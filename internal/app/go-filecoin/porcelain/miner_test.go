@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 
@@ -428,9 +428,15 @@ func (mgop *minerQueryAndDeserializePlumbing) MessageQuery(ctx context.Context, 
 		return [][]byte{address.TestAddress.Bytes()}, nil
 	case miner.GetWorker:
 		return [][]byte{address.TestAddress2.Bytes()}, nil
-	case miner.GetPower:
-		return [][]byte{types.NewBytesAmount(2).Bytes()}, nil
-	case storagemarket.GetTotalStorage:
+	case power.GetPowerReport:
+		powerReport := types.NewPowerReport(2, 0)
+		val := abi.Value{
+			Val:  powerReport,
+			Type: abi.PowerReport,
+		}
+		raw, err := val.Serialize()
+		return [][]byte{raw}, err
+	case power.GetTotalPower:
 		return [][]byte{types.NewBytesAmount(4).Bytes()}, nil
 	default:
 		return nil, fmt.Errorf("unsupported method: %s", method)

@@ -19,8 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 
@@ -259,7 +258,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 			return nil, err
 		}
 
-		ret, err := applyMessageDirect(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), storagemarket.CreateStorageMiner, types.NewBytesAmount(m.SectorSize), pid)
+		ret, err := applyMessageDirect(ctx, st, sm, addr, address.PowerAddress, types.NewAttoFILFromFIL(100000), power.CreateStorageMiner, addr, addr, pid, types.NewBytesAmount(m.SectorSize))
 		if err != nil {
 			return nil, err
 		}
@@ -276,42 +275,11 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 			Power:   types.NewBytesAmount(m.SectorSize * m.NumCommittedSectors),
 		})
 
-		// commit sector to add power
+		// add power directly to power table
 		for i := uint64(0); i < m.NumCommittedSectors; i++ {
-			// the following statement fakes out the behavior of the SectorBuilder.sectorIDNonce,
-			// which is initialized to 0 and incremented (for the first sector) to 1
-			sectorID := i + 1
+			powerReport := types.NewPowerReport(m.SectorSize*m.NumCommittedSectors, 0)
 
-			commD := make([]byte, 32)
-			commR := make([]byte, 32)
-			commRStar := make([]byte, 32)
-			sealProof := make([]byte, types.TwoPoRepProofPartitions.ProofLen())
-			if _, err := pnrg.Read(commD[:]); err != nil {
-				return nil, err
-			}
-			if _, err := pnrg.Read(commR[:]); err != nil {
-				return nil, err
-			}
-			if _, err := pnrg.Read(commRStar[:]); err != nil {
-				return nil, err
-			}
-			if _, err := pnrg.Read(sealProof[:]); err != nil {
-				return nil, err
-			}
-			_, err := applyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), miner.CommitSector, sectorID, commD, commR, commRStar, sealProof)
-			if err != nil {
-				return nil, err
-			}
-		}
-		if m.NumCommittedSectors > 0 {
-			// Now submit a dummy PoSt right away to trigger power updates.
-			// Don't worry, bootstrap miner actors don't need to verify
-			// that the PoSt is well formed.
-			poStProof := make([]byte, types.OnePoStProofPartition.ProofLen())
-			if _, err := pnrg.Read(poStProof[:]); err != nil {
-				return nil, err
-			}
-			_, err = applyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), miner.SubmitPoSt, poStProof, types.EmptyFaultSet(), types.EmptyIntSet())
+			_, err := applyMessageDirect(ctx, st, sm, addr, address.PowerAddress, types.NewAttoFILFromFIL(0), power.ProcessPowerReport, powerReport, maddr)
 			if err != nil {
 				return nil, err
 			}

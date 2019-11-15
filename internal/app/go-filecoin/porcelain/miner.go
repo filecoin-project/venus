@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	vmErrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
@@ -459,20 +460,29 @@ func MinerGetPower(ctx context.Context, plumbing mgaAPI, minerAddr address.Addre
 	bytes, err := plumbing.MessageQuery(
 		ctx,
 		address.Undef,
-		minerAddr,
-		minerActor.GetPower,
+		address.PowerAddress,
+		power.GetPowerReport,
 		plumbing.ChainHeadKey(),
+		minerAddr,
 	)
 	if err != nil {
 		return MinerPower{}, err
 	}
-	power := types.NewBytesAmountFromBytes(bytes[0])
+	reportValue, err := abi.Deserialize(bytes[0], abi.PowerReport)
+	if err != nil {
+		return MinerPower{}, err
+	}
+	powerReport, ok := reportValue.Val.(types.PowerReport)
+	if !ok {
+		return MinerPower{}, errors.Errorf("invalid report bytes returned from GetPower")
+	}
+	minerPower := powerReport.ActivePower
 
 	bytes, err = plumbing.MessageQuery(
 		ctx,
 		address.Undef,
-		address.StorageMarketAddress,
-		storagemarket.GetTotalStorage,
+		address.PowerAddress,
+		power.GetTotalPower,
 		plumbing.ChainHeadKey(),
 	)
 	if err != nil {
@@ -481,7 +491,7 @@ func MinerGetPower(ctx context.Context, plumbing mgaAPI, minerAddr address.Addre
 	total := types.NewBytesAmountFromBytes(bytes[0])
 
 	return MinerPower{
-		Power: *power,
+		Power: *minerPower,
 		Total: *total,
 	}, nil
 }

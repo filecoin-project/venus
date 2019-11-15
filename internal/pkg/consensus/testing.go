@@ -7,9 +7,10 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -62,14 +63,20 @@ type FakePowerTableViewSnapshot struct {
 func (tq *FakePowerTableViewSnapshot) Query(ctx context.Context, optFrom, to address.Address, method types.MethodID, params ...interface{}) ([][]byte, error) {
 	// Note: this currently happens to work as is, but it's wrong
 	// Note: a better mock is recommended to make sure the correct methods get dispatched
-	if method == storagemarket.GetTotalStorage {
+	if method == power.GetTotalPower {
 		if tq.TotalPower != nil {
 			return [][]byte{tq.TotalPower.Bytes()}, nil
 		}
 		return [][]byte{}, errors.New("something went wrong with the total power")
-	} else if method == miner.GetPower {
+	} else if method == power.GetPowerReport {
 		if tq.MinerPower != nil {
-			return [][]byte{tq.MinerPower.Bytes()}, nil
+			powerReport := types.NewPowerReport(tq.MinerPower.Uint64(), 0)
+			val := abi.Value{
+				Val:  powerReport,
+				Type: abi.PowerReport,
+			}
+			raw, err := val.Serialize()
+			return [][]byte{raw}, err
 		}
 		return [][]byte{}, errors.New("something went wrong with the miner power")
 	} else if method == miner.GetWorker {

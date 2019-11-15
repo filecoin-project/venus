@@ -2,10 +2,8 @@ package fast_test
 
 import (
 	"context"
-	"math/big"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -26,26 +24,7 @@ func TestFilecoin_MinerPower(t *testing.T) {
 	expectedGenesisPower := uint64(131072)
 	assertPowerOutput(ctx, t, env.GenesisMiner, expectedGenesisPower, expectedGenesisPower)
 
-	minerDaemon := env.RequireNewNodeWithFunds(10000)
-	requireMiner(ctx, t, minerDaemon, env.GenesisMiner)
-
-	assertPowerOutput(ctx, t, minerDaemon, 0, expectedGenesisPower)
-}
-
-func requireMiner(ctx context.Context, t *testing.T, minerDaemon, clientDaemon *fast.Filecoin) {
-	collateral := big.NewInt(int64(1))
-
-	pparams, err := minerDaemon.Protocol(ctx)
-	require.NoError(t, err)
-
-	sinfo := pparams.SupportedSectors[0]
-
-	// mine the create storage message
-	series.CtxMiningNext(ctx, 1)
-
-	// Create miner
-	_, err = minerDaemon.MinerCreate(ctx, collateral, fast.AOSectorSize(sinfo.Size), fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
-	require.NoError(t, err)
+	// TODO 3642 this test should check that miner's created with miner create have power
 }
 
 func requireGetMinerAddress(ctx context.Context, t *testing.T, daemon *fast.Filecoin) address.Address {
