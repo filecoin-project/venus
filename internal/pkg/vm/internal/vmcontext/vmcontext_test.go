@@ -97,15 +97,20 @@ func TestVMContextSendFailures(t *testing.T) {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	vms := storagemap.NewStorageMap(bs)
 
-	vmCtxParams := NewContextParams{
-		From:        actor1,
-		To:          actor2,
-		Message:     newMsg(),
-		State:       tree,
-		StorageMap:  vms,
-		GasTracker:  gastracker.NewGasTracker(),
-		BlockHeight: types.NewBlockHeight(0),
-		Actors:      &mockStateTree,
+	msg := newMsg()
+
+	vmCtxParams := func() NewContextParams {
+		return NewContextParams{
+			From:        actor1,
+			To:          actor2,
+			Message:     msg,
+			OriginMsg:   msg,
+			State:       tree,
+			StorageMap:  vms,
+			GasTracker:  gastracker.NewGasTracker(),
+			BlockHeight: types.NewBlockHeight(0),
+			Actors:      &mockStateTree,
+		}
 	}
 
 	fooID := types.MethodID(8272)
@@ -119,7 +124,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(vmCtxParams)
+		ctx := NewVMContext(vmCtxParams())
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), fooID, types.ZeroAttoFIL, []interface{}{})
@@ -143,7 +148,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(vmCtxParams)
+		ctx := NewVMContext(vmCtxParams())
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), fooID, types.ZeroAttoFIL, []interface{}{})
@@ -171,9 +176,11 @@ func TestVMContextSendFailures(t *testing.T) {
 				return nil, nil
 			},
 		}
-		vmCtxParams.Message = msg
-		ctx := NewVMContext(vmCtxParams)
+		params := vmCtxParams()
+		params.Message = msg
+		ctx := NewVMContext(params)
 		ctx.deps = deps
+		ctx.toAddr = msg.To
 
 		_, code, err := ctx.Send(to, fooID, types.ZeroAttoFIL, []interface{}{})
 
@@ -201,8 +208,9 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		vmCtxParams.Message = newMsg()
-		ctx := NewVMContext(vmCtxParams)
+		params := vmCtxParams()
+		params.Message = newMsg()
+		ctx := NewVMContext(params)
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), fooID, types.ZeroAttoFIL, []interface{}{})
@@ -236,7 +244,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(vmCtxParams)
+		ctx := NewVMContext(vmCtxParams())
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), fooID, types.ZeroAttoFIL, []interface{}{})
@@ -247,26 +255,43 @@ func TestVMContextSendFailures(t *testing.T) {
 		assert.Equal(t, []string{"ToValues", "EncodeValues", "GetOrCreateActor", "Send"}, calls)
 	})
 
+	t.Run("AddressForNewActor uses origin message", func(t *testing.T) {
+		vmctx := NewVMContext(vmCtxParams())
+		addr1, err := vmctx.AddressForNewActor()
+		require.NoError(t, err)
+
+		assert.Equal(t, addr1.Protocol(), address.Actor)
+
+		// vmctx with same origin message produces same addr
+		addr2, err := NewVMContext(vmCtxParams()).AddressForNewActor()
+		require.NoError(t, err)
+		assert.Equal(t, addr2, addr1)
+
+		// vmctx with different origin message produces different addr
+		params := vmCtxParams()
+		params.OriginMsg = newMsg()
+		params.OriginMsg.From = newAddress()
+		params.OriginMsg.CallSeqNum = 42
+
+		addr3, err := NewVMContext(params).AddressForNewActor()
+		require.NoError(t, err)
+		assert.NotEqual(t, addr3, addr1)
+	})
+
 	t.Run("creates new actor from cid", func(t *testing.T) {
 		ctx := context.Background()
-		vmctx := NewVMContext(vmCtxParams)
+		vmctx := NewVMContext(vmCtxParams())
 		addr, err := vmctx.AddressForNewActor()
 
 		require.NoError(t, err)
 
-		params := &actor.FakeActorStorage{}
-		err = vmctx.CreateNewActor(addr, fakeActorCid, params)
+		err = vmctx.CreateNewActor(addr, fakeActorCid)
 		require.NoError(t, err)
 
 		act, err := tree.GetActor(ctx, addr)
 		require.NoError(t, err)
 
 		assert.Equal(t, fakeActorCid, act.Code)
-		actorStorage := vms.NewStorage(addr, act)
-		chunk, err := actorStorage.Get(act.Head)
-		require.NoError(t, err)
-
-		assert.True(t, len(chunk) > 0)
 	})
 
 }

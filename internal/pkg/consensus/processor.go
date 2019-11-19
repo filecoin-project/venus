@@ -14,9 +14,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
@@ -303,11 +305,6 @@ var (
 // not make any changes to the state/blockchain and is useful for interrogating
 // actor state. Block height bh is optional; some methods will ignore it.
 func (p *DefaultProcessor) CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method types.MethodID, params []byte, from address.Address, optBh *types.BlockHeight) ([][]byte, uint8, error) {
-	toActor, err := st.GetActor(ctx, to)
-	if err != nil {
-		return nil, 1, errors.ApplyErrorPermanentWrapf(err, "failed to get To actor")
-	}
-
 	// not committing or flushing storage structures guarantees changes won't make it to stored state tree or datastore
 	cachedSt := state.NewCachedTree(st)
 
@@ -324,9 +321,22 @@ func (p *DefaultProcessor) CallQueryMethod(ctx context.Context, st state.Tree, v
 	gasTracker := vm.NewGasTracker()
 	gasTracker.MsgGasLimit = types.BlockGasLimit
 
+	// translate address before retrieving from actor
+	toAddr, err := p.resolveAddress(ctx, msg, cachedSt, vms, gasTracker)
+	if err != nil {
+		return nil, 1, errors.FaultErrorWrapf(err, "Could not resolve actor address")
+	}
+
+	toActor, err := st.GetActor(ctx, toAddr)
+	if err != nil {
+		return nil, 1, errors.ApplyErrorPermanentWrapf(err, "failed to get To actor")
+	}
+
 	vmCtxParams := vm.NewContextParams{
 		To:          toActor,
+		ToAddr:      toAddr,
 		Message:     msg,
+		OriginMsg:   msg,
 		State:       cachedSt,
 		StorageMap:  vms,
 		GasTracker:  gasTracker,
@@ -342,11 +352,6 @@ func (p *DefaultProcessor) CallQueryMethod(ctx context.Context, st state.Tree, v
 // PreviewQueryMethod estimates the amount of gas that will be used by a method
 // call. It accepts all the same arguments as CallQueryMethod.
 func (p *DefaultProcessor) PreviewQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method types.MethodID, params []byte, from address.Address, optBh *types.BlockHeight) (types.GasUnits, error) {
-	toActor, err := st.GetActor(ctx, to)
-	if err != nil {
-		return types.NewGasUnits(0), errors.ApplyErrorPermanentWrapf(err, "failed to get To actor")
-	}
-
 	// not committing or flushing storage structures guarantees changes won't make it to stored state tree or datastore
 	cachedSt := state.NewCachedTree(st)
 
@@ -363,9 +368,22 @@ func (p *DefaultProcessor) PreviewQueryMethod(ctx context.Context, st state.Tree
 	gasTracker := vm.NewGasTracker()
 	gasTracker.MsgGasLimit = types.BlockGasLimit
 
+	// translate address before retrieving from actor
+	toAddr, err := p.resolveAddress(ctx, msg, cachedSt, vms, gasTracker)
+	if err != nil {
+		return types.NewGasUnits(0), errors.FaultErrorWrapf(err, "Could not resolve actor address")
+	}
+
+	toActor, err := st.GetActor(ctx, toAddr)
+	if err != nil {
+		return types.NewGasUnits(0), errors.ApplyErrorPermanentWrapf(err, "failed to get To actor")
+	}
+
 	vmCtxParams := vm.NewContextParams{
 		To:          toActor,
+		ToAddr:      toAddr,
 		Message:     msg,
+		OriginMsg:   msg,
 		State:       cachedSt,
 		StorageMap:  vms,
 		GasTracker:  gasTracker,
@@ -418,7 +436,13 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		}
 	}
 
-	toActor, err := st.GetOrCreateActor(ctx, msg.To, func() (*actor.Actor, error) {
+	// translate address before retrieving from actor
+	toAddr, err := p.resolveAddress(ctx, msg, st, store, gasTracker)
+	if err != nil {
+		return nil, errors.FaultErrorWrapf(err, "Could not resolve actor address")
+	}
+
+	toActor, err := st.GetOrCreateActor(ctx, toAddr, func() (*actor.Actor, error) {
 		// Addresses are deterministic so sending a message to a non-existent address must not install an actor,
 		// else actors could be installed ahead of address activation. So here we create the empty, upgradable
 		// actor to collect any balance that may be transferred.
@@ -431,7 +455,9 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 	vmCtxParams := vm.NewContextParams{
 		From:        fromActor,
 		To:          toActor,
+		ToAddr:      toAddr,
 		Message:     msg,
+		OriginMsg:   msg,
 		State:       st,
 		StorageMap:  store,
 		GasTracker:  gasTracker,
@@ -457,6 +483,38 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 	receipt.Return = append(receipt.Return, ret...)
 
 	return receipt, vmErr
+}
+
+// resolveAddress looks up associated id address if actor address. Otherwise it returns the same address.
+func (p *DefaultProcessor) resolveAddress(ctx context.Context, msg *types.UnsignedMessage, st *state.CachedTree, vms vm.StorageMap, gt *vm.GasTracker) (address.Address, error) {
+	if msg.To.Protocol() != address.Actor {
+		return msg.To, nil
+	}
+
+	vmCtxParams := vm.NewContextParams{
+		Message:    msg,
+		State:      st,
+		StorageMap: vms,
+		GasTracker: gt,
+		Actors:     p.actors,
+	}
+	vmCtx := vm.NewVMContext(vmCtxParams)
+	ret, _, err := vmCtx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{msg.To})
+	if err != nil {
+		return address.Undef, err
+	}
+
+	id, err := abi.Deserialize(ret[0], abi.Integer)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	idAddr, err := address.NewIDAddress(id.Val.(*big.Int).Uint64())
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return idAddr, nil
 }
 
 // ApplyMessagesAndPayRewards pays the block mining reward to the miner's owner and then applies

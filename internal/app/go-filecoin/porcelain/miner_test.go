@@ -443,7 +443,7 @@ func (mgop *minerQueryAndDeserializePlumbing) MessageQuery(ctx context.Context, 
 	}
 }
 
-func (mgop *minerQueryAndDeserializePlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*vm.FunctionSignature, error) {
+func (mgop *minerQueryAndDeserializePlumbing) ActorGetStableSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*vm.FunctionSignature, error) {
 	if method == miner.GetSectorSize {
 		return &vm.FunctionSignature{
 			Params: nil,
@@ -509,7 +509,7 @@ func (mpp *minerGetProvingPeriodPlumbing) MessageQuery(ctx context.Context, optF
 	return nil, fmt.Errorf("unsupported method: %s", method)
 }
 
-func (mpp *minerGetProvingPeriodPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*vm.FunctionSignature, error) {
+func (mpp *minerGetProvingPeriodPlumbing) ActorGetStableSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*vm.FunctionSignature, error) {
 	if method == miner.GetProvingSetCommitments {
 		return &vm.FunctionSignature{
 			Params: nil,
@@ -599,7 +599,7 @@ func (minerGetSectorSizePlumbing) ChainHeadKey() block.TipSetKey {
 func (minerGetSectorSizePlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	return [][]byte{types.NewBytesAmount(1234).Bytes()}, nil
 }
-func (minerGetSectorSizePlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*vm.FunctionSignature, error) {
+func (minerGetSectorSizePlumbing) ActorGetStableSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*vm.FunctionSignature, error) {
 	return &vm.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.BytesAmount},
@@ -624,7 +624,7 @@ func (minerGetLastCommittedSectorIDPlumbing) ChainHeadKey() block.TipSetKey {
 func (minerGetLastCommittedSectorIDPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	return [][]byte{leb128.FromUInt64(5432)}, nil
 }
-func (minerGetLastCommittedSectorIDPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*vm.FunctionSignature, error) {
+func (minerGetLastCommittedSectorIDPlumbing) ActorGetStableSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*vm.FunctionSignature, error) {
 	return &vm.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.SectorID},

@@ -250,7 +250,7 @@ func minerAddrsFromKis(t *testing.T, kis []types.KeyInfo) []address.Address {
 	minerAddrs := make([]address.Address, len(kis))
 	var err error
 	for i := 0; i < len(kis); i++ {
-		minerAddrs[i], err = address.NewActorAddress([]byte(fmt.Sprintf("%s%s", kis[i], "Miner")))
+		minerAddrs[i], err = address.NewSecp256k1Address([]byte(fmt.Sprintf("%s%s", kis[i], "Miner")))
 
 		require.NoError(t, err)
 	}

@@ -161,7 +161,7 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 	return func() *SignedMessage {
 		s := fmt.Sprintf("smsg%d", i)
 		i++
-		newAddr, err := address.NewActorAddress([]byte(s + "-to"))
+		newAddr, err := address.NewSecp256k1Address([]byte(s + "-to"))
 		if err != nil {
 			panic(err)
 		}
@@ -217,11 +217,11 @@ func NewMessageForTestGetter() func() *UnsignedMessage {
 	return func() *UnsignedMessage {
 		s := fmt.Sprintf("msg%d", i)
 		i++
-		from, err := address.NewActorAddress([]byte(s + "-from"))
+		from, err := address.NewSecp256k1Address([]byte(s + "-from"))
 		if err != nil {
 			panic(err)
 		}
-		to, err := address.NewActorAddress([]byte(s + "-to"))
+		to, err := address.NewSecp256k1Address([]byte(s + "-to"))
 		if err != nil {
 			panic(err)
 		}

@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/big"
 	mrand "math/rand"
 	"strconv"
 	"time"
 
 	"github.com/filecoin-project/go-amt-ipld"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 
 	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -263,14 +266,30 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 			return nil, err
 		}
 
-		// get miner address
+		// get miner actor address
 		maddr, err := address.NewFromBytes(ret[0])
 		if err != nil {
 			return nil, err
 		}
 
+		// lookup id address for actor address
+		ret, err = applyMessageDirect(ctx, st, sm, addr, address.InitAddress, types.ZeroAttoFIL, initactor.GetActorIDForAddress, maddr)
+		if err != nil {
+			return nil, err
+		}
+
+		mID, err := abi.Deserialize(ret[0], abi.Integer)
+		if err != nil {
+			return nil, err
+		}
+
+		mIDAddr, err := address.NewIDAddress(mID.Val.(*big.Int).Uint64())
+		if err != nil {
+			return nil, err
+		}
+
 		minfos = append(minfos, RenderedMinerInfo{
-			Address: maddr,
+			Address: mIDAddr,
 			Owner:   m.Owner,
 			Power:   types.NewBytesAmount(m.SectorSize * m.NumCommittedSectors),
 		})
@@ -279,7 +298,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 		for i := uint64(0); i < m.NumCommittedSectors; i++ {
 			powerReport := types.NewPowerReport(m.SectorSize*m.NumCommittedSectors, 0)
 
-			_, err := applyMessageDirect(ctx, st, sm, addr, address.PowerAddress, types.NewAttoFILFromFIL(0), power.ProcessPowerReport, powerReport, maddr)
+			_, err := applyMessageDirect(ctx, st, sm, addr, address.PowerAddress, types.NewAttoFILFromFIL(0), power.ProcessPowerReport, powerReport, mIDAddr)
 			if err != nil {
 				return nil, err
 			}

@@ -29,6 +29,8 @@ const (
 	InvalidMethodID = MethodID(0xFFFFFFFFFFFFFFFF)
 	// SendMethodID is the method ID for sending money to an actor.
 	SendMethodID = MethodID(0)
+	// ConstructorMethodID is the method ID used to initialize an actor's state.
+	ConstructorMethodID = MethodID(1)
 )
 
 // GasUnits represents number of units of gas consumed

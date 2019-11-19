@@ -74,7 +74,7 @@ func TestSignedMessageCidToNode(t *testing.T) {
 }
 
 func makeMessage(t *testing.T, signer MockSigner, nonce uint64) *SignedMessage {
-	newAddr, err := address.NewActorAddress([]byte("receiver"))
+	newAddr, err := address.NewSecp256k1Address([]byte("receiver"))
 	require.NoError(t, err)
 
 	msg := NewMeteredMessage(

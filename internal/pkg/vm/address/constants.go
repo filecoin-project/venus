@@ -11,12 +11,12 @@ func init() {
 
 	var err error
 
-	TestAddress, err = NewActorAddress([]byte("satoshi"))
+	TestAddress, err = NewSecp256k1Address([]byte("satoshi"))
 	if err != nil {
 		panic(err)
 	}
 
-	TestAddress2, err = NewActorAddress([]byte("nakamoto"))
+	TestAddress2, err = NewSecp256k1Address([]byte("nakamoto"))
 	if err != nil {
 		panic(err)
 	}

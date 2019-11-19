@@ -11,7 +11,7 @@ func NewForTestGetter() func() Address {
 	return func() Address {
 		s := fmt.Sprintf("address%d", i)
 		i++
-		newAddr, err := NewActorAddress([]byte(s))
+		newAddr, err := NewSecp256k1Address([]byte(s))
 		if err != nil {
 			panic(err)
 		}

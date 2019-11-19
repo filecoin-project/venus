@@ -1,7 +1,10 @@
 package vm
 
 import (
+	"bytes"
+
 	cbor "github.com/ipfs/go-ipld-cbor"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
@@ -25,7 +28,7 @@ type FakeVMContext struct {
 	Addresser               func() (address.Address, error)
 	Charger                 func(cost types.GasUnits) error
 	Sampler                 func(sampleHeight *types.BlockHeight) ([]byte, error)
-	ActorCreator            func(addr address.Address, code cid.Cid, initalizationParams interface{}) error
+	ActorCreator            func(addr address.Address, code cid.Cid) error
 }
 
 // NewFakeVMContext fakes the state machine infrastructure so actor methods can be called directly
@@ -53,7 +56,7 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 		Addresser: func() (address.Address, error) {
 			return addressGetter(), nil
 		},
-		ActorCreator: func(addr address.Address, code cid.Cid, initalizationParams interface{}) error {
+		ActorCreator: func(addr address.Address, code cid.Cid) error {
 			return nil
 		},
 	}
@@ -138,8 +141,8 @@ func (tc *FakeVMContext) Charge(cost types.GasUnits) error {
 // for built-in actors
 
 // CreateNewActor creates an actor of a given type
-func (tc *FakeVMContext) CreateNewActor(addr address.Address, code cid.Cid, initalizationParams interface{}) error {
-	return tc.ActorCreator(addr, code, initalizationParams)
+func (tc *FakeVMContext) CreateNewActor(addr address.Address, code cid.Cid) error {
+	return tc.ActorCreator(addr, code)
 }
 
 // Verifier provides an interface to the proofs verifier
@@ -175,6 +178,17 @@ var _ runtime.Storage = &testStorage{}
 // Put satisfies the Storage interface
 func (ts *testStorage) Put(v interface{}) (cid.Cid, error) {
 	ts.state = v
+	if cm, ok := v.(cbg.CBORMarshaler); ok {
+		buf := new(bytes.Buffer)
+		err := cm.MarshalCBOR(buf)
+		if err == nil {
+			nd, err := cbor.Decode(buf.Bytes(), types.DefaultHashFunction, -1)
+			if err != nil {
+				panic("failed to decode")
+			}
+			return nd.Cid(), err
+		}
+	}
 	raw, err := encoding.Encode(v)
 	if err != nil {
 		panic("failed to encode")

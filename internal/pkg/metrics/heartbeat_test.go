@@ -141,7 +141,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 	expHeight := types.Uint64(444)
 	expTs := mustMakeTipset(t, expHeight)
 
-	addr, err := address.NewActorAddress([]byte("miner address"))
+	addr, err := address.NewSecp256k1Address([]byte("miner address"))
 	require.NoError(t, err)
 
 	// The handle method will run the assertions for the test

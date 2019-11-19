@@ -13,7 +13,7 @@ func TestSectorBuilderUtils(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("prover id creation", func(t *testing.T) {
-		addr, err := address.NewActorAddress([]byte("satoshi"))
+		addr, err := address.NewSecp256k1Address([]byte("satoshi"))
 		require.NoError(t, err)
 
 		id := AddressToProverID(addr)

@@ -2,11 +2,14 @@ package testhelpers
 
 import (
 	"context"
+	"math/big"
 	"testing"
 
 	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	cid "github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
@@ -153,6 +156,24 @@ func (ms testSigner) SignBytes(data []byte, addr address.Address) (types.Signatu
 	return types.Signature{}, nil
 }
 
+// RequireActorIDAddress looks up an actor address in the init actor and returns the associated id address
+func RequireActorIDAddress(ctx context.Context, t *testing.T, st state.Tree, store vm.StorageMap, addr address.Address) address.Address {
+	processor := consensus.NewConfiguredProcessor(&consensus.FakeMessageValidator{}, &FakeBlockRewarder{}, builtin.DefaultActors)
+	params, err := abi.ToEncodedValues(addr)
+	require.NoError(t, err)
+
+	result, _, err := processor.CallQueryMethod(ctx, st, store, address.InitAddress, initactor.GetActorIDForAddress, params, address.Undef, nil)
+	require.NoError(t, err)
+
+	idVal, err := abi.Deserialize(result[0], abi.Integer)
+	require.NoError(t, err)
+
+	idAddr, err := address.NewIDAddress(idVal.Val.(*big.Int).Uint64())
+	require.NoError(t, err)
+
+	return idAddr
+}
+
 // ApplyTestMessage sends a message directly to the vm, bypassing message
 // validation
 func ApplyTestMessage(st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
@@ -174,6 +195,10 @@ func newMessageApplier(msg *types.UnsignedMessage, processor *consensus.DefaultP
 	bh *types.BlockHeight, minerOwner address.Address, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
 	amr, err := processor.ApplyMessagesAndPayRewards(context.Background(), st, storageMap, []*types.UnsignedMessage{msg}, minerOwner, bh, ancestors)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := storageMap.Flush(); err != nil {
 		return nil, err
 	}
 

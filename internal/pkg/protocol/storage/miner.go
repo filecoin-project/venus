@@ -82,7 +82,7 @@ type Miner struct {
 
 // minerPorcelain is the subset of the porcelain API that storage.Miner needs.
 type minerPorcelain interface {
-	ActorGetSignature(context.Context, address.Address, types.MethodID) (*vm.FunctionSignature, error)
+	ActorGetStableSignature(context.Context, address.Address, types.MethodID) (*vm.FunctionSignature, error)
 
 	ChainHeadKey() block.TipSetKey
 	ChainTipSet(block.TipSetKey) (block.TipSet, error)
@@ -656,9 +656,9 @@ func (sm *Miner) isBootstrapMinerActor(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, errors.Wrap(err, "query method failed")
 	}
-	sig, err := sm.porcelainAPI.ActorGetSignature(ctx, sm.minerAddr, miner.IsBootstrapMiner)
+	sig, err := sm.porcelainAPI.ActorGetStableSignature(ctx, sm.minerAddr, miner.IsBootstrapMiner)
 	if err != nil {
-		return false, errors.Wrap(err, "query method failed")
+		return false, errors.Wrap(err, "method signature retrieval failed")
 	}
 
 	deserialized, err := abi.Deserialize(returnValues[0], sig.Return[0])
@@ -687,7 +687,7 @@ func (sm *Miner) getActorSectorCommitments(ctx context.Context) (map[string]type
 	if err != nil {
 		return nil, errors.Wrap(err, "query method failed")
 	}
-	sig, err := sm.porcelainAPI.ActorGetSignature(ctx, sm.minerAddr, miner.GetProvingSetCommitments)
+	sig, err := sm.porcelainAPI.ActorGetStableSignature(ctx, sm.minerAddr, miner.GetProvingSetCommitments)
 	if err != nil {
 		return nil, errors.Wrap(err, "query method failed")
 	}

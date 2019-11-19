@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -45,6 +47,16 @@ type API struct {
 // New returns a new porcelain.API.
 func New(plumbing *plumbing.API) *API {
 	return &API{plumbing}
+}
+
+// ActorGetStable gets an actor by address, converting the address to an id address if necessary
+func (a *API) ActorGetStable(ctx context.Context, addr address.Address) (*actor.Actor, error) {
+	return GetStableActor(ctx, a, addr)
+}
+
+// ActorGetStableSignature gets an actor signature by address, converting the address to an id address if necessary
+func (a *API) ActorGetStableSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ *vm.FunctionSignature, err error) {
+	return GetStableActorSignature(ctx, a, actorAddr, method)
 }
 
 // ChainHead returns the current head tipset

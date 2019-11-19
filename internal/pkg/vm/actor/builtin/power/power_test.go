@@ -39,7 +39,8 @@ func TestPowerCreateStorageMiner(t *testing.T) {
 	outAddr, err := address.NewFromBytes(result.Receipt.Return[0])
 	require.NoError(t, err)
 
-	minerActor, err := st.GetActor(ctx, outAddr)
+	idAddr := th.RequireActorIDAddress(ctx, t, st, vms, outAddr)
+	minerActor, err := st.GetActor(ctx, idAddr)
 	require.NoError(t, err)
 
 	powerAct, err := st.GetActor(ctx, address.PowerAddress)
@@ -49,7 +50,7 @@ func TestPowerCreateStorageMiner(t *testing.T) {
 	assert.Equal(t, types.NewAttoFILFromFIL(100), minerActor.Balance)
 
 	var mstor miner.State
-	builtin.RequireReadState(t, vms, outAddr, minerActor, &mstor)
+	builtin.RequireReadState(t, vms, idAddr, minerActor, &mstor)
 
 	assert.Equal(t, mstor.ActiveCollateral, types.NewAttoFILFromFIL(0))
 	assert.Equal(t, mstor.PeerID, pid)
@@ -66,8 +67,9 @@ func TestProcessPowerReport(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		st, vms := th.RequireCreateStorages(ctx, t)
 		pid := th.RequireRandomPeerID(t)
-		minerAddr := requireCreateMiner(hundredAttoFIL, t, st, vms, address.TestAddress, pid, 0)
+		outAddr := requireCreateMiner(hundredAttoFIL, t, st, vms, address.TestAddress, pid, 0)
 
+		minerAddr := th.RequireActorIDAddress(ctx, t, st, vms, outAddr)
 		reportInit := requireGetPowerReport(t, st, vms, minerAddr)
 		assert.Equal(t, types.NewBytesAmount(0), reportInit.ActivePower)
 		assert.Equal(t, types.NewBytesAmount(0), reportInit.InactivePower)
@@ -118,7 +120,9 @@ func TestGetTotalPower(t *testing.T) {
 
 	st, vms := th.RequireCreateStorages(ctx, t)
 	pid := th.RequireRandomPeerID(t)
-	minerAddr := requireCreateMiner(hundredAttoFIL, t, st, vms, address.TestAddress, pid, 0)
+	outAddr := requireCreateMiner(hundredAttoFIL, t, st, vms, address.TestAddress, pid, 0)
+
+	minerAddr := th.RequireActorIDAddress(ctx, t, st, vms, outAddr)
 
 	// set power
 	report1 := types.NewPowerReport(600, 400)
@@ -149,8 +153,9 @@ func TestRemoveStorageMiner(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		st, vms := th.RequireCreateStorages(ctx, t)
 		pid := th.RequireRandomPeerID(t)
-		minerAddr := requireCreateMiner(hundredAttoFIL, t, st, vms, address.TestAddress, pid, 0)
+		outAddr := requireCreateMiner(hundredAttoFIL, t, st, vms, address.TestAddress, pid, 0)
 
+		minerAddr := th.RequireActorIDAddress(ctx, t, st, vms, outAddr)
 		pdata := actor.MustConvertParams(minerAddr)
 		msg := types.NewUnsignedMessage(address.TestAddress, address.PowerAddress, 0, hundredAttoFIL, power.RemoveStorageMiner, pdata)
 		result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
@@ -164,7 +169,9 @@ func TestRemoveStorageMiner(t *testing.T) {
 	t.Run("remove nonempty fails", func(t *testing.T) {
 		st, vms := th.RequireCreateStorages(ctx, t)
 		pid := th.RequireRandomPeerID(t)
-		minerAddr := requireCreateMiner(hundredAttoFIL, t, st, vms, address.TestAddress, pid, 0)
+		outAddr := requireCreateMiner(hundredAttoFIL, t, st, vms, address.TestAddress, pid, 0)
+
+		minerAddr := th.RequireActorIDAddress(ctx, t, st, vms, outAddr)
 
 		// set power
 		report1 := types.NewPowerReport(600, 400)

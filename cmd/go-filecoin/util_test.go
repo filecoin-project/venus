@@ -18,7 +18,7 @@ func TestOptionalAddr(t *testing.T) {
 
 		opts := make(cmdkit.OptMap)
 
-		specifiedAddr, err := address.NewActorAddress([]byte("a new test address"))
+		specifiedAddr, err := address.NewSecp256k1Address([]byte("a new test address"))
 		require.NoError(t, err)
 		opts["from"] = specifiedAddr.String()
 

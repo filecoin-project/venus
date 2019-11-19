@@ -46,7 +46,7 @@ func (mm *MessageMaker) Signer() *MockSigner {
 func (mm *MessageMaker) NewUnsignedMessage(from address.Address, nonce uint64) *UnsignedMessage {
 	seq := mm.seq
 	mm.seq++
-	to, err := address.NewActorAddress([]byte("destination"))
+	to, err := address.NewSecp256k1Address([]byte("destination"))
 	require.NoError(mm.t, err)
 	return NewMeteredMessage(
 		from,

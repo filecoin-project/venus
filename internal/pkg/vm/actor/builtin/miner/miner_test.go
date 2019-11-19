@@ -44,7 +44,8 @@ func TestAskFunctions(t *testing.T) {
 
 	st, vms := th.RequireCreateStorages(ctx, t)
 
-	minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+	outAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+	minerAddr := th.RequireActorIDAddress(ctx, t, st, vms, outAddr)
 
 	// make an ask, and then make sure it all looks good
 	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(5), big.NewInt(1500))
@@ -112,9 +113,8 @@ func TestChangeWorker(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	st, vms := th.RequireCreateStorages(ctx, t)
-
 	t.Run("Change worker address", func(t *testing.T) {
+		st, vms := th.RequireCreateStorages(ctx, t)
 		minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
 		// retrieve worker before changing it
@@ -145,6 +145,7 @@ func TestChangeWorker(t *testing.T) {
 	})
 
 	t.Run("Only owner can change address", func(t *testing.T) {
+		st, vms := th.RequireCreateStorages(ctx, t)
 		minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
 		// change worker
@@ -160,7 +161,9 @@ func TestChangeWorker(t *testing.T) {
 	})
 
 	t.Run("Errors when gas cost too low", func(t *testing.T) {
-		minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+		st, vms := th.RequireCreateStorages(ctx, t)
+		outAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+		minerAddr := th.RequireActorIDAddress(ctx, t, st, vms, outAddr)
 		mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 
 		// change worker
@@ -176,6 +179,37 @@ func TestChangeWorker(t *testing.T) {
 		assert.Contains(t, result.ExecutionError.Error(), "Insufficient gas")
 		assert.Equal(t, uint8(internal.ErrInsufficientGas), result.Receipt.ExitCode)
 	})
+}
+
+func TestConstructor(t *testing.T) {
+	tf.UnitTest(t)
+
+	message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, types.ConstructorMethodID, nil)
+	vmctx := vm.NewFakeVMContext(message, nil)
+	storageMap := th.VMStorage()
+	minerActor := actor.NewActor(types.MinerActorCodeCid, types.ZeroAttoFIL)
+	vmctx.StorageValue = storageMap.NewStorage(address.TestAddress, minerActor)
+
+	act := &Actor{}
+	addrGetter := address.NewForTestGetter()
+	owner := addrGetter()
+	worker := addrGetter()
+	sectorSize := types.NewBytesAmount(42)
+	pid := th.RequireIntPeerID(t, 3)
+
+	(*Impl)(act).Constructor(vmctx, owner, worker, pid, sectorSize)
+
+	stateEncoded, err := vmctx.Storage().Get(minerActor.Head)
+	require.NoError(t, err)
+
+	state := &State{}
+	err = encoding.Decode(stateEncoded, state)
+	require.NoError(t, err)
+
+	assert.Equal(t, state.Owner, owner)
+	assert.Equal(t, state.Worker, worker)
+	assert.Equal(t, state.PeerID, pid)
+	assert.Equal(t, state.SectorSize, sectorSize)
 }
 
 func TestGetWorker(t *testing.T) {
@@ -613,7 +647,8 @@ func setupMinerActorLiason(t *testing.T) *minerActorLiason {
 	head := builder.AppendManyOn(10, block.UndefTipSet)
 	ancestors := builder.RequireTipSets(head.Key(), 10)
 	origPid := th.RequireRandomPeerID(t)
-	minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, origPid)
+	outAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, origPid)
+	minerAddr := th.RequireActorIDAddress(ctx, t, st, vms, outAddr)
 	return newMinerActorLiason(t, st, vms, ancestors, minerAddr)
 }
 
@@ -1025,7 +1060,8 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	head := builder.AppendManyOn(10, block.UndefTipSet)
 	ancestors := builder.RequireTipSets(head.Key(), 10)
 	origPid := th.RequireRandomPeerID(t)
-	minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, origPid)
+	outAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, origPid)
+	minerAddr := th.RequireActorIDAddress(ctx, t, st, vms, outAddr)
 	proof := th.MakeRandomPoStProofForTest()
 	doneDefault := types.EmptyIntSet()
 	faultsDefault := types.EmptyFaultSet()
@@ -1285,7 +1321,8 @@ func TestActorSlashStorageFault(t *testing.T) {
 	}
 
 	t.Run("slashing charges gas", func(t *testing.T) {
-		st, vms, minerAddr := createMinerWithPower(t)
+		st, vms, outAddr := createMinerWithPower(t)
+		minerAddr := th.RequireActorIDAddress(context.TODO(), t, st, vms, outAddr)
 		mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 
 		// change worker
@@ -1313,7 +1350,8 @@ func TestActorSlashStorageFault(t *testing.T) {
 	})
 
 	t.Run("slashing too early fails", func(t *testing.T) {
-		st, vms, minerAddr := createMinerWithPower(t)
+		st, vms, outAddr := createMinerWithPower(t)
+		minerAddr := th.RequireActorIDAddress(context.TODO(), t, st, vms, outAddr)
 
 		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission, SlashStorageFault, nil)
 		require.NoError(t, err)
@@ -1325,7 +1363,8 @@ func TestActorSlashStorageFault(t *testing.T) {
 	})
 
 	t.Run("slashing after generation attack time succeeds", func(t *testing.T) {
-		st, vms, minerAddr := createMinerWithPower(t)
+		st, vms, outAddr := createMinerWithPower(t)
+		minerAddr := th.RequireActorIDAddress(context.TODO(), t, st, vms, outAddr)
 
 		// get storage power prior to fault
 		oldTotalStoragePower := th.GetTotalPower(t, st, vms)
