@@ -19,7 +19,7 @@ type mockSyncer struct {
 	headsCalled []block.TipSetKey
 }
 
-func (fs *mockSyncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, t bool) error {
+func (fs *mockSyncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo) error {
 	fs.headsCalled = append(fs.headsCalled, ci.Head)
 	return nil
 }

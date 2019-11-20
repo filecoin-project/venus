@@ -17,22 +17,22 @@ const DefaultInQueueSize = 5
 // DefaultWorkQueueSize is the size of the work queue
 const DefaultWorkQueueSize = 20
 
-// catchupSyncer is the interface of the logic syncing incoming chains
-type catchupSyncer interface {
-	HandleNewTipSet(context.Context, *block.ChainInfo, bool) error
+// dispatchSyncer is the interface of the logic syncing incoming chains
+type dispatchSyncer interface {
+	HandleNewTipSet(context.Context, *block.ChainInfo) error
 }
 
 // NewDispatcher creates a new syncing dispatcher with default queue sizes.
-func NewDispatcher(catchupSyncer catchupSyncer) *Dispatcher {
+func NewDispatcher(catchupSyncer dispatchSyncer) *Dispatcher {
 	return NewDispatcherWithSizes(catchupSyncer, DefaultWorkQueueSize, DefaultInQueueSize)
 }
 
 // NewDispatcherWithSizes creates a new syncing dispatcher.
-func NewDispatcherWithSizes(catchupSyncer catchupSyncer, workQueueSize, inQueueSize int) *Dispatcher {
+func NewDispatcherWithSizes(syncer dispatchSyncer, workQueueSize, inQueueSize int) *Dispatcher {
 	return &Dispatcher{
 		workQueue:     NewTargetQueue(),
 		workQueueSize: workQueueSize,
-		catchupSyncer: catchupSyncer,
+		syncer:        syncer,
 		incoming:      make(chan Target, inQueueSize),
 		control:       make(chan interface{}, 1),
 		registeredCb:  func(t Target) {},
@@ -65,7 +65,7 @@ type Dispatcher struct {
 	incoming chan Target
 	// catchupSyncer is used for dispatching sync targets for chain heads
 	// during the CHAIN_CATCHUP mode of operation
-	catchupSyncer catchupSyncer
+	syncer dispatchSyncer
 
 	// registeredCb is a callback registered over the control channel.  It
 	// is called after every successful sync.
@@ -135,7 +135,7 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			syncTarget, popped := d.workQueue.Pop()
 			if popped {
 				// Do work
-				err := d.catchupSyncer.HandleNewTipSet(syncingCtx, &syncTarget.ChainInfo, true)
+				err := d.syncer.HandleNewTipSet(syncingCtx, &syncTarget.ChainInfo)
 				if err != nil {
 					log.Info("sync request could not complete: %s", err)
 				}
