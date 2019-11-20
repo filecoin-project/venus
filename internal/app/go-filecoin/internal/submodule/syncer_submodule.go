@@ -73,7 +73,10 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
 	fetcher := fetcher.NewGraphSyncFetcher(ctx, gsync, blockstore.Blockstore, blkValid, config.Clock(), discovery.PeerTracker)
 
-	chainSyncManager := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, fetcher, config.Clock())
+	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, fetcher, config.Clock())
+	if err != nil {
+		return SyncerSubmodule{}, err
+	}
 
 	return SyncerSubmodule{
 		BlockTopic: pubsub.NewTopic(topic),
@@ -89,6 +92,6 @@ type syncerNode interface {
 }
 
 // Start starts the syncer submodule for a node.
-func (s *SyncerSubmodule) Start(ctx context.Context, _node syncerNode) {
-	s.ChainSyncManager.Start(ctx)
+func (s *SyncerSubmodule) Start(ctx context.Context, _node syncerNode) error {
+	return s.ChainSyncManager.Start(ctx)
 }

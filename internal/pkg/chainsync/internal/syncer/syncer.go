@@ -67,6 +67,8 @@ type Syncer struct {
 	messageProvider messageStore
 
 	clock clock.Clock
+	// staged is the heaviest tipset seen by the syncer so far
+	staged block.TipSet
 
 	// Reporter is used by the syncer to update the current status of the chain.
 	reporter status.Reporter
@@ -92,7 +94,7 @@ type ChainReaderWriter interface {
 	GetTipSetReceiptsRoot(tsKey block.TipSetKey) (cid.Cid, error)
 	HasTipSetAndState(ctx context.Context, tsKey block.TipSetKey) bool
 	PutTipSetMetadata(ctx context.Context, tsas *chain.TipSetMetadata) error
-	SetHead(ctx context.Context, s block.TipSet) error
+	SetHead(ctx context.Context, ts block.TipSet) error
 	HasTipSetAndStatesWithParentsAndHeight(pTsKey block.TipSetKey, h uint64) bool
 	GetTipSetAndStatesByParentsAndHeight(pTsKey block.TipSetKey, h uint64) ([]*chain.TipSetMetadata, error)
 }
@@ -146,8 +148,9 @@ func init() {
 
 var logSyncer = logging.Logger("chainsync.syncer")
 
-// NewSyncer constructs a Syncer ready for use.
-func NewSyncer(fv FullBlockValidator, hv HeaderValidator, cs ChainSelector, s ChainReaderWriter, m messageStore, f Fetcher, sr status.Reporter, c clock.Clock) *Syncer {
+// NewSyncer constructs a Syncer ready for use.  The chain reader must have a
+// head tipset to initialize the staging field.
+func NewSyncer(fv FullBlockValidator, hv HeaderValidator, cs ChainSelector, s ChainReaderWriter, m messageStore, f Fetcher, sr status.Reporter, c clock.Clock) (*Syncer, error) {
 	return &Syncer{
 		fetcher: f,
 		badTipSets: &BadTipSetCache{
@@ -160,7 +163,18 @@ func NewSyncer(fv FullBlockValidator, hv HeaderValidator, cs ChainSelector, s Ch
 		messageProvider: m,
 		clock:           c,
 		reporter:        sr,
+	}, nil
+}
+
+// StageHead reads the head from the syncer's chain store and sets the syncer's
+// staged field.  Used for initializing syncer.
+func (syncer *Syncer) StageHead() error {
+	staged, err := syncer.chainStore.GetTipSet(syncer.chainStore.GetHead())
+	if err != nil {
+		return err
 	}
+	syncer.staged = staged
+	return nil
 }
 
 // fetchAndValidateHeaders fetches headers and runs semantic block validation
@@ -277,45 +291,8 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 		return err
 	}
 	logSyncer.Debugf("Successfully updated store with %s", next.String())
-
-	// TipSet is validated and added to store, now check if it is the heaviest.
-	nextParentStateID, err := syncer.chainStore.GetTipSetStateRoot(parent.Key())
-	if err != nil {
-		return err
-	}
-
-	headTipSet, err := syncer.chainStore.GetTipSet(priorHeadKey)
-	if err != nil {
-		return err
-	}
-	headParentKey, err := headTipSet.Parents()
-	if err != nil {
-		return err
-	}
-
-	var headParentStateID cid.Cid
-	if !headParentKey.Empty() { // head is not genesis
-		headParentStateID, err = syncer.chainStore.GetTipSetStateRoot(headParentKey)
-		if err != nil {
-			return err
-		}
-	}
-
-	heavier, err := syncer.chainSelector.IsHeavier(ctx, next, headTipSet, nextParentStateID, headParentStateID)
-	if err != nil {
-		return err
-	}
-
-	// If it is the heaviest update the chainStore.
-	if heavier {
-		if err = syncer.chainStore.SetHead(ctx, next); err != nil {
-			return err
-		}
-		// Gather the entire new chain for reorg comparison and logging.
-		syncer.logReorg(ctx, headTipSet, next)
-	}
-
 	return nil
+
 }
 
 // TODO #3537 this should be stored the first time it is computed and retrieved
@@ -452,7 +429,7 @@ func (syncer *Syncer) widen(ctx context.Context, ts block.TipSet) (block.TipSet,
 // represent a valid extension. It limits the length of new chains it will
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
-func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, trusted bool) (err error) {
+func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo) (err error) {
 	logSyncer.Debugf("Begin fetch and sync of chain with head %v", ci.Head)
 	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ci.Head.String()))
@@ -469,7 +446,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, 
 		return nil
 	}
 
-	syncer.reporter.UpdateStatus(status.SyncingStarted(syncer.clock.Now().Unix()), status.SyncHead(ci.Head), status.SyncHeight(ci.Height), status.SyncTrusted(trusted), status.SyncComplete(false))
+	syncer.reporter.UpdateStatus(status.SyncingStarted(syncer.clock.Now().Unix()), status.SyncHead(ci.Head), status.SyncHeight(ci.Height), status.SyncComplete(false))
 	defer syncer.reporter.UpdateStatus(status.SyncComplete(true))
 	syncer.reporter.UpdateStatus(status.SyncFetchComplete(false))
 
@@ -524,6 +501,10 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, 
 				if err != nil {
 					return err
 				}
+				err = syncer.stageIfHeaviest(ctx, wts)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		// If the tipsets has length greater than 1, then we need to sync each tipset
@@ -544,12 +525,57 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, 
 				return err
 			}
 		}
+
 		if i%500 == 0 {
 			logSyncer.Infof("processing block %d of %v for chain with head at %v", i, len(tipsets), ci.Head.String())
 		}
 		grandParent = parent
 		parent = ts
 	}
+	return syncer.stageIfHeaviest(ctx, parent)
+}
+
+func (syncer *Syncer) stageIfHeaviest(ctx context.Context, candidate block.TipSet) error {
+	// stageIfHeaviest sets the provided candidates to the staging head of the chain if they
+	// are heavier. Precondtion: candidates are validated and added to the store.
+	parentKey, err := candidate.Parents()
+	if err != nil {
+		return err
+	}
+	candidateParentStateID, err := syncer.chainStore.GetTipSetStateRoot(parentKey)
+	if err != nil {
+		return err
+	}
+
+	stagedParentKey, err := syncer.staged.Parents()
+	if err != nil {
+		return err
+	}
+	var stagedParentStateID cid.Cid
+	if !stagedParentKey.Empty() { // head is not genesis
+		stagedParentStateID, err = syncer.chainStore.GetTipSetStateRoot(stagedParentKey)
+		if err != nil {
+			return err
+		}
+	}
+
+	heavier, err := syncer.chainSelector.IsHeavier(ctx, candidate, syncer.staged, candidateParentStateID, stagedParentStateID)
+	if err != nil {
+		return err
+	}
+
+	// If it is the heaviest update the chainStore.
+	if heavier {
+		// dragons separate this to the dispatcher when we are in sync follow
+		err := syncer.chainStore.SetHead(ctx, candidate)
+		if err != nil {
+			return err
+		}
+		// Gather the entire new chain for reorg comparison and logging.
+		syncer.logReorg(ctx, syncer.staged, candidate)
+		syncer.staged = candidate
+	}
+
 	return nil
 }
 

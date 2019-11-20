@@ -50,15 +50,17 @@ func TestLoadFork(t *testing.T) {
 	// *not* as the store, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{}
 	sel := &chain.FakeChainSelector{}
-	s := syncer.NewSyncer(eval, eval, sel, store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	s, err := syncer.NewSyncer(eval, eval, sel, store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	require.NoError(t, err)
+	require.NoError(t, s.StageHead())
 
 	base := builder.AppendManyOn(3, genesis)
 	left := builder.AppendManyOn(4, base)
 	right := builder.AppendManyOn(3, base)
 
 	// Sync the two branches, which stores all blocks in the underlying stores.
-	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo("", "", left.Key(), heightFromTip(t, left)), true))
-	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo("", "", right.Key(), heightFromTip(t, right)), true))
+	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo("", "", left.Key(), heightFromTip(t, left))))
+	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo("", "", right.Key(), heightFromTip(t, right))))
 	verifyHead(t, store, left)
 
 	// The syncer/store assume that the fetcher populates the underlying block store such that
@@ -78,7 +80,9 @@ func TestLoadFork(t *testing.T) {
 	newStore := chain.NewStore(repo.ChainDatastore(), cborStore, state.NewTreeLoader(), chain.NewStatusReporter(), genesis.At(0).Cid())
 	require.NoError(t, newStore.Load(ctx))
 	fakeFetcher := th.NewTestFetcher()
-	offlineSyncer := syncer.NewSyncer(eval, eval, sel, newStore, builder, fakeFetcher, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	offlineSyncer, err := syncer.NewSyncer(eval, eval, sel, newStore, builder, fakeFetcher, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	require.NoError(t, err)
+	require.NoError(t, offlineSyncer.StageHead())
 
 	assert.True(t, newStore.HasTipSetAndState(ctx, left.Key()))
 	assert.False(t, newStore.HasTipSetAndState(ctx, right.Key()))
@@ -104,11 +108,11 @@ func TestLoadFork(t *testing.T) {
 	// without getting old blocks from network. i.e. the store index has been trimmed
 	// of non-heaviest chain blocks.
 
-	err = offlineSyncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", newRight.Key(), heightFromTip(t, newRight)), true)
+	err = offlineSyncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", newRight.Key(), heightFromTip(t, newRight)))
 	assert.Error(t, err)
 
 	// The left chain is ok without any fetching though.
-	assert.NoError(t, offlineSyncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", left.Key(), heightFromTip(t, left)), true))
+	assert.NoError(t, offlineSyncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", left.Key(), heightFromTip(t, left))))
 }
 
 // Power table weight comparisons impact syncer's selection.
@@ -155,13 +159,15 @@ func TestSyncerWeighsPower(t *testing.T) {
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: gen.At(0).StateRoot, TipSet: gen, TipSetReceipts: gen.At(0).MessageReceipts}))
 	require.NoError(t, store.SetHead(ctx, gen))
 	eval := &integrationStateEvaluator{c512: isb.c512}
-	syncer := syncer.NewSyncer(eval, eval, consensus.NewChainSelector(cst, as, gen.At(0).Cid()), store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	syncer, err := syncer.NewSyncer(eval, eval, consensus.NewChainSelector(cst, as, gen.At(0).Cid()), store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	require.NoError(t, err)
+	require.NoError(t, syncer.StageHead())
 
 	// sync fork 1
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", head1.Key(), heightFromTip(t, head1)), true))
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", head1.Key(), heightFromTip(t, head1))))
 	assert.Equal(t, head1.Key(), store.GetHead())
 	// sync fork 2
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", head2.Key(), heightFromTip(t, head1)), true))
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", head2.Key(), heightFromTip(t, head1))))
 	assert.Equal(t, head2.Key(), store.GetHead())
 }
 

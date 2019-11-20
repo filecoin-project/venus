@@ -165,7 +165,9 @@ func (node *Node) Start(ctx context.Context) error {
 			return err
 		}
 
-		node.syncer.Start(syncCtx, node)
+		if err := node.syncer.Start(syncCtx, node); err != nil {
+			return err
+		}
 	}
 
 	return nil

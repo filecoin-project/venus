@@ -25,18 +25,22 @@ type Manager struct {
 }
 
 // NewManager creates a new chain sync manager.
-func NewManager(fv syncer.FullBlockValidator, hv syncer.HeaderValidator, cs syncer.ChainSelector, s syncer.ChainReaderWriter, m *chain.MessageStore, f syncer.Fetcher, c clock.Clock) Manager {
-	syncer := syncer.NewSyncer(fv, hv, cs, s, m, f, status.NewReporter(), c)
+func NewManager(fv syncer.FullBlockValidator, hv syncer.HeaderValidator, cs syncer.ChainSelector, s syncer.ChainReaderWriter, m *chain.MessageStore, f syncer.Fetcher, c clock.Clock) (Manager, error) {
+	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, f, status.NewReporter(), c)
+	if err != nil {
+		return Manager{}, err
+	}
 	dispatcher := dispatcher.NewDispatcher(syncer)
 	return Manager{
 		syncer:     syncer,
 		dispatcher: dispatcher,
-	}
+	}, nil
 }
 
 // Start starts the chain sync manager.
-func (m *Manager) Start(ctx context.Context) {
+func (m *Manager) Start(ctx context.Context) error {
 	m.dispatcher.Start(ctx)
+	return m.syncer.StageHead()
 }
 
 // BlockProposer returns the block proposer.
