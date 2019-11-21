@@ -52,7 +52,7 @@ type Node struct {
 	// OfflineMode, when true, disables libp2p.
 	OfflineMode bool
 
-	// ChainClock is a chainClock used byt the node for chain epoch.
+	// ChainClock is a chainClock used by the node for chain epoch.
 	ChainClock clock.ChainEpochClock
 
 	// Repo is the repo this node was created with.
