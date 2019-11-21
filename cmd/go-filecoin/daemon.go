@@ -20,7 +20,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
@@ -95,7 +94,6 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 		return errors.Wrap(err, "Bad block time passed")
 	}
 	opts = append(opts, node.BlockTime(blockTime))
-	opts = append(opts, node.ClockConfigOption(clock.NewSystemClock()))
 
 	journal, err := journal.NewZapJournal(rep.JournalPath())
 	if err != nil {

@@ -52,8 +52,8 @@ type Node struct {
 	// OfflineMode, when true, disables libp2p.
 	OfflineMode bool
 
-	// Clock is a clock used by the node for time.
-	Clock clock.Clock
+	// ChainClock is a chainClock used byt the node for chain epoch.
+	ChainClock clock.ChainEpochClock
 
 	// Repo is the repo this node was created with.
 	//
@@ -715,7 +715,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		MessageStore:  node.chain.MessageStore,
 		Processor:     processor,
 		Blockstore:    node.Blockstore.Blockstore,
-		Clock:         node.Clock,
+		Clock:         node.ChainClock,
 	}), nil
 }
 

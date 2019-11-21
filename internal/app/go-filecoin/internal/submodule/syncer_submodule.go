@@ -35,7 +35,7 @@ type SyncerSubmodule struct {
 type syncerConfig interface {
 	GenesisCid() cid.Cid
 	BlockTime() time.Duration
-	Clock() clock.Clock
+	ChainClock() clock.ChainEpochClock
 }
 
 type nodeChainSelector interface {
@@ -47,7 +47,7 @@ type nodeChainSelector interface {
 func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo, blockstore *BlockstoreSubmodule, network *NetworkSubmodule, discovery *DiscoverySubmodule, chn *ChainSubmodule) (SyncerSubmodule, error) {
 	// setup block validation
 	// TODO when #2961 is resolved do the needful here.
-	blkValid := consensus.NewDefaultBlockValidator(config.BlockTime(), config.Clock())
+	blkValid := consensus.NewDefaultBlockValidator(config.BlockTime(), config.ChainClock())
 
 	// register block validation on floodsub
 	btv := net.NewBlockTopicValidator(blkValid)
@@ -71,9 +71,9 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 	loader := gsstoreutil.LoaderForBlockstore(blockstore.Blockstore)
 	storer := gsstoreutil.StorerForBlockstore(blockstore.Blockstore)
 	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
-	fetcher := fetcher.NewGraphSyncFetcher(ctx, gsync, blockstore.Blockstore, blkValid, config.Clock(), discovery.PeerTracker)
+	fetcher := fetcher.NewGraphSyncFetcher(ctx, gsync, blockstore.Blockstore, blkValid, config.ChainClock(), discovery.PeerTracker)
 
-	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, fetcher, config.Clock())
+	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, fetcher, config.ChainClock())
 	if err != nil {
 		return SyncerSubmodule{}, err
 	}
