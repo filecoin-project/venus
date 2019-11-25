@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 )
 
 type ctxSleepDelayKey struct{}
@@ -14,7 +14,7 @@ var (
 	sleepDelayKey = ctxSleepDelayKey{}
 
 	// Default delay
-	defaultSleepDelay = consensus.DefaultBlockTime
+	defaultSleepDelay = clock.EpochDuration
 )
 
 // SetCtxSleepDelay returns a context with `d` set in the context. To sleep with
@@ -25,7 +25,7 @@ func SetCtxSleepDelay(ctx context.Context, d time.Duration) context.Context {
 
 // CtxSleepDelay is a helper method to make sure people don't call `time.Sleep`
 // or `time.After` themselves in series. It will use the time.Duration in the
-// context, or default to `mining.DefaultBlockTime` from the go-filecoin/mining package.
+// context, or default to `clock.EpochDuration` from the go-filecoin/mining package.
 // A channel is return which will receive a time.Time value after the delay.
 func CtxSleepDelay(ctx context.Context) <-chan time.Time {
 	d, ok := ctx.Value(sleepDelayKey).(time.Duration)

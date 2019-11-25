@@ -20,8 +20,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 )
@@ -36,7 +36,7 @@ var daemonCmd = &cmds.Command{
 		cmdkit.BoolOption(OfflineMode, "start the node without networking"),
 		cmdkit.BoolOption(ELStdout),
 		cmdkit.BoolOption(IsRelay, "advertise and allow filecoin network traffic to be relayed through this node"),
-		cmdkit.StringOption(BlockTime, "time a node waits before trying to mine the next block").WithDefault(consensus.DefaultBlockTime.String()),
+		cmdkit.StringOption(BlockTime, "time a node waits before trying to mine the next block").WithDefault(clock.EpochDuration.String()),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		return daemonRun(req, re)
