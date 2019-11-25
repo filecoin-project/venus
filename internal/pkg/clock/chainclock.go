@@ -2,18 +2,17 @@ package clock
 
 import (
 	"time"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // EpochDuration is a constant that represents the UTC time duration
 // of a blockchain epoch.
 var EpochDuration = time.Second * 15
 
-// ChainEpoch represents a round of a blockchain protocol.
-type ChainEpoch uint64
-
 // ChainEpochClock is an interface for a clock that represents epochs of the protocol.
 type ChainEpochClock interface {
-	EpochAtTime(t time.Time) ChainEpoch
+	EpochAtTime(t time.Time) *types.BlockHeight
 	Clock
 }
 
@@ -35,8 +34,8 @@ func NewChainClock(genesisTime uint64) ChainEpochClock {
 // EpochAtTime returns the ChainEpoch corresponding to t.
 // It first subtracts GenesisTime, then divides by EpochDuration
 // and returns the resulting number of epochs.
-func (cc *chainClock) EpochAtTime(t time.Time) ChainEpoch {
+func (cc *chainClock) EpochAtTime(t time.Time) *types.BlockHeight {
 	difference := t.Sub(cc.GenesisTime)
 	epochs := difference / EpochDuration
-	return ChainEpoch(epochs)
+	return types.NewBlockHeight(uint64(epochs.Seconds()))
 }
