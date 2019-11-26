@@ -19,7 +19,15 @@ type mockSyncer struct {
 	headsCalled []block.TipSetKey
 }
 
-func (fs *mockSyncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo) error {
+type noopTransitioner struct {}
+func (nt *noopTransitioner) MaybeTransitionToCatchup(inCatchup bool, _ []dispatcher.Target) (bool, error) {
+	return inCatchup, nil
+}
+func (nt *noopTransitioner) MaybeTransitionToFollow(_ context.Context, inCatchup bool, _ int) (bool, error) {
+	return !inCatchup, nil
+}
+
+func (fs *mockSyncer) HandleNewTipSet(_ context.Context, ci *block.ChainInfo, _ bool) error {
 	fs.headsCalled = append(fs.headsCalled, ci.Head)
 	return nil
 }
@@ -29,7 +37,8 @@ func TestDispatchStartHappy(t *testing.T) {
 	s := &mockSyncer{
 		headsCalled: make([]block.TipSetKey, 0),
 	}
-	testDispatch := dispatcher.NewDispatcher(s)
+	nt := &noopTransitioner{}
+	testDispatch := dispatcher.NewDispatcher(s, nt)
 
 	cis := []*block.ChainInfo{
 		// We need to put these in priority order to avoid a race.
@@ -68,9 +77,10 @@ func TestDispatcherDropsWhenFull(t *testing.T) {
 	s := &mockSyncer{
 		headsCalled: make([]block.TipSetKey, 0),
 	}
+	nt := &noopTransitioner{}
 	testWorkSize := 20
 	testBufferSize := 30
-	testDispatch := dispatcher.NewDispatcherWithSizes(s, testWorkSize, testBufferSize)
+	testDispatch := dispatcher.NewDispatcherWithSizes(s, nt, testWorkSize, testBufferSize)
 
 	finished := moresync.NewLatch(1)
 	testDispatch.RegisterCallback(func(target dispatcher.Target) {

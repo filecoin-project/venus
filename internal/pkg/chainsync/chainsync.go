@@ -30,7 +30,8 @@ func NewManager(fv syncer.FullBlockValidator, hv syncer.HeaderValidator, cs sync
 	if err != nil {
 		return Manager{}, err
 	}
-	dispatcher := dispatcher.NewDispatcher(syncer)
+	gapTransitioner := dispatcher.NewGapTransitioner(s, syncer)
+	dispatcher := dispatcher.NewDispatcher(syncer, gapTransitioner)
 	return Manager{
 		syncer:     syncer,
 		dispatcher: dispatcher,
@@ -40,7 +41,7 @@ func NewManager(fv syncer.FullBlockValidator, hv syncer.HeaderValidator, cs sync
 // Start starts the chain sync manager.
 func (m *Manager) Start(ctx context.Context) error {
 	m.dispatcher.Start(ctx)
-	return m.syncer.StageHead()
+	return m.syncer.InitStaged()
 }
 
 // BlockProposer returns the block proposer.

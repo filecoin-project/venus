@@ -324,8 +324,13 @@ func (store *Store) SetHead(ctx context.Context, ts block.TipSet) error {
 		logStore.Error(debug.Stack())
 	}
 
-	if err := store.setHeadPersistent(ctx, ts); err != nil {
+	noop, err := store.setHeadPersistent(ctx, ts)
+	if err != nil {
 		return err
+	}
+	if noop {
+		// exit without sending head events if head was already set to ts
+		return nil
 	}
 
 	h, err := ts.Height()
@@ -339,18 +344,23 @@ func (store *Store) SetHead(ctx context.Context, ts block.TipSet) error {
 	return nil
 }
 
-func (store *Store) setHeadPersistent(ctx context.Context, ts block.TipSet) error {
+func (store *Store) setHeadPersistent(ctx context.Context, ts block.TipSet) (bool, error) {
+	// setHeaadPersistent sets the head in memory and on disk if the head is not
+	// already set to ts.  If it is already set to ts it skips this and returns true
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
 	// Ensure consistency by storing this new head on disk.
 	if errInner := store.writeHead(ctx, ts.Key()); errInner != nil {
-		return errors.Wrap(errInner, "failed to write new Head to datastore")
+		return false, errors.Wrap(errInner, "failed to write new Head to datastore")
+	}
+	if ts.Equals(store.head) {
+		return true, nil
 	}
 
 	store.head = ts
 
-	return nil
+	return false, nil
 }
 
 // writeHead writes the given cid set as head to disk.

@@ -2,8 +2,7 @@ package syncer
 
 import (
 	"context"
-	"sync"
-
+	
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
@@ -40,15 +39,6 @@ type messageStore interface {
 // tipset in the incoming chain, and assumptions regarding the existence of
 // grandparent state in the store.
 type Syncer struct {
-	// This mutex ensures at most one call to HandleNewTipSet executes at
-	// any time.  This is important because at least two sections of the
-	// code otherwise have races:
-	// 1. syncOne assumes that chainStore.Head() does not change when
-	// comparing tipset weights and updating the store
-	// 2. HandleNewTipSet assumes that calls to widen and then syncOne
-	// are not run concurrently with other calls to widen to ensure
-	// that the syncer always finds the heaviest existing tipset.
-	mu sync.Mutex
 	// fetcher is the networked block fetching service for fetching blocks
 	// and messages.
 	fetcher Fetcher
@@ -166,15 +156,20 @@ func NewSyncer(fv FullBlockValidator, hv HeaderValidator, cs ChainSelector, s Ch
 	}, nil
 }
 
-// StageHead reads the head from the syncer's chain store and sets the syncer's
+// InitStaged reads the head from the syncer's chain store and sets the syncer's
 // staged field.  Used for initializing syncer.
-func (syncer *Syncer) StageHead() error {
+func (syncer *Syncer) InitStaged() error {
 	staged, err := syncer.chainStore.GetTipSet(syncer.chainStore.GetHead())
 	if err != nil {
 		return err
 	}
 	syncer.staged = staged
 	return nil
+}
+
+// SetStagedHead sets the syncer's internal staged tipset to the chain's head.
+func (syncer *Syncer) SetStagedHead(ctx context.Context) error {
+	return syncer.chainStore.SetHead(ctx, syncer.staged)
 }
 
 // fetchAndValidateHeaders fetches headers and runs semantic block validation
@@ -292,7 +287,6 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 	}
 	logSyncer.Debugf("Successfully updated store with %s", next.String())
 	return nil
-
 }
 
 // TODO #3537 this should be stored the first time it is computed and retrieved
@@ -425,21 +419,27 @@ func (syncer *Syncer) widen(ctx context.Context, ts block.TipSet) (block.TipSet,
 	return wts, nil
 }
 
-// HandleNewTipSet extends the Syncer's chain store with the given tipset if they
-// represent a valid extension. It limits the length of new chains it will
-// attempt to validate and caches invalid blocks it has encountered to
-// help prevent DOS.
-func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo) (err error) {
+// HandleNewTipSet validates and syncs the chain rooted at the provided tipset
+// to a chain store.  Iff catchup is false then the syncer will set the head.
+func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, catchup bool) error {
+	err := syncer.handleNewTipSet(ctx, ci)
+	if err != nil {
+		return err
+	}
+	if catchup {
+		return nil
+	}
+	return syncer.SetStagedHead(ctx)
+}
+
+func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) (err error) {
+	// handleNewTipSet extends the Syncer's chain store with the given tipset if 
+	// the chain is a valid extension.  It stages new heaviest tipsets for later
+	// setting the chain head
 	logSyncer.Debugf("Begin fetch and sync of chain with head %v", ci.Head)
 	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ci.Head.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
-
-	// This lock could last a long time as we fetch all the blocks needed to sync the chain.
-	// This is justified because the app is pretty useless until it is synced.
-	// It's better for multiple calls to wait here than to try to fetch the chain independently.
-	syncer.mu.Lock()
-	defer syncer.mu.Unlock()
 
 	// If the store already has this tipset then the syncer is finished.
 	if syncer.chainStore.HasTipSetAndState(ctx, ci.Head) {
@@ -566,11 +566,6 @@ func (syncer *Syncer) stageIfHeaviest(ctx context.Context, candidate block.TipSe
 
 	// If it is the heaviest update the chainStore.
 	if heavier {
-		// dragons separate this to the dispatcher when we are in sync follow
-		err := syncer.chainStore.SetHead(ctx, candidate)
-		if err != nil {
-			return err
-		}
 		// Gather the entire new chain for reorg comparison and logging.
 		syncer.logReorg(ctx, syncer.staged, candidate)
 		syncer.staged = candidate
