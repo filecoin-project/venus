@@ -19,7 +19,8 @@ type mockSyncer struct {
 	headsCalled []block.TipSetKey
 }
 
-type noopTransitioner struct {}
+type noopTransitioner struct{}
+
 func (nt *noopTransitioner) MaybeTransitionToCatchup(inCatchup bool, _ []dispatcher.Target) (bool, error) {
 	return inCatchup, nil
 }

@@ -2,7 +2,7 @@ package syncer
 
 import (
 	"context"
-	
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
@@ -433,7 +433,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, 
 }
 
 func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) (err error) {
-	// handleNewTipSet extends the Syncer's chain store with the given tipset if 
+	// handleNewTipSet extends the Syncer's chain store with the given tipset if
 	// the chain is a valid extension.  It stages new heaviest tipsets for later
 	// setting the chain head
 	logSyncer.Debugf("Begin fetch and sync of chain with head %v", ci.Head)
