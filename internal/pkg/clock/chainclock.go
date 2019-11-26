@@ -8,7 +8,13 @@ import (
 
 // EpochDuration is a constant that represents the UTC time duration
 // of a blockchain epoch.
-var EpochDuration = time.Second * 15
+const EpochDuration = EpochUnits * time.Duration(EpochCount)
+
+// EpochCount is the number of instances in an Epoch.
+const EpochCount = int64(15)
+
+// EpochUnits is the units an Epoch is measured in.
+const EpochUnits = time.Second
 
 // ChainEpochClock is an interface for a clock that represents epochs of the protocol.
 type ChainEpochClock interface {
@@ -35,7 +41,11 @@ func NewChainClock(genesisTime uint64) ChainEpochClock {
 // It first subtracts GenesisTime, then divides by EpochDuration
 // and returns the resulting number of epochs.
 func (cc *chainClock) EpochAtTime(t time.Time) *types.BlockHeight {
+	// anything before the genesis is epoch 0.
+	if t.Unix() <= cc.GenesisTime.Unix() {
+		return types.NewBlockHeight(uint64(0))
+	}
 	difference := t.Sub(cc.GenesisTime)
 	epochs := difference / EpochDuration
-	return types.NewBlockHeight(uint64(epochs.Seconds()))
+	return types.NewBlockHeight(uint64(epochs))
 }
