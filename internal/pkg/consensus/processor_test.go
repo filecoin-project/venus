@@ -102,17 +102,18 @@ func TestProcessTipSetSuccess(t *testing.T) {
 
 	gotStCid, err := st.Flush(ctx)
 	assert.NoError(t, err)
-	expAct1, expAct2, expAct3 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(10000-550)), th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(10000-50)), th.RequireNewEmptyActor(types.NewAttoFILFromFIL(550+50))
+
+	expAct1, expAct2, expAct3 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(10000-550)), th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(10000-50)), th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(550+50))
 	expAct1.IncNonce()
 	expAct2.IncNonce()
 
 	blockRewardAmount := NewDefaultBlockRewarder().BlockRewardAmount()
 	twoBlockRewards := blockRewardAmount.Add(blockRewardAmount)
 	expectedNetworkBalance := startingNetworkBalance.Sub(twoBlockRewards)
-	expStCid, _ := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
+	expStCid,_ := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(t, expectedNetworkBalance),
 		minerAddr:              miner,
-		minerOwner:             th.RequireNewEmptyActor(twoBlockRewards),
+		minerOwner:             actor.NewActor(types.AccountActorCodeCid, twoBlockRewards),
 		fromAddr1:              expAct1,
 		fromAddr2:              expAct2,
 		toAddr:                 expAct3,
@@ -174,14 +175,14 @@ func TestProcessTipsConflicts(t *testing.T) {
 	gotStCid, err := st.Flush(ctx)
 	assert.NoError(t, err)
 
-	expAct1, expAct2 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(1000-501)), th.RequireNewEmptyActor(types.NewAttoFILFromFIL(501))
+	expAct1, expAct2 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(1000-501)), th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(501))
 	expAct1.IncNonce()
 	blockReward := NewDefaultBlockRewarder().BlockRewardAmount()
 	twoBlockRewards := blockReward.Add(blockReward)
 	expectedNetworkBalance := startingNetworkBalance.Sub(twoBlockRewards)
 	expStCid, _ := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(t, expectedNetworkBalance),
-		minerOwner:             th.RequireNewEmptyActor(twoBlockRewards),
+		minerOwner:             th.RequireNewAccountActor(t, twoBlockRewards),
 		minerAddr:              miner,
 		fromAddr:               expAct1,
 		toAddr:                 expAct2,
@@ -251,7 +252,7 @@ func TestProcessTipsetVMErrors(t *testing.T) {
 	// Stick one empty actor and one fake actor in the state tree so they can talk.
 	fromAddr, toAddr := mockSigner.Addresses[0], mockSigner.Addresses[1]
 
-	act1, act2 := th.RequireNewEmptyActor(types.NewAttoFILFromFIL(0)), th.RequireNewFakeActor(t, vms, toAddr, fakeActorCodeCid)
+	act1, act2 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(0)), th.RequireNewFakeActor(t, vms, toAddr, fakeActorCodeCid)
 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(t, startingNetworkBalance),
 		fromAddr:               act1,
@@ -282,12 +283,12 @@ func TestProcessTipsetVMErrors(t *testing.T) {
 	assert.Contains(t, results[0].ExecutionError.Error(), "boom")
 
 	// 3 & 4. That on VM error the state is rolled back and nonce is inc'd.
-	expectedAct1, expectedAct2 := th.RequireNewEmptyActor(types.NewAttoFILFromFIL(0)), th.RequireNewFakeActor(t, vms, toAddr, fakeActorCodeCid)
+	expectedAct1, expectedAct2 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(0)), th.RequireNewFakeActor(t, vms, toAddr, fakeActorCodeCid)
 	expectedAct1.IncNonce()
 	blockRewardAmount := NewDefaultBlockRewarder().BlockRewardAmount()
 	expectedStCid, _ := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(t, startingNetworkBalance.Sub(blockRewardAmount)),
-		minerOwnerAddr:         th.RequireNewEmptyActor(blockRewardAmount),
+		minerOwnerAddr:         th.RequireNewAccountActor(t, blockRewardAmount),
 		minerAddr:              miner,
 		fromAddr:               expectedAct1,
 		toAddr:                 expectedAct2,
@@ -623,7 +624,6 @@ func TestSendToNonexistentAddressThenSpendFromIt(t *testing.T) {
 
 	act3 := state.MustGetActor(st, addr3)
 	assert.Equal(t, types.NewAttoFILFromFIL(300), act3.Balance)
-	assert.True(t, act3.Empty())
 }
 
 func TestApplyQueryMessageWillNotAlterState(t *testing.T) {

@@ -42,12 +42,6 @@ func RequireMakeStateTree(t *testing.T, cst *hamt.CborIpldStore, acts map[addres
 	return c, tree
 }
 
-// RequireNewEmptyActor creates a new empty actor with the given starting
-// value and requires that its steps succeed.
-func RequireNewEmptyActor(value types.AttoFIL) *actor.Actor {
-	return &actor.Actor{Balance: value}
-}
-
 // RequireNewAccountActor creates a new account actor with the given starting
 // value and requires that its steps succeed.
 func RequireNewAccountActor(t *testing.T, value types.AttoFIL) *actor.Actor {

@@ -3,7 +3,7 @@ package actor
 
 import (
 	"fmt"
-
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -130,4 +130,17 @@ func InitBuiltinActorCodeObjs(cst *hamt.CborIpldStore) error {
 
 	return cst.Blocks.AddBlock(types.InitActorCodeObj)
 
+}
+
+// Initialize returns a function to be called when lookup in the state tree fails
+func Initialize(addr address.Address) func() (*Actor, error) {
+	return func() (*Actor, error) {
+		if addr.Protocol() != address.SECP256K1 && addr.Protocol() != address.BLS {
+			return nil, errors.New("Attempt to implicitly create actor with wrong type of address")
+		}
+
+		// TODO: register address in init actor state
+
+		return NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL), nil
+	}
 }

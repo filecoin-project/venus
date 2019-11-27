@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -428,26 +427,13 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		}, err
 	}
 
-	// Processing an external message from an empty actor upgrades it to an account actor.
-	if fromActor.Empty() {
-		err := account.UpgradeActor(fromActor)
-		if err != nil {
-			return nil, errors.FaultErrorWrap(err, "failed to upgrade empty actor")
-		}
-	}
-
 	// translate address before retrieving from actor
 	toAddr, err := p.resolveAddress(ctx, msg, st, store, gasTracker)
 	if err != nil {
 		return nil, errors.FaultErrorWrapf(err, "Could not resolve actor address")
 	}
 
-	toActor, err := st.GetOrCreateActor(ctx, toAddr, func() (*actor.Actor, error) {
-		// Addresses are deterministic so sending a message to a non-existent address must not install an actor,
-		// else actors could be installed ahead of address activation. So here we create the empty, upgradable
-		// actor to collect any balance that may be transferred.
-		return &actor.Actor{}, nil
-	})
+	toActor, err := st.GetOrCreateActor(ctx, toAddr, actor.Initialize(toAddr))
 	if err != nil {
 		return nil, errors.FaultErrorWrap(err, "failed to get To actor")
 	}
@@ -598,9 +584,7 @@ func rewardTransfer(ctx context.Context, fromAddr, toAddr address.Address, value
 		return errors.FaultErrorWrap(err, "could not retrieve from actor for reward transfer.")
 	}
 
-	toActor, err := st.GetOrCreateActor(ctx, toAddr, func() (*actor.Actor, error) {
-		return &actor.Actor{}, nil
-	})
+	toActor, err := st.GetOrCreateActor(ctx, toAddr, actor.Initialize(toAddr))
 	if err != nil {
 		return errors.FaultErrorWrap(err, "failed to get To actor")
 	}

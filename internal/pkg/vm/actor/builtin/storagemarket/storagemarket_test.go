@@ -68,32 +68,16 @@ func TestStorageMarketCreateStorageMinerDoesNotOverwriteActorBalance(t *testing.
 
 	st, vms := th.RequireCreateStorages(ctx, t)
 
-	// create account of future miner actor by sending FIL to the predicted address
+	// attempt create account of future miner actor by sending FIL to the predicted address
 	minerAddr, err := address.NewIDAddress(100) // 100 is the first address of a constructed actor
 	require.NoError(t, err)
 
 	msg := types.NewUnsignedMessage(address.TestAddress2, minerAddr, 0, types.NewAttoFILFromFIL(100), types.SendMethodID, []byte{})
-	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
-	require.NoError(t, err)
-	require.Equal(t, uint8(0), result.Receipt.ExitCode)
+	_, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 
-	pdata := actor.MustConvertParams(types.OneKiBSectorSize, th.RequireRandomPeerID(t))
-	msg = types.NewUnsignedMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), storagemarket.CreateStorageMiner, pdata)
-	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
-	require.NoError(t, err)
-	require.Equal(t, uint8(0), result.Receipt.ExitCode)
-	require.NoError(t, result.ExecutionError)
-
-	// ensure our derived address is the address storage market creates
-	derivedAddr, err := deriveMinerAddress(address.TestAddress, 0)
-	createdAddress, err := address.NewFromBytes(result.Receipt.Return[0])
-	require.NoError(t, err)
-	assert.Equal(t, derivedAddr, createdAddress)
-	miner, err := st.GetActor(ctx, minerAddr)
-	require.NoError(t, err)
-
-	// miner balance should be sum of messages
-	assert.Equal(t, types.NewAttoFILFromFIL(300).String(), miner.Balance.String())
+	// message fails because actor address is not secp or bls. This prevents blocking miner from creation.
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "wrong type of address")
 }
 
 func TestProofsMode(t *testing.T) {
