@@ -48,6 +48,8 @@ type VMContext struct {
 	ancestors         []block.TipSet
 	actors            ExecutableActorLookup
 	isCallerValidated bool
+	allowSideEffects  bool
+	stateHandle       actorStateHandle
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
@@ -69,7 +71,7 @@ type NewContextParams struct {
 
 // NewVMContext returns an initialized context.
 func NewVMContext(params NewContextParams) *VMContext {
-	return &VMContext{
+	ctx := VMContext{
 		from:              params.From,
 		to:                params.To,
 		toAddr:            params.ToAddr,
@@ -82,8 +84,11 @@ func NewVMContext(params NewContextParams) *VMContext {
 		ancestors:         params.Ancestors,
 		actors:            params.Actors,
 		isCallerValidated: false,
+		allowSideEffects:  true,
 		deps:              makeDeps(params.State),
 	}
+	ctx.stateHandle = newActorStateHandle(&ctx, ctx.to.Head)
+	return &ctx
 }
 
 // GasUnits retrieves the gas cost so far
@@ -110,6 +115,11 @@ func (ctx *VMContext) Randomness(epoch types.BlockHeight, offset uint64) runtime
 
 // Send allows actors to invoke methods on other actors
 func (ctx *VMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+	// check if side-effects are allowed
+	if !ctx.allowSideEffects {
+		runtime.Abort("Calling Send() is not allowed during side-effet lock")
+	}
+
 	deps := ctx.deps
 
 	// the message sender is the `to` actor, so this is what we set as `from` in the new message
@@ -165,6 +175,9 @@ func (ctx *VMContext) Send(to address.Address, method types.MethodID, value type
 		return nil, ret, err
 	}
 
+	// validate state access
+	ctx.stateHandle.Validate()
+
 	return out, ret, nil
 }
 
@@ -195,8 +208,7 @@ func (ctx *VMContext) Caller() address.Address {
 
 // StateHandle handles access to the actor state.
 func (ctx *VMContext) StateHandle() runtime.ActorStateHandle {
-	// Review: this is how the spec does it, although I think this handles need to be maintained in memory for the current high level dispatch
-	return NewActorStateHandle(ctx, ctx.to.Head)
+	return &ctx.stateHandle
 }
 
 // ValueReceived is the amount of FIL received by this actor during this method call.
@@ -248,6 +260,13 @@ func (ctx *VMContext) CreateNewActor(addr address.Address, code cid.Cid) error {
 	newActor.Code = code
 
 	return nil
+}
+
+// AllowSideEffects determines wether or not the actor code is allowed to produce side-effects.
+//
+// At this time, any `Send` to the same or another actor is considered a side-effect.
+func (ctx *VMContext) AllowSideEffects(allow bool) {
+	ctx.allowSideEffects = allow
 }
 
 // Verifier returns an interface to the proof verification code
