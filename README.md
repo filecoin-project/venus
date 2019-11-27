@@ -82,7 +82,15 @@ Now install the tools and dependencies listed below. If you have **any problems 
 #### Install Go and Rust
 
 The build process for go-filecoin requires:
-
+- [Git](https://git-scm.com) >= v2.16.5
+  - git tools does not support git rev-parse @:"${__submodule_path} if git version less v2.16.5 , you can get error like this 
+```sh
+failed to find or obtain precompiled assets for bls-signatures, falling back to local build
+fatal: Invalid object name '@'.
+make: *** [.install-bls] ERROR 128
+Command './scripts/install-go-bls-sigs.sh' failed: exit status 1
+fatal: Invalid object name '@'.
+```
 - [Go](https://golang.org/doc/install) >= v1.13
   - Installing Go for the first time? We recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.
 - [Rust](https://www.rust-lang.org/) >= v1.36.0 and `cargo`
