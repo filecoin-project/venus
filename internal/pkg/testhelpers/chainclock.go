@@ -1,7 +1,6 @@
 package testhelpers
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"time"
 )
 
@@ -9,17 +8,17 @@ import (
 type FakeChainClock interface {
 	FakeClock
 
-	EpochAtTime(t time.Time) *types.BlockHeight
+	EpochAtTime(t time.Time) int64
 }
 
 type fakeChainClock struct {
-	epoch uint64
+	epoch int64
 
 	FakeClock
 }
 
 // NewFakeChainClock returns a FakeChainClock.
-func NewFakeChainClock(chainEpoch uint64, wallTime time.Time) FakeChainClock {
+func NewFakeChainClock(chainEpoch int64, wallTime time.Time) FakeChainClock {
 	return &fakeChainClock{
 		epoch:     chainEpoch,
 		FakeClock: NewFakeClock(wallTime),
@@ -27,11 +26,11 @@ func NewFakeChainClock(chainEpoch uint64, wallTime time.Time) FakeChainClock {
 }
 
 // EpochAtTime returns the ChainEpoch held by the fakeChainClock.
-func (fcc *fakeChainClock) EpochAtTime(t time.Time) *types.BlockHeight {
-	return types.NewBlockHeight(fcc.epoch)
+func (fcc *fakeChainClock) EpochAtTime(t time.Time) int64 {
+	return fcc.epoch
 }
 
 // SetChainEpoch sets the FakeChainClock's ChainEpoch to `epoch`.
-func (fcc *fakeChainClock) SetChainEpoch(epoch uint64) {
+func (fcc *fakeChainClock) SetChainEpoch(epoch int64) {
 	fcc.epoch = epoch
 }
