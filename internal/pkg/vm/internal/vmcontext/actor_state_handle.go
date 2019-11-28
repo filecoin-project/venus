@@ -16,7 +16,7 @@ type actorStateHandle struct {
 	// used_obj holds the pointer to the obj that has been used with this handle.
 	//
 	// any subsequent calls needs to be using the same variable.
-	used_obj interface{}
+	usedObj interface{}
 }
 
 // validateFn returns True if it's valid.
@@ -48,9 +48,9 @@ var _ runtime.ActorStateHandle = (*actorStateHandle)(nil)
 // Readonly is the implementation of the ActorStateHandle interface.
 func (h *actorStateHandle) Readonly(obj interface{}) {
 	// track the variable used by the caller
-	if h.used_obj == nil {
-		h.used_obj = obj
-	} else if h.used_obj != obj {
+	if h.usedObj == nil {
+		h.usedObj = obj
+	} else if h.usedObj != obj {
 		runtime.Abort("Must use the same state variable on repeated calls")
 	}
 
@@ -74,9 +74,9 @@ func (h *actorStateHandle) Transaction(obj interface{}, f transactionFn) (interf
 	}
 
 	// track the variable used by the caller
-	if h.used_obj == nil {
-		h.used_obj = obj
-	} else if h.used_obj != obj {
+	if h.usedObj == nil {
+		h.usedObj = obj
+	} else if h.usedObj != obj {
 		runtime.Abort("Must use the same state variable on repeated calls")
 	}
 
@@ -123,25 +123,13 @@ func (h *actorStateHandle) Transaction(obj interface{}, f transactionFn) (interf
 // This method is not part of the public API,
 // it is expected to be called by the runtime after each actor method.
 func (h *actorStateHandle) Validate() {
-	if h.used_obj != nil {
+	if h.usedObj != nil {
 		// verify the obj has not changed
-		if h.cidOf(h.used_obj) != h.head {
+		usedCid, err := h.ctx.Storage().CidOf(h.usedObj)
+		if err != nil || usedCid != h.head {
 			runtime.Abort("State mutated outside of Transaction() scope")
 		}
 	}
-}
-
-// Dragons: move this to the storage API
-func (h *actorStateHandle) cidOf(obj interface{}) cid.Cid {
-	// get Cid for object
-	// Dragons: this should not be storing
-	storage := h.ctx.Storage()
-	newcid, err := storage.Put(obj)
-	if err != nil {
-		runtime.Abort("Storage put error")
-	}
-
-	return newcid
 }
 
 // Dragons: cleanup after changing `storage.Get` to `Get(cid, interface{})`

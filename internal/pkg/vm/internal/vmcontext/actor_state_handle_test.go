@@ -88,6 +88,20 @@ func TestActorStateHandle(t *testing.T) {
 		assert.Equal(t, out, ts.initialstate)
 	})
 
+	t.Run("readonly promotion", func(t *testing.T) {
+		ts := setup()
+		defer ts.cleanup()
+
+		var out testActorStateHandleState
+		ts.h.Readonly(&out)
+
+		_, err := ts.h.Transaction(&out, func() (interface{}, error) {
+			out.FieldA = "changed!"
+			return nil, nil
+		})
+		assert.NoError(t, err)
+	})
+
 	t.Run("transaction", func(t *testing.T) {
 		ts := setup()
 		defer ts.cleanup()

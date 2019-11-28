@@ -150,6 +150,8 @@ type Storage interface {
 	// Dragons: move out after cleaning up the actor state construction
 	Head() cid.Cid
 	Put(interface{}) (cid.Cid, error)
+	// Dragons: move out after cleaning up the actor state construction
+	CidOf(interface{}) (cid.Cid, error)
 	// Dragons: this interface is wrong, the caller does not know how the object got serialized (Put/1 takes an interface{} not bytes)
 	// TODO: change to `Get(cid, interface{}) error`
 	Get(cid.Cid) ([]byte, error)

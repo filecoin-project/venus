@@ -222,6 +222,18 @@ func (ts testStorage) Get(cid.Cid) ([]byte, error) {
 	return node.RawData(), nil
 }
 
+// CidOf returns the Cid of the object.
+func (ts testStorage) CidOf(v interface{}) (cid.Cid, error) {
+	if v == nil {
+		return cid.Undef, nil
+	}
+	raw, err := encoding.Encode(v)
+	if err != nil {
+		return cid.Undef, err
+	}
+	return cid.NewCidV1(cid.Raw, raw), nil
+}
+
 // Commit satisfies the Storage interface but does nothing
 func (ts testStorage) Commit(cid.Cid, cid.Cid) error {
 	return nil
