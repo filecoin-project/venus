@@ -17,7 +17,6 @@ type Runtime interface {
 	// Send(input InvocInput) result.InvocOutput
 	// Dragons: match signature for this PR, change to struct on next PR
 	Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
-	// Review: should be add `Abort` and `Assert` here?
 }
 
 // InvocationContext is passed to the actors on each method call.
@@ -75,11 +74,8 @@ type ActorStateHandle interface {
 	//
 	// `Transaction(F) -> (T, Error) where F: Fn(S) -> (T, error), S: ActorState`.
 	//
-	// Note: the actual Go signature is a bit different due to the lack of type system magic,
-	//       and also wanting to avoid some unnecessary reflection.
-	//
-	// Review: we might want to spend an hour or four making the signature look like it's supposed to..
-	// Hack: In order to know `S` and save some code, the actual signature looks like:
+	// Note: the actual Go signature is a bit different due to the lack of type system magic.
+	//		 In order to know `S`, the actual signature looks like:
 	//       `Transaction(S, F) where S: ActorState, F: Fn() -> (T, Error)`.
 	//
 	// # Usage
@@ -91,7 +87,7 @@ type ActorStateHandle interface {
 	//	 st.ImLoaded = True
 	//   return st.Thing, nil
 	// })
-	// // state.ImLoaded = False // BAD!! state is readonly outside the lambda
+	// // state.ImLoaded = False // BAD!! state is readonly outside the lambda, it will panic
 	// ```
 	Transaction(obj interface{}, f func() (interface{}, error)) (interface{}, error)
 }
