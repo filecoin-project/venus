@@ -239,7 +239,7 @@ func (ts testStorage) Commit(cid.Cid, cid.Cid) error {
 	return nil
 }
 
-// Head returns an empty Cid to satisfy the Storage interface
+// Head returns the Cid of the current state.
 func (ts testStorage) Head() cid.Cid {
 	if ts.state == nil {
 		return cid.Undef
