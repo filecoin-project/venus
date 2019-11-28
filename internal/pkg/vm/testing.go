@@ -29,6 +29,8 @@ type FakeVMContext struct {
 	Charger                 func(cost types.GasUnits) error
 	Sampler                 func(sampleHeight *types.BlockHeight) ([]byte, error)
 	ActorCreator            func(addr address.Address, code cid.Cid) error
+	allowSideEffects        bool
+	stateHandle             runtime.ActorStateHandle
 }
 
 // NewFakeVMContext fakes the state machine infrastructure so actor methods can be called directly
@@ -37,7 +39,7 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 	copy(randomness[:], []byte("only random in the figurative sense"))
 
 	addressGetter := address.NewForTestGetter()
-	return &FakeVMContext{
+	aux := FakeVMContext{
 		MessageValue:            message,
 		StorageValue:            &testStorage{state: state},
 		BlockHeightValue:        types.NewBlockHeight(0),
@@ -59,7 +61,10 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 		ActorCreator: func(addr address.Address, code cid.Cid) error {
 			return nil
 		},
+		allowSideEffects: true,
 	}
+	aux.stateHandle = vmcontext.NewActorStateHandle(&aux, aux.StorageValue.Head())
+	return &aux
 }
 
 // NewFakeVMContextWithVerifier creates a fake VMContext with the given verifier
@@ -84,6 +89,10 @@ func (tc *FakeVMContext) Randomness(epoch types.BlockHeight, offset uint64) runt
 
 // Send sends a message to another actor
 func (tc *FakeVMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+	// check if side-effects are allowed
+	if !tc.allowSideEffects {
+		runtime.Abort("Calling Send() is not allowed during side-effet lock")
+	}
 	return tc.Sender(to, method, value, params)
 }
 
@@ -111,7 +120,7 @@ func (tc *FakeVMContext) Caller() address.Address {
 
 // StateHandle handles access to the actor state.
 func (tc *FakeVMContext) StateHandle() runtime.ActorStateHandle {
-	return vmcontext.NewActorStateHandle(tc, tc.StorageValue.Head())
+	return tc.stateHandle
 }
 
 // ValueReceived is the amount of FIL received by this actor during this method call.
@@ -148,6 +157,13 @@ func (tc *FakeVMContext) CreateNewActor(addr address.Address, code cid.Cid) erro
 // Verifier provides an interface to the proofs verifier
 func (tc *FakeVMContext) Verifier() verification.Verifier {
 	return tc.VerifierValue
+}
+
+// AllowSideEffects determines wether or not the actor code is allowed to produce side-effects.
+//
+// At this time, any `Send` to the same or another actor is considered a side-effect.
+func (tc *FakeVMContext) AllowSideEffects(allow bool) {
+	tc.allowSideEffects = allow
 }
 
 // Dragons: should I stay or should I go?
@@ -206,13 +222,28 @@ func (ts testStorage) Get(cid.Cid) ([]byte, error) {
 	return node.RawData(), nil
 }
 
+// CidOf returns the Cid of the object.
+func (ts testStorage) CidOf(v interface{}) (cid.Cid, error) {
+	if v == nil {
+		return cid.Undef, nil
+	}
+	raw, err := encoding.Encode(v)
+	if err != nil {
+		return cid.Undef, err
+	}
+	return cid.NewCidV1(cid.Raw, raw), nil
+}
+
 // Commit satisfies the Storage interface but does nothing
 func (ts testStorage) Commit(cid.Cid, cid.Cid) error {
 	return nil
 }
 
-// Head returns an empty Cid to satisfy the Storage interface
+// Head returns the Cid of the current state.
 func (ts testStorage) Head() cid.Cid {
+	if ts.state == nil {
+		return cid.Undef
+	}
 	raw, err := encoding.Encode(ts.state)
 	if err != nil {
 		panic("failed to encode")
