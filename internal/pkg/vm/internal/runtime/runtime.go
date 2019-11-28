@@ -68,7 +68,10 @@ type InvocationContext interface {
 // and ensure the context implementation exposes them.
 type ExtendedInvocationContext interface {
 	InvocationContext
-	// Dragons: add new VerifySignature
+	// Dragons: add new CreateActor (this is just for the init actor)
+	// CreateActor(code cid.Cid, params []interface{}) address.Address
+	// Dragons: add new VerifySignature (mileage on the arg types may vary)
+	// VerifySignature(signer address.Address, signature filcrypto.Signature, msg filcrypto.Message) bool
 }
 
 // LegacyInvocationContext are the methods from the old VM we have not removed yet.
