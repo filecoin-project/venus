@@ -2,7 +2,7 @@ package verification
 
 import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-sectorbuilder"
+	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 )
 
 // VerifySealRequest represents a request to verify the output of a Seal() operation.

@@ -3,6 +3,7 @@ package runtime
 import (
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
@@ -14,42 +15,75 @@ type Runtime interface {
 	// Randomness gives the actors access to sampling peudo-randomess from the chain.
 	Randomness(epoch types.BlockHeight, offset uint64) Randomness
 	// Send allows actors to invoke methods on other actors
-	// Send(input InvocInput) result.InvocOutput
-	// Dragons: match signature for this PR, change to struct on next PR
+	// Dragons: cleanup to match new vm expectations
 	Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
+	// Storage is the raw store for IPLD objects.
+	//
+	// Note: this is required for custom data structures.
+	Storage() Storage
+}
+
+// MessageInfo contains information available to the actor about the executing message.
+type MessageInfo interface {
+	// BlockMiner is the address for the actor who mined the block in which the initial on-chain message appears.
+	BlockMiner() address.Address
+	// ValueReceived is the amount of FIL received by this actor during this method call.
+	//
+	// Note: the value has already been deposited on the actors account and is reflected in the balance.
+	ValueReceived() types.AttoFIL
+	// Caller is the immediate caller to the current executing method.
+	Caller() address.Address
 }
 
 // InvocationContext is passed to the actors on each method call.
 type InvocationContext interface {
 	// Runtime exposes some methods on the runtime to the actor.
 	Runtime() Runtime
+	// Message contains information available to the actor about the executing message.
+	Message() MessageInfo
 	// ValidateCaller validates the caller against a patter.
 	//
 	// All actor methods MUST call this method before returning.
 	ValidateCaller(CallerPattern)
-	// Caller is the immediate caller to the current executing method.
-	Caller() address.Address
 	// StateHandle handles access to the actor state.
 	StateHandle() ActorStateHandle
-	// ValueReceived is the amount of FIL received by this actor during this method call.
-	//
-	// Note: the value is already been deposited on the actors account and is reflected on the balance.
-	ValueReceived() types.AttoFIL
 	// Balance is the current balance on the current actors account.
 	//
 	// Note: the value received for this invocation is already reflected on the balance.
 	Balance() types.AttoFIL
-	// Storage is the raw store for IPLD objects.
-	//
-	// Note: this is required for custom data structures.
-	Storage() Storage
 	// Charge allows actor code to charge extra.
 	//
 	// This method should be rarely used, the VM takes care of charging the gas on calls.
 	//
 	// Methods with extra complexity that is not accounted by other means (i.e. external calls, storage calls)
 	// will have to charge extra.
-	Charge(cost types.GasUnits) error
+	Charge(units types.GasUnits) error
+}
+
+// ExtendedInvocationContext is a set of convenience functions built on top external ABI calls.
+//
+// Actor code should not be using this interface directly.
+//
+// Note: This interface is intended to document the full set of available operations
+// and ensure the context implementation exposes them.
+type ExtendedInvocationContext interface {
+	InvocationContext
+	// Dragons: add new CreateActor (this is just for the init actor)
+	// CreateActor(code cid.Cid, params []interface{}) address.Address
+	// Dragons: add new VerifySignature (mileage on the arg types may vary)
+	// VerifySignature(signer address.Address, signature filcrypto.Signature, msg filcrypto.Message) bool
+}
+
+// LegacyInvocationContext are the methods from the old VM we have not removed yet.
+//
+// WARNING: Every method in this interface is to be considered DEPRECATED.
+// Dragons: this methods are legacy and have not been ported to the new VM semantics.
+type LegacyInvocationContext interface {
+	InvocationContext
+	LegacyMessage() *types.UnsignedMessage
+	LegacyCreateNewActor(addr address.Address, code cid.Cid) error
+	LegacyAddressForNewActor() (address.Address, error)
+	LegacyVerifier() verification.Verifier
 }
 
 // ActorStateHandle handles the actor state, allowing actors to lock on the state.
@@ -94,20 +128,6 @@ type ActorStateHandle interface {
 
 // Randomness is a string of random bytes
 type Randomness []byte
-
-// InvocInput are the params to invoke a method in an Actor.
-type InvocInput struct {
-	To     address.Address
-	Method types.MethodID
-	Params MethodParams
-	Value  types.AttoFIL
-}
-
-// MethodParam is the parameter to an actor method.
-type MethodParam []byte
-
-// MethodParams is a list of `MethodParam` to be passed into an Actor method.
-type MethodParams []MethodParam
 
 // PatternContext is the context a pattern gets access to in order to determine if the caller matches.
 type PatternContext interface {

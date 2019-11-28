@@ -50,6 +50,7 @@ type VMContext struct {
 	isCallerValidated bool
 	allowSideEffects  bool
 	stateHandle       actorStateHandle
+	blockMiner        address.Address
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
@@ -67,6 +68,7 @@ type NewContextParams struct {
 	BlockHeight *types.BlockHeight
 	Ancestors   []block.TipSet
 	Actors      ExecutableActorLookup
+	BlockMiner  address.Address
 }
 
 // NewVMContext returns an initialized context.
@@ -85,6 +87,7 @@ func NewVMContext(params NewContextParams) *VMContext {
 		actors:            params.Actors,
 		isCallerValidated: false,
 		allowSideEffects:  true,
+		blockMiner:        params.BlockMiner,
 		deps:              makeDeps(params.State),
 	}
 	ctx.stateHandle = newActorStateHandle(&ctx, ctx.to.Head)
@@ -181,10 +184,34 @@ func (ctx *VMContext) Send(to address.Address, method types.MethodID, value type
 	return out, ret, nil
 }
 
+var _ runtime.MessageInfo = (*VMContext)(nil)
+
+// BlockMiner is the address for the actor miner who mined the block in which the initial on-chain message appears.
+func (ctx *VMContext) BlockMiner() address.Address {
+	return ctx.blockMiner
+}
+
+// ValueReceived is the amount of FIL received by this actor during this method call.
+//
+// Note: the value is already been deposited on the actors account and is reflected on the balance.
+func (ctx *VMContext) ValueReceived() types.AttoFIL {
+	return ctx.message.Value
+}
+
+// Caller is the immediate caller to the current executing method.
+func (ctx *VMContext) Caller() address.Address {
+	return ctx.message.From
+}
+
 var _ runtime.InvocationContext = (*VMContext)(nil)
 
 // Runtime exposes some methods on the runtime to the actor.
 func (ctx *VMContext) Runtime() runtime.Runtime {
+	return ctx
+}
+
+// Message contains information available to the actor about the executing message.
+func (ctx *VMContext) Message() runtime.MessageInfo {
 	return ctx
 }
 
@@ -201,21 +228,9 @@ func (ctx *VMContext) ValidateCaller(pattern runtime.CallerPattern) {
 	ctx.isCallerValidated = true
 }
 
-// Caller is the immediate caller to the current executing method.
-func (ctx *VMContext) Caller() address.Address {
-	return ctx.message.From
-}
-
 // StateHandle handles access to the actor state.
 func (ctx *VMContext) StateHandle() runtime.ActorStateHandle {
 	return &ctx.stateHandle
-}
-
-// ValueReceived is the amount of FIL received by this actor during this method call.
-//
-// Note: the value is already been deposited on the actors account and is reflected on the balance.
-func (ctx *VMContext) ValueReceived() types.AttoFIL {
-	return ctx.message.Value
 }
 
 // Balance is the current balance on the current actors account.
@@ -231,18 +246,27 @@ func (ctx *VMContext) Storage() runtime.Storage {
 }
 
 // Charge attempts to add the given cost to the accrued gas cost of this transaction
-// Dragons: here just to avoid deleting a lot of lines while we wait for the new Gas Accounting to land
 func (ctx *VMContext) Charge(cost types.GasUnits) error {
 	return ctx.gasTracker.Charge(cost)
 }
 
-//
-// built-in actor needs
-//
+var _ runtime.ExtendedInvocationContext = (*VMContext)(nil)
 
-// CreateNewActor creates an actor at the given address.
+var _ runtime.LegacyInvocationContext = (*VMContext)(nil)
+
+// LegacyVerifier returns an interface to the proof verification code
+func (ctx *VMContext) LegacyVerifier() verification.Verifier {
+	return &verification.RustVerifier{}
+}
+
+// LegacyMessage retrieves the message associated with this context.
+func (ctx *VMContext) LegacyMessage() *types.UnsignedMessage {
+	return ctx.message
+}
+
+// LegacyCreateNewActor creates an actor at the given address.
 // If the address is occupied by a non-empty actor, this method will fail.
-func (ctx *VMContext) CreateNewActor(addr address.Address, code cid.Cid) error {
+func (ctx *VMContext) LegacyCreateNewActor(addr address.Address, code cid.Cid) error {
 	// Check existing address. If nothing there, create empty actor.
 	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), addr, func() (*actor.Actor, error) {
 		return &actor.Actor{}, nil
@@ -262,30 +286,12 @@ func (ctx *VMContext) CreateNewActor(addr address.Address, code cid.Cid) error {
 	return nil
 }
 
-// AllowSideEffects determines wether or not the actor code is allowed to produce side-effects.
+// LegacyAddressForNewActor creates computes the address for a new actor in the same way that ethereum does.
 //
-// At this time, any `Send` to the same or another actor is considered a side-effect.
-func (ctx *VMContext) AllowSideEffects(allow bool) {
-	ctx.allowSideEffects = allow
-}
-
-// Verifier returns an interface to the proof verification code
-func (ctx *VMContext) Verifier() verification.Verifier {
-	return &verification.RustVerifier{}
-}
-
-// Dragons: all extras on the meantime
-
-// Message retrieves the message associated with this context.
-func (ctx *VMContext) Message() *types.UnsignedMessage {
-	return ctx.message
-}
-
-// AddressForNewActor creates computes the address for a new actor in the same
-// way that ethereum does.  Note that this will not work if we allow the
+// Note: this will not work if we allow the
 // creation of multiple contracts in a given invocation (nonce will remain the
 // same, resulting in the same address back)
-func (ctx *VMContext) AddressForNewActor() (address.Address, error) {
+func (ctx *VMContext) LegacyAddressForNewActor() (address.Address, error) {
 	return computeActorAddress(ctx.originMsg.From, uint64(ctx.originMsg.CallSeqNum))
 }
 
@@ -303,21 +309,21 @@ func computeActorAddress(creator address.Address, nonce uint64) (address.Address
 	return address.NewActorAddress(buf.Bytes())
 }
 
-// patternContext is a wrapper on a vmcontext to implement the PatternContext
-type patternContext struct {
-	vm *VMContext
-}
+//
+// internal methods not exposed to actors
+//
 
-var _ runtime.PatternContext = patternContext{}
-
-func (ctx patternContext) Code() cid.Cid {
-	return ctx.vm.from.Code
+// AllowSideEffects determines wether or not the actor code is allowed to produce side-effects.
+//
+// At this time, any `Send` to the same or another actor is considered a side-effect.
+func (ctx *VMContext) AllowSideEffects(allow bool) {
+	ctx.allowSideEffects = allow
 }
 
 // ExtendedRuntime has a few extra methods on top of what is exposed to the actors.
 type ExtendedRuntime interface {
 	runtime.Runtime
-	Message() *types.UnsignedMessage
+	LegacyMessage() *types.UnsignedMessage
 	From() *actor.Actor
 	To() *actor.Actor
 	Actors() ExecutableActorLookup
@@ -373,7 +379,7 @@ type TransferFn = func(*actor.Actor, *actor.Actor, types.AttoFIL) error
 
 // send executes a message pass inside the VM. It exists alongside Send so that we can inject its dependencies during test.
 func send(ctx context.Context, transfer TransferFn, vmCtx ExtendedRuntime) ([][]byte, uint8, error) {
-	msg := vmCtx.Message()
+	msg := vmCtx.LegacyMessage()
 	if !msg.Value.Equal(types.ZeroAttoFIL) {
 		if err := transfer(vmCtx.From(), vmCtx.To(), msg.Value); err != nil {
 			if errors.ShouldRevert(err) {
@@ -460,4 +466,15 @@ func (ctx *VMContext) resolveActorAddress(addr address.Address) (address.Address
 	}
 
 	return idAddr, nil
+}
+
+// patternContext is a wrapper on a vmcontext to implement the PatternContext
+type patternContext struct {
+	vm *VMContext
+}
+
+var _ runtime.PatternContext = patternContext{}
+
+func (ctx patternContext) Code() cid.Cid {
+	return ctx.vm.from.Code
 }
