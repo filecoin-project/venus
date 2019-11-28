@@ -49,6 +49,12 @@ func setup() testSetup {
 func TestActorStateHandle(t *testing.T) {
 	tf.UnitTest(t)
 
+	// this test case verifies that the `Validate` works when nothing was done with the state
+	t.Run("noop", func(t *testing.T) {
+		ts := setup()
+		defer ts.cleanup()
+	})
+
 	t.Run("readonly", func(t *testing.T) {
 		ts := setup()
 		defer ts.cleanup()
@@ -100,10 +106,9 @@ func TestActorStateHandle(t *testing.T) {
 		// check that it changed
 		assert.Equal(t, out.FieldA, expected)
 
-		var out2 testActorStateHandleState
-		ts.h.Readonly(&out2)
-		// really check with a new object
-		assert.Equal(t, out2.FieldA, expected)
+		ts.h.Readonly(&out)
+		// really check by loading it again
+		assert.Equal(t, out.FieldA, expected)
 	})
 
 	t.Run("transaction but no mutation", func(t *testing.T) {
@@ -135,10 +140,9 @@ func TestActorStateHandle(t *testing.T) {
 		// check that it did NOT change
 		assert.Equal(t, out, ts.initialstate)
 
-		var out2 testActorStateHandleState
-		ts.h.Readonly(&out2)
-		// really check with a new object
-		assert.Equal(t, out2, ts.initialstate)
+		ts.h.Readonly(&out)
+		// really check by loading it again
+		assert.Equal(t, out, ts.initialstate)
 	})
 
 	t.Run("transaction returning value", func(t *testing.T) {
@@ -170,6 +174,29 @@ func TestActorStateHandle(t *testing.T) {
 		assert.NoError(t, err)
 
 		out.FieldA = "changed again!"
+	})
+
+	t.Run("transaction double whammy", func(t *testing.T) {
+		ts := setup()
+		defer ts.cleanup()
+
+		var out testActorStateHandleState
+
+		_, err := ts.h.Transaction(&out, func() (interface{}, error) {
+			out.FieldA = "changed!"
+			return nil, nil
+		})
+		assert.NoError(t, err)
+
+		v, err := ts.h.Transaction(&out, func() (interface{}, error) {
+			out.FieldA = "again!"
+			return out.FieldA, nil
+		})
+		assert.NoError(t, err)
+
+		ts.h.Readonly(&out)
+		// really check by loading it again
+		assert.Equal(t, out.FieldA, v)
 	})
 }
 
@@ -224,8 +251,28 @@ func TestActorStateHandleNilState(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		var out2 testActorStateHandleState
-		h.Readonly(&out2) // should not fail
+		h.Readonly(&out) // should not fail
+	})
+
+	t.Run("readonly nil pointer to state", func(t *testing.T) {
+		defer mustPanic(t)
+
+		h, cleanup := setup()
+		defer cleanup()
+
+		h.Readonly(nil)
+	})
+
+	t.Run("transaction nil pointer to state", func(t *testing.T) {
+		defer mustPanic(t)
+
+		h, cleanup := setup()
+		defer cleanup()
+
+		_, err := h.Transaction(nil, func() (interface{}, error) {
+			return nil, nil
+		})
+		assert.NoError(t, err)
 	})
 }
 

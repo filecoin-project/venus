@@ -8,13 +8,18 @@ import (
 
 type actorStateHandle struct {
 	ctx  actorStateHandleContext
-	head *cid.Cid
+	head cid.Cid
 	// validations is a list of validations that the vm will execute after the actor code finishes.
 	//
 	// Any validation failure will result in the execution getting aborted.
 	validations []validateFn
+	// used_obj holds the pointer to the obj that has been used with this handle.
+	//
+	// any subsequent calls needs to be using the same variable.
+	used_obj interface{}
 }
 
+// validateFn returns True if it's valid.
 type validateFn = func() bool
 
 type actorStateHandleContext interface {
@@ -23,6 +28,8 @@ type actorStateHandleContext interface {
 }
 
 // NewActorStateHandle returns a new `actorStateHandle`
+//
+// Note: just visible for testing.
 func NewActorStateHandle(ctx actorStateHandleContext, head cid.Cid) runtime.ActorStateHandle {
 	aux := newActorStateHandle(ctx, head)
 	return &aux
@@ -31,69 +38,50 @@ func NewActorStateHandle(ctx actorStateHandleContext, head cid.Cid) runtime.Acto
 func newActorStateHandle(ctx actorStateHandleContext, head cid.Cid) actorStateHandle {
 	return actorStateHandle{
 		ctx:         ctx,
-		head:        &head,
+		head:        head,
 		validations: []validateFn{},
 	}
 }
 
 var _ runtime.ActorStateHandle = (*actorStateHandle)(nil)
 
-// Readonly loads a readonly copy of the state into the argument.
-//
-// Any modification to the state is illegal and will result in an `Abort`.
+// Readonly is the implementation of the ActorStateHandle interface.
 func (h *actorStateHandle) Readonly(obj interface{}) {
+	// track the variable used by the caller
+	if h.used_obj == nil {
+		h.used_obj = obj
+	} else if h.used_obj != obj {
+		runtime.Abort("Must use the same state variable on repeated calls")
+	}
+
 	// load state from storage
 	// Note: we copy the head over to `readonlyHead` in case it gets modified afterwards via `Transaction()`.
-	readonlyHead := *h.head
+	readonlyHead := h.head
 
 	if readonlyHead == cid.Undef {
 		runtime.Abort("Nil state can not be accessed via Readonly(), use Transaction() instead")
 	}
 
 	h.get(readonlyHead, obj)
-
-	// add validation
-	h.addCidValidation(obj, readonlyHead)
 }
 
 type transactionFn = func() (interface{}, error)
 
-// Transaction loads a mutable version of the state into the `obj` argument and protects
-// the execution from side effects.
-//
-// The second argument is a function which allows the caller to mutate the state.
-//
-// The new state will be commited if there are no errors returned.
-// Note: if an error is returned, the state changes will be DISCARDED and the reference will revert back.
-//
-// WARNING: If the state is modified AFTER the function returns, the execution will Abort.
-//	        The state is mutable ONLY inside the lambda.
-//
-// Transaction can be thought of as having the following signature:
-//
-// `Transaction(F) -> (T, Error) where F: Fn(S) -> (T, error), S: ActorState`.
-//
-// Note: the actual Go signature is a bit different due to the lack of type system magic,
-//       and also wanting to avoid some unnecessary reflection.
-//
-// Review: we might want to spend an hour or four making the signature look like it's supposed to..
-// Hack: In order to know `S` and save some code, the actual signature looks like:
-//       `Transaction(S, F) where S: ActorState, F: Fn() -> (T, Error)`.
-//
-// # Usage
-//
-// ```go
-// var state SomeState
-// ret, err := ctx.StateHandke().Transaction(&state, func() (interface{}, error) {
-//   // make some changes
-//	 st.ImLoaded = True
-//   return st.Thing, nil
-// })
-// // state.ImLoaded = False // BAD!! state is readonly outside the lambda
-// ```
+// Transaction is the implementation of the ActorStateHandle interface.
 func (h *actorStateHandle) Transaction(obj interface{}, f transactionFn) (interface{}, error) {
+	if obj == nil {
+		runtime.Abort("Must not pass nil to Transaction()")
+	}
+
+	// track the variable used by the caller
+	if h.used_obj == nil {
+		h.used_obj = obj
+	} else if h.used_obj != obj {
+		runtime.Abort("Must use the same state variable on repeated calls")
+	}
+
 	// load state from storage
-	oldcid := *h.head
+	oldcid := h.head
 	h.get(oldcid, obj)
 
 	// call user code allowing mutation but not side-effects
@@ -104,10 +92,9 @@ func (h *actorStateHandle) Transaction(obj interface{}, f transactionFn) (interf
 	// forward user error
 	if err != nil {
 		// re-load state from storage
-		// Note: this will throw away any changes done to the object
+		// Note: this will throw away any changes done to the object and replace it with Readonly()
 		h.get(oldcid, obj)
 
-		h.addCidValidation(obj, oldcid)
 		return out, err
 	}
 
@@ -126,19 +113,9 @@ func (h *actorStateHandle) Transaction(obj interface{}, f transactionFn) (interf
 	}
 
 	// update head
-	h.head = &newcid
-
-	// add validation
-	h.addCidValidation(obj, newcid)
+	h.head = newcid
 
 	return out, nil
-}
-
-func (h *actorStateHandle) addCidValidation(obj interface{}, expected cid.Cid) {
-	// checks that the cid of the obj has not changed
-	h.validations = append(h.validations, func() bool {
-		return h.cidOf(obj) == expected
-	})
 }
 
 // Validate validates that the state was mutated properly.
@@ -146,8 +123,9 @@ func (h *actorStateHandle) addCidValidation(obj interface{}, expected cid.Cid) {
 // This method is not part of the public API,
 // it is expected to be called by the runtime after each actor method.
 func (h *actorStateHandle) Validate() {
-	for _, vfn := range h.validations {
-		if !vfn() {
+	if h.used_obj != nil {
+		// verify the obj has not changed
+		if h.cidOf(h.used_obj) != h.head {
 			runtime.Abort("State mutated outside of Transaction() scope")
 		}
 	}

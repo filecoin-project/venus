@@ -65,7 +65,8 @@ type ActorStateHandle interface {
 	// The second argument is a function which allows the caller to mutate the state.
 	//
 	// The new state will be commited if there are no errors returned.
-	// Note: if an error is returned, the state changes will be DISCARDED and the reference will revert back.
+	// Note: if an error is returned, the state changes will be DISCARDED and the reference will mutate to
+	// 		 be equivalent to value of doing a Readonly().
 	//
 	// WARNING: If the state is modified AFTER the function returns, the execution will Abort.
 	//	        The state is mutable ONLY inside the lambda.
