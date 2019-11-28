@@ -74,7 +74,7 @@ type transactionFn = func() (interface{}, error)
 // `Transaction(F) -> (T, Error) where F: Fn(S) -> (T, error), S: ActorState`.
 //
 // Note: the actual Go signature is a bit different due to the lack of type system magic,
-//       and also wanting to avoid some unnecesary reflection.
+//       and also wanting to avoid some unnecessary reflection.
 //
 // Review: we might want to spend an hour or four making the signature look like it's supposed to..
 // Hack: In order to know `S` and save some code, the actual signature looks like:

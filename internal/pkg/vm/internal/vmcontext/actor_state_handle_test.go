@@ -46,8 +46,6 @@ func setup() testSetup {
 	}
 }
 
-var testError = errors.New("some error")
-
 func TestActorStateHandle(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -91,13 +89,14 @@ func TestActorStateHandle(t *testing.T) {
 		var out testActorStateHandleState
 		expected := "new state"
 
-		ts.h.Transaction(&out, func() (interface{}, error) {
+		_, err := ts.h.Transaction(&out, func() (interface{}, error) {
 			// check state is not what we are going to use
 			assert.NotEqual(t, out.FieldA, expected)
 			out.FieldA = expected
 
 			return nil, nil
 		})
+		assert.NoError(t, err)
 		// check that it changed
 		assert.Equal(t, out.FieldA, expected)
 
@@ -114,9 +113,10 @@ func TestActorStateHandle(t *testing.T) {
 		var out testActorStateHandleState
 
 		// should work, mutating is not compulsory
-		ts.h.Transaction(&out, func() (interface{}, error) {
+		_, err := ts.h.Transaction(&out, func() (interface{}, error) {
 			return nil, nil
 		})
+		assert.NoError(t, err)
 
 		assert.Equal(t, out, ts.initialstate)
 	})
@@ -129,7 +129,7 @@ func TestActorStateHandle(t *testing.T) {
 
 		_, err := ts.h.Transaction(&out, func() (interface{}, error) {
 			out.FieldA = "changed!"
-			return nil, testError
+			return nil, errors.New("some error")
 		})
 		assert.Error(t, err)
 		// check that it did NOT change
@@ -147,9 +147,10 @@ func TestActorStateHandle(t *testing.T) {
 
 		var out testActorStateHandleState
 
-		v, _ := ts.h.Transaction(&out, func() (interface{}, error) {
+		v, err := ts.h.Transaction(&out, func() (interface{}, error) {
 			return out.FieldA, nil
 		})
+		assert.NoError(t, err)
 
 		assert.Equal(t, v, ts.initialstate.FieldA)
 	})
@@ -162,10 +163,11 @@ func TestActorStateHandle(t *testing.T) {
 
 		var out testActorStateHandleState
 
-		ts.h.Transaction(&out, func() (interface{}, error) {
+		_, err := ts.h.Transaction(&out, func() (interface{}, error) {
 			out.FieldA = "changed!"
 			return nil, nil
 		})
+		assert.NoError(t, err)
 
 		out.FieldA = "changed again!"
 	})
@@ -206,9 +208,10 @@ func TestActorStateHandleNilState(t *testing.T) {
 		defer cleanup()
 
 		var out testActorStateHandleState
-		h.Transaction(&out, func() (interface{}, error) {
+		_, err := h.Transaction(&out, func() (interface{}, error) {
 			return nil, nil
 		})
+		assert.NoError(t, err)
 	})
 
 	t.Run("state initialized after transaction", func(t *testing.T) {
@@ -216,9 +219,10 @@ func TestActorStateHandleNilState(t *testing.T) {
 		defer cleanup()
 
 		var out testActorStateHandleState
-		h.Transaction(&out, func() (interface{}, error) {
+		_, err := h.Transaction(&out, func() (interface{}, error) {
 			return nil, nil
 		})
+		assert.NoError(t, err)
 
 		var out2 testActorStateHandleState
 		h.Readonly(&out2) // should not fail
