@@ -22,6 +22,7 @@ type FakeVMContext struct {
 	BalanceValue            types.AttoFIL
 	BlockHeightValue        *types.BlockHeight
 	VerifierValue           verification.Verifier
+	BlockMinerValue         address.Address
 	RandomnessValue         []byte
 	IsFromAccountActorValue bool
 	Sender                  func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
@@ -46,6 +47,7 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 		BalanceValue:            types.ZeroAttoFIL,
 		RandomnessValue:         randomness,
 		IsFromAccountActorValue: true,
+		BlockMinerValue:         address.Undef,
 		Charger: func(cost types.GasUnits) error {
 			return nil
 		},
@@ -96,10 +98,34 @@ func (tc *FakeVMContext) Send(to address.Address, method types.MethodID, value t
 	return tc.Sender(to, method, value, params)
 }
 
+var _ runtime.MessageInfo = &FakeVMContext{}
+
+// BlockMiner is the address for the actor miner who mined the block in which the initial on-chain message appears.
+func (tc *FakeVMContext) BlockMiner() address.Address {
+	return tc.BlockMinerValue
+}
+
+// Caller is the immediate caller to the current executing method.
+func (tc *FakeVMContext) Caller() address.Address {
+	return tc.MessageValue.From
+}
+
+// ValueReceived is the amount of FIL received by this actor during this method call.
+//
+// Note: the value is already been deposited on the actors account and is reflected on the balance.
+func (tc *FakeVMContext) ValueReceived() types.AttoFIL {
+	return tc.MessageValue.Value
+}
+
 var _ runtime.InvocationContext = &FakeVMContext{}
 
 // Runtime exposes some methods on the runtime to the actor.
 func (tc *FakeVMContext) Runtime() runtime.Runtime {
+	return tc
+}
+
+// Message implements the interface.
+func (tc *FakeVMContext) Message() runtime.MessageInfo {
 	return tc
 }
 
@@ -113,21 +139,9 @@ func (tc *FakeVMContext) ValidateCaller(pattern runtime.CallerPattern) {
 	}
 }
 
-// Caller is the immediate caller to the current executing method.
-func (tc *FakeVMContext) Caller() address.Address {
-	return tc.MessageValue.From
-}
-
 // StateHandle handles access to the actor state.
 func (tc *FakeVMContext) StateHandle() runtime.ActorStateHandle {
 	return tc.stateHandle
-}
-
-// ValueReceived is the amount of FIL received by this actor during this method call.
-//
-// Note: the value is already been deposited on the actors account and is reflected on the balance.
-func (tc *FakeVMContext) ValueReceived() types.AttoFIL {
-	return tc.MessageValue.Value
 }
 
 // Balance is the current balance on the current actors account.
@@ -147,7 +161,9 @@ func (tc *FakeVMContext) Charge(cost types.GasUnits) error {
 	return tc.Charger(cost)
 }
 
-// for built-in actors
+var _ runtime.ExtendedInvocationContext = (*FakeVMContext)(nil)
+
+var _ runtime.LegacyInvocationContext = (*FakeVMContext)(nil)
 
 // CreateNewActor creates an actor of a given type
 func (tc *FakeVMContext) CreateNewActor(addr address.Address, code cid.Cid) error {
@@ -159,23 +175,21 @@ func (tc *FakeVMContext) Verifier() verification.Verifier {
 	return tc.VerifierValue
 }
 
-// AllowSideEffects determines wether or not the actor code is allowed to produce side-effects.
-//
-// At this time, any `Send` to the same or another actor is considered a side-effect.
-func (tc *FakeVMContext) AllowSideEffects(allow bool) {
-	tc.allowSideEffects = allow
-}
-
-// Dragons: should I stay or should I go?
-
-// Message is the message that triggered this invocation
-func (tc *FakeVMContext) Message() *types.UnsignedMessage {
+// OriginalMessage is the message that triggered this invocation
+func (tc *FakeVMContext) OriginalMessage() *types.UnsignedMessage {
 	return tc.MessageValue
 }
 
 // AddressForNewActor creates an address to be used to create a new actor
 func (tc *FakeVMContext) AddressForNewActor() (address.Address, error) {
 	return tc.Addresser()
+}
+
+// AllowSideEffects determines wether or not the actor code is allowed to produce side-effects.
+//
+// At this time, any `Send` to the same or another actor is considered a side-effect.
+func (tc *FakeVMContext) AllowSideEffects(allow bool) {
+	tc.allowSideEffects = allow
 }
 
 type testStorage struct {

@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
@@ -151,7 +151,7 @@ var Errors = map[uint8]error{
 
 type invocationContext interface {
 	runtime.InvocationContext
-	Message() *types.UnsignedMessage
+	OriginalMessage() *types.UnsignedMessage
 	CreateNewActor(addr address.Address, code cid.Cid) error
 	AddressForNewActor() (address.Address, error)
 }
@@ -175,10 +175,10 @@ func (*impl) createStorageMiner(vmctx invocationContext, sectorSize *types.Bytes
 			actorCodeCid = types.BootstrapMinerActorCodeCid
 		}
 
-		initParams := []interface{}{vmctx.Message().From, vmctx.Message().From, pid, sectorSize}
+		initParams := []interface{}{vmctx.OriginalMessage().From, vmctx.OriginalMessage().From, pid, sectorSize}
 
 		// create miner actor by messaging the init actor and sending it collateral
-		ret, _, err := vmctx.Runtime().Send(address.InitAddress, initactor.Exec, vmctx.Message().Value, []interface{}{actorCodeCid, initParams})
+		ret, _, err := vmctx.Runtime().Send(address.InitAddress, initactor.Exec, vmctx.OriginalMessage().Value, []interface{}{actorCodeCid, initParams})
 		if err != nil {
 			return nil, err
 		}
@@ -196,7 +196,7 @@ func (*impl) createStorageMiner(vmctx invocationContext, sectorSize *types.Bytes
 
 		ctx := context.Background()
 
-		state.Miners, err = actor.SetKeyValue(ctx, vmctx.Storage(), state.Miners, actorIDAddr.String(), true)
+		state.Miners, err = actor.SetKeyValue(ctx, vmctx.Runtime().Storage(), state.Miners, actorIDAddr.String(), true)
 		if err != nil {
 			return nil, errors.FaultErrorWrapf(err, "could not set miner key value for lookup with CID: %s", state.Miners)
 		}
@@ -217,12 +217,12 @@ func retreiveActorID(vmctx runtime.Runtime, actorAddr address.Address) (address.
 		return address.Undef, err
 	}
 
-	actorIdVal, err := abi.Deserialize(ret[0], abi.Integer)
+	actorIDVal, err := abi.Deserialize(ret[0], abi.Integer)
 	if err != nil {
 		return address.Undef, errors.FaultErrorWrap(err, "could not convert actor id to big.Int")
 	}
 
-	return address.NewIDAddress(actorIdVal.Val.(*big.Int).Uint64())
+	return address.NewIDAddress(actorIDVal.Val.(*big.Int).Uint64())
 }
 
 // UpdateStorage is called to reflect a change in the overall power of the network.
@@ -235,10 +235,10 @@ func (*impl) updateStorage(vmctx invocationContext, delta *types.BytesAmount) (u
 
 	var state State
 	_, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
-		miner := vmctx.Message().From
+		miner := vmctx.OriginalMessage().From
 		ctx := context.Background()
 
-		miners, err := actor.LoadLookup(ctx, vmctx.Storage(), state.Miners)
+		miners, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.Miners)
 		if err != nil {
 			return nil, errors.FaultErrorWrapf(err, "could not load lookup for miner with CID: %s", state.Miners)
 		}
@@ -271,7 +271,7 @@ func (a *impl) getLateMiners(vmctx invocationContext) (*map[string]uint64, uint8
 
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		miners := map[string]uint64{}
-		lu, err := actor.LoadLookup(ctx, vmctx.Storage(), state.Miners)
+		lu, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.Miners)
 		if err != nil {
 			return &miners, err
 		}

@@ -449,12 +449,12 @@ const (
 type invocationContext interface {
 	runtime.InvocationContext
 	Verifier() verification.Verifier
-	Message() *types.UnsignedMessage
+	OriginalMessage() *types.UnsignedMessage
 }
 
 // Constructor initializes the actor's state
 func (impl *Impl) Constructor(ctx runtime.InvocationContext, owner, worker address.Address, pid peer.ID, sectorSize *types.BytesAmount) (uint8, error) {
-	err := (*Actor)(impl).InitializeState(ctx.Storage(), NewState(owner, worker, pid, sectorSize))
+	err := (*Actor)(impl).InitializeState(ctx.Runtime().Storage(), NewState(owner, worker, pid, sectorSize))
 	if err != nil {
 		return errors.CodeError(err), err
 	}
@@ -470,7 +470,7 @@ func (*Impl) AddAsk(ctx invocationContext, price types.AttoFIL, expiry *big.Int)
 
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		if ctx.Message().From != state.Worker {
+		if ctx.OriginalMessage().From != state.Worker {
 			return nil, Errors[ErrCallerUnauthorized]
 		}
 
@@ -730,7 +730,7 @@ func (a *Impl) CommitSector(ctx invocationContext, sectorID uint64, commD, commR
 			copy(req.CommR[:], commR)
 			copy(req.CommRStar[:], commRStar)
 			req.Proof = proof
-			req.ProverID = sectorbuilder.AddressToProverID(ctx.Message().To)
+			req.ProverID = sectorbuilder.AddressToProverID(ctx.OriginalMessage().To)
 			req.SectorID = sectorID
 			req.SectorSize = state.SectorSize
 
@@ -744,7 +744,7 @@ func (a *Impl) CommitSector(ctx invocationContext, sectorID uint64, commD, commR
 		}
 
 		// verify that the caller is authorized to perform update
-		if ctx.Message().From != state.Worker {
+		if ctx.OriginalMessage().From != state.Worker {
 			return nil, Errors[ErrCallerUnauthorized]
 		}
 
@@ -854,7 +854,7 @@ func (*Impl) ChangeWorker(ctx invocationContext, worker address.Address) (uint8,
 
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		if ctx.Message().From != state.Owner {
+		if ctx.OriginalMessage().From != state.Owner {
 			return nil, Errors[ErrCallerUnauthorized]
 		}
 
@@ -916,7 +916,7 @@ func (*Impl) UpdatePeerID(ctx invocationContext, pid peer.ID) (uint8, error) {
 	var storage State
 	_, err := actor.WithState(ctx, &storage, func() (interface{}, error) {
 		// verify that the caller is authorized to perform update
-		if ctx.Message().From != storage.Worker {
+		if ctx.OriginalMessage().From != storage.Worker {
 			return nil, Errors[ErrCallerUnauthorized]
 		}
 
@@ -1011,7 +1011,7 @@ func (a *Impl) SubmitPoSt(ctx invocationContext, poStProof types.PoStProof, faul
 	}
 
 	chainHeight := ctx.Runtime().CurrentEpoch()
-	sender := ctx.Message().From
+	sender := ctx.OriginalMessage().From
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		// verify that the caller is authorized to perform update
@@ -1037,7 +1037,7 @@ func (a *Impl) SubmitPoSt(ctx invocationContext, poStProof types.PoStProof, faul
 		// The message value has been added to the actor's balance.
 		// Ensure this value fully covers the fee which will be charged to this balance so that the resulting
 		// balance (which forms pledge & storage collateral) is not less than it was before.
-		messageValue := ctx.Message().Value
+		messageValue := ctx.OriginalMessage().Value
 		if messageValue.LessThan(feeRequired) {
 			return nil, errors.NewRevertErrorf("PoSt message requires value of at least %s attofil to cover fees, got %s", feeRequired, messageValue)
 		}
@@ -1102,7 +1102,7 @@ func (a *Impl) SubmitPoSt(ctx invocationContext, poStProof types.PoStProof, faul
 			}
 
 			sortedSectorInfo := go_sectorbuilder.NewSortedSectorInfo(sectorInfos...)
-			log.Infof("Verifying post for addr %s -- end: %s -- seed: %x", ctx.Message().To, state.ProvingPeriodEnd, seed)
+			log.Infof("Verifying post for addr %s -- end: %s -- seed: %x", ctx.OriginalMessage().To, state.ProvingPeriodEnd, seed)
 			for i, ssi := range sortedSectorInfo.Values() {
 				log.Infof("ssi %d: sector id %d -- commR %x", i, ssi.SectorID, ssi.CommR)
 			}

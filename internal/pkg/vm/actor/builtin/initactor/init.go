@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -126,7 +126,7 @@ type invocationContext interface {
 	runtime.InvocationContext
 	AddressForNewActor() (address.Address, error)
 	CreateNewActor(addr address.Address, code cid.Cid) error
-	Message() *types.UnsignedMessage
+	OriginalMessage() *types.UnsignedMessage
 }
 
 // Impl is the VM implementation of the actor.
@@ -160,7 +160,7 @@ func (a *Impl) GetActorIDForAddress(rt runtime.InvocationContext, addr address.A
 	}
 
 	ctx := context.TODO()
-	lookup, err := actor.LoadLookup(ctx, rt.Storage(), state.AddressMap)
+	lookup, err := actor.LoadLookup(ctx, rt.Runtime().Storage(), state.AddressMap)
 	if err != nil {
 		return big.NewInt(0), errors.CodeError(err), errors.RevertErrorWrapf(err, "could not load lookup for cid: %s", state.IdMap)
 	}
@@ -190,7 +190,7 @@ func (a *Impl) GetAddressForActorID(rt runtime.InvocationContext, actorID types.
 	}
 
 	ctx := context.TODO()
-	lookup, err := actor.LoadLookup(ctx, rt.Storage(), state.IdMap)
+	lookup, err := actor.LoadLookup(ctx, rt.Runtime().Storage(), state.IdMap)
 	if err != nil {
 		return address.Undef, errors.CodeError(err), errors.RevertErrorWrapf(err, "could not load lookup for cid: %s", state.IdMap)
 	}
@@ -247,12 +247,12 @@ func (a *Impl) Exec(rt invocationContext, codeCID cid.Cid, params []interface{})
 
 	// map id to address and vice versa
 	ctx := context.TODO()
-	state.AddressMap, err = a.setId(ctx, rt.Storage(), state.AddressMap, actorAddr, actorID)
+	state.AddressMap, err = a.setId(ctx, rt.Runtime().Storage(), state.AddressMap, actorAddr, actorID)
 	if err != nil {
 		return address.Undef, errors.CodeError(err), errors.FaultErrorWrap(err, "could not save id by address")
 	}
 
-	state.IdMap, err = a.setAddress(ctx, rt.Storage(), state.IdMap, actorID, actorAddr)
+	state.IdMap, err = a.setAddress(ctx, rt.Runtime().Storage(), state.IdMap, actorID, actorAddr)
 	if err != nil {
 		return address.Undef, errors.CodeError(err), errors.FaultErrorWrap(err, "could not save addres by id")
 	}
@@ -270,7 +270,7 @@ func (a *Impl) Exec(rt invocationContext, codeCID cid.Cid, params []interface{})
 	}
 
 	// send message containing actor's initial balance to construct it with the given params
-	_, _, err = rt.Runtime().Send(idAddr, types.ConstructorMethodID, rt.Message().Value, params)
+	_, _, err = rt.Runtime().Send(idAddr, types.ConstructorMethodID, rt.OriginalMessage().Value, params)
 	if err != nil {
 		return address.Undef, errors.CodeError(err), err
 	}
