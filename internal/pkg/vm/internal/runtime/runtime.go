@@ -45,7 +45,7 @@ type InvocationContext interface {
 	Storage() Storage
 	// Charge allows actor code to charge extra.
 	//
-	// This method should be seldomly used, the VM takes care of charging the gas on calls.
+	// This method should be rarely used, the VM takes care of charging the gas on calls.
 	//
 	// Methods with extra complexity that is not accounted by other means (i.e. external calls, storage calls)
 	// will have to charge extra.
@@ -63,7 +63,7 @@ type ActorStateHandle interface {
 	//
 	// The second argument is a function which allows the caller to mutate the state.
 	//
-	// The new state will be commited if there are no errors returned.
+	// The new state will be committed if there are no errors returned.
 	// Note: if an error is returned, the state changes will be DISCARDED and the reference will mutate to
 	// 		 be equivalent to value of doing a Readonly().
 	//
