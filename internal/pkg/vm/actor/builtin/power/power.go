@@ -154,8 +154,7 @@ var Errors = map[uint8]error{
 // Dragons: shouldnt this be calling the initacor to create an actor?
 type invocationContext interface {
 	runtime.InvocationContext
-	OriginalMessage() *types.UnsignedMessage
-	AddressForNewActor() (address.Address, error)
+	LegacyAddressForNewActor() (address.Address, error)
 }
 
 // CreateStorageMiner creates a new record of a miner in the power table.
@@ -172,10 +171,10 @@ func (*impl) createStorageMiner(vmctx invocationContext, ownerAddr, workerAddr a
 			actorCodeCid = types.BootstrapMinerActorCodeCid
 		}
 
-		initParams := []interface{}{vmctx.OriginalMessage().From, vmctx.OriginalMessage().From, pid, sectorSize}
+		initParams := []interface{}{vmctx.Message().Caller(), vmctx.Message().Caller(), pid, sectorSize}
 
 		// create miner actor by messaging the init actor and sending it collateral
-		ret, _, err := vmctx.Runtime().Send(address.InitAddress, initactor.Exec, vmctx.OriginalMessage().Value, []interface{}{actorCodeCid, initParams})
+		ret, _, err := vmctx.Runtime().Send(address.InitAddress, initactor.Exec, vmctx.Message().ValueReceived(), []interface{}{actorCodeCid, initParams})
 		if err != nil {
 			return nil, err
 		}
@@ -235,12 +234,12 @@ func retreiveActorID(vmctx runtime.Runtime, actorAddr address.Address) (address.
 		return address.Undef, err
 	}
 
-	actorIdVal, err := abi.Deserialize(ret[0], abi.Integer)
+	actorIDVal, err := abi.Deserialize(ret[0], abi.Integer)
 	if err != nil {
 		return address.Undef, errors.FaultErrorWrap(err, "could not convert actor id to big.Int")
 	}
 
-	return address.NewIDAddress(actorIdVal.Val.(*big.Int).Uint64())
+	return address.NewIDAddress(actorIDVal.Val.(*big.Int).Uint64())
 }
 
 // RemoveStorageMiner removes the given miner address from the power table.  This call will fail if

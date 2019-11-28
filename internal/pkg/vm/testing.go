@@ -165,23 +165,23 @@ var _ runtime.ExtendedInvocationContext = (*FakeVMContext)(nil)
 
 var _ runtime.LegacyInvocationContext = (*FakeVMContext)(nil)
 
-// CreateNewActor creates an actor of a given type
-func (tc *FakeVMContext) CreateNewActor(addr address.Address, code cid.Cid) error {
+// LegacyCreateNewActor creates an actor of a given type
+func (tc *FakeVMContext) LegacyCreateNewActor(addr address.Address, code cid.Cid) error {
 	return tc.ActorCreator(addr, code)
 }
 
-// Verifier provides an interface to the proofs verifier
-func (tc *FakeVMContext) Verifier() verification.Verifier {
+// LegacyVerifier provides an interface to the proofs verifier
+func (tc *FakeVMContext) LegacyVerifier() verification.Verifier {
 	return tc.VerifierValue
 }
 
-// OriginalMessage is the message that triggered this invocation
-func (tc *FakeVMContext) OriginalMessage() *types.UnsignedMessage {
+// LegacyMessage is the message that triggered this invocation
+func (tc *FakeVMContext) LegacyMessage() *types.UnsignedMessage {
 	return tc.MessageValue
 }
 
-// AddressForNewActor creates an address to be used to create a new actor
-func (tc *FakeVMContext) AddressForNewActor() (address.Address, error) {
+// LegacyAddressForNewActor creates an address to be used to create a new actor
+func (tc *FakeVMContext) LegacyAddressForNewActor() (address.Address, error) {
 	return tc.Addresser()
 }
 

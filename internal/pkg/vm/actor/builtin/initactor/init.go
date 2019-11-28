@@ -124,9 +124,8 @@ func (*Actor) InitializeState(storage runtime.Storage, params interface{}) error
 // minerInvocationContext has some special sauce for the miner.
 type invocationContext interface {
 	runtime.InvocationContext
-	AddressForNewActor() (address.Address, error)
-	CreateNewActor(addr address.Address, code cid.Cid) error
-	OriginalMessage() *types.UnsignedMessage
+	LegacyAddressForNewActor() (address.Address, error)
+	LegacyCreateNewActor(addr address.Address, code cid.Cid) error
 }
 
 // Impl is the VM implementation of the actor.
@@ -233,7 +232,7 @@ func (a *Impl) Exec(rt invocationContext, codeCID cid.Cid, params []interface{})
 	}
 
 	// create more stable address
-	actorAddr, err := rt.AddressForNewActor()
+	actorAddr, err := rt.LegacyAddressForNewActor()
 	if err != nil {
 		return address.Undef, errors.CodeError(err), errors.FaultErrorWrapf(err, "could not create address for actor")
 	}
@@ -264,13 +263,13 @@ func (a *Impl) Exec(rt invocationContext, codeCID cid.Cid, params []interface{})
 	}
 
 	// create new actor keyed by id address
-	err = rt.CreateNewActor(idAddr, codeCID)
+	err = rt.LegacyCreateNewActor(idAddr, codeCID)
 	if err != nil {
 		return address.Undef, errors.CodeError(err), errors.FaultErrorWrapf(err, "could not create actor with address %s", idAddr.String())
 	}
 
 	// send message containing actor's initial balance to construct it with the given params
-	_, _, err = rt.Runtime().Send(idAddr, types.ConstructorMethodID, rt.OriginalMessage().Value, params)
+	_, _, err = rt.Runtime().Send(idAddr, types.ConstructorMethodID, rt.Message().ValueReceived(), params)
 	if err != nil {
 		return address.Undef, errors.CodeError(err), err
 	}

@@ -254,19 +254,19 @@ var _ runtime.ExtendedInvocationContext = (*VMContext)(nil)
 
 var _ runtime.LegacyInvocationContext = (*VMContext)(nil)
 
-// Verifier returns an interface to the proof verification code
-func (ctx *VMContext) Verifier() verification.Verifier {
+// LegacyVerifier returns an interface to the proof verification code
+func (ctx *VMContext) LegacyVerifier() verification.Verifier {
 	return &verification.RustVerifier{}
 }
 
-// OriginalMessage retrieves the message associated with this context.
-func (ctx *VMContext) OriginalMessage() *types.UnsignedMessage {
+// LegacyMessage retrieves the message associated with this context.
+func (ctx *VMContext) LegacyMessage() *types.UnsignedMessage {
 	return ctx.message
 }
 
-// CreateNewActor creates an actor at the given address.
+// LegacyCreateNewActor creates an actor at the given address.
 // If the address is occupied by a non-empty actor, this method will fail.
-func (ctx *VMContext) CreateNewActor(addr address.Address, code cid.Cid) error {
+func (ctx *VMContext) LegacyCreateNewActor(addr address.Address, code cid.Cid) error {
 	// Check existing address. If nothing there, create empty actor.
 	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), addr, func() (*actor.Actor, error) {
 		return &actor.Actor{}, nil
@@ -286,12 +286,12 @@ func (ctx *VMContext) CreateNewActor(addr address.Address, code cid.Cid) error {
 	return nil
 }
 
-// AddressForNewActor creates computes the address for a new actor in the same way that ethereum does.
+// LegacyAddressForNewActor creates computes the address for a new actor in the same way that ethereum does.
 //
 // Note: this will not work if we allow the
 // creation of multiple contracts in a given invocation (nonce will remain the
 // same, resulting in the same address back)
-func (ctx *VMContext) AddressForNewActor() (address.Address, error) {
+func (ctx *VMContext) LegacyAddressForNewActor() (address.Address, error) {
 	return computeActorAddress(ctx.originMsg.From, uint64(ctx.originMsg.CallSeqNum))
 }
 
@@ -323,7 +323,7 @@ func (ctx *VMContext) AllowSideEffects(allow bool) {
 // ExtendedRuntime has a few extra methods on top of what is exposed to the actors.
 type ExtendedRuntime interface {
 	runtime.Runtime
-	OriginalMessage() *types.UnsignedMessage
+	LegacyMessage() *types.UnsignedMessage
 	From() *actor.Actor
 	To() *actor.Actor
 	Actors() ExecutableActorLookup
@@ -379,7 +379,7 @@ type TransferFn = func(*actor.Actor, *actor.Actor, types.AttoFIL) error
 
 // send executes a message pass inside the VM. It exists alongside Send so that we can inject its dependencies during test.
 func send(ctx context.Context, transfer TransferFn, vmCtx ExtendedRuntime) ([][]byte, uint8, error) {
-	msg := vmCtx.OriginalMessage()
+	msg := vmCtx.LegacyMessage()
 	if !msg.Value.Equal(types.ZeroAttoFIL) {
 		if err := transfer(vmCtx.From(), vmCtx.To(), msg.Value); err != nil {
 			if errors.ShouldRevert(err) {

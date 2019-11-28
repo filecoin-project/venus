@@ -202,7 +202,7 @@ var Errors = map[uint8]error{
 // Dragons: verify if the message is still needed
 type invocationContext interface {
 	runtime.InvocationContext
-	OriginalMessage() *types.UnsignedMessage
+	LegacyMessage() *types.UnsignedMessage
 }
 
 // CreateChannel creates a new payment channel from the caller to the target.
@@ -218,8 +218,8 @@ func (*impl) createChannel(vmctx invocationContext, target address.Address, eol 
 
 	ctx := context.Background()
 	st := vmctx.Runtime().Storage()
-	payerAddress := vmctx.OriginalMessage().From
-	channelID := types.NewChannelID(uint64(vmctx.OriginalMessage().CallSeqNum))
+	payerAddress := vmctx.Message().Caller()
+	channelID := types.NewChannelID(uint64(vmctx.LegacyMessage().CallSeqNum))
 
 	err := withPayerChannels(ctx, st, payerAddress, func(byChannelID storage.Lookup) error {
 		// check to see if payment channel is duplicate
@@ -234,7 +234,7 @@ func (*impl) createChannel(vmctx invocationContext, target address.Address, eol 
 		// add payment channel and commit
 		err = byChannelID.Set(ctx, channelID.KeyString(), &PaymentChannel{
 			Target:         target,
-			Amount:         vmctx.OriginalMessage().Value,
+			Amount:         vmctx.Message().ValueReceived(),
 			AmountRedeemed: types.NewAttoFILFromFIL(0),
 			AgreedEol:      eol,
 			Eol:            eol,
@@ -298,7 +298,7 @@ func (*impl) redeem(vmctx invocationContext, payer address.Address, chid *types.
 		}
 
 		// validate the amount can be sent to the target and send payment to that address.
-		err = validateAndUpdateChannel(vmctx, vmctx.OriginalMessage().From, &channel, amt, validAt, condition, redeemerConditionParams)
+		err = validateAndUpdateChannel(vmctx, vmctx.Message().Caller(), &channel, amt, validAt, condition, redeemerConditionParams)
 		if err != nil {
 			return err
 		}
@@ -356,7 +356,7 @@ func (*impl) close(vmctx invocationContext, payer address.Address, chid *types.C
 		}
 
 		// validate the amount can be sent to the target and send payment to that address.
-		err = validateAndUpdateChannel(vmctx, vmctx.OriginalMessage().From, &channel, amt, validAt, condition, redeemerConditionParams)
+		err = validateAndUpdateChannel(vmctx, vmctx.Message().Caller(), &channel, amt, validAt, condition, redeemerConditionParams)
 		if err != nil {
 			return err
 		}
@@ -390,7 +390,7 @@ func (*impl) extend(vmctx invocationContext, chid *types.ChannelID, eol *types.B
 
 	ctx := context.Background()
 	st := vmctx.Runtime().Storage()
-	payerAddress := vmctx.OriginalMessage().From
+	payerAddress := vmctx.Message().Caller()
 
 	err := withPayerChannels(ctx, st, payerAddress, func(byChannelID storage.Lookup) error {
 		var channel PaymentChannel
@@ -412,7 +412,7 @@ func (*impl) extend(vmctx invocationContext, chid *types.ChannelID, eol *types.B
 		channel.Eol = eol
 
 		// increment the value
-		channel.Amount = channel.Amount.Add(vmctx.OriginalMessage().Value)
+		channel.Amount = channel.Amount.Add(vmctx.Message().ValueReceived())
 
 		return byChannelID.Set(ctx, chid.KeyString(), channel)
 	})
@@ -442,7 +442,7 @@ func (*impl) cancel(vmctx invocationContext, chid *types.ChannelID) (uint8, erro
 
 	ctx := context.Background()
 	st := vmctx.Runtime().Storage()
-	payerAddress := vmctx.OriginalMessage().From
+	payerAddress := vmctx.Message().Caller()
 
 	err := withPayerChannels(ctx, st, payerAddress, func(byChannelID storage.Lookup) error {
 		var channel PaymentChannel
@@ -504,7 +504,7 @@ func (*impl) reclaim(vmctx invocationContext, chid *types.ChannelID) (uint8, err
 
 	ctx := context.Background()
 	st := vmctx.Runtime().Storage()
-	payerAddress := vmctx.OriginalMessage().From
+	payerAddress := vmctx.Message().Caller()
 
 	err := withPayerChannels(ctx, st, payerAddress, func(byChannelID storage.Lookup) error {
 		var channel PaymentChannel
@@ -552,7 +552,7 @@ func (*impl) voucher(vmctx invocationContext, chid *types.ChannelID, amount type
 
 	ctx := context.Background()
 	st := vmctx.Runtime().Storage()
-	payerAddress := vmctx.OriginalMessage().From
+	payerAddress := vmctx.Message().Caller()
 	var voucher types.PaymentVoucher
 
 	err := withPayerChannelsForReading(ctx, st, payerAddress, func(byChannelID storage.Lookup) error {
@@ -573,7 +573,7 @@ func (*impl) voucher(vmctx invocationContext, chid *types.ChannelID, amount type
 		// set voucher
 		voucher = types.PaymentVoucher{
 			Channel:   *chid,
-			Payer:     vmctx.OriginalMessage().From,
+			Payer:     vmctx.Message().Caller(),
 			Target:    channel.Target,
 			Amount:    amount,
 			ValidAt:   *validAt,
@@ -667,7 +667,7 @@ func validateAndUpdateChannel(ctx invocationContext, target address.Address, cha
 
 	// transfer funds to sender
 	updateAmount := amt.Sub(channel.AmountRedeemed)
-	_, _, err := ctx.Runtime().Send(ctx.OriginalMessage().From, types.SendMethodID, updateAmount, nil)
+	_, _, err := ctx.Runtime().Send(ctx.Message().Caller(), types.SendMethodID, updateAmount, nil)
 	if err != nil {
 		return err
 	}

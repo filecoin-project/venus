@@ -80,10 +80,10 @@ type ExtendedInvocationContext interface {
 // Dragons: this methods are legacy and have not been ported to the new VM semantics.
 type LegacyInvocationContext interface {
 	InvocationContext
-	OriginalMessage() *types.UnsignedMessage
-	CreateNewActor(addr address.Address, code cid.Cid) error
-	AddressForNewActor() (address.Address, error)
-	Verifier() verification.Verifier
+	LegacyMessage() *types.UnsignedMessage
+	LegacyCreateNewActor(addr address.Address, code cid.Cid) error
+	LegacyAddressForNewActor() (address.Address, error)
+	LegacyVerifier() verification.Verifier
 }
 
 // ActorStateHandle handles the actor state, allowing actors to lock on the state.

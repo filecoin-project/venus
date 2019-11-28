@@ -151,9 +151,8 @@ var Errors = map[uint8]error{
 
 type invocationContext interface {
 	runtime.InvocationContext
-	OriginalMessage() *types.UnsignedMessage
-	CreateNewActor(addr address.Address, code cid.Cid) error
-	AddressForNewActor() (address.Address, error)
+	LegacyCreateNewActor(addr address.Address, code cid.Cid) error
+	LegacyAddressForNewActor() (address.Address, error)
 }
 
 // CreateStorageMiner creates a new miner which will commit sectors of the
@@ -175,10 +174,10 @@ func (*impl) createStorageMiner(vmctx invocationContext, sectorSize *types.Bytes
 			actorCodeCid = types.BootstrapMinerActorCodeCid
 		}
 
-		initParams := []interface{}{vmctx.OriginalMessage().From, vmctx.OriginalMessage().From, pid, sectorSize}
+		initParams := []interface{}{vmctx.Message().Caller(), vmctx.Message().Caller(), pid, sectorSize}
 
 		// create miner actor by messaging the init actor and sending it collateral
-		ret, _, err := vmctx.Runtime().Send(address.InitAddress, initactor.Exec, vmctx.OriginalMessage().Value, []interface{}{actorCodeCid, initParams})
+		ret, _, err := vmctx.Runtime().Send(address.InitAddress, initactor.Exec, vmctx.Message().ValueReceived(), []interface{}{actorCodeCid, initParams})
 		if err != nil {
 			return nil, err
 		}
@@ -235,7 +234,7 @@ func (*impl) updateStorage(vmctx invocationContext, delta *types.BytesAmount) (u
 
 	var state State
 	_, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
-		miner := vmctx.OriginalMessage().From
+		miner := vmctx.Message().Caller()
 		ctx := context.Background()
 
 		miners, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.Miners)

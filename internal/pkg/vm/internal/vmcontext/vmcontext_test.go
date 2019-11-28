@@ -257,13 +257,13 @@ func TestVMContextSendFailures(t *testing.T) {
 
 	t.Run("AddressForNewActor uses origin message", func(t *testing.T) {
 		vmctx := NewVMContext(vmCtxParams())
-		addr1, err := vmctx.AddressForNewActor()
+		addr1, err := vmctx.LegacyAddressForNewActor()
 		require.NoError(t, err)
 
 		assert.Equal(t, addr1.Protocol(), address.Actor)
 
 		// vmctx with same origin message produces same addr
-		addr2, err := NewVMContext(vmCtxParams()).AddressForNewActor()
+		addr2, err := NewVMContext(vmCtxParams()).LegacyAddressForNewActor()
 		require.NoError(t, err)
 		assert.Equal(t, addr2, addr1)
 
@@ -273,7 +273,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		params.OriginMsg.From = newAddress()
 		params.OriginMsg.CallSeqNum = 42
 
-		addr3, err := NewVMContext(params).AddressForNewActor()
+		addr3, err := NewVMContext(params).LegacyAddressForNewActor()
 		require.NoError(t, err)
 		assert.NotEqual(t, addr3, addr1)
 	})
@@ -281,11 +281,11 @@ func TestVMContextSendFailures(t *testing.T) {
 	t.Run("creates new actor from cid", func(t *testing.T) {
 		ctx := context.Background()
 		vmctx := NewVMContext(vmCtxParams())
-		addr, err := vmctx.AddressForNewActor()
+		addr, err := vmctx.LegacyAddressForNewActor()
 
 		require.NoError(t, err)
 
-		err = vmctx.CreateNewActor(addr, fakeActorCid)
+		err = vmctx.LegacyCreateNewActor(addr, fakeActorCid)
 		require.NoError(t, err)
 
 		act, err := tree.GetActor(ctx, addr)
