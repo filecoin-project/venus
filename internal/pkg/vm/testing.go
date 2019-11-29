@@ -163,12 +163,25 @@ func (tc *FakeVMContext) Charge(cost types.GasUnits) error {
 
 var _ runtime.ExtendedInvocationContext = (*FakeVMContext)(nil)
 
-var _ runtime.LegacyInvocationContext = (*FakeVMContext)(nil)
+// CreateActor implemenets the ExtendedInvocationContext interface.
+func (tc *FakeVMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address {
+	addr, err := tc.Addresser()
+	if err != nil {
+		runtime.Abort("Could not create address")
+	}
+	idAddr, err := address.NewIDAddress(uint64(actorID))
+	if err != nil {
+		runtime.Abort("Could not create IDAddress for actor")
+	}
+	err = tc.ActorCreator(idAddr, code)
+	if err != nil {
+		runtime.Abort("Could not create actor")
+	}
 
-// LegacyCreateNewActor creates an actor of a given type
-func (tc *FakeVMContext) LegacyCreateNewActor(addr address.Address, code cid.Cid) error {
-	return tc.ActorCreator(addr, code)
+	return addr
 }
+
+var _ runtime.LegacyInvocationContext = (*FakeVMContext)(nil)
 
 // LegacyVerifier provides an interface to the proofs verifier
 func (tc *FakeVMContext) LegacyVerifier() verification.Verifier {

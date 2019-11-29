@@ -149,15 +149,9 @@ var Errors = map[uint8]error{
 	ErrUnsupportedSectorSize: errors.NewCodedRevertErrorf(ErrUnsupportedSectorSize, "sector size is not supported"),
 }
 
-type invocationContext interface {
-	runtime.InvocationContext
-	LegacyCreateNewActor(addr address.Address, code cid.Cid) error
-	LegacyAddressForNewActor() (address.Address, error)
-}
-
 // CreateStorageMiner creates a new miner which will commit sectors of the
 // given size. The miners collateral is set by the value in the message.
-func (*impl) createStorageMiner(vmctx invocationContext, sectorSize *types.BytesAmount, pid peer.ID) (address.Address, uint8, error) {
+func (*impl) createStorageMiner(vmctx runtime.InvocationContext, sectorSize *types.BytesAmount, pid peer.ID) (address.Address, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return address.Undef, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -227,7 +221,7 @@ func retreiveActorID(vmctx runtime.Runtime, actorAddr address.Address) (address.
 // UpdateStorage is called to reflect a change in the overall power of the network.
 // This occurs either when a miner adds a new commitment, or when one is removed
 // (via slashing, faults or willful removal). The delta is in number of bytes.
-func (*impl) updateStorage(vmctx invocationContext, delta *types.BytesAmount) (uint8, error) {
+func (*impl) updateStorage(vmctx runtime.InvocationContext, delta *types.BytesAmount) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -261,7 +255,7 @@ func (*impl) updateStorage(vmctx invocationContext, delta *types.BytesAmount) (u
 	return 0, nil
 }
 
-func (a *impl) getLateMiners(vmctx invocationContext) (*map[string]uint64, uint8, error) {
+func (a *impl) getLateMiners(vmctx runtime.InvocationContext) (*map[string]uint64, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -308,7 +302,7 @@ func (a *impl) getLateMiners(vmctx invocationContext) (*map[string]uint64, uint8
 }
 
 // GetTotalStorage returns the total amount of proven storage in the system.
-func (*impl) getTotalStorage(vmctx invocationContext) (*types.BytesAmount, uint8, error) {
+func (*impl) getTotalStorage(vmctx runtime.InvocationContext) (*types.BytesAmount, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -330,7 +324,7 @@ func (*impl) getTotalStorage(vmctx invocationContext) (*types.BytesAmount, uint8
 }
 
 // GetSectorSize returns the sector size of the block chain
-func (*impl) getProofsMode(vmctx invocationContext) (types.ProofsMode, uint8, error) {
+func (*impl) getProofsMode(vmctx runtime.InvocationContext) (types.ProofsMode, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return 0, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -351,7 +345,7 @@ func (*impl) getProofsMode(vmctx invocationContext) (types.ProofsMode, uint8, er
 	return size, 0, nil
 }
 
-func (*impl) getMinerPoStState(vmctx invocationContext, minerAddr address.Address) (uint64, error) {
+func (*impl) getMinerPoStState(vmctx runtime.InvocationContext, minerAddr address.Address) (uint64, error) {
 	msgResult, _, err := vmctx.Runtime().Send(minerAddr, miner.GetPoStState, types.ZeroAttoFIL, nil)
 	if err != nil {
 		return 0, err

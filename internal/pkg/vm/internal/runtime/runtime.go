@@ -68,8 +68,12 @@ type InvocationContext interface {
 // and ensure the context implementation exposes them.
 type ExtendedInvocationContext interface {
 	InvocationContext
-	// Dragons: add new CreateActor (this is just for the init actor)
-	// CreateActor(code cid.Cid, params []interface{}) address.Address
+	// Create an actor in the state tree.
+	//
+	// This will determine an address for the actor and call its `Constructor()` method.
+	//
+	// WARNING: May only be called by InitActor.
+	CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address
 	// Dragons: add new VerifySignature (mileage on the arg types may vary)
 	// VerifySignature(signer address.Address, signature filcrypto.Signature, msg filcrypto.Message) bool
 }
@@ -81,7 +85,6 @@ type ExtendedInvocationContext interface {
 type LegacyInvocationContext interface {
 	InvocationContext
 	LegacyMessage() *types.UnsignedMessage
-	LegacyCreateNewActor(addr address.Address, code cid.Cid) error
 	LegacyAddressForNewActor() (address.Address, error)
 	LegacyVerifier() verification.Verifier
 }

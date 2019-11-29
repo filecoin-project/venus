@@ -252,6 +252,70 @@ func (ctx *VMContext) Charge(cost types.GasUnits) error {
 
 var _ runtime.ExtendedInvocationContext = (*VMContext)(nil)
 
+func isBuiltinActor(code cid.Cid) bool {
+	return code.Equals(types.StorageMarketActorCodeCid) ||
+		code.Equals(types.InitActorCodeCid) ||
+		code.Equals(types.MinerActorCodeCid) ||
+		code.Equals(types.BootstrapMinerActorCodeCid) ||
+		code.Equals(types.PaymentBrokerActorCodeCid)
+}
+
+func isSingletonActor(code cid.Cid) bool {
+	return code.Equals(types.StorageMarketActorCodeCid) ||
+		code.Equals(types.InitActorCodeCid) ||
+		code.Equals(types.PaymentBrokerActorCodeCid)
+}
+
+// CreateActor implemenets the ExtendedInvocationContext interface.
+func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address {
+	if !isBuiltinActor(code) {
+		runtime.Abort("Can only create built-in actors.")
+	}
+
+	// Review: why are we checking this here? it assumes singleton actors always exist
+	if isSingletonActor(code) {
+		runtime.Abort("Can only have one instance of singleton actors.")
+	}
+
+	// create address for actor
+	actorAddr, err := computeActorAddress(ctx.originMsg.From, uint64(ctx.originMsg.CallSeqNum))
+	if err != nil {
+		runtime.Abort("Could not create address for actor")
+	}
+
+	idAddr, err := address.NewIDAddress(uint64(actorID))
+	if err != nil {
+		runtime.Abort("Could not create IDAddress for actor")
+	}
+
+	// Check existing address. If nothing there, create empty actor.
+	//
+	// Note: we are storing the actors by ActorID *address*
+	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), idAddr, func() (*actor.Actor, error) {
+		return &actor.Actor{}, nil
+	})
+
+	if err != nil {
+		runtime.Abort("Could not get or create actor")
+	}
+
+	if !newActor.Empty() {
+		runtime.Abort("Actor address already exists")
+	}
+
+	// Review: how does this work? we are modifying the value without commiting chages to the store
+	// make this the right 'type' of actor
+	newActor.Code = code
+
+	// send message containing actor's initial balance to construct it with the given params
+	_, _, err = ctx.Runtime().Send(idAddr, types.ConstructorMethodID, ctx.Message().ValueReceived(), params)
+	if err != nil {
+		runtime.Abort("Constructor failed on actor")
+	}
+
+	return actorAddr
+}
+
 var _ runtime.LegacyInvocationContext = (*VMContext)(nil)
 
 // LegacyVerifier returns an interface to the proof verification code
@@ -262,28 +326,6 @@ func (ctx *VMContext) LegacyVerifier() verification.Verifier {
 // LegacyMessage retrieves the message associated with this context.
 func (ctx *VMContext) LegacyMessage() *types.UnsignedMessage {
 	return ctx.message
-}
-
-// LegacyCreateNewActor creates an actor at the given address.
-// If the address is occupied by a non-empty actor, this method will fail.
-func (ctx *VMContext) LegacyCreateNewActor(addr address.Address, code cid.Cid) error {
-	// Check existing address. If nothing there, create empty actor.
-	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), addr, func() (*actor.Actor, error) {
-		return &actor.Actor{}, nil
-	})
-
-	if err != nil {
-		return errors.FaultErrorWrap(err, "Error retrieving or creating actor")
-	}
-
-	if !newActor.Empty() {
-		return errors.NewRevertErrorf("attempt to create actor at address %s but a non-empty actor is already installed", addr.String())
-	}
-
-	// make this the right 'type' of actor
-	newActor.Code = code
-
-	return nil
 }
 
 // LegacyAddressForNewActor creates computes the address for a new actor in the same way that ethereum does.
