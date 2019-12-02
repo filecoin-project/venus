@@ -272,7 +272,6 @@ func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []i
 		runtime.Abort("Can only create built-in actors.")
 	}
 
-	// Review: why are we checking this here? it assumes singleton actors always exist
 	if isSingletonActor(code) {
 		runtime.Abort("Can only have one instance of singleton actors.")
 	}
@@ -303,7 +302,6 @@ func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []i
 		runtime.Abort("Actor address already exists")
 	}
 
-	// Review: how does this work? we are modifying the value without commiting chages to the store
 	// make this the right 'type' of actor
 	newActor.Code = code
 

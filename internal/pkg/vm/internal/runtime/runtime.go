@@ -70,7 +70,7 @@ type ExtendedInvocationContext interface {
 	InvocationContext
 	// Create an actor in the state tree.
 	//
-	// This will determine an address for the actor and call its `Constructor()` method.
+	// This will determine a reorg "stable" address for the actor and call its `Constructor()` method.
 	//
 	// WARNING: May only be called by InitActor.
 	CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address
