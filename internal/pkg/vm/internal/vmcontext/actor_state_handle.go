@@ -54,6 +54,9 @@ func (h *actorStateHandle) Readonly(obj interface{}) {
 		runtime.Abort("Must use the same state variable on repeated calls")
 	}
 
+	// Dragons: needed while we can get actor state modified directly by actor code
+	h.head = h.ctx.Storage().Head()
+
 	// load state from storage
 	// Note: we copy the head over to `readonlyHead` in case it gets modified afterwards via `Transaction()`.
 	readonlyHead := h.head
@@ -79,6 +82,9 @@ func (h *actorStateHandle) Transaction(obj interface{}, f transactionFn) (interf
 	} else if h.usedObj != obj {
 		runtime.Abort("Must use the same state variable on repeated calls")
 	}
+
+	// Dragons: needed while we can get actor state modified directly by actor code
+	h.head = h.ctx.Storage().Head()
 
 	// load state from storage
 	oldcid := h.head

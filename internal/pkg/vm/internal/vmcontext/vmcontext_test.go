@@ -9,6 +9,7 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	dag "github.com/ipfs/go-merkledag"
 	xerrors "github.com/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
@@ -23,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gastracker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -78,6 +80,94 @@ func TestVMContextStorage(t *testing.T) {
 	storage, err := vmCtx.Storage().Get(vmCtx.Storage().Head())
 	assert.NoError(t, err)
 	assert.Equal(t, storage, node.RawData())
+}
+
+func TestVMContextCreateActor(t *testing.T) {
+	tf.UnitTest(t)
+
+	newMsg := types.NewMessageForTestGetter()
+
+	setup := func() *VMContext {
+		actor1 := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(0))
+		actor2 := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(0))
+		msg := newMsg()
+
+		mockStateTree := state.MockStateTree{
+			BuiltinActors: map[cid.Cid]dispatch.ExecutableActor{},
+		}
+		tree := state.NewCachedTree(&mockStateTree)
+
+		return &VMContext{
+			from:             actor1,
+			to:               actor2,
+			state:            tree,
+			message:          msg,
+			originMsg:        msg,
+			allowSideEffects: true,
+			deps:             makeDeps(tree),
+		}
+	}
+
+	mustAbort := func(t *testing.T, partialMsg string) {
+		r := recover()
+		if r == nil {
+			t.Fail()
+		}
+		err := r.(runtime.AbortPanicError)
+		assert.Contains(t, err.Error(), partialMsg)
+	}
+
+	t.Run("create new actor", func(t *testing.T) {
+		vm := setup()
+
+		initialFunds := types.NewAttoFILFromFIL(191)
+		ctorParams := []interface{}{"hello"}
+
+		// override VM behaviour to bypass actor constructor and trap values
+		var valueForwarded types.AttoFIL
+		var paramsForwarded []interface{}
+		vm.message.Value = initialFunds
+		vm.deps.ToValues = func(params []interface{}) ([]*abi.Value, error) {
+			paramsForwarded = params
+			return []*abi.Value{}, nil
+		}
+		vm.deps.Send = func(ctx context.Context, vmCtx ExtendedRuntime) ([][]byte, uint8, error) {
+			valueForwarded = vmCtx.LegacyMessage().Value
+			return nil, 0, nil
+		}
+
+		ctx := context.Background()
+		code := types.MinerActorCodeCid
+
+		actorID := types.Uint64(242)
+		idAddr, err := address.NewIDAddress(uint64(actorID))
+		require.NoError(t, err)
+
+		vm.CreateActor(actorID, code, ctorParams)
+
+		act, err := vm.state.GetActor(ctx, idAddr)
+		require.NoError(t, err)
+		assert.Equal(t, act.Code, code)
+
+		// Verify funds are forwarded by create actor
+		assert.Equal(t, valueForwarded, initialFunds)
+		// Verify the params are forwarded to the new actor
+		assert.Equal(t, paramsForwarded, ctorParams)
+	})
+
+	t.Run("abort when not constructing built-in actor", func(t *testing.T) {
+		defer mustAbort(t, "built-in")
+		vm := setup()
+		code := dag.NewRawNode([]byte("nonesuch")).Cid()
+		vm.CreateActor(types.Uint64(242), code, []interface{}{})
+	})
+
+	t.Run("abort when constructing singleton multiple times", func(t *testing.T) {
+		defer mustAbort(t, "singleton")
+		vm := setup()
+		code := types.StorageMarketActorCodeCid
+		vm.CreateActor(types.Uint64(242), code, []interface{}{})
+	})
 }
 
 func TestVMContextSendFailures(t *testing.T) {
@@ -277,23 +367,6 @@ func TestVMContextSendFailures(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEqual(t, addr3, addr1)
 	})
-
-	t.Run("creates new actor from cid", func(t *testing.T) {
-		ctx := context.Background()
-		vmctx := NewVMContext(vmCtxParams())
-		addr, err := vmctx.LegacyAddressForNewActor()
-
-		require.NoError(t, err)
-
-		err = vmctx.LegacyCreateNewActor(addr, fakeActorCid)
-		require.NoError(t, err)
-
-		act, err := tree.GetActor(ctx, addr)
-		require.NoError(t, err)
-
-		assert.Equal(t, fakeActorCid, act.Code)
-	})
-
 }
 
 func TestSendErrorHandling(t *testing.T) {

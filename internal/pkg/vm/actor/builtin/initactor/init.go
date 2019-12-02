@@ -124,8 +124,7 @@ func (*Actor) InitializeState(storage runtime.Storage, params interface{}) error
 // minerInvocationContext has some special sauce for the miner.
 type invocationContext interface {
 	runtime.InvocationContext
-	LegacyAddressForNewActor() (address.Address, error)
-	LegacyCreateNewActor(addr address.Address, code cid.Cid) error
+	CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address
 }
 
 // Impl is the VM implementation of the actor.
@@ -213,63 +212,38 @@ func (a *Impl) GetAddressForActorID(rt runtime.InvocationContext, actorID types.
 
 // Exec creates a new builtin actor.
 func (a *Impl) Exec(rt invocationContext, codeCID cid.Cid, params []interface{}) (address.Address, uint8, error) {
-	if err := rt.Charge(actor.DefaultGasCost); err != nil {
-		return address.Undef, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
-	}
-
-	if !a.isBuiltinActor(codeCID) {
-		return address.Undef, 1, errors.NewRevertError("cannot launch actor instance that is not a builtin actor")
-	}
-
-	if a.isSingletonActor(codeCID) {
-		return address.Undef, 1, errors.NewRevertError("cannot launch another actor of this type")
-	}
-
 	var state State
-	err := actor.ReadState(rt, &state)
+	out, err := rt.StateHandle().Transaction(&state, func() (interface{}, error) {
+		// create id address
+		actorID := state.assignNewID()
+
+		return actorID, nil
+	})
 	if err != nil {
 		return address.Undef, errors.CodeError(err), err
 	}
 
-	// create more stable address
-	actorAddr, err := rt.LegacyAddressForNewActor()
-	if err != nil {
-		return address.Undef, errors.CodeError(err), errors.FaultErrorWrapf(err, "could not create address for actor")
-	}
+	actorID := out.(types.Uint64)
 
-	// create id address
-	actorID := state.assignNewID()
-	idAddr, err := address.NewIDAddress(uint64(actorID))
-	if err != nil {
-		return address.Undef, errors.CodeError(err), errors.FaultErrorWrapf(err, "could not create id address with id %d", actorID)
-	}
+	actorAddr := rt.CreateActor(actorID, codeCID, params)
 
-	// map id to address and vice versa
-	ctx := context.TODO()
-	state.AddressMap, err = a.setId(ctx, rt.Runtime().Storage(), state.AddressMap, actorAddr, actorID)
-	if err != nil {
-		return address.Undef, errors.CodeError(err), errors.FaultErrorWrap(err, "could not save id by address")
-	}
+	_, err = rt.StateHandle().Transaction(&state, func() (interface{}, error) {
+		var err error
 
-	state.IdMap, err = a.setAddress(ctx, rt.Runtime().Storage(), state.IdMap, actorID, actorAddr)
-	if err != nil {
-		return address.Undef, errors.CodeError(err), errors.FaultErrorWrap(err, "could not save addres by id")
-	}
+		// map id to address and vice versa
+		ctx := context.TODO()
+		state.AddressMap, err = a.setId(ctx, rt.Runtime().Storage(), state.AddressMap, actorAddr, actorID)
+		if err != nil {
+			return nil, errors.FaultErrorWrap(err, "could not save id by address")
+		}
 
-	// write the state
-	err = actor.WriteState(rt, state)
-	if err != nil {
-		return address.Undef, errors.CodeError(err), errors.FaultErrorWrap(err, "could not write actor state")
-	}
+		state.IdMap, err = a.setAddress(ctx, rt.Runtime().Storage(), state.IdMap, actorID, actorAddr)
+		if err != nil {
+			return nil, errors.FaultErrorWrap(err, "could not save addres by id")
+		}
 
-	// create new actor keyed by id address
-	err = rt.LegacyCreateNewActor(idAddr, codeCID)
-	if err != nil {
-		return address.Undef, errors.CodeError(err), errors.FaultErrorWrapf(err, "could not create actor with address %s", idAddr.String())
-	}
-
-	// send message containing actor's initial balance to construct it with the given params
-	_, _, err = rt.Runtime().Send(idAddr, types.ConstructorMethodID, rt.Message().ValueReceived(), params)
+		return nil, nil
+	})
 	if err != nil {
 		return address.Undef, errors.CodeError(err), err
 	}
