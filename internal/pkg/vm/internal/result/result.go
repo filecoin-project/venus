@@ -19,7 +19,6 @@ func Success() InvocOutput {
 // Value returns a successful code with the value encoded.
 //
 // Callers do NOT need to encode the value before calling this method.
-// Review: for @spec, @go-filecoin, changed this to an interface so the caller doesnt have to do the serialization himself
 func Value(obj interface{}) InvocOutput {
 	aux, err := encoding.Encode(obj)
 	if err != nil {

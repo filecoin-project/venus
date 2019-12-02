@@ -6,7 +6,6 @@ import "github.com/filecoin-project/go-filecoin/internal/pkg/types"
 type ExitCode types.Uint64
 
 // Exit codes.
-// Review: for @spec, the spec should reserve a lot more ErrorCodes (have users start at 1024 or more).
 const (
 	// OK is the success return value, similar to unix exit code 0.
 	Ok ExitCode = ExitCode(0)
@@ -50,7 +49,6 @@ const (
 	MethodSubcallError = ExitCode(10)
 
 	// Runtime failed to encode the object.
-	// Review: for @spec, @go-filecoin, added this error
 	EncodingError = ExitCode(11)
 )
 

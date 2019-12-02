@@ -8,6 +8,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
@@ -261,6 +262,7 @@ func makeCtx(method types.MethodID) *VMContext {
 		GasTracker:  gastracker.NewGasTracker(),
 		BlockHeight: types.NewBlockHeight(0),
 		Actors:      builtin.DefaultActors,
+		To:          &actor.Actor{},
 	}
 
 	return NewVMContext(vmCtxParams)

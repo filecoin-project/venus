@@ -73,7 +73,7 @@ func makeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (Exp
 	}
 
 	return func(ctx ExtendedRuntime) ([]byte, uint8, error) {
-		params, err := abi.DecodeValues(ctx.Message().Params, signature.Params)
+		params, err := abi.DecodeValues(ctx.LegacyMessage().Params, signature.Params)
 		if err != nil {
 			return nil, 1, errors.RevertErrorWrap(err, "invalid params")
 		}
