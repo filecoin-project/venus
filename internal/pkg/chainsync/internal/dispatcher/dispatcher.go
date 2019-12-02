@@ -17,22 +17,37 @@ const DefaultInQueueSize = 5
 // DefaultWorkQueueSize is the size of the work queue
 const DefaultWorkQueueSize = 20
 
+// MaxEpochGap is the maximum number of epochs chainsync can fall behind
+// before catching up
+const MaxEpochGap = 10
+
 // dispatchSyncer is the interface of the logic syncing incoming chains
 type dispatchSyncer interface {
-	HandleNewTipSet(context.Context, *block.ChainInfo) error
+	HandleNewTipSet(context.Context, *block.ChainInfo, bool) error
+}
+
+type transitionSyncer interface {
+	SetStagedHead(context.Context) error
+}
+
+// chainHeadState is the interface for determining the head of the chain
+type chainHeadState interface {
+	GetHead() block.TipSetKey
+	GetTipSet(block.TipSetKey) (block.TipSet, error)
 }
 
 // NewDispatcher creates a new syncing dispatcher with default queue sizes.
-func NewDispatcher(catchupSyncer dispatchSyncer) *Dispatcher {
-	return NewDispatcherWithSizes(catchupSyncer, DefaultWorkQueueSize, DefaultInQueueSize)
+func NewDispatcher(catchupSyncer dispatchSyncer, trans Transitioner) *Dispatcher {
+	return NewDispatcherWithSizes(catchupSyncer, trans, DefaultWorkQueueSize, DefaultInQueueSize)
 }
 
 // NewDispatcherWithSizes creates a new syncing dispatcher.
-func NewDispatcherWithSizes(syncer dispatchSyncer, workQueueSize, inQueueSize int) *Dispatcher {
+func NewDispatcherWithSizes(syncer dispatchSyncer, trans Transitioner, workQueueSize, inQueueSize int) *Dispatcher {
 	return &Dispatcher{
 		workQueue:     NewTargetQueue(),
 		workQueueSize: workQueueSize,
 		syncer:        syncer,
+		transitioner:  trans,
 		incoming:      make(chan Target, inQueueSize),
 		control:       make(chan interface{}, 1),
 		registeredCb:  func(t Target) {},
@@ -63,9 +78,13 @@ type Dispatcher struct {
 	workQueueSize int
 	// incoming is the queue of incoming sync targets to the dispatcher.
 	incoming chan Target
-	// catchupSyncer is used for dispatching sync targets for chain heads
-	// during the CHAIN_CATCHUP mode of operation
+	// syncer is used for dispatching sync targets for chain heads to sync
+	// local chain state to these targets.
 	syncer dispatchSyncer
+	// catchup is true when the syncer is in catchup mode
+	catchup bool
+	// transitioner wraps logic for transitioning between catchup and follow states.
+	transitioner Transitioner
 
 	// registeredCb is a callback registered over the control channel.  It
 	// is called after every successful sync.
@@ -122,9 +141,16 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 				ws = append(ws, d.drainIncoming()...)
 			default:
 			}
-			for _, syncTarget := range ws {
+			catchup, err := d.transitioner.MaybeTransitionToCatchup(d.catchup, ws)
+			if err != nil {
+				log.Errorf("state update error from reading chain head %s", err)
+			} else {
+				d.catchup = catchup
+			}
+			for i, syncTarget := range ws {
 				// Drop targets we don't have room for
 				if d.workQueue.Len() >= d.workQueueSize {
+					log.Infof("not enough space for %d targets on dispatcher's work queue", len(ws)-i)
 					break
 				}
 				// Sort new targets by putting on work queue.
@@ -135,12 +161,18 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			syncTarget, popped := d.workQueue.Pop()
 			if popped {
 				// Do work
-				err := d.syncer.HandleNewTipSet(syncingCtx, &syncTarget.ChainInfo)
+				err := d.syncer.HandleNewTipSet(syncingCtx, &syncTarget.ChainInfo, d.catchup)
 				if err != nil {
 					log.Info("sync request could not complete: %s", err)
 				}
 				d.syncTargetCount++
 				d.registeredCb(syncTarget)
+				follow, err := d.transitioner.MaybeTransitionToFollow(syncingCtx, d.catchup, d.workQueue.Len())
+				if err != nil {
+					log.Errorf("state update error setting head %s", err)
+				} else {
+					d.catchup = !follow
+				}
 			} else {
 				// No work left, block until something shows up
 				select {
@@ -191,6 +223,75 @@ func (d *Dispatcher) processCtrl(ctrlMsg interface{}) {
 // syncing job against given inputs.
 type Target struct {
 	block.ChainInfo
+}
+
+// Transitioner determines whether the caller should move between catchup and
+// follow states.
+type Transitioner interface {
+	MaybeTransitionToCatchup(bool, []Target) (bool, error)
+	MaybeTransitionToFollow(context.Context, bool, int) (bool, error)
+}
+
+// GapTransitioner changes state based on the detection of gaps between the
+// local head and syncing targets.
+type GapTransitioner struct {
+	// headState is used to determine the head tipset height for switching
+	// measuring gaps.
+	headState chainHeadState
+	// headSetter sets the chain head to the internal staged value.
+	headSetter transitionSyncer
+}
+
+// NewGapTransitioner returns a new gap transitioner
+func NewGapTransitioner(headState chainHeadState, headSetter transitionSyncer) *GapTransitioner {
+	return &GapTransitioner{
+		headState:  headState,
+		headSetter: headSetter,
+	}
+}
+
+// MaybeTransitionToCatchup returns true if the state is already catchup, or if
+// it should transition from follow to catchup. Undefined on error.
+func (gt *GapTransitioner) MaybeTransitionToCatchup(inCatchup bool, targets []Target) (bool, error) {
+	if inCatchup {
+		return true, nil
+	}
+	// current head height
+	head, err := gt.headState.GetTipSet(gt.headState.GetHead())
+	if err != nil {
+		return false, err
+	}
+	headHeight, err := head.Height()
+	if err != nil {
+		return false, err
+	}
+
+	// transition from follow to catchup if incoming targets have gaps
+	// Note: we run this check even on targets we may drop
+	for _, target := range targets {
+		if target.Height > headHeight+MaxEpochGap {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// MaybeTransitionToFollow returns true if the state is already follow, or if
+// it should transition from catchup to follow.  Undefined on error.
+func (gt *GapTransitioner) MaybeTransitionToFollow(ctx context.Context, inCatchup bool, outstandingTargets int) (bool, error) {
+	if !inCatchup {
+		return true, nil
+	}
+
+	// transition from catchup to follow if the work queue is empty.
+	// this is safe -- all gap conditions cause syncing to enter catchup
+	// this is pessimistic -- all gap conditions can go away before queue is empty
+	if outstandingTargets == 0 {
+		// set staging to head on transition catchup --> follow
+		return true, gt.headSetter.SetStagedHead(ctx)
+	}
+
+	return false, nil
 }
 
 // TargetQueue orders dispatcher syncRequests by the underlying `targetQueue`'s
