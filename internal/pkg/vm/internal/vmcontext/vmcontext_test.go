@@ -141,6 +141,8 @@ func TestVMContextCreateActor(t *testing.T) {
 
 		actorID := types.Uint64(242)
 		idAddr, err := address.NewIDAddress(uint64(actorID))
+		require.NoError(t, err)
+
 		vm.CreateActor(actorID, code, ctorParams)
 
 		act, err := vm.state.GetActor(ctx, idAddr)
