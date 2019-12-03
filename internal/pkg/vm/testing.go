@@ -89,8 +89,8 @@ func (tc *FakeVMContext) Randomness(epoch types.BlockHeight, offset uint64) runt
 	return rnd
 }
 
-// Send sends a message to another actor
-func (tc *FakeVMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+// LegacySend sends a message to another actor
+func (tc *FakeVMContext) LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 	// check if side-effects are allowed
 	if !tc.allowSideEffects {
 		runtime.Abort("Calling Send() is not allowed during side-effet lock")

@@ -1052,7 +1052,7 @@ func (a *Impl) SubmitPoSt(ctx invocationContext, poStProof types.PoStProof, faul
 		// Refund any overpayment of fees to the owner.
 		if messageValue.GreaterThan(feeRequired) {
 			overpayment := messageValue.Sub(feeRequired)
-			_, _, err := ctx.Runtime().Send(sender, types.SendMethodID, overpayment, []interface{}{})
+			_, _, err := ctx.Runtime().LegacySend(sender, types.SendMethodID, overpayment, []interface{}{})
 			if err != nil {
 				return nil, errors.NewRevertErrorf("Failed to refund overpayment of %s to %s", overpayment, sender)
 			}
@@ -1135,7 +1135,7 @@ func (a *Impl) SubmitPoSt(ctx invocationContext, poStProof types.PoStProof, faul
 		delta := newPower.Sub(oldPower)
 
 		if !delta.IsZero() {
-			_, ret, err := ctx.Runtime().Send(address.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{delta})
+			_, ret, err := ctx.Runtime().LegacySend(address.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{delta})
 			if err != nil {
 				return nil, err
 			}
@@ -1198,7 +1198,7 @@ func (*Impl) SlashStorageFault(ctx invocationContext) (uint8, error) {
 
 		// Strip the miner of their power.
 		powerDelta := types.ZeroBytes.Sub(state.Power) // negate bytes amount
-		_, ret, err := ctx.Runtime().Send(address.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{powerDelta})
+		_, ret, err := ctx.Runtime().LegacySend(address.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{powerDelta})
 		if err != nil {
 			return nil, err
 		}
@@ -1270,7 +1270,7 @@ func (a *Impl) CalculateLateFee(ctx invocationContext, height *types.BlockHeight
 //
 
 func (*Impl) burnFunds(ctx invocationContext, amount types.AttoFIL) error {
-	_, _, err := ctx.Runtime().Send(address.BurntFundsAddress, types.SendMethodID, amount, []interface{}{})
+	_, _, err := ctx.Runtime().LegacySend(address.BurntFundsAddress, types.SendMethodID, amount, []interface{}{})
 	return err
 }
 
@@ -1297,7 +1297,7 @@ func getPoStChallengeSeed(ctx invocationContext, state State, sampleAt *types.Bl
 // GetProofsMode returns the genesis block-configured proofs mode.
 func GetProofsMode(ctx invocationContext) (types.ProofsMode, error) {
 	var proofsMode types.ProofsMode
-	msgResult, _, err := ctx.Runtime().Send(address.StorageMarketAddress, Storagemarket_GetProofsMode, types.ZeroAttoFIL, nil)
+	msgResult, _, err := ctx.Runtime().LegacySend(address.StorageMarketAddress, Storagemarket_GetProofsMode, types.ZeroAttoFIL, nil)
 	if err != nil {
 		return types.TestProofsMode, xerrors.Wrap(err, "'GetProofsMode' message failed")
 	}

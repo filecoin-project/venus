@@ -14,9 +14,9 @@ type Runtime interface {
 	CurrentEpoch() types.BlockHeight
 	// Randomness gives the actors access to sampling peudo-randomess from the chain.
 	Randomness(epoch types.BlockHeight, offset uint64) Randomness
-	// Send allows actors to invoke methods on other actors
-	// Dragons: cleanup to match new vm expectations
-	Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
+	// LegacySend allows actors to invoke methods on other actors
+	// TODO: remove after all legacy actor code is gone (issue #???)
+	LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
 	// Storage is the raw store for IPLD objects.
 	//
 	// Note: this is required for custom data structures.

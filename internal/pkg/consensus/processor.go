@@ -505,7 +505,7 @@ func (p *DefaultProcessor) resolveAddress(ctx context.Context, msg *types.Unsign
 		To:         to,
 	}
 	vmCtx := vm.NewVMContext(vmCtxParams)
-	ret, _, err := vmCtx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{msg.To})
+	ret, _, err := vmCtx.LegacySend(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{msg.To})
 	if err != nil {
 		return address.Undef, err
 	}

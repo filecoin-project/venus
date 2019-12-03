@@ -174,7 +174,7 @@ func (*impl) createStorageMiner(vmctx invocationContext, ownerAddr, workerAddr a
 		initParams := []interface{}{vmctx.Message().Caller(), vmctx.Message().Caller(), pid, sectorSize}
 
 		// create miner actor by messaging the init actor and sending it collateral
-		ret, _, err := vmctx.Runtime().Send(address.InitAddress, initactor.Exec, vmctx.Message().ValueReceived(), []interface{}{actorCodeCid, initParams})
+		ret, _, err := vmctx.Runtime().LegacySend(address.InitAddress, initactor.Exec, vmctx.Message().ValueReceived(), []interface{}{actorCodeCid, initParams})
 		if err != nil {
 			return nil, err
 		}
@@ -228,8 +228,8 @@ func (*impl) createStorageMiner(vmctx invocationContext, ownerAddr, workerAddr a
 }
 
 // retriveActorId uses init actor to map an actorAddress to an id address
-func retreiveActorID(vmctx runtime.Runtime, actorAddr address.Address) (address.Address, error) {
-	ret, _, err := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{actorAddr})
+func retreiveActorID(rt runtime.Runtime, actorAddr address.Address) (address.Address, error) {
+	ret, _, err := rt.LegacySend(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{actorAddr})
 	if err != nil {
 		return address.Undef, err
 	}

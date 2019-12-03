@@ -116,8 +116,8 @@ func (ctx *VMContext) Randomness(epoch types.BlockHeight, offset uint64) runtime
 	return rnd
 }
 
-// Send allows actors to invoke methods on other actors
-func (ctx *VMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+// LegacySend allows actors to invoke methods on other actors
+func (ctx *VMContext) LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {
 		runtime.Abort("Calling Send() is not allowed during side-effet lock")
@@ -306,7 +306,7 @@ func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []i
 	newActor.Code = code
 
 	// send message containing actor's initial balance to construct it with the given params
-	_, _, err = ctx.Runtime().Send(idAddr, types.ConstructorMethodID, ctx.Message().ValueReceived(), params)
+	_, _, err = ctx.Runtime().LegacySend(idAddr, types.ConstructorMethodID, ctx.Message().ValueReceived(), params)
 	if err != nil {
 		runtime.Abort("Constructor failed on actor")
 	}
@@ -490,7 +490,7 @@ func (ctx *VMContext) resolveActorAddress(addr address.Address) (address.Address
 		return addr, nil
 	}
 
-	ret, _, err := ctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
+	ret, _, err := ctx.LegacySend(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
 	if err != nil {
 		return address.Undef, err
 	}
