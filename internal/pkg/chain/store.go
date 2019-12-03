@@ -280,6 +280,11 @@ func (store *Store) GetGenesisState(ctx context.Context) (state.Tree, error) {
 	return store.stateTreeLoader.LoadStateTree(ctx, store.stateAndBlockSource.cborStore, genesis.StateRoot)
 }
 
+// GetGenesisBlock returns the genesis block held by the chain store.
+func (store *Store) GetGenesisBlock(ctx context.Context) (*block.Block, error) {
+	return store.stateAndBlockSource.GetBlock(ctx, store.GenesisCid())
+}
+
 // GetTipSetStateRoot returns the aggregate state root CID of the tipset identified by `key`.
 func (store *Store) GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error) {
 	return store.tipIndex.GetTipSetStateRoot(key)

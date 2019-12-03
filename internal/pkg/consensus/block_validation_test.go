@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -20,7 +21,7 @@ import (
 func TestBlockValidSemantic(t *testing.T) {
 	tf.UnitTest(t)
 
-	blockTime := consensus.DefaultBlockTime
+	blockTime := clock.EpochDuration
 	ts := time.Unix(1234567890, 0)
 	mclock := th.NewFakeClock(ts)
 	ctx := context.Background()
@@ -85,7 +86,7 @@ func TestBlockValidSemantic(t *testing.T) {
 func TestBlockValidSyntax(t *testing.T) {
 	tf.UnitTest(t)
 
-	blockTime := consensus.DefaultBlockTime
+	blockTime := clock.EpochDuration
 	ts := time.Unix(1234567890, 0)
 	mclock := th.NewFakeClock(ts)
 	ctx := context.Background()

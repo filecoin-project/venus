@@ -35,7 +35,7 @@ type Builder struct {
 	repo        repo.Repo
 	journal     journal.Journal
 	isRelay     bool
-	clock       clock.Clock
+	chainClock  clock.ChainEpochClock
 	genCid      cid.Cid
 }
 
@@ -94,10 +94,10 @@ func RewarderConfigOption(rewarder consensus.BlockRewarder) BuilderOpt {
 	}
 }
 
-// ClockConfigOption returns a function that sets the clock to use in the node.
-func ClockConfigOption(clk clock.Clock) BuilderOpt {
+// ChainClockConfigOption returns a function that sets the chainClock to use in the node.
+func ChainClockConfigOption(clk clock.ChainEpochClock) BuilderOpt {
 	return func(c *Builder) error {
-		c.clock = clk
+		c.chainClock = clk
 		return nil
 	}
 }
@@ -133,10 +133,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	// Set default values on un-initialized fields
 	//
 
-	if b.clock == nil {
-		b.clock = clock.NewSystemClock()
-	}
-
 	if b.repo == nil {
 		b.repo = repo.NewInMemoryRepo()
 	}
@@ -155,7 +151,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	// create the node
 	nd := &Node{
 		OfflineMode: b.offlineMode,
-		Clock:       b.clock,
 		Repo:        b.repo,
 	}
 
@@ -188,6 +183,16 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}
+
+	if b.chainClock == nil {
+		// get the genesis block time from the chainsubmodule
+		geneBlk, err := nd.chain.ChainReader.GetGenesisBlock(ctx)
+		if err != nil {
+			return nil, err
+		}
+		b.chainClock = clock.NewChainClock(uint64(geneBlk.Timestamp))
+	}
+	nd.ChainClock = b.chainClock
 
 	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), b.repo, &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain)
 	if err != nil {
@@ -274,8 +279,8 @@ func (b builder) IsRelay() bool {
 	return b.isRelay
 }
 
-func (b builder) Clock() clock.Clock {
-	return b.clock
+func (b builder) ChainClock() clock.ChainEpochClock {
+	return b.chainClock
 }
 
 func (b builder) Journal() journal.Journal {

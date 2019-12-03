@@ -50,11 +50,6 @@ var (
 	ErrReceiptRootMismatch = errors.New("blocks receipt root does not match parent tip set")
 )
 
-// DefaultBlockTime is the estimated proving period time.
-// We define this so that we can fake mining in the current incomplete system.
-// We also use this to enforce a soft block validation.
-const DefaultBlockTime = 30 * time.Second
-
 // ElectionLookback is the number of tipsets past the head (inclusive)) that
 // must be traversed to sample the election ticket.
 const ElectionLookback = 5
