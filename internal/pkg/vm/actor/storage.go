@@ -54,7 +54,7 @@ func WithState(ctx runtime.InvocationContext, st interface{}, f func() (interfac
 		return nil, err
 	}
 
-	stage := ctx.Storage()
+	stage := ctx.Runtime().Storage()
 
 	cid, err := stage.Put(st)
 	if err != nil {
@@ -71,7 +71,7 @@ func WithState(ctx runtime.InvocationContext, st interface{}, f func() (interfac
 
 // ReadState is a helper method to read the cbor node at the actor's Head into the given struct
 func ReadState(ctx runtime.InvocationContext, st interface{}) error {
-	storage := ctx.Storage()
+	storage := ctx.Runtime().Storage()
 
 	memory, err := storage.Get(storage.Head())
 	if err != nil {
@@ -87,7 +87,7 @@ func ReadState(ctx runtime.InvocationContext, st interface{}) error {
 
 // WriteState stores state and commits it as the actor's head
 func WriteState(ctx runtime.InvocationContext, state interface{}) error {
-	stage := ctx.Storage()
+	stage := ctx.Runtime().Storage()
 
 	cid, err := stage.Put(state)
 	if err != nil {

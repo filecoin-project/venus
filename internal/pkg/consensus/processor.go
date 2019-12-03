@@ -491,12 +491,18 @@ func (p *DefaultProcessor) resolveAddress(ctx context.Context, msg *types.Unsign
 		return msg.To, nil
 	}
 
+	to, err := st.GetActor(ctx, address.InitAddress)
+	if err != nil {
+		return address.Undef, err
+	}
+
 	vmCtxParams := vm.NewContextParams{
 		Message:    msg,
 		State:      st,
 		StorageMap: vms,
 		GasTracker: gt,
 		Actors:     p.actors,
+		To:         to,
 	}
 	vmCtx := vm.NewVMContext(vmCtxParams)
 	ret, _, err := vmCtx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{msg.To})

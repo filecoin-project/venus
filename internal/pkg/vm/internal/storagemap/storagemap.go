@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	vmerrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
@@ -102,35 +102,24 @@ var ErrNotFound = errors.New("chunk not found")
 
 // Put adds a node to temporary storage by id.
 func (s storage) Put(v interface{}) (cid.Cid, error) {
-	var nd format.Node
-	var err error
-	if blk, ok := v.(blocks.Block); ok {
-		// optimize putting blocks
-		nd, err = cbor.DecodeBlock(blk)
-	} else if raw, ok := v.([]byte); ok {
-		nd, err = cbor.Decode(raw, types.DefaultHashFunction, -1)
-
-	} else if cm, ok := v.(cbg.CBORMarshaler); ok {
-		// TODO: Remote this clause once
-		// https://github.com/ipfs/go-ipld-cbor/pull/64
-		// is merged and cbor.WrapObject can be called directly on objects that
-		// support fastpath marshalling / unmarshalling
-		buf := new(bytes.Buffer)
-		err = cm.MarshalCBOR(buf)
-		if err == nil {
-			nd, err = cbor.Decode(buf.Bytes(), types.DefaultHashFunction, -1)
-		}
-	} else {
-		nd, err = cbor.WrapObject(v, types.DefaultHashFunction, -1)
-	}
+	nd, err := s.toNode(v)
 	if err != nil {
-		return cid.Undef, internal.Errors[internal.ErrDecode]
+		return cid.Undef, err
 	}
 
 	c := nd.Cid()
 	s.chunks[c] = nd
 
 	return c, nil
+}
+
+// CidOf returns the Cid of the object without storing it.
+func (s storage) CidOf(v interface{}) (cid.Cid, error) {
+	nd, err := s.toNode(v)
+	if err != nil {
+		return cid.Undef, err
+	}
+	return nd.Cid(), nil
 }
 
 // Get retrieves a chunk from either temporary storage or its backing store.
@@ -192,6 +181,35 @@ func (s *storage) Flush() error {
 	})
 
 	return s.blockstore.PutMany(blks)
+}
+
+// Put adds a node to temporary storage by id.
+func (s storage) toNode(v interface{}) (ipld.Node, error) {
+	var nd format.Node
+	var err error
+	if blk, ok := v.(blocks.Block); ok {
+		// optimize putting blocks
+		nd, err = cbor.DecodeBlock(blk)
+	} else if raw, ok := v.([]byte); ok {
+		nd, err = cbor.Decode(raw, types.DefaultHashFunction, -1)
+
+	} else if cm, ok := v.(cbg.CBORMarshaler); ok {
+		// TODO: Remote this clause once
+		// https://github.com/ipfs/go-ipld-cbor/pull/64
+		// is merged and cbor.WrapObject can be called directly on objects that
+		// support fastpath marshalling / unmarshalling
+		buf := new(bytes.Buffer)
+		err = cm.MarshalCBOR(buf)
+		if err == nil {
+			nd, err = cbor.Decode(buf.Bytes(), types.DefaultHashFunction, -1)
+		}
+	} else {
+		nd, err = cbor.WrapObject(v, types.DefaultHashFunction, -1)
+	}
+	if err != nil {
+		return nil, internal.Errors[internal.ErrDecode]
+	}
+	return nd, nil
 }
 
 // liveDescendantIds returns the ids of all chunks reachable from the given id for this storage.

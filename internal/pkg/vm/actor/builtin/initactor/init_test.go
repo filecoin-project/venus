@@ -13,8 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-ipfs-blockstore"
-	dag "github.com/ipfs/go-merkledag"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -75,33 +74,6 @@ func TestInitActorExec(t *testing.T) {
 	initParams := []interface{}{[]byte("one"), []byte("two")}
 	act := &Impl{}
 
-	t.Run("exec charges gas", func(t *testing.T) {
-		var charge types.GasUnits
-		vmctx := vm.NewFakeVMContext(msg, newState())
-		vmctx.Charger = func(cost types.GasUnits) error { charge = cost; return nil }
-
-		_, _, err := act.Exec(vmctx, types.MinerActorCodeCid, initParams)
-		require.NoError(t, err)
-
-		assert.Equal(t, types.NewGasUnits(actor.DefaultGasCost), charge)
-	})
-
-	t.Run("exec refuses to construct a non builtin actor", func(t *testing.T) {
-		code := dag.NewRawNode([]byte("nonesuch")).Cid()
-		_, _, err := act.Exec(vm.NewFakeVMContext(msg, newState()), code, initParams)
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "not a builtin actor")
-	})
-
-	t.Run("exec refuses to construct singleton actor", func(t *testing.T) {
-		code := types.StorageMarketActorCodeCid // storage market is a singleton actor
-		_, _, err := act.Exec(vm.NewFakeVMContext(msg, newState()), code, initParams)
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "cannot launch another actor of this type")
-	})
-
 	t.Run("exec constructs a permanent address and creates a mapping to the id", func(t *testing.T) {
 		vmctx := vm.NewFakeVMContext(msg, newState())
 
@@ -133,41 +105,5 @@ func TestInitActorExec(t *testing.T) {
 
 		assert.Equal(t, address.ID, actualAddr.Protocol())
 		assert.Equal(t, types.MinerActorCodeCid, actualCode)
-	})
-
-	t.Run("exec calls constructor and sends funds", func(t *testing.T) {
-		var constructedAddr address.Address
-		var actualTo address.Address
-		var actualMethod types.MethodID
-		var actualValue types.AttoFIL
-		var actualParams []interface{}
-		vmctx := vm.NewFakeVMContext(msg, newState())
-		vmctx.ActorCreator = func(addr address.Address, code cid.Cid) error {
-			constructedAddr = addr
-			return nil
-		}
-		vmctx.Sender = func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
-			actualTo = to
-			actualMethod = method
-			actualValue = value
-			actualParams = params
-			return [][]byte{}, 0, nil
-		}
-		_, _, err := act.Exec(vmctx, types.MinerActorCodeCid, initParams)
-		require.NoError(t, err)
-
-		// sends to actor it just created
-		assert.Equal(t, constructedAddr, actualTo)
-
-		// sends to constructor method
-		assert.Equal(t, types.ConstructorMethodID, actualMethod)
-
-		// sends value given it on to actor
-		assert.Equal(t, msg.Value, actualValue)
-
-		// sends given parameters on to constructor
-		require.Equal(t, 2, len(actualParams))
-		assert.Equal(t, initParams[0], actualParams[0])
-		assert.Equal(t, initParams[1], actualParams[1])
 	})
 }
