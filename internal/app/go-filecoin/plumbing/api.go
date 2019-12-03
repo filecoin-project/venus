@@ -2,7 +2,9 @@ package plumbing
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -355,8 +357,15 @@ func (api *API) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) 
 }
 
 // WalletNewAddress generates a new wallet address
-func (api *API) WalletNewAddress() (address.Address, error) {
-	return wallet.NewAddress(api.wallet, address.SECP256K1)
+func (api *API) WalletNewAddress(addressType string) (address.Address, error) {
+	switch strings.ToLower(addressType) { //this assumes that any additions to types/helpers.go will be lowercase
+	case types.BLS:
+		return wallet.NewAddress(api.wallet, address.BLS)
+	case types.SECP256K1:
+		return wallet.NewAddress(api.wallet, address.SECP256K1)
+	default:
+		return address.Undef, fmt.Errorf("invalid address type: %s", addressType)
+	}
 }
 
 // WalletImport adds a given set of KeyInfos to the wallet

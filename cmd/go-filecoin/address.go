@@ -49,11 +49,15 @@ type AddressLsResult struct {
 
 var addrsNewCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		addr, err := GetPorcelainAPI(env).WalletNewAddress()
+		addressType := req.Options["type"].(string)
+		addr, err := GetPorcelainAPI(env).WalletNewAddress(addressType)
 		if err != nil {
 			return err
 		}
 		return re.Emit(&addressResult{addr.String()})
+	},
+	Options: []cmdkit.Option{
+		cmdkit.StringOption("type", "The type of address to create: bls or secp256k1 (default)").WithDefault(types.SECP256K1),
 	},
 	Type: &addressResult{},
 	Encoders: cmds.EncoderMap{
