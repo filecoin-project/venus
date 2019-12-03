@@ -7,8 +7,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"math/big"
-
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -152,8 +150,9 @@ func (ctx *VMContext) LegacySend(to address.Address, method types.MethodID, valu
 		return nil, 1, errors.FaultErrorWrapf(err, "failed to get id address for actor address")
 	}
 
-	toActor, err := deps.GetOrCreateActor(context.TODO(), toAddr, func() (*actor.Actor, error) {
-		return &actor.Actor{}, nil
+	// TODO: this needs to initialize in init actor state
+	toActor, _, err := deps.GetOrCreateActor(context.TODO(), toAddr, func() (*actor.Actor, address.Address, error) {
+		return &actor.Actor{}, toAddr, nil
 	})
 	if err != nil {
 		return nil, 1, errors.FaultErrorWrapf(err, "failed to get or create To actor %s", msg.To)
@@ -220,8 +219,8 @@ func (ctx *VMContext) Send(to address.Address, method types.MethodID, value type
 		panic(exitcode.ActorNotFound)
 	}
 
-	toActor, err := deps.GetOrCreateActor(context.TODO(), toAddr, func() (*actor.Actor, error) {
-		return &actor.Actor{}, nil
+	toActor, _, err := deps.GetOrCreateActor(context.TODO(), toAddr, func() (*actor.Actor, address.Address, error) {
+		return &actor.Actor{}, toAddr, nil
 	})
 	if err != nil {
 		runtime.Abortf("failed to get or create To actor %s", msg.To)
@@ -359,7 +358,7 @@ func (ctx *VMContext) Balance() types.AttoFIL {
 
 // Storage returns an implementation of the storage module for this context.
 func (ctx *VMContext) Storage() runtime.Storage {
-	return ctx.storageMap.NewStorage(ctx.message.To, ctx.to)
+	return ctx.storageMap.NewStorage(ctx.toAddr, ctx.to)
 }
 
 // Charge attempts to add the given cost to the accrued gas cost of this transaction
@@ -407,8 +406,8 @@ func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []i
 	// Check existing address. If nothing there, create empty actor.
 	//
 	// Note: we are storing the actors by ActorID *address*
-	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), idAddr, func() (*actor.Actor, error) {
-		return &actor.Actor{}, nil
+	newActor, _, err := ctx.state.GetOrCreateActor(context.TODO(), idAddr, func() (*actor.Actor, address.Address, error) {
+		return &actor.Actor{}, idAddr, nil
 	})
 
 	if err != nil {
@@ -523,7 +522,7 @@ func makeDeps(st *state.CachedTree) *deps {
 
 type deps struct {
 	EncodeValues     func([]*abi.Value) ([]byte, error)
-	GetOrCreateActor func(context.Context, address.Address, func() (*actor.Actor, error)) (*actor.Actor, error)
+	GetOrCreateActor func(context.Context, address.Address, func() (*actor.Actor, address.Address, error)) (*actor.Actor, address.Address, error)
 	LegacySend       func(context.Context, ExtendedRuntime) ([][]byte, uint8, error)
 	Apply            func(*VMContext) interface{}
 	ToValues         func([]interface{}) ([]*abi.Value, error)
@@ -614,21 +613,31 @@ func Transfer(fromActor, toActor *actor.Actor, value types.AttoFIL) error {
 
 // resolveAddress looks up associated id address if actor address. Otherwise it returns the same address.
 func (ctx *VMContext) resolveActorAddress(addr address.Address) (address.Address, error) {
-	if addr.Protocol() != address.Actor {
+	if addr.Protocol() == address.ID {
 		return addr, nil
 	}
 
-	ret, _, err := ctx.LegacySend(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
+	init, err := ctx.state.GetActor(context.TODO(), address.InitAddress)
 	if err != nil {
 		return address.Undef, err
 	}
 
-	id, err := abi.Deserialize(ret[0], abi.Integer)
+	vmCtx := NewVMContext(NewContextParams{
+		State:      ctx.state,
+		StorageMap: ctx.storageMap,
+		ToAddr:     address.InitAddress,
+		To:         init,
+	})
+	id, found, err := initactor.LookupIDAddress(vmCtx, addr)
 	if err != nil {
 		return address.Undef, err
 	}
 
-	idAddr, err := address.NewIDAddress(id.Val.(*big.Int).Uint64())
+	if !found {
+		return address.Undef, nil
+	}
+
+	idAddr, err := address.NewIDAddress(id)
 	if err != nil {
 		return address.Undef, err
 	}

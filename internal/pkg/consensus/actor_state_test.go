@@ -32,7 +32,8 @@ func TestQuery(t *testing.T) {
 		bs := bstore.NewBlockstore(r.Datastore())
 
 		fakeActorCodeCid := types.NewCidForTestGetter()()
-		fakeActorAddr := newAddr()
+		fakeActorAddr, err := address.NewIDAddress(1)
+		require.NoError(t, err)
 		fromAddr := newAddr()
 		vms := vm.NewStorageMap(bs)
 		fakeActor := th.RequireNewFakeActor(t, vms, fakeActorAddr, fakeActorCodeCid)
@@ -73,7 +74,8 @@ func TestQuery(t *testing.T) {
 		bs := bstore.NewBlockstore(r.Datastore())
 
 		fakeActorCodeCid := types.NewCidForTestGetter()()
-		fakeActorAddr := newAddr()
+		fakeActorAddr, err := address.NewIDAddress(1)
+		require.NoError(t, err)
 		fromAddr := newAddr()
 		vms := vm.NewStorageMap(bs)
 		fakeActor := th.RequireNewFakeActor(t, vms, fakeActorAddr, fakeActorCodeCid)

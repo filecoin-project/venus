@@ -96,8 +96,8 @@ func TestCachedStateGetOrCreate(t *testing.T) {
 
 	// can create actor in cache
 	addr := address.NewForTestGetter()()
-	actor, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, error) {
-		return actorToCreate, nil
+	actor, _, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, address.Address, error) {
+		return actorToCreate, addr, nil
 	})
 	require.NoError(t, err)
 	assert.True(t, actor == actorToCreate, "GetOrCreate returns same instance created in creator")

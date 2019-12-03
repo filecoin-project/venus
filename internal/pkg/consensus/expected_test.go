@@ -282,10 +282,9 @@ func setTree(ctx context.Context, t *testing.T, kis []types.KeyInfo, cstore *ham
 	m2w := minerToWorkerFromKis(t, kis)
 	vms := vm.NewStorageMap(bstore)
 	for minerAddr, workerAddr := range m2w {
-		ownerActor := th.RequireNewAccountActor(t, types.ZeroAttoFIL)
-		require.NoError(t, tree.SetActor(ctx, workerAddr, ownerActor))
+		th.RequireInitAccountActor(ctx, t, tree, vms, workerAddr, types.ZeroAttoFIL)
 
-		minerActor := th.RequireNewMinerActor(t, vms, minerAddr, workerAddr,
+		minerActor := th.RequireNewMinerActor(ctx, t, tree, vms, minerAddr, workerAddr,
 			10000, th.RequireRandomPeerID(t), types.ZeroAttoFIL)
 		require.NoError(t, tree.SetActor(ctx, minerAddr, minerActor))
 	}

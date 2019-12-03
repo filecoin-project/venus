@@ -9,7 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
@@ -17,8 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -42,23 +41,27 @@ func RequireMakeStateTree(t *testing.T, cst *hamt.CborIpldStore, acts map[addres
 	return c, tree
 }
 
-// RequireNewAccountActor creates a new account actor with the given starting
-// value and requires that its steps succeed.
-func RequireNewAccountActor(t *testing.T, value types.AttoFIL) *actor.Actor {
-	act, err := account.NewActor(value)
-	require.NoError(t, err)
-	return act
-}
-
 // RequireNewMinerActor creates a new miner actor with the given owner, pledge, and collateral,
 // and requires that its steps succeed.
-func RequireNewMinerActor(t *testing.T, vms vm.StorageMap, addr address.Address, owner address.Address, pledge uint64, pid peer.ID, coll types.AttoFIL) *actor.Actor {
-	act := actor.NewActor(types.MinerActorCodeCid, coll)
-	storage := vms.NewStorage(addr, act)
-	initializerData := miner.NewState(owner, owner, pid, types.OneKiBSectorSize)
-	err := (&miner.Actor{}).InitializeState(storage, initializerData)
+func RequireNewMinerActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, addr address.Address, owner address.Address, pledge uint64, pid peer.ID, coll types.AttoFIL) *actor.Actor {
+
+	cachedTree := state.NewCachedTree(st)
+	initActor, err := cachedTree.GetActor(ctx, address.InitAddress)
 	require.NoError(t, err)
+
+	gt := vm.NewGasTracker()
+	gt.MsgGasLimit = types.NewGasUnits(10000)
+	om := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, types.SendMethodID, []byte{})
+	vmctx := vm.NewVMContext(vm.NewContextParams{OriginMsg: om, State: cachedTree, StorageMap: vms, To: initActor, ToAddr: address.InitAddress, GasTracker: gt})
+
+	idAddr, _, err := (&initactor.Impl{}).Exec(vmctx, types.MinerActorCodeCid, []interface{}{owner, owner, pid, types.OneKiBSectorSize})
+	require.NoError(t, err)
+
+	act, err := cachedTree.GetActor(ctx, idAddr)
+	require.NoError(t, err)
+	require.NoError(t, cachedTree.Commit(ctx))
 	require.NoError(t, vms.Flush())
+
 	return act
 }
 
@@ -74,6 +77,16 @@ func RequireNewFakeActorWithTokens(t *testing.T, vms vm.StorageMap, addr address
 	act := actor.NewActor(codeCid, amt)
 	store := vms.NewStorage(addr, act)
 	err := (&actor.FakeActor{}).InitializeState(store, &actor.FakeActorStorage{})
+	require.NoError(t, err)
+	require.NoError(t, vms.Flush())
+	return act
+}
+
+// RequireNewInitActor instantiates and returns a new init actor
+func RequireNewInitActor(t *testing.T, vms vm.StorageMap) *actor.Actor {
+	act := actor.NewActor(types.InitActorCodeCid, types.ZeroAttoFIL)
+	store := vms.NewStorage(address.InitAddress, act)
+	err := (&initactor.Actor{}).InitializeState(store, "test")
 	require.NoError(t, err)
 	require.NoError(t, vms.Flush())
 	return act
@@ -121,23 +134,56 @@ func CreateTestMiner(t *testing.T, st state.Tree, vms vm.StorageMap, minerOwnerA
 func CreateTestMinerWith(
 	collateral types.AttoFIL,
 	t *testing.T,
-	stateTree state.Tree,
+	st state.Tree,
 	vms vm.StorageMap,
 	minerOwnerAddr address.Address,
 	pid peer.ID,
 	height uint64,
 ) address.Address {
+	ctx := context.TODO()
 	pdata := actor.MustConvertParams(types.OneKiBSectorSize, pid)
-	nonce := RequireGetNonce(t, stateTree, address.TestAddress)
+	idAddr, found, err := consensus.ResolveAddress(ctx, minerOwnerAddr, state.NewCachedTree(st), vms, vm.NewGasTracker())
+	require.NoError(t, err)
+	require.True(t, found)
+
+
+	nonce := RequireGetNonce(t, st, idAddr)
 	msg := types.NewUnsignedMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, collateral, storagemarket.CreateStorageMiner, pdata)
 
-	result, err := ApplyTestMessage(stateTree, vms, msg, types.NewBlockHeight(height))
+	result, err := ApplyTestMessage(st, vms, msg, types.NewBlockHeight(height))
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NoError(t, result.ExecutionError)
 	addr, err := address.NewFromBytes(result.Receipt.Return[0])
 	require.NoError(t, err)
 	return addr
+}
+
+// RequireExistingActor adds an account actor to the state tree if none exists
+func RequireGetActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, addr address.Address) *actor.Actor {
+	idAddr, found, err := consensus.ResolveAddress(ctx, addr, state.NewCachedTree(st), vms, vm.NewGasTracker())
+	require.NoError(t, err)
+	require.True(t, found, "test actor not found")
+
+	act, err :=  st.GetActor(ctx, idAddr)
+	require.NoError(t, err)
+	return act
+}
+
+// RequireInitAccountActor initializes an account actor
+func RequireInitAccountActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, addr address.Address, balance types.AttoFIL) (*actor.Actor, address.Address) {
+	cachedTree := state.NewCachedTree(st)
+	initActor, err := cachedTree.GetActor(ctx, address.InitAddress)
+	require.NoError(t, err)
+
+	act, idAddr, err := cachedTree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, address.Address, error) {
+		vmctx := vm.NewVMContext(vm.NewContextParams{State: cachedTree, StorageMap: vms, To: initActor, ToAddr: address.InitAddress})
+		return initactor.InitializeAccountActor(vmctx, addr, balance)
+	})
+	require.NoError(t, err)
+	require.NoError(t, cachedTree.Commit(ctx))
+
+	return act, idAddr
 }
 
 // GetTotalPower get total miner power from storage market

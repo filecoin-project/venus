@@ -69,15 +69,15 @@ func TestStorageMarketCreateStorageMinerDoesNotOverwriteActorBalance(t *testing.
 	st, vms := th.RequireCreateStorages(ctx, t)
 
 	// attempt create account of future miner actor by sending FIL to the predicted address
-	minerAddr, err := address.NewIDAddress(100) // 100 is the first address of a constructed actor
+	minerAddr, err := address.NewIDAddress(102) // 102 is the first address of a constructed actor outside genesis
 	require.NoError(t, err)
 
 	msg := types.NewUnsignedMessage(address.TestAddress2, minerAddr, 0, types.NewAttoFILFromFIL(100), types.SendMethodID, []byte{})
 	_, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 
-	// message fails because actor address is not secp or bls. This prevents blocking miner from creation.
+	// message fails because we do not create actors when message to is an ID address.
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "wrong type of address")
+	require.Contains(t, err.Error(), "actor not found")
 }
 
 func TestProofsMode(t *testing.T) {

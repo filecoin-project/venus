@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/filecoin-project/go-amt-ipld"
@@ -245,17 +246,6 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 
 // SetupDefaultActors inits the builtin actors that are required to run filecoin.
 func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.StorageMap, storeType types.ProofsMode, network string) error {
-	for addr, val := range defaultAccounts {
-		a, err := account.NewActor(val)
-		if err != nil {
-			return err
-		}
-
-		if err := st.SetActor(ctx, addr, a); err != nil {
-			return err
-		}
-	}
-
 	stAct := storagemarket.NewActor()
 	err := (&storagemarket.Actor{}).InitializeState(storageMap.NewStorage(address.StorageMarketAddress, stAct), storeType)
 	if err != nil {
@@ -289,5 +279,40 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 	if err != nil {
 		return err
 	}
-	return st.SetActor(ctx, address.InitAddress, intAct)
+	if err := st.SetActor(ctx, address.InitAddress, intAct); err != nil {
+		return err
+	}
+
+	cachedTree := state.NewCachedTree(st)
+
+	// sort addresses so genesis generation will be stable
+	sortedAddresses := []string{}
+	for addr, _ := range defaultAccounts {
+		sortedAddresses = append(sortedAddresses, string(addr.Bytes()))
+	}
+	sort.Strings(sortedAddresses)
+
+	for _, addrBytes := range sortedAddresses {
+		addr, err := address.NewFromBytes([]byte(addrBytes))
+		if err != nil {
+			return err
+		}
+		val := defaultAccounts[addr]
+
+		_, _, err = cachedTree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, address.Address, error) {
+			if addr.Protocol() == address.SECP256K1 || addr.Protocol() == address.BLS {
+				initActor, err := cachedTree.GetActor(ctx, address.InitAddress)
+				if err != nil {
+					return nil, address.Undef, err
+				}
+
+				vmctx := vm.NewVMContext(vm.NewContextParams{State: cachedTree, StorageMap: storageMap, To: initActor, ToAddr: address.InitAddress})
+				return initactor.InitializeAccountActor(vmctx, addr, val)
+			} else {
+				a, err := account.NewActor(val)
+				return a, addr, err
+			}
+		})
+	}
+	return cachedTree.Commit(ctx)
 }

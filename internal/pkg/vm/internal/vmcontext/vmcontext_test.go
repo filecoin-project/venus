@@ -287,10 +287,10 @@ func TestVMContextSendFailures(t *testing.T) {
 				calls = append(calls, "EncodeValues")
 				return nil, nil
 			},
-			GetOrCreateActor: func(_ context.Context, _ address.Address, _ func() (*actor.Actor, error)) (*actor.Actor, error) {
+			GetOrCreateActor: func(_ context.Context, _ address.Address, _ func() (*actor.Actor, address.Address, error)) (*actor.Actor, address.Address, error) {
 
 				calls = append(calls, "GetOrCreateActor")
-				return nil, xerrors.New("error")
+				return nil, address.Undef, xerrors.New("error")
 			},
 			ToValues: func(_ []interface{}) ([]*abi.Value, error) {
 				calls = append(calls, "ToValues")
@@ -320,7 +320,7 @@ func TestVMContextSendFailures(t *testing.T) {
 				calls = append(calls, "EncodeValues")
 				return nil, nil
 			},
-			GetOrCreateActor: func(_ context.Context, _ address.Address, f func() (*actor.Actor, error)) (*actor.Actor, error) {
+			GetOrCreateActor: func(_ context.Context, _ address.Address, f func() (*actor.Actor, address.Address, error)) (*actor.Actor, address.Address, error) {
 				calls = append(calls, "GetOrCreateActor")
 				return f()
 			},

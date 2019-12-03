@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
@@ -111,13 +112,13 @@ type FakeBlockRewarder struct{}
 var _ BlockRewarder = (*FakeBlockRewarder)(nil)
 
 // BlockReward is a noop
-func (tbr *FakeBlockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
+func (tbr *FakeBlockRewarder) BlockReward(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address) error {
 	// do nothing to keep state root the same
 	return nil
 }
 
 // GasReward is a noop
-func (tbr *FakeBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error {
+func (tbr *FakeBlockRewarder) GasReward(ctx context.Context, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error {
 	// do nothing to keep state root the same
 	return nil
 }

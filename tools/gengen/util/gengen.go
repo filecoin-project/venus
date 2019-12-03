@@ -356,12 +356,12 @@ type blockRewarder struct{}
 var _ consensus.BlockRewarder = (*blockRewarder)(nil)
 
 // BlockReward is a noop
-func (gbr *blockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
+func (gbr *blockRewarder) BlockReward(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address) error {
 	return nil
 }
 
 // GasReward is a noop
-func (gbr *blockRewarder) GasReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error {
+func (gbr *blockRewarder) GasReward(ctx context.Context, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error {
 	return nil
 }
 

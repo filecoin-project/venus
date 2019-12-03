@@ -90,16 +90,16 @@ func TestStateGetOrCreate(t *testing.T) {
 
 	// no actor - error
 	t.Run("no actor - error", func(t *testing.T) {
-		actor, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, error) {
-			return nil, fmt.Errorf("fail")
+		actor, _, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, address.Address, error) {
+			return nil, addr, fmt.Errorf("fail")
 		})
 		assert.EqualError(t, err, "fail")
 		assert.Nil(t, actor)
 	})
 
 	t.Run("no actor - success", func(t *testing.T) {
-		a, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, error) {
-			return &actor.Actor{}, nil
+		a, _, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, address.Address, error) {
+			return &actor.Actor{}, addr, nil
 		})
 		assert.NoError(t, err)
 		assert.Equal(t, a, &actor.Actor{})
@@ -109,8 +109,8 @@ func TestStateGetOrCreate(t *testing.T) {
 		a := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(10))
 		assert.NoError(t, tree.SetActor(ctx, addr, a))
 
-		actorBack, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, error) {
-			return &actor.Actor{}, nil
+		actorBack, _, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, address.Address, error) {
+			return &actor.Actor{}, addr, nil
 		})
 		assert.NoError(t, err)
 		assert.Equal(t, actorBack, a)

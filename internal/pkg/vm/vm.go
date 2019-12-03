@@ -2,8 +2,7 @@ package vm
 
 import (
 	"context"
-
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
