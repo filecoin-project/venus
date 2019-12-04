@@ -108,7 +108,7 @@ func (a *FakeActor) InitializeState(storage runtime.Storage, initializerData int
 		return err
 	}
 
-	return storage.Commit(id, cid.Undef)
+	return storage.LegacyCommit(id, cid.Undef)
 }
 
 // Method returns method definition for a given method id.

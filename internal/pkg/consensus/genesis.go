@@ -178,7 +178,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			if err != nil {
 				return nil, err
 			}
-			if err = s.Commit(scid, a.Head); err != nil {
+			if err = s.LegacyCommit(scid, a.Head); err != nil {
 				return nil, err
 			}
 			if err := st.SetActor(ctx, addr, a); err != nil {

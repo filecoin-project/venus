@@ -141,10 +141,10 @@ func (s storage) Get(cid cid.Cid) ([]byte, error) {
 	return blk.RawData(), nil
 }
 
-// Commit updates the head of the current actor to the given cid.
+// LegacyCommit updates the head of the current actor to the given cid.
 // The new cid must be the content id of a chunk put in storage.
 // The given oldCid must match the cid of the current actor.
-func (s storage) Commit(newCid cid.Cid, oldCid cid.Cid) error {
+func (s storage) LegacyCommit(newCid cid.Cid, oldCid cid.Cid) error {
 	// commit to initialize actor only permitted if Head and expected id are nil
 	if oldCid.Defined() && s.actor.Head.Defined() && !oldCid.Equals(s.actor.Head) {
 		return internal.Errors[internal.ErrStaleHead]
@@ -162,8 +162,8 @@ func (s storage) Commit(newCid cid.Cid, oldCid cid.Cid) error {
 	return nil
 }
 
-// Head return the current head of the actor's memory
-func (s storage) Head() cid.Cid {
+// LegacyHead return the current head of the actor's memory
+func (s storage) LegacyHead() cid.Cid {
 	return s.actor.Head
 }
 

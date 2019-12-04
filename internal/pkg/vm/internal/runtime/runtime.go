@@ -179,7 +179,7 @@ func Assert(cond bool) {
 // Storage defines the storage module exposed to actors.
 type Storage interface {
 	// Dragons: move out after cleaning up the actor state construction
-	Head() cid.Cid
+	LegacyHead() cid.Cid
 	Put(interface{}) (cid.Cid, error)
 	// Dragons: move out after cleaning up the actor state construction
 	CidOf(interface{}) (cid.Cid, error)
@@ -187,5 +187,5 @@ type Storage interface {
 	// TODO: change to `Get(cid, interface{}) error`
 	Get(cid.Cid) ([]byte, error)
 	// Dragons: move out after cleaning up the actor state construction
-	Commit(cid.Cid, cid.Cid) error
+	LegacyCommit(cid.Cid, cid.Cid) error
 }

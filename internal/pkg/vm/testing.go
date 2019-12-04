@@ -69,7 +69,7 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 		},
 		allowSideEffects: true,
 	}
-	aux.stateHandle = vmcontext.NewActorStateHandle(&aux, aux.StorageValue.Head())
+	aux.stateHandle = vmcontext.NewActorStateHandle(&aux, aux.StorageValue.LegacyHead())
 	return &aux
 }
 
@@ -279,13 +279,13 @@ func (ts testStorage) CidOf(v interface{}) (cid.Cid, error) {
 	return cid.NewCidV1(cid.Raw, raw), nil
 }
 
-// Commit satisfies the Storage interface but does nothing
-func (ts testStorage) Commit(cid.Cid, cid.Cid) error {
+// LegacyCommit satisfies the Storage interface but does nothing
+func (ts testStorage) LegacyCommit(cid.Cid, cid.Cid) error {
 	return nil
 }
 
-// Head returns the Cid of the current state.
-func (ts testStorage) Head() cid.Cid {
+// LegacyHead returns the Cid of the current state.
+func (ts testStorage) LegacyHead() cid.Cid {
 	if ts.state == nil {
 		return cid.Undef
 	}

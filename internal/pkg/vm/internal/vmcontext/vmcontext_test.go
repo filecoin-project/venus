@@ -69,7 +69,7 @@ func TestVMContextStorage(t *testing.T) {
 
 	cid, err := vmCtx.Storage().Put(node.RawData())
 	require.NoError(t, err)
-	err = vmCtx.Storage().Commit(cid, vmCtx.Storage().Head())
+	err = vmCtx.Storage().LegacyCommit(cid, vmCtx.Storage().LegacyHead())
 	require.NoError(t, err)
 	assert.NoError(t, cstate.Commit(ctx))
 
@@ -77,7 +77,7 @@ func TestVMContextStorage(t *testing.T) {
 	toActorBack, err := st.GetActor(ctx, toAddr)
 	assert.NoError(t, err)
 	vmCtxParams.To = toActorBack
-	storage, err := vmCtx.Storage().Get(vmCtx.Storage().Head())
+	storage, err := vmCtx.Storage().Get(vmCtx.Storage().LegacyHead())
 	assert.NoError(t, err)
 	assert.Equal(t, storage, node.RawData())
 }

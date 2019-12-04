@@ -748,7 +748,7 @@ func createVoucherSignatureData(channelID *types.ChannelID, amount types.AttoFIL
 }
 
 func withPayerChannels(ctx context.Context, st runtime.Storage, payer address.Address, f func(storage.Lookup) error) error {
-	stateCid, err := actor.WithLookup(ctx, st, st.Head(), func(byPayer storage.Lookup) error {
+	stateCid, err := actor.WithLookup(ctx, st, st.LegacyHead(), func(byPayer storage.Lookup) error {
 		byChannelLookup, err := findByChannelLookup(ctx, st, byPayer, payer)
 		if err != nil {
 			return err
@@ -778,11 +778,11 @@ func withPayerChannels(ctx context.Context, st runtime.Storage, payer address.Ad
 		return err
 	}
 
-	return st.Commit(stateCid, st.Head())
+	return st.LegacyCommit(stateCid, st.LegacyHead())
 }
 
 func withPayerChannelsForReading(ctx context.Context, st runtime.Storage, payer address.Address, f func(storage.Lookup) error) error {
-	return actor.WithLookupForReading(ctx, st, st.Head(), func(byPayer storage.Lookup) error {
+	return actor.WithLookupForReading(ctx, st, st.LegacyHead(), func(byPayer storage.Lookup) error {
 		byChannelLookup, err := findByChannelLookup(ctx, st, byPayer, payer)
 		if err != nil {
 			return err

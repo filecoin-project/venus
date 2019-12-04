@@ -64,7 +64,7 @@ func TestLoadLookup(t *testing.T) {
 
 	assert.True(t, c.Defined())
 
-	err = storage.Commit(c, cid.Undef)
+	err = storage.LegacyCommit(c, cid.Undef)
 	require.NoError(t, err)
 
 	err = vms.Flush()
