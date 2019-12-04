@@ -667,7 +667,7 @@ func validateAndUpdateChannel(ctx invocationContext, target address.Address, cha
 
 	// transfer funds to sender
 	updateAmount := amt.Sub(channel.AmountRedeemed)
-	_, _, err := ctx.Runtime().Send(ctx.Message().Caller(), types.SendMethodID, updateAmount, nil)
+	_, _, err := ctx.Runtime().LegacySend(ctx.Message().Caller(), types.SendMethodID, updateAmount, nil)
 	if err != nil {
 		return err
 	}
@@ -691,7 +691,7 @@ func reclaim(ctx context.Context, vmctx invocationContext, byChannelID storage.L
 	}
 
 	// send funds
-	_, _, err = vmctx.Runtime().Send(payer, types.SendMethodID, amt, nil)
+	_, _, err = vmctx.Runtime().LegacySend(payer, types.SendMethodID, amt, nil)
 	if err != nil {
 		return errors.RevertErrorWrap(err, "could not send update funds")
 	}
@@ -748,7 +748,7 @@ func createVoucherSignatureData(channelID *types.ChannelID, amount types.AttoFIL
 }
 
 func withPayerChannels(ctx context.Context, st runtime.Storage, payer address.Address, f func(storage.Lookup) error) error {
-	stateCid, err := actor.WithLookup(ctx, st, st.Head(), func(byPayer storage.Lookup) error {
+	stateCid, err := actor.WithLookup(ctx, st, st.LegacyHead(), func(byPayer storage.Lookup) error {
 		byChannelLookup, err := findByChannelLookup(ctx, st, byPayer, payer)
 		if err != nil {
 			return err
@@ -778,11 +778,11 @@ func withPayerChannels(ctx context.Context, st runtime.Storage, payer address.Ad
 		return err
 	}
 
-	return st.Commit(stateCid, st.Head())
+	return st.LegacyCommit(stateCid, st.LegacyHead())
 }
 
 func withPayerChannelsForReading(ctx context.Context, st runtime.Storage, payer address.Address, f func(storage.Lookup) error) error {
-	return actor.WithLookupForReading(ctx, st, st.Head(), func(byPayer storage.Lookup) error {
+	return actor.WithLookupForReading(ctx, st, st.LegacyHead(), func(byPayer storage.Lookup) error {
 		byChannelLookup, err := findByChannelLookup(ctx, st, byPayer, payer)
 		if err != nil {
 			return err
@@ -813,7 +813,7 @@ func checkCondition(vmctx invocationContext, channel *PaymentChannel) error {
 		return nil
 	}
 
-	_, _, err := vmctx.Runtime().Send(channel.Condition.To, channel.Condition.Method, types.ZeroAttoFIL, channel.Condition.Params)
+	_, _, err := vmctx.Runtime().LegacySend(channel.Condition.To, channel.Condition.Method, types.ZeroAttoFIL, channel.Condition.Params)
 	if err != nil {
 		if errors.IsFault(err) {
 			return err

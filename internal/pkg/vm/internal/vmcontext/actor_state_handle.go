@@ -55,7 +55,7 @@ func (h *actorStateHandle) Readonly(obj interface{}) {
 	}
 
 	// Dragons: needed while we can get actor state modified directly by actor code
-	h.head = h.ctx.Storage().Head()
+	h.head = h.ctx.Storage().LegacyHead()
 
 	// load state from storage
 	// Note: we copy the head over to `readonlyHead` in case it gets modified afterwards via `Transaction()`.
@@ -84,7 +84,7 @@ func (h *actorStateHandle) Transaction(obj interface{}, f transactionFn) (interf
 	}
 
 	// Dragons: needed while we can get actor state modified directly by actor code
-	h.head = h.ctx.Storage().Head()
+	h.head = h.ctx.Storage().LegacyHead()
 
 	// load state from storage
 	oldcid := h.head
@@ -113,7 +113,7 @@ func (h *actorStateHandle) Transaction(obj interface{}, f transactionFn) (interf
 
 	// commit the new state
 	// Note: this is more of a commit into pending, not a real commit
-	err = storage.Commit(newcid, oldcid)
+	err = storage.LegacyCommit(newcid, oldcid)
 	if err != nil {
 		runtime.Abort("Storage commit error")
 	}

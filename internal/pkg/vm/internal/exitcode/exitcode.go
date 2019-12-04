@@ -1,6 +1,10 @@
 package exitcode
 
-import "github.com/filecoin-project/go-filecoin/internal/pkg/types"
+import (
+	"fmt"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+)
 
 // ExitCode is the exit code of a method executing inside the VM.
 type ExitCode types.Uint64
@@ -60,4 +64,13 @@ func (code ExitCode) IsSuccess() bool {
 // IsError returns `True` if the exit code is an error.
 func (code ExitCode) IsError() bool {
 	return code != Ok
+}
+
+func (code ExitCode) String() string {
+	switch code {
+	case Ok:
+		return "Ok"
+	default:
+		return fmt.Sprintf("ExitCode(%d)", (uint64)(code))
+	}
 }

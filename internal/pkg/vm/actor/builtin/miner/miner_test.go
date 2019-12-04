@@ -581,7 +581,7 @@ func (mal *minerActorLiason) requirePoSt(blockHeight uint64, done types.IntSet, 
 func (mal *minerActorLiason) requireReadState() State {
 	miner := state.MustGetActor(mal.st, mal.minerAddr)
 	storage := mal.vms.NewStorage(mal.minerAddr, miner)
-	stateBytes, err := storage.Get(storage.Head())
+	stateBytes, err := storage.Get(storage.LegacyHead())
 	require.NoError(mal.t, err)
 	var minerState State
 	err = actor.UnmarshalStorage(stateBytes, &minerState)

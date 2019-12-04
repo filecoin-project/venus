@@ -25,7 +25,8 @@ type FakeVMContext struct {
 	BlockMinerValue         address.Address
 	RandomnessValue         []byte
 	IsFromAccountActorValue bool
-	Sender                  func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
+	LegacySender            func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
+	Sender                  func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{}
 	Addresser               func() (address.Address, error)
 	Charger                 func(cost types.GasUnits) error
 	Sampler                 func(sampleHeight *types.BlockHeight) ([]byte, error)
@@ -54,8 +55,11 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 		Sampler: func(sampleHeight *types.BlockHeight) ([]byte, error) {
 			return randomness, nil
 		},
-		Sender: func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+		LegacySender: func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 			return [][]byte{}, 0, nil
+		},
+		Sender: func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{} {
+			return nil
 		},
 		Addresser: func() (address.Address, error) {
 			return addressGetter(), nil
@@ -65,7 +69,7 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 		},
 		allowSideEffects: true,
 	}
-	aux.stateHandle = vmcontext.NewActorStateHandle(&aux, aux.StorageValue.Head())
+	aux.stateHandle = vmcontext.NewActorStateHandle(&aux, aux.StorageValue.LegacyHead())
 	return &aux
 }
 
@@ -89,8 +93,17 @@ func (tc *FakeVMContext) Randomness(epoch types.BlockHeight, offset uint64) runt
 	return rnd
 }
 
-// Send sends a message to another actor
-func (tc *FakeVMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+// LegacySend sends a message to another actor
+func (tc *FakeVMContext) LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+	// check if side-effects are allowed
+	if !tc.allowSideEffects {
+		runtime.Abort("Calling LegacySend() is not allowed during side-effet lock")
+	}
+	return tc.LegacySender(to, method, value, params)
+}
+
+// Send allows actors to invoke methods on other actors
+func (tc *FakeVMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{} {
 	// check if side-effects are allowed
 	if !tc.allowSideEffects {
 		runtime.Abort("Calling Send() is not allowed during side-effet lock")
@@ -181,6 +194,11 @@ func (tc *FakeVMContext) CreateActor(actorID types.Uint64, code cid.Cid, params 
 	return addr
 }
 
+// VerifySignature implemenets the ExtendedInvocationContext interface.
+func (*FakeVMContext) VerifySignature(signer address.Address, signature types.Signature, msg []byte) bool {
+	return types.IsValidSignature(msg, signer, signature)
+}
+
 var _ runtime.LegacyInvocationContext = (*FakeVMContext)(nil)
 
 // LegacyVerifier provides an interface to the proofs verifier
@@ -261,13 +279,13 @@ func (ts testStorage) CidOf(v interface{}) (cid.Cid, error) {
 	return cid.NewCidV1(cid.Raw, raw), nil
 }
 
-// Commit satisfies the Storage interface but does nothing
-func (ts testStorage) Commit(cid.Cid, cid.Cid) error {
+// LegacyCommit satisfies the Storage interface but does nothing
+func (ts testStorage) LegacyCommit(cid.Cid, cid.Cid) error {
 	return nil
 }
 
-// Head returns the Cid of the current state.
-func (ts testStorage) Head() cid.Cid {
+// LegacyHead returns the Cid of the current state.
+func (ts testStorage) LegacyHead() cid.Cid {
 	if ts.state == nil {
 		return cid.Undef
 	}

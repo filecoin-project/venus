@@ -28,7 +28,7 @@ func setup() testSetup {
 		storage:          vm.NewTestStorage(initialstate),
 		allowSideEffects: true,
 	}
-	initialhead := ctx.storage.Head()
+	initialhead := ctx.storage.LegacyHead()
 	h := vmcontext.NewActorStateHandle(&ctx, initialhead)
 
 	cleanup := func() {
@@ -222,7 +222,7 @@ func TestActorStateHandleNilState(t *testing.T) {
 			storage:          vm.NewTestStorage(nil),
 			allowSideEffects: true,
 		}
-		initialhead := ctx.storage.Head()
+		initialhead := ctx.storage.LegacyHead()
 		h := vmcontext.NewActorStateHandle(&ctx, initialhead)
 
 		cleanup := func() {

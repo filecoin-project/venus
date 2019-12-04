@@ -126,7 +126,7 @@ func (*Actor) InitializeState(storage runtime.Storage, _ interface{}) error {
 		return err
 	}
 
-	return storage.Commit(id, cid.Undef)
+	return storage.LegacyCommit(id, cid.Undef)
 }
 
 //
@@ -174,15 +174,9 @@ func (*impl) createStorageMiner(vmctx invocationContext, ownerAddr, workerAddr a
 		initParams := []interface{}{vmctx.Message().Caller(), vmctx.Message().Caller(), pid, sectorSize}
 
 		// create miner actor by messaging the init actor and sending it collateral
-		ret, _, err := vmctx.Runtime().Send(address.InitAddress, initactor.Exec, vmctx.Message().ValueReceived(), []interface{}{actorCodeCid, initParams})
-		if err != nil {
-			return nil, err
-		}
+		ret := vmctx.Runtime().Send(address.InitAddress, initactor.Exec, vmctx.Message().ValueReceived(), []interface{}{actorCodeCid, initParams})
 
-		addr, err := address.NewFromBytes(ret[0])
-		if err != nil {
-			return nil, errors.FaultErrorWrap(err, "could not convert init.Exec return value to address")
-		}
+		addr := ret.(address.Address)
 
 		// retrieve id to key miner
 		actorIDAddr, err := retreiveActorID(vmctx.Runtime(), addr)
@@ -228,18 +222,12 @@ func (*impl) createStorageMiner(vmctx invocationContext, ownerAddr, workerAddr a
 }
 
 // retriveActorId uses init actor to map an actorAddress to an id address
-func retreiveActorID(vmctx runtime.Runtime, actorAddr address.Address) (address.Address, error) {
-	ret, _, err := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{actorAddr})
-	if err != nil {
-		return address.Undef, err
-	}
+func retreiveActorID(rt runtime.Runtime, actorAddr address.Address) (address.Address, error) {
+	ret := rt.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{actorAddr})
 
-	actorIDVal, err := abi.Deserialize(ret[0], abi.Integer)
-	if err != nil {
-		return address.Undef, errors.FaultErrorWrap(err, "could not convert actor id to big.Int")
-	}
+	actorIDVal := ret.(*big.Int)
 
-	return address.NewIDAddress(actorIDVal.Val.(*big.Int).Uint64())
+	return address.NewIDAddress(actorIDVal.Uint64())
 }
 
 // RemoveStorageMiner removes the given miner address from the power table.  This call will fail if

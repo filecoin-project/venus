@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -158,12 +158,12 @@ func TestStorageHeadAndCommit(t *testing.T) {
 		newCid, err := stage.Put(newMemory.RawData())
 		require.NoError(t, err)
 
-		assert.NotEqual(t, newCid, stage.Head())
+		assert.NotEqual(t, newCid, stage.LegacyHead())
 
-		err = stage.Commit(newCid, stage.Head())
+		err = stage.LegacyCommit(newCid, stage.LegacyHead())
 		assert.NoError(t, err)
 
-		assert.Equal(t, newCid, stage.Head())
+		assert.Equal(t, newCid, stage.LegacyHead())
 	})
 
 	t.Run("Committing a non existent chunk is an error", func(t *testing.T) {
@@ -174,7 +174,7 @@ func TestStorageHeadAndCommit(t *testing.T) {
 		newMemory, err := cbor.WrapObject([]byte("New memory"), types.DefaultHashFunction, -1)
 		require.NoError(t, err)
 
-		ec := stage.Commit(newMemory.Cid(), stage.Head())
+		ec := stage.LegacyCommit(newMemory.Cid(), stage.LegacyHead())
 		assert.Equal(t, internal.Errors[internal.ErrDanglingPointer], ec)
 	})
 
@@ -195,7 +195,7 @@ func TestStorageHeadAndCommit(t *testing.T) {
 		_, err = stage.Put(newMemory2.RawData())
 		require.NoError(t, err)
 
-		err = stage.Commit(newMemory2.Cid(), newMemory1.Cid())
+		err = stage.LegacyCommit(newMemory2.Cid(), newMemory1.Cid())
 		assert.Equal(t, internal.Errors[internal.ErrStaleHead], err)
 	})
 }
@@ -235,7 +235,7 @@ func TestDatastoreBacking(t *testing.T) {
 		require.NoError(t, err)
 
 		// commit the change
-		assert.NoError(t, stage.Commit(cid, stage.Head()))
+		assert.NoError(t, stage.LegacyCommit(cid, stage.LegacyHead()))
 
 		// flush the change
 		err = storage.Flush()
@@ -262,7 +262,7 @@ func TestDatastoreBacking(t *testing.T) {
 		require.NoError(t, err)
 
 		// only commit the second change
-		assert.NoError(t, stage.Commit(cid2, stage.Head()))
+		assert.NoError(t, stage.LegacyCommit(cid2, stage.LegacyHead()))
 
 		// flush the change
 		err = storage.Flush()
@@ -296,7 +296,7 @@ func TestDatastoreBacking(t *testing.T) {
 		require.NoError(t, err)
 
 		// only commit the second change
-		assert.NoError(t, stage.Commit(cid2, stage.Head()))
+		assert.NoError(t, stage.LegacyCommit(cid2, stage.LegacyHead()))
 
 		// flush the change
 		err = storage.Flush()
@@ -331,7 +331,7 @@ func TestValidationAndPruning(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Attempt to commit before adding linked memory
-		err = stage.Commit(cid, stage.Head())
+		err = stage.LegacyCommit(cid, stage.LegacyHead())
 		assert.Equal(t, internal.Errors[internal.ErrDanglingPointer], err)
 	})
 }

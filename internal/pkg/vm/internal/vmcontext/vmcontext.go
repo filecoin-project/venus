@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gastracker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
@@ -116,8 +117,8 @@ func (ctx *VMContext) Randomness(epoch types.BlockHeight, offset uint64) runtime
 	return rnd
 }
 
-// Send allows actors to invoke methods on other actors
-func (ctx *VMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+// LegacySend allows actors to invoke methods on other actors
+func (ctx *VMContext) LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {
 		runtime.Abort("Calling Send() is not allowed during side-effet lock")
@@ -173,7 +174,7 @@ func (ctx *VMContext) Send(to address.Address, method types.MethodID, value type
 	}
 	innerCtx := NewVMContext(innerParams)
 
-	out, ret, err := deps.Send(context.Background(), innerCtx)
+	out, ret, err := deps.LegacySend(context.Background(), innerCtx)
 	if err != nil {
 		return nil, ret, err
 	}
@@ -182,6 +183,122 @@ func (ctx *VMContext) Send(to address.Address, method types.MethodID, value type
 	ctx.stateHandle.Validate()
 
 	return out, ret, nil
+}
+
+// Send allows actors to invoke methods on other actors
+func (ctx *VMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{} {
+	// check if side-effects are allowed
+	if !ctx.allowSideEffects {
+		runtime.Abort("Calling Send() is not allowed during side-effet lock")
+	}
+
+	deps := ctx.deps
+
+	// the message sender is the `to` actor, so this is what we set as `from` in the new message
+	from := ctx.toAddr
+	fromActor := ctx.to
+
+	vals, err := deps.ToValues(params)
+	if err != nil {
+		runtime.Abort("failed to convert inputs to abi values")
+	}
+
+	paramData, err := deps.EncodeValues(vals)
+	if err != nil {
+		runtime.Abort("encoding params failed")
+	}
+
+	msg := types.NewUnsignedMessage(from, to, 0, value, method, paramData)
+	if msg.From == msg.To {
+		// TODO 3647: handle this
+		runtime.Abortf("unhandled: sending to self (%s)", msg.From)
+	}
+
+	// fetch id address from init actor if necessary
+	toAddr, err := ctx.resolveActorAddress(msg.To)
+	if err != nil {
+		panic(exitcode.ActorNotFound)
+	}
+
+	toActor, err := deps.GetOrCreateActor(context.TODO(), toAddr, func() (*actor.Actor, error) {
+		return &actor.Actor{}, nil
+	})
+	if err != nil {
+		runtime.Abortf("failed to get or create To actor %s", msg.To)
+	}
+	// TODO(fritz) de-dup some of the logic between here and core.Send
+	innerParams := NewContextParams{
+		From:        fromActor,
+		To:          toActor,
+		ToAddr:      toAddr,
+		Message:     msg,
+		OriginMsg:   ctx.originMsg,
+		State:       ctx.state,
+		StorageMap:  ctx.storageMap,
+		GasTracker:  ctx.gasTracker,
+		BlockHeight: ctx.blockHeight,
+		Ancestors:   ctx.ancestors,
+		Actors:      ctx.actors,
+	}
+	innerCtx := NewVMContext(innerParams)
+
+	return deps.Apply(innerCtx)
+}
+
+func apply(ctx *VMContext) interface{} {
+	filValue := ctx.message.Value
+	if !filValue.Equal(types.ZeroAttoFIL) {
+		if filValue.IsNegative() {
+			runtime.Abort("Can not transfer negative FIL value")
+		}
+		if err := Transfer(ctx.from, ctx.to, filValue); err != nil {
+			panic(exitcode.InsufficientFunds)
+		}
+	}
+
+	msg := ctx.message
+
+	if msg.Method == types.SendMethodID {
+		// if only tokens are transferred there is no need for a method
+		// this means we can shortcircuit execution
+		return nil
+	}
+
+	if msg.Method == types.InvalidMethodID {
+		// your test should not be getting here..
+		// Note: this method is not materialized in production but could occur on tests
+		panic("trying to execute fake method on the actual VM, fix test")
+	}
+
+	// TODO: use chain height based protocol version here (#3360)
+	toExecutable, err := ctx.Actors().GetActorCode(ctx.To().Code, 0)
+	if err != nil {
+		panic(exitcode.ActorCodeNotFound)
+	}
+
+	exportedFn, ok := makeTypedExport(toExecutable, msg.Method)
+	if !ok {
+		panic(exitcode.InvalidMethod)
+	}
+
+	vals, code, err := exportedFn(ctx)
+
+	// Handle legacy codes and errors
+	if err != nil {
+		runtime.Abort("Legacy actor code returned an error")
+	}
+
+	if code != 0 {
+		runtime.Abort("Legacy actor code returned with non-zero error code")
+	}
+
+	// validate state access
+	ctx.stateHandle.Validate()
+
+	if len(vals) > 0 {
+		return vals[0]
+	}
+	return nil
 }
 
 var _ runtime.MessageInfo = (*VMContext)(nil)
@@ -306,12 +423,14 @@ func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []i
 	newActor.Code = code
 
 	// send message containing actor's initial balance to construct it with the given params
-	_, _, err = ctx.Runtime().Send(idAddr, types.ConstructorMethodID, ctx.Message().ValueReceived(), params)
-	if err != nil {
-		runtime.Abort("Constructor failed on actor")
-	}
+	ctx.Runtime().Send(idAddr, types.ConstructorMethodID, ctx.Message().ValueReceived(), params)
 
 	return actorAddr
+}
+
+// VerifySignature implemenets the ExtendedInvocationContext interface.
+func (*VMContext) VerifySignature(signer address.Address, signature types.Signature, msg []byte) bool {
+	return types.IsValidSignature(msg, signer, signature)
 }
 
 var _ runtime.LegacyInvocationContext = (*VMContext)(nil)
@@ -392,8 +511,9 @@ func (ctx *VMContext) To() *actor.Actor {
 func makeDeps(st *state.CachedTree) *deps {
 	deps := deps{
 		EncodeValues: abi.EncodeValues,
-		Send:         Send,
+		LegacySend:   LegacySend,
 		ToValues:     abi.ToValues,
+		Apply:        apply,
 	}
 	if st != nil {
 		deps.GetOrCreateActor = st.GetOrCreateActor
@@ -404,13 +524,14 @@ func makeDeps(st *state.CachedTree) *deps {
 type deps struct {
 	EncodeValues     func([]*abi.Value) ([]byte, error)
 	GetOrCreateActor func(context.Context, address.Address, func() (*actor.Actor, error)) (*actor.Actor, error)
-	Send             func(context.Context, ExtendedRuntime) ([][]byte, uint8, error)
+	LegacySend       func(context.Context, ExtendedRuntime) ([][]byte, uint8, error)
+	Apply            func(*VMContext) interface{}
 	ToValues         func([]interface{}) ([]*abi.Value, error)
 }
 
-// Send executes a message pass inside the VM. If error is set it
+// LegacySend executes a message pass inside the VM. If error is set it
 // will always satisfy either ShouldRevert() or IsFault().
-func Send(ctx context.Context, vmCtx ExtendedRuntime) ([][]byte, uint8, error) {
+func LegacySend(ctx context.Context, vmCtx ExtendedRuntime) (out [][]byte, code uint8, err error) {
 	return send(ctx, Transfer, vmCtx)
 }
 
@@ -456,14 +577,21 @@ func send(ctx context.Context, transfer TransferFn, vmCtx ExtendedRuntime) ([][]
 		return nil, 1, errors.Errors[errors.ErrMissingExport]
 	}
 
-	r, code, err := exportedFn(vmCtx)
-	if r != nil {
-		var rv [][]byte
-		err = encoding.Decode(r, &rv)
+	vals, code, err := exportedFn(vmCtx)
+	if vals != nil {
+		r, err := abi.ToEncodedValues(vals...)
 		if err != nil {
-			return nil, 1, errors.NewRevertErrorf("method return doesn't decode as array: %s", err)
+			return nil, 1, errors.FaultErrorWrap(err, "failed to marshal output value")
 		}
-		return rv, code, err
+
+		if r != nil {
+			var rv [][]byte
+			err = encoding.Decode(r, &rv)
+			if err != nil {
+				return nil, 1, errors.NewRevertErrorf("method return doesn't decode as array: %s", err)
+			}
+			return rv, code, err
+		}
 	}
 	return nil, code, err
 }
@@ -490,7 +618,7 @@ func (ctx *VMContext) resolveActorAddress(addr address.Address) (address.Address
 		return addr, nil
 	}
 
-	ret, _, err := ctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
+	ret, _, err := ctx.LegacySend(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
 	if err != nil {
 		return address.Undef, err
 	}

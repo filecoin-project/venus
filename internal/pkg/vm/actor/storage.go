@@ -61,7 +61,7 @@ func WithState(ctx runtime.InvocationContext, st interface{}, f func() (interfac
 		return nil, vmerrors.RevertErrorWrap(err, "Could not stage memory chunk")
 	}
 
-	err = stage.Commit(cid, stage.Head())
+	err = stage.LegacyCommit(cid, stage.LegacyHead())
 	if err != nil {
 		return nil, vmerrors.RevertErrorWrap(err, "Could not commit actor memory")
 	}
@@ -73,7 +73,7 @@ func WithState(ctx runtime.InvocationContext, st interface{}, f func() (interfac
 func ReadState(ctx runtime.InvocationContext, st interface{}) error {
 	storage := ctx.Runtime().Storage()
 
-	memory, err := storage.Get(storage.Head())
+	memory, err := storage.Get(storage.LegacyHead())
 	if err != nil {
 		return vmerrors.FaultErrorWrap(err, "Could not read actor storage")
 	}
@@ -94,7 +94,7 @@ func WriteState(ctx runtime.InvocationContext, state interface{}) error {
 		return vmerrors.RevertErrorWrap(err, "Could not stage memory chunk")
 	}
 
-	err = stage.Commit(cid, stage.Head())
+	err = stage.LegacyCommit(cid, stage.LegacyHead())
 	if err != nil {
 		return vmerrors.RevertErrorWrap(err, "Could not commit actor memory")
 	}

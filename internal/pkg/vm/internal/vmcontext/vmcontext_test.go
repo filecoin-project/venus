@@ -69,7 +69,7 @@ func TestVMContextStorage(t *testing.T) {
 
 	cid, err := vmCtx.Storage().Put(node.RawData())
 	require.NoError(t, err)
-	err = vmCtx.Storage().Commit(cid, vmCtx.Storage().Head())
+	err = vmCtx.Storage().LegacyCommit(cid, vmCtx.Storage().LegacyHead())
 	require.NoError(t, err)
 	assert.NoError(t, cstate.Commit(ctx))
 
@@ -77,7 +77,7 @@ func TestVMContextStorage(t *testing.T) {
 	toActorBack, err := st.GetActor(ctx, toAddr)
 	assert.NoError(t, err)
 	vmCtxParams.To = toActorBack
-	storage, err := vmCtx.Storage().Get(vmCtx.Storage().Head())
+	storage, err := vmCtx.Storage().Get(vmCtx.Storage().LegacyHead())
 	assert.NoError(t, err)
 	assert.Equal(t, storage, node.RawData())
 }
@@ -131,9 +131,9 @@ func TestVMContextCreateActor(t *testing.T) {
 			paramsForwarded = params
 			return []*abi.Value{}, nil
 		}
-		vm.deps.Send = func(ctx context.Context, vmCtx ExtendedRuntime) ([][]byte, uint8, error) {
+		vm.deps.Apply = func(vmCtx *VMContext) interface{} {
 			valueForwarded = vmCtx.LegacyMessage().Value
-			return nil, 0, nil
+			return nil
 		}
 
 		ctx := context.Background()
@@ -217,7 +217,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		ctx := NewVMContext(vmCtxParams())
 		ctx.deps = deps
 
-		_, code, err := ctx.Send(newAddress(), fooID, types.ZeroAttoFIL, []interface{}{})
+		_, code, err := ctx.LegacySend(newAddress(), fooID, types.ZeroAttoFIL, []interface{}{})
 
 		assert.Error(t, err)
 		assert.Equal(t, 1, int(code))
@@ -241,7 +241,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		ctx := NewVMContext(vmCtxParams())
 		ctx.deps = deps
 
-		_, code, err := ctx.Send(newAddress(), fooID, types.ZeroAttoFIL, []interface{}{})
+		_, code, err := ctx.LegacySend(newAddress(), fooID, types.ZeroAttoFIL, []interface{}{})
 
 		assert.Error(t, err)
 		assert.Equal(t, 1, int(code))
@@ -272,7 +272,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		ctx.deps = deps
 		ctx.toAddr = msg.To
 
-		_, code, err := ctx.Send(to, fooID, types.ZeroAttoFIL, []interface{}{})
+		_, code, err := ctx.LegacySend(to, fooID, types.ZeroAttoFIL, []interface{}{})
 
 		assert.Error(t, err)
 		assert.Equal(t, 1, int(code))
@@ -303,7 +303,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		ctx := NewVMContext(params)
 		ctx.deps = deps
 
-		_, code, err := ctx.Send(newAddress(), fooID, types.ZeroAttoFIL, []interface{}{})
+		_, code, err := ctx.LegacySend(newAddress(), fooID, types.ZeroAttoFIL, []interface{}{})
 
 		assert.Error(t, err)
 		assert.Equal(t, 1, int(code))
@@ -324,7 +324,7 @@ func TestVMContextSendFailures(t *testing.T) {
 				calls = append(calls, "GetOrCreateActor")
 				return f()
 			},
-			Send: func(ctx context.Context, vmCtx ExtendedRuntime) ([][]byte, uint8, error) {
+			LegacySend: func(ctx context.Context, vmCtx ExtendedRuntime) ([][]byte, uint8, error) {
 				calls = append(calls, "Send")
 				return nil, 123, expectedVMSendErr
 			},
@@ -337,7 +337,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		ctx := NewVMContext(vmCtxParams())
 		ctx.deps = deps
 
-		_, code, err := ctx.Send(newAddress(), fooID, types.ZeroAttoFIL, []interface{}{})
+		_, code, err := ctx.LegacySend(newAddress(), fooID, types.ZeroAttoFIL, []interface{}{})
 
 		assert.Error(t, err)
 		assert.Equal(t, 123, int(code))
