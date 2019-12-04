@@ -36,7 +36,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 		ret, exitCode, err := fn(makeCtx(Two))
 		assert.NoError(t, err)
 		assert.Equal(t, exitCode, uint8(0))
-		assert.Nil(t, ret)
+		assert.Equal(t, len(ret), 0)
 	})
 
 	t.Run("with return", func(t *testing.T) {
@@ -53,11 +53,11 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 		ret, exitCode, err := fn(makeCtx(Four))
 		assert.NoError(t, err)
 		assert.Equal(t, exitCode, uint8(0))
+		assert.Equal(t, len(ret), 1)
 
-		vv, err := abi.DecodeValues(ret, a.signatures[Four].Return)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(vv))
-		assert.Equal(t, vv[0].Val, []byte("hello"))
+		v, ok := ret[0].([]byte)
+		assert.True(t, ok)
+		assert.Equal(t, v, []byte("hello"))
 	})
 
 	t.Run("with error return", func(t *testing.T) {

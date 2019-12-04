@@ -46,7 +46,7 @@ func NewVMContext(params NewContextParams) *vmcontext.VMContext {
 // Send executes a message pass inside the VM. If error is set it
 // will always satisfy either ShouldRevert() or IsFault().
 func Send(ctx context.Context, vmCtx vmcontext.ExtendedRuntime) ([][]byte, uint8, error) {
-	return vmcontext.Send(ctx, vmCtx)
+	return vmcontext.LegacySend(ctx, vmCtx)
 }
 
 // Transfer transfers the given value between two actors.

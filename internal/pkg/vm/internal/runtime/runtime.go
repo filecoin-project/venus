@@ -1,6 +1,8 @@
 package runtime
 
 import (
+	"fmt"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
@@ -17,6 +19,8 @@ type Runtime interface {
 	// LegacySend allows actors to invoke methods on other actors
 	// TODO: remove after all legacy actor code is gone (issue #???)
 	LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
+	// Send allows actors to invoke methods on other actors
+	Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{}
 	// Storage is the raw store for IPLD objects.
 	//
 	// Note: this is required for custom data structures.
@@ -74,8 +78,11 @@ type ExtendedInvocationContext interface {
 	//
 	// WARNING: May only be called by InitActor.
 	CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address
-	// Dragons: add new VerifySignature (mileage on the arg types may vary)
-	// VerifySignature(signer address.Address, signature filcrypto.Signature, msg filcrypto.Message) bool
+	// VerifySignature cryptographically verifies the signature.
+	//
+	// This methods returns `True` when 'signature' is signed hash of 'msg'
+	// using the public key belonging to the `signer`.
+	VerifySignature(signer address.Address, signature types.Signature, msg []byte) bool
 }
 
 // LegacyInvocationContext are the methods from the old VM we have not removed yet.
@@ -155,6 +162,11 @@ func (x AbortPanicError) Error() string {
 // Abort will stop the VM execution and return an abort error to the caller.
 func Abort(msg string) {
 	panic(AbortPanicError{msg: msg})
+}
+
+// Abortf will stop the VM execution and return an abort error to the caller.
+func Abortf(msg string, args ...interface{}) error {
+	panic(AbortPanicError{msg: fmt.Sprintf(msg, args...)})
 }
 
 // Assert will abort if the condition is `False` and return an abort error to the caller.

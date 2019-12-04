@@ -131,9 +131,9 @@ func TestVMContextCreateActor(t *testing.T) {
 			paramsForwarded = params
 			return []*abi.Value{}, nil
 		}
-		vm.deps.Send = func(ctx context.Context, vmCtx ExtendedRuntime) ([][]byte, uint8, error) {
+		vm.deps.Apply = func(vmCtx *VMContext) interface{} {
 			valueForwarded = vmCtx.LegacyMessage().Value
-			return nil, 0, nil
+			return nil
 		}
 
 		ctx := context.Background()
@@ -324,7 +324,7 @@ func TestVMContextSendFailures(t *testing.T) {
 				calls = append(calls, "GetOrCreateActor")
 				return f()
 			},
-			Send: func(ctx context.Context, vmCtx ExtendedRuntime) ([][]byte, uint8, error) {
+			LegacySend: func(ctx context.Context, vmCtx ExtendedRuntime) ([][]byte, uint8, error) {
 				calls = append(calls, "Send")
 				return nil, 123, expectedVMSendErr
 			},
