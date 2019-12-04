@@ -165,7 +165,7 @@ func Abort(msg string) {
 }
 
 // Abortf will stop the VM execution and return an abort error to the caller.
-func Abortf(msg string, args ...interface{}) error {
+func Abortf(msg string, args ...interface{}) {
 	panic(AbortPanicError{msg: fmt.Sprintf(msg, args...)})
 }
 
