@@ -84,13 +84,14 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 func TestPaymentBrokerUpdate(t *testing.T) {
 	tf.UnitTest(t)
 
+	ctx := context.TODO()
 	sys := setup(t)
 
 	result, err := sys.ApplyRedeemMessage(sys.target, 100, 0)
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
-	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 
 	assert.Equal(t, types.NewAttoFILFromFIL(900), paymentBroker.Balance)
 
@@ -217,6 +218,7 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 	tf.UnitTest(t)
 
+	ctx := context.TODO()
 	addrGetter := address.NewForTestGetter()
 	pbTestActorAddr, err := address.NewIDAddress(4000)
 	require.NoError(t, err)
@@ -232,7 +234,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, sys.st.SetActor(context.TODO(), pbTestActorAddr, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 		// Expect that the redeemed flag is false on init
-		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 		channel := sys.retrieveChannel(paymentBroker)
 		assert.Equal(t, false, channel.Redeemed)
 
@@ -243,7 +245,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, appResult.ExecutionError)
 
 		// Expect that the redeemed flag is now true
-		paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 		channel = sys.retrieveChannel(paymentBroker)
 		assert.Equal(t, true, channel.Redeemed)
 	})
@@ -253,7 +255,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, sys.st.SetActor(context.TODO(), pbTestActorAddr, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 		// Expect that the condition is nil on init
-		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 		channel := sys.retrieveChannel(paymentBroker)
 		assert.Nil(t, channel.Condition)
 
@@ -264,7 +266,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, appResult.ExecutionError)
 
 		// Expect that the condition is now set and correct
-		paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 		channel = sys.retrieveChannel(paymentBroker)
 		assert.NotNil(t, channel.Condition)
 		assert.Equal(t, pbTestActorAddr, channel.Condition.To)
@@ -285,7 +287,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, appResult.ExecutionError)
 
 		// Expect that the condition is set and correct
-		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 		channel := sys.retrieveChannel(paymentBroker)
 		assert.NotNil(t, channel.Condition)
 		assert.Equal(t, pbTestActorAddr, channel.Condition.To)
@@ -297,7 +299,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, appResult.ExecutionError)
 
 		// Expect that the condition is now nil
-		paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 		channel = sys.retrieveChannel(paymentBroker)
 		assert.Nil(t, channel.Condition)
 	})
@@ -313,7 +315,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, appResult.ExecutionError)
 
 		// Expect that the condition is nil
-		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 		channel := sys.retrieveChannel(paymentBroker)
 		assert.Nil(t, channel.Condition)
 
@@ -323,7 +325,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, appResult.ExecutionError)
 
 		// Expect that the condition is updated with the new redeemer params
-		paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 		channel = sys.retrieveChannel(paymentBroker)
 		assert.NotNil(t, channel.Condition)
 		assert.Equal(t, pbTestActorAddr, channel.Condition.To)
@@ -344,7 +346,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, appResult.ExecutionError)
 
 		// Expect that the condition is set and correct
-		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 		channel := sys.retrieveChannel(paymentBroker)
 		assert.NotNil(t, channel.Condition)
 		assert.Equal(t, pbTestActorAddr, channel.Condition.To)
@@ -358,7 +360,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, appResult.ExecutionError)
 
 		// Expect that the condition is updated with the new redeemer params
-		paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 		channel = sys.retrieveChannel(paymentBroker)
 		assert.NotNil(t, channel.Condition)
 		assert.Equal(t, pbTestActorAddr, channel.Condition.To)
@@ -396,6 +398,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 func TestPaymentBrokerRedeemReversesCancellations(t *testing.T) {
 	tf.UnitTest(t)
 
+	ctx := context.TODO()
 	sys := setup(t)
 
 	// Cancel the payment channel
@@ -407,7 +410,7 @@ func TestPaymentBrokerRedeemReversesCancellations(t *testing.T) {
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
 	// Expect that the EOL of the payment channel now reflects the cancellation
-	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 	channel := sys.retrieveChannel(paymentBroker)
 	assert.Equal(t, types.NewBlockHeight(20000), channel.AgreedEol)
 	assert.Equal(t, types.NewBlockHeight(10100), channel.Eol)
@@ -418,7 +421,7 @@ func TestPaymentBrokerRedeemReversesCancellations(t *testing.T) {
 
 	// Expect that the EOL has been reset to its originally agreed upon value
 	// meaning that the cancellation has been reversed
-	paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+	paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 	channel = sys.retrieveChannel(paymentBroker)
 	assert.Equal(t, types.NewBlockHeight(20000), channel.AgreedEol)
 	assert.Equal(t, types.NewBlockHeight(20000), channel.Eol)
@@ -520,6 +523,7 @@ func TestPaymentBrokerUpdateErrorsBeforeValidAt(t *testing.T) {
 func TestPaymentBrokerUpdateSuccessWithValidAt(t *testing.T) {
 	tf.UnitTest(t)
 
+	ctx := context.TODO()
 	sys := setup(t)
 
 	// Redeem at block height == validAt != 0.
@@ -528,10 +532,10 @@ func TestPaymentBrokerUpdateSuccessWithValidAt(t *testing.T) {
 
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
-	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 	assert.Equal(t, types.NewAttoFILFromFIL(900), paymentBroker.Balance)
 
-	payee := state.MustGetActor(sys.st, sys.target)
+	payee, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, sys.target)
 	assert.Equal(t, types.NewAttoFILFromFIL(100), payee.Balance)
 
 	channel := sys.retrieveChannel(paymentBroker)
@@ -545,10 +549,10 @@ func TestPaymentBrokerUpdateSuccessWithValidAt(t *testing.T) {
 
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
-	paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+	paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 	assert.Equal(t, types.NewAttoFILFromFIL(800), paymentBroker.Balance)
 
-	payee = state.MustGetActor(sys.st, sys.target)
+	payee, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, sys.target)
 	assert.Equal(t, types.NewAttoFILFromFIL(200), payee.Balance)
 
 	channel = sys.retrieveChannel(paymentBroker)
@@ -560,9 +564,10 @@ func TestPaymentBrokerUpdateSuccessWithValidAt(t *testing.T) {
 func TestPaymentBrokerClose(t *testing.T) {
 	tf.UnitTest(t)
 
+	ctx := context.TODO()
 	sys := setup(t)
 
-	payerActor := state.MustGetActor(sys.st, sys.payer)
+	payerActor, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, sys.payer)
 	payerBalancePriorToClose := payerActor.Balance
 
 	result, err := sys.ApplyCloseMessage(sys.target, 100, 0)
@@ -705,9 +710,10 @@ func TestPaymentBrokerRedeemInvalidSig(t *testing.T) {
 func TestPaymentBrokerReclaim(t *testing.T) {
 	tf.UnitTest(t)
 
+	ctx := context.TODO()
 	sys := setup(t)
 
-	payer := state.MustGetActor(sys.st, sys.payer)
+	payer, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, sys.payer)
 	payerBalancePriorToClose := payer.Balance
 
 	pdata := abi.MustConvertParams(sys.channelID)
@@ -717,13 +723,13 @@ func TestPaymentBrokerReclaim(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 
-	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 
 	// all funds have been redeemed or returned
 	assert.Equal(t, types.NewAttoFILFromFIL(0), paymentBroker.Balance)
 
 	// entire balance is returned to payer
-	payer = state.MustGetActor(sys.st, sys.payer)
+	payer, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, sys.payer)
 	assert.Equal(t, payerBalancePriorToClose.Add(types.NewAttoFILFromFIL(1000)), payer.Balance)
 }
 
@@ -747,6 +753,7 @@ func TestPaymentBrokerReclaimFailsBeforeChannelEol(t *testing.T) {
 func TestPaymentBrokerExtend(t *testing.T) {
 	tf.UnitTest(t)
 
+	ctx := context.TODO()
 	sys := setup(t)
 
 	// extend channel
@@ -767,7 +774,7 @@ func TestPaymentBrokerExtend(t *testing.T) {
 	assert.Equal(t, uint8(0), result.Receipt.ExitCode)
 
 	// check value
-	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 	assert.Equal(t, types.NewAttoFILFromFIL(900), paymentBroker.Balance) // 1000 + 1000 - 1100
 
 	// get payment channel
@@ -813,6 +820,7 @@ func TestPaymentBrokerExtendRefusesToShortenTheEol(t *testing.T) {
 func TestPaymentBrokerCancel(t *testing.T) {
 	tf.UnitTest(t)
 
+	ctx := context.TODO()
 	sys := setup(t)
 
 	pdata := abi.MustConvertParams(sys.channelID)
@@ -823,7 +831,7 @@ func TestPaymentBrokerCancel(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, uint8(0), result.Receipt.ExitCode)
 
-	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 	channel := sys.retrieveChannel(paymentBroker)
 
 	assert.Equal(t, types.NewBlockHeight(20000), channel.AgreedEol)
@@ -895,6 +903,7 @@ func TestPaymentBrokerCancelSucceedsAfterSuccessfulRedeemButFailedConditions(t *
 	blockHeightParam := types.NewBlockHeight(43)
 	redeemerParams := []interface{}{blockHeightParam}
 
+	ctx := context.TODO()
 	sys := setup(t)
 	require.NoError(t, sys.st.SetActor(context.Background(), pbTestAddr, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
@@ -905,7 +914,7 @@ func TestPaymentBrokerCancelSucceedsAfterSuccessfulRedeemButFailedConditions(t *
 	require.NoError(t, result.ExecutionError)
 
 	// Expect that the redeemed flag is true and condition is set
-	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
 	channel := sys.retrieveChannel(paymentBroker)
 	assert.Equal(t, true, channel.Redeemed)
 	assert.NotNil(t, channel.Condition)

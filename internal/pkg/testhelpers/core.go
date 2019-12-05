@@ -78,6 +78,10 @@ func RequireNewMinerActor(ctx context.Context, t *testing.T, st state.Tree, vms 
 
 // RequireLookupActor converts the given address to an id address before looking up the actor in the state tree
 func RequireLookupActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, actorAddr address.Address) (*actor.Actor, address.Address) {
+	if actorAddr.Protocol() == address.ID {
+		return state.MustGetActor(st, actorAddr), actorAddr
+	}
+
 	cachedTree := state.NewCachedTree(st)
 	initActor, _, err := cachedTree.GetOrCreateActor(ctx, address.InitAddress, func() (*actor.Actor, address.Address, error) {
 		return RequireNewInitActor(t, vms), address.InitAddress, nil
@@ -193,7 +197,7 @@ func CreateTestMinerWith(
 	require.True(t, found)
 
 
-	nonce := RequireGetNonce(t, st, idAddr)
+	nonce := RequireGetNonce(t, st, vms, idAddr)
 	msg := types.NewUnsignedMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, collateral, storagemarket.CreateStorageMiner, pdata)
 
 	result, err := ApplyTestMessage(st, vms, msg, types.NewBlockHeight(height))
@@ -247,11 +251,9 @@ func GetTotalPower(t *testing.T, st state.Tree, vms vm.StorageMap) *types.BytesA
 
 // RequireGetNonce returns the next nonce of the actor at address a within
 // state tree st, failing on error.
-func RequireGetNonce(t *testing.T, st state.Tree, a address.Address) uint64 {
+func RequireGetNonce(t *testing.T, st state.Tree, vms vm.StorageMap, a address.Address) uint64 {
 	ctx := context.Background()
-	actr, err := st.GetActor(ctx, a)
-	require.NoError(t, err)
-
+	actr, _ := RequireLookupActor(ctx, t, st, vms, a)
 	nonce, err := actor.NextNonce(actr)
 	require.NoError(t, err)
 	return nonce

@@ -2,6 +2,8 @@ package vmcontext
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/ipfs/go-block-format"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -20,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
@@ -186,6 +189,7 @@ func TestVMContextSendFailures(t *testing.T) {
 	tree := state.NewCachedTree(&mockStateTree)
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	vms := storagemap.NewStorageMap(bs)
+	initActor := mustCreateInitActor(t, bs)
 
 	msg := newMsg()
 
@@ -287,6 +291,10 @@ func TestVMContextSendFailures(t *testing.T) {
 				calls = append(calls, "EncodeValues")
 				return nil, nil
 			},
+			GetActor: func(_ context.Context, _ address.Address) (*actor.Actor, error) {
+				calls = append(calls, "GetActor")
+				return initActor, nil
+			},
 			GetOrCreateActor: func(_ context.Context, _ address.Address, _ func() (*actor.Actor, address.Address, error)) (*actor.Actor, address.Address, error) {
 
 				calls = append(calls, "GetOrCreateActor")
@@ -308,7 +316,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, 1, int(code))
 		assert.True(t, errors.IsFault(err))
-		assert.Equal(t, []string{"ToValues", "EncodeValues", "GetOrCreateActor"}, calls)
+		assert.Equal(t, []string{"ToValues", "EncodeValues", "GetActor", "GetOrCreateActor"}, calls)
 	})
 
 	t.Run("propagates any error returned from Send", func(t *testing.T) {
@@ -319,6 +327,10 @@ func TestVMContextSendFailures(t *testing.T) {
 			EncodeValues: func(_ []*abi.Value) ([]byte, error) {
 				calls = append(calls, "EncodeValues")
 				return nil, nil
+			},
+			GetActor: func(_ context.Context, _ address.Address) (*actor.Actor, error) {
+				calls = append(calls, "GetActor")
+				return initActor, nil
 			},
 			GetOrCreateActor: func(_ context.Context, _ address.Address, f func() (*actor.Actor, address.Address, error)) (*actor.Actor, address.Address, error) {
 				calls = append(calls, "GetOrCreateActor")
@@ -342,7 +354,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, 123, int(code))
 		assert.Equal(t, expectedVMSendErr, err)
-		assert.Equal(t, []string{"ToValues", "EncodeValues", "GetOrCreateActor", "Send"}, calls)
+		assert.Equal(t, []string{"ToValues", "EncodeValues", "GetActor", "GetOrCreateActor", "Send"}, calls)
 	})
 
 	t.Run("AddressForNewActor uses origin message", func(t *testing.T) {
@@ -482,3 +494,21 @@ func TestTransfer(t *testing.T) {
 		assert.EqualError(t, Transfer(actor2, actor3, negval), "cannot transfer negative values")
 	})
 }
+
+func mustCreateInitActor(t *testing.T, bs blockstore.Blockstore) *actor.Actor {
+	act := actor.NewActor(types.InitActorCodeCid, types.ZeroAttoFIL)
+
+	initStorage := &initactor.State{
+		Network: "test",
+		NextID:  100,
+	}
+	stateBytes, err := encoding.Encode(initStorage)
+	require.NoError(t, err)
+
+	blk := blocks.NewBlock(stateBytes)
+	bs.Put(blk)
+
+	act.Head = blk.Cid()
+	return act
+}
+

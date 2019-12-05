@@ -276,27 +276,19 @@ func sharedSetupInitial() (*hamt.CborIpldStore, *message.Pool, cid.Cid) {
 func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 	state.Tree, *message.Pool, []address.Address, blockstore.Blockstore) {
 
-	cst, pool, fakeActorCodeCid := sharedSetupInitial()
+	cst, pool, _ := sharedSetupInitial()
 	ctx := context.TODO()
 	d := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(d)
 	vms := vm.NewStorageMap(bs)
 
-	// TODO: We don't need fake actors here, so these could be made real.
-	//       And the NetworkAddress actor can/should be the real one.
-	// Stick two fake actors in the state tree so they can talk.
-	// Now tracking in #3311
 	addr1, addr2, addr3, addr5 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2], mockSigner.Addresses[4]
-	act1 := th.RequireNewFakeActor(t, vms, addr1, fakeActorCodeCid)
-	act2 := th.RequireNewFakeActor(t, vms, addr2, fakeActorCodeCid)
-	fakeNetAct := th.RequireNewFakeActorWithTokens(t, vms, addr3, fakeActorCodeCid, types.NewAttoFILFromFIL(1000000))
 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward failures.
-		address.NetworkAddress: fakeNetAct,
-
-		addr1: act1,
-		addr2: act2,
+		address.NetworkAddress: th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(1000000)),
 	})
+	th.RequireInitAccountActor(ctx, t, st, vms, addr1, types.NewAttoFILFromFIL(100))
+	th.RequireInitAccountActor(ctx, t, st, vms, addr2, types.NewAttoFILFromFIL(100))
 	th.RequireInitAccountActor(ctx, t, st, vms, addr5, types.ZeroAttoFIL)
 	_, addr4 := th.RequireNewMinerActor(ctx, t, st, vms, addr5, 10, th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
 	return st, pool, []address.Address{addr1, addr2, addr3, addr4, addr5}, bs
@@ -613,11 +605,11 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 
 	// Set actor nonce past nonce of message in pool.
 	// Have to do this here to get a permanent error in the pool.
-	act, err := st.GetActor(ctx, addrs[1])
+	act, actID := th.RequireLookupActor(ctx, t, st, vm.NewStorageMap(bs), addrs[1])
 	require.NoError(t, err)
 
 	act.Nonce = types.Uint64(2)
-	err = st.SetActor(ctx, addrs[1], act)
+	err = st.SetActor(ctx, actID, act)
 	require.NoError(t, err)
 
 	stateRoot, err := st.Flush(ctx)

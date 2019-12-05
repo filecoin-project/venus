@@ -515,6 +515,7 @@ func makeDeps(st *state.CachedTree) *deps {
 		Apply:        apply,
 	}
 	if st != nil {
+		deps.GetActor = st.GetActor
 		deps.GetOrCreateActor = st.GetOrCreateActor
 	}
 	return &deps
@@ -522,6 +523,7 @@ func makeDeps(st *state.CachedTree) *deps {
 
 type deps struct {
 	EncodeValues     func([]*abi.Value) ([]byte, error)
+	GetActor 		 func(context.Context, address.Address) (*actor.Actor, error)
 	GetOrCreateActor func(context.Context, address.Address, func() (*actor.Actor, address.Address, error)) (*actor.Actor, address.Address, error)
 	LegacySend       func(context.Context, ExtendedRuntime) ([][]byte, uint8, error)
 	Apply            func(*VMContext) interface{}
@@ -617,7 +619,7 @@ func (ctx *VMContext) resolveActorAddress(addr address.Address) (address.Address
 		return addr, nil
 	}
 
-	init, err := ctx.state.GetActor(context.TODO(), address.InitAddress)
+	init, err := ctx.deps.GetActor(context.TODO(), address.InitAddress)
 	if err != nil {
 		return address.Undef, err
 	}
