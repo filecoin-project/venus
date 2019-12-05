@@ -10,11 +10,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 var blockTopicLogger = logging.Logger("net/block_validator")
+var messageTopicLogger = logging.Logger("net/message_validator")
 var mDecodeBlkFail = metrics.NewInt64Counter("net/pubsub_block_decode_failure", "Number of blocks that fail to decode seen on BlockTopic pubsub channel")
 var mInvalidBlk = metrics.NewInt64Counter("net/pubsub_invalid_block", "Number of blocks that fail syntax validation seen on BlockTopic pubsub channel")
+var mDecodeMsgFail = metrics.NewInt64Counter("net/pubsub_message_decode_failure", "Number of messages that fail to decode seen on MessageTopic pubsub channel")
+var mInvalidMsg = metrics.NewInt64Counter("net/pubsub_invalid_message", "Number of messages that fail syntax validation seen on MessageTopic pubsub channel")
 
 // BlockTopicValidator may be registered on go-libp2p-pubsub to validate pubsub messages on the
 // BlockTopic.
@@ -57,4 +61,49 @@ func (btv *BlockTopicValidator) Validator() pubsub.Validator {
 // Opts returns the pubsub ValidatorOpts the BlockTopicValidator is configured to use.
 func (btv *BlockTopicValidator) Opts() []pubsub.ValidatorOpt {
 	return btv.opts
+}
+
+// MessageTopicValidator may be registered on go-libp3p-pubsub to validate
+// pubsub messages on the MessageTopic
+type MessageTopicValidator struct {
+	validator pubsub.Validator
+	opts      []pubsub.ValidatorOpt
+}
+
+// NewMessageTopicValidator returns a MessageTopicValidator using `mv` for
+// message validation
+func NewMessageTopicValidator(mv *consensus.IngestionValidator, opts ...pubsub.ValidatorOpt) *MessageTopicValidator {
+	return &MessageTopicValidator{
+		opts: opts,
+		validator: func(ctx context.Context, p peer.ID, msg *pubsub.Message) bool {
+			unmarshaled := &types.SignedMessage{}
+			if err := unmarshaled.Unmarshal(msg.GetData()); err != nil {
+				messageTopicLogger.Debugf("message from peer: %s failed to decode: %s", p.String(), err.Error())
+				mDecodeMsgFail.Inc(ctx, 1)
+				return false
+			}
+			if err := mv.Validate(ctx, unmarshaled); err != nil {
+				mCid, _ := unmarshaled.Cid()
+				messageTopicLogger.Debugf("message %s from peer: %s failed to validate: %s", mCid.String(), p.String(), err.Error())
+				mInvalidMsg.Inc(ctx, 1)
+				return false
+			}
+			return true
+		},
+	}
+}
+
+// Topic returns the topic string BlockTopic
+func (mtv *MessageTopicValidator) Topic(network string) string {
+	return MessageTopic(network)
+}
+
+// Validator returns a validation method matching the Validator pubsub function signature.
+func (mtv *MessageTopicValidator) Validator() pubsub.Validator {
+	return mtv.validator
+}
+
+// Opts returns the pubsub ValidatorOpts the BlockTopicValidator is configured to use.
+func (mtv *MessageTopicValidator) Opts() []pubsub.ValidatorOpt {
+	return mtv.opts
 }
