@@ -11,7 +11,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-ipfs-blockstore"
 	dag "github.com/ipfs/go-merkledag"
 
 	"github.com/stretchr/testify/assert"
@@ -26,6 +26,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -276,29 +277,28 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 	state.Tree, *message.Pool, []address.Address, blockstore.Blockstore) {
 
 	cst, pool, fakeActorCodeCid := sharedSetupInitial()
-	vms := th.VMStorage()
+	ctx := context.TODO()
 	d := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(d)
+	vms := vm.NewStorageMap(bs)
 
 	// TODO: We don't need fake actors here, so these could be made real.
 	//       And the NetworkAddress actor can/should be the real one.
 	// Stick two fake actors in the state tree so they can talk.
 	// Now tracking in #3311
-	addr1, addr2, addr3, addr4, addr5 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2], mockSigner.Addresses[3], mockSigner.Addresses[4]
+	addr1, addr2, addr3, addr5 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2], mockSigner.Addresses[4]
 	act1 := th.RequireNewFakeActor(t, vms, addr1, fakeActorCodeCid)
 	act2 := th.RequireNewFakeActor(t, vms, addr2, fakeActorCodeCid)
 	fakeNetAct := th.RequireNewFakeActorWithTokens(t, vms, addr3, fakeActorCodeCid, types.NewAttoFILFromFIL(1000000))
-	minerAct := th.RequireNewMinerActor(t, vms, addr4, addr5, 10, th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
-	minerOwner := th.RequireNewFakeActor(t, vms, addr5, fakeActorCodeCid)
 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward failures.
 		address.NetworkAddress: fakeNetAct,
 
 		addr1: act1,
 		addr2: act2,
-		addr4: minerAct,
-		addr5: minerOwner,
 	})
+	th.RequireInitAccountActor(ctx, t, st, vms, addr5, types.ZeroAttoFIL)
+	_, addr4 := th.RequireNewMinerActor(ctx, t, st, vms, addr5, 10, th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
 	return st, pool, []address.Address{addr1, addr2, addr3, addr4, addr5}, bs
 }
 
@@ -309,17 +309,15 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	vms := th.VMStorage()
 
 	mockSigner, _ := setupSigner()
-	cst, _, fakeActorCodeCid := sharedSetupInitial()
+	cst, _, _ := sharedSetupInitial()
+	ctx := context.TODO()
 
 	// Stick two fake actors in the state tree so they can talk.
 	addr1, addr2 := mockSigner.Addresses[0], mockSigner.Addresses[1]
-	act1 := th.RequireNewFakeActor(t, vms, addr1, fakeActorCodeCid)
 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(1000000)),
-		addr1:                  act1,
 	})
-
-	ctx := context.Background()
+	th.RequireInitAccountActor(ctx, t, st, vms, addr1, types.ZeroAttoFIL)
 
 	// NOTE: it is important that each category (success, temporary failure, permanent failure) is represented below.
 	// If a given message's category changes in the future, it needs to be replaced here in tests by another so we fully
@@ -663,6 +661,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		return nil, nil
 	}
 	minerAddr := addrs[4]
+	th.RequireInitAccountActor(ctx, t, st, vm.NewStorageMap(bs), addrs[3], types.ZeroAttoFIL)
 	minerOwnerAddr := addrs[3]
 
 	messages := chain.NewMessageStore(bs)

@@ -277,7 +277,7 @@ func (a *Impl) Exec(rt invocationContext, codeCID cid.Cid, params []interface{})
 
 		state.IdMap, err = setAddress(ctx, rt.Runtime().Storage(), state.IdMap, actorID, actorAddr)
 		if err != nil {
-			return nil, errors.FaultErrorWrap(err, "could not save addres by id")
+			return nil, errors.FaultErrorWrap(err, "could not save address by id")
 		}
 
 		return nil, nil
@@ -291,37 +291,34 @@ func (a *Impl) Exec(rt invocationContext, codeCID cid.Cid, params []interface{})
 
 func createMappedIDaddress(rt invocationContext, actorAddr address.Address) (address.Address, error) {
 	var state State
-	err := actor.ReadState(rt, &state)
+	idAddr, err := rt.StateHandle().Transaction(&state, func() (interface{}, error) {
+
+		// create id address
+		actorID := state.assignNewID()
+		idAddr, err := address.NewIDAddress(uint64(actorID))
+		if err != nil {
+			return address.Undef, errors.FaultErrorWrapf(err, "could not create id address with id %d", actorID)
+		}
+
+		// map id to address and vice versa
+		ctx := context.TODO()
+		state.AddressMap, err = setId(ctx, rt.Runtime().Storage(), state.AddressMap, actorAddr, actorID)
+		if err != nil {
+			return address.Undef, errors.FaultErrorWrap(err, "could not save id by address")
+		}
+
+		state.IdMap, err = setAddress(ctx, rt.Runtime().Storage(), state.IdMap, actorID, actorAddr)
+		if err != nil {
+			return address.Undef, errors.FaultErrorWrap(err, "could not save addres by id")
+		}
+
+		return idAddr, nil
+	})
 	if err != nil {
 		return address.Undef, err
 	}
 
-	// create id address
-	actorID := state.assignNewID()
-	idAddr, err := address.NewIDAddress(uint64(actorID))
-	if err != nil {
-		return address.Undef, errors.FaultErrorWrapf(err, "could not create id address with id %d", actorID)
-	}
-
-	// map id to address and vice versa
-	ctx := context.TODO()
-	state.AddressMap, err = setId(ctx, rt.Runtime().Storage(), state.AddressMap, actorAddr, actorID)
-	if err != nil {
-		return address.Undef, errors.FaultErrorWrap(err, "could not save id by address")
-	}
-
-	state.IdMap, err = setAddress(ctx, rt.Runtime().Storage(), state.IdMap, actorID, actorAddr)
-	if err != nil {
-		return address.Undef, errors.FaultErrorWrap(err, "could not save addres by id")
-	}
-
-	// write the state
-	err = actor.WriteState(rt, state)
-	if err != nil {
-		return address.Undef, errors.FaultErrorWrap(err, "could not write actor state")
-	}
-
-	return idAddr, nil
+	return idAddr.(address.Address), nil
 }
 
 func setAddress(ctx context.Context, storage runtime.Storage, idMap cid.Cid, actorID types.Uint64, addr address.Address) (cid.Cid, error) {

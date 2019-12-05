@@ -279,7 +279,7 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 		return nil, errors.FaultErrorWrap(err, "couldn't load from actor")
 	}
 	fromActor.IncNonce()
-	if err := st.SetActor(ctx, msg.From, fromActor); err != nil {
+	if err := st.SetActor(ctx, fromAddr, fromActor); err != nil {
 		return nil, errors.FaultErrorWrap(err, "could not set from actor after inc nonce")
 	}
 
@@ -324,9 +324,13 @@ func (p *DefaultProcessor) CallQueryMethod(ctx context.Context, st state.Tree, v
 	gasTracker.MsgGasLimit = types.BlockGasLimit
 
 	// translate address before retrieving from actor
-	toAddr, _, err := ResolveAddress(ctx, msg.To, cachedSt, vms, gasTracker)
+	toAddr, found, err := ResolveAddress(ctx, msg.To, cachedSt, vms, gasTracker)
 	if err != nil {
 		return nil, 1, errors.FaultErrorWrapf(err, "Could not resolve actor address")
+	}
+
+	if !found {
+		return nil, 1, errors.ApplyErrorPermanentWrapf(err, "failed to resolve To actor")
 	}
 
 	toActor, err := st.GetActor(ctx, toAddr)
@@ -412,7 +416,10 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		return nil, errors.FaultErrorWrapf(err, "Could not resolve actor address")
 	}
 	if !found {
-		return nil, errors.RevertErrorWrap(err, "could not find actor with from address")
+		return &types.MessageReceipt{
+			ExitCode:   errors.CodeError(err),
+			GasAttoFIL: types.ZeroAttoFIL,
+		}, errFromAccountNotFound
 	}
 
 	fromActor, err := st.GetActor(ctx, fromAddr)
@@ -562,7 +569,15 @@ func (br *DefaultBlockRewarder) BlockReward(ctx context.Context, st state.Tree, 
 // GasReward transfers the gas cost reward from the sender actor to the minerOwnerAddr
 func (br *DefaultBlockRewarder) GasReward(ctx context.Context, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error {
 	cachedTree := state.NewCachedTree(st)
-	if err := rewardTransfer(ctx, msg.From, minerOwnerAddr, cost, cachedTree, vms, vm.NewGasTracker()); err != nil {
+	fromAddr, found, err := ResolveAddress(ctx, msg.From, cachedTree, vms, vm.NewGasTracker())
+	if err != nil {
+		return errors.FaultErrorWrapf(err, "Could not resolve from address for gas")
+	}
+	if !found {
+		return errors.FaultErrorWrapf(err, "Could not resolve from address for gas")
+	}
+
+	if err := rewardTransfer(ctx, fromAddr, minerOwnerAddr, cost, cachedTree, vms, vm.NewGasTracker()); err != nil {
 		return errors.FaultErrorWrap(err, "Error attempting to pay gas reward")
 	}
 	return cachedTree.Commit(ctx)
