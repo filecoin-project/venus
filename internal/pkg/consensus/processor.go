@@ -523,7 +523,7 @@ func (p *DefaultProcessor) ApplyMessagesAndPayRewards(ctx context.Context, st st
 	var results []*ApplyMessageResult
 
 	// Pay block reward.
-	if err := p.blockRewarder.BlockReward(ctx, st,vms, minerOwnerAddr); err != nil {
+	if err := p.blockRewarder.BlockReward(ctx, st, vms, minerOwnerAddr); err != nil {
 		return nil, err
 	}
 

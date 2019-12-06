@@ -172,7 +172,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 
 		// Initialize account actors
 		for addr, val := range genCfg.accounts {
-			cachedState.GetOrCreateActor(ctx, addr, func() (*actor.Actor, address.Address, error) {
+			_, _, err := cachedState.GetOrCreateActor(ctx, addr, func() (*actor.Actor, address.Address, error) {
 				if addr.Protocol() == address.ID {
 					a, err := account.NewActor(val)
 					return a, addr, err
@@ -181,11 +181,13 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 				vmctx := vm.NewVMContext(vm.NewContextParams{State: cachedState, StorageMap: storageMap, To: init, ToAddr: address.InitAddress})
 				return initactor.InitializeAccountActor(vmctx, addr, val)
 			})
+			if err != nil {
+				return nil, err
+			}
 		}
 		if err := cachedState.Commit(ctx); err != nil {
 			return nil, err
 		}
-
 
 		// Initialize miner actors
 		for addr, val := range genCfg.miners {
@@ -299,7 +301,7 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 
 	// sort addresses so genesis generation will be stable
 	sortedAddresses := []string{}
-	for addr, _ := range defaultAccounts {
+	for addr := range defaultAccounts {
 		sortedAddresses = append(sortedAddresses, string(addr.Bytes()))
 	}
 	sort.Strings(sortedAddresses)
@@ -321,11 +323,14 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 
 				vmctx := vm.NewVMContext(vm.NewContextParams{State: cachedTree, StorageMap: storageMap, To: initActor, ToAddr: address.InitAddress})
 				return initactor.InitializeAccountActor(vmctx, addr, val)
-			} else {
-				a, err := account.NewActor(val)
-				return a, addr, err
 			}
+
+			a, err := account.NewActor(val)
+			return a, addr, err
 		})
+		if err != nil {
+			return err
+		}
 	}
 	return cachedTree.Commit(ctx)
 }

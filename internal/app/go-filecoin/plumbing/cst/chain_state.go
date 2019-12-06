@@ -59,10 +59,6 @@ func (cs *carStore) Put(b blocks.Block) error {
 	return cs.store.Put(b)
 }
 
-type actornotregistered interface {
-	ActorNotFound() bool
-}
-
 type actorNotRegisteredError struct{}
 
 func (e actorNotRegisteredError) Error() string {
@@ -72,7 +68,6 @@ func (e actorNotRegisteredError) Error() string {
 func (e actorNotRegisteredError) ActorNotFound() bool {
 	return true
 }
-
 
 var (
 	// ErrNoMethod is returned by Get when there is no method signature (eg, transfer).

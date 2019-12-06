@@ -223,6 +223,9 @@ func setupPrealloc(ctx context.Context, st state.Tree, storageMap vm.StorageMap,
 			vmctx := vm.NewVMContext(vm.NewContextParams{State: cachedTree, StorageMap: storageMap, To: initActor, ToAddr: address.InitAddress})
 			return initactor.InitializeAccountActor(vmctx, addr, types.NewAttoFILFromFIL(valint))
 		})
+		if err != nil {
+			return err
+		}
 	}
 	if err := cachedTree.Commit(ctx); err != nil {
 		return err

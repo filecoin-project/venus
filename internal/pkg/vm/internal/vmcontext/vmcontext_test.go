@@ -506,9 +506,8 @@ func mustCreateInitActor(t *testing.T, bs blockstore.Blockstore) *actor.Actor {
 	require.NoError(t, err)
 
 	blk := blocks.NewBlock(stateBytes)
-	bs.Put(blk)
+	require.NoError(t, bs.Put(blk))
 
 	act.Head = blk.Cid()
 	return act
 }
-

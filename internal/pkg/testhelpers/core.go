@@ -57,14 +57,14 @@ func RequireNewMinerActor(ctx context.Context, t *testing.T, st state.Tree, vms 
 	gt.MsgGasLimit = types.NewGasUnits(10000)
 	m := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, types.SendMethodID, []byte{})
 	vmctx := vm.NewVMContext(vm.NewContextParams{
-		Message: m,
-		OriginMsg: m,
-		State: cachedTree,
+		Message:    m,
+		OriginMsg:  m,
+		State:      cachedTree,
 		StorageMap: vms,
-		To: initActor,
-		ToAddr: address.InitAddress,
+		To:         initActor,
+		ToAddr:     address.InitAddress,
 		GasTracker: gt,
-		Actors: builtin.DefaultActors,
+		Actors:     builtin.DefaultActors,
 	})
 
 	actorAddr, _, err := (&initactor.Impl{}).Exec(vmctx, types.MinerActorCodeCid, []interface{}{owner, owner, pid, types.OneKiBSectorSize})
@@ -89,10 +89,10 @@ func RequireLookupActor(ctx context.Context, t *testing.T, st state.Tree, vms vm
 	require.NoError(t, err)
 
 	vmctx := vm.NewVMContext(vm.NewContextParams{
-		State: cachedTree,
+		State:      cachedTree,
 		StorageMap: vms,
-		To: initActor,
-		ToAddr: address.InitAddress,
+		To:         initActor,
+		ToAddr:     address.InitAddress,
 	})
 	id, found, err := initactor.LookupIDAddress(vmctx, actorAddr)
 	require.NoError(t, err)
@@ -100,7 +100,6 @@ func RequireLookupActor(ctx context.Context, t *testing.T, st state.Tree, vms vm
 
 	idAddr, err := address.NewIDAddress(id)
 	require.NoError(t, err)
-
 
 	act, err := cachedTree.GetActor(ctx, idAddr)
 	require.NoError(t, err)
@@ -196,7 +195,6 @@ func CreateTestMinerWith(
 	require.NoError(t, err)
 	require.True(t, found)
 
-
 	nonce := RequireGetNonce(t, st, vms, idAddr)
 	msg := types.NewUnsignedMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, collateral, storagemarket.CreateStorageMiner, pdata)
 
@@ -209,13 +207,13 @@ func CreateTestMinerWith(
 	return addr
 }
 
-// RequireExistingActor adds an account actor to the state tree if none exists
+// RequireGetActor adds an account actor to the state tree if none exists
 func RequireGetActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, addr address.Address) *actor.Actor {
 	idAddr, found, err := consensus.ResolveAddress(ctx, addr, state.NewCachedTree(st), vms, vm.NewGasTracker())
 	require.NoError(t, err)
 	require.True(t, found, "test actor not found")
 
-	act, err :=  st.GetActor(ctx, idAddr)
+	act, err := st.GetActor(ctx, idAddr)
 	require.NoError(t, err)
 	return act
 }

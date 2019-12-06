@@ -167,7 +167,7 @@ func TestProcessTipsetReward(t *testing.T) {
 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: networkAct,
 	})
-	_, ownerIdAddr := th.RequireInitAccountActor(ctx, t, st, vms, minerOwnerAddr, minerBalance)
+	_, ownerIDAddr := th.RequireInitAccountActor(ctx, t, st, vms, minerOwnerAddr, minerBalance)
 
 	stCid, _, minerAddr := mustCreateStorageMiner(ctx, t, st, vms, minerOwnerAddr)
 
@@ -180,7 +180,7 @@ func TestProcessTipsetReward(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, results, 0)
 
-	minerOwnerActor, err := st.GetActor(ctx, ownerIdAddr)
+	minerOwnerActor, err := st.GetActor(ctx, ownerIDAddr)
 	require.NoError(t, err)
 
 	blockRewardAmount := NewDefaultBlockRewarder().BlockRewardAmount()
@@ -214,8 +214,8 @@ func TestProcessTipsetVMErrors(t *testing.T) {
 	act2 := th.RequireNewFakeActor(t, vms, toAddr, fakeActorCodeCid)
 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(t, startingNetworkBalance),
-		address.InitAddress: th.RequireNewInitActor(t, vms),
-		toAddr: act2,
+		address.InitAddress:    th.RequireNewInitActor(t, vms),
+		toAddr:                 act2,
 	})
 	_, fromID := th.RequireInitAccountActor(ctx, t, st, vms, fromAddr, types.NewAttoFILFromFIL(1000))
 	th.RequireInitAccountActor(ctx, t, st, vms, minerOwnerAddr, types.ZeroAttoFIL)
@@ -856,16 +856,16 @@ func setupActorsForGasTest(t *testing.T, vms vm.StorageMap, fakeActorCodeCid cid
 
 	addresses := []address.Address{
 		mockSigner.Addresses[0], // addr0
-		addr1, // addr1
-		addr2, // addr2
-		addr3,      // minerAddr
+		addr1,                   // addr1
+		addr2,                   // addr2
+		addr3,                   // minerAddr
 	}
 
 	// act1 message recipient
 	act1 := th.RequireNewFakeActorWithTokens(t, vms, addresses[1], fakeActorCodeCid, types.NewAttoFILFromFIL(100))
 
 	// act2 2nd message recipient
-	act2 :=  th.RequireNewFakeActorWithTokens(t, vms, addresses[2], fakeActorCodeCid, types.NewAttoFILFromFIL(0))
+	act2 := th.RequireNewFakeActorWithTokens(t, vms, addresses[2], fakeActorCodeCid, types.NewAttoFILFromFIL(0))
 
 	// minerActor
 	act3 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(0))

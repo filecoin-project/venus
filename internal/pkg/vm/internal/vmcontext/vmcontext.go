@@ -523,7 +523,7 @@ func makeDeps(st *state.CachedTree) *deps {
 
 type deps struct {
 	EncodeValues     func([]*abi.Value) ([]byte, error)
-	GetActor 		 func(context.Context, address.Address) (*actor.Actor, error)
+	GetActor         func(context.Context, address.Address) (*actor.Actor, error)
 	GetOrCreateActor func(context.Context, address.Address, func() (*actor.Actor, address.Address, error)) (*actor.Actor, address.Address, error)
 	LegacySend       func(context.Context, ExtendedRuntime) ([][]byte, uint8, error)
 	Apply            func(*VMContext) interface{}
