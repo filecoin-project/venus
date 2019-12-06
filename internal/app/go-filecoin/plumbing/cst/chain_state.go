@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/dag"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
@@ -147,7 +148,15 @@ func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey block.Ti
 		return nil, errors.Wrap(err, "failed to load latest state")
 	}
 
-	actr, err := st.GetActor(ctx, addr)
+	idAddr, found,err := consensus.ResolveAddress(ctx, addr, state.NewCachedTree(st), vm.NewStorageMap(chn.bstore), vm.NewGasTracker())
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, errors.Wrapf(err, "no actor at address %s", addr)
+	}
+
+	actr, err := st.GetActor(ctx, idAddr)
 	if err != nil {
 		return nil, errors.Wrapf(err, "no actor at address %s", addr)
 	}

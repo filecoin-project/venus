@@ -159,17 +159,34 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			}
 		}
 
+		if err := SetupDefaultActors(ctx, st, storageMap, genCfg.proofsMode, genCfg.network); err != nil {
+			return nil, err
+		}
+
+		// retrieve init actor so we can register addresses
+		cachedState := state.NewCachedTree(st)
+		init, err := cachedState.GetActor(ctx, address.InitAddress)
+		if err != nil {
+			return nil, err
+		}
+
 		// Initialize account actors
 		for addr, val := range genCfg.accounts {
-			a, err := account.NewActor(val)
-			if err != nil {
-				return nil, err
-			}
+			cachedState.GetOrCreateActor(ctx, addr, func() (*actor.Actor, address.Address, error) {
+				if addr.Protocol() == address.ID {
+					a, err := account.NewActor(val)
+					return a, addr, err
+				}
 
-			if err := st.SetActor(ctx, addr, a); err != nil {
-				return nil, err
-			}
+				vmctx := vm.NewVMContext(vm.NewContextParams{State: cachedState, StorageMap: storageMap, To: init, ToAddr: address.InitAddress})
+				return initactor.InitializeAccountActor(vmctx, addr, val)
+			})
 		}
+		if err := cachedState.Commit(ctx); err != nil {
+			return nil, err
+		}
+
+
 		// Initialize miner actors
 		for addr, val := range genCfg.miners {
 			a := miner.NewActor()
@@ -195,9 +212,6 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			if err := st.SetActor(ctx, addr, a); err != nil {
 				return nil, err
 			}
-		}
-		if err := SetupDefaultActors(ctx, st, storageMap, genCfg.proofsMode, genCfg.network); err != nil {
-			return nil, err
 		}
 		// Now add any other actors configured.
 		for addr, a := range genCfg.actors {
