@@ -297,8 +297,6 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 		return err
 	}
 
-	cachedTree := state.NewCachedTree(st)
-
 	// sort addresses so genesis generation will be stable
 	sortedAddresses := []string{}
 	for addr, _ := range defaultAccounts {
@@ -306,6 +304,7 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 	}
 	sort.Strings(sortedAddresses)
 
+	cachedTree := state.NewCachedTree(st)
 	for _, addrBytes := range sortedAddresses {
 		addr, err := address.NewFromBytes([]byte(addrBytes))
 		if err != nil {

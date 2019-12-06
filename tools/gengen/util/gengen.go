@@ -123,7 +123,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, err
 	}
 
-	if err := setupPrealloc(st, keys, cfg.PreAlloc); err != nil {
+	if err := setupPrealloc(ctx, st, storageMap, keys, cfg.PreAlloc); err != nil {
 		return nil, err
 	}
 
@@ -194,11 +194,18 @@ func genKeys(cfgkeys int, pnrg io.Reader) ([]*types.KeyInfo, error) {
 	return keys, nil
 }
 
-func setupPrealloc(st state.Tree, keys []*types.KeyInfo, prealloc []string) error {
+func setupPrealloc(ctx context.Context, st state.Tree, storageMap vm.StorageMap, keys []*types.KeyInfo, prealloc []string) error {
 
 	if len(keys) < len(prealloc) {
 		return fmt.Errorf("keys do not match prealloc")
 	}
+
+	cachedTree := state.NewCachedTree(st)
+	initActor, err := cachedTree.GetActor(ctx, address.InitAddress)
+	if err != nil {
+		return err
+	}
+
 	for i, v := range prealloc {
 		ki := keys[i]
 
@@ -212,13 +219,13 @@ func setupPrealloc(st state.Tree, keys []*types.KeyInfo, prealloc []string) erro
 			return err
 		}
 
-		act, err := account.NewActor(types.NewAttoFILFromFIL(valint))
-		if err != nil {
-			return err
-		}
-		if err := st.SetActor(context.Background(), addr, act); err != nil {
-			return err
-		}
+		_, _, err = cachedTree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, address.Address, error) {
+			vmctx := vm.NewVMContext(vm.NewContextParams{State: cachedTree, StorageMap: storageMap, To: initActor, ToAddr: address.InitAddress})
+			return initactor.InitializeAccountActor(vmctx, addr, types.NewAttoFILFromFIL(valint))
+		})
+	}
+	if err := cachedTree.Commit(ctx); err != nil {
+		return err
 	}
 
 	netact, err := account.NewActor(types.NewAttoFILFromFIL(10000000000))

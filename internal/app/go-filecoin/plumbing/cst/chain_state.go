@@ -5,20 +5,20 @@ import (
 	"fmt"
 	"io"
 
-	blocks "github.com/ipfs/go-block-format"
-	blockservice "github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	format "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-ipfs-exchange-offline"
+	"github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 	merkdag "github.com/ipfs/go-merkledag"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/dag"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -58,6 +58,21 @@ func newCarStore(bs blockstore.Blockstore) *carStore {
 func (cs *carStore) Put(b blocks.Block) error {
 	return cs.store.Put(b)
 }
+
+type actornotregistered interface {
+	ActorNotFound() bool
+}
+
+type actorNotRegisteredError struct{}
+
+func (e actorNotRegisteredError) Error() string {
+	return "actor not registered"
+}
+
+func (e actorNotRegisteredError) ActorNotFound() bool {
+	return true
+}
+
 
 var (
 	// ErrNoMethod is returned by Get when there is no method signature (eg, transfer).
@@ -148,12 +163,12 @@ func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey block.Ti
 		return nil, errors.Wrap(err, "failed to load latest state")
 	}
 
-	idAddr, found,err := consensus.ResolveAddress(ctx, addr, state.NewCachedTree(st), vm.NewStorageMap(chn.bstore), vm.NewGasTracker())
+	idAddr, found, err := consensus.ResolveAddress(ctx, addr, state.NewCachedTree(st), vm.NewStorageMap(chn.bstore), vm.NewGasTracker())
 	if err != nil {
 		return nil, err
 	}
 	if !found {
-		return nil, errors.Wrapf(err, "no actor at address %s", addr)
+		return nil, actorNotRegisteredError{} // signal that the actor doesn't exist
 	}
 
 	actr, err := st.GetActor(ctx, idAddr)
