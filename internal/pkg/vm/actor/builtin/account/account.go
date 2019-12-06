@@ -90,7 +90,7 @@ func (*Actor) InitializeState(storage runtime.Storage,  initializerData interfac
 		return err
 	}
 
-	return storage.Commit(id, cid.Undef)
+	return storage.LegacyCommit(id, cid.Undef)
 }
 
 //
