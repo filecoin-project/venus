@@ -75,7 +75,8 @@ func TestInitActorExec(t *testing.T) {
 	act := &Impl{}
 
 	t.Run("exec constructs a permanent address and creates a mapping to the id", func(t *testing.T) {
-		vmctx := vm.NewFakeVMContext(msg, newState())
+		state := newState()
+		vmctx := vm.NewFakeVMContext(msg, state)
 
 		// set up enough storage so that it actually uses the hamts
 		sm := vm.NewStorageMap(blockstore.NewBlockstore(datastore.NewMapDatastore()))
@@ -87,6 +88,8 @@ func TestInitActorExec(t *testing.T) {
 		addr, _, err := act.Exec(vmctx, types.MinerActorCodeCid, initParams)
 		require.NoError(t, err)
 
+		vmctx = vm.NewFakeVMContext(msg, state)
+		vmctx.StorageValue = sm.NewStorage(address.InitAddress, actorModel)
 		_, _, err = act.GetActorIDForAddress(vmctx, addr)
 		require.NoError(t, err)
 	})

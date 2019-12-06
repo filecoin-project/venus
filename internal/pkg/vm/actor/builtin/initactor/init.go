@@ -123,10 +123,6 @@ func (*Actor) InitializeState(storage runtime.Storage, params interface{}) error
 
 // InitializeAccountActor returns a function to be called when lookup in the state tree fails
 func InitializeAccountActor(vmctx invocationContext, addr address.Address, balance types.AttoFIL) (*actor.Actor, address.Address, error) {
-	if addr.Protocol() != address.SECP256K1 && addr.Protocol() != address.BLS {
-		return nil, address.Undef, errors.NewRevertError("Attempt to implicitly create actor with wrong type of address")
-	}
-
 	// create id address
 	idAddr, err := createMappedIDaddress(vmctx, addr)
 	if err != nil {
@@ -137,21 +133,11 @@ func InitializeAccountActor(vmctx invocationContext, addr address.Address, balan
 }
 
 // Lookup id address
-func LookupIDAddress(rt invocationContext, addr address.Address) (uint64, bool, error) {
+func LookupIDAddress(rt runtime.InvocationContext, addr address.Address) (uint64, bool, error) {
 	var state State
-	err := actor.ReadState(rt, &state)
-	if err != nil {
-		return 0, false, err
-	}
-
-	ctx := context.TODO()
-	lookup, err := actor.LoadLookup(ctx, rt.Runtime().Storage(), state.AddressMap)
-	if err != nil {
-		return 0, false, errors.RevertErrorWrapf(err, "could not load lookup for cid: %s", state.IdMap)
-	}
-
-	var id types.Uint64
-	err = lookup.Find(ctx, addr.String(), &id)
+	id, err := rt.StateHandle().Transaction(&state, func() (interface{}, error) {
+		return lookupIDAddress(rt, state, addr)
+	})
 	if err != nil {
 		if err == hamt.ErrNotFound {
 			return 0, false, nil
@@ -159,7 +145,8 @@ func LookupIDAddress(rt invocationContext, addr address.Address) (uint64, bool, 
 		return 0, false, errors.FaultErrorWrap(err, "could not lookup actor id")
 	}
 
-	return uint64(id), true, nil
+
+	return uint64(id.(types.Uint64)), true, nil
 }
 
 //
@@ -201,16 +188,18 @@ func (a *Impl) GetActorIDForAddress(rt invocationContext, addr address.Address) 
 		return big.NewInt(0), internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
-	id, found, err := LookupIDAddress(rt, addr)
+	var state State
+	id, err := rt.StateHandle().Transaction(&state, func() (interface{}, error) {
+		return lookupIDAddress(rt, state, addr)
+	})
 	if err != nil {
-		return big.NewInt(0), errors.CodeError(err), err
+		if err == hamt.ErrNotFound {
+			return nil, ErrNotFound, errors.NewCodedRevertErrorf(ErrNotFound, "actor id not found for address: %s", addr)
+		}
+		return nil, errors.CodeError(err), errors.FaultErrorWrap(err, "could not lookup actor id")
 	}
 
-	if !found {
-		return big.NewInt(0), ErrNotFound, errors.NewCodedRevertErrorf(ErrNotFound, "actor id not found for address: %s", addr)
-	}
-
-	return big.NewInt(int64(id)), 0, nil
+	return big.NewInt(int64(id.(types.Uint64))), 0, nil
 }
 
 // GetAddressForActorID looks up the address for an actor id.
@@ -287,6 +276,22 @@ func (a *Impl) Exec(rt invocationContext, codeCID cid.Cid, params []interface{})
 	}
 
 	return actorAddr, 0, nil
+}
+
+func lookupIDAddress(rt runtime.InvocationContext, state State, addr address.Address) (types.Uint64, error) {
+	ctx := context.TODO()
+	lookup, err := actor.LoadLookup(ctx, rt.Runtime().Storage(), state.AddressMap)
+	if err != nil {
+		return 0, errors.RevertErrorWrapf(err, "could not load lookup for cid: %s", state.IdMap)
+	}
+
+	var id types.Uint64
+	err = lookup.Find(ctx, addr.String(), &id)
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
 }
 
 func createMappedIDaddress(rt invocationContext, actorAddr address.Address) (address.Address, error) {
