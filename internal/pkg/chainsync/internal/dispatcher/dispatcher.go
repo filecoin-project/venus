@@ -285,7 +285,7 @@ func (gt *GapTransitioner) MaybeTransitionToFollow(ctx context.Context, inCatchu
 
 	// transition from catchup to follow if the work queue is empty.
 	// this is safe -- all gap conditions cause syncing to enter catchup
-	// this is pessimistic -- all gap conditions can go away before queue is empty
+	// this is pessimistic -- gap conditions could be gone before we transition
 	if outstandingTargets == 0 {
 		// set staging to head on transition catchup --> follow
 		return true, gt.headSetter.SetStagedHead(ctx)
