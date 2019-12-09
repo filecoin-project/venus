@@ -7,6 +7,7 @@ package mining
 import (
 	"context"
 	"time"
+	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -127,6 +128,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		return nil, errors.Wrapf(err, "error retrieving receipt root for tipset %s", baseTipSet.Key().String())
 	}
 
+	now := w.clock.Now()
 	next := &block.Block{
 		Miner:           w.minerAddr,
 		Height:          types.Uint64(blockHeight),
@@ -137,9 +139,14 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		ElectionProof:   electionProof,
 		StateRoot:       baseStateRoot,
 		Ticket:          ticket,
-		Timestamp:       types.Uint64(w.clock.Now().Unix()),
+		Timestamp:       types.Uint64(now.Unix()),
 		BLSAggregateSig: blsAggregateSig,
 	}
+
+	if expEpoch := w.clock.EpochAtTime(now); expEpoch != uint64(next.Height) {
+		panic(fmt.Sprintf("expected epoch: %d, got epoch %d", expEpoch, next.Height))
+	}
+
 	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr, baseTipSet.Key())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read workerAddr during block generation")

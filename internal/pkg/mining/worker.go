@@ -113,7 +113,7 @@ type DefaultWorker struct {
 	processor     MessageApplier
 	messageStore  chain.MessageWriter // nolint: structcheck
 	blockstore    blockstore.Blockstore
-	clock         clock.Clock
+	clock         clock.ChainEpochClock
 }
 
 // WorkerParameters use for NewDefaultWorker parameters
@@ -137,7 +137,7 @@ type WorkerParameters struct {
 	Processor     MessageApplier
 	MessageStore  chain.MessageWriter
 	Blockstore    blockstore.Blockstore
-	Clock         clock.Clock
+	Clock         clock.ChainEpochClock
 }
 
 // NewDefaultWorker instantiates a new Worker.
