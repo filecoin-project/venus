@@ -19,12 +19,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
-type messageStore interface {
-	LoadMessages(context.Context, types.TxMeta) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
-	LoadReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
-	StoreReceipts(context.Context, []*types.MessageReceipt) (cid.Cid, error)
-}
-
 // Syncer updates its chain.Store according to the methods of its
 // consensus.Protocol.  It uses a bad tipset cache and a limit on new
 // blocks to traverse during chain collection.  The Syncer can query the
@@ -89,6 +83,12 @@ type ChainReaderWriter interface {
 	GetTipSetAndStatesByParentsAndHeight(pTsKey block.TipSetKey, h uint64) ([]*chain.TipSetMetadata, error)
 }
 
+type messageStore interface {
+	LoadMessages(context.Context, types.TxMeta) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
+	LoadReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
+	StoreReceipts(context.Context, []*types.MessageReceipt) (cid.Cid, error)
+}
+
 // ChainSelector chooses the heaviest between chains.
 type ChainSelector interface {
 	// IsHeavier returns true if tipset a is heavier than tipset b and false if
@@ -118,14 +118,15 @@ func init() {
 	reorgCnt = metrics.NewInt64Counter("chain/reorg_count", "The number of reorgs that have occurred.")
 }
 
-// UntrustedChainHeightLimit is the maximum number of blocks ahead of the current consensus
-// chain height to accept if syncing without trust.
-var UntrustedChainHeightLimit = 600
+// FinalityEpochs is the number of epochs between an accepted head and the 
+// first finalized tipset.
+const FinalityEpochs = 500
+
 var (
 	// ErrChainHasBadTipSet is returned when the syncer traverses a chain with a cached bad tipset.
 	ErrChainHasBadTipSet = errors.New("input chain contains a cached bad tipset")
 	// ErrNewChainTooLong is returned when processing a fork that split off from the main chain too many blocks ago.
-	ErrNewChainTooLong = errors.New("input chain forked from best chain too far in the past")
+	ErrNewChainTooLong = errors.New("input chain forked from best chain past finality limit")
 	// ErrUnexpectedStoreState indicates that the syncer's chain store is violating expected invariants.
 	ErrUnexpectedStoreState = errors.New("the chain store is in an unexpected state")
 )
@@ -175,7 +176,23 @@ func (syncer *Syncer) SetStagedHead(ctx context.Context) error {
 // fetchAndValidateHeaders fetches headers and runs semantic block validation
 // on the chain of fetched headers
 func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.ChainInfo) ([]block.TipSet, error) {
+	head, err := syncer.chainStore.GetTipSet(syncer.chainStore.GetHead())
+	if err != nil {
+		return nil, err
+	}
+	headHeight, err := head.Height()
+	if err != nil {
+		return nil, err
+	}
 	headers, err := syncer.fetcher.FetchTipSetHeaders(ctx, ci.Head, ci.Sender, func(t block.TipSet) (bool, error) {
+		h, err := t.Height()
+		if err != nil {
+			return true, err
+		}
+		if h + FinalityEpochs < headHeight {
+			return true, ErrNewChainTooLong
+		}
+
 		parents, err := t.Parents()
 		if err != nil {
 			return true, err
