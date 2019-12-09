@@ -208,12 +208,12 @@ func TestRejectFinalityFork(t *testing.T) {
 	builder, store, s := setup(ctx, t)
 	genesis := builder.RequireTipSet(store.GetHead())
 
-	head := builder.AppendManyOn(syncer.FinalityEpochs + 2, genesis)
+	head := builder.AppendManyOn(syncer.FinalityEpochs+2, genesis)
 	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", head.Key(), heightFromTip(t, head)), false))
 
-	// Differentiate fork for a new chain.  Fork has FinalityEpochs + 1 
+	// Differentiate fork for a new chain.  Fork has FinalityEpochs + 1
 	// blocks on top of genesis so forkFinalityBase is more than FinalityEpochs
-	// behind head 
+	// behind head
 	forkFinalityBase := builder.BuildOneOn(genesis, func(bb *chain.BlockBuilder) {
 		bb.SetTicket([]byte{0xbe})
 	})

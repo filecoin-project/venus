@@ -118,7 +118,7 @@ func init() {
 	reorgCnt = metrics.NewInt64Counter("chain/reorg_count", "The number of reorgs that have occurred.")
 }
 
-// FinalityEpochs is the number of epochs between an accepted head and the 
+// FinalityEpochs is the number of epochs between an accepted head and the
 // first finalized tipset.
 const FinalityEpochs = 500
 
@@ -189,7 +189,7 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 		if err != nil {
 			return true, err
 		}
-		if h + FinalityEpochs < headHeight {
+		if h+FinalityEpochs < headHeight {
 			return true, ErrNewChainTooLong
 		}
 
