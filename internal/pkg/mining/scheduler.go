@@ -125,6 +125,8 @@ func (s *timingScheduler) waitForEpochStart(miningCtx context.Context) {
 	newEpochCh := s.chainClock.After(waitDur)
 	select {
 	case <-newEpochCh:
+		//	fmt.Printf("starting epoch: %d\n", nextEpoch)
+		//	fmt.Printf("exp time: h%d-m%d-s%d-m%d, curr time: h%d-m%d-s%d-m%d\n", nextEpochStart.Hour(), nextEpochStart.Minute(), nextEpochStart.Second(), nextEpochStart.Nanosecond()/1000000, currTime.Hour(), currTime.Minute(), currTime.Second(), currTime.Nanosecond()/1000000)
 		return
 	case <-miningCtx.Done():
 		s.isStarted = false
