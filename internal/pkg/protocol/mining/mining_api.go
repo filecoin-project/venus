@@ -3,9 +3,9 @@ package mining
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/pkg/errors"
@@ -22,11 +22,11 @@ type API struct {
 	addNewBlockFunc func(context.Context, *block.Block) (err error)
 	chainReader     miningChainReader
 	isMiningFunc    func() bool
-	mineDelay       time.Duration
 	setupMiningFunc func(context.Context) error
 	startMiningFunc func(context.Context) error
 	stopMiningFunc  func(context.Context)
 	getWorkerFunc   func(ctx context.Context) (mining.Worker, error)
+	chainClock      clock.ChainEpochClock
 }
 
 // New creates a new API instance with the provided deps
@@ -35,22 +35,22 @@ func New(
 	addNewBlockFunc func(context.Context, *block.Block) (err error),
 	chainReader miningChainReader,
 	isMiningFunc func() bool,
-	blockMineDelay time.Duration,
 	setupMiningFunc func(ctx context.Context) error,
 	startMiningFunc func(context.Context) error,
 	stopMiningfunc func(context.Context),
 	getWorkerFunc func(ctx context.Context) (mining.Worker, error),
+	chainClock clock.ChainEpochClock,
 ) API {
 	return API{
 		minerAddress:    minerAddr,
 		addNewBlockFunc: addNewBlockFunc,
 		chainReader:     chainReader,
 		isMiningFunc:    isMiningFunc,
-		mineDelay:       blockMineDelay,
 		setupMiningFunc: setupMiningFunc,
 		startMiningFunc: startMiningFunc,
 		stopMiningFunc:  stopMiningfunc,
 		getWorkerFunc:   getWorkerFunc,
+		chainClock:      chainClock,
 	}
 }
 
@@ -82,7 +82,7 @@ func (a *API) MiningOnce(ctx context.Context) (*block.Block, error) {
 	}
 
 	fmt.Printf("mining once\n")
-	res, err := mining.MineOnce(ctx, miningWorker, a.mineDelay, ts)
+	res, err := mining.MineOnce(ctx, miningWorker, ts, a.chainClock)
 	if err != nil {
 		return nil, err
 	}

@@ -17,6 +17,7 @@ const EpochUnits = time.Second
 // ChainEpochClock is an interface for a clock that represents epochs of the protocol.
 type ChainEpochClock interface {
 	EpochAtTime(t time.Time) int64
+	StartTimeOfEpoch(e uint64) time.Time
 	Clock
 }
 
@@ -42,4 +43,9 @@ func (cc *chainClock) EpochAtTime(t time.Time) int64 {
 	difference := t.Sub(cc.GenesisTime)
 	epochs := difference / EpochDuration
 	return int64(epochs)
+}
+
+// StartTimeOfEpoch returns the start time of the given epoch.
+func (cc *chainClock) StartTimeOfEpoch(e uint64) time.Time {
+	return cc.GenesisTime.Add(EpochUnits * time.Duration(EpochCount*int64(e)))
 }

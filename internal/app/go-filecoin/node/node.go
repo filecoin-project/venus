@@ -354,16 +354,6 @@ func (node *Node) MiningAddress() (address.Address, error) {
 	return addr, nil
 }
 
-// MiningTimes returns the configured time it takes to mine a block, and also
-// the mining delay duration, which is currently a fixed fraction of block time.
-// Note this is mocked behavior, in production this time is determined by how
-// long it takes to generate PoSTs.
-func (node *Node) MiningTimes() (time.Duration, time.Duration) {
-	blockTime := node.PorcelainAPI.BlockTime()
-	mineDelay := blockTime / mining.MineDelayConversionFactor
-	return blockTime, mineDelay
-}
-
 // SetupMining initializes all the functionality the node needs to start mining.
 // This method is idempotent.
 func (node *Node) SetupMining(ctx context.Context) error {
@@ -425,10 +415,8 @@ func (node *Node) StartMining(ctx context.Context) error {
 		return errors.Wrapf(err, "failed to get mining owner address for miner %s", minerAddr)
 	}
 
-	_, mineDelay := node.MiningTimes()
-
 	if node.BlockMining.MiningScheduler == nil {
-		node.BlockMining.MiningScheduler = mining.NewScheduler(node.BlockMining.MiningWorker, mineDelay, node.PorcelainAPI.ChainHead)
+		node.BlockMining.MiningScheduler = mining.NewScheduler(node.BlockMining.MiningWorker, node.PorcelainAPI.ChainHead, node.ChainClock)
 	} else if node.BlockMining.MiningScheduler.IsStarted() {
 		return fmt.Errorf("miner scheduler already started")
 	}
@@ -436,7 +424,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 	var miningCtx context.Context
 	miningCtx, node.BlockMining.CancelMining = context.WithCancel(context.Background())
 
-	outCh, doneWg := node.BlockMining.MiningScheduler.Start(miningCtx)
+	outCh, doneWg := node.BlockMining.MiningScheduler.Start(miningCtx, nil) //xxx: fill this in with a skip channel
 
 	node.BlockMining.MiningDoneWg = doneWg
 	node.BlockMining.AddNewlyMinedBlock = node.addNewlyMinedBlock
@@ -649,17 +637,17 @@ func (node *Node) handleSubscription(ctx context.Context, sub pubsub.Subscriptio
 // setupProtocols creates protocol clients and miners, then sets the node's APIs
 // for each
 func (node *Node) setupProtocols() error {
-	_, mineDelay := node.MiningTimes()
 	blockMiningAPI := mining_protocol.New(
 		node.MiningAddress,
 		node.AddNewBlock,
 		node.chain.ChainReader,
 		node.IsMining,
-		mineDelay,
 		node.SetupMining,
 		node.StartMining,
 		node.StopMining,
-		node.GetMiningWorker)
+		node.GetMiningWorker,
+		node.ChainClock,
+	)
 
 	node.BlockMining.BlockMiningAPI = &blockMiningAPI
 
