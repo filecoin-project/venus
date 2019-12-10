@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/pkg/errors"
 )
 
@@ -175,4 +176,33 @@ func MineOnce(ctx context.Context, w Worker, ts block.TipSet, c clock.ChainEpoch
 		return Output{}, errors.New("Mining completed without returning block")
 	}
 	return block, nil
+}
+
+// MineEpoch attempts to mine a block in an epoch and returns the mined block
+// or nil if no block could be mined
+func MineOneEpoch(ctx context.Context, w DefaultWorker, ts block.TipSet, nullCount uint64, chainClock clock.ChainEpochClock) (*block.Block, error) {
+	workCtx, workCancel := context.WithCancel(ctx)
+	defer workCancel()
+	outCh := make(chan Output)
+
+	// Control the time so that this block is always mined at a time that matches the epoch
+	h, err := ts.Height()
+	if err != nil {
+		return nil, err
+	}
+	epochStartTime := chainClock.StartTimeOfEpoch(nullCount + h + 1)
+	w.clock = th.NewFakeClock(epochStartTime)
+
+	won := w.Mine(workCtx, ts, nullCount, outCh)
+	if !won {
+		return nil, nil
+	}
+	out, ok := <-outCh
+	if !ok {
+		return nil, errors.New("Mining completed without returning block")
+	}
+	if out.Err != nil {
+		return nil, out.Err
+	}
+	return out.NewBlock, nil
 }

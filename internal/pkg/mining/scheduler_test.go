@@ -47,6 +47,9 @@ func TestMineOnce(t *testing.T) {
 // TestMineOnce10Null calls mine once off of a base tipset with a ticket that
 // will win after 10 rounds and verifies that the output has 1 ticket and a
 // +10 height.
+//
+// This is a functional test because there is an inherent race in this code --
+// mining work must finish before the epoch is over to guarantee 
 func TestMineOnce10Null(t *testing.T) {
 	tf.FunctionalTest(t)
 
