@@ -53,6 +53,7 @@ func (s *timingScheduler) Start(miningCtx context.Context, skipCh chan bool) (<-
 		s.mineLoop(miningCtx, outCh, skipCh, &doneWg)
 		doneWg.Done()
 	}()
+	s.isStarted = true
 
 	return outCh, &doneWg
 }

@@ -9,6 +9,7 @@ type FakeChainClock interface {
 	FakeClock
 
 	EpochAtTime(t time.Time) int64
+	StartTimeOfEpoch(e uint64) time.Time
 }
 
 type fakeChainClock struct {
@@ -28,6 +29,11 @@ func NewFakeChainClock(chainEpoch int64, wallTime time.Time) FakeChainClock {
 // EpochAtTime returns the ChainEpoch held by the fakeChainClock.
 func (fcc *fakeChainClock) EpochAtTime(t time.Time) int64 {
 	return fcc.epoch
+}
+
+// StartTimeOfEpoch returns the current time
+func (fcc *fakeChainClock) StartTimeOfEpoch(e uint64) time.Time {
+	return fcc.Now()
 }
 
 // SetChainEpoch sets the FakeChainClock's ChainEpoch to `epoch`.
