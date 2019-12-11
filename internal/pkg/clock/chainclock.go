@@ -1,7 +1,6 @@
 package clock
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -35,7 +34,6 @@ func NewChainClock(genesisTime uint64, blockTime time.Duration) ChainEpochClock 
 // clock.Clock
 func NewChainClockFromClock(genesisTime uint64, blockTime time.Duration, c Clock) ChainEpochClock {
 	gt := time.Unix(int64(genesisTime), int64(genesisTime%1000000000))
-	fmt.Printf("gen time: h%d-m%d-s%d-m%d\n", gt.Hour(), gt.Minute(), gt.Second(), gt.Nanosecond()/1000000)
 	return &chainClock{
 		GenesisTime:   gt,
 		EpochDuration: blockTime,
