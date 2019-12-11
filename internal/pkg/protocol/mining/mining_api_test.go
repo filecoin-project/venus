@@ -134,7 +134,6 @@ func newAPI(t *testing.T) (bapi.API, *node.Node) {
 	builderOpts := []node.BuilderOpt{}
 
 	nd := node.MakeNodeWithChainSeed(t, seed, builderOpts)
-	bt := nd.PorcelainAPI.BlockTime()
 	seed.GiveKey(t, nd, 0)
 	mAddr, ownerAddr := seed.GiveMiner(t, nd, 0)
 	_, err := storage.NewMiner(mAddr, ownerAddr, &storage.FakeProver{}, types.OneKiBSectorSize, nd, nd.Repo.DealsDatastore(), nd.PorcelainAPI)
@@ -144,9 +143,10 @@ func newAPI(t *testing.T) (bapi.API, *node.Node) {
 		nd.AddNewBlock,
 		nd.Chain().ChainReader,
 		nd.IsMining,
-		bt,
 		nd.SetupMining,
 		nd.StartMining,
 		nd.StopMining,
-		nd.CreateMiningWorker), nd
+		nd.CreateMiningWorker,
+		nd.ChainClock,
+		), nd
 }
