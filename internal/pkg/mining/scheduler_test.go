@@ -2,9 +2,10 @@ package mining_test
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
-	"fmt"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
@@ -21,22 +22,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
-func newTestUtils(t *testing.T) block.TipSet {
-	baseBlock := &block.Block{StateRoot: types.CidFromString(t, "somecid")}
-	ts, err := block.NewTipSet(baseBlock)
-	require.NoError(t, err)
-	return ts
-}
-
 // TestMineOnce tests that the MineOnce function results in a mining job being
 // scheduled and run by the mining scheduler.
 func TestMineOnce(t *testing.T) {
 	tf.UnitTest(t)
 
-	ts := newTestUtils(t)
+	ts := testHead(t)
 
 	// Echoes the sent block to output.
-	worker := NewTestWorkerWithDeps(MakeEchoMine(t))
+	worker := NewTestWorker(t, MakeEchoMine(t))
 	chainClock := clock.NewChainClock(uint64(time.Now().Unix()), 100*time.Millisecond)
 	result, err := MineOnce(context.Background(), worker, ts, chainClock)
 	assert.NoError(t, err)
@@ -48,10 +42,10 @@ func TestMineOnce(t *testing.T) {
 // will win after 10 rounds and verifies that the output has 1 ticket and a
 // +10 height.
 //
-// This is a functional test because there is an inherent race in this code --
-// mining work must finish before the epoch is over to guarantee 
+// Note there is a race here.  This test can fail if the mining worker fails to
+// finish its work before the epoch is over.  In practice this does not happen.
 func TestMineOnce10Null(t *testing.T) {
-	tf.FunctionalTest(t)
+	tf.IntegrationTest(t)
 
 	mockSigner, kis := types.NewMockSignersAndKeyInfo(5)
 	ki := &(kis[0])
@@ -79,9 +73,7 @@ func TestMineOnce10Null(t *testing.T) {
 
 	api := th.NewFakeWorkerPorcelainAPI(addr, 10, minerToWorker)
 	genTime := time.Now()
-	fmt.Printf("genTime: %s\n", genTime)
-	fmt.Printf("genTime: h%d-m%d-s%d-m%d\n", genTime.Hour(), genTime.Minute(), genTime.Second(), genTime.Nanosecond()/1000000)
-	chainClock := clock.NewChainClock(uint64(genTime.Unix()), 15*time.Second)
+	chainClock := clock.NewChainClock(uint64(genTime.Unix()), 300*time.Millisecond)
 
 	worker := NewDefaultWorker(WorkerParameters{
 		API: api,
@@ -112,227 +104,293 @@ func TestMineOnce10Null(t *testing.T) {
 	assert.NotEqual(t, baseBlock.Ticket, block.Ticket)
 }
 
-// func TestSchedulerPassesValue(t *testing.T) {
-// 	tf.UnitTest(t)
+// This test makes use of the MineOneEpoch call to
+// exercise the mining code without races or long blocking
+func TestMineOneEpoch10Null(t *testing.T) {
+	tf.IntegrationTest(t)
 
-// 	ts := newTestUtils(t)
-// 	ctx, cancel := context.WithCancel(context.Background())
+	mockSigner, kis := types.NewMockSignersAndKeyInfo(5)
+	ki := &(kis[0])
+	addr, err := ki.Address()
+	require.NoError(t, err)
+	minerToWorker := make(map[address.Address]address.Address)
+	minerToWorker[addr] = addr
+	baseTicket := consensus.SeedFirstWinnerInNRounds(t, 10, ki, 100, 10000)
+	baseBlock := &block.Block{
+		StateRoot: types.CidFromString(t, "somecid"),
+		Height:    0,
+		Ticket:    baseTicket,
+	}
+	baseTs, err := block.NewTipSet(baseBlock)
+	require.NoError(t, err)
 
-// 	checkValsMine := func(c context.Context, inTS block.TipSet, nilBlockCount uint64, outCh chan<- Output) bool {
-// 		assert.Equal(t, ctx, c) // individual run ctx splits off from mining ctx
-// 		assert.Equal(t, inTS, ts)
-// 		outCh <- Output{}
-// 		return true
-// 	}
-// 	var head block.TipSet
-// 	headFunc := func() (block.TipSet, error) {
-// 		return head, nil
-// 	}
-// 	worker := NewTestWorkerWithDeps(checkValsMine)
-// 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)
-// 	head = ts // set head so headFunc returns correctly
-// 	outCh, _ := scheduler.Start(ctx)
-// 	<-outCh
-// 	cancel()
-// }
+	st, pool, _, bs := sharedSetup(t, mockSigner)
+	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
+		return st, nil
+	}
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
+		return []block.TipSet{baseTs}, nil
+	}
+	messages := chain.NewMessageStore(bs)
 
-// func TestSchedulerErrorsOnUnsetHead(t *testing.T) {
-// 	tf.UnitTest(t)
+	api := th.NewFakeWorkerPorcelainAPI(addr, 10, minerToWorker)
+	genTime := time.Now()
+	chainClock := clock.NewChainClock(uint64(genTime.Unix()), 15*time.Second)
 
-// 	ctx := context.Background()
+	worker := NewDefaultWorker(WorkerParameters{
+		API: api,
 
-// 	nothingMine := func(c context.Context, inTS block.TipSet, nbc uint64, outCh chan<- Output) bool {
-// 		outCh <- Output{}
-// 		return false
-// 	}
-// 	nilHeadFunc := func() (block.TipSet, error) {
-// 		return block.UndefTipSet, nil
-// 	}
-// 	worker := NewTestWorkerWithDeps(nothingMine)
-// 	scheduler := NewScheduler(worker, MineDelayTest, nilHeadFunc)
-// 	outCh, doneWg := scheduler.Start(ctx)
-// 	output := <-outCh
-// 	assert.Error(t, output.Err)
-// 	doneWg.Wait()
-// }
+		MinerAddr:      addr,
+		MinerOwnerAddr: addr,
+		WorkerSigner:   mockSigner,
 
-// // If head is the same increment the nullblkcount, otherwise make it 0.
-// func TestSchedulerUpdatesNullBlkCount(t *testing.T) {
-// 	tf.UnitTest(t)
+		TipSetMetadata: fakeTSMetadata{},
+		GetStateTree:   getStateTree,
+		GetWeight:      getWeightTest,
+		GetAncestors:   getAncestors,
+		Election:       &consensus.ElectionMachine{},
+		TicketGen:      &consensus.TicketMachine{},
 
-// 	ts := newTestUtils(t)
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	//	blk2 := &block.Block{StateRoot: types.CidFromString(t, "somecid"), Height: 1}
+		MessageSource: pool,
+		Processor:     th.NewFakeProcessor(),
+		Blockstore:    bs,
+		MessageStore:  messages,
+		Clock:         chainClock,
+	})
 
-// 	checkNullBlocks := uint64(0)
-// 	checkTArrMine := func(c context.Context, inTS block.TipSet, nBC uint64, outCh chan<- Output) bool {
-// 		select {
-// 		case <-ctx.Done():
-// 			return false
-// 		default:
-// 		}
-// 		assert.Equal(t, checkNullBlocks, nBC)
-// 		outCh <- Output{}
-// 		return false
-// 	}
-// 	var head block.TipSet
-// 	headFunc := func() (block.TipSet, error) {
-// 		return head, nil
-// 	}
-// 	worker := NewTestWorkerWithDeps(checkTArrMine)
-// 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)
-// 	head = ts
-// 	outCh, _ := scheduler.Start(ctx)
-// 	<-outCh
-// 	// setting checkNullBlocks races with the mining delay timer.
-// 	checkNullBlocks = uint64(1)
-// 	<-outCh
-// 	checkNullBlocks = uint64(2)
-// 	<-outCh
-// 	cancel()
-// }
+	for i := 0; i < 10; i++ {
+		// with null count < 10 we see no errors and get no wins
+		blk, err := MineOneEpoch(context.Background(), *worker, baseTs, uint64(i), chainClock)
+		assert.NoError(t, err)
+		assert.Nil(t, blk)
+	}
+	blk, err := MineOneEpoch(context.Background(), *worker, baseTs, 10, chainClock)
+	assert.NoError(t, err)
+	assert.NotNil(t, blk)
+	assert.Equal(t, uint64(10+1), uint64(blk.Height))
+	assert.Equal(t, chainClock.EpochAtTime(time.Unix(int64(blk.Timestamp), int64(blk.Timestamp%1000000000))), int64(blk.Height))
+}
 
-// // Test that we can push multiple blocks through.  This schedules tipsets
-// // with successively higher block heights (aka epoch).
-// func TestSchedulerPassesManyValues(t *testing.T) {
-// 	tf.UnitTest(t)
+// Mining loop unit tests
 
-// 	ts1 := newTestUtils(t)
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	var checkTS block.TipSet
+func TestWorkerCalled(t *testing.T) {
+	tf.UnitTest(t)
+	ts := testHead(t)
 
-// 	// make tipsets with progressively higher heights
-// 	blk2 := &block.Block{StateRoot: types.CidFromString(t, "somecid"), Height: 1}
-// 	ts2 := th.RequireNewTipSet(t, blk2)
-// 	blk3 := &block.Block{StateRoot: types.CidFromString(t, "somecid"), Height: 2}
-// 	ts3 := th.RequireNewTipSet(t, blk3)
-// 	var head block.TipSet
-// 	headFunc := func() (block.TipSet, error) {
-// 		return head, nil
-// 	}
+	called := false
+	var wg sync.WaitGroup
+	wg.Add(1)
+	w := NewTestWorker(t, func(_ context.Context, workHead block.TipSet, _ uint64, _ chan<- Output) bool {
+		called = true
+		assert.True(t, workHead.Equals(ts))
+		wg.Done()
+		return true
+	})
 
-// 	checkValsMine := func(c context.Context, ts block.TipSet, nbc uint64, outCh chan<- Output) bool {
-// 		assert.Equal(t, ts, checkTS)
-// 		outCh <- Output{}
-// 		return false
-// 	}
-// 	worker := NewTestWorkerWithDeps(checkValsMine)
-// 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)
-// 	checkTS = ts1
-// 	head = ts1
-// 	outCh, _ := scheduler.Start(ctx)
-// 	<-outCh
-// 	// This is testing a race (that checkTS and head are both set before
-// 	// the headFunc is called, but the TestMine delay should be long enough
-// 	// that it should work.  TODO: eliminate races.
-// 	checkTS = ts2
-// 	head = ts2
-// 	<-outCh
-// 	checkTS = ts3 // Same race as ^^
-// 	head = ts3
-// 	<-outCh
-// 	cancel()
-// }
+	fakeClock, chainClock, blockTime := testClock(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-// // TestSchedulerCollect tests that the scheduler collects tipsets before mining
-// func TestSchedulerCollect(t *testing.T) {
-// 	tf.UnitTest(t)
-// 	ts1 := newTestUtils(t)
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	blk2 := &block.Block{StateRoot: types.CidFromString(t, "somecid"), Height: 1}
-// 	ts2 := th.RequireNewTipSet(t, blk2)
-// 	blk3 := &block.Block{StateRoot: types.CidFromString(t, "somecid"), Height: 1}
-// 	ts3 := th.RequireNewTipSet(t, blk3)
-// 	var head block.TipSet
-// 	headFunc := func() (block.TipSet, error) {
-// 		return head, nil
-// 	}
-// 	checkValsMine := func(c context.Context, inTS block.TipSet, nbc uint64, outCh chan<- Output) bool {
-// 		assert.Equal(t, inTS, ts3)
-// 		outCh <- Output{}
-// 		return false
-// 	}
-// 	worker := NewTestWorkerWithDeps(checkValsMine)
-// 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)
-// 	head = ts1
-// 	outCh, _ := scheduler.Start(ctx)
-// 	// again this is racing on the assumption that mining delay is long
-// 	// enough for all these variables to be set before the sleep finishes.
-// 	head = ts2
-// 	head = ts3 // the scheduler should collect the latest input
-// 	<-outCh
-// 	cancel()
-// }
+	scheduler := NewScheduler(w, headFunc(ts), chainClock)
+	scheduler.Start(ctx, nil)
+	fmt.Printf("current time %s\n", chainClock.Now())
+	fakeClock.BlockUntil(1)
+	fmt.Printf("got a sleeper\n")
+	fakeClock.Advance(blockTime)
+	fmt.Printf("current time %s\n", chainClock.Now())
 
-// func TestSchedulerCancelMiningCtx(t *testing.T) {
-// 	tf.UnitTest(t)
+	wg.Wait()
+	assert.True(t, called)
+}
 
-// 	ts := newTestUtils(t)
-// 	// Test that canceling the mining context stops mining, cancels
-// 	// the inner context, and closes the output channel.
-// 	miningCtx, miningCtxCancel := context.WithCancel(context.Background())
-// 	var head block.TipSet
-// 	headFunc := func() (block.TipSet, error) {
-// 		return head, nil
-// 	}
-// 	shouldCancelMine := func(c context.Context, inTS block.TipSet, nbc uint64, outCh chan<- Output) bool {
-// 		mineTimer := time.NewTimer(th.BlockTimeTest)
-// 		select {
-// 		case <-mineTimer.C:
-// 			t.Fatal("should not take whole time")
-// 		case <-c.Done():
-// 		}
-// 		return false
-// 	}
-// 	worker := NewTestWorkerWithDeps(shouldCancelMine)
-// 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)
-// 	head = ts
-// 	outCh, doneWg := scheduler.Start(miningCtx)
-// 	miningCtxCancel()
-// 	doneWg.Wait()
-// 	assert.Equal(t, ChannelClosed, ReceiveOutCh(outCh))
-// }
+func TestCorrectNullBlocksGivenEpoch(t *testing.T) {
+	tf.UnitTest(t)
+	ts := testHead(t)
+	h, err := ts.Height()
+	require.NoError(t, err)
 
-// func TestSchedulerMultiRoundWithCollect(t *testing.T) {
-// 	tf.UnitTest(t)
-// 	ts1 := newTestUtils(t)
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	var checkTS block.TipSet
-// 	var head block.TipSet
-// 	headFunc := func() (block.TipSet, error) {
-// 		return head, nil
-// 	}
-// 	// make tipsets with progressively higher heights
-// 	blk2 := &block.Block{StateRoot: types.CidFromString(t, "somecid"), Height: 1}
-// 	ts2 := th.RequireNewTipSet(t, blk2)
-// 	blk3 := &block.Block{StateRoot: types.CidFromString(t, "somecid"), Height: 2}
-// 	ts3 := th.RequireNewTipSet(t, blk3)
+	fakeClock, chainClock, blockTime := testClock(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-// 	checkValsMine := func(c context.Context, inTS block.TipSet, nbc uint64, outCh chan<- Output) bool {
-// 		assert.Equal(t, inTS, checkTS)
-// 		outCh <- Output{}
-// 		return false
-// 	}
-// 	worker := NewTestWorkerWithDeps(checkValsMine)
-// 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)
-// 	checkTS = ts1
-// 	head = ts1
-// 	outCh, doneWg := scheduler.Start(ctx)
+	// Move forward 20 epochs
+	for i := 0; i < 19; i++ {
+		fakeClock.Advance(blockTime)
+	}
 
-// 	<-outCh
-// 	head = ts2 // again we're racing :(
-// 	checkTS = ts2
+	var wg sync.WaitGroup
+	wg.Add(1)
+	w := NewTestWorker(t, func(_ context.Context, _ block.TipSet, nullCount uint64, _ chan<- Output) bool {
+		assert.Equal(t, h+19, nullCount)
+		wg.Done()
+		return true
+	})
 
-// 	<-outCh
-// 	checkTS = ts3
-// 	head = ts3
+	scheduler := NewScheduler(w, headFunc(ts), chainClock)
+	scheduler.Start(ctx, nil)
+	fakeClock.BlockUntil(1)
+	// Move forward 1 epoch for a total of 21
+	fakeClock.Advance(blockTime)
 
-// 	cancel()
-// 	doneWg.Wait()
+	wg.Wait()
+}
 
-// 	// drain the channel
-// 	for range outCh {
-// 	}
+func TestWaitsForEpochStart(t *testing.T) {
+	// If the scheduler starts partway through an epoch it will wait to mine
+	// until there is a new epoch boundary
+	tf.UnitTest(t)
+	ts := testHead(t)
 
-// 	assert.Equal(t, ChannelClosed, ReceiveOutCh(outCh))
-// }
+	fakeClock, chainClock, blockTime := testClock(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	genTime := chainClock.Now()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	w := NewTestWorker(t, func(_ context.Context, workHead block.TipSet, _ uint64, _ chan<- Output) bool {
+		// This doesn't get called until the clock has advanced one blocktime
+		assert.Equal(t, genTime.Add(blockTime), chainClock.Now())
+		wg.Done()
+		return true
+	})
+
+	scheduler := NewScheduler(w, headFunc(ts), chainClock)
+	scheduler.Start(ctx, nil)
+	fakeClock.BlockUntil(1)
+	fakeClock.Advance(blockTime / time.Duration(2)) // advance half a blocktime
+	time.Sleep(300 * time.Millisecond)              // Need to race.  Ok to delete this test if we prefer not to.
+	fakeClock.Advance(blockTime / time.Duration(2))
+	wg.Wait()
+}
+
+func TestCancelsLateWork(t *testing.T) {
+	// Test will hang if work is not cancelled
+	tf.UnitTest(t)
+	ts := testHead(t)
+
+	fakeClock, chainClock, blockTime := testClock(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	var count int
+	w := NewTestWorker(t, func(workCtx context.Context, _ block.TipSet, _ uint64, _ chan<- Output) bool {
+		if count != 0 { // only first job blocks
+			return true
+		}
+		count++
+		select {
+		case <-workCtx.Done():
+			wg.Done()
+			return true
+		}
+	})
+
+	scheduler := NewScheduler(w, headFunc(ts), chainClock)
+	scheduler.Start(ctx, nil)
+	fakeClock.BlockUntil(1)
+	fakeClock.Advance(blockTime) // schedule first work item
+	fakeClock.BlockUntil(1)
+	fakeClock.Advance(blockTime) // enter next epoch, should cancel first work item
+
+	wg.Wait()
+}
+
+func TestShutdownWaitgroup(t *testing.T) {
+	// waitgroup waits for all mining jobs to shut down properly
+	genTime := time.Now()
+	chainClock := clock.NewChainClock(uint64(genTime.Unix()), 100*time.Millisecond)
+	ts := testHead(t)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var mu sync.Mutex
+	jobs := make(map[uint64]bool)
+	w := NewTestWorker(t, func(workContext context.Context, _ block.TipSet, null uint64, _ chan<- Output) bool {
+		mu.Lock()
+		jobs[null] = false
+		mu.Unlock()
+		select {
+		case <-workContext.Done():
+			mu.Lock()
+			jobs[null] = true
+			mu.Unlock()
+			return true
+		}
+	})
+
+	scheduler := NewScheduler(w, headFunc(ts), chainClock)
+	_, wg := scheduler.Start(ctx, nil)
+	time.Sleep(600 * time.Millisecond) // run through some epochs
+	cancel()
+	wg.Wait()
+
+	// After passing barrier all jobs should be finished
+	mu.Lock()
+	defer mu.Unlock()
+	for _, waitedForFin := range jobs {
+		assert.True(t, waitedForFin)
+	}
+}
+
+func TestSkips(t *testing.T) {
+	tf.UnitTest(t)
+	ts := testHead(t)
+
+	fakeClock, chainClock, blockTime := testClock(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	w := NewTestWorker(t, func(_ context.Context, _ block.TipSet, nullCount uint64, _ chan<- Output) bool {
+		// This should never be reached as the first epoch should skip mining
+		if nullCount == 0 {
+			t.Fail()
+			return true
+		} else {
+			wg.Done()
+		}
+		return true
+	})
+
+	scheduler := NewScheduler(w, headFunc(ts), chainClock)
+	skipCh := make(chan bool)
+	go func() { skipCh <- true }()
+	scheduler.Start(ctx, skipCh)
+	fakeClock.BlockUntil(1)
+	fakeClock.Advance(blockTime)
+	go func() { skipCh <- false }()
+	fakeClock.BlockUntil(1)
+	fakeClock.Advance(blockTime)
+	wg.Wait()
+}
+
+// Helper functions
+
+func testHead(t *testing.T) block.TipSet {
+	baseBlock := &block.Block{StateRoot: types.CidFromString(t, "somecid")}
+	ts, err := block.NewTipSet(baseBlock)
+	require.NoError(t, err)
+	return ts
+}
+
+func testClock(t *testing.T) (th.FakeClock, clock.ChainEpochClock, time.Duration) {
+	// return a fake clock for running tests a ChainEpochClock for
+	// using in the scheduler, and the testing blocktime
+	gt := time.Unix(1234567890, 1234567890%1000000000)
+	fmt.Printf("test clock time: h%d-m%d-s%d-m%d\n", gt.Hour(), gt.Minute(), gt.Second(), gt.Nanosecond()/1000000)
+	fc := th.NewFakeClock(gt)
+	defaultBlockTimeTest := 1 * time.Second
+	chainClock := clock.NewChainClockFromClock(uint64(gt.Unix()), defaultBlockTimeTest, fc)
+
+	return fc, chainClock, defaultBlockTimeTest
+}
+
+func headFunc(ts block.TipSet) func() (block.TipSet, error) {
+	return func() (block.TipSet, error) {
+		return ts, nil
+	}
+}

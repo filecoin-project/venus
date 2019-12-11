@@ -7,7 +7,6 @@ package mining
 import (
 	"context"
 	"time"
-	"fmt"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
@@ -204,14 +203,12 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		// TODO #2223 remove this explicit wait if/when NotarizeTime calls VDF
-		w.clock.Sleep(w.api.BlockTime())
+		// TODO #3703 actually launch election post work here
 		done <- struct{}{}
 	}()
 
 	select {
 	case <-ctx.Done():
-		fmt.Printf("rekt\n")
 		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base, "nullBlocks", nullBlkCount)
 		return
 	case <-done:

@@ -5,6 +5,9 @@ import (
 	"time"
 )
 
+// DefaultBlockTime is the default duration of epochs
+const DefaultBlockTime = 15 * time.Second
+
 // ChainEpochClock is an interface for a clock that represents epochs of the protocol.
 type ChainEpochClock interface {
 	EpochAtTime(t time.Time) int64
@@ -31,8 +34,8 @@ func NewChainClock(genesisTime uint64, blockTime time.Duration) ChainEpochClock 
 // NewChainClockFromClock returns a ChainEpochClock wrapping the provided
 // clock.Clock
 func NewChainClockFromClock(genesisTime uint64, blockTime time.Duration, c Clock) ChainEpochClock {
-	gt := time.Unix(int64(genesisTime), 0)
-	fmt.Printf("gt: h%d-m%d-s%d-m%d\n", gt.Hour(), gt.Minute(), gt.Second(), gt.Nanosecond()/1000000)
+	gt := time.Unix(int64(genesisTime), int64(genesisTime%1000000000))
+	fmt.Printf("gen time: h%d-m%d-s%d-m%d\n", gt.Hour(), gt.Minute(), gt.Second(), gt.Nanosecond()/1000000)
 	return &chainClock{
 		GenesisTime:   gt,
 		EpochDuration: blockTime,
