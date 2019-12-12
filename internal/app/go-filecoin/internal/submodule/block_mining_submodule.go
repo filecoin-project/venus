@@ -17,7 +17,7 @@ type BlockMiningSubmodule struct {
 	AddNewlyMinedBlock newBlockFunc
 	// cancelMining cancels the context for block production and sector commitments.
 	CancelMining    context.CancelFunc
-	MiningWorker    mining.Worker
+	MiningWorker    *mining.DefaultWorker
 	MiningScheduler mining.Scheduler
 	Mining          struct {
 		sync.Mutex

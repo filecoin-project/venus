@@ -148,5 +148,5 @@ func newAPI(t *testing.T) (bapi.API, *node.Node) {
 		nd.StopMining,
 		nd.CreateMiningWorker,
 		nd.ChainClock,
-		), nd
+	), nd
 }

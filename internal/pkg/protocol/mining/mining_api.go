@@ -25,7 +25,7 @@ type API struct {
 	setupMiningFunc func(context.Context) error
 	startMiningFunc func(context.Context) error
 	stopMiningFunc  func(context.Context)
-	getWorkerFunc   func(ctx context.Context) (mining.Worker, error)
+	getWorkerFunc   func(ctx context.Context) (*mining.DefaultWorker, error)
 	chainClock      clock.ChainEpochClock
 }
 
@@ -38,7 +38,7 @@ func New(
 	setupMiningFunc func(ctx context.Context) error,
 	startMiningFunc func(context.Context) error,
 	stopMiningfunc func(context.Context),
-	getWorkerFunc func(ctx context.Context) (mining.Worker, error),
+	getWorkerFunc func(ctx context.Context) (*mining.DefaultWorker, error),
 	chainClock clock.ChainEpochClock,
 ) API {
 	return API{
@@ -82,7 +82,7 @@ func (a *API) MiningOnce(ctx context.Context) (*block.Block, error) {
 	}
 
 	fmt.Printf("mining once\n")
-	res, err := mining.MineOnce(ctx, miningWorker, ts, a.chainClock)
+	res, err := mining.MineOnce(ctx, *miningWorker, ts, a.chainClock)
 	if err != nil {
 		return nil, err
 	}

@@ -22,22 +22,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
-// TestMineOnce tests that the MineOnce function results in a mining job being
-// scheduled and run by the mining scheduler.
-func TestMineOnce(t *testing.T) {
-	tf.UnitTest(t)
-
-	ts := testHead(t)
-
-	// Echoes the sent block to output.
-	worker := NewTestWorker(t, MakeEchoMine(t))
-	chainClock := clock.NewChainClock(uint64(time.Now().Unix()), 100*time.Millisecond)
-	result, err := MineOnce(context.Background(), worker, ts, chainClock)
-	assert.NoError(t, err)
-	assert.NoError(t, result.Err)
-	assert.True(t, ts.ToSlice()[0].StateRoot.Equals(result.NewBlock.StateRoot))
-}
-
 // TestMineOnce10Null calls mine once off of a base tipset with a ticket that
 // will win after 10 rounds and verifies that the output has 1 ticket and a
 // +10 height.
@@ -96,7 +80,7 @@ func TestMineOnce10Null(t *testing.T) {
 		Clock:         chainClock,
 	})
 
-	result, err := MineOnce(context.Background(), worker, baseTs, chainClock)
+	result, err := MineOnce(context.Background(), *worker, baseTs, chainClock)
 	assert.NoError(t, err)
 	assert.NoError(t, result.Err)
 	block := result.NewBlock
@@ -276,12 +260,10 @@ func TestCancelsLateWork(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	var count int
-	w := NewTestWorker(t, func(workCtx context.Context, _ block.TipSet, _ uint64, _ chan<- Output) bool {
-		if count != 0 { // only first job blocks
+	w := NewTestWorker(t, func(workCtx context.Context, _ block.TipSet, nullCount uint64, _ chan<- Output) bool {
+		if nullCount != 0 { // only first job blocks
 			return true
 		}
-		count++
 		select {
 		case <-workCtx.Done():
 			wg.Done()

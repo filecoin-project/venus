@@ -663,7 +663,7 @@ func (node *Node) setupProtocols() error {
 }
 
 // GetMiningWorker ensures mining is setup and then returns the worker
-func (node *Node) GetMiningWorker(ctx context.Context) (mining.Worker, error) {
+func (node *Node) GetMiningWorker(ctx context.Context) (*mining.DefaultWorker, error) {
 	if err := node.SetupMining(ctx); err != nil {
 		return nil, err
 	}
@@ -672,7 +672,7 @@ func (node *Node) GetMiningWorker(ctx context.Context) (mining.Worker, error) {
 
 // CreateMiningWorker creates a mining.Worker for the node using the configured
 // getStateTree, getWeight, and getAncestors functions for the node
-func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error) {
+func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker, error) {
 	processor := consensus.NewDefaultProcessor()
 
 	minerAddr, err := node.MiningAddress()

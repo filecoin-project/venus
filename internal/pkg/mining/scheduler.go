@@ -83,7 +83,6 @@ func (s *timingScheduler) mineLoop(miningCtx context.Context, outCh chan Output,
 		default:
 		}
 		if s.skipping { // don't mine if we are skipping
-			fmt.Printf("skip!\n")
 			continue
 		}
 
@@ -98,10 +97,10 @@ func (s *timingScheduler) mineLoop(miningCtx context.Context, outCh chan Output,
 		}
 		nullBlkCount := s.calcNullBlks(h)
 		doneWg.Add(1)
-		go func() {
-			s.worker.Mine(workContext, base, nullBlkCount, outCh)
+		go func(ctx context.Context) {
+			s.worker.Mine(ctx, base, nullBlkCount, outCh)
 			doneWg.Done()
-		}()
+		}(workContext)
 	}
 }
 
@@ -147,26 +146,20 @@ func NewScheduler(w Worker, f func() (block.TipSet, error), c clock.ChainEpochCl
 	}
 }
 
-// MineOnce is a convenience function that presents a synchronous blocking
-// interface to the mining scheduler.  The worker will mine as many null blocks
-// on top of the input tipset as necessary and output the winning block.
-// It makes a polling function that simply returns the provided tipset.
-// Then the scheduler takes this polling function, and the worker and the
-// mining duration
-func MineOnce(ctx context.Context, w Worker, ts block.TipSet, c clock.ChainEpochClock) (Output, error) {
-	pollHeadFunc := func() (block.TipSet, error) {
-		return ts, nil
+// MineOnce mines on a given base until it finds a winner.
+func MineOnce(ctx context.Context, w DefaultWorker, ts block.TipSet, c clock.ChainEpochClock) (Output, error) {
+	var winner *block.Block
+	var err error
+	var nullCount uint64
+	for winner == nil {
+		winner, err = MineOneEpoch(ctx, w, ts, nullCount, c)
+		if err != nil {
+			return Output{}, err
+		}
+		nullCount++
 	}
-	s := NewScheduler(w, pollHeadFunc, c)
-	subCtx, subCtxCancel := context.WithCancel(ctx)
-	defer subCtxCancel()
 
-	outCh, _ := s.Start(subCtx, nil)
-	block, ok := <-outCh
-	if !ok {
-		return Output{}, errors.New("Mining completed without returning block")
-	}
-	return block, nil
+	return Output{NewBlock: winner}, nil
 }
 
 // MineOneEpoch attempts to mine a block in an epoch and returns the mined block
