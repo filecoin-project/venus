@@ -332,9 +332,9 @@ func TestSkips(t *testing.T) {
 		if nullCount == 0 {
 			t.Fail()
 			return true
-		} else {
-			wg.Done()
 		}
+		wg.Done()
+
 		return true
 	})
 

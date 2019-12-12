@@ -66,12 +66,12 @@ func (s *timingScheduler) mineLoop(miningCtx context.Context, outCh chan Output,
 	// If the previous epoch's mining job is not finished it is canceled via the context
 	//
 	// The scheduler will skip mining jobs if the skipping flag is set
-	workContext, workCancel := context.WithCancel(miningCtx)
+	workContext, workCancel := context.WithCancel(miningCtx) // nolint:staticcheck
 	for {
 		s.waitForEpochStart(miningCtx)
 		select { // check for interrupt during waiting
 		case <-miningCtx.Done():
-			return
+			return // nolint:govet
 		default:
 		}
 		workCancel() // cancel any late work from last epoch
@@ -86,7 +86,7 @@ func (s *timingScheduler) mineLoop(miningCtx context.Context, outCh chan Output,
 			continue
 		}
 
-		workContext, workCancel = context.WithCancel(miningCtx)
+		workContext, workCancel = context.WithCancel(miningCtx) // nolint: govet
 		base, err := s.pollHeadFunc()
 		if err != nil {
 			log.Errorf("error polling head from mining scheduler %s", err)
