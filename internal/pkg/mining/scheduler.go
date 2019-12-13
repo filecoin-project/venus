@@ -11,104 +11,102 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/pkg/errors"
 )
 
-// Scheduler is the mining interface consumers use. When you Start() the
-// scheduler it returns a channel and a sync.WaitGroup:
-//   - channel: the scheduler emits outputs (mined blocks) to the caller on this channel
-//   - waitgroup: signals that the scheduler and any goroutines it launched
-//             have stopped. (Context cancelation happens async, so you
-//             need some way to know when it has actually stopped.)
-//
-// Once started, a scheduler can be stopped by canceling the context provided to `Start()`,
-// which will signal on the waitgroup when it's actually done.
+// Scheduler is the mining interface consumers use.
 type Scheduler interface {
 	Start(miningCtx context.Context) (<-chan Output, *sync.WaitGroup)
 	IsStarted() bool
+	Pause()
+	Continue()
 }
 
 type timingScheduler struct {
 	// worker contains the actual mining logic.
 	worker Worker
-	// mineDelay is the time the scheduler blocks for collection.
-	mineDelay time.Duration
 	// pollHeadFunc is the function the scheduler uses to poll for the
 	// current heaviest tipset
 	pollHeadFunc func() (block.TipSet, error)
+	// chainClock measures time and tracks the epoch-time relationship
+	chainClock clock.ChainEpochClock
+
+	// mu protects skipping
+	mu sync.Mutex
+	// skipping tracks whether we should skip mining
+	skipping bool
 
 	isStarted bool
 }
 
-// MineDelayConversionFactor is the constant that divides the mining block time
-// to arrive and the mining delay.  TODO: get a legit value for this param.
-const MineDelayConversionFactor = 30
-
-// Start is the main entrypoint for the timingScheduler. Call it to start
-// mining. It returns two channels: an input channel for tipsets and an output
-// channel for newly mined blocks. It also returns a waitgroup that will signal
-// that all mining runs and auxiliary goroutines have completed. Each tipset
-// that is received on the input channel is procssesed by the scheduler.
-// Depending on the tipset height and the time the input is received, a new
-// input may cancel the context of the previous mining run, or be ignorned.
-// Any successfully mined blocks are sent into the output channel. Closing the
-// input channel does not cause the scheduler to stop; cancel the miningCtx to
-// stop all mining and shut down the scheduler.
+// Start starts mining taking in a context.
+// It returns a channel for reading mining outputs and a waitgroup for teardown.
+// It is the callers responsibility to close the out channel only after waiting
+// on the waitgroup.
 func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync.WaitGroup) {
-	// we buffer 1 to make sure we do not get blocked when shutting down
+	var doneWg sync.WaitGroup
 	outCh := make(chan Output, 1)
-	var doneWg sync.WaitGroup    // for internal use
-	var extDoneWg sync.WaitGroup // for external use
 
-	log.Debugf("Scheduler starting main receive loop")
+	// loop mining work
 	doneWg.Add(1)
-
+	go func() {
+		s.mineLoop(miningCtx, outCh, &doneWg)
+		doneWg.Done()
+	}()
 	s.isStarted = true
-	go func() {
-		defer doneWg.Done()
-		nullBlkCount := uint64(0)
-		var prevBase block.TipSet
-		var prevWon bool
-		for {
-			select {
-			case <-miningCtx.Done():
-				s.isStarted = false
-				return
-			default:
-			}
-			// This is the sleep during which we collect. TODO: maybe this should vary?
-			time.Sleep(s.mineDelay)
-			// Ask for the heaviest tipset.
-			base, _ := s.pollHeadFunc()
-			if !base.Defined() { // Don't try to mine on an unset head.
-				outCh <- NewOutput(nil, errors.New("cannot mine on unset (nil) head"))
-				return
-			}
-			if prevWon && prevBase.Equals(base) {
-				// Skip this round, this likely means that the new head has not propagated yet through the system.
-				// TODO: investigate if there is a better way to handle this situation.
-				continue
-			}
 
-			// Determine how many null blocks we should mine with.
-			nullBlkCount = nextNullBlkCount(nullBlkCount, prevBase, base)
+	return outCh, &doneWg
+}
 
-			// Mine synchronously! Ignore all new tipsets.
-			prevWon = s.worker.Mine(miningCtx, base, nullBlkCount, outCh)
-			prevBase = base
+func (s *timingScheduler) mineLoop(miningCtx context.Context, outCh chan Output, doneWg *sync.WaitGroup) {
+	// mineLoop is the main event loop for the timing scheduler.  It waits for
+	// a new epoch to start, polls the heaviest head, includes the correct number
+	// of null blocks and starts a mining job async.
+	//
+	// If the previous epoch's mining job is not finished it is canceled via the context
+	//
+	// The scheduler will skip mining jobs if the skipping flag is set
+	workContext, workCancel := context.WithCancel(miningCtx) // nolint:staticcheck
+	for {
+		currEpoch := s.chainClock.WaitNextEpoch(miningCtx)
+		select { // check for interrupt during waiting
+		case <-miningCtx.Done():
+			s.isStarted = false
+			return // nolint:govet
+		default:
 		}
-	}()
+		workCancel() // cancel any late work from last epoch
 
-	// This tear down goroutine waits for all work to be done before closing
-	// channels.  When this goroutine is complete, external code can
-	// consider the scheduler to be done.
-	extDoneWg.Add(1)
-	go func() {
-		defer extDoneWg.Done()
-		doneWg.Wait()
-		close(outCh)
-	}()
-	return outCh, &extDoneWg
+		// check if we are skipping and don't mine if so
+		if s.isSkipping() {
+			continue
+		}
+
+		workContext, workCancel = context.WithCancel(miningCtx) // nolint: govet
+		base, err := s.pollHeadFunc()
+		if err != nil {
+			log.Errorf("error polling head from mining scheduler %s", err)
+		}
+		h, err := base.Height()
+		if err != nil {
+			log.Errorf("error getting height from base", err)
+		}
+		nullBlkCount := uint64(currEpoch.AsBigInt().Int64()) - h - 1
+		doneWg.Add(1)
+		go func(ctx context.Context) {
+			s.worker.Mine(ctx, base, nullBlkCount, outCh)
+			doneWg.Done()
+		}(workContext)
+	}
+}
+
+func (s *timingScheduler) isSkipping() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.skipping
 }
 
 // IsStarted is called when starting mining to tell whether the scheduler should be
@@ -117,39 +115,75 @@ func (s *timingScheduler) IsStarted() bool {
 	return s.isStarted
 }
 
-func nextNullBlkCount(prevNullBlkCount uint64, prevBase, currBase block.TipSet) uint64 {
-	if !prevBase.Defined() || !prevBase.Key().Equals(currBase.Key()) {
-		return 0
-	}
+// Pause is called to pause the scheduler from running mining work
+func (s *timingScheduler) Pause() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.skipping = true
+}
 
-	return prevNullBlkCount + 1
-
+// Continue is called to unpause the scheduler's mining work
+func (s *timingScheduler) Continue() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.skipping = false
 }
 
 // NewScheduler returns a new timingScheduler to schedule mining work on the
 // input worker.
-func NewScheduler(w Worker, md time.Duration, f func() (block.TipSet, error)) Scheduler {
-	return &timingScheduler{worker: w, mineDelay: md, pollHeadFunc: f}
+func NewScheduler(w Worker, f func() (block.TipSet, error), c clock.ChainEpochClock) Scheduler {
+	return &timingScheduler{
+		worker:       w,
+		pollHeadFunc: f,
+		chainClock:   c,
+	}
 }
 
-// MineOnce is a convenience function that presents a synchronous blocking
-// interface to the mining scheduler.  The worker will mine as many null blocks
-// on top of the input tipset as necessary and output the winning block.
-// It makes a polling function that simply returns the provided tipset.
-// Then the scheduler takes this polling function, and the worker and the
-// mining duration
-func MineOnce(ctx context.Context, w Worker, md time.Duration, ts block.TipSet) (Output, error) {
-	pollHeadFunc := func() (block.TipSet, error) {
-		return ts, nil
+// MineOnce mines on a given base until it finds a winner.
+func MineOnce(ctx context.Context, w DefaultWorker, ts block.TipSet, c clock.ChainEpochClock) (Output, error) {
+	var winner *block.Block
+	var nullCount uint64
+	for winner == nil {
+		var err error
+		winner, err = MineOneEpoch(ctx, w, ts, nullCount, c)
+		if err != nil {
+			return Output{}, err
+		}
+		nullCount++
 	}
-	s := NewScheduler(w, md, pollHeadFunc)
-	subCtx, subCtxCancel := context.WithCancel(ctx)
-	defer subCtxCancel()
 
-	outCh, _ := s.Start(subCtx)
-	block, ok := <-outCh
-	if !ok {
-		return Output{}, errors.New("Mining completed without returning block")
+	return Output{NewBlock: winner}, nil
+}
+
+// MineOneEpoch attempts to mine a block in an epoch and returns the mined block
+// or nil if no block could be mined
+func MineOneEpoch(ctx context.Context, w DefaultWorker, ts block.TipSet, nullCount uint64, chainClock clock.ChainEpochClock) (*block.Block, error) {
+	workCtx, workCancel := context.WithCancel(ctx)
+	defer workCancel()
+	outCh := make(chan Output, 1)
+
+	// Control the time so that this block is always mined at a time that matches the epoch
+	h, err := ts.Height()
+	if err != nil {
+		return nil, err
 	}
-	return block, nil
+	epochStartTime := chainClock.StartTimeOfEpoch(types.NewBlockHeight(nullCount + h + 1))
+	nextEpochStartTime := chainClock.StartTimeOfEpoch(types.NewBlockHeight(nullCount + h + 2))
+	epochTime := nextEpochStartTime.Sub(epochStartTime)
+	halfEpochTime := epochTime / time.Duration(2) // mine blocks midway through the epoch
+
+	w.clock = th.NewFakeClock(epochStartTime.Add(halfEpochTime))
+
+	won := w.Mine(workCtx, ts, nullCount, outCh)
+	if !won {
+		return nil, nil
+	}
+	out, ok := <-outCh
+	if !ok {
+		return nil, errors.New("Mining completed without returning block")
+	}
+	if out.Err != nil {
+		return nil, out.Err
+	}
+	return out.NewBlock, nil
 }

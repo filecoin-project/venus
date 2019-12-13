@@ -21,7 +21,7 @@ import (
 func TestBlockValidSemantic(t *testing.T) {
 	tf.UnitTest(t)
 
-	blockTime := clock.EpochDuration
+	blockTime := clock.DefaultEpochDuration
 	ts := time.Unix(1234567890, 0)
 	mclock := th.NewFakeClock(ts)
 	ctx := context.Background()
@@ -86,7 +86,7 @@ func TestBlockValidSemantic(t *testing.T) {
 func TestBlockValidSyntax(t *testing.T) {
 	tf.UnitTest(t)
 
-	blockTime := clock.EpochDuration
+	blockTime := clock.DefaultEpochDuration
 	ts := time.Unix(1234567890, 0)
 	mclock := th.NewFakeClock(ts)
 	ctx := context.Background()

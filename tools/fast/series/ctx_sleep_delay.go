@@ -14,7 +14,7 @@ var (
 	sleepDelayKey = ctxSleepDelayKey{}
 
 	// Default delay
-	defaultSleepDelay = clock.EpochDuration
+	defaultSleepDelay = clock.DefaultEpochDuration
 )
 
 // SetCtxSleepDelay returns a context with `d` set in the context. To sleep with

@@ -203,8 +203,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		// TODO #2223 remove this explicit wait if/when NotarizeTime calls VDF
-		w.clock.Sleep(w.api.BlockTime())
+		// TODO #3703 actually launch election post work here
 		done <- struct{}{}
 	}()
 

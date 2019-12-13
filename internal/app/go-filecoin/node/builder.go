@@ -115,6 +115,7 @@ func New(ctx context.Context, opts ...BuilderOpt) (*Node, error) {
 	// initialize builder and set base values
 	n := &Builder{
 		offlineMode: false,
+		blockTime:   clock.DefaultEpochDuration,
 	}
 
 	// apply builder options
@@ -190,7 +191,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		b.chainClock = clock.NewChainClock(uint64(geneBlk.Timestamp))
+		b.chainClock = clock.NewChainClock(uint64(geneBlk.Timestamp), b.blockTime)
 	}
 	nd.ChainClock = b.chainClock
 

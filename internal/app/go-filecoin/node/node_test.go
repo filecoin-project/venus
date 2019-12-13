@@ -13,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
@@ -215,11 +214,7 @@ func TestNodeConfig(t *testing.T) {
 
 	n := node.GenNode(t, &tno)
 	cfg := n.Repo.Config()
-	_, blockTime := n.MiningTimes()
 
-	actualBlockTime := time.Duration(configBlockTime / mining.MineDelayConversionFactor)
-
-	assert.Equal(t, actualBlockTime, blockTime)
 	assert.Equal(t, true, n.OfflineMode)
 	assert.Equal(t, defaultCfg.Mining, cfg.Mining)
 	assert.Equal(t, &config.SwarmConfig{
