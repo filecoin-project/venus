@@ -7,7 +7,6 @@ package mining
 import (
 	"context"
 	"time"
-	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -141,10 +140,6 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		Ticket:          ticket,
 		Timestamp:       types.Uint64(now.Unix()),
 		BLSAggregateSig: blsAggregateSig,
-	}
-
-	if expEpoch := w.clock.EpochAtTime(now); expEpoch != uint64(next.Height) {
-		panic(fmt.Sprintf("expected epoch: %d, got epoch %d", expEpoch, next.Height))
 	}
 
 	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr, baseTipSet.Key())

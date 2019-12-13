@@ -48,15 +48,13 @@ type MessageSyntaxValidator interface {
 // DefaultBlockValidator implements the BlockValidator interface.
 type DefaultBlockValidator struct {
 	clock.ChainEpochClock
-	blockTime time.Duration
 }
 
 // NewDefaultBlockValidator returns a new DefaultBlockValidator. It uses `blkTime`
 // to validate blocks and uses the DefaultBlockValidationClock.
-func NewDefaultBlockValidator(blkTime time.Duration, c clock.ChainEpochClock) *DefaultBlockValidator {
+func NewDefaultBlockValidator(c clock.ChainEpochClock) *DefaultBlockValidator {
 	return &DefaultBlockValidator{
 		ChainEpochClock: c,
-		blockTime:       blkTime,
 	}
 }
 
@@ -64,7 +62,7 @@ func NewDefaultBlockValidator(blkTime time.Duration, c clock.ChainEpochClock) *D
 // the chain clock.
 func (dv *DefaultBlockValidator) NotFutureBlock(b *block.Block) error {
 	currentEpoch := dv.EpochAtTime(dv.Now())
-	if uint64(b.Height) > currentEpoch {
+	if int64(b.Height) > currentEpoch {
 		return fmt.Errorf("block %s with timestamp %d generate in future epoch %d", b.Cid().String(), b.Timestamp, b.Height)
 	}
 	return nil
@@ -73,8 +71,8 @@ func (dv *DefaultBlockValidator) NotFutureBlock(b *block.Block) error {
 // TimeMatchesEpoch errors if the epoch and time don't match according to the
 // chain clock.
 func (dv *DefaultBlockValidator) TimeMatchesEpoch(b *block.Block) error {
-	expectedEpoch := dv.EpochAtTime(time.Unix(int64(b.Timestamp), 0))
-	if expectedEpoch != uint64(b.Height) {
+	expectedEpoch := dv.EpochAtTime(time.Unix(int64(b.Timestamp), int64(b.Timestamp)%int64(time.Second)))
+	if expectedEpoch != int64(b.Height) {
 		return fmt.Errorf("block %s with timestamp %d generated in wrong epoch %d, expected epoch %d", b.Cid().String(), b.Timestamp, b.Height, expectedEpoch)
 	}
 	return nil
@@ -121,12 +119,6 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 	}
 
 	return nil
-}
-
-// BlockTime returns the block time the DefaultBlockValidator uses to validate
-/// blocks against.
-func (dv *DefaultBlockValidator) BlockTime() time.Duration {
-	return dv.blockTime
 }
 
 // ValidateMessagesSyntax validates a set of messages are correctly formed.

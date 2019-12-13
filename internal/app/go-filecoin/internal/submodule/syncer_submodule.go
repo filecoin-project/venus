@@ -47,7 +47,7 @@ type nodeChainSelector interface {
 func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo, blockstore *BlockstoreSubmodule, network *NetworkSubmodule, discovery *DiscoverySubmodule, chn *ChainSubmodule) (SyncerSubmodule, error) {
 	// setup block validation
 	// TODO when #2961 is resolved do the needful here.
-	blkValid := consensus.NewDefaultBlockValidator(config.BlockTime(), config.ChainClock())
+	blkValid := consensus.NewDefaultBlockValidator(config.ChainClock())
 
 	// register block validation on floodsub
 	btv := net.NewBlockTopicValidator(blkValid)
