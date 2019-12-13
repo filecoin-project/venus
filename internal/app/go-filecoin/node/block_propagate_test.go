@@ -6,11 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
@@ -135,7 +136,8 @@ func TestChainSync(t *testing.T) {
 // makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
 func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*Node) {
 	seed := MakeChainSeed(t, TestGenCfg)
-	builderOpts := []BuilderOpt{ChainClockConfigOption(th.NewFakeChainClock(0, time.Unix(1234567890, 0)))}
+	c := clock.NewChainClockFromClock(1234567890, 100*time.Millisecond, th.NewFakeClock(time.Unix(1234567890, 0)))
+	builderOpts := []BuilderOpt{ChainClockConfigOption(c)}
 	minerNode := MakeNodeWithChainSeed(t, seed, builderOpts,
 		PeerKeyOpt(PeerKeys[0]),
 	)

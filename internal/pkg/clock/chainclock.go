@@ -1,16 +1,20 @@
 package clock
 
 import (
+	"context"
 	"time"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
-// DefaultBlockTime is the default duration of epochs
-const DefaultBlockTime = 15 * time.Second
+// DefaultEpochDuration is the default duration of epochs
+const DefaultEpochDuration = 15 * time.Second
 
 // ChainEpochClock is an interface for a clock that represents epochs of the protocol.
 type ChainEpochClock interface {
-	EpochAtTime(t time.Time) int64
-	StartTimeOfEpoch(e uint64) time.Time
+	EpochAtTime(t time.Time) *types.BlockHeight
+	StartTimeOfEpoch(e *types.BlockHeight) time.Time
+	WaitNextEpoch(ctx context.Context) *types.BlockHeight
 	Clock
 }
 
@@ -19,7 +23,7 @@ type chainClock struct {
 	// GenesisTime is the time of the first block. EpochClock counts
 	// up from there.
 	GenesisTime time.Time
-	// EpochDuration is the time an epoch takes
+	// EpochDuration is the fixed time length of the epoch window
 	EpochDuration time.Duration
 
 	Clock
@@ -32,8 +36,8 @@ func NewChainClock(genesisTime uint64, blockTime time.Duration) ChainEpochClock 
 
 // NewChainClockFromClock returns a ChainEpochClock wrapping the provided
 // clock.Clock
-func NewChainClockFromClock(genesisTime uint64, blockTime time.Duration, c Clock) ChainEpochClock {
-	gt := time.Unix(int64(genesisTime), int64(genesisTime%1000000000))
+func NewChainClockFromClock(genesisSeconds uint64, blockTime time.Duration, c Clock) ChainEpochClock {
+	gt := time.Unix(int64(genesisSeconds), 0)
 	return &chainClock{
 		GenesisTime:   gt,
 		EpochDuration: blockTime,
@@ -44,16 +48,31 @@ func NewChainClockFromClock(genesisTime uint64, blockTime time.Duration, c Clock
 // EpochAtTime returns the ChainEpoch corresponding to t.
 // It first subtracts GenesisTime, then divides by EpochDuration
 // and returns the resulting number of epochs.
-func (cc *chainClock) EpochAtTime(t time.Time) int64 {
+func (cc *chainClock) EpochAtTime(t time.Time) *types.BlockHeight {
 	difference := t.Sub(cc.GenesisTime)
 	epochs := difference / cc.EpochDuration
-	return int64(epochs)
+	return types.NewBlockHeight(uint64(epochs))
 }
 
 // StartTimeOfEpoch returns the start time of the given epoch.
-func (cc *chainClock) StartTimeOfEpoch(e uint64) time.Time {
-	addedTime := cc.GenesisTime.Add(cc.EpochDuration * time.Duration(int64(e)))
-	//	fmt.Printf("epoch %d start time: h%d-m%d-s%d-m%d\n", e, addedTime.Hour(), addedTime.Minute(), addedTime.Second(), addedTime.Nanosecond()/1000000)
-	//	fmt.Printf("duration: %s\n", cc.EpochDuration*time.Duration(int64(e)))
+func (cc *chainClock) StartTimeOfEpoch(e *types.BlockHeight) time.Time {
+	bigE := e.AsBigInt()
+	addedTime := cc.GenesisTime.Add(cc.EpochDuration * time.Duration(bigE.Int64()))
 	return addedTime
+}
+
+// WaitNextEpoch returns after the next epoch occurs or ctx is done.
+func (cc *chainClock) WaitNextEpoch(ctx context.Context) *types.BlockHeight {
+	currEpoch := cc.EpochAtTime(cc.Now())
+	nextEpoch := currEpoch.Add(types.NewBlockHeight(uint64(1)))
+	nextEpochStart := cc.StartTimeOfEpoch(nextEpoch)
+	nowB4 := cc.Now()
+	waitDur := nextEpochStart.Sub(nowB4)
+	newEpochCh := cc.After(waitDur)
+	select {
+	case <-newEpochCh:
+	case <-ctx.Done():
+	}
+
+	return nextEpoch
 }

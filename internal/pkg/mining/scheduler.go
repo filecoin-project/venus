@@ -7,20 +7,22 @@ package mining
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/pkg/errors"
 )
 
 // Scheduler is the mining interface consumers use.
 type Scheduler interface {
-	Start(miningCtx context.Context, skipCh chan bool) (<-chan Output, *sync.WaitGroup)
+	Start(miningCtx context.Context) (<-chan Output, *sync.WaitGroup)
 	IsStarted() bool
+	Pause()
+	Continue()
 }
 
 type timingScheduler struct {
@@ -32,25 +34,26 @@ type timingScheduler struct {
 	// chainClock measures time and tracks the epoch-time relationship
 	chainClock clock.ChainEpochClock
 
+	// mu protects skipping
+	mu sync.Mutex
 	// skipping tracks whether we should skip mining
 	skipping bool
 
 	isStarted bool
 }
 
-// Start starts mining. It takes in a channel signaling when to skip mining --
-// intended to be wired to the syncer's catchup notifications -- and a context.
+// Start starts mining taking in a context.
 // It returns a channel for reading mining outputs and a waitgroup for teardown.
-// It is the callers responsibility to close the out channel ONLY after waiting
+// It is the callers responsibility to close the out channel only after waiting
 // on the waitgroup.
-func (s *timingScheduler) Start(miningCtx context.Context, skipCh chan bool) (<-chan Output, *sync.WaitGroup) {
+func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync.WaitGroup) {
 	var doneWg sync.WaitGroup
 	outCh := make(chan Output, 1)
 
 	// loop mining work
 	doneWg.Add(1)
 	go func() {
-		s.mineLoop(miningCtx, outCh, skipCh, &doneWg)
+		s.mineLoop(miningCtx, outCh, &doneWg)
 		doneWg.Done()
 	}()
 	s.isStarted = true
@@ -58,7 +61,7 @@ func (s *timingScheduler) Start(miningCtx context.Context, skipCh chan bool) (<-
 	return outCh, &doneWg
 }
 
-func (s *timingScheduler) mineLoop(miningCtx context.Context, outCh chan Output, skipCh chan bool, doneWg *sync.WaitGroup) {
+func (s *timingScheduler) mineLoop(miningCtx context.Context, outCh chan Output, doneWg *sync.WaitGroup) {
 	// mineLoop is the main event loop for the timing scheduler.  It waits for
 	// a new epoch to start, polls the heaviest head, includes the correct number
 	// of null blocks and starts a mining job async.
@@ -68,21 +71,17 @@ func (s *timingScheduler) mineLoop(miningCtx context.Context, outCh chan Output,
 	// The scheduler will skip mining jobs if the skipping flag is set
 	workContext, workCancel := context.WithCancel(miningCtx) // nolint:staticcheck
 	for {
-		s.waitForEpochStart(miningCtx)
+		currEpoch := s.chainClock.WaitNextEpoch(miningCtx)
 		select { // check for interrupt during waiting
 		case <-miningCtx.Done():
+			s.isStarted = false
 			return // nolint:govet
 		default:
 		}
 		workCancel() // cancel any late work from last epoch
 
 		// check if we are skipping and don't mine if so
-		select {
-		case skip := <-skipCh:
-			s.skipping = skip
-		default:
-		}
-		if s.skipping { // don't mine if we are skipping
+		if s.isSkipping() {
 			continue
 		}
 
@@ -95,7 +94,7 @@ func (s *timingScheduler) mineLoop(miningCtx context.Context, outCh chan Output,
 		if err != nil {
 			log.Errorf("error getting height from base", err)
 		}
-		nullBlkCount := s.calcNullBlks(h)
+		nullBlkCount := uint64(currEpoch.AsBigInt().Int64()) - h - 1
 		doneWg.Add(1)
 		go func(ctx context.Context) {
 			s.worker.Mine(ctx, base, nullBlkCount, outCh)
@@ -104,36 +103,30 @@ func (s *timingScheduler) mineLoop(miningCtx context.Context, outCh chan Output,
 	}
 }
 
-func (s *timingScheduler) waitForEpochStart(miningCtx context.Context) {
-	// waitForEpochStart blocks until the next epoch begins
-	currEpoch := uint64(s.chainClock.EpochAtTime(s.chainClock.Now()))
-	nextEpoch := currEpoch + 1
-	nextEpochStart := s.chainClock.StartTimeOfEpoch(nextEpoch)
-	nowB4 := s.chainClock.Now()
-	waitDur := nextEpochStart.Sub(nowB4)
-	newEpochCh := s.chainClock.After(waitDur)
-	fmt.Printf("wait for time: %s at %s/%s\n", nextEpochStart, nowB4, s.chainClock.Now())
-	select {
-	case currTime := <-newEpochCh:
-		//	fmt.Printf("starting epoch: %d\n", nextEpoch)
-		//		fmt.Printf("exp time: h%d-m%d-s%d-m%d, curr time: h%d-m%d-s%d-m%d\n", nextEpochStart.Hour(), nextEpochStart.Minute(), nextEpochStart.Second(), nextEpochStart.Nanosecond()/1000000, currTime.Hour(), currTime.Minute(), currTime.Second(), currTime.Nanosecond()/1000000)
-		_ = currTime
-		return
-	case <-miningCtx.Done():
-		s.isStarted = false
-		return
-	}
-}
-
-func (s *timingScheduler) calcNullBlks(baseHeight uint64) uint64 {
-	currEpoch := uint64(s.chainClock.EpochAtTime(s.chainClock.Now()))
-	return currEpoch - baseHeight - 1
+func (s *timingScheduler) isSkipping() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.skipping
 }
 
 // IsStarted is called when starting mining to tell whether the scheduler should be
 // started
 func (s *timingScheduler) IsStarted() bool {
 	return s.isStarted
+}
+
+// Pause is called to pause the scheduler from running mining work
+func (s *timingScheduler) Pause() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.skipping = true
+}
+
+// Continue is called to unpause the scheduler's mining work
+func (s *timingScheduler) Continue() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.skipping = false
 }
 
 // NewScheduler returns a new timingScheduler to schedule mining work on the
@@ -149,9 +142,9 @@ func NewScheduler(w Worker, f func() (block.TipSet, error), c clock.ChainEpochCl
 // MineOnce mines on a given base until it finds a winner.
 func MineOnce(ctx context.Context, w DefaultWorker, ts block.TipSet, c clock.ChainEpochClock) (Output, error) {
 	var winner *block.Block
-	var err error
 	var nullCount uint64
 	for winner == nil {
+		var err error
 		winner, err = MineOneEpoch(ctx, w, ts, nullCount, c)
 		if err != nil {
 			return Output{}, err
@@ -174,8 +167,8 @@ func MineOneEpoch(ctx context.Context, w DefaultWorker, ts block.TipSet, nullCou
 	if err != nil {
 		return nil, err
 	}
-	epochStartTime := chainClock.StartTimeOfEpoch(nullCount + h + 1)
-	nextEpochStartTime := chainClock.StartTimeOfEpoch(nullCount + h + 2)
+	epochStartTime := chainClock.StartTimeOfEpoch(types.NewBlockHeight(nullCount + h + 1))
+	nextEpochStartTime := chainClock.StartTimeOfEpoch(types.NewBlockHeight(nullCount + h + 2))
 	epochTime := nextEpochStartTime.Sub(epochStartTime)
 	halfEpochTime := epochTime / time.Duration(2) // mine blocks midway through the epoch
 

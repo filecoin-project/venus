@@ -115,7 +115,7 @@ func New(ctx context.Context, opts ...BuilderOpt) (*Node, error) {
 	// initialize builder and set base values
 	n := &Builder{
 		offlineMode: false,
-		blockTime:   clock.DefaultBlockTime,
+		blockTime:   clock.DefaultEpochDuration,
 	}
 
 	// apply builder options

@@ -424,7 +424,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 	var miningCtx context.Context
 	miningCtx, node.BlockMining.CancelMining = context.WithCancel(context.Background())
 
-	outCh, doneWg := node.BlockMining.MiningScheduler.Start(miningCtx, nil) //xxx: fill this in with a skip channel
+	outCh, doneWg := node.BlockMining.MiningScheduler.Start(miningCtx)
 
 	node.BlockMining.MiningDoneWg = doneWg
 	node.BlockMining.AddNewlyMinedBlock = node.addNewlyMinedBlock
