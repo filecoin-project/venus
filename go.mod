@@ -10,7 +10,6 @@ require (
 	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/Workiva/go-datastructures v1.0.50
 	github.com/btcsuite/btcd v0.20.1-beta // indirect
-	github.com/btcsuite/goleveldb v1.0.0 // indirect
 	github.com/cskr/pubsub v1.0.2
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v0.7.3-0.20190315170154-87d593639c77
@@ -31,13 +30,13 @@ require (
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.2
 	github.com/ipfs/go-car v0.0.2
-	github.com/ipfs/go-cid v0.0.3
+	github.com/ipfs/go-cid v0.0.4
 	github.com/ipfs/go-datastore v0.1.1
 	github.com/ipfs/go-ds-badger v0.0.7
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-graphsync v0.0.3
 	github.com/ipfs/go-hamt-ipld v0.0.13
-	github.com/ipfs/go-ipfs-blockstore v0.1.0
+	github.com/ipfs/go-ipfs-blockstore v0.1.1
 	github.com/ipfs/go-ipfs-chunker v0.0.1
 	github.com/ipfs/go-ipfs-cmdkit v0.0.1
 	github.com/ipfs/go-ipfs-cmds v0.0.1
@@ -57,7 +56,6 @@ require (
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/jbenet/goprocess v0.1.3
 	github.com/jstemmer/go-junit-report v0.9.1
-	github.com/kkdai/bstream v1.0.0 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/libp2p/go-flow-metrics v0.0.2 // indirect
 	github.com/libp2p/go-libp2p v0.4.1-0.20191006140250-5f60501a04d5
@@ -72,7 +70,6 @@ require (
 	github.com/libp2p/go-libp2p-testing v0.1.1 // indirect
 	github.com/libp2p/go-stream-muxer v0.0.1
 	github.com/libp2p/go-yamux v1.2.4 // indirect
-	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-isatty v0.0.10 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mitchellh/go-homedir v1.1.0
@@ -81,7 +78,7 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/multiformats/go-multiaddr-net v0.1.1
 	github.com/multiformats/go-multibase v0.0.1
-	github.com/multiformats/go-multihash v0.0.8
+	github.com/multiformats/go-multihash v0.0.10
 	github.com/multiformats/go-multistream v0.1.0
 	github.com/onsi/ginkgo v1.10.3 // indirect
 	github.com/onsi/gomega v1.7.1 // indirect
