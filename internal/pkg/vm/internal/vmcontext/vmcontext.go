@@ -640,7 +640,7 @@ func (ctx *VMContext) getOrCreateActor(c context.Context, st *state.CachedTree, 
 		return nil, address.Undef, err
 	}
 
-	act, err := ctx.deps.GetActor(ctx, idAddr)
+	act, err := ctx.deps.GetActor(c, idAddr)
 	return act, idAddr, err
 }
 
