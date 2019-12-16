@@ -19,7 +19,7 @@ type Tree interface {
 	Flush(ctx context.Context) (cid.Cid, error)
 
 	GetActor(ctx context.Context, a address.Address) (*actor.Actor, error)
-	GetOrCreateActor(ctx context.Context, a address.Address, c func() (*actor.Actor, error)) (*actor.Actor, error)
+	GetOrCreateActor(ctx context.Context, a address.Address, c func() (*actor.Actor, address.Address, error)) (*actor.Actor, address.Address, error)
 	SetActor(ctx context.Context, a address.Address, act *actor.Actor) error
 
 	ForEachActor(ctx context.Context, walkFn ActorWalkFn) error
@@ -90,12 +90,12 @@ func (t *tree) GetActor(ctx context.Context, a address.Address) (*actor.Actor, e
 
 // GetOrCreateActor retrieves an actor by their address
 // If no actor exists at the given address it returns a newly initialized actor.
-func (t *tree) GetOrCreateActor(ctx context.Context, address address.Address, creator func() (*actor.Actor, error)) (*actor.Actor, error) {
-	act, err := t.GetActor(ctx, address)
+func (t *tree) GetOrCreateActor(ctx context.Context, addr address.Address, creator func() (*actor.Actor, address.Address, error)) (*actor.Actor, address.Address, error) {
+	act, err := t.GetActor(ctx, addr)
 	if IsActorNotFoundError(err) {
 		return creator()
 	}
-	return act, err
+	return act, addr, err
 }
 
 // SetActor sets the memory slot at address 'a' to the given actor.

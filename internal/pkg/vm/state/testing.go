@@ -95,7 +95,7 @@ func (m *MockStateTree) SetActor(ctx context.Context, address address.Address, a
 }
 
 // GetOrCreateActor implements StateTree.GetOrCreateActor.
-func (m *MockStateTree) GetOrCreateActor(ctx context.Context, address address.Address, creator func() (*actor.Actor, error)) (*actor.Actor, error) {
+func (m *MockStateTree) GetOrCreateActor(ctx context.Context, addr address.Address, creator func() (*actor.Actor, address.Address, error)) (*actor.Actor, address.Address, error) {
 	return creator()
 }
 

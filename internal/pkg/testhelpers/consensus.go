@@ -64,13 +64,13 @@ type FakeBlockRewarder struct{}
 var _ consensus.BlockRewarder = (*FakeBlockRewarder)(nil)
 
 // BlockReward is a noop
-func (tbr *FakeBlockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
+func (tbr *FakeBlockRewarder) BlockReward(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address) error {
 	// do nothing to keep state root the same
 	return nil
 }
 
 // GasReward does nothing
-func (tbr *FakeBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error {
+func (tbr *FakeBlockRewarder) GasReward(ctx context.Context, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error {
 	// do nothing to keep state root the same
 	return nil
 }
@@ -203,6 +203,9 @@ func newMessageApplier(msg *types.UnsignedMessage, processor *consensus.DefaultP
 	}
 
 	if len(amr) > 0 {
+		if amr[0].Failure != nil {
+			return nil, amr[0].Failure
+		}
 		return &amr[0].ApplicationResult, err
 	}
 

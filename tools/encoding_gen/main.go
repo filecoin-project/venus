@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
@@ -35,7 +36,7 @@ func main() {
 	}
 
 	if err := gen.WriteToFile(filepath.Join(base, "actor/builtin/initactor/initactor_encoding_gen.go"), gen.IpldCborTypeEncodingGenerator{}, "initactor",
-		initactor.State{}, // actor/builtin/initactior/init.go
+		initactor.State{}, // actor/builtin/initactor/init.go
 	); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -44,6 +45,13 @@ func main() {
 	if err := gen.WriteToFile(filepath.Join(base, "actor/builtin/miner/miner_encoding_gen.go"), gen.IpldCborTypeEncodingGenerator{}, "miner",
 		miner.State{}, // actor/builtin/miner/miner.go
 		miner.Ask{},   // actor/builtin/miner/miner.go
+	); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	if err := gen.WriteToFile(filepath.Join(base, "actor/builtin/account/account_encoding_gen.go"), gen.IpldCborTypeEncodingGenerator{}, "account",
+		account.State{}, // actor/builtin/account/account.go
 	); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

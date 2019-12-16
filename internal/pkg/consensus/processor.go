@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"math/big"
 
 	"github.com/ipfs/go-cid"
@@ -14,10 +15,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -42,10 +41,10 @@ type MessageValidator interface {
 // BlockRewarder applies all rewards due to the miner's owner for processing a block including block reward and gas
 type BlockRewarder interface {
 	// BlockReward pays out the mining reward
-	BlockReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address) error
+	BlockReward(ctx context.Context, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address) error
 
 	// GasReward pays gas from the sender to the miner
-	GasReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error
+	GasReward(ctx context.Context, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error
 }
 
 // ApplicationResult contains the result of successfully applying one message.
@@ -248,7 +247,7 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 	}
 
 	if r.GasAttoFIL.IsPositive() {
-		gasError := p.blockRewarder.GasReward(ctx, st, minerOwnerAddr, msg, r.GasAttoFIL)
+		gasError := p.blockRewarder.GasReward(ctx, st, vms, minerOwnerAddr, msg, r.GasAttoFIL)
 		if gasError != nil {
 			return nil, errors.NewFaultError("failed to transfer gas reward to owner of miner")
 		}
@@ -272,12 +271,16 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 
 	// At this point we consider the message successfully applied so inc
 	// the nonce.
-	fromActor, err := st.GetActor(ctx, msg.From)
+	fromAddr, _, err := ResolveAddress(ctx, msg.From, state.NewCachedTree(st), vms, gasTracker)
+	if err != nil {
+		return nil, errors.FaultErrorWrapf(err, "Could not resolve from actor address")
+	}
+	fromActor, err := st.GetActor(ctx, fromAddr)
 	if err != nil {
 		return nil, errors.FaultErrorWrap(err, "couldn't load from actor")
 	}
 	fromActor.IncNonce()
-	if err := st.SetActor(ctx, msg.From, fromActor); err != nil {
+	if err := st.SetActor(ctx, fromAddr, fromActor); err != nil {
 		return nil, errors.FaultErrorWrap(err, "could not set from actor after inc nonce")
 	}
 
@@ -322,9 +325,13 @@ func (p *DefaultProcessor) CallQueryMethod(ctx context.Context, st state.Tree, v
 	gasTracker.MsgGasLimit = types.BlockGasLimit
 
 	// translate address before retrieving from actor
-	toAddr, err := p.resolveAddress(ctx, msg, cachedSt, vms, gasTracker)
+	toAddr, found, err := ResolveAddress(ctx, msg.To, cachedSt, vms, gasTracker)
 	if err != nil {
 		return nil, 1, errors.FaultErrorWrapf(err, "Could not resolve actor address")
+	}
+
+	if !found {
+		return nil, 1, errors.ApplyErrorPermanentWrapf(err, "failed to resolve To actor")
 	}
 
 	toActor, err := st.GetActor(ctx, toAddr)
@@ -368,15 +375,10 @@ func (p *DefaultProcessor) PreviewQueryMethod(ctx context.Context, st state.Tree
 	gasTracker := vm.NewGasTracker()
 	gasTracker.MsgGasLimit = types.BlockGasLimit
 
-	// translate address before retrieving from actor
-	toAddr, err := p.resolveAddress(ctx, msg, cachedSt, vms, gasTracker)
+	// ensure actor exists
+	toActor, toAddr, err := getOrCreateActor(ctx, cachedSt, vms, msg.To, gasTracker)
 	if err != nil {
-		return types.NewGasUnits(0), errors.FaultErrorWrapf(err, "Could not resolve actor address")
-	}
-
-	toActor, err := st.GetActor(ctx, toAddr)
-	if err != nil {
-		return types.NewGasUnits(0), errors.ApplyErrorPermanentWrapf(err, "failed to get To actor")
+		return types.GasUnits(0), errors.FaultErrorWrap(err, "failed to get To actor")
 	}
 
 	vmCtxParams := vm.NewContextParams{
@@ -410,7 +412,18 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		}, err
 	}
 
-	fromActor, err := st.GetActor(ctx, msg.From)
+	fromAddr, found, err := ResolveAddress(ctx, msg.From, st, store, gasTracker)
+	if err != nil {
+		return nil, errors.FaultErrorWrapf(err, "Could not resolve actor address")
+	}
+	if !found {
+		return &types.MessageReceipt{
+			ExitCode:   errors.CodeError(err),
+			GasAttoFIL: types.ZeroAttoFIL,
+		}, errFromAccountNotFound
+	}
+
+	fromActor, err := st.GetActor(ctx, fromAddr)
 	if state.IsActorNotFoundError(err) {
 		return &types.MessageReceipt{
 			ExitCode:   errors.CodeError(err),
@@ -428,26 +441,8 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		}, err
 	}
 
-	// Processing an external message from an empty actor upgrades it to an account actor.
-	if fromActor.Empty() {
-		err := account.UpgradeActor(fromActor)
-		if err != nil {
-			return nil, errors.FaultErrorWrap(err, "failed to upgrade empty actor")
-		}
-	}
-
-	// translate address before retrieving from actor
-	toAddr, err := p.resolveAddress(ctx, msg, st, store, gasTracker)
-	if err != nil {
-		return nil, errors.FaultErrorWrapf(err, "Could not resolve actor address")
-	}
-
-	toActor, err := st.GetOrCreateActor(ctx, toAddr, func() (*actor.Actor, error) {
-		// Addresses are deterministic so sending a message to a non-existent address must not install an actor,
-		// else actors could be installed ahead of address activation. So here we create the empty, upgradable
-		// actor to collect any balance that may be transferred.
-		return &actor.Actor{}, nil
-	})
+	// ensure actor exists
+	toActor, toAddr, err := getOrCreateActor(ctx, st, store, msg.To, gasTracker)
 	if err != nil {
 		return nil, errors.FaultErrorWrap(err, "failed to get To actor")
 	}
@@ -485,42 +480,39 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 	return receipt, vmErr
 }
 
-// resolveAddress looks up associated id address if actor address. Otherwise it returns the same address.
-func (p *DefaultProcessor) resolveAddress(ctx context.Context, msg *types.UnsignedMessage, st *state.CachedTree, vms vm.StorageMap, gt *vm.GasTracker) (address.Address, error) {
-	if msg.To.Protocol() != address.Actor {
-		return msg.To, nil
+// ResolveAddress looks up associated id address. If the given address is already and id address, it is returned unchanged.
+func ResolveAddress(ctx context.Context, addr address.Address, st *state.CachedTree, vms vm.StorageMap, gt *vm.GasTracker) (address.Address, bool, error) {
+	if addr.Protocol() == address.ID {
+		return addr, true, nil
 	}
 
-	to, err := st.GetActor(ctx, address.InitAddress)
+	init, err := st.GetActor(ctx, address.InitAddress)
 	if err != nil {
-		return address.Undef, err
+		return address.Undef, false, err
 	}
 
-	vmCtxParams := vm.NewContextParams{
-		Message:    msg,
+	vmCtx := vm.NewVMContext(vm.NewContextParams{
 		State:      st,
 		StorageMap: vms,
-		GasTracker: gt,
-		Actors:     p.actors,
-		To:         to,
-	}
-	vmCtx := vm.NewVMContext(vmCtxParams)
-	ret, _, err := vmCtx.LegacySend(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{msg.To})
+		ToAddr:     address.InitAddress,
+		To:         init,
+	})
+
+	id, found, err := initactor.LookupIDAddress(vmCtx, addr)
 	if err != nil {
-		return address.Undef, err
+		return address.Undef, false, err
 	}
 
-	id, err := abi.Deserialize(ret[0], abi.Integer)
-	if err != nil {
-		return address.Undef, err
+	if !found {
+		return address.Undef, false, nil
 	}
 
-	idAddr, err := address.NewIDAddress(id.Val.(*big.Int).Uint64())
+	idAddr, err := address.NewIDAddress(id)
 	if err != nil {
-		return address.Undef, err
+		return address.Undef, false, err
 	}
 
-	return idAddr, nil
+	return idAddr, true, nil
 }
 
 // ApplyMessagesAndPayRewards pays the block mining reward to the miner's owner and then applies
@@ -532,7 +524,7 @@ func (p *DefaultProcessor) ApplyMessagesAndPayRewards(ctx context.Context, st st
 	var results []*ApplyMessageResult
 
 	// Pay block reward.
-	if err := p.blockRewarder.BlockReward(ctx, st, minerOwnerAddr); err != nil {
+	if err := p.blockRewarder.BlockReward(ctx, st, vms, minerOwnerAddr); err != nil {
 		return nil, err
 	}
 
@@ -556,6 +548,39 @@ func (p *DefaultProcessor) ApplyMessagesAndPayRewards(ctx context.Context, st st
 	return results, nil
 }
 
+// ApplyMessageDirect applies a given message directly to the given state tree and storage map and returns the result of the message.
+// This is a shortcut to allow internal code to use built-in actor functionality to alter state.
+func ApplyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, from, to address.Address, nonce uint64, value types.AttoFIL, method types.MethodID, params ...interface{}) ([]byte, error) {
+	cst := state.NewCachedTree(st)
+
+	encodedParams, err := abi.ToEncodedValues(params...)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := types.NewUnsignedMessage(from, to, nonce, value, method, encodedParams)
+	msg.GasLimit = 10000
+	processor := NewConfiguredProcessor(&directMessageValidator{}, &DefaultBlockRewarder{}, builtin.DefaultActors)
+	receipt, err := processor.attemptApplyMessage(ctx, cst, vms, msg, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
+	if err != nil {
+		return nil, err
+	}
+	if receipt.ExitCode != 0 {
+		return nil, errors.NewFaultError("non-zero exit code for direct message")
+	}
+
+	if err = cst.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	if len(receipt.Return) > 0 {
+
+		return receipt.Return[0], nil
+	}
+
+	return []byte{}, nil
+}
+
 // DefaultBlockRewarder pays the block reward from the network actor to the miner's owner.
 type DefaultBlockRewarder struct{}
 
@@ -567,18 +592,26 @@ func NewDefaultBlockRewarder() *DefaultBlockRewarder {
 var _ BlockRewarder = (*DefaultBlockRewarder)(nil)
 
 // BlockReward transfers the block reward from the network actor to the miner's owner.
-func (br *DefaultBlockRewarder) BlockReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address) error {
+func (br *DefaultBlockRewarder) BlockReward(ctx context.Context, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address) error {
 	cachedTree := state.NewCachedTree(st)
-	if err := rewardTransfer(ctx, address.NetworkAddress, minerOwnerAddr, br.BlockRewardAmount(), cachedTree); err != nil {
+	if err := rewardTransfer(ctx, address.NetworkAddress, minerOwnerAddr, br.BlockRewardAmount(), cachedTree, vms, vm.NewGasTracker()); err != nil {
 		return errors.FaultErrorWrap(err, "Error attempting to pay block reward")
 	}
 	return cachedTree.Commit(ctx)
 }
 
 // GasReward transfers the gas cost reward from the sender actor to the minerOwnerAddr
-func (br *DefaultBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error {
+func (br *DefaultBlockRewarder) GasReward(ctx context.Context, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error {
 	cachedTree := state.NewCachedTree(st)
-	if err := rewardTransfer(ctx, msg.From, minerOwnerAddr, cost, cachedTree); err != nil {
+	fromAddr, found, err := ResolveAddress(ctx, msg.From, cachedTree, vms, vm.NewGasTracker())
+	if err != nil {
+		return errors.FaultErrorWrapf(err, "Could not resolve from address for gas")
+	}
+	if !found {
+		return errors.FaultErrorWrapf(err, "Could not resolve from address for gas")
+	}
+
+	if err := rewardTransfer(ctx, fromAddr, minerOwnerAddr, cost, cachedTree, vms, vm.NewGasTracker()); err != nil {
 		return errors.FaultErrorWrap(err, "Error attempting to pay gas reward")
 	}
 	return cachedTree.Commit(ctx)
@@ -592,15 +625,13 @@ func (br *DefaultBlockRewarder) BlockRewardAmount() types.AttoFIL {
 }
 
 // rewardTransfer retrieves two actors from the given addresses and attempts to transfer the given value from the balance of the first's to the second.
-func rewardTransfer(ctx context.Context, fromAddr, toAddr address.Address, value types.AttoFIL, st *state.CachedTree) error {
+func rewardTransfer(ctx context.Context, fromAddr, toAddr address.Address, value types.AttoFIL, st *state.CachedTree, vms vm.StorageMap, gt *vm.GasTracker) error {
 	fromActor, err := st.GetActor(ctx, fromAddr)
 	if err != nil {
 		return errors.FaultErrorWrap(err, "could not retrieve from actor for reward transfer.")
 	}
 
-	toActor, err := st.GetOrCreateActor(ctx, toAddr, func() (*actor.Actor, error) {
-		return &actor.Actor{}, nil
-	})
+	toActor, _, err := getOrCreateActor(ctx, st, vms, toAddr, gt)
 	if err != nil {
 		return errors.FaultErrorWrap(err, "failed to get To actor")
 	}
@@ -644,4 +675,52 @@ func (p *DefaultProcessor) minerOwnerAddress(ctx context.Context, st state.Tree,
 		return address.Undef, errors.NewFaultErrorf("could not get miner owner. error code %d", code)
 	}
 	return address.NewFromBytes(ret[0])
+}
+
+func getOrCreateActor(ctx context.Context, st *state.CachedTree, store vm.StorageMap, addr address.Address, gt *vm.GasTracker) (*actor.Actor, address.Address, error) {
+	// resolve address before lookup
+	idAddr, found, err := ResolveAddress(ctx, addr, st, store, gt)
+	if err != nil {
+		return nil, address.Undef, err
+	}
+
+	if found {
+		act, err := st.GetActor(ctx, idAddr)
+		return act, idAddr, err
+	}
+
+	initAct, err := st.GetActor(ctx, address.InitAddress)
+	if err != nil {
+		return nil, address.Undef, err
+	}
+
+	// this should never fail due to lack of gas since gas doesn't have meaning here
+	noopGT := vm.NewGasTracker()
+	noopGT.MsgGasLimit = 10000 // must exceed gas units consumed by init.Exec+account.Constructor+init.GetActorIDForAddress
+	vmctx := vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, To: initAct, State: st, StorageMap: store, GasTracker: noopGT})
+	vmctx.Send(address.InitAddress, initactor.Exec, types.ZeroAttoFIL, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
+
+	vmctx = vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, To: initAct, State: st, StorageMap: store, GasTracker: noopGT})
+	idAddrInt := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
+
+	id, ok := idAddrInt.(*big.Int)
+	if !ok {
+		return nil, address.Undef, errors.NewFaultError("non-integer return from GetActorIDForAddress")
+	}
+
+	idAddr, err = address.NewIDAddress(id.Uint64())
+	if err != nil {
+		return nil, address.Undef, err
+	}
+
+	act, err := st.GetActor(ctx, idAddr)
+	return act, idAddr, err
+}
+
+// directMessageValidator is a validator that doesn't validate to simplify message creation in tests.
+type directMessageValidator struct{}
+
+// Validate always returns nil
+func (tsmv *directMessageValidator) Validate(ctx context.Context, msg *types.UnsignedMessage, fromActor *actor.Actor) error {
+	return nil
 }

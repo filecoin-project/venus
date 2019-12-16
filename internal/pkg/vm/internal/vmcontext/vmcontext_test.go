@@ -2,6 +2,9 @@ package vmcontext
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/ipfs/go-block-format"
+	"math/big"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -20,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
@@ -186,6 +190,7 @@ func TestVMContextSendFailures(t *testing.T) {
 	tree := state.NewCachedTree(&mockStateTree)
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	vms := storagemap.NewStorageMap(bs)
+	initActor := requireCreateInitActor(t, bs)
 
 	msg := newMsg()
 
@@ -283,14 +288,21 @@ func TestVMContextSendFailures(t *testing.T) {
 	t.Run("returns a fault error if unable to create or find a recipient actor", func(t *testing.T) {
 		var calls []string
 		deps := &deps{
+			Apply: func(_ *VMContext) interface{} {
+				return nil
+			},
 			EncodeValues: func(_ []*abi.Value) ([]byte, error) {
 				calls = append(calls, "EncodeValues")
 				return nil, nil
 			},
-			GetOrCreateActor: func(_ context.Context, _ address.Address, _ func() (*actor.Actor, error)) (*actor.Actor, error) {
+			GetActor: func(_ context.Context, _ address.Address) (*actor.Actor, error) {
+				calls = append(calls, "GetActor")
+				return initActor, nil
+			},
+			GetOrCreateActor: func(_ context.Context, _ address.Address, _ func() (*actor.Actor, address.Address, error)) (*actor.Actor, address.Address, error) {
 
 				calls = append(calls, "GetOrCreateActor")
-				return nil, xerrors.New("error")
+				return nil, address.Undef, xerrors.New("error")
 			},
 			ToValues: func(_ []interface{}) ([]*abi.Value, error) {
 				calls = append(calls, "ToValues")
@@ -308,7 +320,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, 1, int(code))
 		assert.True(t, errors.IsFault(err))
-		assert.Equal(t, []string{"ToValues", "EncodeValues", "GetOrCreateActor"}, calls)
+		assert.Equal(t, []string{"ToValues", "EncodeValues", "GetActor", "ToValues", "EncodeValues", "GetActor", "ToValues", "EncodeValues", "GetActor"}, calls)
 	})
 
 	t.Run("propagates any error returned from Send", func(t *testing.T) {
@@ -316,11 +328,18 @@ func TestVMContextSendFailures(t *testing.T) {
 
 		var calls []string
 		deps := &deps{
+			Apply: func(_ *VMContext) interface{} {
+				return big.NewInt(42)
+			},
 			EncodeValues: func(_ []*abi.Value) ([]byte, error) {
 				calls = append(calls, "EncodeValues")
 				return nil, nil
 			},
-			GetOrCreateActor: func(_ context.Context, _ address.Address, f func() (*actor.Actor, error)) (*actor.Actor, error) {
+			GetActor: func(_ context.Context, _ address.Address) (*actor.Actor, error) {
+				calls = append(calls, "GetActor")
+				return initActor, nil
+			},
+			GetOrCreateActor: func(_ context.Context, _ address.Address, f func() (*actor.Actor, address.Address, error)) (*actor.Actor, address.Address, error) {
 				calls = append(calls, "GetOrCreateActor")
 				return f()
 			},
@@ -342,7 +361,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, 123, int(code))
 		assert.Equal(t, expectedVMSendErr, err)
-		assert.Equal(t, []string{"ToValues", "EncodeValues", "GetOrCreateActor", "Send"}, calls)
+		assert.Equal(t, []string{"ToValues", "EncodeValues", "GetActor", "ToValues", "EncodeValues", "GetActor", "ToValues", "EncodeValues", "GetActor", "GetActor", "Send"}, calls)
 	})
 
 	t.Run("AddressForNewActor uses origin message", func(t *testing.T) {
@@ -481,4 +500,21 @@ func TestTransfer(t *testing.T) {
 		assert.EqualError(t, Transfer(actor2, actor3, types.NewAttoFILFromFIL(1000)), "not enough balance")
 		assert.EqualError(t, Transfer(actor2, actor3, negval), "cannot transfer negative values")
 	})
+}
+
+func requireCreateInitActor(t *testing.T, bs blockstore.Blockstore) *actor.Actor {
+	act := actor.NewActor(types.InitActorCodeCid, types.ZeroAttoFIL)
+
+	initStorage := &initactor.State{
+		Network: "test",
+		NextID:  100,
+	}
+	stateBytes, err := encoding.Encode(initStorage)
+	require.NoError(t, err)
+
+	blk := blocks.NewBlock(stateBytes)
+	require.NoError(t, bs.Put(blk))
+
+	act.Head = blk.Cid()
+	return act
 }

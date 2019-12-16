@@ -7,10 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"math/big"
-
-	"github.com/ipfs/go-cid"
-
+	"fmt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
@@ -27,6 +24,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/ipfs/go-cid"
+	"math/big"
 )
 
 // ExecutableActorLookup provides a method to get an executable actor by code and protocol version
@@ -146,15 +145,8 @@ func (ctx *VMContext) LegacySend(to address.Address, method types.MethodID, valu
 		return nil, 1, errors.NewFaultErrorf("unhandled: sending to self (%s)", msg.From)
 	}
 
-	// fetch id address from init actor if necessary
-	toAddr, err := ctx.resolveActorAddress(msg.To)
-	if err != nil {
-		return nil, 1, errors.FaultErrorWrapf(err, "failed to get id address for actor address")
-	}
-
-	toActor, err := deps.GetOrCreateActor(context.TODO(), toAddr, func() (*actor.Actor, error) {
-		return &actor.Actor{}, nil
-	})
+	// get actor and id address or create a new account actor.
+	toActor, toAddr, err := ctx.getOrCreateActor(context.TODO(), ctx.state, msg.To)
 	if err != nil {
 		return nil, 1, errors.FaultErrorWrapf(err, "failed to get or create To actor %s", msg.To)
 	}
@@ -214,15 +206,8 @@ func (ctx *VMContext) Send(to address.Address, method types.MethodID, value type
 		runtime.Abortf("unhandled: sending to self (%s)", msg.From)
 	}
 
-	// fetch id address from init actor if necessary
-	toAddr, err := ctx.resolveActorAddress(msg.To)
-	if err != nil {
-		panic(exitcode.ActorNotFound)
-	}
-
-	toActor, err := deps.GetOrCreateActor(context.TODO(), toAddr, func() (*actor.Actor, error) {
-		return &actor.Actor{}, nil
-	})
+	// fetch actor and id address, creating actor if necessary
+	toActor, toAddr, err := ctx.getOrCreateActor(context.TODO(), ctx.state, msg.To)
 	if err != nil {
 		runtime.Abortf("failed to get or create To actor %s", msg.To)
 	}
@@ -285,7 +270,7 @@ func apply(ctx *VMContext) interface{} {
 
 	// Handle legacy codes and errors
 	if err != nil {
-		runtime.Abort("Legacy actor code returned an error")
+		runtime.Abort(fmt.Sprintf("Legacy actor code returned an error: %s", err.Error()))
 	}
 
 	if code != 0 {
@@ -359,7 +344,7 @@ func (ctx *VMContext) Balance() types.AttoFIL {
 
 // Storage returns an implementation of the storage module for this context.
 func (ctx *VMContext) Storage() runtime.Storage {
-	return ctx.storageMap.NewStorage(ctx.message.To, ctx.to)
+	return ctx.storageMap.NewStorage(ctx.toAddr, ctx.to)
 }
 
 // Charge attempts to add the given cost to the accrued gas cost of this transaction
@@ -370,7 +355,8 @@ func (ctx *VMContext) Charge(cost types.GasUnits) error {
 var _ runtime.ExtendedInvocationContext = (*VMContext)(nil)
 
 func isBuiltinActor(code cid.Cid) bool {
-	return code.Equals(types.StorageMarketActorCodeCid) ||
+	return code.Equals(types.AccountActorCodeCid) ||
+		code.Equals(types.StorageMarketActorCodeCid) ||
 		code.Equals(types.InitActorCodeCid) ||
 		code.Equals(types.MinerActorCodeCid) ||
 		code.Equals(types.BootstrapMinerActorCodeCid) ||
@@ -383,7 +369,7 @@ func isSingletonActor(code cid.Cid) bool {
 		code.Equals(types.PaymentBrokerActorCodeCid)
 }
 
-// CreateActor implemenets the ExtendedInvocationContext interface.
+// CreateActor implements the ExtendedInvocationContext interface.
 func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address {
 	if !isBuiltinActor(code) {
 		runtime.Abort("Can only create built-in actors.")
@@ -394,9 +380,22 @@ func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []i
 	}
 
 	// create address for actor
-	actorAddr, err := computeActorAddress(ctx.originMsg.From, uint64(ctx.originMsg.CallSeqNum))
-	if err != nil {
-		runtime.Abort("Could not create address for actor")
+	var actorAddr address.Address
+	var err error
+	if types.AccountActorCodeCid.Equals(code) {
+		// address for account actor comes from first parameter
+		if len(params) < 1 {
+			runtime.Abort("Missing address parameter for account actor creation")
+		}
+		actorAddr, err = actorAddressFromParam(params[0])
+		if err != nil {
+			runtime.Abort("Parameter for account actor creation is not an address")
+		}
+	} else {
+		actorAddr, err = computeActorAddress(ctx.originMsg.From, uint64(ctx.originMsg.CallSeqNum))
+		if err != nil {
+			runtime.Abort("Could not create address for actor")
+		}
 	}
 
 	idAddr, err := address.NewIDAddress(uint64(actorID))
@@ -407,8 +406,8 @@ func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []i
 	// Check existing address. If nothing there, create empty actor.
 	//
 	// Note: we are storing the actors by ActorID *address*
-	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), idAddr, func() (*actor.Actor, error) {
-		return &actor.Actor{}, nil
+	newActor, _, err := ctx.state.GetOrCreateActor(context.TODO(), idAddr, func() (*actor.Actor, address.Address, error) {
+		return &actor.Actor{}, idAddr, nil
 	})
 
 	if err != nil {
@@ -516,6 +515,7 @@ func makeDeps(st *state.CachedTree) *deps {
 		Apply:        apply,
 	}
 	if st != nil {
+		deps.GetActor = st.GetActor
 		deps.GetOrCreateActor = st.GetOrCreateActor
 	}
 	return &deps
@@ -523,7 +523,8 @@ func makeDeps(st *state.CachedTree) *deps {
 
 type deps struct {
 	EncodeValues     func([]*abi.Value) ([]byte, error)
-	GetOrCreateActor func(context.Context, address.Address, func() (*actor.Actor, error)) (*actor.Actor, error)
+	GetActor         func(context.Context, address.Address) (*actor.Actor, error)
+	GetOrCreateActor func(context.Context, address.Address, func() (*actor.Actor, address.Address, error)) (*actor.Actor, address.Address, error)
 	LegacySend       func(context.Context, ExtendedRuntime) ([][]byte, uint8, error)
 	Apply            func(*VMContext) interface{}
 	ToValues         func([]interface{}) ([]*abi.Value, error)
@@ -612,28 +613,88 @@ func Transfer(fromActor, toActor *actor.Actor, value types.AttoFIL) error {
 	return nil
 }
 
+// GetOrCreateActor retrieves an actor by first resolving its address. If that fails it will initialize a new account actor
+func (ctx *VMContext) getOrCreateActor(c context.Context, st *state.CachedTree, addr address.Address) (*actor.Actor, address.Address, error) {
+	// resolve address before lookup
+	idAddr, err := ctx.resolveActorAddress(addr)
+	if err != nil {
+		return nil, address.Undef, err
+	}
+
+	if idAddr != address.Undef {
+		act, err := ctx.deps.GetActor(c, idAddr)
+		return act, idAddr, err
+	}
+
+	// this should never fail due to lack of gas since gas doesn't have meaning here
+	ctx.Send(address.InitAddress, initactor.Exec, types.ZeroAttoFIL, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
+	idAddrInt := ctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
+
+	id, ok := idAddrInt.(*big.Int)
+	if !ok {
+		return nil, address.Undef, errors.NewFaultError("non-integer return from GetActorIDForAddress")
+	}
+
+	idAddr, err = address.NewIDAddress(id.Uint64())
+	if err != nil {
+		return nil, address.Undef, err
+	}
+
+	act, err := ctx.deps.GetActor(c, idAddr)
+	return act, idAddr, err
+}
+
 // resolveAddress looks up associated id address if actor address. Otherwise it returns the same address.
 func (ctx *VMContext) resolveActorAddress(addr address.Address) (address.Address, error) {
-	if addr.Protocol() != address.Actor {
+	if addr.Protocol() == address.ID {
 		return addr, nil
 	}
 
-	ret, _, err := ctx.LegacySend(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
+	init, err := ctx.deps.GetActor(context.TODO(), address.InitAddress)
 	if err != nil {
 		return address.Undef, err
 	}
 
-	id, err := abi.Deserialize(ret[0], abi.Integer)
+	vmCtx := NewVMContext(NewContextParams{
+		State:      ctx.state,
+		StorageMap: ctx.storageMap,
+		ToAddr:     address.InitAddress,
+		To:         init,
+	})
+	id, found, err := initactor.LookupIDAddress(vmCtx, addr)
 	if err != nil {
 		return address.Undef, err
 	}
 
-	idAddr, err := address.NewIDAddress(id.Val.(*big.Int).Uint64())
+	if !found {
+		return address.Undef, nil
+	}
+
+	idAddr, err := address.NewIDAddress(id)
 	if err != nil {
 		return address.Undef, err
 	}
 
 	return idAddr, nil
+}
+
+func actorAddressFromParam(maybeAddress interface{}) (address.Address, error) {
+	addr, ok := maybeAddress.(address.Address)
+	if ok {
+		return addr, nil
+	}
+
+	serialized, ok := maybeAddress.([]byte)
+	if ok {
+		addrInt, err := abi.Deserialize(serialized, abi.Address)
+		if err != nil {
+			return address.Undef, err
+		}
+
+		return addrInt.Val.(address.Address), nil
+	}
+
+	return address.Undef, errors.NewRevertError("address parameter is not an address")
 }
 
 // patternContext is a wrapper on a vmcontext to implement the PatternContext

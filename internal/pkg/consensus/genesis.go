@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/filecoin-project/go-amt-ipld"
@@ -158,17 +159,32 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			}
 		}
 
+		if err := SetupDefaultActors(ctx, st, storageMap, genCfg.proofsMode, genCfg.network); err != nil {
+			return nil, err
+		}
+
+		// sort addresses so genesis generation will be stable
+		sortedAddresses := []string{}
+		for addr := range genCfg.accounts {
+			sortedAddresses = append(sortedAddresses, string(addr.Bytes()))
+		}
+		sort.Strings(sortedAddresses)
+
 		// Initialize account actors
-		for addr, val := range genCfg.accounts {
-			a, err := account.NewActor(val)
+		for _, addrStr := range sortedAddresses {
+			addr, err := address.NewFromBytes([]byte(addrStr))
 			if err != nil {
 				return nil, err
 			}
+			val := genCfg.accounts[addr]
 
-			if err := st.SetActor(ctx, addr, a); err != nil {
+			_, err = ApplyMessageDirect(ctx, st, storageMap, address.NetworkAddress, address.InitAddress, 0, val,
+				initactor.Exec, types.AccountActorCodeCid, []interface{}{addr})
+			if err != nil {
 				return nil, err
 			}
 		}
+
 		// Initialize miner actors
 		for addr, val := range genCfg.miners {
 			a := miner.NewActor()
@@ -194,9 +210,6 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			if err := st.SetActor(ctx, addr, a); err != nil {
 				return nil, err
 			}
-		}
-		if err := SetupDefaultActors(ctx, st, storageMap, genCfg.proofsMode, genCfg.network); err != nil {
-			return nil, err
 		}
 		// Now add any other actors configured.
 		for addr, a := range genCfg.actors {
@@ -245,17 +258,6 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 
 // SetupDefaultActors inits the builtin actors that are required to run filecoin.
 func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.StorageMap, storeType types.ProofsMode, network string) error {
-	for addr, val := range defaultAccounts {
-		a, err := account.NewActor(val)
-		if err != nil {
-			return err
-		}
-
-		if err := st.SetActor(ctx, addr, a); err != nil {
-			return err
-		}
-	}
-
 	stAct := storagemarket.NewActor()
 	err := (&storagemarket.Actor{}).InitializeState(storageMap.NewStorage(address.StorageMarketAddress, stAct), storeType)
 	if err != nil {
@@ -289,5 +291,43 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 	if err != nil {
 		return err
 	}
-	return st.SetActor(ctx, address.InitAddress, intAct)
+	if err := st.SetActor(ctx, address.InitAddress, intAct); err != nil {
+		return err
+	}
+
+	// sort addresses so genesis generation will be stable
+	sortedAddresses := []string{}
+	for addr := range defaultAccounts {
+		sortedAddresses = append(sortedAddresses, string(addr.Bytes()))
+	}
+	sort.Strings(sortedAddresses)
+
+	for i, addrBytes := range sortedAddresses {
+		addr, err := address.NewFromBytes([]byte(addrBytes))
+		if err != nil {
+			return err
+		}
+		val := defaultAccounts[addr]
+
+		if addr.Protocol() == address.ID {
+			a, err := account.NewActor(val)
+			if err != nil {
+				return err
+			}
+
+			if err := st.SetActor(ctx, addr, a); err != nil {
+				return err
+			}
+		} else {
+			_, err = ApplyMessageDirect(ctx, st, storageMap, address.NetworkAddress, address.InitAddress, uint64(i), val, initactor.Exec, types.AccountActorCodeCid, []interface{}{addr})
+			if err != nil {
+				return err
+			}
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

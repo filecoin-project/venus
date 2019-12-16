@@ -60,7 +60,8 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	require.Len(t, sectorMetadata.Pieces, 1)
 
 	// Create a miner actor with fake commitments
-	minerAddr := addrGetter()
+	minerAddr, err := address.NewIDAddress(42)
+	require.NoError(t, err)
 	sectorID := sectorMetadata.SectorID
 	piece := sectorMetadata.Pieces[0]
 	pip := piece.InclusionProof
@@ -72,8 +73,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	// Create the payer actor
 	var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
 	payer := mockSigner.Addresses[0]
-	payerActor := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(50000))
-	state.MustSetActor(st, payer, payerActor)
+	th.RequireInitAccountActor(ctx, t, st, vms, payer, types.NewAttoFILFromFIL(50000))
 
 	// Create a payment channel from payer -> target
 	channelID := establishChannel(st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(20000))
@@ -117,7 +117,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor code not found")
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor does not export method")
 	})
 
 	t.Run("Voucher with piece inclusion condition and incorrect PIP fails", func(t *testing.T) {
@@ -212,8 +212,7 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...addres
 	require.NoError(err)
 
 	for _, addr := range targetAddresses {
-		targetActor := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(0))
-		st.SetActor(ctx, addr, targetActor)
+		th.RequireInitAccountActor(ctx, t, st, vms, addr, types.NewAttoFILFromFIL(0))
 	}
 
 	return cst, st, vms

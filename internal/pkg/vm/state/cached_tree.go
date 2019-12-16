@@ -41,17 +41,22 @@ func (t *CachedTree) GetActor(ctx context.Context, a address.Address) (*actor.Ac
 
 // GetOrCreateActor retrieves an actor from the cache. If it's not found it will GetOrCreate it from the
 // underlying tree and then set it in the cache before returning it.
-func (t *CachedTree) GetOrCreateActor(ctx context.Context, address address.Address, creator func() (*actor.Actor, error)) (*actor.Actor, error) {
+func (t *CachedTree) GetOrCreateActor(ctx context.Context,
+	addr address.Address,
+	creator func() (*actor.Actor, address.Address, error)) (*actor.Actor, address.Address, error) {
+
 	var err error
-	actor, found := t.cache[address]
-	if !found {
-		actor, err = t.st.GetOrCreateActor(ctx, address, creator)
-		if err != nil {
-			return nil, err
-		}
-		t.cache[address] = actor
+	actor, found := t.cache[addr]
+	if found {
+		return actor, addr, nil
 	}
-	return actor, nil
+
+	actor, mappedAddr, err := t.st.GetOrCreateActor(ctx, addr, creator)
+	if err != nil {
+		return nil, address.Undef, err
+	}
+	t.cache[mappedAddr] = actor
+	return actor, mappedAddr, nil
 }
 
 // Commit takes all the cached actors and sets them into the underlying cache.

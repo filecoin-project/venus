@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-ipfs-blockstore"
 	"math/big"
 	"testing"
 
@@ -358,7 +361,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 		updatePeerIdMsg := types.NewUnsignedMessage(
 			address.TestAddress2,
 			minerAddr,
-			th.RequireGetNonce(t, st, address.TestAddress2),
+			th.RequireGetNonce(t, st, vms, address.TestAddress2),
 			types.NewAttoFILFromFIL(0),
 			UpdatePeerID,
 			actor.MustConvertParams(th.RequireRandomPeerID(t)))
@@ -449,7 +452,7 @@ func updatePeerIdSuccess(t *testing.T, st state.Tree, vms storagemap.StorageMap,
 	updatePeerIdMsg := types.NewUnsignedMessage(
 		fromAddr,
 		minerAddr,
-		th.RequireGetNonce(t, st, fromAddr),
+		th.RequireGetNonce(t, st, vms, fromAddr),
 		types.NewAttoFILFromFIL(0),
 		UpdatePeerID,
 		actor.MustConvertParams(newPid))
@@ -1068,7 +1071,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 
 	miner := state.MustGetActor(st, minerAddr)
 	minerBalance := miner.Balance
-	owner := state.MustGetActor(st, address.TestAddress)
+	owner, _ := th.RequireLookupActor(ctx, t, st, vms, address.TestAddress)
 	ownerBalance := owner.Balance
 
 	firstCommitBlockHeight := uint64(3)
@@ -1136,8 +1139,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		assert.Equal(t, minerBalance.String(), miner.Balance.String())
 
 		// Check  change was refunded to owner, balance is now reduced by fee.
-		owner, err := st.GetActor(ctx, address.TestAddress)
-		assert.NoError(t, err)
+		owner, _ := th.RequireLookupActor(ctx, t, st, vms, address.TestAddress)
 		assert.Equal(t, ownerBalance.Sub(fee).String(), owner.Balance.String())
 	})
 
@@ -1568,12 +1570,17 @@ func TestVerifyPIP(t *testing.T) {
 
 func TestGetProofsMode(t *testing.T) {
 	ctx := context.Background()
-	st, vms := th.RequireCreateStorages(ctx, t)
+
+	cst := hamt.NewCborStore()
+	d := datastore.NewMapDatastore()
+	bs := blockstore.NewBlockstore(d)
 
 	gasTracker := gastracker.NewGasTracker()
 	gasTracker.MsgGasLimit = 99999
 
 	t.Run("in TestMode", func(t *testing.T) {
+		st := state.NewTree(cst)
+		vms := vm.NewStorageMap(bs)
 		vmCtx := vmcontext.NewVMContext(vmcontext.NewContextParams{
 			From:        &actor.Actor{},
 			To:          &actor.Actor{},
@@ -1594,6 +1601,8 @@ func TestGetProofsMode(t *testing.T) {
 	})
 
 	t.Run("in LiveMode", func(t *testing.T) {
+		st := state.NewTree(cst)
+		vms := vm.NewStorageMap(bs)
 		vmCtx := vmcontext.NewVMContext(vmcontext.NewContextParams{
 			From:        &actor.Actor{},
 			To:          &actor.Actor{},
