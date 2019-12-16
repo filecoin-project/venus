@@ -614,21 +614,21 @@ func Transfer(fromActor, toActor *actor.Actor, value types.AttoFIL) error {
 }
 
 // GetOrCreateActor retrieves an actor by first resolving its address. If that fails it will initialize a new account actor
-func (vmctx *VMContext) getOrCreateActor(ctx context.Context, st *state.CachedTree, addr address.Address) (*actor.Actor, address.Address, error) {
+func (ctx *VMContext) getOrCreateActor(c context.Context, st *state.CachedTree, addr address.Address) (*actor.Actor, address.Address, error) {
 	// resolve address before lookup
-	idAddr, err := vmctx.resolveActorAddress(addr)
+	idAddr, err := ctx.resolveActorAddress(addr)
 	if err != nil {
 		return nil, address.Undef, err
 	}
 
 	if idAddr != address.Undef {
-		act, err := vmctx.deps.GetActor(ctx, idAddr)
+		act, err := ctx.deps.GetActor(c, idAddr)
 		return act, idAddr, err
 	}
 
 	// this should never fail due to lack of gas since gas doesn't have meaning here
-	vmctx.Send(address.InitAddress, initactor.Exec, types.ZeroAttoFIL, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
-	idAddrInt := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
+	ctx.Send(address.InitAddress, initactor.Exec, types.ZeroAttoFIL, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
+	idAddrInt := ctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
 
 	id, ok := idAddrInt.(*big.Int)
 	if !ok {
@@ -640,7 +640,7 @@ func (vmctx *VMContext) getOrCreateActor(ctx context.Context, st *state.CachedTr
 		return nil, address.Undef, err
 	}
 
-	act, err := vmctx.deps.GetActor(ctx, idAddr)
+	act, err := ctx.deps.GetActor(ctx, idAddr)
 	return act, idAddr, err
 }
 
