@@ -117,7 +117,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor code not found")
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor does not export method")
 	})
 
 	t.Run("Voucher with piece inclusion condition and incorrect PIP fails", func(t *testing.T) {
