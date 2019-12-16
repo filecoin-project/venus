@@ -163,9 +163,22 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			return nil, err
 		}
 
+		// sort addresses so genesis generation will be stable
+		sortedAddresses := []string{}
+		for addr, _ := range genCfg.accounts {
+			sortedAddresses = append(sortedAddresses, string(addr.Bytes()))
+		}
+		sort.Strings(sortedAddresses)
+
 		// Initialize account actors
-		for addr, val := range genCfg.accounts {
-			_, err := ApplyMessageDirect(ctx, st, storageMap, address.NetworkAddress, address.InitAddress, 0, val,
+		for _, addrStr := range sortedAddresses {
+			addr, err := address.NewFromBytes([]byte(addrStr))
+			if err != nil {
+				return nil, err
+			}
+			val := genCfg.accounts[addr]
+
+			_, err = ApplyMessageDirect(ctx, st, storageMap, address.NetworkAddress, address.InitAddress, 0, val,
 				initactor.Exec, types.AccountActorCodeCid, []interface{}{addr})
 			if err != nil {
 				return nil, err
