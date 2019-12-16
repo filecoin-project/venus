@@ -689,30 +689,28 @@ func getOrCreateActor(ctx context.Context, st *state.CachedTree, store vm.Storag
 		return act, idAddr, err
 	}
 
-	if addr.Protocol() != address.ID {
-		initAct, err := st.GetActor(ctx, address.InitAddress)
-		if err != nil {
-			return nil, address.Undef, err
-		}
+	initAct, err := st.GetActor(ctx, address.InitAddress)
+	if err != nil {
+		return nil, address.Undef, err
+	}
 
-		// this should never fail due to lack of gas since gas doesn't have meaning here
-		noopGT := vm.NewGasTracker()
-		noopGT.MsgGasLimit = 10000
-		vmctx := vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, To: initAct, State: st, StorageMap: store, GasTracker: noopGT})
-		vmctx.Send(address.InitAddress, initactor.Exec, types.ZeroAttoFIL, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
+	// this should never fail due to lack of gas since gas doesn't have meaning here
+	noopGT := vm.NewGasTracker()
+	noopGT.MsgGasLimit = 10000
+	vmctx := vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, To: initAct, State: st, StorageMap: store, GasTracker: noopGT})
+	vmctx.Send(address.InitAddress, initactor.Exec, types.ZeroAttoFIL, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
 
-		vmctx = vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, To: initAct, State: st, StorageMap: store, GasTracker: noopGT})
-		idAddrInt := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
+	vmctx = vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, To: initAct, State: st, StorageMap: store, GasTracker: noopGT})
+	idAddrInt := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
 
-		id, ok := idAddrInt.(*big.Int)
-		if !ok {
-			return nil, address.Undef, errors.NewFaultError("non-integer return from GetActorIDForAddress")
-		}
+	id, ok := idAddrInt.(*big.Int)
+	if !ok {
+		return nil, address.Undef, errors.NewFaultError("non-integer return from GetActorIDForAddress")
+	}
 
-		idAddr, err = address.NewIDAddress(id.Uint64())
-		if err != nil {
-			return nil, address.Undef, err
-		}
+	idAddr, err = address.NewIDAddress(id.Uint64())
+	if err != nil {
+		return nil, address.Undef, err
 	}
 
 	act, err := st.GetActor(ctx, idAddr)
