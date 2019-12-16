@@ -121,17 +121,6 @@ func (*Actor) InitializeState(storage runtime.Storage, params interface{}) error
 // public methods for actor
 //
 
-// InitializeAccountActor returns a function to be called when lookup in the state tree fails
-func XInitializeAccountActor(vmctx invocationContext, addr address.Address, balance types.AttoFIL) (*actor.Actor, address.Address, error) {
-	// create id address
-	idAddr, err := createMappedIDaddress(vmctx, addr)
-	if err != nil {
-		return nil, address.Undef, err
-	}
-
-	return actor.NewActor(types.AccountActorCodeCid, balance), idAddr, nil
-}
-
 // Lookup id address
 func LookupIDAddress(rt runtime.InvocationContext, addr address.Address) (uint64, bool, error) {
 	var state State
@@ -291,38 +280,6 @@ func lookupIDAddress(rt runtime.InvocationContext, state State, addr address.Add
 	}
 
 	return id, nil
-}
-
-func createMappedIDaddress(rt invocationContext, actorAddr address.Address) (address.Address, error) {
-	var state State
-	idAddr, err := rt.StateHandle().Transaction(&state, func() (interface{}, error) {
-
-		// create id address
-		actorID := state.assignNewID()
-		idAddr, err := address.NewIDAddress(uint64(actorID))
-		if err != nil {
-			return address.Undef, errors.FaultErrorWrapf(err, "could not create id address with id %d", actorID)
-		}
-
-		// map id to address and vice versa
-		ctx := context.TODO()
-		state.AddressMap, err = setId(ctx, rt.Runtime().Storage(), state.AddressMap, actorAddr, actorID)
-		if err != nil {
-			return address.Undef, errors.FaultErrorWrap(err, "could not save id by address")
-		}
-
-		state.IdMap, err = setAddress(ctx, rt.Runtime().Storage(), state.IdMap, actorID, actorAddr)
-		if err != nil {
-			return address.Undef, errors.FaultErrorWrap(err, "could not save addres by id")
-		}
-
-		return idAddr, nil
-	})
-	if err != nil {
-		return address.Undef, err
-	}
-
-	return idAddr.(address.Address), nil
 }
 
 func setAddress(ctx context.Context, storage runtime.Storage, idMap cid.Cid, actorID types.Uint64, addr address.Address) (cid.Cid, error) {

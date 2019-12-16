@@ -8,8 +8,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
@@ -26,6 +24,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/ipfs/go-cid"
+	"math/big"
 )
 
 // ExecutableActorLookup provides a method to get an executable actor by code and protocol version
@@ -145,16 +145,8 @@ func (ctx *VMContext) LegacySend(to address.Address, method types.MethodID, valu
 		return nil, 1, errors.NewFaultErrorf("unhandled: sending to self (%s)", msg.From)
 	}
 
-	// fetch id address from init actor if necessary
-	toAddr, err := ctx.resolveActorAddress(msg.To)
-	if err != nil {
-		return nil, 1, errors.FaultErrorWrapf(err, "failed to get id address for actor address")
-	}
-
-	// TODO: this needs to initialize in init actor state
-	toActor, _, err := deps.GetOrCreateActor(context.TODO(), toAddr, func() (*actor.Actor, address.Address, error) {
-		return &actor.Actor{}, toAddr, nil
-	})
+	// get actor and id address or create a new account actor.
+	toActor, toAddr, err := ctx.getOrCreateActor(context.TODO(), ctx.state, msg.To)
 	if err != nil {
 		return nil, 1, errors.FaultErrorWrapf(err, "failed to get or create To actor %s", msg.To)
 	}
@@ -214,15 +206,8 @@ func (ctx *VMContext) Send(to address.Address, method types.MethodID, value type
 		runtime.Abortf("unhandled: sending to self (%s)", msg.From)
 	}
 
-	// fetch id address from init actor if necessary
-	toAddr, err := ctx.resolveActorAddress(msg.To)
-	if err != nil {
-		panic(exitcode.ActorNotFound)
-	}
-
-	toActor, _, err := deps.GetOrCreateActor(context.TODO(), toAddr, func() (*actor.Actor, address.Address, error) {
-		return &actor.Actor{}, toAddr, nil
-	})
+	// fetch actor and id address, creating actor if necessary
+	toActor, toAddr, err := ctx.getOrCreateActor(context.TODO(), ctx.state, msg.To)
 	if err != nil {
 		runtime.Abortf("failed to get or create To actor %s", msg.To)
 	}
@@ -626,6 +611,37 @@ func Transfer(fromActor, toActor *actor.Actor, value types.AttoFIL) error {
 	toActor.Balance = toActor.Balance.Add(value)
 
 	return nil
+}
+
+// GetOrCreateActor retrieves an actor by first resolving its address. If that fails it will initialize a new account actor
+func (vmctx *VMContext) getOrCreateActor(ctx context.Context, st *state.CachedTree, addr address.Address) (*actor.Actor, address.Address, error) {
+	// resolve address before lookup
+	idAddr, err := vmctx.resolveActorAddress(addr)
+	if err != nil {
+		return nil, address.Undef, err
+	}
+
+	if idAddr != address.Undef {
+		act, err := vmctx.deps.GetActor(ctx, idAddr)
+		return act, idAddr, err
+	}
+
+	// this should never fail due to lack of gas since gas doesn't have meaning here
+	vmctx.Send(address.InitAddress, initactor.Exec, types.ZeroAttoFIL, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
+	idAddrInt := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
+
+	id, ok := idAddrInt.(*big.Int)
+	if !ok {
+		return nil, address.Undef, errors.NewFaultError("non-integer return from GetActorIDForAddress")
+	}
+
+	idAddr, err = address.NewIDAddress(id.Uint64())
+	if err != nil {
+		return nil, address.Undef, err
+	}
+
+	act, err := vmctx.deps.GetActor(ctx, idAddr)
+	return act, idAddr, err
 }
 
 // resolveAddress looks up associated id address if actor address. Otherwise it returns the same address.

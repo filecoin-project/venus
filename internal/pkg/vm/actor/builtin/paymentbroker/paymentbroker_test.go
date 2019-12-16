@@ -165,7 +165,7 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		assert.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor code not found")
+		assert.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor does not export method")
 		assert.EqualValues(t, errors.CodeError(appResult.ExecutionError), ErrConditionInvalid)
 	})
 

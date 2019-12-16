@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/ipfs/go-block-format"
+	"math/big"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -287,6 +288,9 @@ func TestVMContextSendFailures(t *testing.T) {
 	t.Run("returns a fault error if unable to create or find a recipient actor", func(t *testing.T) {
 		var calls []string
 		deps := &deps{
+			Apply: func(_ *VMContext) interface{} {
+				return nil
+			},
 			EncodeValues: func(_ []*abi.Value) ([]byte, error) {
 				calls = append(calls, "EncodeValues")
 				return nil, nil
@@ -316,7 +320,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, 1, int(code))
 		assert.True(t, errors.IsFault(err))
-		assert.Equal(t, []string{"ToValues", "EncodeValues", "GetActor", "GetOrCreateActor"}, calls)
+		assert.Equal(t, []string{"ToValues", "EncodeValues", "GetActor", "ToValues", "EncodeValues", "GetActor", "ToValues", "EncodeValues", "GetActor"}, calls)
 	})
 
 	t.Run("propagates any error returned from Send", func(t *testing.T) {
@@ -324,6 +328,9 @@ func TestVMContextSendFailures(t *testing.T) {
 
 		var calls []string
 		deps := &deps{
+			Apply: func(_ *VMContext) interface{} {
+				return big.NewInt(42)
+			},
 			EncodeValues: func(_ []*abi.Value) ([]byte, error) {
 				calls = append(calls, "EncodeValues")
 				return nil, nil
@@ -354,7 +361,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, 123, int(code))
 		assert.Equal(t, expectedVMSendErr, err)
-		assert.Equal(t, []string{"ToValues", "EncodeValues", "GetActor", "GetOrCreateActor", "Send"}, calls)
+		assert.Equal(t, []string{"ToValues", "EncodeValues", "GetActor", "ToValues", "EncodeValues", "GetActor", "ToValues", "EncodeValues", "GetActor", "GetActor", "Send"}, calls)
 	})
 
 	t.Run("AddressForNewActor uses origin message", func(t *testing.T) {
