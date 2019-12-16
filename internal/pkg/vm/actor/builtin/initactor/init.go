@@ -122,7 +122,7 @@ func (*Actor) InitializeState(storage runtime.Storage, params interface{}) error
 //
 
 // InitializeAccountActor returns a function to be called when lookup in the state tree fails
-func InitializeAccountActor(vmctx invocationContext, addr address.Address, balance types.AttoFIL) (*actor.Actor, address.Address, error) {
+func XInitializeAccountActor(vmctx invocationContext, addr address.Address, balance types.AttoFIL) (*actor.Actor, address.Address, error) {
 	// create id address
 	idAddr, err := createMappedIDaddress(vmctx, addr)
 	if err != nil {
@@ -144,7 +144,6 @@ func LookupIDAddress(rt runtime.InvocationContext, addr address.Address) (uint64
 		}
 		return 0, false, errors.FaultErrorWrap(err, "could not lookup actor id")
 	}
-
 
 	return uint64(id.(types.Uint64)), true, nil
 }

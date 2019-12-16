@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-ipfs-blockstore"
 	"math/big"
 	"testing"
 
@@ -1567,12 +1570,17 @@ func TestVerifyPIP(t *testing.T) {
 
 func TestGetProofsMode(t *testing.T) {
 	ctx := context.Background()
-	st, vms := th.RequireCreateStorages(ctx, t)
+
+	cst := hamt.NewCborStore()
+	d := datastore.NewMapDatastore()
+	bs := blockstore.NewBlockstore(d)
 
 	gasTracker := gastracker.NewGasTracker()
 	gasTracker.MsgGasLimit = 99999
 
 	t.Run("in TestMode", func(t *testing.T) {
+		st := state.NewTree(cst)
+		vms := vm.NewStorageMap(bs)
 		vmCtx := vmcontext.NewVMContext(vmcontext.NewContextParams{
 			From:        &actor.Actor{},
 			To:          &actor.Actor{},
@@ -1593,6 +1601,8 @@ func TestGetProofsMode(t *testing.T) {
 	})
 
 	t.Run("in LiveMode", func(t *testing.T) {
+		st := state.NewTree(cst)
+		vms := vm.NewStorageMap(bs)
 		vmCtx := vmcontext.NewVMContext(vmcontext.NewContextParams{
 			From:        &actor.Actor{},
 			To:          &actor.Actor{},

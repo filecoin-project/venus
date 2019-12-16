@@ -66,7 +66,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 
 	stCid, _, minerAddr := mustCreateStorageMiner(ctx, t, st, vms, minerOwner)
 
-	msg1 := types.NewMeteredMessage(fromAddr1, toAddr, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
+	msg1 := types.NewMeteredMessage(fromAddr1, toAddr, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(300))
 	msgs1 := []*types.UnsignedMessage{msg1}
 	cidGetter := types.NewCidForTestGetter()
 	blk1 := &block.Block{
@@ -78,7 +78,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	}
 
 	msgs2 := []*types.UnsignedMessage{types.NewMeteredMessage(fromAddr2, toAddr, 0,
-		types.NewAttoFILFromFIL(50), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))}
+		types.NewAttoFILFromFIL(50), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(300))}
 	blk2 := &block.Block{
 		Height:    20,
 		StateRoot: stCid,

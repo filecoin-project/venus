@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -284,7 +285,7 @@ func apply(ctx *VMContext) interface{} {
 
 	// Handle legacy codes and errors
 	if err != nil {
-		runtime.Abort("Legacy actor code returned an error")
+		runtime.Abort(fmt.Sprintf("Legacy actor code returned an error: %s", err.Error()))
 	}
 
 	if code != 0 {
@@ -369,7 +370,8 @@ func (ctx *VMContext) Charge(cost types.GasUnits) error {
 var _ runtime.ExtendedInvocationContext = (*VMContext)(nil)
 
 func isBuiltinActor(code cid.Cid) bool {
-	return code.Equals(types.StorageMarketActorCodeCid) ||
+	return code.Equals(types.AccountActorCodeCid) ||
+		code.Equals(types.StorageMarketActorCodeCid) ||
 		code.Equals(types.InitActorCodeCid) ||
 		code.Equals(types.MinerActorCodeCid) ||
 		code.Equals(types.BootstrapMinerActorCodeCid) ||
@@ -382,7 +384,7 @@ func isSingletonActor(code cid.Cid) bool {
 		code.Equals(types.PaymentBrokerActorCodeCid)
 }
 
-// CreateActor implemenets the ExtendedInvocationContext interface.
+// CreateActor implements the ExtendedInvocationContext interface.
 func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address {
 	if !isBuiltinActor(code) {
 		runtime.Abort("Can only create built-in actors.")
@@ -393,9 +395,22 @@ func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []i
 	}
 
 	// create address for actor
-	actorAddr, err := computeActorAddress(ctx.originMsg.From, uint64(ctx.originMsg.CallSeqNum))
-	if err != nil {
-		runtime.Abort("Could not create address for actor")
+	var actorAddr address.Address
+	var err error
+	if types.AccountActorCodeCid.Equals(code) {
+		// address for account actor comes from first parameter
+		if len(params) < 1 {
+			runtime.Abort("Missing address parameter for account actor creation")
+		}
+		actorAddr, err = actorAddressFromParam(params[0])
+		if err != nil {
+			runtime.Abort("Parameter for account actor creation is not an address")
+		}
+	} else {
+		actorAddr, err = computeActorAddress(ctx.originMsg.From, uint64(ctx.originMsg.CallSeqNum))
+		if err != nil {
+			runtime.Abort("Could not create address for actor")
+		}
 	}
 
 	idAddr, err := address.NewIDAddress(uint64(actorID))
@@ -645,6 +660,25 @@ func (ctx *VMContext) resolveActorAddress(addr address.Address) (address.Address
 	}
 
 	return idAddr, nil
+}
+
+func actorAddressFromParam(maybeAddress interface{}) (address.Address, error) {
+	addr, ok := maybeAddress.(address.Address)
+	if ok {
+		return addr, nil
+	}
+
+	serialized, ok := maybeAddress.([]byte)
+	if ok {
+		addrInt, err := abi.Deserialize(serialized, abi.Address)
+		if err != nil {
+			return address.Undef, err
+		}
+
+		return addrInt.Val.(address.Address), nil
+	}
+
+	return address.Undef, errors.NewRevertError("address parameter is not an address")
 }
 
 // patternContext is a wrapper on a vmcontext to implement the PatternContext

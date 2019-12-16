@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
-
 )
 
 // Actor is the builtin actor responsible for individual accounts.
@@ -70,7 +69,7 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSi
 }
 
 // InitializeState for account actors does nothing.
-func (*Actor) InitializeState(storage runtime.Storage,  initializerData interface{}) error {
+func (*Actor) InitializeState(storage runtime.Storage, initializerData interface{}) error {
 	state, ok := initializerData.(*State)
 	if !ok {
 		return errors.NewFaultError("Initial state to account actor is not a account.State struct")
@@ -104,7 +103,7 @@ type Impl Actor
 func (impl *Impl) Constructor(ctx runtime.InvocationContext, addr address.Address) (uint8, error) {
 	err := (*Actor)(impl).InitializeState(ctx.Runtime().Storage(), NewState(addr))
 	if err != nil {
-		return errors.CodeError(err), err
+		return errors.CodeError(err), errors.RevertErrorWrap(err, "Could not initialize account state")
 	}
 	return 0, nil
 }

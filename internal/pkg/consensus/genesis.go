@@ -163,30 +163,13 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			return nil, err
 		}
 
-		// retrieve init actor so we can register addresses
-		cachedState := state.NewCachedTree(st)
-		init, err := cachedState.GetActor(ctx, address.InitAddress)
-		if err != nil {
-			return nil, err
-		}
-
 		// Initialize account actors
 		for addr, val := range genCfg.accounts {
-			_, _, err := cachedState.GetOrCreateActor(ctx, addr, func() (*actor.Actor, address.Address, error) {
-				if addr.Protocol() == address.ID {
-					a, err := account.NewActor(val)
-					return a, addr, err
-				}
-
-				vmctx := vm.NewVMContext(vm.NewContextParams{State: cachedState, StorageMap: storageMap, To: init, ToAddr: address.InitAddress})
-				return initactor.InitializeAccountActor(vmctx, addr, val)
-			})
+			_, err := ApplyMessageDirect(ctx, st, storageMap, address.NetworkAddress, address.InitAddress, 0, val,
+				initactor.Exec, types.AccountActorCodeCid, []interface{}{addr})
 			if err != nil {
 				return nil, err
 			}
-		}
-		if err := cachedState.Commit(ctx); err != nil {
-			return nil, err
 		}
 
 		// Initialize miner actors
@@ -306,31 +289,32 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 	}
 	sort.Strings(sortedAddresses)
 
-	cachedTree := state.NewCachedTree(st)
-	for _, addrBytes := range sortedAddresses {
+	for i, addrBytes := range sortedAddresses {
 		addr, err := address.NewFromBytes([]byte(addrBytes))
 		if err != nil {
 			return err
 		}
 		val := defaultAccounts[addr]
 
-		_, _, err = cachedTree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, address.Address, error) {
-			if addr.Protocol() == address.SECP256K1 || addr.Protocol() == address.BLS {
-				initActor, err := cachedTree.GetActor(ctx, address.InitAddress)
-				if err != nil {
-					return nil, address.Undef, err
-				}
-
-				vmctx := vm.NewVMContext(vm.NewContextParams{State: cachedTree, StorageMap: storageMap, To: initActor, ToAddr: address.InitAddress})
-				return initactor.InitializeAccountActor(vmctx, addr, val)
+		if addr.Protocol() == address.ID {
+			a, err := account.NewActor(val)
+			if err != nil {
+				return err
 			}
 
-			a, err := account.NewActor(val)
-			return a, addr, err
-		})
+			if err := st.SetActor(ctx, addr, a); err != nil {
+				return err
+			}
+		} else {
+			_, err = ApplyMessageDirect(ctx, st, storageMap, address.NetworkAddress, address.InitAddress, uint64(i), val, initactor.Exec, types.AccountActorCodeCid, []interface{}{addr})
+			if err != nil {
+				return err
+			}
+		}
+
 		if err != nil {
 			return err
 		}
 	}
-	return cachedTree.Commit(ctx)
+	return nil
 }

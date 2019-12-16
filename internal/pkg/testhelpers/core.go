@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
+	"math/big"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -221,16 +222,36 @@ func RequireGetActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.St
 // RequireInitAccountActor initializes an account actor
 func RequireInitAccountActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, addr address.Address, balance types.AttoFIL) (*actor.Actor, address.Address) {
 	cachedTree := state.NewCachedTree(st)
-	initActor, _, err := cachedTree.GetOrCreateActor(ctx, address.InitAddress, func() (*actor.Actor, address.Address, error) {
+
+	// ensure network actor
+	network, _, err := cachedTree.GetOrCreateActor(ctx, address.NetworkAddress, func() (*actor.Actor, address.Address, error) {
+		act, err := account.NewActor(types.NewAttoFILFromFIL(100000000))
+		return act, address.NetworkAddress, err
+	})
+	require.NoError(t, err)
+
+	// ensure init actor
+	_, _, err = cachedTree.GetOrCreateActor(ctx, address.InitAddress, func() (*actor.Actor, address.Address, error) {
 		return RequireNewInitActor(t, vms), address.InitAddress, nil
 	})
 	require.NoError(t, err)
 
-	act, idAddr, err := cachedTree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, address.Address, error) {
-		vmctx := vm.NewVMContext(vm.NewContextParams{State: cachedTree, StorageMap: vms, To: initActor, ToAddr: address.InitAddress})
-		return initactor.InitializeAccountActor(vmctx, addr, balance)
-	})
+	// create actor
+	vmctx := vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, State: cachedTree, StorageMap: vms, To: network, ToAddr: address.NetworkAddress})
+	vmctx.Send(address.InitAddress, initactor.Exec, balance, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
+
+	// fetch id address for actor from init actor
+	gt := vm.NewGasTracker()
+	gt.MsgGasLimit = 10000
+	vmctx = vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, State: cachedTree, StorageMap: vms, To: network, ToAddr: address.NetworkAddress, GasTracker: gt})
+	idAddrInt := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
+
+	idAddr, err := address.NewIDAddress(idAddrInt.(*big.Int).Uint64())
 	require.NoError(t, err)
+
+	act, err := cachedTree.GetActor(ctx, idAddr)
+	require.NoError(t, err)
+
 	require.NoError(t, cachedTree.Commit(ctx))
 	require.NoError(t, vms.Flush())
 

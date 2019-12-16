@@ -652,9 +652,9 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
 		return nil, nil
 	}
-	minerAddr := addrs[4]
-	th.RequireInitAccountActor(ctx, t, st, vm.NewStorageMap(bs), addrs[3], types.ZeroAttoFIL)
-	minerOwnerAddr := addrs[3]
+	minerAddr := addrs[3]
+	th.RequireInitAccountActor(ctx, t, st, vm.NewStorageMap(bs), addrs[4], types.ZeroAttoFIL)
+	minerOwnerAddr := addrs[4]
 
 	messages := chain.NewMessageStore(bs)
 

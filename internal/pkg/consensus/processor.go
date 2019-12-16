@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"math/big"
 
 	"github.com/ipfs/go-cid"
@@ -547,6 +548,38 @@ func (p *DefaultProcessor) ApplyMessagesAndPayRewards(ctx context.Context, st st
 	return results, nil
 }
 
+// ApplyMessageDirect applies a given message directly to the given state tree and storage map and returns the result of the message.
+// This is a shortcut to allow internal code to use built-in actor functionality to alter state.
+func ApplyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, from, to address.Address, nonce uint64, value types.AttoFIL, method types.MethodID, params ...interface{}) ([]byte, error) {
+	cst := state.NewCachedTree(st)
+
+	encodedParams, err := abi.ToEncodedValues(params...)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := types.NewUnsignedMessage(from, to, nonce, value, method, encodedParams)
+	msg.GasLimit = 10000
+	processor := NewConfiguredProcessor(&directMessageValidator{}, &DefaultBlockRewarder{}, builtin.DefaultActors)
+	receipt, err := processor.attemptApplyMessage(ctx, cst, vms, msg, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
+	if err != nil {
+		return nil, err
+	}
+	if receipt.ExitCode != 0 {
+		return nil, errors.NewFaultError("non-zero exit code for direct message")
+	}
+
+	if err = cst.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	if len(receipt.Return) > 0 {
+		return receipt.Return[0], nil
+	}
+
+	return []byte{}, nil
+}
+
 // DefaultBlockRewarder pays the block reward from the network actor to the miner's owner.
 type DefaultBlockRewarder struct{}
 
@@ -655,16 +688,40 @@ func getOrCreateActor(ctx context.Context, st *state.CachedTree, store vm.Storag
 		return act, idAddr, err
 	}
 
-	return st.GetOrCreateActor(ctx, idAddr, func() (*actor.Actor, address.Address, error) {
-		if addr.Protocol() == address.ID {
-			return actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL), idAddr, nil
-		}
-
-		initActor, err := st.GetActor(ctx, address.InitAddress)
+	if addr.Protocol() != address.ID {
+		initAct, err := st.GetActor(ctx, address.InitAddress)
 		if err != nil {
 			return nil, address.Undef, err
 		}
-		vmctx := vm.NewVMContext(vm.NewContextParams{State: st, StorageMap: store, To: initActor, ToAddr: address.InitAddress})
-		return initactor.InitializeAccountActor(vmctx, addr, types.ZeroAttoFIL)
-	})
+
+		// this should never fail due to lack of gas since gas doesn't have meaning here
+		noopGT := vm.NewGasTracker()
+		noopGT.MsgGasLimit = 10000
+		vmctx := vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, To: initAct, State: st, StorageMap: store, GasTracker: noopGT})
+		vmctx.Send(address.InitAddress, initactor.Exec, types.ZeroAttoFIL, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
+
+		vmctx = vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, To: initAct, State: st, StorageMap: store, GasTracker: noopGT})
+		idAddrInt := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
+
+		id, ok := idAddrInt.(*big.Int)
+		if !ok {
+			return nil, address.Undef, errors.NewFaultError("non-integer return from GetActorIDForAddress")
+		}
+
+		idAddr, err = address.NewIDAddress(id.Uint64())
+		if err != nil {
+			return nil, address.Undef, err
+		}
+	}
+
+	act, err := st.GetActor(ctx, idAddr)
+	return act, idAddr, err
+}
+
+// directMessageValidator is a validator that doesn't validate to simplify message creation in tests.
+type directMessageValidator struct{}
+
+// Validate always returns nil
+func (tsmv *directMessageValidator) Validate(ctx context.Context, msg *types.UnsignedMessage, fromActor *actor.Actor) error {
+	return nil
 }
