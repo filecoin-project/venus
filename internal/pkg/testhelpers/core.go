@@ -56,10 +56,11 @@ func RequireNewMinerActor(ctx context.Context, t *testing.T, st state.Tree, vms 
 
 	gt := vm.NewGasTracker()
 	gt.MsgGasLimit = types.NewGasUnits(10000)
-	m := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, types.SendMethodID, []byte{})
+	// we are required to have a message in the context even though it will not be used.
+	dummyMessage := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, types.SendMethodID, []byte{})
 	vmctx := vm.NewVMContext(vm.NewContextParams{
-		Message:    m,
-		OriginMsg:  m,
+		Message:    dummyMessage,
+		OriginMsg:  dummyMessage,
 		State:      cachedTree,
 		StorageMap: vms,
 		To:         initActor,
