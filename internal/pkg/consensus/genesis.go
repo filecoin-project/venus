@@ -165,7 +165,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 
 		// sort addresses so genesis generation will be stable
 		sortedAddresses := []string{}
-		for addr, _ := range genCfg.accounts {
+		for addr := range genCfg.accounts {
 			sortedAddresses = append(sortedAddresses, string(addr.Bytes()))
 		}
 		sort.Strings(sortedAddresses)

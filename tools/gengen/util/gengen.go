@@ -301,7 +301,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 		for i := uint64(0); i < m.NumCommittedSectors; i++ {
 			powerReport := types.NewPowerReport(m.SectorSize*m.NumCommittedSectors, 0)
 
-			_, err := consensus.ApplyMessageDirect(ctx, st, sm, addr, address.PowerAddress, uint64(i), types.NewAttoFILFromFIL(0), power.ProcessPowerReport, powerReport, mIDAddr)
+			_, err := consensus.ApplyMessageDirect(ctx, st, sm, addr, address.PowerAddress, i, types.NewAttoFILFromFIL(0), power.ProcessPowerReport, powerReport, mIDAddr)
 			if err != nil {
 				return nil, err
 			}

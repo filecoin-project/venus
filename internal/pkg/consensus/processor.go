@@ -480,7 +480,7 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 	return receipt, vmErr
 }
 
-// ResolveAddress looks up associated id address if actor address. Otherwise it returns the same address.
+// ResolveAddress looks up associated id address. If the given address is already and id address, it is returned unchanged.
 func ResolveAddress(ctx context.Context, addr address.Address, st *state.CachedTree, vms vm.StorageMap, gt *vm.GasTracker) (address.Address, bool, error) {
 	if addr.Protocol() == address.ID {
 		return addr, true, nil
@@ -574,6 +574,7 @@ func ApplyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, f
 	}
 
 	if len(receipt.Return) > 0 {
+
 		return receipt.Return[0], nil
 	}
 

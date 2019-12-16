@@ -189,7 +189,7 @@ func TestVMContextSendFailures(t *testing.T) {
 	tree := state.NewCachedTree(&mockStateTree)
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	vms := storagemap.NewStorageMap(bs)
-	initActor := mustCreateInitActor(t, bs)
+	initActor := requireCreateInitActor(t, bs)
 
 	msg := newMsg()
 
@@ -495,7 +495,7 @@ func TestTransfer(t *testing.T) {
 	})
 }
 
-func mustCreateInitActor(t *testing.T, bs blockstore.Blockstore) *actor.Actor {
+func requireCreateInitActor(t *testing.T, bs blockstore.Blockstore) *actor.Actor {
 	act := actor.NewActor(types.InitActorCodeCid, types.ZeroAttoFIL)
 
 	initStorage := &initactor.State{
