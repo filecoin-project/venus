@@ -696,7 +696,7 @@ func getOrCreateActor(ctx context.Context, st *state.CachedTree, store vm.Storag
 
 	// this should never fail due to lack of gas since gas doesn't have meaning here
 	noopGT := vm.NewGasTracker()
-	noopGT.MsgGasLimit = 10000
+	noopGT.MsgGasLimit = 10000 // must exceed gas units consumed by init.Exec+account.Constructor+init.GetActorIDForAddress
 	vmctx := vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, To: initAct, State: st, StorageMap: store, GasTracker: noopGT})
 	vmctx.Send(address.InitAddress, initactor.Exec, types.ZeroAttoFIL, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
 
