@@ -202,7 +202,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 			// Omitted fields below
 			//StateRoot:       stateRoot,
 			//Proof            PoStProof
-			Timestamp:       f.stamper.Stamp(uint64(height)),
+			Timestamp: f.stamper.Stamp(uint64(height)),
 		}
 		// Nonce intentionally omitted as it will go away.
 
@@ -403,7 +403,7 @@ type TimeStamper interface {
 }
 
 // ZeroTimestamper writes a default of 0 to the timestamp
-type ZeroTimestamper struct {}
+type ZeroTimestamper struct{}
 
 // Stamp returns a stamp for the current block
 func (zt *ZeroTimestamper) Stamp(height uint64) types.Uint64 {
@@ -419,13 +419,13 @@ type ClockTimestamper struct {
 func NewClockTimestamper(chainClock clock.ChainEpochClock) *ClockTimestamper {
 	return &ClockTimestamper{
 		c: chainClock,
-	}	
-} 
+	}
+}
 
-// Stamp assigns a valid timestamp given genesis time and block time to 
+// Stamp assigns a valid timestamp given genesis time and block time to
 // a block of the provided height.
 func (ct *ClockTimestamper) Stamp(height uint64) types.Uint64 {
-	startTime := ct.c.StartTimeOfEpoch(height)
+	startTime := ct.c.StartTimeOfEpoch(types.NewBlockHeight(height))
 
 	timestamp := uint64(startTime.Unix())
 	return types.Uint64(timestamp)

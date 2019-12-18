@@ -407,7 +407,6 @@ func TestBlockNotLinkedRejected(t *testing.T) {
 type poisonValidator struct {
 	headerFailureTS uint64
 	fullFailureTS   uint64
-	t               *testing.T
 }
 
 func newPoisonValidator(t *testing.T, headerFailure, fullFailure uint64) *poisonValidator {

@@ -51,7 +51,7 @@ func TestBlockValidSemantic(t *testing.T) {
 func TestMismatchedTime(t *testing.T) {
 	tf.UnitTest(t)
 
-	blockTime := clock.DefaultBlockTime
+	blockTime := clock.DefaultEpochDuration
 	genTime := time.Unix(1234567890, 1234567890%int64(time.Second))
 	fc := th.NewFakeClock(genTime)
 	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, fc)
@@ -73,7 +73,7 @@ func TestMismatchedTime(t *testing.T) {
 func TestFutureEpoch(t *testing.T) {
 	tf.UnitTest(t)
 
-	blockTime := clock.DefaultBlockTime
+	blockTime := clock.DefaultEpochDuration
 	genTime := time.Unix(1234567890, 1234567890%int64(time.Second))
 	fc := th.NewFakeClock(genTime)
 	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, fc)
@@ -92,12 +92,13 @@ func TestBlockValidSyntax(t *testing.T) {
 	blockTime := clock.DefaultEpochDuration
 	ts := time.Unix(1234567890, 0)
 	mclock := th.NewFakeClock(ts)
+	chainClock := clock.NewChainClockFromClock(uint64(ts.Unix()), blockTime, mclock)
 	ctx := context.Background()
-	fc.Advance(blockTime)
+	mclock.Advance(blockTime)
 
-	validator := consensus.NewDefaultBlockValidator(mclock)
+	validator := consensus.NewDefaultBlockValidator(chainClock)
 
-	validTs := types.Uint64(fc.Now().Unix())
+	validTs := types.Uint64(mclock.Now().Unix())
 	validSt := types.NewCidForTestGetter()()
 	validAd := address.NewForTestGetter()()
 	validTi := block.Ticket{VRFProof: []byte{1}}
@@ -115,7 +116,7 @@ func TestBlockValidSyntax(t *testing.T) {
 	// validation, then revalidate the block
 
 	// invalidate timestamp
-	blk.Timestamp = types.Uint64(ts.Add(time.Duration(3)*blockTime).Unix())
+	blk.Timestamp = types.Uint64(ts.Add(time.Duration(3) * blockTime).Unix())
 	require.Error(t, validator.ValidateSyntax(ctx, blk))
 	blk.Timestamp = validTs
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))

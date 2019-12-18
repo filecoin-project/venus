@@ -29,9 +29,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/fetcher"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -58,7 +58,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	fc := th.NewFakeClock(time.Now())
 	genTime := uint64(1234567890)
-	blockTime := 5*time.Second
+	blockTime := 5 * time.Second
 	chainClock := clock.NewChainClockFromClock(genTime, blockTime, fc)
 	bv := consensus.NewDefaultBlockValidator(chainClock)
 	pid0 := th.RequireIntPeerID(t, 0)
@@ -422,7 +422,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
 		blk := simpleBlock()
 		blk.Height = 1
-		blk.Timestamp = types.Uint64(chainClock.StartTimeOfEpoch(uint64(blk.Height)).Unix())
+		blk.Timestamp = types.Uint64(chainClock.StartTimeOfEpoch(types.NewBlockHeight(uint64(blk.Height))).Unix())
 		key := block.NewTipSetKey(blk.Cid())
 		chain0 := block.NewChainInfo(pid0, pid0, key, uint64(blk.Height))
 		invalidSyntaxLoader := simpleLoader([]format.Node{blk.ToNode()})
@@ -804,7 +804,7 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 	bridge1 := ipldbridge.NewIPLDBridge()
 	bridge2 := ipldbridge.NewIPLDBridge()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	
+
 	bv := consensus.NewDefaultBlockValidator(chainClock)
 	pt := discovery.NewPeerTracker(peer.ID(""))
 	pt.Track(block.NewChainInfo(host2.ID(), host2.ID(), block.TipSetKey{}, 0))

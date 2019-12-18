@@ -13,6 +13,7 @@ const DefaultEpochDuration = 15 * time.Second
 // ChainEpochClock is an interface for a clock that represents epochs of the protocol.
 type ChainEpochClock interface {
 	EpochAtTime(t time.Time) *types.BlockHeight
+	EpochRangeAtTimestamp(t uint64) (*types.BlockHeight, *types.BlockHeight)
 	StartTimeOfEpoch(e *types.BlockHeight) time.Time
 	WaitNextEpoch(ctx context.Context) *types.BlockHeight
 	Clock
@@ -52,6 +53,18 @@ func (cc *chainClock) EpochAtTime(t time.Time) *types.BlockHeight {
 	difference := t.Sub(cc.GenesisTime)
 	epochs := difference / cc.EpochDuration
 	return types.NewBlockHeight(uint64(epochs))
+}
+
+// EpochRangeAtTimestamp returns the possible epoch number range a given
+// unix second timestamp value can validly belong to.  This method can go
+// away once integration tests work well enough to not require subsecond
+// block times.
+func (cc *chainClock) EpochRangeAtTimestamp(seconds uint64) (*types.BlockHeight, *types.BlockHeight) {
+	earliest := time.Unix(int64(seconds), 0)
+	first := cc.EpochAtTime(earliest)
+	latest := earliest.Add(time.Second)
+	last := cc.EpochAtTime(latest)
+	return first, last
 }
 
 // StartTimeOfEpoch returns the start time of the given epoch.

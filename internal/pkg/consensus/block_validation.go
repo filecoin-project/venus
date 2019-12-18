@@ -3,7 +3,6 @@ package consensus
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
@@ -62,7 +61,7 @@ func NewDefaultBlockValidator(c clock.ChainEpochClock) *DefaultBlockValidator {
 // the chain clock.
 func (dv *DefaultBlockValidator) NotFutureBlock(b *block.Block) error {
 	currentEpoch := dv.EpochAtTime(dv.Now())
-	if int64(b.Height) > currentEpoch {
+	if types.NewBlockHeight(uint64(b.Height)).GreaterThan(currentEpoch) {
 		return fmt.Errorf("block %s with timestamp %d generate in future epoch %d", b.Cid().String(), b.Timestamp, b.Height)
 	}
 	return nil
@@ -71,9 +70,17 @@ func (dv *DefaultBlockValidator) NotFutureBlock(b *block.Block) error {
 // TimeMatchesEpoch errors if the epoch and time don't match according to the
 // chain clock.
 func (dv *DefaultBlockValidator) TimeMatchesEpoch(b *block.Block) error {
-	expectedEpoch := dv.EpochAtTime(time.Unix(int64(b.Timestamp), int64(b.Timestamp)%int64(time.Second)))
-	if expectedEpoch != int64(b.Height) {
-		return fmt.Errorf("block %s with timestamp %d generated in wrong epoch %d, expected epoch %d", b.Cid().String(), b.Timestamp, b.Height, expectedEpoch)
+	earliestExpected, latestExpected := dv.EpochRangeAtTimestamp(uint64(b.Timestamp))
+	blockEpoch := types.NewBlockHeight(uint64(b.Height))
+	if !earliestExpected.LessEqual(blockEpoch) || !latestExpected.GreaterEqual(blockEpoch) {
+		return fmt.Errorf(
+			"block %s with timestamp %d generated in wrong epoch %d, expected epoch in range [%d, %d]",
+			b.Cid().String(),
+			b.Timestamp,
+			b.Height,
+			earliestExpected.AsBigInt().Int64(),
+			latestExpected.AsBigInt().Int64(),
+		)
 	}
 	return nil
 }
