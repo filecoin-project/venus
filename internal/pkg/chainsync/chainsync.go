@@ -22,7 +22,7 @@ type BlockProposer interface {
 type Manager struct {
 	syncer       *syncer.Syncer
 	dispatcher   *dispatcher.Dispatcher
-	transitionCh chan bool 
+	transitionCh chan bool
 }
 
 // NewManager creates a new chain sync manager.
