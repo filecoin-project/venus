@@ -81,6 +81,7 @@ type Dispatcher struct {
 	// syncer is used for dispatching sync targets for chain heads to sync
 	// local chain state to these targets.
 	syncer dispatchSyncer
+
 	// catchup is true when the syncer is in catchup mode
 	catchup bool
 	// transitioner wraps logic for transitioning between catchup and follow states.
@@ -230,6 +231,7 @@ type Target struct {
 type Transitioner interface {
 	MaybeTransitionToCatchup(bool, []Target) (bool, error)
 	MaybeTransitionToFollow(context.Context, bool, int) (bool, error)
+	TransitionChannel() chan bool
 }
 
 // GapTransitioner changes state based on the detection of gaps between the
@@ -240,13 +242,17 @@ type GapTransitioner struct {
 	headState chainHeadState
 	// headSetter sets the chain head to the internal staged value.
 	headSetter transitionSyncer
+	// transitionCh emits true when transitioning to catchup and false
+	// when transitioning to follow
+	transitionCh chan bool
 }
 
 // NewGapTransitioner returns a new gap transitioner
 func NewGapTransitioner(headState chainHeadState, headSetter transitionSyncer) *GapTransitioner {
 	return &GapTransitioner{
-		headState:  headState,
-		headSetter: headSetter,
+		headState:    headState,
+		headSetter:   headSetter,
+		transitionCh: make(chan bool, 0),
 	}
 }
 
@@ -270,6 +276,7 @@ func (gt *GapTransitioner) MaybeTransitionToCatchup(inCatchup bool, targets []Ta
 	// Note: we run this check even on targets we may drop
 	for _, target := range targets {
 		if target.Height > headHeight+MaxEpochGap {
+			gt.transitionCh <- true
 			return true, nil
 		}
 	}
@@ -287,11 +294,17 @@ func (gt *GapTransitioner) MaybeTransitionToFollow(ctx context.Context, inCatchu
 	// this is safe -- all gap conditions cause syncing to enter catchup
 	// this is pessimistic -- gap conditions could be gone before we transition
 	if outstandingTargets == 0 {
+		gt.transitionCh <- false
 		// set staging to head on transition catchup --> follow
 		return true, gt.headSetter.SetStagedHead(ctx)
 	}
 
 	return false, nil
+}
+
+// TransitionChannel returns a channel emitting transition flags.
+func (gt *GapTransitioner) TransitionChannel() chan bool {
+	return gt.transitionCh
 }
 
 // TargetQueue orders dispatcher syncRequests by the underlying `targetQueue`'s

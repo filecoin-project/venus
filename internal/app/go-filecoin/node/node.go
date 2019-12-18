@@ -168,6 +168,9 @@ func (node *Node) Start(ctx context.Context) error {
 		if err := node.syncer.Start(syncCtx, node); err != nil {
 			return err
 		}
+
+		// Wire up syncing and possible mining
+		go node.doMiningPause(syncCtx)
 	}
 
 	return nil
@@ -391,6 +394,34 @@ func (node *Node) SetupMining(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (node *Node) doMiningPause(ctx context.Context) {
+	// doMiningPause receives state transition signals from the syncer
+	// dispatcher allowing syncing to make progress.
+	//
+	// When mining, the node passes these signals along to the scheduler
+	// pausing and continuing mining based on syncer state.
+	catchupCh := node.Syncer().ChainSyncManager.TransitionChannel()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case toCatchup, ok := <-catchupCh:
+			if !ok {
+				return
+			}
+			if node.BlockMining.MiningScheduler == nil {
+				// drop syncer transition signals if not mining
+				continue
+			}
+			if toCatchup {
+				node.BlockMining.MiningScheduler.Pause()
+			} else {
+				node.BlockMining.MiningScheduler.Continue()
+			}
+		}
+	}
 }
 
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
