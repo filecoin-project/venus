@@ -27,6 +27,9 @@ func (nt *noopTransitioner) MaybeTransitionToCatchup(inCatchup bool, _ []dispatc
 func (nt *noopTransitioner) MaybeTransitionToFollow(_ context.Context, inCatchup bool, _ int) (bool, error) {
 	return !inCatchup, nil
 }
+func (nt *noopTransitioner) TransitionChannel() chan bool {
+	return nil
+}
 
 func (fs *mockSyncer) HandleNewTipSet(_ context.Context, ci *block.ChainInfo, _ bool) error {
 	fs.headsCalled = append(fs.headsCalled, ci.Head)

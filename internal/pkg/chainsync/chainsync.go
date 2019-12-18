@@ -20,8 +20,9 @@ type BlockProposer interface {
 
 // Manager sync the chain.
 type Manager struct {
-	syncer     *syncer.Syncer
-	dispatcher *dispatcher.Dispatcher
+	syncer       *syncer.Syncer
+	dispatcher   *dispatcher.Dispatcher
+	transitionCh chan bool 
 }
 
 // NewManager creates a new chain sync manager.
@@ -33,8 +34,9 @@ func NewManager(fv syncer.FullBlockValidator, hv syncer.HeaderValidator, cs sync
 	gapTransitioner := dispatcher.NewGapTransitioner(s, syncer)
 	dispatcher := dispatcher.NewDispatcher(syncer, gapTransitioner)
 	return Manager{
-		syncer:     syncer,
-		dispatcher: dispatcher,
+		syncer:       syncer,
+		dispatcher:   dispatcher,
+		transitionCh: gapTransitioner.TransitionChannel(),
 	}, nil
 }
 
@@ -47,6 +49,11 @@ func (m *Manager) Start(ctx context.Context) error {
 // BlockProposer returns the block proposer.
 func (m *Manager) BlockProposer() BlockProposer {
 	return m.dispatcher
+}
+
+// TransitionChannel returns a channel emitting transition flags.
+func (m *Manager) TransitionChannel() chan bool {
+	return m.transitionCh
 }
 
 // Status returns the block proposer.
