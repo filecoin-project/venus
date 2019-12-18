@@ -67,7 +67,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	defer cancel()
 
 	numNodes := 4
-	_, nodes := makeNodesBlockPropTests(t, numNodes)
+	_, nodes, fakeClock, blockTime := makeNodesBlockPropTests(t, numNodes)
 
 	StartNodes(t, nodes)
 	defer StopNodes(nodes)
@@ -81,6 +81,8 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	nextBlk := requireMineOnce(ctx, t, minerNode)
 	// Wait for network connection notifications to propagate
 	time.Sleep(time.Millisecond * 300)
+	// Advance node's time so that it is epoch 1
+	fakeClock.Advance(blockTime)
 
 	assert.NoError(t, minerNode.AddNewBlock(ctx, nextBlk))
 
@@ -104,7 +106,7 @@ func TestChainSync(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	_, nodes := makeNodesBlockPropTests(t, 2)
+	_, nodes, fakeClock, blockTime := makeNodesBlockPropTests(t, 2)
 
 	StartNodes(t, nodes)
 	defer StopNodes(nodes)
@@ -114,6 +116,9 @@ func TestChainSync(t *testing.T) {
 	firstBlock := requireMineOnce(ctx, t, nodes[0])
 	secondBlock := requireMineOnce(ctx, t, nodes[0])
 	thirdBlock := requireMineOnce(ctx, t, nodes[0])
+
+	// Advance node's time so that it is epoch 1
+	fakeClock.Advance(blockTime)
 
 	assert.NoError(t, nodes[0].AddNewBlock(ctx, firstBlock))
 	assert.NoError(t, nodes[0].AddNewBlock(ctx, secondBlock))
@@ -134,9 +139,11 @@ func TestChainSync(t *testing.T) {
 }
 
 // makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
-func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*Node) {
+func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*Node, th.FakeClock, time.Duration) {
 	seed := MakeChainSeed(t, TestGenCfg)
-	c := clock.NewChainClockFromClock(1234567890, 100*time.Millisecond, th.NewFakeClock(time.Unix(1234567890, 0)))
+	fc := th.NewFakeClock(time.Unix(1234567890, 0))
+	blockTime := 100 * time.Millisecond
+	c := clock.NewChainClockFromClock(1234567890, 100*time.Millisecond, fc)
 	builderOpts := []BuilderOpt{ChainClockConfigOption(c)}
 	minerNode := MakeNodeWithChainSeed(t, seed, builderOpts,
 		PeerKeyOpt(PeerKeys[0]),
@@ -155,5 +162,5 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 	for i := 0; i < nodeLimit; i++ {
 		nodes = append(nodes, MakeNodeWithChainSeed(t, seed, builderOpts))
 	}
-	return mineraddr, nodes
+	return mineraddr, nodes, fc, blockTime
 }

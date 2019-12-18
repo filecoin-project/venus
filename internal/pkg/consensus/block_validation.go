@@ -3,7 +3,6 @@ package consensus
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
@@ -47,27 +46,48 @@ type MessageSyntaxValidator interface {
 
 // DefaultBlockValidator implements the BlockValidator interface.
 type DefaultBlockValidator struct {
-	clock.Clock
-	blockTime time.Duration
+	clock.ChainEpochClock
 }
 
 // NewDefaultBlockValidator returns a new DefaultBlockValidator. It uses `blkTime`
 // to validate blocks and uses the DefaultBlockValidationClock.
-func NewDefaultBlockValidator(blkTime time.Duration, c clock.Clock) *DefaultBlockValidator {
+func NewDefaultBlockValidator(c clock.ChainEpochClock) *DefaultBlockValidator {
 	return &DefaultBlockValidator{
-		Clock:     c,
-		blockTime: blkTime,
+		ChainEpochClock: c,
 	}
+}
+
+// NotFutureBlock errors if the block belongs to a future epoch according to
+// the chain clock.
+func (dv *DefaultBlockValidator) NotFutureBlock(b *block.Block) error {
+	currentEpoch := dv.EpochAtTime(dv.Now())
+	if types.NewBlockHeight(uint64(b.Height)).GreaterThan(currentEpoch) {
+		return fmt.Errorf("block %s with timestamp %d generate in future epoch %d", b.Cid().String(), b.Timestamp, b.Height)
+	}
+	return nil
+}
+
+// TimeMatchesEpoch errors if the epoch and time don't match according to the
+// chain clock.
+func (dv *DefaultBlockValidator) TimeMatchesEpoch(b *block.Block) error {
+	earliestExpected, latestExpected := dv.EpochRangeAtTimestamp(uint64(b.Timestamp))
+	blockEpoch := types.NewBlockHeight(uint64(b.Height))
+	if !earliestExpected.LessEqual(blockEpoch) || !latestExpected.GreaterEqual(blockEpoch) {
+		return fmt.Errorf(
+			"block %s with timestamp %d generated in wrong epoch %d, expected epoch in range [%d, %d]",
+			b.Cid().String(),
+			b.Timestamp,
+			b.Height,
+			earliestExpected.AsBigInt().Int64(),
+			latestExpected.AsBigInt().Int64(),
+		)
+	}
+	return nil
 }
 
 // ValidateSemantic checks validation conditions on a header that can be
 // checked given only the parent header.
 func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *block.Block, parents block.TipSet) error {
-	pmin, err := parents.MinTimestamp()
-	if err != nil {
-		return err
-	}
-
 	ph, err := parents.Height()
 	if err != nil {
 		return err
@@ -77,13 +97,6 @@ func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *bl
 		return fmt.Errorf("block %s has invalid height %d", child.Cid().String(), child.Height)
 	}
 
-	// check that child is appropriately delayed from its parents including
-	// null blocks.
-	// TODO replace check on height when #2222 lands
-	limit := uint64(pmin) + uint64(dv.BlockTime().Seconds())*(uint64(child.Height)-ph)
-	if uint64(child.Timestamp) < limit {
-		return fmt.Errorf("block %s with timestamp %d generated too far past parent, expected timestamp < %d", child.Cid().String(), child.Timestamp, limit)
-	}
 	return nil
 }
 
@@ -94,9 +107,13 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 	if blk.Height == 0 {
 		return nil
 	}
-	now := uint64(dv.Now().Unix())
-	if uint64(blk.Timestamp) > now {
-		return fmt.Errorf("block %s with timestamp %d generate in future at time %d", blk.Cid().String(), blk.Timestamp, now)
+	err := dv.NotFutureBlock(blk)
+	if err != nil {
+		return err
+	}
+	err = dv.TimeMatchesEpoch(blk)
+	if err != nil {
+		return err
 	}
 	if !blk.StateRoot.Defined() {
 		return fmt.Errorf("block %s has nil StateRoot", blk.Cid().String())
@@ -109,12 +126,6 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 	}
 
 	return nil
-}
-
-// BlockTime returns the block time the DefaultBlockValidator uses to validate
-/// blocks against.
-func (dv *DefaultBlockValidator) BlockTime() time.Duration {
-	return dv.blockTime
 }
 
 // ValidateMessagesSyntax validates a set of messages are correctly formed.

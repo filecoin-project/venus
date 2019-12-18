@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p-pubsub/pb"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
@@ -63,7 +64,8 @@ func TestBlockPubSubValidation(t *testing.T) {
 	blocktime := time.Second * 1
 
 	// setup a block validator and a topic validator
-	bv := consensus.NewDefaultBlockValidator(blocktime, mclock)
+	chainClock := clock.NewChainClockFromClock(uint64(now.Unix()), blocktime, mclock)
+	bv := consensus.NewDefaultBlockValidator(chainClock)
 	btv := net.NewBlockTopicValidator(bv)
 
 	// setup a floodsub instance on the host and register the topic validator
@@ -82,6 +84,8 @@ func TestBlockPubSubValidation(t *testing.T) {
 	// generate a miner address for blocks
 	miner := address.NewForTestGetter()()
 
+	mclock.Advance(blocktime) // enter epoch 1
+
 	// create an invalid block
 	invalidBlk := &block.Block{
 		Height:    1,
@@ -98,9 +102,10 @@ func TestBlockPubSubValidation(t *testing.T) {
 	time.Sleep(time.Millisecond * 100)
 
 	// create a valid block
+	validTime := chainClock.StartTimeOfEpoch(types.NewBlockHeight(uint64(1)))
 	validBlk := &block.Block{
 		Height:    1,
-		Timestamp: types.Uint64(now.Unix()), // valid because it was publish "now".
+		Timestamp: types.Uint64(uint64(validTime.Unix())),
 		StateRoot: types.NewCidForTestGetter()(),
 		Miner:     miner,
 		Ticket:    block.Ticket{VRFProof: []byte{0}},

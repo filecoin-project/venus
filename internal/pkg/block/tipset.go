@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"sort"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 )
@@ -116,20 +115,6 @@ func (ts TipSet) MinTicket() (Ticket, error) {
 		return Ticket{}, errUndefTipSet
 	}
 	return ts.blocks[0].Ticket, nil
-}
-
-// MinTimestamp returns the smallest timestamp of all blocks in the tipset.
-func (ts TipSet) MinTimestamp() (types.Uint64, error) {
-	if len(ts.blocks) == 0 {
-		return 0, errUndefTipSet
-	}
-	min := ts.blocks[0].Timestamp
-	for i := 1; i < len(ts.blocks); i++ {
-		if ts.blocks[i].Timestamp < min {
-			min = ts.blocks[i].Timestamp
-		}
-	}
-	return min, nil
 }
 
 // Height returns the height of a tipset.

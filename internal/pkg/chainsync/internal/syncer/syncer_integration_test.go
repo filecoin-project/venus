@@ -123,7 +123,7 @@ func TestSyncerWeighsPower(t *testing.T) {
 	cst := hamt.NewCborStore()
 	ctx := context.Background()
 	isb := newIntegrationStateBuilder(t, cst)
-	builder := chain.NewBuilderWithState(t, address.Undef, isb)
+	builder := chain.NewBuilderWithDeps(t, address.Undef, isb, &chain.ZeroTimestamper{})
 
 	// Construct genesis with readable state tree root
 	gen := builder.BuildOneOn(block.UndefTipSet, func(bb *chain.BlockBuilder) {})

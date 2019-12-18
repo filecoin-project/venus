@@ -19,6 +19,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -37,6 +39,7 @@ type Builder struct {
 	t            *testing.T
 	minerAddress address.Address
 	stateBuilder StateBuilder
+	stamper      TimeStamper
 	bs           blockstore.Blockstore
 	cstore       *hamt.CborIpldStore
 	messages     *MessageStore
@@ -52,12 +55,12 @@ var _ MessageProvider = (*Builder)(nil)
 
 // NewBuilder builds a new chain faker with default fake state building.
 func NewBuilder(t *testing.T, miner address.Address) *Builder {
-	return NewBuilderWithState(t, miner, &FakeStateBuilder{})
+	return NewBuilderWithDeps(t, miner, &FakeStateBuilder{}, &ZeroTimestamper{})
 }
 
-// NewBuilderWithState builds a new chain faker.
+// NewBuilderWithDeps builds a new chain faker.
 // Blocks will have `miner` set as the miner address, or a default if empty.
-func NewBuilderWithState(t *testing.T, miner address.Address, sb StateBuilder) *Builder {
+func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, stamper TimeStamper) *Builder {
 	if miner.Empty() {
 		var err error
 		miner, err = address.NewSecp256k1Address([]byte("miner"))
@@ -69,6 +72,7 @@ func NewBuilderWithState(t *testing.T, miner address.Address, sb StateBuilder) *
 		t:            t,
 		minerAddress: miner,
 		stateBuilder: sb,
+		stamper:      stamper,
 		bs:           bs,
 		cstore:       hamt.CSTFromBstore(bs),
 		messages:     NewMessageStore(bs),
@@ -198,7 +202,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 			// Omitted fields below
 			//StateRoot:       stateRoot,
 			//Proof            PoStProof
-			//Timestamp        Uint64
+			Timestamp: f.stamper.Stamp(uint64(height)),
 		}
 		// Nonce intentionally omitted as it will go away.
 
@@ -389,6 +393,42 @@ func (FakeStateBuilder) Weigh(tip block.TipSet, state cid.Cid) (uint64, error) {
 		}
 	}
 	return parentWeight + uint64(tip.Len()), nil
+}
+
+///// Timestamper /////
+
+// TimeStamper is an object that timestamps blocks
+type TimeStamper interface {
+	Stamp(uint64) types.Uint64
+}
+
+// ZeroTimestamper writes a default of 0 to the timestamp
+type ZeroTimestamper struct{}
+
+// Stamp returns a stamp for the current block
+func (zt *ZeroTimestamper) Stamp(height uint64) types.Uint64 {
+	return types.Uint64(0)
+}
+
+// ClockTimestamper writes timestamps based on a blocktime and genesis time
+type ClockTimestamper struct {
+	c clock.ChainEpochClock
+}
+
+// NewClockTimestamper makes a new stamper for creating production valid timestamps
+func NewClockTimestamper(chainClock clock.ChainEpochClock) *ClockTimestamper {
+	return &ClockTimestamper{
+		c: chainClock,
+	}
+}
+
+// Stamp assigns a valid timestamp given genesis time and block time to
+// a block of the provided height.
+func (ct *ClockTimestamper) Stamp(height uint64) types.Uint64 {
+	startTime := ct.c.StartTimeOfEpoch(types.NewBlockHeight(height))
+
+	timestamp := uint64(startTime.Unix())
+	return types.Uint64(timestamp)
 }
 
 ///// State evaluator /////
