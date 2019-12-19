@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
-	
 )
 
 // ChainSeed is a generalized struct for configuring node
@@ -118,7 +117,6 @@ func (cs *ChainSeed) Addr(t *testing.T, key int) address.Address {
 
 	return a
 }
-
 
 // ConnectNodes connects two nodes together
 func ConnectNodes(t *testing.T, a, b *Node) {

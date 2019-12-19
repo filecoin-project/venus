@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	node "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"	
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
@@ -205,7 +205,7 @@ func TestNodeConfig(t *testing.T) {
 	}
 
 	initOpts := []node.InitOpt{}
-	
+
 	builder := test.NewNodeBuilder(t)
 	builder.WithGenesisInit(th.DefaultGenesis)
 	builder.WithInitOpt(initOpts...)

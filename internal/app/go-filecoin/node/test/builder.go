@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
-
 )
 
 // NodeBuilder creates and configures Filecoin nodes for in-process testing.
@@ -51,7 +50,7 @@ func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 			},
 		},
 		builderOpts: []node.BuilderOpt{},
-		tb:      tb,
+		tb:          tb,
 	}
 }
 
@@ -122,7 +121,6 @@ func (b *NodeBuilder) requireNoError(err error) {
 	require.NoError(b.tb, err)
 }
 
-
 // MakeNodeWithChainSeed makes a single node with the given chain seed, and some init options
 func MakeNodeWithChainSeed(t *testing.T, seed *node.ChainSeed, builderopts []node.BuilderOpt, initopts ...node.InitOpt) *node.Node { // nolint: golint
 	t.Helper()
@@ -156,4 +154,3 @@ func MakeNodesUnstartedWithGif(t *testing.T, numNodes int, builderopts []node.Bu
 func MakeNodesUnstarted(t *testing.T, numNodes int, builderopts []node.BuilderOpt) []*node.Node {
 	return MakeNodesUnstartedWithGif(t, numNodes, builderopts, th.DefaultGenesis)
 }
-
