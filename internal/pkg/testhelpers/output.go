@@ -1,6 +1,7 @@
 package testhelpers
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"strings"
@@ -113,6 +114,7 @@ func (o *CmdOutput) AssertSuccess() *CmdOutput {
 // AssertFail asserts that the output represents a failed execution, with the error
 // matching the passed in error.
 func (o *CmdOutput) AssertFail(err string) *CmdOutput {
+	fmt.Printf("Assert FAIL\n")
 	o.tb.Helper()
 	assert.NotEqual(o.tb, 0, o.status, "client returned zero status")
 	assert.Empty(o.tb, o.ReadStdout()) // Also checks no invocation error.
