@@ -50,7 +50,7 @@ func TestLoadFork(t *testing.T) {
 	// *not* as the store, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{}
 	sel := &chain.FakeChainSelector{}
-	s, err := syncer.NewSyncer(eval, eval, sel, store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	s, err := syncer.NewSyncer(eval, eval, sel, store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)), &noopFaultDetector{})
 	require.NoError(t, err)
 	require.NoError(t, s.InitStaged())
 
@@ -80,7 +80,7 @@ func TestLoadFork(t *testing.T) {
 	newStore := chain.NewStore(repo.ChainDatastore(), cborStore, state.NewTreeLoader(), chain.NewStatusReporter(), genesis.At(0).Cid())
 	require.NoError(t, newStore.Load(ctx))
 	fakeFetcher := th.NewTestFetcher()
-	offlineSyncer, err := syncer.NewSyncer(eval, eval, sel, newStore, builder, fakeFetcher, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	offlineSyncer, err := syncer.NewSyncer(eval, eval, sel, newStore, builder, fakeFetcher, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)), &noopFaultDetector{})
 	require.NoError(t, err)
 	require.NoError(t, offlineSyncer.InitStaged())
 
@@ -159,7 +159,7 @@ func TestSyncerWeighsPower(t *testing.T) {
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: gen.At(0).StateRoot, TipSet: gen, TipSetReceipts: gen.At(0).MessageReceipts}))
 	require.NoError(t, store.SetHead(ctx, gen))
 	eval := &integrationStateEvaluator{c512: isb.c512}
-	syncer, err := syncer.NewSyncer(eval, eval, consensus.NewChainSelector(cst, as, gen.At(0).Cid()), store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	syncer, err := syncer.NewSyncer(eval, eval, consensus.NewChainSelector(cst, as, gen.At(0).Cid()), store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)), &noopFaultDetector{})
 	require.NoError(t, err)
 	require.NoError(t, syncer.InitStaged())
 
@@ -320,4 +320,10 @@ func dumpBlocksToCborStore(t *testing.T, builder *chain.Builder, cst *hamt.CborI
 		_, err = cst.Put(context.Background(), blk)
 		require.NoError(t, err)
 	}
+}
+
+type noopFaultDetector struct{}
+
+func (fd *noopFaultDetector) CheckBlock(_ *block.Block, _ block.TipSet) error {
+	return nil
 }

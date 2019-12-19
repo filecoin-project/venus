@@ -233,7 +233,7 @@ func TestNoUncessesaryFetch(t *testing.T) {
 	// A new syncer unable to fetch blocks from the network can handle a tipset that's already
 	// in the store and linked to genesis.
 	emptyFetcher := chain.NewBuilder(t, address.Undef)
-	newSyncer, err := syncer.NewSyncer(&chain.FakeStateEvaluator{}, &chain.FakeStateEvaluator{}, &chain.FakeChainSelector{}, store, builder, emptyFetcher, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	newSyncer, err := syncer.NewSyncer(&chain.FakeStateEvaluator{}, &chain.FakeStateEvaluator{}, &chain.FakeChainSelector{}, store, builder, emptyFetcher, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)), &noopFaultDetector{})
 	require.NoError(t, err)
 	require.NoError(t, newSyncer.InitStaged())
 	assert.NoError(t, newSyncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", head.Key(), heightFromTip(t, head)), false))
@@ -555,7 +555,7 @@ func setupWithValidator(ctx context.Context, t *testing.T, fullVal syncer.FullBl
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the store, to which the syncer must ensure to put blocks.
 	sel := &chain.FakeChainSelector{}
-	syncer, err := syncer.NewSyncer(fullVal, headerVal, sel, store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	syncer, err := syncer.NewSyncer(fullVal, headerVal, sel, store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)), &noopFaultDetector{})
 	require.NoError(t, err)
 	require.NoError(t, syncer.InitStaged())
 

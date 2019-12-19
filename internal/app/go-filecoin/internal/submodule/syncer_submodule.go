@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
 )
 
 // SyncerSubmodule enhances the node with chain syncing capabilities
@@ -26,10 +27,13 @@ type SyncerSubmodule struct {
 	BlockSub         pubsub.Subscription
 	ChainSelector    nodeChainSelector
 	Consensus        consensus.Protocol
+	FaultDetector    slashing.CFaultDetector
 	ChainSyncManager *chainsync.Manager
 
 	// cancelChainSync cancels the context for chain sync subscriptions and handlers.
 	CancelChainSync context.CancelFunc
+	// faultCh receives detected consensus faults
+	faultCh chan slashing.ConsensusFault
 }
 
 type syncerConfig interface {
@@ -72,8 +76,10 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 	storer := gsstoreutil.StorerForBlockstore(blockstore.Blockstore)
 	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
 	fetcher := fetcher.NewGraphSyncFetcher(ctx, gsync, blockstore.Blockstore, blkValid, config.ChainClock(), discovery.PeerTracker)
+	faultCh := make(chan slashing.ConsensusFault)
+	faultDetector := slashing.NewCFaultDetector(faultCh)
 
-	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, fetcher, config.ChainClock())
+	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, fetcher, config.ChainClock(), faultDetector)
 	if err != nil {
 		return SyncerSubmodule{}, err
 	}
@@ -85,6 +91,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 		ChainSelector:    nodeChainSelector,
 		ChainSyncManager: &chainSyncManager,
 		// cancelChainSync: nil,
+		faultCh: faultCh,
 	}, nil
 }
 
@@ -93,5 +100,16 @@ type syncerNode interface {
 
 // Start starts the syncer submodule for a node.
 func (s *SyncerSubmodule) Start(ctx context.Context, _node syncerNode) error {
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-s.faultCh:
+				// TODO #3690 connect this up to a slasher that sends messages
+				// to outbound queue to carry out penalization
+			}
+		}
+	}()
 	return s.ChainSyncManager.Start(ctx)
 }

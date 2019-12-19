@@ -36,11 +36,11 @@ func TestNoFaults(t *testing.T) {
 
 		faultCh := make(chan ConsensusFault, 1)
 		cfd := NewCFaultDetector(faultCh)
-		cfd.CheckBlock(block1, parentTipSet)
+		assert.NoError(t, cfd.CheckBlock(block1, parentTipSet))
 		assertEmptyCh(t, faultCh)
-		cfd.CheckBlock(block2, parentTipSet)
+		assert.NoError(t, cfd.CheckBlock(block2, parentTipSet))
 		assertEmptyCh(t, faultCh)
-		cfd.CheckBlock(block3, parentTipSet)
+		assert.NoError(t, cfd.CheckBlock(block3, parentTipSet))
 		assertEmptyCh(t, faultCh)
 	})
 
@@ -55,9 +55,9 @@ func TestNoFaults(t *testing.T) {
 
 		faultCh := make(chan ConsensusFault, 1)
 		cfd := NewCFaultDetector(faultCh)
-		cfd.CheckBlock(block1, parent1TipSet)
+		assert.NoError(t, cfd.CheckBlock(block1, parent1TipSet))
 		assertEmptyCh(t, faultCh)
-		cfd.CheckBlock(block2, parent2TipSet)
+		assert.NoError(t, cfd.CheckBlock(block2, parent2TipSet))
 		assertEmptyCh(t, faultCh)
 	})
 
@@ -71,9 +71,9 @@ func TestNoFaults(t *testing.T) {
 
 		faultCh := make(chan ConsensusFault, 1)
 		cfd := NewCFaultDetector(faultCh)
-		cfd.CheckBlock(block1, parent1TipSet)
+		assert.NoError(t, cfd.CheckBlock(block1, parent1TipSet))
 		assertEmptyCh(t, faultCh)
-		cfd.CheckBlock(block2, parent2TipSet)
+		assert.NoError(t, cfd.CheckBlock(block2, parent2TipSet))
 		assertEmptyCh(t, faultCh)
 	})
 
@@ -84,9 +84,9 @@ func TestNoFaults(t *testing.T) {
 		block := &block.Block{Miner: minerAddr1, Height: 43}
 		faultCh := make(chan ConsensusFault, 1)
 		cfd := NewCFaultDetector(faultCh)
-		cfd.CheckBlock(block, parentTipSet)
+		assert.NoError(t, cfd.CheckBlock(block, parentTipSet))
 		assertEmptyCh(t, faultCh)
-		cfd.CheckBlock(block, parentTipSet)
+		assert.NoError(t, cfd.CheckBlock(block, parentTipSet))
 		assertEmptyCh(t, faultCh)
 	})
 }
@@ -103,9 +103,9 @@ func TestFault(t *testing.T) {
 
 	faultCh := make(chan ConsensusFault, 1)
 	cfd := NewCFaultDetector(faultCh)
-	cfd.CheckBlock(block1, parentTipSet)
+	assert.NoError(t, cfd.CheckBlock(block1, parentTipSet))
 	assertEmptyCh(t, faultCh) // no collision here because index is empty
-	cfd.CheckBlock(block2, parentTipSet)
+	assert.NoError(t, cfd.CheckBlock(block2, parentTipSet))
 	fault := <-faultCh
 	assert.Equal(t, fault.Block1, block2)
 	assert.Equal(t, fault.Block2, block1)
@@ -124,9 +124,9 @@ func TestFaultNullBlocks(t *testing.T) {
 
 		faultCh := make(chan ConsensusFault, 3)
 		cfd := NewCFaultDetector(faultCh)
-		cfd.CheckBlock(block1, parentTipSet)
+		assert.NoError(t, cfd.CheckBlock(block1, parentTipSet))
 		assertEmptyCh(t, faultCh)
-		cfd.CheckBlock(block2, parentTipSet)
+		assert.NoError(t, cfd.CheckBlock(block2, parentTipSet))
 		for i := 0; i < 3; i++ {
 			fault := <-faultCh
 			assert.Equal(t, fault.Block1, block2)

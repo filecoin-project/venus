@@ -54,6 +54,9 @@ type Syncer struct {
 	// staged is the heaviest tipset seen by the syncer so far
 	staged block.TipSet
 
+	// faultDetector is used to manage information about potential consensus faults
+	faultDetector
+
 	// Reporter is used by the syncer to update the current status of the chain.
 	reporter status.Reporter
 }
@@ -112,6 +115,12 @@ type FullBlockValidator interface {
 	RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight uint64, stateID cid.Cid, receiptRoot cid.Cid) (cid.Cid, []*types.MessageReceipt, error)
 }
 
+// faultDetector tracks data for detecting consensus faults and emits faults
+// upon detection.
+type faultDetector interface {
+	CheckBlock(b *block.Block, p block.TipSet) error
+}
+
 var reorgCnt *metrics.Int64Counter
 
 func init() {
@@ -141,7 +150,7 @@ var logSyncer = logging.Logger("chainsync.syncer")
 
 // NewSyncer constructs a Syncer ready for use.  The chain reader must have a
 // head tipset to initialize the staging field.
-func NewSyncer(fv FullBlockValidator, hv HeaderValidator, cs ChainSelector, s ChainReaderWriter, m messageStore, f Fetcher, sr status.Reporter, c clock.Clock) (*Syncer, error) {
+func NewSyncer(fv FullBlockValidator, hv HeaderValidator, cs ChainSelector, s ChainReaderWriter, m messageStore, f Fetcher, sr status.Reporter, c clock.Clock, fd faultDetector) (*Syncer, error) {
 	return &Syncer{
 		fetcher: f,
 		badTipSets: &BadTipSetCache{
@@ -153,6 +162,7 @@ func NewSyncer(fv FullBlockValidator, hv HeaderValidator, cs ChainSelector, s Ch
 		chainStore:      s,
 		messageProvider: m,
 		clock:           c,
+		faultDetector:   fd,
 		reporter:        sr,
 	}, nil
 }
@@ -287,6 +297,15 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 	root, receipts, err := syncer.fullValidator.RunStateTransition(ctx, next, nextBlsMessages, nextSecpMessages, ancestors, parentWeight, stateRoot, parentReceiptRoot)
 	if err != nil {
 		return err
+	}
+
+	// Now that the tipset is validated preconditions are satisfied to check
+	// consensus faults
+	for i := 0; i < next.Len(); i++ {
+		err := syncer.faultDetector.CheckBlock(next.At(i), parent)
+		if err != nil {
+			return err
+		}
 	}
 
 	receiptCid, err := syncer.messageProvider.StoreReceipts(ctx, receipts)
