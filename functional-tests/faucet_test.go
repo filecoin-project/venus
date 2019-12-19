@@ -23,7 +23,8 @@ import (
 var faucetBinary = "../tools/faucet/faucet"
 
 func TestFaucetSendFunds(t *testing.T) {
-	tf.FunctionalTest(t)
+	//	tf.FunctionalTest(t)
+	tf.IntegrationTest(t)
 
 	if _, err := os.Stat(faucetBinary); os.IsNotExist(err) {
 		panic("faucet not found, run `go run build/*.go build` to fix")
@@ -41,7 +42,7 @@ func TestFaucetSendFunds(t *testing.T) {
 	blockTime := time.Second * 5
 
 	// Setup first node, note: Testbed.Name() is the directory
-	genesisTime := time.Unix(123456789, 0)
+	genesisTime := time.Now()
 	genesis := iptbtester.RequireGenerateGenesis(t, 10000, node0.Testbed.Name(), genesisTime)
 
 	node0.MustInitWithGenesis(ctx, genesis)
