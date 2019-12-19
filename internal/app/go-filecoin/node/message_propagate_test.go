@@ -1,4 +1,4 @@
-package node
+package node_test
 
 import (
 	"context"
@@ -9,6 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
+	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
+
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
@@ -35,26 +38,24 @@ func TestMessagePropagation(t *testing.T) {
 	)
 
 	// Initialize the first node to be the message sender.
-	senderNodeOpts := TestNodeOptions{
-		GenesisFunc: genesis,
-		BuilderOpts: DefaultTestingConfig(),
-		InitOpts: []InitOpt{
-			DefaultKeyOpt(&ki),
-		},
-	}
-	sender := GenNode(t, &senderNodeOpts)
+	builder := test.NewNodeBuilder(t)
+	builder.WithGenesisInit(genesis)
+	builder.WithInitOpt(DefaultKeyOpt(&ki))
+	builder.WithBuilderOpt(DefaultTestingConfig()...)
+
+	sender := builder.Build(ctx)
 
 	// Initialize other nodes to receive the message.
 	receiverCount := 2
-	receivers := MakeNodesUnstartedWithGif(t, receiverCount, false, genesis)
+	receivers := test.MakeNodesUnstartedWithGif(t, receiverCount, []BuilderOpt{}, genesis)
 
 	nodes := append([]*Node{sender}, receivers...)
 	StartNodes(t, nodes)
 	defer StopNodes(nodes)
 
 	// Connect nodes in series
-	connect(t, nodes[0], nodes[1])
-	connect(t, nodes[1], nodes[2])
+	ConnectNodes(t, nodes[0], nodes[1])
+	ConnectNodes(t, nodes[1], nodes[2])
 	// Wait for network connection notifications to propagate
 	time.Sleep(time.Millisecond * 200)
 

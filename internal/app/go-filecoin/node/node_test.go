@@ -11,7 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
+	node "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"	
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
@@ -24,7 +25,7 @@ import (
 func TestNodeConstruct(t *testing.T) {
 	tf.UnitTest(t)
 
-	nd := node.MakeNodesUnstarted(t, 1, false)[0]
+	nd := test.MakeNodesUnstarted(t, 1, []node.BuilderOpt{})[0]
 	assert.NotNil(t, nd.Host)
 
 	nd.Stop(context.Background())
@@ -35,7 +36,7 @@ func TestNodeNetworking(t *testing.T) {
 
 	ctx := context.Background()
 
-	nds := node.MakeNodesUnstarted(t, 2, false)
+	nds := test.MakeNodesUnstarted(t, 2, []node.BuilderOpt{})
 	nd1, nd2 := nds[0], nds[1]
 
 	pinfo := peer.AddrInfo{
@@ -74,7 +75,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		ctx := context.Background()
 
 		// These are two bootstrap nodes we'll connect to.
-		nds := node.MakeNodesUnstarted(t, 2, false)
+		nds := test.MakeNodesUnstarted(t, 2, []node.BuilderOpt{})
 		node.StartNodes(t, nds)
 		nd1, nd2 := nds[0], nds[1]
 
@@ -121,11 +122,11 @@ func TestNodeInit(t *testing.T) {
 
 	ctx := context.Background()
 
-	nd := node.MakeOfflineNode(t)
+	nd := test.MakeNodesUnstarted(t, 1, []node.BuilderOpt{node.OfflineMode(true)})[0]
 
 	assert.NoError(t, nd.Start(ctx))
 
-	assert.NotEqual(t, 0, nd.Chain().ChainReader.GetHead().Len())
+	assert.NotEqual(t, 0, nd.PorcelainAPI.ChainHeadKey().Len())
 	nd.Stop(ctx)
 }
 
@@ -135,7 +136,7 @@ func TestNodeStartMining(t *testing.T) {
 	ctx := context.Background()
 
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
-	minerNode := node.MakeNodeWithChainSeed(t, seed, []node.BuilderOpt{}, node.PeerKeyOpt(node.PeerKeys[0]))
+	minerNode := test.MakeNodeWithChainSeed(t, seed, []node.BuilderOpt{}, node.PeerKeyOpt(node.PeerKeys[0]))
 
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, ownerAddr := seed.GiveMiner(t, minerNode, 0)
@@ -199,34 +200,24 @@ func TestNodeConfig(t *testing.T) {
 	configBlockTime := 99
 
 	builderOptions := []node.BuilderOpt{
-		repoConfig(),
 		node.VerifierConfigOption(verifier),
 		node.BlockTime(time.Duration(configBlockTime)),
 	}
 
 	initOpts := []node.InitOpt{}
-	tno := node.TestNodeOptions{
-		BuilderOpts: builderOptions,
-		InitOpts:    initOpts,
-		OfflineMode: true,
-		GenesisFunc: th.DefaultGenesis,
-	}
+	
+	builder := test.NewNodeBuilder(t)
+	builder.WithGenesisInit(th.DefaultGenesis)
+	builder.WithInitOpt(initOpts...)
+	builderOptions = append(builderOptions, node.OfflineMode(true))
+	builder.WithBuilderOpt(builderOptions...)
 
-	n := node.GenNode(t, &tno)
+	n := builder.Build(context.Background())
 	cfg := n.Repo.Config()
 
 	assert.Equal(t, true, n.OfflineMode)
 	assert.Equal(t, defaultCfg.Mining, cfg.Mining)
 	assert.Equal(t, &config.SwarmConfig{
-		Address: "/ip4/0.0.0.0/tcp/0",
+		Address: "/ip4/127.0.0.1/tcp/0",
 	}, cfg.Swarm)
-}
-
-func repoConfig() node.BuilderOpt {
-	defaultCfg := config.NewDefaultConfig()
-	return func(c *node.Builder) error {
-		// overwrite value set with th.GetFreePort()
-		c.Repo().Config().API.Address = defaultCfg.API.Address
-		return nil
-	}
 }

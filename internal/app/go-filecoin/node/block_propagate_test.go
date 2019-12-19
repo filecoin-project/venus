@@ -1,4 +1,4 @@
-package node
+package node_test
 
 import (
 	"context"
@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
@@ -33,8 +35,7 @@ func connect(t *testing.T, nd1, nd2 *Node) {
 }
 
 func requireMineOnce(ctx context.Context, t *testing.T, minerNode *Node) *block.Block {
-	head := minerNode.chain.ChainReader.GetHead()
-	headTipSet, err := minerNode.chain.ChainReader.GetTipSet(head)
+	headTipSet, err := minerNode.PorcelainAPI.ChainHead()
 	require.NoError(t, err)
 	baseTS := headTipSet
 	require.NotNil(t, baseTS)
@@ -89,7 +90,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	equal := false
 	for i := 0; i < 30; i++ {
 		for j := 1; j < numNodes; j++ {
-			otherHead := nodes[j].chain.ChainReader.GetHead()
+			otherHead := nodes[j].PorcelainAPI.ChainHeadKey()
 			assert.NotNil(t, otherHead)
 			equal = otherHead.ToSlice()[0].Equals(nextBlk.Cid())
 			if equal {
@@ -126,7 +127,7 @@ func TestChainSync(t *testing.T) {
 
 	equal := false
 	for i := 0; i < 30; i++ {
-		otherHead := nodes[1].chain.ChainReader.GetHead()
+		otherHead := nodes[1].PorcelainAPI.ChainHeadKey()
 		assert.NotNil(t, otherHead)
 		equal = otherHead.ToSlice()[0].Equals(thirdBlock.Cid())
 		if equal {
@@ -145,7 +146,7 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 	blockTime := 100 * time.Millisecond
 	c := clock.NewChainClockFromClock(1234567890, 100*time.Millisecond, fc)
 	builderOpts := []BuilderOpt{ChainClockConfigOption(c)}
-	minerNode := MakeNodeWithChainSeed(t, seed, builderOpts,
+	minerNode := test.MakeNodeWithChainSeed(t, seed, builderOpts,
 		PeerKeyOpt(PeerKeys[0]),
 	)
 	seed.GiveKey(t, minerNode, 0)
@@ -160,7 +161,7 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 		nodeLimit = numNodes
 	}
 	for i := 0; i < nodeLimit; i++ {
-		nodes = append(nodes, MakeNodeWithChainSeed(t, seed, builderOpts))
+		nodes = append(nodes, test.MakeNodeWithChainSeed(t, seed, builderOpts))
 	}
 	return mineraddr, nodes, fc, blockTime
 }

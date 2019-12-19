@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"io/ioutil"
 	"math/rand"
 	"testing"
 	"time"
@@ -15,14 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	
 )
 
 // ChainSeed is a generalized struct for configuring node
@@ -30,15 +27,6 @@ type ChainSeed struct {
 	info   *gengen.RenderedGenInfo
 	cst    *hamt.CborIpldStore
 	bstore blockstore.Blockstore
-}
-
-// TestNodeOptions is a generalized struct for passing Node options around for testing
-type TestNodeOptions struct {
-	OfflineMode bool
-	BuilderOpts []BuilderOpt
-	GenesisFunc consensus.GenesisInitFunc
-	InitOpts    []InitOpt
-	Seed        *ChainSeed
 }
 
 // MakeChainSeed creates a chain seed struct (see above) from a given
@@ -131,12 +119,6 @@ func (cs *ChainSeed) Addr(t *testing.T, key int) address.Address {
 	return a
 }
 
-// MakeNodeWithChainSeed makes a single node with the given chain seed, and some init options
-func MakeNodeWithChainSeed(t *testing.T, seed *ChainSeed, builderopts []BuilderOpt, initopts ...InitOpt) *Node { // nolint: golint
-	t.Helper()
-	tno := TestNodeOptions{OfflineMode: false, GenesisFunc: seed.GenesisInitFunc, BuilderOpts: builderopts, InitOpts: initopts}
-	return GenNode(t, &tno)
-}
 
 // ConnectNodes connects two nodes together
 func ConnectNodes(t *testing.T, a, b *Node) {
@@ -150,39 +132,6 @@ func ConnectNodes(t *testing.T, a, b *Node) {
 	if err != nil {
 		t.Fatal(err)
 	}
-}
-
-// MakeNodesUnstartedWithGif creates some new nodes with an InMemoryRepo and fake proof verifier.
-// The repo is initialized with a supplied genesis init function.
-// Call StartNodes to start them.
-func MakeNodesUnstartedWithGif(t *testing.T, numNodes int, offlineMode bool, gif consensus.GenesisInitFunc) []*Node {
-	tno := TestNodeOptions{
-		OfflineMode: offlineMode,
-		GenesisFunc: gif,
-		BuilderOpts: DefaultTestingConfig(),
-	}
-
-	var out []*Node
-	for i := 0; i < numNodes; i++ {
-		nd := GenNode(t, &tno)
-		out = append(out, nd)
-	}
-
-	return out
-}
-
-// MakeNodesUnstarted creates some new nodes with an InMemoryRepo, fake proof verifier, and default genesis block.
-// Call StartNodes to start them.
-func MakeNodesUnstarted(t *testing.T, numNodes int, offlineMode bool) []*Node {
-	return MakeNodesUnstartedWithGif(t, numNodes, offlineMode, th.DefaultGenesis)
-}
-
-// MakeOfflineNode returns a single unstarted offline node.
-func MakeOfflineNode(t *testing.T) *Node {
-	return MakeNodesUnstartedWithGif(t,
-		1,    /* 1 node */
-		true, /* offline */
-		th.DefaultGenesis)[0]
 }
 
 // DefaultTestingConfig returns default configuration for testing
@@ -242,42 +191,6 @@ var TestGenCfg = &gengen.GenesisCfg{
 		"10000",
 		"10000",
 	},
-}
-
-// GenNode allows you to completely configure a node for testing.
-func GenNode(t *testing.T, tno *TestNodeOptions) *Node {
-	r := repo.NewInMemoryRepo()
-	sectorDir, err := ioutil.TempDir("", "go-fil-test-sectors")
-	require.NoError(t, err)
-
-	if tno.GenesisFunc != nil {
-		err = Init(context.Background(), r, tno.GenesisFunc, tno.InitOpts...)
-	} else {
-		err = Init(context.Background(), r, tno.Seed.GenesisInitFunc, tno.InitOpts...)
-	}
-	require.NoError(t, err)
-
-	r.Config().SectorBase.RootDir = sectorDir
-	r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
-	if !tno.OfflineMode {
-		r.Config().Swarm.Address = "/ip4/127.0.0.1/tcp/0"
-	}
-
-	localCfgOpts, err := OptionsFromRepo(r)
-	require.NoError(t, err)
-
-	localCfgOpts = append(localCfgOpts, tno.BuilderOpts...)
-
-	// enables or disables libp2p
-	localCfgOpts = append(localCfgOpts, func(c *Builder) error {
-		c.offlineMode = tno.OfflineMode
-		return nil
-	})
-
-	nd, err := New(context.Background(), localCfgOpts...)
-
-	require.NoError(t, err)
-	return nd
 }
 
 func mustGenKey(seed int64) crypto.PrivKey {
