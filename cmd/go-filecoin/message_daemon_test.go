@@ -3,7 +3,6 @@ package commands_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"testing"
 

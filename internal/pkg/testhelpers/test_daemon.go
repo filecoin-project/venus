@@ -367,6 +367,7 @@ func (td *TestDaemon) assertNoLogErrors() {
 		regexp.QuoteMeta("MessageSub.Next(): subscription cancelled by calling sub.Cancel()"),
 		regexp.QuoteMeta("BlockSub.Next(): context canceled"),
 		regexp.QuoteMeta("MessageSub.Next(): context canceled"),
+		"updating message pool for tipset * context canceled",
 	}
 
 	filteredStdErr := tdErr
