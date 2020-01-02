@@ -25,7 +25,7 @@ type NodeBuilder struct {
 	// Options to the repo initialisation.
 	initOpts []node.InitOpt
 	// Mutations to be applied to node config after initialisation.
-	configMutations []func(*config.Config)
+	configMutations []node.ConfigOpt
 	// Mutations to be applied to the node builder config before building.
 	builderOpts []node.BuilderOpt
 
@@ -37,14 +37,14 @@ func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 	return &NodeBuilder{
 		gif:      consensus.MakeGenesisFunc(consensus.NetworkName("go-filecoin-test")),
 		initOpts: []node.InitOpt{},
-		configMutations: []func(*config.Config){
+		configMutations: []node.ConfigOpt{
 			// Default configurations that make sense for integration tests.
 			// The can be overridden by subsequent `withConfigChanges`.
-			func(c *config.Config) {
+			node.ConfigOpt(func(c *config.Config) {
 				// Bind only locally, defer port selection until binding.
 				c.API.Address = "/ip4/127.0.0.1/tcp/0"
 				c.Swarm.Address = "/ip4/127.0.0.1/tcp/0"
-			},
+			}),
 		},
 		builderOpts: []node.BuilderOpt{},
 		tb:          tb,
@@ -70,7 +70,7 @@ func (b *NodeBuilder) WithBuilderOpt(opts ...node.BuilderOpt) *NodeBuilder {
 }
 
 // WithConfig adds a configuration mutation function to be invoked after repo initialisation.
-func (b *NodeBuilder) WithConfig(cm func(config *config.Config)) *NodeBuilder {
+func (b *NodeBuilder) WithConfig(cm node.ConfigOpt) *NodeBuilder {
 	b.configMutations = append(b.configMutations, cm)
 	return b
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/build/project"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	gen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
 // The file used to build these addresses can be found in:
@@ -32,6 +33,9 @@ var testKeys []string
 // TestMiners is a list of pregenerated miner acccounts. They are owned by the matching TestAddress.
 var TestMiners []string
 
+// TestGenGenConfig is the gengen config used to make the default test genesis block.
+var TestGenGenConfig gen.GenesisCfg
+
 type detailsStruct struct {
 	Keys   []*types.KeyInfo
 	Miners []struct {
@@ -40,6 +44,30 @@ type detailsStruct struct {
 		NumCommittedSectors uint64
 	}
 	GenesisCid cid.Cid `refmt:",omitempty"`
+}
+
+func init() {
+	root := project.Root()
+
+	genConfigPath := filepath.Join(root, "fixtures/setup.json")
+	genConfigFile, err := os.Open(genConfigPath)
+	if err != nil {
+		return
+	}
+	defer func() {
+		if err := genConfigFile.Close(); err != nil {
+			panic(err)
+		}
+	}()
+	genConfigBytes, err := ioutil.ReadAll(genConfigFile)
+	if err != nil {
+		panic(err)
+	}
+	err = json.Unmarshal(genConfigBytes, &TestGenGenConfig)
+	if err != nil {
+		panic(err)
+	}
+	gen.ApplyProofsModeDefaults(&TestGenGenConfig, false, false)
 }
 
 func init() {

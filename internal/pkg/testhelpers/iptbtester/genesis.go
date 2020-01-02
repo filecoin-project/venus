@@ -31,6 +31,7 @@ type idResult struct {
 func RequireGenerateGenesis(t *testing.T, funds int64, dir string, genesisTime time.Time) *GenesisInfo {
 	// Setup, generate a genesis and key file
 	cfg := &gengen.GenesisCfg{
+		Seed:       0,
 		ProofsMode: types.TestProofsMode,
 		Keys:       1,
 		PreAlloc: []string{
@@ -44,6 +45,7 @@ func RequireGenerateGenesis(t *testing.T, funds int64, dir string, genesisTime t
 			},
 		},
 		Network: "go-filecoin-test",
+		Time:    uint64(genesisTime.Unix()),
 	}
 
 	genfile, err := ioutil.TempFile(dir, "genesis.*.car")
@@ -56,7 +58,7 @@ func RequireGenerateGenesis(t *testing.T, funds int64, dir string, genesisTime t
 		t.Fatal(err)
 	}
 
-	info, err := gengen.GenGenesisCar(cfg, genfile, 0, genesisTime)
+	info, err := gengen.GenGenesisCar(cfg, genfile)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"math/rand"
 	"testing"
-	"time"
 
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
@@ -13,7 +12,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -36,9 +37,8 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 	mds := ds.NewMapDatastore()
 	bstore := blockstore.NewBlockstore(mds)
 	cst := hamt.CSTFromBstore(bstore)
-	genesisTime := time.Unix(123456789, 0)
 
-	info, err := gengen.GenGen(context.TODO(), cfg, cst, bstore, 0, genesisTime)
+	info, err := gengen.GenGen(context.TODO(), cfg, cst, bstore)
 	require.NoError(t, err)
 
 	return &ChainSeed{
@@ -95,8 +95,8 @@ func (cs *ChainSeed) GiveMiner(t *testing.T, nd *Node, which int) (address.Addre
 	t.Helper()
 	cfg := nd.Repo.Config()
 	m := cs.info.Miners[which]
-
 	cfg.Mining.MinerAddress = m.Address
+
 	require.NoError(t, nd.Repo.ReplaceConfig(cfg))
 
 	ownerAddr, err := cs.info.Keys[m.Owner].Address()
@@ -116,6 +116,30 @@ func (cs *ChainSeed) Addr(t *testing.T, key int) address.Address {
 	}
 
 	return a
+}
+
+// ConfigOpt mutates a node config post initialization
+type ConfigOpt func(*config.Config)
+
+// MinerConfigOpt is a config option that sets a node's miner address to one of
+// the chain seed's miner addresses
+func (cs *ChainSeed) MinerConfigOpt(which int) ConfigOpt {
+	return func(cfg *config.Config) {
+		m := cs.info.Miners[which]
+		cfg.Mining.MinerAddress = m.Address
+	}
+}
+
+// KeyInitOpt is a node init option that imports one of the chain seed's
+// keys to a node's wallet
+func (cs *ChainSeed) KeyInitOpt(which int) InitOpt {
+	kinfo := cs.info.Keys[which]
+	return ImportKeyOpt(kinfo)
+}
+
+// FixtureChainSeed returns the genesis function that
+func FixtureChainSeed(t *testing.T) *ChainSeed {
+	return MakeChainSeed(t, &fixtures.TestGenGenConfig)
 }
 
 // ConnectNodes connects two nodes together
