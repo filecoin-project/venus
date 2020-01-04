@@ -1,10 +1,12 @@
 package commands_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
@@ -18,11 +20,15 @@ func TestLeb128Decode(t *testing.T) {
 		{"A==", "65"},
 	}
 
-	d := makeTestDaemonWithMinerAndStart(t)
-	defer d.ShutdownSuccess()
+	ctx := context.Background()
+	builder := test.NewNodeBuilder(t)
+	n := builder.BuildAndStart(ctx)
+	defer n.Stop(ctx)
+	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	defer done()
 
 	for _, tt := range decodeTests {
-		output := d.RunSuccess("leb128", "decode", tt.Text).ReadStdoutTrimNewlines()
+		output := cmdClient.RunSuccess(ctx, "leb128", "decode", tt.Text).ReadStdoutTrimNewlines()
 
 		require.Equal(t, tt.Want, output)
 	}
@@ -38,11 +44,15 @@ func TestLeb128Encode(t *testing.T) {
 		{"65", "A=="},
 	}
 
-	d := makeTestDaemonWithMinerAndStart(t)
-	defer d.ShutdownSuccess()
+	ctx := context.Background()
+	builder := test.NewNodeBuilder(t)
+	n := builder.BuildAndStart(ctx)
+	defer n.Stop(ctx)
+	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	defer done()
 
 	for _, tt := range encodeTests {
-		output := d.RunSuccess("leb128", "encode", tt.Text).ReadStdoutTrimNewlines()
+		output := cmdClient.RunSuccess(ctx, "leb128", "encode", tt.Text).ReadStdoutTrimNewlines()
 
 		require.Contains(t, output, tt.Want)
 	}

@@ -12,7 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
@@ -25,10 +27,10 @@ func TestChainHead(t *testing.T) {
 
 	n := builder.BuildAndStart(ctx)
 	defer n.Stop(ctx)
-
 	cmdClient, done := test.RunNodeAPI(ctx, n, t)
 	defer done()
 
+	node.FixtureChainSeed(t)
 	jsonResult := cmdClient.RunSuccess(ctx, "chain", "head", "--enc", "json").ReadStdoutTrimNewlines()
 	var cidsFromJSON []cid.Cid
 	err := json.Unmarshal([]byte(jsonResult), &cidsFromJSON)
@@ -37,7 +39,6 @@ func TestChainHead(t *testing.T) {
 	textResult := cmdClient.RunSuccess(ctx, "chain", "ls", "--enc", "text").ReadStdoutTrimNewlines()
 	textCid, err := cid.Decode(textResult)
 	require.NoError(t, err)
-
 	assert.Equal(t, textCid, cidsFromJSON[0])
 }
 

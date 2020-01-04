@@ -1,12 +1,14 @@
 package commands_test
 
 import (
+	"context"
 	"io/ioutil"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
@@ -14,24 +16,35 @@ import (
 func TestId(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	d := th.NewDaemon(t).Start()
-	defer d.ShutdownSuccess()
+	ctx := context.Background()
 
-	id := d.RunSuccess("id")
+	builder := test.NewNodeBuilder(t)
+	n := builder.BuildAndStart(ctx)
+	defer n.Stop(ctx)
+	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	defer done()
+
+	id := cmdClient.RunSuccess(ctx, "id")
 
 	idContent := id.ReadStdout()
 	assert.Containsf(t, idContent, "/ip4/127.0.0.1/tcp/", "default addr")
 	assert.Contains(t, idContent, "ID")
-
 }
 
 func TestIdFormat(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	d := th.NewDaemon(t).Start()
-	defer d.ShutdownSuccess()
+	ctx := context.Background()
 
-	idContent := d.RunSuccess("id",
+	builder := test.NewNodeBuilder(t)
+	n := builder.BuildAndStart(ctx)
+	defer n.Stop(ctx)
+	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	defer done()
+
+	idContent := cmdClient.RunSuccess(
+		ctx,
+		"id",
 		"--format=\"<id>\\t<aver>\\t<pver>\\t<pubkey>\\n<addrs>\"",
 	).ReadStdout()
 

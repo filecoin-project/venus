@@ -1,31 +1,40 @@
 package commands_test
 
 import (
+	"context"
 	"testing"
 
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
 func TestSwarmConnectPeersValid(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	d1 := th.NewDaemon(t).Start()
-	defer d1.ShutdownSuccess()
+	ctx := context.Background()
+	builder := test.NewNodeBuilder(t)
 
-	d2 := th.NewDaemon(t).Start()
-	defer d2.ShutdownSuccess()
+	n1 := builder.BuildAndStart(ctx)
+	defer n1.Stop(ctx)
+	n2 := builder.BuildAndStart(ctx)
+	defer n2.Stop(ctx)
 
-	d1.ConnectSuccess(d2)
+	node.ConnectNodes(t, n1, n2)
 }
 
 func TestSwarmConnectPeersInvalid(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	d1 := th.NewDaemon(t).Start()
-	defer d1.ShutdownSuccess()
+	ctx := context.Background()
+	builder := test.NewNodeBuilder(t)
 
-	d1.RunFail("failed to parse ip4 addr",
-		"swarm connect /ip4/hello",
+	n := builder.BuildAndStart(ctx)
+	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	defer done()
+	n.Stop(ctx)
+
+	cmdClient.RunFail(ctx, "failed to parse ip4 addr",
+		"swarm", "connect", "/ip4/hello",
 	)
 }

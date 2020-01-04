@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,6 +44,7 @@ func (a *NodeAPI) Node() *node.Node {
 func (a *NodeAPI) Run(ctx context.Context) (client *Client, stop func()) {
 	ready := make(chan interface{})
 	terminate := make(chan os.Signal, 1)
+
 	go func() {
 		err := commands.RunAPIAndWait(ctx, a.node, a.node.Repo.Config().API, ready, terminate)
 		require.NoError(a.tb, err)
@@ -53,7 +55,9 @@ func (a *NodeAPI) Run(ctx context.Context) (client *Client, stop func()) {
 	require.NoError(a.tb, err)
 	require.NotEmpty(a.tb, addr, "empty API address")
 
-	return &Client{addr, a.tb}, func() { close(terminate) }
+	return &Client{addr, a.tb}, func() {
+		close(terminate)
+	}
 }
 
 // Client is an in-process client to a command API.
@@ -68,7 +72,7 @@ func (c *Client) Address() string {
 }
 
 // Run runs a CLI command and returns its output.
-func (c *Client) Run(ctx context.Context, command ...string) *th.CmdOutput {
+func (c *Client) Run(ctx context.Context, shouldFail bool, command ...string) *th.CmdOutput {
 	c.tb.Helper()
 	args := []string{
 		"go-filecoin", // A dummy first arg is required, simulating shell invocation.
@@ -90,28 +94,31 @@ func (c *Client) Run(ctx context.Context, command ...string) *th.CmdOutput {
 
 	out := th.ReadOutput(c.tb, command, readStdOut, readStdErr)
 	if err != nil {
-		out.SetInvocationError(err)
+		if !shouldFail {
+			out.SetInvocationError(err)
+		}
 	} else {
 		out.SetStatus(exitCode)
 	}
-
-	require.NoError(c.tb, err, "client execution error")
-	assert.Equal(c.tb, 0, exitCode, "client returned non-zero status")
+	if !shouldFail {
+		require.NoError(c.tb, err, "client execution error")
+		assert.Equal(c.tb, 0, exitCode, "client returned non-zero status")
+	}
 
 	return out
 }
 
 // RunSuccess runs a command and asserts that it succeeds (status of zero and logs no errors).
 func (c *Client) RunSuccess(ctx context.Context, command ...string) *th.CmdOutput {
-	output := c.Run(ctx, command...)
+	output := c.Run(ctx, false, command...)
 	output.AssertSuccess()
 	return output
 }
 
 // RunFail runs a command and asserts that it fails with a specified message on stderr.
-func (c *Client) RunFail(ctx context.Context, error string, command ...string) *th.CmdOutput {
-	output := c.Run(ctx, command...)
-	output.AssertFail(error)
+func (c *Client) RunFail(ctx context.Context, err string, command ...string) *th.CmdOutput {
+	output := c.Run(ctx, true, command...)
+	output.AssertFail(err)
 	return output
 }
 
@@ -121,4 +128,18 @@ func (c *Client) RunJSON(ctx context.Context, command ...string) map[string]inte
 	var parsed map[string]interface{}
 	require.NoError(c.tb, json.Unmarshal([]byte(out.ReadStdout()), &parsed))
 	return parsed
+}
+
+// RunSuccessFirstLine executes the given command, asserts success and returns
+// the first line of stdout.
+func (c *Client) RunSuccessFirstLine(ctx context.Context, args ...string) string {
+	return c.RunSuccessLines(ctx, args...)[0]
+}
+
+// RunSuccessLines executes the given command, asserts success and returns
+// an array of lines of the stdout.
+func (c *Client) RunSuccessLines(ctx context.Context, args ...string) []string {
+	output := c.RunSuccess(ctx, args...)
+	result := output.ReadStdoutTrimNewlines()
+	return strings.Split(result, "\n")
 }

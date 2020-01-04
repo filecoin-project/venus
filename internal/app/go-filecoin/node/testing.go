@@ -142,6 +142,13 @@ func FixtureChainSeed(t *testing.T) *ChainSeed {
 	return MakeChainSeed(t, &fixtures.TestGenGenConfig)
 }
 
+// DefaultAddressConfigOpt is a node config option setting the default address
+func DefaultAddressConfigOpt(addr address.Address) ConfigOpt {
+	return func(cfg *config.Config) {
+		cfg.Wallet.DefaultAddress = addr
+	}
+}
+
 // ConnectNodes connects two nodes together
 func ConnectNodes(t *testing.T, a, b *Node) {
 	t.Helper()

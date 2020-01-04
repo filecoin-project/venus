@@ -1,86 +1,114 @@
 package commands_test
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
+
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestAddrsNewAndList(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	d := th.NewDaemon(t).Start()
-	defer d.ShutdownSuccess()
+	ctx := context.Background()
+	builder := test.NewNodeBuilder(t)
 
-	addrs := make([]string, 10)
+	n := builder.BuildAndStart(ctx)
+	defer n.Stop(ctx)
+	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	defer done()
+
+	addrs := make([]address.Address, 10)
+	var err error
 	for i := 0; i < 10; i++ {
-		addrs[i] = d.CreateAddress()
+		addrs[i], err = n.PorcelainAPI.WalletNewAddress(types.SECP256K1)
+		require.NoError(t, err)
 	}
 
-	list := d.RunSuccess("address", "ls").ReadStdout()
+	list := cmdClient.RunSuccess(ctx, "address", "ls").ReadStdout()
 	for _, addr := range addrs {
-		assert.Contains(t, list, addr)
+		assert.Contains(t, list, addr.String())
 	}
 }
 
 func TestWalletBalance(t *testing.T) {
 	tf.IntegrationTest(t)
+	ctx := context.Background()
 
-	d := th.NewDaemon(t).Start()
-	defer d.ShutdownSuccess()
-	addr := d.CreateAddress()
+	builder := test.NewNodeBuilder(t)
+	cs := node.FixtureChainSeed(t)
+	builder.WithGenesisInit(cs.GenesisInitFunc)
+
+	n := builder.BuildAndStart(ctx)
+	defer n.Stop(ctx)
+	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	defer done()
+	addr, err := n.PorcelainAPI.WalletNewAddress(types.SECP256K1)
+	require.NoError(t, err)
 
 	t.Log("[success] not found, zero")
-	balance := d.RunSuccess("wallet", "balance", addr)
+	balance := cmdClient.RunSuccess(ctx, "wallet", "balance", addr.String())
 	assert.Equal(t, "0", balance.ReadStdoutTrimNewlines())
 
 	t.Log("[success] balance 9999900000")
-	balance = d.RunSuccess("wallet", "balance", address.NetworkAddress.String())
+	balance = cmdClient.RunSuccess(ctx, "wallet", "balance", address.NetworkAddress.String())
 	assert.Equal(t, "949999900000", balance.ReadStdoutTrimNewlines())
 
 	t.Log("[success] newly generated one")
-	addrNew := d.RunSuccess("address new")
-	balance = d.RunSuccess("wallet", "balance", addrNew.ReadStdoutTrimNewlines())
+	addrNew := cmdClient.RunSuccess(ctx, "address", "new")
+	balance = cmdClient.RunSuccess(ctx, "wallet", "balance", addrNew.ReadStdoutTrimNewlines())
 	assert.Equal(t, "0", balance.ReadStdoutTrimNewlines())
 }
 
 func TestAddrLookupAndUpdate(t *testing.T) {
 	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
+	ctx := context.Background()
 
-	d := makeTestDaemonWithMinerAndStart(t)
-	defer d.ShutdownSuccess()
+	builder := test.NewNodeBuilder(t)
+	cs := node.FixtureChainSeed(t)
 
-	d1 := th.NewDaemon(t,
-		th.WithMiner(fixtures.TestMiners[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[1])).Start()
-	defer d1.ShutdownSuccess()
+	builder.WithGenesisInit(cs.GenesisInitFunc)
+	n1 := builder.BuildAndStart(ctx)
+	defer n1.Stop(ctx)
+	cmdClient, done := test.RunNodeAPI(ctx, n1, t)
+	defer done()
 
-	d1.ConnectSuccess(d)
+	builder2 := test.NewNodeBuilder(t)
+	builder2.WithConfig(cs.MinerConfigOpt(0))
+	builder2.WithInitOpt(cs.KeyInitOpt(0))
+	builder2.WithInitOpt(cs.KeyInitOpt(1))
+
+	n2 := builder2.BuildAndStart(ctx)
+	defer n2.Stop(ctx)
+
+	node.ConnectNodes(t, n1, n2)
 
 	addr := fixtures.TestAddresses[0]
 	minerAddr := fixtures.TestMiners[0]
 	minerPidForUpdate := th.RequireRandomPeerID(t)
 
 	// capture original, pre-update miner pid
-	lookupOutA := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr)
+	lookupOutA := cmdClient.RunSuccessFirstLine(ctx, "address", "lookup", minerAddr)
 
 	// Not a miner address, should fail.
-	d.RunFail("failed to find", "address", "lookup", addr)
+	cmdClient.RunFail(ctx, "failed to find", "address", "lookup", addr)
 
 	// update the miner's peer ID
-	updateMsg := th.RunSuccessFirstLine(d,
+	updateMsg := cmdClient.RunSuccessFirstLine(ctx,
 		"miner", "update-peerid",
 		"--from", addr,
 		"--gas-price", "1",
@@ -90,28 +118,35 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 	)
 
 	// ensure mining happens after update message gets included in mempool
-	d1.MineAndPropagate(10*time.Second, d)
+	_, err := n2.BlockMining.BlockMiningAPI.MiningOnce(ctx)
+	require.NoError(t, err)
 
 	// wait for message to be included in a block
-	d.WaitForMessageRequireSuccess(mustDecodeCid(updateMsg))
+	require.NoError(t, n1.PorcelainAPI.MessageWaitDone(ctx, mustDecodeCid(updateMsg)))
 
 	// use the address lookup command to ensure update happened
-	lookupOutB := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr)
+	lookupOutB := cmdClient.RunSuccessFirstLine(ctx, "address", "lookup", minerAddr)
 	assert.Equal(t, minerPidForUpdate.Pretty(), lookupOutB)
 	assert.NotEqual(t, lookupOutA, lookupOutB)
 }
 
 func TestWalletLoadFromFile(t *testing.T) {
 	tf.IntegrationTest(t)
+	ctx := context.Background()
 
-	d := th.NewDaemon(t).Start()
-	defer d.ShutdownSuccess()
+	builder := test.NewNodeBuilder(t)
+
+	buildWithMiner(t, builder)
+	n1 := builder.BuildAndStart(ctx)
+	defer n1.Stop(ctx)
+	cmdClient, done := test.RunNodeAPI(ctx, n1, t)
+	defer done()
 
 	for _, p := range fixtures.KeyFilePaths() {
-		d.RunSuccess("wallet", "import", p)
+		cmdClient.RunSuccess(ctx, "wallet", "import", p)
 	}
 
-	dw := d.RunSuccess("address", "ls").ReadStdoutTrimNewlines()
+	dw := cmdClient.RunSuccess(ctx, "address", "ls").ReadStdoutTrimNewlines()
 
 	for _, addr := range fixtures.TestAddresses {
 		// assert we loaded the test address from the file
@@ -119,19 +154,24 @@ func TestWalletLoadFromFile(t *testing.T) {
 	}
 
 	// assert default amount of funds were allocated to address during genesis
-	wb := d.RunSuccess("wallet", "balance", fixtures.TestAddresses[0]).ReadStdoutTrimNewlines()
+	wb := cmdClient.RunSuccess(ctx, "wallet", "balance", fixtures.TestAddresses[0]).ReadStdoutTrimNewlines()
 	assert.Contains(t, wb, "10000")
 }
 
 func TestWalletExportImportRoundTrip(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	d := th.NewDaemon(t).Start()
-	defer d.ShutdownSuccess()
+	ctx := context.Background()
+	builder := test.NewNodeBuilder(t)
 
-	dw := d.RunSuccess("address", "ls").ReadStdoutTrimNewlines()
+	n := builder.BuildAndStart(ctx)
+	defer n.Stop(ctx)
+	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	defer done()
 
-	ki := d.RunSuccess("wallet", "export", dw, "--enc=json").ReadStdoutTrimNewlines()
+	dw := cmdClient.RunSuccess(ctx, "address", "ls").ReadStdoutTrimNewlines()
+
+	ki := cmdClient.RunSuccess(ctx, "wallet", "export", dw, "--enc=json").ReadStdoutTrimNewlines()
 
 	wf, err := os.Create("walletFileTest")
 	require.NoError(t, err)
@@ -142,24 +182,28 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, wf.Close())
 
-	maybeAddr := d.RunSuccess("wallet", "import", wf.Name()).ReadStdoutTrimNewlines()
+	maybeAddr := cmdClient.RunSuccess(ctx, "wallet", "import", wf.Name()).ReadStdoutTrimNewlines()
 	assert.Equal(t, dw, maybeAddr)
-
 }
 
 func TestWalletExportPrivateKeyConsistentDisplay(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	d := th.NewDaemon(t).Start()
-	defer d.ShutdownSuccess()
+	ctx := context.Background()
+	builder := test.NewNodeBuilder(t)
 
-	dw := d.RunSuccess("address", "ls").ReadStdoutTrimNewlines()
+	n := builder.BuildAndStart(ctx)
+	defer n.Stop(ctx)
+	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	defer done()
 
-	exportText := d.RunSuccess("wallet", "export", dw).ReadStdoutTrimNewlines()
-	exportTextPrivateKeyLine := strings.Split(exportText, "\n")[1]
+	dw := cmdClient.RunSuccess(ctx, "address", "ls").ReadStdoutTrimNewlines()
+
+	exportLines := cmdClient.RunSuccessLines(ctx, "wallet", "export", dw)
+	exportTextPrivateKeyLine := exportLines[1]
 	exportTextPrivateKey := strings.Split(exportTextPrivateKeyLine, "\t")[1]
 
-	exportJSON := d.RunSuccess("wallet", "export", dw, "--enc=json").ReadStdoutTrimNewlines()
+	exportJSON := cmdClient.RunSuccess(ctx, "wallet", "export", dw, "--enc=json").ReadStdoutTrimNewlines()
 
 	assert.Contains(t, exportJSON, exportTextPrivateKey)
 }
