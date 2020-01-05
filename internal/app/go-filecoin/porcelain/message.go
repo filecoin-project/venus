@@ -15,15 +15,17 @@ type waitPlumbing interface {
 }
 
 // MessageWaitDone blocks until the given message cid appears on chain
-func MessageWaitDone(ctx context.Context, plumbing waitPlumbing, msgCid cid.Cid) error {
+func MessageWaitDone(ctx context.Context, plumbing waitPlumbing, msgCid cid.Cid) (*types.MessageReceipt, error) {
 	l := moresync.NewLatch(1)
-	err := plumbing.MessageWait(ctx, msgCid, func(_ *block.Block, _ *types.SignedMessage, _ *types.MessageReceipt) error {
+	var ret *types.MessageReceipt
+	err := plumbing.MessageWait(ctx, msgCid, func(_ *block.Block, _ *types.SignedMessage, rcpt *types.MessageReceipt) error {
+		ret = rcpt
 		l.Done()
 		return nil
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	l.Wait()
-	return nil
+	return ret, nil
 }
