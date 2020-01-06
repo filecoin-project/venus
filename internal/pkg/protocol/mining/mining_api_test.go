@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
@@ -131,9 +132,10 @@ func TestMiningAPI_MiningTogether(t *testing.T) {
 
 func newAPI(t *testing.T) (bapi.API, *node.Node) {
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
-	builderOpts := []node.BuilderOpt{}
-
-	nd := node.MakeNodeWithChainSeed(t, seed, builderOpts)
+	ctx := context.Background()
+	builder := test.NewNodeBuilder(t)
+	builder.WithGenesisInit(seed.GenesisInitFunc)
+	nd := builder.Build(ctx)
 	seed.GiveKey(t, nd, 0)
 	mAddr, ownerAddr := seed.GiveMiner(t, nd, 0)
 	_, err := storage.NewMiner(mAddr, ownerAddr, &storage.FakeProver{}, types.OneKiBSectorSize, nd, nd.Repo.DealsDatastore(), nd.PorcelainAPI)

@@ -1,4 +1,4 @@
-package node
+package node_test
 
 import (
 	"context"
@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
@@ -33,8 +35,7 @@ func connect(t *testing.T, nd1, nd2 *Node) {
 }
 
 func requireMineOnce(ctx context.Context, t *testing.T, minerNode *Node) *block.Block {
-	head := minerNode.chain.ChainReader.GetHead()
-	headTipSet, err := minerNode.chain.ChainReader.GetTipSet(head)
+	headTipSet, err := minerNode.PorcelainAPI.ChainHead()
 	require.NoError(t, err)
 	baseTS := headTipSet
 	require.NotNil(t, baseTS)
@@ -89,7 +90,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	equal := false
 	for i := 0; i < 30; i++ {
 		for j := 1; j < numNodes; j++ {
-			otherHead := nodes[j].chain.ChainReader.GetHead()
+			otherHead := nodes[j].PorcelainAPI.ChainHeadKey()
 			assert.NotNil(t, otherHead)
 			equal = otherHead.ToSlice()[0].Equals(nextBlk.Cid())
 			if equal {
@@ -126,7 +127,7 @@ func TestChainSync(t *testing.T) {
 
 	equal := false
 	for i := 0; i < 30; i++ {
-		otherHead := nodes[1].chain.ChainReader.GetHead()
+		otherHead := nodes[1].PorcelainAPI.ChainHeadKey()
 		assert.NotNil(t, otherHead)
 		equal = otherHead.ToSlice()[0].Equals(thirdBlock.Cid())
 		if equal {
@@ -141,13 +142,15 @@ func TestChainSync(t *testing.T) {
 // makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
 func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*Node, th.FakeClock, time.Duration) {
 	seed := MakeChainSeed(t, TestGenCfg)
+	ctx := context.Background()
 	fc := th.NewFakeClock(time.Unix(1234567890, 0))
 	blockTime := 100 * time.Millisecond
 	c := clock.NewChainClockFromClock(1234567890, 100*time.Millisecond, fc)
-	builderOpts := []BuilderOpt{ChainClockConfigOption(c)}
-	minerNode := MakeNodeWithChainSeed(t, seed, builderOpts,
-		PeerKeyOpt(PeerKeys[0]),
-	)
+	builder := test.NewNodeBuilder(t)
+	builder.WithGenesisInit(seed.GenesisInitFunc)
+	builder.WithBuilderOpt(ChainClockConfigOption(c))
+	builder.WithInitOpt(PeerKeyOpt(PeerKeys[0]))
+	minerNode := builder.Build(ctx)
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, ownerAddr := seed.GiveMiner(t, minerNode, 0)
 	_, err := storage.NewMiner(mineraddr, ownerAddr, &storage.FakeProver{}, types.OneKiBSectorSize, minerNode, minerNode.Repo.DealsDatastore(), minerNode.PorcelainAPI)
@@ -159,8 +162,11 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 	if numNodes > 2 {
 		nodeLimit = numNodes
 	}
+	builder2 := test.NewNodeBuilder(t)
+	builder2.WithGenesisInit(seed.GenesisInitFunc)
+	builder2.WithBuilderOpt(ChainClockConfigOption(c))
 	for i := 0; i < nodeLimit; i++ {
-		nodes = append(nodes, MakeNodeWithChainSeed(t, seed, builderOpts))
+		nodes = append(nodes, builder2.Build(ctx))
 	}
 	return mineraddr, nodes, fc, blockTime
 }

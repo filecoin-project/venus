@@ -26,9 +26,8 @@ type NodeBuilder struct {
 	initOpts []node.InitOpt
 	// Mutations to be applied to node config after initialisation.
 	configMutations []func(*config.Config)
-
-	// Whether to skip network connection when starting.
-	offline bool
+	// Mutations to be applied to the node builder config before building.
+	builderOpts []node.BuilderOpt
 
 	tb testing.TB
 }
@@ -47,8 +46,8 @@ func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 				c.Swarm.Address = "/ip4/127.0.0.1/tcp/0"
 			},
 		},
-		offline: false,
-		tb:      tb,
+		builderOpts: []node.BuilderOpt{},
+		tb:          tb,
 	}
 }
 
@@ -64,15 +63,15 @@ func (b *NodeBuilder) WithInitOpt(opts ...node.InitOpt) *NodeBuilder {
 	return b
 }
 
-// WithConfig adds a configuration mutation function to be invoked after repo initialisation.
-func (b *NodeBuilder) WithConfig(cm func(config *config.Config)) *NodeBuilder {
-	b.configMutations = append(b.configMutations, cm)
+// WithBuilderOpt adds one or more node building options to node creation.
+func (b *NodeBuilder) WithBuilderOpt(opts ...node.BuilderOpt) *NodeBuilder {
+	b.builderOpts = append(b.builderOpts, opts...)
 	return b
 }
 
-// WithOffline set's the built nodes' offline configuration (default false).
-func (b *NodeBuilder) WithOffline(offline bool) *NodeBuilder {
-	b.offline = offline
+// WithConfig adds a configuration mutation function to be invoked after repo initialisation.
+func (b *NodeBuilder) WithConfig(cm func(config *config.Config)) *NodeBuilder {
+	b.configMutations = append(b.configMutations, cm)
 	return b
 }
 
@@ -94,11 +93,8 @@ func (b *NodeBuilder) Build(ctx context.Context) *node.Node {
 	// Initialize the node.
 	repoConfigOpts, err := node.OptionsFromRepo(repo)
 	b.requireNoError(err)
-	builderConfigOpts := []node.BuilderOpt{
-		node.OfflineMode(b.offline),
-	}
 
-	nd, err := node.New(ctx, append(repoConfigOpts, builderConfigOpts...)...)
+	nd, err := node.New(ctx, append(repoConfigOpts, b.builderOpts...)...)
 	b.requireNoError(err)
 	return nd
 }
@@ -114,4 +110,15 @@ func (b *NodeBuilder) BuildAndStart(ctx context.Context) *node.Node {
 func (b *NodeBuilder) requireNoError(err error) {
 	b.tb.Helper()
 	require.NoError(b.tb, err)
+}
+
+// BuildMany builds numNodes nodes with the builder's configuration.
+func (b *NodeBuilder) BuildMany(ctx context.Context, numNodes int) []*node.Node {
+	var out []*node.Node
+	for i := 0; i < numNodes; i++ {
+		nd := b.Build(ctx)
+		out = append(out, nd)
+	}
+
+	return out
 }
