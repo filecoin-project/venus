@@ -206,12 +206,12 @@ func (d *Dispatcher) RegisterCallback(cb func(Target)) {
 	d.control <- cbMessage{cb: cb}
 }
 
-// WaitForTarget returns a function that will block until the dispatcher
+// WaiterForTarget returns a function that will block until the dispatcher
 // processes the given target
-func (d *Dispatcher) WaitForTarget(ci *block.ChainInfo) func() {
+func (d *Dispatcher) WaiterForTarget(waitKey block.TipSetKey) func() {
 	processed := moresync.NewLatch(1)
 	d.RegisterCallback(func(t Target) {
-		if t.ChainInfo.Head.Equals(ci.Head) {
+		if t.ChainInfo.Head.Equals(waitKey) {
 			processed.Done()
 		}
 	})

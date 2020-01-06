@@ -364,9 +364,3 @@ func ApplyProofsModeDefaults(cfg *GenesisCfg, useLiveProofsMode bool, force bool
 		}
 	}
 }
-
-// DefaultSeed is the default seed used by the gengen tool
-const DefaultSeed = 4
-
-// DefaultTime is the default time used by the gengen tool
-const DefaultTime = 123456789

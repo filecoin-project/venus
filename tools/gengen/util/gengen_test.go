@@ -34,9 +34,12 @@ var testConfig = &GenesisCfg{
 		},
 	},
 	Network: "go-filecoin-test",
-	Seed:    DefaultSeed,
-	Time:    DefaultTime,
+	Seed:    defaultSeed,
+	Time:    defaultTime,
 }
+
+const defaultSeed = 4
+const defaultTime = 123456789
 
 func TestGenGenLoading(t *testing.T) {
 	tf.IntegrationTest(t)

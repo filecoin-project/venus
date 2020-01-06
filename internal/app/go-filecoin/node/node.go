@@ -347,8 +347,7 @@ func (node *Node) addNewlyMinedBlock(ctx context.Context, b *block.Block) {
 }
 
 func (node *Node) addMinedBlockSynchronous(ctx context.Context, b *block.Block) error {
-	ci := block.NewChainInfo(node.Host().ID(), node.Host().ID(), block.NewTipSetKey(b.Cid()), uint64(b.Height))
-	wait := node.syncer.ChainSyncManager.BlockProposer().WaitForTarget(ci)
+	wait := node.syncer.ChainSyncManager.BlockProposer().WaiterForTarget(block.NewTipSetKey(b.Cid()))
 	err := node.AddNewBlock(ctx, b)
 	if err != nil {
 		return err
