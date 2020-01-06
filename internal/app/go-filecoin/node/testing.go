@@ -132,8 +132,8 @@ func ConnectNodes(t *testing.T, a, b *Node) {
 	}
 }
 
-// DefaultTestingConfig returns default configuration for testing
-func DefaultTestingConfig() []BuilderOpt {
+// FakeProofVerifierBuilderOpts returns default configuration for testing
+func FakeProofVerifierBuilderOpts() []BuilderOpt {
 	return []BuilderOpt{
 		VerifierConfigOption(&verification.FakeVerifier{
 			VerifyPoStValid:                true,

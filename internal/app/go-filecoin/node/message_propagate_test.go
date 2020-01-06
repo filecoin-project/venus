@@ -37,16 +37,19 @@ func TestMessagePropagation(t *testing.T) {
 	)
 
 	// Initialize the first node to be the message sender.
-	builder := test.NewNodeBuilder(t)
-	builder.WithGenesisInit(genesis)
-	builder.WithInitOpt(DefaultKeyOpt(&ki))
-	builder.WithBuilderOpt(DefaultTestingConfig()...)
+	builder1 := test.NewNodeBuilder(t)
+	builder1.WithGenesisInit(genesis)
+	builder1.WithInitOpt(DefaultKeyOpt(&ki))
+	builder1.WithBuilderOpt(FakeProofVerifierBuilderOpts()...)
 
-	sender := builder.Build(ctx)
+	sender := builder1.Build(ctx)
 
 	// Initialize other nodes to receive the message.
+	builder2 := test.NewNodeBuilder(t)
+	builder2.WithGenesisInit(genesis)
+	builder2.WithBuilderOpt(FakeProofVerifierBuilderOpts()...)
 	receiverCount := 2
-	receivers := test.MakeNodesUnstartedWithGif(t, receiverCount, []BuilderOpt{}, genesis)
+	receivers := builder2.BuildMany(ctx, receiverCount)
 
 	nodes := append([]*Node{sender}, receivers...)
 	StartNodes(t, nodes)

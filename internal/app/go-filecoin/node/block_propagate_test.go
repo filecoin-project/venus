@@ -142,13 +142,15 @@ func TestChainSync(t *testing.T) {
 // makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
 func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*Node, th.FakeClock, time.Duration) {
 	seed := MakeChainSeed(t, TestGenCfg)
+	ctx := context.Background()
 	fc := th.NewFakeClock(time.Unix(1234567890, 0))
 	blockTime := 100 * time.Millisecond
 	c := clock.NewChainClockFromClock(1234567890, 100*time.Millisecond, fc)
-	builderOpts := []BuilderOpt{ChainClockConfigOption(c)}
-	minerNode := test.MakeNodeWithChainSeed(t, seed, builderOpts,
-		PeerKeyOpt(PeerKeys[0]),
-	)
+	builder := test.NewNodeBuilder(t)
+	builder.WithGenesisInit(seed.GenesisInitFunc)
+	builder.WithBuilderOpt(ChainClockConfigOption(c))
+	builder.WithInitOpt(PeerKeyOpt(PeerKeys[0]))
+	minerNode := builder.Build(ctx)
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, ownerAddr := seed.GiveMiner(t, minerNode, 0)
 	_, err := storage.NewMiner(mineraddr, ownerAddr, &storage.FakeProver{}, types.OneKiBSectorSize, minerNode, minerNode.Repo.DealsDatastore(), minerNode.PorcelainAPI)
@@ -160,8 +162,11 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 	if numNodes > 2 {
 		nodeLimit = numNodes
 	}
+	builder2 := test.NewNodeBuilder(t)
+	builder2.WithGenesisInit(seed.GenesisInitFunc)
+	builder2.WithBuilderOpt(ChainClockConfigOption(c))
 	for i := 0; i < nodeLimit; i++ {
-		nodes = append(nodes, test.MakeNodeWithChainSeed(t, seed, builderOpts))
+		nodes = append(nodes, builder2.Build(ctx))
 	}
 	return mineraddr, nodes, fc, blockTime
 }

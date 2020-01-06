@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 )
 
 // NodeBuilder creates and configures Filecoin nodes for in-process testing.
@@ -29,8 +28,6 @@ type NodeBuilder struct {
 	configMutations []func(*config.Config)
 	// Mutations to be applied to the node builder config before building.
 	builderOpts []node.BuilderOpt
-	// Whether to skip network connection when starting.
-	offline bool
 
 	tb testing.TB
 }
@@ -78,12 +75,6 @@ func (b *NodeBuilder) WithConfig(cm func(config *config.Config)) *NodeBuilder {
 	return b
 }
 
-// WithOffline set's the built nodes' offline configuration (default false).
-func (b *NodeBuilder) WithOffline(offline bool) *NodeBuilder {
-	b.offline = offline
-	return b
-}
-
 // Build creates a node as specified by this builder.
 // This many be invoked multiple times to create many nodes.
 func (b *NodeBuilder) Build(ctx context.Context) *node.Node {
@@ -121,36 +112,13 @@ func (b *NodeBuilder) requireNoError(err error) {
 	require.NoError(b.tb, err)
 }
 
-// MakeNodeWithChainSeed makes a single node with the given chain seed, and some init options
-func MakeNodeWithChainSeed(t *testing.T, seed *node.ChainSeed, builderopts []node.BuilderOpt, initopts ...node.InitOpt) *node.Node { // nolint: golint
-	t.Helper()
-	builder := NewNodeBuilder(t)
-	builder.WithGenesisInit(seed.GenesisInitFunc)
-	builder.WithBuilderOpt(builderopts...)
-	builder.WithInitOpt(initopts...)
-	return builder.Build(context.Background())
-}
-
-// MakeNodesUnstartedWithGif creates some new nodes with an InMemoryRepo and fake proof verifier.
-// The repo is initialized with a supplied genesis init function.
-// Call StartNodes to start them.
-func MakeNodesUnstartedWithGif(t *testing.T, numNodes int, builderopts []node.BuilderOpt, gif consensus.GenesisInitFunc) []*node.Node {
-	builder := NewNodeBuilder(t)
-	builder.WithGenesisInit(gif)
-	builderopts = append(builderopts, node.DefaultTestingConfig()...)
-	builder.WithBuilderOpt(builderopts...)
-
+// BuildMany builds numNodes nodes with the builder's configuration.
+func (b *NodeBuilder) BuildMany(ctx context.Context, numNodes int) []*node.Node {
 	var out []*node.Node
 	for i := 0; i < numNodes; i++ {
-		nd := builder.Build(context.Background())
+		nd := b.Build(ctx)
 		out = append(out, nd)
 	}
 
 	return out
-}
-
-// MakeNodesUnstarted creates some new nodes with an InMemoryRepo, fake proof verifier, and default genesis block.
-// Call StartNodes to start them.
-func MakeNodesUnstarted(t *testing.T, numNodes int, builderopts []node.BuilderOpt) []*node.Node {
-	return MakeNodesUnstartedWithGif(t, numNodes, builderopts, th.DefaultGenesis)
 }

@@ -24,8 +24,11 @@ import (
 
 func TestNodeConstruct(t *testing.T) {
 	tf.UnitTest(t)
-
-	nd := test.MakeNodesUnstarted(t, 1, []node.BuilderOpt{})[0]
+	ctx := context.Background()
+	builder := test.NewNodeBuilder(t)
+	builder.WithGenesisInit(th.DefaultGenesis)
+	builder.WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...)
+	nd := builder.Build(ctx)
 	assert.NotNil(t, nd.Host)
 
 	nd.Stop(context.Background())
@@ -35,8 +38,10 @@ func TestNodeNetworking(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-
-	nds := test.MakeNodesUnstarted(t, 2, []node.BuilderOpt{})
+	builder := test.NewNodeBuilder(t)
+	builder.WithGenesisInit(th.DefaultGenesis)
+	builder.WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...)
+	nds := builder.BuildMany(ctx, 2)
 	nd1, nd2 := nds[0], nds[1]
 
 	pinfo := peer.AddrInfo{
@@ -75,7 +80,10 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		ctx := context.Background()
 
 		// These are two bootstrap nodes we'll connect to.
-		nds := test.MakeNodesUnstarted(t, 2, []node.BuilderOpt{})
+		builder := test.NewNodeBuilder(t)
+		builder.WithGenesisInit(th.DefaultGenesis)
+		builder.WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...)
+		nds := builder.BuildMany(ctx, 2)
 		node.StartNodes(t, nds)
 		nd1, nd2 := nds[0], nds[1]
 
@@ -121,8 +129,12 @@ func TestNodeInit(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
+	builder := test.NewNodeBuilder(t)
+	builder.WithGenesisInit(th.DefaultGenesis)
+	builder.WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...)
+	builder.WithBuilderOpt(node.OfflineMode(true))
 
-	nd := test.MakeNodesUnstarted(t, 1, []node.BuilderOpt{node.OfflineMode(true)})[0]
+	nd := builder.Build(ctx)
 
 	assert.NoError(t, nd.Start(ctx))
 
@@ -136,7 +148,10 @@ func TestNodeStartMining(t *testing.T) {
 	ctx := context.Background()
 
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
-	minerNode := test.MakeNodeWithChainSeed(t, seed, []node.BuilderOpt{}, node.PeerKeyOpt(node.PeerKeys[0]))
+	builder := test.NewNodeBuilder(t)
+	builder.WithInitOpt(node.PeerKeyOpt(node.PeerKeys[0]))
+	builder.WithGenesisInit(seed.GenesisInitFunc)
+	minerNode := builder.Build(ctx)
 
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, ownerAddr := seed.GiveMiner(t, minerNode, 0)
@@ -209,8 +224,8 @@ func TestNodeConfig(t *testing.T) {
 	builder := test.NewNodeBuilder(t)
 	builder.WithGenesisInit(th.DefaultGenesis)
 	builder.WithInitOpt(initOpts...)
-	builderOptions = append(builderOptions, node.OfflineMode(true))
 	builder.WithBuilderOpt(builderOptions...)
+	builder.WithBuilderOpt(node.OfflineMode(true))
 
 	n := builder.Build(context.Background())
 	cfg := n.Repo.Config()

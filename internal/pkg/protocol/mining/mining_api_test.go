@@ -132,9 +132,10 @@ func TestMiningAPI_MiningTogether(t *testing.T) {
 
 func newAPI(t *testing.T) (bapi.API, *node.Node) {
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
-	builderOpts := []node.BuilderOpt{}
-
-	nd := test.MakeNodeWithChainSeed(t, seed, builderOpts)
+	ctx := context.Background()
+	builder := test.NewNodeBuilder(t)
+	builder.WithGenesisInit(seed.GenesisInitFunc)
+	nd := builder.Build(ctx)
 	seed.GiveKey(t, nd, 0)
 	mAddr, ownerAddr := seed.GiveMiner(t, nd, 0)
 	_, err := storage.NewMiner(mAddr, ownerAddr, &storage.FakeProver{}, types.OneKiBSectorSize, nd, nd.Repo.DealsDatastore(), nd.PorcelainAPI)
