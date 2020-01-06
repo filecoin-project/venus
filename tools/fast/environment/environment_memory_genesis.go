@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"os"
 	"sync"
-	"time"
 
 	logging "github.com/ipfs/go-log"
 
@@ -251,7 +250,7 @@ func (e *MemoryGenesis) buildGenesis(funds *big.Int) error {
 
 	var genbuffer bytes.Buffer
 
-	info, err := gengen.GenGenesisCar(cfg, &genbuffer, 0, time.Unix(123456789, 0))
+	info, err := gengen.GenGenesisCar(cfg, &genbuffer)
 	if err != nil {
 		return err
 	}

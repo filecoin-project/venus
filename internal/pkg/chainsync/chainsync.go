@@ -16,6 +16,7 @@ type BlockProposer interface {
 	SendHello(ci *block.ChainInfo) error
 	SendOwnBlock(ci *block.ChainInfo) error
 	SendGossipBlock(ci *block.ChainInfo) error
+	WaiterForTarget(wk block.TipSetKey) func()
 }
 
 // Manager sync the chain.

@@ -1,4 +1,5 @@
 {
+  "seed": 4,
   "keys": 5,
   "preAlloc": [
     "10000000000",
@@ -11,5 +12,6 @@
     "owner": 0,
     "numCommittedSectors": 1
   }],
-  "network": "go-filecoin-test"
+  "network": "go-filecoin-test",
+  "time": 123456789
 }

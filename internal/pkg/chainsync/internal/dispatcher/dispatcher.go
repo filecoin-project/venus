@@ -7,6 +7,7 @@ import (
 	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/util/moresync"
 )
 
 var log = logging.Logger("chainsync.dispatcher")
@@ -205,6 +206,19 @@ func (d *Dispatcher) RegisterCallback(cb func(Target)) {
 	d.control <- cbMessage{cb: cb}
 }
 
+// WaiterForTarget returns a function that will block until the dispatcher
+// processes the given target
+func (d *Dispatcher) WaiterForTarget(waitKey block.TipSetKey) func() {
+	processed := moresync.NewLatch(1)
+	d.RegisterCallback(func(t Target) {
+		if t.ChainInfo.Head.Equals(waitKey) {
+			processed.Done()
+		}
+	})
+	return func() {
+		processed.Wait()
+	}
+}
 func (d *Dispatcher) processCtrl(ctrlMsg interface{}) {
 	// processCtrl takes a control message, determines its type, and performs the
 	// specified action.

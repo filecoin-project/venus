@@ -4,7 +4,6 @@ import (
 	"context"
 	"io/ioutil"
 	"testing"
-	"time"
 
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
@@ -17,8 +16,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
-
-var defaultGenesisTime = time.Unix(123456789, 0)
 
 var testConfig = &GenesisCfg{
 	ProofsMode: types.TestProofsMode,
@@ -37,7 +34,12 @@ var testConfig = &GenesisCfg{
 		},
 	},
 	Network: "go-filecoin-test",
+	Seed:    defaultSeed,
+	Time:    defaultTime,
 }
+
+const defaultSeed = 4
+const defaultTime = 123456789
 
 func TestGenGenLoading(t *testing.T) {
 	tf.IntegrationTest(t)
@@ -45,7 +47,7 @@ func TestGenGenLoading(t *testing.T) {
 	fi, err := ioutil.TempFile("", "gengentest")
 	assert.NoError(t, err)
 
-	_, err = GenGenesisCar(testConfig, fi, 0, defaultGenesisTime)
+	_, err = GenGenesisCar(testConfig, fi)
 	assert.NoError(t, err)
 	assert.NoError(t, fi.Close())
 
@@ -68,7 +70,7 @@ func TestGenGenDeterministicBetweenBuilds(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
 		cst := hamt.CSTFromBstore(bstore)
-		inf, err := GenGen(ctx, testConfig, cst, bstore, 0, defaultGenesisTime)
+		inf, err := GenGen(ctx, testConfig, cst, bstore)
 		assert.NoError(t, err)
 		if info == nil {
 			info = inf

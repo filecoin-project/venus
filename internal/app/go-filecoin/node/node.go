@@ -346,6 +346,16 @@ func (node *Node) addNewlyMinedBlock(ctx context.Context, b *block.Block) {
 	}
 }
 
+func (node *Node) addMinedBlockSynchronous(ctx context.Context, b *block.Block) error {
+	wait := node.syncer.ChainSyncManager.BlockProposer().WaiterForTarget(block.NewTipSetKey(b.Cid()))
+	err := node.AddNewBlock(ctx, b)
+	if err != nil {
+		return err
+	}
+	wait()
+	return nil
+}
+
 // MiningAddress returns the address of the mining actor mining on behalf of
 // the node.
 func (node *Node) MiningAddress() (address.Address, error) {
@@ -670,7 +680,7 @@ func (node *Node) handleSubscription(ctx context.Context, sub pubsub.Subscriptio
 func (node *Node) setupProtocols() error {
 	blockMiningAPI := mining_protocol.New(
 		node.MiningAddress,
-		node.AddNewBlock,
+		node.addMinedBlockSynchronous,
 		node.chain.ChainReader,
 		node.IsMining,
 		node.SetupMining,

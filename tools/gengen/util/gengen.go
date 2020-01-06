@@ -7,7 +7,6 @@ import (
 	"math/big"
 	mrand "math/rand"
 	"strconv"
-	"time"
 
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
@@ -61,6 +60,9 @@ type CreateStorageMinerConfig struct {
 // GenesisCfg is the top level configuration struct used to create a genesis
 // block.
 type GenesisCfg struct {
+	// Seed is used to sample randomness for generating keys
+	Seed int64
+
 	// Keys is an array of names of keys. A random key will be generated
 	// for each name here.
 	Keys int
@@ -77,6 +79,9 @@ type GenesisCfg struct {
 
 	// ProofsMode affects sealing, sector packing, PoSt, etc. in the proofs library
 	ProofsMode types.ProofsMode
+
+	// Time is the genesis block time in unix seconds
+	Time uint64
 }
 
 // RenderedGenInfo contains information about a genesis block creation
@@ -108,8 +113,8 @@ type RenderedMinerInfo struct {
 // the final genesis block.
 //
 // WARNING: Do not use maps in this code, they will make this code non deterministic.
-func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs blockstore.Blockstore, seed int64, genesisTime time.Time) (*RenderedGenInfo, error) {
-	pnrg := mrand.New(mrand.NewSource(seed))
+func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*RenderedGenInfo, error) {
+	pnrg := mrand.New(mrand.NewSource(cfg.Seed))
 	keys, err := genKeys(cfg.Keys, pnrg)
 	if err != nil {
 		return nil, err
@@ -159,7 +164,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		MessageReceipts: emptyAMTCid,
 		BLSAggregateSig: emptyBLSSignature[:],
 		Ticket:          block.Ticket{VRFProof: []byte{0xec}},
-		Timestamp:       types.Uint64(genesisTime.Unix()),
+		Timestamp:       types.Uint64(cfg.Time),
 	}
 
 	c, err := cst.Put(ctx, geneblk)
@@ -312,14 +317,14 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 }
 
 // GenGenesisCar generates a car for the given genesis configuration
-func GenGenesisCar(cfg *GenesisCfg, out io.Writer, seed int64, genesisTime time.Time) (*RenderedGenInfo, error) {
+func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (*RenderedGenInfo, error) {
 	ctx := context.Background()
 
 	bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
 	cst := hamt.CSTFromBstore(bstore)
 	dserv := dag.NewDAGService(bserv.New(bstore, offline.Exchange(bstore)))
 
-	info, err := GenGen(ctx, cfg, cst, bstore, seed, genesisTime)
+	info, err := GenGen(ctx, cfg, cst, bstore)
 	if err != nil {
 		return nil, err
 	}

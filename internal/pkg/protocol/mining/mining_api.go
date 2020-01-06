@@ -2,7 +2,6 @@ package mining
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
@@ -81,7 +80,6 @@ func (a *API) MiningOnce(ctx context.Context) (*block.Block, error) {
 		return nil, err
 	}
 
-	fmt.Printf("mining once\n")
 	res, err := mining.MineOnce(ctx, *miningWorker, ts, a.chainClock)
 	if err != nil {
 		return nil, err
@@ -90,7 +88,6 @@ func (a *API) MiningOnce(ctx context.Context) (*block.Block, error) {
 		return nil, res.Err
 	}
 
-	fmt.Printf("adding block\n")
 	if err := a.addNewBlockFunc(ctx, res.NewBlock); err != nil {
 		return nil, err
 	}

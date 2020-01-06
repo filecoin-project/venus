@@ -20,8 +20,9 @@ const defaultPeerKeyBits = 2048
 
 // initCfg contains configuration for initializing a node's repo.
 type initCfg struct {
-	peerKey    crypto.PrivKey
-	defaultKey *types.KeyInfo
+	peerKey     crypto.PrivKey
+	defaultKey  *types.KeyInfo
+	initImports []*types.KeyInfo
 }
 
 // InitOpt is an option for initialization of a node's repo.
@@ -40,6 +41,13 @@ func PeerKeyOpt(k crypto.PrivKey) InitOpt {
 func DefaultKeyOpt(ki *types.KeyInfo) InitOpt {
 	return func(opts *initCfg) {
 		opts.defaultKey = ki
+	}
+}
+
+// ImportKeyOpt imports the provided key during initialization.
+func ImportKeyOpt(ki *types.KeyInfo) InitOpt {
+	return func(opts *initCfg) {
+		opts.initImports = append(opts.initImports, ki)
 	}
 }
 
@@ -63,7 +71,17 @@ func Init(ctx context.Context, r repo.Repo, gen consensus.GenesisInitFunc, opts 
 		return err
 	}
 
-	defaultKey, err := initDefaultKey(r.WalletDatastore(), cfg.defaultKey)
+	backend, err := wallet.NewDSBackend(r.WalletDatastore())
+	if err != nil {
+		return errors.Wrap(err, "failed to open wallet datastore")
+	}
+	w := wallet.New(backend)
+
+	defaultKey, err := initDefaultKey(w, cfg.defaultKey)
+	if err != nil {
+		return err
+	}
+	err = importInitKeys(w, cfg.initImports)
 	if err != nil {
 		return err
 	}
@@ -94,12 +112,8 @@ func initPeerKey(store keystore.Keystore, key crypto.PrivKey) error {
 	return nil
 }
 
-func initDefaultKey(store repo.Datastore, key *types.KeyInfo) (*types.KeyInfo, error) {
-	backend, err := wallet.NewDSBackend(store)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to open wallet datastore")
-	}
-	w := wallet.New(backend)
+func initDefaultKey(w *wallet.Wallet, key *types.KeyInfo) (*types.KeyInfo, error) {
+	var err error
 	if key == nil {
 		key, err = w.NewKeyInfo()
 		if err != nil {
@@ -111,4 +125,14 @@ func initDefaultKey(store repo.Datastore, key *types.KeyInfo) (*types.KeyInfo, e
 		}
 	}
 	return key, nil
+}
+
+func importInitKeys(w *wallet.Wallet, importKeys []*types.KeyInfo) error {
+	for _, ki := range importKeys {
+		_, err := w.Import(ki)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
