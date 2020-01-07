@@ -19,9 +19,8 @@ func TestActorDaemon(t *testing.T) {
 	ctx := context.Background()
 	t.Run("actor ls --enc json returns NDJSON containing all actors in the state tree", func(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+
+		_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		op1 := cmdClient.RunSuccess(ctx, "actor", "ls", "--enc", "json")

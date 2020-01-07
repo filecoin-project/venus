@@ -25,9 +25,7 @@ func TestBlockDaemon(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
 		buildWithMiner(t, builder)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		// mine a block and get its CID
@@ -49,9 +47,7 @@ func TestBlockDaemon(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
 		buildWithMiner(t, builder)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		// mine a block and get its CID
@@ -73,9 +69,7 @@ func TestBlockDaemon(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
 		buildWithMiner(t, builder)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		// mine a block and get its CID
@@ -97,9 +91,7 @@ func TestBlockDaemon(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
 		buildWithMiner(t, builder)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		// mine a block and get its CID
@@ -122,9 +114,7 @@ func TestBlockDaemon(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
 		buildWithMiner(t, builder)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		_, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
@@ -143,9 +133,7 @@ func TestBlockDaemon(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
 		buildWithMiner(t, builder)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		_, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
@@ -171,9 +159,7 @@ func TestBlockDaemon(t *testing.T) {
 		builder.WithInitOpt(cs.KeyInitOpt(1))
 		builder.WithInitOpt(cs.KeyInitOpt(0))
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		_, err = n.BlockMining.BlockMiningAPI.MiningOnce(ctx)

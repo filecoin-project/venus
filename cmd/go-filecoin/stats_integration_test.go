@@ -15,9 +15,7 @@ func TestStatsBandwidth(t *testing.T) {
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
 
-	n := builder.BuildAndStart(ctx)
-	defer n.Stop(ctx)
-	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
 	stats := cmdClient.RunSuccess(ctx, "stats", "bandwidth").ReadStdoutTrimNewlines()
