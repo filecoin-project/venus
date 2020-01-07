@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
 )
 
 // BlockProposer allows callers to propose new blocks for inclusion in the chain.
@@ -27,8 +28,8 @@ type Manager struct {
 }
 
 // NewManager creates a new chain sync manager.
-func NewManager(fv syncer.FullBlockValidator, hv syncer.HeaderValidator, cs syncer.ChainSelector, s syncer.ChainReaderWriter, m *chain.MessageStore, f syncer.Fetcher, c clock.Clock) (Manager, error) {
-	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, f, status.NewReporter(), c)
+func NewManager(fv syncer.FullBlockValidator, hv syncer.HeaderValidator, cs syncer.ChainSelector, s syncer.ChainReaderWriter, m *chain.MessageStore, f syncer.Fetcher, c clock.Clock, detector *slashing.ConsensusFaultDetector) (Manager, error) {
+	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, f, status.NewReporter(), c, detector)
 	if err != nil {
 		return Manager{}, err
 	}
