@@ -2,6 +2,7 @@ package commands_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -9,18 +10,21 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
 func TestActorDaemon(t *testing.T) {
 	tf.IntegrationTest(t)
-
+	ctx := context.Background()
 	t.Run("actor ls --enc json returns NDJSON containing all actors in the state tree", func(t *testing.T) {
-		d := th.NewDaemon(t).Start()
-		defer d.ShutdownSuccess()
+		builder := test.NewNodeBuilder(t)
+		n := builder.BuildAndStart(ctx)
+		defer n.Stop(ctx)
+		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		defer done()
 
-		op1 := d.RunSuccess("actor", "ls", "--enc", "json")
+		op1 := cmdClient.RunSuccess(ctx, "actor", "ls", "--enc", "json")
 		result1 := op1.ReadStdoutTrimNewlines()
 
 		var avs []commands.ActorView

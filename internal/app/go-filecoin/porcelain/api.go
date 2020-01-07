@@ -273,3 +273,8 @@ func (a *API) PingMinerWithTimeout(
 func (a *API) MinerSetWorkerAddress(ctx context.Context, toAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits) (cid.Cid, error) {
 	return MinerSetWorkerAddress(ctx, a, toAddr, gasPrice, gasLimit)
 }
+
+// MessageWaitDone blocks until the message is on chain
+func (a *API) MessageWaitDone(ctx context.Context, msgCid cid.Cid) error {
+	return MessageWaitDone(ctx, a, msgCid)
+}

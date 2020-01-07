@@ -91,6 +91,7 @@ func (pool *Pool) Add(ctx context.Context, msg *types.SignedMessage, height uint
 func (pool *Pool) Pending() []*types.SignedMessage {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
+
 	out := make([]*types.SignedMessage, 0, len(pool.pending))
 	for _, msg := range pool.pending {
 		out = append(out, msg.message)
@@ -116,12 +117,12 @@ func (pool *Pool) Get(c cid.Cid) (*types.SignedMessage, bool) {
 func (pool *Pool) Remove(c cid.Cid) {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
-
 	msg, ok := pool.pending[c]
 	if ok {
 		delete(pool.addressNonces, newAddressNonce(msg.message))
 		delete(pool.pending, c)
 	}
+
 	mpSize.Set(context.TODO(), int64(len(pool.pending)))
 }
 

@@ -1,14 +1,17 @@
 package commands_test
 
 import (
-	"strings"
+	"context"
 	"sync"
 	"testing"
 
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
@@ -16,25 +19,31 @@ import (
 func TestMpoolLs(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	sendMessage := func(d *th.TestDaemon, from string, to string) *th.CmdOutput {
-		return d.RunSuccess("message", "send",
+	sendMessage := func(ctx context.Context, cmdClient *test.Client, from string, to string) *th.CmdOutput {
+		return cmdClient.RunSuccess(ctx, "message", "send",
 			"--from", from,
 			"--gas-price", "1", "--gas-limit", "300",
 			"--value=10", to,
 		)
 	}
+	cs := node.FixtureChainSeed(t)
 
 	t.Run("return all messages", func(t *testing.T) {
+		ctx := context.Background()
+		builder := test.NewNodeBuilder(t)
+		builder.WithInitOpt(cs.KeyInitOpt(0))
+		builder.WithGenesisInit(cs.GenesisInitFunc)
 
-		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
-		defer d.ShutdownSuccess()
+		n := builder.BuildAndStart(ctx)
+		defer n.Stop(ctx)
+		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		defer done()
 
-		sendMessage(d, fixtures.TestAddresses[0], fixtures.TestAddresses[2])
-		sendMessage(d, fixtures.TestAddresses[0], fixtures.TestAddresses[2])
+		sendMessage(ctx, cmdClient, fixtures.TestAddresses[0], fixtures.TestAddresses[2])
+		sendMessage(ctx, cmdClient, fixtures.TestAddresses[0], fixtures.TestAddresses[2])
 
-		out := d.RunSuccess("mpool", "ls")
+		cids := cmdClient.RunSuccessLines(ctx, "mpool", "ls")
 
-		cids := strings.Split(strings.Trim(out.ReadStdout(), "\n"), "\n")
 		assert.Equal(t, 2, len(cids))
 
 		for _, c := range cids {
@@ -44,33 +53,37 @@ func TestMpoolLs(t *testing.T) {
 		}
 
 		// Should return immediately with --wait-for-count equal to message count
-		out = d.RunSuccess("mpool", "ls", "--wait-for-count=2")
-		cids = strings.Split(strings.Trim(out.ReadStdout(), "\n"), "\n")
+		cids = cmdClient.RunSuccessLines(ctx, "mpool", "ls", "--wait-for-count=2")
 		assert.Equal(t, 2, len(cids))
 	})
 
 	t.Run("wait for enough messages", func(t *testing.T) {
+		ctx := context.Background()
+		builder := test.NewNodeBuilder(t)
+		builder.WithInitOpt(cs.KeyInitOpt(0))
+		builder.WithGenesisInit(cs.GenesisInitFunc)
 
-		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
-		defer d.ShutdownSuccess()
+		n := builder.BuildAndStart(ctx)
+		defer n.Stop(ctx)
+		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		defer done()
 
 		wg := sync.WaitGroup{}
 		wg.Add(1)
 
 		complete := false
 		go func() {
-			out := d.RunSuccess("mpool", "ls", "--wait-for-count=3")
+			c := cmdClient.RunSuccessLines(ctx, "mpool", "ls", "--wait-for-count=3")
 			complete = true
-			c := strings.Split(strings.Trim(out.ReadStdout(), "\n"), "\n")
 			assert.Equal(t, 3, len(c))
 			wg.Done()
 		}()
 
-		sendMessage(d, fixtures.TestAddresses[0], fixtures.TestAddresses[1])
+		sendMessage(ctx, cmdClient, fixtures.TestAddresses[0], fixtures.TestAddresses[1])
 		assert.False(t, complete)
-		sendMessage(d, fixtures.TestAddresses[0], fixtures.TestAddresses[1])
+		sendMessage(ctx, cmdClient, fixtures.TestAddresses[0], fixtures.TestAddresses[1])
 		assert.False(t, complete)
-		sendMessage(d, fixtures.TestAddresses[0], fixtures.TestAddresses[1])
+		sendMessage(ctx, cmdClient, fixtures.TestAddresses[0], fixtures.TestAddresses[1])
 
 		wg.Wait()
 
@@ -80,19 +93,27 @@ func TestMpoolLs(t *testing.T) {
 
 func TestMpoolShow(t *testing.T) {
 	tf.IntegrationTest(t)
+	cs := node.FixtureChainSeed(t)
 
 	t.Run("shows message", func(t *testing.T) {
 
-		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
-		defer d.ShutdownSuccess()
+		ctx := context.Background()
+		builder := test.NewNodeBuilder(t)
+		builder.WithInitOpt(cs.KeyInitOpt(0))
+		builder.WithGenesisInit(cs.GenesisInitFunc)
 
-		msgCid := d.RunSuccess("message", "send",
+		n := builder.BuildAndStart(ctx)
+		defer n.Stop(ctx)
+		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		defer done()
+
+		msgCid := cmdClient.RunSuccess(ctx, "message", "send",
 			"--from", fixtures.TestAddresses[0],
 			"--gas-price", "1", "--gas-limit", "300",
 			"--value=10", fixtures.TestAddresses[2],
 		).ReadStdoutTrimNewlines()
 
-		out := d.RunSuccess("mpool", "show", msgCid).ReadStdoutTrimNewlines()
+		out := cmdClient.RunSuccess(ctx, "mpool", "show", msgCid).ReadStdoutTrimNewlines()
 
 		assert.Contains(t, out, "From:      "+fixtures.TestAddresses[0])
 		assert.Contains(t, out, "To:        "+fixtures.TestAddresses[2])
@@ -101,12 +122,19 @@ func TestMpoolShow(t *testing.T) {
 
 	t.Run("fails missing message", func(t *testing.T) {
 
-		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
-		defer d.ShutdownSuccess()
+		ctx := context.Background()
+		builder := test.NewNodeBuilder(t)
+		builder.WithInitOpt(cs.KeyInitOpt(0))
+		builder.WithGenesisInit(cs.GenesisInitFunc)
+
+		n := builder.BuildAndStart(ctx)
+		defer n.Stop(ctx)
+		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		defer done()
 
 		const c = "QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw"
 
-		out := d.RunFail("not found", "mpool", "show", c).ReadStderr()
+		out := cmdClient.RunFail(ctx, "not found", "mpool", "show", c).ReadStderr()
 		assert.Contains(t, out, c)
 	})
 }
@@ -115,19 +143,35 @@ func TestMpoolRm(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	t.Run("remove a message", func(t *testing.T) {
+		cs := node.FixtureChainSeed(t)
+		ctx := context.Background()
+		builder := test.NewNodeBuilder(t)
+		builder.WithInitOpt(cs.KeyInitOpt(0))
+		builder.WithGenesisInit(cs.GenesisInitFunc)
 
-		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
-		defer d.ShutdownSuccess()
+		n := builder.BuildAndStart(ctx)
+		defer n.Stop(ctx)
+		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		defer done()
 
-		msgCid := d.RunSuccess("message", "send",
+		msgCid := cmdClient.RunSuccess(ctx, "message", "send",
 			"--from", fixtures.TestAddresses[0],
 			"--gas-price", "1", "--gas-limit", "300",
 			"--value=10", fixtures.TestAddresses[2],
 		).ReadStdoutTrimNewlines()
 
-		d.RunSuccess("mpool", "rm", msgCid)
+		// wait for the pool to have the message
+		_, err := n.PorcelainAPI.MessagePoolWait(ctx, 1)
+		require.NoError(t, err)
 
-		out := d.RunSuccess("mpool", "ls").ReadStdoutTrimNewlines()
+		// remove message in process so the following ls cannot race on lock
+		//  acquire
+		c, err := cid.Parse(msgCid)
+		require.NoError(t, err)
+		n.PorcelainAPI.MessagePoolRemove(c)
+
+		out := cmdClient.RunSuccess(ctx, "mpool", "ls").ReadStdoutTrimNewlines()
+
 		assert.Equal(t, "", out)
 	})
 }

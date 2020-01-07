@@ -3,7 +3,6 @@ package commands_test
 import (
 	"context"
 	"math/big"
-	"strings"
 	"testing"
 	"time"
 
@@ -12,38 +11,37 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 )
 
-func parseInt(t *testing.T, s string) *big.Int {
-	i := new(big.Int)
-	i, err := i.SetString(strings.TrimSpace(s), 10)
-	assert.True(t, err, "couldn't parse as big.Int %q", s)
-	return i
-}
-
 func TestMiningGenBlock(t *testing.T) {
 	tf.IntegrationTest(t)
+	ctx := context.Background()
+	builder := test.NewNodeBuilder(t)
+	buildWithMiner(t, builder)
 
-	d := makeTestDaemonWithMinerAndStart(t)
-	defer d.ShutdownSuccess()
+	n := builder.BuildAndStart(ctx)
+	defer n.Stop(ctx)
 
-	addr := fixtures.TestAddresses[0]
+	addr, err := address.NewFromString(fixtures.TestAddresses[0])
+	require.NoError(t, err)
 
-	s := d.RunSuccess("wallet", "balance", addr)
-	beforeBalance := parseInt(t, s.ReadStdout())
+	attoFILBefore, err := n.PorcelainAPI.WalletBalance(ctx, addr)
+	require.NoError(t, err)
 
-	d.RunSuccess("mining", "once")
+	_, err = n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
+	require.NoError(t, err)
 
-	s = d.RunSuccess("wallet", "balance", addr)
-	afterBalance := parseInt(t, s.ReadStdout())
-	sum := new(big.Int)
+	attoFILAfter, err := n.PorcelainAPI.WalletBalance(ctx, addr)
+	require.NoError(t, err)
 
-	assert.Equal(t, sum.Add(beforeBalance, big.NewInt(1000)), afterBalance)
+	assert.Equal(t, attoFILBefore.Add(types.NewAttoFILFromFIL(1000)), attoFILAfter)
 }
 
 func TestMiningAddPieceAndSealNow(t *testing.T) {
