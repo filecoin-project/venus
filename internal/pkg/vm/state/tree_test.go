@@ -25,10 +25,10 @@ func TestStatePutGet(t *testing.T) {
 	tree := NewTree(cst)
 
 	act1 := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
-	act1.IncNonce()
+	act1.IncrementSeqNum()
 	act2 := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
-	act2.IncNonce()
-	act2.IncNonce()
+	act2.IncrementSeqNum()
+	act2.IncrementSeqNum()
 
 	addrGetter := address.NewForTestGetter()
 	addr1 := addrGetter()
@@ -125,7 +125,7 @@ func TestGetAllActors(t *testing.T) {
 	tree := NewTree(cst)
 	addr := address.NewForTestGetter()()
 
-	actor := actor.Actor{Code: types.AccountActorCodeCid, Nonce: 1234, Balance: types.NewAttoFILFromFIL(123)}
+	actor := actor.Actor{Code: types.AccountActorCodeCid, CallSeqNum: 1234, Balance: types.NewAttoFILFromFIL(123)}
 	err := tree.SetActor(ctx, addr, &actor)
 	assert.NoError(t, err)
 	_, err = tree.Flush(ctx)
@@ -136,7 +136,7 @@ func TestGetAllActors(t *testing.T) {
 	for result := range results {
 		assert.Equal(t, addr.String(), result.Address)
 		assert.Equal(t, actor.Code, result.Actor.Code)
-		assert.Equal(t, actor.Nonce, result.Actor.Nonce)
+		assert.Equal(t, actor.CallSeqNum, result.Actor.CallSeqNum)
 		assert.Equal(t, actor.Balance, result.Actor.Balance)
 	}
 }

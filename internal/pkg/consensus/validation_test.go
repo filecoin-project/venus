@@ -151,7 +151,7 @@ func TestIngestionValidator(t *testing.T) {
 		require.NoError(t, err)
 		assert.NoError(t, validator.Validate(ctx, msg))
 
-		highNonce := uint64(act.Nonce + mpoolCfg.MaxNonceGap + 10)
+		highNonce := uint64(act.CallSeqNum + mpoolCfg.MaxNonceGap + 10)
 		msg, err = types.NewSignedMessage(*newMessage(t, alice, bob, highNonce, 5, 1, 0), signer)
 		require.NoError(t, err)
 		err = validator.Validate(ctx, msg)
@@ -183,7 +183,7 @@ func TestIngestionValidator(t *testing.T) {
 func newActor(t *testing.T, balanceAF int, nonce uint64) *actor.Actor {
 	actor, err := account.NewActor(attoFil(balanceAF))
 	require.NoError(t, err)
-	actor.Nonce = types.Uint64(nonce)
+	actor.CallSeqNum = types.Uint64(nonce)
 	return actor
 }
 

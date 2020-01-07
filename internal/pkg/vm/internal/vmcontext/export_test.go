@@ -224,7 +224,7 @@ func (a *mockActor) Method(id types.MethodID) (dispatch.Method, *dispatch.Functi
 	}
 }
 
-func (a *mockActor) InitializeState(storage runtime.Storage, initializerData interface{}) error {
+func (a *mockActor) InitializeState(storage runtime.LegacyStorage, initializerData interface{}) error {
 	return nil
 }
 
@@ -259,7 +259,7 @@ func makeCtx(method types.MethodID) *VMContext {
 
 	vmCtxParams := NewContextParams{
 		Message:     types.NewUnsignedMessage(addrGetter(), addrGetter(), 0, types.ZeroAttoFIL, method, nil),
-		GasTracker:  gastracker.NewGasTracker(),
+		GasTracker:  gastracker.NewLegacyGasTracker(),
 		BlockHeight: types.NewBlockHeight(0),
 		Actors:      builtin.DefaultActors,
 		To:          &actor.Actor{},

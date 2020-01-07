@@ -11,7 +11,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	dag "github.com/ipfs/go-merkledag"
 
 	"github.com/stretchr/testify/assert"
@@ -285,7 +285,7 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 	addr1, addr2, addr3, addr5 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2], mockSigner.Addresses[4]
 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward failures.
-		address.NetworkAddress: th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(1000000)),
+		address.LegacyNetworkAddress: th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(1000000)),
 	})
 	th.RequireInitAccountActor(ctx, t, st, vms, addr1, types.NewAttoFILFromFIL(100))
 	th.RequireInitAccountActor(ctx, t, st, vms, addr2, types.NewAttoFILFromFIL(100))
@@ -307,7 +307,7 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	// Stick two fake actors in the state tree so they can talk.
 	addr1, addr2 := mockSigner.Addresses[0], mockSigner.Addresses[1]
 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
-		address.NetworkAddress: th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(1000000)),
+		address.LegacyNetworkAddress: th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(1000000)),
 	})
 	th.RequireInitAccountActor(ctx, t, st, vms, addr1, types.ZeroAttoFIL)
 
@@ -608,7 +608,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	act, actID := th.RequireLookupActor(ctx, t, st, vm.NewStorageMap(bs), addrs[1])
 	require.NoError(t, err)
 
-	act.Nonce = types.Uint64(2)
+	act.CallSeqNum = types.Uint64(2)
 	err = st.SetActor(ctx, actID, act)
 	require.NoError(t, err)
 

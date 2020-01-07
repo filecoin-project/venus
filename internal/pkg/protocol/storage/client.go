@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -25,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/convert"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 const (
@@ -214,7 +214,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		}
 
 		proposal.Payment.Channel = cpResp.Channel
-		proposal.Payment.PayChActor = address.PaymentBrokerAddress
+		proposal.Payment.PayChActor = address.LegacyPaymentBrokerAddress
 		proposal.Payment.ChannelMsgCid = &cpResp.ChannelMsgCid
 		proposal.Payment.Vouchers = cpResp.Vouchers
 	}

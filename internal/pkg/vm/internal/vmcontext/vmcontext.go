@@ -43,7 +43,7 @@ type VMContext struct {
 	originMsg         *types.UnsignedMessage
 	state             *state.CachedTree
 	storageMap        storagemap.StorageMap
-	gasTracker        *gastracker.GasTracker
+	gasTracker        *gastracker.LegacyGasTracker
 	blockHeight       *types.BlockHeight
 	ancestors         []block.TipSet
 	actors            ExecutableActorLookup
@@ -64,7 +64,7 @@ type NewContextParams struct {
 	OriginMsg   *types.UnsignedMessage
 	State       *state.CachedTree
 	StorageMap  storagemap.StorageMap
-	GasTracker  *gastracker.GasTracker
+	GasTracker  *gastracker.LegacyGasTracker
 	BlockHeight *types.BlockHeight
 	Ancestors   []block.TipSet
 	Actors      ExecutableActorLookup
@@ -344,10 +344,16 @@ func (ctx *VMContext) Balance() types.AttoFIL {
 
 // Storage returns an implementation of the storage module for this context.
 func (ctx *VMContext) Storage() runtime.Storage {
+	panic("new method, legacy vmcontext wont provide access to")
+}
+
+// LegacyStorage returns an implementation of the storage module for this context.
+func (ctx *VMContext) LegacyStorage() runtime.LegacyStorage {
 	return ctx.storageMap.NewStorage(ctx.toAddr, ctx.to)
 }
 
 // Charge attempts to add the given cost to the accrued gas cost of this transaction
+// Dragons: this should no longer return an error
 func (ctx *VMContext) Charge(cost types.GasUnits) error {
 	return ctx.gasTracker.Charge(cost)
 }
@@ -422,7 +428,7 @@ func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []i
 	newActor.Code = code
 
 	// send message containing actor's initial balance to construct it with the given params
-	ctx.Runtime().Send(idAddr, types.ConstructorMethodID, ctx.Message().ValueReceived(), params)
+	ctx.Send(idAddr, types.ConstructorMethodID, ctx.Message().ValueReceived(), params)
 
 	return actorAddr
 }
@@ -504,6 +510,13 @@ func (ctx *VMContext) To() *actor.Actor {
 	return ctx.to
 }
 
+var _ ExportContext = (*VMContext)(nil)
+
+// Params implements ExportContext.
+func (ctx *VMContext) Params() []byte {
+	return ctx.message.Params
+}
+
 // Dependency injection setup.
 
 // makeDeps returns a VMContext's external dependencies with their standard values set.
@@ -525,14 +538,14 @@ type deps struct {
 	EncodeValues     func([]*abi.Value) ([]byte, error)
 	GetActor         func(context.Context, address.Address) (*actor.Actor, error)
 	GetOrCreateActor func(context.Context, address.Address, func() (*actor.Actor, address.Address, error)) (*actor.Actor, address.Address, error)
-	LegacySend       func(context.Context, ExtendedRuntime) ([][]byte, uint8, error)
+	LegacySend       func(context.Context, *VMContext) ([][]byte, uint8, error)
 	Apply            func(*VMContext) interface{}
 	ToValues         func([]interface{}) ([]*abi.Value, error)
 }
 
 // LegacySend executes a message pass inside the VM. If error is set it
 // will always satisfy either ShouldRevert() or IsFault().
-func LegacySend(ctx context.Context, vmCtx ExtendedRuntime) (out [][]byte, code uint8, err error) {
+func LegacySend(ctx context.Context, vmCtx *VMContext) (out [][]byte, code uint8, err error) {
 	return send(ctx, Transfer, vmCtx)
 }
 
@@ -540,7 +553,7 @@ func LegacySend(ctx context.Context, vmCtx ExtendedRuntime) (out [][]byte, code 
 type TransferFn = func(*actor.Actor, *actor.Actor, types.AttoFIL) error
 
 // send executes a message pass inside the VM. It exists alongside Send so that we can inject its dependencies during test.
-func send(ctx context.Context, transfer TransferFn, vmCtx ExtendedRuntime) ([][]byte, uint8, error) {
+func send(ctx context.Context, transfer TransferFn, vmCtx *VMContext) ([][]byte, uint8, error) {
 	msg := vmCtx.LegacyMessage()
 	if !msg.Value.Equal(types.ZeroAttoFIL) {
 		if err := transfer(vmCtx.From(), vmCtx.To(), msg.Value); err != nil {
@@ -627,8 +640,8 @@ func (ctx *VMContext) getOrCreateActor(c context.Context, st *state.CachedTree, 
 	}
 
 	// this should never fail due to lack of gas since gas doesn't have meaning here
-	ctx.Send(address.InitAddress, initactor.Exec, types.ZeroAttoFIL, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
-	idAddrInt := ctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
+	ctx.Send(address.InitAddress, initactor.ExecMethodID, types.ZeroAttoFIL, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
+	idAddrInt := ctx.Send(address.InitAddress, initactor.GetActorIDForAddressMethodID, types.ZeroAttoFIL, []interface{}{addr})
 
 	id, ok := idAddrInt.(*big.Int)
 	if !ok {

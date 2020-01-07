@@ -54,7 +54,7 @@ func WithState(ctx runtime.InvocationContext, st interface{}, f func() (interfac
 		return nil, err
 	}
 
-	stage := ctx.Runtime().Storage()
+	stage := ctx.Runtime().LegacyStorage()
 
 	cid, err := stage.Put(st)
 	if err != nil {
@@ -71,7 +71,7 @@ func WithState(ctx runtime.InvocationContext, st interface{}, f func() (interfac
 
 // ReadState is a helper method to read the cbor node at the actor's Head into the given struct
 func ReadState(ctx runtime.InvocationContext, st interface{}) error {
-	storage := ctx.Runtime().Storage()
+	storage := ctx.Runtime().LegacyStorage()
 
 	memory, err := storage.Get(storage.LegacyHead())
 	if err != nil {
@@ -87,7 +87,7 @@ func ReadState(ctx runtime.InvocationContext, st interface{}) error {
 
 // WriteState stores state and commits it as the actor's head
 func WriteState(ctx runtime.InvocationContext, state interface{}) error {
-	stage := ctx.Runtime().Storage()
+	stage := ctx.Runtime().LegacyStorage()
 
 	cid, err := stage.Put(state)
 	if err != nil {
@@ -104,7 +104,7 @@ func WriteState(ctx runtime.InvocationContext, state interface{}) error {
 
 // SetKeyValue convenience method to load a lookup, set one key value pair and commit.
 // This function is inefficient when multiple values need to be set into the lookup.
-func SetKeyValue(ctx context.Context, storage runtime.Storage, id cid.Cid, key string, value interface{}) (cid.Cid, error) {
+func SetKeyValue(ctx context.Context, storage runtime.LegacyStorage, id cid.Cid, key string, value interface{}) (cid.Cid, error) {
 	lookup, err := LoadLookup(ctx, storage, id)
 	if err != nil {
 		return cid.Undef, err
@@ -120,7 +120,7 @@ func SetKeyValue(ctx context.Context, storage runtime.Storage, id cid.Cid, key s
 
 // WithLookup allows one to read and write to a hamt-ipld node from storage via a callback function.
 // This function commits the lookup before returning.
-func WithLookup(ctx context.Context, storage runtime.Storage, id cid.Cid, f func(storage.Lookup) error) (cid.Cid, error) {
+func WithLookup(ctx context.Context, storage runtime.LegacyStorage, id cid.Cid, f func(storage.Lookup) error) (cid.Cid, error) {
 	lookup, err := LoadLookup(ctx, storage, id)
 	if err != nil {
 		return cid.Undef, err
@@ -135,7 +135,7 @@ func WithLookup(ctx context.Context, storage runtime.Storage, id cid.Cid, f func
 
 // WithLookupForReading allows one to read from a hamt-ipld node from storage via a callback function.
 // Unlike WithLookup, this function will not attempt to commit.
-func WithLookupForReading(ctx context.Context, storage runtime.Storage, id cid.Cid, f func(storage.Lookup) error) error {
+func WithLookupForReading(ctx context.Context, storage runtime.LegacyStorage, id cid.Cid, f func(storage.Lookup) error) error {
 	lookup, err := LoadLookup(ctx, storage, id)
 	if err != nil {
 		return err
@@ -146,7 +146,7 @@ func WithLookupForReading(ctx context.Context, storage runtime.Storage, id cid.C
 
 // LoadLookup loads hamt-ipld node from storage if the cid exists, or creates a new one if it is nil.
 // The lookup provides access to a HAMT/CHAMP tree stored in storage.
-func LoadLookup(ctx context.Context, storage runtime.Storage, cid cid.Cid) (storage.Lookup, error) {
+func LoadLookup(ctx context.Context, storage runtime.LegacyStorage, cid cid.Cid) (storage.Lookup, error) {
 	cborStore := &hamt.CborIpldStore{
 		Blocks: &storageAsBlocks{s: storage},
 		Atlas:  &cbor.CborAtlas,
@@ -166,9 +166,9 @@ func LoadLookup(ctx context.Context, storage runtime.Storage, cid cid.Cid) (stor
 	return &lookup{n: root, s: storage}, nil
 }
 
-// storageAsBlocks allows us to use an runtime.Storage as a Blockstore
+// storageAsBlocks allows us to use an runtime.LegacyStorage as a Blockstore
 type storageAsBlocks struct {
-	s runtime.Storage
+	s runtime.LegacyStorage
 }
 
 // GetBlock gets a block from underlying storage by cid
@@ -190,7 +190,7 @@ func (sab *storageAsBlocks) AddBlock(b block.Block) error {
 // lookup implements storage.Lookup and provides structured key-value storage for actors
 type lookup struct {
 	n *hamt.Node
-	s runtime.Storage
+	s runtime.LegacyStorage
 }
 
 var _ storage.Lookup = (*lookup)(nil)

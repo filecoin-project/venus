@@ -2,17 +2,30 @@ package vm
 
 import (
 	"context"
-	"github.com/ipfs/go-ipfs-blockstore"
+
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gastracker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // Re-exports
+
+// Interpreter is the VM.
+type Interpreter = interpreter.VMInterpreter
+
+// NewVM creates a new VM interpreter.
+func NewVM(st state.Tree, store storage.VMStorage) Interpreter {
+	vm := vmcontext.NewVM(vmcontext.NewProdRandomnessSource(), vmcontext.NewProdActorImplTable(), store, st)
+	return &vm
+}
 
 // StorageMap manages Storages.
 type StorageMap = storagemap.StorageMap
@@ -22,12 +35,12 @@ func NewStorageMap(bs blockstore.Blockstore) StorageMap {
 	return storagemap.NewStorageMap(bs)
 }
 
-// GasTracker maintains the state of gas usage throughout the execution of a block and a message
-type GasTracker = gastracker.GasTracker
+// LegacyGasTracker maintains the state of gas usage throughout the execution of a block and a message
+type LegacyGasTracker = gastracker.LegacyGasTracker
 
-// NewGasTracker initializes a new empty gas tracker
-func NewGasTracker() *gastracker.GasTracker {
-	return gastracker.NewGasTracker()
+// NewLegacyGasTracker initializes a new empty gas tracker
+func NewLegacyGasTracker() *gastracker.LegacyGasTracker {
+	return gastracker.NewLegacyGasTracker()
 }
 
 // NewContextParams is passed to NewVMContext to construct a new context.
@@ -44,7 +57,7 @@ func NewVMContext(params NewContextParams) *vmcontext.VMContext {
 
 // Send executes a message pass inside the VM. If error is set it
 // will always satisfy either ShouldRevert() or IsFault().
-func Send(ctx context.Context, vmCtx vmcontext.ExtendedRuntime) ([][]byte, uint8, error) {
+func Send(ctx context.Context, vmCtx *vmcontext.VMContext) ([][]byte, uint8, error) {
 	return vmcontext.LegacySend(ctx, vmCtx)
 }
 

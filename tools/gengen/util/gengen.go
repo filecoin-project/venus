@@ -208,7 +208,7 @@ func setupPrealloc(ctx context.Context, st state.Tree, storageMap vm.StorageMap,
 	if err != nil {
 		return err
 	}
-	err = st.SetActor(context.Background(), address.NetworkAddress, netact)
+	err = st.SetActor(context.Background(), address.LegacyNetworkAddress, netact)
 	if err != nil {
 		return err
 	}
@@ -226,8 +226,8 @@ func setupPrealloc(ctx context.Context, st state.Tree, storageMap vm.StorageMap,
 			return err
 		}
 
-		_, err = consensus.ApplyMessageDirect(ctx, st, storageMap, address.NetworkAddress, address.InitAddress, uint64(i), types.NewAttoFILFromFIL(valint),
-			initactor.Exec, types.AccountActorCodeCid, []interface{}{addr})
+		_, err = consensus.ApplyMessageDirect(ctx, st, storageMap, address.LegacyNetworkAddress, address.InitAddress, uint64(i), types.NewAttoFILFromFIL(valint),
+			initactor.ExecMethodID, types.AccountActorCodeCid, []interface{}{addr})
 		if err != nil {
 			return err
 		}
@@ -262,12 +262,12 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 		}
 
 		// give collateral to account actor
-		_, err = consensus.ApplyMessageDirect(ctx, st, sm, address.NetworkAddress, addr, 0, types.NewAttoFILFromFIL(100000), types.SendMethodID)
+		_, err = consensus.ApplyMessageDirect(ctx, st, sm, address.LegacyNetworkAddress, addr, 0, types.NewAttoFILFromFIL(100000), types.SendMethodID)
 		if err != nil {
 			return nil, err
 		}
 
-		ret, err := consensus.ApplyMessageDirect(ctx, st, sm, addr, address.PowerAddress, uint64(i), types.NewAttoFILFromFIL(100000), power.CreateStorageMiner, addr, addr, pid, types.NewBytesAmount(m.SectorSize))
+		ret, err := consensus.ApplyMessageDirect(ctx, st, sm, addr, address.StoragePowerAddress, uint64(i), types.NewAttoFILFromFIL(100000), power.CreateStorageMiner, addr, addr, pid, types.NewBytesAmount(m.SectorSize))
 		if err != nil {
 			return nil, err
 		}
@@ -280,7 +280,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 		maddr := val.Val.(address.Address)
 
 		// lookup id address for actor address
-		ret, err = consensus.ApplyMessageDirect(ctx, st, sm, addr, address.InitAddress, 0, types.ZeroAttoFIL, initactor.GetActorIDForAddress, maddr)
+		ret, err = consensus.ApplyMessageDirect(ctx, st, sm, addr, address.InitAddress, 0, types.ZeroAttoFIL, initactor.GetActorIDForAddressMethodID, maddr)
 		if err != nil {
 			return nil, err
 		}
@@ -306,7 +306,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 		for i := uint64(0); i < m.NumCommittedSectors; i++ {
 			powerReport := types.NewPowerReport(m.SectorSize*m.NumCommittedSectors, 0)
 
-			_, err := consensus.ApplyMessageDirect(ctx, st, sm, addr, address.PowerAddress, i, types.NewAttoFILFromFIL(0), power.ProcessPowerReport, powerReport, mIDAddr)
+			_, err := consensus.ApplyMessageDirect(ctx, st, sm, addr, address.StoragePowerAddress, i, types.NewAttoFILFromFIL(0), power.ProcessPowerReport, powerReport, mIDAddr)
 			if err != nil {
 				return nil, err
 			}

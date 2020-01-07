@@ -29,7 +29,7 @@ import (
 
 // StorageMap manages Storages.
 type StorageMap interface {
-	NewStorage(addr address.Address, actor *actor.Actor) runtime.Storage
+	NewStorage(addr address.Address, actor *actor.Actor) runtime.LegacyStorage
 	Flush() error
 }
 
@@ -56,11 +56,11 @@ func NewStorageMap(bs blockstore.Blockstore) StorageMap {
 
 var _ StorageMap = &storageMap{}
 
-// NewStorage gets or creates a `runtime.Storage` for the given address
+// NewStorage gets or creates a `runtime.LegacyStorage` for the given address
 // storage updates the given actor's storage by updating its Head property.
 // The instance of actor passed into this method needs to be the instance ultimately
 // persisted.
-func (s *storageMap) NewStorage(addr address.Address, actor *actor.Actor) runtime.Storage {
+func (s *storageMap) NewStorage(addr address.Address, actor *actor.Actor) runtime.LegacyStorage {
 	st, ok := s.storageMap[addr]
 	if ok {
 		// Return a hybrid storage with the pre-existing chunks, but the given instance of the actor.
@@ -95,7 +95,7 @@ func (s *storageMap) Flush() error {
 	return nil
 }
 
-var _ runtime.Storage = (*storage)(nil)
+var _ runtime.LegacyStorage = (*storage)(nil)
 
 // ErrNotFound is returned by storage when no chunk in storage matches a requested Cid
 var ErrNotFound = errors.New("chunk not found")

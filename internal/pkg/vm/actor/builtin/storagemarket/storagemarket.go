@@ -107,7 +107,7 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSi
 }
 
 // InitializeState stores the actor's initial data structure.
-func (*Actor) InitializeState(storage runtime.Storage, proofsModeInterface interface{}) error {
+func (*Actor) InitializeState(storage runtime.LegacyStorage, proofsModeInterface interface{}) error {
 	proofsMode, ok := proofsModeInterface.(types.ProofsMode)
 	if !ok {
 		return errors.NewRevertError("storage market actor init parameter is not a proofs mode")
@@ -171,7 +171,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, sectorSize *typ
 		initParams := []interface{}{vmctx.Message().Caller(), vmctx.Message().Caller(), pid, sectorSize}
 
 		// create miner actor by messaging the init actor and sending it collateral
-		ret, _, err := vmctx.Runtime().LegacySend(address.InitAddress, initactor.Exec, vmctx.Message().ValueReceived(), []interface{}{actorCodeCid, initParams})
+		ret, _, err := vmctx.LegacySend(address.InitAddress, initactor.ExecMethodID, vmctx.Message().ValueReceived(), []interface{}{actorCodeCid, initParams})
 		if err != nil {
 			return nil, err
 		}
@@ -182,14 +182,14 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, sectorSize *typ
 		}
 
 		// retrieve id to key miner
-		actorIDAddr, err := retreiveActorID(vmctx.Runtime(), addr)
+		actorIDAddr, err := retreiveActorID(vmctx, addr)
 		if err != nil {
 			return nil, errors.FaultErrorWrapf(err, "could not retrieve actor id addrs after initializing actor")
 		}
 
 		ctx := context.Background()
 
-		state.Miners, err = actor.SetKeyValue(ctx, vmctx.Runtime().Storage(), state.Miners, actorIDAddr.String(), true)
+		state.Miners, err = actor.SetKeyValue(ctx, vmctx.Runtime().LegacyStorage(), state.Miners, actorIDAddr.String(), true)
 		if err != nil {
 			return nil, errors.FaultErrorWrapf(err, "could not set miner key value for lookup with CID: %s", state.Miners)
 		}
@@ -204,8 +204,8 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, sectorSize *typ
 }
 
 // retriveActorId uses init actor to map an actorAddress to an id address
-func retreiveActorID(rt runtime.Runtime, actorAddr address.Address) (address.Address, error) {
-	ret, _, err := rt.LegacySend(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{actorAddr})
+func retreiveActorID(vmctx runtime.InvocationContext, actorAddr address.Address) (address.Address, error) {
+	ret, _, err := vmctx.LegacySend(address.InitAddress, initactor.GetActorIDForAddressMethodID, types.ZeroAttoFIL, []interface{}{actorAddr})
 	if err != nil {
 		return address.Undef, err
 	}
@@ -231,7 +231,7 @@ func (*impl) updateStorage(vmctx runtime.InvocationContext, delta *types.BytesAm
 		miner := vmctx.Message().Caller()
 		ctx := context.Background()
 
-		miners, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.Miners)
+		miners, err := actor.LoadLookup(ctx, vmctx.Runtime().LegacyStorage(), state.Miners)
 		if err != nil {
 			return nil, errors.FaultErrorWrapf(err, "could not load lookup for miner with CID: %s", state.Miners)
 		}
@@ -264,7 +264,7 @@ func (a *impl) getLateMiners(vmctx runtime.InvocationContext) (*map[string]uint6
 
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		miners := map[string]uint64{}
-		lu, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.Miners)
+		lu, err := actor.LoadLookup(ctx, vmctx.Runtime().LegacyStorage(), state.Miners)
 		if err != nil {
 			return &miners, err
 		}
@@ -346,7 +346,7 @@ func (*impl) getProofsMode(vmctx runtime.InvocationContext) (types.ProofsMode, u
 }
 
 func (*impl) getMinerPoStState(vmctx runtime.InvocationContext, minerAddr address.Address) (uint64, error) {
-	msgResult, _, err := vmctx.Runtime().LegacySend(minerAddr, miner.GetPoStState, types.ZeroAttoFIL, nil)
+	msgResult, _, err := vmctx.LegacySend(minerAddr, miner.GetPoStState, types.ZeroAttoFIL, nil)
 	if err != nil {
 		return 0, err
 	}

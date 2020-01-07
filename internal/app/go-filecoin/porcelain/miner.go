@@ -460,7 +460,7 @@ func MinerGetPower(ctx context.Context, plumbing mgaAPI, minerAddr address.Addre
 	bytes, err := plumbing.MessageQuery(
 		ctx,
 		address.Undef,
-		address.PowerAddress,
+		address.StoragePowerAddress,
 		power.GetPowerReport,
 		plumbing.ChainHeadKey(),
 		minerAddr,
@@ -481,7 +481,7 @@ func MinerGetPower(ctx context.Context, plumbing mgaAPI, minerAddr address.Addre
 	bytes, err = plumbing.MessageQuery(
 		ctx,
 		address.Undef,
-		address.PowerAddress,
+		address.StoragePowerAddress,
 		power.GetTotalPower,
 		plumbing.ChainHeadKey(),
 	)

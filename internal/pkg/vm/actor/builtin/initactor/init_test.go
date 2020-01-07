@@ -49,7 +49,7 @@ func TestInitActorGetNetwork(t *testing.T) {
 		Network: "bar",
 	}
 
-	msg := types.NewUnsignedMessage(address.TestAddress, address.InitAddress, 0, types.NewAttoFILFromFIL(53), GetNetwork, []byte{})
+	msg := types.NewUnsignedMessage(address.TestAddress, address.InitAddress, 0, types.NewAttoFILFromFIL(53), GetNetworkMethodID, []byte{})
 	vmctx := vm.NewFakeVMContext(msg, state)
 
 	actor := &Impl{}
@@ -63,7 +63,7 @@ func TestInitActorGetNetwork(t *testing.T) {
 func TestInitActorExec(t *testing.T) {
 	tf.UnitTest(t)
 
-	msg := types.NewUnsignedMessage(address.TestAddress, address.InitAddress, 0, types.ZeroAttoFIL, Exec, []byte{})
+	msg := types.NewUnsignedMessage(address.TestAddress, address.InitAddress, 0, types.ZeroAttoFIL, ExecMethodID, []byte{})
 
 	newState := func() *State {
 		return &State{
@@ -81,15 +81,15 @@ func TestInitActorExec(t *testing.T) {
 		// set up enough storage so that it actually uses the hamts
 		sm := vm.NewStorageMap(blockstore.NewBlockstore(datastore.NewMapDatastore()))
 		actorModel := actor.NewActor(types.InitActorCodeCid, types.ZeroAttoFIL)
-		vmctx.StorageValue = sm.NewStorage(address.InitAddress, actorModel)
-		err := (*Actor)(act).InitializeState(vmctx.Storage(), "network")
+		vmctx.LegacyStorageValue = sm.NewStorage(address.InitAddress, actorModel)
+		err := (*Actor)(act).InitializeState(vmctx.LegacyStorage(), "network")
 		require.NoError(t, err)
 
 		addr, _, err := act.Exec(vmctx, types.MinerActorCodeCid, initParams)
 		require.NoError(t, err)
 
 		vmctx = vm.NewFakeVMContext(msg, state)
-		vmctx.StorageValue = sm.NewStorage(address.InitAddress, actorModel)
+		vmctx.LegacyStorageValue = sm.NewStorage(address.InitAddress, actorModel)
 		_, _, err = act.GetActorIDForAddress(vmctx, addr)
 		require.NoError(t, err)
 	})

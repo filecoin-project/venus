@@ -212,7 +212,7 @@ func DeduppedMessages(tsMessages [][]*types.UnsignedMessage) ([][]*types.Unsigne
 //       revert errors.
 //   - everything else: successfully applied (include, keep changes)
 //
-func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.UnsignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []block.TipSet) (result *ApplicationResult, err error) {
+func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.UnsignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, gasTracker *vm.LegacyGasTracker, ancestors []block.TipSet) (result *ApplicationResult, err error) {
 	msgCid, err := msg.Cid()
 	if err != nil {
 		return nil, errors.FaultErrorWrap(err, "could not get message cid")
@@ -279,7 +279,7 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 	if err != nil {
 		return nil, errors.FaultErrorWrap(err, "couldn't load from actor")
 	}
-	fromActor.IncNonce()
+	fromActor.IncrementSeqNum()
 	if err := st.SetActor(ctx, fromAddr, fromActor); err != nil {
 		return nil, errors.FaultErrorWrap(err, "could not set from actor after inc nonce")
 	}
@@ -321,7 +321,7 @@ func (p *DefaultProcessor) CallQueryMethod(ctx context.Context, st state.Tree, v
 	}
 
 	// Set the gas limit to the max because this message send should always succeed; it doesn't cost gas.
-	gasTracker := vm.NewGasTracker()
+	gasTracker := vm.NewLegacyGasTracker()
 	gasTracker.MsgGasLimit = types.BlockGasLimit
 
 	// translate address before retrieving from actor
@@ -372,7 +372,7 @@ func (p *DefaultProcessor) PreviewQueryMethod(ctx context.Context, st state.Tree
 	}
 
 	// Set the gas limit to the max because this message send should always succeed; it doesn't cost gas.
-	gasTracker := vm.NewGasTracker()
+	gasTracker := vm.NewLegacyGasTracker()
 	gasTracker.MsgGasLimit = types.BlockGasLimit
 
 	// ensure actor exists
@@ -403,7 +403,7 @@ func (p *DefaultProcessor) PreviewQueryMethod(ctx context.Context, st state.Tree
 // should deal with trying to apply the message to the state tree whereas
 // ApplyMessage should deal with any side effects and how it should be presented
 // to the caller. attemptApplyMessage should only be called from ApplyMessage.
-func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []block.TipSet) (*types.MessageReceipt, error) {
+func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight, gasTracker *vm.LegacyGasTracker, ancestors []block.TipSet) (*types.MessageReceipt, error) {
 	gasTracker.ResetForNewMessage(msg)
 	if err := blockGasLimitError(gasTracker); err != nil {
 		return &types.MessageReceipt{
@@ -481,7 +481,7 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 }
 
 // ResolveAddress looks up associated id address. If the given address is already and id address, it is returned unchanged.
-func ResolveAddress(ctx context.Context, addr address.Address, st *state.CachedTree, vms vm.StorageMap, gt *vm.GasTracker) (address.Address, bool, error) {
+func ResolveAddress(ctx context.Context, addr address.Address, st *state.CachedTree, vms vm.StorageMap, gt *vm.LegacyGasTracker) (address.Address, bool, error) {
 	if addr.Protocol() == address.ID {
 		return addr, true, nil
 	}
@@ -529,7 +529,7 @@ func (p *DefaultProcessor) ApplyMessagesAndPayRewards(ctx context.Context, st st
 	}
 
 	// Process all messages.
-	gasTracker := vm.NewGasTracker()
+	gasTracker := vm.NewLegacyGasTracker()
 	for _, msg := range messages {
 		r, err := p.ApplyMessage(ctx, st, vms, msg, minerOwnerAddr, bh, gasTracker, ancestors)
 		switch {
@@ -561,7 +561,7 @@ func ApplyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, f
 	msg := types.NewUnsignedMessage(from, to, nonce, value, method, encodedParams)
 	msg.GasLimit = 10000
 	processor := NewConfiguredProcessor(&directMessageValidator{}, &DefaultBlockRewarder{}, builtin.DefaultActors)
-	receipt, err := processor.attemptApplyMessage(ctx, cst, vms, msg, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
+	receipt, err := processor.attemptApplyMessage(ctx, cst, vms, msg, types.NewBlockHeight(0), vm.NewLegacyGasTracker(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -594,7 +594,7 @@ var _ BlockRewarder = (*DefaultBlockRewarder)(nil)
 // BlockReward transfers the block reward from the network actor to the miner's owner.
 func (br *DefaultBlockRewarder) BlockReward(ctx context.Context, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address) error {
 	cachedTree := state.NewCachedTree(st)
-	if err := rewardTransfer(ctx, address.NetworkAddress, minerOwnerAddr, br.BlockRewardAmount(), cachedTree, vms, vm.NewGasTracker()); err != nil {
+	if err := rewardTransfer(ctx, address.LegacyNetworkAddress, minerOwnerAddr, br.BlockRewardAmount(), cachedTree, vms, vm.NewLegacyGasTracker()); err != nil {
 		return errors.FaultErrorWrap(err, "Error attempting to pay block reward")
 	}
 	return cachedTree.Commit(ctx)
@@ -603,7 +603,7 @@ func (br *DefaultBlockRewarder) BlockReward(ctx context.Context, st state.Tree, 
 // GasReward transfers the gas cost reward from the sender actor to the minerOwnerAddr
 func (br *DefaultBlockRewarder) GasReward(ctx context.Context, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error {
 	cachedTree := state.NewCachedTree(st)
-	fromAddr, found, err := ResolveAddress(ctx, msg.From, cachedTree, vms, vm.NewGasTracker())
+	fromAddr, found, err := ResolveAddress(ctx, msg.From, cachedTree, vms, vm.NewLegacyGasTracker())
 	if err != nil {
 		return errors.FaultErrorWrapf(err, "Could not resolve from address for gas")
 	}
@@ -611,7 +611,7 @@ func (br *DefaultBlockRewarder) GasReward(ctx context.Context, st state.Tree, vm
 		return errors.FaultErrorWrapf(err, "Could not resolve from address for gas")
 	}
 
-	if err := rewardTransfer(ctx, fromAddr, minerOwnerAddr, cost, cachedTree, vms, vm.NewGasTracker()); err != nil {
+	if err := rewardTransfer(ctx, fromAddr, minerOwnerAddr, cost, cachedTree, vms, vm.NewLegacyGasTracker()); err != nil {
 		return errors.FaultErrorWrap(err, "Error attempting to pay gas reward")
 	}
 	return cachedTree.Commit(ctx)
@@ -625,7 +625,7 @@ func (br *DefaultBlockRewarder) BlockRewardAmount() types.AttoFIL {
 }
 
 // rewardTransfer retrieves two actors from the given addresses and attempts to transfer the given value from the balance of the first's to the second.
-func rewardTransfer(ctx context.Context, fromAddr, toAddr address.Address, value types.AttoFIL, st *state.CachedTree, vms vm.StorageMap, gt *vm.GasTracker) error {
+func rewardTransfer(ctx context.Context, fromAddr, toAddr address.Address, value types.AttoFIL, st *state.CachedTree, vms vm.StorageMap, gt *vm.LegacyGasTracker) error {
 	fromActor, err := st.GetActor(ctx, fromAddr)
 	if err != nil {
 		return errors.FaultErrorWrap(err, "could not retrieve from actor for reward transfer.")
@@ -639,7 +639,7 @@ func rewardTransfer(ctx context.Context, fromAddr, toAddr address.Address, value
 	return vm.Transfer(fromActor, toActor, value)
 }
 
-func blockGasLimitError(gasTracker *vm.GasTracker) error {
+func blockGasLimitError(gasTracker *vm.LegacyGasTracker) error {
 	if gasTracker.GasAboveBlockLimit() {
 		return errGasAboveBlockLimit
 	} else if gasTracker.GasTooHighForCurrentBlock() {
@@ -677,7 +677,7 @@ func (p *DefaultProcessor) minerOwnerAddress(ctx context.Context, st state.Tree,
 	return address.NewFromBytes(ret[0])
 }
 
-func getOrCreateActor(ctx context.Context, st *state.CachedTree, store vm.StorageMap, addr address.Address, gt *vm.GasTracker) (*actor.Actor, address.Address, error) {
+func getOrCreateActor(ctx context.Context, st *state.CachedTree, store vm.StorageMap, addr address.Address, gt *vm.LegacyGasTracker) (*actor.Actor, address.Address, error) {
 	// resolve address before lookup
 	idAddr, found, err := ResolveAddress(ctx, addr, st, store, gt)
 	if err != nil {
@@ -695,13 +695,13 @@ func getOrCreateActor(ctx context.Context, st *state.CachedTree, store vm.Storag
 	}
 
 	// this should never fail due to lack of gas since gas doesn't have meaning here
-	noopGT := vm.NewGasTracker()
+	noopGT := vm.NewLegacyGasTracker()
 	noopGT.MsgGasLimit = 10000 // must exceed gas units consumed by init.Exec+account.Constructor+init.GetActorIDForAddress
 	vmctx := vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, To: initAct, State: st, StorageMap: store, GasTracker: noopGT})
-	vmctx.Send(address.InitAddress, initactor.Exec, types.ZeroAttoFIL, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
+	vmctx.Send(address.InitAddress, initactor.ExecMethodID, types.ZeroAttoFIL, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
 
 	vmctx = vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, To: initAct, State: st, StorageMap: store, GasTracker: noopGT})
-	idAddrInt := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
+	idAddrInt := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddressMethodID, types.ZeroAttoFIL, []interface{}{addr})
 
 	id, ok := idAddrInt.(*big.Int)
 	if !ok {

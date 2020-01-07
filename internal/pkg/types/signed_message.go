@@ -98,6 +98,11 @@ func (smsg *SignedMessage) VerifySignature() bool {
 	return IsValidSignature(bmsg, smsg.Message.From, smsg.Signature)
 }
 
+// OnChainLen returns the amount of bytes used to represent the message on chain.
+func (smsg *SignedMessage) OnChainLen() uint32 {
+	panic("byteme")
+}
+
 func (smsg *SignedMessage) String() string {
 	errStr := "(error encoding SignedMessage)"
 	cid, err := smsg.Cid()
