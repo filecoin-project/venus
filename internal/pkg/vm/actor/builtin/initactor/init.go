@@ -275,7 +275,6 @@ func (a *Impl) GetAddressForActorID(rt runtime.InvocationContext, actorID types.
 // Exec creates a new builtin actor.
 func (a *Impl) Exec(vmctx invocationContext, codeCID cid.Cid, params []interface{}) (address.Address, uint8, error) {
 	// Dragons: clean this up to match spec
-	// TODO: add optional argument with reorg stable address
 	var state State
 	out, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		// create id address

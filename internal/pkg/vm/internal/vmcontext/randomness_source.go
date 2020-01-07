@@ -16,6 +16,6 @@ func NewProdRandomnessSource() randomnessSource {
 var _ randomnessSource = (*prodRndSource)(nil)
 
 func (*prodRndSource) Randomness(epoch types.BlockHeight, offset uint64) runtime.Randomness {
-	// TODO: implement when spec is ready
+	// TODO: implement randomness based on new spec (issue: #3717)
 	return []byte{}
 }

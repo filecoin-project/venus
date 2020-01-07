@@ -21,6 +21,6 @@ func NewProdActorImplTable() actorImplLookup {
 var _ actorImplLookup = (*prodActorImplTable)(nil)
 
 func (t *prodActorImplTable) GetActorImpl(code cid.Cid, epoch types.BlockHeight) (dispatch.ExecutableActor, error) {
-	// TODO: move the table over here, and have it support height lookup
+	// TODO: move the table over here, and have it support height lookup (#3360)
 	return t.actors.GetActorCode(code, 0)
 }

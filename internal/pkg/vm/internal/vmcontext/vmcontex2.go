@@ -151,7 +151,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 	vm.store.Flush()
 	// commit new actor state
 	vm.state.Commit(context.Background())
-	// TODO: update state root
+	// TODO: update state root (issue: #3718)
 
 	return receipts
 }
@@ -161,7 +161,6 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 // This messages do not consume client gas are do not fail.
 func (vm *VM) applyImplicitMessage(imsg internalMessage) interface{} {
 	// implicit messages gas is tracked separatly and not paid by the miner
-	// Review: does anyone pay for it?
 	gasTank := gas.NewTracker(gas.SystemGasLimit)
 
 	// the execution of the implicit messages is simpler than full external/actor-actor messages
@@ -214,7 +213,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 		return message.Failure(exitcode.OutOfGas), gasTank.GasConsumed().Cost(msg.GasPrice)
 	}
 
-	// TODO: from address need to be normalized here
+	// Dragons: from address need to be normalized here
 
 	// 2. load actor from global state
 	fromActor, err := vm.state.GetActor(context.Background(), msg.From)
@@ -253,9 +252,9 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 	// - (if did not previously exist, the new auto-created target actor)
 
 	// 7.a. checkpoint store
-	// TODO: vm.store.Checkpoint()
+	// TODO: vm.store.Checkpoint() (issue: #3718)
 	// 7.b. checkpoint actor state
-	// TODO: vm.state.Checkpoint()
+	// TODO: vm.state.Checkpoint() (issue: #3718)
 
 	// send
 	// 1. build internal message
@@ -280,9 +279,8 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 	safeProcess := func() (out message.Receipt) {
 		// trap aborts and exitcodes
 		defer func() {
-			// TODO: discard "non-checkpointed" state changes
+			// TODO: discard "non-checkpointed" state changes (issue: #3718)
 
-			// TODO: cron actor needs to reuse this snippet to protect its main loop
 			if r := recover(); r == nil {
 				switch r.(type) {
 				case runtime.AbortPanicError:
