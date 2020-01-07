@@ -32,9 +32,7 @@ func TestOutbox(t *testing.T) {
 		builder.WithInitOpt(cs.KeyInitOpt(1))
 		builder.WithGenesisInit(cs.GenesisInitFunc)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		c1 := sendMessage(ctx, cmdClient, fixtures.TestAddresses[0], fixtures.TestAddresses[2]).ReadStdoutTrimNewlines()
@@ -64,9 +62,7 @@ func TestOutbox(t *testing.T) {
 		builder.WithInitOpt(cs.KeyInitOpt(1))
 		builder.WithGenesisInit(cs.GenesisInitFunc)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		c1 := sendMessage(ctx, cmdClient, fixtures.TestAddresses[0], fixtures.TestAddresses[2]).ReadStdoutTrimNewlines()

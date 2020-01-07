@@ -21,9 +21,7 @@ func TestConfigDaemon(t *testing.T) {
 	t.Run("config <key> prints config value", func(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		op1 := cmdClient.RunSuccess(ctx, "config", "datastore")
@@ -42,9 +40,7 @@ func TestConfigDaemon(t *testing.T) {
 	t.Run("config <key> simple_value updates config", func(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		period := "1m"
@@ -68,9 +64,7 @@ func TestConfigDaemon(t *testing.T) {
 	t.Run("config <key> <val> updates config", func(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		cmdClient.RunSuccess(ctx, "config", "bootstrap", `{"addresses": ["fake1", "fake2"], "period": "1m", "minPeerThreshold": 0}`)

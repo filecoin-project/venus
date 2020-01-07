@@ -25,9 +25,7 @@ func TestChainHead(t *testing.T) {
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
 
-	n := builder.BuildAndStart(ctx)
-	defer n.Stop(ctx)
-	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
 	node.FixtureChainSeed(t)
@@ -50,9 +48,7 @@ func TestChainLs(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
 		buildWithMiner(t, builder)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		blk, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
@@ -77,10 +73,7 @@ func TestChainLs(t *testing.T) {
 	t.Run("chain ls with chain of size 1 returns genesis block", func(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		op := cmdClient.RunSuccess(ctx, "chain", "ls", "--enc", "json")
@@ -97,9 +90,7 @@ func TestChainLs(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
 		buildWithMiner(t, builder)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		var blocks []block.Block
@@ -123,9 +114,7 @@ func TestChainLs(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
 		buildWithMiner(t, builder)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		blk, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
@@ -144,9 +133,7 @@ func TestChainLs(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
 		buildWithMiner(t, builder)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		_, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)

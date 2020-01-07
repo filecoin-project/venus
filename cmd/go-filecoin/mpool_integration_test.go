@@ -34,9 +34,7 @@ func TestMpoolLs(t *testing.T) {
 		builder.WithInitOpt(cs.KeyInitOpt(0))
 		builder.WithGenesisInit(cs.GenesisInitFunc)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		sendMessage(ctx, cmdClient, fixtures.TestAddresses[0], fixtures.TestAddresses[2])
@@ -63,9 +61,7 @@ func TestMpoolLs(t *testing.T) {
 		builder.WithInitOpt(cs.KeyInitOpt(0))
 		builder.WithGenesisInit(cs.GenesisInitFunc)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		wg := sync.WaitGroup{}
@@ -102,9 +98,7 @@ func TestMpoolShow(t *testing.T) {
 		builder.WithInitOpt(cs.KeyInitOpt(0))
 		builder.WithGenesisInit(cs.GenesisInitFunc)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		msgCid := cmdClient.RunSuccess(ctx, "message", "send",
@@ -127,9 +121,7 @@ func TestMpoolShow(t *testing.T) {
 		builder.WithInitOpt(cs.KeyInitOpt(0))
 		builder.WithGenesisInit(cs.GenesisInitFunc)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		const c = "QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw"
@@ -149,9 +141,7 @@ func TestMpoolRm(t *testing.T) {
 		builder.WithInitOpt(cs.KeyInitOpt(0))
 		builder.WithGenesisInit(cs.GenesisInitFunc)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		msgCid := cmdClient.RunSuccess(ctx, "message", "send",

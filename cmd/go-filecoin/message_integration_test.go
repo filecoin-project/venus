@@ -31,9 +31,7 @@ func TestMessageSend(t *testing.T) {
 	builder.WithInitOpt(cs.KeyInitOpt(1))
 	builder.WithInitOpt(cs.KeyInitOpt(0))
 
-	n := builder.BuildAndStart(ctx)
-	defer n.Stop(ctx)
-	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
 	_, err = n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
@@ -91,9 +89,7 @@ func TestMessageWait(t *testing.T) {
 	builder := test.NewNodeBuilder(t)
 
 	buildWithMiner(t, builder)
-	n := builder.BuildAndStart(ctx)
-	defer n.Stop(ctx)
-	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
 	t.Run("[success] transfer only", func(t *testing.T) {
@@ -142,9 +138,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 
 	buildWithMiner(t, builder)
 	builder.WithConfig(node.DefaultAddressConfigOpt(defaultAddr))
-	n := builder.BuildAndStart(ctx)
-	defer n.Stop(ctx)
-	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
 	doubleTheBlockGasLimit := strconv.Itoa(int(types.BlockGasLimit) * 2)
@@ -186,9 +180,7 @@ func TestMessageStatus(t *testing.T) {
 	builder := test.NewNodeBuilder(t)
 
 	buildWithMiner(t, builder)
-	n := builder.BuildAndStart(ctx)
-	defer n.Stop(ctx)
-	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
 	t.Run("queue then on chain", func(t *testing.T) {

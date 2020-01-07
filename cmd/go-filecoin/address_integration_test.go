@@ -26,9 +26,7 @@ func TestAddrsNewAndList(t *testing.T) {
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
 
-	n := builder.BuildAndStart(ctx)
-	defer n.Stop(ctx)
-	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
 	addrs := make([]address.Address, 10)
@@ -52,9 +50,7 @@ func TestWalletBalance(t *testing.T) {
 	cs := node.FixtureChainSeed(t)
 	builder.WithGenesisInit(cs.GenesisInitFunc)
 
-	n := builder.BuildAndStart(ctx)
-	defer n.Stop(ctx)
-	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 	addr, err := n.PorcelainAPI.WalletNewAddress(types.SECP256K1)
 	require.NoError(t, err)
@@ -82,9 +78,7 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 	cs := node.FixtureChainSeed(t)
 
 	builder.WithGenesisInit(cs.GenesisInitFunc)
-	n1 := builder.BuildAndStart(ctx)
-	defer n1.Stop(ctx)
-	cmdClient, done := test.RunNodeAPI(ctx, n1, t)
+	n1, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
 	builder2 := test.NewNodeBuilder(t)
@@ -138,9 +132,7 @@ func TestWalletLoadFromFile(t *testing.T) {
 	builder := test.NewNodeBuilder(t)
 
 	buildWithMiner(t, builder)
-	n1 := builder.BuildAndStart(ctx)
-	defer n1.Stop(ctx)
-	cmdClient, done := test.RunNodeAPI(ctx, n1, t)
+	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
 	for _, p := range fixtures.KeyFilePaths() {
@@ -165,9 +157,7 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
 
-	n := builder.BuildAndStart(ctx)
-	defer n.Stop(ctx)
-	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
 	dw := cmdClient.RunSuccess(ctx, "address", "ls").ReadStdoutTrimNewlines()
@@ -193,9 +183,7 @@ func TestWalletExportPrivateKeyConsistentDisplay(t *testing.T) {
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
 
-	n := builder.BuildAndStart(ctx)
-	defer n.Stop(ctx)
-	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
 	dw := cmdClient.RunSuccess(ctx, "address", "ls").ReadStdoutTrimNewlines()

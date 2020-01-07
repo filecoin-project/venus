@@ -107,6 +107,18 @@ func (b *NodeBuilder) BuildAndStart(ctx context.Context) *node.Node {
 	return n
 }
 
+// BuildAndStartAPI is a convenience function composing BuildAndStart with
+// RunNodeAPI
+func (b *NodeBuilder) BuildAndStartAPI(ctx context.Context) (*node.Node, *Client, func()) {
+	n := b.BuildAndStart(ctx)
+	c, apiDone := RunNodeAPI(ctx, n, b.tb)
+	done := func() {
+		apiDone()
+		n.Stop(ctx)
+	}
+	return n, c, done
+}
+
 func (b *NodeBuilder) requireNoError(err error) {
 	b.tb.Helper()
 	require.NoError(b.tb, err)

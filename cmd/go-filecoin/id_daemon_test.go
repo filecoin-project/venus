@@ -19,9 +19,7 @@ func TestId(t *testing.T) {
 	ctx := context.Background()
 
 	builder := test.NewNodeBuilder(t)
-	n := builder.BuildAndStart(ctx)
-	defer n.Stop(ctx)
-	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
 	id := cmdClient.RunSuccess(ctx, "id")
@@ -37,9 +35,7 @@ func TestIdFormat(t *testing.T) {
 	ctx := context.Background()
 
 	builder := test.NewNodeBuilder(t)
-	n := builder.BuildAndStart(ctx)
-	defer n.Stop(ctx)
-	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
 	idContent := cmdClient.RunSuccess(

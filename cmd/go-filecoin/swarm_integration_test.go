@@ -29,10 +29,8 @@ func TestSwarmConnectPeersInvalid(t *testing.T) {
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
 
-	n := builder.BuildAndStart(ctx)
-	cmdClient, done := test.RunNodeAPI(ctx, n, t)
+	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
-	n.Stop(ctx)
 
 	cmdClient.RunFail(ctx, "failed to parse ip4 addr",
 		"swarm", "connect", "/ip4/hello",

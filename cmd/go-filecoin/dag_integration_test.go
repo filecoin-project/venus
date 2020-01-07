@@ -22,9 +22,7 @@ func TestDagDaemon(t *testing.T) {
 	t.Run("dag get <cid> returning the genesis block", func(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
 
-		n := builder.BuildAndStart(ctx)
-		defer n.Stop(ctx)
-		cmdClient, done := test.RunNodeAPI(ctx, n, t)
+		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
 		c := n.PorcelainAPI.ChainHeadKey().Iter().Value()
