@@ -232,6 +232,12 @@ func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.
 		if isConnectionRefused(err) {
 			return cmdkit.Errorf(cmdkit.ErrFatal, "Connection Refused. Is the daemon running?")
 		}
+		if cmdKitErr, ok := err.(*cmdkit.Error); ok && cmdKitErr.Code == cmdkit.ErrNormal {
+			return re.CloseWithError(err)
+		}
+		if urlErr, ok := err.(*url.Error); ok && urlErr.Timeout() {
+			return re.CloseWithError(err)
+		}
 		return cmdkit.Errorf(cmdkit.ErrFatal, err.Error())
 	}
 

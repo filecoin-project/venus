@@ -100,6 +100,7 @@ func (o *CmdOutput) ReadStdoutTrimNewlines() string {
 // AssertSuccess asserts that the output represents a successful execution.
 func (o *CmdOutput) AssertSuccess() *CmdOutput {
 	o.tb.Helper()
+	assert.Equal(o.tb, 0, o.status, "client returned non-zero status")
 	oErr := o.ReadStderr() // Also checks no invocation error.
 
 	assert.NotContains(o.tb, oErr, "CRITICAL")
@@ -113,6 +114,7 @@ func (o *CmdOutput) AssertSuccess() *CmdOutput {
 // matching the passed in error.
 func (o *CmdOutput) AssertFail(err string) *CmdOutput {
 	o.tb.Helper()
+	assert.NotEqual(o.tb, 0, o.status, "client returned zero status")
 	assert.Empty(o.tb, o.ReadStdout()) // Also checks no invocation error.
 	assert.Contains(o.tb, o.ReadStderr(), err)
 	return o

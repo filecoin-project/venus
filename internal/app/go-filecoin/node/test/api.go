@@ -72,7 +72,7 @@ func (c *Client) Address() string {
 }
 
 // Run runs a CLI command and returns its output.
-func (c *Client) Run(ctx context.Context, shouldFail bool, command ...string) *th.CmdOutput {
+func (c *Client) Run(ctx context.Context, command ...string) *th.CmdOutput {
 	c.tb.Helper()
 	args := []string{
 		"go-filecoin", // A dummy first arg is required, simulating shell invocation.
@@ -94,30 +94,25 @@ func (c *Client) Run(ctx context.Context, shouldFail bool, command ...string) *t
 
 	out := th.ReadOutput(c.tb, command, readStdOut, readStdErr)
 	if err != nil {
-		if !shouldFail {
-			out.SetInvocationError(err)
-		}
+		out.SetInvocationError(err)
 	} else {
 		out.SetStatus(exitCode)
 	}
-	if !shouldFail {
-		require.NoError(c.tb, err, "client execution error")
-		assert.Equal(c.tb, 0, exitCode, "client returned non-zero status")
-	}
+	assert.NoError(c.tb, err, "client execution error")
 
 	return out
 }
 
 // RunSuccess runs a command and asserts that it succeeds (status of zero and logs no errors).
 func (c *Client) RunSuccess(ctx context.Context, command ...string) *th.CmdOutput {
-	output := c.Run(ctx, false, command...)
+	output := c.Run(ctx, command...)
 	output.AssertSuccess()
 	return output
 }
 
 // RunFail runs a command and asserts that it fails with a specified message on stderr.
 func (c *Client) RunFail(ctx context.Context, err string, command ...string) *th.CmdOutput {
-	output := c.Run(ctx, true, command...)
+	output := c.Run(ctx, command...)
 	output.AssertFail(err)
 	return output
 }
