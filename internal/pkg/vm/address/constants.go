@@ -21,32 +21,49 @@ func init() {
 		panic(err)
 	}
 
-	InitAddress, err = NewIDAddress(0)
+	SystemAddress, err = NewIDAddress(0)
 	if err != nil {
 		panic(err)
 	}
 
-	NetworkAddress, err = NewIDAddress(1)
+	InitAddress, err = NewIDAddress(1)
 	if err != nil {
 		panic(err)
 	}
 
-	StorageMarketAddress, err = NewIDAddress(2)
+	RewardAddress, err = NewIDAddress(2)
 	if err != nil {
 		panic(err)
 	}
 
-	PaymentBrokerAddress, err = NewIDAddress(3)
+	CronAddress, err = NewIDAddress(3)
 	if err != nil {
 		panic(err)
 	}
 
-	PowerAddress, err = NewIDAddress(4)
+	StoragePowerAddress, err = NewIDAddress(4)
+	if err != nil {
+		panic(err)
+	}
+
+	StorageMarketAddress, err = NewIDAddress(5)
 	if err != nil {
 		panic(err)
 	}
 
 	BurntFundsAddress, err = NewIDAddress(99)
+	if err != nil {
+		panic(err)
+	}
+
+	// legacy
+
+	LegacyNetworkAddress, err = NewIDAddress(50)
+	if err != nil {
+		panic(err)
+	}
+
+	LegacyPaymentBrokerAddress, err = NewIDAddress(51)
 	if err != nil {
 		panic(err)
 	}
@@ -58,18 +75,26 @@ var (
 	// TestAddress2 is an account with some initial funds in it.
 	TestAddress2 Address
 
+	// SystemAddress is the hard-coded address of the filecoin system actor.
+	SystemAddress Address
 	// InitAddress is the filecoin network initializer.
 	InitAddress Address
-	// NetworkAddress is the filecoin network treasury.
-	NetworkAddress Address
-	// StorageMarketAddress is the hard-coded address of the filecoin storage market actor.
-	StorageMarketAddress Address
-	// PaymentBrokerAddress is the hard-coded address of the filecoin payment broker actor.
-	PaymentBrokerAddress Address
-	// PowerAddress is the hard-coded address of the filecoin power actor.
-	PowerAddress Address
+	// RewardAddress is the hard-coded address of the filecoin block reward actor.
+	RewardAddress Address
+	// CronAddress is the hard-coded address of the filecoin Cron actor.
+	CronAddress Address
 	// BurntFundsAddress is the hard-coded address of the burnt funds account actor.
 	BurntFundsAddress Address
+
+	// StoragePowerAddress is the hard-coded address of the filecoin power actor.
+	StoragePowerAddress Address
+	// StorageMarketAddress is the hard-coded address of the filecoin storage market actor.
+	StorageMarketAddress Address
+
+	// LegacyPaymentBrokerAddress does not exist anymore.
+	LegacyPaymentBrokerAddress Address
+	// LegacyNetworkAddress does not exist anymore.
+	LegacyNetworkAddress Address
 )
 
 var (
