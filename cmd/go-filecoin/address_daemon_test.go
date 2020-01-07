@@ -122,7 +122,8 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	// wait for message to be included in a block
-	require.NoError(t, n1.PorcelainAPI.MessageWaitDone(ctx, mustDecodeCid(updateMsg)))
+	_, err = n1.PorcelainAPI.MessageWaitDone(ctx, mustDecodeCid(updateMsg))
+	require.NoError(t, err)
 
 	// use the address lookup command to ensure update happened
 	lookupOutB := cmdClient.RunSuccessFirstLine(ctx, "address", "lookup", minerAddr)
