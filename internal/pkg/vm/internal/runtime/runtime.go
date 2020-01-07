@@ -58,7 +58,7 @@ type InvocationContext interface {
 	// Balance is the current balance on the current actors account.
 	//
 	// Note: the value received for this invocation is already reflected on the balance.
-	// Dragons: I want to move this to the statehandle and call it state.
+	// Review: I want to move this to the statehandle and call it state.
 	Balance() types.AttoFIL
 	// Charge allows actor code to charge extra.
 	//
@@ -94,7 +94,6 @@ type ExtendedInvocationContext interface {
 // LegacyInvocationContext are the methods from the old VM we have not removed yet.
 //
 // WARNING: Every method in this interface is to be considered DEPRECATED.
-// Dragons: this methods are legacy and have not been ported to the new VM semantics.
 type LegacyInvocationContext interface {
 	InvocationContext
 	LegacyMessage() *types.UnsignedMessage
@@ -199,14 +198,9 @@ type Storage interface {
 
 // LegacyStorage defines the storage module exposed to actors.
 type LegacyStorage interface {
-	// Dragons: move out after cleaning up the actor state construction
 	LegacyHead() cid.Cid
 	Put(interface{}) (cid.Cid, error)
-	// Dragons: move out after cleaning up the actor state construction
 	CidOf(interface{}) (cid.Cid, error)
-	// Dragons: this interface is wrong, the caller does not know how the object got serialized (Put/1 takes an interface{} not bytes)
-	// TODO: change to `Get(cid, interface{}) error`
 	Get(cid.Cid) ([]byte, error)
-	// Dragons: move out after cleaning up the actor state construction
 	LegacyCommit(cid.Cid, cid.Cid) error
 }

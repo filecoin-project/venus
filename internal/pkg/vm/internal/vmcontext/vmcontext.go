@@ -108,7 +108,6 @@ func (ctx *VMContext) CurrentEpoch() types.BlockHeight {
 
 // Randomness gives the actors access to sampling peudo-randomess from the chain.
 func (ctx *VMContext) Randomness(epoch types.BlockHeight, offset uint64) runtime.Randomness {
-	// Dragons: the spec has a TODO on how this works
 	rnd, err := sampling.SampleChainRandomness(&epoch, ctx.ancestors)
 	if err != nil {
 		runtime.Abort("failed to sample randomness")
@@ -353,7 +352,6 @@ func (ctx *VMContext) LegacyStorage() runtime.LegacyStorage {
 }
 
 // Charge attempts to add the given cost to the accrued gas cost of this transaction
-// Dragons: this should no longer return an error
 func (ctx *VMContext) Charge(cost types.GasUnits) error {
 	return ctx.gasTracker.Charge(cost)
 }

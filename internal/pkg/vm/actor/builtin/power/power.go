@@ -151,7 +151,6 @@ var Errors = map[uint8]error{
 	ErrDuplicateEntry:       errors.NewCodedRevertError(ErrDuplicateEntry, "duplicate create power table entry attempt"),
 }
 
-// Dragons: shouldnt this be calling the initacor to create an actor?
 type invocationContext interface {
 	runtime.InvocationContext
 	LegacyAddressForNewActor() (address.Address, error)

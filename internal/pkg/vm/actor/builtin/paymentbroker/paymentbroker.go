@@ -199,7 +199,6 @@ var Errors = map[uint8]error{
 	ErrInvalidSignature:         errors.NewCodedRevertErrorf(ErrInvalidSignature, "signature failed to validate"),
 }
 
-// Dragons: verify if the message is still needed
 type invocationContext interface {
 	runtime.InvocationContext
 	LegacyMessage() *types.UnsignedMessage

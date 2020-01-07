@@ -394,7 +394,6 @@ type Impl Actor
 
 var log = logging.Logger("actor.miner")
 
-// Dragons: import cycle between actors, we need to separate the definitions from the impls
 var Storagemarket_UpdateStorage = types.MethodID(1 + 32)
 var Storagemarket_GetProofsMode = types.MethodID(3 + 32)
 
