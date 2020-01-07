@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
@@ -98,7 +97,7 @@ func (c *Client) Run(ctx context.Context, command ...string) *th.CmdOutput {
 	} else {
 		out.SetStatus(exitCode)
 	}
-	assert.NoError(c.tb, err, "client execution error")
+	require.NoError(c.tb, err, "client execution error")
 
 	return out
 }
