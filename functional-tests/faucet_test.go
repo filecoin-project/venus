@@ -23,8 +23,7 @@ import (
 var faucetBinary = "../tools/faucet/faucet"
 
 func TestFaucetSendFunds(t *testing.T) {
-	//	tf.FunctionalTest(t)
-	tf.IntegrationTest(t)
+	tf.FunctionalTest(t)
 
 	if _, err := os.Stat(faucetBinary); os.IsNotExist(err) {
 		panic("faucet not found, run `go run build/*.go build` to fix")

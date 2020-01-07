@@ -35,7 +35,7 @@ func TestNoFaults(t *testing.T) {
 		block3 := &block.Block{Miner: minerAddr3, Height: 43}
 
 		faultCh := make(chan ConsensusFault, 1)
-		cfd := NewCFaultDetector(faultCh)
+		cfd := NewConsensusFaultDetector(faultCh)
 		assert.NoError(t, cfd.CheckBlock(block1, parentTipSet))
 		assertEmptyCh(t, faultCh)
 		assert.NoError(t, cfd.CheckBlock(block2, parentTipSet))
@@ -54,7 +54,7 @@ func TestNoFaults(t *testing.T) {
 		block2 := &block.Block{Miner: minerAddr1, Height: 56}
 
 		faultCh := make(chan ConsensusFault, 1)
-		cfd := NewCFaultDetector(faultCh)
+		cfd := NewConsensusFaultDetector(faultCh)
 		assert.NoError(t, cfd.CheckBlock(block1, parent1TipSet))
 		assertEmptyCh(t, faultCh)
 		assert.NoError(t, cfd.CheckBlock(block2, parent2TipSet))
@@ -70,7 +70,7 @@ func TestNoFaults(t *testing.T) {
 		block2 := &block.Block{Miner: minerAddr1, Height: 56}
 
 		faultCh := make(chan ConsensusFault, 1)
-		cfd := NewCFaultDetector(faultCh)
+		cfd := NewConsensusFaultDetector(faultCh)
 		assert.NoError(t, cfd.CheckBlock(block1, parent1TipSet))
 		assertEmptyCh(t, faultCh)
 		assert.NoError(t, cfd.CheckBlock(block2, parent2TipSet))
@@ -83,7 +83,7 @@ func TestNoFaults(t *testing.T) {
 
 		block := &block.Block{Miner: minerAddr1, Height: 43}
 		faultCh := make(chan ConsensusFault, 1)
-		cfd := NewCFaultDetector(faultCh)
+		cfd := NewConsensusFaultDetector(faultCh)
 		assert.NoError(t, cfd.CheckBlock(block, parentTipSet))
 		assertEmptyCh(t, faultCh)
 		assert.NoError(t, cfd.CheckBlock(block, parentTipSet))
@@ -102,7 +102,7 @@ func TestFault(t *testing.T) {
 	block2 := &block.Block{Miner: minerAddr1, Height: 43, StateRoot: types.CidFromString(t, "some-other-state")}
 
 	faultCh := make(chan ConsensusFault, 1)
-	cfd := NewCFaultDetector(faultCh)
+	cfd := NewConsensusFaultDetector(faultCh)
 	assert.NoError(t, cfd.CheckBlock(block1, parentTipSet))
 	assertEmptyCh(t, faultCh) // no collision here because index is empty
 	assert.NoError(t, cfd.CheckBlock(block2, parentTipSet))
@@ -123,7 +123,7 @@ func TestFaultNullBlocks(t *testing.T) {
 		block2 := &block.Block{Miner: minerAddr1, Height: 49}
 
 		faultCh := make(chan ConsensusFault, 3)
-		cfd := NewCFaultDetector(faultCh)
+		cfd := NewConsensusFaultDetector(faultCh)
 		assert.NoError(t, cfd.CheckBlock(block1, parentTipSet))
 		assertEmptyCh(t, faultCh)
 		assert.NoError(t, cfd.CheckBlock(block2, parentTipSet))

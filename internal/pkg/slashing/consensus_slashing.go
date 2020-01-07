@@ -5,9 +5,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
-// CFaultDetector detects consensus faults -- misbehavior conditions where a single
+// ConsensusFaultDetector detects consensus faults -- misbehavior conditions where a single
 // party produces multiple blocks at the same time.
-type CFaultDetector struct {
+type ConsensusFaultDetector struct {
 	// minerIndex tracks witnessed blocks by miner address and epoch
 	minerIndex map[address.Address]map[uint64]*block.Block
 	// sender sends messages on behalf of the slasher
@@ -16,12 +16,14 @@ type CFaultDetector struct {
 
 // ConsensusFault is the information needed to submit a consensus fault
 type ConsensusFault struct {
+	// Block1 and Block2 are two distinct blocks from an overlapping interval
+	// signed by the same miner
 	Block1, Block2 *block.Block
 }
 
-// NewCFaultDetector returns a fault detector given a fault channel
-func NewCFaultDetector(faultCh chan ConsensusFault) *CFaultDetector {
-	return &CFaultDetector{
+// NewConsensusFaultDetector returns a fault detector given a fault channel
+func NewConsensusFaultDetector(faultCh chan ConsensusFault) *ConsensusFaultDetector {
+	return &ConsensusFaultDetector{
 		minerIndex: make(map[address.Address]map[uint64]*block.Block),
 		faultCh:    faultCh,
 	}
@@ -30,7 +32,7 @@ func NewCFaultDetector(faultCh chan ConsensusFault) *CFaultDetector {
 
 // CheckBlock records a new block and checks for faults
 // Preconditions: the signature is already checked and p is the parent
-func (detector *CFaultDetector) CheckBlock(b *block.Block, p block.TipSet) error {
+func (detector *ConsensusFaultDetector) CheckBlock(b *block.Block, p block.TipSet) error {
 	latest := uint64(b.Height)
 	parentHeight, err := p.Height()
 	if err != nil {

@@ -27,7 +27,7 @@ type SyncerSubmodule struct {
 	BlockSub         pubsub.Subscription
 	ChainSelector    nodeChainSelector
 	Consensus        consensus.Protocol
-	FaultDetector    slashing.CFaultDetector
+	FaultDetector    slashing.ConsensusFaultDetector
 	ChainSyncManager *chainsync.Manager
 
 	// cancelChainSync cancels the context for chain sync subscriptions and handlers.
@@ -77,7 +77,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
 	fetcher := fetcher.NewGraphSyncFetcher(ctx, gsync, blockstore.Blockstore, blkValid, config.ChainClock(), discovery.PeerTracker)
 	faultCh := make(chan slashing.ConsensusFault)
-	faultDetector := slashing.NewCFaultDetector(faultCh)
+	faultDetector := slashing.NewConsensusFaultDetector(faultCh)
 
 	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, fetcher, config.ChainClock(), faultDetector)
 	if err != nil {
