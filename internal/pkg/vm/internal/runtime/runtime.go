@@ -16,15 +16,14 @@ type Runtime interface {
 	CurrentEpoch() types.BlockHeight
 	// Randomness gives the actors access to sampling peudo-randomess from the chain.
 	Randomness(epoch types.BlockHeight, offset uint64) Randomness
-	// LegacySend allows actors to invoke methods on other actors
-	// TODO: remove after all legacy actor code is gone (issue #???)
-	LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
-	// Send allows actors to invoke methods on other actors
-	Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{}
 	// Storage is the raw store for IPLD objects.
 	//
 	// Note: this is required for custom data structures.
 	Storage() Storage
+	// LegacyStorage is the raw store for IPLD objects.
+	//
+	// Note: this is required for custom data structures.
+	LegacyStorage() LegacyStorage
 }
 
 // MessageInfo contains information available to the actor about the executing message.
@@ -51,9 +50,15 @@ type InvocationContext interface {
 	ValidateCaller(CallerPattern)
 	// StateHandle handles access to the actor state.
 	StateHandle() ActorStateHandle
+	// LegacySend allows actors to invoke methods on other actors
+	// TODO: remove after all legacy actor code is gone (issue #???)
+	LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
+	// Send allows actors to invoke methods on other actors
+	Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{}
 	// Balance is the current balance on the current actors account.
 	//
 	// Note: the value received for this invocation is already reflected on the balance.
+	// Dragons: I want to move this to the statehandle and call it state.
 	Balance() types.AttoFIL
 	// Charge allows actor code to charge extra.
 	//
@@ -61,6 +66,7 @@ type InvocationContext interface {
 	//
 	// Methods with extra complexity that is not accounted by other means (i.e. external calls, storage calls)
 	// will have to charge extra.
+	// Dragons: move up to runtime
 	Charge(units types.GasUnits) error
 }
 
@@ -98,10 +104,7 @@ type LegacyInvocationContext interface {
 
 // ActorStateHandle handles the actor state, allowing actors to lock on the state.
 type ActorStateHandle interface {
-	// Readonly loads a readonly copy of the state into the argument.
-	//
-	// Any modification to the state is illegal and will result in an `Abort`.
-	Readonly(obj interface{})
+	ReadonlyActorStateHandle
 	// Transaction loads a mutable version of the state into the `obj` argument and protects
 	// the execution from side effects.
 	//
@@ -134,6 +137,14 @@ type ActorStateHandle interface {
 	// // state.ImLoaded = False // BAD!! state is readonly outside the lambda, it will panic
 	// ```
 	Transaction(obj interface{}, f func() (interface{}, error)) (interface{}, error)
+}
+
+// ReadonlyActorStateHandle handles the actor state loading for view only.
+type ReadonlyActorStateHandle interface {
+	// Readonly loads a readonly copy of the state into the argument.
+	//
+	// Any modification to the state is illegal and will result in an `Abort`.
+	Readonly(obj interface{})
 }
 
 // Randomness is a string of random bytes
@@ -178,6 +189,16 @@ func Assert(cond bool) {
 
 // Storage defines the storage module exposed to actors.
 type Storage interface {
+	// Put stores an object and returns its content-addresable ID.
+	Put(interface{}) cid.Cid
+	// Put stores an object and returns its content-addresable ID.
+	Get(cid cid.Cid, obj interface{}) bool
+	// CidOf returns the content-addresable ID of an object WITHOUT storing it.
+	CidOf(interface{}) cid.Cid
+}
+
+// LegacyStorage defines the storage module exposed to actors.
+type LegacyStorage interface {
 	// Dragons: move out after cleaning up the actor state construction
 	LegacyHead() cid.Cid
 	Put(interface{}) (cid.Cid, error)
