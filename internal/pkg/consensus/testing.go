@@ -137,7 +137,7 @@ type FakeElectionMachine struct{}
 
 // RunElection returns a fake election proof.
 func (fem *FakeElectionMachine) RunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullCount uint64) (block.VRFPi, error) {
-	return MakeFakeElectionProofForTest(), nil
+	return MakeFakeDeprecatedElectionProofForTest(), nil
 }
 
 // IsElectionWinner always returns true
@@ -183,8 +183,8 @@ func MakeFakeTicketForTest() block.Ticket {
 	}
 }
 
-// MakeFakeElectionProofForTest creates a fake election proof
-func MakeFakeElectionProofForTest() []byte {
+// MakeFakeDeprecatedElectionProofForTest creates a fake election proof
+func MakeFakeDeprecatedElectionProofForTest() []byte {
 	proof := make([]byte, 65)
 	proof[0] = 42
 	return proof
@@ -314,7 +314,7 @@ func NewMockElectionMachine(f func(block.Ticket)) *MockElectionMachine {
 // RunElection calls the registered callback and returns a fake proof
 func (mem *MockElectionMachine) RunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullCount uint64) (block.VRFPi, error) {
 	mem.fn(ticket)
-	return MakeFakeElectionProofForTest(), nil
+	return MakeFakeDeprecatedElectionProofForTest(), nil
 }
 
 // IsElectionWinner calls the registered callback and returns true

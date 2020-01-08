@@ -24,20 +24,20 @@ import (
 // RequireSignedTestBlockFromTipSet creates a block with a valid signature by
 // the passed in miner work and a Miner field set to the minerAddr.
 func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, stateRootCid cid.Cid, receiptRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer types.Signer) *block.Block {
-	electionProof := consensus.MakeFakeElectionProofForTest()
+	electionProof := consensus.MakeFakeDeprecatedElectionProofForTest()
 	ticket := consensus.MakeFakeTicketForTest()
 	emptyBLSSig := (*bls.Aggregate([]bls.Signature{}))[:]
 
 	b := &block.Block{
-		Miner:           minerAddr,
-		Ticket:          ticket,
-		Parents:         baseTipSet.Key(),
-		ParentWeight:    types.Uint64(10000 * height),
-		Height:          types.Uint64(height),
-		StateRoot:       stateRootCid,
-		MessageReceipts: receiptRootCid,
-		ElectionProof:   electionProof,
-		BLSAggregateSig: emptyBLSSig,
+		Miner:                   minerAddr,
+		Ticket:                  ticket,
+		Parents:                 baseTipSet.Key(),
+		ParentWeight:            types.Uint64(10000 * height),
+		Height:                  types.Uint64(height),
+		StateRoot:               stateRootCid,
+		MessageReceipts:         receiptRootCid,
+		DeprecatedElectionProof: electionProof,
+		BLSAggregateSig:         emptyBLSSig,
 	}
 	sig, err := signer.SignBytes(b.SignatureData(), minerWorker)
 	require.NoError(t, err)

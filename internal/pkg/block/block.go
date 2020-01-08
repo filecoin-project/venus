@@ -43,9 +43,9 @@ type Block struct {
 	// MessageReceipts is a set of receipts matching to the sending of the `Messages`.
 	MessageReceipts cid.Cid `json:"messageReceipts,omitempty" refmt:",omitempty"`
 
-	// ElectionProof is the "scratched ticket" proving that this block won
+	// DeprecatedElectionProof is the "scratched ticket" proving that this block won
 	// an election.
-	ElectionProof VRFPi `json:"proof"`
+	DeprecatedElectionProof VRFPi `json:"proof"`
 
 	// The timestamp, in seconds since the Unix epoch, at which this block was created.
 	Timestamp types.Uint64 `json:"timestamp"`
@@ -137,17 +137,17 @@ func (b *Block) Equals(other *Block) bool {
 // creating and verification
 func (b *Block) SignatureData() []byte {
 	tmp := &Block{
-		Miner:           b.Miner,
-		Ticket:          b.Ticket,  // deep copy needed??
-		Parents:         b.Parents, // deep copy needed??
-		ParentWeight:    b.ParentWeight,
-		Height:          b.Height,
-		Messages:        b.Messages,
-		StateRoot:       b.StateRoot,
-		MessageReceipts: b.MessageReceipts,
-		ElectionProof:   b.ElectionProof,
-		Timestamp:       b.Timestamp,
-		BLSAggregateSig: b.BLSAggregateSig,
+		Miner:                   b.Miner,
+		Ticket:                  b.Ticket,  // deep copy needed??
+		Parents:                 b.Parents, // deep copy needed??
+		ParentWeight:            b.ParentWeight,
+		Height:                  b.Height,
+		Messages:                b.Messages,
+		StateRoot:               b.StateRoot,
+		MessageReceipts:         b.MessageReceipts,
+		DeprecatedElectionProof: b.DeprecatedElectionProof,
+		Timestamp:               b.Timestamp,
+		BLSAggregateSig:         b.BLSAggregateSig,
 		// BlockSig omitted
 	}
 

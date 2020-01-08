@@ -239,9 +239,9 @@ func (c *Expected) validateMining(
 			}
 		}
 
-		// Validate ElectionProof
+		// Validate DeprecatedElectionProof
 		nullBlkCount := uint64(blk.Height) - prevHeight - 1
-		result, err := c.IsElectionWinner(ctx, pwrTableView, electionTicket, nullBlkCount, blk.ElectionProof, workerAddr, blk.Miner)
+		result, err := c.IsElectionWinner(ctx, pwrTableView, electionTicket, nullBlkCount, blk.DeprecatedElectionProof, workerAddr, blk.Miner)
 		if err != nil {
 			return errors.Wrap(err, "failed checking election proof")
 		}
