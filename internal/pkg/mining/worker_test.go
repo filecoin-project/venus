@@ -44,7 +44,7 @@ func TestLookbackElection(t *testing.T) {
 	ancestors := builder.RequireTipSets(head.Key(), lookback)
 
 	st, pool, addrs, bs := sharedSetup(t, mockSignerVal)
-	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
@@ -142,7 +142,7 @@ func Test_Mine(t *testing.T) {
 	tipSet := th.RequireNewTipSet(t, baseBlock)
 
 	st, pool, addrs, bs := sharedSetup(t, mockSignerVal)
-	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
@@ -357,7 +357,7 @@ func TestApplyBLSMessages(t *testing.T) {
 	tipSet := th.RequireNewTipSet(t, baseBlock)
 
 	st, pool, addrs, bs := sharedSetup(t, mockSignerVal)
-	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
@@ -474,7 +474,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 
 	mockSigner, blockSignerAddr := setupSigner()
 	st, pool, addrs, bs := sharedSetup(t, mockSigner)
-	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
@@ -543,7 +543,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	newCid := types.NewCidForTestGetter()
 	st, pool, addrs, bs := sharedSetup(t, mockSigner)
 
-	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
@@ -646,7 +646,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 
 	st, pool, addrs, bs := sharedSetup(t, mockSigner)
 
-	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
@@ -712,7 +712,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	newCid := types.NewCidForTestGetter()
 
 	st, pool, addrs, bs := sharedSetup(t, mockSigner)
-	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
@@ -769,7 +769,7 @@ func TestGenerateError(t *testing.T) {
 
 	st, pool, addrs, bs := sharedSetup(t, mockSigner)
 
-	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {

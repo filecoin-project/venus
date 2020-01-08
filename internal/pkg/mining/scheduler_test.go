@@ -43,7 +43,7 @@ func TestMineOnce10Null(t *testing.T) {
 	require.NoError(t, err)
 
 	st, pool, _, bs := sharedSetup(t, mockSigner)
-	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
@@ -106,7 +106,7 @@ func TestMineOneEpoch10Null(t *testing.T) {
 	require.NoError(t, err)
 
 	st, pool, _, bs := sharedSetup(t, mockSigner)
-	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {

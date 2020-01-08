@@ -29,7 +29,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		log.Infof("[TIMER] DefaultWorker.Generate baseTipset: %s - elapsed time: %s", baseTipSet.String(), time.Since(generateTimer).Round(time.Millisecond))
 	}()
 
-	stateTree, err := w.getStateTree(ctx, baseTipSet)
+	stateTree, err := w.getStateTree(ctx, baseTipSet.Key())
 	if err != nil {
 		return nil, errors.Wrap(err, "get state tree")
 	}
