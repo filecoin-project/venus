@@ -125,6 +125,13 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 		return fmt.Errorf("block %s has nil ticket", blk.Cid().String())
 	}
 
+	ptl := len(blk.PoStPartialTickets)
+	sil := len(blk.PoStSectorIDs)
+	cil := len(blk.PoStChallengeIDXs)
+	if ptl != sil || sil != cil {
+		return fmt.Errorf("block %s has invalid PoSt data fields of different lengths", blk.Cid().String())
+	}
+
 	return nil
 }
 
