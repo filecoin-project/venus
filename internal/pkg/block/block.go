@@ -33,7 +33,6 @@ type Block struct {
 	Height types.Uint64 `json:"height"`
 
 	// Messages is the set of messages included in this block
-	// TODO: should be a merkletree-ish thing
 	Messages types.TxMeta `json:"messages,omitempty" refmt:",omitempty"`
 
 	// StateRoot is a cid pointer to the state tree after application of the
@@ -43,9 +42,24 @@ type Block struct {
 	// MessageReceipts is a set of receipts matching to the sending of the `Messages`.
 	MessageReceipts cid.Cid `json:"messageReceipts,omitempty" refmt:",omitempty"`
 
-	// ElectionProof is the "scratched ticket" proving that this block won
+	// DeprecatedElectionProof is the "scratched ticket" proving that this block won
 	// an election.
-	ElectionProof VRFPi `json:"proof"`
+	DeprecatedElectionProof VRFPi `json:"proof"`
+
+	// PoStRandomness is the verifiable randomness used to generate postCandidates
+	PoStRandomness VRFPi `json:"postRandomness"`
+
+	// PoStCandidatePartialTickets are the winning PoSt tickets submitted with this block
+	PoStPartialTickets [][]byte `json:"postCandidates"`
+
+	// PoStSectorIDs are the sector ids of the winning PoSt tickets
+	PoStSectorIDs []types.Uint64 `json:"postSectorIDs"`
+
+	// PoStChallengeIDXs are the challenge indexes within the sector for the winning PoSt tickets
+	PoStChallengeIDXs []types.Uint64 `json:"postChallengeIDXs"`
+
+	// PoStProof is the snark output proving that the PoSt tickets are valid
+	PoStProof types.PoStProof `json:"postProof"`
 
 	// The timestamp, in seconds since the Unix epoch, at which this block was created.
 	Timestamp types.Uint64 `json:"timestamp"`
@@ -137,17 +151,22 @@ func (b *Block) Equals(other *Block) bool {
 // creating and verification
 func (b *Block) SignatureData() []byte {
 	tmp := &Block{
-		Miner:           b.Miner,
-		Ticket:          b.Ticket,  // deep copy needed??
-		Parents:         b.Parents, // deep copy needed??
-		ParentWeight:    b.ParentWeight,
-		Height:          b.Height,
-		Messages:        b.Messages,
-		StateRoot:       b.StateRoot,
-		MessageReceipts: b.MessageReceipts,
-		ElectionProof:   b.ElectionProof,
-		Timestamp:       b.Timestamp,
-		BLSAggregateSig: b.BLSAggregateSig,
+		Miner:                   b.Miner,
+		Ticket:                  b.Ticket,  // deep copy needed??
+		Parents:                 b.Parents, // deep copy needed??
+		ParentWeight:            b.ParentWeight,
+		Height:                  b.Height,
+		Messages:                b.Messages,
+		StateRoot:               b.StateRoot,
+		MessageReceipts:         b.MessageReceipts,
+		DeprecatedElectionProof: b.DeprecatedElectionProof,
+		PoStRandomness:          b.PoStRandomness,
+		PoStPartialTickets:      b.PoStPartialTickets,
+		PoStSectorIDs:           b.PoStSectorIDs,
+		PoStChallengeIDXs:       b.PoStChallengeIDXs,
+		PoStProof:               b.PoStProof,
+		Timestamp:               b.Timestamp,
+		BLSAggregateSig:         b.BLSAggregateSig,
 		// BlockSig omitted
 	}
 

@@ -102,6 +102,9 @@ func TestBlockValidSyntax(t *testing.T) {
 	validSt := types.NewCidForTestGetter()()
 	validAd := address.NewForTestGetter()()
 	validTi := block.Ticket{VRFProof: []byte{1}}
+	validPoStPartialTickets := [][]byte{{1}}
+	validPoStSectorIDs := []types.Uint64{1}
+	validPoStChallengeIDXs := []types.Uint64{1}
 	// create a valid block
 	blk := &block.Block{
 		Timestamp: validTs,
@@ -109,6 +112,10 @@ func TestBlockValidSyntax(t *testing.T) {
 		Miner:     validAd,
 		Ticket:    validTi,
 		Height:    1,
+
+		PoStPartialTickets: validPoStPartialTickets,
+		PoStSectorIDs:      validPoStSectorIDs,
+		PoStChallengeIDXs:  validPoStChallengeIDXs,
 	}
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
@@ -137,6 +144,12 @@ func TestBlockValidSyntax(t *testing.T) {
 	blk.Ticket = block.Ticket{}
 	require.Error(t, validator.ValidateSyntax(ctx, blk))
 	blk.Ticket = validTi
+	require.NoError(t, validator.ValidateSyntax(ctx, blk))
+
+	// invalidate PoSt
+	blk.PoStSectorIDs = []types.Uint64{0, 5, 3}
+	require.Error(t, validator.ValidateSyntax(ctx, blk))
+	blk.PoStSectorIDs = validPoStSectorIDs
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
 }

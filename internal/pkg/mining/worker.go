@@ -47,7 +47,7 @@ type Worker interface {
 
 // GetStateTree is a function that gets the aggregate state tree of a TipSet. It's
 // its own function to facilitate testing.
-type GetStateTree func(context.Context, block.TipSet) (state.Tree, error)
+type GetStateTree func(context.Context, block.TipSetKey) (state.Tree, error)
 
 // GetWeight is a function that calculates the weight of a TipSet.  Weight is
 // expressed as two uint64s comprising a rational number.

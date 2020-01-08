@@ -29,7 +29,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		log.Infof("[TIMER] DefaultWorker.Generate baseTipset: %s - elapsed time: %s", baseTipSet.String(), time.Since(generateTimer).Round(time.Millisecond))
 	}()
 
-	stateTree, err := w.getStateTree(ctx, baseTipSet)
+	stateTree, err := w.getStateTree(ctx, baseTipSet.Key())
 	if err != nil {
 		return nil, errors.Wrap(err, "get state tree")
 	}
@@ -129,17 +129,17 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 
 	now := w.clock.Now()
 	next := &block.Block{
-		Miner:           w.minerAddr,
-		Height:          types.Uint64(blockHeight),
-		Messages:        txMeta,
-		MessageReceipts: baseReceiptRoot,
-		Parents:         baseTipSet.Key(),
-		ParentWeight:    types.Uint64(weight),
-		ElectionProof:   electionProof,
-		StateRoot:       baseStateRoot,
-		Ticket:          ticket,
-		Timestamp:       types.Uint64(now.Unix()),
-		BLSAggregateSig: blsAggregateSig,
+		Miner:                   w.minerAddr,
+		Height:                  types.Uint64(blockHeight),
+		Messages:                txMeta,
+		MessageReceipts:         baseReceiptRoot,
+		Parents:                 baseTipSet.Key(),
+		ParentWeight:            types.Uint64(weight),
+		DeprecatedElectionProof: electionProof,
+		StateRoot:               baseStateRoot,
+		Ticket:                  ticket,
+		Timestamp:               types.Uint64(now.Unix()),
+		BLSAggregateSig:         blsAggregateSig,
 	}
 
 	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr, baseTipSet.Key())

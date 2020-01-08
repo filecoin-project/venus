@@ -37,7 +37,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	vmerr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 var log = logging.Logger("node") // nolint: deadcode
@@ -733,7 +732,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 		MinerOwnerAddr: minerOwnerAddr,
 		WorkerSigner:   node.Wallet.Wallet,
 
-		GetStateTree:   node.getStateTree,
+		GetStateTree:   node.chain.ChainReader.GetTipSetState,
 		GetWeight:      node.getWeight,
 		GetAncestors:   node.getAncestors,
 		Election:       consensus.ElectionMachine{},
@@ -746,11 +745,6 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 		Blockstore:    node.Blockstore.Blockstore,
 		Clock:         node.ChainClock,
 	}), nil
-}
-
-// getStateTree is the default GetStateTree function for the mining worker.
-func (node *Node) getStateTree(ctx context.Context, ts block.TipSet) (state.Tree, error) {
-	return node.chain.ChainReader.GetTipSetState(ctx, ts.Key())
 }
 
 // getWeight is the default GetWeight function for the mining worker.
