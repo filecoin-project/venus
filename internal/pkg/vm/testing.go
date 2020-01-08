@@ -235,8 +235,8 @@ type testStorage struct {
 }
 
 // NewTestStorage returns a new "testStorage"
-func NewTestStorage(state interface{}) testStorage {
-	return testStorage{
+func NewTestStorage(state interface{}) runtime.Storage {
+	return &testStorage{
 		state: state,
 	}
 }
@@ -293,8 +293,8 @@ type testLegacyStorage struct {
 }
 
 // NewTestLegacyStorage returns a new "testLegacyStorage"
-func NewTestLegacyStorage(state interface{}) testLegacyStorage {
-	return testLegacyStorage{
+func NewTestLegacyStorage(state interface{}) runtime.LegacyStorage {
+	return &testLegacyStorage{
 		state: state,
 	}
 }

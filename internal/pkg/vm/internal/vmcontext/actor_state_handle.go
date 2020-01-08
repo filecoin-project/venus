@@ -27,10 +27,6 @@ type actorStateHandleContext interface {
 	AllowSideEffects(bool)
 }
 
-type readonlyActorStateHandleContext interface {
-	LegacyStorage() runtime.LegacyStorage
-}
-
 type readonlyContextWrapper struct {
 	store runtime.LegacyStorage
 }

@@ -26,7 +26,7 @@ func setup() testSetup {
 
 	storage := vm.NewTestLegacyStorage(initialstate)
 	ctx := fakeActorStateHandleContext{
-		storage:          &storage,
+		storage:          storage,
 		allowSideEffects: true,
 	}
 	initialhead := ctx.storage.LegacyHead()
@@ -221,7 +221,7 @@ func TestActorStateHandleNilState(t *testing.T) {
 	setup := func() (runtime.ActorStateHandle, func()) {
 		storage := vm.NewTestLegacyStorage(nil)
 		ctx := fakeActorStateHandleContext{
-			storage:          &storage,
+			storage:          storage,
 			allowSideEffects: true,
 		}
 		initialhead := ctx.storage.LegacyHead()
