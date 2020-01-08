@@ -6,9 +6,9 @@ import (
 
 // A Ticket is a marker of a tick of the blockchain's clock.  It is the source
 // of randomness for proofs of storage and leader election.  It is generated
-// by the miner of a block using a VRF and a VDF.
+// by the miner of a block using a VRF.
 type Ticket struct {
-	// A proof output by running a VRF on the VDFResult of the parent ticket
+	// A proof output by running a VRF on the VRFProof of the parent ticket
 	VRFProof VRFPi
 }
 

@@ -75,6 +75,11 @@ func TestTriangleEncoding(t *testing.T) {
 			Timestamp:               types.Uint64(1),
 			BlockSig:                []byte{0x3},
 			BLSAggregateSig:         []byte{0x3},
+			PoStPartialTickets:      [][]byte{{0x05}, {0x04}},
+			PoStSectorIDs:           []types.Uint64{types.Uint64(5), types.Uint64(3)},
+			PoStChallengeIDXs:       []types.Uint64{types.Uint64(52), types.Uint64(3000)},
+			PoStProof:               []byte{0x07},
+			PoStRandomness:          []byte{0x02, 0x06},
 		}
 		s := reflect.TypeOf(*b)
 		// This check is here to request that you add a non-zero value for new fields
@@ -82,7 +87,7 @@ func TestTriangleEncoding(t *testing.T) {
 		// Also please add non zero fields to "b" and "diff" in TestSignatureData
 		// and add a new check that different values of the new field result in
 		// different output data.
-		require.Equal(t, 14, s.NumField()) // Note: this also counts private fields
+		require.Equal(t, 19, s.NumField()) // Note: this also counts private fields
 		testRoundTrip(t, b)
 	})
 }
@@ -237,6 +242,11 @@ func TestSignatureData(t *testing.T) {
 		DeprecatedElectionProof: []byte{0x1},
 		StateRoot:               types.CidFromString(t, "somecid"),
 		Timestamp:               types.Uint64(1),
+		PoStPartialTickets:      [][]byte{{0x05}, {0x04}},
+		PoStSectorIDs:           []types.Uint64{types.Uint64(5), types.Uint64(3)},
+		PoStChallengeIDXs:       []types.Uint64{types.Uint64(52), types.Uint64(3000)},
+		PoStProof:               []byte{0x07},
+		PoStRandomness:          []byte{0x02, 0x06},
 		BlockSig:                []byte{0x3},
 	}
 
@@ -251,6 +261,11 @@ func TestSignatureData(t *testing.T) {
 		DeprecatedElectionProof: []byte{0x2},
 		StateRoot:               types.CidFromString(t, "someothercid"),
 		Timestamp:               types.Uint64(4),
+		PoStPartialTickets:      [][]byte{{0x04}, {0x05}},
+		PoStSectorIDs:           []types.Uint64{types.Uint64(0), types.Uint64(1)},
+		PoStChallengeIDXs:       []types.Uint64{types.Uint64(25), types.Uint64(3001)},
+		PoStProof:               []byte{0x17},
+		PoStRandomness:          []byte{0x12, 0x16},
 		BlockSig:                []byte{0x4},
 	}
 
@@ -375,6 +390,61 @@ func TestSignatureData(t *testing.T) {
 		defer func() { b.Timestamp = cpy }()
 
 		b.Timestamp = diff.Timestamp
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.PoStRandomness
+		defer func() { b.PoStRandomness = cpy }()
+
+		b.PoStRandomness = diff.PoStRandomness
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.PoStProof
+		defer func() { b.PoStProof = cpy }()
+
+		b.PoStProof = diff.PoStProof
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.PoStPartialTickets
+		defer func() { b.PoStPartialTickets = cpy }()
+
+		b.PoStPartialTickets = diff.PoStPartialTickets
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.PoStSectorIDs
+		defer func() { b.PoStSectorIDs = cpy }()
+
+		b.PoStSectorIDs = diff.PoStSectorIDs
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.PoStChallengeIDXs
+		defer func() { b.PoStChallengeIDXs = cpy }()
+
+		b.PoStChallengeIDXs = diff.PoStChallengeIDXs
 		after := b.SignatureData()
 		assert.False(t, bytes.Equal(before, after))
 	}()
