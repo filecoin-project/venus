@@ -24,18 +24,20 @@ import (
 
 // VM holds the state and executes messages over the state.
 type VM struct {
-	rnd          randomnessSource
-	actorImpls   actorImplLookup
+	rnd          RandomnessSource
+	actorImpls   ActorImplLookup
 	store        storage.VMStorage
 	state        *state.CachedTree
 	currentEpoch types.BlockHeight
 }
 
-type randomnessSource interface {
+// RandomnessSource provides randomness to actors.
+type RandomnessSource interface {
 	Randomness(epoch types.BlockHeight, offset uint64) runtime.Randomness
 }
 
-type actorImplLookup interface {
+// ActorImplLookup provides access to upgradeable actor code.
+type ActorImplLookup interface {
 	GetActorImpl(code cid.Cid, epoch types.BlockHeight) (dispatch.ExecutableActor, error)
 }
 
@@ -57,7 +59,7 @@ type actorStorage struct {
 }
 
 // NewVM creates a new runtime for executing messages.
-func NewVM(rnd randomnessSource, actorImpls actorImplLookup, store storage.VMStorage, st state.Tree) VM {
+func NewVM(rnd RandomnessSource, actorImpls ActorImplLookup, store storage.VMStorage, st state.Tree) VM {
 	return VM{
 		rnd:        rnd,
 		actorImpls: actorImpls,
@@ -148,9 +150,18 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 
 	// commit state
 	// flush all objects out
-	vm.store.Flush()
+	if err := vm.store.Flush(); err != nil {
+		// Review: what do we want to do with this errors?
+		//         we can change the return to be ([]Receipt, error) although its unclear what to do about it as a caller
+		//         we can just crash, or let the caller retry a few times and then crash
+		panic(err)
+	}
 	// commit new actor state
-	vm.state.Commit(context.Background())
+	if err := vm.state.Commit(context.Background()); err != nil {
+		// Review: what do we want to do with this errors?
+		//         similarly, what can the caller do?
+		panic(err)
+	}
 	// TODO: update state root (issue: #3718)
 
 	return receipts
@@ -198,7 +209,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 	gasTank := gas.NewTracker(msg.GasLimit)
 
 	// pre-send
-	// 1. charge for message existance
+	// 1. charge for message existence
 	// 2. load sender actor
 	// 3. check message seq number
 	// 4. check if _sender_ has enough funds
@@ -275,7 +286,8 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 	ctx := newInvocationContext(vm, imsg, fromActor, &gasTank)
 
 	// 3. process the msg (safely)
-	// Note: we use panics throught the execution to early terminate, we need to trap them on this top level call
+	// Note: we use panics throughout the execution to signal early termination,
+	//       we need to trap them on this top level call
 	safeProcess := func() (out message.Receipt) {
 		// trap aborts and exitcodes
 		defer func() {

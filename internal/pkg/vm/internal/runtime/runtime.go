@@ -188,11 +188,11 @@ func Assert(cond bool) {
 
 // Storage defines the storage module exposed to actors.
 type Storage interface {
-	// Put stores an object and returns its content-addresable ID.
+	// Put stores an object and returns its content-addressable ID.
 	Put(interface{}) cid.Cid
-	// Put stores an object and returns its content-addresable ID.
+	// Put stores an object and returns its content-addressable ID.
 	Get(cid cid.Cid, obj interface{}) bool
-	// CidOf returns the content-addresable ID of an object WITHOUT storing it.
+	// CidOf returns the content-addressable ID of an object WITHOUT storing it.
 	CidOf(interface{}) cid.Cid
 }
 

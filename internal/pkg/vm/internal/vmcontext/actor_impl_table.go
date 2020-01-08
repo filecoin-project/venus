@@ -12,13 +12,13 @@ type prodActorImplTable struct {
 }
 
 // NewProdActorImplTable creates a lookup table with the production implementations of actors.
-func NewProdActorImplTable() actorImplLookup {
+func NewProdActorImplTable() ActorImplLookup {
 	return &prodActorImplTable{
 		actors: builtin.DefaultActors,
 	}
 }
 
-var _ actorImplLookup = (*prodActorImplTable)(nil)
+var _ ActorImplLookup = (*prodActorImplTable)(nil)
 
 func (t *prodActorImplTable) GetActorImpl(code cid.Cid, epoch types.BlockHeight) (dispatch.ExecutableActor, error) {
 	// TODO: move the table over here, and have it support height lookup (#3360)

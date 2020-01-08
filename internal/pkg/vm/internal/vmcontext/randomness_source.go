@@ -9,11 +9,11 @@ type prodRndSource struct {
 }
 
 // NewProdRandomnessSource crates a production randomness source.
-func NewProdRandomnessSource() randomnessSource {
+func NewProdRandomnessSource() RandomnessSource {
 	return &prodRndSource{}
 }
 
-var _ randomnessSource = (*prodRndSource)(nil)
+var _ RandomnessSource = (*prodRndSource)(nil)
 
 func (*prodRndSource) Randomness(epoch types.BlockHeight, offset uint64) runtime.Randomness {
 	// TODO: implement randomness based on new spec (issue: #3717)

@@ -43,7 +43,7 @@ func (s VMStorage) WithReadCache(enabled bool) VMStorage {
 	return s
 }
 
-// Put stores object and returns it's content-addresable ID.
+// Put stores object and returns it's content-addressable ID.
 func (s *VMStorage) Put(obj interface{}) (cid.Cid, error) {
 	nd, err := s.toNode(obj)
 	if err != nil {
@@ -66,7 +66,7 @@ func (s *VMStorage) CidOf(obj interface{}) (cid.Cid, error) {
 	return nd.Cid(), nil
 }
 
-// Get loads the object based on its content-addresable ID.
+// Get loads the object based on its content-addressable ID.
 func (s *VMStorage) Get(cid cid.Cid, obj interface{}) error {
 	// attempt to read from write buffer first
 	n, ok := s.writeBuffer[cid]

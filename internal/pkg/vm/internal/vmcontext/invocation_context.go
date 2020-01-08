@@ -167,13 +167,13 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 	// send init actor msg to create the account actor
 	params := []interface{}{target}
 	targetIDAddrOpaque := ctx.Send(address.InitAddress, initactor.ExecMethodID, types.ZeroAttoFIL, params)
-	// cast reponse, interface{} -> address.Address
+	// cast response, interface{} -> address.Address
 	targetIDAddr = targetIDAddrOpaque.(address.Address)
 
 	// load actor
 	targetActor, err := ctx.rt.state.GetActor(context.Background(), targetIDAddr)
 	if err != nil {
-		panic("unreachable, exec failed to create the actor but returned succesfully")
+		panic("unreachable, exec failed to create the actor but returned successfully")
 	}
 
 	return targetActor, targetIDAddr

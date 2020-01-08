@@ -10,7 +10,7 @@ import (
 type Unit = types.GasUnits
 
 // SystemGasLimit is the maximum gas for implicit system messages.
-var SystemGasLimit = (Unit)(types.NewGasUnits(10 ^ 18))
+var SystemGasLimit = types.NewGasUnits(10 ^ 18)
 
 // Tracker maintains the state of gas usage throughout the execution of a message.
 type Tracker struct {

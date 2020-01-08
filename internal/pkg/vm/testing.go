@@ -269,7 +269,11 @@ func (ts *testStorage) Get(cid cid.Cid, obj interface{}) bool {
 		return false
 	}
 
-	encoding.Decode(node.RawData(), obj)
+	err = encoding.Decode(node.RawData(), obj)
+	if err != nil {
+		return false
+	}
+
 	return true
 }
 
