@@ -77,7 +77,6 @@ type TicketValidator interface {
 // ElectionValidator validates that an election fairly produced a winner.
 type ElectionValidator interface {
 	DeprecatedIsElectionWinner(context.Context, PowerTableView, block.Ticket, uint64, block.VRFPi, address.Address, address.Address) (bool, error)
-
 }
 
 // SnapshotGenerator produces snapshots to examine actor state

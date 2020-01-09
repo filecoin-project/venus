@@ -16,6 +16,7 @@ import (
 // proofs.
 type ElectionMachine struct{}
 
+// Dragons -- turn this pseudo code real
 // func (em ElectionMachine) GeneratePoStRandomness(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullBlockCount uint64) (block.VRFPi, error) {
 // 	seedBuf := make([]byte, binary.MaxVarintLen64)
 // 	n := binary.PutUvarint(seedBuf, nullBlockCount)
