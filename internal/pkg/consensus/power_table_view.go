@@ -83,15 +83,13 @@ func (v PowerTableView) WorkerAddr(ctx context.Context, mAddr address.Address) (
 
 // HasPower returns true if the provided address belongs to a miner with power
 // in the storage market
-func (v PowerTableView) HasPower(ctx context.Context, mAddr address.Address) bool {
+func (v PowerTableView) HasPower(ctx context.Context, mAddr address.Address) (bool, error) {
 	numBytes, err := v.Miner(ctx, mAddr)
 	if err != nil {
 		if state.IsActorNotFoundError(err) {
-			return false
+			return false, nil
 		}
-
-		panic(err) //hey guys, dropping errors is BAD
+		return false, err
 	}
-
-	return numBytes.GreaterThan(types.ZeroBytes)
+	return numBytes.GreaterThan(types.ZeroBytes), nil
 }

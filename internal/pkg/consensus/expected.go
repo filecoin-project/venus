@@ -76,7 +76,8 @@ type TicketValidator interface {
 
 // ElectionValidator validates that an election fairly produced a winner.
 type ElectionValidator interface {
-	IsElectionWinner(context.Context, PowerTableView, block.Ticket, uint64, block.VRFPi, address.Address, address.Address) (bool, error)
+	DeprecatedIsElectionWinner(context.Context, PowerTableView, block.Ticket, uint64, block.VRFPi, address.Address, address.Address) (bool, error)
+
 }
 
 // SnapshotGenerator produces snapshots to examine actor state
@@ -241,7 +242,7 @@ func (c *Expected) validateMining(
 
 		// Validate DeprecatedElectionProof
 		nullBlkCount := uint64(blk.Height) - prevHeight - 1
-		result, err := c.IsElectionWinner(ctx, pwrTableView, electionTicket, nullBlkCount, blk.DeprecatedElectionProof, workerAddr, blk.Miner)
+		result, err := c.DeprecatedIsElectionWinner(ctx, pwrTableView, electionTicket, nullBlkCount, blk.DeprecatedElectionProof, workerAddr, blk.Miner)
 		if err != nil {
 			return errors.Wrap(err, "failed checking election proof")
 		}

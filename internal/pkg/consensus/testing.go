@@ -135,13 +135,13 @@ func NewFakeProcessor(actors builtin.Actors) *DefaultProcessor {
 // FakeElectionMachine generates fake election proofs and verifies all proofs
 type FakeElectionMachine struct{}
 
-// RunElection returns a fake election proof.
-func (fem *FakeElectionMachine) RunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullCount uint64) (block.VRFPi, error) {
+// DeprecatedRunElection returns a fake election proof.
+func (fem *FakeElectionMachine) DeprecatedRunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullCount uint64) (block.VRFPi, error) {
 	return MakeFakeDeprecatedElectionProofForTest(), nil
 }
 
-// IsElectionWinner always returns true
-func (fem *FakeElectionMachine) IsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, nullCount uint64, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+// DeprecatedIsElectionWinner always returns true
+func (fem *FakeElectionMachine) DeprecatedIsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, nullCount uint64, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
 	return true, nil
 }
 
@@ -169,8 +169,8 @@ func (ftv *FailingTicketValidator) IsValidTicket(parent, ticket block.Ticket, si
 // FailingElectionValidator marks all elections as invalid
 type FailingElectionValidator struct{}
 
-// IsElectionWinner always returns false
-func (fev *FailingElectionValidator) IsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, nullCount uint64, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+// DeprecatedIsElectionWinner always returns false
+func (fev *FailingElectionValidator) DeprecatedIsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, nullCount uint64, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
 	return false, nil
 }
 
@@ -218,10 +218,10 @@ func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, minerPower
 
 	for {
 		// does it win at n rounds?
-		proof, err := em.RunElection(curr, wAddr, signer, uint64(n))
+		proof, err := em.DeprecatedRunElection(curr, wAddr, signer, uint64(n))
 		require.NoError(t, err)
 
-		wins, err := em.IsElectionWinner(ctx, ptv, curr, uint64(n), proof, wAddr, wAddr)
+		wins, err := em.DeprecatedIsElectionWinner(ctx, ptv, curr, uint64(n), proof, wAddr, wAddr)
 		require.NoError(t, err)
 		if wins {
 			// does it have no wins before n rounds?
@@ -245,10 +245,10 @@ func losesAllRounds(t *testing.T, n int, ticket block.Ticket, wAddr address.Addr
 }
 
 func losesAtRound(t *testing.T, n int, ticket block.Ticket, wAddr address.Address, signer types.Signer, ptv PowerTableView, em ElectionMachine) bool {
-	proof, err := em.RunElection(ticket, wAddr, signer, uint64(n))
+	proof, err := em.DeprecatedRunElection(ticket, wAddr, signer, uint64(n))
 	require.NoError(t, err)
 
-	wins, err := em.IsElectionWinner(context.Background(), ptv, ticket, uint64(n), proof, wAddr, wAddr)
+	wins, err := em.DeprecatedIsElectionWinner(context.Background(), ptv, ticket, uint64(n), proof, wAddr, wAddr)
 	require.NoError(t, err)
 	return !wins
 }
@@ -311,14 +311,14 @@ func NewMockElectionMachine(f func(block.Ticket)) *MockElectionMachine {
 	return &MockElectionMachine{fn: f}
 }
 
-// RunElection calls the registered callback and returns a fake proof
-func (mem *MockElectionMachine) RunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullCount uint64) (block.VRFPi, error) {
+// DeprecatedRunElection calls the registered callback and returns a fake proof
+func (mem *MockElectionMachine) DeprecatedRunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullCount uint64) (block.VRFPi, error) {
 	mem.fn(ticket)
 	return MakeFakeDeprecatedElectionProofForTest(), nil
 }
 
-// IsElectionWinner calls the registered callback and returns true
-func (mem *MockElectionMachine) IsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, nullCount uint64, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+// DeprecatedIsElectionWinner calls the registered callback and returns true
+func (mem *MockElectionMachine) DeprecatedIsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, nullCount uint64, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
 	mem.fn(ticket)
 	return true, nil
 }

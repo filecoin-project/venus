@@ -36,7 +36,7 @@ func makeCases(t *testing.T, ki *types.KeyInfo, signer types.Signer) []electionC
 	totalPower1 := uint64(42)
 	nonce1 := uint64(0)
 	t1 := consensus.SeedFirstWinnerInNRounds(t, int(nonce1), ki, minerPower1, totalPower1)
-	ep1, err := em.RunElection(t1, requireAddress(t, ki), signer, nonce1)
+	ep1, err := em.DeprecatedRunElection(t1, requireAddress(t, ki), signer, nonce1)
 	require.NoError(t, err)
 	case1 := electionCase{
 		ticket:        t1,
@@ -51,7 +51,7 @@ func makeCases(t *testing.T, ki *types.KeyInfo, signer types.Signer) []electionC
 	totalPower2 := uint64(42)
 	nonce2 := uint64(0)
 	t2 := consensus.SeedLoserInNRounds(t, int(nonce2), ki, minerPower2, totalPower2)
-	ep2, err := em.RunElection(t1, requireAddress(t, ki), signer, nonce2)
+	ep2, err := em.DeprecatedRunElection(t1, requireAddress(t, ki), signer, nonce2)
 	require.NoError(t, err)
 	case2 := electionCase{
 		ticket:        t2,
@@ -66,7 +66,7 @@ func makeCases(t *testing.T, ki *types.KeyInfo, signer types.Signer) []electionC
 	totalPower3 := uint64(3)
 	nonce3 := uint64(0)
 	t3 := consensus.SeedFirstWinnerInNRounds(t, int(nonce3), ki, minerPower3, totalPower3)
-	ep3, err := em.RunElection(t3, requireAddress(t, ki), signer, nonce3)
+	ep3, err := em.DeprecatedRunElection(t3, requireAddress(t, ki), signer, nonce3)
 	require.NoError(t, err)
 	ep3[len(ep3)-1] ^= 0xFF // flip bits
 	case3 := electionCase{
@@ -82,7 +82,7 @@ func makeCases(t *testing.T, ki *types.KeyInfo, signer types.Signer) []electionC
 	totalPower4 := uint64(3)
 	nonce4 := uint64(0)
 	t4 := consensus.SeedLoserInNRounds(t, int(nonce4), ki, minerPower4, totalPower4)
-	ep4, err := em.RunElection(t4, requireAddress(t, ki), signer, nonce4)
+	ep4, err := em.DeprecatedRunElection(t4, requireAddress(t, ki), signer, nonce4)
 	require.NoError(t, err)
 	ep4[0] = 0xFF           // This proof only wins with > 1/2 total power in the system
 	ep4[len(ep4)-1] ^= 0xFF // ensure ep4 has changed
@@ -98,7 +98,7 @@ func makeCases(t *testing.T, ki *types.KeyInfo, signer types.Signer) []electionC
 	return []electionCase{case1, case2, case3, case4}
 }
 
-func TestIsElectionWinner(t *testing.T) {
+func TestDeprecatedIsElectionWinner(t *testing.T) {
 	tf.UnitTest(t)
 
 	signer, kis := types.NewMockSignersAndKeyInfo(1)
@@ -107,19 +107,19 @@ func TestIsElectionWinner(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("IsElectionWinner performs as expected on cases", func(t *testing.T) {
+	t.Run("DeprecatedIsElectionWinner performs as expected on cases", func(t *testing.T) {
 		minerToWorker := map[address.Address]address.Address{minerAddress: minerAddress}
 		for _, c := range cases {
 			ptv := consensus.NewFakePowerTableView(types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower), minerToWorker)
-			r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, ptv, c.ticket, c.nonce, c.electionProof, minerAddress, minerAddress)
+			r, err := consensus.ElectionMachine{}.DeprecatedIsElectionWinner(ctx, ptv, c.ticket, c.nonce, c.electionProof, minerAddress, minerAddress)
 			assert.NoError(t, err)
 			assert.Equal(t, c.wins, r, "%+v", c)
 		}
 	})
 
-	t.Run("IsElectionWinner returns false + error when we fail to get total power", func(t *testing.T) {
+	t.Run("DeprecatedIsElectionWinner returns false + error when we fail to get total power", func(t *testing.T) {
 		ptv1 := consensus.NewPowerTableView(&consensus.FakePowerTableViewSnapshot{MinerPower: types.NewBytesAmount(cases[0].myPower)})
-		r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, ptv1, cases[0].ticket, cases[0].nonce, cases[0].electionProof, minerAddress, minerAddress)
+		r, err := consensus.ElectionMachine{}.DeprecatedIsElectionWinner(ctx, ptv1, cases[0].ticket, cases[0].nonce, cases[0].electionProof, minerAddress, minerAddress)
 		assert.False(t, r)
 		require.Error(t, err)
 		assert.Equal(t, err.Error(), "Couldn't get totalPower: something went wrong with the total power")
@@ -128,23 +128,23 @@ func TestIsElectionWinner(t *testing.T) {
 
 	t.Run("IsWinningTicket returns false + error when we fail to get miner power", func(t *testing.T) {
 		ptv2 := consensus.NewPowerTableView(&consensus.FakePowerTableViewSnapshot{TotalPower: types.NewBytesAmount(cases[0].totalPower)})
-		r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, ptv2, cases[0].ticket, cases[0].nonce, cases[0].electionProof, minerAddress, minerAddress)
+		r, err := consensus.ElectionMachine{}.DeprecatedIsElectionWinner(ctx, ptv2, cases[0].ticket, cases[0].nonce, cases[0].electionProof, minerAddress, minerAddress)
 		assert.False(t, r)
 		require.Error(t, err)
 		assert.Equal(t, err.Error(), "Couldn't get minerPower: something went wrong with the miner power")
 	})
 }
 
-func TestRunElection(t *testing.T) {
+func TestDeprecatedRunElection(t *testing.T) {
 	signer, kis := types.NewMockSignersAndKeyInfo(1)
 	electionAddr := requireAddress(t, &kis[0])
 
-	electionProof, err := consensus.ElectionMachine{}.RunElection(consensus.MakeFakeTicketForTest(), electionAddr, signer, 0)
+	electionProof, err := consensus.ElectionMachine{}.DeprecatedRunElection(consensus.MakeFakeTicketForTest(), electionAddr, signer, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 65, len(electionProof))
 }
 
-func TestCompareElectionPower(t *testing.T) {
+func TestDeprecatedCompareElectionPower(t *testing.T) {
 	tf.UnitTest(t)
 
 	cases := []struct {
@@ -169,7 +169,7 @@ func TestCompareElectionPower(t *testing.T) {
 	for _, c := range cases {
 		ep := make([]byte, 65)
 		ep[0] = c.electionProof
-		res := consensus.CompareElectionPower(ep, types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower))
+		res := consensus.DeprecatedCompareElectionPower(ep, types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower))
 		assert.Equal(t, c.wins, res, "%+v", c)
 	}
 }
@@ -221,7 +221,7 @@ func TestElectionFailsWithInvalidSigner(t *testing.T) {
 	parent := block.Ticket{VRFProof: block.VRFPi{0xbb}}
 	signer, _ := types.NewMockSignersAndKeyInfo(1)
 	badAddress := address.TestAddress
-	ep, err := consensus.ElectionMachine{}.RunElection(parent, badAddress, signer, 0)
+	ep, err := consensus.ElectionMachine{}.DeprecatedRunElection(parent, badAddress, signer, 0)
 	assert.Error(t, err)
 	assert.Equal(t, block.VRFPi{}, ep)
 }
