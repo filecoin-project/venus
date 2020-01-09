@@ -4,3 +4,6 @@
 [submodule "vendors/go-sectorbuilder"]
 	path = vendors/go-sectorbuilder
 	url = https://github.com/filecoin-project/go-sectorbuilder.git
+[submodule "vendors/filecoin-ffi"]
+	path = vendors/filecoin-ffi
+	url = https://github.com/filecoin-project/filecoin-ffi.git

@@ -126,6 +126,7 @@ func deps() {
 		cmd("./scripts/install-go-bls-sigs.sh"),
 		cmd("./scripts/install-go-sectorbuilder.sh"),
 		cmd("./scripts/install-filecoin-parameters.sh"),
+		cmd("./scripts/install-filecoin-ffi.sh"),
 	}
 
 	for _, c := range cmds {
