@@ -6,11 +6,10 @@ import (
 )
 
 // Unit is the unit of gas.
-// Dragons: move the gasunits to be defined here.
 type Unit = types.GasUnits
 
 // SystemGasLimit is the maximum gas for implicit system messages.
-var SystemGasLimit = types.NewGasUnits(10 ^ 18)
+var SystemGasLimit = types.NewGasUnits(uint64(10) ^ uint64(18))
 
 // Tracker maintains the state of gas usage throughout the execution of a message.
 type Tracker struct {
@@ -31,15 +30,13 @@ func NewTracker(limit Unit) Tracker {
 // WARNING: this method will panic if there is no sufficient gas left.
 func (t *Tracker) Charge(amount Unit) {
 	if ok := t.TryCharge(amount); !ok {
-		panic(exitcode.OutOfGas)
+		exitcode.AbortWithCode(exitcode.OutOfGas)
 	}
 }
 
-// TryCharge will add the gas charge to the current method gas context.
+// TryCharge charges `amount` or `RemainingGas()``, whichever is smaller.
 //
-// This method returns `True` if the there was enough gas.
-//
-// Note: this method will Zero out the gas when it returns `False`.
+// Returns `True` if the there was enough gas to pay for `amount`.
 func (t *Tracker) TryCharge(amount Unit) bool {
 	// check for limit
 	if t.gasConsumed+amount > t.gasLimit {

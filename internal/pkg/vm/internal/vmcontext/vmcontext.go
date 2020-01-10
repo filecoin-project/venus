@@ -236,7 +236,7 @@ func apply(ctx *VMContext) interface{} {
 			runtime.Abort("Can not transfer negative FIL value")
 		}
 		if err := Transfer(ctx.from, ctx.to, filValue); err != nil {
-			panic(exitcode.InsufficientFunds)
+			exitcode.AbortWithCode(exitcode.InsufficientFunds)
 		}
 	}
 
@@ -257,12 +257,12 @@ func apply(ctx *VMContext) interface{} {
 	// TODO: use chain height based protocol version here (#3360)
 	toExecutable, err := ctx.Actors().GetActorCode(ctx.To().Code, 0)
 	if err != nil {
-		panic(exitcode.ActorCodeNotFound)
+		exitcode.AbortWithCode(exitcode.ActorCodeNotFound)
 	}
 
 	exportedFn, ok := makeTypedExport(toExecutable, msg.Method)
 	if !ok {
-		panic(exitcode.InvalidMethod)
+		exitcode.AbortWithCode(exitcode.InvalidMethod)
 	}
 
 	vals, code, err := exportedFn(ctx)

@@ -299,8 +299,9 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 					// Review: abort has a msg inside.. should we log it or what?
 					out = message.Failure(exitcode.MethodAbort).WithGas(gasTank.GasConsumed())
 					return
-				case exitcode.ExitCode:
-					out = message.Failure(r.(exitcode.ExitCode)).WithGas(gasTank.GasConsumed())
+				case exitcode.Panic:
+					aux := r.(exitcode.Panic)
+					out = message.Failure(aux.Code()).WithGas(gasTank.GasConsumed())
 					return
 				default:
 					// Review: how do we rethrow while maintaining call stack?
@@ -407,7 +408,7 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 func (vm *VM) getActorImpl(code cid.Cid) dispatch.ExecutableActor {
 	actorImpl, err := vm.actorImpls.GetActorImpl(code, vm.currentEpoch)
 	if err != nil {
-		panic(exitcode.ActorCodeNotFound)
+		exitcode.AbortWithCode(exitcode.ActorCodeNotFound)
 	}
 	return actorImpl
 }

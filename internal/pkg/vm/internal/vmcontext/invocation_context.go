@@ -57,26 +57,29 @@ func (ctx *stateHandleContext) LegacyStorage() runtime.LegacyStorage {
 func (ctx *invocationContext) invoke() interface{} {
 	// pre-dispatch
 	// 1. charge gas for message invocation
-	// 2. transfer optional funds
-	// 3. short-circuit _Send_ method
-	// 4. load target actor
+	// 2. load target actor
+	// 3. transfer optional funds
+	// 4. short-circuit _Send_ method
 	// 5. load target actor code
 	// 6. create target state handle
+
+	// Dragons: assert from address is an id address.
+	// TODO: move the resolve target outisde, assert the to address is an id address.
 
 	// 1. charge gas for msg
 	ctx.gasTank.Charge(gascost.OnMethodInvocation(&ctx.msg))
 
-	// 2. transfer funds carried by the msg
+	// 2. load target actor
+	// Note: we replace the "to" address with the normalized version
+	ctx.toActor, ctx.msg.to = ctx.resolveTarget(ctx.msg.to)
+
+	// 3. transfer funds carried by the msg
 	ctx.rt.transfer(ctx.msg.from, ctx.msg.to, ctx.msg.value)
 
-	// 3. if we are just sending funds, there is nothing else to do.
+	// 4. if we are just sending funds, there is nothing else to do.
 	if ctx.msg.method == types.SendMethodID {
 		return message.Ok().WithGas(ctx.gasTank.GasConsumed())
 	}
-
-	// 4. load target actor
-	// Note: we replace the "to" address with the normalized version
-	ctx.toActor, ctx.msg.to = ctx.resolveTarget(ctx.msg.to)
 
 	// 5. load target actor code
 	// TODO: use chain height based protocol version here (#3360)
@@ -87,19 +90,19 @@ func (ctx *invocationContext) invoke() interface{} {
 	ctx.stateHandle = &stateHandle
 
 	// dispatch
-	// 2. check method exists
-	// 3. invoke method on actor
+	// 1. check method exists
+	// 2. invoke method on actor
 
-	// 2. check method exists
+	// 1. check method exists
 	exportedFn, ok := makeTypedExport(actorImpl, ctx.msg.method)
 	if !ok {
-		panic(exitcode.InvalidMethod)
+		exitcode.AbortWithCode(exitcode.InvalidMethod)
 	}
 
-	// 3. invoke method on actor
+	// 2. invoke method on actor
 	vals, code, err := exportedFn(ctx)
 
-	// Handle legacy errors and codes
+	// handle legacy errors and codes
 	if err != nil {
 		runtime.Abort("Legacy actor code returned an error")
 	}
@@ -161,7 +164,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 
 	if !target.IsPubKey() {
 		// Don't implicitly create an account actor for an address without an associated key.
-		panic(exitcode.ActorNotFound)
+		exitcode.AbortWithCode(exitcode.ActorNotFound)
 	}
 
 	// send init actor msg to create the account actor

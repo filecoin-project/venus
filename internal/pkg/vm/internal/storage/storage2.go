@@ -37,10 +37,9 @@ func NewStorage(bs blockstore.Blockstore) VMStorage {
 	}
 }
 
-// WithReadCache enable/disables the read chache.
-func (s VMStorage) WithReadCache(enabled bool) VMStorage {
+// SetReadCache enable/disables the read chache.
+func (s *VMStorage) SetReadCache(enabled bool) {
 	s.readCacheEnabled = enabled
-	return s
 }
 
 // Put stores object and returns it's content-addressable ID.
