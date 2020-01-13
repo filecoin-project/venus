@@ -2,6 +2,7 @@ package vmcontext
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
@@ -139,7 +140,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 	// resolve the target address via the InitActor, and attempt to load state.
 	initActorEntry, err := ctx.rt.state.GetActor(context.Background(), address.InitAddress)
 	if err != nil {
-		panic("init actor not found")
+		panic(fmt.Errorf("init actor not found. %s", err))
 	}
 
 	// build state handle
@@ -176,7 +177,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 	// load actor
 	targetActor, err := ctx.rt.state.GetActor(context.Background(), targetIDAddr)
 	if err != nil {
-		panic("unreachable, exec failed to create the actor but returned successfully")
+		panic(fmt.Errorf("unreachable: exec failed to create the actor but returned successfully. %s", err))
 	}
 
 	return targetActor, targetIDAddr
@@ -238,7 +239,7 @@ func (ctx *invocationContext) Send(to address.Address, method types.MethodID, va
 	encodedParams, err := abi.ToEncodedValues(params...)
 	if err != nil {
 		// Review: should this be a recoverable or unrecoverable panic?
-		panic("failed to encode params")
+		panic(fmt.Errorf("failed to encode params. %s", err))
 	}
 	newMsg := internalMessage{
 		from:   from,
@@ -283,7 +284,6 @@ var _ runtime.ExtendedInvocationContext = (*invocationContext)(nil)
 /// CreateActor implements runtime.ExtendedInvocationContext.
 func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address {
 	// Dragons: code it over, there were some changes in spec, revise
-	panic("byteme")
 }
 
 /// VerifySignature implements runtime.ExtendedInvocationContext.

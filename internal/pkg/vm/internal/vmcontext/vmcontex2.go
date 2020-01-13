@@ -3,6 +3,7 @@ package vmcontext
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
@@ -312,7 +313,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 			if r := recover(); r == nil {
 				switch r.(type) {
 				case runtime.AbortPanicError:
-					// Review: abort has a msg inside.. should we log it or what?
+					// Dragons: log the message
 					out = message.Failure(exitcode.MethodAbort).WithGas(gasTank.GasConsumed())
 					return
 				case exitcode.Panic:
@@ -320,7 +321,6 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 					out = message.Failure(aux.Code()).WithGas(gasTank.GasConsumed())
 					return
 				default:
-					// Review: how do we rethrow while maintaining call stack?
 					panic(r)
 				}
 			}
@@ -362,10 +362,9 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 }
 
 func (vm *VM) getMinerOwner(minerAddr address.Address) address.Address {
-	// resolve the target address via the InitActor, and attempt to load state.
 	minerActorEntry, err := vm.state.GetActor(context.Background(), minerAddr)
 	if err != nil {
-		panic("unreachable")
+		panic(fmt.Errorf("unreachable. %s", err))
 	}
 
 	// build state handle
@@ -400,7 +399,7 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 	// retrieve debit account
 	fromActor, err := vm.state.GetActor(ctx, debitFrom)
 	if err != nil {
-		panic("unreachable: debit account not found")
+		panic(fmt.Errorf("unreachable: debit account not found. %s", err))
 	}
 
 	// check that account has enough balance for transfer
@@ -411,7 +410,7 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 	// retrieve credit account
 	toActor, err := vm.state.GetActor(ctx, creditTo)
 	if err != nil {
-		panic("unreachable: credit account not found")
+		panic(fmt.Errorf("unreachable: credit account not found. %s", err))
 	}
 
 	// move funds
@@ -485,7 +484,7 @@ var _ runtime.Storage = (*actorStorage)(nil)
 func (s actorStorage) Put(obj interface{}) cid.Cid {
 	cid, err := s.inner.Put(obj)
 	if err != nil {
-		panic("could not put object in store")
+		panic(fmt.Errorf("could not put object in store. %s", err))
 	}
 	return cid
 }
@@ -493,7 +492,7 @@ func (s actorStorage) Put(obj interface{}) cid.Cid {
 func (s actorStorage) CidOf(obj interface{}) cid.Cid {
 	cid, err := s.inner.CidOf(obj)
 	if err != nil {
-		panic("could not calculate cid for obj")
+		panic(fmt.Errorf("could not calculate cid for obj. %s", err))
 	}
 	return cid
 }
@@ -504,7 +503,7 @@ func (s actorStorage) Get(cid cid.Cid, obj interface{}) bool {
 		return false
 	}
 	if err != nil {
-		panic("could not get obj from store")
+		panic(fmt.Errorf("could not get obj from store. %s", err))
 	}
 	return true
 }
@@ -536,7 +535,7 @@ func makeBlockRewardMessage(blockMiner address.Address, penalty types.AttoFIL) i
 	params := []interface{}{blockMiner, penalty}
 	encoded, err := abi.ToEncodedValues(params...)
 	if err != nil {
-		panic("failed to encode built-in block reward")
+		panic(fmt.Errorf("failed to encode built-in block reward. %s", err))
 	}
 	return internalMessage{
 		miner:  blockMiner,
