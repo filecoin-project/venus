@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-bls-sigs"
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"

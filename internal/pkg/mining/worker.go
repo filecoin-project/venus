@@ -8,6 +8,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -17,14 +21,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	sector "github.com/filecoin-project/go-sectorbuilder"
 )
 
 var log = logging.Logger("mining")
@@ -82,9 +84,9 @@ type workerPorcelainAPI interface {
 
 type electionUtil interface {
 	GeneratePoStRandomness(block.Ticket, address.Address, types.Signer, uint64) ([]byte, error)
-	GenerateCandidates([]byte, sector.SortedSectorInfo, *proofs.ElectionPoster) ([]block.EPoStCandidate, error)
-	GeneratePoSt(sector.SortedSectorInfo, []byte, []block.EPoStCandidate, *proofs.ElectionPoster) ([]byte, error)
-	CandidateWins([]byte, *proofs.ElectionPoster, uint64, uint64, uint64, uint64) bool
+	GenerateCandidates([]byte, ffi.SortedPublicSectorInfo, postgenerator.PoStGenerator) ([]ffi.Candidate, error)
+	GeneratePoSt(ffi.SortedPublicSectorInfo, []byte, []ffi.Candidate, postgenerator.PoStGenerator) ([]byte, error)
+	CandidateWins([]byte, uint64, uint64, uint64, uint64) bool
 }
 
 // ticketGenerator creates tickets.
@@ -116,7 +118,7 @@ type DefaultWorker struct {
 	messageStore  chain.MessageWriter // nolint: structcheck
 	blockstore    blockstore.Blockstore
 	clock         clock.Clock
-	poster        *proofs.ElectionPoster
+	poster        postgenerator.PoStGenerator
 }
 
 // WorkerParameters use for NewDefaultWorker parameters
@@ -141,7 +143,7 @@ type WorkerParameters struct {
 	MessageStore  chain.MessageWriter
 	Blockstore    blockstore.Blockstore
 	Clock         clock.Clock
-	Poster        *proofs.ElectionPoster
+	Poster        postgenerator.PoStGenerator
 }
 
 // NewDefaultWorker instantiates a new Worker.
@@ -241,7 +243,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		return
 	}
 	// Generate election post candidates
-	done := make(chan []block.EPoStCandidate)
+	done := make(chan []ffi.Candidate)
 	errCh := make(chan error)
 	go func() {
 		defer close(done)
@@ -253,7 +255,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		}
 		done <- candidates
 	}()
-	var candidates []block.EPoStCandidate
+	var candidates []ffi.Candidate
 	select {
 	case <-ctx.Done():
 		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base, "nullBlocks", nullBlkCount)
@@ -285,11 +287,11 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		return
 	}
 	hasher := hasher.NewHasher()
-	var winners []block.EPoStCandidate
+	var winners []ffi.Candidate
 	for _, candidate := range candidates {
-		hasher.Bytes(candidate.PartialTicket)
+		hasher.Bytes(candidate.PartialTicket[:])
 		challengeTicket := hasher.Hash()
-		if w.election.CandidateWins(challengeTicket, w.poster, sectorNum, 0, networkPower.Uint64(), sectorSize.Uint64()) {
+		if w.election.CandidateWins(challengeTicket, sectorNum, 0, networkPower.Uint64(), sectorSize.Uint64()) {
 			winners = append(winners, candidate)
 		}
 	}
@@ -325,7 +327,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		post = postOut
 	}
 
-	postInfo := block.NewEPoStInfo(post, postRandomness, winners...)
+	postInfo := block.NewEPoStInfo(post, postRandomness, block.FromFFICandidates(winners...)...)
 
 	next, err := w.Generate(ctx, base, nextTicket, nullBlkCount, postInfo)
 	if err == nil {

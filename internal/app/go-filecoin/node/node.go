@@ -6,10 +6,13 @@ import (
 	"os"
 	"reflect"
 	"runtime"
-	"time"
 
+	a2 "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-sectorbuilder"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
+	ds "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -17,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/internal/submodule"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -27,14 +31,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	mining_protocol "github.com/filecoin-project/go-filecoin/internal/pkg/protocol/mining"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/retrieval"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
+
+	// TODO: replace this with go-address module #3719
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	vmerr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 )
@@ -77,7 +80,7 @@ type Node struct {
 	chain         submodule.ChainSubmodule
 	syncer        submodule.SyncerSubmodule
 	BlockMining   submodule.BlockMiningSubmodule
-	SectorStorage submodule.SectorBuilderSubmodule
+	StorageMining *submodule.StorageMiningSubmodule
 
 	//
 	// Supporting services
@@ -86,6 +89,7 @@ type Node struct {
 	Wallet            submodule.WalletSubmodule
 	Messaging         submodule.MessagingSubmodule
 	StorageNetworking submodule.StorageNetworkingSubmodule
+	ProofVerification submodule.ProofVerificationSubmodule
 
 	//
 	// Protocols
@@ -113,7 +117,7 @@ func (node *Node) Start(ctx context.Context) error {
 
 	// Only set these up if there is a miner configured.
 	if _, err := node.MiningAddress(); err == nil {
-		if err := node.setupSectorBuilder(ctx); err != nil {
+		if err := node.setupStorageMining(ctx); err != nil {
 			log.Errorf("setup mining failed: %v", err)
 			return err
 		}
@@ -125,7 +129,8 @@ func (node *Node) Start(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to set up protocols:")
 	}
-	node.RetrievalProtocol.RetrievalMiner = retrieval.NewMiner(node)
+	// DRAGONS: uncomment when we have retrieval market integration
+	//node.RetrievalProtocol.RetrievalMiner = retrieval.NewMiner()
 
 	var syncCtx context.Context
 	syncCtx, node.syncer.CancelChainSync = context.WithCancel(context.Background())
@@ -217,17 +222,6 @@ func (node *Node) setupHeartbeatServices(ctx context.Context) error {
 	return nil
 }
 
-func (node *Node) setupSectorBuilder(ctx context.Context) error {
-	// initialize a sector builder
-	sectorBuilder, err := initSectorBuilderForNode(ctx, node)
-	if err != nil {
-		return errors.Wrap(err, "failed to initialize sector builder")
-	}
-	node.SectorStorage.SectorBuilder = sectorBuilder
-
-	return nil
-}
-
 func (node *Node) setIsMining(isMining bool) {
 	node.BlockMining.Mining.Lock()
 	defer node.BlockMining.Mining.Unlock()
@@ -282,12 +276,6 @@ func (node *Node) handleNewChainHeads(ctx context.Context, prevHead block.TipSet
 			if err := handler.HandleNewHead(ctx, newHead); err != nil {
 				log.Error(err)
 			}
-
-			if node.StorageProtocol.StorageMiner != nil {
-				if _, err := node.StorageProtocol.StorageMiner.OnNewHeaviestTipSet(newHead); err != nil {
-					log.Error(err)
-				}
-			}
 		case <-ctx.Done():
 			return
 		}
@@ -318,11 +306,11 @@ func (node *Node) Stop(ctx context.Context) {
 	node.cancelSubscriptions()
 	node.chain.ChainReader.Stop()
 
-	if node.SectorBuilder() != nil {
-		if err := node.SectorBuilder().Close(); err != nil {
-			fmt.Printf("error closing sector builder: %s\n", err)
+	if node.StorageMining != nil {
+		if err := node.StorageMining.Stop(ctx); err != nil {
+			fmt.Printf("error stopping storage miner: %s\n", err)
 		}
-		node.SectorStorage.SectorBuilder = nil
+		node.StorageMining = nil
 	}
 
 	if err := node.Host().Close(); err != nil {
@@ -379,9 +367,9 @@ func (node *Node) SetupMining(ctx context.Context) error {
 		return errors.Wrap(err, "failed to get miner actor")
 	}
 
-	// ensure we have a sector builder
-	if node.SectorBuilder() == nil {
-		if err := node.setupSectorBuilder(ctx); err != nil {
+	// ensure we've got our storage mining submodule configured
+	if node.StorageMining == nil {
+		if err := node.setupStorageMining(ctx); err != nil {
 			return err
 		}
 	}
@@ -393,14 +381,62 @@ func (node *Node) SetupMining(ctx context.Context) error {
 		}
 	}
 
-	// ensure we have a storage miner
-	if node.StorageProtocol.StorageMiner == nil {
-		storageMiner, err := initStorageMinerForNode(ctx, node)
-		if err != nil {
-			return errors.Wrap(err, "failed to initialize storage miner")
-		}
-		node.StorageProtocol.StorageMiner = storageMiner
+	return nil
+}
+
+func (node *Node) setupStorageMining(ctx context.Context) error {
+	if node.StorageMining != nil {
+		return errors.New("storage mining submodule has already been initialized")
 	}
+
+	minerAddr, err := node.MiningAddress()
+	if err != nil {
+		return err
+	}
+
+	sectorSize, err := node.PorcelainAPI.MinerGetSectorSize(ctx, minerAddr)
+	if err != nil {
+		return err
+	}
+
+	minerAddr2, err := a2.NewFromBytes(minerAddr.Bytes())
+	if err != nil {
+		return err
+	}
+
+	repoPath, err := node.Repo.Path()
+	if err != nil {
+		return err
+	}
+
+	sectorDir, err := paths.GetSectorPath(node.Repo.Config().SectorBase.RootDir, repoPath)
+	if err != nil {
+		return err
+	}
+
+	sectorBuilder, err := sectorbuilder.New(&sectorbuilder.Config{
+		SectorSize:    sectorSize.Uint64(),
+		Miner:         minerAddr2,
+		WorkerThreads: 1,
+		Dir:           sectorDir,
+	}, namespace.Wrap(node.Repo.Datastore(), ds.NewKey("/sectorbuilder")))
+	if err != nil {
+		return err
+	}
+
+	workerAddr, err := node.PorcelainAPI.MinerGetWorkerAddress(ctx, minerAddr, node.Chain().ChainReader.GetHead())
+	if err != nil {
+		return err
+	}
+
+	waiter := msg.NewWaiter(node.chain.ChainReader, node.chain.MessageStore, node.Blockstore.Blockstore, node.Blockstore.CborStore)
+
+	sub, err := submodule.NewStorageMiningSubmodule(minerAddr, workerAddr, node.Repo.Datastore(), sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet)
+	if err != nil {
+		return err
+	}
+
+	node.StorageMining = &sub
 
 	return nil
 }
@@ -434,7 +470,7 @@ func (node *Node) doMiningPause(ctx context.Context) {
 }
 
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
-// the SectorBuilder for the mining address.
+// the StorageMining for the mining address.
 func (node *Node) StartMining(ctx context.Context) error {
 	if node.IsMining() {
 		return errors.New("Node is already mining")
@@ -443,16 +479,6 @@ func (node *Node) StartMining(ctx context.Context) error {
 	err := node.SetupMining(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to setup mining")
-	}
-
-	minerAddr, err := node.MiningAddress()
-	if err != nil {
-		return errors.Wrap(err, "failed to get mining address")
-	}
-
-	minerOwnerAddr, err := node.PorcelainAPI.MinerGetOwnerAddress(ctx, minerAddr)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get mining owner address for miner %s", minerAddr)
 	}
 
 	if node.BlockMining.MiningScheduler == nil {
@@ -471,171 +497,13 @@ func (node *Node) StartMining(ctx context.Context) error {
 	node.BlockMining.MiningDoneWg.Add(1)
 	go node.handleNewMiningOutput(miningCtx, outCh)
 
-	// loop, turning sealing-results into commitSector messages to be included
-	// in the chain
-	go func() {
-		for {
-			select {
-			case result := <-node.SectorBuilder().SectorSealResults():
-				if result.SealingErr != nil {
-					log.Errorf("failed to seal sector with id %d: %s", result.SectorID, result.SealingErr.Error())
-				} else if result.SealingResult != nil {
-
-					// TODO: determine these algorithmically by simulating call and querying historical prices
-					gasPrice := types.NewGasPrice(1)
-					gasUnits := types.NewGasUnits(300)
-
-					val := result.SealingResult
-
-					// look up miner worker address. If this fails, something is really wrong
-					// so we bail and don't commit sectors.
-					workerAddr, err := node.PorcelainAPI.MinerGetWorkerAddress(miningCtx, minerAddr, node.chain.ChainReader.GetHead())
-					if err != nil {
-						log.Errorf("failed to get worker address %s", err)
-						continue
-					}
-
-					// This call can fail due to, e.g. nonce collisions. Our miners existence depends on this.
-					// We should deal with this, but MessageSendWithRetry is problematic.
-					msgCid, _, err := node.PorcelainAPI.MessageSend(
-						miningCtx,
-						workerAddr,
-						minerAddr,
-						types.ZeroAttoFIL,
-						gasPrice,
-						gasUnits,
-						miner.CommitSector,
-						val.SectorID,
-						val.CommD[:],
-						val.CommR[:],
-						val.CommRStar[:],
-						val.Proof[:],
-					)
-
-					if err != nil {
-						log.Errorf("failed to send commitSector message from %s to %s for sector with id %d: %s", minerOwnerAddr, minerAddr, val.SectorID, err)
-						continue
-					}
-
-					node.StorageProtocol.StorageMiner.OnCommitmentSent(val, msgCid, nil)
-				}
-			case <-miningCtx.Done():
-				return
-			}
-		}
-	}()
-
-	// schedules sealing of staged piece-data
-	if node.Repo.Config().Mining.AutoSealIntervalSeconds > 0 {
-		go func() {
-			for {
-				select {
-				case <-miningCtx.Done():
-					return
-				case <-time.After(time.Duration(node.Repo.Config().Mining.AutoSealIntervalSeconds) * time.Second):
-					log.Info("auto-seal has been triggered")
-					if err := node.SectorBuilder().SealAllStagedSectors(miningCtx); err != nil {
-						log.Errorf("scheduler received error from node.SectorStorage.SectorBuilder.SealAllStagedSectors (%s) - exiting", err.Error())
-						return
-					}
-				}
-			}
-		}()
-	} else {
-		log.Debug("auto-seal is disabled")
+	if err := node.StorageMining.Start(ctx); err != nil {
+		fmt.Printf("error starting storage miner: %s\n", err)
 	}
+
 	node.setIsMining(true)
 
 	return nil
-}
-
-func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.SectorBuilder, error) {
-	minerAddr, err := node.MiningAddress()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get node's mining address")
-	}
-
-	sectorSize, err := node.PorcelainAPI.MinerGetSectorSize(ctx, minerAddr)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get sector size for miner w/address %s", minerAddr.String())
-	}
-
-	lastUsedSectorID, err := node.PorcelainAPI.MinerGetLastCommittedSectorID(ctx, minerAddr)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get last used sector id for miner w/address %s", minerAddr.String())
-	}
-
-	// TODO: Currently, weconfigure the RustSectorBuilder to store its
-	// metadata in the staging directory, it should be in its own directory.
-	//
-	// Tracked here: https://github.com/filecoin-project/rust-fil-proofs/issues/402
-	repoPath, err := node.Repo.Path()
-	if err != nil {
-		return nil, err
-	}
-	sectorDir, err := paths.GetSectorPath(node.Repo.Config().SectorBase.RootDir, repoPath)
-	if err != nil {
-		return nil, err
-	}
-
-	stagingDir, err := paths.StagingDir(sectorDir)
-	if err != nil {
-		return nil, err
-	}
-
-	sealedDir, err := paths.SealedDir(sectorDir)
-	if err != nil {
-		return nil, err
-	}
-	cfg := sectorbuilder.RustSectorBuilderConfig{
-		LastUsedSectorID: lastUsedSectorID,
-		MetadataDir:      stagingDir,
-		MinerAddr:        minerAddr,
-		SealedSectorDir:  sealedDir,
-		StagedSectorDir:  stagingDir,
-		SectorClass:      types.NewSectorClass(sectorSize),
-	}
-
-	sb, err := sectorbuilder.NewRustSectorBuilder(cfg)
-	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("failed to initialize sector builder for miner %s", minerAddr.String()))
-	}
-
-	return sb, nil
-}
-
-// initStorageMinerForNode initializes the storage miner.
-func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, error) {
-	minerAddr, err := node.MiningAddress()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get node's mining address")
-	}
-
-	ownerAddress, err := node.PorcelainAPI.MinerGetOwnerAddress(ctx, minerAddr)
-	if err != nil {
-		return nil, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
-	}
-
-	sectorSize, err := node.PorcelainAPI.MinerGetSectorSize(ctx, minerAddr)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch miner's sector size")
-	}
-
-	prover := storage.NewProver(minerAddr, sectorSize, node.PorcelainAPI, node.PorcelainAPI)
-
-	miner, err := storage.NewMiner(
-		minerAddr,
-		ownerAddress,
-		prover,
-		sectorSize,
-		node,
-		node.Repo.DealsDatastore(),
-		node.PorcelainAPI)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to instantiate storage miner")
-	}
-
-	return miner, nil
 }
 
 // StopMining stops mining on new blocks.
@@ -692,13 +560,15 @@ func (node *Node) setupProtocols() error {
 	node.BlockMining.BlockMiningAPI = &blockMiningAPI
 
 	// set up retrieval client and api
-	retapi := retrieval.NewAPI(retrieval.NewClient(node.network.Host, node.PorcelainAPI))
-	node.RetrievalProtocol.RetrievalAPI = &retapi
+	// DRAGONS: uncomment when we have a real retrieval client implementation
+	//retapi := retrieval.NewAPI(retrieval.NewClient())
+	//node.RetrievalProtocol.RetrievalAPI = &retapi
 
 	// set up storage client and api
-	smc := storage.NewClient(node.network.Host, node.PorcelainAPI)
-	smcAPI := storage.NewAPI(smc)
-	node.StorageProtocol.StorageAPI = &smcAPI
+	// DRAGONS: uncomment when we have a storage market
+	//smc := storage.NewClient()
+	//smcAPI := storage.NewAPI(smc)
+	//node.StorageProtocol.StorageAPI = &smcAPI
 	return nil
 }
 
@@ -725,6 +595,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 		log.Errorf("could not get owner address of miner actor")
 		return nil, err
 	}
+
 	return mining.NewDefaultWorker(mining.WorkerParameters{
 		API: node.PorcelainAPI,
 
@@ -744,7 +615,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 		Processor:     processor,
 		Blockstore:    node.Blockstore.Blockstore,
 		Clock:         node.ChainClock,
-		Poster:        node.SectorStorage.ElectionPoster,
+		Poster:        node.StorageMining.PoStGenerator,
 	}), nil
 }
 
@@ -778,9 +649,9 @@ func (node *Node) Host() host.Host {
 	return node.network.Host
 }
 
-// SectorBuilder returns the nodes sectorBuilder.
-func (node *Node) SectorBuilder() sectorbuilder.SectorBuilder {
-	return node.SectorStorage.SectorBuilder
+// PieceManager returns the node's PieceManager.
+func (node *Node) PieceManager() piecemanager.PieceManager {
+	return node.StorageMining.PieceManager
 }
 
 // BlockService returns the nodes blockservice.

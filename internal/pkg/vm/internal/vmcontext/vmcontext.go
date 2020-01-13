@@ -440,7 +440,7 @@ var _ runtime.LegacyInvocationContext = (*VMContext)(nil)
 
 // LegacyVerifier returns an interface to the proof verification code
 func (ctx *VMContext) LegacyVerifier() verification.Verifier {
-	return &verification.RustVerifier{}
+	return &verification.FFIBackedProofVerifier{}
 }
 
 // LegacyMessage retrieves the message associated with this context.

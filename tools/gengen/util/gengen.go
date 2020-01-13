@@ -8,10 +8,10 @@ import (
 	mrand "math/rand"
 	"strconv"
 
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 
-	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"

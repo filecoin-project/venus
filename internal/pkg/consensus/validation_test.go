@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/go-bls-sigs"
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"

@@ -3,9 +3,9 @@ package types
 import (
 	"bytes"
 
-	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/pkg/errors"
 
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"

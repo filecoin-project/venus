@@ -13,6 +13,9 @@ import (
 	"sync"
 	"time"
 
+	pf "github.com/filecoin-project/go-paramfetch"
+	"github.com/pkg/errors"
+
 	"github.com/filecoin-project/go-filecoin/build/internal/helpers"
 	"github.com/filecoin-project/go-filecoin/build/internal/version"
 )
@@ -115,23 +118,19 @@ func deps() {
 
 	log.Println("Installing dependencies...")
 
-	cmds := []command{
-		// Download all go modules. While not strictly necessary (go
-		// will do this automatically), this:
-		//  1. Makes it easier to cache dependencies in CI.
-		//  2. Makes it possible to fetch all deps ahead of time for
-		//     offline development.
-		cmd("go mod download"),
-		// Download and build proofs.
-		cmd("./scripts/install-go-bls-sigs.sh"),
-		cmd("./scripts/install-go-sectorbuilder.sh"),
-		cmd("./scripts/install-filecoin-parameters.sh"),
-		cmd("./scripts/install-filecoin-ffi.sh"),
+	runCmd(cmd("go mod download"))
+
+	dat, err := ioutil.ReadFile("./parameters.json")
+	if err != nil {
+		panic(errors.Wrap(err, "failed to read contents of ./parameters.json"))
 	}
 
-	for _, c := range cmds {
-		runCmd(c)
+	err = pf.GetParams(dat, 1024)
+	if err != nil {
+		panic(errors.Wrap(err, "failed to acquire Groth parameters for 1KiB sectors"))
 	}
+
+	runCmd(cmd("./scripts/install-filecoin-ffi.sh"))
 }
 
 // lint runs linting using golangci-lint

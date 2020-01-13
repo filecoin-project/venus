@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -244,19 +243,9 @@ func (a *API) ClientValidateDeal(ctx context.Context, proposalCid cid.Cid, proof
 	return ClientVerifyStorageDeal(ctx, a, proposalCid, proofInfo)
 }
 
-// CalculatePoSt invokes the sector builder to calculate a proof-of-spacetime.
-func (a *API) CalculatePoSt(ctx context.Context, sortedCommRs go_sectorbuilder.SortedSectorInfo, seed types.PoStChallengeSeed) (types.PoStProof, error) {
-	return CalculatePoSt(ctx, a, sortedCommRs, seed)
-}
-
-// SealNow forces the sectorbuilder to seal the staged sectors it has
-func (a *API) SealNow(ctx context.Context) error {
-	return SealNow(ctx, a)
-}
-
-// AddPiece adds a piece to a staged sector
-func (a *API) AddPiece(ctx context.Context, reader io.Reader) (uint64, error) {
-	return AddPiece(ctx, a, reader)
+// SealPieceIntoNewSector writes the provided piece into a new sector
+func (a *API) SealPieceIntoNewSector(ctx context.Context, dealID uint64, pieceSize uint64, pieceReader io.Reader) error {
+	return SealPieceIntoNewSector(ctx, a, dealID, pieceSize, pieceReader)
 }
 
 // PingMinerWithTimeout pings a storage or retrieval miner, waiting the given

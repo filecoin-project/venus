@@ -10,13 +10,15 @@ import (
 	"testing"
 	"time"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
+
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-files"
+	files "github.com/ipfs/go-ipfs-files"
 	"github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
@@ -28,7 +30,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
-	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 func TestDealsRedeem(t *testing.T) {
@@ -435,7 +436,7 @@ func setupDeal(
 }
 
 func getMaxUserBytesPerStagedSector() uint64 {
-	return go_sectorbuilder.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize.Uint64())
+	return ffi.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize.Uint64())
 }
 
 func requireTestCID(t *testing.T, data []byte) cid.Cid {

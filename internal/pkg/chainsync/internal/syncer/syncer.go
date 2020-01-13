@@ -127,10 +127,6 @@ func init() {
 	reorgCnt = metrics.NewInt64Counter("chain/reorg_count", "The number of reorgs that have occurred.")
 }
 
-// FinalityEpochs is the number of epochs between an accepted head and the
-// first finalized tipset.
-const FinalityEpochs = 500
-
 var (
 	// ErrChainHasBadTipSet is returned when the syncer traverses a chain with a cached bad tipset.
 	ErrChainHasBadTipSet = errors.New("input chain contains a cached bad tipset")
@@ -199,7 +195,7 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 		if err != nil {
 			return true, err
 		}
-		if h+FinalityEpochs < headHeight {
+		if h+consensus.FinalityEpochs < headHeight {
 			return true, ErrNewChainTooLong
 		}
 

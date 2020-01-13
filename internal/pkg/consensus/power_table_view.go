@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
+
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -12,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	sector "github.com/filecoin-project/go-sectorbuilder"
 )
 
 // PowerTableView defines the set of functions used by the ChainManager to view
@@ -97,12 +98,12 @@ func (v PowerTableView) HasPower(ctx context.Context, mAddr address.Address) (bo
 }
 
 // SortedSectorInfos returns the sector information for the given miner
-func (v PowerTableView) SortedSectorInfos(ctx context.Context, mAddr address.Address) (sector.SortedSectorInfo, error) {
+func (v PowerTableView) SortedSectorInfos(ctx context.Context, mAddr address.Address) (ffi.SortedPublicSectorInfo, error) {
 	// Dragons: once we have a real VM we must get the sector infos from the
 	// miner actor.  For now we return a set of fake sectors matching the
 	// total power reported on chain.
 
-	var fakeSectors sector.SortedSectorInfo
+	var fakeSectors ffi.SortedPublicSectorInfo
 	numSectors, err := v.NumSectors(ctx, mAddr)
 	if err != nil {
 		return fakeSectors, nil

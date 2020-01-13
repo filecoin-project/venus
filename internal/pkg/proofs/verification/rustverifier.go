@@ -1,48 +1,40 @@
 package verification
 
-import (
-	"github.com/filecoin-project/go-sectorbuilder"
-)
+import ffi "github.com/filecoin-project/filecoin-ffi"
 
-// RustVerifier provides proof-verification methods.
-type RustVerifier struct{}
+// FFIBackedProofVerifier calls into rust-fil-proofs through CGO/FFI in order
+// to verify PoSt and PoRep proofs
+type FFIBackedProofVerifier struct{}
 
-var _ Verifier = &RustVerifier{}
-
-// VerifySeal returns nil if the Seal operation from which its inputs were
-// derived was valid, and an error if not.
-func (rp *RustVerifier) VerifySeal(req VerifySealRequest) (VerifySealResponse, error) {
-	isValid, err := go_sectorbuilder.VerifySeal(req.SectorSize.Uint64(), req.CommR, req.CommD, req.CommRStar, req.ProverID, req.SectorID, req.Proof)
-	if err != nil {
-		return VerifySealResponse{}, err
-	}
-
-	return VerifySealResponse{
-		IsValid: isValid,
-	}, nil
+// VerifySeal returns a value indicating the validity of the provided proof
+func (f FFIBackedProofVerifier) VerifySeal(
+	sectorSize uint64,
+	commR [ffi.CommitmentBytesLen]byte,
+	commD [ffi.CommitmentBytesLen]byte,
+	proverID [32]byte,
+	ticket [32]byte,
+	seed [32]byte,
+	sectorID uint64,
+	proof []byte,
+) (bool, error) {
+	return ffi.VerifySeal(sectorSize, commR, commD, proverID, ticket, seed, sectorID, proof)
 }
 
-// VerifyPoSt verifies that a proof-of-spacetime is valid.
-func (rp *RustVerifier) VerifyPoSt(req VerifyPoStRequest) (VerifyPoStResponse, error) {
-	isValid, err := go_sectorbuilder.VerifyPoSt(req.SectorSize.Uint64(), req.SortedSectorInfo, req.ChallengeSeed, req.Proof, req.Faults)
-	if err != nil {
-		return VerifyPoStResponse{}, err
-	}
-
-	return VerifyPoStResponse{
-		IsValid: isValid,
-	}, nil
+// VerifyPoSt returns a value indicating the validity of the provided proof
+func (f FFIBackedProofVerifier) VerifyPoSt(
+	sectorSize uint64,
+	sectorInfo ffi.SortedPublicSectorInfo,
+	randomness [32]byte,
+	challengeCount uint64,
+	proof []byte,
+	winners []ffi.Candidate,
+	proverID [32]byte,
+) (bool, error) {
+	return ffi.VerifyPoSt(sectorSize, sectorInfo, randomness, challengeCount, proof, winners, proverID)
 }
 
-// VerifyPieceInclusionProof returns true if the piece inclusion proof is valid
-// with the given arguments.
-func (rp *RustVerifier) VerifyPieceInclusionProof(req VerifyPieceInclusionProofRequest) (VerifyPieceInclusionProofResponse, error) {
-	isValid, err := go_sectorbuilder.VerifyPieceInclusionProof(req.SectorSize.Uint64(), req.PieceSize.Uint64(), req.CommP, req.CommD, req.PieceInclusionProof)
-	if err != nil {
-		return VerifyPieceInclusionProofResponse{}, err
-	}
-
-	return VerifyPieceInclusionProofResponse{
-		IsValid: isValid,
-	}, nil
+// NewFFIBackedProofVerifier produces an FFIBackedProofVerifier which delegates
+// its verification calls to libfilecoin
+func NewFFIBackedProofVerifier() FFIBackedProofVerifier {
+	return FFIBackedProofVerifier{}
 }

@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
@@ -62,6 +61,7 @@ func requireMineOnce(ctx context.Context, t *testing.T, minerNode *Node) *block.
 }
 
 func TestBlockPropsManyNodes(t *testing.T) {
+	t.Skip("Skip pending storage market integration")
 	tf.UnitTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -104,6 +104,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 }
 
 func TestChainSync(t *testing.T) {
+	t.Skip("Skip pending storage market integration #3731")
 	tf.UnitTest(t)
 
 	ctx := context.Background()
@@ -152,8 +153,8 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 	builder.WithInitOpt(PeerKeyOpt(PeerKeys[0]))
 	minerNode := builder.Build(ctx)
 	seed.GiveKey(t, minerNode, 0)
-	mineraddr, ownerAddr := seed.GiveMiner(t, minerNode, 0)
-	_, err := storage.NewMiner(mineraddr, ownerAddr, &storage.FakeProver{}, types.OneKiBSectorSize, minerNode, minerNode.Repo.DealsDatastore(), minerNode.PorcelainAPI)
+	mineraddr, _ := seed.GiveMiner(t, minerNode, 0)
+	_, err := storage.NewMiner()
 	assert.NoError(t, err)
 
 	nodes := []*Node{minerNode}

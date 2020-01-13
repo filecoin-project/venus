@@ -195,12 +195,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	}
 	nd.ChainClock = b.chainClock
 
-	nd.SectorStorage, err = submodule.NewSectorStorageSubmodule(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.SectorStorage")
-	}
-
-	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), b.repo, &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.SectorStorage.ElectionPoster)
+	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), b.repo, &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.ProofVerification.ProofVerifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}
@@ -225,6 +220,8 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.BlockMining")
 	}
 
+	nd.ProofVerification = submodule.NewProofVerificationSubmodule()
+
 	nd.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.StorageProtocol")
@@ -236,20 +233,20 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	}
 
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
-		Chain:         nd.chain.State,
-		Sync:          cst.NewChainSyncProvider(nd.syncer.ChainSyncManager),
-		Config:        cfg.NewConfig(b.repo),
-		DAG:           dag.NewDAG(merkledag.NewDAGService(nd.Blockservice.Blockservice)),
-		Deals:         strgdls.New(b.repo.DealsDatastore()),
-		Expected:      nd.syncer.Consensus,
-		MsgPool:       nd.Messaging.MsgPool,
-		MsgPreviewer:  msg.NewPreviewer(nd.chain.ChainReader, nd.Blockstore.CborStore, nd.Blockstore.Blockstore, nd.chain.Processor),
-		ActState:      nd.chain.ActorState,
-		MsgWaiter:     msg.NewWaiter(nd.chain.ChainReader, nd.chain.MessageStore, nd.Blockstore.Blockstore, nd.Blockstore.CborStore),
-		Network:       nd.network.Network,
-		Outbox:        nd.Messaging.Outbox,
-		SectorBuilder: nd.SectorBuilder,
-		Wallet:        nd.Wallet.Wallet,
+		Chain:        nd.chain.State,
+		Sync:         cst.NewChainSyncProvider(nd.syncer.ChainSyncManager),
+		Config:       cfg.NewConfig(b.repo),
+		DAG:          dag.NewDAG(merkledag.NewDAGService(nd.Blockservice.Blockservice)),
+		Deals:        strgdls.New(b.repo.DealsDatastore()),
+		Expected:     nd.syncer.Consensus,
+		MsgPool:      nd.Messaging.MsgPool,
+		MsgPreviewer: msg.NewPreviewer(nd.chain.ChainReader, nd.Blockstore.CborStore, nd.Blockstore.Blockstore, nd.chain.Processor),
+		ActState:     nd.chain.ActorState,
+		MsgWaiter:    msg.NewWaiter(nd.chain.ChainReader, nd.chain.MessageStore, nd.Blockstore.Blockstore, nd.Blockstore.CborStore),
+		Network:      nd.network.Network,
+		Outbox:       nd.Messaging.Outbox,
+		PieceManager: nd.PieceManager,
+		Wallet:       nd.Wallet.Wallet,
 	}))
 
 	return nd, nil

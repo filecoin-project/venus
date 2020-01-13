@@ -52,6 +52,9 @@ const (
 	GetTotalStorage
 	GetProofsMode
 	GetLateMiners
+	PublishStorageDeals
+	PreCommitSector
+	CommitSector
 )
 
 // NewActor returns a new storage market actor.

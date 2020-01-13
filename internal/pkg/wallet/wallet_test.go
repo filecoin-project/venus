@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/filecoin-project/go-bls-sigs"
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"

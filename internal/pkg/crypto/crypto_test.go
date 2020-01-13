@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )

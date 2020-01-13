@@ -5,8 +5,8 @@ import (
 	"sort"
 	"time"
 
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-amt-ipld"
-	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
