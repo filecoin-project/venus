@@ -284,6 +284,7 @@ var _ runtime.ExtendedInvocationContext = (*invocationContext)(nil)
 /// CreateActor implements runtime.ExtendedInvocationContext.
 func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address {
 	// Dragons: code it over, there were some changes in spec, revise
+	panic("code me")
 }
 
 /// VerifySignature implements runtime.ExtendedInvocationContext.
