@@ -355,8 +355,8 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 	require.NoError(t, err)
 	_, err = rsrc.miner.BlockMining.BlockMiningAPI.MiningOnce(ctx)
 	require.NoError(t, err)
-
 	rcpt, err := rsrc.target.PorcelainAPI.MessageWaitDone(ctx, mcid)
+
 	require.NoError(t, err)
 	assert.Equal(t, 0, int(rcpt.ExitCode))
 
@@ -366,6 +366,7 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 
 	// payer must wait for close message to see correct balance
 	_, err = rsrc.payer.PorcelainAPI.MessageWaitDone(ctx, mcid)
+
 	require.NoError(t, err)
 
 	payerBalanceAfter, err := rsrc.payer.PorcelainAPI.WalletBalance(ctx, rsrc.payerAddr)
@@ -518,8 +519,8 @@ func requireNewPaychResource(ctx context.Context, t *testing.T) *paychResources 
 	payerNode := builder2.BuildAndStart(ctx)
 
 	node.ConnectNodes(t, minerNode, targetNode)
+	node.ConnectNodes(t, minerNode, payerNode)
 	node.ConnectNodes(t, targetNode, payerNode)
-	node.ConnectNodes(t, payerNode, minerNode)
 
 	return &paychResources{
 		t: t,
