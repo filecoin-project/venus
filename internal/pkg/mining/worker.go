@@ -78,8 +78,8 @@ type workerPorcelainAPI interface {
 }
 
 type electionUtil interface {
-	RunElection(block.Ticket, address.Address, types.Signer, uint64) (block.VRFPi, error)
-	IsElectionWinner(context.Context, consensus.PowerTableView, block.Ticket, uint64, block.VRFPi, address.Address, address.Address) (bool, error)
+	DeprecatedRunElection(block.Ticket, address.Address, types.Signer, uint64) (block.VRFPi, error)
+	DeprecatedIsElectionWinner(context.Context, consensus.PowerTableView, block.Ticket, uint64, block.VRFPi, address.Address, address.Address) (bool, error)
 }
 
 // ticketGenerator creates tickets.
@@ -235,7 +235,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	}
 
 	// Run an election to check if this miner has won the right to mine
-	electionProof, err := w.election.RunElection(electionTicket, workerAddr, w.workerSigner, nullBlkCount)
+	electionProof, err := w.election.DeprecatedRunElection(electionTicket, workerAddr, w.workerSigner, nullBlkCount)
 	if err != nil {
 		log.Errorf("failed to run local election: %s", err)
 		outCh <- Output{Err: err}
@@ -247,7 +247,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- Output{Err: err}
 		return
 	}
-	weHaveAWinner, err := w.election.IsElectionWinner(ctx, powerTable, electionTicket, nullBlkCount, electionProof, workerAddr, w.minerAddr)
+	weHaveAWinner, err := w.election.DeprecatedIsElectionWinner(ctx, powerTable, electionTicket, nullBlkCount, electionProof, workerAddr, w.minerAddr)
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't run election: %s", err.Error())
 		outCh <- Output{Err: err}

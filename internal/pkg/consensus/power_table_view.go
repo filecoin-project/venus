@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	sector "github.com/filecoin-project/go-sectorbuilder"
 )
 
 // PowerTableView defines the set of functions used by the ChainManager to view
@@ -83,15 +84,34 @@ func (v PowerTableView) WorkerAddr(ctx context.Context, mAddr address.Address) (
 
 // HasPower returns true if the provided address belongs to a miner with power
 // in the storage market
-func (v PowerTableView) HasPower(ctx context.Context, mAddr address.Address) bool {
+func (v PowerTableView) HasPower(ctx context.Context, mAddr address.Address) (bool, error) {
 	numBytes, err := v.Miner(ctx, mAddr)
 	if err != nil {
 		if state.IsActorNotFoundError(err) {
-			return false
+			return false, nil
 		}
+		return false, err
+	}
+	return numBytes.GreaterThan(types.ZeroBytes), nil
+}
 
-		panic(err) //hey guys, dropping errors is BAD
+// SortedSectorInfos returns the sector information for the given miner
+func (v PowerTableView) SortedSectorInfos(ctx context.Context, mAddr address.Address) (sector.SortedSectorInfo, error) {
+	// Dragons: once we have a real VM we must get the sector infos from the
+	// miner actor.  For now we return a fake constant.
+	var fakeCommR1, fakeCommR2 [sector.CommitmentBytesLen]byte
+	fakeCommR1[0], fakeCommR1[1] = 0xa, 0xb
+	fakeCommR2[0], fakeCommR2[1] = 0xc, 0xd
+	sectorID1, sectorID2 := uint64(0), uint64(1)
+
+	psi1 := sector.SectorInfo{
+		SectorID: sectorID1,
+		CommR:    fakeCommR1,
+	}
+	psi2 := sector.SectorInfo{
+		SectorID: sectorID2,
+		CommR:    fakeCommR2,
 	}
 
-	return numBytes.GreaterThan(types.ZeroBytes)
+	return sector.NewSortedSectorInfo(psi1, psi2), nil
 }

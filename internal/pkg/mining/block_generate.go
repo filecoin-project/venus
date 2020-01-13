@@ -39,7 +39,11 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		return nil, errors.Wrap(err, "get power table")
 	}
 
-	if !powerTable.HasPower(ctx, w.minerAddr) {
+	hasPower, err := powerTable.HasPower(ctx, w.minerAddr)
+	if err != nil {
+		return nil, err
+	}
+	if !hasPower {
 		return nil, errors.Errorf("bad miner address, miner must store files before mining: %s", w.minerAddr)
 	}
 
