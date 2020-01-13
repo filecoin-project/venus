@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime/debug"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
@@ -22,7 +23,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
 )
+
+var vmLog = logging.Logger("vm.context")
 
 // VM holds the state and executes messages over the state.
 type VM struct {
@@ -183,6 +187,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) (out interface{}, err e
 				err = errors.New("Invalid exitcode raised during implicit message execution")
 			default:
 				// do not trap unknown panics
+				debug.PrintStack()
 				panic(r)
 			}
 		}
@@ -313,7 +318,8 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 			if r := recover(); r == nil {
 				switch r.(type) {
 				case runtime.AbortPanicError:
-					// Dragons: log the message
+					aux := r.(runtime.AbortPanicError)
+					vmLog.Warn("Abort during vm execution. %s", aux)
 					out = message.Failure(exitcode.MethodAbort).WithGas(gasTank.GasConsumed())
 					return
 				case exitcode.Panic:
@@ -321,6 +327,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 					out = message.Failure(aux.Code()).WithGas(gasTank.GasConsumed())
 					return
 				default:
+					debug.PrintStack()
 					panic(r)
 				}
 			}

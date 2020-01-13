@@ -58,7 +58,6 @@ type InvocationContext interface {
 	// Balance is the current balance on the current actors account.
 	//
 	// Note: the value received for this invocation is already reflected on the balance.
-	// Review: I want to move this to the statehandle and call it state.
 	Balance() types.AttoFIL
 	// Charge allows actor code to charge extra.
 	//
@@ -163,6 +162,10 @@ type CallerPattern interface {
 // AbortPanicError is used on panic when `Abort` is called by actors.
 type AbortPanicError struct {
 	msg string
+}
+
+func (x AbortPanicError) String() string {
+	return x.msg
 }
 
 func (x AbortPanicError) Error() string {
