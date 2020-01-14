@@ -70,6 +70,8 @@ func (em ElectionMachine) CandidateWins(candidate proofs.EPoStCandidate, ep *pro
 	rhs = rhs.Mul(rhs, big.NewInt(expectedLeadersPerEpoch))
 
 	// lhs < rhs?
+	// (challengeTicket / maxChallengeTicket) < expectedLeadersPerEpoch * (effective miner power) / networkPower
+	// effective miner power = sectorSize * numberSectors / numSectorsSampled
 	return lhs.Cmp(rhs) == -1
 }
 
@@ -82,7 +84,9 @@ func (em ElectionMachine) VerifyPoSt(ctx context.Context, ep *proofs.ElectionPos
 	}
 	var candidateSectorInfos []sector.SectorInfo
 	for _, si := range allSectorInfos.Values() {
-		candidateSectorInfos = append(candidateSectorInfos, si)
+		if _, ok := candidateSectorID[si.SectorID]; ok {
+			candidateSectorInfos = append(candidateSectorInfos, si)
+		}
 	}
 
 	return ep.VerifyElectionPost(

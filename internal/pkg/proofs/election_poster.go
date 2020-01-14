@@ -8,7 +8,8 @@ import (
 	sector "github.com/filecoin-project/go-sectorbuilder"
 )
 
-// SectorChallengeRatioDiv is
+// SectorChallengeRatioDiv is the number of sectors per candidate partial
+// ticket
 const SectorChallengeRatioDiv = 25
 
 // EPoStCandidate wraps the input data needed to verify an election PoSt
