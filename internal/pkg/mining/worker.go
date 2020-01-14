@@ -17,11 +17,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	sector "github.com/filecoin-project/go-sectorbuilder"
 )
 
 var log = logging.Logger("mining")
@@ -80,6 +83,10 @@ type workerPorcelainAPI interface {
 type electionUtil interface {
 	DeprecatedRunElection(block.Ticket, address.Address, types.Signer, uint64) (block.VRFPi, error)
 	DeprecatedIsElectionWinner(context.Context, consensus.PowerTableView, block.Ticket, uint64, block.VRFPi, address.Address, address.Address) (bool, error)
+	GeneratePoStRandomness(block.Ticket, address.Address, types.Signer, uint64) ([]byte, error)
+	GenerateCandidates([]byte, sector.SortedSectorInfo, *proofs.ElectionPoster) ([]*proofs.EPoStCandidate, error)
+	GeneratePoSt(sector.SortedSectorInfo, []byte, []*proofs.EPoStCandidate, *proofs.ElectionPoster) ([]byte, error)
+	CandidateWins([]byte, *proofs.ElectionPoster, uint64, uint64, uint64, uint64) bool
 }
 
 // ticketGenerator creates tickets.
@@ -100,20 +107,18 @@ type DefaultWorker struct {
 	minerOwnerAddr address.Address
 	workerSigner   types.Signer
 
-	// consensus things
-	tsMetadata   tipSetMetadata
-	getStateTree GetStateTree
-	getWeight    GetWeight
-	getAncestors GetAncestors
-	election     electionUtil
-	ticketGen    ticketGenerator
-
-	// core filecoin things
+	tsMetadata    tipSetMetadata
+	getStateTree  GetStateTree
+	getWeight     GetWeight
+	getAncestors  GetAncestors
+	election      electionUtil
+	ticketGen     ticketGenerator
 	messageSource MessageSource
 	processor     MessageApplier
 	messageStore  chain.MessageWriter // nolint: structcheck
 	blockstore    blockstore.Blockstore
 	clock         clock.Clock
+	poster        *proofs.ElectionPoster
 }
 
 // WorkerParameters use for NewDefaultWorker parameters
@@ -138,6 +143,7 @@ type WorkerParameters struct {
 	MessageStore  chain.MessageWriter
 	Blockstore    blockstore.Blockstore
 	Clock         clock.Clock
+	Poster        *proofs.ElectionPoster
 }
 
 // NewDefaultWorker instantiates a new Worker.
@@ -158,6 +164,7 @@ func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
 		ticketGen:      parameters.TicketGen,
 		tsMetadata:     parameters.TipSetMetadata,
 		clock:          parameters.Clock,
+		poster:         parameters.Poster,
 	}
 }
 
@@ -198,22 +205,6 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- Output{Err: err}
 		return
 	}
-
-	// Provably delay for the blocktime
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		// TODO #3703 actually launch election post work here
-		done <- struct{}{}
-	}()
-
-	select {
-	case <-ctx.Done():
-		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base, "nullBlocks", nullBlkCount)
-		return
-	case <-done:
-	}
-
 	// lookback consensus.ElectionLookback for the election ticket
 	baseHeight, err := base.Height()
 	if err != nil {
@@ -233,11 +224,9 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- Output{Err: err}
 		return
 	}
-
-	// Run an election to check if this miner has won the right to mine
-	electionProof, err := w.election.DeprecatedRunElection(electionTicket, workerAddr, w.workerSigner, nullBlkCount)
+	postRandomness, err := w.election.GeneratePoStRandomness(electionTicket, workerAddr, w.workerSigner, nullBlkCount)
 	if err != nil {
-		log.Errorf("failed to run local election: %s", err)
+		log.Errorf("Worker.Mine failed to generate post randomness %s", err)
 		outCh <- Output{Err: err}
 		return
 	}
@@ -247,16 +236,108 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- Output{Err: err}
 		return
 	}
-	weHaveAWinner, err := w.election.DeprecatedIsElectionWinner(ctx, powerTable, electionTicket, nullBlkCount, electionProof, workerAddr, w.minerAddr)
+	sortedSectorInfos, err := powerTable.SortedSectorInfos(ctx, w.minerAddr)
+	if err != nil {
+		log.Warnf("Worker.Mine failed to get ssi for %s", w.minerAddr.String())
+		outCh <- Output{Err: err}
+		return
+	}
+	// Generate election post candidates
+	done := make(chan []*proofs.EPoStCandidate)
+	errCh := make(chan error)
+	go func() {
+		defer close(done)
+		defer close(errCh)
+		candidates, err := w.election.GenerateCandidates(postRandomness, sortedSectorInfos, w.poster)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		done <- candidates
+	}()
+	var candidates []*proofs.EPoStCandidate
+	select {
+	case <-ctx.Done():
+		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base, "nullBlocks", nullBlkCount)
+	case err := <-errCh:
+		log.Warnf("Worker.Mine failed to get ssi for %s", err)
+		outCh <- Output{Err: err}
+		return
+	case genResult := <-done:
+		candidates = genResult
+	}
+	// Run a deprecated election to check if this miner has won the deprecated right to mine
+	deprecatedElectionProof, err := w.election.DeprecatedRunElection(electionTicket, workerAddr, w.workerSigner, nullBlkCount)
+	if err != nil {
+		log.Errorf("failed to run local election: %s", err)
+		outCh <- Output{Err: err}
+		return
+	}
+	weHaveAWinnerDeprecated, err := w.election.DeprecatedIsElectionWinner(ctx, powerTable, electionTicket, nullBlkCount, deprecatedElectionProof, workerAddr, w.minerAddr)
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't run election: %s", err.Error())
 		outCh <- Output{Err: err}
 		return
 	}
 
-	// This address has mining rights, so mine a block
-	if weHaveAWinner {
-		next, err := w.Generate(ctx, base, nextTicket, electionProof, nullBlkCount)
+	// Look for any winning candidates
+	sectorNum, err := powerTable.NumSectors(ctx, w.minerAddr)
+	if err != nil {
+		log.Errorf("failed to get number of sectors for miner: %s", err)
+		outCh <- Output{Err: err}
+		return
+	}
+	networkPower, err := powerTable.Total(ctx)
+	if err != nil {
+		log.Errorf("failed to get total power: %s", err)
+		outCh <- Output{Err: err}
+		return
+	}
+	sectorSize, err := powerTable.SectorSize(ctx, w.minerAddr)
+	if err != nil {
+		log.Errorf("failed to get sector size for miner: %s", err)
+		outCh <- Output{Err: err}
+		return
+	}
+	hasher := hasher.NewHasher()
+	var winners []*proofs.EPoStCandidate
+	for _, candidate := range candidates {
+		hasher.Bytes(candidate.PartialTicket)
+		challengeTicket := hasher.Hash()
+		if w.election.CandidateWins(challengeTicket, w.poster, sectorNum, 0, networkPower.Uint64(), sectorSize.Uint64()) {
+			winners = append(winners, candidate)
+		}
+	}
+	// Generate PoSt
+	postDone := make(chan []byte)
+	errCh = make(chan error)
+	go func() {
+		defer close(postDone)
+		defer close(errCh)
+		post, err := w.election.GeneratePoSt(sortedSectorInfos, postRandomness, winners, w.poster)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		postDone <- post
+	}()
+	var post []byte
+	select {
+	case <-ctx.Done():
+		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base, "nullBlocks", nullBlkCount)
+	case err := <-errCh:
+		log.Warnf("Worker.Mine failed to generate post %s", err)
+		outCh <- Output{Err: err}
+		return
+	case postOut := <-postDone:
+		post = postOut
+	}
+	// Dragons not using post yet in this commit...
+	_ = post
+
+	// This address has deprecated mining rights, so mine a block
+	if weHaveAWinnerDeprecated {
+		next, err := w.Generate(ctx, base, nextTicket, nullBlkCount, postRandomness, deprecatedElectionProof, winners, post)
 		if err == nil {
 			log.Debugf("Worker.Mine generates new winning block! %s", next.Cid().String())
 		}

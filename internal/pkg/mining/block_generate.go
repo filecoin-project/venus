@@ -6,6 +6,7 @@ package mining
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"time"
 
 	"github.com/pkg/errors"
@@ -18,11 +19,16 @@ import (
 )
 
 // Generate returns a new block created from the messages in the pool.
-func (w *DefaultWorker) Generate(ctx context.Context,
+func (w *DefaultWorker) Generate(
+	ctx context.Context,
 	baseTipSet block.TipSet,
 	ticket block.Ticket,
-	electionProof block.VRFPi,
-	nullBlockCount uint64) (*block.Block, error) {
+	nullBlockCount uint64,
+	postRandomness []byte,
+	deprecatedElectionProof block.VRFPi,
+	winners []*proofs.EPoStCandidate,
+	post []byte,
+) (*block.Block, error) {
 
 	generateTimer := time.Now()
 	defer func() {
@@ -62,6 +68,16 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	ancestors, err := w.getAncestors(ctx, baseTipSet, types.NewBlockHeight(blockHeight))
 	if err != nil {
 		return nil, errors.Wrap(err, "get base tip set ancestors")
+	}
+
+	// Serialize winners
+	winningSectorIDs := make([]types.Uint64, len(winners))
+	winningChallengeIndexes := make([]types.Uint64, len(winners))
+	winningPartialTickets := make([][]byte, len(winners))
+	for i, candidate := range winners {
+		winningSectorIDs[i] = types.Uint64(candidate.SectorID)
+		winningChallengeIndexes[i] = types.Uint64(candidate.SectorChallengeIndex)
+		winningPartialTickets[i] = candidate.PartialTicket
 	}
 
 	// Construct list of message candidates for inclusion.
@@ -139,7 +155,12 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		MessageReceipts:         baseReceiptRoot,
 		Parents:                 baseTipSet.Key(),
 		ParentWeight:            types.Uint64(weight),
-		DeprecatedElectionProof: electionProof,
+		DeprecatedElectionProof: deprecatedElectionProof,
+		PoStRandomness:          postRandomness,
+		PoStPartialTickets:      winningPartialTickets,
+		PoStSectorIDs:           winningSectorIDs,
+		PoStChallengeIDXs:       winningChallengeIndexes,
+		PoStProof:               post,
 		StateRoot:               baseStateRoot,
 		Ticket:                  ticket,
 		Timestamp:               types.Uint64(now.Unix()),

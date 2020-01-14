@@ -2,6 +2,8 @@ package consensus
 
 import (
 	"context"
+	"encoding/binary"
+	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -98,20 +100,64 @@ func (v PowerTableView) HasPower(ctx context.Context, mAddr address.Address) (bo
 // SortedSectorInfos returns the sector information for the given miner
 func (v PowerTableView) SortedSectorInfos(ctx context.Context, mAddr address.Address) (sector.SortedSectorInfo, error) {
 	// Dragons: once we have a real VM we must get the sector infos from the
-	// miner actor.  For now we return a fake constant.
-	var fakeCommR1, fakeCommR2 [sector.CommitmentBytesLen]byte
-	fakeCommR1[0], fakeCommR1[1] = 0xa, 0xb
-	fakeCommR2[0], fakeCommR2[1] = 0xc, 0xd
-	sectorID1, sectorID2 := uint64(0), uint64(1)
+	// miner actor.  For now we return a set of fake sectors matching the
+	// total power reported on chain.
 
-	psi1 := sector.SectorInfo{
-		SectorID: sectorID1,
-		CommR:    fakeCommR1,
+	var fakeSectors sector.SortedSectorInfo
+	numSectors, err := v.NumSectors(ctx, mAddr)
+	if err != nil {
+		return fakeSectors, nil
 	}
-	psi2 := sector.SectorInfo{
-		SectorID: sectorID2,
-		CommR:    fakeCommR2,
+	var infos []sector.SectorInfo
+	for i := uint64(0); i < numSectors; i++ {
+		buf := make([]byte, binary.MaxVarintLen64)
+		binary.PutUvarint(buf, i)
+		var fakeCommRi [sector.CommitmentBytesLen]byte
+		copy(fakeCommRi[:], buf)
+		infos = append(infos, sector.SectorInfo{
+			SectorID: i,
+			CommR:    fakeCommRi,
+		})
 	}
 
-	return sector.NewSortedSectorInfo(psi1, psi2), nil
+	fakeSectors = sector.NewSortedSectorInfo(infos...)
+	return fakeSectors, nil
+}
+
+// SectorSize returns the sector size for this miner
+func (v PowerTableView) SectorSize(ctx context.Context, mAddr address.Address) (*types.BytesAmount, error) {
+	rets, err := v.snapshot.Query(ctx, address.Undef, address.StoragePowerAddress, power.GetSectorSize, mAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(rets) == 0 {
+		return nil, errors.Errorf("invalid nil return value from GetSectorSize")
+	}
+
+	sectorSizeValue, err := abi.Deserialize(rets[0], abi.BytesAmount)
+	if err != nil {
+		return nil, err
+	}
+	ss, ok := sectorSizeValue.Val.(*types.BytesAmount)
+	if !ok {
+		return nil, errors.Errorf("invalid sectorsize bytes returned from GetWorker")
+	}
+	return ss, nil
+}
+
+// NumSectors returns the number of sectors this miner has committed
+func (v PowerTableView) NumSectors(ctx context.Context, mAddr address.Address) (uint64, error) {
+	minerBytes, err := v.Miner(ctx, mAddr)
+	if err != nil {
+		return 0, err
+	}
+	sectorSize, err := v.SectorSize(ctx, mAddr)
+	if err != nil {
+		return 0, err
+	}
+	if minerBytes.Uint64()%sectorSize.Uint64() != 0 {
+		return 0, fmt.Errorf("total power byte count %d is not a multiple of sector size %d ", minerBytes.Uint64(), sectorSize.Uint64())
+	}
+	return minerBytes.Uint64() / sectorSize.Uint64(), nil
 }
