@@ -33,7 +33,7 @@ var (
 
 func init() {
 	ticketDomain = &big.Int{}
-	// The size of the ticket domain must equal the size of the Signature (ticket) generated.
+	// DEPRECATED: The size of the ticket domain must equal the size of the Signature (ticket) generated.
 	// Currently this is a secp256k1.Sign signature, which is 65 bytes.
 	ticketDomain.Exp(big.NewInt(2), big.NewInt(65*8), nil)
 	ticketDomain.Sub(ticketDomain, big.NewInt(1))
@@ -53,6 +53,12 @@ var (
 // ElectionLookback is the number of tipsets past the head (inclusive)) that
 // must be traversed to sample the election ticket.
 const ElectionLookback = 5
+
+// challengeBits is the number of bits in the challenge ticket's domain
+const challengeBits = 256
+
+// expectedLeadersPerEpoch is the mean number of leaders per epoch
+const expectedLeadersPerEpoch = 5
 
 // AncestorRoundsNeeded is the number of rounds of the ancestor chain needed
 // to process all state transitions.

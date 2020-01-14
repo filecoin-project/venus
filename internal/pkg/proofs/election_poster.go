@@ -8,6 +8,9 @@ import (
 	sector "github.com/filecoin-project/go-sectorbuilder"
 )
 
+// SectorChallengeRatioDiv is
+const SectorChallengeRatioDiv = 25
+
 // EPoStCandidate wraps the input data needed to verify an election PoSt
 type EPoStCandidate struct {
 	SectorID             uint64
@@ -27,7 +30,7 @@ func (ep *ElectionPoster) VerifyElectionPost(ctx context.Context, sectorSize uin
 
 // ComputeElectionPoSt returns an election post proving that the partial
 // tickets are linked to the sector commitments.
-func (ep *ElectionPoster) ComputeElectionPoSt(sectorInfo sector.SortedSectorInfo, challengeSeed []byte, winners []EPoStCandidate) ([]byte, error) {
+func (ep *ElectionPoster) ComputeElectionPoSt(sectorInfo sector.SortedSectorInfo, challengeSeed []byte, winners []*EPoStCandidate) ([]byte, error) {
 	fakePoSt := make([]byte, 1)
 	fakePoSt[0] = 0xe
 	return fakePoSt, nil
@@ -50,4 +53,14 @@ func (ep *ElectionPoster) GenerateEPostCandidates(sectorInfo sector.SortedSector
 		candidates = append(candidates, nextCandidate)
 	}
 	return candidates, nil
+}
+
+// ElectionPostChallengeCount is the total number of partial tickets allowed by
+// the system
+func (ep *ElectionPoster) ElectionPostChallengeCount(sectors, faults uint64) uint64 {
+	if sectors-faults == 0 {
+		return 0
+	}
+	// ceil(sectors / SectorChallengeRatioDiv)
+	return (sectors-faults-1)/SectorChallengeRatioDiv + 1
 }

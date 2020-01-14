@@ -5,43 +5,96 @@ import (
 	"encoding/binary"
 	"math/big"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	sector "github.com/filecoin-project/go-sectorbuilder"
 )
 
 // ElectionMachine generates and validates PoSt partial tickets and PoSt
 // proofs.
 type ElectionMachine struct{}
 
-// Dragons -- turn this pseudo code real
-// func (em ElectionMachine) GeneratePoStRandomness(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullBlockCount uint64) (block.VRFPi, error) {
-// 	seedBuf := make([]byte, binary.MaxVarintLen64)
-// 	n := binary.PutUvarint(seedBuf, nullBlockCount)
-// 	buf := append(ticket.VRFProof, seedBuf[:n]...)
+// GeneratePoStRandomness returns the PoStRandomness for the given epoch.
+func (em ElectionMachine) GeneratePoStRandomness(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullBlockCount uint64) ([]byte, error) {
+	seedBuf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutUvarint(seedBuf, nullBlockCount)
+	buf := append(ticket.VRFProof, seedBuf[:n]...)
 
-// 	// TODO get the domain tag up in here
-// 	vrfPi, err := signer.SignBytes(buf[:], candidateAddr)
-// 	if err != nil {
-// 		return block.VRFPi{}, err
-// 	}
+	return signer.SignBytes(buf[:], candidateAddr)
+}
 
-// 	return block.VRFPi(vrfPi), nil
-// }
+// GenerateCandidates creates candidate partial tickets for consideration in
+// block reward election
+func (em ElectionMachine) GenerateCandidates(poStRand []byte, sectorInfos sector.SortedSectorInfo, ep *proofs.ElectionPoster) ([]*proofs.EPoStCandidate, error) {
+	dummyFaults := []uint64{}
+	return ep.GenerateEPostCandidates(sectorInfos, poStRand, dummyFaults)
+}
 
-// func (em ElectionMachine) GenerateCandidates(poStRand []byte, candidateAddr address.Address, sb SectorBuilderThingy) {
-// 	// get em from state machine
-// 	sectorInfos := _
-// 	// nothing for now
-// 	dummyFaults := []uint64{}
-// 	return sb.GenerateEPostCandidates(sectorInfos, poStRand, dummyFaults)
-// }
+// GeneratePoSt creates a PoSt proof over the input PoSt candidates.  Should
+// only be called on winning candidates.
+func (em ElectionMachine) GeneratePoSt(sectorInfo sector.SortedSectorInfo, challengeSeed []byte, winners []*proofs.EPoStCandidate, ep *proofs.ElectionPoster) ([]byte, error) {
+	return ep.ComputeElectionPoSt(sectorInfo, challengeSeed, winners)
+}
 
-// func (em ElectionMachine) FilterWinners(candidates []types.PoStCandidates) []types.PoStCandidates {
+// VerifyPoStRandomness verifies that the PoSt randomness is the result of the
+// candidate signing the ticket.
+func (em ElectionMachine) VerifyPoStRandomness(rand block.VRFPi, ticket block.Ticket, candidateAddr address.Address, nullBlockCount uint64) bool {
+	seedBuf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutUvarint(seedBuf, nullBlockCount)
+	buf := append(ticket.VRFProof, seedBuf[:n]...)
 
-// }
+	vrfPi := types.Signature(rand)
+	return types.IsValidSignature(buf[:], candidateAddr, vrfPi)
+}
+
+// CandidateWins returns true if the input candidate wins the election
+func (em ElectionMachine) CandidateWins(candidate proofs.EPoStCandidate, ep *proofs.ElectionPoster, sectorNum, faultNum, networkPower, sectorSize uint64) bool {
+
+	hasher := hasher.NewHasher()
+	hasher.Bytes(candidate.PartialTicket)
+	challengeTicket := hasher.Hash()
+	numSectorsSampled := ep.ElectionPostChallengeCount(sectorNum, faultNum)
+
+	lhs := new(big.Int).SetBytes(challengeTicket[:])
+	lhs = lhs.Mul(lhs, big.NewInt(int64(networkPower)))
+	lhs = lhs.Mul(lhs, big.NewInt(int64(numSectorsSampled)))
+
+	// sectorPower * 2^len(H)
+	rhs := new(big.Int).Lsh(big.NewInt(int64(sectorSize)), challengeBits)
+	rhs = rhs.Mul(rhs, big.NewInt(int64(sectorNum)))
+	rhs = rhs.Mul(rhs, big.NewInt(expectedLeadersPerEpoch))
+
+	// lhs < rhs?
+	return lhs.Cmp(rhs) == -1
+}
+
+// VerifyPoSt verifies a PoSt proof.
+func (em ElectionMachine) VerifyPoSt(ctx context.Context, ep *proofs.ElectionPoster, allSectorInfos sector.SortedSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []*proofs.EPoStCandidate, proverID address.Address) (bool, error) {
+	// filter down sector infos to only those referenced by candidates
+	candidateSectorID := make(map[uint64]struct{})
+	for _, candidate := range candidates {
+		candidateSectorID[candidate.SectorID] = struct{}{}
+	}
+	var candidateSectorInfos []sector.SectorInfo
+	for _, si := range allSectorInfos.Values() {
+		candidateSectorInfos = append(candidateSectorInfos, si)
+	}
+
+	return ep.VerifyElectionPost(
+		ctx,
+		sectorSize,
+		sector.NewSortedSectorInfo(candidateSectorInfos...),
+		challengeSeed,
+		proof,
+		candidates,
+		proverID,
+	)
+}
 
 // DeprecatedCompareElectionPower return true if the input electionProof is below the
 // election victory threshold for the input miner and global power values.
