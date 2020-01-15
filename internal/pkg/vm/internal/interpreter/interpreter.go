@@ -10,7 +10,7 @@ import (
 type VMInterpreter interface {
 	// ApplyTipSetMessages applies all the messages in a tipset.
 	//
-	// Note: this method does not error, any processing error will be present as an `ExitCode` in the `MessageReceipt`.
+	// Note: any message processing error will be present as an `ExitCode` in the `MessageReceipt`.
 	ApplyTipSetMessages(msgs []BlockMessagesInfo, epoch types.BlockHeight) ([]message.Receipt, error)
 }
 

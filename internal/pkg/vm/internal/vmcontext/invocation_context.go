@@ -64,8 +64,8 @@ func (ctx *invocationContext) invoke() interface{} {
 	// 5. load target actor code
 	// 6. create target state handle
 
-	// Dragons: assert from address is an id address.
-	// TODO: move the resolve target outisde, assert the to address is an id address.
+	// assert from address is an ID address.
+	runtime.Assert(ctx.msg.from.Protocol() == address.ID)
 
 	// 1. charge gas for msg
 	ctx.gasTank.Charge(gascost.OnMethodInvocation(&ctx.msg))
@@ -237,8 +237,7 @@ func (ctx *invocationContext) Send(to address.Address, method types.MethodID, va
 	// 2. build internal message
 	encodedParams, err := abi.ToEncodedValues(params...)
 	if err != nil {
-		// Review: should this be a recoverable or unrecoverable panic?
-		panic(fmt.Errorf("failed to encode params. %s", err))
+		runtime.Abortf(exitcode.EncodingError, "failed to encode params. %s", err)
 	}
 	newMsg := internalMessage{
 		from:   from,

@@ -248,8 +248,8 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 	// Dragons: from address need to be normalized here
 
 	// 2. load actor from global state
+	// Dragons: change this to actor, ok, error ok for found or not, err are non-recoverable IO errors and such
 	fromActor, err := vm.state.GetActor(context.Background(), msg.From)
-	// Review: when are errors surfaced? this can lead to invalid state transitions
 	if fromActor == nil || err != nil {
 		// Execution error; sender does not exist at time of message execution.
 		return message.Failure(exitcode.ActorNotFound, gas.Zero), gasTank.GasConsumed().Cost(msg.GasPrice)
