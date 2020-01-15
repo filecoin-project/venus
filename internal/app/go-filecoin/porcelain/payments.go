@@ -130,7 +130,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	// Create channel
 	response.ChannelMsgCid, _, err = plumbing.MessageSend(ctx,
 		config.From,
-		address.PaymentBrokerAddress,
+		address.LegacyPaymentBrokerAddress,
 		config.Value,
 		config.GasPrice,
 		config.GasLimit,
@@ -245,7 +245,7 @@ func createPayment(ctx context.Context, plumbing cpPlumbing, baseKey block.TipSe
 
 	ret, err := plumbing.MessageQuery(ctx,
 		response.From,
-		address.PaymentBrokerAddress,
+		address.LegacyPaymentBrokerAddress,
 		paymentbroker.Voucher,
 		baseKey,
 		response.Channel,

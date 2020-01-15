@@ -12,7 +12,12 @@ import (
 )
 
 // ExportedFunc is the signature an exported method of an actor is expected to have.
-type ExportedFunc func(ctx ExtendedRuntime) ([]interface{}, uint8, error)
+type ExportedFunc func(ctx ExportContext) ([]interface{}, uint8, error)
+
+// ExportContext is the context forwarded to the actors.
+type ExportContext interface {
+	Params() []byte
+}
 
 // makeTypedExport finds the correct method on the given actor and returns it.
 // The returned function is wrapped such that it takes care of serialization and type checks.
@@ -72,8 +77,8 @@ func makeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (Exp
 		badImpl()
 	}
 
-	return func(ctx ExtendedRuntime) ([]interface{}, uint8, error) {
-		params, err := abi.DecodeValues(ctx.LegacyMessage().Params, signature.Params)
+	return func(ctx ExportContext) ([]interface{}, uint8, error) {
+		params, err := abi.DecodeValues(ctx.Params(), signature.Params)
 		if err != nil {
 			return nil, 1, errors.RevertErrorWrap(err, "invalid params")
 		}

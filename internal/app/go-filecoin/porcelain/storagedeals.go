@@ -107,7 +107,7 @@ func DealRedeem(ctx context.Context, plumbing dealRedeemPlumbing, fromAddr addre
 	c, _, err := plumbing.MessageSend(
 		ctx,
 		fromAddr,
-		address.PaymentBrokerAddress,
+		address.LegacyPaymentBrokerAddress,
 		types.NewAttoFILFromFIL(0),
 		gasPrice,
 		gasLimit,
@@ -128,7 +128,7 @@ func DealRedeemPreview(ctx context.Context, plumbing dealRedeemPlumbing, fromAdd
 	return plumbing.MessagePreview(
 		ctx,
 		fromAddr,
-		address.PaymentBrokerAddress,
+		address.LegacyPaymentBrokerAddress,
 		paymentbroker.Redeem,
 		params...,
 	)

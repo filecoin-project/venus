@@ -10,7 +10,7 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -43,7 +43,7 @@ func TestPaymentBrokerGenesis(t *testing.T) {
 
 	_, st, _ := requireGenesis(ctx, t, address.NewForTestGetter()())
 
-	paymentBroker := state.MustGetActor(st, address.PaymentBrokerAddress)
+	paymentBroker := state.MustGetActor(st, address.LegacyPaymentBrokerAddress)
 
 	assert.Equal(t, types.NewAttoFILFromFIL(0), paymentBroker.Balance)
 }
@@ -58,7 +58,7 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 	_, st, vms := requireGenesis(ctx, t, target)
 
 	pdata := abi.MustConvertParams(target, big.NewInt(10))
-	msg := types.NewUnsignedMessage(payer, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(1000), CreateChannel, pdata)
+	msg := types.NewUnsignedMessage(payer, address.LegacyPaymentBrokerAddress, 0, types.NewAttoFILFromFIL(1000), CreateChannel, pdata)
 
 	result, err := th.ApplyTestMessageWithActors(builtinsWithTestActor(), st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 
 	channelID := types.NewChannelIDFromBytes(result.Receipt.Return[0])
 
-	paymentBroker := state.MustGetActor(st, address.PaymentBrokerAddress)
+	paymentBroker := state.MustGetActor(st, address.LegacyPaymentBrokerAddress)
 
 	assert.Equal(t, types.NewAttoFILFromFIL(1000), paymentBroker.Balance)
 
@@ -91,7 +91,7 @@ func TestPaymentBrokerUpdate(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
-	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 
 	assert.Equal(t, types.NewAttoFILFromFIL(900), paymentBroker.Balance)
 
@@ -234,7 +234,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, sys.st.SetActor(context.TODO(), pbTestActorAddr, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 		// Expect that the redeemed flag is false on init
-		paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+		paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 		channel := sys.retrieveChannel(paymentBroker)
 		assert.Equal(t, false, channel.Redeemed)
 
@@ -245,7 +245,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, appResult.ExecutionError)
 
 		// Expect that the redeemed flag is now true
-		paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+		paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 		channel = sys.retrieveChannel(paymentBroker)
 		assert.Equal(t, true, channel.Redeemed)
 	})
@@ -255,7 +255,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, sys.st.SetActor(context.TODO(), pbTestActorAddr, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 		// Expect that the condition is nil on init
-		paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+		paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 		channel := sys.retrieveChannel(paymentBroker)
 		assert.Nil(t, channel.Condition)
 
@@ -266,7 +266,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, appResult.ExecutionError)
 
 		// Expect that the condition is now set and correct
-		paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+		paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 		channel = sys.retrieveChannel(paymentBroker)
 		assert.NotNil(t, channel.Condition)
 		assert.Equal(t, pbTestActorAddr, channel.Condition.To)
@@ -287,7 +287,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, appResult.ExecutionError)
 
 		// Expect that the condition is set and correct
-		paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+		paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 		channel := sys.retrieveChannel(paymentBroker)
 		assert.NotNil(t, channel.Condition)
 		assert.Equal(t, pbTestActorAddr, channel.Condition.To)
@@ -299,7 +299,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, appResult.ExecutionError)
 
 		// Expect that the condition is now nil
-		paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+		paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 		channel = sys.retrieveChannel(paymentBroker)
 		assert.Nil(t, channel.Condition)
 	})
@@ -315,7 +315,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, appResult.ExecutionError)
 
 		// Expect that the condition is nil
-		paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+		paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 		channel := sys.retrieveChannel(paymentBroker)
 		assert.Nil(t, channel.Condition)
 
@@ -325,7 +325,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, appResult.ExecutionError)
 
 		// Expect that the condition is updated with the new redeemer params
-		paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+		paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 		channel = sys.retrieveChannel(paymentBroker)
 		assert.NotNil(t, channel.Condition)
 		assert.Equal(t, pbTestActorAddr, channel.Condition.To)
@@ -346,7 +346,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, appResult.ExecutionError)
 
 		// Expect that the condition is set and correct
-		paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+		paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 		channel := sys.retrieveChannel(paymentBroker)
 		assert.NotNil(t, channel.Condition)
 		assert.Equal(t, pbTestActorAddr, channel.Condition.To)
@@ -360,7 +360,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		require.NoError(t, appResult.ExecutionError)
 
 		// Expect that the condition is updated with the new redeemer params
-		paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+		paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 		channel = sys.retrieveChannel(paymentBroker)
 		assert.NotNil(t, channel.Condition)
 		assert.Equal(t, pbTestActorAddr, channel.Condition.To)
@@ -403,14 +403,14 @@ func TestPaymentBrokerRedeemReversesCancellations(t *testing.T) {
 
 	// Cancel the payment channel
 	pdata := abi.MustConvertParams(sys.channelID)
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Cancel, pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.LegacyPaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Cancel, pdata)
 	result, err := sys.ApplyMessage(msg, 100)
 	require.NoError(t, result.ExecutionError)
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
 	// Expect that the EOL of the payment channel now reflects the cancellation
-	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 	channel := sys.retrieveChannel(paymentBroker)
 	assert.Equal(t, types.NewBlockHeight(20000), channel.AgreedEol)
 	assert.Equal(t, types.NewBlockHeight(10100), channel.Eol)
@@ -421,7 +421,7 @@ func TestPaymentBrokerRedeemReversesCancellations(t *testing.T) {
 
 	// Expect that the EOL has been reset to its originally agreed upon value
 	// meaning that the cancellation has been reversed
-	paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+	paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 	channel = sys.retrieveChannel(paymentBroker)
 	assert.Equal(t, types.NewBlockHeight(20000), channel.AgreedEol)
 	assert.Equal(t, types.NewBlockHeight(20000), channel.Eol)
@@ -532,7 +532,7 @@ func TestPaymentBrokerUpdateSuccessWithValidAt(t *testing.T) {
 
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
-	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 	assert.Equal(t, types.NewAttoFILFromFIL(900), paymentBroker.Balance)
 
 	payee, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, sys.target)
@@ -549,7 +549,7 @@ func TestPaymentBrokerUpdateSuccessWithValidAt(t *testing.T) {
 
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
-	paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+	paymentBroker, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 	assert.Equal(t, types.NewAttoFILFromFIL(800), paymentBroker.Balance)
 
 	payee, _ = th.RequireLookupActor(ctx, t, sys.st, sys.vms, sys.target)
@@ -574,7 +574,7 @@ func TestPaymentBrokerClose(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, result.ExecutionError)
 
-	paymentBroker := th.RequireGetActor(sys.ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+	paymentBroker := th.RequireGetActor(sys.ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 
 	// all funds have been redeemed or returned
 	assert.Equal(t, types.NewAttoFILFromFIL(0), paymentBroker.Balance)
@@ -615,7 +615,7 @@ func TestPaymentBrokerCloseInvalidSig(t *testing.T) {
 
 	var condition *types.Predicate
 	pdata := abi.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, condition, signature, []interface{}{})
-	msg := types.NewUnsignedMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), Close, pdata)
+	msg := types.NewUnsignedMessage(sys.target, address.LegacyPaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), Close, pdata)
 	res, err := sys.ApplyMessage(msg, 0)
 	require.EqualError(t, res.ExecutionError, Errors[ErrInvalidSignature].Error())
 	require.NoError(t, err)
@@ -701,7 +701,7 @@ func TestPaymentBrokerRedeemInvalidSig(t *testing.T) {
 
 	var condition *types.Predicate
 	pdata := abi.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, condition, signature, []interface{}{})
-	msg := types.NewUnsignedMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), Redeem, pdata)
+	msg := types.NewUnsignedMessage(sys.target, address.LegacyPaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), Redeem, pdata)
 	res, err := sys.ApplyMessage(msg, 0)
 	require.EqualError(t, res.ExecutionError, Errors[ErrInvalidSignature].Error())
 	require.NoError(t, err)
@@ -717,13 +717,13 @@ func TestPaymentBrokerReclaim(t *testing.T) {
 	payerBalancePriorToClose := payer.Balance
 
 	pdata := abi.MustConvertParams(sys.channelID)
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), Reclaim, pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.LegacyPaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), Reclaim, pdata)
 	// block height is after Eol
 	res, err := sys.ApplyMessage(msg, 20001)
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 
-	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 
 	// all funds have been redeemed or returned
 	assert.Equal(t, types.NewAttoFILFromFIL(0), paymentBroker.Balance)
@@ -739,7 +739,7 @@ func TestPaymentBrokerReclaimFailsBeforeChannelEol(t *testing.T) {
 	sys := setup(t)
 
 	pdata := abi.MustConvertParams(sys.channelID)
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), Reclaim, pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.LegacyPaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), Reclaim, pdata)
 	// block height is before Eol
 	result, err := sys.ApplyMessage(msg, 0)
 	require.NoError(t, err)
@@ -758,7 +758,7 @@ func TestPaymentBrokerExtend(t *testing.T) {
 
 	// extend channel
 	pdata := abi.MustConvertParams(sys.channelID, types.NewBlockHeight(30000))
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Extend, pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.LegacyPaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Extend, pdata)
 
 	result, err := sys.ApplyMessage(msg, 9)
 	require.NoError(t, result.ExecutionError)
@@ -774,7 +774,7 @@ func TestPaymentBrokerExtend(t *testing.T) {
 	assert.Equal(t, uint8(0), result.Receipt.ExitCode)
 
 	// check value
-	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 	assert.Equal(t, types.NewAttoFILFromFIL(900), paymentBroker.Balance) // 1000 + 1000 - 1100
 
 	// get payment channel
@@ -793,7 +793,7 @@ func TestPaymentBrokerExtendFailsWithNonExistentChannel(t *testing.T) {
 
 	// extend channel
 	pdata := abi.MustConvertParams(types.NewChannelID(383), types.NewBlockHeight(30000))
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Extend, pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.LegacyPaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Extend, pdata)
 
 	result, err := sys.ApplyMessage(msg, 9)
 	require.NoError(t, err)
@@ -808,7 +808,7 @@ func TestPaymentBrokerExtendRefusesToShortenTheEol(t *testing.T) {
 
 	// extend channel setting block height to 5 (<10)
 	pdata := abi.MustConvertParams(sys.channelID, types.NewBlockHeight(5))
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Extend, pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.LegacyPaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Extend, pdata)
 
 	result, err := sys.ApplyMessage(msg, 9)
 	require.NoError(t, err)
@@ -824,14 +824,14 @@ func TestPaymentBrokerCancel(t *testing.T) {
 	sys := setup(t)
 
 	pdata := abi.MustConvertParams(sys.channelID)
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Cancel, pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.LegacyPaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Cancel, pdata)
 
 	result, err := sys.ApplyMessage(msg, 100)
 	require.NoError(t, result.ExecutionError)
 	require.NoError(t, err)
 	assert.Equal(t, uint8(0), result.Receipt.ExitCode)
 
-	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 	channel := sys.retrieveChannel(paymentBroker)
 
 	assert.Equal(t, types.NewBlockHeight(20000), channel.AgreedEol)
@@ -862,7 +862,7 @@ func TestPaymentBrokerCancelFailsAfterSuccessfulRedeem(t *testing.T) {
 
 	// Attempts to Cancel and expects failure
 	pdata := abi.MustConvertParams(sys.channelID)
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Cancel, pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.LegacyPaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Cancel, pdata)
 	result, err = sys.ApplyMessage(msg, 100)
 	assert.NoError(t, err)
 	assert.Error(t, result.ExecutionError)
@@ -885,7 +885,7 @@ func TestPaymentBrokerCancelFailsAfterSuccessfulRedeemWithNilCondtion(t *testing
 
 	// Attempts to Cancel and expects failure
 	pdata := abi.MustConvertParams(sys.channelID)
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Cancel, pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.LegacyPaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Cancel, pdata)
 	result, err = sys.ApplyMessage(msg, 100)
 	assert.NoError(t, err)
 	assert.Error(t, result.ExecutionError)
@@ -914,7 +914,7 @@ func TestPaymentBrokerCancelSucceedsAfterSuccessfulRedeemButFailedConditions(t *
 	require.NoError(t, result.ExecutionError)
 
 	// Expect that the redeemed flag is true and condition is set
-	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.PaymentBrokerAddress)
+	paymentBroker, _ := th.RequireLookupActor(ctx, t, sys.st, sys.vms, address.LegacyPaymentBrokerAddress)
 	channel := sys.retrieveChannel(paymentBroker)
 	assert.Equal(t, true, channel.Redeemed)
 	assert.NotNil(t, channel.Condition)
@@ -924,7 +924,7 @@ func TestPaymentBrokerCancelSucceedsAfterSuccessfulRedeemButFailedConditions(t *
 
 	// Attempt to Cancel and expects success
 	pdata := abi.MustConvertParams(sys.channelID)
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Cancel, pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.LegacyPaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Cancel, pdata)
 	_, err = sys.ApplyMessage(msg, 100)
 	assert.NoError(t, err)
 }
@@ -949,7 +949,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		args, err := abi.ToEncodedValues(payer)
 		require.NoError(t, err)
 
-		returnValue, exitCode, err := consensus.NewDefaultProcessor().CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, Ls, args, payer, types.NewBlockHeight(9))
+		returnValue, exitCode, err := consensus.NewDefaultProcessor().CallQueryMethod(ctx, st, vms, address.LegacyPaymentBrokerAddress, Ls, args, payer, types.NewBlockHeight(9))
 		require.NoError(t, err)
 		assert.Equal(t, uint8(0), exitCode)
 
@@ -987,7 +987,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		args, err := abi.ToEncodedValues(payer)
 		require.NoError(t, err)
 
-		returnValue, exitCode, err := consensus.NewDefaultProcessor().CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, Ls, args, payer, types.NewBlockHeight(9))
+		returnValue, exitCode, err := consensus.NewDefaultProcessor().CallQueryMethod(ctx, st, vms, address.LegacyPaymentBrokerAddress, Ls, args, payer, types.NewBlockHeight(9))
 		require.NoError(t, err)
 		assert.Equal(t, uint8(0), exitCode)
 
@@ -1010,7 +1010,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
 		pdata := abi.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, nilCondition)
-		msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, Voucher, pdata)
+		msg := types.NewUnsignedMessage(sys.payer, address.LegacyPaymentBrokerAddress, 1, types.ZeroAttoFIL, Voucher, pdata)
 		res, err := sys.ApplyMessage(msg, 9)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
@@ -1046,7 +1046,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		voucherAmount := types.NewAttoFILFromFIL(2000)
 		args := abi.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, nilCondition)
 
-		msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, Voucher, args)
+		msg := types.NewUnsignedMessage(sys.payer, address.LegacyPaymentBrokerAddress, 1, types.ZeroAttoFIL, Voucher, args)
 		res, err := sys.ApplyMessage(msg, 9)
 		assert.NoError(t, err)
 		assert.NotEqual(t, uint8(0), res.Receipt.ExitCode)
@@ -1065,7 +1065,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
 		pdata := abi.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, condition)
-		msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, Voucher, pdata)
+		msg := types.NewUnsignedMessage(sys.payer, address.LegacyPaymentBrokerAddress, 1, types.ZeroAttoFIL, Voucher, pdata)
 		res, err := sys.ApplyMessage(msg, 9)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
@@ -1119,7 +1119,7 @@ func TestSignVoucher(t *testing.T) {
 
 func establishChannel(ctx context.Context, st state.Tree, vms storagemap.StorageMap, from address.Address, target address.Address, nonce uint64, amt types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
 	pdata := abi.MustConvertParams(target, eol)
-	msg := types.NewUnsignedMessage(from, address.PaymentBrokerAddress, nonce, amt, CreateChannel, pdata)
+	msg := types.NewUnsignedMessage(from, address.LegacyPaymentBrokerAddress, nonce, amt, CreateChannel, pdata)
 	result, err := th.ApplyTestMessageWithActors(builtinsWithTestActor(), st, vms, msg, types.NewBlockHeight(0))
 	if err != nil {
 		panic(err)
@@ -1212,7 +1212,7 @@ func (sys *system) CallQueryMethod(method types.MethodID, height uint64, params 
 
 	args := abi.MustConvertParams(params...)
 
-	return consensus.NewDefaultProcessor().CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, method, args, sys.payer, types.NewBlockHeight(height))
+	return consensus.NewDefaultProcessor().CallQueryMethod(sys.ctx, sys.st, sys.vms, address.LegacyPaymentBrokerAddress, method, args, sys.payer, types.NewBlockHeight(height))
 }
 
 func (sys *system) ApplyRedeemMessage(target address.Address, amtInt uint64, nonce uint64) (*consensus.ApplicationResult, error) {
@@ -1248,7 +1248,7 @@ func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
 	args, err := abi.ToEncodedValues(sys.payer)
 	require.NoError(sys.t, err)
 
-	returnValue, exitCode, err := consensus.NewDefaultProcessor().CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, Ls, args, sys.payer, types.NewBlockHeight(9))
+	returnValue, exitCode, err := consensus.NewDefaultProcessor().CallQueryMethod(sys.ctx, sys.st, sys.vms, address.LegacyPaymentBrokerAddress, Ls, args, sys.payer, types.NewBlockHeight(9))
 	require.NoError(sys.t, err)
 	assert.Equal(sys.t, uint8(0), exitCode)
 
@@ -1271,7 +1271,7 @@ func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, 
 	require.NoError(sys.t, err)
 
 	pdata := abi.MustConvertParams(sys.payer, sys.channelID, amt, validAt, condition, signature, suppliedParams)
-	msg := types.NewUnsignedMessage(target, address.PaymentBrokerAddress, nonce, types.NewAttoFILFromFIL(0), method, pdata)
+	msg := types.NewUnsignedMessage(target, address.LegacyPaymentBrokerAddress, nonce, types.NewAttoFILFromFIL(0), method, pdata)
 
 	return sys.ApplyMessage(msg, height)
 }
@@ -1284,7 +1284,7 @@ func requireGetPaymentChannel(t *testing.T, ctx context.Context, st state.Tree, 
 	var paymentMap map[string]*PaymentChannel
 
 	pdata := abi.MustConvertParams(payer)
-	values, ec, err := consensus.NewDefaultProcessor().CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, Ls, pdata, payer, types.NewBlockHeight(0))
+	values, ec, err := consensus.NewDefaultProcessor().CallQueryMethod(ctx, st, vms, address.LegacyPaymentBrokerAddress, Ls, pdata, payer, types.NewBlockHeight(0))
 	require.Zero(t, ec)
 	require.NoError(t, err)
 
@@ -1315,7 +1315,7 @@ func (ma *PBTestActor) Method(id types.MethodID) (dispatch.Method, *dispatch.Fun
 }
 
 // InitializeState stores this actors
-func (ma *PBTestActor) InitializeState(storage runtime.Storage, initializerData interface{}) error {
+func (ma *PBTestActor) InitializeState(storage runtime.LegacyStorage, initializerData interface{}) error {
 	return nil
 }
 

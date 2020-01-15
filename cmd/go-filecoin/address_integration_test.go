@@ -60,7 +60,7 @@ func TestWalletBalance(t *testing.T) {
 	assert.Equal(t, "0", balance.ReadStdoutTrimNewlines())
 
 	t.Log("[success] balance 9999900000")
-	balance = cmdClient.RunSuccess(ctx, "wallet", "balance", address.NetworkAddress.String())
+	balance = cmdClient.RunSuccess(ctx, "wallet", "balance", address.LegacyNetworkAddress.String())
 	assert.Equal(t, "949999900000", balance.ReadStdoutTrimNewlines())
 
 	t.Log("[success] newly generated one")

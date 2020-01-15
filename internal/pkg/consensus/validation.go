@@ -82,14 +82,14 @@ func (v *DefaultMessageValidator) Validate(ctx context.Context, msg *types.Unsig
 		return errInsufficientGas
 	}
 
-	if msg.CallSeqNum < fromActor.Nonce {
-		log.Debugf("Message: %s nonce lower than actor nonce: %s from actor: %s", msg.String(), fromActor.Nonce, msg.From.String())
+	if msg.CallSeqNum < fromActor.CallSeqNum {
+		log.Debugf("Message: %s nonce lower than actor nonce: %s from actor: %s", msg.String(), fromActor.CallSeqNum, msg.From.String())
 		errNonceTooLowCt.Inc(ctx, 1)
 		return errNonceTooLow
 	}
 
-	if !v.allowHighNonce && msg.CallSeqNum > fromActor.Nonce {
-		log.Debugf("Message: %s nonce greater than actor nonce: %s from actor: %s", msg.String(), fromActor.Nonce, msg.From.String())
+	if !v.allowHighNonce && msg.CallSeqNum > fromActor.CallSeqNum {
+		log.Debugf("Message: %s nonce greater than actor nonce: %s from actor: %s", msg.String(), fromActor.CallSeqNum, msg.From.String())
 		errNonceTooHighCt.Inc(ctx, 1)
 		return errNonceTooHigh
 	}
@@ -146,8 +146,8 @@ func (v *IngestionValidator) Validate(ctx context.Context, smsg *types.SignedMes
 	}
 
 	// check that message nonce is not too high
-	if msg.CallSeqNum > fromActor.Nonce && msg.CallSeqNum-fromActor.Nonce > v.cfg.MaxNonceGap {
-		return errors.NewRevertErrorf("message nonce (%d) is too much greater than actor nonce (%d)", msg.CallSeqNum, fromActor.Nonce)
+	if msg.CallSeqNum > fromActor.CallSeqNum && msg.CallSeqNum-fromActor.CallSeqNum > v.cfg.MaxNonceGap {
+		return errors.NewRevertErrorf("message nonce (%d) is too much greater than actor nonce (%d)", msg.CallSeqNum, fromActor.CallSeqNum)
 	}
 
 	return v.validator.Validate(ctx, &msg, fromActor)

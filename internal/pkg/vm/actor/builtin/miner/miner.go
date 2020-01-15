@@ -116,6 +116,12 @@ type State struct {
 	OwedStorageCollateral types.AttoFIL
 }
 
+// View is a readonly view into the actor state
+type View struct {
+	state State
+	store runtime.LegacyStorage
+}
+
 // Ask is a price advertisement by the miner
 type Ask struct {
 	Price  types.AttoFIL
@@ -177,6 +183,23 @@ func NewState(owner, worker address.Address, pid peer.ID, sectorSize *types.Byte
 		SlashedAt:             types.NewBlockHeight(0),
 		OwedStorageCollateral: types.ZeroAttoFIL,
 	}
+}
+
+// NewView creates a new init actor state view.
+func NewView(stateHandle runtime.ReadonlyActorStateHandle, store runtime.LegacyStorage) View {
+	// load state as readonly
+	var state State
+	stateHandle.Readonly(&state)
+	// return view
+	return View{
+		state: state,
+		store: store,
+	}
+}
+
+// Owner returns the address for the miner ownner.
+func (view *View) Owner() address.Address {
+	return view.state.Owner
 }
 
 //
@@ -343,7 +366,7 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSi
 }
 
 // InitializeState stores this miner's initial data structure.
-func (*Actor) InitializeState(storage runtime.Storage, initializerData interface{}) error {
+func (*Actor) InitializeState(storage runtime.LegacyStorage, initializerData interface{}) error {
 	minerState, ok := initializerData.(*State)
 	if !ok {
 		return errors.NewFaultError("Initial state to miner actor is not a miner.State struct")
@@ -371,7 +394,6 @@ type Impl Actor
 
 var log = logging.Logger("actor.miner")
 
-// Dragons: import cycle between actors, we need to separate the definitions from the impls
 var Storagemarket_UpdateStorage = types.MethodID(1 + 32)
 var Storagemarket_GetProofsMode = types.MethodID(3 + 32)
 
@@ -454,7 +476,7 @@ type invocationContext interface {
 
 // Constructor initializes the actor's state
 func (impl *Impl) Constructor(ctx runtime.InvocationContext, owner, worker address.Address, pid peer.ID, sectorSize *types.BytesAmount) (uint8, error) {
-	err := (*Actor)(impl).InitializeState(ctx.Runtime().Storage(), NewState(owner, worker, pid, sectorSize))
+	err := (*Actor)(impl).InitializeState(ctx.Runtime().LegacyStorage(), NewState(owner, worker, pid, sectorSize))
 	if err != nil {
 		return errors.CodeError(err), err
 	}
@@ -1052,7 +1074,7 @@ func (a *Impl) SubmitPoSt(ctx invocationContext, poStProof types.PoStProof, faul
 		// Refund any overpayment of fees to the owner.
 		if messageValue.GreaterThan(feeRequired) {
 			overpayment := messageValue.Sub(feeRequired)
-			_, _, err := ctx.Runtime().LegacySend(sender, types.SendMethodID, overpayment, []interface{}{})
+			_, _, err := ctx.LegacySend(sender, types.SendMethodID, overpayment, []interface{}{})
 			if err != nil {
 				return nil, errors.NewRevertErrorf("Failed to refund overpayment of %s to %s", overpayment, sender)
 			}
@@ -1135,7 +1157,7 @@ func (a *Impl) SubmitPoSt(ctx invocationContext, poStProof types.PoStProof, faul
 		delta := newPower.Sub(oldPower)
 
 		if !delta.IsZero() {
-			_, ret, err := ctx.Runtime().LegacySend(address.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{delta})
+			_, ret, err := ctx.LegacySend(address.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{delta})
 			if err != nil {
 				return nil, err
 			}
@@ -1198,7 +1220,7 @@ func (*Impl) SlashStorageFault(ctx invocationContext) (uint8, error) {
 
 		// Strip the miner of their power.
 		powerDelta := types.ZeroBytes.Sub(state.Power) // negate bytes amount
-		_, ret, err := ctx.Runtime().LegacySend(address.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{powerDelta})
+		_, ret, err := ctx.LegacySend(address.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{powerDelta})
 		if err != nil {
 			return nil, err
 		}
@@ -1270,7 +1292,7 @@ func (a *Impl) CalculateLateFee(ctx invocationContext, height *types.BlockHeight
 //
 
 func (*Impl) burnFunds(ctx invocationContext, amount types.AttoFIL) error {
-	_, _, err := ctx.Runtime().LegacySend(address.BurntFundsAddress, types.SendMethodID, amount, []interface{}{})
+	_, _, err := ctx.LegacySend(address.BurntFundsAddress, types.SendMethodID, amount, []interface{}{})
 	return err
 }
 
@@ -1297,7 +1319,7 @@ func getPoStChallengeSeed(ctx invocationContext, state State, sampleAt *types.Bl
 // GetProofsMode returns the genesis block-configured proofs mode.
 func GetProofsMode(ctx invocationContext) (types.ProofsMode, error) {
 	var proofsMode types.ProofsMode
-	msgResult, _, err := ctx.Runtime().LegacySend(address.StorageMarketAddress, Storagemarket_GetProofsMode, types.ZeroAttoFIL, nil)
+	msgResult, _, err := ctx.LegacySend(address.StorageMarketAddress, Storagemarket_GetProofsMode, types.ZeroAttoFIL, nil)
 	if err != nil {
 		return types.TestProofsMode, xerrors.Wrap(err, "'GetProofsMode' message failed")
 	}

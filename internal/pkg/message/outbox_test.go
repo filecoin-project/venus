@@ -56,7 +56,7 @@ func TestOutbox(t *testing.T) {
 			b.IncHeight(1000)
 		})
 		actr, _ := account.NewActor(types.ZeroAttoFIL)
-		actr.Nonce = 42
+		actr.CallSeqNum = 42
 		provider.SetHeadAndActor(t, head.Key(), sender, actr)
 
 		ob := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, message.NullPolicy{}, provider, provider, newOutboxTestJournal(t))
@@ -67,7 +67,7 @@ func TestOutbox(t *testing.T) {
 			bcast  bool
 			nonce  types.Uint64
 			height int
-		}{{true, actr.Nonce, 1000}, {false, actr.Nonce + 1, 1000}}
+		}{{true, actr.CallSeqNum, 1000}, {false, actr.CallSeqNum + 1, 1000}}
 
 		for _, test := range testCases {
 			_, pubDone, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), test.bcast, types.InvalidMethodID)
@@ -100,7 +100,7 @@ func TestOutbox(t *testing.T) {
 			b.IncHeight(1000)
 		})
 		actr, _ := account.NewActor(types.ZeroAttoFIL)
-		actr.Nonce = 42
+		actr.CallSeqNum = 42
 		provider.SetHeadAndActor(t, head.Key(), sender, actr)
 
 		s := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, message.NullPolicy{}, provider, provider, newOutboxTestJournal(t))
@@ -135,7 +135,7 @@ func TestOutbox(t *testing.T) {
 		}
 
 		for i := 0; i < 60; i++ {
-			assert.True(t, nonces[uint64(actr.Nonce)+uint64(i)])
+			assert.True(t, nonces[uint64(actr.CallSeqNum)+uint64(i)])
 
 		}
 	})

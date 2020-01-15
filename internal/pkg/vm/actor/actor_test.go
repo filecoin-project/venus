@@ -20,7 +20,7 @@ func TestActorCid(t *testing.T) {
 	actor1 := NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 	actor2 := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(5))
 	actor2.Head = requireCid(t, "Actor 2 State")
-	actor1.IncNonce()
+	actor1.IncrementSeqNum()
 
 	c1, err := actor1.Cid()
 	assert.NoError(t, err)

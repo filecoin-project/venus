@@ -35,6 +35,7 @@ type State struct {
 	Address address.Address
 }
 
+// NewState creates a new actor state.
 func NewState(addr address.Address) *State {
 	return &State{Address: addr}
 }
@@ -69,7 +70,7 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSi
 }
 
 // InitializeState for account actors does nothing.
-func (*Actor) InitializeState(storage runtime.Storage, initializerData interface{}) error {
+func (*Actor) InitializeState(storage runtime.LegacyStorage, initializerData interface{}) error {
 	state, ok := initializerData.(*State)
 	if !ok {
 		return errors.NewFaultError("Initial state to account actor is not a account.State struct")
@@ -101,7 +102,7 @@ type Impl Actor
 
 // Constructor initializes the actor's state
 func (impl *Impl) Constructor(ctx runtime.InvocationContext, addr address.Address) (uint8, error) {
-	err := (*Actor)(impl).InitializeState(ctx.Runtime().Storage(), NewState(addr))
+	err := (*Actor)(impl).InitializeState(ctx.Runtime().LegacyStorage(), NewState(addr))
 	if err != nil {
 		return errors.CodeError(err), errors.RevertErrorWrap(err, "Could not initialize account state")
 	}

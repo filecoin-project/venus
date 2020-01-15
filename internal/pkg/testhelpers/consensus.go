@@ -162,7 +162,7 @@ func RequireActorIDAddress(ctx context.Context, t *testing.T, st state.Tree, sto
 	params, err := abi.ToEncodedValues(addr)
 	require.NoError(t, err)
 
-	result, _, err := processor.CallQueryMethod(ctx, st, store, address.InitAddress, initactor.GetActorIDForAddress, params, address.Undef, nil)
+	result, _, err := processor.CallQueryMethod(ctx, st, store, address.InitAddress, initactor.GetActorIDForAddressMethodID, params, address.Undef, nil)
 	require.NoError(t, err)
 
 	idVal, err := abi.Deserialize(result[0], abi.Integer)

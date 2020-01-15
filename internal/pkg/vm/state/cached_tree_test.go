@@ -29,7 +29,7 @@ func TestCachedStateGetCommit(t *testing.T) {
 	act1 := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 	act1Cid := requireCid(t, "hello")
 	act1.Head = act1Cid
-	act1.IncNonce()
+	act1.IncrementSeqNum()
 	act2 := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 	act2Cid := requireCid(t, "world")
 	act2.Head = act2Cid
@@ -45,18 +45,18 @@ func TestCachedStateGetCommit(t *testing.T) {
 	cAct1, err := tree.GetActor(ctx, addr1)
 	require.NoError(t, err)
 
-	assert.Equal(t, uint64(1), uint64(cAct1.Nonce))
+	assert.Equal(t, uint64(1), uint64(cAct1.CallSeqNum))
 	assert.Equal(t, act1Cid, cAct1.Head)
 
 	// altering act1 doesn't alter it in underlying cache
-	cAct1.IncNonce()
+	cAct1.IncrementSeqNum()
 	cAct1Cid := requireCid(t, "goodbye")
 	cAct1.Head = cAct1Cid
 
 	uAct1, err := underlying.GetActor(ctx, addr1)
 	require.NoError(t, err)
 
-	assert.Equal(t, uint64(1), uint64(uAct1.Nonce))
+	assert.Equal(t, uint64(1), uint64(uAct1.CallSeqNum))
 	assert.Equal(t, act1.Head, uAct1.Head)
 
 	// retrieving from the cache again returns the same instance
@@ -71,14 +71,14 @@ func TestCachedStateGetCommit(t *testing.T) {
 	uAct1Again, err := underlying.GetActor(ctx, addr1)
 	require.NoError(t, err)
 
-	assert.Equal(t, uint64(2), uint64(uAct1Again.Nonce))
+	assert.Equal(t, uint64(2), uint64(uAct1Again.CallSeqNum))
 	assert.Equal(t, cAct1Cid, uAct1Again.Head)
 
 	// commit doesn't affect untouched actors
 	uAct2, err := underlying.GetActor(ctx, addr2)
 	require.NoError(t, err)
 
-	assert.Equal(t, uint64(0), uint64(uAct2.Nonce))
+	assert.Equal(t, uint64(0), uint64(uAct2.CallSeqNum))
 	assert.Equal(t, act2Cid, uAct2.Head)
 }
 

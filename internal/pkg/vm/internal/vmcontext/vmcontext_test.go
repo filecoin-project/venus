@@ -2,10 +2,11 @@ package vmcontext
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/ipfs/go-block-format"
 	"math/big"
 	"testing"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	blocks "github.com/ipfs/go-block-format"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -63,7 +64,7 @@ func TestVMContextStorage(t *testing.T) {
 		Message:     msg,
 		State:       cstate,
 		StorageMap:  vms,
-		GasTracker:  gastracker.NewGasTracker(),
+		GasTracker:  gastracker.NewLegacyGasTracker(),
 		BlockHeight: types.NewBlockHeight(0),
 	}
 	vmCtx := NewVMContext(vmCtxParams)
@@ -71,9 +72,9 @@ func TestVMContextStorage(t *testing.T) {
 	node, err := cbor.WrapObject(helloID, types.DefaultHashFunction, -1)
 	assert.NoError(t, err)
 
-	cid, err := vmCtx.Storage().Put(node.RawData())
+	cid, err := vmCtx.LegacyStorage().Put(node.RawData())
 	require.NoError(t, err)
-	err = vmCtx.Storage().LegacyCommit(cid, vmCtx.Storage().LegacyHead())
+	err = vmCtx.LegacyStorage().LegacyCommit(cid, vmCtx.LegacyStorage().LegacyHead())
 	require.NoError(t, err)
 	assert.NoError(t, cstate.Commit(ctx))
 
@@ -81,7 +82,7 @@ func TestVMContextStorage(t *testing.T) {
 	toActorBack, err := st.GetActor(ctx, toAddr)
 	assert.NoError(t, err)
 	vmCtxParams.To = toActorBack
-	storage, err := vmCtx.Storage().Get(vmCtx.Storage().LegacyHead())
+	storage, err := vmCtx.LegacyStorage().Get(vmCtx.LegacyStorage().LegacyHead())
 	assert.NoError(t, err)
 	assert.Equal(t, storage, node.RawData())
 }
@@ -117,8 +118,8 @@ func TestVMContextCreateActor(t *testing.T) {
 		if r == nil {
 			t.Fail()
 		}
-		err := r.(runtime.AbortPanicError)
-		assert.Contains(t, err.Error(), partialMsg)
+		err := r.(runtime.ExecutionPanic)
+		assert.Contains(t, err.String(), partialMsg)
 	}
 
 	t.Run("create new actor", func(t *testing.T) {
@@ -202,7 +203,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			OriginMsg:   msg,
 			State:       tree,
 			StorageMap:  vms,
-			GasTracker:  gastracker.NewGasTracker(),
+			GasTracker:  gastracker.NewLegacyGasTracker(),
 			BlockHeight: types.NewBlockHeight(0),
 			Actors:      &mockStateTree,
 		}
@@ -343,7 +344,7 @@ func TestVMContextSendFailures(t *testing.T) {
 				calls = append(calls, "GetOrCreateActor")
 				return f()
 			},
-			LegacySend: func(ctx context.Context, vmCtx ExtendedRuntime) ([][]byte, uint8, error) {
+			LegacySend: func(ctx context.Context, vmCtx *VMContext) ([][]byte, uint8, error) {
 				calls = append(calls, "Send")
 				return nil, 123, expectedVMSendErr
 			},
@@ -414,7 +415,7 @@ func TestSendErrorHandling(t *testing.T) {
 			Message:     msg,
 			State:       tree,
 			StorageMap:  vms,
-			GasTracker:  gastracker.NewGasTracker(),
+			GasTracker:  gastracker.NewLegacyGasTracker(),
 			BlockHeight: types.NewBlockHeight(0),
 		}
 		vmCtx := NewVMContext(vmCtxParams)
@@ -437,7 +438,7 @@ func TestSendErrorHandling(t *testing.T) {
 			Message:     msg,
 			State:       tree,
 			StorageMap:  vms,
-			GasTracker:  gastracker.NewGasTracker(),
+			GasTracker:  gastracker.NewLegacyGasTracker(),
 			BlockHeight: types.NewBlockHeight(0),
 			Actors:      stateTree,
 		}
@@ -465,7 +466,7 @@ func TestSendErrorHandling(t *testing.T) {
 			Message:     msg,
 			State:       tree,
 			StorageMap:  vms,
-			GasTracker:  gastracker.NewGasTracker(),
+			GasTracker:  gastracker.NewLegacyGasTracker(),
 			BlockHeight: types.NewBlockHeight(0),
 			Actors:      stateTree,
 		}

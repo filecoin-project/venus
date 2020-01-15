@@ -17,7 +17,7 @@ type Method interface {
 // ExecutableActor is the interface all builtin actors have to implement.
 type ExecutableActor interface {
 	Method(id types.MethodID) (Method, *FunctionSignature, bool)
-	InitializeState(storage runtime.Storage, initializerData interface{}) error
+	InitializeState(storage runtime.LegacyStorage, initializerData interface{}) error
 }
 
 // Exports describe the public methods of an actor.

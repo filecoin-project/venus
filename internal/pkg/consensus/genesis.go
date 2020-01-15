@@ -35,10 +35,10 @@ var (
 
 func init() {
 	defaultAccounts = map[address.Address]types.AttoFIL{
-		address.NetworkAddress:    types.NewAttoFILFromFIL(10000000000),
-		address.BurntFundsAddress: types.NewAttoFILFromFIL(0),
-		address.TestAddress:       types.NewAttoFILFromFIL(50000),
-		address.TestAddress2:      types.NewAttoFILFromFIL(60000),
+		address.LegacyNetworkAddress: types.NewAttoFILFromFIL(10000000000),
+		address.BurntFundsAddress:    types.NewAttoFILFromFIL(0),
+		address.TestAddress:          types.NewAttoFILFromFIL(50000),
+		address.TestAddress2:         types.NewAttoFILFromFIL(60000),
 	}
 }
 
@@ -178,8 +178,8 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			}
 			val := genCfg.accounts[addr]
 
-			_, err = ApplyMessageDirect(ctx, st, storageMap, address.NetworkAddress, address.InitAddress, 0, val,
-				initactor.Exec, types.AccountActorCodeCid, []interface{}{addr})
+			_, err = ApplyMessageDirect(ctx, st, storageMap, address.LegacyNetworkAddress, address.InitAddress, 0, val,
+				initactor.ExecMethodID, types.AccountActorCodeCid, []interface{}{addr})
 			if err != nil {
 				return nil, err
 			}
@@ -206,7 +206,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			if err != nil {
 				return nil, err
 			}
-			a.Nonce = types.Uint64(nonce)
+			a.CallSeqNum = types.Uint64(nonce)
 			if err := st.SetActor(ctx, addr, a); err != nil {
 				return nil, err
 			}
@@ -268,20 +268,20 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 	}
 
 	pbAct := paymentbroker.NewActor()
-	err = (&paymentbroker.Actor{}).InitializeState(storageMap.NewStorage(address.PaymentBrokerAddress, pbAct), nil)
+	err = (&paymentbroker.Actor{}).InitializeState(storageMap.NewStorage(address.LegacyPaymentBrokerAddress, pbAct), nil)
 	if err != nil {
 		return err
 	}
-	if err = st.SetActor(ctx, address.PaymentBrokerAddress, pbAct); err != nil {
+	if err = st.SetActor(ctx, address.LegacyPaymentBrokerAddress, pbAct); err != nil {
 		return err
 	}
 
 	powAct := power.NewActor()
-	err = (&power.Actor{}).InitializeState(storageMap.NewStorage(address.PowerAddress, powAct), nil)
+	err = (&power.Actor{}).InitializeState(storageMap.NewStorage(address.StoragePowerAddress, powAct), nil)
 	if err != nil {
 		return err
 	}
-	err = st.SetActor(ctx, address.PowerAddress, powAct)
+	err = st.SetActor(ctx, address.StoragePowerAddress, powAct)
 	if err != nil {
 		return err
 	}
@@ -319,7 +319,7 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 				return err
 			}
 		} else {
-			_, err = ApplyMessageDirect(ctx, st, storageMap, address.NetworkAddress, address.InitAddress, uint64(i), val, initactor.Exec, types.AccountActorCodeCid, []interface{}{addr})
+			_, err = ApplyMessageDirect(ctx, st, storageMap, address.LegacyNetworkAddress, address.InitAddress, uint64(i), val, initactor.ExecMethodID, types.AccountActorCodeCid, []interface{}{addr})
 			if err != nil {
 				return err
 			}

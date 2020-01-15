@@ -51,7 +51,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		provider := message.NewFakeProvider(t)
 		root := provider.NewGenesis()
 		actr, _ := account.NewActor(types.ZeroAttoFIL)
-		actr.Nonce = 42
+		actr.CallSeqNum = 42
 		provider.SetHeadAndActor(t, root.Key(), sender, actr)
 
 		handler := makeHandler(provider, root)

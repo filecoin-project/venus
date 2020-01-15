@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 )
 
 // Runtime has operations in the VM that are exposed to all actors.
@@ -16,15 +17,14 @@ type Runtime interface {
 	CurrentEpoch() types.BlockHeight
 	// Randomness gives the actors access to sampling peudo-randomess from the chain.
 	Randomness(epoch types.BlockHeight, offset uint64) Randomness
-	// LegacySend allows actors to invoke methods on other actors
-	// TODO: remove after all legacy actor code is gone (issue #???)
-	LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
-	// Send allows actors to invoke methods on other actors
-	Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{}
 	// Storage is the raw store for IPLD objects.
 	//
 	// Note: this is required for custom data structures.
 	Storage() Storage
+	// LegacyStorage is the raw store for IPLD objects.
+	//
+	// Note: this is required for custom data structures.
+	LegacyStorage() LegacyStorage
 }
 
 // MessageInfo contains information available to the actor about the executing message.
@@ -51,6 +51,11 @@ type InvocationContext interface {
 	ValidateCaller(CallerPattern)
 	// StateHandle handles access to the actor state.
 	StateHandle() ActorStateHandle
+	// LegacySend allows actors to invoke methods on other actors
+	// TODO: remove after all legacy actor code is gone (issue #???)
+	LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
+	// Send allows actors to invoke methods on other actors
+	Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{}
 	// Balance is the current balance on the current actors account.
 	//
 	// Note: the value received for this invocation is already reflected on the balance.
@@ -61,6 +66,7 @@ type InvocationContext interface {
 	//
 	// Methods with extra complexity that is not accounted by other means (i.e. external calls, storage calls)
 	// will have to charge extra.
+	// Dragons: move up to runtime
 	Charge(units types.GasUnits) error
 }
 
@@ -88,7 +94,6 @@ type ExtendedInvocationContext interface {
 // LegacyInvocationContext are the methods from the old VM we have not removed yet.
 //
 // WARNING: Every method in this interface is to be considered DEPRECATED.
-// Dragons: this methods are legacy and have not been ported to the new VM semantics.
 type LegacyInvocationContext interface {
 	InvocationContext
 	LegacyMessage() *types.UnsignedMessage
@@ -98,10 +103,7 @@ type LegacyInvocationContext interface {
 
 // ActorStateHandle handles the actor state, allowing actors to lock on the state.
 type ActorStateHandle interface {
-	// Readonly loads a readonly copy of the state into the argument.
-	//
-	// Any modification to the state is illegal and will result in an `Abort`.
-	Readonly(obj interface{})
+	ReadonlyActorStateHandle
 	// Transaction loads a mutable version of the state into the `obj` argument and protects
 	// the execution from side effects.
 	//
@@ -136,6 +138,14 @@ type ActorStateHandle interface {
 	Transaction(obj interface{}, f func() (interface{}, error)) (interface{}, error)
 }
 
+// ReadonlyActorStateHandle handles the actor state loading for view only.
+type ReadonlyActorStateHandle interface {
+	// Readonly loads a readonly copy of the state into the argument.
+	//
+	// Any modification to the state is illegal and will result in an `Abort`.
+	Readonly(obj interface{})
+}
+
 // Randomness is a string of random bytes
 type Randomness []byte
 
@@ -150,42 +160,53 @@ type CallerPattern interface {
 	IsMatch(ctx PatternContext) bool
 }
 
-// AbortPanicError is used on panic when `Abort` is called by actors.
-type AbortPanicError struct {
-	msg string
+// ExecutionPanic is used to abort vm execution with an exit code.
+type ExecutionPanic struct {
+	msg  string
+	code exitcode.ExitCode
 }
 
-func (x AbortPanicError) Error() string {
-	return x.msg
+// Code is the code used to abort the execution (see: `Abort()`).
+func (p ExecutionPanic) Code() exitcode.ExitCode {
+	return p.code
 }
 
-// Abort will stop the VM execution and return an abort error to the caller.
-func Abort(msg string) {
-	panic(AbortPanicError{msg: msg})
+func (p ExecutionPanic) String() string {
+	return p.msg
 }
 
-// Abortf will stop the VM execution and return an abort error to the caller.
-func Abortf(msg string, args ...interface{}) {
-	panic(AbortPanicError{msg: fmt.Sprintf(msg, args...)})
+// Abort aborts the VM execution and sets the executing message return to the given `code`.
+func Abort(code exitcode.ExitCode) {
+	panic(ExecutionPanic{code: code})
+}
+
+// Abortf will stop the VM execution and return an the error to the caller.
+func Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
+	panic(ExecutionPanic{code: code, msg: fmt.Sprintf(msg, args...)})
 }
 
 // Assert will abort if the condition is `False` and return an abort error to the caller.
 func Assert(cond bool) {
 	if !cond {
-		Abort("assertion failure in actor code.")
+		Abortf(exitcode.MethodAbort, "assertion failure in actor code.")
 	}
 }
 
 // Storage defines the storage module exposed to actors.
 type Storage interface {
-	// Dragons: move out after cleaning up the actor state construction
+	// Put stores an object and returns its content-addressable ID.
+	Put(interface{}) cid.Cid
+	// Put stores an object and returns its content-addressable ID.
+	Get(cid cid.Cid, obj interface{}) bool
+	// CidOf returns the content-addressable ID of an object WITHOUT storing it.
+	CidOf(interface{}) cid.Cid
+}
+
+// LegacyStorage defines the storage module exposed to actors.
+type LegacyStorage interface {
 	LegacyHead() cid.Cid
 	Put(interface{}) (cid.Cid, error)
-	// Dragons: move out after cleaning up the actor state construction
 	CidOf(interface{}) (cid.Cid, error)
-	// Dragons: this interface is wrong, the caller does not know how the object got serialized (Put/1 takes an interface{} not bytes)
-	// TODO: change to `Get(cid, interface{}) error`
 	Get(cid.Cid) ([]byte, error)
-	// Dragons: move out after cleaning up the actor state construction
 	LegacyCommit(cid.Cid, cid.Cid) error
 }

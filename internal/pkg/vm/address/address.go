@@ -71,6 +71,12 @@ func (a Address) Protocol() Protocol {
 	return a.str[0]
 }
 
+// IsPubKey returns true if the address is a pub-key style address.
+func (a Address) IsPubKey() bool {
+	p := a.Protocol()
+	return p == SECP256K1 || p == BLS
+}
+
 // Payload returns the payload of the address.
 func (a Address) Payload() []byte {
 	return []byte(a.str[1:])

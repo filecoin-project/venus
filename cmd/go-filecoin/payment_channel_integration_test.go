@@ -161,7 +161,7 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 		[]interface{}{},
 	}
 	sender := newTestSender(t, types.NewAttoFIL(big.NewInt(1)), 300, rsrc.targetAddr, rsrc.target)
-	mcid := sender.requireSend(ctx, address.PaymentBrokerAddress, types.NewAttoFILFromFIL(0), paymentbroker.Redeem, params...)
+	mcid := sender.requireSend(ctx, address.LegacyPaymentBrokerAddress, types.NewAttoFILFromFIL(0), paymentbroker.Redeem, params...)
 
 	_, err = rsrc.miner.PorcelainAPI.MessagePoolWait(ctx, 1)
 	require.NoError(t, err)
@@ -208,7 +208,7 @@ func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
 		[]interface{}{},
 	}
 	sender := newTestSender(t, types.NewAttoFIL(big.NewInt(1)), 300, rsrc.targetAddr, rsrc.target)
-	mcid := sender.requireSend(ctx, address.PaymentBrokerAddress, types.NewAttoFILFromFIL(0), paymentbroker.Redeem, params...)
+	mcid := sender.requireSend(ctx, address.LegacyPaymentBrokerAddress, types.NewAttoFILFromFIL(0), paymentbroker.Redeem, params...)
 
 	_, err = rsrc.miner.PorcelainAPI.MessagePoolWait(ctx, 1)
 	require.NoError(t, err)
@@ -268,7 +268,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 		[]interface{}{},
 	}
 	targetSender := newTestSender(t, types.NewAttoFIL(big.NewInt(1)), 300, rsrc.targetAddr, rsrc.target)
-	mcid := targetSender.requireSend(ctx, address.PaymentBrokerAddress, types.NewAttoFILFromFIL(0), paymentbroker.Redeem, params...)
+	mcid := targetSender.requireSend(ctx, address.LegacyPaymentBrokerAddress, types.NewAttoFILFromFIL(0), paymentbroker.Redeem, params...)
 
 	_, err = rsrc.miner.PorcelainAPI.MessagePoolWait(ctx, 1)
 	require.NoError(t, err)
@@ -290,7 +290,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	payerSender := newTestSender(t, types.NewAttoFIL(big.NewInt(1)), 300, rsrc.payerAddr, rsrc.payer)
-	mcid = payerSender.requireSend(ctx, address.PaymentBrokerAddress, types.NewAttoFILFromFIL(0), paymentbroker.Reclaim, chanid)
+	mcid = payerSender.requireSend(ctx, address.LegacyPaymentBrokerAddress, types.NewAttoFILFromFIL(0), paymentbroker.Reclaim, chanid)
 
 	_, err = rsrc.miner.PorcelainAPI.MessagePoolWait(ctx, 1)
 	require.NoError(t, err)
@@ -347,7 +347,7 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 		[]interface{}{},
 	}
 	sender := newTestSender(t, types.NewAttoFIL(big.NewInt(1)), 300, rsrc.targetAddr, rsrc.target)
-	mcid := sender.requireSend(ctx, address.PaymentBrokerAddress, types.NewAttoFILFromFIL(0), paymentbroker.Close, params...)
+	mcid := sender.requireSend(ctx, address.LegacyPaymentBrokerAddress, types.NewAttoFILFromFIL(0), paymentbroker.Close, params...)
 
 	require.NoError(t, err)
 
@@ -409,7 +409,7 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 	sender := newTestSender(t, types.NewAttoFIL(big.NewInt(1)), 300, rsrc.payerAddr, rsrc.payer)
 	mcid := sender.requireSend(
 		ctx,
-		address.PaymentBrokerAddress,
+		address.LegacyPaymentBrokerAddress,
 		extendAmount,
 		paymentbroker.Extend,
 		chanid, extendExpiry,
@@ -458,7 +458,7 @@ func TestPaymentChannelCancelSuccess(t *testing.T) {
 	sender := newTestSender(t, types.NewAttoFIL(big.NewInt(1)), 300, rsrc.payerAddr, rsrc.payer)
 	mcid := sender.requireSend(
 		ctx,
-		address.PaymentBrokerAddress,
+		address.LegacyPaymentBrokerAddress,
 		types.NewAttoFIL(big.NewInt(1)),
 		paymentbroker.Cancel,
 		chanid,
@@ -536,7 +536,7 @@ func requireNewPaychResource(ctx context.Context, t *testing.T) *paychResources 
 
 func (rsrc *paychResources) requirePaymentChannel(ctx context.Context, t *testing.T, amt types.AttoFIL, eol *types.BlockHeight) (*types.ChannelID, types.AttoFIL) {
 	sender := newTestSender(t, types.NewAttoFIL(big.NewInt(1)), 300, rsrc.payerAddr, rsrc.payer)
-	mcid := sender.requireSend(ctx, address.PaymentBrokerAddress, amt, paymentbroker.CreateChannel, rsrc.targetAddr, eol)
+	mcid := sender.requireSend(ctx, address.LegacyPaymentBrokerAddress, amt, paymentbroker.CreateChannel, rsrc.targetAddr, eol)
 
 	_, err := rsrc.miner.PorcelainAPI.MessagePoolWait(ctx, 1)
 	require.NoError(t, err)

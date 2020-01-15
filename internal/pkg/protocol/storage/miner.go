@@ -316,7 +316,7 @@ func (sm *Miner) getPaymentChannel(ctx context.Context, p *storagedeal.SignedPro
 
 	payer := p.Payment.Payer
 
-	ret, err := sm.porcelainAPI.MessageQuery(ctx, address.Undef, address.PaymentBrokerAddress, paymentbroker.Ls, sm.porcelainAPI.ChainHeadKey(), payer)
+	ret, err := sm.porcelainAPI.MessageQuery(ctx, address.Undef, address.LegacyPaymentBrokerAddress, paymentbroker.Ls, sm.porcelainAPI.ChainHeadKey(), payer)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error getting payment channel for payer")
 	}

@@ -7,7 +7,7 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	sbtesting "github.com/filecoin-project/go-filecoin/internal/pkg/sectorbuilder/testing"
@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/filecoin-project/go-sectorbuilder"
+	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/stretchr/testify/require"
 )
@@ -93,7 +93,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	makeRedeemMsg := func(condition *types.Predicate, sectorID uint64, pip []byte, signature []byte) *types.UnsignedMessage {
 		suppliedParams := []interface{}{sectorID, pip}
 		pdata := abi.MustConvertParams(payer, channelID, amt, types.NewBlockHeight(0), condition, signature, suppliedParams)
-		return types.NewUnsignedMessage(target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), paymentbroker.Redeem, pdata)
+		return types.NewUnsignedMessage(target, address.LegacyPaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), paymentbroker.Redeem, pdata)
 	}
 
 	t.Run("Voucher with piece inclusion condition and correct proof succeeds", func(t *testing.T) {
@@ -220,7 +220,7 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...addres
 
 func establishChannel(st state.Tree, vms storagemap.StorageMap, from address.Address, target address.Address, nonce uint64, amt types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
 	pdata := abi.MustConvertParams(target, eol)
-	msg := types.NewUnsignedMessage(from, address.PaymentBrokerAddress, nonce, amt, paymentbroker.CreateChannel, pdata)
+	msg := types.NewUnsignedMessage(from, address.LegacyPaymentBrokerAddress, nonce, amt, paymentbroker.CreateChannel, pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	if err != nil {
 		panic(err)

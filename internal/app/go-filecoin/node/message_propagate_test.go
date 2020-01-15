@@ -71,7 +71,7 @@ func TestMessagePropagation(t *testing.T) {
 		_, _, err := sender.PorcelainAPI.MessageSend(
 			ctx,
 			senderAddress,
-			address.NetworkAddress,
+			address.LegacyNetworkAddress,
 			types.NewAttoFILFromFIL(1),
 			types.NewGasPrice(1),
 			types.NewGasUnits(0),

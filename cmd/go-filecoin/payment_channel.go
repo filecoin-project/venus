@@ -83,7 +83,7 @@ message to be mined to get the channelID.`,
 			usedGas, err := GetPorcelainAPI(env).MessagePreview(
 				req.Context,
 				fromAddr,
-				address.PaymentBrokerAddress,
+				address.LegacyPaymentBrokerAddress,
 				paymentbroker.CreateChannel,
 				target, eol,
 			)
@@ -100,7 +100,7 @@ message to be mined to get the channelID.`,
 		c, _, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
-			address.PaymentBrokerAddress,
+			address.LegacyPaymentBrokerAddress,
 			amount,
 			gasPrice,
 			gasLimit,
@@ -284,7 +284,7 @@ var redeemCmd = &cmds.Command{
 			result.GasUsed, err = GetPorcelainAPI(env).MessagePreview(
 				req.Context,
 				fromAddr,
-				address.PaymentBrokerAddress,
+				address.LegacyPaymentBrokerAddress,
 				paymentbroker.Redeem,
 				params...,
 			)
@@ -292,7 +292,7 @@ var redeemCmd = &cmds.Command{
 			result.Cid, _, err = GetPorcelainAPI(env).MessageSend(
 				req.Context,
 				fromAddr,
-				address.PaymentBrokerAddress,
+				address.LegacyPaymentBrokerAddress,
 				types.NewAttoFILFromFIL(0),
 				gasPrice,
 				gasLimit,
@@ -360,7 +360,7 @@ var reclaimCmd = &cmds.Command{
 			usedGas, err := GetPorcelainAPI(env).MessagePreview(
 				req.Context,
 				fromAddr,
-				address.PaymentBrokerAddress,
+				address.LegacyPaymentBrokerAddress,
 				paymentbroker.Reclaim,
 				channel,
 			)
@@ -377,7 +377,7 @@ var reclaimCmd = &cmds.Command{
 		c, _, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
-			address.PaymentBrokerAddress,
+			address.LegacyPaymentBrokerAddress,
 			types.NewAttoFILFromFIL(0),
 			gasPrice,
 			gasLimit,
@@ -459,7 +459,7 @@ var closeCmd = &cmds.Command{
 			result.GasUsed, err = GetPorcelainAPI(env).MessagePreview(
 				req.Context,
 				fromAddr,
-				address.PaymentBrokerAddress,
+				address.LegacyPaymentBrokerAddress,
 				paymentbroker.Close,
 				params...,
 			)
@@ -467,7 +467,7 @@ var closeCmd = &cmds.Command{
 			result.Cid, _, err = GetPorcelainAPI(env).MessageSend(
 				req.Context,
 				fromAddr,
-				address.PaymentBrokerAddress,
+				address.LegacyPaymentBrokerAddress,
 				types.NewAttoFILFromFIL(0),
 				gasPrice,
 				gasLimit,
@@ -547,7 +547,7 @@ var extendCmd = &cmds.Command{
 			usedGas, err := GetPorcelainAPI(env).MessagePreview(
 				req.Context,
 				fromAddr,
-				address.PaymentBrokerAddress,
+				address.LegacyPaymentBrokerAddress,
 				paymentbroker.Extend,
 				channel, eol,
 			)
@@ -564,7 +564,7 @@ var extendCmd = &cmds.Command{
 		c, _, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
-			address.PaymentBrokerAddress,
+			address.LegacyPaymentBrokerAddress,
 			amount,
 			gasPrice,
 			gasLimit,
@@ -634,7 +634,7 @@ var cancelCmd = &cmds.Command{
 			usedGas, err := GetPorcelainAPI(env).MessagePreview(
 				req.Context,
 				fromAddr,
-				address.PaymentBrokerAddress,
+				address.LegacyPaymentBrokerAddress,
 				paymentbroker.Cancel,
 				channel,
 			)
@@ -651,7 +651,7 @@ var cancelCmd = &cmds.Command{
 		c, _, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
-			address.PaymentBrokerAddress,
+			address.LegacyPaymentBrokerAddress,
 			types.NewAttoFILFromFIL(0),
 			gasPrice,
 			gasLimit,

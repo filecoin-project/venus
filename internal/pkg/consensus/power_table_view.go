@@ -30,7 +30,7 @@ func NewPowerTableView(q ActorStateSnapshot) PowerTableView {
 
 // Total returns the total storage as a BytesAmount.
 func (v PowerTableView) Total(ctx context.Context) (*types.BytesAmount, error) {
-	rets, err := v.snapshot.Query(ctx, address.Undef, address.PowerAddress, power.GetTotalPower)
+	rets, err := v.snapshot.Query(ctx, address.Undef, address.StoragePowerAddress, power.GetTotalPower)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func (v PowerTableView) Total(ctx context.Context) (*types.BytesAmount, error) {
 
 // Miner returns the storage that this miner has committed to the network.
 func (v PowerTableView) Miner(ctx context.Context, mAddr address.Address) (*types.BytesAmount, error) {
-	rets, err := v.snapshot.Query(ctx, address.Undef, address.PowerAddress, power.GetPowerReport, mAddr)
+	rets, err := v.snapshot.Query(ctx, address.Undef, address.StoragePowerAddress, power.GetPowerReport, mAddr)
 	if err != nil {
 		return nil, err
 	}

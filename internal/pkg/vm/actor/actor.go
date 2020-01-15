@@ -37,9 +37,9 @@ type Actor struct {
 	Code cid.Cid `refmt:",omitempty"`
 	// Head is the CID of the root of the actor's state tree.
 	Head cid.Cid `refmt:",omitempty"`
-	// Nonce is the nonce expected on the next message from this actor.
-	// Messages are processed in strict, contiguous nonce order.
-	Nonce types.Uint64
+	// CallSeqNum is the number expected on the next message from this actor.
+	// Messages are processed in strict, contiguous order.
+	CallSeqNum types.Uint64
 	// Balance is the amount of FIL in the actor's account.
 	Balance types.AttoFIL
 }
@@ -47,10 +47,10 @@ type Actor struct {
 // NewActor constructs a new actor.
 func NewActor(code cid.Cid, balance types.AttoFIL) *Actor {
 	return &Actor{
-		Code:    code,
-		Head:    cid.Undef,
-		Nonce:   0,
-		Balance: balance,
+		Code:       code,
+		Head:       cid.Undef,
+		CallSeqNum: 0,
+		Balance:    balance,
 	}
 }
 
@@ -59,9 +59,9 @@ func (a *Actor) Empty() bool {
 	return !a.Code.Defined()
 }
 
-// IncNonce increments the nonce of this actor by 1.
-func (a *Actor) IncNonce() {
-	a.Nonce = a.Nonce + 1
+// IncrementSeqNum increments the seq number.
+func (a *Actor) IncrementSeqNum() {
+	a.CallSeqNum = a.CallSeqNum + 1
 }
 
 // Cid returns the canonical CID for the actor.
@@ -87,7 +87,7 @@ func (a *Actor) Marshal() ([]byte, error) {
 
 // Format implements fmt.Formatter.
 func (a *Actor) Format(f fmt.State, c rune) {
-	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", types.ActorCodeTypeName(a.Code), a, a.Balance, a.Nonce))) // nolint: errcheck
+	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", types.ActorCodeTypeName(a.Code), a, a.Balance, a.CallSeqNum))) // nolint: errcheck
 }
 
 ///// Utility functions (non-methods) /////
@@ -102,7 +102,7 @@ func NextNonce(actor *Actor) (uint64, error) {
 	if !(actor.Empty() || actor.Code.Equals(types.AccountActorCodeCid)) {
 		return 0, errors.New("next nonce only defined for account or empty actors")
 	}
-	return uint64(actor.Nonce), nil
+	return uint64(actor.CallSeqNum), nil
 }
 
 // InitBuiltinActorCodeObjs writes all builtin actor code objects to `cst`. This method should be called when initializing a genesis

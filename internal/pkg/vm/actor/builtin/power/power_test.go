@@ -31,7 +31,7 @@ func TestPowerCreateStorageMiner(t *testing.T) {
 
 	pid := th.RequireRandomPeerID(t)
 	pdata := actor.MustConvertParams(address.TestAddress, address.TestAddress, pid, types.OneKiBSectorSize)
-	msg := types.NewUnsignedMessage(address.TestAddress, address.PowerAddress, 0, types.NewAttoFILFromFIL(100), power.CreateStorageMiner, pdata)
+	msg := types.NewUnsignedMessage(address.TestAddress, address.StoragePowerAddress, 0, types.NewAttoFILFromFIL(100), power.CreateStorageMiner, pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
 	require.Nil(t, result.ExecutionError)
@@ -43,7 +43,7 @@ func TestPowerCreateStorageMiner(t *testing.T) {
 	minerActor, err := st.GetActor(ctx, idAddr)
 	require.NoError(t, err)
 
-	powerAct, err := st.GetActor(ctx, address.PowerAddress)
+	powerAct, err := st.GetActor(ctx, address.StoragePowerAddress)
 	require.NoError(t, err)
 
 	assert.Equal(t, types.NewAttoFILFromFIL(0), powerAct.Balance)
@@ -77,7 +77,7 @@ func TestProcessPowerReport(t *testing.T) {
 		// set power
 		report1 := types.NewPowerReport(600, 5555)
 		pdata1 := actor.MustConvertParams(report1, minerAddr)
-		msg1 := types.NewUnsignedMessage(address.TestAddress, address.PowerAddress, 0, hundredAttoFIL, power.ProcessPowerReport, pdata1)
+		msg1 := types.NewUnsignedMessage(address.TestAddress, address.StoragePowerAddress, 0, hundredAttoFIL, power.ProcessPowerReport, pdata1)
 		result1, err := th.ApplyTestMessage(st, vms, msg1, types.NewBlockHeight(0))
 		require.NoError(t, err)
 		require.Nil(t, result1.ExecutionError)
@@ -89,7 +89,7 @@ func TestProcessPowerReport(t *testing.T) {
 		// set power again
 		report2 := types.NewPowerReport(77, 990)
 		pdata2 := actor.MustConvertParams(report2, minerAddr)
-		msg2 := types.NewUnsignedMessage(address.TestAddress, address.PowerAddress, 0, hundredAttoFIL, power.ProcessPowerReport, pdata2)
+		msg2 := types.NewUnsignedMessage(address.TestAddress, address.StoragePowerAddress, 0, hundredAttoFIL, power.ProcessPowerReport, pdata2)
 		result2, err := th.ApplyTestMessage(st, vms, msg2, types.NewBlockHeight(0))
 		require.NoError(t, err)
 		require.Nil(t, result2.ExecutionError)
@@ -104,7 +104,7 @@ func TestProcessPowerReport(t *testing.T) {
 		st, vms := th.RequireCreateStorages(ctx, t)
 		report := types.NewPowerReport(1, 2)
 		pdata := actor.MustConvertParams(report, address.TestAddress)
-		msg := types.NewUnsignedMessage(address.TestAddress, address.PowerAddress, 0, hundredAttoFIL, power.ProcessPowerReport, pdata)
+		msg := types.NewUnsignedMessage(address.TestAddress, address.StoragePowerAddress, 0, hundredAttoFIL, power.ProcessPowerReport, pdata)
 		result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 		assert.NoError(t, err)
 		assert.Equal(t, power.Errors[power.ErrUnknownEntry], result.ExecutionError)
@@ -127,13 +127,13 @@ func TestGetTotalPower(t *testing.T) {
 	// set power
 	report1 := types.NewPowerReport(600, 400)
 	pdata1 := actor.MustConvertParams(report1, minerAddr)
-	msg1 := types.NewUnsignedMessage(address.TestAddress, address.PowerAddress, 0, hundredAttoFIL, power.ProcessPowerReport, pdata1)
+	msg1 := types.NewUnsignedMessage(address.TestAddress, address.StoragePowerAddress, 0, hundredAttoFIL, power.ProcessPowerReport, pdata1)
 	result1, err := th.ApplyTestMessage(st, vms, msg1, types.NewBlockHeight(0))
 	require.NoError(t, err)
 	require.Nil(t, result1.ExecutionError)
 
 	// get power
-	msg2 := types.NewUnsignedMessage(address.TestAddress, address.PowerAddress, 0, hundredAttoFIL, power.GetTotalPower, nil)
+	msg2 := types.NewUnsignedMessage(address.TestAddress, address.StoragePowerAddress, 0, hundredAttoFIL, power.GetTotalPower, nil)
 	result2, err := th.ApplyTestMessage(st, vms, msg2, types.NewBlockHeight(1))
 	require.NoError(t, err)
 	require.Equal(t, 1, len(result2.Receipt.Return))
@@ -157,7 +157,7 @@ func TestRemoveStorageMiner(t *testing.T) {
 
 		minerAddr := th.RequireActorIDAddress(ctx, t, st, vms, outAddr)
 		pdata := actor.MustConvertParams(minerAddr)
-		msg := types.NewUnsignedMessage(address.TestAddress, address.PowerAddress, 0, hundredAttoFIL, power.RemoveStorageMiner, pdata)
+		msg := types.NewUnsignedMessage(address.TestAddress, address.StoragePowerAddress, 0, hundredAttoFIL, power.RemoveStorageMiner, pdata)
 		result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 		assert.NoError(t, err)
 		assert.Nil(t, result.ExecutionError)
@@ -176,13 +176,13 @@ func TestRemoveStorageMiner(t *testing.T) {
 		// set power
 		report1 := types.NewPowerReport(600, 400)
 		pdata1 := actor.MustConvertParams(report1, minerAddr)
-		msg1 := types.NewUnsignedMessage(address.TestAddress, address.PowerAddress, 0, hundredAttoFIL, power.ProcessPowerReport, pdata1)
+		msg1 := types.NewUnsignedMessage(address.TestAddress, address.StoragePowerAddress, 0, hundredAttoFIL, power.ProcessPowerReport, pdata1)
 		result1, err := th.ApplyTestMessage(st, vms, msg1, types.NewBlockHeight(0))
 		require.NoError(t, err)
 		require.Nil(t, result1.ExecutionError)
 
 		pdata2 := actor.MustConvertParams(minerAddr)
-		msg2 := types.NewUnsignedMessage(address.TestAddress, address.PowerAddress, 0, hundredAttoFIL, power.RemoveStorageMiner, pdata2)
+		msg2 := types.NewUnsignedMessage(address.TestAddress, address.StoragePowerAddress, 0, hundredAttoFIL, power.RemoveStorageMiner, pdata2)
 		result2, err := th.ApplyTestMessage(st, vms, msg2, types.NewBlockHeight(0))
 		require.NoError(t, err)
 		assert.Equal(t, power.Errors[power.ErrDeleteMinerWithPower], result2.ExecutionError)
@@ -196,7 +196,7 @@ func TestRemoveStorageMiner(t *testing.T) {
 	t.Run("remove nonexistent fails", func(t *testing.T) {
 		st, vms := th.RequireCreateStorages(ctx, t)
 		pdata := actor.MustConvertParams(address.TestAddress)
-		msg := types.NewUnsignedMessage(address.TestAddress, address.PowerAddress, 0, hundredAttoFIL, power.RemoveStorageMiner, pdata)
+		msg := types.NewUnsignedMessage(address.TestAddress, address.StoragePowerAddress, 0, hundredAttoFIL, power.RemoveStorageMiner, pdata)
 		result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 		require.NoError(t, err)
 		assert.Equal(t, power.Errors[power.ErrUnknownEntry], result.ExecutionError)
@@ -206,7 +206,7 @@ func TestRemoveStorageMiner(t *testing.T) {
 // helpers
 func requireCreateMiner(collateral types.AttoFIL, t *testing.T, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, pid peer.ID, height uint64) address.Address {
 	pdata := actor.MustConvertParams(minerOwnerAddr, minerOwnerAddr, pid, types.OneKiBSectorSize)
-	msg := types.NewUnsignedMessage(address.TestAddress, address.PowerAddress, 0, collateral, power.CreateStorageMiner, pdata)
+	msg := types.NewUnsignedMessage(address.TestAddress, address.StoragePowerAddress, 0, collateral, power.CreateStorageMiner, pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
 	require.Nil(t, result.ExecutionError)
@@ -218,7 +218,7 @@ func requireCreateMiner(collateral types.AttoFIL, t *testing.T, st state.Tree, v
 
 func requireGetPowerReport(t *testing.T, st state.Tree, vms vm.StorageMap, minerAddr address.Address) types.PowerReport {
 	pdata := actor.MustConvertParams(minerAddr)
-	msg := types.NewUnsignedMessage(address.TestAddress, address.PowerAddress, 0, types.NewAttoFILFromFIL(100), power.GetPowerReport, pdata)
+	msg := types.NewUnsignedMessage(address.TestAddress, address.StoragePowerAddress, 0, types.NewAttoFILFromFIL(100), power.GetPowerReport, pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
 	require.Nil(t, result.ExecutionError)
@@ -234,7 +234,7 @@ func assertEntryNotFound(t *testing.T, st state.Tree, vms vm.StorageMap, minerAd
 	// and asserts that the getPowerReport message returns an execution error
 	// because the power table entry is not found
 	pdata := actor.MustConvertParams(minerAddr)
-	msg := types.NewUnsignedMessage(address.TestAddress, address.PowerAddress, 0, types.NewAttoFILFromFIL(100), power.GetPowerReport, pdata)
+	msg := types.NewUnsignedMessage(address.TestAddress, address.StoragePowerAddress, 0, types.NewAttoFILFromFIL(100), power.GetPowerReport, pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
 	assert.Equal(t, power.Errors[power.ErrUnknownEntry], result.ExecutionError)

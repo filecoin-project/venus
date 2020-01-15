@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
 	"github.com/ipfs/go-cid"
@@ -19,6 +20,7 @@ import (
 type FakeVMContext struct {
 	MessageValue            *types.UnsignedMessage
 	StorageValue            runtime.Storage
+	LegacyStorageValue      runtime.LegacyStorage
 	BalanceValue            types.AttoFIL
 	BlockHeightValue        *types.BlockHeight
 	VerifierValue           verification.Verifier
@@ -44,6 +46,7 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 	aux := FakeVMContext{
 		MessageValue:            message,
 		StorageValue:            &testStorage{state: state},
+		LegacyStorageValue:      &testLegacyStorage{state: state},
 		BlockHeightValue:        types.NewBlockHeight(0),
 		BalanceValue:            types.ZeroAttoFIL,
 		RandomnessValue:         randomness,
@@ -69,7 +72,7 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 		},
 		allowSideEffects: true,
 	}
-	aux.stateHandle = vmcontext.NewActorStateHandle(&aux, aux.StorageValue.LegacyHead())
+	aux.stateHandle = vmcontext.NewActorStateHandle(&aux, aux.LegacyStorageValue.LegacyHead())
 	return &aux
 }
 
@@ -97,7 +100,7 @@ func (tc *FakeVMContext) Randomness(epoch types.BlockHeight, offset uint64) runt
 func (tc *FakeVMContext) LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 	// check if side-effects are allowed
 	if !tc.allowSideEffects {
-		runtime.Abort("Calling LegacySend() is not allowed during side-effet lock")
+		runtime.Abortf(exitcode.MethodAbort, "Calling LegacySend() is not allowed during side-effet lock")
 	}
 	return tc.LegacySender(to, method, value, params)
 }
@@ -106,7 +109,7 @@ func (tc *FakeVMContext) LegacySend(to address.Address, method types.MethodID, v
 func (tc *FakeVMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{} {
 	// check if side-effects are allowed
 	if !tc.allowSideEffects {
-		runtime.Abort("Calling Send() is not allowed during side-effet lock")
+		runtime.Abortf(exitcode.MethodAbort, "Calling Send() is not allowed during side-effet lock")
 	}
 	return tc.Sender(to, method, value, params)
 }
@@ -148,7 +151,7 @@ func (tc *FakeVMContext) Message() runtime.MessageInfo {
 func (tc *FakeVMContext) ValidateCaller(pattern runtime.CallerPattern) {
 	// Note: the FakeVMContext is currently harcoded to a single pattern
 	if !tc.IsFromAccountActorValue {
-		runtime.Abort("Method invoked by incorrect caller")
+		runtime.Abortf(exitcode.MethodAbort, "Method invoked by incorrect caller")
 	}
 }
 
@@ -169,6 +172,11 @@ func (tc *FakeVMContext) Storage() runtime.Storage {
 	return tc.StorageValue
 }
 
+// LegacyStorage provides and interface to actor state
+func (tc *FakeVMContext) LegacyStorage() runtime.LegacyStorage {
+	return tc.LegacyStorageValue
+}
+
 // Charge charges gas for the current action
 func (tc *FakeVMContext) Charge(cost types.GasUnits) error {
 	return tc.Charger(cost)
@@ -180,15 +188,15 @@ var _ runtime.ExtendedInvocationContext = (*FakeVMContext)(nil)
 func (tc *FakeVMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address {
 	addr, err := tc.Addresser()
 	if err != nil {
-		runtime.Abort("Could not create address")
+		runtime.Abortf(exitcode.MethodAbort, "Could not create address")
 	}
 	idAddr, err := address.NewIDAddress(uint64(actorID))
 	if err != nil {
-		runtime.Abort("Could not create IDAddress for actor")
+		runtime.Abortf(exitcode.MethodAbort, "Could not create IDAddress for actor")
 	}
 	err = tc.ActorCreator(idAddr, code)
 	if err != nil {
-		runtime.Abort("Could not create actor")
+		runtime.Abortf(exitcode.MethodAbort, "Could not create actor")
 	}
 
 	return addr
@@ -234,10 +242,68 @@ func NewTestStorage(state interface{}) runtime.Storage {
 	}
 }
 
-var _ runtime.Storage = &testStorage{}
+var _ runtime.Storage = (*testStorage)(nil)
+
+func (ts *testStorage) Put(v interface{}) cid.Cid {
+	ts.state = v
+	if cm, ok := v.(cbg.CBORMarshaler); ok {
+		buf := new(bytes.Buffer)
+		err := cm.MarshalCBOR(buf)
+		if err == nil {
+			nd, err := cbor.Decode(buf.Bytes(), types.DefaultHashFunction, -1)
+			if err != nil {
+				panic("failed to decode")
+			}
+			return nd.Cid()
+		}
+	}
+	raw, err := encoding.Encode(v)
+	if err != nil {
+		panic("failed to encode")
+	}
+	return cid.NewCidV1(cid.Raw, raw)
+}
+
+func (ts *testStorage) Get(cid cid.Cid, obj interface{}) bool {
+	node, err := cbor.WrapObject(ts.state, types.DefaultHashFunction, -1)
+	if err != nil {
+		return false
+	}
+
+	err = encoding.Decode(node.RawData(), obj)
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+func (ts *testStorage) CidOf(obj interface{}) cid.Cid {
+	if obj == nil {
+		return cid.Undef
+	}
+	raw, err := encoding.Encode(obj)
+	if err != nil {
+		panic("failed to encode")
+	}
+	return cid.NewCidV1(cid.Raw, raw)
+}
+
+type testLegacyStorage struct {
+	state interface{}
+}
+
+// NewTestLegacyStorage returns a new "testLegacyStorage"
+func NewTestLegacyStorage(state interface{}) runtime.LegacyStorage {
+	return &testLegacyStorage{
+		state: state,
+	}
+}
+
+var _ runtime.LegacyStorage = (*testLegacyStorage)(nil)
 
 // Put satisfies the Storage interface
-func (ts *testStorage) Put(v interface{}) (cid.Cid, error) {
+func (ts *testLegacyStorage) Put(v interface{}) (cid.Cid, error) {
 	ts.state = v
 	if cm, ok := v.(cbg.CBORMarshaler); ok {
 		buf := new(bytes.Buffer)
@@ -258,7 +324,7 @@ func (ts *testStorage) Put(v interface{}) (cid.Cid, error) {
 }
 
 // Get returns the internal state variable encoded into bytes
-func (ts testStorage) Get(cid.Cid) ([]byte, error) {
+func (ts testLegacyStorage) Get(cid.Cid) ([]byte, error) {
 	node, err := cbor.WrapObject(ts.state, types.DefaultHashFunction, -1)
 	if err != nil {
 		return []byte{}, err
@@ -268,7 +334,7 @@ func (ts testStorage) Get(cid.Cid) ([]byte, error) {
 }
 
 // CidOf returns the Cid of the object.
-func (ts testStorage) CidOf(v interface{}) (cid.Cid, error) {
+func (ts testLegacyStorage) CidOf(v interface{}) (cid.Cid, error) {
 	if v == nil {
 		return cid.Undef, nil
 	}
@@ -280,12 +346,12 @@ func (ts testStorage) CidOf(v interface{}) (cid.Cid, error) {
 }
 
 // LegacyCommit satisfies the Storage interface but does nothing
-func (ts testStorage) LegacyCommit(cid.Cid, cid.Cid) error {
+func (ts testLegacyStorage) LegacyCommit(cid.Cid, cid.Cid) error {
 	return nil
 }
 
 // LegacyHead returns the Cid of the current state.
-func (ts testStorage) LegacyHead() cid.Cid {
+func (ts testLegacyStorage) LegacyHead() cid.Cid {
 	if ts.state == nil {
 		return cid.Undef
 	}

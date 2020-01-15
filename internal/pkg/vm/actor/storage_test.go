@@ -24,7 +24,7 @@ func TestActorMarshal(t *testing.T) {
 
 	actor := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(1))
 	actor.Head = requireCid(t, "Actor Storage")
-	actor.IncNonce()
+	actor.IncrementSeqNum()
 
 	marshalled, err := actor.Marshal()
 	assert.NoError(t, err)
@@ -35,7 +35,7 @@ func TestActorMarshal(t *testing.T) {
 
 	assert.Equal(t, actor.Code, actorBack.Code)
 	assert.Equal(t, actor.Head, actorBack.Head)
-	assert.Equal(t, actor.Nonce, actorBack.Nonce)
+	assert.Equal(t, actor.CallSeqNum, actorBack.CallSeqNum)
 
 	c1, err := actor.Cid()
 	assert.NoError(t, err)

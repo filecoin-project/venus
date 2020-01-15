@@ -114,7 +114,7 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSi
 }
 
 // InitializeState stores the actor's initial data structure.
-func (*Actor) InitializeState(storage runtime.Storage, _ interface{}) error {
+func (*Actor) InitializeState(storage runtime.LegacyStorage, _ interface{}) error {
 	initStorage := &State{}
 	stateBytes, err := encoding.Encode(initStorage)
 	if err != nil {
@@ -151,7 +151,6 @@ var Errors = map[uint8]error{
 	ErrDuplicateEntry:       errors.NewCodedRevertError(ErrDuplicateEntry, "duplicate create power table entry attempt"),
 }
 
-// Dragons: shouldnt this be calling the initacor to create an actor?
 type invocationContext interface {
 	runtime.InvocationContext
 	LegacyAddressForNewActor() (address.Address, error)
@@ -174,19 +173,19 @@ func (*impl) createStorageMiner(vmctx invocationContext, ownerAddr, workerAddr a
 		initParams := []interface{}{vmctx.Message().Caller(), vmctx.Message().Caller(), pid, sectorSize}
 
 		// create miner actor by messaging the init actor and sending it collateral
-		ret := vmctx.Runtime().Send(address.InitAddress, initactor.Exec, vmctx.Message().ValueReceived(), []interface{}{actorCodeCid, initParams})
+		ret := vmctx.Send(address.InitAddress, initactor.ExecMethodID, vmctx.Message().ValueReceived(), []interface{}{actorCodeCid, initParams})
 
 		addr := ret.(address.Address)
 
 		// retrieve id to key miner
-		actorIDAddr, err := retreiveActorID(vmctx.Runtime(), addr)
+		actorIDAddr, err := retreiveActorID(vmctx, addr)
 		if err != nil {
 			return nil, errors.FaultErrorWrapf(err, "could not retrieve actor id addrs after initializing actor")
 		}
 
 		// Update power table.
 		ctx := context.Background()
-		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().LegacyStorage(), state.PowerTable, func(lookup storage.Lookup) error {
 			// Do not overwrite table entry if it already exists
 			err := lookup.Find(ctx, actorIDAddr.String(), nil)
 			if err != hamt.ErrNotFound { // we expect to not find the power table entry
@@ -222,8 +221,8 @@ func (*impl) createStorageMiner(vmctx invocationContext, ownerAddr, workerAddr a
 }
 
 // retriveActorId uses init actor to map an actorAddress to an id address
-func retreiveActorID(rt runtime.Runtime, actorAddr address.Address) (address.Address, error) {
-	ret := rt.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{actorAddr})
+func retreiveActorID(vmctx invocationContext, actorAddr address.Address) (address.Address, error) {
+	ret := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddressMethodID, types.ZeroAttoFIL, []interface{}{actorAddr})
 
 	actorIDVal := ret.(*big.Int)
 
@@ -241,7 +240,7 @@ func (*impl) removeStorageMiner(vmctx invocationContext, delAddr address.Address
 	var state State
 	_, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		ctx := context.Background()
-		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().LegacyStorage(), state.PowerTable, func(lookup storage.Lookup) error {
 			// Find entry to delete.
 			var delEntry TableEntry
 			err := lookup.Find(ctx, delAddr.String(), &delEntry)
@@ -284,7 +283,7 @@ func (*impl) getTotalPower(vmctx invocationContext) (*types.BytesAmount, uint8, 
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		ctx := context.Background()
 		total := types.NewBytesAmount(0)
-		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		err := actor.WithLookupForReading(ctx, vmctx.Runtime().LegacyStorage(), state.PowerTable, func(lookup storage.Lookup) error {
 			// TODO https://github.com/filecoin-project/specs/issues/634 this is inefficient
 			return lookup.ForEachValue(ctx, TableEntry{}, func(k string, value interface{}) error {
 				entry, ok := value.(TableEntry)
@@ -313,7 +312,7 @@ func (*impl) getPowerReport(vmctx invocationContext, addr address.Address) (type
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		ctx := context.Background()
 		var report types.PowerReport
-		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		err := actor.WithLookupForReading(ctx, vmctx.Runtime().LegacyStorage(), state.PowerTable, func(lookup storage.Lookup) error {
 			err := lookup.Find(ctx, addr.String(), &report)
 			if err != nil {
 				if err == hamt.ErrNotFound {
@@ -340,7 +339,7 @@ func (*impl) processPowerReport(vmctx invocationContext, report types.PowerRepor
 	var state State
 	_, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		ctx := context.Background()
-		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().LegacyStorage(), state.PowerTable, func(lookup storage.Lookup) error {
 			// Find entry to update.
 			var updateEntry TableEntry
 			err := lookup.Find(ctx, updateAddr.String(), &updateEntry)

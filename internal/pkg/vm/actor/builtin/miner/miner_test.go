@@ -191,7 +191,7 @@ func TestConstructor(t *testing.T) {
 	vmctx := vm.NewFakeVMContext(message, nil)
 	storageMap := th.VMStorage()
 	minerActor := actor.NewActor(types.MinerActorCodeCid, types.ZeroAttoFIL)
-	vmctx.StorageValue = storageMap.NewStorage(address.TestAddress, minerActor)
+	vmctx.LegacyStorageValue = storageMap.NewStorage(address.TestAddress, minerActor)
 
 	act := &Actor{}
 	addrGetter := address.NewForTestGetter()
@@ -202,7 +202,7 @@ func TestConstructor(t *testing.T) {
 
 	(*Impl)(act).Constructor(vmctx, owner, worker, pid, sectorSize)
 
-	stateEncoded, err := vmctx.Storage().Get(minerActor.Head)
+	stateEncoded, err := vmctx.LegacyStorage().Get(minerActor.Head)
 	require.NoError(t, err)
 
 	state := &State{}
@@ -1575,7 +1575,7 @@ func TestGetProofsMode(t *testing.T) {
 	d := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(d)
 
-	gasTracker := gastracker.NewGasTracker()
+	gasTracker := gastracker.NewLegacyGasTracker()
 	gasTracker.MsgGasLimit = 99999
 
 	t.Run("in TestMode", func(t *testing.T) {

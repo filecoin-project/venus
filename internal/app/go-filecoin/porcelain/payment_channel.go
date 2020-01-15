@@ -38,7 +38,7 @@ func PaymentChannelLs(
 	values, err := plumbing.MessageQuery(
 		ctx,
 		fromAddr,
-		address.PaymentBrokerAddress,
+		address.LegacyPaymentBrokerAddress,
 		paymentbroker.Ls,
 		plumbing.ChainHeadKey(),
 		payerAddr,
@@ -81,7 +81,7 @@ func PaymentChannelVoucher(
 	values, err := plumbing.MessageQuery(
 		ctx,
 		fromAddr,
-		address.PaymentBrokerAddress,
+		address.LegacyPaymentBrokerAddress,
 		paymentbroker.Voucher,
 		plumbing.ChainHeadKey(),
 		channel, amount, validAt, condition,

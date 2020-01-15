@@ -194,7 +194,7 @@ func TestDealRedeem(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, fromAddr, plumbing.ResultingFromAddr)
-	assert.Equal(t, address.PaymentBrokerAddress, plumbing.ResultingActorAddr)
+	assert.Equal(t, address.LegacyPaymentBrokerAddress, plumbing.ResultingActorAddr)
 	assert.Equal(t, paymentbroker.Redeem, plumbing.ResultingMethod)
 	assert.Equal(t, payerAddr, plumbing.ResultingVoucherPayer)
 	assert.Equal(t, channelID, plumbing.ResultingVoucherChannel)
@@ -248,7 +248,7 @@ func TestDealRedeemPreview(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, fromAddr, plumbing.ResultingFromAddr)
-	assert.Equal(t, address.PaymentBrokerAddress, plumbing.ResultingActorAddr)
+	assert.Equal(t, address.LegacyPaymentBrokerAddress, plumbing.ResultingActorAddr)
 	assert.Equal(t, paymentbroker.Redeem, plumbing.ResultingMethod)
 	assert.Equal(t, payerAddr, plumbing.ResultingVoucherPayer)
 	assert.Equal(t, channelID, plumbing.ResultingVoucherChannel)

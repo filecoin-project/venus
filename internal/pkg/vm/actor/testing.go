@@ -92,7 +92,7 @@ var signatures = dispatch.Exports{
 }
 
 // InitializeState stores this actors
-func (a *FakeActor) InitializeState(storage runtime.Storage, initializerData interface{}) error {
+func (a *FakeActor) InitializeState(storage runtime.LegacyStorage, initializerData interface{}) error {
 	st, ok := initializerData.(*FakeActorStorage)
 	if !ok {
 		return errors.NewFaultError("Initial state to fake actor is not a FakeActorStorage struct")
@@ -196,32 +196,32 @@ func (*impl) NonZeroExitCode(ctx runtime.InvocationContext) (uint8, error) {
 
 // NestedBalance sends 100 to the given address.
 func (*impl) NestedBalance(ctx runtime.InvocationContext, target address.Address) (uint8, error) {
-	_, code, err := ctx.Runtime().LegacySend(target, types.SendMethodID, types.NewAttoFILFromFIL(100), nil)
+	_, code, err := ctx.LegacySend(target, types.SendMethodID, types.NewAttoFILFromFIL(100), nil)
 	return code, err
 }
 
 // SendTokens sends 100 to the given address.
 func (*impl) SendTokens(ctx runtime.InvocationContext, target address.Address) (uint8, error) {
-	_, code, err := ctx.Runtime().LegacySend(target, types.SendMethodID, types.NewAttoFILFromFIL(100), nil)
+	_, code, err := ctx.LegacySend(target, types.SendMethodID, types.NewAttoFILFromFIL(100), nil)
 	return code, err
 }
 
 // CallSendTokens tells the target to invoke SendTokens to send tokens to the
 // to address (that is, it calls target.SendTokens(to)).
 func (*impl) CallSendTokens(ctx runtime.InvocationContext, target address.Address, to address.Address) (uint8, error) {
-	_, code, err := ctx.Runtime().LegacySend(target, sendTokensID, types.ZeroAttoFIL, []interface{}{to})
+	_, code, err := ctx.LegacySend(target, sendTokensID, types.ZeroAttoFIL, []interface{}{to})
 	return code, err
 }
 
 // AttemptMultiSpend1 attempts to re-spend already spent tokens using a double reentrant call.
 func (*impl) AttemptMultiSpend1(ctx runtime.InvocationContext, self, target address.Address) (uint8, error) {
 	// This will transfer 100 tokens legitimately.
-	_, code, err := ctx.Runtime().LegacySend(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
+	_, code, err := ctx.LegacySend(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
 	if code != 0 || err != nil {
 		return code, errors.FaultErrorWrap(err, "failed first callSendTokens")
 	}
 	// Try to double spend
-	_, code, err = ctx.Runtime().LegacySend(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
+	_, code, err = ctx.LegacySend(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
 	if code != 0 || err != nil {
 		return code, errors.FaultErrorWrap(err, "failed second callSendTokens")
 	}
@@ -231,7 +231,7 @@ func (*impl) AttemptMultiSpend1(ctx runtime.InvocationContext, self, target addr
 // AttemptMultiSpend2 attempts to re-spend already spent tokens using a reentrant call followed by a direct spend call.
 func (a *impl) AttemptMultiSpend2(ctx runtime.InvocationContext, self, target address.Address) (uint8, error) {
 	// This will transfer 100 tokens legitimately.
-	_, code, err := ctx.Runtime().LegacySend(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
+	_, code, err := ctx.LegacySend(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
 	if code != 0 || err != nil {
 		return code, errors.FaultErrorWrap(err, "failed first callSendTokens")
 	}
@@ -248,7 +248,7 @@ func (*impl) RunsAnotherMessage(ctx runtime.InvocationContext, target address.Ad
 	if err := ctx.Charge(100); err != nil {
 		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
-	_, code, err := ctx.Runtime().LegacySend(target, HasReturnValueID, types.ZeroAttoFIL, []interface{}{})
+	_, code, err := ctx.LegacySend(target, HasReturnValueID, types.ZeroAttoFIL, []interface{}{})
 	return code, err
 }
 

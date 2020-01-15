@@ -3,16 +3,17 @@ package testhelpers
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"math/big"
 	"testing"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
@@ -54,7 +55,7 @@ func RequireNewMinerActor(ctx context.Context, t *testing.T, st state.Tree, vms 
 	})
 	require.NoError(t, err)
 
-	gt := vm.NewGasTracker()
+	gt := vm.NewLegacyGasTracker()
 	gt.MsgGasLimit = types.NewGasUnits(10000)
 	// we are required to have a message in the context even though it will not be used.
 	dummyMessage := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, types.SendMethodID, []byte{})
@@ -193,7 +194,7 @@ func CreateTestMinerWith(
 ) address.Address {
 	ctx := context.TODO()
 	pdata := actor.MustConvertParams(types.OneKiBSectorSize, pid)
-	idAddr, found, err := consensus.ResolveAddress(ctx, minerOwnerAddr, state.NewCachedTree(st), vms, vm.NewGasTracker())
+	idAddr, found, err := consensus.ResolveAddress(ctx, minerOwnerAddr, state.NewCachedTree(st), vms, vm.NewLegacyGasTracker())
 	require.NoError(t, err)
 	require.True(t, found)
 
@@ -211,7 +212,7 @@ func CreateTestMinerWith(
 
 // RequireGetActor adds an account actor to the state tree if none exists
 func RequireGetActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, addr address.Address) *actor.Actor {
-	idAddr, found, err := consensus.ResolveAddress(ctx, addr, state.NewCachedTree(st), vms, vm.NewGasTracker())
+	idAddr, found, err := consensus.ResolveAddress(ctx, addr, state.NewCachedTree(st), vms, vm.NewLegacyGasTracker())
 	require.NoError(t, err)
 	require.True(t, found, "test actor not found")
 
@@ -225,9 +226,9 @@ func RequireInitAccountActor(ctx context.Context, t *testing.T, st state.Tree, v
 	cachedTree := state.NewCachedTree(st)
 
 	// ensure network actor
-	network, _, err := cachedTree.GetOrCreateActor(ctx, address.NetworkAddress, func() (*actor.Actor, address.Address, error) {
+	network, _, err := cachedTree.GetOrCreateActor(ctx, address.LegacyNetworkAddress, func() (*actor.Actor, address.Address, error) {
 		act, err := account.NewActor(types.NewAttoFILFromFIL(100000000))
-		return act, address.NetworkAddress, err
+		return act, address.LegacyNetworkAddress, err
 	})
 	require.NoError(t, err)
 
@@ -238,14 +239,14 @@ func RequireInitAccountActor(ctx context.Context, t *testing.T, st state.Tree, v
 	require.NoError(t, err)
 
 	// create actor
-	vmctx := vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, State: cachedTree, StorageMap: vms, To: network, ToAddr: address.NetworkAddress})
-	vmctx.Send(address.InitAddress, initactor.Exec, balance, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
+	vmctx := vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, State: cachedTree, StorageMap: vms, To: network, ToAddr: address.LegacyNetworkAddress})
+	vmctx.Send(address.InitAddress, initactor.ExecMethodID, balance, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
 
 	// fetch id address for actor from init actor
-	gt := vm.NewGasTracker()
+	gt := vm.NewLegacyGasTracker()
 	gt.MsgGasLimit = 10000
-	vmctx = vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, State: cachedTree, StorageMap: vms, To: network, ToAddr: address.NetworkAddress, GasTracker: gt})
-	idAddrInt := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
+	vmctx = vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, State: cachedTree, StorageMap: vms, To: network, ToAddr: address.LegacyNetworkAddress, GasTracker: gt})
+	idAddrInt := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddressMethodID, types.ZeroAttoFIL, []interface{}{addr})
 
 	idAddr, err := address.NewIDAddress(idAddrInt.(*big.Int).Uint64())
 	require.NoError(t, err)

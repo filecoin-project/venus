@@ -24,8 +24,9 @@ type testActorStateHandleState struct {
 func setup() testSetup {
 	initialstate := testActorStateHandleState{FieldA: "fakestate"}
 
+	storage := vm.NewTestLegacyStorage(initialstate)
 	ctx := fakeActorStateHandleContext{
-		storage:          vm.NewTestStorage(initialstate),
+		storage:          storage,
 		allowSideEffects: true,
 	}
 	initialhead := ctx.storage.LegacyHead()
@@ -218,8 +219,9 @@ func TestActorStateHandleNilState(t *testing.T) {
 	tf.UnitTest(t)
 
 	setup := func() (runtime.ActorStateHandle, func()) {
+		storage := vm.NewTestLegacyStorage(nil)
 		ctx := fakeActorStateHandleContext{
-			storage:          vm.NewTestStorage(nil),
+			storage:          storage,
 			allowSideEffects: true,
 		}
 		initialhead := ctx.storage.LegacyHead()
@@ -295,11 +297,11 @@ type extendedStateHandle interface {
 }
 
 type fakeActorStateHandleContext struct {
-	storage          runtime.Storage
+	storage          runtime.LegacyStorage
 	allowSideEffects bool
 }
 
-func (ctx *fakeActorStateHandleContext) Storage() runtime.Storage {
+func (ctx *fakeActorStateHandleContext) LegacyStorage() runtime.LegacyStorage {
 	return ctx.storage
 }
 

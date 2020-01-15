@@ -106,7 +106,7 @@ func getProofsMode(ctx context.Context, plumbing protocolParamsPlumbing) (types.
 }
 
 func getNetworkName(ctx context.Context, plumbing protocolParamsPlumbing) (string, error) {
-	nameBytes, err := plumbing.MessageQuery(ctx, address.Address{}, address.InitAddress, initactor.GetNetwork, plumbing.ChainHeadKey())
+	nameBytes, err := plumbing.MessageQuery(ctx, address.Address{}, address.InitAddress, initactor.GetNetworkMethodID, plumbing.ChainHeadKey())
 	if err != nil {
 		return "", errors.Wrap(err, "'getNetwork' query message failed")
 	}

@@ -83,7 +83,7 @@ func retrieveActorIDForActorAddress(ctx context.Context, plumbing getStableActor
 	}
 
 	head := plumbing.ChainHeadKey()
-	ret, err := plumbing.MessageQuery(ctx, address.Undef, address.InitAddress, initactor.GetActorIDForAddress, head, addr)
+	ret, err := plumbing.MessageQuery(ctx, address.Undef, address.InitAddress, initactor.GetActorIDForAddressMethodID, head, addr)
 	if err != nil {
 		return address.Undef, err
 	}

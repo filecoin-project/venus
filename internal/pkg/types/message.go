@@ -36,6 +36,9 @@ const (
 // GasUnits represents number of units of gas consumed
 type GasUnits = Uint64
 
+// ZeroGas is the zero value for Gas.
+const ZeroGas = GasUnits(0)
+
 // BlockGasLimit is the maximum amount of gas that can be used to execute messages in a single block
 var BlockGasLimit = NewGasUnits(10000000)
 
@@ -138,6 +141,11 @@ func (msg *UnsignedMessage) Cid() (cid.Cid, error) {
 	return obj.Cid(), nil
 }
 
+// OnChainLen returns the amount of bytes used to represent the message on chain.
+func (msg *UnsignedMessage) OnChainLen() uint32 {
+	panic("byteme")
+}
+
 func (msg *UnsignedMessage) String() string {
 	errStr := "(error encoding Message)"
 	cid, err := msg.Cid()
@@ -187,4 +195,17 @@ func (m TxMeta) String() string {
 // String returns a readable string.
 func (id MethodID) String() string {
 	return fmt.Sprintf("%v", (uint64)(id))
+}
+
+// Cost returns the cost of the gas given the price.
+func (x GasUnits) Cost(price AttoFIL) AttoFIL {
+	// turn the gas into a bigint
+	bigx := big.NewInt((int64)(x))
+
+	// cost = gas * price
+	// Note: the `bigint.Mul` works by replacing the pointer with the multiplication result.
+	out := big.NewInt(0)
+	out.Mul(bigx, price.AsBigInt())
+
+	return NewAttoFIL(out)
 }

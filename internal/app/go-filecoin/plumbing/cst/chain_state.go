@@ -8,9 +8,9 @@ import (
 	"github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-exchange-offline"
-	"github.com/ipfs/go-ipld-format"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 	merkdag "github.com/ipfs/go-merkledag"
 	"github.com/pkg/errors"
@@ -158,7 +158,7 @@ func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey block.Ti
 		return nil, errors.Wrap(err, "failed to load latest state")
 	}
 
-	idAddr, found, err := consensus.ResolveAddress(ctx, addr, state.NewCachedTree(st), vm.NewStorageMap(chn.bstore), vm.NewGasTracker())
+	idAddr, found, err := consensus.ResolveAddress(ctx, addr, state.NewCachedTree(st), vm.NewStorageMap(chn.bstore), vm.NewLegacyGasTracker())
 	if err != nil {
 		return nil, err
 	}
