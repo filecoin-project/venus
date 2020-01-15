@@ -3,6 +3,7 @@ package proofs
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	sector "github.com/filecoin-project/go-sectorbuilder"
@@ -17,6 +18,20 @@ type EPoStCandidate struct {
 	SectorID             uint64
 	PartialTicket        []byte
 	SectorChallengeIndex uint64
+}
+
+// ZipEPoStCandidates creates a slice of EPoSt candidates given slices for the fields
+// Precondition: all slices have the same length
+func ZipEPoStCandidates(sectorIDs, sectorChallengeIndexes []types.Uint64, partialTickets [][]byte) []*EPoStCandidate {
+	candidates := make([]*EPoStCandidate, len(sectorIDs))
+	for i := 0; i < len(sectorIDs); i++ {
+		candidates[i] = &EPoStCandidate{
+			SectorID:             uint64(sectorIDs[i]),
+			PartialTicket:        partialTickets[i],
+			SectorChallengeIndex: uint64(sectorChallengeIndexes[i]),
+		}
+	}
+	return candidates
 }
 
 // ElectionPoster generates and verifies electoin PoSts

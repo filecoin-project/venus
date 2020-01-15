@@ -33,7 +33,10 @@ func TestMineOnce10Null(t *testing.T) {
 	require.NoError(t, err)
 	minerToWorker := make(map[address.Address]address.Address)
 	minerToWorker[addr] = addr
-	baseTicket := consensus.SeedFirstWinnerInNRounds(t, 10, ki, 100, 10000)
+	totalPower := uint64(10000)
+	numSectors := uint64(1)
+	sectorSize := uint64(100)
+	baseTicket := consensus.SeedFirstWinnerInNRounds(t, 10, ki, totalPower, numSectors, sectorSize)
 	baseBlock := &block.Block{
 		StateRoot: types.CidFromString(t, "somecid"),
 		Height:    0,
@@ -51,7 +54,7 @@ func TestMineOnce10Null(t *testing.T) {
 	}
 	messages := chain.NewMessageStore(bs)
 
-	api := th.NewFakeWorkerPorcelainAPI(addr, 10, minerToWorker)
+	api := th.NewFakeWorkerPorcelainAPI(addr, 100, minerToWorker)
 	genTime := time.Now()
 	fc := th.NewFakeClock(genTime)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime.Unix()), 15*time.Second, fc)
@@ -96,7 +99,10 @@ func TestMineOneEpoch10Null(t *testing.T) {
 	require.NoError(t, err)
 	minerToWorker := make(map[address.Address]address.Address)
 	minerToWorker[addr] = addr
-	baseTicket := consensus.SeedFirstWinnerInNRounds(t, 10, ki, 100, 10000)
+	totalPower := uint64(10000)
+	numSectors := uint64(1)
+	sectorSize := uint64(100)
+	baseTicket := consensus.SeedFirstWinnerInNRounds(t, 10, ki, totalPower, numSectors, sectorSize)
 	baseBlock := &block.Block{
 		StateRoot: types.CidFromString(t, "somecid"),
 		Height:    0,
@@ -114,7 +120,7 @@ func TestMineOneEpoch10Null(t *testing.T) {
 	}
 	messages := chain.NewMessageStore(bs)
 
-	api := th.NewFakeWorkerPorcelainAPI(addr, 10, minerToWorker)
+	api := th.NewFakeWorkerPorcelainAPI(addr, 100, minerToWorker)
 	genTime := time.Now()
 	fc := th.NewFakeClock(genTime)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime.Unix()), 15*time.Second, fc)
@@ -148,7 +154,7 @@ func TestMineOneEpoch10Null(t *testing.T) {
 	}
 	blk, err := MineOneEpoch(context.Background(), *worker, baseTs, 10, chainClock)
 	assert.NoError(t, err)
-	assert.NotNil(t, blk)
+	require.NotNil(t, blk)
 	assert.Equal(t, uint64(10+1), uint64(blk.Height))
 	assert.Equal(t, chainClock.EpochAtTime(time.Unix(int64(blk.Timestamp), 0)), types.NewBlockHeight(uint64(blk.Height)))
 }
