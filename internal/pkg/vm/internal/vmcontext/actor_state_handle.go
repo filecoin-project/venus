@@ -2,6 +2,7 @@ package vmcontext
 
 import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/ipfs/go-cid"
 )
@@ -67,7 +68,7 @@ func (h *actorStateHandle) Readonly(obj interface{}) {
 	if h.usedObj == nil {
 		h.usedObj = obj
 	} else if h.usedObj != obj {
-		runtime.Abort("Must use the same state variable on repeated calls")
+		runtime.Abortf(exitcode.MethodAbort, "Must use the same state variable on repeated calls")
 	}
 
 	// Dragons: needed while we can get actor state modified directly by actor code
@@ -78,7 +79,7 @@ func (h *actorStateHandle) Readonly(obj interface{}) {
 	readonlyHead := h.head
 
 	if readonlyHead == cid.Undef {
-		runtime.Abort("Nil state can not be accessed via Readonly(), use Transaction() instead")
+		runtime.Abortf(exitcode.MethodAbort, "Nil state can not be accessed via Readonly(), use Transaction() instead")
 	}
 
 	h.get(readonlyHead, obj)
@@ -89,14 +90,14 @@ type transactionFn = func() (interface{}, error)
 // Transaction is the implementation of the ActorStateHandle interface.
 func (h *actorStateHandle) Transaction(obj interface{}, f transactionFn) (interface{}, error) {
 	if obj == nil {
-		runtime.Abort("Must not pass nil to Transaction()")
+		runtime.Abortf(exitcode.MethodAbort, "Must not pass nil to Transaction()")
 	}
 
 	// track the variable used by the caller
 	if h.usedObj == nil {
 		h.usedObj = obj
 	} else if h.usedObj != obj {
-		runtime.Abort("Must use the same state variable on repeated calls")
+		runtime.Abortf(exitcode.MethodAbort, "Must use the same state variable on repeated calls")
 	}
 
 	// Dragons: needed while we can get actor state modified directly by actor code
@@ -124,14 +125,14 @@ func (h *actorStateHandle) Transaction(obj interface{}, f transactionFn) (interf
 	storage := h.ctx.LegacyStorage()
 	newcid, err := storage.Put(obj)
 	if err != nil {
-		runtime.Abort("Storage put error")
+		runtime.Abortf(exitcode.MethodAbort, "Storage put error")
 	}
 
 	// commit the new state
 	// Note: this is more of a commit into pending, not a real commit
 	err = storage.LegacyCommit(newcid, oldcid)
 	if err != nil {
-		runtime.Abort("Storage commit error")
+		runtime.Abortf(exitcode.MethodAbort, "Storage commit error")
 	}
 
 	// update head
@@ -149,7 +150,7 @@ func (h *actorStateHandle) Validate() {
 		// verify the obj has not changed
 		usedCid, err := h.ctx.LegacyStorage().CidOf(h.usedObj)
 		if err != nil || usedCid != h.head {
-			runtime.Abort("State mutated outside of Transaction() scope")
+			runtime.Abortf(exitcode.MethodAbort, "State mutated outside of Transaction() scope")
 		}
 	}
 }
@@ -160,10 +161,10 @@ func (h *actorStateHandle) get(cid cid.Cid, obj interface{}) {
 	storage := h.ctx.LegacyStorage()
 	rawstate, err := storage.Get(cid)
 	if err != nil {
-		runtime.Abort("Storage get error")
+		runtime.Abortf(exitcode.MethodAbort, "Storage get error")
 	}
 
 	if err := encoding.Decode(rawstate, obj); err != nil {
-		runtime.Abort("Could not deserialize state")
+		runtime.Abortf(exitcode.MethodAbort, "Could not deserialize state")
 	}
 }

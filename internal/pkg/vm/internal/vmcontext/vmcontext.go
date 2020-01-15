@@ -7,7 +7,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"fmt"
+	"math/big"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
@@ -25,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/ipfs/go-cid"
-	"math/big"
 )
 
 // ExecutableActorLookup provides a method to get an executable actor by code and protocol version
@@ -110,7 +110,7 @@ func (ctx *VMContext) CurrentEpoch() types.BlockHeight {
 func (ctx *VMContext) Randomness(epoch types.BlockHeight, offset uint64) runtime.Randomness {
 	rnd, err := sampling.SampleChainRandomness(&epoch, ctx.ancestors)
 	if err != nil {
-		runtime.Abort("failed to sample randomness")
+		runtime.Abortf(exitcode.MethodAbort, "failed to sample randomness")
 	}
 	return rnd
 }
@@ -119,7 +119,7 @@ func (ctx *VMContext) Randomness(epoch types.BlockHeight, offset uint64) runtime
 func (ctx *VMContext) LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {
-		runtime.Abort("Calling Send() is not allowed during side-effet lock")
+		runtime.Abortf(exitcode.MethodAbort, "Calling Send() is not allowed during side-effet lock")
 	}
 
 	deps := ctx.deps
@@ -180,7 +180,7 @@ func (ctx *VMContext) LegacySend(to address.Address, method types.MethodID, valu
 func (ctx *VMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{} {
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {
-		runtime.Abort("Calling Send() is not allowed during side-effet lock")
+		runtime.Abortf(exitcode.MethodAbort, "Calling Send() is not allowed during side-effet lock")
 	}
 
 	deps := ctx.deps
@@ -191,24 +191,24 @@ func (ctx *VMContext) Send(to address.Address, method types.MethodID, value type
 
 	vals, err := deps.ToValues(params)
 	if err != nil {
-		runtime.Abort("failed to convert inputs to abi values")
+		runtime.Abortf(exitcode.MethodAbort, "failed to convert inputs to abi values")
 	}
 
 	paramData, err := deps.EncodeValues(vals)
 	if err != nil {
-		runtime.Abort("encoding params failed")
+		runtime.Abortf(exitcode.MethodAbort, "encoding params failed")
 	}
 
 	msg := types.NewUnsignedMessage(from, to, 0, value, method, paramData)
 	if msg.From == msg.To {
 		// TODO 3647: handle this
-		runtime.Abortf("unhandled: sending to self (%s)", msg.From)
+		runtime.Abortf(exitcode.MethodAbort, "unhandled: sending to self (%s)", msg.From)
 	}
 
 	// fetch actor and id address, creating actor if necessary
 	toActor, toAddr, err := ctx.getOrCreateActor(context.TODO(), ctx.state, msg.To)
 	if err != nil {
-		runtime.Abortf("failed to get or create To actor %s", msg.To)
+		runtime.Abortf(exitcode.MethodAbort, "failed to get or create To actor %s", msg.To)
 	}
 	// TODO(fritz) de-dup some of the logic between here and core.Send
 	innerParams := NewContextParams{
@@ -233,10 +233,10 @@ func apply(ctx *VMContext) interface{} {
 	filValue := ctx.message.Value
 	if !filValue.Equal(types.ZeroAttoFIL) {
 		if filValue.IsNegative() {
-			runtime.Abort("Can not transfer negative FIL value")
+			runtime.Abortf(exitcode.MethodAbort, "Can not transfer negative FIL value")
 		}
 		if err := Transfer(ctx.from, ctx.to, filValue); err != nil {
-			exitcode.AbortWithCode(exitcode.InsufficientFunds)
+			runtime.Abort(exitcode.InsufficientFunds)
 		}
 	}
 
@@ -257,23 +257,23 @@ func apply(ctx *VMContext) interface{} {
 	// TODO: use chain height based protocol version here (#3360)
 	toExecutable, err := ctx.Actors().GetActorCode(ctx.To().Code, 0)
 	if err != nil {
-		exitcode.AbortWithCode(exitcode.ActorCodeNotFound)
+		runtime.Abort(exitcode.ActorCodeNotFound)
 	}
 
 	exportedFn, ok := makeTypedExport(toExecutable, msg.Method)
 	if !ok {
-		exitcode.AbortWithCode(exitcode.InvalidMethod)
+		runtime.Abort(exitcode.InvalidMethod)
 	}
 
 	vals, code, err := exportedFn(ctx)
 
 	// Handle legacy codes and errors
 	if err != nil {
-		runtime.Abort(fmt.Sprintf("Legacy actor code returned an error: %s", err.Error()))
+		runtime.Abortf(exitcode.MethodAbort, "Legacy actor code returned an error: %s", err.Error())
 	}
 
 	if code != 0 {
-		runtime.Abort("Legacy actor code returned with non-zero error code")
+		runtime.Abortf(exitcode.MethodAbort, "Legacy actor code returned with non-zero error code")
 	}
 
 	// validate state access
@@ -321,10 +321,10 @@ func (ctx *VMContext) Message() runtime.MessageInfo {
 // All actor methods MUST call this method before returning.
 func (ctx *VMContext) ValidateCaller(pattern runtime.CallerPattern) {
 	if ctx.isCallerValidated {
-		runtime.Abort("Method must validate caller identity exactly once")
+		runtime.Abortf(exitcode.MethodAbort, "Method must validate caller identity exactly once")
 	}
 	if !pattern.IsMatch(patternContext{vm: ctx}) {
-		runtime.Abort("Method invoked by incorrect caller")
+		runtime.Abortf(exitcode.MethodAbort, "Method invoked by incorrect caller")
 	}
 	ctx.isCallerValidated = true
 }
@@ -376,11 +376,11 @@ func isSingletonActor(code cid.Cid) bool {
 // CreateActor implements the ExtendedInvocationContext interface.
 func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address {
 	if !isBuiltinActor(code) {
-		runtime.Abort("Can only create built-in actors.")
+		runtime.Abortf(exitcode.MethodAbort, "Can only create built-in actors.")
 	}
 
 	if isSingletonActor(code) {
-		runtime.Abort("Can only have one instance of singleton actors.")
+		runtime.Abortf(exitcode.MethodAbort, "Can only have one instance of singleton actors.")
 	}
 
 	// create address for actor
@@ -389,22 +389,22 @@ func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []i
 	if types.AccountActorCodeCid.Equals(code) {
 		// address for account actor comes from first parameter
 		if len(params) < 1 {
-			runtime.Abort("Missing address parameter for account actor creation")
+			runtime.Abortf(exitcode.MethodAbort, "Missing address parameter for account actor creation")
 		}
 		actorAddr, err = actorAddressFromParam(params[0])
 		if err != nil {
-			runtime.Abort("Parameter for account actor creation is not an address")
+			runtime.Abortf(exitcode.MethodAbort, "Parameter for account actor creation is not an address")
 		}
 	} else {
 		actorAddr, err = computeActorAddress(ctx.originMsg.From, uint64(ctx.originMsg.CallSeqNum))
 		if err != nil {
-			runtime.Abort("Could not create address for actor")
+			runtime.Abortf(exitcode.MethodAbort, "Could not create address for actor")
 		}
 	}
 
 	idAddr, err := address.NewIDAddress(uint64(actorID))
 	if err != nil {
-		runtime.Abort("Could not create IDAddress for actor")
+		runtime.Abortf(exitcode.MethodAbort, "Could not create IDAddress for actor")
 	}
 
 	// Check existing address. If nothing there, create empty actor.
@@ -415,11 +415,11 @@ func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []i
 	})
 
 	if err != nil {
-		runtime.Abort("Could not get or create actor")
+		runtime.Abortf(exitcode.MethodAbort, "Could not get or create actor")
 	}
 
 	if !newActor.Empty() {
-		runtime.Abort("Actor address already exists")
+		runtime.Abortf(exitcode.MethodAbort, "Actor address already exists")
 	}
 
 	// make this the right 'type' of actor

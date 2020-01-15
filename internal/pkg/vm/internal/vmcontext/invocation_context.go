@@ -83,7 +83,6 @@ func (ctx *invocationContext) invoke() interface{} {
 	}
 
 	// 5. load target actor code
-	// TODO: use chain height based protocol version here (#3360)
 	actorImpl := ctx.rt.getActorImpl(ctx.toActor.Code)
 
 	// 6. create target state handle
@@ -97,7 +96,7 @@ func (ctx *invocationContext) invoke() interface{} {
 	// 1. check method exists
 	exportedFn, ok := makeTypedExport(actorImpl, ctx.msg.method)
 	if !ok {
-		exitcode.AbortWithCode(exitcode.InvalidMethod)
+		runtime.Abort(exitcode.InvalidMethod)
 	}
 
 	// 2. invoke method on actor
@@ -105,10 +104,10 @@ func (ctx *invocationContext) invoke() interface{} {
 
 	// handle legacy errors and codes
 	if err != nil {
-		runtime.Abort("Legacy actor code returned an error")
+		runtime.Abortf(exitcode.MethodAbort, "Legacy actor code returned an error")
 	}
 	if code != 0 {
-		runtime.Abort("Legacy actor code returned with non-zero error code")
+		runtime.Abortf(exitcode.MethodAbort, "Legacy actor code returned with non-zero error code")
 	}
 
 	// post-dispatch
@@ -118,7 +117,7 @@ func (ctx *invocationContext) invoke() interface{} {
 
 	// 1. check caller was validated
 	if !ctx.isCallerValidated {
-		runtime.Abort("Caller MUST be validated during method execution")
+		runtime.Abortf(exitcode.MethodAbort, "Caller MUST be validated during method execution")
 	}
 
 	// 2. validate state access
@@ -165,7 +164,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 
 	if !target.IsPubKey() {
 		// Don't implicitly create an account actor for an address without an associated key.
-		exitcode.AbortWithCode(exitcode.ActorNotFound)
+		runtime.Abort(exitcode.ActorNotFound)
 	}
 
 	// send init actor msg to create the account actor
@@ -202,10 +201,10 @@ func (ctx *invocationContext) Message() runtime.MessageInfo {
 // ValidateCaller implements runtime.InvocationContext.
 func (ctx *invocationContext) ValidateCaller(pattern runtime.CallerPattern) {
 	if ctx.isCallerValidated {
-		runtime.Abort("Method must validate caller identity exactly once")
+		runtime.Abortf(exitcode.MethodAbort, "Method must validate caller identity exactly once")
 	}
 	if !pattern.IsMatch((*patternContext2)(ctx)) {
-		runtime.Abort("Method invoked by incorrect caller")
+		runtime.Abortf(exitcode.MethodAbort, "Method invoked by incorrect caller")
 	}
 	ctx.isCallerValidated = true
 }
@@ -224,7 +223,7 @@ func (ctx *invocationContext) LegacySend(to address.Address, method types.Method
 func (ctx *invocationContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{} {
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {
-		runtime.Abort("Calling Send() is not allowed during side-effet lock")
+		runtime.Abortf(exitcode.MethodAbort, "Calling Send() is not allowed during side-effet lock")
 	}
 
 	// prepare

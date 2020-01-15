@@ -74,18 +74,3 @@ func (code ExitCode) String() string {
 		return fmt.Sprintf("ExitCode(%d)", (uint64)(code))
 	}
 }
-
-// Panic is used to abort vm execution with an exit code.
-type Panic struct {
-	code ExitCode
-}
-
-// Code is the code used to abort the execution (see: `AbortWithCode()`).
-func (p Panic) Code() ExitCode {
-	return p.code
-}
-
-// AbortWithCode aborts the VM execution and sets the executing message return to the given `code`.
-func AbortWithCode(code ExitCode) {
-	panic(Panic{code: code})
-}

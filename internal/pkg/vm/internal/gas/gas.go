@@ -3,10 +3,14 @@ package gas
 import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
 // Unit is the unit of gas.
 type Unit = types.GasUnits
+
+// Zero is the zero value for Gas.
+const Zero = types.ZeroGas
 
 // SystemGasLimit is the maximum gas for implicit system messages.
 var SystemGasLimit = types.NewGasUnits(uint64(10) ^ uint64(18))
@@ -30,7 +34,7 @@ func NewTracker(limit Unit) Tracker {
 // WARNING: this method will panic if there is no sufficient gas left.
 func (t *Tracker) Charge(amount Unit) {
 	if ok := t.TryCharge(amount); !ok {
-		exitcode.AbortWithCode(exitcode.OutOfGas)
+		runtime.Abort(exitcode.OutOfGas)
 	}
 }
 

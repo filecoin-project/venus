@@ -2,15 +2,15 @@ package message
 
 import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gas"
 )
 
 // Receipt is what is returned by executing a message on the vm.
 type Receipt struct {
 	ExitCode    exitcode.ExitCode
 	ReturnValue []byte
-	GasUsed     types.GasUnits
+	GasUsed     gas.Unit
 }
 
 // Ok returns an empty succesfull result.
@@ -18,7 +18,7 @@ func Ok() Receipt {
 	return Receipt{
 		ExitCode:    0,
 		ReturnValue: nil,
-		GasUsed:     types.ZeroGas,
+		GasUsed:     gas.Zero,
 	}
 }
 
@@ -34,21 +34,21 @@ func Value(obj interface{}) Receipt {
 	return Receipt{
 		ExitCode:    0,
 		ReturnValue: aux,
-		GasUsed:     types.ZeroGas,
+		GasUsed:     gas.Zero,
 	}
 }
 
 // Failure returns with a non-zero exit code.
-func Failure(exitCode exitcode.ExitCode) Receipt {
+func Failure(exitCode exitcode.ExitCode, gasAmount gas.Unit) Receipt {
 	return Receipt{
 		ExitCode:    exitCode,
 		ReturnValue: nil,
-		GasUsed:     types.ZeroGas,
+		GasUsed:     gasAmount,
 	}
 }
 
 // WithGas sets the gas used.
-func (r Receipt) WithGas(amount types.GasUnits) Receipt {
+func (r Receipt) WithGas(amount gas.Unit) Receipt {
 	r.GasUsed = amount
 	return r
 }

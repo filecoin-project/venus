@@ -181,10 +181,9 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) (out interface{}, err e
 	defer func() {
 		if r := recover(); r == nil {
 			switch r.(type) {
-			case runtime.AbortPanicError:
-				err = errors.New("Invalid abort during implicit message execution")
-			case exitcode.Panic:
-				err = errors.New("Invalid exitcode raised during implicit message execution")
+			case runtime.ExecutionPanic:
+				p := r.(runtime.ExecutionPanic)
+				err = fmt.Errorf("Invalid abort during implicit message execution. %s", p)
 			default:
 				// do not trap unknown panics
 				debug.PrintStack()
@@ -243,7 +242,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 	if !ok {
 		// Invalid message; insufficient gas limit to pay for the on-chain message size.
 		// Note: the miner needs to pay the full msg cost, not what might have been partially consumed
-		return message.Failure(exitcode.OutOfGas), msgCost.Cost(msg.GasPrice)
+		return message.Failure(exitcode.OutOfGas, gas.Zero), msgCost.Cost(msg.GasPrice)
 	}
 
 	// Dragons: from address need to be normalized here
@@ -253,13 +252,13 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 	// Review: when are errors surfaced? this can lead to invalid state transitions
 	if fromActor == nil || err != nil {
 		// Execution error; sender does not exist at time of message execution.
-		return message.Failure(exitcode.ActorNotFound), gasTank.GasConsumed().Cost(msg.GasPrice)
+		return message.Failure(exitcode.ActorNotFound, gas.Zero), gasTank.GasConsumed().Cost(msg.GasPrice)
 	}
 
 	// 3. make sure this is the right message order for fromActor
 	if msg.CallSeqNum != fromActor.CallSeqNum {
 		// Execution error; invalid seq number.
-		return message.Failure(exitcode.InvalidCallSeqNum), gasTank.GasConsumed().Cost(msg.GasPrice)
+		return message.Failure(exitcode.InvalidCallSeqNum, gas.Zero), gasTank.GasConsumed().Cost(msg.GasPrice)
 	}
 
 	// 4. Check sender balance (gas + value being sent)
@@ -267,7 +266,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 	totalCost := msg.Value.Add(gasLimitCost)
 	if fromActor.Balance.LessThan(totalCost) {
 		// Execution error; sender does not have sufficient funds to pay for the gas limit.
-		return message.Failure(exitcode.InsufficientFunds), gasTank.GasConsumed().Cost(msg.GasPrice)
+		return message.Failure(exitcode.InsufficientFunds, gas.Zero), gasTank.GasConsumed().Cost(msg.GasPrice)
 	}
 
 	// 5. Increment sender CallSeqNum
@@ -317,14 +316,10 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 
 			if r := recover(); r == nil {
 				switch r.(type) {
-				case runtime.AbortPanicError:
-					aux := r.(runtime.AbortPanicError)
-					vmLog.Warn("Abort during vm execution. %s", aux)
-					out = message.Failure(exitcode.MethodAbort).WithGas(gasTank.GasConsumed())
-					return
-				case exitcode.Panic:
-					aux := r.(exitcode.Panic)
-					out = message.Failure(aux.Code()).WithGas(gasTank.GasConsumed())
+				case runtime.ExecutionPanic:
+					p := r.(runtime.ExecutionPanic)
+					vmLog.Warn("Abort during vm execution. %s", p)
+					out = message.Failure(p.Code(), gasTank.GasConsumed())
 					return
 				default:
 					debug.PrintStack()
@@ -361,7 +356,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 		vm.settleGasBill(msg.From, &gasTank, minerOwner, msg.GasPrice)
 
 		// Note: we are charging the caller not the miner, there is ZERO miner penalty
-		return message.Failure(exitcode.OutOfGas).WithGas(gasTank.GasConsumed()), types.ZeroAttoFIL
+		return message.Failure(exitcode.OutOfGas, gasTank.GasConsumed()), types.ZeroAttoFIL
 	}
 
 	// 2. Success!
@@ -430,7 +425,7 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 func (vm *VM) getActorImpl(code cid.Cid) dispatch.ExecutableActor {
 	actorImpl, err := vm.actorImpls.GetActorImpl(code, vm.currentEpoch)
 	if err != nil {
-		exitcode.AbortWithCode(exitcode.ActorCodeNotFound)
+		runtime.Abort(exitcode.ActorCodeNotFound)
 	}
 	return actorImpl
 }
@@ -522,7 +517,7 @@ func (s actorStorage) Get(cid cid.Cid, obj interface{}) bool {
 func msgCID(msg *types.UnsignedMessage) cid.Cid {
 	cid, err := msg.Cid()
 	if err != nil {
-		runtime.Abort("Could not compute CID for message")
+		runtime.Abortf(exitcode.MethodAbort, "Could not compute CID for message")
 	}
 	return cid
 }

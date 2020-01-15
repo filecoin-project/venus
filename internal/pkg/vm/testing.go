@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
 	"github.com/ipfs/go-cid"
@@ -99,7 +100,7 @@ func (tc *FakeVMContext) Randomness(epoch types.BlockHeight, offset uint64) runt
 func (tc *FakeVMContext) LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 	// check if side-effects are allowed
 	if !tc.allowSideEffects {
-		runtime.Abort("Calling LegacySend() is not allowed during side-effet lock")
+		runtime.Abortf(exitcode.MethodAbort, "Calling LegacySend() is not allowed during side-effet lock")
 	}
 	return tc.LegacySender(to, method, value, params)
 }
@@ -108,7 +109,7 @@ func (tc *FakeVMContext) LegacySend(to address.Address, method types.MethodID, v
 func (tc *FakeVMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{} {
 	// check if side-effects are allowed
 	if !tc.allowSideEffects {
-		runtime.Abort("Calling Send() is not allowed during side-effet lock")
+		runtime.Abortf(exitcode.MethodAbort, "Calling Send() is not allowed during side-effet lock")
 	}
 	return tc.Sender(to, method, value, params)
 }
@@ -150,7 +151,7 @@ func (tc *FakeVMContext) Message() runtime.MessageInfo {
 func (tc *FakeVMContext) ValidateCaller(pattern runtime.CallerPattern) {
 	// Note: the FakeVMContext is currently harcoded to a single pattern
 	if !tc.IsFromAccountActorValue {
-		runtime.Abort("Method invoked by incorrect caller")
+		runtime.Abortf(exitcode.MethodAbort, "Method invoked by incorrect caller")
 	}
 }
 
@@ -187,15 +188,15 @@ var _ runtime.ExtendedInvocationContext = (*FakeVMContext)(nil)
 func (tc *FakeVMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address {
 	addr, err := tc.Addresser()
 	if err != nil {
-		runtime.Abort("Could not create address")
+		runtime.Abortf(exitcode.MethodAbort, "Could not create address")
 	}
 	idAddr, err := address.NewIDAddress(uint64(actorID))
 	if err != nil {
-		runtime.Abort("Could not create IDAddress for actor")
+		runtime.Abortf(exitcode.MethodAbort, "Could not create IDAddress for actor")
 	}
 	err = tc.ActorCreator(idAddr, code)
 	if err != nil {
-		runtime.Abort("Could not create actor")
+		runtime.Abortf(exitcode.MethodAbort, "Could not create actor")
 	}
 
 	return addr

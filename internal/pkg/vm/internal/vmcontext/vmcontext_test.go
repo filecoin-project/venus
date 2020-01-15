@@ -118,8 +118,8 @@ func TestVMContextCreateActor(t *testing.T) {
 		if r == nil {
 			t.Fail()
 		}
-		err := r.(runtime.AbortPanicError)
-		assert.Contains(t, err.Error(), partialMsg)
+		err := r.(runtime.ExecutionPanic)
+		assert.Contains(t, err.String(), partialMsg)
 	}
 
 	t.Run("create new actor", func(t *testing.T) {

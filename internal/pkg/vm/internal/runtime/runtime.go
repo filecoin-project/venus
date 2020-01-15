@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 )
 
 // Runtime has operations in the VM that are exposed to all actors.
@@ -159,33 +160,35 @@ type CallerPattern interface {
 	IsMatch(ctx PatternContext) bool
 }
 
-// AbortPanicError is used on panic when `Abort` is called by actors.
-type AbortPanicError struct {
-	msg string
+// ExecutionPanic is used to abort vm execution with an exit code.
+type ExecutionPanic struct {
+	msg  string
+	code exitcode.ExitCode
 }
 
-func (x AbortPanicError) String() string {
-	return x.msg
+// Code is the code used to abort the execution (see: `Abort()`).
+func (p ExecutionPanic) Code() exitcode.ExitCode {
+	return p.code
 }
 
-func (x AbortPanicError) Error() string {
-	return x.msg
+func (p ExecutionPanic) String() string {
+	return p.msg
 }
 
-// Abort will stop the VM execution and return an abort error to the caller.
-func Abort(msg string) {
-	panic(AbortPanicError{msg: msg})
+// Abort aborts the VM execution and sets the executing message return to the given `code`.
+func Abort(code exitcode.ExitCode) {
+	panic(ExecutionPanic{code: code})
 }
 
-// Abortf will stop the VM execution and return an abort error to the caller.
-func Abortf(msg string, args ...interface{}) {
-	panic(AbortPanicError{msg: fmt.Sprintf(msg, args...)})
+// Abortf will stop the VM execution and return an the error to the caller.
+func Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
+	panic(ExecutionPanic{code: code, msg: fmt.Sprintf(msg, args...)})
 }
 
 // Assert will abort if the condition is `False` and return an abort error to the caller.
 func Assert(cond bool) {
 	if !cond {
-		Abort("assertion failure in actor code.")
+		Abortf(exitcode.MethodAbort, "assertion failure in actor code.")
 	}
 }
 
