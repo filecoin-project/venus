@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -52,7 +53,7 @@ var (
 
 // ElectionLookback is the number of tipsets past the head (inclusive)) that
 // must be traversed to sample the election ticket.
-const ElectionLookback = 5
+const ElectionLookback = 1
 
 // challengeBits is the number of bits in the challenge ticket's domain
 const challengeBits = 256
@@ -113,13 +114,16 @@ type Expected struct {
 	actorState SnapshotGenerator
 
 	blockTime time.Duration
+
+	// postVerifier verifies post proofs and associated data
+	postVerifier *proofs.ElectionPoster
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, actorState SnapshotGenerator, bt time.Duration, ev ElectionValidator, tv TicketValidator) *Expected {
+func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, actorState SnapshotGenerator, bt time.Duration, ev ElectionValidator, tv TicketValidator, pv *proofs.ElectionPoster) *Expected {
 	return &Expected{
 		cstore:            cs,
 		blockTime:         bt,
@@ -128,6 +132,7 @@ func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Pro
 		actorState:        actorState,
 		ElectionValidator: ev,
 		TicketValidator:   tv,
+		postVerifier:      pv,
 	}
 }
 

@@ -56,6 +56,7 @@ func (t *FakeWorkerPorcelainAPI) Snapshot(ctx context.Context, tsk block.TipSetK
 	return &consensus.FakePowerTableViewSnapshot{
 		MinerPower:    types.NewBytesAmount(1),
 		TotalPower:    types.NewBytesAmount(t.totalPower),
+		SectorSize:    types.NewBytesAmount(1),
 		MinerToWorker: t.minerToWorker,
 	}, nil
 }

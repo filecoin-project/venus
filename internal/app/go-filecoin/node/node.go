@@ -744,6 +744,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 		Processor:     processor,
 		Blockstore:    node.Blockstore.Blockstore,
 		Clock:         node.ChainClock,
+		Poster:        node.SectorStorage.ElectionPoster,
 	}), nil
 }
 

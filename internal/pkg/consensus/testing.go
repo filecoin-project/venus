@@ -7,17 +7,18 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
-	"github.com/stretchr/testify/require"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	sector "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/stretchr/testify/require"
 )
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
@@ -54,9 +55,12 @@ func (t *FakeActorStateStore) StateTreeSnapshot(st state.Tree, bh *types.BlockHe
 }
 
 // FakePowerTableViewSnapshot returns a snapshot that can be fed into a PowerTableView to produce specific values
+// Dragons: once the power table no longer has a faked out SortedSectorInfos method we'll need to expand this
+// to also fake that out.
 type FakePowerTableViewSnapshot struct {
 	MinerPower    *types.BytesAmount
 	TotalPower    *types.BytesAmount
+	SectorSize    *types.BytesAmount
 	MinerToWorker map[address.Address]address.Address
 }
 
@@ -84,6 +88,11 @@ func (tq *FakePowerTableViewSnapshot) Query(ctx context.Context, optFrom, to add
 		if tq.MinerToWorker != nil {
 			return [][]byte{tq.MinerToWorker[to].Bytes()}, nil
 		}
+	} else if method == power.GetSectorSize {
+		if tq.SectorSize != nil {
+			return [][]byte{tq.SectorSize.Bytes()}, nil
+		}
+		return [][]byte{}, errors.New("something went wrong with sector size")
 	}
 	return [][]byte{}, fmt.Errorf("unknown method for TestQueryer '%s'", method)
 }
@@ -137,11 +146,47 @@ type FakeElectionMachine struct{}
 
 // DeprecatedRunElection returns a fake election proof.
 func (fem *FakeElectionMachine) DeprecatedRunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullCount uint64) (block.VRFPi, error) {
-	return MakeFakeDeprecatedElectionProofForTest(), nil
+	return MakeFakeVRFProofForTest(), nil
 }
 
 // DeprecatedIsElectionWinner always returns true
 func (fem *FakeElectionMachine) DeprecatedIsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, nullCount uint64, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+	return true, nil
+}
+
+// GeneratePoStRandomness returns a fake post randomness byte array
+func (fem *FakeElectionMachine) GeneratePoStRandomness(_ block.Ticket, _ address.Address, _ types.Signer, _ uint64) ([]byte, error) {
+	return MakeFakeVRFProofForTest(), nil
+}
+
+// GenerateCandidates returns one fake election post candidate
+func (fem *FakeElectionMachine) GenerateCandidates(_ []byte, _ sector.SortedSectorInfo, _ *proofs.ElectionPoster) ([]*proofs.EPoStCandidate, error) {
+	return []*proofs.EPoStCandidate{
+		{
+			SectorID:             0,
+			PartialTicket:        []byte{0xf},
+			SectorChallengeIndex: 0,
+		},
+	}, nil
+}
+
+// GeneratePoSt returns a fake post proof
+func (fem *FakeElectionMachine) GeneratePoSt(_ sector.SortedSectorInfo, _ []byte, _ []*proofs.EPoStCandidate, _ *proofs.ElectionPoster) ([]byte, error) {
+	return MakeFakePoStForTest(), nil
+}
+
+// VerifyPoStRandomness returns true
+func (fem *FakeElectionMachine) VerifyPoStRandomness(_ block.VRFPi, _ block.Ticket, _ address.Address, _ uint64) bool {
+	return true
+}
+
+// CandidateWins returns true
+func (fem *FakeElectionMachine) CandidateWins(_ []byte, _ *proofs.ElectionPoster, _, _, _, _ uint64) bool {
+	return true
+}
+
+// VerifyPoSt return true
+func (fem *FakeElectionMachine) VerifyPoSt(_ context.Context, _ *proofs.ElectionPoster, _ sector.SortedSectorInfo, _ uint64, _ []byte, _ []byte, _ []*proofs.EPoStCandidate, _ address.Address) (bool, error) {
 	return true, nil
 }
 
@@ -183,11 +228,23 @@ func MakeFakeTicketForTest() block.Ticket {
 	}
 }
 
-// MakeFakeDeprecatedElectionProofForTest creates a fake election proof
-func MakeFakeDeprecatedElectionProofForTest() []byte {
+// MakeFakeVRFProofForTest creates a fake election proof
+func MakeFakeVRFProofForTest() []byte {
 	proof := make([]byte, 65)
 	proof[0] = 42
 	return proof
+}
+
+// MakeFakePoStForTest creates a fake post
+func MakeFakePoStForTest() []byte {
+	proof := make([]byte, 1)
+	proof[0] = 0xe
+	return proof
+}
+
+// MakeFakeWinnersForTest creats an empty winners array
+func MakeFakeWinnersForTest() []*proofs.EPoStCandidate {
+	return []*proofs.EPoStCandidate{}
 }
 
 // SeedFirstWinnerInNRounds returns a ticket that when mined upon for N rounds
@@ -303,7 +360,8 @@ func (mtm *MockTicketMachine) IsValidTicket(parent, ticket block.Ticket, signerA
 // MockElectionMachine allows a test to set a function to be called upon
 // election running and validation
 type MockElectionMachine struct {
-	fn func(block.Ticket)
+	fn  func(block.Ticket)
+	fem *FakeElectionMachine
 }
 
 // NewMockElectionMachine creates a mock given a callback
@@ -314,11 +372,31 @@ func NewMockElectionMachine(f func(block.Ticket)) *MockElectionMachine {
 // DeprecatedRunElection calls the registered callback and returns a fake proof
 func (mem *MockElectionMachine) DeprecatedRunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullCount uint64) (block.VRFPi, error) {
 	mem.fn(ticket)
-	return MakeFakeDeprecatedElectionProofForTest(), nil
+	return MakeFakeVRFProofForTest(), nil
 }
 
 // DeprecatedIsElectionWinner calls the registered callback and returns true
 func (mem *MockElectionMachine) DeprecatedIsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, nullCount uint64, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
 	mem.fn(ticket)
 	return true, nil
+}
+
+// GeneratePoStRandomness defers to a fake election machine
+func (mem *MockElectionMachine) GeneratePoStRandomness(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullBlockCount uint64) ([]byte, error) {
+	return mem.fem.GeneratePoStRandomness(ticket, candidateAddr, signer, nullBlockCount)
+}
+
+// GenerateCandidates defers to a fake election machine
+func (mem *MockElectionMachine) GenerateCandidates(poStRand []byte, sectorInfos sector.SortedSectorInfo, ep *proofs.ElectionPoster) ([]*proofs.EPoStCandidate, error) {
+	return mem.fem.GenerateCandidates(poStRand, sectorInfos, ep)
+}
+
+// GeneratePoSt defers to a fake election machine
+func (mem *MockElectionMachine) GeneratePoSt(sectorInfo sector.SortedSectorInfo, challengeSeed []byte, winners []*proofs.EPoStCandidate, ep *proofs.ElectionPoster) ([]byte, error) {
+	return mem.fem.GeneratePoSt(sectorInfo, challengeSeed, winners, ep)
+}
+
+// CandidateWins defers to a fake election machine
+func (mem *MockElectionMachine) CandidateWins(challengeTicket []byte, ep *proofs.ElectionPoster, sectorNum, faultNum, networkPower, sectorSize uint64) bool {
+	return mem.fem.CandidateWins(challengeTicket, ep, sectorNum, faultNum, networkPower, sectorSize)
 }

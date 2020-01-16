@@ -27,7 +27,7 @@ func init() {
 	encoding.RegisterIpldCborType(TableEntry{})
 }
 
-// Actor provides bookkeeping for the storage power of registered mienrs.
+// Actor provides bookkeeping for the storage power of registered miners.
 // It updates power based on faults and storage proofs.
 // It also tracks pledge collateral conditions.
 type Actor struct{}
@@ -44,6 +44,7 @@ type TableEntry struct {
 	InactivePower          *types.BytesAmount
 	AvailableBalance       types.AttoFIL
 	LockedPledgeCollateral types.AttoFIL
+	SectorSize             *types.BytesAmount
 }
 
 // Actor Methods
@@ -55,6 +56,7 @@ const (
 	ProcessPowerReport
 	GetPowerReport
 	ProcessFaultReport
+	GetSectorSize
 	// ReportConsensusFault
 	// Surprise
 	// AddBalance ? (review: is this a runtime builtin?)
@@ -93,6 +95,10 @@ var signatures = dispatch.Exports{
 		Params: []abi.Type{abi.Address},
 		Return: []abi.Type{abi.PowerReport},
 	},
+	GetSectorSize: &dispatch.FunctionSignature{
+		Params: []abi.Type{abi.Address},
+		Return: []abi.Type{abi.BytesAmount},
+	},
 }
 
 // Method returns method definition for a given method id.
@@ -108,6 +114,8 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSi
 		return reflect.ValueOf((*impl)(a).processPowerReport), signatures[ProcessPowerReport], true
 	case GetPowerReport:
 		return reflect.ValueOf((*impl)(a).getPowerReport), signatures[GetPowerReport], true
+	case GetSectorSize:
+		return reflect.ValueOf((*impl)(a).getSectorSize), signatures[GetSectorSize], true
 	default:
 		return nil, nil, false
 	}
@@ -161,7 +169,6 @@ func (*impl) createStorageMiner(vmctx invocationContext, ownerAddr, workerAddr a
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return address.Undef, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
-
 	var state State
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		actorCodeCid := types.MinerActorCodeCid
@@ -201,6 +208,7 @@ func (*impl) createStorageMiner(vmctx invocationContext, ownerAddr, workerAddr a
 				InactivePower:          types.NewBytesAmount(0),
 				AvailableBalance:       types.ZeroAttoFIL,
 				LockedPledgeCollateral: types.ZeroAttoFIL,
+				SectorSize:             sectorSize,
 			})
 			if err != nil {
 				return errors.FaultErrorWrapf(err, "Could not set power table at address: %s", actorIDAddr.String())
@@ -311,15 +319,18 @@ func (*impl) getPowerReport(vmctx invocationContext, addr address.Address) (type
 	var state State
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		ctx := context.Background()
+		var tableEntry TableEntry
 		var report types.PowerReport
 		err := actor.WithLookupForReading(ctx, vmctx.Runtime().LegacyStorage(), state.PowerTable, func(lookup storage.Lookup) error {
-			err := lookup.Find(ctx, addr.String(), &report)
+			err := lookup.Find(ctx, addr.String(), &tableEntry)
 			if err != nil {
 				if err == hamt.ErrNotFound {
 					return Errors[ErrUnknownEntry]
 				}
 				return errors.FaultErrorWrapf(err, "Could not retrieve power table entry with ID: %s", addr.String())
 			}
+			report.ActivePower = tableEntry.ActivePower
+			report.InactivePower = tableEntry.InactivePower
 			return nil
 		})
 		return report, err
@@ -328,6 +339,33 @@ func (*impl) getPowerReport(vmctx invocationContext, addr address.Address) (type
 		return types.PowerReport{}, errors.CodeError(err), err
 	}
 	return ret.(types.PowerReport), 0, nil
+}
+
+func (*impl) getSectorSize(vmctx invocationContext, addr address.Address) (*types.BytesAmount, uint8, error) {
+	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
+		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
+	var state State
+	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+		ctx := context.Background()
+		ss := types.NewBytesAmount(0)
+		err := actor.WithLookupForReading(ctx, vmctx.Runtime().LegacyStorage(), state.PowerTable, func(lookup storage.Lookup) error {
+			return lookup.ForEachValue(ctx, TableEntry{}, func(k string, value interface{}) error {
+				entry, ok := value.(TableEntry)
+				if !ok {
+					return errors.NewFaultError("Expected TableEntry from power table lookup")
+				}
+				ss = entry.SectorSize
+				return nil
+			})
+		})
+		return ss, err
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+	return ret.(*types.BytesAmount), 0, nil
 }
 
 // ProcessPowerReport updates a registered miner's power table entry according to the power report.
@@ -350,7 +388,9 @@ func (*impl) processPowerReport(vmctx invocationContext, report types.PowerRepor
 				return errors.FaultErrorWrapf(err, "Could not retrieve power table entry with ID: %s", updateAddr.String())
 			}
 			// All clear to update
-			return lookup.Set(ctx, updateAddr.String(), report)
+			updateEntry.ActivePower = report.ActivePower
+			updateEntry.InactivePower = report.InactivePower
+			return lookup.Set(ctx, updateAddr.String(), updateEntry)
 		})
 		if err != nil {
 			return nil, err

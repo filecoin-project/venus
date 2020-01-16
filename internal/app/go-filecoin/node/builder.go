@@ -195,7 +195,12 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	}
 	nd.ChainClock = b.chainClock
 
-	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), b.repo, &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain)
+	nd.SectorStorage, err = submodule.NewSectorStorageSubmodule(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build node.SectorStorage")
+	}
+
+	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), b.repo, &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.SectorStorage.ElectionPoster)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}
@@ -218,11 +223,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.BlockMining, err = submodule.NewBlockMiningSubmodule(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.BlockMining")
-	}
-
-	nd.SectorStorage, err = submodule.NewSectorStorageSubmodule(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.SectorStorage")
 	}
 
 	nd.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(ctx)
