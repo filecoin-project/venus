@@ -247,6 +247,16 @@ func (c *Expected) validateMining(
 			return errors.New("PoStRandomness invalid")
 		}
 
+		// Verify no duplicate challenge indexes
+		challengeIndexes := make(map[uint64]struct{})
+		for _, winner := range blk.EPoStInfo.Winners {
+			index := winner.SectorChallengeIndex
+			if _, dup := challengeIndexes[uint64(index)]; dup {
+				return errors.Errorf("Duplicate partial ticket submitted, challenge idx: %d", index)
+			}
+			challengeIndexes[uint64(index)] = struct{}{}
+		}
+
 		// Verify all partial tickets are winners
 		sectorNum, err := powerTable.NumSectors(ctx, blk.Miner)
 		if err != nil {

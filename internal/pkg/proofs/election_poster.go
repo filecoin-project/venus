@@ -41,14 +41,14 @@ func (ep *ElectionPoster) GenerateEPostCandidates(sectorInfo ffi.SortedPublicSec
 	// each partial ticket is the hash of the challengeSeed and sectorID
 	var candidates []ffi.Candidate
 	hasher := hasher.NewHasher()
-	for _, si := range sectorInfo.Values() {
+	for i, si := range sectorInfo.Values() {
 		hasher.Int(si.SectorID)
 		hasher.Bytes(challengeSeed[:])
 		nextCandidate := ffi.Candidate{
 			SectorID:             si.SectorID,
 			PartialTicket:        convert.To32ByteArray(hasher.Hash()),
 			Ticket:               [32]byte{},
-			SectorChallengeIndex: 0, //fake value of 0 for all candidates
+			SectorChallengeIndex: uint64(i), //fake value of sector idx
 		}
 		candidates = append(candidates, nextCandidate)
 	}
