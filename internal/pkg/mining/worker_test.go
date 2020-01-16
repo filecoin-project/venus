@@ -518,7 +518,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	baseTipset := builder.AppendOn(parentTipset, 2)
 	assert.Equal(t, 2, baseTipset.Len())
 
-	blk, err := worker.Generate(ctx, baseTipset, block.Ticket{VRFProof: []byte{2}}, 0, consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest(), consensus.MakeFakePoStForTest())
+	blk, err := worker.Generate(ctx, baseTipset, block.Ticket{VRFProof: []byte{2}}, 0, consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest(), consensus.MakeFakePoStForTest())
 
 	assert.NoError(t, err)
 
@@ -624,7 +624,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		StateRoot:               stateRoot,
 		DeprecatedElectionProof: consensus.MakeFakeVRFProofForTest(),
 	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, 0, consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest(), consensus.MakeFakePoStForTest())
+	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, 0, consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest(), consensus.MakeFakePoStForTest())
 	assert.NoError(t, err)
 
 	// This is the temporary failure + the good message,
@@ -692,14 +692,14 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	}
 	baseTipSet := th.RequireNewTipSet(t, &baseBlock)
 	ticket := mining.NthTicket(7)
-	blk, err := worker.Generate(ctx, baseTipSet, ticket, 0, consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest(), consensus.MakeFakePoStForTest())
+	blk, err := worker.Generate(ctx, baseTipSet, ticket, 0, consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest(), consensus.MakeFakePoStForTest())
 	assert.NoError(t, err)
 
 	assert.Equal(t, h+1, blk.Height)
 	assert.Equal(t, minerAddr, blk.Miner)
 	assert.Equal(t, ticket, blk.Ticket)
 
-	blk, err = worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, 1, consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest(), consensus.MakeFakePoStForTest())
+	blk, err = worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, 1, consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest(), consensus.MakeFakePoStForTest())
 	assert.NoError(t, err)
 
 	assert.Equal(t, h+2, blk.Height)
@@ -752,7 +752,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		StateRoot:               newCid(),
 		DeprecatedElectionProof: consensus.MakeFakeVRFProofForTest(),
 	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, 0, consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest(), consensus.MakeFakePoStForTest())
+	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, 0, consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest(), consensus.MakeFakePoStForTest())
 	assert.NoError(t, err)
 
 	assert.Len(t, pool.Pending(), 0) // This is the temporary failure.
@@ -816,7 +816,7 @@ func TestGenerateError(t *testing.T) {
 		DeprecatedElectionProof: consensus.MakeFakeVRFProofForTest(),
 	}
 	baseTipSet := th.RequireNewTipSet(t, &baseBlock)
-	blk, err := worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, 0, consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest(), consensus.MakeFakePoStForTest())
+	blk, err := worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, 0, consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest(), consensus.MakeFakePoStForTest())
 	assert.Error(t, err, "boom")
 	assert.Nil(t, blk)
 

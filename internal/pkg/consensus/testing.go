@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -49,6 +51,7 @@ func NewFakeActorStateStore(minerPower, totalPower *types.BytesAmount, minerToWo
 func (t *FakeActorStateStore) StateTreeSnapshot(st state.Tree, bh *types.BlockHeight) ActorStateSnapshot {
 	return &FakePowerTableViewSnapshot{
 		MinerPower:    t.minerPower,
+		SectorSize:    t.minerPower,
 		TotalPower:    t.totalPower,
 		MinerToWorker: t.minerToWorker,
 	}
@@ -211,12 +214,22 @@ func (ftv *FailingTicketValidator) IsValidTicket(parent, ticket block.Ticket, si
 	return false
 }
 
-// FailingElectionValidator marks all elections as invalid
+// FailingElectionValidator marks all election candidates as invalid
 type FailingElectionValidator struct{}
 
-// DeprecatedIsElectionWinner always returns false
-func (fev *FailingElectionValidator) DeprecatedIsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, nullCount uint64, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
-	return false, nil
+// CandidateWins always returns false
+func (fev *FailingElectionValidator) CandidateWins(_ []byte, _ *proofs.ElectionPoster, _, _, _, _ uint64) bool {
+	return false
+}
+
+// VerifyPoSt returns true without error
+func (fev *FailingElectionValidator) VerifyPoSt(_ context.Context, _ *proofs.ElectionPoster, _ sector.SortedSectorInfo, _ uint64, _ []byte, _ []byte, _ []*proofs.EPoStCandidate, _ address.Address) (bool, error) {
+	return true, nil
+}
+
+// VerifyPoStRandomness return true
+func (fev *FailingElectionValidator) VerifyPoStRandomness(_ block.VRFPi, _ block.Ticket, _ address.Address, _ uint64) bool {
+	return true
 }
 
 // MakeFakeTicketForTest creates a fake ticket
@@ -247,6 +260,23 @@ func MakeFakeWinnersForTest() []*proofs.EPoStCandidate {
 	return []*proofs.EPoStCandidate{}
 }
 
+// NFakeSectorInfos returns numSectors fake sector infos
+func NFakeSectorInfos(numSectors uint64) sector.SortedSectorInfo {
+	var infos []sector.SectorInfo
+	for i := uint64(0); i < numSectors; i++ {
+		buf := make([]byte, binary.MaxVarintLen64)
+		binary.PutUvarint(buf, i)
+		var fakeCommRi [sector.CommitmentBytesLen]byte
+		copy(fakeCommRi[:], buf)
+		infos = append(infos, sector.SectorInfo{
+			SectorID: i,
+			CommR:    fakeCommRi,
+		})
+	}
+
+	return sector.NewSortedSectorInfo(infos...)
+}
+
 // SeedFirstWinnerInNRounds returns a ticket that when mined upon for N rounds
 // by a miner that has `minerPower` out of a system-wide `totalPower` and keyinfo
 // `ki` will produce a ticket that gives a winning election proof in exactly `n`
@@ -260,71 +290,78 @@ func MakeFakeWinnersForTest() []*proofs.EPoStCandidate {
 // inputs as miner power might be so low that winning a ticket is very
 // unlikely.  However runtime is deterministic so if it runs fast once on
 // given inputs is safe to use in tests.
-func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, minerPower, totalPower uint64) block.Ticket {
+func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, networkPower, numSectors, sectorSize uint64) block.Ticket {
+	tm := TicketMachine{}
 	signer := types.NewMockSigner([]types.KeyInfo{*ki})
 	wAddr, err := ki.Address()
 	require.NoError(t, err)
-	minerToWorker := make(map[address.Address]address.Address)
-	minerToWorker[wAddr] = wAddr
-	ptv := NewFakePowerTableView(types.NewBytesAmount(minerPower), types.NewBytesAmount(totalPower), minerToWorker)
-	em := ElectionMachine{}
-	tm := TicketMachine{}
-	ctx := context.Background()
 
+	// give it some fake sector infos
+	sectorInfos := NFakeSectorInfos(numSectors)
 	curr := MakeFakeTicketForTest()
 
 	for {
-		// does it win at n rounds?
-		proof, err := em.DeprecatedRunElection(curr, wAddr, signer, uint64(n))
-		require.NoError(t, err)
+		if winsAtEpoch(t, uint64(n), curr, ki, networkPower, numSectors, sectorSize, sectorInfos) {
+			losesAllPrevious := true
+			for m := 0; m < n; m++ {
+				if winsAtEpoch(t, uint64(m), curr, ki, networkPower, numSectors, sectorSize, sectorInfos) {
+					losesAllPrevious = false
+					break
+				}
+			}
+			if losesAllPrevious {
 
-		wins, err := em.DeprecatedIsElectionWinner(ctx, ptv, curr, uint64(n), proof, wAddr, wAddr)
-		require.NoError(t, err)
-		if wins {
-			// does it have no wins before n rounds?
-			if losesAllRounds(t, n-1, curr, wAddr, signer, ptv, em) {
 				return curr
 			}
 		}
 
-		// make a new ticket off the previous
+		// make a new ticket off the previous to keep searching
 		curr, err = tm.NextTicket(curr, wAddr, signer)
 		require.NoError(t, err)
 	}
 }
 
-func losesAllRounds(t *testing.T, n int, ticket block.Ticket, wAddr address.Address, signer types.Signer, ptv PowerTableView, em ElectionMachine) bool {
-	for i := 0; i < n; i++ {
-		losesAtRound(t, i, ticket, wAddr, signer, ptv, em)
-
-	}
-	return true
-}
-
-func losesAtRound(t *testing.T, n int, ticket block.Ticket, wAddr address.Address, signer types.Signer, ptv PowerTableView, em ElectionMachine) bool {
-	proof, err := em.DeprecatedRunElection(ticket, wAddr, signer, uint64(n))
-	require.NoError(t, err)
-
-	wins, err := em.DeprecatedIsElectionWinner(context.Background(), ptv, ticket, uint64(n), proof, wAddr, wAddr)
-	require.NoError(t, err)
-	return !wins
-}
-
-// SeedLoserInNRounds returns a ticket that loses with a null block count of N.
-func SeedLoserInNRounds(t *testing.T, n int, ki *types.KeyInfo, minerPower, totalPower uint64) block.Ticket {
+func winsAtEpoch(t *testing.T, epoch uint64, ticket block.Ticket, ki *types.KeyInfo, networkPower, numSectors, sectorSize uint64, sectorInfos sector.SortedSectorInfo) bool {
 	signer := types.NewMockSigner([]types.KeyInfo{*ki})
 	wAddr, err := ki.Address()
 	require.NoError(t, err)
-	minerToWorker := make(map[address.Address]address.Address)
-	minerToWorker[wAddr] = wAddr
-	ptv := NewFakePowerTableView(types.NewBytesAmount(minerPower), types.NewBytesAmount(totalPower), minerToWorker)
 	em := ElectionMachine{}
+
+	// use ticket to seed postRandomness
+	postRandomness, err := em.GeneratePoStRandomness(ticket, wAddr, signer, epoch)
+	require.NoError(t, err)
+
+	// does this postRandomness create a winner?
+	candidates, err := em.GenerateCandidates(postRandomness, sectorInfos, &proofs.ElectionPoster{})
+	require.NoError(t, err)
+
+	for _, candidate := range candidates {
+		hasher := hasher.NewHasher()
+		hasher.Bytes(candidate.PartialTicket)
+		ct := hasher.Hash()
+		if em.CandidateWins(ct, &proofs.ElectionPoster{}, numSectors, 0, networkPower, sectorSize) {
+			return true
+		}
+	}
+	return false
+}
+
+func losesAtEpoch(t *testing.T, epoch uint64, ticket block.Ticket, ki *types.KeyInfo, networkPower, numSectors, sectorSize uint64, sectorInfos sector.SortedSectorInfo) bool {
+	return !winsAtEpoch(t, epoch, ticket, ki, networkPower, numSectors, sectorSize, sectorInfos)
+}
+
+// SeedLoserInNRounds returns a ticket that loses with a null block count of N.
+func SeedLoserInNRounds(t *testing.T, n int, ki *types.KeyInfo, networkPower, numSectors, sectorSize uint64) block.Ticket {
+	signer := types.NewMockSigner([]types.KeyInfo{*ki})
+	wAddr, err := ki.Address()
+	require.NoError(t, err)
 	tm := TicketMachine{}
 
+	sectorInfos := NFakeSectorInfos(numSectors)
 	curr := MakeFakeTicketForTest()
 
 	for {
-		if losesAtRound(t, n, curr, wAddr, signer, ptv, em) {
+		if losesAtEpoch(t, uint64(n), curr, ki, networkPower, numSectors, sectorSize, sectorInfos) {
 			return curr
 		}
 
@@ -369,18 +406,6 @@ func NewMockElectionMachine(f func(block.Ticket)) *MockElectionMachine {
 	return &MockElectionMachine{fn: f}
 }
 
-// DeprecatedRunElection calls the registered callback and returns a fake proof
-func (mem *MockElectionMachine) DeprecatedRunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullCount uint64) (block.VRFPi, error) {
-	mem.fn(ticket)
-	return MakeFakeVRFProofForTest(), nil
-}
-
-// DeprecatedIsElectionWinner calls the registered callback and returns true
-func (mem *MockElectionMachine) DeprecatedIsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, nullCount uint64, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
-	mem.fn(ticket)
-	return true, nil
-}
-
 // GeneratePoStRandomness defers to a fake election machine
 func (mem *MockElectionMachine) GeneratePoStRandomness(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullBlockCount uint64) ([]byte, error) {
 	return mem.fem.GeneratePoStRandomness(ticket, candidateAddr, signer, nullBlockCount)
@@ -396,7 +421,18 @@ func (mem *MockElectionMachine) GeneratePoSt(sectorInfo sector.SortedSectorInfo,
 	return mem.fem.GeneratePoSt(sectorInfo, challengeSeed, winners, ep)
 }
 
-// CandidateWins defers to a fake election machine
+// VerifyPoSt defers to fake
+func (mem *MockElectionMachine) VerifyPoSt(ctx context.Context, ep *proofs.ElectionPoster, allSectorInfos sector.SortedSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []*proofs.EPoStCandidate, proverID address.Address) (bool, error) {
+	return mem.fem.VerifyPoSt(ctx, ep, allSectorInfos, sectorSize, challengeSeed, proof, candidates, proverID)
+}
+
+// CandidateWins defers to fake
 func (mem *MockElectionMachine) CandidateWins(challengeTicket []byte, ep *proofs.ElectionPoster, sectorNum, faultNum, networkPower, sectorSize uint64) bool {
 	return mem.fem.CandidateWins(challengeTicket, ep, sectorNum, faultNum, networkPower, sectorSize)
+}
+
+// VerifyPoStRandomness runs the callback on the ticket before calling the fake
+func (mem *MockElectionMachine) VerifyPoStRandomness(rand block.VRFPi, ticket block.Ticket, candidateAddr address.Address, nullBlockCount uint64) bool {
+	mem.fn(ticket)
+	return mem.fem.VerifyPoStRandomness(rand, ticket, candidateAddr, nullBlockCount)
 }

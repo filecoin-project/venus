@@ -81,8 +81,6 @@ type workerPorcelainAPI interface {
 }
 
 type electionUtil interface {
-	DeprecatedRunElection(block.Ticket, address.Address, types.Signer, uint64) (block.VRFPi, error)
-	DeprecatedIsElectionWinner(context.Context, consensus.PowerTableView, block.Ticket, uint64, block.VRFPi, address.Address, address.Address) (bool, error)
 	GeneratePoStRandomness(block.Ticket, address.Address, types.Signer, uint64) ([]byte, error)
 	GenerateCandidates([]byte, sector.SortedSectorInfo, *proofs.ElectionPoster) ([]*proofs.EPoStCandidate, error)
 	GeneratePoSt(sector.SortedSectorInfo, []byte, []*proofs.EPoStCandidate, *proofs.ElectionPoster) ([]byte, error)
@@ -266,19 +264,6 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	case genResult := <-done:
 		candidates = genResult
 	}
-	// Run a deprecated election to check if this miner has won the deprecated right to mine
-	deprecatedElectionProof, err := w.election.DeprecatedRunElection(electionTicket, workerAddr, w.workerSigner, nullBlkCount)
-	if err != nil {
-		log.Errorf("failed to run local election: %s", err)
-		outCh <- Output{Err: err}
-		return
-	}
-	weHaveAWinnerDeprecated, err := w.election.DeprecatedIsElectionWinner(ctx, powerTable, electionTicket, nullBlkCount, deprecatedElectionProof, workerAddr, w.minerAddr)
-	if err != nil {
-		log.Errorf("Worker.Mine couldn't run election: %s", err.Error())
-		outCh <- Output{Err: err}
-		return
-	}
 
 	// Look for any winning candidates
 	sectorNum, err := powerTable.NumSectors(ctx, w.minerAddr)
@@ -308,6 +293,13 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 			winners = append(winners, candidate)
 		}
 	}
+
+	// no winners we are done
+	if len(winners) == 0 {
+		return
+	}
+	// we have a winning block
+
 	// Generate PoSt
 	postDone := make(chan []byte)
 	errCh = make(chan error)
@@ -332,19 +324,13 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	case postOut := <-postDone:
 		post = postOut
 	}
-	// Dragons not using post yet in this commit...
-	_ = post
 
-	// This address has deprecated mining rights, so mine a block
-	if weHaveAWinnerDeprecated {
-		next, err := w.Generate(ctx, base, nextTicket, nullBlkCount, postRandomness, deprecatedElectionProof, winners, post)
-		if err == nil {
-			log.Debugf("Worker.Mine generates new winning block! %s", next.Cid().String())
-		}
-		outCh <- NewOutput(next, err)
-		won = true
-		return
+	next, err := w.Generate(ctx, base, nextTicket, nullBlkCount, postRandomness, winners, post)
+	if err == nil {
+		log.Debugf("Worker.Mine generates new winning block! %s", next.Cid().String())
 	}
+	outCh <- NewOutput(next, err)
+	won = true
 	return
 }
 

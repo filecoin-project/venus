@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -108,19 +107,8 @@ func (v PowerTableView) SortedSectorInfos(ctx context.Context, mAddr address.Add
 	if err != nil {
 		return fakeSectors, nil
 	}
-	var infos []sector.SectorInfo
-	for i := uint64(0); i < numSectors; i++ {
-		buf := make([]byte, binary.MaxVarintLen64)
-		binary.PutUvarint(buf, i)
-		var fakeCommRi [sector.CommitmentBytesLen]byte
-		copy(fakeCommRi[:], buf)
-		infos = append(infos, sector.SectorInfo{
-			SectorID: i,
-			CommR:    fakeCommRi,
-		})
-	}
 
-	fakeSectors = sector.NewSortedSectorInfo(infos...)
+	fakeSectors = NFakeSectorInfos(numSectors)
 	return fakeSectors, nil
 }
 

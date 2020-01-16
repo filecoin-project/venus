@@ -2,6 +2,7 @@ package consensus_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -82,7 +83,8 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		emptyBLSMessages, emptyMessages := emptyMessages(len(nextBlocks))
 
 		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, []block.TipSet{pTipSet}, uint64(nextBlocks[0].ParentWeight), genesisBlock.StateRoot, genesisBlock.MessageReceipts)
-		assert.EqualError(t, err, "block author did not win election")
+		require.Error(t, err)
+		assert.True(t, strings.Contains(err.Error(), "lost election"))
 	})
 
 	t.Run("correct tickets processed in election and next ticket", func(t *testing.T) {

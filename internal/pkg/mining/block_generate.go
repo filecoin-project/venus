@@ -25,7 +25,6 @@ func (w *DefaultWorker) Generate(
 	ticket block.Ticket,
 	nullBlockCount uint64,
 	postRandomness []byte,
-	deprecatedElectionProof block.VRFPi,
 	winners []*proofs.EPoStCandidate,
 	post []byte,
 ) (*block.Block, error) {
@@ -149,22 +148,21 @@ func (w *DefaultWorker) Generate(
 
 	now := w.clock.Now()
 	next := &block.Block{
-		Miner:                   w.minerAddr,
-		Height:                  types.Uint64(blockHeight),
-		Messages:                txMeta,
-		MessageReceipts:         baseReceiptRoot,
-		Parents:                 baseTipSet.Key(),
-		ParentWeight:            types.Uint64(weight),
-		DeprecatedElectionProof: deprecatedElectionProof,
-		PoStRandomness:          postRandomness,
-		PoStPartialTickets:      winningPartialTickets,
-		PoStSectorIDs:           winningSectorIDs,
-		PoStChallengeIDXs:       winningChallengeIndexes,
-		PoStProof:               post,
-		StateRoot:               baseStateRoot,
-		Ticket:                  ticket,
-		Timestamp:               types.Uint64(now.Unix()),
-		BLSAggregateSig:         blsAggregateSig,
+		Miner:              w.minerAddr,
+		Height:             types.Uint64(blockHeight),
+		Messages:           txMeta,
+		MessageReceipts:    baseReceiptRoot,
+		Parents:            baseTipSet.Key(),
+		ParentWeight:       types.Uint64(weight),
+		PoStRandomness:     postRandomness,
+		PoStPartialTickets: winningPartialTickets,
+		PoStSectorIDs:      winningSectorIDs,
+		PoStChallengeIDXs:  winningChallengeIndexes,
+		PoStProof:          post,
+		StateRoot:          baseStateRoot,
+		Ticket:             ticket,
+		Timestamp:          types.Uint64(now.Unix()),
+		BLSAggregateSig:    blsAggregateSig,
 	}
 
 	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr, baseTipSet.Key())

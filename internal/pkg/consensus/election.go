@@ -5,8 +5,6 @@ import (
 	"encoding/binary"
 	"math/big"
 
-	"github.com/pkg/errors"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -97,60 +95,6 @@ func filterSectorInfosByCandidates(allSectorInfos sector.SortedSectorInfo, candi
 		}
 	}
 	return sector.NewSortedSectorInfo(candidateSectorInfos...)
-}
-
-// DeprecatedCompareElectionPower return true if the input electionProof is below the
-// election victory threshold for the input miner and global power values.
-func DeprecatedCompareElectionPower(electionProof block.VRFPi, minerPower *types.BytesAmount, totalPower *types.BytesAmount) bool {
-	lhs := &big.Int{}
-	lhs.SetBytes(electionProof)
-	lhs.Mul(lhs, totalPower.BigInt())
-	rhs := &big.Int{}
-	rhs.Mul(minerPower.BigInt(), ticketDomain)
-
-	return lhs.Cmp(rhs) < 0
-}
-
-// DeprecatedRunElection uses a VRF to run a secret, verifiable election with respect to
-// an input ticket.
-func (em ElectionMachine) DeprecatedRunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullBlockCount uint64) (block.VRFPi, error) {
-	seedBuf := make([]byte, binary.MaxVarintLen64)
-	n := binary.PutUvarint(seedBuf, nullBlockCount)
-	buf := append(ticket.VRFProof, seedBuf[:n]...)
-
-	vrfPi, err := signer.SignBytes(buf[:], candidateAddr)
-	if err != nil {
-		return block.VRFPi{}, err
-	}
-
-	return block.VRFPi(vrfPi), nil
-}
-
-// DeprecatedIsElectionWinner verifies that an election proof was validly generated and
-// is a winner.  TODO #3418 improve state management to clean up interface.
-func (em ElectionMachine) DeprecatedIsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, nullBlockCount uint64, electionProof block.VRFPi, signingAddr, minerAddr address.Address) (bool, error) {
-	seedBuf := make([]byte, binary.MaxVarintLen64)
-	n := binary.PutUvarint(seedBuf, nullBlockCount)
-	buf := append(ticket.VRFProof, seedBuf[:n]...)
-
-	// Verify election proof is valid
-	vrfPi := types.Signature(electionProof)
-	if valid := types.IsValidSignature(buf[:], signingAddr, vrfPi); !valid {
-		return false, nil
-	}
-
-	// Verify election proof is a winner
-	totalPower, err := ptv.Total(ctx)
-	if err != nil {
-		return false, errors.Wrap(err, "Couldn't get totalPower")
-	}
-
-	minerPower, err := ptv.Miner(ctx, minerAddr)
-	if err != nil {
-		return false, errors.Wrap(err, "Couldn't get minerPower")
-	}
-
-	return DeprecatedCompareElectionPower(electionProof, minerPower, totalPower), nil
 }
 
 // TicketMachine uses a VRF and VDF to generate deterministic, unpredictable

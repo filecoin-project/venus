@@ -38,6 +38,9 @@ func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, sta
 		MessageReceipts:         receiptRootCid,
 		DeprecatedElectionProof: electionProof,
 		BLSAggregateSig:         emptyBLSSig,
+		PoStPartialTickets:      [][]byte{{0xe}},
+		PoStSectorIDs:           []types.Uint64{0},
+		PoStChallengeIDXs:       []types.Uint64{0},
 	}
 	sig, err := signer.SignBytes(b.SignatureData(), minerWorker)
 	require.NoError(t, err)
