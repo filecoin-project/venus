@@ -82,8 +82,8 @@ type workerPorcelainAPI interface {
 
 type electionUtil interface {
 	GeneratePoStRandomness(block.Ticket, address.Address, types.Signer, uint64) ([]byte, error)
-	GenerateCandidates([]byte, sector.SortedSectorInfo, *proofs.ElectionPoster) ([]*proofs.EPoStCandidate, error)
-	GeneratePoSt(sector.SortedSectorInfo, []byte, []*proofs.EPoStCandidate, *proofs.ElectionPoster) ([]byte, error)
+	GenerateCandidates([]byte, sector.SortedSectorInfo, *proofs.ElectionPoster) ([]block.EPoStCandidate, error)
+	GeneratePoSt(sector.SortedSectorInfo, []byte, []block.EPoStCandidate, *proofs.ElectionPoster) ([]byte, error)
 	CandidateWins([]byte, *proofs.ElectionPoster, uint64, uint64, uint64, uint64) bool
 }
 
@@ -241,7 +241,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		return
 	}
 	// Generate election post candidates
-	done := make(chan []*proofs.EPoStCandidate)
+	done := make(chan []block.EPoStCandidate)
 	errCh := make(chan error)
 	go func() {
 		defer close(done)
@@ -253,7 +253,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		}
 		done <- candidates
 	}()
-	var candidates []*proofs.EPoStCandidate
+	var candidates []block.EPoStCandidate
 	select {
 	case <-ctx.Done():
 		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base, "nullBlocks", nullBlkCount)
@@ -285,7 +285,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		return
 	}
 	hasher := hasher.NewHasher()
-	var winners []*proofs.EPoStCandidate
+	var winners []block.EPoStCandidate
 	for _, candidate := range candidates {
 		hasher.Bytes(candidate.PartialTicket)
 		challengeTicket := hasher.Hash()
@@ -325,7 +325,9 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		post = postOut
 	}
 
-	next, err := w.Generate(ctx, base, nextTicket, nullBlkCount, postRandomness, winners, post)
+	postInfo := block.NewEPoStInfo(post, postRandomness, winners...)
+
+	next, err := w.Generate(ctx, base, nextTicket, nullBlkCount, postInfo)
 	if err == nil {
 		log.Debugf("Worker.Mine generates new winning block! %s", next.Cid().String())
 	}

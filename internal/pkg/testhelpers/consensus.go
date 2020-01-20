@@ -27,6 +27,9 @@ func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, sta
 	electionProof := consensus.MakeFakePoStForTest()
 	ticket := consensus.MakeFakeTicketForTest()
 	emptyBLSSig := (*bls.Aggregate([]bls.Signature{}))[:]
+	winner := block.NewEPoStCandidate(0, []byte{0xe}, 0)
+	postRandomness := []byte{0xff}
+	postInfo := block.NewEPoStInfo(electionProof, postRandomness, winner)
 
 	b := &block.Block{
 		Miner:                   minerAddr,
@@ -37,10 +40,7 @@ func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, sta
 		StateRoot:               stateRootCid,
 		MessageReceipts:         receiptRootCid,
 		BLSAggregateSig:         emptyBLSSig,
-		PoStPartialTickets:      [][]byte{{0xe}},
-		PoStSectorIDs:           []types.Uint64{0},
-		PoStChallengeIDXs:       []types.Uint64{0},
-		PoStProof:               electionProof,
+		EPoStInfo:                postInfo,
 	}
 	sig, err := signer.SignBytes(b.SignatureData(), minerWorker)
 	require.NoError(t, err)

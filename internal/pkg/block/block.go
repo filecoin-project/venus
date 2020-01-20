@@ -21,20 +21,23 @@ type Block struct {
 	// Ticket is the ticket submitted with this block.
 	Ticket Ticket `json:"ticket"`
 
-	// PoStRandomness is the verifiable randomness used to generate postCandidates
-	PoStRandomness VRFPi `json:"postRandomness"`
+	// EPoStInfo wraps all data for verifying this block's Election PoSt
+	EPoStInfo EPoStInfo `json:EPoStInfo`
 
-	// PoStCandidatePartialTickets are the winning PoSt tickets submitted with this block
-	PoStPartialTickets [][]byte `json:"postCandidates"`
+	// // PoStRandomness is the verifiable randomness used to generate postCandidates
+	// PoStRandomness VRFPi `json:"postRandomness"`
 
-	// PoStSectorIDs are the sector ids of the winning PoSt tickets
-	PoStSectorIDs []types.Uint64 `json:"postSectorIDs"`
+	// // PoStCandidatePartialTickets are the winning PoSt tickets submitted with this block
+	// PoStPartialTickets [][]byte `json:"postCandidates"`
 
-	// PoStChallengeIDXs are the challenge indexes within the sector for the winning PoSt tickets
-	PoStChallengeIDXs []types.Uint64 `json:"postChallengeIDXs"`
+	// // PoStSectorIDs are the sector ids of the winning PoSt tickets
+	// PoStSectorIDs []types.Uint64 `json:"postSectorIDs"`
 
-	// PoStProof is the snark output proving that the PoSt tickets are valid
-	PoStProof types.PoStProof `json:"postProof"`
+	// // PoStChallengeIDXs are the challenge indexes within the sector for the winning PoSt tickets
+	// PoStChallengeIDXs []types.Uint64 `json:"postChallengeIDXs"`
+
+	// // PoStProof is the snark output proving that the PoSt tickets are valid
+	// PoStProof types.PoStProof `json:"postProof"`
 
 	// Parents is the set of parents this block was based on. Typically one,
 	// but can be several in the case where there were multiple winning ticket-
@@ -150,22 +153,18 @@ func (b *Block) Equals(other *Block) bool {
 // creating and verification
 func (b *Block) SignatureData() []byte {
 	tmp := &Block{
-		Miner:              b.Miner,
-		Ticket:             b.Ticket,  // deep copy needed??
-		Parents:            b.Parents, // deep copy needed??
-		ParentWeight:       b.ParentWeight,
-		Height:             b.Height,
-		Messages:           b.Messages,
-		StateRoot:          b.StateRoot,
-		MessageReceipts:    b.MessageReceipts,
-		PoStRandomness:     b.PoStRandomness,
-		PoStPartialTickets: b.PoStPartialTickets,
-		PoStSectorIDs:      b.PoStSectorIDs,
-		PoStChallengeIDXs:  b.PoStChallengeIDXs,
-		PoStProof:          b.PoStProof,
-		Timestamp:          b.Timestamp,
-		BLSAggregateSig:    b.BLSAggregateSig,
-		ForkSignaling:      b.ForkSignaling,
+		Miner:           b.Miner,
+		Ticket:          b.Ticket,  // deep copy needed??
+		Parents:         b.Parents, // deep copy needed??
+		ParentWeight:    b.ParentWeight,
+		Height:          b.Height,
+		Messages:        b.Messages,
+		StateRoot:       b.StateRoot,
+		MessageReceipts: b.MessageReceipts,
+		EPoStInfo:       b.EPoStInfo,
+		Timestamp:       b.Timestamp,
+		BLSAggregateSig: b.BLSAggregateSig,
+		ForkSignaling:   b.ForkSignaling,
 		// BlockSig omitted
 	}
 

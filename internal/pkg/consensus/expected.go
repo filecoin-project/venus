@@ -85,7 +85,7 @@ type TicketValidator interface {
 
 // ElectionValidator validates that an election fairly produced a winner.
 type ElectionValidator interface {
-	VerifyPoSt(ctx context.Context, ep *proofs.ElectionPoster, allSectorInfos sector.SortedSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []*proofs.EPoStCandidate, proverID address.Address) (bool, error)
+	VerifyPoSt(ctx context.Context, ep *proofs.ElectionPoster, allSectorInfos sector.SortedSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []block.EPoStCandidate, proverID address.Address) (bool, error)
 	CandidateWins(challengeTicket []byte, ep *proofs.ElectionPoster, sectorNum, faultNum, networkPower, sectorSize uint64) bool
 	VerifyPoStRandomness(rand block.VRFPi, ticket block.Ticket, candidateAddr address.Address, nullBlockCount uint64) bool
 }
@@ -248,7 +248,7 @@ func (c *Expected) validateMining(
 
 		// Verify PoStRandomness
 		nullBlkCount := uint64(blk.Height) - prevHeight - 1
-		if !c.VerifyPoStRandomness(blk.PoStRandomness, electionTicket, workerAddr, nullBlkCount) {
+		if !c.VerifyPoStRandomness(blk.EPoStInfo.PoStRandomness, electionTicket, workerAddr, nullBlkCount) {
 			return errors.New("PoStRandomness invalid")
 		}
 
@@ -266,20 +266,19 @@ func (c *Expected) validateMining(
 			return errors.Wrap(err, "failed to read sectorSize from power table")
 		}
 		hasher := hasher.NewHasher()
-		for i, partialTicket := range blk.PoStPartialTickets {
-			hasher.Bytes(partialTicket)
+		for i, candidate := range blk.EPoStInfo.Winners {
+			hasher.Bytes(candidate.PartialTicket)
 			if !c.ElectionValidator.CandidateWins(hasher.Hash(), c.postVerifier, sectorNum, 0, networkPower.Uint64(), sectorSize.Uint64()) {
 				return errors.Errorf("partial ticket %d lost election", i)
 			}
 		}
 
 		// Verify PoSt is valid
-		winners := proofs.ZipEPoStCandidates(blk.PoStSectorIDs, blk.PoStChallengeIDXs, blk.PoStPartialTickets)
 		allSectorInfos, err := powerTable.SortedSectorInfos(ctx, blk.Miner)
 		if err != nil {
 			return errors.Wrapf(err, "failed to read sector infos from power table")
 		}
-		valid, err := c.VerifyPoSt(ctx, c.postVerifier, allSectorInfos, sectorSize.Uint64(), blk.PoStRandomness, blk.PoStProof, winners, blk.Miner)
+		valid, err := c.VerifyPoSt(ctx, c.postVerifier, allSectorInfos, sectorSize.Uint64(), blk.EPoStInfo.PoStRandomness, blk.EPoStInfo.PoStProof, blk.EPoStInfo.Winners, blk.Miner)
 		if err != nil {
 			return errors.Wrapf(err, "error checking PoSt")
 		}
