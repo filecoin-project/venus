@@ -621,9 +621,9 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	require.NoError(t, err)
 
 	baseBlock := block.Block{
-		Parents:                 block.NewTipSetKey(newCid()),
-		Height:                  types.Uint64(100),
-		StateRoot:               stateRoot,
+		Parents:   block.NewTipSetKey(newCid()),
+		Height:    types.Uint64(100),
+		StateRoot: stateRoot,
 	}
 	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
 
@@ -688,9 +688,9 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	h := types.Uint64(100)
 	w := types.Uint64(1000)
 	baseBlock := block.Block{
-		Height:                  h,
-		ParentWeight:            w,
-		StateRoot:               newCid(),
+		Height:       h,
+		ParentWeight: w,
+		StateRoot:    newCid(),
 	}
 	baseTipSet := th.RequireNewTipSet(t, &baseBlock)
 	ticket := mining.NthTicket(7)
@@ -750,9 +750,9 @@ func TestGenerateWithoutMessages(t *testing.T) {
 
 	assert.Len(t, pool.Pending(), 0)
 	baseBlock := block.Block{
-		Parents:                 block.NewTipSetKey(newCid()),
-		Height:                  types.Uint64(100),
-		StateRoot:               newCid(),
+		Parents:   block.NewTipSetKey(newCid()),
+		Height:    types.Uint64(100),
+		StateRoot: newCid(),
 	}
 	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
 	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, 0, fakePoStInfo)
@@ -813,9 +813,9 @@ func TestGenerateError(t *testing.T) {
 
 	assert.Len(t, pool.Pending(), 1)
 	baseBlock := block.Block{
-		Parents:                 block.NewTipSetKey(newCid()),
-		Height:                  types.Uint64(100),
-		StateRoot:               newCid(),
+		Parents:   block.NewTipSetKey(newCid()),
+		Height:    types.Uint64(100),
+		StateRoot: newCid(),
 	}
 	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
 	baseTipSet := th.RequireNewTipSet(t, &baseBlock)

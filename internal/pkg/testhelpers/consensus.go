@@ -32,15 +32,15 @@ func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, sta
 	postInfo := block.NewEPoStInfo(electionProof, postRandomness, winner)
 
 	b := &block.Block{
-		Miner:                   minerAddr,
-		Ticket:                  ticket,
-		Parents:                 baseTipSet.Key(),
-		ParentWeight:            types.Uint64(10000 * height),
-		Height:                  types.Uint64(height),
-		StateRoot:               stateRootCid,
-		MessageReceipts:         receiptRootCid,
-		BLSAggregateSig:         emptyBLSSig,
-		EPoStInfo:                postInfo,
+		Miner:           minerAddr,
+		Ticket:          ticket,
+		Parents:         baseTipSet.Key(),
+		ParentWeight:    types.Uint64(10000 * height),
+		Height:          types.Uint64(height),
+		StateRoot:       stateRootCid,
+		MessageReceipts: receiptRootCid,
+		BLSAggregateSig: emptyBLSSig,
+		EPoStInfo:       postInfo,
 	}
 	sig, err := signer.SignBytes(b.SignatureData(), minerWorker)
 	require.NoError(t, err)

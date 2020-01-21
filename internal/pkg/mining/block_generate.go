@@ -135,17 +135,17 @@ func (w *DefaultWorker) Generate(
 
 	now := w.clock.Now()
 	next := &block.Block{
-		Miner:              w.minerAddr,
-		Height:             types.Uint64(blockHeight),
-		Messages:           txMeta,
-		MessageReceipts:    baseReceiptRoot,
-		Parents:            baseTipSet.Key(),
-		ParentWeight:       types.Uint64(weight),
-		EPoStInfo:          ePoStInfo,
-		StateRoot:          baseStateRoot,
-		Ticket:             ticket,
-		Timestamp:          types.Uint64(now.Unix()),
-		BLSAggregateSig:    blsAggregateSig,
+		Miner:           w.minerAddr,
+		Height:          types.Uint64(blockHeight),
+		Messages:        txMeta,
+		MessageReceipts: baseReceiptRoot,
+		Parents:         baseTipSet.Key(),
+		ParentWeight:    types.Uint64(weight),
+		EPoStInfo:       ePoStInfo,
+		StateRoot:       baseStateRoot,
+		Ticket:          ticket,
+		Timestamp:       types.Uint64(now.Unix()),
+		BLSAggregateSig: blsAggregateSig,
 	}
 
 	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr, baseTipSet.Key())

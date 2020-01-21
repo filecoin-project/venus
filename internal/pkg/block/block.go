@@ -22,22 +22,7 @@ type Block struct {
 	Ticket Ticket `json:"ticket"`
 
 	// EPoStInfo wraps all data for verifying this block's Election PoSt
-	EPoStInfo EPoStInfo `json:EPoStInfo`
-
-	// // PoStRandomness is the verifiable randomness used to generate postCandidates
-	// PoStRandomness VRFPi `json:"postRandomness"`
-
-	// // PoStCandidatePartialTickets are the winning PoSt tickets submitted with this block
-	// PoStPartialTickets [][]byte `json:"postCandidates"`
-
-	// // PoStSectorIDs are the sector ids of the winning PoSt tickets
-	// PoStSectorIDs []types.Uint64 `json:"postSectorIDs"`
-
-	// // PoStChallengeIDXs are the challenge indexes within the sector for the winning PoSt tickets
-	// PoStChallengeIDXs []types.Uint64 `json:"postChallengeIDXs"`
-
-	// // PoStProof is the snark output proving that the PoSt tickets are valid
-	// PoStProof types.PoStProof `json:"postProof"`
+	EPoStInfo EPoStInfo `json:"ePoStInfo"`
 
 	// Parents is the set of parents this block was based on. Typically one,
 	// but can be several in the case where there were multiple winning ticket-
