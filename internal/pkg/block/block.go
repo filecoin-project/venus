@@ -21,6 +21,9 @@ type Block struct {
 	// Ticket is the ticket submitted with this block.
 	Ticket Ticket `json:"ticket"`
 
+	// EPoStInfo wraps all data for verifying this block's Election PoSt
+	EPoStInfo EPoStInfo `json:"ePoStInfo"`
+
 	// Parents is the set of parents this block was based on. Typically one,
 	// but can be several in the case where there were multiple winning ticket-
 	// holders for an epoch.
@@ -32,9 +35,6 @@ type Block struct {
 	// Height is the chain height of this block.
 	Height types.Uint64 `json:"height"`
 
-	// Messages is the set of messages included in this block
-	Messages types.TxMeta `json:"messages,omitempty" refmt:",omitempty"`
-
 	// StateRoot is a cid pointer to the state tree after application of the
 	// transactions state transitions.
 	StateRoot cid.Cid `json:"stateRoot,omitempty" refmt:",omitempty"`
@@ -42,24 +42,11 @@ type Block struct {
 	// MessageReceipts is a set of receipts matching to the sending of the `Messages`.
 	MessageReceipts cid.Cid `json:"messageReceipts,omitempty" refmt:",omitempty"`
 
-	// DeprecatedElectionProof is the "scratched ticket" proving that this block won
-	// an election.
-	DeprecatedElectionProof VRFPi `json:"proof"`
+	// Messages is the set of messages included in this block
+	Messages types.TxMeta `json:"messages,omitempty" refmt:",omitempty"`
 
-	// PoStRandomness is the verifiable randomness used to generate postCandidates
-	PoStRandomness VRFPi `json:"postRandomness"`
-
-	// PoStCandidatePartialTickets are the winning PoSt tickets submitted with this block
-	PoStPartialTickets [][]byte `json:"postCandidates"`
-
-	// PoStSectorIDs are the sector ids of the winning PoSt tickets
-	PoStSectorIDs []types.Uint64 `json:"postSectorIDs"`
-
-	// PoStChallengeIDXs are the challenge indexes within the sector for the winning PoSt tickets
-	PoStChallengeIDXs []types.Uint64 `json:"postChallengeIDXs"`
-
-	// PoStProof is the snark output proving that the PoSt tickets are valid
-	PoStProof types.PoStProof `json:"postProof"`
+	// The aggregate signature of all BLS signed messages in the block
+	BLSAggregateSig types.Signature `json:"blsAggregateSig"`
 
 	// The timestamp, in seconds since the Unix epoch, at which this block was created.
 	Timestamp types.Uint64 `json:"timestamp"`
@@ -67,8 +54,8 @@ type Block struct {
 	// The signature of the miner's worker key over the block
 	BlockSig types.Signature `json:"blocksig"`
 
-	// The aggregate signature of all BLS signed messages in the block
-	BLSAggregateSig types.Signature `json:"blsAggregateSig"`
+	// ForkSignaling is extra data used by miners to communicate
+	ForkSignaling types.Uint64
 
 	cachedCid cid.Cid
 
@@ -151,22 +138,18 @@ func (b *Block) Equals(other *Block) bool {
 // creating and verification
 func (b *Block) SignatureData() []byte {
 	tmp := &Block{
-		Miner:                   b.Miner,
-		Ticket:                  b.Ticket,  // deep copy needed??
-		Parents:                 b.Parents, // deep copy needed??
-		ParentWeight:            b.ParentWeight,
-		Height:                  b.Height,
-		Messages:                b.Messages,
-		StateRoot:               b.StateRoot,
-		MessageReceipts:         b.MessageReceipts,
-		DeprecatedElectionProof: b.DeprecatedElectionProof,
-		PoStRandomness:          b.PoStRandomness,
-		PoStPartialTickets:      b.PoStPartialTickets,
-		PoStSectorIDs:           b.PoStSectorIDs,
-		PoStChallengeIDXs:       b.PoStChallengeIDXs,
-		PoStProof:               b.PoStProof,
-		Timestamp:               b.Timestamp,
-		BLSAggregateSig:         b.BLSAggregateSig,
+		Miner:           b.Miner,
+		Ticket:          b.Ticket,  // deep copy needed??
+		Parents:         b.Parents, // deep copy needed??
+		ParentWeight:    b.ParentWeight,
+		Height:          b.Height,
+		Messages:        b.Messages,
+		StateRoot:       b.StateRoot,
+		MessageReceipts: b.MessageReceipts,
+		EPoStInfo:       b.EPoStInfo,
+		Timestamp:       b.Timestamp,
+		BLSAggregateSig: b.BLSAggregateSig,
+		ForkSignaling:   b.ForkSignaling,
 		// BlockSig omitted
 	}
 

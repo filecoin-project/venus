@@ -6,7 +6,6 @@ package mining
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"time"
 
 	"github.com/pkg/errors"
@@ -24,9 +23,7 @@ func (w *DefaultWorker) Generate(
 	baseTipSet block.TipSet,
 	ticket block.Ticket,
 	nullBlockCount uint64,
-	postRandomness []byte,
-	winners []*proofs.EPoStCandidate,
-	post []byte,
+	ePoStInfo block.EPoStInfo,
 ) (*block.Block, error) {
 
 	generateTimer := time.Now()
@@ -67,16 +64,6 @@ func (w *DefaultWorker) Generate(
 	ancestors, err := w.getAncestors(ctx, baseTipSet, types.NewBlockHeight(blockHeight))
 	if err != nil {
 		return nil, errors.Wrap(err, "get base tip set ancestors")
-	}
-
-	// Serialize winners
-	winningSectorIDs := make([]types.Uint64, len(winners))
-	winningChallengeIndexes := make([]types.Uint64, len(winners))
-	winningPartialTickets := make([][]byte, len(winners))
-	for i, candidate := range winners {
-		winningSectorIDs[i] = types.Uint64(candidate.SectorID)
-		winningChallengeIndexes[i] = types.Uint64(candidate.SectorChallengeIndex)
-		winningPartialTickets[i] = candidate.PartialTicket
 	}
 
 	// Construct list of message candidates for inclusion.
@@ -148,21 +135,17 @@ func (w *DefaultWorker) Generate(
 
 	now := w.clock.Now()
 	next := &block.Block{
-		Miner:              w.minerAddr,
-		Height:             types.Uint64(blockHeight),
-		Messages:           txMeta,
-		MessageReceipts:    baseReceiptRoot,
-		Parents:            baseTipSet.Key(),
-		ParentWeight:       types.Uint64(weight),
-		PoStRandomness:     postRandomness,
-		PoStPartialTickets: winningPartialTickets,
-		PoStSectorIDs:      winningSectorIDs,
-		PoStChallengeIDXs:  winningChallengeIndexes,
-		PoStProof:          post,
-		StateRoot:          baseStateRoot,
-		Ticket:             ticket,
-		Timestamp:          types.Uint64(now.Unix()),
-		BLSAggregateSig:    blsAggregateSig,
+		Miner:           w.minerAddr,
+		Height:          types.Uint64(blockHeight),
+		Messages:        txMeta,
+		MessageReceipts: baseReceiptRoot,
+		Parents:         baseTipSet.Key(),
+		ParentWeight:    types.Uint64(weight),
+		EPoStInfo:       ePoStInfo,
+		StateRoot:       baseStateRoot,
+		Ticket:          ticket,
+		Timestamp:       types.Uint64(now.Unix()),
+		BLSAggregateSig: blsAggregateSig,
 	}
 
 	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr, baseTipSet.Key())

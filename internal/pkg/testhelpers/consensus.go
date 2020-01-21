@@ -24,23 +24,23 @@ import (
 // RequireSignedTestBlockFromTipSet creates a block with a valid signature by
 // the passed in miner work and a Miner field set to the minerAddr.
 func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, stateRootCid cid.Cid, receiptRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer types.Signer) *block.Block {
-	electionProof := consensus.MakeFakeVRFProofForTest()
+	electionProof := consensus.MakeFakePoStForTest()
 	ticket := consensus.MakeFakeTicketForTest()
 	emptyBLSSig := (*bls.Aggregate([]bls.Signature{}))[:]
+	winner := block.NewEPoStCandidate(0, []byte{0xe}, 0)
+	postRandomness := []byte{0xff}
+	postInfo := block.NewEPoStInfo(electionProof, postRandomness, winner)
 
 	b := &block.Block{
-		Miner:                   minerAddr,
-		Ticket:                  ticket,
-		Parents:                 baseTipSet.Key(),
-		ParentWeight:            types.Uint64(10000 * height),
-		Height:                  types.Uint64(height),
-		StateRoot:               stateRootCid,
-		MessageReceipts:         receiptRootCid,
-		DeprecatedElectionProof: electionProof,
-		BLSAggregateSig:         emptyBLSSig,
-		PoStPartialTickets:      [][]byte{{0xe}},
-		PoStSectorIDs:           []types.Uint64{0},
-		PoStChallengeIDXs:       []types.Uint64{0},
+		Miner:           minerAddr,
+		Ticket:          ticket,
+		Parents:         baseTipSet.Key(),
+		ParentWeight:    types.Uint64(10000 * height),
+		Height:          types.Uint64(height),
+		StateRoot:       stateRootCid,
+		MessageReceipts: receiptRootCid,
+		BLSAggregateSig: emptyBLSSig,
+		EPoStInfo:       postInfo,
 	}
 	sig, err := signer.SignBytes(b.SignatureData(), minerWorker)
 	require.NoError(t, err)

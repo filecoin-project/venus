@@ -27,14 +27,14 @@ func (em ElectionMachine) GeneratePoStRandomness(ticket block.Ticket, candidateA
 
 // GenerateCandidates creates candidate partial tickets for consideration in
 // block reward election
-func (em ElectionMachine) GenerateCandidates(poStRand []byte, sectorInfos sector.SortedSectorInfo, ep *proofs.ElectionPoster) ([]*proofs.EPoStCandidate, error) {
+func (em ElectionMachine) GenerateCandidates(poStRand []byte, sectorInfos sector.SortedSectorInfo, ep *proofs.ElectionPoster) ([]block.EPoStCandidate, error) {
 	dummyFaults := []uint64{}
 	return ep.GenerateEPostCandidates(sectorInfos, poStRand, dummyFaults)
 }
 
 // GeneratePoSt creates a PoSt proof over the input PoSt candidates.  Should
 // only be called on winning candidates.
-func (em ElectionMachine) GeneratePoSt(allSectorInfos sector.SortedSectorInfo, challengeSeed []byte, winners []*proofs.EPoStCandidate, ep *proofs.ElectionPoster) ([]byte, error) {
+func (em ElectionMachine) GeneratePoSt(allSectorInfos sector.SortedSectorInfo, challengeSeed []byte, winners []block.EPoStCandidate, ep *proofs.ElectionPoster) ([]byte, error) {
 	winnerSectorInfos := filterSectorInfosByCandidates(allSectorInfos, winners)
 	return ep.ComputeElectionPoSt(winnerSectorInfos, challengeSeed, winners)
 }
@@ -70,7 +70,7 @@ func (em ElectionMachine) CandidateWins(challengeTicket []byte, ep *proofs.Elect
 }
 
 // VerifyPoSt verifies a PoSt proof.
-func (em ElectionMachine) VerifyPoSt(ctx context.Context, ep *proofs.ElectionPoster, allSectorInfos sector.SortedSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []*proofs.EPoStCandidate, proverID address.Address) (bool, error) {
+func (em ElectionMachine) VerifyPoSt(ctx context.Context, ep *proofs.ElectionPoster, allSectorInfos sector.SortedSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []block.EPoStCandidate, proverID address.Address) (bool, error) {
 	// filter down sector infos to only those referenced by candidates
 	return ep.VerifyElectionPost(
 		ctx,
@@ -83,10 +83,10 @@ func (em ElectionMachine) VerifyPoSt(ctx context.Context, ep *proofs.ElectionPos
 	)
 }
 
-func filterSectorInfosByCandidates(allSectorInfos sector.SortedSectorInfo, candidates []*proofs.EPoStCandidate) sector.SortedSectorInfo {
+func filterSectorInfosByCandidates(allSectorInfos sector.SortedSectorInfo, candidates []block.EPoStCandidate) sector.SortedSectorInfo {
 	candidateSectorID := make(map[uint64]struct{})
 	for _, candidate := range candidates {
-		candidateSectorID[candidate.SectorID] = struct{}{}
+		candidateSectorID[uint64(candidate.SectorID)] = struct{}{}
 	}
 	var candidateSectorInfos []sector.SectorInfo
 	for _, si := range allSectorInfos.Values() {

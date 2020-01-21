@@ -61,25 +61,22 @@ func TestTriangleEncoding(t *testing.T) {
 	t.Run("encoding block with nonzero fields works", func(t *testing.T) {
 		// We should ensure that every field is set -- zero values might
 		// pass when non-zero values do not due to nil/null encoding.
-
+		candidate1 := blk.NewEPoStCandidate(5, []byte{0x05}, 52)
+		candidate2 := blk.NewEPoStCandidate(3, []byte{0x04}, 3000)
+		postInfo := blk.NewEPoStInfo([]byte{0x07}, []byte{0x02, 0x06}, candidate1, candidate2)
 		b := &blk.Block{
-			Miner:                   newAddress(),
-			Ticket:                  blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-			Height:                  types.Uint64(2),
-			Messages:                types.TxMeta{SecpRoot: types.CidFromString(t, "somecid"), BLSRoot: types.EmptyMessagesCID},
-			MessageReceipts:         types.CidFromString(t, "somecid"),
-			Parents:                 blk.NewTipSetKey(types.CidFromString(t, "somecid")),
-			ParentWeight:            types.Uint64(1000),
-			DeprecatedElectionProof: types.NewTestPoSt(),
-			StateRoot:               types.CidFromString(t, "somecid"),
-			Timestamp:               types.Uint64(1),
-			BlockSig:                []byte{0x3},
-			BLSAggregateSig:         []byte{0x3},
-			PoStPartialTickets:      [][]byte{{0x05}, {0x04}},
-			PoStSectorIDs:           []types.Uint64{types.Uint64(5), types.Uint64(3)},
-			PoStChallengeIDXs:       []types.Uint64{types.Uint64(52), types.Uint64(3000)},
-			PoStProof:               []byte{0x07},
-			PoStRandomness:          []byte{0x02, 0x06},
+			Miner:           newAddress(),
+			Ticket:          blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
+			Height:          types.Uint64(2),
+			Messages:        types.TxMeta{SecpRoot: types.CidFromString(t, "somecid"), BLSRoot: types.EmptyMessagesCID},
+			MessageReceipts: types.CidFromString(t, "somecid"),
+			Parents:         blk.NewTipSetKey(types.CidFromString(t, "somecid")),
+			ParentWeight:    types.Uint64(1000),
+			StateRoot:       types.CidFromString(t, "somecid"),
+			Timestamp:       types.Uint64(1),
+			BlockSig:        []byte{0x3},
+			BLSAggregateSig: []byte{0x3},
+			EPoStInfo:       postInfo,
 		}
 		s := reflect.TypeOf(*b)
 		// This check is here to request that you add a non-zero value for new fields
@@ -87,7 +84,7 @@ func TestTriangleEncoding(t *testing.T) {
 		// Also please add non zero fields to "b" and "diff" in TestSignatureData
 		// and add a new check that different values of the new field result in
 		// different output data.
-		require.Equal(t, 19, s.NumField()) // Note: this also counts private fields
+		require.Equal(t, 15, s.NumField()) // Note: this also counts private fields
 		testRoundTrip(t, b)
 	})
 }
@@ -230,43 +227,42 @@ func TestBlockJsonMarshal(t *testing.T) {
 func TestSignatureData(t *testing.T) {
 	tf.UnitTest(t)
 	newAddress := address.NewForTestGetter()
+	candidate1 := blk.NewEPoStCandidate(5, []byte{0x05}, 52)
+	candidate2 := blk.NewEPoStCandidate(3, []byte{0x04}, 3000)
+	postInfo := blk.NewEPoStInfo([]byte{0x07}, []byte{0x02, 0x06}, candidate1, candidate2)
 
 	b := &blk.Block{
-		Miner:                   newAddress(),
-		Ticket:                  blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-		Height:                  types.Uint64(2),
-		Messages:                types.TxMeta{SecpRoot: types.CidFromString(t, "somecid"), BLSRoot: types.EmptyMessagesCID},
-		MessageReceipts:         types.CidFromString(t, "somecid"),
-		Parents:                 blk.NewTipSetKey(types.CidFromString(t, "somecid")),
-		ParentWeight:            types.Uint64(1000),
-		DeprecatedElectionProof: []byte{0x1},
-		StateRoot:               types.CidFromString(t, "somecid"),
-		Timestamp:               types.Uint64(1),
-		PoStPartialTickets:      [][]byte{{0x05}, {0x04}},
-		PoStSectorIDs:           []types.Uint64{types.Uint64(5), types.Uint64(3)},
-		PoStChallengeIDXs:       []types.Uint64{types.Uint64(52), types.Uint64(3000)},
-		PoStProof:               []byte{0x07},
-		PoStRandomness:          []byte{0x02, 0x06},
-		BlockSig:                []byte{0x3},
+		Miner:           newAddress(),
+		Ticket:          blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
+		Height:          types.Uint64(2),
+		Messages:        types.TxMeta{SecpRoot: types.CidFromString(t, "somecid"), BLSRoot: types.EmptyMessagesCID},
+		MessageReceipts: types.CidFromString(t, "somecid"),
+		Parents:         blk.NewTipSetKey(types.CidFromString(t, "somecid")),
+		ParentWeight:    types.Uint64(1000),
+		ForkSignaling:   types.Uint64(3),
+		StateRoot:       types.CidFromString(t, "somecid"),
+		Timestamp:       types.Uint64(1),
+		EPoStInfo:       postInfo,
+		BlockSig:        []byte{0x3},
 	}
 
+	diffCandidate1 := blk.NewEPoStCandidate(0, []byte{0x04}, 25)
+	diffCandidate2 := blk.NewEPoStCandidate(1, []byte{0x05}, 3001)
+	diffPoStInfo := blk.NewEPoStInfo([]byte{0x17}, []byte{0x12, 0x16}, diffCandidate1, diffCandidate2)
+
 	diff := &blk.Block{
-		Miner:                   newAddress(),
-		Ticket:                  blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
-		Height:                  types.Uint64(3),
-		Messages:                types.TxMeta{SecpRoot: types.CidFromString(t, "someothercid"), BLSRoot: types.EmptyMessagesCID},
-		MessageReceipts:         types.CidFromString(t, "someothercid"),
-		Parents:                 blk.NewTipSetKey(types.CidFromString(t, "someothercid")),
-		ParentWeight:            types.Uint64(1001),
-		DeprecatedElectionProof: []byte{0x2},
-		StateRoot:               types.CidFromString(t, "someothercid"),
-		Timestamp:               types.Uint64(4),
-		PoStPartialTickets:      [][]byte{{0x04}, {0x05}},
-		PoStSectorIDs:           []types.Uint64{types.Uint64(0), types.Uint64(1)},
-		PoStChallengeIDXs:       []types.Uint64{types.Uint64(25), types.Uint64(3001)},
-		PoStProof:               []byte{0x17},
-		PoStRandomness:          []byte{0x12, 0x16},
-		BlockSig:                []byte{0x4},
+		Miner:           newAddress(),
+		Ticket:          blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
+		Height:          types.Uint64(3),
+		Messages:        types.TxMeta{SecpRoot: types.CidFromString(t, "someothercid"), BLSRoot: types.EmptyMessagesCID},
+		MessageReceipts: types.CidFromString(t, "someothercid"),
+		Parents:         blk.NewTipSetKey(types.CidFromString(t, "someothercid")),
+		ParentWeight:    types.Uint64(1001),
+		ForkSignaling:   types.Uint64(2),
+		StateRoot:       types.CidFromString(t, "someothercid"),
+		Timestamp:       types.Uint64(4),
+		EPoStInfo:       diffPoStInfo,
+		BlockSig:        []byte{0x4},
 	}
 
 	// Changing BlockSig does not affect output
@@ -364,10 +360,10 @@ func TestSignatureData(t *testing.T) {
 	func() {
 		before := b.SignatureData()
 
-		cpy := b.DeprecatedElectionProof
-		defer func() { b.DeprecatedElectionProof = cpy }()
+		cpy := b.ForkSignaling
+		defer func() { b.ForkSignaling = cpy }()
 
-		b.DeprecatedElectionProof = diff.DeprecatedElectionProof
+		b.ForkSignaling = diff.ForkSignaling
 		after := b.SignatureData()
 		assert.False(t, bytes.Equal(before, after))
 	}()
@@ -397,10 +393,10 @@ func TestSignatureData(t *testing.T) {
 	func() {
 		before := b.SignatureData()
 
-		cpy := b.PoStRandomness
-		defer func() { b.PoStRandomness = cpy }()
+		cpy := b.EPoStInfo.PoStRandomness
+		defer func() { b.EPoStInfo.PoStRandomness = cpy }()
 
-		b.PoStRandomness = diff.PoStRandomness
+		b.EPoStInfo.PoStRandomness = diff.EPoStInfo.PoStRandomness
 		after := b.SignatureData()
 		assert.False(t, bytes.Equal(before, after))
 	}()
@@ -408,10 +404,10 @@ func TestSignatureData(t *testing.T) {
 	func() {
 		before := b.SignatureData()
 
-		cpy := b.PoStProof
-		defer func() { b.PoStProof = cpy }()
+		cpy := b.EPoStInfo.PoStProof
+		defer func() { b.EPoStInfo.PoStProof = cpy }()
 
-		b.PoStProof = diff.PoStProof
+		b.EPoStInfo.PoStProof = diff.EPoStInfo.PoStProof
 		after := b.SignatureData()
 		assert.False(t, bytes.Equal(before, after))
 	}()
@@ -419,33 +415,50 @@ func TestSignatureData(t *testing.T) {
 	func() {
 		before := b.SignatureData()
 
-		cpy := b.PoStPartialTickets
-		defer func() { b.PoStPartialTickets = cpy }()
+		cpy0 := b.EPoStInfo.Winners[0].PartialTicket
+		cpy1 := b.EPoStInfo.Winners[1].PartialTicket
+		defer func() {
+			b.EPoStInfo.Winners[0].PartialTicket = cpy0
+			b.EPoStInfo.Winners[1].PartialTicket = cpy1
 
-		b.PoStPartialTickets = diff.PoStPartialTickets
+		}()
+
+		b.EPoStInfo.Winners[0].PartialTicket = diff.EPoStInfo.Winners[0].PartialTicket
+		b.EPoStInfo.Winners[1].PartialTicket = diff.EPoStInfo.Winners[1].PartialTicket
 		after := b.SignatureData()
 		assert.False(t, bytes.Equal(before, after))
 	}()
 
 	func() {
 		before := b.SignatureData()
+		cpy0 := b.EPoStInfo.Winners[0].SectorID
+		cpy1 := b.EPoStInfo.Winners[1].SectorID
+		defer func() {
+			b.EPoStInfo.Winners[0].SectorID = cpy0
+			b.EPoStInfo.Winners[1].SectorID = cpy1
+		}()
 
-		cpy := b.PoStSectorIDs
-		defer func() { b.PoStSectorIDs = cpy }()
-
-		b.PoStSectorIDs = diff.PoStSectorIDs
+		b.EPoStInfo.Winners[0].SectorID = diff.EPoStInfo.Winners[0].SectorID
+		b.EPoStInfo.Winners[1].SectorID = diff.EPoStInfo.Winners[1].SectorID
 		after := b.SignatureData()
+
 		assert.False(t, bytes.Equal(before, after))
 	}()
 
 	func() {
 		before := b.SignatureData()
+		cpy0 := b.EPoStInfo.Winners[0].SectorChallengeIndex
+		cpy1 := b.EPoStInfo.Winners[1].SectorChallengeIndex
+		defer func() {
+			b.EPoStInfo.Winners[0].SectorChallengeIndex = cpy0
+			b.EPoStInfo.Winners[1].SectorChallengeIndex = cpy1
 
-		cpy := b.PoStChallengeIDXs
-		defer func() { b.PoStChallengeIDXs = cpy }()
+		}()
 
-		b.PoStChallengeIDXs = diff.PoStChallengeIDXs
+		b.EPoStInfo.Winners[0].SectorChallengeIndex = diff.EPoStInfo.Winners[0].SectorChallengeIndex
+		b.EPoStInfo.Winners[1].SectorChallengeIndex = diff.EPoStInfo.Winners[1].SectorChallengeIndex
 		after := b.SignatureData()
+
 		assert.False(t, bytes.Equal(before, after))
 	}()
 

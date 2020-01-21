@@ -163,8 +163,8 @@ func (fem *FakeElectionMachine) GeneratePoStRandomness(_ block.Ticket, _ address
 }
 
 // GenerateCandidates returns one fake election post candidate
-func (fem *FakeElectionMachine) GenerateCandidates(_ []byte, _ sector.SortedSectorInfo, _ *proofs.ElectionPoster) ([]*proofs.EPoStCandidate, error) {
-	return []*proofs.EPoStCandidate{
+func (fem *FakeElectionMachine) GenerateCandidates(_ []byte, _ sector.SortedSectorInfo, _ *proofs.ElectionPoster) ([]block.EPoStCandidate, error) {
+	return []block.EPoStCandidate{
 		{
 			SectorID:             0,
 			PartialTicket:        []byte{0xf},
@@ -174,7 +174,7 @@ func (fem *FakeElectionMachine) GenerateCandidates(_ []byte, _ sector.SortedSect
 }
 
 // GeneratePoSt returns a fake post proof
-func (fem *FakeElectionMachine) GeneratePoSt(_ sector.SortedSectorInfo, _ []byte, _ []*proofs.EPoStCandidate, _ *proofs.ElectionPoster) ([]byte, error) {
+func (fem *FakeElectionMachine) GeneratePoSt(_ sector.SortedSectorInfo, _ []byte, _ []block.EPoStCandidate, _ *proofs.ElectionPoster) ([]byte, error) {
 	return MakeFakePoStForTest(), nil
 }
 
@@ -189,7 +189,7 @@ func (fem *FakeElectionMachine) CandidateWins(_ []byte, _ *proofs.ElectionPoster
 }
 
 // VerifyPoSt return true
-func (fem *FakeElectionMachine) VerifyPoSt(_ context.Context, _ *proofs.ElectionPoster, _ sector.SortedSectorInfo, _ uint64, _ []byte, _ []byte, _ []*proofs.EPoStCandidate, _ address.Address) (bool, error) {
+func (fem *FakeElectionMachine) VerifyPoSt(_ context.Context, _ *proofs.ElectionPoster, _ sector.SortedSectorInfo, _ uint64, _ []byte, _ []byte, _ []block.EPoStCandidate, _ address.Address) (bool, error) {
 	return true, nil
 }
 
@@ -223,7 +223,7 @@ func (fev *FailingElectionValidator) CandidateWins(_ []byte, _ *proofs.ElectionP
 }
 
 // VerifyPoSt returns true without error
-func (fev *FailingElectionValidator) VerifyPoSt(_ context.Context, _ *proofs.ElectionPoster, _ sector.SortedSectorInfo, _ uint64, _ []byte, _ []byte, _ []*proofs.EPoStCandidate, _ address.Address) (bool, error) {
+func (fev *FailingElectionValidator) VerifyPoSt(_ context.Context, _ *proofs.ElectionPoster, _ sector.SortedSectorInfo, _ uint64, _ []byte, _ []byte, _ []block.EPoStCandidate, _ address.Address) (bool, error) {
 	return true, nil
 }
 
@@ -256,8 +256,8 @@ func MakeFakePoStForTest() []byte {
 }
 
 // MakeFakeWinnersForTest creats an empty winners array
-func MakeFakeWinnersForTest() []*proofs.EPoStCandidate {
-	return []*proofs.EPoStCandidate{}
+func MakeFakeWinnersForTest() []block.EPoStCandidate {
+	return []block.EPoStCandidate{}
 }
 
 // NFakeSectorInfos returns numSectors fake sector infos
@@ -412,17 +412,17 @@ func (mem *MockElectionMachine) GeneratePoStRandomness(ticket block.Ticket, cand
 }
 
 // GenerateCandidates defers to a fake election machine
-func (mem *MockElectionMachine) GenerateCandidates(poStRand []byte, sectorInfos sector.SortedSectorInfo, ep *proofs.ElectionPoster) ([]*proofs.EPoStCandidate, error) {
+func (mem *MockElectionMachine) GenerateCandidates(poStRand []byte, sectorInfos sector.SortedSectorInfo, ep *proofs.ElectionPoster) ([]block.EPoStCandidate, error) {
 	return mem.fem.GenerateCandidates(poStRand, sectorInfos, ep)
 }
 
 // GeneratePoSt defers to a fake election machine
-func (mem *MockElectionMachine) GeneratePoSt(sectorInfo sector.SortedSectorInfo, challengeSeed []byte, winners []*proofs.EPoStCandidate, ep *proofs.ElectionPoster) ([]byte, error) {
+func (mem *MockElectionMachine) GeneratePoSt(sectorInfo sector.SortedSectorInfo, challengeSeed []byte, winners []block.EPoStCandidate, ep *proofs.ElectionPoster) ([]byte, error) {
 	return mem.fem.GeneratePoSt(sectorInfo, challengeSeed, winners, ep)
 }
 
 // VerifyPoSt defers to fake
-func (mem *MockElectionMachine) VerifyPoSt(ctx context.Context, ep *proofs.ElectionPoster, allSectorInfos sector.SortedSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []*proofs.EPoStCandidate, proverID address.Address) (bool, error) {
+func (mem *MockElectionMachine) VerifyPoSt(ctx context.Context, ep *proofs.ElectionPoster, allSectorInfos sector.SortedSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []block.EPoStCandidate, proverID address.Address) (bool, error) {
 	return mem.fem.VerifyPoSt(ctx, ep, allSectorInfos, sectorSize, challengeSeed, proof, candidates, proverID)
 }
 
