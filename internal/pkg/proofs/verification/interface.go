@@ -31,6 +31,7 @@ type SealVerifier interface {
 	) (bool, error)
 }
 
+// Verifier verifies PoSt and Seal
 type Verifier interface {
 	PoStVerifier
 	SealVerifier

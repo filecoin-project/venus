@@ -26,6 +26,7 @@ import (
 // +10 height.
 func TestMineOnce10Null(t *testing.T) {
 	tf.IntegrationTest(t)
+	t.Skip("Dragons: fake proofs")
 
 	mockSigner, kis := types.NewMockSignersAndKeyInfo(5)
 	ki := &(kis[0])
@@ -92,6 +93,7 @@ func TestMineOnce10Null(t *testing.T) {
 // exercise the mining code without races or long blocking
 func TestMineOneEpoch10Null(t *testing.T) {
 	tf.IntegrationTest(t)
+	t.Skip("Dragons: fake proofs")
 
 	mockSigner, kis := types.NewMockSignersAndKeyInfo(5)
 	ki := &(kis[0])

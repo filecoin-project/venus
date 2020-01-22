@@ -43,6 +43,7 @@ func NewEPoStInfo(proof types.PoStProof, rand VRFPi, winners ...EPoStCandidate) 
 	}
 }
 
+// ToFFICandidate converts a block.EPoStCandidate to a ffi candidate
 func (x *EPoStCandidate) ToFFICandidate() ffi.Candidate {
 	var pt [32]byte
 	copy(pt[:], x.PartialTicket)
@@ -55,6 +56,7 @@ func (x *EPoStCandidate) ToFFICandidate() ffi.Candidate {
 	}
 }
 
+// ToFFICandidates converts several block.EPoStCandidate to several ffi candidate
 func ToFFICandidates(candidates ...EPoStCandidate) []ffi.Candidate {
 	out := make([]ffi.Candidate, len(candidates))
 	for idx, c := range candidates {
