@@ -157,7 +157,7 @@ func TestNodeStartMining(t *testing.T) {
 	seed.GiveMiner(t, minerNode, 0) // TODO: update to accommodate new go-fil-markets integration
 	// Start mining give error for fail to get miner actor from the heaviest tipset stateroot
 	assert.Contains(t, minerNode.StartMining(ctx).Error(), "failed to setup mining")
-	_, err := storage.NewMiner()
+	_, err := storage.NewProvider()
 	assert.NoError(t, err)
 
 	assert.NoError(t, minerNode.Start(ctx))

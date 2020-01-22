@@ -16,13 +16,13 @@ type StorageProtocolSubmodule struct {
 	StorageAPI *storage.API
 
 	// Storage Market Interfaces
-	StorageMiner *storage.Miner
+	StorageMiner *storage.Provider
 }
 
 // NewStorageProtocolSubmodule creates a new storage protocol submodule.
 func NewStorageProtocolSubmodule(ds datastore.Batching, bs blockstore.Blockstore, fs filestore.FileStore, ps piecestore.PieceStore, dt datatransfer.Manager) (StorageProtocolSubmodule, error) {
 	connector := storagemarketconnector.NewStorageProviderNodeConnector()
-	storageMarketProvider, err := storage.NewMiner(ds, bs, fs, ps, dt, connector)
+	storageMarketProvider, err := storage.NewProvider(ds, bs, fs, ps, dt, connector)
 	if err != nil {
 		return StorageProtocolSubmodule{}, err
 	}

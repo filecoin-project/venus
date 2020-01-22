@@ -42,7 +42,7 @@ func requireMineOnce(ctx context.Context, t *testing.T, minerNode *Node) *block.
 	worker, err := minerNode.CreateMiningWorker(ctx)
 	require.NoError(t, err)
 
-	// Miner should win first election as it has all the power so only
+	// Provider should win first election as it has all the power so only
 	// mine once with 0 null blocks
 	out := make(chan mining.Output)
 	var wonElection bool
@@ -154,7 +154,7 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 	minerNode := builder.Build(ctx)
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, _ := seed.GiveMiner(t, minerNode, 0)
-	_, err := storage.NewMiner()
+	_, err := storage.NewProvider()
 	assert.NoError(t, err)
 
 	nodes := []*Node{minerNode}

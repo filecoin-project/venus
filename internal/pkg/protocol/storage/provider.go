@@ -10,15 +10,16 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
-// Miner is
-type Miner struct{}
+// Provider is
+type Provider struct{}
 
-// NewMiner is
-func NewMiner(ds datastore.Batching, bs blockstore.Blockstore, fs filestore.FileStore, ps piecestore.PieceStore, dt datatransfer.Manager, sp storagemarket.StorageProviderNode) (*Miner, error) {
+// NewProvider consummates deals, interacting (indirectly) with the storage
+// market actor, sector subsystems, and blockchain.
+func NewProvider(ds datastore.Batching, bs blockstore.Blockstore, fs filestore.FileStore, ps piecestore.PieceStore, dt datatransfer.Manager, sp storagemarket.StorageProviderNode) (*Provider, error) {
 	_, err := m.NewProvider(ds, bs, fs, ps, dt, sp)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Miner{}, nil // nolint:govet
+	return &Provider{}, nil // nolint:govet
 }
