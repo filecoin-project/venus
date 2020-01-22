@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/go-bls-sigs"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 

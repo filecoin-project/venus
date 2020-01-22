@@ -167,9 +167,8 @@ func ConnectNodes(t *testing.T, a, b *Node) {
 func FakeProofVerifierBuilderOpts() []BuilderOpt {
 	return []BuilderOpt{
 		VerifierConfigOption(&verification.FakeVerifier{
-			VerifyPoStValid:                true,
-			VerifyPieceInclusionProofValid: true,
-			VerifySealValid:                true,
+			VerifyPoStValid: true,
+			VerifySealValid: true,
 		}),
 	}
 }

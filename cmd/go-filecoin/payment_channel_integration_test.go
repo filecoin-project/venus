@@ -21,6 +21,7 @@ import (
 
 func TestPaymentChannelCreateSuccess(t *testing.T) {
 	tf.IntegrationTest(t)
+	t.Skip("Dragons: fake proofs")
 
 	ctx := context.Background()
 
@@ -36,6 +37,7 @@ func TestPaymentChannelCreateSuccess(t *testing.T) {
 
 func TestPaymentChannelLs(t *testing.T) {
 	tf.IntegrationTest(t)
+	t.Skip("Dragons: fake proofs")
 
 	t.Run("Works with default payer", func(t *testing.T) {
 		ctx := context.Background()
@@ -110,6 +112,7 @@ func TestPaymentChannelLs(t *testing.T) {
 
 func TestPaymentChannelVoucherSuccess(t *testing.T) {
 	tf.IntegrationTest(t)
+	t.Skip("Dragons: fake proofs")
 
 	ctx := context.Background()
 
@@ -134,6 +137,7 @@ func TestPaymentChannelVoucherSuccess(t *testing.T) {
 
 func TestPaymentChannelRedeemSuccess(t *testing.T) {
 	tf.IntegrationTest(t)
+	t.Skip("Dragons: fake proofs")
 
 	ctx := context.Background()
 
@@ -182,6 +186,7 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 
 func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
 	tf.IntegrationTest(t)
+	t.Skip("Dragons: fake proofs")
 
 	ctx := context.Background()
 
@@ -229,6 +234,7 @@ func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
 
 func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	tf.IntegrationTest(t)
+	t.Skip("Dragons: fake proofs")
 
 	ctx := context.Background()
 	// Start test
@@ -314,6 +320,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 
 func TestPaymentChannelCloseSuccess(t *testing.T) {
 	tf.IntegrationTest(t)
+	t.Skip("Dragons: fake proofs")
 
 	ctx := context.Background()
 
@@ -380,6 +387,7 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 
 func TestPaymentChannelExtendSuccess(t *testing.T) {
 	tf.IntegrationTest(t)
+	t.Skip("Dragons: fake proofs")
 
 	ctx := context.Background()
 
@@ -439,6 +447,8 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 
 func TestPaymentChannelCancelSuccess(t *testing.T) {
 	tf.IntegrationTest(t)
+	t.Skip("Dragons: fake proofs")
+
 	ctx := context.Background()
 	// Start test
 	rsrc := requireNewPaychResource(ctx, t)

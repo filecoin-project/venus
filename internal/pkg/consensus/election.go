@@ -1,15 +1,21 @@
 package consensus
 
 import (
-	"context"
 	"encoding/binary"
 	"math/big"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/util/convert"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
+	sector "github.com/filecoin-project/go-sectorbuilder"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	sector "github.com/filecoin-project/go-sectorbuilder"
 )
 
 // ElectionMachine generates and validates PoSt partial tickets and PoSt
@@ -27,16 +33,15 @@ func (em ElectionMachine) GeneratePoStRandomness(ticket block.Ticket, candidateA
 
 // GenerateCandidates creates candidate partial tickets for consideration in
 // block reward election
-func (em ElectionMachine) GenerateCandidates(poStRand []byte, sectorInfos sector.SortedSectorInfo, ep *proofs.ElectionPoster) ([]block.EPoStCandidate, error) {
+func (em ElectionMachine) GenerateCandidates(poStRand []byte, sectorInfos ffi.SortedPublicSectorInfo, ep postgenerator.PoStGenerator) ([]ffi.Candidate, error) {
 	dummyFaults := []uint64{}
-	return ep.GenerateEPostCandidates(sectorInfos, poStRand, dummyFaults)
+	return ep.GenerateEPostCandidates(sectorInfos, convert.To32ByteArray(poStRand), dummyFaults)
 }
 
 // GeneratePoSt creates a PoSt proof over the input PoSt candidates.  Should
 // only be called on winning candidates.
-func (em ElectionMachine) GeneratePoSt(allSectorInfos sector.SortedSectorInfo, challengeSeed []byte, winners []block.EPoStCandidate, ep *proofs.ElectionPoster) ([]byte, error) {
-	winnerSectorInfos := filterSectorInfosByCandidates(allSectorInfos, winners)
-	return ep.ComputeElectionPoSt(winnerSectorInfos, challengeSeed, winners)
+func (em ElectionMachine) GeneratePoSt(allSectorInfos ffi.SortedPublicSectorInfo, challengeSeed []byte, winners []ffi.Candidate, ep postgenerator.PoStGenerator) ([]byte, error) {
+	return ep.ComputeElectionPoSt(allSectorInfos, challengeSeed, winners)
 }
 
 // VerifyPoStRandomness verifies that the PoSt randomness is the result of the
@@ -51,8 +56,8 @@ func (em ElectionMachine) VerifyPoStRandomness(rand block.VRFPi, ticket block.Ti
 }
 
 // CandidateWins returns true if the input candidate wins the election
-func (em ElectionMachine) CandidateWins(challengeTicket []byte, ep *proofs.ElectionPoster, sectorNum, faultNum, networkPower, sectorSize uint64) bool {
-	numSectorsSampled := ep.ElectionPostChallengeCount(sectorNum, faultNum)
+func (em ElectionMachine) CandidateWins(challengeTicket []byte, sectorNum, faultNum, networkPower, sectorSize uint64) bool {
+	numSectorsSampled := sector.ElectionPostChallengeCount(sectorNum, faultNum)
 
 	lhs := new(big.Int).SetBytes(challengeTicket[:])
 	lhs = lhs.Mul(lhs, big.NewInt(int64(networkPower)))
@@ -70,31 +75,17 @@ func (em ElectionMachine) CandidateWins(challengeTicket []byte, ep *proofs.Elect
 }
 
 // VerifyPoSt verifies a PoSt proof.
-func (em ElectionMachine) VerifyPoSt(ctx context.Context, ep *proofs.ElectionPoster, allSectorInfos sector.SortedSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []block.EPoStCandidate, proverID address.Address) (bool, error) {
+func (em ElectionMachine) VerifyPoSt(ep verification.PoStVerifier, allSectorInfos ffi.SortedPublicSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []block.EPoStCandidate, proverAddr address.Address) (bool, error) {
 	// filter down sector infos to only those referenced by candidates
-	return ep.VerifyElectionPost(
-		ctx,
-		sectorSize,
-		filterSectorInfosByCandidates(allSectorInfos, candidates),
-		challengeSeed,
-		proof,
-		candidates,
-		proverID,
-	)
-}
+	challengeCount := sector.ElectionPostChallengeCount(uint64(len(allSectorInfos.Values())), 0)
 
-func filterSectorInfosByCandidates(allSectorInfos sector.SortedSectorInfo, candidates []block.EPoStCandidate) sector.SortedSectorInfo {
-	candidateSectorID := make(map[uint64]struct{})
-	for _, candidate := range candidates {
-		candidateSectorID[uint64(candidate.SectorID)] = struct{}{}
-	}
-	var candidateSectorInfos []sector.SectorInfo
-	for _, si := range allSectorInfos.Values() {
-		if _, ok := candidateSectorID[si.SectorID]; ok {
-			candidateSectorInfos = append(candidateSectorInfos, si)
-		}
-	}
-	return sector.NewSortedSectorInfo(candidateSectorInfos...)
+	var randomness [32]byte
+	copy(randomness[:], challengeSeed)
+
+	var proverID [32]byte
+	copy(proverID[:], proverAddr.Payload())
+
+	return ep.VerifyPoSt(sectorSize, allSectorInfos, randomness, challengeCount, proof, block.ToFFICandidates(candidates...), proverID)
 }
 
 // TicketMachine uses a VRF and VDF to generate deterministic, unpredictable

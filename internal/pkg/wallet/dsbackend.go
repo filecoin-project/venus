@@ -5,12 +5,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/filecoin-project/go-bls-sigs"
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
 	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"

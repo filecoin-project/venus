@@ -8,6 +8,10 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
+
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -18,7 +22,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
@@ -26,7 +29,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	sector "github.com/filecoin-project/go-sectorbuilder"
 )
 
 var (
@@ -85,8 +87,8 @@ type TicketValidator interface {
 
 // ElectionValidator validates that an election fairly produced a winner.
 type ElectionValidator interface {
-	VerifyPoSt(ctx context.Context, ep *proofs.ElectionPoster, allSectorInfos sector.SortedSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []block.EPoStCandidate, proverID address.Address) (bool, error)
-	CandidateWins(challengeTicket []byte, ep *proofs.ElectionPoster, sectorNum, faultNum, networkPower, sectorSize uint64) bool
+	VerifyPoSt(ep verification.PoStVerifier, allSectorInfos ffi.SortedPublicSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []block.EPoStCandidate, proverID address.Address) (bool, error)
+	CandidateWins(challengeTicket []byte, sectorNum, faultNum, networkPower, sectorSize uint64) bool
 	VerifyPoStRandomness(rand block.VRFPi, ticket block.Ticket, candidateAddr address.Address, nullBlockCount uint64) bool
 }
 
@@ -119,15 +121,15 @@ type Expected struct {
 
 	blockTime time.Duration
 
-	// postVerifier verifies post proofs and associated data
-	postVerifier *proofs.ElectionPoster
+	// postVerifier verifies PoSt proofs and associated data
+	postVerifier verification.PoStVerifier
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, actorState SnapshotGenerator, bt time.Duration, ev ElectionValidator, tv TicketValidator, pv *proofs.ElectionPoster) *Expected {
+func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, actorState SnapshotGenerator, bt time.Duration, ev ElectionValidator, tv TicketValidator, pv verification.PoStVerifier) *Expected {
 	return &Expected{
 		cstore:            cs,
 		blockTime:         bt,
@@ -268,7 +270,7 @@ func (c *Expected) validateMining(
 		hasher := hasher.NewHasher()
 		for i, candidate := range blk.EPoStInfo.Winners {
 			hasher.Bytes(candidate.PartialTicket)
-			if !c.ElectionValidator.CandidateWins(hasher.Hash(), c.postVerifier, sectorNum, 0, networkPower.Uint64(), sectorSize.Uint64()) {
+			if !c.ElectionValidator.CandidateWins(hasher.Hash(), sectorNum, 0, networkPower.Uint64(), sectorSize.Uint64()) {
 				return errors.Errorf("partial ticket %d lost election", i)
 			}
 		}
@@ -278,7 +280,7 @@ func (c *Expected) validateMining(
 		if err != nil {
 			return errors.Wrapf(err, "failed to read sector infos from power table")
 		}
-		valid, err := c.VerifyPoSt(ctx, c.postVerifier, allSectorInfos, sectorSize.Uint64(), blk.EPoStInfo.PoStRandomness, blk.EPoStInfo.PoStProof, blk.EPoStInfo.Winners, blk.Miner)
+		valid, err := c.VerifyPoSt(c.postVerifier, allSectorInfos, sectorSize.Uint64(), blk.EPoStInfo.PoStRandomness, blk.EPoStInfo.PoStProof, blk.EPoStInfo.Winners, blk.Miner)
 		if err != nil {
 			return errors.Wrapf(err, "error checking PoSt")
 		}

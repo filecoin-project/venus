@@ -7,6 +7,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -19,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	sector "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/stretchr/testify/require"
 )
 
@@ -147,6 +151,8 @@ func NewFakeProcessor(actors builtin.Actors) *DefaultProcessor {
 // FakeElectionMachine generates fake election proofs and verifies all proofs
 type FakeElectionMachine struct{}
 
+var _ ElectionValidator = new(FakeElectionMachine)
+
 // DeprecatedRunElection returns a fake election proof.
 func (fem *FakeElectionMachine) DeprecatedRunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullCount uint64) (block.VRFPi, error) {
 	return MakeFakeVRFProofForTest(), nil
@@ -163,18 +169,19 @@ func (fem *FakeElectionMachine) GeneratePoStRandomness(_ block.Ticket, _ address
 }
 
 // GenerateCandidates returns one fake election post candidate
-func (fem *FakeElectionMachine) GenerateCandidates(_ []byte, _ sector.SortedSectorInfo, _ *proofs.ElectionPoster) ([]block.EPoStCandidate, error) {
-	return []block.EPoStCandidate{
+func (fem *FakeElectionMachine) GenerateCandidates(_ []byte, _ ffi.SortedPublicSectorInfo, _ postgenerator.PoStGenerator) ([]ffi.Candidate, error) {
+	return []ffi.Candidate{
 		{
 			SectorID:             0,
-			PartialTicket:        []byte{0xf},
+			PartialTicket:        [32]byte{0xf},
+			Ticket:               [32]byte{0xe},
 			SectorChallengeIndex: 0,
 		},
 	}, nil
 }
 
 // GeneratePoSt returns a fake post proof
-func (fem *FakeElectionMachine) GeneratePoSt(_ sector.SortedSectorInfo, _ []byte, _ []block.EPoStCandidate, _ *proofs.ElectionPoster) ([]byte, error) {
+func (fem *FakeElectionMachine) GeneratePoSt(_ ffi.SortedPublicSectorInfo, _ []byte, _ []ffi.Candidate, _ postgenerator.PoStGenerator) ([]byte, error) {
 	return MakeFakePoStForTest(), nil
 }
 
@@ -184,12 +191,12 @@ func (fem *FakeElectionMachine) VerifyPoStRandomness(_ block.VRFPi, _ block.Tick
 }
 
 // CandidateWins returns true
-func (fem *FakeElectionMachine) CandidateWins(_ []byte, _ *proofs.ElectionPoster, _, _, _, _ uint64) bool {
+func (fem *FakeElectionMachine) CandidateWins(_ []byte, _ uint64, _ uint64, _ uint64, _ uint64) bool {
 	return true
 }
 
 // VerifyPoSt return true
-func (fem *FakeElectionMachine) VerifyPoSt(_ context.Context, _ *proofs.ElectionPoster, _ sector.SortedSectorInfo, _ uint64, _ []byte, _ []byte, _ []block.EPoStCandidate, _ address.Address) (bool, error) {
+func (fem *FakeElectionMachine) VerifyPoSt(_ verification.PoStVerifier, _ ffi.SortedPublicSectorInfo, _ uint64, _ []byte, _ []byte, _ []block.EPoStCandidate, _ address.Address) (bool, error) {
 	return true, nil
 }
 
@@ -217,13 +224,15 @@ func (ftv *FailingTicketValidator) IsValidTicket(parent, ticket block.Ticket, si
 // FailingElectionValidator marks all election candidates as invalid
 type FailingElectionValidator struct{}
 
+var _ ElectionValidator = new(FailingElectionValidator)
+
 // CandidateWins always returns false
-func (fev *FailingElectionValidator) CandidateWins(_ []byte, _ *proofs.ElectionPoster, _, _, _, _ uint64) bool {
+func (fev *FailingElectionValidator) CandidateWins(_ []byte, _, _, _, _ uint64) bool {
 	return false
 }
 
 // VerifyPoSt returns true without error
-func (fev *FailingElectionValidator) VerifyPoSt(_ context.Context, _ *proofs.ElectionPoster, _ sector.SortedSectorInfo, _ uint64, _ []byte, _ []byte, _ []block.EPoStCandidate, _ address.Address) (bool, error) {
+func (fev *FailingElectionValidator) VerifyPoSt(_ verification.PoStVerifier, _ ffi.SortedPublicSectorInfo, _ uint64, _ []byte, _ []byte, _ []block.EPoStCandidate, _ address.Address) (bool, error) {
 	return true, nil
 }
 
@@ -261,20 +270,20 @@ func MakeFakeWinnersForTest() []block.EPoStCandidate {
 }
 
 // NFakeSectorInfos returns numSectors fake sector infos
-func NFakeSectorInfos(numSectors uint64) sector.SortedSectorInfo {
-	var infos []sector.SectorInfo
+func NFakeSectorInfos(numSectors uint64) ffi.SortedPublicSectorInfo {
+	var infos []ffi.PublicSectorInfo
 	for i := uint64(0); i < numSectors; i++ {
 		buf := make([]byte, binary.MaxVarintLen64)
 		binary.PutUvarint(buf, i)
-		var fakeCommRi [sector.CommitmentBytesLen]byte
+		var fakeCommRi [ffi.CommitmentBytesLen]byte
 		copy(fakeCommRi[:], buf)
-		infos = append(infos, sector.SectorInfo{
+		infos = append(infos, ffi.PublicSectorInfo{
 			SectorID: i,
 			CommR:    fakeCommRi,
 		})
 	}
 
-	return sector.NewSortedSectorInfo(infos...)
+	return ffi.NewSortedPublicSectorInfo(infos...)
 }
 
 // SeedFirstWinnerInNRounds returns a ticket that when mined upon for N rounds
@@ -321,7 +330,7 @@ func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, networkPow
 	}
 }
 
-func winsAtEpoch(t *testing.T, epoch uint64, ticket block.Ticket, ki *types.KeyInfo, networkPower, numSectors, sectorSize uint64, sectorInfos sector.SortedSectorInfo) bool {
+func winsAtEpoch(t *testing.T, epoch uint64, ticket block.Ticket, ki *types.KeyInfo, networkPower, numSectors, sectorSize uint64, sectorInfos ffi.SortedPublicSectorInfo) bool {
 	signer := types.NewMockSigner([]types.KeyInfo{*ki})
 	wAddr, err := ki.Address()
 	require.NoError(t, err)
@@ -337,16 +346,16 @@ func winsAtEpoch(t *testing.T, epoch uint64, ticket block.Ticket, ki *types.KeyI
 
 	for _, candidate := range candidates {
 		hasher := hasher.NewHasher()
-		hasher.Bytes(candidate.PartialTicket)
+		hasher.Bytes(candidate.PartialTicket[:])
 		ct := hasher.Hash()
-		if em.CandidateWins(ct, &proofs.ElectionPoster{}, numSectors, 0, networkPower, sectorSize) {
+		if em.CandidateWins(ct, numSectors, 0, networkPower, sectorSize) {
 			return true
 		}
 	}
 	return false
 }
 
-func losesAtEpoch(t *testing.T, epoch uint64, ticket block.Ticket, ki *types.KeyInfo, networkPower, numSectors, sectorSize uint64, sectorInfos sector.SortedSectorInfo) bool {
+func losesAtEpoch(t *testing.T, epoch uint64, ticket block.Ticket, ki *types.KeyInfo, networkPower, numSectors, sectorSize uint64, sectorInfos ffi.SortedPublicSectorInfo) bool {
 	return !winsAtEpoch(t, epoch, ticket, ki, networkPower, numSectors, sectorSize, sectorInfos)
 }
 
@@ -401,6 +410,8 @@ type MockElectionMachine struct {
 	fem *FakeElectionMachine
 }
 
+var _ ElectionValidator = new(MockElectionMachine)
+
 // NewMockElectionMachine creates a mock given a callback
 func NewMockElectionMachine(f func(block.Ticket)) *MockElectionMachine {
 	return &MockElectionMachine{fn: f}
@@ -412,23 +423,23 @@ func (mem *MockElectionMachine) GeneratePoStRandomness(ticket block.Ticket, cand
 }
 
 // GenerateCandidates defers to a fake election machine
-func (mem *MockElectionMachine) GenerateCandidates(poStRand []byte, sectorInfos sector.SortedSectorInfo, ep *proofs.ElectionPoster) ([]block.EPoStCandidate, error) {
+func (mem *MockElectionMachine) GenerateCandidates(poStRand []byte, sectorInfos ffi.SortedPublicSectorInfo, ep postgenerator.PoStGenerator) ([]ffi.Candidate, error) {
 	return mem.fem.GenerateCandidates(poStRand, sectorInfos, ep)
 }
 
 // GeneratePoSt defers to a fake election machine
-func (mem *MockElectionMachine) GeneratePoSt(sectorInfo sector.SortedSectorInfo, challengeSeed []byte, winners []block.EPoStCandidate, ep *proofs.ElectionPoster) ([]byte, error) {
+func (mem *MockElectionMachine) GeneratePoSt(sectorInfo ffi.SortedPublicSectorInfo, challengeSeed []byte, winners []ffi.Candidate, ep postgenerator.PoStGenerator) ([]byte, error) {
 	return mem.fem.GeneratePoSt(sectorInfo, challengeSeed, winners, ep)
 }
 
 // VerifyPoSt defers to fake
-func (mem *MockElectionMachine) VerifyPoSt(ctx context.Context, ep *proofs.ElectionPoster, allSectorInfos sector.SortedSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []block.EPoStCandidate, proverID address.Address) (bool, error) {
-	return mem.fem.VerifyPoSt(ctx, ep, allSectorInfos, sectorSize, challengeSeed, proof, candidates, proverID)
+func (mem *MockElectionMachine) VerifyPoSt(ep verification.PoStVerifier, allSectorInfos ffi.SortedPublicSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []block.EPoStCandidate, proverID address.Address) (bool, error) {
+	return mem.fem.VerifyPoSt(ep, allSectorInfos, sectorSize, challengeSeed, proof, candidates, proverID)
 }
 
 // CandidateWins defers to fake
-func (mem *MockElectionMachine) CandidateWins(challengeTicket []byte, ep *proofs.ElectionPoster, sectorNum, faultNum, networkPower, sectorSize uint64) bool {
-	return mem.fem.CandidateWins(challengeTicket, ep, sectorNum, faultNum, networkPower, sectorSize)
+func (mem *MockElectionMachine) CandidateWins(challengeTicket []byte, sectorNum uint64, faultNum uint64, networkPower uint64, sectorSize uint64) bool {
+	return mem.fem.CandidateWins(challengeTicket, sectorNum, faultNum, networkPower, sectorSize)
 }
 
 // VerifyPoStRandomness runs the callback on the ticket before calling the fake

@@ -22,6 +22,7 @@ import (
 
 func TestMiningGenBlock(t *testing.T) {
 	tf.IntegrationTest(t)
+	t.Skip("Dragons: fake proofs")
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
 	buildWithMiner(t, builder)

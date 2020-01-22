@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
+
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 	"github.com/ipfs/go-graphsync/ipldbridge"
@@ -18,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
 )
 
@@ -49,7 +50,7 @@ type nodeChainSelector interface {
 }
 
 // NewSyncerSubmodule creates a new chain submodule.
-func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo, blockstore *BlockstoreSubmodule, network *NetworkSubmodule, discovery *DiscoverySubmodule, chn *ChainSubmodule, nodePoster *proofs.ElectionPoster) (SyncerSubmodule, error) {
+func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo, blockstore *BlockstoreSubmodule, network *NetworkSubmodule, discovery *DiscoverySubmodule, chn *ChainSubmodule, postVerifier verification.PoStVerifier) (SyncerSubmodule, error) {
 	// setup block validation
 	// TODO when #2961 is resolved do the needful here.
 	blkValid := consensus.NewDefaultBlockValidator(config.ChainClock())
@@ -67,7 +68,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 	}
 
 	// set up consensus
-	nodeConsensus := consensus.NewExpected(blockstore.CborStore, blockstore.Blockstore, chn.Processor, chn.ActorState, config.BlockTime(), consensus.ElectionMachine{}, consensus.TicketMachine{}, nodePoster)
+	nodeConsensus := consensus.NewExpected(blockstore.CborStore, blockstore.Blockstore, chn.Processor, chn.ActorState, config.BlockTime(), consensus.ElectionMachine{}, consensus.TicketMachine{}, postVerifier)
 	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, chn.ActorState, config.GenesisCid())
 
 	// setup fecher

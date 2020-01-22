@@ -5,13 +5,14 @@ import (
 	"testing"
 	"time"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
+
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
@@ -59,7 +60,7 @@ func TestProtocolParams(t *testing.T) {
 		}
 
 		sectorSize := types.OneKiBSectorSize
-		maxUserBytes := types.NewBytesAmount(go_sectorbuilder.GetMaxUserBytesPerStagedSector(sectorSize.Uint64()))
+		maxUserBytes := types.NewBytesAmount(ffi.GetMaxUserBytesPerStagedSector(sectorSize.Uint64()))
 
 		expected := &porcelain.ProtocolParams{
 			AutoSealInterval: 120,

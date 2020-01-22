@@ -22,6 +22,7 @@ import (
 // See https://github.com/filecoin-project/go-filecoin/pull/1643
 
 func TestRetrievalProtocolPieceNotFound(t *testing.T) {
+	t.Skip("Skip pending retrieval market shared component")
 	tf.UnitTest(t)
 
 	ctx := context.Background()

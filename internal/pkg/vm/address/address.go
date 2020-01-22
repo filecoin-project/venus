@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/filecoin-project/go-bls-sigs"
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/polydawn/refmt/obj/atlas"
 

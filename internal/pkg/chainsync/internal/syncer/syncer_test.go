@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -208,7 +210,7 @@ func TestRejectFinalityFork(t *testing.T) {
 	builder, store, s := setup(ctx, t)
 	genesis := builder.RequireTipSet(store.GetHead())
 
-	head := builder.AppendManyOn(syncer.FinalityEpochs+2, genesis)
+	head := builder.AppendManyOn(consensus.FinalityEpochs+2, genesis)
 	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", head.Key(), heightFromTip(t, head)), false))
 
 	// Differentiate fork for a new chain.  Fork has FinalityEpochs + 1
@@ -217,7 +219,7 @@ func TestRejectFinalityFork(t *testing.T) {
 	forkFinalityBase := builder.BuildOneOn(genesis, func(bb *chain.BlockBuilder) {
 		bb.SetTicket([]byte{0xbe})
 	})
-	forkFinalityHead := builder.AppendManyOn(syncer.FinalityEpochs, forkFinalityBase)
+	forkFinalityHead := builder.AppendManyOn(consensus.FinalityEpochs, forkFinalityBase)
 	assert.Error(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", forkFinalityHead.Key(), heightFromTip(t, forkFinalityHead)), false))
 }
 

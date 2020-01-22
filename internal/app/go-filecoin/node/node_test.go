@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 func TestNodeConstruct(t *testing.T) {
@@ -143,6 +142,7 @@ func TestNodeInit(t *testing.T) {
 }
 
 func TestNodeStartMining(t *testing.T) {
+	t.Skip("Skip pending storage market integration #3731")
 	tf.UnitTest(t)
 
 	ctx := context.Background()
@@ -154,10 +154,10 @@ func TestNodeStartMining(t *testing.T) {
 	minerNode := builder.Build(ctx)
 
 	seed.GiveKey(t, minerNode, 0)
-	mineraddr, ownerAddr := seed.GiveMiner(t, minerNode, 0)
+	seed.GiveMiner(t, minerNode, 0) // TODO: update to accommodate new go-fil-markets integration
 	// Start mining give error for fail to get miner actor from the heaviest tipset stateroot
 	assert.Contains(t, minerNode.StartMining(ctx).Error(), "failed to setup mining")
-	_, err := storage.NewMiner(mineraddr, ownerAddr, &storage.FakeProver{}, types.OneKiBSectorSize, minerNode, minerNode.Repo.DealsDatastore(), nil)
+	_, err := storage.NewMiner()
 	assert.NoError(t, err)
 
 	assert.NoError(t, minerNode.Start(ctx))

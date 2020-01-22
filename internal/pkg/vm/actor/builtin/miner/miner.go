@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -21,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
-	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 )
 
 func init() {
@@ -338,8 +336,6 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSi
 		return reflect.ValueOf((*Impl)(a).SlashStorageFault), signatures[SlashStorageFault], true
 	case ChangeWorker:
 		return reflect.ValueOf((*Impl)(a).ChangeWorker), signatures[ChangeWorker], true
-	case VerifyPieceInclusion:
-		return reflect.ValueOf((*Impl)(a).VerifyPieceInclusion), signatures[VerifyPieceInclusion], true
 	case GetSectorSize:
 		return reflect.ValueOf((*Impl)(a).GetSectorSize), signatures[GetSectorSize], true
 	case GetAsks:
@@ -747,20 +743,26 @@ func (a *Impl) CommitSector(ctx invocationContext, sectorID uint64, commD, commR
 		//
 		// This switching will be removed when issue #2270 is completed.
 		if !a.Bootstrap {
-			req := verification.VerifySealRequest{}
-			copy(req.CommD[:], commD)
-			copy(req.CommR[:], commR)
-			copy(req.CommRStar[:], commRStar)
-			req.Proof = proof
-			req.ProverID = sectorbuilder.AddressToProverID(ctx.LegacyMessage().To)
-			req.SectorID = sectorID
-			req.SectorSize = state.SectorSize
+			var commRAry [32]byte
+			copy(commRAry[:], commR)
 
-			res, err := ctx.LegacyVerifier().VerifySeal(req)
+			var commDAry [32]byte
+			copy(commDAry[:], commD)
+
+			var proverID [32]byte
+			copy(proverID[:], ctx.LegacyMessage().To.Bytes()[:])
+
+			var ticket [32]byte
+			panic("need a ticket")
+
+			var seed [32]byte
+			panic("need a seed")
+
+			isValid, err := ctx.LegacyVerifier().VerifySeal(state.SectorSize.Uint64(), commRAry, commDAry, proverID, ticket, seed, sectorID, proof[:])
 			if err != nil {
 				return nil, errors.RevertErrorWrap(err, "failed to verify seal proof")
 			}
-			if !res.IsValid {
+			if !isValid {
 				return nil, Errors[ErrInvalidSealProof]
 			}
 		}
@@ -813,59 +815,6 @@ func (a *Impl) CommitSector(ctx invocationContext, sectorID uint64, commD, commR
 	}
 
 	return 0, nil
-}
-
-// VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector, and
-// verifies that this miner is not slashable
-// This method returns nothing if the verification succeeds and returns a revert error if verification fails.
-func (*Impl) VerifyPieceInclusion(ctx invocationContext, commP []byte, pieceSize *types.BytesAmount, sectorID uint64, proof []byte) (uint8, error) {
-	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
-	}
-
-	chainHeight := ctx.Runtime().CurrentEpoch()
-
-	var state State
-	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-
-		// If miner has not committed sector id, proof is invalid
-		commitment, ok := state.SectorCommitments.Get(sectorID)
-		if !ok {
-			return nil, errors.NewRevertError("sector not committed")
-		}
-
-		if state.ProvingPeriodEnd.IsZero() {
-			return nil, errors.NewRevertError("miner not active")
-		}
-
-		// Ensure the miner is active
-		deadline := state.ProvingPeriodEnd.Add(LatePoStGracePeriod(state.SectorSize))
-		if chainHeight.GreaterThan(deadline) {
-			return nil, errors.NewRevertError("miner is tardy")
-		}
-
-		// Verify proof proves CommP is in sector's CommD
-		var typedCommP types.CommP
-		copy(typedCommP[:], commP)
-
-		res, err := ctx.LegacyVerifier().VerifyPieceInclusionProof(verification.VerifyPieceInclusionProofRequest{
-			CommD:               commitment.CommD,
-			CommP:               typedCommP,
-			PieceInclusionProof: proof,
-			PieceSize:           pieceSize,
-			SectorSize:          state.SectorSize,
-		})
-		if err != nil {
-			return nil, errors.RevertErrorWrap(err, "failed to verify piece inclusion proof")
-		}
-		if !res.IsValid {
-			return nil, Errors[ErrInvalidPieceInclusionProof]
-		}
-
-		return nil, nil
-	})
-
-	return errors.CodeError(err), err
 }
 
 // ChangeWorker alters the worker address in state
@@ -1085,65 +1034,7 @@ func (a *Impl) SubmitPoSt(ctx invocationContext, poStProof types.PoStProof, faul
 		//
 		// This switching will be removed when issue #2270 is completed.
 		if !a.Bootstrap {
-			// calculate challenge seed now. If PoSt is too early, this will fail.
-			poStChallengeTime := types.NewBlockHeight(PoStChallengeWindowBlocks)
-
-			var seed types.PoStChallengeSeed
-			var provingWindowStart, provingWindowEnd *types.BlockHeight
-			if chainHeight.LessThan(state.ProvingPeriodEnd) {
-				// proof is in time, sample at start of post challenge time
-				provingWindowStart = state.ProvingPeriodEnd.Sub(poStChallengeTime)
-				provingWindowEnd = state.ProvingPeriodEnd
-			} else {
-				// proof is late, sample at start of next post challenge time
-				provingWindowStart = nextProvingPeriodEnd.Sub(poStChallengeTime)
-				provingWindowEnd = nextProvingPeriodEnd
-			}
-
-			if chainHeight.LessThan(provingWindowStart) {
-				return nil, errors.NewCodedRevertErrorf(ErrInvalidPoSt, "PoSt arrived at %s, which is before proving window (%s-%s)",
-					chainHeight.String(), provingWindowStart.String(), provingWindowEnd.String())
-			}
-
-			seed, err = getPoStChallengeSeed(ctx, state, provingWindowStart)
-			if err != nil {
-				return nil, errors.RevertErrorWrap(err, "failed to sample chain for challenge seed")
-			}
-
-			var sectorInfos []go_sectorbuilder.SectorInfo
-			for _, id := range state.ProvingSet.Values() {
-				commitment, found := state.SectorCommitments.Get(id)
-				if !found {
-					return nil, errors.NewFaultErrorf("miner ProvingSet sector id %d missing in SectorCommitments", id)
-				}
-				sectorInfo := go_sectorbuilder.SectorInfo{
-					SectorID: id,
-					CommR:    commitment.CommR,
-				}
-				sectorInfos = append(sectorInfos, sectorInfo)
-			}
-
-			sortedSectorInfo := go_sectorbuilder.NewSortedSectorInfo(sectorInfos...)
-			log.Infof("Verifying post for addr %s -- end: %s -- seed: %x", ctx.LegacyMessage().To, state.ProvingPeriodEnd, seed)
-			for i, ssi := range sortedSectorInfo.Values() {
-				log.Infof("ssi %d: sector id %d -- commR %x", i, ssi.SectorID, ssi.CommR)
-			}
-
-			req := verification.VerifyPoStRequest{
-				ChallengeSeed:    seed,
-				SortedSectorInfo: sortedSectorInfo,
-				Faults:           faults.SectorIds.Values(),
-				Proof:            poStProof,
-				SectorSize:       state.SectorSize,
-			}
-
-			res, err := ctx.LegacyVerifier().VerifyPoSt(req)
-			if err != nil {
-				return nil, errors.RevertErrorWrap(err, "failed to verify PoSt")
-			}
-			if !res.IsValid {
-				return nil, Errors[ErrInvalidPoSt]
-			}
+			panic("this needs to use new sectorbuilder #3731")
 		}
 
 		// transition to the next proving period

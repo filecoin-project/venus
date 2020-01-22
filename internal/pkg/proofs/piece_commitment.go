@@ -49,7 +49,7 @@ func GeneratePieceCommitment(req GeneratePieceCommitmentRequest) (res GeneratePi
 		return
 	}
 
-	commP, err := go_sectorbuilder.GeneratePieceCommitment(file.Name(), req.PieceSize.Uint64())
+	commP, err := sectorbuilder.GeneratePieceCommitment(file, req.PieceSize.Uint64())
 	if err != nil {
 		retErr = err
 		return

@@ -29,10 +29,14 @@ func (a *API) ProposeStorageDeal(ctx context.Context, data cid.Cid, miner addres
 
 // QueryStorageDeal calls the storage client QueryDeal function
 func (a *API) QueryStorageDeal(ctx context.Context, prop cid.Cid) (*storagedeal.SignedResponse, error) {
-	return a.sc.QueryDeal(ctx, prop)
+	panic("storage client integration will change during go-fil-markets integration")
+
+	return nil, nil // nolint:govet
 }
 
 // Payments calls the storage client LoadVouchersForDeal function
 func (a *API) Payments(ctx context.Context, dealCid cid.Cid) ([]*types.PaymentVoucher, error) {
-	return a.sc.LoadVouchersForDeal(ctx, dealCid)
+	panic("storage client integration will change during go-fil-markets integration")
+
+	return nil, nil // nolint:govet
 }
