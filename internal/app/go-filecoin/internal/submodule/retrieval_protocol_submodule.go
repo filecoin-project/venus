@@ -3,28 +3,25 @@ package submodule
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
-	iface "github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/retrieval"
 )
 
-// RetrievalProtocolSubmodule enhances the node with retrieval protocol
-// capabilities.
+// RetrievalProtocolSubmodule enhances the `Node` with "Retrieval" protocol capabilities.
 type RetrievalProtocolSubmodule struct {
-	RetrievalClient   iface.RetrievalClient
-	RetrievalProvider iface.RetrievalProvider
+	RetrievalAPI *retrieval.API
+
+	// Retrieval Interfaces
+	RetrievalMiner *retrieval.Provider
 }
 
 // NewRetrievalProtocolSubmodule creates a new retrieval protocol submodule.
-func NewRetrievalProtocolSubmodule(providerAddr address.Address, ps piecestore.PieceStore, bs blockstore.Blockstore) (*RetrievalProtocolSubmodule, error) {
-	panic("TODO: go-fil-markets integration")
-
-	//pnode := retrievalmarketconnector.NewRetrievalProviderNodeConnector()
-	//cnode := retrievalmarketconnector.NewRetrievalClientNodeConnector()
-	//netwk := retrievalmarketconnector.NewRetrievalMarketNetworkConnector()
-	//rsvlr := retrievalmarketconnector.NewRetrievalPeerResolverConnector()
-	//
-	//return &RetrievalProtocolSubmodule{
-	//	RetrievalClient:   impl.NewClient(netwk, bs, cnode, rsvlr),
-	//	RetrievalProvider: impl.NewProvider(providerAddr, pnode, netwk, ps, bs),
-	//}, nil
+func NewRetrievalProtocolSubmodule(providerAddr address.Address, nd retrievalmarket.RetrievalProviderNode, nt rmnet.RetrievalMarketNetwork, ps piecestore.PieceStore, bs blockstore.Blockstore) (RetrievalProtocolSubmodule, error) {
+	return RetrievalProtocolSubmodule{
+		// RetrievalAPI: nil,
+		RetrievalMiner: retrieval.NewProvider(providerAddr, nd, nt, ps, bs),
+	}, nil
 }
