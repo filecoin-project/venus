@@ -10,11 +10,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/retrieval"
 )
 
-// RetrievalProtocolSubmodule enhances the `Node` with "Retrieval" protocol capabilities.
+// RetrievalProtocolSubmodule enhances the node with retrieval protocol
+// capabilities.
 type RetrievalProtocolSubmodule struct {
-	RetrievalAPI *retrieval.API
-
-	// Retrieval Interfaces
+	RetrievalClient *retrieval.Client
 	RetrievalMiner *retrieval.Provider
 }
 

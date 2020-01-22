@@ -11,12 +11,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
 )
 
-// StorageProtocolSubmodule enhances the `Node` with "Storage" protocol capabilities.
+// StorageProtocolSubmodule enhances the node with storage protocol
+// capabilities.
 type StorageProtocolSubmodule struct {
-	StorageAPI *storage.API
-
-	// Storage Market Interfaces
-	StorageMiner *storage.Provider
+	StorageClient *storage.Client
+	StorageProvider *storage.Provider
 }
 
 // NewStorageProtocolSubmodule creates a new storage protocol submodule.
@@ -28,7 +27,7 @@ func NewStorageProtocolSubmodule(ds datastore.Batching, bs blockstore.Blockstore
 	}
 
 	return StorageProtocolSubmodule{
-		// StorageAPI: nil,
-		StorageMiner: storageMarketProvider,
+		StorageClient: nil,
+		StorageProvider: storageMarketProvider,
 	}, nil
 }

@@ -519,7 +519,7 @@ func (node *Node) StopMining(ctx context.Context) {
 		node.BlockMining.MiningDoneWg.Wait()
 	}
 
-	// TODO: stop node.StorageProtocol.StorageMiner
+	// TODO: stop node.StorageProtocol.StorageProvider
 }
 
 func (node *Node) handleSubscription(ctx context.Context, sub pubsub.Subscription, handler pubSubHandler) {
@@ -569,7 +569,7 @@ func (node *Node) setupProtocols() error {
 	// DRAGONS: uncomment when we have a storage market
 	//smc := storage.NewClient()
 	//smcAPI := storage.NewAPI(smc)
-	//node.StorageProtocol.StorageAPI = &smcAPI
+	//node.StorageProtocol.StorageClientAPI = &smcAPI
 	return nil
 }
 
