@@ -159,6 +159,8 @@ github.com/filecoin-project/go-storage-miner v0.0.0-20200114225734-b2b5597f195e 
 github.com/filecoin-project/go-storage-miner v0.0.0-20200114225734-b2b5597f195e/go.mod h1:wLGo5BLgdfPLnPKXE0HNzL22x3bCgCdhtFEyk9qs6G8=
 github.com/filecoin-project/go-storage-miner v0.0.0-20200117223337-c9592598dbdc h1:epJluf6P7Ouxkip4uGHbxprMzoHmJSTfpATN/bbwWF8=
 github.com/filecoin-project/go-storage-miner v0.0.0-20200117223337-c9592598dbdc/go.mod h1:wLGo5BLgdfPLnPKXE0HNzL22x3bCgCdhtFEyk9qs6G8=
+github.com/filecoin-project/go-storage-miner v0.0.0-20200122233640-6a01988b8217 h1:TmSwPQB9B4v6CDm/mg6dqSQL/jj4ZlCqikFAd5REob8=
+github.com/filecoin-project/go-storage-miner v0.0.0-20200122233640-6a01988b8217/go.mod h1:9QP2qibO+2SXJ8KKfmltupMh2qwXy8OatiIgEkL48SQ=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
