@@ -18,6 +18,8 @@ require (
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20191221090835-c7bbef445934
 	github.com/filecoin-project/go-address v0.0.0-20191219011437-af739c490b4f
 	github.com/filecoin-project/go-amt-ipld v0.0.0-20190920035751-ae3c37184616
+	github.com/filecoin-project/go-data-transfer v0.0.0-20191219005021-4accf56bd2ce
+	github.com/filecoin-project/go-fil-markets v0.0.0-20200122013934-353c6e8ac576
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-paramfetch v0.0.1
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200114015900-4103afa82689
@@ -28,15 +30,15 @@ require (
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/gorilla/mux v1.7.0 // indirect
-	github.com/ipfs/go-bitswap v0.1.5
+	github.com/ipfs/go-bitswap v0.1.8
 	github.com/ipfs/go-block-format v0.0.2
-	github.com/ipfs/go-blockservice v0.1.2
-	github.com/ipfs/go-car v0.0.2
+	github.com/ipfs/go-blockservice v0.1.3-0.20190908200855-f22eea50656c
+	github.com/ipfs/go-car v0.0.3-0.20191203022317-23b0a85fd1b1
 	github.com/ipfs/go-cid v0.0.4
 	github.com/ipfs/go-datastore v0.1.1
 	github.com/ipfs/go-ds-badger v0.0.7
 	github.com/ipfs/go-fs-lock v0.0.1
-	github.com/ipfs/go-graphsync v0.0.3
+	github.com/ipfs/go-graphsync v0.0.4
 	github.com/ipfs/go-hamt-ipld v0.0.13
 	github.com/ipfs/go-ipfs-blockstore v0.1.1
 	github.com/ipfs/go-ipfs-chunker v0.0.1
@@ -44,7 +46,7 @@ require (
 	github.com/ipfs/go-ipfs-cmds v0.0.1
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
 	github.com/ipfs/go-ipfs-exchange-offline v0.0.1
-	github.com/ipfs/go-ipfs-files v0.0.3
+	github.com/ipfs/go-ipfs-files v0.0.4
 	github.com/ipfs/go-ipfs-keystore v0.0.1
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.3
@@ -55,7 +57,7 @@ require (
 	github.com/ipfs/go-path v0.0.1
 	github.com/ipfs/go-unixfs v0.2.2
 	github.com/ipfs/iptb v1.3.8-0.20190401234037-98ccf4228a73
-	github.com/ipld/go-ipld-prime v0.0.1-filecoin
+	github.com/ipld/go-ipld-prime v0.0.2-0.20191108012745-28a82f04c785
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/jbenet/goprocess v0.1.3
 	github.com/jstemmer/go-junit-report v0.9.1
@@ -110,7 +112,6 @@ require (
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	golang.org/x/sys v0.0.0-20200116001909-b77594299b42 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
-	golang.org/x/tools v0.0.0-20200116225955-84cebe10344f // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	google.golang.org/api v0.13.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
@@ -122,3 +123,5 @@ require (
 )
 
 replace github.com/filecoin-project/filecoin-ffi => ./vendors/filecoin-ffi
+
+replace github.com/filecoin-project/go-storage-miner => /Users/erinswenson-healey/dev/go-storage-mining

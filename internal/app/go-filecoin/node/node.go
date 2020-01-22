@@ -129,6 +129,7 @@ func (node *Node) Start(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to set up protocols:")
 	}
+
 	// DRAGONS: uncomment when we have retrieval market integration
 	//node.RetrievalProtocol.RetrievalMiner = retrieval.NewMiner()
 

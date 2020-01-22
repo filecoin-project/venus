@@ -212,7 +212,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	nd.ProofVerification = submodule.NewProofVerificationSubmodule()
 
-	nd.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(ctx)
+	nd.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(nil, nil, nil, nil, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.StorageProtocol")
 	}

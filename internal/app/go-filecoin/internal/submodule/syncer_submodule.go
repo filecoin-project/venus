@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-graphsync"
+	"github.com/ipfs/go-graphsync/impl"
 	"github.com/ipfs/go-graphsync/ipldbridge"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
