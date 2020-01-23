@@ -55,6 +55,7 @@ const (
 	PublishStorageDeals
 	PreCommitSector
 	CommitSector
+	AddBalance
 )
 
 // NewActor returns a new storage market actor.
