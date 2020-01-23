@@ -47,10 +47,10 @@ type StorageMinerNodeConnector struct {
 
 var _ storage.NodeAPI = new(StorageMinerNodeConnector)
 
-// NewStorageMinerNodeAdapter produces a StorageMinerNodeConnector, which adapts
+// NewStorageMinerNodeConnector produces a StorageMinerNodeConnector, which adapts
 // types in this codebase to the interface representing "the node" which is
 // expected by the go-storage-miner project.
-func NewStorageMinerNodeAdapter(minerAddress address.Address, workerAddress address.Address, chainStore *chain.Store, chainState *cst.ChainStateReadWriter, outbox *message.Outbox, waiter *msg.Waiter, wallet *wallet.Wallet) *StorageMinerNodeConnector {
+func NewStorageMinerNodeConnector(minerAddress address.Address, workerAddress address.Address, chainStore *chain.Store, chainState *cst.ChainStateReadWriter, outbox *message.Outbox, waiter *msg.Waiter, wallet *wallet.Wallet) *StorageMinerNodeConnector {
 	return &StorageMinerNodeConnector{
 		minerAddr:    minerAddress,
 		workerAddr:   workerAddress,

@@ -1,7 +1,6 @@
 package submodule
 
 import (
-	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
@@ -23,10 +22,10 @@ type StorageProtocolSubmodule struct {
 }
 
 // NewStorageProtocolSubmodule creates a new storage protocol submodule.
-func NewStorageProtocolSubmodule(h host.Host, ds datastore.Batching, bs blockstore.Blockstore, fs filestore.FileStore, ps piecestore.PieceStore, dt datatransfer.Manager, dsc *discovery.Local, dls *statestore.StateStore) (StorageProtocolSubmodule, error) {
+func NewStorageProtocolSubmodule(h host.Host, ds datastore.Batching, bs blockstore.Blockstore, fs filestore.FileStore, ps piecestore.PieceStore, dt datatransfer.Manager, dsc *discovery.Local, dls *statestore.StateStore, wg storagemarketconnector.WorkerGetter) (StorageProtocolSubmodule, error) {
 	panic("TODO: go-fil-markets integration")
 
-	pnode := storagemarketconnector.NewStorageProviderNodeConnector()
+	pnode := storagemarketconnector.NewStorageProviderNodeConnector(wg)
 	cnode := storagemarketconnector.NewStorageClientNodeConnector()
 
 	provider, err := impl.NewProvider(ds, bs, fs, ps, dt, pnode)

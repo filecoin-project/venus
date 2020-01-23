@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	t2 "github.com/filecoin-project/go-fil-markets/shared/types"
@@ -21,15 +23,19 @@ import (
 	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
+type WorkerGetter func(ctx context.Context, minerAddr fcaddr.Address, baseKey block.TipSetKey) (fcaddr.Address, error)
+
 type StorageProviderNodeConnector struct {
-	minerAddr  address.Address
-	chainStore *chain.Store
-	outbox     *message.Outbox
-	waiter     *msg.Waiter
+	minerAddr    address.Address
+	chainStore   *chain.Store
+	outbox       *message.Outbox
+	waiter       *msg.Waiter
+	pieceManager piecemanager.PieceManager
+	workerGetter WorkerGetter
 	//wallet     *wallet.Wallet
 }
 
-func NewStorageProviderNodeConnector() *StorageProviderNodeConnector {
+func NewStorageProviderNodeConnector(workerGetter WorkerGetter) *StorageProviderNodeConnector {
 	return &StorageProviderNodeConnector{}
 }
 
@@ -118,7 +124,7 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 
 	workerAddr, err := s.getFCWorker(ctx)
 	if err != nil {
-		return err
+		return 0, cid.Undef, err
 	}
 
 	mcid, cerr, err := s.outbox.Send(
@@ -160,11 +166,24 @@ func (s *StorageProviderNodeConnector) ListProviderDeals(ctx context.Context, ad
 }
 
 func (s *StorageProviderNodeConnector) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize uint64, pieceReader io.Reader) (uint64, error) {
-	panic("TODO: go-fil-markets integration")
+	// TODO: storage provider is expecting a sector ID here. This won't work. The sector ID needs to be removed from
+	// TODO: the return value, and storage provider needs to call OnDealSectorCommitted which should add Sector ID to its
+	// TODO: callback.
+	return 0, s.pieceManager.SealPieceIntoNewSector(ctx, deal.DealID, pieceSize, pieceReader)
 }
 
 func (s *StorageProviderNodeConnector) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
-	panic("TODO: go-fil-markets integration")
+	fcMiner, err := fcaddr.NewFromBytes(miner.Bytes())
+	if err != nil {
+		return address.Undef, err
+	}
+
+	fcworker, err := s.workerGetter(ctx, fcMiner, s.chainStore.GetHead())
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return address.NewFromBytes(fcworker.Bytes())
 }
 
 func (s *StorageProviderNodeConnector) SignBytes(ctx context.Context, signer address.Address, b []byte) (*t2.Signature, error) {
