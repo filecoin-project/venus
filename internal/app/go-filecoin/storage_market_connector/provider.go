@@ -13,8 +13,6 @@ import (
 
 type StorageProviderNodeConnector struct{}
 
-//var _ storagemarket.StorageProviderNode = new(StorageProviderNodeConnector)
-
 func NewStorageProviderNodeConnector() *StorageProviderNodeConnector {
 	return &StorageProviderNodeConnector{}
 }

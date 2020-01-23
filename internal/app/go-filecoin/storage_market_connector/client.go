@@ -11,8 +11,6 @@ import (
 
 type StorageClientNodeConnector struct{}
 
-//var _ m.StorageClientNode = new(StorageClientNodeConnector)
-
 func NewStorageClientNodeConnector() *StorageClientNodeConnector {
 	return &StorageClientNodeConnector{}
 }
@@ -60,7 +58,3 @@ func (s *StorageClientNodeConnector) OnDealSectorCommitted(ctx context.Context, 
 func (s *StorageClientNodeConnector) ValidateAskSignature(ask *types.SignedStorageAsk) error {
 	panic("implement me")
 }
-
-
-
-

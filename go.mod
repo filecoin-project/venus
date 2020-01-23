@@ -23,6 +23,7 @@ require (
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-paramfetch v0.0.1
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200114015900-4103afa82689
+	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storage-miner v0.0.0-20200122233640-6a01988b8217
 	github.com/go-check/check v0.0.0-20190902080502-41f04d3bba15 // indirect
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect

@@ -2,9 +2,9 @@ package node
 
 import (
 	"context"
-	"github.com/filecoin-project/go-address"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p"
@@ -214,7 +214,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.ProofVerification = submodule.NewProofVerificationSubmodule()
 
 	panic("provider NewStorageProtocolSubmodule the arguments it demands")
-	nd.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(nil, nil, nil, nil, nil)
+	nd.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(nil, nil, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.StorageProtocol")
 	}

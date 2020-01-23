@@ -36,9 +36,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
-
-	// TODO: replace this with go-address module #3719
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address" // TODO: replace this with go-address module #3719
 	vmerr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 )
 
@@ -131,7 +129,7 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 
 	// DRAGONS: uncomment when we have retrieval market integration
-	//node.RetrievalProtocol.RetrievalMiner = retrieval.NewMiner()
+	//node.RetrievalProtocol.RetrievalProvider = retrieval.NewMiner()
 
 	var syncCtx context.Context
 	syncCtx, node.syncer.CancelChainSync = context.WithCancel(context.Background())
