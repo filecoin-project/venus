@@ -50,12 +50,7 @@ func (s *StorageProviderNodeConnector) AddFunds(ctx context.Context, addr addres
 		return err
 	}
 
-	worker, err := s.GetMinerWorker(ctx, s.minerAddr)
-	if err != nil {
-		return err
-	}
-
-	workerAddr, err := fcaddr.NewFromBytes(worker.Bytes())
+	workerAddr, err := s.getFCWorker(ctx)
 	if err != nil {
 		return err
 	}
@@ -89,7 +84,75 @@ func (s *StorageProviderNodeConnector) GetBalance(ctx context.Context, addr addr
 }
 
 func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (storagemarket.DealID, cid.Cid, error) {
-	panic("TODO: go-fil-markets integration")
+	client, err := fcaddr.NewFromBytes(deal.Proposal.Client.Bytes())
+	if err != nil {
+		return 0, cid.Undef, err
+	}
+
+	provider, err := fcaddr.NewFromBytes(deal.Proposal.Provider.Bytes())
+	if err != nil {
+		return 0, cid.Undef, err
+	}
+
+	sig := types.Signature(deal.Proposal.ProposerSignature.Data)
+
+	fcStorageProposal := types.StorageDealProposal{
+		PieceRef:  deal.Proposal.PieceRef,
+		PieceSize: types.Uint64(deal.Proposal.PieceSize),
+
+		Client:   client,
+		Provider: provider,
+
+		ProposalExpiration: types.Uint64(deal.Proposal.ProposalExpiration),
+		Duration:           types.Uint64(deal.Proposal.Duration),
+
+		StoragePricePerEpoch: types.Uint64(deal.Proposal.StoragePricePerEpoch.Uint64()),
+		StorageCollateral:    types.Uint64(deal.Proposal.StorageCollateral.Uint64()),
+
+		ProposerSignature: &sig,
+	}
+	params, err := abi.ToEncodedValues([]types.StorageDealProposal{fcStorageProposal})
+	if err != nil {
+		return 0, cid.Undef, err
+	}
+
+	workerAddr, err := s.getFCWorker(ctx)
+	if err != nil {
+		return err
+	}
+
+	mcid, cerr, err := s.outbox.Send(
+		ctx,
+		workerAddr,
+		fcaddr.StorageMarketAddress,
+		types.ZeroAttoFIL,
+		types.NewGasPrice(1),
+		types.NewGasUnits(300),
+		true,
+		fcsm.PublishStorageDeals,
+		params,
+	)
+	if err != nil {
+		return 0, cid.Undef, err
+	}
+
+	receipt, err := s.wait(ctx, mcid, cerr)
+
+	dealIDValues, err := abi.Deserialize(receipt.Return[0], abi.UintArray)
+	if err != nil {
+		return 0, cid.Undef, err
+	}
+
+	dealIds, ok := dealIDValues.Val.([]uint64)
+	if !ok {
+		return 0, cid.Undef, xerrors.New("decoded deal ids are not a []uint64")
+	}
+
+	if len(dealIds) < 1 {
+		return 0, cid.Undef, xerrors.New("Successful call to publish storage deals did not return deal ids")
+	}
+
+	return storagemarket.DealID(dealIds[0]), mcid, err
 }
 
 func (s *StorageProviderNodeConnector) ListProviderDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
@@ -147,4 +210,17 @@ func (s *StorageProviderNodeConnector) wait(ctx context.Context, mcid cid.Cid, p
 	case <-ctx.Done():
 		return nil, xerrors.New("context ended prematurely")
 	}
+}
+
+func (s *StorageProviderNodeConnector) getFCWorker(ctx context.Context) (fcaddr.Address, error) {
+	worker, err := s.GetMinerWorker(ctx, s.minerAddr)
+	if err != nil {
+		return fcaddr.Undef, err
+	}
+
+	workerAddr, err := fcaddr.NewFromBytes(worker.Bytes())
+	if err != nil {
+		return fcaddr.Undef, err
+	}
+	return workerAddr, nil
 }
