@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 
 	"github.com/filecoin-project/go-address"
@@ -32,7 +34,7 @@ type StorageProviderNodeConnector struct {
 	waiter       *msg.Waiter
 	pieceManager piecemanager.PieceManager
 	workerGetter WorkerGetter
-	//wallet     *wallet.Wallet
+	wallet       *wallet.Wallet
 }
 
 func NewStorageProviderNodeConnector(workerGetter WorkerGetter) *StorageProviderNodeConnector {
@@ -187,7 +189,26 @@ func (s *StorageProviderNodeConnector) GetMinerWorker(ctx context.Context, miner
 }
 
 func (s *StorageProviderNodeConnector) SignBytes(ctx context.Context, signer address.Address, b []byte) (*t2.Signature, error) {
-	panic("TODO: go-fil-markets integration")
+	fcSigner, err := fcaddr.NewFromBytes(signer.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
+	fcSig, err := s.wallet.SignBytes(b, fcSigner)
+	if err != nil {
+		return nil, err
+	}
+
+	var sigType string
+	if signer.Protocol() == address.BLS {
+		sigType = t2.KTBLS
+	} else {
+		sigType = t2.KTSecp256k1
+	}
+	return &t2.Signature{
+		Type: sigType,
+		Data: fcSig[:],
+	}, nil
 }
 
 func (s *StorageProviderNodeConnector) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID uint64, cb storagemarket.DealSectorCommittedCallback) error {
