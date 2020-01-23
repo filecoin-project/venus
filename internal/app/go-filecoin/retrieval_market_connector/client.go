@@ -8,10 +8,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 )
 
-// RetrievalClientNodeConnector adapts the node to provide an interface used by the retrieval client.
 type RetrievalClientNodeConnector struct{}
 
-// NewRetrievalClientNodeConnector creates a new connector.
 func NewRetrievalClientNodeConnector() *RetrievalClientNodeConnector {
 	return &RetrievalClientNodeConnector{}
 }
