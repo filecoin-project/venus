@@ -500,6 +500,13 @@ func (node *Node) StartMining(ctx context.Context) error {
 		fmt.Printf("error starting storage miner: %s\n", err)
 	}
 
+	node.StorageProtocol.StorageProvider.Run(ctx, node.Host())
+
+	// An assumption
+	if err := node.RetrievalProtocol.RetrievalProvider.Start(); err != nil {
+		fmt.Printf("error starting retrieval provider: %s\n", err)
+	}
+
 	node.setIsMining(true)
 
 	return nil

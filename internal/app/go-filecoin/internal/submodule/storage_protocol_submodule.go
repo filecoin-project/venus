@@ -24,6 +24,8 @@ type StorageProtocolSubmodule struct {
 
 // NewStorageProtocolSubmodule creates a new storage protocol submodule.
 func NewStorageProtocolSubmodule(h host.Host, ds datastore.Batching, bs blockstore.Blockstore, fs filestore.FileStore, ps piecestore.PieceStore, dt datatransfer.Manager, dsc *discovery.Local, dls *statestore.StateStore) (StorageProtocolSubmodule, error) {
+	panic("TODO: go-fil-markets integration")
+
 	pnode := storagemarketconnector.NewStorageProviderNodeConnector()
 	cnode := storagemarketconnector.NewStorageClientNodeConnector()
 

@@ -16,9 +16,9 @@ func NewRetrievalProviderNodeConnector() *RetrievalProviderNodeConnector {
 }
 
 func (r RetrievalProviderNodeConnector) UnsealSector(ctx context.Context, sectorId uint64, offset uint64, length uint64) (io.ReadCloser, error) {
-	panic("implement me")
+	panic("TODO: go-fil-markets integration")
 }
 
 func (r RetrievalProviderNodeConnector) SavePaymentVoucher(ctx context.Context, paymentChannel address.Address, voucher *types.SignedVoucher, proof []byte, expectedAmount tokenamount.TokenAmount) (tokenamount.TokenAmount, error) {
-	panic("implement me")
+	panic("TODO: go-fil-markets integration")
 }

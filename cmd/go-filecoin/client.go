@@ -1,20 +1,18 @@
 package commands
 
 import (
-	"errors"
 	"fmt"
 	"io"
-	"strconv"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 	files "github.com/ipfs/go-ipfs-files"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 var clientCmd = &cmds.Command{
@@ -125,34 +123,38 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 		cmdkit.BoolOption("allow-duplicates", "Allows duplicate proposals to be created. Unless this flag is set, you will not be able to make more than one deal per piece per miner. This protection exists to prevent erroneous duplicate deals."),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		allowDuplicates, _ := req.Options["allow-duplicates"].(bool)
+		panic("TODO: go-fil-markets integration")
 
-		miner, err := address.NewFromString(req.Arguments[0])
-		if err != nil {
-			return err
-		}
+		//allowDuplicates, _ := req.Options["allow-duplicates"].(bool)
+		//
+		//miner, err := address.NewFromString(req.Arguments[0])
+		//if err != nil {
+		//	return err
+		//}
+		//
+		//data, err := cid.Decode(req.Arguments[1])
+		//if err != nil {
+		//	return err
+		//}
+		//
+		//askid, err := strconv.ParseUint(req.Arguments[2], 10, 64)
+		//if err != nil {
+		//	return err
+		//}
+		//
+		//duration, err := strconv.ParseUint(req.Arguments[3], 10, 64)
+		//if err != nil {
+		//	return err
+		//}
+		//
+		//resp, err := GetStorageAPI(env).ProposeStorageDeal()
+		//if err != nil {
+		//	return err
+		//}
+		//
+		//return re.Emit(resp)
 
-		data, err := cid.Decode(req.Arguments[1])
-		if err != nil {
-			return err
-		}
-
-		askid, err := strconv.ParseUint(req.Arguments[2], 10, 64)
-		if err != nil {
-			return err
-		}
-
-		duration, err := strconv.ParseUint(req.Arguments[3], 10, 64)
-		if err != nil {
-			return err
-		}
-
-		resp, err := GetStorageAPI(env).ProposeStorageDeal(req.Context, data, miner, askid, duration, allowDuplicates)
-		if err != nil {
-			return err
-		}
-
-		return re.Emit(resp)
+		return nil
 	},
 	Type: storagedeal.Response{},
 	Encoders: cmds.EncoderMap{
@@ -178,17 +180,21 @@ format is specified with the --enc flag.
 		cmdkit.StringArg("id", true, false, "CID of deal to query"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		propcid, err := cid.Decode(req.Arguments[0])
-		if err != nil {
-			return err
-		}
+		panic("TODO: go-fil-markets integration")
 
-		resp, err := GetStorageAPI(env).QueryStorageDeal(req.Context, propcid)
-		if err != nil {
-			return err
-		}
+		//propcid, err := cid.Decode(req.Arguments[0])
+		//if err != nil {
+		//	return err
+		//}
+		//
+		//resp, err := GetStorageAPI(env).QueryStorageDeal(req.Context, propcid)
+		//if err != nil {
+		//	return err
+		//}
+		//
+		//return re.Emit(resp)
 
-		return re.Emit(resp)
+		return nil
 	},
 	Type: storagedeal.SignedResponse{},
 	Encoders: cmds.EncoderMap{
@@ -217,23 +223,27 @@ is invalid.  Returns nil otherwise.
 		cmdkit.StringArg("id", true, false, "CID of deal to query"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		proposalCid, err := cid.Decode(req.Arguments[0])
-		if err != nil {
-			return err
-		}
+		panic("TODO: go-fil-markets integration")
 
-		resp, err := GetStorageAPI(env).QueryStorageDeal(req.Context, proposalCid)
-		if err != nil {
-			return err
-		}
+		//proposalCid, err := cid.Decode(req.Arguments[0])
+		//if err != nil {
+		//	return err
+		//}
+		//
+		//resp, err := GetStorageAPI(env).QueryStorageDeal(req.Context, proposalCid)
+		//if err != nil {
+		//	return err
+		//}
+		//
+		//if resp.State != storagedeal.Complete {
+		//	return errors.New("storage deal not in Complete state")
+		//}
+		//
+		//validateError := GetPorcelainAPI(env).ClientValidateDeal(req.Context, proposalCid, resp.ProofInfo)
+		//
+		//return re.Emit(VerifyStorageDealResult{validateError == nil})
 
-		if resp.State != storagedeal.Complete {
-			return errors.New("storage deal not in Complete state")
-		}
-
-		validateError := GetPorcelainAPI(env).ClientValidateDeal(req.Context, proposalCid, resp.ProofInfo)
-
-		return re.Emit(VerifyStorageDealResult{validateError == nil})
+		return nil
 	},
 	Type: &VerifyStorageDealResult{},
 }
@@ -279,17 +289,21 @@ var paymentsCmd = &cmds.Command{
 		cmdkit.StringArg("dealCid", true, false, "Channel id from which to list vouchers"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		dealCid, err := cid.Decode(req.Arguments[0])
-		if err != nil {
-			return fmt.Errorf("invalid channel id")
-		}
+		panic("TODO: go-fil-markets integration")
 
-		vouchers, err := GetStorageAPI(env).Payments(req.Context, dealCid)
-		if err != nil {
-			return err
-		}
+		//dealCid, err := cid.Decode(req.Arguments[0])
+		//if err != nil {
+		//	return fmt.Errorf("invalid channel id")
+		//}
+		//
+		//vouchers, err := GetStorageAPI(env).Payments(req.Context, dealCid)
+		//if err != nil {
+		//	return err
+		//}
+		//
+		//return re.Emit(vouchers)
 
-		return re.Emit(vouchers)
+		return nil
 	},
 	Type: []*types.PaymentVoucher{},
 	Encoders: cmds.EncoderMap{

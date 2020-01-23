@@ -3,7 +3,7 @@ package commands
 import (
 	"context"
 
-	"github.com/ipfs/go-ipfs-cmds"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/mining"
@@ -16,8 +16,8 @@ type Env struct {
 	blockMiningAPI *mining.API
 	ctx            context.Context
 	porcelainAPI   *porcelain.API
-	retrievalAPI   *retrieval.API
-	storageAPI     *storage.API
+	retrievalAPI   retrieval.API
+	storageAPI     storage.API
 	inspectorAPI   *Inspector
 }
 
@@ -47,13 +47,13 @@ func GetBlockAPI(env cmds.Environment) *mining.API {
 }
 
 // GetRetrievalAPI returns the retrieval protocol api from the given environment.
-func GetRetrievalAPI(env cmds.Environment) *retrieval.API {
+func GetRetrievalAPI(env cmds.Environment) retrieval.API {
 	ce := env.(*Env)
 	return ce.retrievalAPI
 }
 
 // GetStorageAPI returns the storage protocol api from the given environment.
-func GetStorageAPI(env cmds.Environment) *storage.API {
+func GetStorageAPI(env cmds.Environment) storage.API {
 	ce := env.(*Env)
 	return ce.storageAPI
 }
