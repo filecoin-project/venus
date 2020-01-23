@@ -9,16 +9,33 @@ import (
 	t2 "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
-type StorageProviderNodeConnector struct{}
+type StorageProviderNodeConnector struct {
+	chainStore *chain.Store
+	//outbox     *message.Outbox
+	//waiter     *msg.Waiter
+	//wallet     *wallet.Wallet
+}
 
 func NewStorageProviderNodeConnector() *StorageProviderNodeConnector {
 	return &StorageProviderNodeConnector{}
 }
 
 func (s *StorageProviderNodeConnector) MostRecentStateId(ctx context.Context) (storagemarket.StateKey, error) {
-	panic("TODO: go-fil-markets integration")
+	key := s.chainStore.GetHead()
+	ts, err := s.chainStore.GetTipSet(key)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &stateKey{key, uint64(ts.At(0).Height)}, nil
 }
 
 func (s *StorageProviderNodeConnector) AddFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
