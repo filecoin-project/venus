@@ -37,8 +37,16 @@ type StorageProviderNodeConnector struct {
 	wallet       *wallet.Wallet
 }
 
-func NewStorageProviderNodeConnector(workerGetter WorkerGetter) *StorageProviderNodeConnector {
-	return &StorageProviderNodeConnector{}
+func NewStorageProviderNodeConnector(ma address.Address, cs *chain.Store, ob *message.Outbox, w *msg.Waiter, pm piecemanager.PieceManager, wg WorkerGetter, wlt *wallet.Wallet) *StorageProviderNodeConnector {
+	return &StorageProviderNodeConnector{
+		minerAddr:    ma,
+		chainStore:   cs,
+		outbox:       ob,
+		waiter:       w,
+		pieceManager: pm,
+		workerGetter: wg,
+		wallet:       wlt,
+	}
 }
 
 func (s *StorageProviderNodeConnector) MostRecentStateId(ctx context.Context) (storagemarket.StateKey, error) {
@@ -215,7 +223,7 @@ func (s *StorageProviderNodeConnector) SignBytes(ctx context.Context, signer add
 }
 
 func (s *StorageProviderNodeConnector) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID uint64, cb storagemarket.DealSectorCommittedCallback) error {
-	// TODO: deal id is globally unique, do we need the provider address?
+	// TODO: is this provider address the miner address or the miner worker address?
 
 	pred := func(msg *types.SignedMessage, msgCid cid.Cid) bool {
 		m := msg.Message
@@ -223,15 +231,18 @@ func (s *StorageProviderNodeConnector) OnDealSectorCommitted(ctx context.Context
 			return false
 		}
 
-		// TODO: check provider address == msg.From
+		// TODO: compare addresses directly when they share a type #3719
+		if m.From.String() != provider.String() {
+			return false
+		}
 
-		values, err := abi.DecodeValues(m.Params, []abi.Type{abi.SectorPreCommitInfo})
+		values, err := abi.DecodeValues(m.Params, []abi.Type{abi.SectorProveCommitInfo})
 		if err != nil {
 			return false
 		}
 
-		preCommitInfo := values[0].Val.(*types.SectorPreCommitInfo)
-		for _, id := range preCommitInfo.DealIDs {
+		commitInfo := values[0].Val.(*types.SectorProveCommitInfo)
+		for _, id := range commitInfo.DealIDs {
 			if uint64(id) == dealID {
 				return true
 			}
@@ -241,11 +252,13 @@ func (s *StorageProviderNodeConnector) OnDealSectorCommitted(ctx context.Context
 
 	_, found, err := s.waiter.Find(ctx, pred)
 	if found {
+		// TODO: DealSectorCommittedCallback should take a sector ID which we would provide here.
 		cb(err)
 		return nil
 	}
 
 	return s.waiter.WaitPredicate(ctx, pred, func(_ *block.Block, _ *types.SignedMessage, _ *types.MessageReceipt) error {
+		// TODO: DealSectorCommittedCallback should take a sector ID which we would provide here.
 		cb(nil)
 		return nil
 	})

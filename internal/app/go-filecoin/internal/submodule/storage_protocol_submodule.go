@@ -1,17 +1,27 @@
 package submodule
 
 import (
-	"github.com/filecoin-project/go-fil-markets/filestore"
+	"context"
+
+	"github.com/filecoin-project/go-address"
+	graphsyncimpl "github.com/filecoin-project/go-data-transfer/impl/graphsync"
+	filestore2 "github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	iface "github.com/filecoin-project/go-fil-markets/storagemarket"
 	impl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
-	"github.com/filecoin-project/go-statestore"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
+	storagemarketconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/storage_market_connector"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
+	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 	"github.com/ipfs/go-datastore"
+	graphsync "github.com/ipfs/go-graphsync/impl"
+	"github.com/ipfs/go-graphsync/ipldbridge"
+	gsnet "github.com/ipfs/go-graphsync/network"
+	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/host"
-
-	storagemarketconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/storage_market_connector"
 )
 
 // StorageProtocolSubmodule enhances the node with storage protocol
@@ -22,19 +32,53 @@ type StorageProtocolSubmodule struct {
 }
 
 // NewStorageProtocolSubmodule creates a new storage protocol submodule.
-func NewStorageProtocolSubmodule(h host.Host, ds datastore.Batching, bs blockstore.Blockstore, fs filestore.FileStore, ps piecestore.PieceStore, dt datatransfer.Manager, dsc *discovery.Local, dls *statestore.StateStore, wg storagemarketconnector.WorkerGetter) (StorageProtocolSubmodule, error) {
-	panic("TODO: go-fil-markets integration")
+func NewStorageProtocolSubmodule(
+	ctx context.Context,
+	minerAddr fcaddr.Address,
+	c *ChainSubmodule,
+	m *MessagingSubmodule,
+	mw *msg.Waiter,
+	pm piecemanager.PieceManager,
+	wlt *wallet.Wallet,
+	h host.Host,
+	ds datastore.Batching,
+	bs blockstore.Blockstore,
+	repoPath string,
+	wg storagemarketconnector.WorkerGetter) (*StorageProtocolSubmodule, error) {
 
-	pnode := storagemarketconnector.NewStorageProviderNodeConnector(wg)
-	cnode := storagemarketconnector.NewStorageClientNodeConnector()
-
-	provider, err := impl.NewProvider(ds, bs, fs, ps, dt, pnode)
+	ma, err := address.NewFromBytes(minerAddr.Bytes())
 	if err != nil {
-		return StorageProtocolSubmodule{}, err
+		return nil, err
 	}
 
-	return StorageProtocolSubmodule{
-		StorageClient:   impl.NewClient(h, bs, fs, dt, dsc, dls, cnode),
+	pnode := storagemarketconnector.NewStorageProviderNodeConnector(ma, c.ChainReader, m.Outbox, mw, pm, wg, wlt)
+	cnode := storagemarketconnector.NewStorageClientNodeConnector()
+
+	pieceStagingPath, err := paths.PieceStagingDir(repoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	fs, err := filestore2.NewLocalFileStore(filestore2.OsPath(pieceStagingPath))
+	if err != nil {
+		return nil, err
+	}
+
+	graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
+	bridge := ipldbridge.NewIPLDBridge()
+	loader := gsstoreutil.LoaderForBlockstore(bs)
+	storer := gsstoreutil.StorerForBlockstore(bs)
+	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
+
+	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync)
+
+	provider, err := impl.NewProvider(ds, bs, fs, piecestore.NewPieceStore(ds), dt, pnode)
+	if err != nil {
+		return nil, err
+	}
+
+	return &StorageProtocolSubmodule{
+		StorageClient:   impl.NewClient(h, bs, fs, dt, nil, nil, cnode),
 		StorageProvider: provider,
 	}, nil
 }

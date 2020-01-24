@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"runtime"
 
+	"github.com/filecoin-project/go-fil-markets/piecestore"
+
 	a2 "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	bserv "github.com/ipfs/go-blockservice"
@@ -94,8 +96,8 @@ type Node struct {
 	//
 
 	VersionTable      *version.ProtocolVersionTable
-	StorageProtocol   submodule.StorageProtocolSubmodule
-	RetrievalProtocol submodule.RetrievalProtocolSubmodule
+	StorageProtocol   *submodule.StorageProtocolSubmodule
+	RetrievalProtocol *submodule.RetrievalProtocolSubmodule
 }
 
 // Start boots up the node.
@@ -430,12 +432,32 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 
 	waiter := msg.NewWaiter(node.chain.ChainReader, node.chain.MessageStore, node.Blockstore.Blockstore, node.Blockstore.CborStore)
 
-	sub, err := submodule.NewStorageMiningSubmodule(minerAddr, workerAddr, node.Repo.Datastore(), sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet)
+	node.StorageMining, err = submodule.NewStorageMiningSubmodule(minerAddr, workerAddr, node.Repo.Datastore(), sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet)
 	if err != nil {
 		return err
 	}
 
-	node.StorageMining = &sub
+	node.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(
+		ctx,
+		minerAddr,
+		&node.chain,
+		&node.Messaging,
+		waiter,
+		node.StorageMining.PieceManager,
+		node.Wallet.Wallet,
+		node.Host(),
+		node.Repo.Datastore(),
+		node.Blockstore.Blockstore,
+		repoPath,
+		node.PorcelainAPI.MinerGetWorkerAddress)
+	if err != nil {
+		return err
+	}
+
+	node.RetrievalProtocol, err = submodule.NewRetrievalProtocolSubmodule(minerAddr2, piecestore.NewPieceStore(node.Repo.Datastore()), node.Blockstore.Blockstore)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

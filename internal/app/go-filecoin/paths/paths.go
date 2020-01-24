@@ -14,6 +14,7 @@ const defaultRepoDir = "~/.filecoin"
 // node sector storage path defaults
 const filSectorPathVar = "FIL_SECTOR_PATH"
 const defaultSectorDir = ".filecoin_sectors"
+const defaultPieceStagingDir = "pieces"
 const defaultSectorStagingDir = "staging"
 const defaultSectorSealingDir = "sealed"
 
@@ -48,6 +49,11 @@ func GetSectorPath(override, repoPath string) (string, error) {
 	}
 	// Default is third precedence: repoPath/../defaultSectorDir
 	return homedir.Expand(filepath.Join(repoPath, "../", defaultSectorDir))
+}
+
+// PieceStagingDir returns the path to the piece staging directory repo path
+func PieceStagingDir(repoPath string) (string, error) {
+	return homedir.Expand(filepath.Join(repoPath, "../", defaultPieceStagingDir))
 }
 
 // StagingDir returns the path to the sector staging directory given the sector

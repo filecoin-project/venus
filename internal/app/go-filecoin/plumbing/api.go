@@ -281,8 +281,10 @@ func (api *API) SignedMessageSend(ctx context.Context, smsg *types.SignedMessage
 }
 
 // MessageFind returns a message and receipt from the blockchain, if it exists.
-func (api *API) MessageFind(ctx context.Context, msgCid cid.Cid) (*msg.ChainMessage, bool, error) {
-	return api.msgWaiter.Find(ctx, msgCid)
+func (api *API) MessageFind(ctx context.Context, mcid cid.Cid) (*msg.ChainMessage, bool, error) {
+	return api.msgWaiter.Find(ctx, func(msg *types.SignedMessage, msgCid cid.Cid) bool {
+		return msgCid.Equals(mcid)
+	})
 }
 
 // MessageWait invokes the callback when a message with the given cid appears on chain.

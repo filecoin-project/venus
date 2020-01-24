@@ -18,7 +18,7 @@ type RetrievalProtocolSubmodule struct {
 }
 
 // NewRetrievalProtocolSubmodule creates a new retrieval protocol submodule.
-func NewRetrievalProtocolSubmodule(providerAddr address.Address, ps piecestore.PieceStore, bs blockstore.Blockstore) (RetrievalProtocolSubmodule, error) {
+func NewRetrievalProtocolSubmodule(providerAddr address.Address, ps piecestore.PieceStore, bs blockstore.Blockstore) (*RetrievalProtocolSubmodule, error) {
 	panic("TODO: go-fil-markets integration")
 
 	pnode := retrievalmarketconnector.NewRetrievalProviderNodeConnector()
@@ -26,7 +26,7 @@ func NewRetrievalProtocolSubmodule(providerAddr address.Address, ps piecestore.P
 	netwk := retrievalmarketconnector.NewRetrievalMarketNetworkConnector()
 	rsvlr := retrievalmarketconnector.NewRetrievalPeerResolverConnector()
 
-	return RetrievalProtocolSubmodule{
+	return &RetrievalProtocolSubmodule{
 		RetrievalClient:   impl.NewClient(netwk, bs, cnode, rsvlr),
 		RetrievalProvider: impl.NewProvider(providerAddr, pnode, netwk, ps, bs),
 	}, nil

@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"github.com/ipfs/go-ipfs-cmdkit"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )

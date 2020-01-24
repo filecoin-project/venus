@@ -29,17 +29,17 @@ type StorageMiningSubmodule struct {
 }
 
 // NewStorageMiningSubmodule creates a new storage mining submodule.
-func NewStorageMiningSubmodule(minerAddr, workerAddr address.Address, ds datastore.Batching, s sectorbuilder.Interface, c *ChainSubmodule, m *MessagingSubmodule, mw *msg.Waiter, w *WalletSubmodule) (StorageMiningSubmodule, error) {
+func NewStorageMiningSubmodule(minerAddr, workerAddr address.Address, ds datastore.Batching, s sectorbuilder.Interface, c *ChainSubmodule, m *MessagingSubmodule, mw *msg.Waiter, w *WalletSubmodule) (*StorageMiningSubmodule, error) {
 	minerNode := storageminerconnector.NewStorageMinerNodeConnector(minerAddr, workerAddr, c.ChainReader, c.State, m.Outbox, mw, w.Wallet)
 	storageMiner, err := storage.NewMiner(minerNode, ds, s)
 	if err != nil {
-		return StorageMiningSubmodule{}, err
+		return nil, err
 	}
 
 	smbe := piecemanager.NewStorageMinerBackEnd(storageMiner, s)
 	sbbe := postgenerator.NewSectorBuilderBackEnd(s)
 
-	modu := StorageMiningSubmodule{
+	modu := &StorageMiningSubmodule{
 		PieceManager:  smbe,
 		PoStGenerator: sbbe,
 	}
