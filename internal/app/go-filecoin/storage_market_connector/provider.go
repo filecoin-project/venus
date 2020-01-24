@@ -84,10 +84,12 @@ func (s *StorageProviderNodeConnector) AddFunds(ctx context.Context, addr addres
 }
 
 func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
+	// TODO: how to read from StorageMarketActor state
 	panic("TODO: go-fil-markets integration")
 }
 
 func (s *StorageProviderNodeConnector) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {
+	// TODO: how to read from StorageMarketActor state
 	panic("TODO: go-fil-markets integration")
 }
 
@@ -164,6 +166,7 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 }
 
 func (s *StorageProviderNodeConnector) ListProviderDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
+	// TODO: how to read from StorageMarketActor state
 	panic("TODO: go-fil-markets integration")
 }
 
