@@ -5,7 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	graphsyncimpl "github.com/filecoin-project/go-data-transfer/impl/graphsync"
-	filestore2 "github.com/filecoin-project/go-fil-markets/filestore"
+	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	iface "github.com/filecoin-project/go-fil-markets/storagemarket"
 	impl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
@@ -59,7 +59,7 @@ func NewStorageProtocolSubmodule(
 		return nil, err
 	}
 
-	fs, err := filestore2.NewLocalFileStore(filestore2.OsPath(pieceStagingPath))
+	fs, err := filestore.NewLocalFileStore(filestore.OsPath(pieceStagingPath))
 	if err != nil {
 		return nil, err
 	}
