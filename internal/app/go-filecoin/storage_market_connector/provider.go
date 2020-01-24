@@ -215,7 +215,40 @@ func (s *StorageProviderNodeConnector) SignBytes(ctx context.Context, signer add
 }
 
 func (s *StorageProviderNodeConnector) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID uint64, cb storagemarket.DealSectorCommittedCallback) error {
-	panic("TODO: go-fil-markets integration")
+	// TODO: deal id is globally unique, do we need the provider address?
+
+	pred := func(msg *types.SignedMessage, msgCid cid.Cid) bool {
+		m := msg.Message
+		if m.Method != fcsm.CommitSector {
+			return false
+		}
+
+		// TODO: check provider address == msg.From
+
+		values, err := abi.DecodeValues(m.Params, []abi.Type{abi.SectorPreCommitInfo})
+		if err != nil {
+			return false
+		}
+
+		preCommitInfo := values[0].Val.(*types.SectorPreCommitInfo)
+		for _, id := range preCommitInfo.DealIDs {
+			if uint64(id) == dealID {
+				return true
+			}
+		}
+		return false
+	}
+
+	_, found, err := s.waiter.Find(ctx, pred)
+	if found {
+		cb(err)
+		return nil
+	}
+
+	return s.waiter.WaitPredicate(ctx, pred, func(_ *block.Block, _ *types.SignedMessage, _ *types.MessageReceipt) error {
+		cb(nil)
+		return nil
+	})
 }
 
 func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx context.Context, dealID uint64) (sectorID uint64, offset uint64, length uint64, err error) {
