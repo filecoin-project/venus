@@ -23,12 +23,12 @@ const (
 
 // MarshalStorage encodes the passed in data into bytes.
 func MarshalStorage(in interface{}) ([]byte, error) {
-	return encoding.Encode(in)
+	return encoding.EncodeDeprecated(in)
 }
 
 // UnmarshalStorage decodes the passed in bytes into the given object.
 func UnmarshalStorage(raw []byte, to interface{}) error {
-	return encoding.Decode(raw, to)
+	return encoding.DecodeDeprecated(raw, to)
 }
 
 // SetKeyValue convenience method to load a lookup, set one key value pair and commit.
@@ -164,7 +164,7 @@ func (l *lookup) ForEachValue(ctx context.Context, valueType interface{}, callba
 		var decodedValue interface{}
 		if vt != nil {
 			to := reflect.New(vt).Interface()
-			if err := encoding.Decode(valueAsDeferred.Raw, to); err != nil {
+			if err := encoding.DecodeDeprecated(valueAsDeferred.Raw, to); err != nil {
 				return err
 			}
 			decodedValue = reflect.ValueOf(to).Elem().Interface()

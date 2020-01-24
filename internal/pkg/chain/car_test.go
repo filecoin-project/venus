@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -261,19 +262,19 @@ func validateBlockstoreImport(t *testing.T, start, stop block.TipSetKey, bstore 
 			blk, err := block.DecodeBlock(bsBlk.RawData())
 			assert.NoError(t, err)
 
-			secpAMT, err := amt.LoadAMT(as, blk.Messages.SecpRoot)
+			secpAMT, err := amt.LoadAMT(as, blk.Messages.SecpRoot.Cid)
 			require.NoError(t, err)
 
 			var smsg types.SignedMessage
 			requireAMTDecoding(t, bstore, secpAMT, &smsg)
 
-			blsAMT, err := amt.LoadAMT(as, blk.Messages.BLSRoot)
+			blsAMT, err := amt.LoadAMT(as, blk.Messages.BLSRoot.Cid)
 			require.NoError(t, err)
 
 			var umsg types.UnsignedMessage
 			requireAMTDecoding(t, bstore, blsAMT, &umsg)
 
-			rectAMT, err := amt.LoadAMT(as, blk.MessageReceipts)
+			rectAMT, err := amt.LoadAMT(as, blk.MessageReceipts.Cid)
 			require.NoError(t, err)
 
 			var rect types.MessageReceipt

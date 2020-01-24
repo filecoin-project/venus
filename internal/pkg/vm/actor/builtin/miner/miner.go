@@ -789,9 +789,9 @@ func (a *Impl) CommitSector(ctx invocationContext, sectorID uint64, commD, commR
 			state.ProvingPeriodEnd = epoch.Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
 		}
 		comms := types.Commitments{
-			CommD:     types.CommD{},
-			CommR:     types.CommR{},
-			CommRStar: types.CommRStar{},
+			CommD:     &types.CommD{},
+			CommR:     &types.CommR{},
+			CommRStar: &types.CommRStar{},
 		}
 		copy(comms.CommD[:], commD)
 		copy(comms.CommR[:], commR)

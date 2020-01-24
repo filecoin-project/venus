@@ -8,6 +8,7 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
@@ -33,7 +34,7 @@ func requiredCommonDeps(t *testing.T, gif consensus.GenesisInitFunc) *commonDeps
 // need to set some actor state up ahead of time (actor state is ultimately found in the
 // block store).
 func requireCommonDepsWithGifAndBlockstore(t *testing.T, gif consensus.GenesisInitFunc, r repo.Repo, bs bstore.Blockstore) *commonDeps {
-	cst := hamt.CSTFromBstore(bs)
+	cst := cborutil.NewIpldStore(bs)
 	chainStore, err := chain.Init(context.Background(), r, bs, cst, gif)
 	require.NoError(t, err)
 	messageStore := chain.NewMessageStore(bs)

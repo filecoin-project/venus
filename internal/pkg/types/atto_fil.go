@@ -50,9 +50,21 @@ func (z *AttoFIL) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// MarshalJSON converts an AttoFIL to a byte array and returns it.
+// MarshalJSON converts an AttoFIL to json bytes
 func (z AttoFIL) MarshalJSON() ([]byte, error) {
 	return json.Marshal(z.String())
+}
+
+// MarshalBinary converts an AttoFIL to bytes
+func (z AttoFIL) MarshalBinary() ([]byte, error) {
+	return z.Bytes(), nil
+}
+
+// UnmarshalBinary converts a byte slice to AttoFIL
+func (z *AttoFIL) UnmarshalBinary(b []byte) error {
+	af := NewAttoFILFromBytes(b)
+	*z = af
+	return nil
 }
 
 // AttoFIL represents a signed multi-precision integer quantity of

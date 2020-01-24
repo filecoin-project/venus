@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	cid "github.com/ipfs/go-cid"
@@ -11,10 +12,14 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -34,8 +39,8 @@ func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, sta
 		Parents:         baseTipSet.Key(),
 		ParentWeight:    types.Uint64(10000 * height),
 		Height:          types.Uint64(height),
-		StateRoot:       stateRootCid,
-		MessageReceipts: receiptRootCid,
+		StateRoot:       e.NewCid(stateRootCid),
+		MessageReceipts: e.NewCid(receiptRootCid),
 		BLSAggregateSig: emptyBLSSig,
 		EPoStInfo:       postInfo,
 	}

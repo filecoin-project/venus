@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -87,10 +88,10 @@ func (ctx *invocationContext) invoke() interface{} {
 	}
 
 	// 5. load target actor code
-	actorImpl := ctx.rt.getActorImpl(ctx.toActor.Code)
+	actorImpl := ctx.rt.getActorImpl(ctx.toActor.Code.Cid)
 
 	// 6. create target state handle
-	stateHandle := newActorStateHandle((*stateHandleContext)(ctx), ctx.toActor.Head)
+	stateHandle := newActorStateHandle((*stateHandleContext)(ctx), ctx.toActor.Head.Cid)
 	ctx.stateHandle = &stateHandle
 
 	// dispatch
@@ -127,7 +128,7 @@ func (ctx *invocationContext) invoke() interface{} {
 	// 2. validate state access
 	ctx.stateHandle.Validate()
 
-	ctx.toActor.Head = stateHandle.head
+	ctx.toActor.Head = e.NewCid(stateHandle.head)
 
 	// 3. success! build the receipt
 	if len(vals) > 0 {
@@ -149,7 +150,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 	}
 
 	// build state handle
-	var stateHandle = NewReadonlyStateHandle(ctx.rt.Storage(), initActorEntry.Head)
+	var stateHandle = NewReadonlyStateHandle(ctx.rt.Storage(), initActorEntry.Head.Cid)
 
 	// get a view into the actor state
 	initView := initactor.NewView(stateHandle, ctx.rt.Storage())
@@ -351,7 +352,7 @@ func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, pa
 	}
 
 	// make this the right 'type' of actor
-	newActor.Code = code
+	newActor.Code = e.NewCid(code)
 
 	// send message containing actor's initial balance to construct it with the given params
 	ctx.Send(idAddr, types.ConstructorMethodID, ctx.Message().ValueReceived(), params)
@@ -380,7 +381,7 @@ type patternContext2 invocationContext
 var _ runtime.PatternContext = (*patternContext2)(nil)
 
 func (ctx *patternContext2) Code() cid.Cid {
-	return ctx.fromActor.Code
+	return ctx.fromActor.Code.Cid
 }
 
 func isBuiltinActor(code cid.Cid) bool {

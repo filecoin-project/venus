@@ -356,7 +356,7 @@ func setID(ctx context.Context, storage runtime.Storage, addressMap cid.Cid, add
 }
 
 func keyForActorID(actorID types.Uint64) (string, error) {
-	key, err := encoding.Encode(actorID)
+	key, err := encoding.EncodeDeprecated(actorID)
 	if err != nil {
 		return "", fmt.Errorf("could not encode actor id: %d", actorID)
 	}

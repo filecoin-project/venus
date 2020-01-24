@@ -71,7 +71,6 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 		}
 		return cmp < 0
 	})
-
 	// Duplicate blocks (CIDs) are rejected here, pass that error through.
 	key, err := NewTipSetKeyFromUnique(cids...)
 	if err != nil {

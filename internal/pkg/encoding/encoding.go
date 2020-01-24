@@ -63,12 +63,22 @@ type Decoder interface {
 	DecodeStruct(obj interface{}) error
 }
 
-type defaultEncoder = IpldCborEncoder
-type defaultDecoder = IpldCborDecoder
+type defaultEncoder = FxamackerCborEncoder
+type defaultDecoder = FxamackerCborDecoder
+
+// Dragons: get rid of this when the new actor code lands
+type deprecatedEncoder = IpldCborEncoder
+type deprecatedDecoder = IpldCborDecoder
 
 // Encode encodes an object, returning a byte array.
 func Encode(obj interface{}) ([]byte, error) {
 	var encoder Encoder = &defaultEncoder{}
+	return encode(obj, reflect.ValueOf(obj), encoder)
+}
+
+// EncodeDeprecated uses the deprecated refmt cbor encoding
+func EncodeDeprecated(obj interface{}) ([]byte, error) {
+	var encoder Encoder = &deprecatedEncoder{}
 	return encode(obj, reflect.ValueOf(obj), encoder)
 }
 
@@ -118,6 +128,8 @@ func encode(obj interface{}, v reflect.Value, encoder Encoder) ([]byte, error) {
 		err = encoder.EncodeString(v.Convert(reflect.TypeOf("")).Interface().(string))
 	case reflect.Slice:
 		err = encoder.EncodeArray(obj)
+	case reflect.Array:
+		err = encoder.EncodeArray(obj)
 	case reflect.Map:
 		err = encoder.EncodeMap(obj)
 	case reflect.Struct:
@@ -152,6 +164,15 @@ func DecodeWith(obj interface{}, decoder Decoder) error {
 // Decode decodes a decodable type, and populates a pointer to the type.
 func Decode(raw []byte, obj interface{}) error {
 	var decoder Decoder = &defaultDecoder{
+		raw: raw,
+	}
+
+	return decode(obj, reflect.ValueOf(obj), decoder)
+}
+
+// DecodeDeprecated decodes using the deprecated refmt cbor encoding
+func DecodeDeprecated(raw []byte, obj interface{}) error {
+	var decoder Decoder = &deprecatedDecoder{
 		raw: raw,
 	}
 
@@ -197,6 +218,8 @@ func decode(obj interface{}, v reflect.Value, decoder Decoder) error {
 	case reflect.String:
 		return decoder.DecodeValue(obj)
 	case reflect.Slice:
+		return decoder.DecodeArray(obj)
+	case reflect.Array:
 		return decoder.DecodeArray(obj)
 	case reflect.Map:
 		return decoder.DecodeMap(obj)

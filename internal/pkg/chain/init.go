@@ -15,7 +15,7 @@ import (
 )
 
 // Init initializes a DefaultSycner in the given repo.
-func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst *hamt.BasicCborIpldStore, gen consensus.GenesisInitFunc) (*Store, error) {
+func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst hamt.CborIpldStore, gen consensus.GenesisInitFunc) (*Store, error) {
 	// TODO the following should be wrapped in the chain.Store or a sub
 	// interface.
 	// Generate the genesis tipset.
@@ -32,8 +32,8 @@ func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst *hamt.Basi
 	// Persist the genesis tipset to the repo.
 	genTsas := &TipSetMetadata{
 		TipSet:          genTipSet,
-		TipSetStateRoot: genesis.StateRoot,
-		TipSetReceipts:  genesis.MessageReceipts,
+		TipSetStateRoot: genesis.StateRoot.Cid,
+		TipSetReceipts:  genesis.MessageReceipts.Cid,
 	}
 	if err = chainStore.PutTipSetMetadata(ctx, genTsas); err != nil {
 		return nil, errors.Wrap(err, "failed to put genesis block in chain store")

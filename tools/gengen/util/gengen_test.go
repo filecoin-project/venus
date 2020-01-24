@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -69,7 +69,7 @@ func TestGenGenDeterministicBetweenBuilds(t *testing.T) {
 	var info *RenderedGenInfo
 	for i := 0; i < 50; i++ {
 		bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
-		cst := hamt.CSTFromBstore(bstore)
+		cst := cborutil.NewIpldStore(bstore)
 		inf, err := GenGen(ctx, testConfig, cst, bstore)
 		assert.NoError(t, err)
 		if info == nil {

@@ -2,6 +2,7 @@ package porcelain
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
@@ -68,7 +69,7 @@ func listAsksFromActorResult(ctx context.Context, plumbing claPlubming, actorRes
 	addr, _ := address.NewFromString(actorResult.Address)
 	actor := actorResult.Actor
 
-	if !types.MinerActorCodeCid.Equals(actor.Code) && !types.BootstrapMinerActorCodeCid.Equals(actor.Code) {
+	if !types.MinerActorCodeCid.Equals(actor.Code.Cid) && !types.BootstrapMinerActorCodeCid.Equals(actor.Code.Cid) {
 		return nil
 	}
 
@@ -83,12 +84,14 @@ func listAsksFromActorResult(ctx context.Context, plumbing claPlubming, actorRes
 	if err := encoding.Decode(ret[0], &asksIds); err != nil {
 		return err
 	}
+	fmt.Printf("asksIds: %v\n", asksIds)
 
 	for _, id := range asksIds {
 		ask, err := getAskByID(ctx, plumbing, addr, uint64(id))
 		if err != nil {
 			return err
 		}
+		fmt.Printf("ask: %v\n", ask)
 
 		out <- ask
 	}
@@ -138,6 +141,7 @@ func getAskByID(ctx context.Context, plumbing claPlubming, addr address.Address,
 	if err := encoding.Decode(ret[0], &ask); err != nil {
 		return Ask{}, err
 	}
+	fmt.Printf("pre processed ask: %v\n", ask)
 
 	return Ask{
 		Expiry: ask.Expiry,

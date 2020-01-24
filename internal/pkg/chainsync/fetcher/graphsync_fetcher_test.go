@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -44,8 +45,9 @@ import (
 const visitsPerBlock = 18
 
 type notDecodable struct {
-	Num    int    `json:"num"`
-	Mesage string `json:"mesage"`
+	_       struct{} `cbor:",toarray"`
+	Num     int      `json:"num"`
+	Message string   `json:"message"`
 }
 
 func init() {
@@ -65,7 +67,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 	builder := chain.NewBuilderWithDeps(t, address.Undef, &chain.FakeStateBuilder{}, chain.NewClockTimestamper(chainClock))
 	keys := types.MustGenerateKeyInfo(2, 42)
 	mm := types.NewMessageMaker(t, keys)
-	notDecodableBlock, err := cbor.WrapObject(notDecodable{5, "applesauce"}, types.DefaultHashFunction, -1)
+	notDecodableBytes, err := encoding.Encode(notDecodable{Num: 5, Message: "applesauce"})
+	require.NoError(t, err)
+	notDecodableBlock, err := cbor.Decode(notDecodableBytes, types.DefaultHashFunction, -1)
 	require.NoError(t, err)
 
 	alice := mm.Addresses()[0]
@@ -79,27 +83,21 @@ func TestGraphsyncFetcher(t *testing.T) {
 				ssb.ExploreIndex(1, ssb.ExploreAll(ssb.ExploreRecursiveEdge())),
 				ssb.ExploreIndex(2, ssb.ExploreAll(ssb.Matcher())))))
 
-	layer1Selector, err := ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-		efsb.Insert("messages", ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
-			messagesSelector.Insert("secpRoot", amtSelector)
-			messagesSelector.Insert("bLSRoot", amtSelector)
-		}))
-	}).Selector()
+	layer1Selector, err := ssb.ExploreIndex(block.IndexMessagesField,
+		ssb.ExploreRange(0, 2, amtSelector),
+	).Selector()
+
 	require.NoError(t, err)
+
 	recursiveSelector := func(levels int) selector.Selector {
-		s, err := ssb.ExploreRecursive(selector.RecursionLimitDepth(levels), ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-			efsb.Insert("parents", ssb.ExploreUnion(
+		s, err := ssb.ExploreRecursive(selector.RecursionLimitDepth(levels), ssb.ExploreIndex(block.IndexParentsField,
+			ssb.ExploreUnion(
 				ssb.ExploreAll(
-					ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-						efsb.Insert("messages", ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
-							messagesSelector.Insert("secpRoot", amtSelector)
-							messagesSelector.Insert("bLSRoot", amtSelector)
-						}))
-					}),
-				),
+					ssb.ExploreIndex(block.IndexMessagesField,
+						ssb.ExploreRange(0, 2, amtSelector),
+					)),
 				ssb.ExploreIndex(0, ssb.ExploreRecursiveEdge()),
-			))
-		})).Selector()
+			))).Selector()
 		require.NoError(t, err)
 		return s
 	}
@@ -228,7 +226,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.NoError(t, err)
 		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
-		errorOnMessagesLoader := errorOnCidsLoader(loader, final.At(2).Messages.SecpRoot)
+		errorOnMessagesLoader := errorOnCidsLoader(loader, final.At(2).Messages.SecpRoot.Cid)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorOnMessagesLoader, final.Key().ToSlice()...)
 
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, newFakePeerTracker(chain0))
@@ -240,6 +238,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.EqualError(t, err, fmt.Sprintf("fetching tipset: %s: Unable to find any untried peers", final.Key().String()))
 		require.Nil(t, ts)
 	})
+
 	t.Run("partial response fail during recursive fetch recovers at fail point", func(t *testing.T) {
 		gen := builder.NewGenesis()
 		final := builder.BuildManyOn(5, gen, withMessageBuilder)
@@ -414,7 +413,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) was not a block: unmarshal error: stream contains key \"num\", but there's no such field in structs of type block.Block", notDecodableBlock.Cid().String()))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), fmt.Sprintf("fetched data (cid %s) was not a block: cbor: cannot unmarshal", notDecodableBlock.Cid().String()))
 		require.Nil(t, ts)
 	})
 
@@ -430,14 +430,14 @@ func TestGraphsyncFetcher(t *testing.T) {
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, newFakePeerTracker(chain0))
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.EqualError(t, err, fmt.Sprintf("invalid block %s: block %s has nil StateRoot", blk.Cid().String(), blk.Cid().String()))
+		require.EqualError(t, err, fmt.Sprintf("invalid block %s: block %s has nil miner address", blk.Cid().String(), blk.Cid().String()))
 		require.Nil(t, ts)
 	})
 
 	t.Run("blocks present but messages don't decode", func(t *testing.T) {
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
 		blk := requireSimpleValidBlock(t, 3, address.Undef)
-		blk.Messages = types.TxMeta{SecpRoot: notDecodableBlock.Cid(), BLSRoot: types.EmptyMessagesCID}
+		blk.Messages = types.TxMeta{SecpRoot: e.NewCid(notDecodableBlock.Cid()), BLSRoot: e.NewCid(types.EmptyMessagesCID)}
 		key := block.NewTipSetKey(blk.Cid())
 		chain0 := block.NewChainInfo(pid0, pid0, key, uint64(blk.Height))
 		nd, err := (&types.SignedMessage{}).ToNode()
@@ -448,7 +448,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) could not be decoded as an AMT: cbor input should be of type array", notDecodableBlock.Cid().String()))
+		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) could not be decoded as an AMT: cbor input had wrong number of fields", notDecodableBlock.Cid().String()))
 		require.Nil(t, ts)
 	})
 
@@ -655,7 +655,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	builder := chain.NewBuilderWithDeps(t, address.Undef, &chain.FakeStateBuilder{}, chain.NewClockTimestamper(chainClock))
 	keys := types.MustGenerateKeyInfo(1, 42)
 	mm := types.NewMessageMaker(t, keys)
-	notDecodableBlock, err := cbor.WrapObject(notDecodable{5, "applebutter"}, types.DefaultHashFunction, -1)
+	notDecodableBlock, err := cbor.WrapObject(notDecodable{Num: 5, Message: "applebutter"}, types.DefaultHashFunction, -1)
 	require.NoError(t, err)
 
 	alice := mm.Addresses()[0]
@@ -665,14 +665,13 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	require.NoError(t, err)
 
 	recursiveSelector := func(levels int) selector.Selector {
-		s, err := ssb.ExploreRecursive(selector.RecursionLimitDepth(levels), ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-			efsb.Insert("parents", ssb.ExploreUnion(
+		s, err := ssb.ExploreRecursive(selector.RecursionLimitDepth(levels), ssb.ExploreIndex(block.IndexParentsField,
+			ssb.ExploreUnion(
 				ssb.ExploreAll(
 					ssb.Matcher(),
 				),
 				ssb.ExploreIndex(0, ssb.ExploreRecursiveEdge()),
-			))
-		})).Selector()
+			))).Selector()
 		require.NoError(t, err)
 		return s
 	}
@@ -698,7 +697,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	verifyNoMessages := func(t *testing.T, ts block.TipSet) {
 		for i := 0; i < ts.Len(); i++ {
 			blk := ts.At(i)
-			stored, err := bs.Has(blk.Messages.SecpRoot)
+			stored, err := bs.Has(blk.Messages.SecpRoot.Cid)
 			require.NoError(t, err)
 			require.False(t, stored)
 		}
@@ -731,7 +730,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	t.Run("fetch succeeds when messages don't decode", func(t *testing.T) {
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
 		blk := requireSimpleValidBlock(t, 3, address.Undef)
-		blk.Messages = types.TxMeta{SecpRoot: notDecodableBlock.Cid(), BLSRoot: types.EmptyMessagesCID}
+		blk.Messages = types.TxMeta{SecpRoot: e.NewCid(notDecodableBlock.Cid()), BLSRoot: e.NewCid(types.EmptyMessagesCID)}
 		key := block.NewTipSetKey(blk.Cid())
 		chain0 := block.NewChainInfo(pid0, pid0, key, uint64(blk.Height))
 		nd, err := (&types.SignedMessage{}).ToNode()
@@ -844,15 +843,15 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, stored)
 
-		stored, err = bs.Has(ts.At(0).Messages.SecpRoot)
+		stored, err = bs.Has(ts.At(0).Messages.SecpRoot.Cid)
 		require.NoError(t, err)
 		assert.False(t, stored)
 
-		stored, err = bs.Has(ts.At(0).Messages.BLSRoot)
+		stored, err = bs.Has(ts.At(0).Messages.BLSRoot.Cid)
 		require.NoError(t, err)
 		assert.False(t, stored)
 
-		stored, err = bs.Has(ts.At(0).MessageReceipts)
+		stored, err = bs.Has(ts.At(0).MessageReceipts.Cid)
 		require.NoError(t, err)
 		assert.False(t, stored)
 	}
@@ -941,7 +940,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, stored)
 
-		stored, err = bs.Has(ts.At(0).Messages.SecpRoot)
+		stored, err = bs.Has(ts.At(0).Messages.SecpRoot.Cid)
 		require.NoError(t, err)
 		assert.True(t, stored)
 	}

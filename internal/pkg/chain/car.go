@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/ipfs/go-block-format"
@@ -29,6 +30,13 @@ type carStateReader interface {
 	ChainStateTree(ctx context.Context, c cid.Cid) ([]format.Node, error)
 }
 
+// Fields need to stay lower case to match car's default refmt encoding as
+// refmt can't handle arbitrary casing.
+type carHeader struct {
+	Roots   block.TipSetKey `cbor:"roots"`
+	Version uint64          `cbor:"version"`
+}
+
 // Export will export a chain (all blocks and their messages) to the writer `out`.
 func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carMessageReader, sr carStateReader, out io.Writer) error {
 	// ensure we don't duplicate writes to the car file. // e.g. only write EmptyMessageCID once.
@@ -40,10 +48,11 @@ func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carM
 	}
 
 	// Write the car header
-	chb, err := encoding.Encode(car.CarHeader{
-		Roots:   headTS.Key().ToSlice(),
+	ch := carHeader{
+		Roots:   headTS.Key(),
 		Version: 1,
-	})
+	}
+	chb, err := encoding.Encode(ch)
 	if err != nil {
 		return err
 	}
@@ -77,39 +86,39 @@ func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carM
 				return err
 			}
 
-			if !filter[hdr.Messages.SecpRoot] {
+			if !filter[hdr.Messages.SecpRoot.Cid] {
 				logCar.Debugf("writing message collection: %s", hdr.Messages)
 				if err := exportAMTSignedMessages(ctx, out, secpMsgs); err != nil {
 					return err
 				}
-				filter[hdr.Messages.SecpRoot] = true
+				filter[hdr.Messages.SecpRoot.Cid] = true
 			}
 
-			if !filter[hdr.Messages.BLSRoot] {
+			if !filter[hdr.Messages.BLSRoot.Cid] {
 				logCar.Debugf("writing message collection: %s", hdr.Messages)
 				if err := exportAMTUnsignedMessages(ctx, out, blsMsgs); err != nil {
 					return err
 				}
-				filter[hdr.Messages.BLSRoot] = true
+				filter[hdr.Messages.BLSRoot.Cid] = true
 			}
 
 			// TODO(#3473) we can remove MessageReceipts from the exported file once addressed.
-			rect, err := mr.LoadReceipts(ctx, hdr.MessageReceipts)
+			rect, err := mr.LoadReceipts(ctx, hdr.MessageReceipts.Cid)
 			if err != nil {
 				return err
 			}
 
-			if !filter[hdr.MessageReceipts] {
+			if !filter[hdr.MessageReceipts.Cid] {
 				logCar.Debugf("writing message-receipt collection: %s", hdr.Messages)
 				if err := exportAMTReceipts(ctx, out, rect); err != nil {
 					return err
 				}
-				filter[hdr.MessageReceipts] = true
+				filter[hdr.MessageReceipts.Cid] = true
 			}
 
 			if hdr.Height == 0 {
 				logCar.Debugf("writing state tree: %s", hdr.StateRoot)
-				stateRoots, err := sr.ChainStateTree(ctx, hdr.StateRoot)
+				stateRoots, err := sr.ChainStateTree(ctx, hdr.StateRoot.Cid)
 				if err != nil {
 					return err
 				}
@@ -165,6 +174,7 @@ type carStore interface {
 
 // Import imports a chain from `in` to `bs`.
 func Import(ctx context.Context, cs carStore, in io.Reader) (block.TipSetKey, error) {
+	fmt.Printf("about to load car\n")
 	header, err := car.LoadCar(cs, in)
 	if err != nil {
 		return block.UndefTipSet.Key(), err

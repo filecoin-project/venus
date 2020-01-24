@@ -6,17 +6,19 @@ import (
 	"testing"
 	"time"
 
+
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -91,7 +93,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 	invalidBlk := &block.Block{
 		Height:    1,
 		Timestamp: types.Uint64(now.Add(time.Second * 60).Unix()), // invalid timestamp, 60 seconds in future
-		StateRoot: types.NewCidForTestGetter()(),
+		StateRoot: e.NewCid(types.NewCidForTestGetter()()),
 		Miner:     miner,
 		Ticket:    block.Ticket{VRFProof: []byte{0}},
 	}
@@ -107,7 +109,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 	validBlk := &block.Block{
 		Height:    1,
 		Timestamp: types.Uint64(uint64(validTime.Unix())),
-		StateRoot: types.NewCidForTestGetter()(),
+		StateRoot: e.NewCid(types.NewCidForTestGetter()()),
 		Miner:     miner,
 		Ticket:    block.Ticket{VRFProof: []byte{0}},
 	}

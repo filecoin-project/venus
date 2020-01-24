@@ -4,8 +4,9 @@ import (
 	"context"
 
 	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 )
 
 // BlockstoreSubmodule enhances the `Node` with local key/value storing capabilities.
@@ -19,7 +20,7 @@ type BlockstoreSubmodule struct {
 	Blockstore bstore.Blockstore
 
 	// cborStore is a wrapper for a `hamt.CborIpldStore` that works on the local IPLD-Cbor objects stored in `Blockstore`.
-	CborStore hamt.CborIpldStore
+	CborStore *cborutil.IpldStore
 }
 
 type blockstoreRepo interface {
@@ -31,7 +32,7 @@ func NewBlockstoreSubmodule(ctx context.Context, repo blockstoreRepo) (Blockstor
 	// set up block store
 	bs := bstore.NewBlockstore(repo.Datastore())
 	// setup a ipldCbor on top of the local store
-	ipldCborStore := hamt.CSTFromBstore(bs)
+	ipldCborStore := cborutil.NewIpldStore(bs)
 
 	return BlockstoreSubmodule{
 		Blockstore: bs,

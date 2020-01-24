@@ -70,7 +70,7 @@ func (s *VMStorage) Get(cid cid.Cid, obj interface{}) error {
 	if err != nil {
 		return err
 	}
-	return encoding.Decode(raw, obj)
+	return encoding.DecodeDeprecated(raw, obj)
 }
 
 // GetRaw retrieves the raw bytes stored, returns true if it exists.

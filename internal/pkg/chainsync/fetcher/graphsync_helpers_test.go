@@ -28,6 +28,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -56,6 +57,27 @@ type fakeResponse struct {
 	errs        []error
 	blks        []format.Node
 	hangupAfter int
+}
+
+// String serializes the errs and blks field to a printable string for debug
+func (fr fakeResponse) String() string {
+	errStr := ""
+	for _, err := range fr.errs {
+		if err != nil {
+			errStr += err.Error()
+		} else {
+			errStr += fmt.Sprintf("<nil err>")
+		}
+	}
+	blkStr := ""
+	for _, blk := range fr.blks {
+		if blk == nil {
+			blkStr += fmt.Sprintf("<nil blk>")
+		} else {
+			blkStr += fmt.Sprintf("cid: %s, raw data: %x\n", blk.Cid(), blk.RawData())
+		}
+	}
+	return fmt.Sprintf("ipld nodes: %s\nerrs: %s\n\n", blkStr, errStr)
 }
 
 const noHangup = -1
@@ -88,6 +110,14 @@ type mockableGraphsync struct {
 	receivedRequests    []fakeRequest
 	store               bstore.Blockstore
 	t                   *testing.T
+}
+
+func (mgs *mockableGraphsync) stubString() string {
+	stubStr := ""
+	for _, reqResp := range mgs.stubs {
+		stubStr += reqResp.response.String()
+	}
+	return stubStr
 }
 
 func newMockableGraphsync(ctx context.Context, store bstore.Blockstore, clock th.FakeClock, t *testing.T) *mockableGraphsync {
@@ -318,15 +348,16 @@ func requireBlockStorePut(t *testing.T, bs bstore.Blockstore, data format.Node) 
 
 func simpleBlock() *block.Block {
 	meta := types.TxMeta{
-		SecpRoot: types.EmptyMessagesCID,
-		BLSRoot:  types.EmptyMessagesCID,
+		SecpRoot: e.NewCid(types.EmptyMessagesCID),
+		BLSRoot:  e.NewCid(types.EmptyMessagesCID),
 	}
 	return &block.Block{
 		ParentWeight:    0,
 		Parents:         block.NewTipSetKey(),
 		Height:          0,
+		StateRoot:       e.NewCid(types.EmptyMessagesCID),
 		Messages:        meta,
-		MessageReceipts: types.EmptyReceiptsCID,
+		MessageReceipts: e.NewCid(types.EmptyReceiptsCID),
 	}
 }
 
@@ -338,12 +369,14 @@ func requireSimpleValidBlock(t *testing.T, nonce uint64, miner address.Address) 
 	b.Ticket = ticket
 	bytes, err := cbor.DumpObject("null")
 	require.NoError(t, err)
-	b.StateRoot, _ = cid.Prefix{
+	rawRoot, err := cid.Prefix{
 		Version:  1,
 		Codec:    cid.DagCBOR,
 		MhType:   types.DefaultHashFunction,
 		MhLength: -1,
 	}.Sum(bytes)
+	require.NoError(t, err)
+	b.StateRoot = e.NewCid(rawRoot)
 	b.Miner = miner
 	return b
 }

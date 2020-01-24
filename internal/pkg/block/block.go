@@ -5,16 +5,22 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-block-format"
+	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	node "github.com/ipfs/go-ipld-format"
+	mh "github.com/multiformats/go-multihash"
 
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // Block is a block in the blockchain.
 type Block struct {
+	// control field for encoding struct as an array
+	_ struct{} `cbor:",toarray"`
+
 	// Miner is the address of the miner actor that mined this block.
 	Miner address.Address `json:"miner"`
 
@@ -37,13 +43,13 @@ type Block struct {
 
 	// StateRoot is a cid pointer to the state tree after application of the
 	// transactions state transitions.
-	StateRoot cid.Cid `json:"stateRoot,omitempty" refmt:",omitempty"`
+	StateRoot e.Cid `json:"stateRoot,omitempty"`
 
 	// MessageReceipts is a set of receipts matching to the sending of the `Messages`.
-	MessageReceipts cid.Cid `json:"messageReceipts,omitempty" refmt:",omitempty"`
+	MessageReceipts e.Cid `json:"messageReceipts,omitempty"`
 
 	// Messages is the set of messages included in this block
-	Messages types.TxMeta `json:"messages,omitempty" refmt:",omitempty"`
+	Messages types.TxMeta `json:"messages,omitempty"`
 
 	// The aggregate signature of all BLS signed messages in the block
 	BLSAggregateSig types.Signature `json:"blsAggregateSig"`
@@ -61,6 +67,12 @@ type Block struct {
 
 	cachedBytes []byte
 }
+
+// IndexMessagesField is the message field position in the encoded block
+const IndexMessagesField = 8
+
+// IndexParentsField is the parents field position in the encoded block
+const IndexParentsField = 3
 
 // Cid returns the content id of this block.
 func (b *Block) Cid() cid.Cid {
@@ -91,12 +103,33 @@ func (b *Block) Cid() cid.Cid {
 // ToNode converts the Block to an IPLD node.
 func (b *Block) ToNode() node.Node {
 	// Use 32 byte / 256 bit digest. TODO pull this out into a constant?
-	obj, err := cbor.WrapObject(b, types.DefaultHashFunction, -1)
+	// obj, err := cbor.WrapObject(b, types.DefaultHashFunction, -1)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	mhType := uint64(mh.BLAKE2B_MIN + 31)
+	mhLen := -1
+
+	data, err := encoding.Encode(b)
 	if err != nil {
 		panic(err)
 	}
 
-	return obj
+	hash, err := mh.Sum(data, mhType, mhLen)
+	if err != nil {
+		panic(err)
+	}
+	c := cid.NewCidV1(cid.DagCBOR, hash)
+
+	blk, err := blocks.NewBlockWithCid(data, c)
+	if err != nil {
+		panic(err)
+	}
+	node, err := cbor.DecodeBlock(blk)
+	if err != nil {
+		panic(err)
+	}
+	return node
 }
 
 func (b *Block) String() string {

@@ -3,12 +3,12 @@ package node
 import (
 	"context"
 
-	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	keystore "github.com/ipfs/go-ipfs-keystore"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
@@ -62,7 +62,7 @@ func Init(ctx context.Context, r repo.Repo, gen consensus.GenesisInitFunc, opts 
 	}
 
 	bs := bstore.NewBlockstore(r.Datastore())
-	cst := hamt.CSTFromBstore(bs)
+	cst := cborutil.NewIpldStore(bs)
 	if _, err := chain.Init(ctx, r, bs, cst, gen); err != nil {
 		return errors.Wrap(err, "Could not Init Node")
 	}

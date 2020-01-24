@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/mining"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -39,7 +40,7 @@ func TestMineOnce10Null(t *testing.T) {
 	sectorSize := uint64(100)
 	baseTicket := consensus.SeedFirstWinnerInNRounds(t, 10, ki, totalPower, numSectors, sectorSize)
 	baseBlock := &block.Block{
-		StateRoot: types.CidFromString(t, "somecid"),
+		StateRoot: e.NewCid(types.CidFromString(t, "somecid")),
 		Height:    0,
 		Ticket:    baseTicket,
 	}
@@ -106,7 +107,7 @@ func TestMineOneEpoch10Null(t *testing.T) {
 	sectorSize := uint64(100)
 	baseTicket := consensus.SeedFirstWinnerInNRounds(t, 10, ki, totalPower, numSectors, sectorSize)
 	baseBlock := &block.Block{
-		StateRoot: types.CidFromString(t, "somecid"),
+		StateRoot: e.NewCid(types.CidFromString(t, "somecid")),
 		Height:    0,
 		Ticket:    baseTicket,
 	}
@@ -370,7 +371,7 @@ func TestSkips(t *testing.T) {
 // Helper functions
 
 func testHead(t *testing.T) block.TipSet {
-	baseBlock := &block.Block{StateRoot: types.CidFromString(t, "somecid")}
+	baseBlock := &block.Block{StateRoot: e.NewCid(types.CidFromString(t, "somecid"))}
 	ts, err := block.NewTipSet(baseBlock)
 	require.NoError(t, err)
 	return ts

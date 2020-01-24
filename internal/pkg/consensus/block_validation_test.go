@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -44,9 +45,7 @@ func TestBlockValidSemantic(t *testing.T) {
 		err := validator.ValidateSemantic(ctx, c, parents)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid height")
-
 	})
-
 }
 
 func TestMismatchedTime(t *testing.T) {
@@ -100,7 +99,7 @@ func TestBlockValidSyntax(t *testing.T) {
 	validator := consensus.NewDefaultBlockValidator(chainClock)
 
 	validTs := types.Uint64(mclock.Now().Unix())
-	validSt := types.NewCidForTestGetter()()
+	validSt := e.NewCid(types.NewCidForTestGetter()())
 	validAd := vmaddr.NewForTestGetter()()
 	validTi := block.Ticket{VRFProof: []byte{1}}
 	validCandidate := block.NewEPoStCandidate(1, []byte{1}, 1)
@@ -127,7 +126,7 @@ func TestBlockValidSyntax(t *testing.T) {
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
 	// invalidate stateroot
-	blk.StateRoot = cid.Undef
+	blk.StateRoot = e.NewCid(cid.Undef)
 	require.Error(t, validator.ValidateSyntax(ctx, blk))
 	blk.StateRoot = validSt
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
