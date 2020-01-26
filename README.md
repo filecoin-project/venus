@@ -68,6 +68,11 @@ Filecoin can build and run on most Linux and MacOS systems with at least 8GB of 
 - Follow the remaining steps in [Start running Filecoin](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started#start-running-filecoin)
 -->
 
+### Install from Source on MacOS
+```sh
+curl -fsSL https://raw.githubusercontent.com/filecoin-project/go-filecoin/master/scripts/build/mac-build.sh
+```
+
 ### Install from Source
 
 Clone the git repository:
