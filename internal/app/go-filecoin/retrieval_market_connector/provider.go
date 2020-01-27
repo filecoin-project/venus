@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	xerrors "github.com/pkg/errors"
 )
 
 type RetrievalProviderConnector struct {
@@ -47,13 +48,13 @@ func (r RetrievalProviderNodeConnector) UnsealSector(ctx context.Context, sector
 func (r RetrievalProviderNodeConnector) SavePaymentVoucher(ctx context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount) (abi.TokenAmount, error) {
 	var tokenamt tokenamount.TokenAmount
 
-	key, err := r.voucherStoreKeyFor(voucher, paymentChannel)
+	key, err := r.voucherStoreKeyFor(voucher)
 	if err != nil {
 		return tokenamt, err
 	}
 	_, ok := r.vs[key]
 	if ok {
-		return tokenamt, err
+		return tokenamt, xerrors.New("voucher exists")
 	}
 	r.vs[key] = voucherEntry{
 		voucher:     voucher,
@@ -63,7 +64,7 @@ func (r RetrievalProviderNodeConnector) SavePaymentVoucher(ctx context.Context, 
 	return voucher.Amount, nil
 }
 
-func (r *RetrievalProviderConnector) voucherStoreKeyFor(voucher *rtypes.SignedVoucher, pchan address.Address) (string, error) {
+func (r *RetrievalProviderConnector) voucherStoreKeyFor(voucher *rtypes.SignedVoucher) (string, error) {
 	venc, err := voucher.EncodedString()
 	if err != nil {
 		return "", err
