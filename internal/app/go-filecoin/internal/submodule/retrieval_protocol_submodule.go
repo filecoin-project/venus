@@ -6,6 +6,8 @@ import (
 	iface "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	impl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	peer "github.com/libp2p/go-libp2p-core"
+	"github.com/libp2p/go-libp2p-core/host"
 
 	retrievalmarketconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
 )
@@ -18,12 +20,17 @@ type RetrievalProtocolSubmodule struct {
 }
 
 // NewRetrievalProtocolSubmodule creates a new retrieval protocol submodule.
-func NewRetrievalProtocolSubmodule(providerAddr address.Address, ps piecestore.PieceStore, bs blockstore.Blockstore) (RetrievalProtocolSubmodule, error) {
+func NewRetrievalProtocolSubmodule(
+	host host.Host,
+	providerAddr address.Address,
+	ps piecestore.PieceStore,
+	bs blockstore.Blockstore) (RetrievalProtocolSubmodule, error) {
 	panic("TODO: go-fil-markets integration")
 
-	pnode := retrievalmarketconnector.NewRetrievalProviderNodeConnector()
+
+	netwk := retrievalmarketconnector.NewRetrievalMarketNetworkConnector(host)
+	pnode := retrievalmarketconnector.NewRetrievalProviderNodeConnector(netwk, ps, bs)
 	cnode := retrievalmarketconnector.NewRetrievalClientNodeConnector()
-	netwk := retrievalmarketconnector.NewRetrievalMarketNetworkConnector()
 	rsvlr := retrievalmarketconnector.NewRetrievalPeerResolverConnector()
 
 	return RetrievalProtocolSubmodule{

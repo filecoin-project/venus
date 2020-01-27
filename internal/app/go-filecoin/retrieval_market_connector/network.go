@@ -10,7 +10,7 @@ type RetrievalMarketNetworkConnector struct{
 	net network.RetrievalMarketNetwork
 }
 
-func NewRetrievalMarketNetworkConnector(host host.Host, peerID peer.ID) *RetrievalMarketNetworkConnector {
+func NewRetrievalMarketNetworkConnector(host host.Host) *RetrievalMarketNetworkConnector {
 	net := network.NewFromLibp2pHost(host)
 	connector := RetrievalMarketNetworkConnector{net}
 	return &connector
