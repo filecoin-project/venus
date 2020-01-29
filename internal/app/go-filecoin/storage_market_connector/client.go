@@ -3,58 +3,107 @@ package storagemarketconnector
 import (
 	"context"
 
-	a2 "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
-	"github.com/filecoin-project/go-fil-markets/shared/types"
-	m "github.com/filecoin-project/go-fil-markets/storagemarket"
+	smtypes "github.com/filecoin-project/go-fil-markets/shared/types"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+	fcsm "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
+	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
-type StorageClientNodeConnector struct{}
+type StorageClientNodeConnector struct {
+	ConnectorCommon
 
-func NewStorageClientNodeConnector() *StorageClientNodeConnector {
-	return &StorageClientNodeConnector{}
+	// need to init these
+	clientAddr address.Address
+	outbox     *message.Outbox
+	waiter     *msg.Waiter
 }
 
-func (s *StorageClientNodeConnector) MostRecentStateId(ctx context.Context) (m.StateKey, error) {
+var _ storagemarket.StorageClientNode = &StorageClientNodeConnector{}
+
+func NewStorageClientNodeConnector(
+	cs *chain.Store,
+	w *msg.Waiter,
+	wlt *wallet.Wallet,
+) *StorageClientNodeConnector {
+	return &StorageClientNodeConnector{
+		ConnectorCommon: ConnectorCommon{cs, w, wlt},
+	}
+}
+
+// TODO: Combine this and the provider AddFunds into a method in ConnectorCommon?  We would need to pass in the "from" param
+func (s *StorageClientNodeConnector) AddFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
+	params, err := abi.ToEncodedValues(addr)
+	if err != nil {
+		return err
+	}
+
+	fromAddr, err := fcaddr.NewFromBytes(s.clientAddr.Bytes())
+	if err != nil {
+		return err
+	}
+
+	mcid, cerr, err := s.outbox.Send(
+		ctx,
+		fromAddr,
+		fcaddr.StorageMarketAddress,
+		types.NewAttoFIL(amount.Int),
+		types.NewGasPrice(1),
+		types.NewGasUnits(300),
+		true,
+		fcsm.AddBalance,
+		params,
+	)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.wait(ctx, mcid, cerr)
+
+	return err
+}
+
+func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
+	// State query
 	panic("TODO: go-fil-markets integration")
 }
 
-func (s *StorageClientNodeConnector) AddFunds(ctx context.Context, addr a2.Address, amount tokenamount.TokenAmount) error {
+func (s *StorageClientNodeConnector) ListClientDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
+	// State query
 	panic("TODO: go-fil-markets integration")
 }
 
-func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr a2.Address, amount tokenamount.TokenAmount) error {
+func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context) ([]*storagemarket.StorageProviderInfo, error) {
+	// State query
 	panic("TODO: go-fil-markets integration")
 }
 
-func (s *StorageClientNodeConnector) GetBalance(ctx context.Context, addr a2.Address) (m.Balance, error) {
+func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (uint64, error) {
+	// State query
 	panic("TODO: go-fil-markets integration")
 }
 
-func (s *StorageClientNodeConnector) ListClientDeals(ctx context.Context, addr a2.Address) ([]m.StorageDeal, error) {
+func (s *StorageClientNodeConnector) SignProposal(ctx context.Context, signer address.Address, proposal *storagemarket.StorageDealProposal) error {
+
 	panic("TODO: go-fil-markets integration")
 }
 
-func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context) ([]*m.StorageProviderInfo, error) {
+func (s *StorageClientNodeConnector) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {
 	panic("TODO: go-fil-markets integration")
 }
 
-func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, deal m.ClientDeal) (uint64, error) {
+func (s *StorageClientNodeConnector) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealId uint64, cb storagemarket.DealSectorCommittedCallback) error {
 	panic("TODO: go-fil-markets integration")
 }
 
-func (s *StorageClientNodeConnector) SignProposal(ctx context.Context, signer a2.Address, proposal *m.StorageDealProposal) error {
-	panic("TODO: go-fil-markets integration")
-}
-
-func (s *StorageClientNodeConnector) GetDefaultWalletAddress(ctx context.Context) (a2.Address, error) {
-	panic("TODO: go-fil-markets integration")
-}
-
-func (s *StorageClientNodeConnector) OnDealSectorCommitted(ctx context.Context, provider a2.Address, dealId uint64, cb m.DealSectorCommittedCallback) error {
-	panic("TODO: go-fil-markets integration")
-}
-
-func (s *StorageClientNodeConnector) ValidateAskSignature(ask *types.SignedStorageAsk) error {
+func (s *StorageClientNodeConnector) ValidateAskSignature(ask *smtypes.SignedStorageAsk) error {
 	panic("TODO: go-fil-markets integration")
 }
