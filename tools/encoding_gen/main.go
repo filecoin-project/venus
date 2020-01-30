@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	logging "github.com/ipfs/go-log"
 )
@@ -59,13 +58,6 @@ func main() {
 	}
 
 	// cbor.BigIntAtlasEntry,          // actor/built-in/miner.go XXX: atlas
-
-	if err := gen.WriteToFile(filepath.Join(base, "actor/builtin/paymentbroker/paymentbroker_encoding_gen.go"), gen.IpldCborTypeEncodingGenerator{}, "paymentbroker",
-		paymentbroker.PaymentChannel{}, // actor/builtin/paymentbroker/paymentbroker.go
-	); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
 
 	if err := gen.WriteToFile(filepath.Join(base, "actor/builtin/storagemarket/storagemarket_encoding_gen.go"), gen.IpldCborTypeEncodingGenerator{}, "storagemarket",
 		storagemarket.State{}, // actor/builtin/storagemarket/storagemarket.go

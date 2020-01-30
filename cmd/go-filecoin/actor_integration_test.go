@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
@@ -40,7 +40,7 @@ func TestActorDaemon(t *testing.T) {
 		// The order of actors is consistent, but only within builds of genesis.car.
 		// We just want to make sure the views have something valid in them.
 		for _, av := range avs {
-			assert.Contains(t, []string{"StoragemarketActor", "AccountActor", "PaymentbrokerActor", "PowerActor", "MinerActor", "BootstrapMinerActor", "InitActor"}, av.ActorType)
+			assert.Contains(t, []string{"StoragemarketActor", "AccountActor", "PowerActor", "MinerActor", "BootstrapMinerActor", "InitActor"}, av.ActorType)
 		}
 	})
 }

@@ -62,11 +62,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-
-	LegacyPaymentBrokerAddress, err = NewIDAddress(51)
-	if err != nil {
-		panic(err)
-	}
 }
 
 var (
@@ -91,8 +86,6 @@ var (
 	// StorageMarketAddress is the hard-coded address of the filecoin storage market actor.
 	StorageMarketAddress Address
 
-	// LegacyPaymentBrokerAddress does not exist anymore.
-	LegacyPaymentBrokerAddress Address
 	// LegacyNetworkAddress does not exist anymore.
 	LegacyNetworkAddress Address
 )

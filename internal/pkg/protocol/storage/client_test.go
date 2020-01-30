@@ -244,35 +244,6 @@ func (ctp *clientTestAPI) ChainTipSet(_ block.TipSetKey) (block.TipSet, error) {
 	return block.NewTipSet(&block.Block{Height: types.Uint64(ctp.blockHeight)})
 }
 
-func (ctp *clientTestAPI) CreatePayments(ctx context.Context, config porcelain.CreatePaymentsParams) (*porcelain.CreatePaymentsReturn, error) {
-	ctp.createdPayment = true
-	resp := &porcelain.CreatePaymentsReturn{
-		CreatePaymentsParams: config,
-		Channel:              ctp.channelID,
-		ChannelMsgCid:        ctp.msgCid,
-		GasAttoFIL:           types.NewAttoFILFromFIL(100),
-		Vouchers:             make([]*types.PaymentVoucher, 10),
-	}
-
-	conditionMethod := types.MethodID(28273)
-
-	for i := 0; i < 10; i++ {
-		resp.Vouchers[i] = &types.PaymentVoucher{
-			Channel: *ctp.channelID,
-			Payer:   ctp.payer,
-			Target:  ctp.target,
-			Amount:  ctp.perPayment.MulBigInt(big.NewInt(int64(i + 1))),
-			ValidAt: *types.NewBlockHeight(ctp.blockHeight).Add(types.NewBlockHeight(uint64(i+1) * VoucherInterval)),
-			Condition: &types.Predicate{
-				To:     config.MinerAddress,
-				Method: conditionMethod,
-				Params: []interface{}{config.CommP[:]},
-			},
-		}
-	}
-	return resp, nil
-}
-
 func (ctp *clientTestAPI) DAGGetFileSize(context.Context, cid.Cid) (uint64, error) {
 	return ctp.pieceSize, nil
 }

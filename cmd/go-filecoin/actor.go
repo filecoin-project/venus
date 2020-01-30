@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 
@@ -62,8 +61,6 @@ var actorLsCmd = &cmds.Command{
 				output = makeActorView(result.Actor, result.Address, &initactor.Actor{})
 			case result.Actor.Code.Equals(types.StorageMarketActorCodeCid):
 				output = makeActorView(result.Actor, result.Address, &storagemarket.Actor{})
-			case result.Actor.Code.Equals(types.PaymentBrokerActorCodeCid):
-				output = makeActorView(result.Actor, result.Address, &paymentbroker.Actor{})
 			case result.Actor.Code.Equals(types.PowerActorCodeCid):
 				output = makeActorView(result.Actor, result.Address, &power.Actor{})
 			case result.Actor.Code.Equals(types.MinerActorCodeCid):

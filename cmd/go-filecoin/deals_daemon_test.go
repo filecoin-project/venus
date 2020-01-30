@@ -3,7 +3,6 @@ package commands_test
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"io"
 	"math/big"
 	"strings"
@@ -31,104 +30,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 )
-
-func TestDealsRedeem(t *testing.T) {
-	t.Skip("Long term solution: #3642")
-	tf.IntegrationTest(t)
-
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
-		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(100 * time.Millisecond)},
-	})
-
-	defer func() {
-		require.NoError(t, env.Teardown(ctx))
-	}()
-
-	clientDaemon := env.GenesisMiner
-	minerDaemon := env.RequireNewNodeWithFunds(10000)
-
-	collateral := big.NewInt(int64(1))
-	price := big.NewFloat(float64(1))
-	expiry := big.NewInt(int64(10000))
-
-	pparams, err := minerDaemon.Protocol(ctx)
-	require.NoError(t, err)
-
-	sinfo := pparams.SupportedSectors[0]
-
-	// mine the create storage message, then mine the set ask message
-	series.CtxMiningNext(ctx, 2)
-
-	_, err = series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, price, expiry, sinfo.Size)
-	require.NoError(t, err)
-
-	require.NoError(t, minerDaemon.MiningSetup(ctx))
-
-	f := files.NewBytesFile([]byte("HODLHODLHODL"))
-	dataCid, err := clientDaemon.ClientImport(ctx, f)
-	require.NoError(t, err)
-	dataPriceOneBlock := uint64(12)
-
-	var minerAddress address.Address
-	err = minerDaemon.ConfigGet(ctx, "mining.minerAddress", &minerAddress)
-	require.NoError(t, err)
-
-	minerOwnerAddresses, err := minerDaemon.AddressLs(ctx)
-	require.NoError(t, err)
-	minerOwnerAddress := minerOwnerAddresses[0]
-
-	dealDuration := uint64(5)
-
-	// mine the createChannel message needed to create a storage proposal
-	series.CtxMiningNext(ctx, 1)
-
-	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, 0, dealDuration)
-	require.NoError(t, err)
-
-	// atLeastStartH is either the start height of the deal or a height after the deal has started.
-	atLeastStartH, err := series.GetHeadBlockHeight(ctx, clientDaemon)
-	require.NoError(t, err)
-
-	// Wait until deal is accepted so miner has redeemable vouchers.
-	_, err = series.WaitForDealState(ctx, clientDaemon, dealResponse, storagedeal.Staged)
-	require.NoError(t, err)
-
-	// Wait until deal period is complete.
-	completeHeight := types.NewBlockHeight(dealDuration).Add(atLeastStartH)
-	for height := atLeastStartH; completeHeight.GreaterThan(height); {
-		_, err := clientDaemon.MiningOnce(ctx)
-		require.NoError(t, err)
-		height, err = series.GetHeadBlockHeight(ctx, clientDaemon)
-		require.NoError(t, err)
-	}
-
-	oldWalletBalance, err := minerDaemon.WalletBalance(ctx, minerOwnerAddress)
-	require.NoError(t, err)
-
-	// Note: we are racing against sealing here.  If sealing were to finish
-	// after the wallet query but before we issue the redeem message then
-	// our math will be off due to commitSector message gas and possible
-	// block rewards.  In practice sealing takes much longer so we never
-	// lose the race.
-	redeemCid, err := minerDaemon.DealsRedeem(ctx, dealResponse.ProposalCid, fast.AOPrice(big.NewFloat(0.001)), fast.AOLimit(100))
-	require.NoError(t, err)
-
-	_, err = clientDaemon.MiningOnce(ctx)
-	require.NoError(t, err)
-
-	_, err = minerDaemon.MessageWait(ctx, redeemCid)
-	require.NoError(t, err)
-
-	newWalletBalance, err := minerDaemon.WalletBalance(ctx, minerOwnerAddress)
-	require.NoError(t, err)
-
-	expectedGasCost := 0.1
-	expectedBalanceDiff := float64(dealDuration*dataPriceOneBlock) - expectedGasCost
-	expectedBalanceStr := fmt.Sprintf("%.1f", expectedBalanceDiff)
-
-	actualBalanceDiff := newWalletBalance.Sub(oldWalletBalance)
-	assert.Equal(t, expectedBalanceStr, actualBalanceDiff.String())
-}
 
 func TestDealsList(t *testing.T) {
 	t.Skip("Long term solution: #3642")

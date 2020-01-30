@@ -47,10 +47,6 @@ func TestActorFormat(t *testing.T) {
 	storageMarketActor := NewActor(types.StorageMarketActorCodeCid, types.NewAttoFILFromFIL(5))
 	formatted = fmt.Sprintf("%v", storageMarketActor)
 	assert.Contains(t, formatted, "StorageMarketActor")
-
-	paymentBrokerActor := NewActor(types.PaymentBrokerActorCodeCid, types.NewAttoFILFromFIL(5))
-	formatted = fmt.Sprintf("%v", paymentBrokerActor)
-	assert.Contains(t, formatted, "PaymentBrokerActor")
 }
 
 func requireCid(t *testing.T, data string) cid.Cid {

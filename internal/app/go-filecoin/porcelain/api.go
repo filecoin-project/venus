@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
@@ -68,31 +67,9 @@ func (a *API) ChainGetFullBlock(ctx context.Context, id cid.Cid) (*block.FullBlo
 	return GetFullBlock(ctx, a, id)
 }
 
-// CreatePayments establishes a payment channel and create multiple payments against it
-func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (*CreatePaymentsReturn, error) {
-	return CreatePayments(ctx, a, config)
-}
-
-// ValidatePaymentVoucherCondition validates that the given condition is a payment condition and has the right values
-func (a *API) ValidatePaymentVoucherCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error {
-	return ValidatePaymentVoucherCondition(ctx, condition, minerAddr, commP, pieceSize)
-}
-
 // DealGet returns a single deal matching a given cid or an error
 func (a *API) DealGet(ctx context.Context, proposalCid cid.Cid) (*storagedeal.Deal, error) {
 	return DealGet(ctx, a, proposalCid)
-}
-
-// DealRedeem redeems a voucher for the deal with the given cid and returns
-// either the cid of the created redeem message or an error
-func (a *API) DealRedeem(ctx context.Context, fromAddr address.Address, dealCid cid.Cid, gasPrice types.AttoFIL, gasLimit types.GasUnits) (cid.Cid, error) {
-	return DealRedeem(ctx, a, fromAddr, dealCid, gasPrice, gasLimit)
-}
-
-// DealRedeemPreview previews the redeem method for a deal and returns the
-// expected gas used
-func (a *API) DealRedeemPreview(ctx context.Context, fromAddr address.Address, dealCid cid.Cid) (types.GasUnits, error) {
-	return DealRedeemPreview(ctx, a, fromAddr, dealCid)
 }
 
 // DealsLs returns a channel with all deals
@@ -210,27 +187,6 @@ func (a *API) WalletBalance(ctx context.Context, address address.Address) (types
 // If none is set it picks the first address in the wallet and sets it as the default in the config.
 func (a *API) WalletDefaultAddress() (address.Address, error) {
 	return WalletDefaultAddress(a)
-}
-
-// PaymentChannelLs lists payment channels for a given payer
-func (a *API) PaymentChannelLs(
-	ctx context.Context,
-	fromAddr address.Address,
-	payerAddr address.Address,
-) (map[string]*paymentbroker.PaymentChannel, error) {
-	return PaymentChannelLs(ctx, a, fromAddr, payerAddr)
-}
-
-// PaymentChannelVoucher returns a signed payment channel voucher
-func (a *API) PaymentChannelVoucher(
-	ctx context.Context,
-	fromAddr address.Address,
-	channel *types.ChannelID,
-	amount types.AttoFIL,
-	validAt *types.BlockHeight,
-	condition *types.Predicate,
-) (voucher *types.PaymentVoucher, err error) {
-	return PaymentChannelVoucher(ctx, a, fromAddr, channel, amount, validAt, condition)
 }
 
 // ClientListAsks returns a channel with asks from the latest chain state
