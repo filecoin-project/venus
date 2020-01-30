@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
@@ -30,7 +29,7 @@ type StorageClientNodeConnector struct {
 var _ storagemarket.StorageClientNode = &StorageClientNodeConnector{}
 
 func NewStorageClientNodeConnector(
-	cs *chain.Store,
+	cs chainReader,
 	w *msg.Waiter,
 	wlt *wallet.Wallet,
 ) *StorageClientNodeConnector {

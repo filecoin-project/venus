@@ -52,7 +52,7 @@ func NewStorageProtocolSubmodule(
 	}
 
 	pnode := storagemarketconnector.NewStorageProviderNodeConnector(ma, c.State, m.Outbox, mw, pm, wg, wlt)
-	cnode := storagemarketconnector.NewStorageClientNodeConnector()
+	cnode := storagemarketconnector.NewStorageClientNodeConnector(c.State, mw, wlt)
 
 	pieceStagingPath, err := paths.PieceStagingDir(repoPath)
 	if err != nil {
