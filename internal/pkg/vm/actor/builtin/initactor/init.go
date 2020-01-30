@@ -377,12 +377,10 @@ func (a *Impl) isBuiltinActor(code cid.Cid) bool {
 	return code.Equals(types.StorageMarketActorCodeCid) ||
 		code.Equals(types.InitActorCodeCid) ||
 		code.Equals(types.MinerActorCodeCid) ||
-		code.Equals(types.BootstrapMinerActorCodeCid) ||
-		code.Equals(types.PaymentBrokerActorCodeCid)
+		code.Equals(types.BootstrapMinerActorCodeCid)
 }
 
 func (a *Impl) isSingletonActor(code cid.Cid) bool {
 	return code.Equals(types.StorageMarketActorCodeCid) ||
-		code.Equals(types.InitActorCodeCid) ||
-		code.Equals(types.PaymentBrokerActorCodeCid)
+		code.Equals(types.InitActorCodeCid)
 }

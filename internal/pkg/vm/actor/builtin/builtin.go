@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
@@ -68,7 +67,6 @@ var DefaultActors = NewBuilder().
 	Add(types.AccountActorCodeCid, 0, &account.Actor{}).
 	Add(types.StorageMarketActorCodeCid, 0, &storagemarket.Actor{}).
 	Add(types.PowerActorCodeCid, 0, &power.Actor{}).
-	Add(types.PaymentBrokerActorCodeCid, 0, &paymentbroker.Actor{}).
 	Add(types.MinerActorCodeCid, 0, &miner.Actor{}).
 	Add(types.BootstrapMinerActorCodeCid, 0, &miner.Actor{Bootstrap: true}).
 	Add(types.InitActorCodeCid, 0, &initactor.Actor{}).

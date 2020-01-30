@@ -120,9 +120,6 @@ func InitBuiltinActorCodeObjs(cst *hamt.CborIpldStore) error {
 	if err := cst.Blocks.AddBlock(types.AccountActorCodeObj); err != nil {
 		return err
 	}
-	if err := cst.Blocks.AddBlock(types.PaymentBrokerActorCodeObj); err != nil {
-		return err
-	}
 	if err := cst.Blocks.AddBlock(types.PowerActorCodeObj); err != nil {
 		return err
 	}

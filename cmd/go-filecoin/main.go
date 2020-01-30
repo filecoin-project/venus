@@ -8,12 +8,12 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-cmds/cli"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
@@ -177,7 +177,6 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"mining":           miningCmd,
 	"mpool":            mpoolCmd,
 	"outbox":           outboxCmd,
-	"paych":            paymentChannelCmd,
 	"ping":             pingCmd,
 	"protocol":         protocolCmd,
 	"retrieval-client": retrievalClientCmd,
