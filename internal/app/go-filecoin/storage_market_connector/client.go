@@ -3,16 +3,17 @@ package storagemarketconnector
 import (
 	"context"
 
+	"github.com/ipfs/go-hamt-ipld"
+
 	"github.com/filecoin-project/go-address"
+	spaminer "github.com/filecoin-project/specs-actors/actors/builtin/storage_miner"
+	spapow "github.com/filecoin-project/specs-actors/actors/builtin/storage_power"
+
 	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	smtypes "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
-	fcsm "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -22,67 +23,89 @@ type StorageClientNodeConnector struct {
 
 	// need to init these
 	clientAddr address.Address
-	outbox     *message.Outbox
-	waiter     *msg.Waiter
+	cborStore  hamt.CborIpldStore
 }
 
 var _ storagemarket.StorageClientNode = &StorageClientNodeConnector{}
 
 func NewStorageClientNodeConnector(
+	cbor hamt.CborIpldStore,
 	cs chainReader,
 	w *msg.Waiter,
 	wlt *wallet.Wallet,
+	ob *message.Outbox,
+	ca address.Address,
 ) *StorageClientNodeConnector {
 	return &StorageClientNodeConnector{
-		ConnectorCommon: ConnectorCommon{cs, w, wlt},
+		ConnectorCommon: ConnectorCommon{cs, w, wlt, ob},
+		cborStore:       cbor,
+		clientAddr:      ca,
 	}
 }
 
-// TODO: Combine this and the provider AddFunds into a method in ConnectorCommon?  We would need to pass in the "from" param
 func (s *StorageClientNodeConnector) AddFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
-	params, err := abi.ToEncodedValues(addr)
-	if err != nil {
-		return err
-	}
-
-	fromAddr, err := fcaddr.NewFromBytes(s.clientAddr.Bytes())
-	if err != nil {
-		return err
-	}
-
-	mcid, cerr, err := s.outbox.Send(
-		ctx,
-		fromAddr,
-		fcaddr.StorageMarketAddress,
-		types.NewAttoFIL(amount.Int),
-		types.NewGasPrice(1),
-		types.NewGasUnits(300),
-		true,
-		fcsm.AddBalance,
-		params,
-	)
-	if err != nil {
-		return err
-	}
-
-	_, err = s.wait(ctx, mcid, cerr)
-
-	return err
+	return s.addFunds(ctx, s.clientAddr, addr, amount)
 }
 
 func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
-	// State query
-	panic("TODO: go-fil-markets integration")
+	balance, err := s.GetBalance(ctx, addr)
+	if err != nil {
+		return err
+	}
+
+	if !balance.Available.LessThan(amount) {
+		return nil
+	}
+
+	return s.AddFunds(ctx, addr, tokenamount.Sub(amount, balance.Available))
 }
 
 func (s *StorageClientNodeConnector) ListClientDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
-	// State query
-	panic("TODO: go-fil-markets integration")
+	return s.listDeals(ctx, addr)
 }
 
 func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context) ([]*storagemarket.StorageProviderInfo, error) {
-	// State query
-	panic("TODO: go-fil-markets integration")
+	head := s.chainStore.Head()
+	var spState spapow.StoragePowerActorState
+	err := s.chainStore.GetActorStateAt(ctx, head, fcaddr.StoragePowerAddress, &spState)
+	if err != nil {
+		return nil, err
+	}
+
+	infos := []*storagemarket.StorageProviderInfo{}
+	powerHamt, err := hamt.LoadNode(ctx, s.cborStore, spState.PowerTable)
+	err = powerHamt.ForEach(ctx, func(minerAddrStr string, _ interface{}) error {
+		fcMinerAddr, err := fcaddr.NewFromString(minerAddrStr)
+		if err != nil {
+			return err
+		}
+
+		var mState spaminer.StorageMinerActorState
+		err = s.chainStore.GetActorStateAt(ctx, head, fcMinerAddr, &mState)
+		if err != nil {
+			return err
+		}
+
+		minerAddr, err := address.NewFromString(minerAddrStr)
+		if err != nil {
+			return err
+		}
+
+		info := mState.Info
+		infos = append(infos, &storagemarket.StorageProviderInfo{
+			Address:    minerAddr,
+			Owner:      info.Owner,
+			Worker:     info.Worker,
+			SectorSize: uint64(info.SectorSize),
+			PeerID:     info.PeerId,
+		})
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return infos, nil
 }
 
 func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (uint64, error) {

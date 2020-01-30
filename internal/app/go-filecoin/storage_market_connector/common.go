@@ -3,6 +3,11 @@ package storagemarketconnector
 import (
 	"context"
 
+	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+
 	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 
 	"github.com/filecoin-project/go-address"
@@ -17,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	fcsm "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -41,6 +47,7 @@ type ConnectorCommon struct {
 	chainStore chainReader
 	waiter     *msg.Waiter
 	wallet     *wallet.Wallet
+	outbox     *message.Outbox
 }
 
 func (c *ConnectorCommon) MostRecentStateId(ctx context.Context) (storagemarket.StateKey, error) {
@@ -85,6 +92,37 @@ func (c *ConnectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan 
 	case <-ctx.Done():
 		return nil, xerrors.New("context ended prematurely")
 	}
+}
+
+func (c *ConnectorCommon) addFunds(ctx context.Context, from address.Address, addr address.Address, amount tokenamount.TokenAmount) error {
+	params, err := abi.ToEncodedValues(addr)
+	if err != nil {
+		return err
+	}
+
+	fromAddr, err := fcaddr.NewFromBytes(from.Bytes())
+	if err != nil {
+		return err
+	}
+
+	mcid, cerr, err := c.outbox.Send(
+		ctx,
+		fromAddr,
+		fcaddr.StorageMarketAddress,
+		types.NewAttoFIL(amount.Int),
+		types.NewGasPrice(1),
+		types.NewGasUnits(300),
+		true,
+		fcsm.AddBalance,
+		params,
+	)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.wait(ctx, mcid, cerr)
+
+	return err
 }
 
 func (s *ConnectorCommon) SignBytes(ctx context.Context, signer address.Address, b []byte) (*smtypes.Signature, error) {
@@ -134,4 +172,41 @@ func (c *ConnectorCommon) GetBalance(ctx context.Context, addr address.Address) 
 		Available: tokenamount.FromInt(available.Int.Uint64()),
 		Locked:    tokenamount.FromInt(locked.Int.Uint64()),
 	}, nil
+}
+
+func (c *ConnectorCommon) listDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
+	var smState spasm.StorageMarketActorState
+	err := c.chainStore.GetActorStateAt(ctx, c.chainStore.Head(), fcaddr.StorageMarketAddress, &smState)
+	if err != nil {
+		return nil, err
+	}
+
+	// Dragons: ListDeals or similar should be an exported method on StorageMarketState. Do it ourselves for now.
+	providerDealIds, ok := smState.CachedDealIDsByParty[addr]
+	if !ok {
+		return nil, errors.Errorf("No deals for %s", addr.String())
+	}
+
+	deals := []storagemarket.StorageDeal{}
+	for dealId, _ := range providerDealIds {
+		onChainDeal, ok := smState.Deals[dealId]
+		if !ok {
+			return nil, errors.Errorf("Could not find deal for id %d", dealId)
+		}
+		proposal := onChainDeal.Deal.Proposal
+		deals = append(deals, storagemarket.StorageDeal{
+			// Dragons: We're almost certainly looking for a CommP here.
+			PieceRef:             proposal.PieceCID.Bytes(),
+			PieceSize:            uint64(proposal.PieceSize.Total()),
+			Client:               proposal.Client,
+			Provider:             proposal.Provider,
+			ProposalExpiration:   uint64(proposal.EndEpoch),
+			Duration:             uint64(proposal.Duration()),
+			StoragePricePerEpoch: tokenamount.FromInt(proposal.StoragePricePerEpoch.Int.Uint64()),
+			StorageCollateral:    tokenamount.FromInt(proposal.ProviderCollateral.Int.Uint64()),
+			ActivationEpoch:      uint64(proposal.StartEpoch),
+		})
+	}
+
+	return deals, nil
 }

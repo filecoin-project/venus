@@ -48,7 +48,7 @@ func NewStorageProviderNodeConnector(ma address.Address,
 	wlt *wallet.Wallet,
 ) *StorageProviderNodeConnector {
 	return &StorageProviderNodeConnector{
-		ConnectorCommon: ConnectorCommon{cs, w, wlt},
+		ConnectorCommon: ConnectorCommon{cs, w, wlt, ob},
 		chainStore:      cs,
 		minerAddr:       ma,
 		outbox:          ob,
@@ -58,34 +58,12 @@ func NewStorageProviderNodeConnector(ma address.Address,
 }
 
 func (s *StorageProviderNodeConnector) AddFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
-	params, err := abi.ToEncodedValues(addr)
+	workerAddr, err := s.GetMinerWorker(ctx, s.minerAddr)
 	if err != nil {
 		return err
 	}
 
-	workerAddr, err := s.getFCWorker(ctx)
-	if err != nil {
-		return err
-	}
-
-	mcid, cerr, err := s.outbox.Send(
-		ctx,
-		workerAddr,
-		fcaddr.StorageMarketAddress,
-		types.NewAttoFIL(amount.Int),
-		types.NewGasPrice(1),
-		types.NewGasUnits(300),
-		true,
-		fcsm.AddBalance,
-		params,
-	)
-	if err != nil {
-		return err
-	}
-
-	_, err = s.wait(ctx, mcid, cerr)
-
-	return err
+	return s.addFunds(ctx, workerAddr, addr, amount)
 }
 
 func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
@@ -174,40 +152,7 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 }
 
 func (s *StorageProviderNodeConnector) ListProviderDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
-	var smState spasm.StorageMarketActorState
-	err := s.chainStore.GetActorStateAt(ctx, s.chainStore.Head(), fcaddr.StorageMarketAddress, &smState)
-	if err != nil {
-		return nil, err
-	}
-
-	// Dragons: ListDeals or similar should be an exported method on StorageMarketState. Do it ourselves for now.
-	providerDealIds, ok := smState.CachedDealIDsByParty[addr]
-	if !ok {
-		return nil, errors.Errorf("No deals for %s", addr.String())
-	}
-
-	deals := []storagemarket.StorageDeal{}
-	for dealId, _ := range providerDealIds {
-		onChainDeal, ok := smState.Deals[dealId]
-		if !ok {
-			return nil, errors.Errorf("Could not find deal for id %d", dealId)
-		}
-		proposal := onChainDeal.Deal.Proposal
-		deals = append(deals, storagemarket.StorageDeal{
-			// Dragons: We're almost certainly looking for a CommP here.
-			PieceRef:             proposal.PieceCID.Bytes(),
-			PieceSize:            uint64(proposal.PieceSize.Total()),
-			Client:               proposal.Client,
-			Provider:             proposal.Provider,
-			ProposalExpiration:   uint64(proposal.EndEpoch),
-			Duration:             uint64(proposal.Duration()),
-			StoragePricePerEpoch: tokenamount.FromInt(proposal.StoragePricePerEpoch.Int.Uint64()),
-			StorageCollateral:    tokenamount.FromInt(proposal.ProviderCollateral.Int.Uint64()),
-			ActivationEpoch:      uint64(proposal.StartEpoch),
-		})
-	}
-
-	return deals, nil
+	return s.listDeals(ctx, addr)
 }
 
 func (s *StorageProviderNodeConnector) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize uint64, pieceReader io.Reader) (uint64, error) {
