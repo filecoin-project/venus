@@ -18,8 +18,8 @@ import (
 
 type RetrievalProviderConnector struct {
 	vs  map[string]voucherEntry
-	ps  piecestore.PieceStore
-	bs  blockstore.Blockstore
+	ps  *piecestore.PieceStore
+	bs  *blockstore.Blockstore
 	net rmnet.RetrievalMarketNetwork
 }
 

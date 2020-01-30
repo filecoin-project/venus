@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p"
@@ -211,21 +210,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	}
 
 	nd.ProofVerification = submodule.NewProofVerificationSubmodule()
-
-	panic("provider NewStorageProtocolSubmodule the arguments it demands")
-	nd.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(nil, nil, nil, nil, nil, nil, nil, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.StorageProtocol")
-	}
-
-	panic("provider NewRetrievalProtocolSubmodule the arguments it demands")
-
-	libp2phost := b.libp2pOpts
-
-	nd.RetrievalProtocol, err = submodule.NewRetrievalProtocolSubmodule(address.Undef, nil, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.RetrievalProtocol")
-	}
 
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Chain:        nd.chain.State,
