@@ -1,4 +1,4 @@
-package retrievalmarketconnector
+package retrievalmarketconnector_test
 
 import (
 	"context"
@@ -17,6 +17,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
+	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
 	tut "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/shared_testutils"
 )
 
