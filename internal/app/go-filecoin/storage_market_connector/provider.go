@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 
+	"github.com/pkg/errors"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
@@ -12,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	spasm "github.com/filecoin-project/specs-actors/actors/builtin/storage_market"
+	spaminer "github.com/filecoin-project/specs-actors/actors/builtin/storage_miner"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -170,8 +173,40 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 }
 
 func (s *StorageProviderNodeConnector) ListProviderDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
-	// TODO: how to read from StorageMarketActor state
-	panic("TODO: go-fil-markets integration")
+	var smState spasm.StorageMarketActorState
+	err := s.chainStore.GetActorStateAt(ctx, s.chainStore.Head(), fcaddr.StorageMarketAddress, &smState)
+	if err != nil {
+		return nil, err
+	}
+
+	// Dragons: ListDeals or similar should be an exported method on StorageMarketState. Do it ourselves for now.
+	providerDealIds, ok := smState.CachedDealIDsByParty[addr]
+	if !ok {
+		return nil, errors.Errorf("No deals for %s", addr.String())
+	}
+
+	deals := []storagemarket.StorageDeal{}
+	for dealId, _ := range providerDealIds {
+		onChainDeal, ok := smState.Deals[dealId]
+		if !ok {
+			return nil, errors.Errorf("Could not find deal for id %d", dealId)
+		}
+		proposal := onChainDeal.Deal.Proposal
+		deals = append(deals, storagemarket.StorageDeal{
+			// Dragons: We're almost certainly looking for a CommP here.
+			PieceRef:             proposal.PieceCID.Bytes(),
+			PieceSize:            uint64(proposal.PieceSize.Total()),
+			Client:               proposal.Client,
+			Provider:             proposal.Provider,
+			ProposalExpiration:   uint64(proposal.EndEpoch),
+			Duration:             uint64(proposal.Duration()),
+			StoragePricePerEpoch: tokenamount.FromInt(proposal.StoragePricePerEpoch.Int.Uint64()),
+			StorageCollateral:    tokenamount.FromInt(proposal.ProviderCollateral.Int.Uint64()),
+			ActivationEpoch:      uint64(proposal.StartEpoch),
+		})
+	}
+
+	return deals, nil
 }
 
 func (s *StorageProviderNodeConnector) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize uint64, pieceReader io.Reader) (uint64, error) {
@@ -240,8 +275,43 @@ func (s *StorageProviderNodeConnector) OnDealSectorCommitted(ctx context.Context
 	})
 }
 
-func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx context.Context, dealID uint64) (sectorID uint64, offset uint64, length uint64, err error) {
-	panic("TODO: go-fil-markets integration")
+func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx context.Context, dealID uint64) (sectorNumber uint64, offset uint64, length uint64, err error) {
+	var smState spasm.StorageMarketActorState
+	err = s.chainStore.GetActorStateAt(ctx, s.chainStore.Head(), fcaddr.StorageMarketAddress, &smState)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	minerAddr, err := fcaddr.NewFromBytes(s.minerAddr.Bytes())
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	var minerState spaminer.StorageMinerActorState
+	err = s.chainStore.GetActorStateAt(ctx, s.chainStore.Head(), minerAddr, &minerState)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	for sectorNumber, sectorInfo := range minerState.PreCommittedSectors {
+		for _, deal := range sectorInfo.Info.DealIDs.Items {
+			if uint64(deal) == dealID {
+				offset := uint64(0)
+				for _, did := range sectorInfo.Info.DealIDs.Items {
+					deal, ok := smState.Deals[did]
+					if !ok {
+						return 0, 0, 0, errors.Errorf("Could not find miner deal %d in storage market state", did)
+					}
+
+					if uint64(did) == dealID {
+						return uint64(sectorNumber), offset, uint64(deal.Deal.Proposal.PieceSize.Total()), nil
+					}
+					offset += uint64(deal.Deal.Proposal.PieceSize.Total())
+				}
+			}
+		}
+	}
+	return 0, 0, 0, errors.New("Deal not found")
 }
 
 func (s *StorageProviderNodeConnector) getFCWorker(ctx context.Context) (fcaddr.Address, error) {

@@ -119,7 +119,7 @@ func (c *ConnectorCommon) GetBalance(ctx context.Context, addr address.Address) 
 		return storagemarket.Balance{}, err
 	}
 
-	// TODO: Balance or similar should be an exported method on StorageMarketState. Do it ourselves for now.
+	// Dragons: Balance or similar should be an exported method on StorageMarketState. Do it ourselves for now.
 	available, ok := spautil.BalanceTable_GetEntry(smState.EscrowTable, addr)
 	if !ok {
 		available = spaabi.NewTokenAmount(0)
