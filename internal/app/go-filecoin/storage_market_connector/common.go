@@ -3,19 +3,29 @@ package storagemarketconnector
 import (
 	"context"
 
+	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
+
 	"github.com/filecoin-project/go-address"
 	smtypes "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	spaabi "github.com/filecoin-project/specs-actors/actors/abi"
+	spasm "github.com/filecoin-project/specs-actors/actors/builtin/storage_market"
+	spautil "github.com/filecoin-project/specs-actors/actors/util"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
+
+type chainReader interface {
+	Head() block.TipSetKey
+	GetTipSet(block.TipSetKey) (block.TipSet, error)
+	GetActorStateAt(ctx context.Context, tipKey block.TipSetKey, addr fcaddr.Address, out interface{}) error
+}
 
 // Implements storagemarket.StateKey
 type stateKey struct {
@@ -28,13 +38,13 @@ func (k *stateKey) Height() uint64 {
 }
 
 type ConnectorCommon struct {
-	chainStore *chain.Store
+	chainStore chainReader
 	waiter     *msg.Waiter
 	wallet     *wallet.Wallet
 }
 
 func (c *ConnectorCommon) MostRecentStateId(ctx context.Context) (storagemarket.StateKey, error) {
-	key := c.chainStore.GetHead()
+	key := c.chainStore.Head()
 	ts, err := c.chainStore.GetTipSet(key)
 
 	if err != nil {
@@ -103,6 +113,25 @@ func (s *ConnectorCommon) SignBytes(ctx context.Context, signer address.Address,
 }
 
 func (c *ConnectorCommon) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {
-	// TODO: how to read from StorageMarketActor state
-	panic("TODO: go-fil-markets integration")
+	var smState spasm.StorageMarketActorState
+	err := c.chainStore.GetActorStateAt(ctx, c.chainStore.Head(), fcaddr.StorageMarketAddress, &smState)
+	if err != nil {
+		return storagemarket.Balance{}, err
+	}
+
+	// TODO: Balance or similar should be an exported method on StorageMarketState. Do it ourselves for now.
+	available, ok := spautil.BalanceTable_GetEntry(smState.EscrowTable, addr)
+	if !ok {
+		available = spaabi.NewTokenAmount(0)
+	}
+
+	locked, ok := spautil.BalanceTable_GetEntry(smState.LockedReqTable, addr)
+	if !ok {
+		locked = spaabi.NewTokenAmount(0)
+	}
+
+	return storagemarket.Balance{
+		Available: tokenamount.FromInt(available.Int.Uint64()),
+		Locked:    tokenamount.FromInt(locked.Int.Uint64()),
+	}, nil
 }

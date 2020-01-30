@@ -12,9 +12,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/crypto"
 
@@ -171,7 +171,7 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consens
 		return nil, err
 	}
 
-	gif := func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+	gif := func(cst *hamt.BasicCborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
 		return genesisBlk, err
 	}
 

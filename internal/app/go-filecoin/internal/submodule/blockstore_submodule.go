@@ -19,7 +19,7 @@ type BlockstoreSubmodule struct {
 	Blockstore bstore.Blockstore
 
 	// cborStore is a wrapper for a `hamt.CborIpldStore` that works on the local IPLD-Cbor objects stored in `Blockstore`.
-	CborStore *hamt.CborIpldStore
+	CborStore hamt.CborIpldStore
 }
 
 type blockstoreRepo interface {

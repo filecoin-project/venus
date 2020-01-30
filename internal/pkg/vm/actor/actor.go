@@ -3,6 +3,7 @@ package actor
 
 import (
 	"fmt"
+
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -107,7 +108,7 @@ func NextNonce(actor *Actor) (uint64, error) {
 
 // InitBuiltinActorCodeObjs writes all builtin actor code objects to `cst`. This method should be called when initializing a genesis
 // block to ensure all IPLD links referenced by the state tree exist.
-func InitBuiltinActorCodeObjs(cst *hamt.CborIpldStore) error {
+func InitBuiltinActorCodeObjs(cst *hamt.BasicCborIpldStore) error {
 	if err := cst.Blocks.AddBlock(types.StorageMarketActorCodeObj); err != nil {
 		return err
 	}

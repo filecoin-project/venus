@@ -11,12 +11,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	spasm "github.com/filecoin-project/specs-actors/actors/builtin/storage_market"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
@@ -30,6 +30,7 @@ type StorageProviderNodeConnector struct {
 	ConnectorCommon
 
 	minerAddr    address.Address
+	chainStore   chainReader
 	outbox       *message.Outbox
 	pieceManager piecemanager.PieceManager
 	workerGetter WorkerGetter
@@ -38,7 +39,7 @@ type StorageProviderNodeConnector struct {
 var _ storagemarket.StorageProviderNode = &StorageProviderNodeConnector{}
 
 func NewStorageProviderNodeConnector(ma address.Address,
-	cs *chain.Store,
+	cs chainReader,
 	ob *message.Outbox,
 	w *msg.Waiter,
 	pm piecemanager.PieceManager,
@@ -47,6 +48,7 @@ func NewStorageProviderNodeConnector(ma address.Address,
 ) *StorageProviderNodeConnector {
 	return &StorageProviderNodeConnector{
 		ConnectorCommon: ConnectorCommon{cs, w, wlt},
+		chainStore:      cs,
 		minerAddr:       ma,
 		outbox:          ob,
 		pieceManager:    pm,
@@ -86,8 +88,13 @@ func (s *StorageProviderNodeConnector) AddFunds(ctx context.Context, addr addres
 }
 
 func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
-	// TODO: how to read from StorageMarketActor state
-	panic("TODO: go-fil-markets integration")
+	var smState spasm.StorageMarketActorState
+	err := s.chainStore.GetActorStateAt(ctx, s.chainStore.Head(), fcaddr.StorageMarketAddress, &smState)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (storagemarket.DealID, cid.Cid, error) {
@@ -182,7 +189,7 @@ func (s *StorageProviderNodeConnector) GetMinerWorker(ctx context.Context, miner
 	}
 
 	// Fetch from chain
-	fcworker, err := s.workerGetter(ctx, fcMiner, s.chainStore.GetHead())
+	fcworker, err := s.workerGetter(ctx, fcMiner, s.chainStore.Head())
 	if err != nil {
 		return address.Undef, err
 	}

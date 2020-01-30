@@ -32,7 +32,7 @@ type waiterChainReader interface {
 type Waiter struct {
 	chainReader     waiterChainReader
 	messageProvider chain.MessageProvider
-	cst             *hamt.CborIpldStore
+	cst             hamt.CborIpldStore
 	bs              bstore.Blockstore
 }
 
@@ -46,7 +46,7 @@ type ChainMessage struct {
 type WaitPredicate func(msg *types.SignedMessage, msgCid cid.Cid) bool
 
 // NewWaiter returns a new Waiter.
-func NewWaiter(chainStore waiterChainReader, messages chain.MessageProvider, bs bstore.Blockstore, cst *hamt.CborIpldStore) *Waiter {
+func NewWaiter(chainStore waiterChainReader, messages chain.MessageProvider, bs bstore.Blockstore, cst hamt.CborIpldStore) *Waiter {
 	return &Waiter{
 		chainReader:     chainStore,
 		cst:             cst,

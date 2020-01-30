@@ -688,7 +688,7 @@ func (node *Node) BlockService() bserv.BlockService {
 }
 
 // CborStore returns the nodes cborStore.
-func (node *Node) CborStore() *hamt.CborIpldStore {
+func (node *Node) CborStore() hamt.CborIpldStore {
 	return node.Blockstore.CborStore
 }
 

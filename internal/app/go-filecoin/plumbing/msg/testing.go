@@ -20,7 +20,7 @@ type commonDeps struct {
 	chainStore *chain.Store
 	messages   *chain.MessageStore
 	blockstore bstore.Blockstore
-	cst        *hamt.CborIpldStore
+	cst        hamt.CborIpldStore
 }
 
 func requiredCommonDeps(t *testing.T, gif consensus.GenesisInitFunc) *commonDeps { // nolint: deadcode

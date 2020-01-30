@@ -76,7 +76,7 @@ func WithLookupForReading(ctx context.Context, storage runtime.Storage, id cid.C
 // LoadLookup loads hamt-ipld node from storage if the cid exists, or creates a new one if it is nil.
 // The lookup provides access to a HAMT/CHAMP tree stored in storage.
 func LoadLookup(ctx context.Context, storage runtime.Storage, cid cid.Cid) (storage.Lookup, error) {
-	cborStore := &hamt.CborIpldStore{
+	cborStore := &hamt.BasicCborIpldStore{
 		Blocks: &storageAsBlocks{s: storage},
 		Atlas:  &cbor.CborAtlas,
 	}

@@ -41,7 +41,7 @@ type Builder struct {
 	stateBuilder StateBuilder
 	stamper      TimeStamper
 	bs           blockstore.Blockstore
-	cstore       *hamt.CborIpldStore
+	cstore       hamt.CborIpldStore
 	messages     *MessageStore
 	seq          uint64 // For unique tickets
 

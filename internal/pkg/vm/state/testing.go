@@ -123,7 +123,7 @@ func (m *MockStateTree) GetActorCode(c cid.Cid, protocol uint64) (dispatch.Execu
 // can be avoided when we are able to change cborStore to an interface and then
 // making a test implementation of the cbor store that can map test cids to test
 // states.
-func TreeFromString(t *testing.T, s string, cst *hamt.CborIpldStore) Tree {
+func TreeFromString(t *testing.T, s string, cst hamt.CborIpldStore) Tree {
 	tree := NewTree(cst)
 	strAddr, err := address.NewSecp256k1Address([]byte(s))
 	require.NoError(t, err)

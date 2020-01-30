@@ -36,11 +36,11 @@ func (stl *treeLoader) LoadStateTree(ctx context.Context, store ipldStore, c cid
 
 func loadStateTree(ctx context.Context, store ipldStore, c cid.Cid) (Tree, error) {
 	// TODO ideally this assertion can go away when #3078 lands in go-ipld-cbor
-	root, err := hamt.LoadNode(ctx, store.(*hamt.CborIpldStore), c, hamt.UseTreeBitWidth(TreeBitWidth))
+	root, err := hamt.LoadNode(ctx, store.(hamt.CborIpldStore), c, hamt.UseTreeBitWidth(TreeBitWidth))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load node for %s", c)
 	}
-	stateTree := newEmptyStateTree(store.(*hamt.CborIpldStore))
+	stateTree := newEmptyStateTree(store.(hamt.CborIpldStore))
 	stateTree.root = root
 
 	return stateTree, nil

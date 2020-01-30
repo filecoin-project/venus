@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -171,6 +172,21 @@ func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey block.Ti
 		return nil, errors.Wrapf(err, "no actor at address %s", addr)
 	}
 	return actr, nil
+}
+
+// GetActorStateAt returns the root state of an actor at a given point in the chain (specified by tipset key)
+func (chn *ChainStateReadWriter) GetActorStateAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address, out interface{}) error {
+	act, err := chn.GetActorAt(ctx, tipKey, addr)
+	if err != nil {
+		return err
+	}
+
+	blk, err := chn.bstore.Get(act.Head)
+	if err != nil {
+		return err
+	}
+
+	return encoding.Decode(blk.RawData(), out)
 }
 
 // LsActors returns a channel with actors from the latest state on the chain

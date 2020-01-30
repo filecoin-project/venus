@@ -41,7 +41,7 @@ type GetAllActorsResult struct {
 type tree struct {
 	// root is the root of the state merklehamt
 	root  *hamt.Node
-	store *hamt.CborIpldStore
+	store hamt.CborIpldStore
 }
 
 const (
@@ -50,11 +50,11 @@ const (
 )
 
 // NewTree instantiates a new state tree.
-func NewTree(store *hamt.CborIpldStore) Tree {
+func NewTree(store hamt.CborIpldStore) Tree {
 	return newEmptyStateTree(store)
 }
 
-func newEmptyStateTree(store *hamt.CborIpldStore) *tree {
+func newEmptyStateTree(store hamt.CborIpldStore) *tree {
 	return &tree{
 		root:  hamt.NewNode(store, hamt.UseTreeBitWidth(TreeBitWidth)),
 		store: store,
@@ -144,7 +144,7 @@ func (e actorNotFoundError) ActorNotFound() bool {
 	return true
 }
 
-func forEachActor(ctx context.Context, cst *hamt.CborIpldStore, nd *hamt.Node, walkFn ActorWalkFn) error {
+func forEachActor(ctx context.Context, cst hamt.CborIpldStore, nd *hamt.Node, walkFn ActorWalkFn) error {
 	for _, p := range nd.Pointers {
 		for _, kv := range p.KVs {
 			var a actor.Actor
