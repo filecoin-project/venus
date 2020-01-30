@@ -74,7 +74,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	ssb := selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
 
 	amtSelector := ssb.ExploreIndex(2,
-		ssb.ExploreRecursive(10,
+		ssb.ExploreRecursive(selector.RecursionLimitDepth(10),
 			ssb.ExploreUnion(
 				ssb.ExploreIndex(1, ssb.ExploreAll(ssb.ExploreRecursiveEdge())),
 				ssb.ExploreIndex(2, ssb.ExploreAll(ssb.Matcher())))))
@@ -87,7 +87,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	}).Selector()
 	require.NoError(t, err)
 	recursiveSelector := func(levels int) selector.Selector {
-		s, err := ssb.ExploreRecursive(levels, ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
+		s, err := ssb.ExploreRecursive(selector.RecursionLimitDepth(levels), ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 			efsb.Insert("parents", ssb.ExploreUnion(
 				ssb.ExploreAll(
 					ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
@@ -665,7 +665,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	require.NoError(t, err)
 
 	recursiveSelector := func(levels int) selector.Selector {
-		s, err := ssb.ExploreRecursive(levels, ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
+		s, err := ssb.ExploreRecursive(selector.RecursionLimitDepth(levels), ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 			efsb.Insert("parents", ssb.ExploreUnion(
 				ssb.ExploreAll(
 					ssb.Matcher(),

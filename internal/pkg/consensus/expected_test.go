@@ -264,7 +264,7 @@ func emptyMessages(numBlocks int) ([][]*types.UnsignedMessage, [][]*types.Signed
 	return emptyBLSMessages, emptyMessages
 }
 
-func setupCborBlockstore() (*hamt.CborIpldStore, blockstore.Blockstore) {
+func setupCborBlockstore() (*hamt.BasicCborIpldStore, blockstore.Blockstore) {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	cis := hamt.CSTFromBstore(bs)
 
@@ -303,7 +303,7 @@ func testActorState(ctx context.Context, t *testing.T, m2w map[address.Address]a
 	return consensus.NewFakeActorStateStore(minerPower, totalPower, m2w)
 }
 
-func setTree(ctx context.Context, t *testing.T, kis []types.KeyInfo, cstore *hamt.CborIpldStore, bstore blockstore.Blockstore, inRoot cid.Cid) (cid.Cid, []address.Address, map[address.Address]address.Address) {
+func setTree(ctx context.Context, t *testing.T, kis []types.KeyInfo, cstore hamt.CborIpldStore, bstore blockstore.Blockstore, inRoot cid.Cid) (cid.Cid, []address.Address, map[address.Address]address.Address) {
 	tree, err := state.NewTreeLoader().LoadStateTree(ctx, cstore, inRoot)
 	require.NoError(t, err)
 	miners := make([]address.Address, len(kis))

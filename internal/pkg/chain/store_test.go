@@ -54,7 +54,7 @@ type HeadAndTipsetGetter interface {
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
 }
 
-func requirePutBlocksToCborStore(t *testing.T, cst *hamt.CborIpldStore, blocks ...*block.Block) {
+func requirePutBlocksToCborStore(t *testing.T, cst hamt.CborIpldStore, blocks ...*block.Block) {
 	for _, block := range blocks {
 		_, err := cst.Put(context.Background(), block)
 		require.NoError(t, err)
