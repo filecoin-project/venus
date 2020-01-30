@@ -92,12 +92,15 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 }
 
 func (s *StorageClientNodeConnector) SignProposal(ctx context.Context, signer address.Address, proposal *storagemarket.StorageDealProposal) error {
+	signFn := func(ctx context.Context, data []byte) (*smtypes.Signature, error) {
+		return s.SignBytes(ctx, signer, data)
+	}
 
-	panic("TODO: go-fil-markets integration")
+	return proposal.Sign(ctx, signFn)
 }
 
 func (s *StorageClientNodeConnector) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {
-	panic("TODO: go-fil-markets integration")
+	return s.clientAddr, nil
 }
 
 func (s *StorageClientNodeConnector) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealId uint64, cb storagemarket.DealSectorCommittedCallback) error {
