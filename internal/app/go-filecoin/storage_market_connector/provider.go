@@ -15,7 +15,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -25,8 +24,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
-type WorkerGetter func(ctx context.Context, minerAddr fcaddr.Address, baseKey block.TipSetKey) (fcaddr.Address, error)
-
 type StorageProviderNodeConnector struct {
 	ConnectorCommon
 
@@ -34,7 +31,6 @@ type StorageProviderNodeConnector struct {
 	chainStore   chainReader
 	outbox       *message.Outbox
 	pieceManager piecemanager.PieceManager
-	workerGetter WorkerGetter
 }
 
 var _ storagemarket.StorageProviderNode = &StorageProviderNodeConnector{}
@@ -48,12 +44,11 @@ func NewStorageProviderNodeConnector(ma address.Address,
 	wlt *wallet.Wallet,
 ) *StorageProviderNodeConnector {
 	return &StorageProviderNodeConnector{
-		ConnectorCommon: ConnectorCommon{cs, w, wlt, ob},
+		ConnectorCommon: ConnectorCommon{cs, w, wlt, ob, wg},
 		chainStore:      cs,
 		minerAddr:       ma,
 		outbox:          ob,
 		pieceManager:    pm,
-		workerGetter:    wg,
 	}
 }
 
@@ -112,7 +107,7 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 		return 0, cid.Undef, err
 	}
 
-	workerAddr, err := s.getFCWorker(ctx)
+	workerAddr, err := s.getFCWorker(ctx, s.minerAddr)
 	if err != nil {
 		return 0, cid.Undef, err
 	}
@@ -162,65 +157,6 @@ func (s *StorageProviderNodeConnector) OnDealComplete(ctx context.Context, deal 
 	return 0, s.pieceManager.SealPieceIntoNewSector(ctx, deal.DealID, pieceSize, pieceReader)
 }
 
-func (s *StorageProviderNodeConnector) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
-	// Convert to FC address
-	fcMiner, err := fcaddr.NewFromBytes(miner.Bytes())
-	if err != nil {
-		return address.Undef, err
-	}
-
-	// Fetch from chain
-	fcworker, err := s.workerGetter(ctx, fcMiner, s.chainStore.Head())
-	if err != nil {
-		return address.Undef, err
-	}
-
-	// Convert back to go-address
-	return address.NewFromBytes(fcworker.Bytes())
-}
-
-func (s *StorageProviderNodeConnector) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID uint64, cb storagemarket.DealSectorCommittedCallback) error {
-	// TODO: is this provider address the miner address or the miner worker address?
-
-	pred := func(msg *types.SignedMessage, msgCid cid.Cid) bool {
-		m := msg.Message
-		if m.Method != fcsm.CommitSector {
-			return false
-		}
-
-		// TODO: compare addresses directly when they share a type #3719
-		if m.From.String() != provider.String() {
-			return false
-		}
-
-		values, err := abi.DecodeValues(m.Params, []abi.Type{abi.SectorProveCommitInfo})
-		if err != nil {
-			return false
-		}
-
-		commitInfo := values[0].Val.(*types.SectorProveCommitInfo)
-		for _, id := range commitInfo.DealIDs {
-			if uint64(id) == dealID {
-				return true
-			}
-		}
-		return false
-	}
-
-	_, found, err := s.waiter.Find(ctx, pred)
-	if found {
-		// TODO: DealSectorCommittedCallback should take a sector ID which we would provide here.
-		cb(err)
-		return nil
-	}
-
-	return s.waiter.WaitPredicate(ctx, pred, func(_ *block.Block, _ *types.SignedMessage, _ *types.MessageReceipt) error {
-		// TODO: DealSectorCommittedCallback should take a sector ID which we would provide here.
-		cb(nil)
-		return nil
-	})
-}
-
 func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx context.Context, dealID uint64) (sectorNumber uint64, offset uint64, length uint64, err error) {
 	var smState spasm.StorageMarketActorState
 	err = s.chainStore.GetActorStateAt(ctx, s.chainStore.Head(), fcaddr.StorageMarketAddress, &smState)
@@ -258,17 +194,4 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 		}
 	}
 	return 0, 0, 0, errors.New("Deal not found")
-}
-
-func (s *StorageProviderNodeConnector) getFCWorker(ctx context.Context) (fcaddr.Address, error) {
-	worker, err := s.GetMinerWorker(ctx, s.minerAddr)
-	if err != nil {
-		return fcaddr.Undef, err
-	}
-
-	workerAddr, err := fcaddr.NewFromBytes(worker.Bytes())
-	if err != nil {
-		return fcaddr.Undef, err
-	}
-	return workerAddr, nil
 }

@@ -17,6 +17,7 @@ require (
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20191221090835-c7bbef445934
 	github.com/filecoin-project/go-address v0.0.0-20200107215422-da8eea2842b5
 	github.com/filecoin-project/go-amt-ipld v0.0.0-20190920035751-ae3c37184616
+	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-data-transfer v0.0.0-20191219005021-4accf56bd2ce
 	github.com/filecoin-project/go-fil-markets v0.0.0-20200122013934-353c6e8ac576
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543

@@ -440,6 +440,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 	node.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(
 		ctx,
 		minerAddr,
+		address.Undef, // TODO: This is for setting up mining, we need to pass the client address in if this is going to be a storage client also
 		&node.chain,
 		&node.Messaging,
 		waiter,

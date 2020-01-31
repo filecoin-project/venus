@@ -43,11 +43,14 @@ func (k *stateKey) Height() uint64 {
 	return k.height
 }
 
+type WorkerGetter func(ctx context.Context, minerAddr fcaddr.Address, baseKey block.TipSetKey) (fcaddr.Address, error)
+
 type ConnectorCommon struct {
-	chainStore chainReader
-	waiter     *msg.Waiter
-	wallet     *wallet.Wallet
-	outbox     *message.Outbox
+	chainStore   chainReader
+	waiter       *msg.Waiter
+	wallet       *wallet.Wallet
+	outbox       *message.Outbox
+	workerGetter WorkerGetter
 }
 
 func (c *ConnectorCommon) MostRecentStateId(ctx context.Context) (storagemarket.StateKey, error) {
@@ -172,6 +175,78 @@ func (c *ConnectorCommon) GetBalance(ctx context.Context, addr address.Address) 
 		Available: tokenamount.FromInt(available.Int.Uint64()),
 		Locked:    tokenamount.FromInt(locked.Int.Uint64()),
 	}, nil
+}
+
+func (c *ConnectorCommon) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
+	// Convert to FC address
+	fcMiner, err := fcaddr.NewFromBytes(miner.Bytes())
+	if err != nil {
+		return address.Undef, err
+	}
+
+	// Fetch from chain
+	fcworker, err := c.workerGetter(ctx, fcMiner, c.chainStore.Head())
+	if err != nil {
+		return address.Undef, err
+	}
+
+	// Convert back to go-address
+	return address.NewFromBytes(fcworker.Bytes())
+}
+
+func (s *ConnectorCommon) getFCWorker(ctx context.Context, providerAddr address.Address) (fcaddr.Address, error) {
+	worker, err := s.GetMinerWorker(ctx, providerAddr)
+	if err != nil {
+		return fcaddr.Undef, err
+	}
+
+	workerAddr, err := fcaddr.NewFromBytes(worker.Bytes())
+	if err != nil {
+		return fcaddr.Undef, err
+	}
+	return workerAddr, nil
+}
+
+func (s *ConnectorCommon) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID uint64, cb storagemarket.DealSectorCommittedCallback) error {
+	// TODO: is this provider address the miner address or the miner worker address?
+
+	pred := func(msg *types.SignedMessage, msgCid cid.Cid) bool {
+		m := msg.Message
+		if m.Method != fcsm.CommitSector {
+			return false
+		}
+
+		// TODO: compare addresses directly when they share a type #3719
+		if m.From.String() != provider.String() {
+			return false
+		}
+
+		values, err := abi.DecodeValues(m.Params, []abi.Type{abi.SectorProveCommitInfo})
+		if err != nil {
+			return false
+		}
+
+		commitInfo := values[0].Val.(*types.SectorProveCommitInfo)
+		for _, id := range commitInfo.DealIDs {
+			if uint64(id) == dealID {
+				return true
+			}
+		}
+		return false
+	}
+
+	_, found, err := s.waiter.Find(ctx, pred)
+	if found {
+		// TODO: DealSectorCommittedCallback should take a sector ID which we would provide here.
+		cb(err)
+		return nil
+	}
+
+	return s.waiter.WaitPredicate(ctx, pred, func(_ *block.Block, _ *types.SignedMessage, _ *types.MessageReceipt) error {
+		// TODO: DealSectorCommittedCallback should take a sector ID which we would provide here.
+		cb(nil)
+		return nil
+	})
 }
 
 func (c *ConnectorCommon) listDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {

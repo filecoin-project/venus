@@ -9,19 +9,21 @@ import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	iface "github.com/filecoin-project/go-fil-markets/storagemarket"
 	impl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	"github.com/ipfs/go-datastore"
+	graphsync "github.com/ipfs/go-graphsync/impl"
+	"github.com/ipfs/go-graphsync/ipldbridge"
+	gsnet "github.com/ipfs/go-graphsync/network"
+	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
+	"github.com/ipfs/go-hamt-ipld"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/libp2p/go-libp2p-core/host"
+
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	storagemarketconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/storage_market_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
-	"github.com/ipfs/go-datastore"
-	graphsync "github.com/ipfs/go-graphsync/impl"
-	"github.com/ipfs/go-graphsync/ipldbridge"
-	gsnet "github.com/ipfs/go-graphsync/network"
-	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/libp2p/go-libp2p-core/host"
 )
 
 // StorageProtocolSubmodule enhances the node with storage protocol
@@ -35,6 +37,7 @@ type StorageProtocolSubmodule struct {
 func NewStorageProtocolSubmodule(
 	ctx context.Context,
 	minerAddr fcaddr.Address,
+	clientAddr fcaddr.Address,
 	c *ChainSubmodule,
 	m *MessagingSubmodule,
 	mw *msg.Waiter,
@@ -51,8 +54,13 @@ func NewStorageProtocolSubmodule(
 		return nil, err
 	}
 
+	ca, err := address.NewFromBytes(clientAddr.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
 	pnode := storagemarketconnector.NewStorageProviderNodeConnector(ma, c.State, m.Outbox, mw, pm, wg, wlt)
-	cnode := storagemarketconnector.NewStorageClientNodeConnector(c.State, mw, wlt)
+	cnode := storagemarketconnector.NewStorageClientNodeConnector(hamt.CSTFromBstore(bs), c.State, mw, wlt, m.Outbox, ca, wg)
 
 	pieceStagingPath, err := paths.PieceStagingDir(repoPath)
 	if err != nil {
