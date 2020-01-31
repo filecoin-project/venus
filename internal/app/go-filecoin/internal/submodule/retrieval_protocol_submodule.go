@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	iface "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	impl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/host"
 
@@ -24,16 +25,13 @@ type RetrievalProtocolSubmodule struct {
 	RetrievalClient   iface.RetrievalClient
 	RetrievalProvider iface.RetrievalProvider
 }
-type balanceGetter func(ctx context.Context, address address.Address) (types.AttoFIL, error)
-type workerGetter func(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error)
+type BalanceGetter func(ctx context.Context, address address.Address) (types.AttoFIL, error)
+type WorkerGetter func(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error)
 
 // NewRetrievalProtocolSubmodule creates a new retrieval protocol submodule.
 func NewRetrievalProtocolSubmodule(
 	ob *message.Outbox,
-	bg balanceGetter,
 	smAPI piecemanager.StorageMinerAPI,
-	mw msg.Waiter,
-	wg workerGetter,
 	host host.Host,
 	providerAddr address.Address,
 	c *ChainSubmodule,
@@ -41,10 +39,10 @@ func NewRetrievalProtocolSubmodule(
 	bs *blockstore.Blockstore) (RetrievalProtocolSubmodule, error) {
 	panic("TODO: go-fil-markets integration")
 
-	netwk := retrievalmarketconnector.NewRetrievalMarketNetworkConnector(host)
+	netwk := network.NewFromLibp2pHost(host)
 	pnode := retrievalmarketconnector.NewRetrievalProviderNodeConnector(netwk, ps, bs)
 	cnode := retrievalmarketconnector.NewRetrievalClientNodeConnector(
-		bg, bs, c.ChainReader, mw, ob, ps, smAPI, wg)
+		bg, bs, c.ChainReader, ob, ps, smAPI, )
 	rsvlr := retrievalmarketconnector.NewRetrievalPeerResolverConnector()
 
 	return RetrievalProtocolSubmodule{

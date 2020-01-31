@@ -130,3 +130,10 @@ func (s *StorageMinerBackEnd) LocatePieceForDealWithinSector(ctx context.Context
 
 	return 0, 0, 0, errors.Errorf("no encoded piece could be found corresponding to deal id: %d", dealID)
 }
+
+// GetSectorInfo produces information about a sector managed by this storage
+// miner, or an error if the miner does not manage a sector with the
+// provided identity.
+func(s *StorageMinerBackEnd) GetSectorInfo(sectorID uint64) (storage.SectorInfo, error) {
+	return s.miner.GetSectorInfo(sectorID)
+}

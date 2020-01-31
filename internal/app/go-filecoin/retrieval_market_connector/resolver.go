@@ -1,15 +1,20 @@
 package retrievalmarketconnector
 
 import (
-	iface "github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/ipfs/go-cid"
 )
 
 type RetrievalPeerResolverConnector struct{}
+
+// var _ retrievalmarket.PeerResolver = &RetrievalPeerResolverConnector{}
 
 func NewRetrievalPeerResolverConnector() *RetrievalPeerResolverConnector {
 	return &RetrievalPeerResolverConnector{}
 }
 
-func (r *RetrievalPeerResolverConnector) GetPeers(pieceCID []byte) ([]iface.RetrievalPeer, error) {
-	panic("TODO: go-fil-markets integration")
+func (r RetrievalPeerResolverConnector) GetPeers(payloadCID cid.Cid) ([]retrievalmarket.RetrievalPeer, error) {
+	panic("implement me")
 }
+
+
