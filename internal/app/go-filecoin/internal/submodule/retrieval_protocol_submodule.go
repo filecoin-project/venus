@@ -35,18 +35,17 @@ func NewRetrievalProtocolSubmodule(
 	host host.Host,
 	providerAddr address.Address,
 	c *ChainSubmodule,
-	ps *piecestore.PieceStore,
+	ps piecestore.PieceStore,
 	bs *blockstore.Blockstore) (RetrievalProtocolSubmodule, error) {
 	panic("TODO: go-fil-markets integration")
 
 	netwk := network.NewFromLibp2pHost(host)
 	pnode := retrievalmarketconnector.NewRetrievalProviderNodeConnector(netwk, ps, bs)
-	cnode := retrievalmarketconnector.NewRetrievalClientNodeConnector(
-		bg, bs, c.ChainReader, ob, ps, smAPI, )
+	cnode := retrievalmarketconnector.NewRetrievalClientNodeConnector(bs, c.ChainReader...)
 	rsvlr := retrievalmarketconnector.NewRetrievalPeerResolverConnector()
 
 	return RetrievalProtocolSubmodule{
 		RetrievalClient:   impl.NewClient(netwk, *bs, cnode, rsvlr),
-		RetrievalProvider: impl.NewProvider(providerAddr, pnode, netwk, *ps, *bs),
+		RetrievalProvider: impl.NewProvider(providerAddr, pnode, netwk, ps, *bs),
 	}, nil
 }

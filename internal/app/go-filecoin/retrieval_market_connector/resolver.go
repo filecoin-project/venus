@@ -1,4 +1,4 @@
-package retrievalmarketconnector
+package retrieval_market_connector
 
 import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"

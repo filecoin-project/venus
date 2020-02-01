@@ -1,4 +1,4 @@
-package retrievalmarketconnector_test
+package retrieval_market_connector_test
 
 import (
 	"context"
@@ -31,7 +31,7 @@ func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
 
 func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 	rmnet := gfmtut.NewTestRetrievalMarketNetwork(gfmtut.TestNetworkParams{})
-	ps := &tut.DummyPieceStore{}
+	ps := tut.RequireMakeTestPieceStore(t)
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	pchan, err := address.NewIDAddress(rand.Uint64())
 	require.NoError(t, err)
@@ -46,14 +46,14 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 	proof := []byte("proof")
 
 	t.Run("saves payment voucher and returns voucher amount if new", func(t *testing.T) {
-		rpc := NewRetrievalProviderNodeConnector(rmnet, ps, bs)
+		rpc := NewRetrievalProviderNodeConnector(rmnet, ps, &bs)
 		tokenamt, err := rpc.SavePaymentVoucher(ctx, pchan, voucher, proof, dealAmount)
 		assert.NoError(t, err)
 		assert.True(t, voucher.Amount.Equals(tokenamt))
 	})
 
 	t.Run("errors and does not overwrite voucher if already saved, regardless of other params", func(t *testing.T) {
-		rpc := NewRetrievalProviderNodeConnector(rmnet, ps, bs)
+		rpc := NewRetrievalProviderNodeConnector(rmnet, ps, &bs)
 		_, err := rpc.SavePaymentVoucher(ctx, pchan, voucher, proof, dealAmount)
 		require.NoError(t, err)
 		proof2 := []byte("newproof")
@@ -64,7 +64,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 		assert.Equal(t, tokenamount.TokenAmount{nil}, tokenamt2)
 	})
 	t.Run("errors if cannot create a key for the voucher store", func(t *testing.T) {
-		rpc := NewRetrievalProviderNodeConnector(rmnet, ps, bs)
+		rpc := NewRetrievalProviderNodeConnector(rmnet, ps, &bs)
 		badVoucher := &types.SignedVoucher{
 			Merges: make([]types.Merge, cbg.MaxLength+1),
 		}
