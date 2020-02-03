@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
@@ -97,7 +97,7 @@ additional sectors.`,
 		var pid peer.ID
 		peerid := req.Options["peerid"]
 		if peerid != nil {
-			pid, err = peer.IDB58Decode(peerid.(string))
+			pid, err = peer.Decode(peerid.(string))
 			if err != nil {
 				return errors.Wrap(err, "invalid peer id")
 			}
@@ -308,7 +308,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			return err
 		}
 
-		newPid, err := peer.IDB58Decode(req.Arguments[1])
+		newPid, err := peer.Decode(req.Arguments[1])
 		if err != nil {
 			return err
 		}

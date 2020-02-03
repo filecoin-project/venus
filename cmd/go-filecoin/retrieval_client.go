@@ -46,7 +46,5 @@ var clientRetrievePieceCmd = &cmds.Command{
 		//}
 		//
 		//return re.Emit(readCloser)
-
-		return nil
 	},
 }

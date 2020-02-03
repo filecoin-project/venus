@@ -1,7 +1,6 @@
 package fast
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
@@ -45,9 +44,7 @@ func (f *Filecoin) MiningStart(ctx context.Context) error {
 	}
 
 	if out.ExitCode() > 0 {
-		errorBuf := new(bytes.Buffer)
-		errorBuf.ReadFrom(out.Stderr())
-		return fmt.Errorf("filecoin command: %s, exited with non-zero exitcode: %d %s", out.Args(), out.ExitCode(), errorBuf.String())
+		return fmt.Errorf("filecoin command: %s, exited with non-zero exitcode: %d", out.Args(), out.ExitCode())
 	}
 
 	return nil

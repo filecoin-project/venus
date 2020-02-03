@@ -152,8 +152,6 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 		//}
 		//
 		//return re.Emit(resp)
-
-		return nil
 	},
 	Type: storagedeal.Response{},
 	Encoders: cmds.EncoderMap{
@@ -192,8 +190,6 @@ format is specified with the --enc flag.
 		//}
 		//
 		//return re.Emit(resp)
-
-		return nil
 	},
 	Type: storagedeal.SignedResponse{},
 	Encoders: cmds.EncoderMap{
@@ -207,7 +203,7 @@ format is specified with the --enc flag.
 
 // VerifyStorageDealResult wraps the success in an interface type
 type VerifyStorageDealResult struct {
-	validPip bool
+	validPip bool // nolint: structcheck
 }
 
 var clientVerifyStorageDealCmd = &cmds.Command{
@@ -241,8 +237,6 @@ is invalid.  Returns nil otherwise.
 		//validateError := GetPorcelainAPI(env).ClientValidateDeal(req.Context, proposalCid, resp.ProofInfo)
 		//
 		//return re.Emit(VerifyStorageDealResult{validateError == nil})
-
-		return nil
 	},
 	Type: &VerifyStorageDealResult{},
 }
@@ -301,8 +295,6 @@ var paymentsCmd = &cmds.Command{
 		//}
 		//
 		//return re.Emit(vouchers)
-
-		return nil
 	},
 	Type: []*types.PaymentVoucher{},
 	Encoders: cmds.EncoderMap{

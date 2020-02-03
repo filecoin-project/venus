@@ -203,7 +203,7 @@ type clientTestAPI struct {
 	signer         types.Signer
 }
 
-func newTestClientAPI(t *testing.T, pieceReader io.Reader, pieceSize uint64) *clientTestAPI {
+func newTestClientAPI(t *testing.T, pieceReader io.Reader, pieceSize uint64) *clientTestAPI { // nolint: deadcode
 	cidGetter := types.NewCidForTestGetter()
 	addressGetter := address.NewForTestGetter()
 	mockSigner, ki := types.NewMockSignersAndKeyInfo(1)
@@ -269,7 +269,7 @@ func (ctp *clientTestAPI) MinerGetSectorSize(ctx context.Context, minerAddr addr
 }
 
 func (ctp *clientTestAPI) MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error) {
-	id, err := peer.IDB58Decode("QmWbMozPyW6Ecagtxq7SXBXXLY5BNdP1GwHB2WoZCKMvcb")
+	id, err := peer.Decode("QmWbMozPyW6Ecagtxq7SXBXXLY5BNdP1GwHB2WoZCKMvcb")
 	require.NoError(ctp.testing, err, "Could not create peer id")
 
 	return id, nil
@@ -292,7 +292,7 @@ type testClientNode struct {
 	responder func(request interface{}) (interface{}, error)
 }
 
-func newTestClientNode(responder func(request interface{}) (interface{}, error)) *testClientNode {
+func newTestClientNode(responder func(request interface{}) (interface{}, error)) *testClientNode { // nolint: deadcode
 	return &testClientNode{
 		responder: responder,
 	}

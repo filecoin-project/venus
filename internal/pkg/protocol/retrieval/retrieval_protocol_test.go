@@ -39,7 +39,7 @@ func TestRetrievalProtocolPieceNotFound(t *testing.T) {
 	//require.Error(t, err)
 }
 
-func retrievePieceBytes(ctx context.Context, retrievalAPI *retrieval.API, data cid.Cid, minerPID peer.ID, addr address.Address) ([]byte, error) {
+func retrievePieceBytes(ctx context.Context, retrievalAPI *retrieval.API, data cid.Cid, minerPID peer.ID, addr address.Address) ([]byte, error) { // nolint: deadcode
 	//r, err := retrievalAPI.RetrievePiece(ctx, data, minerPID, addr)
 	//if err != nil {
 	//	return nil, err
@@ -54,7 +54,7 @@ func retrievePieceBytes(ctx context.Context, retrievalAPI *retrieval.API, data c
 	return nil, nil
 }
 
-func configureMinerAndClient(t *testing.T) (minerNode *node.Node, clientNode *node.Node, minerAddr address.Address, minerOwnerAddr address.Address) {
+func configureMinerAndClient(t *testing.T) (minerNode *node.Node, clientNode *node.Node, minerAddr address.Address, minerOwnerAddr address.Address) { // nolint: deadcode
 	ctx := context.Background()
 
 	seed := node.MakeChainSeed(t, node.TestGenCfg)

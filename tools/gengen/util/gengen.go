@@ -245,7 +245,7 @@ func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*types.KeyInfo, m
 
 		var pid peer.ID
 		if m.PeerID != "" {
-			p, err := peer.IDB58Decode(m.PeerID)
+			p, err := peer.Decode(m.PeerID)
 			if err != nil {
 				return nil, err
 			}

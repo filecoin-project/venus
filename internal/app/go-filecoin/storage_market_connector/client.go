@@ -28,8 +28,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
+// StorageClientNodeConnector adapts the node to provide the correct interface to the storage client.
 type StorageClientNodeConnector struct {
-	ConnectorCommon
+	connectorCommon
 
 	clientAddr address.Address
 	cborStore  hamt.CborIpldStore
@@ -37,6 +38,7 @@ type StorageClientNodeConnector struct {
 
 var _ storagemarket.StorageClientNode = &StorageClientNodeConnector{}
 
+// NewStorageClientNodeConnector creates a new connector
 func NewStorageClientNodeConnector(
 	cbor hamt.CborIpldStore,
 	cs chainReader,
@@ -47,16 +49,18 @@ func NewStorageClientNodeConnector(
 	wg WorkerGetter,
 ) *StorageClientNodeConnector {
 	return &StorageClientNodeConnector{
-		ConnectorCommon: ConnectorCommon{cs, w, wlt, ob, wg},
+		connectorCommon: connectorCommon{cs, w, wlt, ob, wg},
 		cborStore:       cbor,
 		clientAddr:      ca,
 	}
 }
 
+// AddFunds sends a message to add collateral for the given address
 func (s *StorageClientNodeConnector) AddFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
 	return s.addFunds(ctx, s.clientAddr, addr, amount)
 }
 
+// EnsureFunds checks the current balance for an address and adds funds if the balance is below the given amount
 func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
 	balance, err := s.GetBalance(ctx, addr)
 	if err != nil {
@@ -70,10 +74,12 @@ func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr addre
 	return s.AddFunds(ctx, addr, tokenamount.Sub(amount, balance.Available))
 }
 
+// ListClientDeals returns all deals published on chain for the given account
 func (s *StorageClientNodeConnector) ListClientDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
 	return s.listDeals(ctx, addr)
 }
 
+// ListStorageProviders finds all miners that will provide storage
 func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context) ([]*storagemarket.StorageProviderInfo, error) {
 	head := s.chainStore.Head()
 	var spState spapow.StoragePowerActorState
@@ -84,6 +90,10 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context) (
 
 	infos := []*storagemarket.StorageProviderInfo{}
 	powerHamt, err := hamt.LoadNode(ctx, s.cborStore, spState.PowerTable)
+	if err != nil {
+		return nil, err
+	}
+
 	err = powerHamt.ForEach(ctx, func(minerAddrStr string, _ interface{}) error {
 		fcMinerAddr, err := fcaddr.NewFromString(minerAddrStr)
 		if err != nil {
@@ -118,10 +128,13 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context) (
 	return infos, nil
 }
 
+// ValidatePublishedDeal validates a deal has been published correctly
 // Adapted from https://github.com/filecoin-project/lotus/blob/3b34eba6124d16162b712e971f0db2ee108e0f67/markets/storageadapter/client.go#L156
 func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (uint64, error) {
 	// Fetch receipt to return dealId
-	waitCtx, _ := context.WithTimeout(ctx, 10*time.Millisecond)
+	waitCtx, cancel := context.WithTimeout(ctx, 10*time.Millisecond)
+	defer cancel()
+
 	var publishMsg *types.SignedMessage
 	var publishReceipt *types.MessageReceipt
 
@@ -181,6 +194,7 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 	return 0, xerrors.Errorf("published deal does not match ClientDeal")
 }
 
+// SignProposal uses the local wallet to sign the given proposal
 func (s *StorageClientNodeConnector) SignProposal(ctx context.Context, signer address.Address, proposal *storagemarket.StorageDealProposal) error {
 	signFn := func(ctx context.Context, data []byte) (*smtypes.Signature, error) {
 		return s.SignBytes(ctx, signer, data)
@@ -189,10 +203,12 @@ func (s *StorageClientNodeConnector) SignProposal(ctx context.Context, signer ad
 	return proposal.Sign(ctx, signFn)
 }
 
+// GetDefaultWalletAddress returns the default account for this node
 func (s *StorageClientNodeConnector) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {
 	return s.clientAddr, nil
 }
 
+// ValidateAskSignature ensures the given ask has been signed correctly
 func (s *StorageClientNodeConnector) ValidateAskSignature(signed *smtypes.SignedStorageAsk) error {
 	ask := signed.Ask
 	data, err := cborutil.Dump(ask)

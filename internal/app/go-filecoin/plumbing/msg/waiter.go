@@ -43,6 +43,7 @@ type ChainMessage struct {
 	Receipt *types.MessageReceipt
 }
 
+// WaitPredicate is a function that identifies a message and returns true when found.
 type WaitPredicate func(msg *types.SignedMessage, msgCid cid.Cid) bool
 
 // NewWaiter returns a new Waiter.

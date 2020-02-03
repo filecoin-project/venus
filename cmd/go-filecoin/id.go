@@ -140,7 +140,7 @@ func (idd *IDDetails) UnmarshalJSON(data []byte) error {
 	if err := decode(v, "ID", &id); err != nil {
 		return err
 	}
-	if idd.ID, err = peer.IDB58Decode(id); err != nil {
+	if idd.ID, err = peer.Decode(id); err != nil {
 		return err
 	}
 

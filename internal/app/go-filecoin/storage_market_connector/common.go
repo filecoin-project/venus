@@ -43,9 +43,10 @@ func (k *stateKey) Height() uint64 {
 	return k.height
 }
 
+// WorkerGetter is a function that can retrieve the miner worker for the given address from actor state
 type WorkerGetter func(ctx context.Context, minerAddr fcaddr.Address, baseKey block.TipSetKey) (fcaddr.Address, error)
 
-type ConnectorCommon struct {
+type connectorCommon struct {
 	chainStore   chainReader
 	waiter       *msg.Waiter
 	wallet       *wallet.Wallet
@@ -53,7 +54,8 @@ type ConnectorCommon struct {
 	workerGetter WorkerGetter
 }
 
-func (c *ConnectorCommon) MostRecentStateId(ctx context.Context) (storagemarket.StateKey, error) {
+// MostRecentStateId returns the state key from the current head of the chain.
+func (c *connectorCommon) MostRecentStateId(ctx context.Context) (storagemarket.StateKey, error) { // nolint: golint
 	key := c.chainStore.Head()
 	ts, err := c.chainStore.GetTipSet(key)
 
@@ -64,7 +66,7 @@ func (c *ConnectorCommon) MostRecentStateId(ctx context.Context) (storagemarket.
 	return &stateKey{key, uint64(ts.At(0).Height)}, nil
 }
 
-func (c *ConnectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan error) (*types.MessageReceipt, error) {
+func (c *connectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan error) (*types.MessageReceipt, error) {
 	receiptChan := make(chan *types.MessageReceipt)
 	errChan := make(chan error)
 
@@ -97,7 +99,7 @@ func (c *ConnectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan 
 	}
 }
 
-func (c *ConnectorCommon) addFunds(ctx context.Context, from address.Address, addr address.Address, amount tokenamount.TokenAmount) error {
+func (c *connectorCommon) addFunds(ctx context.Context, from address.Address, addr address.Address, amount tokenamount.TokenAmount) error {
 	params, err := abi.ToEncodedValues(addr)
 	if err != nil {
 		return err
@@ -128,7 +130,8 @@ func (c *ConnectorCommon) addFunds(ctx context.Context, from address.Address, ad
 	return err
 }
 
-func (s *ConnectorCommon) SignBytes(ctx context.Context, signer address.Address, b []byte) (*smtypes.Signature, error) {
+// SignBytes uses the local wallet to sign the bytes with the given address
+func (c *connectorCommon) SignBytes(ctx context.Context, signer address.Address, b []byte) (*smtypes.Signature, error) {
 	var fcSigner fcaddr.Address
 	var err error
 
@@ -136,7 +139,7 @@ func (s *ConnectorCommon) SignBytes(ctx context.Context, signer address.Address,
 		return nil, err
 	}
 
-	fcSig, err := s.wallet.SignBytes(b, fcSigner)
+	fcSig, err := c.wallet.SignBytes(b, fcSigner)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +156,7 @@ func (s *ConnectorCommon) SignBytes(ctx context.Context, signer address.Address,
 	}, nil
 }
 
-func (c *ConnectorCommon) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {
+func (c *connectorCommon) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {
 	var smState spasm.StorageMarketActorState
 	err := c.chainStore.GetActorStateAt(ctx, c.chainStore.Head(), fcaddr.StorageMarketAddress, &smState)
 	if err != nil {
@@ -177,7 +180,7 @@ func (c *ConnectorCommon) GetBalance(ctx context.Context, addr address.Address) 
 	}, nil
 }
 
-func (c *ConnectorCommon) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
+func (c *connectorCommon) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
 	// Convert to FC address
 	fcMiner, err := fcaddr.NewFromBytes(miner.Bytes())
 	if err != nil {
@@ -194,8 +197,8 @@ func (c *ConnectorCommon) GetMinerWorker(ctx context.Context, miner address.Addr
 	return address.NewFromBytes(fcworker.Bytes())
 }
 
-func (s *ConnectorCommon) getFCWorker(ctx context.Context, providerAddr address.Address) (fcaddr.Address, error) {
-	worker, err := s.GetMinerWorker(ctx, providerAddr)
+func (c *connectorCommon) getFCWorker(ctx context.Context, providerAddr address.Address) (fcaddr.Address, error) {
+	worker, err := c.GetMinerWorker(ctx, providerAddr)
 	if err != nil {
 		return fcaddr.Undef, err
 	}
@@ -207,7 +210,7 @@ func (s *ConnectorCommon) getFCWorker(ctx context.Context, providerAddr address.
 	return workerAddr, nil
 }
 
-func (s *ConnectorCommon) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID uint64, cb storagemarket.DealSectorCommittedCallback) error {
+func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID uint64, cb storagemarket.DealSectorCommittedCallback) error {
 	// TODO: is this provider address the miner address or the miner worker address?
 
 	pred := func(msg *types.SignedMessage, msgCid cid.Cid) bool {
@@ -235,21 +238,21 @@ func (s *ConnectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 		return false
 	}
 
-	_, found, err := s.waiter.Find(ctx, pred)
+	_, found, err := c.waiter.Find(ctx, pred)
 	if found {
 		// TODO: DealSectorCommittedCallback should take a sector ID which we would provide here.
 		cb(err)
 		return nil
 	}
 
-	return s.waiter.WaitPredicate(ctx, pred, func(_ *block.Block, _ *types.SignedMessage, _ *types.MessageReceipt) error {
+	return c.waiter.WaitPredicate(ctx, pred, func(_ *block.Block, _ *types.SignedMessage, _ *types.MessageReceipt) error {
 		// TODO: DealSectorCommittedCallback should take a sector ID which we would provide here.
 		cb(nil)
 		return nil
 	})
 }
 
-func (c *ConnectorCommon) listDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
+func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
 	var smState spasm.StorageMarketActorState
 	err := c.chainStore.GetActorStateAt(ctx, c.chainStore.Head(), fcaddr.StorageMarketAddress, &smState)
 	if err != nil {
@@ -263,10 +266,10 @@ func (c *ConnectorCommon) listDeals(ctx context.Context, addr address.Address) (
 	}
 
 	deals := []storagemarket.StorageDeal{}
-	for dealId, _ := range providerDealIds {
-		onChainDeal, ok := smState.Deals[dealId]
+	for dealID := range providerDealIds {
+		onChainDeal, ok := smState.Deals[dealID]
 		if !ok {
-			return nil, errors.Errorf("Could not find deal for id %d", dealId)
+			return nil, errors.Errorf("Could not find deal for id %d", dealID)
 		}
 		proposal := onChainDeal.Deal.Proposal
 		deals = append(deals, storagemarket.StorageDeal{

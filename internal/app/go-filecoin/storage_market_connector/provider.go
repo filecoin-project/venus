@@ -24,8 +24,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
+// StorageProviderNodeConnector adapts the node to provide an interface for the storage provider
 type StorageProviderNodeConnector struct {
-	ConnectorCommon
+	connectorCommon
 
 	minerAddr    address.Address
 	chainStore   chainReader
@@ -35,6 +36,7 @@ type StorageProviderNodeConnector struct {
 
 var _ storagemarket.StorageProviderNode = &StorageProviderNodeConnector{}
 
+// NewStorageProviderNodeConnector creates a new connector
 func NewStorageProviderNodeConnector(ma address.Address,
 	cs chainReader,
 	ob *message.Outbox,
@@ -44,7 +46,7 @@ func NewStorageProviderNodeConnector(ma address.Address,
 	wlt *wallet.Wallet,
 ) *StorageProviderNodeConnector {
 	return &StorageProviderNodeConnector{
-		ConnectorCommon: ConnectorCommon{cs, w, wlt, ob, wg},
+		connectorCommon: connectorCommon{cs, w, wlt, ob, wg},
 		chainStore:      cs,
 		minerAddr:       ma,
 		outbox:          ob,
@@ -52,6 +54,7 @@ func NewStorageProviderNodeConnector(ma address.Address,
 	}
 }
 
+// AddFunds sends a message to add storage market collateral for the given address
 func (s *StorageProviderNodeConnector) AddFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
 	workerAddr, err := s.GetMinerWorker(ctx, s.minerAddr)
 	if err != nil {
@@ -61,6 +64,7 @@ func (s *StorageProviderNodeConnector) AddFunds(ctx context.Context, addr addres
 	return s.addFunds(ctx, workerAddr, addr, amount)
 }
 
+// EnsureFunds checks the balance for an account and adds funds to the given amount if the balance is insufficient
 func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
 	balance, err := s.GetBalance(ctx, addr)
 	if err != nil {
@@ -74,6 +78,7 @@ func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr add
 	return s.AddFunds(ctx, addr, tokenamount.Sub(amount, balance.Available))
 }
 
+// PublishDeals publishes storage deals on chain
 func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (storagemarket.DealID, cid.Cid, error) {
 	client, err := fcaddr.NewFromBytes(deal.Proposal.Client.Bytes())
 	if err != nil {
@@ -128,6 +133,9 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 	}
 
 	receipt, err := s.wait(ctx, mcid, cerr)
+	if err != nil {
+		return 0, cid.Undef, err
+	}
 
 	dealIDValues, err := abi.Deserialize(receipt.Return[0], abi.UintArray)
 	if err != nil {
@@ -146,10 +154,12 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 	return storagemarket.DealID(dealIds[0]), mcid, err
 }
 
+// ListProviderDeals lists all deals for the given provider
 func (s *StorageProviderNodeConnector) ListProviderDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
 	return s.listDeals(ctx, addr)
 }
 
+// OnDealComplete adds the piece to the storage provider
 func (s *StorageProviderNodeConnector) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize uint64, pieceReader io.Reader) (uint64, error) {
 	// TODO: storage provider is expecting a sector ID here. This won't work. The sector ID needs to be removed from
 	// TODO: the return value, and storage provider needs to call OnDealSectorCommitted which should add Sector ID to its
@@ -157,6 +167,7 @@ func (s *StorageProviderNodeConnector) OnDealComplete(ctx context.Context, deal 
 	return 0, s.pieceManager.SealPieceIntoNewSector(ctx, deal.DealID, pieceSize, pieceReader)
 }
 
+// LocatePieceForDealWithinSector finds the sector, offset and length of a piece associated with the given deal id
 func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx context.Context, dealID uint64) (sectorNumber uint64, offset uint64, length uint64, err error) {
 	var smState spasm.StorageMarketActorState
 	err = s.chainStore.GetActorStateAt(ctx, s.chainStore.Head(), fcaddr.StorageMarketAddress, &smState)

@@ -583,7 +583,7 @@ func TestMinerGetAsk(t *testing.T) {
 }
 
 func requirePeerID() peer.ID {
-	id, err := peer.IDB58Decode("QmWbMozPyW6Ecagtxq7SXBXXLY5BNdP1GwHB2WoZCKMvcb")
+	id, err := peer.Decode("QmWbMozPyW6Ecagtxq7SXBXXLY5BNdP1GwHB2WoZCKMvcb")
 	if err != nil {
 		panic("Could not create peer id")
 	}
