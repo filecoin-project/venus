@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -154,8 +153,6 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 	minerNode := builder.Build(ctx)
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, _ := seed.GiveMiner(t, minerNode, 0)
-	_, err := storage.NewProvider()
-	assert.NoError(t, err)
 
 	nodes := []*Node{minerNode}
 

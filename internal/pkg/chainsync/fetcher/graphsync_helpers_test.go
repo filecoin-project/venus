@@ -229,7 +229,7 @@ func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s select
 			Ctx:        mgs.ctx,
 			LinkLoader: linkLoader,
 		},
-	}.TraverseInformatively(node, s, visitor)
+	}.WalkAdv(node, s, visitor)
 	if err == errHangup {
 		err = nil
 	}

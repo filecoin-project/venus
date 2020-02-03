@@ -1,12 +1,13 @@
 package fast
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
-	"github.com/ipfs/go-ipfs-files"
+	files "github.com/ipfs/go-ipfs-files"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
@@ -44,7 +45,9 @@ func (f *Filecoin) MiningStart(ctx context.Context) error {
 	}
 
 	if out.ExitCode() > 0 {
-		return fmt.Errorf("filecoin command: %s, exited with non-zero exitcode: %d", out.Args(), out.ExitCode())
+		errorBuf := new(bytes.Buffer)
+		errorBuf.ReadFrom(out.Stderr())
+		return fmt.Errorf("filecoin command: %s, exited with non-zero exitcode: %d %s", out.Args(), out.ExitCode(), errorBuf.String())
 	}
 
 	return nil

@@ -2,6 +2,7 @@ package submodule
 
 import (
 	"context"
+	"os"
 
 	"github.com/filecoin-project/go-address"
 	graphsyncimpl "github.com/filecoin-project/go-data-transfer/impl/graphsync"
@@ -17,6 +18,7 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
@@ -67,7 +69,19 @@ func NewStorageProtocolSubmodule(
 		return nil, err
 	}
 
+	// ensure pieces directory exists
+	err = os.MkdirAll(pieceStagingPath, 0700)
+	if err != nil {
+		return nil, err
+	}
+
 	fs, err := filestore.NewLocalFileStore(filestore.OsPath(pieceStagingPath))
+	if err != nil {
+		return nil, err
+	}
+
+	// ensure miner-address is in datastore because graphsyncimpl requires it
+	err = ds.Put(datastore.NewKey("miner-address"), minerAddr.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +96,7 @@ func NewStorageProtocolSubmodule(
 
 	provider, err := impl.NewProvider(ds, bs, fs, piecestore.NewPieceStore(ds), dt, pnode)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error creating graphsync provider")
 	}
 
 	return &StorageProtocolSubmodule{

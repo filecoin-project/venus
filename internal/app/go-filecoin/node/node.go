@@ -7,8 +7,6 @@ import (
 	"reflect"
 	"runtime"
 
-	"github.com/filecoin-project/go-fil-markets/piecestore"
-
 	a2 "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	bserv "github.com/ipfs/go-blockservice"
@@ -452,13 +450,14 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		repoPath,
 		node.PorcelainAPI.MinerGetWorkerAddress)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error initializing storage protocol")
 	}
 
-	node.RetrievalProtocol, err = submodule.NewRetrievalProtocolSubmodule(minerAddr2, piecestore.NewPieceStore(node.Repo.Datastore()), node.Blockstore.Blockstore)
-	if err != nil {
-		return err
-	}
+	// TODO: Retrieval Market Integration
+	//node.RetrievalProtocol, err = submodule.NewRetrievalProtocolSubmodule(minerAddr2, piecestore.NewPieceStore(node.Repo.Datastore()), node.Blockstore.Blockstore)
+	//if err != nil {
+	//	return err
+	//}
 
 	return nil
 }
@@ -525,10 +524,10 @@ func (node *Node) StartMining(ctx context.Context) error {
 
 	node.StorageProtocol.StorageProvider.Run(ctx, node.Host())
 
-	// An assumption
-	if err := node.RetrievalProtocol.RetrievalProvider.Start(); err != nil {
-		fmt.Printf("error starting retrieval provider: %s\n", err)
-	}
+	// TODO: Retrieval Market Integration
+	//if err := node.RetrievalProtocol.RetrievalProvider.Start(); err != nil {
+	//	fmt.Printf("error starting retrieval provider: %s\n", err)
+	//}
 
 	node.setIsMining(true)
 
