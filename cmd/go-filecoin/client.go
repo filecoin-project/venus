@@ -122,7 +122,7 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 		cmdkit.BoolOption("allow-duplicates", "Allows duplicate proposals to be created. Unless this flag is set, you will not be able to make more than one deal per piece per miner. This protection exists to prevent erroneous duplicate deals."),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		panic("TODO: go-fil-markets integration")
+		panic("not implemented pending full storage market integration")
 
 		//allowDuplicates, _ := req.Options["allow-duplicates"].(bool)
 		//
@@ -177,7 +177,7 @@ format is specified with the --enc flag.
 		cmdkit.StringArg("id", true, false, "CID of deal to query"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		panic("TODO: go-fil-markets integration")
+		panic("not implemented pending full storage market integration")
 
 		//propcid, err := cid.Decode(req.Arguments[0])
 		//if err != nil {
@@ -218,7 +218,7 @@ is invalid.  Returns nil otherwise.
 		cmdkit.StringArg("id", true, false, "CID of deal to query"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		panic("TODO: go-fil-markets integration")
+		panic("not implemented pending full storage market integration")
 
 		//proposalCid, err := cid.Decode(req.Arguments[0])
 		//if err != nil {
@@ -282,7 +282,7 @@ var paymentsCmd = &cmds.Command{
 		cmdkit.StringArg("dealCid", true, false, "Channel id from which to list vouchers"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		panic("TODO: go-fil-markets integration")
+		panic("not implemented pending full storage market integration")
 
 		//dealCid, err := cid.Decode(req.Arguments[0])
 		//if err != nil {
