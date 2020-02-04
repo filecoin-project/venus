@@ -1,12 +1,8 @@
 package vm
 
 import (
-	"context"
-
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gastracker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
@@ -56,29 +52,6 @@ type LegacyGasTracker = gastracker.LegacyGasTracker
 // NewLegacyGasTracker initializes a new empty gas tracker
 func NewLegacyGasTracker() *gastracker.LegacyGasTracker {
 	return gastracker.NewLegacyGasTracker()
-}
-
-// NewContextParams is passed to NewVMContext to construct a new context.
-type NewContextParams = vmcontext.NewContextParams
-
-// NewVMContext returns an initialized context.
-func NewVMContext(params NewContextParams) *vmcontext.VMContext {
-	return vmcontext.NewVMContext(params)
-}
-
-//
-// Free functions
-//
-
-// Send executes a message pass inside the VM. If error is set it
-// will always satisfy either ShouldRevert() or IsFault().
-func Send(ctx context.Context, vmCtx *vmcontext.VMContext) ([][]byte, uint8, error) {
-	return vmcontext.LegacySend(ctx, vmCtx)
-}
-
-// Transfer transfers the given value between two actors.
-func Transfer(fromActor, toActor *actor.Actor, value types.AttoFIL) error {
-	return vmcontext.Transfer(fromActor, toActor, value)
 }
 
 // FunctionSignature describes the signature of a single function.

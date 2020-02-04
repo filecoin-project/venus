@@ -9,11 +9,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gastracker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -254,16 +253,21 @@ func (*impl) six(ctx runtime.Runtime) (uint8, error) {
 	return 0, fmt.Errorf("NOT A REVERT OR FAULT -- PROGRAMMER ERROR")
 }
 
-func makeCtx(method types.MethodID) *VMContext {
+func makeCtx(method types.MethodID) *invocationContext {
 	addrGetter := address.NewForTestGetter()
 
-	vmCtxParams := NewContextParams{
-		Message:     types.NewUnsignedMessage(addrGetter(), addrGetter(), 0, types.ZeroAttoFIL, method, nil),
-		GasTracker:  gastracker.NewLegacyGasTracker(),
-		BlockHeight: types.NewBlockHeight(0),
-		Actors:      builtin.DefaultActors,
-		To:          &actor.Actor{},
+	msg := internalMessage{
+		miner:         addrGetter(),
+		from:          addrGetter(),
+		to:            addrGetter(),
+		value:         types.ZeroAttoFIL,
+		method:        method,
+		params:        []byte{},
+		callSeqNumber: 0,
 	}
 
-	return NewVMContext(vmCtxParams)
+	gasTank := gas.NewTracker(gas.SystemGasLimit)
+	ctx := newInvocationContext(nil, msg, &actor.Actor{}, &gasTank)
+
+	return &ctx
 }

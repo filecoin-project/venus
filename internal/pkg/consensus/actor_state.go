@@ -10,8 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -22,10 +20,9 @@ type chainStateChainReader interface {
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
 }
 
+// Dragons: delete
 // QueryProcessor querys actor state of a particular tipset
 type QueryProcessor interface {
-	// CallQueryMethod calls a method on an actor in the given state tree.
-	CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method types.MethodID, params []byte, from address.Address, optBh *types.BlockHeight) ([][]byte, uint8, error)
 }
 
 // ActorStateStore knows how to send read-only messages for querying actor state.
@@ -45,9 +42,9 @@ func NewActorStateStore(chainReader chainStateChainReader, cst *hamt.CborIpldSto
 	return &ActorStateStore{chainReader, cst, bs, processor}
 }
 
+// Dragons: delete
 // ActorStateSnapshot permits queries to chain state at a particular tip set.
 type ActorStateSnapshot interface {
-	Query(ctx context.Context, optFrom, to address.Address, method types.MethodID, params ...interface{}) ([][]byte, error)
 }
 
 // Snapshot returns a snapshot of tipset state for querying
@@ -89,19 +86,4 @@ func newProcessorQueryer(st state.Tree, vms vm.StorageMap, height *types.BlockHe
 		height:    height,
 		processor: processor,
 	}
-}
-
-// Query sends a read-only message against the state of the snapshot.
-func (q *processorSnapshot) Query(ctx context.Context, optFrom, to address.Address, method types.MethodID, params ...interface{}) ([][]byte, error) {
-	encodedParams, err := abi.ToEncodedValues(params...)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to encode message params")
-	}
-	r, ec, err := q.processor.CallQueryMethod(ctx, q.st, q.vms, to, method, encodedParams, optFrom, q.height)
-	if err != nil {
-		return nil, errors.Wrap(err, "query method returned an error")
-	} else if ec != 0 {
-		return nil, errors.Errorf("query method returned a non-zero error code %d", ec)
-	}
-	return r, nil
 }

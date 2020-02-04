@@ -1,7 +1,9 @@
 package vmcontext
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -9,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
@@ -377,4 +380,50 @@ var _ runtime.PatternContext = (*patternContext2)(nil)
 
 func (ctx *patternContext2) Code() cid.Cid {
 	return ctx.fromActor.Code
+}
+
+func isBuiltinActor(code cid.Cid) bool {
+	return code.Equals(types.AccountActorCodeCid) ||
+		code.Equals(types.StorageMarketActorCodeCid) ||
+		code.Equals(types.InitActorCodeCid) ||
+		code.Equals(types.MinerActorCodeCid) ||
+		code.Equals(types.BootstrapMinerActorCodeCid)
+}
+
+func isSingletonActor(code cid.Cid) bool {
+	return code.Equals(types.StorageMarketActorCodeCid) ||
+		code.Equals(types.InitActorCodeCid)
+}
+
+func computeActorAddress(creator address.Address, nonce uint64) (address.Address, error) {
+	buf := new(bytes.Buffer)
+
+	if _, err := buf.Write(creator.Bytes()); err != nil {
+		return address.Undef, err
+	}
+
+	if err := binary.Write(buf, binary.BigEndian, nonce); err != nil {
+		return address.Undef, err
+	}
+
+	return address.NewActorAddress(buf.Bytes())
+}
+
+func actorAddressFromParam(maybeAddress interface{}) (address.Address, error) {
+	addr, ok := maybeAddress.(address.Address)
+	if ok {
+		return addr, nil
+	}
+
+	serialized, ok := maybeAddress.([]byte)
+	if ok {
+		addrInt, err := abi.Deserialize(serialized, abi.Address)
+		if err != nil {
+			return address.Undef, err
+		}
+
+		return addrInt.Val.(address.Address), nil
+	}
+
+	return address.Undef, errors.NewRevertError("address parameter is not an address")
 }

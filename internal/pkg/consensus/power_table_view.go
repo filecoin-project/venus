@@ -6,12 +6,7 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
-	"github.com/pkg/errors"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -32,56 +27,66 @@ func NewPowerTableView(q ActorStateSnapshot) PowerTableView {
 
 // Total returns the total storage as a BytesAmount.
 func (v PowerTableView) Total(ctx context.Context) (*types.BytesAmount, error) {
-	rets, err := v.snapshot.Query(ctx, address.Undef, address.StoragePowerAddress, power.GetTotalPower)
-	if err != nil {
-		return nil, err
-	}
+	// Dragons: re-write without using query
 
-	return types.NewBytesAmountFromBytes(rets[0]), nil
+	// rets, err := v.snapshot.Query(ctx, address.Undef, address.StoragePowerAddress, power.GetTotalPower)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// return types.NewBytesAmountFromBytes(rets[0]), nil
+	return types.NewBytesAmount(0), nil
 }
 
 // Miner returns the storage that this miner has committed to the network.
 func (v PowerTableView) Miner(ctx context.Context, mAddr address.Address) (*types.BytesAmount, error) {
-	rets, err := v.snapshot.Query(ctx, address.Undef, address.StoragePowerAddress, power.GetPowerReport, mAddr)
-	if err != nil {
-		return nil, err
-	}
-	if len(rets) == 0 {
-		return nil, errors.Errorf("invalid nil return value from GetPowerReport")
-	}
+	// Dragons: re-write without using query
 
-	reportValue, err := abi.Deserialize(rets[0], abi.PowerReport)
-	if err != nil {
-		return nil, err
-	}
-	r, ok := reportValue.Val.(types.PowerReport)
-	if !ok {
-		return nil, errors.Errorf("invalid report bytes returned from GetPower")
-	}
+	// rets, err := v.snapshot.Query(ctx, address.Undef, address.StoragePowerAddress, power.GetPowerReport, mAddr)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if len(rets) == 0 {
+	// 	return nil, errors.Errorf("invalid nil return value from GetPowerReport")
+	// }
 
-	return r.ActivePower, nil
+	// reportValue, err := abi.Deserialize(rets[0], abi.PowerReport)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// r, ok := reportValue.Val.(types.PowerReport)
+	// if !ok {
+	// 	return nil, errors.Errorf("invalid report bytes returned from GetPower")
+	// }
+
+	// return r.ActivePower, nil
+
+	return types.NewBytesAmount(0), nil
 }
 
 // WorkerAddr returns the address of the miner worker given the miner address.
 func (v PowerTableView) WorkerAddr(ctx context.Context, mAddr address.Address) (address.Address, error) {
-	rets, err := v.snapshot.Query(ctx, address.Undef, mAddr, miner.GetWorker)
-	if err != nil {
-		return address.Undef, err
-	}
+	// Dragons: re-write without using query
 
-	if len(rets) == 0 {
-		return address.Undef, errors.Errorf("invalid nil return value from GetWorker")
-	}
+	// rets, err := v.snapshot.Query(ctx, address.Undef, mAddr, miner.GetWorker)
+	// if err != nil {
+	// 	return address.Undef, err
+	// }
 
-	addrValue, err := abi.Deserialize(rets[0], abi.Address)
-	if err != nil {
-		return address.Undef, err
-	}
-	a, ok := addrValue.Val.(address.Address)
-	if !ok {
-		return address.Undef, errors.Errorf("invalid address bytes returned from GetWorker")
-	}
-	return a, nil
+	// if len(rets) == 0 {
+	// 	return address.Undef, errors.Errorf("invalid nil return value from GetWorker")
+	// }
+
+	// addrValue, err := abi.Deserialize(rets[0], abi.Address)
+	// if err != nil {
+	// 	return address.Undef, err
+	// }
+	// a, ok := addrValue.Val.(address.Address)
+	// if !ok {
+	// 	return address.Undef, errors.Errorf("invalid address bytes returned from GetWorker")
+	// }
+	// return a, nil
+	return address.Undef, nil
 }
 
 // HasPower returns true if the provided address belongs to a miner with power
@@ -115,24 +120,28 @@ func (v PowerTableView) SortedSectorInfos(ctx context.Context, mAddr address.Add
 
 // SectorSize returns the sector size for this miner
 func (v PowerTableView) SectorSize(ctx context.Context, mAddr address.Address) (*types.BytesAmount, error) {
-	rets, err := v.snapshot.Query(ctx, address.Undef, address.StoragePowerAddress, power.GetSectorSize, mAddr)
-	if err != nil {
-		return nil, err
-	}
+	// Dragons: re-write without using query
 
-	if len(rets) == 0 {
-		return nil, errors.Errorf("invalid nil return value from GetSectorSize")
-	}
+	// rets, err := v.snapshot.Query(ctx, address.Undef, address.StoragePowerAddress, power.GetSectorSize, mAddr)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	sectorSizeValue, err := abi.Deserialize(rets[0], abi.BytesAmount)
-	if err != nil {
-		return nil, err
-	}
-	ss, ok := sectorSizeValue.Val.(*types.BytesAmount)
-	if !ok {
-		return nil, errors.Errorf("invalid sectorsize bytes returned from GetWorker")
-	}
-	return ss, nil
+	// if len(rets) == 0 {
+	// 	return nil, errors.Errorf("invalid nil return value from GetSectorSize")
+	// }
+
+	// sectorSizeValue, err := abi.Deserialize(rets[0], abi.BytesAmount)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// ss, ok := sectorSizeValue.Val.(*types.BytesAmount)
+	// if !ok {
+	// 	return nil, errors.Errorf("invalid sectorsize bytes returned from GetWorker")
+	// }
+	// return ss, nil
+
+	return types.NewBytesAmount(0), nil
 }
 
 // NumSectors returns the number of sectors this miner has committed
