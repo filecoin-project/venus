@@ -548,7 +548,10 @@ func (node *Node) StopMining(ctx context.Context) {
 		node.BlockMining.MiningDoneWg.Wait()
 	}
 
-	// TODO: stop node.StorageProtocol.StorageProvider
+	err := node.StorageMining.Stop(ctx)
+	if err != nil {
+		log.Warn("Error stopping storage miner", err)
+	}
 }
 
 func (node *Node) handleSubscription(ctx context.Context, sub pubsub.Subscription, handler pubSubHandler) {
