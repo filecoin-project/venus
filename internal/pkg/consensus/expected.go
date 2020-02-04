@@ -77,7 +77,7 @@ var AncestorRoundsNeeded = max(miner.LargestSectorSizeProvingPeriodBlocks+miner.
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
-	ProcessTipSet(context.Context, state.Tree, vm.StorageMap, block.TipSet, [][]*types.UnsignedMessage, []block.TipSet) ([]*ApplyMessageResult, error)
+	ProcessTipSet(context.Context, state.Tree, vm.Storage, block.TipSet, []vm.BlockMessagesInfo) ([]vm.MessageReceipt, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
@@ -164,9 +164,9 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsM
 		return cid.Undef, []*types.MessageReceipt{}, err
 	}
 
-	vms := vm.NewStorageMap(c.bstore)
+	vms := vm.NewStorage(c.bstore)
 	var st state.Tree
-	st, receipts, err = c.runMessages(ctx, priorState, vms, ts, blsMessages, unwrap(secpMessages), ancestors)
+	st, receipts, err = c.runMessages(ctx, priorState, vms, ts, blsMessages, secpMessages, ancestors)
 	if err != nil {
 		return cid.Undef, []*types.MessageReceipt{}, err
 	}
@@ -302,23 +302,42 @@ func (c *Expected) validateMining(
 // for the entire tipset. The output state must be flushed after calling to
 // guarantee that the state transitions propagate.
 // Messages that fail to apply are dropped on the floor (and no receipt is emitted).
-func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.UnsignedMessage, ancestors []block.TipSet) (state.Tree, []*types.MessageReceipt, error) {
-	allMessages := combineMessages(blsMessages, secpMessages)
+func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storage, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet) (state.Tree, []*types.MessageReceipt, error) {
+	msgs := []vm.BlockMessagesInfo{}
 
-	results, err := c.processor.ProcessTipSet(ctx, st, vms, ts, allMessages, ancestors)
+	// build message information per block
+	for i := 0; i < ts.Len(); i++ {
+		blk := ts.At(i)
+
+		msgInfo := vm.BlockMessagesInfo{
+			BLSMessages:  blsMessages[i],
+			SECPMessages: secpMessages[i],
+			Miner:        blk.Miner,
+		}
+
+		msgs = append(msgs, msgInfo)
+	}
+
+	// process tipset
+	receipts, err := c.processor.ProcessTipSet(ctx, st, vms, ts, msgs)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error validating tipset")
 	}
 
-	var receipts []*types.MessageReceipt
-	for _, res := range results {
-		if res.Failure == nil {
-			receipts = append(receipts, res.Receipt)
+	// Dragons: get rid of this map, unify types.MessageReceipt and have it be the vm.MessageReceipt all across the code
+	auxReceipts := []*types.MessageReceipt{}
+	for i := 0; i < len(receipts); i++ {
+		r := types.MessageReceipt{
+			// Review: this are all translations to get it compiling past this point
+			//         the legacy messagereceipt type is no longer valid and will be replaced with vm.MessageReceipt
+			ExitCode:   uint8(receipts[i].ExitCode),
+			Return:     [][]byte{receipts[i].ReturnValue},
+			GasAttoFIL: receipts[i].GasUsed.Cost(types.ZeroAttoFIL),
 		}
-		// Else drop the error on the floor.
+		auxReceipts = append(auxReceipts, &r)
 	}
 
-	return st, receipts, nil
+	return st, auxReceipts, nil
 }
 
 func (c *Expected) createPowerTableView(st state.Tree) PowerTableView {
@@ -346,27 +365,6 @@ func verifyBLSMessageAggregate(sig types.Signature, msgs []*types.UnsignedMessag
 		return errors.New("block BLS signature does not validate against BLS messages")
 	}
 	return nil
-}
-
-// combineMessages takes lists of bls and secp messages grouped by block and combines them so
-// that they are still grouped by block and the bls messages come before secp messages in the same block.
-func combineMessages(blsMsgs [][]*types.UnsignedMessage, secpMsgs [][]*types.UnsignedMessage) [][]*types.UnsignedMessage {
-	combined := make([][]*types.UnsignedMessage, len(blsMsgs))
-	for blkIndex := 0; blkIndex < len(blsMsgs); blkIndex++ {
-		combined[blkIndex] = append(blsMsgs[blkIndex], secpMsgs[blkIndex]...)
-	}
-	return combined
-}
-
-// Unwraps nested slices of signed messages.
-// Much better than this function would be a type encapsulating a tipset's messages, along
-// with deduplication and unwrapping logic.
-func unwrap(smsgs [][]*types.SignedMessage) [][]*types.UnsignedMessage {
-	unsigned := make([][]*types.UnsignedMessage, len(smsgs))
-	for i, inner := range smsgs {
-		unsigned[i] = types.UnwrapSigned(inner)
-	}
-	return unsigned
 }
 
 func max(a, b int) int {

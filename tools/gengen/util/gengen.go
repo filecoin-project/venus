@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/big"
 	mrand "math/rand"
 	"strconv"
 
@@ -17,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
@@ -121,31 +119,32 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 	}
 
 	st := state.NewTree(cst)
-	storageMap := vm.NewStorageMap(bs)
+	store := vm.NewStorage(bs)
+	vm := vm.NewVM(st, &store).(consensus.GenesisVM)
 
 	if err := actor.InitBuiltinActorCodeObjs(cst); err != nil {
 		return nil, err
 	}
 
-	if err := consensus.SetupDefaultActors(ctx, st, storageMap, cfg.ProofsMode, cfg.Network); err != nil {
+	if err := consensus.SetupDefaultActors(ctx, vm, &store, st, cfg.ProofsMode, cfg.Network); err != nil {
 		return nil, err
 	}
 
-	if err := setupPrealloc(ctx, st, storageMap, keys, cfg.PreAlloc); err != nil {
+	if err := setupPrealloc(ctx, vm, st, keys, cfg.PreAlloc); err != nil {
 		return nil, err
 	}
 
-	miners, err := setupMiners(st, storageMap, keys, cfg.Miners, pnrg)
+	miners, err := setupMiners(vm, st, keys, cfg.Miners, pnrg)
+	if err != nil {
+		return nil, err
+	}
+
+	err = store.Flush()
 	if err != nil {
 		return nil, err
 	}
 
 	stateRoot, err := st.Flush(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	err = storageMap.Flush()
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +197,7 @@ func genKeys(cfgkeys int, pnrg io.Reader) ([]*types.KeyInfo, error) {
 	return keys, nil
 }
 
-func setupPrealloc(ctx context.Context, st state.Tree, storageMap vm.StorageMap, keys []*types.KeyInfo, prealloc []string) error {
+func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, keys []*types.KeyInfo, prealloc []string) error {
 
 	if len(keys) < len(prealloc) {
 		return fmt.Errorf("keys do not match prealloc")
@@ -226,8 +225,8 @@ func setupPrealloc(ctx context.Context, st state.Tree, storageMap vm.StorageMap,
 			return err
 		}
 
-		_, err = consensus.ApplyMessageDirect(ctx, st, storageMap, address.LegacyNetworkAddress, address.InitAddress, uint64(i), types.NewAttoFILFromFIL(valint),
-			initactor.ExecMethodID, types.AccountActorCodeCid, []interface{}{addr})
+		_, err = vm.ApplyGenesisMessage(address.LegacyNetworkAddress, address.InitAddress,
+			initactor.ExecMethodID, types.NewAttoFILFromFIL(valint), types.AccountActorCodeCid, []interface{}{addr})
 		if err != nil {
 			return err
 		}
@@ -235,11 +234,10 @@ func setupPrealloc(ctx context.Context, st state.Tree, storageMap vm.StorageMap,
 	return nil
 }
 
-func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners []*CreateStorageMinerConfig, pnrg io.Reader) ([]RenderedMinerInfo, error) {
+func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*types.KeyInfo, miners []*CreateStorageMinerConfig, pnrg io.Reader) ([]RenderedMinerInfo, error) {
 	var minfos []RenderedMinerInfo
-	ctx := context.Background()
 
-	for i, m := range miners {
+	for _, m := range miners {
 		addr, err := keys[m.Owner].Address()
 		if err != nil {
 			return nil, err
@@ -262,39 +260,18 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 		}
 
 		// give collateral to account actor
-		_, err = consensus.ApplyMessageDirect(ctx, st, sm, address.LegacyNetworkAddress, addr, 0, types.NewAttoFILFromFIL(100000), types.SendMethodID)
+		_, err = vm.ApplyGenesisMessage(address.LegacyNetworkAddress, addr, types.SendMethodID, types.NewAttoFILFromFIL(100000))
 		if err != nil {
 			return nil, err
 		}
 
-		ret, err := consensus.ApplyMessageDirect(ctx, st, sm, addr, address.StoragePowerAddress, uint64(i), types.NewAttoFILFromFIL(100000), power.CreateStorageMiner, addr, addr, pid, types.NewBytesAmount(m.SectorSize))
+		ret, err := vm.ApplyGenesisMessage(addr, address.StoragePowerAddress, power.CreateStorageMiner, types.NewAttoFILFromFIL(100000), addr, addr, pid, types.NewBytesAmount(m.SectorSize))
 		if err != nil {
 			return nil, err
 		}
 
-		// get miner actor address
-		val, err := abi.Deserialize(ret, abi.Address)
-		if err != nil {
-			return nil, err
-		}
-		maddr := val.Val.(address.Address)
-
-		// lookup id address for actor address
-		ret, err = consensus.ApplyMessageDirect(ctx, st, sm, addr, address.InitAddress, 0, types.ZeroAttoFIL, initactor.GetActorIDForAddressMethodID, maddr)
-		if err != nil {
-			return nil, err
-		}
-
-		val, err = abi.Deserialize(ret, abi.Integer)
-		if err != nil {
-			return nil, err
-		}
-		mID := val.Val.(*big.Int)
-
-		mIDAddr, err := address.NewIDAddress(mID.Uint64())
-		if err != nil {
-			return nil, err
-		}
+		// get miner ID address
+		mIDAddr := ret.(address.Address)
 
 		minfos = append(minfos, RenderedMinerInfo{
 			Address: mIDAddr,
@@ -306,7 +283,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 		for i := uint64(0); i < m.NumCommittedSectors; i++ {
 			powerReport := types.NewPowerReport(m.SectorSize*m.NumCommittedSectors, 0)
 
-			_, err := consensus.ApplyMessageDirect(ctx, st, sm, addr, address.StoragePowerAddress, i, types.NewAttoFILFromFIL(0), power.ProcessPowerReport, powerReport, mIDAddr)
+			_, err := vm.ApplyGenesisMessage(addr, address.StoragePowerAddress, power.ProcessPowerReport, types.NewAttoFILFromFIL(0), powerReport, mIDAddr)
 			if err != nil {
 				return nil, err
 			}

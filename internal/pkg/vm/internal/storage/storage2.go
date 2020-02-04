@@ -67,11 +67,20 @@ func (s *VMStorage) CidOf(obj interface{}) (cid.Cid, error) {
 
 // Get loads the object based on its content-addressable ID.
 func (s *VMStorage) Get(cid cid.Cid, obj interface{}) error {
+	raw, err := s.GetRaw(cid)
+	if err != nil {
+		return err
+	}
+	return encoding.Decode(raw, obj)
+}
+
+// GetRaw retrieves the raw bytes stored, returns true if it exists.
+func (s *VMStorage) GetRaw(cid cid.Cid) ([]byte, error) {
 	// attempt to read from write buffer first
 	n, ok := s.writeBuffer[cid]
 	if ok {
 		// decode the object
-		return encoding.Decode(n.RawData(), obj)
+		return n.RawData(), nil
 	}
 
 	if s.readCacheEnabled {
@@ -79,7 +88,7 @@ func (s *VMStorage) Get(cid cid.Cid, obj interface{}) error {
 		n, ok := s.readCache[cid]
 		if ok {
 			// decode the object
-			return encoding.Decode(n.RawData(), obj)
+			return n.RawData(), nil
 		}
 	}
 
@@ -87,9 +96,9 @@ func (s *VMStorage) Get(cid cid.Cid, obj interface{}) error {
 	blk, err := s.blockstore.Get(cid)
 	if err != nil {
 		if err == blockstore.ErrNotFound {
-			return ErrNotFound
+			return nil, ErrNotFound
 		}
-		return err
+		return nil, err
 	}
 
 	if s.readCacheEnabled {
@@ -97,8 +106,7 @@ func (s *VMStorage) Get(cid cid.Cid, obj interface{}) error {
 		s.readCache[cid] = blk
 	}
 
-	// decode the object
-	return encoding.Decode(blk.RawData(), obj)
+	return blk.RawData(), nil
 }
 
 // Flush writes all the in-memory held objects down to the store.

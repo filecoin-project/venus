@@ -177,6 +177,7 @@ func TestVMContextCreateActor(t *testing.T) {
 
 func TestVMContextSendFailures(t *testing.T) {
 	tf.UnitTest(t)
+	t.Skip("using legacy vmcontext")
 
 	actor1 := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(100))
 	actor2 := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(50))

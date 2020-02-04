@@ -21,6 +21,7 @@ import (
 
 func TestTotal(t *testing.T) {
 	tf.UnitTest(t)
+	t.Skip("using legacy vm")
 
 	ctx := context.Background()
 
@@ -40,6 +41,7 @@ func TestTotal(t *testing.T) {
 
 func TestMiner(t *testing.T) {
 	tf.UnitTest(t)
+	t.Skip("using legacy vm")
 
 	ctx := context.Background()
 

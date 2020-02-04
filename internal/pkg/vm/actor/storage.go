@@ -104,7 +104,7 @@ func WriteState(ctx runtime.InvocationContext, state interface{}) error {
 
 // SetKeyValue convenience method to load a lookup, set one key value pair and commit.
 // This function is inefficient when multiple values need to be set into the lookup.
-func SetKeyValue(ctx context.Context, storage runtime.LegacyStorage, id cid.Cid, key string, value interface{}) (cid.Cid, error) {
+func SetKeyValue(ctx context.Context, storage runtime.Storage, id cid.Cid, key string, value interface{}) (cid.Cid, error) {
 	lookup, err := LoadLookup(ctx, storage, id)
 	if err != nil {
 		return cid.Undef, err
@@ -120,7 +120,7 @@ func SetKeyValue(ctx context.Context, storage runtime.LegacyStorage, id cid.Cid,
 
 // WithLookup allows one to read and write to a hamt-ipld node from storage via a callback function.
 // This function commits the lookup before returning.
-func WithLookup(ctx context.Context, storage runtime.LegacyStorage, id cid.Cid, f func(storage.Lookup) error) (cid.Cid, error) {
+func WithLookup(ctx context.Context, storage runtime.Storage, id cid.Cid, f func(storage.Lookup) error) (cid.Cid, error) {
 	lookup, err := LoadLookup(ctx, storage, id)
 	if err != nil {
 		return cid.Undef, err
@@ -135,7 +135,7 @@ func WithLookup(ctx context.Context, storage runtime.LegacyStorage, id cid.Cid, 
 
 // WithLookupForReading allows one to read from a hamt-ipld node from storage via a callback function.
 // Unlike WithLookup, this function will not attempt to commit.
-func WithLookupForReading(ctx context.Context, storage runtime.LegacyStorage, id cid.Cid, f func(storage.Lookup) error) error {
+func WithLookupForReading(ctx context.Context, storage runtime.Storage, id cid.Cid, f func(storage.Lookup) error) error {
 	lookup, err := LoadLookup(ctx, storage, id)
 	if err != nil {
 		return err
@@ -146,7 +146,7 @@ func WithLookupForReading(ctx context.Context, storage runtime.LegacyStorage, id
 
 // LoadLookup loads hamt-ipld node from storage if the cid exists, or creates a new one if it is nil.
 // The lookup provides access to a HAMT/CHAMP tree stored in storage.
-func LoadLookup(ctx context.Context, storage runtime.LegacyStorage, cid cid.Cid) (storage.Lookup, error) {
+func LoadLookup(ctx context.Context, storage runtime.Storage, cid cid.Cid) (storage.Lookup, error) {
 	cborStore := &hamt.CborIpldStore{
 		Blocks: &storageAsBlocks{s: storage},
 		Atlas:  &cbor.CborAtlas,
@@ -168,29 +168,25 @@ func LoadLookup(ctx context.Context, storage runtime.LegacyStorage, cid cid.Cid)
 
 // storageAsBlocks allows us to use an runtime.LegacyStorage as a Blockstore
 type storageAsBlocks struct {
-	s runtime.LegacyStorage
+	s runtime.Storage
 }
 
 // GetBlock gets a block from underlying storage by cid
 func (sab *storageAsBlocks) GetBlock(ctx context.Context, c cid.Cid) (block.Block, error) {
-	chunk, err := sab.s.Get(c)
-	if err != nil {
-		return nil, err
-	}
-
+	chunk, _ := sab.s.GetRaw(c)
 	return block.NewBlock(chunk), nil
 }
 
 // AddBlock add a block to underlying storage
 func (sab *storageAsBlocks) AddBlock(b block.Block) error {
-	_, err := sab.s.Put(b)
-	return err
+	sab.s.Put(b)
+	return nil
 }
 
 // lookup implements storage.Lookup and provides structured key-value storage for actors
 type lookup struct {
 	n *hamt.Node
-	s runtime.LegacyStorage
+	s runtime.Storage
 }
 
 var _ storage.Lookup = (*lookup)(nil)
@@ -215,10 +211,10 @@ func (l *lookup) Delete(ctx context.Context, k string) error {
 // Commit ensures all data in the tree is flushed to storage and returns the cid of the head node.
 func (l *lookup) Commit(ctx context.Context) (cid.Cid, error) {
 	if err := l.n.Flush(ctx); err != nil {
-		return cid.Undef, err
+		panic(err)
 	}
 
-	return l.s.Put(l.n)
+	return l.s.Put(l.n), nil
 }
 
 // IsEmpty returns true if this node contains no key values

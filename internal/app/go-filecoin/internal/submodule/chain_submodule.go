@@ -47,7 +47,6 @@ type chainRepo interface {
 
 type chainConfig interface {
 	GenesisCid() cid.Cid
-	Rewarder() consensus.BlockRewarder
 }
 
 // NewChainSubmodule creates a new chain submodule.
@@ -57,12 +56,8 @@ func NewChainSubmodule(ctx context.Context, config chainConfig, repo chainRepo, 
 	chainStore := chain.NewStore(repo.ChainDatastore(), blockstore.CborStore, state.NewTreeLoader(), chainStatusReporter, config.GenesisCid())
 
 	// set up processor
-	var processor *consensus.DefaultProcessor
-	if config.Rewarder() == nil {
-		processor = consensus.NewDefaultProcessor()
-	} else {
-		processor = consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), config.Rewarder(), builtin.DefaultActors)
-	}
+	processor := consensus.NewDefaultProcessor()
+
 	actorState := consensus.NewActorStateStore(chainStore, blockstore.CborStore, blockstore.Blockstore, processor)
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, builtin.DefaultActors)

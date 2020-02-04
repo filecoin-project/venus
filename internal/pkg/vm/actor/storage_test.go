@@ -1,20 +1,12 @@
 package actor_test
 
 import (
-	"context"
 	"testing"
 
-	cid "github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-hamt-ipld"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
@@ -46,93 +38,96 @@ func TestActorMarshal(t *testing.T) {
 
 func TestLoadLookup(t *testing.T) {
 	tf.UnitTest(t)
+	t.Skip("new runtime")
 
-	ds := datastore.NewMapDatastore()
-	bs := blockstore.NewBlockstore(ds)
-	vms := storagemap.NewStorageMap(bs)
-	storage := vms.NewStorage(address.TestAddress, &Actor{})
-	ctx := context.TODO()
+	// ds := datastore.NewMapDatastore()
+	// bs := blockstore.NewBlockstore(ds)
+	// vms := storagemap.NewStorageMap(bs)
+	// storage := vms.NewStorage(address.TestAddress, &Actor{})
+	// ctx := context.TODO()
 
-	lookup, err := LoadLookup(ctx, storage, cid.Undef)
-	require.NoError(t, err)
+	// lookup, err := LoadLookup(ctx, storage, cid.Undef)
+	// require.NoError(t, err)
 
-	err = lookup.Set(ctx, "foo", "someData")
-	require.NoError(t, err)
+	// err = lookup.Set(ctx, "foo", "someData")
+	// require.NoError(t, err)
 
-	c, err := lookup.Commit(ctx)
-	require.NoError(t, err)
+	// c, err := lookup.Commit(ctx)
+	// require.NoError(t, err)
 
-	assert.True(t, c.Defined())
+	// assert.True(t, c.Defined())
 
-	err = storage.LegacyCommit(c, cid.Undef)
-	require.NoError(t, err)
+	// err = storage.LegacyCommit(c, cid.Undef)
+	// require.NoError(t, err)
 
-	err = vms.Flush()
-	require.NoError(t, err)
+	// err = vms.Flush()
+	// require.NoError(t, err)
 
-	t.Run("Fetch chunk by cid", func(t *testing.T) {
-		bs = blockstore.NewBlockstore(ds)
-		vms = storagemap.NewStorageMap(bs)
-		storage = vms.NewStorage(address.TestAddress, &Actor{})
+	// t.Run("Fetch chunk by cid", func(t *testing.T) {
+	// 	bs = blockstore.NewBlockstore(ds)
+	// 	vms = storagemap.NewStorageMap(bs)
+	// 	storage = vms.NewStorage(address.TestAddress, &Actor{})
 
-		lookup, err = LoadLookup(ctx, storage, c)
-		require.NoError(t, err)
+	// 	lookup, err = LoadLookup(ctx, storage, c)
+	// 	require.NoError(t, err)
 
-		var value string
-		err := lookup.Find(ctx, "foo", &value)
-		require.NoError(t, err)
+	// 	var value string
+	// 	err := lookup.Find(ctx, "foo", &value)
+	// 	require.NoError(t, err)
 
-		assert.Equal(t, "someData", value)
-	})
+	// 	assert.Equal(t, "someData", value)
+	// })
 
-	t.Run("Get errs for missing key", func(t *testing.T) {
-		bs = blockstore.NewBlockstore(ds)
-		vms = storagemap.NewStorageMap(bs)
-		storage = vms.NewStorage(address.TestAddress, &Actor{})
+	// t.Run("Get errs for missing key", func(t *testing.T) {
+	// 	bs = blockstore.NewBlockstore(ds)
+	// 	vms = storagemap.NewStorageMap(bs)
+	// 	storage = vms.NewStorage(address.TestAddress, &Actor{})
 
-		lookup, err = LoadLookup(ctx, storage, c)
-		require.NoError(t, err)
+	// 	lookup, err = LoadLookup(ctx, storage, c)
+	// 	require.NoError(t, err)
 
-		err := lookup.Find(ctx, "bar", nil)
-		require.Error(t, err)
-		assert.Equal(t, hamt.ErrNotFound, err)
-	})
+	// 	err := lookup.Find(ctx, "bar", nil)
+	// 	require.Error(t, err)
+	// 	assert.Equal(t, hamt.ErrNotFound, err)
+	// })
 }
 
 func TestLoadLookupWithInvalidCid(t *testing.T) {
 	tf.UnitTest(t)
+	t.Skip("new runtime")
 
-	ds := datastore.NewMapDatastore()
-	bs := blockstore.NewBlockstore(ds)
-	vms := storagemap.NewStorageMap(bs)
-	storage := vms.NewStorage(address.TestAddress, &Actor{})
-	ctx := context.TODO()
+	// ds := datastore.NewMapDatastore()
+	// bs := blockstore.NewBlockstore(ds)
+	// vms := storagemap.NewStorageMap(bs)
+	// storage := vms.NewStorage(address.TestAddress, &Actor{})
+	// ctx := context.TODO()
 
-	c := types.NewCidForTestGetter()()
+	// c := types.NewCidForTestGetter()()
 
-	_, err := LoadLookup(ctx, storage, c)
-	require.Error(t, err)
-	assert.Equal(t, storagemap.ErrNotFound, err)
+	// _, err := LoadLookup(ctx, storage, c)
+	// require.Error(t, err)
+	// assert.Equal(t, storagemap.ErrNotFound, err)
 }
 
 func TestSetKeyValue(t *testing.T) {
 	tf.UnitTest(t)
+	t.Skip("new runtime")
 
-	ds := datastore.NewMapDatastore()
-	bs := blockstore.NewBlockstore(ds)
-	vms := storagemap.NewStorageMap(bs)
-	storage := vms.NewStorage(address.TestAddress, &Actor{})
-	ctx := context.TODO()
+	// ds := datastore.NewMapDatastore()
+	// bs := blockstore.NewBlockstore(ds)
+	// vms := storagemap.NewStorageMap(bs)
+	// storage := vms.NewStorage(address.TestAddress, &Actor{})
+	// ctx := context.TODO()
 
-	c, err := SetKeyValue(ctx, storage, cid.Undef, "foo", "bar")
-	require.NoError(t, err)
-	assert.True(t, c.Defined())
+	// c, err := SetKeyValue(ctx, storage, cid.Undef, "foo", "bar")
+	// require.NoError(t, err)
+	// assert.True(t, c.Defined())
 
-	lookup, err := LoadLookup(ctx, storage, c)
-	require.NoError(t, err)
+	// lookup, err := LoadLookup(ctx, storage, c)
+	// require.NoError(t, err)
 
-	var val string
-	err = lookup.Find(ctx, "foo", &val)
-	require.NoError(t, err)
-	assert.Equal(t, "bar", val)
+	// var val string
+	// err = lookup.Find(ctx, "foo", &val)
+	// require.NoError(t, err)
+	// assert.Equal(t, "bar", val)
 }

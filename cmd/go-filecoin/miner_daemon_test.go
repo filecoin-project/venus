@@ -2,7 +2,6 @@ package commands_test
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -17,9 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/fixtures"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -28,7 +25,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
-	"github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
 func TestMinerHelp(t *testing.T) {
@@ -263,54 +260,55 @@ func requireMinerCreate(ctx context.Context, t *testing.T, env *fastesting.TestE
 func TestMinerCreateChargesGas(t *testing.T) {
 	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
+	t.Skip("new runtime")
 
-	miningMinerOwnerAddr, err := address.NewFromString(fixtures.TestAddresses[0])
-	require.NoError(t, err)
+	// miningMinerOwnerAddr, err := address.NewFromString(fixtures.TestAddresses[0])
+	// require.NoError(t, err)
 
-	d1 := makeTestDaemonWithMinerAndStart(t)
-	defer d1.ShutdownSuccess()
-	d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
-	defer d.ShutdownSuccess()
-	d1.ConnectSuccess(d)
-	var wg sync.WaitGroup
+	// d1 := makeTestDaemonWithMinerAndStart(t)
+	// defer d1.ShutdownSuccess()
+	// d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+	// defer d.ShutdownSuccess()
+	// d1.ConnectSuccess(d)
+	// var wg sync.WaitGroup
 
-	// make sure the FIL shows up in the MinerOwnerAccount
-	startingBalance := queryBalance(t, d, miningMinerOwnerAddr)
+	// // make sure the FIL shows up in the MinerOwnerAccount
+	// startingBalance := queryBalance(t, d, miningMinerOwnerAddr)
 
-	wg.Add(1)
-	go func() {
-		testMiner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "333", "--gas-limit", "100", "200")
-		addr, err := address.NewFromString(strings.Trim(testMiner.ReadStdout(), "\n"))
-		assert.NoError(t, err)
-		assert.NotEqual(t, addr, address.Undef)
-		wg.Done()
-	}()
-	// ensure mining runs after the command in our goroutine
-	d1.MineAndPropagate(time.Second, d)
-	wg.Wait()
+	// wg.Add(1)
+	// go func() {
+	// 	testMiner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "333", "--gas-limit", "100", "200")
+	// 	addr, err := address.NewFromString(strings.Trim(testMiner.ReadStdout(), "\n"))
+	// 	assert.NoError(t, err)
+	// 	assert.NotEqual(t, addr, address.Undef)
+	// 	wg.Done()
+	// }()
+	// // ensure mining runs after the command in our goroutine
+	// d1.MineAndPropagate(time.Second, d)
+	// wg.Wait()
 
-	expectedBlockReward := consensus.NewDefaultBlockRewarder().BlockRewardAmount()
-	expectedPrice := types.NewAttoFILFromFIL(333)
-	expectedGasCost := big.NewInt(100)
-	expectedBalance := expectedBlockReward.Add(expectedPrice.MulBigInt(expectedGasCost))
-	newBalance := queryBalance(t, d, miningMinerOwnerAddr)
-	assert.Equal(t, expectedBalance.String(), newBalance.Sub(startingBalance).String())
+	// expectedBlockReward := consensus.NewDefaultBlockRewarder().BlockRewardAmount()
+	// expectedPrice := types.NewAttoFILFromFIL(333)
+	// expectedGasCost := big.NewInt(100)
+	// expectedBalance := expectedBlockReward.Add(expectedPrice.MulBigInt(expectedGasCost))
+	// newBalance := queryBalance(t, d, miningMinerOwnerAddr)
+	// assert.Equal(t, expectedBalance.String(), newBalance.Sub(startingBalance).String())
 }
 
-func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) types.AttoFIL {
-	output := d.RunSuccess("actor", "ls", "--enc", "json")
-	result := output.ReadStdoutTrimNewlines()
-	for _, line := range bytes.Split([]byte(result), []byte{'\n'}) {
-		var a commands.ActorView
-		err := json.Unmarshal(line, &a)
-		require.NoError(t, err)
-		if a.Address == actorAddr.String() {
-			return a.Balance
-		}
-	}
-	t.Fail()
-	return types.ZeroAttoFIL
-}
+// func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) types.AttoFIL {
+// 	output := d.RunSuccess("actor", "ls", "--enc", "json")
+// 	result := output.ReadStdoutTrimNewlines()
+// 	for _, line := range bytes.Split([]byte(result), []byte{'\n'}) {
+// 		var a commands.ActorView
+// 		err := json.Unmarshal(line, &a)
+// 		require.NoError(t, err)
+// 		if a.Address == actorAddr.String() {
+// 			return a.Balance
+// 		}
+// 	}
+// 	t.Fail()
+// 	return types.ZeroAttoFIL
+// }
 
 func TestMinerOwner(t *testing.T) {
 	t.Skip("Long term solution: #3642")

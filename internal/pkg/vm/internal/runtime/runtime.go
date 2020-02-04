@@ -16,7 +16,7 @@ type Runtime interface {
 	// CurrentEpoch is the current chain epoch.
 	CurrentEpoch() types.BlockHeight
 	// Randomness gives the actors access to sampling peudo-randomess from the chain.
-	Randomness(epoch types.BlockHeight, offset uint64) Randomness
+	Randomness(epoch types.BlockHeight) Randomness
 	// Storage is the raw store for IPLD objects.
 	//
 	// Note: this is required for custom data structures.
@@ -83,7 +83,7 @@ type ExtendedInvocationContext interface {
 	// This will determine a reorg "stable" address for the actor and call its `Constructor()` method.
 	//
 	// WARNING: May only be called by InitActor.
-	CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address
+	CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) (address.Address, address.Address)
 	// VerifySignature cryptographically verifies the signature.
 	//
 	// This methods returns `True` when 'signature' is signed hash of 'msg'
@@ -104,6 +104,10 @@ type LegacyInvocationContext interface {
 // ActorStateHandle handles the actor state, allowing actors to lock on the state.
 type ActorStateHandle interface {
 	ReadonlyActorStateHandle
+	// Create initializes the state to the given value.
+	//
+	// This operation is only valid if the value has never been set before.
+	Create(obj interface{})
 	// Transaction loads a mutable version of the state into the `obj` argument and protects
 	// the execution from side effects.
 	//
@@ -196,8 +200,10 @@ func Assert(cond bool) {
 type Storage interface {
 	// Put stores an object and returns its content-addressable ID.
 	Put(interface{}) cid.Cid
-	// Put stores an object and returns its content-addressable ID.
+	// Get retrieves an object, returns true if it exists.
 	Get(cid cid.Cid, obj interface{}) bool
+	// GetRaw retrieves the raw bytes stored, returns true if it exists.
+	GetRaw(cid cid.Cid) ([]byte, bool)
 	// CidOf returns the content-addressable ID of an object WITHOUT storing it.
 	CidOf(interface{}) cid.Cid
 }

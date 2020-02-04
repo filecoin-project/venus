@@ -5,7 +5,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
 // Method is a callable pointer to an executable method in an actor implementation.
@@ -17,7 +16,6 @@ type Method interface {
 // ExecutableActor is the interface all builtin actors have to implement.
 type ExecutableActor interface {
 	Method(id types.MethodID) (Method, *FunctionSignature, bool)
-	InitializeState(storage runtime.LegacyStorage, initializerData interface{}) error
 }
 
 // Exports describe the public methods of an actor.

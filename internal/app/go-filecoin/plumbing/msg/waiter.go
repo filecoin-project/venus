@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -219,7 +218,7 @@ func (w *Waiter) receiptByIndex(ctx context.Context, tsKey block.TipSetKey, targ
 		return nil, err
 	}
 
-	deduped, err := consensus.DeduppedMessages(messages)
+	deduped, err := deduppedMessages(messages)
 	if err != nil {
 		return nil, err
 	}
@@ -242,4 +241,25 @@ func (w *Waiter) receiptByIndex(ctx context.Context, tsKey block.TipSetKey, targ
 		}
 	}
 	return nil, errors.Errorf("could not find message cid %s in dedupped messages", targetCid.String())
+}
+
+func deduppedMessages(tsMessages [][]*types.UnsignedMessage) ([][]*types.UnsignedMessage, error) {
+	allMessages := make([][]*types.UnsignedMessage, len(tsMessages))
+	msgFilter := make(map[cid.Cid]struct{})
+
+	for i, blkMessages := range tsMessages {
+		for _, msg := range blkMessages {
+			mCid, err := msg.Cid()
+			if err != nil {
+				return nil, err
+			}
+
+			_, found := msgFilter[mCid]
+			if !found {
+				allMessages[i] = append(allMessages[i], msg)
+				msgFilter[mCid] = struct{}{}
+			}
+		}
+	}
+	return allMessages, nil
 }

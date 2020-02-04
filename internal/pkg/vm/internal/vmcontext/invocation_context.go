@@ -41,7 +41,7 @@ func newInvocationContext(rt *VM, msg internalMessage, fromActor *actor.Actor, g
 		fromActor:         fromActor,
 		gasTank:           gasTank,
 		isCallerValidated: false,
-		allowSideEffects:  false,
+		allowSideEffects:  true,
 	}
 }
 
@@ -51,8 +51,8 @@ func (ctx *stateHandleContext) AllowSideEffects(allow bool) {
 	ctx.allowSideEffects = allow
 }
 
-func (ctx *stateHandleContext) LegacyStorage() runtime.LegacyStorage {
-	return ctx.rt.LegacyStorage()
+func (ctx *stateHandleContext) Storage() runtime.Storage {
+	return ctx.rt.Storage()
 }
 
 func (ctx *invocationContext) invoke() interface{} {
@@ -104,10 +104,10 @@ func (ctx *invocationContext) invoke() interface{} {
 
 	// handle legacy errors and codes
 	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "Legacy actor code returned an error")
+		runtime.Abortf(exitcode.MethodAbort, "Legacy actor code returned an error. %s", err)
 	}
 	if code != 0 {
-		runtime.Abortf(exitcode.MethodAbort, "Legacy actor code returned with non-zero error code")
+		runtime.Abortf(exitcode.MethodAbort, "Legacy actor code returned with non-zero error code, code: %d", code)
 	}
 
 	// post-dispatch
@@ -122,6 +122,8 @@ func (ctx *invocationContext) invoke() interface{} {
 
 	// 2. validate state access
 	ctx.stateHandle.Validate()
+
+	ctx.toActor.Head = stateHandle.head
 
 	// 3. success! build the receipt
 	if len(vals) > 0 {
@@ -143,10 +145,10 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 	}
 
 	// build state handle
-	var stateHandle = NewReadonlyStateHandle(ctx.rt.LegacyStorage(), initActorEntry.Head)
+	var stateHandle = NewReadonlyStateHandle(ctx.rt.Storage(), initActorEntry.Head)
 
 	// get a view into the actor state
-	initView := initactor.NewView(stateHandle, ctx.rt.LegacyStorage())
+	initView := initactor.NewView(stateHandle, ctx.rt.Storage())
 
 	// lookup the ActorID based on the address
 	targetIDAddr, ok := initView.GetIDAddressByAddress(target)
@@ -168,8 +170,23 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 	}
 
 	// send init actor msg to create the account actor
-	params := []interface{}{target}
-	targetIDAddrOpaque := ctx.Send(address.InitAddress, initactor.ExecMethodID, types.ZeroAttoFIL, params)
+	params := []interface{}{types.AccountActorCodeCid, []interface{}{target}}
+
+	encodedParams, err := abi.ToEncodedValues(params...)
+	if err != nil {
+		runtime.Abortf(exitcode.EncodingError, "failed to encode params. %s", err)
+	}
+	newMsg := internalMessage{
+		from:   ctx.msg.from,
+		to:     address.InitAddress,
+		value:  types.ZeroAttoFIL,
+		method: initactor.ExecMethodID,
+		params: encodedParams,
+	}
+
+	newCtx := newInvocationContext(ctx.rt, newMsg, ctx.fromActor, ctx.gasTank)
+
+	targetIDAddrOpaque := newCtx.invoke()
 	// cast response, interface{} -> address.Address
 	targetIDAddr = targetIDAddrOpaque.(address.Address)
 
@@ -280,9 +297,62 @@ func (ctx *invocationContext) Charge(cost types.GasUnits) error {
 var _ runtime.ExtendedInvocationContext = (*invocationContext)(nil)
 
 /// CreateActor implements runtime.ExtendedInvocationContext.
-func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address {
+func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) (address.Address, address.Address) {
 	// Dragons: code it over, there were some changes in spec, revise
-	panic("code me")
+	if !isBuiltinActor(code) {
+		runtime.Abortf(exitcode.MethodAbort, "Can only create built-in actors.")
+	}
+
+	if isSingletonActor(code) {
+		runtime.Abortf(exitcode.MethodAbort, "Can only have one instance of singleton actors.")
+	}
+
+	// create address for actor
+	var actorAddr address.Address
+	var err error
+	if types.AccountActorCodeCid.Equals(code) {
+		// address for account actor comes from first parameter
+		if len(params) < 1 {
+			runtime.Abortf(exitcode.MethodAbort, "Missing address parameter for account actor creation")
+		}
+		actorAddr, err = actorAddressFromParam(params[0])
+		if err != nil {
+			runtime.Abortf(exitcode.MethodAbort, "Parameter for account actor creation is not an address")
+		}
+	} else {
+		actorAddr, err = computeActorAddress(ctx.msg.from, uint64(ctx.msg.callSeqNumber))
+		if err != nil {
+			runtime.Abortf(exitcode.MethodAbort, "Could not create address for actor")
+		}
+	}
+
+	idAddr, err := address.NewIDAddress(uint64(actorID))
+	if err != nil {
+		runtime.Abortf(exitcode.MethodAbort, "Could not create IDAddress for actor")
+	}
+
+	// Check existing address. If nothing there, create empty actor.
+	//
+	// Note: we are storing the actors by ActorID *address*
+	newActor, _, err := ctx.rt.state.GetOrCreateActor(context.TODO(), idAddr, func() (*actor.Actor, address.Address, error) {
+		return &actor.Actor{}, idAddr, nil
+	})
+
+	if err != nil {
+		runtime.Abortf(exitcode.MethodAbort, "Could not get or create actor")
+	}
+
+	if !newActor.Empty() {
+		runtime.Abortf(exitcode.MethodAbort, "Actor address already exists")
+	}
+
+	// make this the right 'type' of actor
+	newActor.Code = code
+
+	// send message containing actor's initial balance to construct it with the given params
+	ctx.Send(idAddr, types.ConstructorMethodID, ctx.Message().ValueReceived(), params)
+
+	return idAddr, actorAddr
 }
 
 /// VerifySignature implements runtime.ExtendedInvocationContext.

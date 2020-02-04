@@ -13,7 +13,6 @@ import (
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
@@ -30,11 +29,6 @@ func (w *DefaultWorker) Generate(
 	defer func() {
 		log.Infof("[TIMER] DefaultWorker.Generate baseTipset: %s - elapsed time: %s", baseTipSet.String(), time.Since(generateTimer).Round(time.Millisecond))
 	}()
-
-	stateTree, err := w.getStateTree(ctx, baseTipSet.Key())
-	if err != nil {
-		return nil, errors.Wrap(err, "get state tree")
-	}
 
 	powerTable, err := w.getPowerTable(ctx, baseTipSet.Key())
 	if err != nil {
@@ -61,53 +55,26 @@ func (w *DefaultWorker) Generate(
 
 	blockHeight := baseHeight + nullBlockCount + 1
 
-	ancestors, err := w.getAncestors(ctx, baseTipSet, types.NewBlockHeight(blockHeight))
-	if err != nil {
-		return nil, errors.Wrap(err, "get base tip set ancestors")
-	}
-
 	// Construct list of message candidates for inclusion.
 	// These messages will be processed, and those that fail excluded from the block.
 	pending := w.messageSource.Pending()
 	mq := NewMessageQueue(pending)
 	candidateMsgs := orderMessageCandidates(mq.Drain())
 
-	// run state transition to learn which messages are valid
-	vms := vm.NewStorageMap(w.blockstore)
-	results, err := w.processor.ApplyMessagesAndPayRewards(ctx, stateTree, vms, types.UnwrapSigned(candidateMsgs),
-		w.minerOwnerAddr, types.NewBlockHeight(blockHeight), ancestors)
-	if err != nil {
-		return nil, errors.Wrap(err, "generate apply messages")
-	}
+	// Dragons: ask something to select and order messages to include
 
 	var blsAccepted []*types.SignedMessage
 	var secpAccepted []*types.SignedMessage
 
 	// Align the results with the candidate signed messages to accumulate the messages lists
 	// to include in the block, and handle failed messages.
-	for i, r := range results {
-		msg := candidateMsgs[i]
-		if r.Failure == nil {
-			if msg.Message.From.Protocol() == address.BLS {
-				blsAccepted = append(blsAccepted, msg)
-			} else {
-				secpAccepted = append(secpAccepted, msg)
-			}
-		} else if r.FailureIsPermanent {
-			// Remove message that can never succeed from the message pool now.
-			// There might be better places to do this, such as wherever successful messages are removed
-			// from the pool, or by posting the failure to an event bus to be handled async.
-			log.Infof("permanent ApplyMessage failure, [%s] (%s)", msg, r.Failure)
-			mc, err := msg.Cid()
-			if err == nil {
-				w.messageSource.Remove(mc)
-			} else {
-				log.Warnf("failed to get CID from message", err)
-			}
+	for _, msg := range candidateMsgs {
+		if msg.Message.From.Protocol() == address.BLS {
+			blsAccepted = append(blsAccepted, msg)
 		} else {
-			// This message might succeed in the future, so leave it in the pool for now.
-			log.Infof("temporary ApplyMessage failure, [%s] (%s)", msg, r.Failure)
+			secpAccepted = append(secpAccepted, msg)
 		}
+
 	}
 
 	// Create an aggregage signature for messages
