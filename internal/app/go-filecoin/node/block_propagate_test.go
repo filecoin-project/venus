@@ -54,13 +54,13 @@ func requireMineOnce(ctx context.Context, t *testing.T, minerNode *Node) *block.
 	next := <-out
 	wg.Wait() // wait for wonElection to be set
 	assert.True(t, wonElection)
-	assert.NoError(t, next.Err)
+	require.NoError(t, next.Err)
 
 	return next.NewBlock
 }
 
 func TestBlockPropsManyNodes(t *testing.T) {
-	t.Skip("Skip pending storage market integration")
+	t.Skip("Skip pending miner actor integration #3731")
 	tf.UnitTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -103,7 +103,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 }
 
 func TestChainSync(t *testing.T) {
-	t.Skip("Skip pending storage market integration #3731")
+	t.Skip("Skip pending miner actor integration #3731")
 	tf.UnitTest(t)
 
 	ctx := context.Background()
