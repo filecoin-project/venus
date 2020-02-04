@@ -41,7 +41,7 @@ func requireMineOnce(ctx context.Context, t *testing.T, minerNode *Node) *block.
 	worker, err := minerNode.CreateMiningWorker(ctx)
 	require.NoError(t, err)
 
-	// Provider should win first election as it has all the power so only
+	// Miner should win first election as it has all the power so only
 	// mine once with 0 null blocks
 	out := make(chan mining.Output)
 	var wonElection bool
