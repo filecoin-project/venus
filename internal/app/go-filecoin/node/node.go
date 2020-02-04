@@ -430,6 +430,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 
 	waiter := msg.NewWaiter(node.chain.ChainReader, node.chain.MessageStore, node.Blockstore.Blockstore, node.Blockstore.CborStore)
 
+	// TODO: rework these modules so they can be at least partially constructed during the building phase #3738
 	node.StorageMining, err = submodule.NewStorageMiningSubmodule(minerAddr, workerAddr, node.Repo.Datastore(), sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet)
 	if err != nil {
 		return err
