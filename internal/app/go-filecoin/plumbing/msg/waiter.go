@@ -208,40 +208,58 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts block.TipSet, targetMs
 }
 
 func (w *Waiter) receiptByIndex(ctx context.Context, tsKey block.TipSetKey, targetCid cid.Cid, messages [][]*types.UnsignedMessage) (*types.MessageReceipt, error) {
-	// receiptCid, err := w.chainReader.GetTipSetReceiptsRoot(tsKey)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	receiptCid, err := w.chainReader.GetTipSetReceiptsRoot(tsKey)
+	if err != nil {
+		return nil, err
+	}
 
-	// receipts, err := w.messageProvider.LoadReceipts(ctx, receiptCid)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	receipts, err := w.messageProvider.LoadReceipts(ctx, receiptCid)
+	if err != nil {
+		return nil, err
+	}
 
-	// deduped, err := consensus.DeduppedMessages(messages)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	deduped, err := deduppedMessages(messages)
+	if err != nil {
+		return nil, err
+	}
 
-	// receiptIndex := 0
-	// for _, blkMessages := range deduped {
-	// 	for _, msg := range blkMessages {
-	// 		msgCid, err := msg.Cid()
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
+	receiptIndex := 0
+	for _, blkMessages := range deduped {
+		for _, msg := range blkMessages {
+			msgCid, err := msg.Cid()
+			if err != nil {
+				return nil, err
+			}
 
-	// 		if msgCid.Equals(targetCid) {
-	// 			if receiptIndex >= len(receipts) {
-	// 				return nil, errors.Errorf("could not find message receipt at index %d", receiptIndex)
-	// 			}
-	// 			return receipts[receiptIndex], nil
-	// 		}
-	// 		receiptIndex++
-	// 	}
-	// }
-	// return nil, errors.Errorf("could not find message cid %s in dedupped messages", targetCid.String())
+			if msgCid.Equals(targetCid) {
+				if receiptIndex >= len(receipts) {
+					return nil, errors.Errorf("could not find message receipt at index %d", receiptIndex)
+				}
+				return receipts[receiptIndex], nil
+			}
+			receiptIndex++
+		}
+	}
+	return nil, errors.Errorf("could not find message cid %s in dedupped messages", targetCid.String())
+}
 
-	// Dragons: do something
-	return nil, fmt.Errorf("re-write or delete")
+func deduppedMessages(tsMessages [][]*types.UnsignedMessage) ([][]*types.UnsignedMessage, error) {
+	allMessages := make([][]*types.UnsignedMessage, len(tsMessages))
+	msgFilter := make(map[cid.Cid]struct{})
+
+	for i, blkMessages := range tsMessages {
+		for _, msg := range blkMessages {
+			mCid, err := msg.Cid()
+			if err != nil {
+				return nil, err
+			}
+
+			_, found := msgFilter[mCid]
+			if !found {
+				allMessages[i] = append(allMessages[i], msg)
+				msgFilter[mCid] = struct{}{}
+			}
+		}
+	}
+	return allMessages, nil
 }

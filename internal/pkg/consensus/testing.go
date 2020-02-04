@@ -124,8 +124,7 @@ func (tsmv *FakeMessageValidator) Validate(ctx context.Context, msg *types.Unsig
 // NewFakeProcessor creates a processor with a test validator and test rewarder
 func NewFakeProcessor(actors builtin.Actors) *DefaultProcessor {
 	return &DefaultProcessor{
-		validator: &FakeMessageValidator{},
-		actors:    actors,
+		actors: actors,
 	}
 }
 

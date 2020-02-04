@@ -133,7 +133,7 @@ func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *block.Block
 
 // NewFakeProcessor creates a processor with a test validator and test rewarder
 func NewFakeProcessor() *consensus.DefaultProcessor {
-	return consensus.NewConfiguredProcessor(&consensus.FakeMessageValidator{}, builtin.DefaultActors)
+	return consensus.NewConfiguredProcessor(builtin.DefaultActors)
 }
 
 type testSigner struct{}
@@ -144,7 +144,7 @@ func (ms testSigner) SignBytes(data []byte, addr address.Address) (types.Signatu
 
 // RequireActorIDAddress looks up an actor address in the init actor and returns the associated id address
 func RequireActorIDAddress(ctx context.Context, t *testing.T, st state.Tree, store vm.StorageMap, addr address.Address) address.Address {
-	processor := consensus.NewConfiguredProcessor(&consensus.FakeMessageValidator{}, builtin.DefaultActors)
+	processor := consensus.NewConfiguredProcessor(builtin.DefaultActors)
 	params, err := abi.ToEncodedValues(addr)
 	require.NoError(t, err)
 
@@ -173,11 +173,13 @@ func ApplyTestMessageWithActors(actors builtin.Actors, st state.Tree, store vm.S
 
 // ApplyTestMessageWithGas uses the FakeBlockRewarder but the default SignedMessageValidator
 func ApplyTestMessageWithGas(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight, minerOwner address.Address) (*consensus.ApplicationResult, error) {
-	applier := consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), actors)
+	applier := consensus.NewConfiguredProcessor(actors)
 	return newMessageApplier(msg, applier, st, store, bh, minerOwner, nil)
 }
 
 func newMessageApplier(msg *types.UnsignedMessage, processor *consensus.DefaultProcessor, st state.Tree, storageMap vm.StorageMap, bh *types.BlockHeight, minerOwner address.Address, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
+	// Dragons: support for this feature no longer exists, delete or resurect
+
 	// amr, err := processor.ApplyMessagesAndPayRewards(context.Background(), st, storageMap, []*types.UnsignedMessage{msg}, minerOwner, bh, ancestors)
 	// if err != nil {
 	// 	return nil, err
@@ -221,5 +223,5 @@ func applyTestMessageWithAncestors(actors builtin.Actors, st state.Tree, store v
 }
 
 func newTestApplier(actors builtin.Actors) *consensus.DefaultProcessor {
-	return consensus.NewConfiguredProcessor(&consensus.FakeMessageValidator{}, actors)
+	return consensus.NewConfiguredProcessor(actors)
 }

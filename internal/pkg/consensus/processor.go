@@ -41,8 +41,7 @@ type ApplyMessageResult struct {
 
 // DefaultProcessor handles all block processing.
 type DefaultProcessor struct {
-	validator MessageValidator
-	actors    builtin.Actors
+	actors builtin.Actors
 }
 
 var _ Processor = (*DefaultProcessor)(nil)
@@ -50,16 +49,14 @@ var _ Processor = (*DefaultProcessor)(nil)
 // NewDefaultProcessor creates a default processor from the given state tree and vms.
 func NewDefaultProcessor() *DefaultProcessor {
 	return &DefaultProcessor{
-		validator: NewDefaultMessageValidator(),
-		actors:    builtin.DefaultActors,
+		actors: builtin.DefaultActors,
 	}
 }
 
 // NewConfiguredProcessor creates a default processor with custom validation and rewards.
-func NewConfiguredProcessor(validator MessageValidator, actors builtin.Actors) *DefaultProcessor {
+func NewConfiguredProcessor(actors builtin.Actors) *DefaultProcessor {
 	return &DefaultProcessor{
-		validator: validator,
-		actors:    actors,
+		actors: actors,
 	}
 }
 

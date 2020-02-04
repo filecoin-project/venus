@@ -51,7 +51,7 @@ func setupTest(t *testing.T) (*hamt.CborIpldStore, *chain.Store, *chain.MessageS
 
 func TestWait(t *testing.T) {
 	tf.UnitTest(t)
-	t.Skip("this guy is waiting forever")
+
 	ctx := context.Background()
 	cst, chainStore, msgStore, waiter := setupTest(t)
 
