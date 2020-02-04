@@ -7,10 +7,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-graphsync/impl"
-	"github.com/ipfs/go-graphsync/ipldbridge"
-	gsnet "github.com/ipfs/go-graphsync/network"
-	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -72,12 +68,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, chn.ActorState, config.GenesisCid())
 
 	// setup fecher
-	graphsyncNetwork := gsnet.NewFromLibp2pHost(network.Host)
-	bridge := ipldbridge.NewIPLDBridge()
-	loader := gsstoreutil.LoaderForBlockstore(blockstore.Blockstore)
-	storer := gsstoreutil.StorerForBlockstore(blockstore.Blockstore)
-	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
-	fetcher := fetcher.NewGraphSyncFetcher(ctx, gsync, blockstore.Blockstore, blkValid, config.ChainClock(), discovery.PeerTracker)
+	fetcher := fetcher.NewGraphSyncFetcher(ctx, network.GraphExchange, blockstore.Blockstore, blkValid, config.ChainClock(), discovery.PeerTracker)
 	faultCh := make(chan slashing.ConsensusFault)
 	faultDetector := slashing.NewConsensusFaultDetector(faultCh)
 

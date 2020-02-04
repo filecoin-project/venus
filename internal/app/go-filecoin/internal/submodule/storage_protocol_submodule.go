@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 
+	"github.com/ipfs/go-graphsync"
+
 	"github.com/filecoin-project/go-address"
 	graphsyncimpl "github.com/filecoin-project/go-data-transfer/impl/graphsync"
 	"github.com/filecoin-project/go-fil-markets/filestore"
@@ -11,10 +13,6 @@ import (
 	iface "github.com/filecoin-project/go-fil-markets/storagemarket"
 	impl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/ipfs/go-datastore"
-	graphsync "github.com/ipfs/go-graphsync/impl"
-	"github.com/ipfs/go-graphsync/ipldbridge"
-	gsnet "github.com/ipfs/go-graphsync/network"
-	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -48,6 +46,7 @@ func NewStorageProtocolSubmodule(
 	h host.Host,
 	ds datastore.Batching,
 	bs blockstore.Blockstore,
+	gsync graphsync.GraphExchange,
 	repoPath string,
 	wg storagemarketconnector.WorkerGetter) (*StorageProtocolSubmodule, error) {
 
@@ -85,12 +84,6 @@ func NewStorageProtocolSubmodule(
 	if err != nil {
 		return nil, err
 	}
-
-	graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
-	bridge := ipldbridge.NewIPLDBridge()
-	loader := gsstoreutil.LoaderForBlockstore(bs)
-	storer := gsstoreutil.StorerForBlockstore(bs)
-	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
 
 	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync)
 

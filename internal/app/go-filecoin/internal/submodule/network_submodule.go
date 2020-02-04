@@ -8,6 +8,11 @@ import (
 	bsnet "github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
+	graphsync "github.com/ipfs/go-graphsync"
+	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
+	"github.com/ipfs/go-graphsync/ipldbridge"
+	gsnet "github.com/ipfs/go-graphsync/network"
+	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
@@ -50,6 +55,8 @@ type NetworkSubmodule struct {
 	Bitswap exchange.Interface
 
 	Network *net.Network
+
+	GraphExchange graphsync.GraphExchange
 }
 
 type blankValidator struct{}
@@ -129,17 +136,25 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	// set up pinger
 	pingService := ping.NewPingService(peerHost)
 
+	// set up graphsync
+	graphsyncNetwork := gsnet.NewFromLibp2pHost(peerHost)
+	bridge := ipldbridge.NewIPLDBridge()
+	loader := gsstoreutil.LoaderForBlockstore(blockstore.Blockstore)
+	storer := gsstoreutil.StorerForBlockstore(blockstore.Blockstore)
+	gsync := graphsyncimpl.New(ctx, graphsyncNetwork, bridge, loader, storer)
+
 	// build network
 	network := net.New(peerHost, net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService))
 
 	// build the network submdule
 	return NetworkSubmodule{
-		NetworkName: networkName,
-		Host:        peerHost,
-		Router:      router,
-		pubsub:      gsub,
-		Bitswap:     bswap,
-		Network:     network,
+		NetworkName:   networkName,
+		Host:          peerHost,
+		Router:        router,
+		pubsub:        gsub,
+		Bitswap:       bswap,
+		GraphExchange: gsync,
+		Network:       network,
 	}, nil
 }
 

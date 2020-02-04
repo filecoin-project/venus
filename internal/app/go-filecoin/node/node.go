@@ -447,6 +447,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		node.Host(),
 		node.Repo.Datastore(),
 		node.Blockstore.Blockstore,
+		node.network.GraphExchange,
 		repoPath,
 		node.PorcelainAPI.MinerGetWorkerAddress)
 	if err != nil {
