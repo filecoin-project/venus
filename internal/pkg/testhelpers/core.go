@@ -199,7 +199,7 @@ func CreateTestMinerWith(
 ) address.Address {
 	ctx := context.TODO()
 	pdata := actor.MustConvertParams(types.OneKiBSectorSize, pid)
-	idAddr, found, err := consensus.ResolveAddress(ctx, minerOwnerAddr, state.NewCachedTree(st), vms, vm.NewLegacyGasTracker())
+	idAddr, found, err := consensus.ResolveAddress(ctx, minerOwnerAddr, state.NewCachedTree(st), vms)
 	require.NoError(t, err)
 	require.True(t, found)
 
@@ -217,7 +217,7 @@ func CreateTestMinerWith(
 
 // RequireGetActor adds an account actor to the state tree if none exists
 func RequireGetActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, addr address.Address) *actor.Actor {
-	idAddr, found, err := consensus.ResolveAddress(ctx, addr, state.NewCachedTree(st), vms, vm.NewLegacyGasTracker())
+	idAddr, found, err := consensus.ResolveAddress(ctx, addr, state.NewCachedTree(st), vms)
 	require.NoError(t, err)
 	require.True(t, found, "test actor not found")
 

@@ -4,7 +4,6 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gastracker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
@@ -44,14 +43,6 @@ type StorageMap = storagemap.StorageMap
 // NewStorageMap returns a storage object for the given datastore.
 func NewStorageMap(bs blockstore.Blockstore) StorageMap {
 	return storagemap.NewStorageMap(bs)
-}
-
-// LegacyGasTracker maintains the state of gas usage throughout the execution of a block and a message
-type LegacyGasTracker = gastracker.LegacyGasTracker
-
-// NewLegacyGasTracker initializes a new empty gas tracker
-func NewLegacyGasTracker() *gastracker.LegacyGasTracker {
-	return gastracker.NewLegacyGasTracker()
 }
 
 // FunctionSignature describes the signature of a single function.

@@ -77,7 +77,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 }
 
 // ResolveAddress looks up associated id address. If the given address is already and id address, it is returned unchanged.
-func ResolveAddress(ctx context.Context, addr address.Address, st *state.CachedTree, vms vm.StorageMap, gt *vm.LegacyGasTracker) (address.Address, bool, error) {
+func ResolveAddress(ctx context.Context, addr address.Address, st *state.CachedTree, vms vm.StorageMap) (address.Address, bool, error) {
 	// Dragons: remove completly, or just FW to the vm. we can expose a method on the VM that lets you do this.
 	return address.Undef, true, nil
 }
