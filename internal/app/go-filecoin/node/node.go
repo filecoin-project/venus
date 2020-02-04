@@ -591,17 +591,6 @@ func (node *Node) setupProtocols() error {
 	)
 
 	node.BlockMining.BlockMiningAPI = &blockMiningAPI
-
-	// set up retrieval client and api
-	// DRAGONS: uncomment when we have a real retrieval client implementation
-	//retapi := retrieval.NewAPI(retrieval.NewClient())
-	//node.RetrievalProtocol.RetrievalAPI = &retapi
-
-	// set up storage client and api
-	// DRAGONS: uncomment when we have a storage market
-	//smc := storage.NewClient()
-	//smcAPI := storage.NewAPI(smc)
-	//node.StorageProtocol.StorageClientAPI = &smcAPI
 	return nil
 }
 
