@@ -128,7 +128,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 					Return: nil,
 				},
 			}),
-			Error:  "makeTypedExport must receive a function with signature: func (runtime.Runtime) (uint8, error), but got: func() (uint8, error)",
+			Error:  "makeTypedExport must receive a function with signature: func (runtime.InvocationContext) (uint8, error), but got: func() (uint8, error)",
 			Method: One,
 		},
 		{
@@ -139,7 +139,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 					Return: nil,
 				},
 			}),
-			Error:  "makeTypedExport must receive a function with signature: func (runtime.Runtime) (uint8, error), but got: func(runtime.Runtime) error",
+			Error:  "makeTypedExport must receive a function with signature: func (runtime.InvocationContext) (uint8, error), but got: func(runtime.InvocationContext) error",
 			Method: Three,
 		},
 		{
@@ -150,7 +150,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 					Return: []abi.Type{abi.Bytes},
 				},
 			}),
-			Error:  "makeTypedExport must receive a function with signature: func (runtime.Runtime) ([]byte, uint8, error), but got: func(runtime.Runtime) (uint8, error)",
+			Error:  "makeTypedExport must receive a function with signature: func (runtime.InvocationContext) ([]byte, uint8, error), but got: func(runtime.InvocationContext) (uint8, error)",
 			Method: Two,
 		},
 		{
@@ -161,7 +161,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 					Return: []abi.Type{abi.Bytes, abi.Bytes},
 				},
 			}),
-			Error:  "makeTypedExport must receive a function with signature: func (runtime.Runtime) ([]byte, []byte, uint8, error), but got: func(runtime.Runtime) (uint8, error)",
+			Error:  "makeTypedExport must receive a function with signature: func (runtime.InvocationContext) ([]byte, []byte, uint8, error), but got: func(runtime.InvocationContext) (uint8, error)",
 			Method: Two,
 		},
 	}
@@ -233,23 +233,23 @@ func (*impl) one() (uint8, error) {
 	return 0, nil
 }
 
-func (*impl) two(ctx runtime.Runtime) (uint8, error) {
+func (*impl) two(ctx runtime.InvocationContext) (uint8, error) {
 	return 0, nil
 }
 
-func (*impl) three(ctx runtime.Runtime) error {
+func (*impl) three(ctx runtime.InvocationContext) error {
 	return nil
 }
 
-func (*impl) four(ctx runtime.Runtime) ([]byte, uint8, error) {
+func (*impl) four(ctx runtime.InvocationContext) ([]byte, uint8, error) {
 	return []byte("hello"), 0, nil
 }
 
-func (*impl) five(ctx runtime.Runtime) ([]byte, uint8, error) {
+func (*impl) five(ctx runtime.InvocationContext) ([]byte, uint8, error) {
 	return nil, 2, errors.NewRevertError("fail5")
 }
 
-func (*impl) six(ctx runtime.Runtime) (uint8, error) {
+func (*impl) six(ctx runtime.InvocationContext) (uint8, error) {
 	return 0, fmt.Errorf("NOT A REVERT OR FAULT -- PROGRAMMER ERROR")
 }
 
