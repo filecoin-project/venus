@@ -58,12 +58,16 @@ type connectorCommon struct {
 func (c *connectorCommon) MostRecentStateId(ctx context.Context) (storagemarket.StateKey, error) { // nolint: golint
 	key := c.chainStore.Head()
 	ts, err := c.chainStore.GetTipSet(key)
-
 	if err != nil {
 		return nil, err
 	}
 
-	return &stateKey{key, uint64(ts.At(0).Height)}, nil
+	height, err := ts.Height()
+	if err != nil {
+		return nil, err
+	}
+
+	return &stateKey{key, height}, nil
 }
 
 func (c *connectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan error) (*types.MessageReceipt, error) {
