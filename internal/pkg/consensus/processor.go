@@ -9,19 +9,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
-
-// Dragons: delete
-// MessageValidator validates the syntax and semantics of a message before it is applied.
-type MessageValidator interface {
-	// Validate checks a message for validity.
-	Validate(ctx context.Context, msg *types.UnsignedMessage, fromActor *actor.Actor) error
-}
 
 // ApplicationResult contains the result of successfully applying one message.
 // ExecutionError might be set and the message can still be applied successfully.
