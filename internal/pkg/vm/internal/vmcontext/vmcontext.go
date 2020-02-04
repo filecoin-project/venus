@@ -107,7 +107,7 @@ func (ctx *VMContext) CurrentEpoch() types.BlockHeight {
 }
 
 // Randomness gives the actors access to sampling peudo-randomess from the chain.
-func (ctx *VMContext) Randomness(epoch types.BlockHeight, offset uint64) runtime.Randomness {
+func (ctx *VMContext) Randomness(epoch types.BlockHeight) runtime.Randomness {
 	rnd, err := sampling.SampleChainRandomness(&epoch, ctx.ancestors)
 	if err != nil {
 		runtime.Abortf(exitcode.MethodAbort, "failed to sample randomness")

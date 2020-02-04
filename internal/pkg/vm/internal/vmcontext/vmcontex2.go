@@ -39,7 +39,7 @@ type VM struct {
 
 // RandomnessSource provides randomness to actors.
 type RandomnessSource interface {
-	Randomness(epoch types.BlockHeight, offset uint64) runtime.Randomness
+	Randomness(epoch types.BlockHeight) runtime.Randomness
 }
 
 // ActorImplLookup provides access to upgradeable actor code.
@@ -511,8 +511,8 @@ func (vm *VM) CurrentEpoch() types.BlockHeight {
 }
 
 // Randomness implements runtime.Runtime.
-func (vm *VM) Randomness(epoch types.BlockHeight, offset uint64) runtime.Randomness {
-	return vm.rnd.Randomness(epoch, offset)
+func (vm *VM) Randomness(epoch types.BlockHeight) runtime.Randomness {
+	return vm.rnd.Randomness(epoch)
 }
 
 // Storage implements runtime.Runtime.

@@ -91,7 +91,7 @@ func (tc *FakeVMContext) CurrentEpoch() types.BlockHeight {
 }
 
 // Randomness provides random bytes used in verification challenges
-func (tc *FakeVMContext) Randomness(epoch types.BlockHeight, offset uint64) runtime.Randomness {
+func (tc *FakeVMContext) Randomness(epoch types.BlockHeight) runtime.Randomness {
 	rnd, _ := tc.Sampler(&epoch)
 	return rnd
 }

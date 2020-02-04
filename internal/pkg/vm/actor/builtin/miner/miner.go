@@ -1189,7 +1189,7 @@ func (*Impl) getPledgeCollateralRequirement(state State, height *types.BlockHeig
 
 // getPoStChallengeSeed returns some chain randomness
 func getPoStChallengeSeed(ctx invocationContext, state State, sampleAt *types.BlockHeight) (types.PoStChallengeSeed, error) {
-	randomness := ctx.Runtime().Randomness(*sampleAt, 0)
+	randomness := ctx.Runtime().Randomness(*sampleAt)
 
 	seed := types.PoStChallengeSeed{}
 	copy(seed[:], randomness)

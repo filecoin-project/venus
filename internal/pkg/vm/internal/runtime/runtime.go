@@ -16,7 +16,7 @@ type Runtime interface {
 	// CurrentEpoch is the current chain epoch.
 	CurrentEpoch() types.BlockHeight
 	// Randomness gives the actors access to sampling peudo-randomess from the chain.
-	Randomness(epoch types.BlockHeight, offset uint64) Randomness
+	Randomness(epoch types.BlockHeight) Randomness
 	// Storage is the raw store for IPLD objects.
 	//
 	// Note: this is required for custom data structures.
