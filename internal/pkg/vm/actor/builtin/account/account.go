@@ -1,18 +1,15 @@
 package account
 
 import (
-	"github.com/ipfs/go-cid"
 	"reflect"
 
-	xerrors "github.com/pkg/errors"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
@@ -70,27 +67,27 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSi
 }
 
 // InitializeState for account actors does nothing.
-func (*Actor) InitializeState(storage runtime.LegacyStorage, initializerData interface{}) error {
-	state, ok := initializerData.(*State)
+func (*Actor) InitializeState(handle runtime.ActorStateHandle, initializerData interface{}) error {
+	inputState, ok := initializerData.(*State)
 	if !ok {
 		return errors.NewFaultError("Initial state to account actor is not a account.State struct")
 	}
 
-	if state.Address.Protocol() != address.SECP256K1 && state.Address.Protocol() != address.BLS {
+	if inputState.Address.Protocol() != address.SECP256K1 && inputState.Address.Protocol() != address.BLS {
 		return errors.NewRevertError("Attempt to create account actor with wrong type of address")
 	}
 
-	stateBytes, err := encoding.Encode(state)
-	if err != nil {
-		return xerrors.Wrap(err, "failed to cbor marshal objecinitalizerDatat")
-	}
-
-	id, err := storage.Put(stateBytes)
+	var state State
+	_, err := handle.Transaction(&state, func() (interface{}, error) {
+		// create id address
+		state.Address = inputState.Address
+		return nil, nil
+	})
 	if err != nil {
 		return err
 	}
 
-	return storage.LegacyCommit(id, cid.Undef)
+	return nil
 }
 
 //
@@ -102,7 +99,9 @@ type Impl Actor
 
 // Constructor initializes the actor's state
 func (impl *Impl) Constructor(ctx runtime.InvocationContext, addr address.Address) (uint8, error) {
-	err := (*Actor)(impl).InitializeState(ctx.Runtime().LegacyStorage(), NewState(addr))
+	ctx.ValidateCaller(pattern.IsAInitActor{})
+
+	err := (*Actor)(impl).InitializeState(ctx.StateHandle(), NewState(addr))
 	if err != nil {
 		return errors.CodeError(err), errors.RevertErrorWrap(err, "Could not initialize account state")
 	}

@@ -4,7 +4,6 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -19,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
@@ -362,23 +362,15 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSi
 }
 
 // InitializeState stores this miner's initial data structure.
-func (*Actor) InitializeState(storage runtime.LegacyStorage, initializerData interface{}) error {
+func (*Actor) InitializeState(handle runtime.ActorStateHandle, initializerData interface{}) error {
 	minerState, ok := initializerData.(*State)
 	if !ok {
 		return errors.NewFaultError("Initial state to miner actor is not a miner.State struct")
 	}
 
-	stateBytes, err := encoding.Encode(minerState)
-	if err != nil {
-		return xerrors.Wrap(err, "failed to cbor marshal object")
-	}
+	handle.Create(minerState)
 
-	id, err := storage.Put(stateBytes)
-	if err != nil {
-		return err
-	}
-
-	return storage.LegacyCommit(id, cid.Undef)
+	return nil
 }
 
 //
@@ -472,7 +464,9 @@ type invocationContext interface {
 
 // Constructor initializes the actor's state
 func (impl *Impl) Constructor(ctx runtime.InvocationContext, owner, worker address.Address, pid peer.ID, sectorSize *types.BytesAmount) (uint8, error) {
-	err := (*Actor)(impl).InitializeState(ctx.Runtime().LegacyStorage(), NewState(owner, worker, pid, sectorSize))
+	ctx.ValidateCaller(pattern.IsAInitActor{})
+
+	err := (*Actor)(impl).InitializeState(ctx.StateHandle(), NewState(owner, worker, pid, sectorSize))
 	if err != nil {
 		return errors.CodeError(err), err
 	}

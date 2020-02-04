@@ -192,7 +192,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, sectorSize *typ
 
 		ctx := context.Background()
 
-		state.Miners, err = actor.SetKeyValue(ctx, vmctx.Runtime().LegacyStorage(), state.Miners, actorIDAddr.String(), true)
+		state.Miners, err = actor.SetKeyValue(ctx, vmctx.Runtime().Storage(), state.Miners, actorIDAddr.String(), true)
 		if err != nil {
 			return nil, errors.FaultErrorWrapf(err, "could not set miner key value for lookup with CID: %s", state.Miners)
 		}
@@ -234,7 +234,7 @@ func (*impl) updateStorage(vmctx runtime.InvocationContext, delta *types.BytesAm
 		miner := vmctx.Message().Caller()
 		ctx := context.Background()
 
-		miners, err := actor.LoadLookup(ctx, vmctx.Runtime().LegacyStorage(), state.Miners)
+		miners, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.Miners)
 		if err != nil {
 			return nil, errors.FaultErrorWrapf(err, "could not load lookup for miner with CID: %s", state.Miners)
 		}
@@ -267,7 +267,7 @@ func (a *impl) getLateMiners(vmctx runtime.InvocationContext) (*map[string]uint6
 
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		miners := map[string]uint64{}
-		lu, err := actor.LoadLookup(ctx, vmctx.Runtime().LegacyStorage(), state.Miners)
+		lu, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.Miners)
 		if err != nil {
 			return &miners, err
 		}

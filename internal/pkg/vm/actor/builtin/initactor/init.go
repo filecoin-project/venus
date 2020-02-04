@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -34,7 +35,7 @@ type State struct {
 // View is a readonly view into the actor state
 type View struct {
 	state State
-	store runtime.LegacyStorage
+	store runtime.Storage
 }
 
 // assignNewID returns the nextID and increments the counter
@@ -59,7 +60,7 @@ func NewActor() *actor.Actor {
 }
 
 // NewView creates a new init actor state view.
-func NewView(stateHandle runtime.ReadonlyActorStateHandle, store runtime.LegacyStorage) View {
+func NewView(stateHandle runtime.ReadonlyActorStateHandle, store runtime.Storage) View {
 	// load state as readonly
 	var state State
 	stateHandle.Readonly(&state)
@@ -196,7 +197,7 @@ const (
 // invocationContext is the context for the init actor.
 type invocationContext interface {
 	runtime.InvocationContext
-	CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address
+	CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) (address.Address, address.Address)
 }
 
 // Impl is the VM implementation of the actor.
@@ -218,14 +219,16 @@ func (*Impl) GetNetwork(ctx runtime.InvocationContext) (string, uint8, error) {
 }
 
 // GetActorIDForAddress looks up the actor id for a filecoin address.
-func (a *Impl) GetActorIDForAddress(rt invocationContext, addr address.Address) (*big.Int, uint8, error) {
-	if err := rt.Charge(actor.DefaultGasCost); err != nil {
+func (a *Impl) GetActorIDForAddress(ctx invocationContext, addr address.Address) (*big.Int, uint8, error) {
+	ctx.ValidateCaller(pattern.Any{})
+
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return big.NewInt(0), internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
-	id, err := rt.StateHandle().Transaction(&state, func() (interface{}, error) {
-		return lookupIDAddress(rt, state, addr)
+	id, err := ctx.StateHandle().Transaction(&state, func() (interface{}, error) {
+		return lookupIDAddress(ctx, state, addr)
 	})
 	if err != nil {
 		if err == hamt.ErrNotFound {
@@ -250,7 +253,7 @@ func (a *Impl) GetAddressForActorID(rt runtime.InvocationContext, actorID types.
 	}
 
 	ctx := context.TODO()
-	lookup, err := actor.LoadLookup(ctx, rt.Runtime().LegacyStorage(), state.IDMap)
+	lookup, err := actor.LoadLookup(ctx, rt.Runtime().Storage(), state.IDMap)
 	if err != nil {
 		return address.Undef, errors.CodeError(err), errors.RevertErrorWrapf(err, "could not load lookup for cid: %s", state.IDMap)
 	}
@@ -274,6 +277,8 @@ func (a *Impl) GetAddressForActorID(rt runtime.InvocationContext, actorID types.
 
 // Exec creates a new builtin actor.
 func (a *Impl) Exec(vmctx invocationContext, codeCID cid.Cid, params []interface{}) (address.Address, uint8, error) {
+	vmctx.ValidateCaller(pattern.Any{})
+
 	// Dragons: clean this up to match spec
 	var state State
 	out, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
@@ -288,19 +293,19 @@ func (a *Impl) Exec(vmctx invocationContext, codeCID cid.Cid, params []interface
 
 	actorID := out.(types.Uint64)
 
-	actorAddr := vmctx.CreateActor(actorID, codeCID, params)
+	actorIdAddr, actorAddr := vmctx.CreateActor(actorID, codeCID, params)
 
 	_, err = vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		var err error
 
 		// map id to address and vice versa
 		ctx := context.TODO()
-		state.AddressMap, err = setID(ctx, vmctx.Runtime().LegacyStorage(), state.AddressMap, actorAddr, actorID)
+		state.AddressMap, err = setID(ctx, vmctx.Runtime().Storage(), state.AddressMap, actorAddr, actorID)
 		if err != nil {
 			return nil, errors.FaultErrorWrap(err, "could not save id by address")
 		}
 
-		state.IDMap, err = setAddress(ctx, vmctx.Runtime().LegacyStorage(), state.IDMap, actorID, actorAddr)
+		state.IDMap, err = setAddress(ctx, vmctx.Runtime().Storage(), state.IDMap, actorID, actorAddr)
 		if err != nil {
 			return nil, errors.FaultErrorWrap(err, "could not save address by id")
 		}
@@ -312,12 +317,12 @@ func (a *Impl) Exec(vmctx invocationContext, codeCID cid.Cid, params []interface
 	}
 
 	// Dragons: the idaddress is returned by the spec
-	return actorAddr, 0, nil
+	return actorIdAddr, 0, nil
 }
 
 func lookupIDAddress(vmctx runtime.InvocationContext, state State, addr address.Address) (types.Uint64, error) {
 	ctx := context.TODO()
-	lookup, err := actor.LoadLookup(ctx, vmctx.Runtime().LegacyStorage(), state.AddressMap)
+	lookup, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.AddressMap)
 	if err != nil {
 		return 0, errors.RevertErrorWrapf(err, "could not load lookup for cid: %s", state.IDMap)
 	}
@@ -331,7 +336,7 @@ func lookupIDAddress(vmctx runtime.InvocationContext, state State, addr address.
 	return id, nil
 }
 
-func setAddress(ctx context.Context, storage runtime.LegacyStorage, idMap cid.Cid, actorID types.Uint64, addr address.Address) (cid.Cid, error) {
+func setAddress(ctx context.Context, storage runtime.Storage, idMap cid.Cid, actorID types.Uint64, addr address.Address) (cid.Cid, error) {
 	lookup, err := actor.LoadLookup(ctx, storage, idMap)
 	if err != nil {
 		return cid.Undef, errors.RevertErrorWrapf(err, "could not load lookup for cid: %s", idMap)
@@ -350,7 +355,7 @@ func setAddress(ctx context.Context, storage runtime.LegacyStorage, idMap cid.Ci
 	return lookup.Commit(ctx)
 }
 
-func setID(ctx context.Context, storage runtime.LegacyStorage, addressMap cid.Cid, addr address.Address, actorID types.Uint64) (cid.Cid, error) {
+func setID(ctx context.Context, storage runtime.Storage, addressMap cid.Cid, addr address.Address, actorID types.Uint64) (cid.Cid, error) {
 	lookup, err := actor.LoadLookup(ctx, storage, addressMap)
 	if err != nil {
 		return cid.Undef, errors.RevertErrorWrapf(err, "could not load lookup for cid: %s", addressMap)
