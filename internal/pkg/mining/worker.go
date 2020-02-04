@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -72,8 +71,7 @@ type MessageSource interface {
 
 // A MessageApplier processes all the messages in a message pool.
 type MessageApplier interface {
-	// ApplyMessagesAndPayRewards applies all state transitions related to a set of messages.
-	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.UnsignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, ancestors []block.TipSet) ([]*consensus.ApplyMessageResult, error)
+	// Dragons: add something back or remove
 }
 
 type workerPorcelainAPI interface {

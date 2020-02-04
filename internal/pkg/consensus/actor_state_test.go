@@ -43,7 +43,7 @@ func TestQuery(t *testing.T) {
 		// setup/teardown through geneisus helpers.
 
 		actors := builtin.NewBuilder().AddAll(builtin.DefaultActors).Add(fakeActorCodeCid, 0, &actor.FakeActor{}).Build()
-		processor := NewConfiguredProcessor(NewDefaultMessageValidator(), NewDefaultBlockRewarder(), actors)
+		processor := NewConfiguredProcessor(NewDefaultMessageValidator(), actors)
 		testGen := MakeGenesisFunc(
 			// Actor we will send the query to.
 			AddActor(fakeActorAddr, fakeActor),
@@ -87,7 +87,7 @@ func TestQuery(t *testing.T) {
 			AddAll(builtin.DefaultActors).
 			Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
 			Build()
-		processor := NewConfiguredProcessor(NewDefaultMessageValidator(), NewDefaultBlockRewarder(), actors)
+		processor := NewConfiguredProcessor(NewDefaultMessageValidator(), actors)
 		testGen := MakeGenesisFunc(
 			// Actor we will send the query to.
 			AddActor(fakeActorAddr, fakeActor),

@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -209,37 +208,40 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts block.TipSet, targetMs
 }
 
 func (w *Waiter) receiptByIndex(ctx context.Context, tsKey block.TipSetKey, targetCid cid.Cid, messages [][]*types.UnsignedMessage) (*types.MessageReceipt, error) {
-	receiptCid, err := w.chainReader.GetTipSetReceiptsRoot(tsKey)
-	if err != nil {
-		return nil, err
-	}
+	// receiptCid, err := w.chainReader.GetTipSetReceiptsRoot(tsKey)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	receipts, err := w.messageProvider.LoadReceipts(ctx, receiptCid)
-	if err != nil {
-		return nil, err
-	}
+	// receipts, err := w.messageProvider.LoadReceipts(ctx, receiptCid)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	deduped, err := consensus.DeduppedMessages(messages)
-	if err != nil {
-		return nil, err
-	}
+	// deduped, err := consensus.DeduppedMessages(messages)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	receiptIndex := 0
-	for _, blkMessages := range deduped {
-		for _, msg := range blkMessages {
-			msgCid, err := msg.Cid()
-			if err != nil {
-				return nil, err
-			}
+	// receiptIndex := 0
+	// for _, blkMessages := range deduped {
+	// 	for _, msg := range blkMessages {
+	// 		msgCid, err := msg.Cid()
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
 
-			if msgCid.Equals(targetCid) {
-				if receiptIndex >= len(receipts) {
-					return nil, errors.Errorf("could not find message receipt at index %d", receiptIndex)
-				}
-				return receipts[receiptIndex], nil
-			}
-			receiptIndex++
-		}
-	}
-	return nil, errors.Errorf("could not find message cid %s in dedupped messages", targetCid.String())
+	// 		if msgCid.Equals(targetCid) {
+	// 			if receiptIndex >= len(receipts) {
+	// 				return nil, errors.Errorf("could not find message receipt at index %d", receiptIndex)
+	// 			}
+	// 			return receipts[receiptIndex], nil
+	// 		}
+	// 		receiptIndex++
+	// 	}
+	// }
+	// return nil, errors.Errorf("could not find message cid %s in dedupped messages", targetCid.String())
+
+	// Dragons: do something
+	return nil, fmt.Errorf("re-write or delete")
 }

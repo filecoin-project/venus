@@ -42,7 +42,7 @@ func TestPreview(t *testing.T) {
 			AddAll(builtin.DefaultActors).
 			Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
 			Build()
-		processor := consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), consensus.NewDefaultBlockRewarder(), actors)
+		processor := consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), actors)
 		testGen := consensus.MakeGenesisFunc(
 			// Actor we will send the query to.
 			consensus.AddActor(fakeActorAddr, fakeActor),

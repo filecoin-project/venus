@@ -24,12 +24,12 @@ type testActorStateHandleState struct {
 func setup() testSetup {
 	initialstate := testActorStateHandleState{FieldA: "fakestate"}
 
-	storage := vm.NewTestLegacyStorage(initialstate)
+	storage := vm.NewTestStorage(initialstate)
 	ctx := fakeActorStateHandleContext{
 		storage:          storage,
 		allowSideEffects: true,
 	}
-	initialhead := ctx.storage.LegacyHead()
+	initialhead := storage.CidOf(initialstate)
 	h := vmcontext.NewActorStateHandle(&ctx, initialhead)
 
 	cleanup := func() {
@@ -219,13 +219,13 @@ func TestActorStateHandleNilState(t *testing.T) {
 	tf.UnitTest(t)
 
 	setup := func() (runtime.ActorStateHandle, func()) {
-		storage := vm.NewTestLegacyStorage(nil)
+		storage := vm.NewTestStorage(nil)
 		ctx := fakeActorStateHandleContext{
 			storage:          storage,
 			allowSideEffects: true,
 		}
-		initialhead := ctx.storage.LegacyHead()
-		h := vmcontext.NewActorStateHandle(&ctx, initialhead)
+
+		h := vmcontext.NewActorStateHandle(&ctx, cid.Undef)
 
 		cleanup := func() {
 			// the vmcontext is supposed to call validate after each actor method
@@ -297,11 +297,11 @@ type extendedStateHandle interface {
 }
 
 type fakeActorStateHandleContext struct {
-	storage          runtime.LegacyStorage
+	storage          runtime.Storage
 	allowSideEffects bool
 }
 
-func (ctx *fakeActorStateHandleContext) LegacyStorage() runtime.LegacyStorage {
+func (ctx *fakeActorStateHandleContext) Storage() runtime.Storage {
 	return ctx.storage
 }
 

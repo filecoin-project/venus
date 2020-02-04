@@ -372,7 +372,7 @@ func isSingletonActor(code cid.Cid) bool {
 }
 
 // CreateActor implements the ExtendedInvocationContext interface.
-func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address {
+func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) (address.Address, address.Address) {
 	if !isBuiltinActor(code) {
 		runtime.Abortf(exitcode.MethodAbort, "Can only create built-in actors.")
 	}
@@ -426,7 +426,7 @@ func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []i
 	// send message containing actor's initial balance to construct it with the given params
 	ctx.Send(idAddr, types.ConstructorMethodID, ctx.Message().ValueReceived(), params)
 
-	return actorAddr
+	return idAddr, actorAddr
 }
 
 // VerifySignature implemenets the ExtendedInvocationContext interface.

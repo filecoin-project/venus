@@ -19,6 +19,21 @@ var errInsufficientGasCt *metrics.Int64Counter
 var errNonceTooLowCt *metrics.Int64Counter
 var errNonceTooHighCt *metrics.Int64Counter
 
+var (
+	// These errors are only to be used by ApplyMessage; they shouldn't be
+	// used in any other context as they are an implementation detail.
+	errGasAboveBlockLimit = errors.NewRevertError("message gas limit above block gas limit")
+	errGasPriceZero       = errors.NewRevertError("message gas price is zero")
+	errNonceTooHigh       = errors.NewRevertError("nonce too high")
+	errNonceTooLow        = errors.NewRevertError("nonce too low")
+	errNonAccountActor    = errors.NewRevertError("message from non-account actor")
+	errNegativeValue      = errors.NewRevertError("negative value")
+	errInsufficientGas    = errors.NewRevertError("balance insufficient to cover transfer+gas")
+	errInvalidSignature   = errors.NewRevertError("invalid signature by sender over message data")
+	// TODO we'll eventually handle sending to self.
+	errSelfSend = errors.NewRevertError("cannot send to self")
+)
+
 func init() {
 	errNegativeValueCt = metrics.NewInt64Counter("consensus/msg_negative_value_err", "Number of negative valuedmessage")
 	errGasAboveBlockLimitCt = metrics.NewInt64Counter("consensus/msg_gas_above_blk_limit_err", "Number of messages with gas above block limit")

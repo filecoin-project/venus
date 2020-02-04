@@ -185,7 +185,7 @@ func (tc *FakeVMContext) Charge(cost types.GasUnits) error {
 var _ runtime.ExtendedInvocationContext = (*FakeVMContext)(nil)
 
 // CreateActor implemenets the ExtendedInvocationContext interface.
-func (tc *FakeVMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address {
+func (tc *FakeVMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) (address.Address, address.Address) {
 	addr, err := tc.Addresser()
 	if err != nil {
 		runtime.Abortf(exitcode.MethodAbort, "Could not create address")
@@ -199,7 +199,7 @@ func (tc *FakeVMContext) CreateActor(actorID types.Uint64, code cid.Cid, params 
 		runtime.Abortf(exitcode.MethodAbort, "Could not create actor")
 	}
 
-	return addr
+	return idAddr, addr
 }
 
 // VerifySignature implemenets the ExtendedInvocationContext interface.
@@ -276,6 +276,15 @@ func (ts *testStorage) Get(cid cid.Cid, obj interface{}) bool {
 	}
 
 	return true
+}
+
+func (ts *testStorage) GetRaw(cid cid.Cid) ([]byte, bool) {
+	node, err := cbor.WrapObject(ts.state, types.DefaultHashFunction, -1)
+	if err != nil {
+		return nil, false
+	}
+
+	return node.RawData(), true
 }
 
 func (ts *testStorage) CidOf(obj interface{}) cid.Cid {

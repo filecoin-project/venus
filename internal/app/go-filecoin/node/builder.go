@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
@@ -31,7 +30,6 @@ type Builder struct {
 	libp2pOpts  []libp2p.Option
 	offlineMode bool
 	verifier    verification.Verifier
-	rewarder    consensus.BlockRewarder
 	repo        repo.Repo
 	journal     journal.Journal
 	isRelay     bool
@@ -82,14 +80,6 @@ func Libp2pOptions(opts ...libp2p.Option) BuilderOpt {
 func VerifierConfigOption(verifier verification.Verifier) BuilderOpt {
 	return func(c *Builder) error {
 		c.verifier = verifier
-		return nil
-	}
-}
-
-// RewarderConfigOption returns a function that sets the rewarder to use in the node consensus
-func RewarderConfigOption(rewarder consensus.BlockRewarder) BuilderOpt {
-	return func(c *Builder) error {
-		c.rewarder = rewarder
 		return nil
 	}
 }
@@ -283,10 +273,6 @@ func (b builder) ChainClock() clock.ChainEpochClock {
 
 func (b builder) Journal() journal.Journal {
 	return b.journal
-}
-
-func (b builder) Rewarder() consensus.BlockRewarder {
-	return b.rewarder
 }
 
 func (b builder) Libp2pOpts() []libp2p.Option {

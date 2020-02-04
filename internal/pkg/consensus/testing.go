@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
@@ -122,29 +121,11 @@ func (tsmv *FakeMessageValidator) Validate(ctx context.Context, msg *types.Unsig
 	return nil
 }
 
-// FakeBlockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
-type FakeBlockRewarder struct{}
-
-var _ BlockRewarder = (*FakeBlockRewarder)(nil)
-
-// BlockReward is a noop
-func (tbr *FakeBlockRewarder) BlockReward(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address) error {
-	// do nothing to keep state root the same
-	return nil
-}
-
-// GasReward is a noop
-func (tbr *FakeBlockRewarder) GasReward(ctx context.Context, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error {
-	// do nothing to keep state root the same
-	return nil
-}
-
 // NewFakeProcessor creates a processor with a test validator and test rewarder
 func NewFakeProcessor(actors builtin.Actors) *DefaultProcessor {
 	return &DefaultProcessor{
-		validator:     &FakeMessageValidator{},
-		blockRewarder: &FakeBlockRewarder{},
-		actors:        actors,
+		validator: &FakeMessageValidator{},
+		actors:    actors,
 	}
 }
 

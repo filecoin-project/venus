@@ -2,13 +2,13 @@ package vmcontext
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"runtime/debug"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/cron"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/reward"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemining"
@@ -32,7 +32,7 @@ var vmLog = logging.Logger("vm.context")
 type VM struct {
 	rnd          RandomnessSource
 	actorImpls   ActorImplLookup
-	store        storage.VMStorage
+	store        *storage.VMStorage
 	state        *state.CachedTree
 	currentEpoch types.BlockHeight
 }
@@ -51,12 +51,13 @@ type ActorImplLookup interface {
 type MinerPenaltyFIL = types.AttoFIL
 
 type internalMessage struct {
-	miner  address.Address
-	from   address.Address
-	to     address.Address
-	value  types.AttoFIL
-	method types.MethodID
-	params []byte
+	miner         address.Address
+	from          address.Address
+	to            address.Address
+	value         types.AttoFIL
+	method        types.MethodID
+	params        []byte
+	callSeqNumber types.Uint64
 }
 
 // actorStorage hides the storage methods from the actors and turns the errors into runtime panics.
@@ -65,13 +66,78 @@ type actorStorage struct {
 }
 
 // NewVM creates a new runtime for executing messages.
-func NewVM(rnd RandomnessSource, actorImpls ActorImplLookup, store storage.VMStorage, st state.Tree) VM {
+func NewVM(rnd RandomnessSource, actorImpls ActorImplLookup, store *storage.VMStorage, st state.Tree) VM {
 	return VM{
-		rnd:        rnd,
-		actorImpls: actorImpls,
-		store:      store,
-		state:      state.NewCachedTree(st),
+		rnd:          rnd,
+		actorImpls:   actorImpls,
+		store:        store,
+		state:        state.NewCachedTree(st),
+		currentEpoch: *types.NewBlockHeight(0),
 	}
+}
+
+// ApplyGenesisMessage forces the execution of a message in the vm actor.
+//
+// This method is intended to be used in the generation of the genesis block only.
+func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method types.MethodID, value types.AttoFIL, params ...interface{}) (interface{}, error) {
+	// get the params into bytes
+	encodedParams, err := abi.ToEncodedValues(params...)
+	if err != nil {
+		return nil, err
+	}
+
+	// normalize from addr
+	from = vm.normalizeFrom(from)
+
+	// build internal message
+	imsg := internalMessage{
+		miner:  address.Undef,
+		from:   from,
+		to:     to,
+		value:  value,
+		method: method,
+		params: encodedParams,
+	}
+
+	ret, err := vm.applyImplicitMessage(imsg)
+	if err != nil {
+		return ret, err
+	}
+
+	// commit state
+	// flush all objects out
+	if err := vm.store.Flush(); err != nil {
+		return nil, err
+	}
+	// commit new actor state
+	if err := vm.state.Commit(context.Background()); err != nil {
+		return nil, err
+	}
+	// TODO: update state root (issue: #3718)
+
+	return ret, nil
+}
+
+func (vm *VM) normalizeFrom(from address.Address) address.Address {
+	// resolve the target address via the InitActor, and attempt to load state.
+	initActorEntry, err := vm.state.GetActor(context.Background(), address.InitAddress)
+	if err != nil {
+		panic(fmt.Errorf("init actor not found. %s", err))
+	}
+
+	// build state handle
+	var stateHandle = NewReadonlyStateHandle(vm.Storage(), initActorEntry.Head)
+
+	// get a view into the actor state
+	initView := initactor.NewView(stateHandle, vm.Storage())
+
+	// lookup the ActorID based on the address
+	targetIDAddr, ok := initView.GetIDAddressByAddress(from)
+	if !ok {
+		panic("TODO")
+	}
+
+	return targetIDAddr
 }
 
 // implement VMInterpreter for VM
@@ -179,7 +245,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 // This messages do not consume client gas are do not fail.
 func (vm *VM) applyImplicitMessage(imsg internalMessage) (out interface{}, err error) {
 	defer func() {
-		if r := recover(); r == nil {
+		if r := recover(); r != nil {
 			switch r.(type) {
 			case runtime.ExecutionPanic:
 				p := r.(runtime.ExecutionPanic)
@@ -205,8 +271,10 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) (out interface{}, err e
 	// 1. load from actor
 	fromActor, err := vm.state.GetActor(context.Background(), imsg.from)
 	if fromActor == nil || err != nil {
-		return nil, errors.New("implicit message `from` actor not found")
+		return nil, fmt.Errorf("implicit message `from` field actor not found, addr: %s", imsg.from)
 	}
+
+	imsg.callSeqNumber = fromActor.CallSeqNum
 
 	// 2. increment seq number
 	fromActor.IncrementSeqNum()
@@ -295,12 +363,13 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 
 	// 1. build internal msg
 	imsg := internalMessage{
-		miner:  miner,
-		from:   msg.From,
-		to:     msg.To,
-		value:  msg.Value,
-		method: msg.Method,
-		params: msg.Params,
+		miner:         miner,
+		from:          msg.From,
+		to:            msg.To,
+		value:         msg.Value,
+		method:        msg.Method,
+		params:        msg.Params,
+		callSeqNumber: msg.CallSeqNum,
 	}
 
 	// 2. build invocation context
@@ -314,7 +383,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 		defer func() {
 			// TODO: discard "non-checkpointed" state changes (issue: #3718)
 
-			if r := recover(); r == nil {
+			if r := recover(); r != nil {
 				switch r.(type) {
 				case runtime.ExecutionPanic:
 					p := r.(runtime.ExecutionPanic)
@@ -370,7 +439,7 @@ func (vm *VM) getMinerOwner(minerAddr address.Address) address.Address {
 	}
 
 	// build state handle
-	var stateHandle = NewReadonlyStateHandle(vm.LegacyStorage(), minerActorEntry.Head)
+	var stateHandle = NewReadonlyStateHandle(vm.Storage(), minerActorEntry.Head)
 
 	// get a view into the actor state
 	minerView := miner.NewView(stateHandle, vm.LegacyStorage())
@@ -448,7 +517,7 @@ func (vm *VM) Randomness(epoch types.BlockHeight, offset uint64) runtime.Randomn
 
 // Storage implements runtime.Runtime.
 func (vm *VM) Storage() runtime.Storage {
-	return actorStorage{inner: &vm.store}
+	return actorStorage{inner: vm.store}
 }
 
 // LegacyStorage implements runtime.Runtime.
@@ -508,6 +577,17 @@ func (s actorStorage) Get(cid cid.Cid, obj interface{}) bool {
 		panic(fmt.Errorf("could not get obj from store. %s", err))
 	}
 	return true
+}
+
+func (s actorStorage) GetRaw(cid cid.Cid) ([]byte, bool) {
+	raw, err := s.inner.GetRaw(cid)
+	if err == storage.ErrNotFound {
+		return nil, false
+	}
+	if err != nil {
+		panic(fmt.Errorf("could not get obj from store. %s", err))
+	}
+	return raw, true
 }
 
 //

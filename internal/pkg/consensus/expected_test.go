@@ -41,6 +41,7 @@ func TestNewExpected(t *testing.T) {
 // with integration tests (see chain_daemon_test.go for example)
 func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	tf.UnitTest(t)
+	t.Skip("using legacy vmcontext")
 
 	ctx := context.Background()
 	mockSigner, kis := types.NewMockSignersAndKeyInfo(3)
