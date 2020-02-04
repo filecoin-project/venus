@@ -242,18 +242,36 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 		return false
 	}
 
-	_, found, err := c.waiter.Find(ctx, pred)
+	msg, found, err := c.waiter.Find(ctx, pred)
+	if err != nil {
+		cb(0, err)
+		return err
+	}
 	if found {
-		// TODO: DealSectorCommittedCallback should take a sector ID which we would provide here.
-		cb(err)
-		return nil
+		sectorID, err := decodeSectorId(msg.Message)
+		cb(sectorID, err)
+		return err
 	}
 
-	return c.waiter.WaitPredicate(ctx, pred, func(_ *block.Block, _ *types.SignedMessage, _ *types.MessageReceipt) error {
-		// TODO: DealSectorCommittedCallback should take a sector ID which we would provide here.
-		cb(nil)
-		return nil
+	return c.waiter.WaitPredicate(ctx, pred, func(_ *block.Block, msg *types.SignedMessage, _ *types.MessageReceipt) error {
+		sectorID, err := decodeSectorId(msg)
+		cb(sectorID, err)
+		return err
 	})
+}
+
+func decodeSectorId(msg *types.SignedMessage) (uint64, error) {
+	values, err := abi.DecodeValues(msg.Message.Params, []abi.Type{abi.SectorProveCommitInfo})
+	if err != nil {
+		return 0, err
+	}
+
+	commitInfo, ok := values[0].Val.(*types.SectorProveCommitInfo)
+	if !ok {
+		return 0, errors.Errorf("Expected message params to be SectorProveCommitInfo, but was %v", values[0].Type)
+	}
+
+	return uint64(commitInfo.SectorID), nil
 }
 
 func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
