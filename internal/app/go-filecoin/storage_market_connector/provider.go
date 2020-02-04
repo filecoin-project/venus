@@ -160,11 +160,11 @@ func (s *StorageProviderNodeConnector) ListProviderDeals(ctx context.Context, ad
 }
 
 // OnDealComplete adds the piece to the storage provider
-func (s *StorageProviderNodeConnector) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize uint64, pieceReader io.Reader) (uint64, error) {
+func (s *StorageProviderNodeConnector) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize uint64, pieceReader io.Reader) error {
 	// TODO: storage provider is expecting a sector ID here. This won't work. The sector ID needs to be removed from
 	// TODO: the return value, and storage provider needs to call OnDealSectorCommitted which should add Sector ID to its
 	// TODO: callback.
-	return 0, s.pieceManager.SealPieceIntoNewSector(ctx, deal.DealID, pieceSize, pieceReader)
+	return s.pieceManager.SealPieceIntoNewSector(ctx, deal.DealID, pieceSize, pieceReader)
 }
 
 // LocatePieceForDealWithinSector finds the sector, offset and length of a piece associated with the given deal id

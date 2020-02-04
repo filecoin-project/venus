@@ -79,15 +79,9 @@ func NewStorageProtocolSubmodule(
 		return nil, err
 	}
 
-	// ensure miner-address is in datastore because graphsyncimpl requires it
-	err = ds.Put(datastore.NewKey("miner-address"), minerAddr.Bytes())
-	if err != nil {
-		return nil, err
-	}
-
 	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync)
 
-	provider, err := impl.NewProvider(ds, bs, fs, piecestore.NewPieceStore(ds), dt, pnode)
+	provider, err := impl.NewProvider(ds, bs, fs, piecestore.NewPieceStore(ds), dt, pnode, ma)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating graphsync provider")
 	}
