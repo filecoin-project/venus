@@ -18,6 +18,7 @@ import (
 
 func TestMpoolLs(t *testing.T) {
 	tf.IntegrationTest(t)
+	t.Skip("hangs")
 
 	sendMessage := func(ctx context.Context, cmdClient *test.Client, from string, to string) *th.CmdOutput {
 		return cmdClient.RunSuccess(ctx, "message", "send",
@@ -89,6 +90,7 @@ func TestMpoolLs(t *testing.T) {
 
 func TestMpoolShow(t *testing.T) {
 	tf.IntegrationTest(t)
+	t.Skip("hangs")
 	cs := node.FixtureChainSeed(t)
 
 	t.Run("shows message", func(t *testing.T) {
@@ -133,6 +135,7 @@ func TestMpoolShow(t *testing.T) {
 
 func TestMpoolRm(t *testing.T) {
 	tf.IntegrationTest(t)
+	t.Skip("hangs")
 
 	t.Run("remove a message", func(t *testing.T) {
 		cs := node.FixtureChainSeed(t)
