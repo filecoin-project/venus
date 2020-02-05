@@ -219,19 +219,19 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 		return err
 	}
 	if found {
-		sectorID, err := decodeSectorId(msg.Message)
+		sectorID, err := decodeSectorID(msg.Message)
 		cb(sectorID, err)
 		return err
 	}
 
 	return c.waiter.WaitPredicate(ctx, pred, func(_ *block.Block, msg *types.SignedMessage, _ *types.MessageReceipt) error {
-		sectorID, err := decodeSectorId(msg)
+		sectorID, err := decodeSectorID(msg)
 		cb(sectorID, err)
 		return err
 	})
 }
 
-func decodeSectorId(msg *types.SignedMessage) (uint64, error) {
+func decodeSectorID(msg *types.SignedMessage) (uint64, error) {
 	values, err := abi.DecodeValues(msg.Message.Params, []abi.Type{abi.SectorProveCommitInfo})
 	if err != nil {
 		return 0, err
