@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -19,7 +20,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 var testSignature = types.Signature("<test signature>")
@@ -29,7 +30,7 @@ func TestProposeDeal(t *testing.T) {
 	tf.UnitTest(t)
 
 	//ctx := context.Background()
-	//addressCreator := address.NewForTestGetter()
+	//addressCreator := fcaddr.NewForTestGetter()
 	//
 	//var proposal *storagedeal.SignedProposal
 	//
@@ -106,7 +107,7 @@ func TestProposeZeroPriceDeal(t *testing.T) {
 	//tf.UnitTest(t)
 	//
 	//ctx := context.Background()
-	//addressCreator := address.NewForTestGetter()
+	//addressCreator := fcaddr.NewForTestGetter()
 	//
 	//// Create API and set miner's price to zero
 	//pieceSize := uint64(7)
@@ -152,7 +153,7 @@ func TestProposeDealFailsWhenADealAlreadyExists(t *testing.T) {
 	tf.UnitTest(t)
 
 	//ctx := context.Background()
-	//addressCreator := address.NewForTestGetter()
+	//addressCreator := fcaddr.NewForTestGetter()
 	//
 	//client := NewClient()
 	//
@@ -172,7 +173,7 @@ func TestProposeDealFailsWhenSignatureIsInvalid(t *testing.T) {
 	tf.UnitTest(t)
 
 	//ctx := context.Background()
-	//addressCreator := address.NewForTestGetter()
+	//addressCreator := fcaddr.NewForTestGetter()
 	//
 	//client := NewClient()
 	//
@@ -205,7 +206,7 @@ type clientTestAPI struct {
 
 func newTestClientAPI(t *testing.T, pieceReader io.Reader, pieceSize uint64) *clientTestAPI { // nolint: deadcode
 	cidGetter := types.NewCidForTestGetter()
-	addressGetter := address.NewForTestGetter()
+	addressGetter := fcaddr.NewForTestGetter()
 	mockSigner, ki := types.NewMockSignersAndKeyInfo(1)
 	workerAddr, err := ki[0].Address()
 	require.NoError(t, err, "Could not create worker address")
@@ -257,7 +258,7 @@ func (ctp *clientTestAPI) MinerGetAsk(ctx context.Context, minerAddr address.Add
 }
 
 func (ctp *clientTestAPI) MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
-	return address.TestAddress, nil
+	return fcaddr.TestAddress, nil
 }
 
 func (ctp *clientTestAPI) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ block.TipSetKey) (address.Address, error) {

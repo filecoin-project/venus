@@ -2,10 +2,11 @@ package fast
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/libp2p/go-libp2p-core/peer"
+
+	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 )
 
 // AddressNew runs the address new command against the filecoin process.

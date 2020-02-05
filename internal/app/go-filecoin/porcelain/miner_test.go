@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -22,7 +23,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 
 	"github.com/stretchr/testify/assert"
@@ -86,7 +87,7 @@ func TestMinerCreate(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		ctx := context.Background()
-		expectedAddress := address.NewForTestGetter()()
+		expectedAddress := fcaddr.NewForTestGetter()()
 		plumbing := newMinerCreate(t, false, expectedAddress)
 		collateral := types.NewAttoFILFromFIL(1)
 
@@ -294,7 +295,7 @@ func TestMinerSetPrice(t *testing.T) {
 
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(50)
-		minerAddr := address.NewForTestGetter()()
+		minerAddr := fcaddr.NewForTestGetter()()
 
 		plumbing.messageSend = func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error) {
 			assert.Equal(t, minerAddr, to)
@@ -308,7 +309,7 @@ func TestMinerSetPrice(t *testing.T) {
 	t.Run("sends ask to default miner when no miner is given", func(t *testing.T) {
 		plumbing := newMinerSetPricePlumbing(t)
 
-		minerAddr := address.NewForTestGetter()()
+		minerAddr := fcaddr.NewForTestGetter()()
 		require.NoError(t, plumbing.config.Set("mining.minerAddress", minerAddr.String()))
 
 		ctx := context.Background()
@@ -359,7 +360,7 @@ func TestMinerSetPrice(t *testing.T) {
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(50)
 		expiry := big.NewInt(24)
-		minerAddr := address.NewForTestGetter()()
+		minerAddr := fcaddr.NewForTestGetter()()
 
 		messageCid := types.NewCidForTestGetter()()
 
@@ -425,9 +426,9 @@ func (mgop *minerQueryAndDeserializePlumbing) MessageQuery(ctx context.Context, 
 	// Note: a better mock is recommended to make sure the correct methods get dispatched
 	switch method {
 	case miner.GetOwner:
-		return [][]byte{address.TestAddress.Bytes()}, nil
+		return [][]byte{fcaddr.TestAddress.Bytes()}, nil
 	case miner.GetWorker:
-		return [][]byte{address.TestAddress2.Bytes()}, nil
+		return [][]byte{fcaddr.TestAddress2.Bytes()}, nil
 	case power.GetPowerReport:
 		powerReport := types.NewPowerReport(2, 0)
 		val := abi.Value{
@@ -457,23 +458,23 @@ func (mgop *minerQueryAndDeserializePlumbing) ActorGetStableSignature(ctx contex
 func TestMinerGetOwnerAddress(t *testing.T) {
 	tf.UnitTest(t)
 
-	addr, err := MinerGetOwnerAddress(context.Background(), &minerQueryAndDeserializePlumbing{}, address.TestAddress2)
+	addr, err := MinerGetOwnerAddress(context.Background(), &minerQueryAndDeserializePlumbing{}, fcaddr.TestAddress2)
 	assert.NoError(t, err)
-	assert.Equal(t, address.TestAddress, addr)
+	assert.Equal(t, fcaddr.TestAddress, addr)
 }
 
 func TestMinerGetWorkerAddress(t *testing.T) {
 	tf.UnitTest(t)
 
-	addr, err := MinerGetWorkerAddress(context.Background(), &minerQueryAndDeserializePlumbing{}, address.TestAddress2, block.NewTipSetKey())
+	addr, err := MinerGetWorkerAddress(context.Background(), &minerQueryAndDeserializePlumbing{}, fcaddr.TestAddress2, block.NewTipSetKey())
 	assert.NoError(t, err)
-	assert.Equal(t, address.TestAddress2, addr)
+	assert.Equal(t, fcaddr.TestAddress2, addr)
 }
 
 func TestMinerGetPower(t *testing.T) {
 	tf.UnitTest(t)
 
-	power, err := MinerGetPower(context.Background(), &minerQueryAndDeserializePlumbing{}, address.TestAddress2)
+	power, err := MinerGetPower(context.Background(), &minerQueryAndDeserializePlumbing{}, fcaddr.TestAddress2)
 	assert.NoError(t, err)
 	assert.Equal(t, "4", power.Total.String())
 	assert.Equal(t, "2", power.Power.String())
@@ -523,7 +524,7 @@ func (mpp *minerGetProvingPeriodPlumbing) ActorGetStableSignature(ctx context.Co
 func TestMinerProvingPeriod(t *testing.T) {
 	tf.UnitTest(t)
 
-	pp, err := MinerGetProvingWindow(context.Background(), &minerGetProvingPeriodPlumbing{}, address.TestAddress2)
+	pp, err := MinerGetProvingWindow(context.Background(), &minerGetProvingPeriodPlumbing{}, fcaddr.TestAddress2)
 	assert.NoError(t, err)
 	assert.Equal(t, "10", pp.Start.String())
 	assert.Equal(t, "20", pp.End.String())
@@ -545,7 +546,7 @@ func (mgop *minerGetPeerIDPlumbing) MessageQuery(ctx context.Context, optFrom, t
 func TestMinerGetPeerID(t *testing.T) {
 	tf.UnitTest(t)
 
-	id, err := MinerGetPeerID(context.Background(), &minerGetPeerIDPlumbing{}, address.TestAddress2)
+	id, err := MinerGetPeerID(context.Background(), &minerGetPeerIDPlumbing{}, fcaddr.TestAddress2)
 	require.NoError(t, err)
 
 	expected := requirePeerID()
@@ -574,7 +575,7 @@ func (mgop *minerGetAskPlumbing) MessageQuery(ctx context.Context, optFrom, to a
 func TestMinerGetAsk(t *testing.T) {
 	tf.UnitTest(t)
 
-	ask, err := MinerGetAsk(context.Background(), &minerGetAskPlumbing{}, address.TestAddress2, 4)
+	ask, err := MinerGetAsk(context.Background(), &minerGetAskPlumbing{}, fcaddr.TestAddress2, 4)
 	require.NoError(t, err)
 
 	assert.Equal(t, types.NewAttoFILFromFIL(32), ask.Price)
@@ -609,7 +610,7 @@ func (minerGetSectorSizePlumbing) ActorGetStableSignature(ctx context.Context, a
 func TestMinerGetSectorSize(t *testing.T) {
 	tf.UnitTest(t)
 
-	sectorSize, err := MinerGetSectorSize(context.Background(), &minerGetSectorSizePlumbing{}, address.TestAddress2)
+	sectorSize, err := MinerGetSectorSize(context.Background(), &minerGetSectorSizePlumbing{}, fcaddr.TestAddress2)
 	require.NoError(t, err)
 
 	assert.Equal(t, int(sectorSize.Uint64()), 1234)
@@ -634,7 +635,7 @@ func (minerGetLastCommittedSectorIDPlumbing) ActorGetStableSignature(ctx context
 func TestMinerGetLastCommittedSectorID(t *testing.T) {
 	tf.UnitTest(t)
 
-	lastCommittedSectorID, err := MinerGetLastCommittedSectorID(context.Background(), &minerGetLastCommittedSectorIDPlumbing{}, address.TestAddress2)
+	lastCommittedSectorID, err := MinerGetLastCommittedSectorID(context.Background(), &minerGetLastCommittedSectorIDPlumbing{}, fcaddr.TestAddress2)
 	require.NoError(t, err)
 
 	assert.Equal(t, int(lastCommittedSectorID), 5432)
@@ -680,9 +681,9 @@ func (mswap *minerSetWorkerAddressPlumbing) MinerGetOwnerAddress(ctx context.Con
 func TestMinerSetWorkerAddress(t *testing.T) {
 	tf.UnitTest(t)
 
-	minerOwner := address.TestAddress
-	minerAddr := address.NewForTestGetter()()
-	workerAddr := address.NewForTestGetter()()
+	minerOwner := fcaddr.TestAddress
+	minerAddr := fcaddr.NewForTestGetter()()
+	workerAddr := fcaddr.NewForTestGetter()()
 	gprice := types.ZeroAttoFIL
 	glimit := types.NewGasUnits(0)
 

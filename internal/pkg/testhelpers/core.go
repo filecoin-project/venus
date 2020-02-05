@@ -206,7 +206,7 @@ func CreateTestMinerWith(
 	require.True(t, found)
 
 	nonce := RequireGetNonce(t, st, vms, idAddr)
-	msg := types.NewUnsignedMessage(minerOwnerAddr, fcaddr.StorageMarketAddress, nonce, collateral, storagemarket.CreateStorageMiner, pdata)
+	msg := types.NewUnsignedMessage(minerOwnerAddr, vmaddr.StorageMarketAddress, nonce, collateral, storagemarket.CreateStorageMiner, pdata)
 
 	result, err := ApplyTestMessage(st, vms, msg, types.NewBlockHeight(height))
 	require.NoError(t, err)

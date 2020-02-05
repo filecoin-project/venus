@@ -9,14 +9,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSerializeProposal(t *testing.T) {
 	tf.UnitTest(t)
 
-	ag := address.NewForTestGetter()
+	ag := fcaddr.NewForTestGetter()
 	cg := types.NewCidForTestGetter()
 	p := &storagedeal.Proposal{}
 	p.Size = types.NewBytesAmount(5)

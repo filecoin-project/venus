@@ -73,7 +73,7 @@ func TestWriteFile(t *testing.T) {
 		"nickname": ""
 	},
 	"mining": {
-		"minerAddress": "empty",
+		"minerAddress": "\u003cempty\u003e",
 		"autoSealIntervalSeconds": 120,
 		"storagePrice": "0"
 	},
@@ -100,7 +100,7 @@ func TestWriteFile(t *testing.T) {
 		"address": "/ip4/0.0.0.0/tcp/6000"
 	},
 	"wallet": {
-		"defaultAddress": "empty"
+		"defaultAddress": "\u003cempty\u003e"
 	}
 }`,
 		string(content),

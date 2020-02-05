@@ -542,9 +542,11 @@ func (node *Node) StopMining(ctx context.Context) {
 		node.BlockMining.MiningDoneWg.Wait()
 	}
 
-	err := node.StorageMining.Stop(ctx)
-	if err != nil {
-		log.Warn("Error stopping storage miner", err)
+	if node.StorageMining != nil {
+		err := node.StorageMining.Stop(ctx)
+		if err != nil {
+			log.Warn("Error stopping storage miner", err)
+		}
 	}
 }
 

@@ -4,10 +4,10 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 

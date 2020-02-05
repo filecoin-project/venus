@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -23,7 +24,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 var testCid cid.Cid
@@ -186,7 +187,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 
 func mustMakeTipset(t *testing.T, height types.Uint64) block.TipSet {
 	ts, err := block.NewTipSet(&block.Block{
-		Miner:           address.NewForTestGetter()(),
+		Miner:           fcaddr.NewForTestGetter()(),
 		Ticket:          block.Ticket{VRFProof: []byte{0}},
 		Parents:         block.TipSetKey{},
 		ParentWeight:    0,

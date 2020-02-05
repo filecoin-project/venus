@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +17,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -138,7 +139,7 @@ func TestGetTipSetState(t *testing.T) {
 	fakeCode := types.CidFromString(t, "somecid")
 	balance := types.NewAttoFILFromFIL(1000000)
 	testActor := actor.NewActor(fakeCode, balance)
-	addr := address.NewForTestGetter()()
+	addr := fcaddr.NewForTestGetter()()
 	st1 := state.NewTree(cst)
 	require.NoError(t, st1.SetActor(ctx, addr, testActor))
 	root, err := st1.Flush(ctx)

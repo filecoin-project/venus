@@ -1,13 +1,15 @@
 package cfg
 
 import (
+	"testing"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestConfigGet(t *testing.T) {
@@ -69,7 +71,7 @@ func TestConfigSet(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, ":1234", cfg.API.Address)
 
-		testAddr := address.TestAddress2.String()
+		testAddr := fcaddr.TestAddress2.String()
 		err = cfgAPI.Set("mining.minerAddress", testAddr)
 		require.NoError(t, err)
 		assert.Equal(t, testAddr, cfg.Mining.MinerAddress.String())
