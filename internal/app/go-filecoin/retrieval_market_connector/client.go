@@ -20,7 +20,7 @@ import (
 )
 
 type RetrievalClientNodeConnector struct {
-	bs         *blockstore.Blockstore
+	bs         blockstore.Blockstore
 	cs         *chain.Store
 
 	laneStore map[address.Address]laneEntries
@@ -80,7 +80,7 @@ type RetrievalSigner interface {
 }
 
 func NewRetrievalClientNodeConnector(
-	bs *blockstore.Blockstore,
+	bs blockstore.Blockstore,
 	cs *chain.Store,
 	mw MsgWaiter,
 	ob MsgSender,

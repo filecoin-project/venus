@@ -19,7 +19,7 @@ import (
 type RetrievalProviderConnector struct {
 	vs  map[string]voucherEntry
 	ps  piecestore.PieceStore
-	bs  *blockstore.Blockstore
+	bs  blockstore.Blockstore
 	net rmnet.RetrievalMarketNetwork
 }
 
@@ -32,6 +32,7 @@ type voucherEntry struct {
 	expectedAmt tokenamount.TokenAmount
 }
 
+
 func NewRetrievalProviderNodeConnector(network rmnet.RetrievalMarketNetwork, pieceStore piecestore.PieceStore, bs *blockstore.Blockstore) *RetrievalProviderConnector {
 	return &RetrievalProviderConnector{
 		vs:  make(map[string]voucherEntry),
@@ -41,11 +42,11 @@ func NewRetrievalProviderNodeConnector(network rmnet.RetrievalMarketNetwork, pie
 	}
 }
 
-func (r RetrievalProviderNodeConnector) UnsealSector(ctx context.Context, sectorId uint64, offset uint64, length uint64) (io.ReadCloser, error) {
+func (r *RetrievalProviderNodeConnector) UnsealSector(ctx context.Context, sectorId uint64, offset uint64, length uint64) (io.ReadCloser, error) {
 	panic("TODO: go-fil-markets integration")
 }
 
-func (r RetrievalProviderNodeConnector) SavePaymentVoucher(_ context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount) (abi.TokenAmount, error) {
+func (r *RetrievalProviderNodeConnector) SavePaymentVoucher(_ context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount) (abi.TokenAmount, error) {
 	var tokenamt tokenamount.TokenAmount
 
 	key, err := r.voucherStoreKeyFor(voucher)

@@ -13,7 +13,6 @@ import (
 
 	retmkt "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -28,14 +27,14 @@ type WorkerGetter func(ctx context.Context, minerAddr address.Address, baseKey b
 
 // NewRetrievalProtocolSubmodule creates a new retrieval protocol submodule.
 func NewRetrievalProtocolSubmodule(
-	bs *blockstore.Blockstore,
+	bs blockstore.Blockstore,
 	c *ChainSubmodule,
 	mw retmkt.MsgWaiter,
 	host host.Host,
 	providerAddr address.Address,
-	ob *message.Outbox,
+	ob retmkt.MsgSender,
 	ps piecestore.PieceStore,
-	signer types.Signer,
+	signer retmkt.RetrievalSigner,
 	wal retmkt.WalletAPI,
 	aapi retmkt.ActorAPI,
 	smapi retmkt.SmAPI,
@@ -59,7 +58,7 @@ func NewRetrievalProtocolSubmodule(
 	rsvlr := retmkt.NewRetrievalPeerResolverConnector()
 
 	return RetrievalProtocolSubmodule{
-		RetrievalClient:   impl.NewClient(netwk, *bs, cnode, rsvlr),
-		RetrievalProvider: impl.NewProvider(providerAddr, pnode, netwk, ps, *bs),
+		RetrievalClient:   impl.NewClient(netwk, bs, cnode, rsvlr),
+		RetrievalProvider: impl.NewProvider(providerAddr, pnode, netwk, ps, bs),
 	}, nil
 }
