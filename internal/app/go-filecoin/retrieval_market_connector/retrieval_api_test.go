@@ -2,14 +2,17 @@ package retrieval_market_connector_test
 
 import (
 	"context"
+	"errors"
 	"math/rand"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	gfm_types "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
@@ -20,17 +23,19 @@ import (
 type retrievalMarketClientTestAPI struct {
 	allocateLaneErr error
 
-	expectedLanes    map[fcaddr.Address]uint64       // mock payment broker lane store
-	expectedPmtChans map[fcaddr.Address]pmtChanEntry // mock payment broker's payment channel store
-	actualPmtChans   map[fcaddr.Address]pmtChanEntry // validate that the payment channels were created
+	expectedLanes    map[address.Address]uint64       // mock payment broker lane store
+	expectedPmtChans map[address.Address]pmtChanEntry // mock payment broker's payment channel store
+	actualPmtChans   map[address.Address]pmtChanEntry // to check that the payment channels were created
+
+	payChBalanceErr error
 
 	balance       tokenamount.TokenAmount
 	balanceErr    error
-	workerAddr    fcaddr.Address
+	workerAddr    address.Address
 	workerAddrErr error
 	nextNonce     uint64
 	nextNonceErr  error
-	walletAddr    fcaddr.Address
+	walletAddr    address.Address
 	walletAddrErr error
 	sig           *gfm_types.Signature
 	sigErr        error
@@ -42,24 +47,43 @@ type retrievalMarketClientTestAPI struct {
 	expectedMsgReceipt *types.MessageReceipt
 	expectedSignedMsg  *types.SignedMessage
 }
+// pmtChanEntry is a record of a created payment channel with funds available.
+type pmtChanEntry struct {
+	payee      address.Address
+	redeemed tokenamount.TokenAmount
+	channelID  address.Address
+	fundsAvail tokenamount.TokenAmount
+}
 
-func (tapa *retrievalMarketClientTestAPI) Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+func (tapa *retrievalMarketClientTestAPI) GetPaymentChannelInfo(_ context.Context, paymentChannel address.Address) (address.Address, paymentbroker.PaymentChannel, error) {
+	for payer, entry := range tapa.actualPmtChans {
+		if entry.channelID == paymentChannel {
+			fcTarget, _ := fcaddr.NewFromBytes(entry.payee.Bytes())
+			pch := paymentbroker.PaymentChannel{
+				Target:         fcTarget,
+				Amount:         types.NewAttoFIL(entry.fundsAvail.Int),
+				AmountRedeemed: types.NewAttoFIL(entry.redeemed.Int),
+			}
+
+			return payer, pch, nil
+		}
+	}
+	return address.Undef, paymentbroker.PaymentChannel{}, errors.New("no such channelID")
+}
+
+func (tapa *retrievalMarketClientTestAPI) Wait(_ context.Context, _ cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	if tapa.waitErr != nil {
 		return tapa.waitErr
 	}
 
-	clientAddr := tapa.expectedSignedMsg.Message.From
+	clientAddr, err := retrieval_market_connector.GoAddrFromFcAddr(tapa.expectedSignedMsg.Message.From)
+	if err != nil {
+		return err
+	}
 	tapa.actualPmtChans[clientAddr] = tapa.expectedPmtChans[clientAddr]
 
 	cb(tapa.expectedBlock, tapa.expectedSignedMsg, tapa.expectedMsgReceipt)
 	return nil
-}
-
-// pmtChanEntry is a record of a created payment channel with funds available.
-type pmtChanEntry struct {
-	payee      fcaddr.Address
-	channelID  fcaddr.Address
-	fundsAvail tokenamount.TokenAmount
 }
 
 func NewRetrievalMarketClientTestAPI(t *testing.T, bal tokenamount.TokenAmount) *retrievalMarketClientTestAPI {
@@ -68,30 +92,30 @@ func NewRetrievalMarketClientTestAPI(t *testing.T, bal tokenamount.TokenAmount) 
 		workerAddr:       requireMakeTestFcAddr(t),
 		nextNonce:        rand.Uint64(),
 		walletAddr:       requireMakeTestFcAddr(t),
-		expectedLanes:    make(map[fcaddr.Address]uint64),
-		expectedPmtChans: make(map[fcaddr.Address]pmtChanEntry),
-		actualPmtChans:   make(map[fcaddr.Address]pmtChanEntry),
+		expectedLanes:    make(map[address.Address]uint64),
+		expectedPmtChans: make(map[address.Address]pmtChanEntry),
+		actualPmtChans:   make(map[address.Address]pmtChanEntry),
 	}
 }
 
-func (tapa *retrievalMarketClientTestAPI) GetBalance(_ context.Context, _ fcaddr.Address) (types.AttoFIL, error) {
+func (tapa *retrievalMarketClientTestAPI) GetBalance(_ context.Context, _ address.Address) (types.AttoFIL, error) {
 	return types.NewAttoFIL(tapa.balance.Int), tapa.balanceErr
 }
-func (tapa *retrievalMarketClientTestAPI) GetWorkerAddress(_ context.Context, _ fcaddr.Address, _ block.TipSetKey) (fcaddr.Address, error) {
+func (tapa *retrievalMarketClientTestAPI) GetWorkerAddress(_ context.Context, _ address.Address, _ block.TipSetKey) (address.Address, error) {
 	return tapa.workerAddr, tapa.workerAddrErr
 }
-func (tapa *retrievalMarketClientTestAPI) NextNonce(_ context.Context, _ fcaddr.Address) (uint64, error) {
+func (tapa *retrievalMarketClientTestAPI) NextNonce(_ context.Context, _ address.Address) (uint64, error) {
 	tapa.nextNonce++
 	return tapa.nextNonce, tapa.nextNonceErr
 }
-func (tapa *retrievalMarketClientTestAPI) GetDefaultWalletAddress() (fcaddr.Address, error) {
+func (tapa *retrievalMarketClientTestAPI) GetDefaultWalletAddress() (address.Address, error) {
 	return tapa.walletAddr, tapa.walletAddrErr
 }
-func (tapa *retrievalMarketClientTestAPI) SignBytes(data []byte, addr fcaddr.Address) (types.Signature, error) {
+func (tapa *retrievalMarketClientTestAPI) SignBytes(_ []byte, _ address.Address) (types.Signature, error) {
 	return tapa.sig.Data, tapa.sigErr
 }
 
-func (tapa *retrievalMarketClientTestAPI) Send(ctx context.Context, from, to fcaddr.Address, value types.AttoFIL,
+func (tapa *retrievalMarketClientTestAPI) Send(_ context.Context, _, _ address.Address, _ types.AttoFIL,
 	gasPrice types.AttoFIL, gasLimit types.GasUnits, bcast bool, method types.MethodID, params ...interface{}) (out cid.Cid, pubErrCh chan error, err error) {
 	tapa.nextNonce++
 
@@ -104,10 +128,10 @@ func (tapa *retrievalMarketClientTestAPI) Send(ctx context.Context, from, to fca
 // GetPaymentChannelIDByPayee searches for a payment channel for a payer + payee.
 // It does not assume the payment channel has been created. If not found, returns
 // 0 channel ID and nil.
-func (tapa *retrievalMarketClientTestAPI) GetPaymentChannelAddress(ctx context.Context, payer, _ fcaddr.Address) (fcaddr.Address, error) {
+func (tapa *retrievalMarketClientTestAPI) GetPaymentChannelID(ctx context.Context, payer, _ address.Address) (address.Address, error) {
 	entry, ok := tapa.actualPmtChans[payer]
 	if !ok {
-		return fcaddr.Undef, nil
+		return address.Undef, nil
 	}
 	// assuming only one client for test purposes
 	return entry.channelID, nil
@@ -116,7 +140,7 @@ func (tapa *retrievalMarketClientTestAPI) GetPaymentChannelAddress(ctx context.C
 // // GetPaymentChannelByChannelID searches for a payment channel by its ID
 // // It assumes the PaymentChannel has been created, and returns empty payment channel
 // // + error if the channel ID is not found
-// func (tapa *retrievalMarketClientTestAPI) GetPaymentChannelByChannelID(_ context.Context, payer fcaddr.Address, id *types.ChannelID) (*paymentbroker.PaymentChannel, error) {
+// func (tapa *retrievalMarketClientTestAPI) GetPaymentChannelByChannelID(_ context.Context, payer address.Address, id *types.ChannelID) (*paymentbroker.PaymentChannel, error) {
 // 	entry, ok := tapa.expectedPmtChans[payer]
 // 	if !ok || !entry.channelID.Equal(id) {
 // 		return &paymentbroker.PaymentChannel{}, errors.New("payment channel not found")
@@ -128,7 +152,7 @@ func (tapa *retrievalMarketClientTestAPI) GetPaymentChannelAddress(ctx context.C
 // 	}, nil
 // }
 
-func (tapa *retrievalMarketClientTestAPI) AllocateLane(_ context.Context, _ fcaddr.Address, chid fcaddr.Address) (uint64, error) {
+func (tapa *retrievalMarketClientTestAPI) AllocateLane(_ context.Context, _ address.Address, chid address.Address) (uint64, error) {
 	lane, ok := tapa.expectedLanes[chid]
 	if ok {
 		tapa.expectedLanes[chid] = lane+1
@@ -136,25 +160,32 @@ func (tapa *retrievalMarketClientTestAPI) AllocateLane(_ context.Context, _ fcad
 	return lane, nil
 }
 
-func (tapa *retrievalMarketClientTestAPI) StubMessageResponse(t *testing.T, fcClient, fcMiner fcaddr.Address) {
-	params, err := abi.ToEncodedValues(fcMiner, uint64(1))
+func (tapa *retrievalMarketClientTestAPI) StubMessageResponse(t *testing.T, from, to address.Address, value types.AttoFIL) {
+	fcTo, err := retrieval_market_connector.FcAddrFromGoAddr(to)
 	require.NoError(t, err)
+	fcFrom, err := retrieval_market_connector.FcAddrFromGoAddr(from)
+	require.NoError(t, err)
+
+	params, err := abi.ToEncodedValues(fcTo, uint64(1))
+	require.NoError(t, err)
+
 	unsignedMsg := types.UnsignedMessage{
 		To:         fcaddr.LegacyPaymentBrokerAddress,
-		From:       fcClient,
+		From:       fcFrom,
 		CallSeqNum: 0,
-		Value:      types.ZeroAttoFIL,
+		Value:      value,
 		Method:     paymentbroker.CreateChannel,
 		Params:     params,
 		GasPrice:   types.AttoFIL{},
 		GasLimit:   0,
 	}
 
-	newAddr, err := fcaddr.NewIDAddress(rand.Uint64())
+	newAddr, err := address.NewIDAddress(rand.Uint64())
 	require.NoError(t, err)
-	tapa.expectedPmtChans[fcClient] = pmtChanEntry{
+	tapa.expectedPmtChans[from] = pmtChanEntry{
 		channelID:  newAddr,
-		fundsAvail: tapa.balance,
+		fundsAvail: tokenamount.TokenAmount{Int: value.AsBigInt()},
+		redeemed: tokenamount.FromInt(0),
 	}
 
 	require.NoError(t, err)
@@ -180,4 +211,10 @@ func (tapa *retrievalMarketClientTestAPI) StubMessageResponse(t *testing.T, fcCl
 		Message:   unsignedMsg,
 		Signature: sig,
 	}
+}
+
+func requireMakeTestFcAddr(t *testing.T) address.Address {
+	res, err := address.NewIDAddress(rand.Uint64())
+	require.NoError(t, err)
+	return res
 }
