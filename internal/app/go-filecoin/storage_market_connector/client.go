@@ -3,15 +3,14 @@ package storagemarketconnector
 import (
 	"bytes"
 	"context"
-	"time"
+
+	"github.com/ipfs/go-cid"
 
 	smcborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/go-leb128"
 	"github.com/ipfs/go-hamt-ipld"
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	fcsm "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	spaminer "github.com/filecoin-project/specs-actors/actors/builtin/storage_miner"
@@ -127,23 +126,18 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context) (
 // Adapted from https://github.com/filecoin-project/lotus/blob/3b34eba6124d16162b712e971f0db2ee108e0f67/markets/storageadapter/client.go#L156
 func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (uint64, error) {
 	// Fetch receipt to return dealId
-	waitCtx, cancel := context.WithTimeout(ctx, 10*time.Millisecond)
-	defer cancel()
-
-	var publishMsg *types.SignedMessage
-	var publishReceipt *types.MessageReceipt
-
-	err := s.waiter.Wait(waitCtx, *deal.PublishMessage, func(block *block.Block, signedMessage *types.SignedMessage, receipt *types.MessageReceipt) error {
-		publishMsg = signedMessage
-		publishReceipt = receipt
-		return nil
+	chnMsg, found, err := s.waiter.Find(ctx, func(msg *types.SignedMessage, c cid.Cid) bool {
+		return c.Equals(*deal.PublishMessage)
 	})
-
 	if err != nil {
 		return 0, err
 	}
 
-	unsigned := publishMsg.Message
+	if !found {
+		return 0, xerrors.Errorf("Could not find published deal message %s", deal.PublishMessage.String())
+	}
+
+	unsigned := chnMsg.Message.Message
 
 	minerWorker, err := s.GetMinerWorker(ctx, deal.Proposal.Provider)
 	if err != nil {
@@ -183,7 +177,16 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 		bytes.Equal([]byte(*proposal.ProposerSignature), deal.Proposal.ProposerSignature.Data)
 
 	if equals {
-		return leb128.ToUInt64(publishReceipt.Return[0]), nil // TODO: Is this correct?
+		sectorIDVal, err := abi.Deserialize(chnMsg.Receipt.Return[0], abi.SectorID)
+		if err != nil {
+			return 0, err
+		}
+
+		sectorID, ok := sectorIDVal.Val.(uint64)
+		if !ok {
+			return 0, xerrors.New("publish deal return is not a sector ID")
+		}
+		return sectorID, nil
 	}
 
 	return 0, xerrors.Errorf("published deal does not match ClientDeal")
