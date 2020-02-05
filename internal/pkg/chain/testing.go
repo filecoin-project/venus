@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-
 	ds "github.com/ipfs/go-datastore"
 	syncds "github.com/ipfs/go-datastore/sync"
 	"github.com/ipfs/go-hamt-ipld"
@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // Builder builds fake chains and acts as a provider and fetcher for the chain thus generated.

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -16,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 var minerCmd = &cmds.Command{

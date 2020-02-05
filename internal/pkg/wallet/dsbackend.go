@@ -5,16 +5,16 @@ import (
 	"strings"
 	"sync"
 
+	bls "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-address"
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
 	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // DSBackendType is the reflect type of the DSBackend.

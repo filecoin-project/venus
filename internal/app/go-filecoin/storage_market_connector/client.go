@@ -95,18 +95,13 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context) (
 	}
 
 	err = powerHamt.ForEach(ctx, func(minerAddrStr string, _ interface{}) error {
-		fcMinerAddr, err := fcaddr.NewFromString(minerAddrStr)
+		minerAddr, err := address.NewFromString(minerAddrStr)
 		if err != nil {
 			return err
 		}
 
 		var mState spaminer.StorageMinerActorState
-		err = s.chainStore.GetActorStateAt(ctx, head, fcMinerAddr, &mState)
-		if err != nil {
-			return err
-		}
-
-		minerAddr, err := address.NewFromString(minerAddrStr)
+		err = s.chainStore.GetActorStateAt(ctx, head, minerAddr, &mState)
 		if err != nil {
 			return err
 		}
@@ -150,7 +145,7 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 
 	unsigned := publishMsg.Message
 
-	minerWorker, err := s.getFCWorker(ctx, deal.Proposal.Provider)
+	minerWorker, err := s.GetMinerWorker(ctx, deal.Proposal.Provider)
 	if err != nil {
 		return 0, err
 	}
@@ -216,12 +211,7 @@ func (s *StorageClientNodeConnector) ValidateAskSignature(signed *smtypes.Signed
 		return err
 	}
 
-	fcMiner, err := fcaddr.NewFromBytes(ask.Miner.Bytes())
-	if err != nil {
-		return err
-	}
-
-	if types.IsValidSignature(data, fcMiner, signed.Signature.Data) {
+	if types.IsValidSignature(data, ask.Miner, signed.Signature.Data) {
 		return nil
 	}
 

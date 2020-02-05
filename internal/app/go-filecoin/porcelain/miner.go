@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -18,7 +19,7 @@ import (
 	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	vmErrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 )
 
@@ -63,7 +64,7 @@ func MinerCreate(
 	smsgCid, _, err := plumbing.MessageSend(
 		ctx,
 		minerOwnerAddr,
-		address.StorageMarketAddress,
+		fcaddr.StorageMarketAddress,
 		collateral,
 		gasPrice,
 		gasLimit,
@@ -128,7 +129,7 @@ func MinerPreviewCreate(
 	usedGas, err = plumbing.MessagePreview(
 		ctx,
 		fromAddr,
-		address.StorageMarketAddress,
+		fcaddr.StorageMarketAddress,
 		storagemarket.CreateStorageMiner,
 		sectorSize,
 		pid,
@@ -460,7 +461,7 @@ func MinerGetPower(ctx context.Context, plumbing mgaAPI, minerAddr address.Addre
 	bytes, err := plumbing.MessageQuery(
 		ctx,
 		address.Undef,
-		address.StoragePowerAddress,
+		fcaddr.StoragePowerAddress,
 		power.GetPowerReport,
 		plumbing.ChainHeadKey(),
 		minerAddr,
@@ -481,7 +482,7 @@ func MinerGetPower(ctx context.Context, plumbing mgaAPI, minerAddr address.Addre
 	bytes, err = plumbing.MessageQuery(
 		ctx,
 		address.Undef,
-		address.StoragePowerAddress,
+		fcaddr.StoragePowerAddress,
 		power.GetTotalPower,
 		plumbing.ChainHeadKey(),
 	)

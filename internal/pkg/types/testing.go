@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
@@ -14,7 +15,6 @@ import (
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // NewTestPoSt creates a trivial, right-sized byte slice for a Proof of Spacetime.

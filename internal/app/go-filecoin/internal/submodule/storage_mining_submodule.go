@@ -5,6 +5,7 @@ import (
 
 	storageminerconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/storage_miner_connector"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-storage-miner"
 	"github.com/ipfs/go-datastore"
@@ -12,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // StorageMiningSubmodule enhances the `Node` with storage mining capabilities.

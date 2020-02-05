@@ -1,8 +1,8 @@
 package slashing
 
 import (
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // ConsensusFaultDetector detects consensus faults -- misbehavior conditions where a single

@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	storagemarketconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/storage_market_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -36,8 +35,8 @@ type StorageProtocolSubmodule struct {
 // NewStorageProtocolSubmodule creates a new storage protocol submodule.
 func NewStorageProtocolSubmodule(
 	ctx context.Context,
-	minerAddr fcaddr.Address,
-	clientAddr fcaddr.Address,
+	minerAddr address.Address,
+	clientAddr address.Address,
 	c *ChainSubmodule,
 	m *MessagingSubmodule,
 	mw *msg.Waiter,
@@ -50,18 +49,8 @@ func NewStorageProtocolSubmodule(
 	repoPath string,
 	wg storagemarketconnector.WorkerGetter) (*StorageProtocolSubmodule, error) {
 
-	ma, err := address.NewFromBytes(minerAddr.Bytes())
-	if err != nil {
-		return nil, err
-	}
-
-	ca, err := address.NewFromBytes(clientAddr.Bytes())
-	if err != nil {
-		return nil, err
-	}
-
-	pnode := storagemarketconnector.NewStorageProviderNodeConnector(ma, c.State, m.Outbox, mw, pm, wg, wlt)
-	cnode := storagemarketconnector.NewStorageClientNodeConnector(hamt.CSTFromBstore(bs), c.State, mw, wlt, m.Outbox, ca, wg)
+	pnode := storagemarketconnector.NewStorageProviderNodeConnector(minerAddr, c.State, m.Outbox, mw, pm, wg, wlt)
+	cnode := storagemarketconnector.NewStorageClientNodeConnector(hamt.CSTFromBstore(bs), c.State, mw, wlt, m.Outbox, clientAddr, wg)
 
 	pieceStagingPath, err := paths.PieceStagingDir(repoPath)
 	if err != nil {
@@ -81,7 +70,7 @@ func NewStorageProtocolSubmodule(
 
 	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync)
 
-	provider, err := impl.NewProvider(ds, bs, fs, piecestore.NewPieceStore(ds), dt, pnode, ma)
+	provider, err := impl.NewProvider(ds, bs, fs, piecestore.NewPieceStore(ds), dt, pnode, minerAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating graphsync provider")
 	}

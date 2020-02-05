@@ -30,7 +30,7 @@ import (
 type chainReader interface {
 	Head() block.TipSetKey
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
-	GetActorStateAt(ctx context.Context, tipKey block.TipSetKey, addr fcaddr.Address, out interface{}) error
+	GetActorStateAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address, out interface{}) error
 }
 
 // Implements storagemarket.StateKey
@@ -44,7 +44,7 @@ func (k *stateKey) Height() uint64 {
 }
 
 // WorkerGetter is a function that can retrieve the miner worker for the given address from actor state
-type WorkerGetter func(ctx context.Context, minerAddr fcaddr.Address, baseKey block.TipSetKey) (fcaddr.Address, error)
+type WorkerGetter func(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error)
 
 type connectorCommon struct {
 	chainStore   chainReader
@@ -103,13 +103,8 @@ func (c *connectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan 
 	}
 }
 
-func (c *connectorCommon) addFunds(ctx context.Context, from address.Address, addr address.Address, amount tokenamount.TokenAmount) error {
+func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address, addr address.Address, amount tokenamount.TokenAmount) error {
 	params, err := abi.ToEncodedValues(addr)
-	if err != nil {
-		return err
-	}
-
-	fromAddr, err := fcaddr.NewFromBytes(from.Bytes())
 	if err != nil {
 		return err
 	}
@@ -136,14 +131,9 @@ func (c *connectorCommon) addFunds(ctx context.Context, from address.Address, ad
 
 // SignBytes uses the local wallet to sign the bytes with the given address
 func (c *connectorCommon) SignBytes(ctx context.Context, signer address.Address, b []byte) (*smtypes.Signature, error) {
-	var fcSigner fcaddr.Address
 	var err error
 
-	if fcSigner, err = fcaddr.NewFromBytes(signer.Bytes()); err != nil {
-		return nil, err
-	}
-
-	fcSig, err := c.wallet.SignBytes(b, fcSigner)
+	fcSig, err := c.wallet.SignBytes(b, signer)
 	if err != nil {
 		return nil, err
 	}
@@ -185,33 +175,14 @@ func (c *connectorCommon) GetBalance(ctx context.Context, addr address.Address) 
 }
 
 func (c *connectorCommon) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
-	// Convert to FC address
-	fcMiner, err := fcaddr.NewFromBytes(miner.Bytes())
-	if err != nil {
-		return address.Undef, err
-	}
-
 	// Fetch from chain
-	fcworker, err := c.workerGetter(ctx, fcMiner, c.chainStore.Head())
+	fcworker, err := c.workerGetter(ctx, miner, c.chainStore.Head())
 	if err != nil {
 		return address.Undef, err
 	}
 
 	// Convert back to go-address
 	return address.NewFromBytes(fcworker.Bytes())
-}
-
-func (c *connectorCommon) getFCWorker(ctx context.Context, providerAddr address.Address) (fcaddr.Address, error) {
-	worker, err := c.GetMinerWorker(ctx, providerAddr)
-	if err != nil {
-		return fcaddr.Undef, err
-	}
-
-	workerAddr, err := fcaddr.NewFromBytes(worker.Bytes())
-	if err != nil {
-		return fcaddr.Undef, err
-	}
-	return workerAddr, nil
 }
 
 func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID uint64, cb storagemarket.DealSectorCommittedCallback) error {

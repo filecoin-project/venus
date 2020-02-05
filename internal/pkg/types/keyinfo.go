@@ -3,12 +3,12 @@ package types
 import (
 	"bytes"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/pkg/errors"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // KeyInfo is a key and its type used for signing.

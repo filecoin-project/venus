@@ -80,24 +80,14 @@ func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr add
 
 // PublishDeals publishes storage deals on chain
 func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (storagemarket.DealID, cid.Cid, error) {
-	client, err := fcaddr.NewFromBytes(deal.Proposal.Client.Bytes())
-	if err != nil {
-		return 0, cid.Undef, err
-	}
-
-	provider, err := fcaddr.NewFromBytes(deal.Proposal.Provider.Bytes())
-	if err != nil {
-		return 0, cid.Undef, err
-	}
-
 	sig := types.Signature(deal.Proposal.ProposerSignature.Data)
 
 	fcStorageProposal := types.StorageDealProposal{
 		PieceRef:  deal.Proposal.PieceRef,
 		PieceSize: types.Uint64(deal.Proposal.PieceSize),
 
-		Client:   client,
-		Provider: provider,
+		Client:   deal.Proposal.Client,
+		Provider: deal.Proposal.Provider,
 
 		ProposalExpiration: types.Uint64(deal.Proposal.ProposalExpiration),
 		Duration:           types.Uint64(deal.Proposal.Duration),
@@ -112,7 +102,7 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 		return 0, cid.Undef, err
 	}
 
-	workerAddr, err := s.getFCWorker(ctx, s.minerAddr)
+	workerAddr, err := s.GetMinerWorker(ctx, s.minerAddr)
 	if err != nil {
 		return 0, cid.Undef, err
 	}
@@ -175,13 +165,8 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 		return 0, 0, 0, err
 	}
 
-	minerAddr, err := fcaddr.NewFromBytes(s.minerAddr.Bytes())
-	if err != nil {
-		return 0, 0, 0, err
-	}
-
 	var minerState spaminer.StorageMinerActorState
-	err = s.chainStore.GetActorStateAt(ctx, s.chainStore.Head(), minerAddr, &minerState)
+	err = s.chainStore.GetActorStateAt(ctx, s.chainStore.Head(), s.minerAddr, &minerState)
 	if err != nil {
 		return 0, 0, 0, err
 	}

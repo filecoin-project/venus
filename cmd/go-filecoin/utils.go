@@ -5,12 +5,12 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // SilentWriter writes to a stream, stopping after the first error and discarding output until

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"runtime/debug"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/cron"
@@ -12,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/reward"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemining"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gas"
@@ -120,7 +121,7 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 
 func (vm *VM) normalizeFrom(from address.Address) address.Address {
 	// resolve the target address via the InitActor, and attempt to load state.
-	initActorEntry, err := vm.state.GetActor(context.Background(), address.InitAddress)
+	initActorEntry, err := vm.state.GetActor(context.Background(), vmaddr.InitAddress)
 	if err != nil {
 		panic(fmt.Errorf("init actor not found. %s", err))
 	}
@@ -342,7 +343,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 	// 6. Deduct gas limit funds from sender first
 	// Note: this should always succeed, due to the sender balance check above
 	// Note: after this point, we nede to return this funds back before exiting
-	vm.transfer(msg.From, address.BurntFundsAddress, gasLimitCost)
+	vm.transfer(msg.From, vmaddr.BurntFundsAddress, gasLimitCost)
 
 	// 7. checkpoint state
 	// Even if the message fails, the following accumulated changes will be applied:
@@ -448,9 +449,9 @@ func (vm *VM) getMinerOwner(minerAddr address.Address) address.Address {
 
 func (vm *VM) settleGasBill(sender address.Address, gasTank *gas.Tracker, payee address.Address, gasPrice types.AttoFIL) {
 	// release unused funds that were withheld
-	vm.transfer(address.BurntFundsAddress, sender, gasTank.RemainingGas().Cost(gasPrice))
+	vm.transfer(vmaddr.BurntFundsAddress, sender, gasTank.RemainingGas().Cost(gasPrice))
 	// pay miner for gas
-	vm.transfer(address.BurntFundsAddress, payee, gasTank.GasConsumed().Cost(gasPrice))
+	vm.transfer(vmaddr.BurntFundsAddress, payee, gasTank.GasConsumed().Cost(gasPrice))
 }
 
 // transfer debits money from one account and credits it to another.
@@ -604,7 +605,7 @@ func msgCID(msg *types.UnsignedMessage) cid.Cid {
 func makeEpostMessage(blockMiner address.Address) internalMessage {
 	return internalMessage{
 		miner:  blockMiner,
-		from:   address.SystemAddress,
+		from:   vmaddr.SystemAddress,
 		to:     blockMiner,
 		value:  types.ZeroAttoFIL,
 		method: storagemining.ProcessVerifiedElectionPoStMethodID,
@@ -620,8 +621,8 @@ func makeBlockRewardMessage(blockMiner address.Address, penalty types.AttoFIL) i
 	}
 	return internalMessage{
 		miner:  blockMiner,
-		from:   address.SystemAddress,
-		to:     address.RewardAddress,
+		from:   vmaddr.SystemAddress,
+		to:     vmaddr.RewardAddress,
 		value:  types.ZeroAttoFIL,
 		method: reward.AwardBlockRewardMethodID,
 		params: encoded,
@@ -631,8 +632,8 @@ func makeBlockRewardMessage(blockMiner address.Address, penalty types.AttoFIL) i
 func makeCronTickMessage(blockMiner address.Address) internalMessage {
 	return internalMessage{
 		miner:  blockMiner,
-		from:   address.SystemAddress,
-		to:     address.CronAddress,
+		from:   vmaddr.SystemAddress,
+		to:     vmaddr.CronAddress,
 		value:  types.ZeroAttoFIL,
 		method: cron.EpochTickMethodID,
 		params: []byte{},

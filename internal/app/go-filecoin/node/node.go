@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"runtime"
 
-	a2 "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -36,7 +36,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address" // TODO: replace this with go-address module #3719
 	vmerr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 )
 
@@ -398,11 +397,6 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return err
 	}
 
-	minerAddr2, err := a2.NewFromBytes(minerAddr.Bytes())
-	if err != nil {
-		return err
-	}
-
 	repoPath, err := node.Repo.Path()
 	if err != nil {
 		return err
@@ -415,7 +409,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 
 	sectorBuilder, err := sectorbuilder.New(&sectorbuilder.Config{
 		SectorSize:    sectorSize.Uint64(),
-		Miner:         minerAddr2,
+		Miner:         minerAddr,
 		WorkerThreads: 1,
 		Dir:           sectorDir,
 	}, namespace.Wrap(node.Repo.Datastore(), ds.NewKey("/sectorbuilder")))
