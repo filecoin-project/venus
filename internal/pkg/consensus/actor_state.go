@@ -19,8 +19,8 @@ type chainStateChainReader interface {
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
 }
 
-// Dragons: delete
 // QueryProcessor querys actor state of a particular tipset
+// Dragons: delete
 type QueryProcessor interface {
 }
 
@@ -41,8 +41,8 @@ func NewActorStateStore(chainReader chainStateChainReader, cst *hamt.CborIpldSto
 	return &ActorStateStore{chainReader, cst, bs, processor}
 }
 
-// Dragons: delete
 // ActorStateSnapshot permits queries to chain state at a particular tip set.
+// Dragons: delete
 type ActorStateSnapshot interface {
 }
 
