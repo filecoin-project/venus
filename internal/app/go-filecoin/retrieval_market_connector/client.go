@@ -22,88 +22,95 @@ import (
 type RetrievalClientNodeConnector struct {
 	bs         *blockstore.Blockstore
 	cs         *chain.Store
-	laneReg    map[address.Address]uint64
-	laneRegLk  sync.RWMutex
-	pmtChanReg map[address.Address]pmtChanEntry
-	pmChanLk   sync.RWMutex
+	payChStore map[address.Address]*paychEntry
+	payChLk    sync.RWMutex
+
+	laneStore map[address.Address]laneEntries
+	laneLk    sync.RWMutex
 
 	// APIs/interfaces
-	actAPI actorAPI
-	signer byteSigner
-	mw     msgWaiter
-	outbox msgSender
+	actAPI ActorAPI
+	signer types.Signer
+	mw     MsgWaiter
+	outbox MsgSender
+	pbAPI  PaymentBrokerAPI
 	ps     piecestore.PieceStore
-	sm     smAPI
-	wal    walletAPI
+	sm     SmAPI
+	wal    WalletAPI
 }
 
-// pmtChanEntry is a record of a created payment channel with funds available.
-type pmtChanEntry struct {
-	msgCID cid.Cid
-	err error
-	pmtChannel types.ChannelID
-	minerAddr  address.Address
-	fundsAvail tokenamount.TokenAmount
+type paychEntry struct {
+	lastErr    error
+	clientAddr address.Address
+	chid       address.Address
+	fundsAvail types.AttoFIL
+}
+type laneEntries []*laneEntry
+
+type laneEntry struct {
+	val  types.AttoFIL
 }
 
 // smAPI is the subset of the StorageMinerAPI that the retrieval provider node will need
 // for unsealing and getting sector info
-type smAPI interface {
+type SmAPI interface {
 	// GetSectorInfo(sectorID uint64) (storage.SectorInfo, error)
 	// UnsealSector(ctx context.Context, sectorID uint64) (io.ReadCloser, error)
 }
 
-type actorAPI interface {
+type ActorAPI interface {
 	// GetWorkerAddress gets the go-filecoin address of a (miner) worker owned by addr
 	GetWorkerAddress(ctx context.Context, addr fcaddr.Address, baseKey block.TipSetKey) (fcaddr.Address, error)
 	// GetNonce gets the current message nonce
-	NextNonce(ctx context.Context, addr address.Address) (uint64, error)
+	NextNonce(ctx context.Context, addr fcaddr.Address) (uint64, error)
 }
-
-type msgWaiter interface {
+type MsgWaiter interface {
 	Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 }
 
-type msgSender interface {
+type MsgSender interface {
 	// Send sends a message to the chain
 	Send(ctx context.Context, from, to fcaddr.Address, value types.AttoFIL,
 		gasPrice types.AttoFIL, gasLimit types.GasUnits, bcast bool, method types.MethodID, params ...interface{}) (out cid.Cid, pubErrCh chan error, err error)
 }
-type walletAPI interface {
+type WalletAPI interface {
 	// GetBalance gets the balance in AttoFIL for a given address
 	GetBalance(ctx context.Context, address fcaddr.Address) (types.AttoFIL, error)
 	// GetDefaultWalletAddress retrieves the wallet addressed used to sign data and pay fees
 	GetDefaultWalletAddress() (fcaddr.Address, error)
 }
 
-type byteSigner interface {
-	// SignBytes signs data using an address and returns the signing type, the signature, and any error
-	SignBytes(data []byte, addr fcaddr.Address) ([]byte, error)
+type PaymentBrokerAPI interface {
+	// GetPaymentChannelAddress queries for the address of a payment channel for a payer/payee
+	GetPaymentChannelAddress(ctx context.Context, payer, payee fcaddr.Address) (fcaddr.Address, error)
+	// GetPaymentChannelBalance(ctx context.Context, payee fcaddr.Address, paymentChannel fcaddr.Address) (types.AttoFIL, error)
 }
 
 func NewRetrievalClientNodeConnector(
 	bs *blockstore.Blockstore,
 	cs *chain.Store,
-	mw msgWaiter,
-	ob msgSender,
+	mw MsgWaiter,
+	ob MsgSender,
 	ps piecestore.PieceStore,
-	sm smAPI,
-	signer byteSigner,
-	aapi actorAPI,
-	wal walletAPI,
+	sm SmAPI,
+	signer types.Signer,
+	aapi ActorAPI,
+	wal WalletAPI,
+	pbapi PaymentBrokerAPI,
 ) *RetrievalClientNodeConnector {
 	return &RetrievalClientNodeConnector{
 		bs:         bs,
 		cs:         cs,
-		laneReg:    make(map[address.Address]uint64),
 		mw:         mw,
+		payChStore: make(map[address.Address]*paychEntry),
 		outbox:     ob,
-		pmtChanReg: make(map[address.Address]pmtChanEntry),
 		ps:         ps,
 		sm:         sm,
 		signer:     signer,
 		actAPI:     aapi,
 		wal:        wal,
+		pbAPI:      pbapi,
+		laneStore:  make(map[address.Address]laneEntries),
 	}
 }
 
@@ -112,39 +119,42 @@ func NewRetrievalClientNodeConnector(
 // Blocks until message is mined?
 func (r *RetrievalClientNodeConnector) GetOrCreatePaymentChannel(ctx context.Context, clientAddress address.Address, minerAddress address.Address, clientFundsAvailable abi.TokenAmount) (address.Address, error) {
 
-	fcClientAddr, err := fcaddr.NewFromBytes(clientWallet.Bytes())
+	if clientWallet == address.Undef || minerWallet == address.Undef {
+		return address.Undef, errors.New("empty address")
+	}
+
+	fcClient, err := GoAddrToFcAddr(clientWallet)
 	if err != nil {
 		return address.Undef, err
 	}
-	bal, err := r.wal.GetBalance(ctx, fcClientAddr)
+	fcMiner, err := GoAddrToFcAddr(minerWallet)
 	if err != nil {
 		return address.Undef, err
 	}
 
-	entry, ok := r.pmtChanReg[clientWallet]
-	if !ok {
+	chid, err := r.pbAPI.GetPaymentChannelAddress(ctx, fcClient, fcMiner)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	if chid == fcaddr.Undef {
 		// create the payment channel
+		bal, err := r.wal.GetBalance(ctx, fcClient)
+		if err != nil {
+			return address.Undef, err
+		}
+
 		filAmt := types.NewAttoFIL(clientFundsAvailable.Int)
 		if bal.LessThan(filAmt) {
 			return address.Undef, errors.New("not enough funds in wallet")
 		}
 
-		fcClient, err := fcaddr.NewFromBytes(clientWallet.Bytes())
-		if err != nil {
-			return address.Undef, err
-		}
-		fcMiner, err := fcaddr.NewFromBytes(minerWallet.Bytes())
-		if err != nil {
-			return address.Undef, err
-		}
-
 		height, err := r.getBlockHeight()
 		if err != nil {
-			return address.Undef, nil
+			return address.Undef, err
 		}
 		validAt := height + 1 // valid almost immediately since a retrieval could theoretically happen in 1 block
 
-		// nobody is using the error channel anywhere.
 		msgCid, _, err := r.outbox.Send(ctx,
 			fcClient,                          // from
 			fcaddr.LegacyPaymentBrokerAddress, // to
@@ -155,107 +165,83 @@ func (r *RetrievalClientNodeConnector) GetOrCreatePaymentChannel(ctx context.Con
 			paymentbroker.CreateChannel,       // command
 			fcMiner, validAt,                  // params: payment address, valid block height
 		)
-
-		entry = pmtChanEntry{minerAddr: minerWallet, fundsAvail: clientFundsAvailable, msgCID: msgCid}
-		r.pmtChanReg[clientWallet] = entry
+		entry := paychEntry{clientAddr: clientWallet, fundsAvail: filAmt, lastErr: err}
+		r.payChLk.Lock()
+		r.payChStore[clientWallet] = &entry
+		r.payChLk.Unlock()
 
 		r.mw.Wait(ctx, msgCid, r.updatePaymentChannelEntry)
-		return address.Undef, nil
+
+		return address.Undef, err
 	}
 
 	// Not a real actor, just plays one on PaymentChannels.
-	chidAddr, err := address.NewActorAddress(entry.pmtChannel.Bytes())
-	if err != nil {
-		return address.Undef, err
-	}
-	return chidAddr, entry.err
+	return FcAddrToGoAddr(chid)
 }
 
-// AllocateLane creates a new lane for this paymentChannel, with enough token to cover the deal
+// AllocateLane creates a new lane for this paymentChannel with 0 FIL in the lane
 // Assumes AllocateLane is called after GetOrCreatePaymentChannel
 //func (r *RetrievalClientNodeConnector) AllocateLane(paymentChannel address.Address) (int64, error) {
 func (r *RetrievalClientNodeConnector) AllocateLane(paymentChannel address.Address) (uint64, error) {
-	r.pmChanLk.Lock()
-	defer r.pmChanLk.Unlock()
-	_, ok := r.pmtChanReg[paymentChannel]
-	if !ok {
-		return 0, errors.New("paymentChannel not registered")
+	payer, _, found := r.getPaychEntry(paymentChannel)
+	if !found {
+		return 0, errors.New("payment channel not registered")
 	}
 
-	lastLane, ok := r.laneReg[paymentChannel]
-	if ok {
-		lastLane++
+	le := laneEntry{}
+	if r.laneStore[payer] == nil {
+		r.laneStore[payer] = []*laneEntry{}
 	}
-	r.laneReg[paymentChannel] = lastLane
-	return lastLane, nil
+	r.laneStore[payer] = append(r.laneStore[payer], &le)
+	lane := uint64(len(r.laneStore[payer])-1)
+
+	return lane, nil
 }
 
 
 // CreatePaymentVoucher creates a payment voucher for the retrieval client.
 // If there is not enough value stored in the payment channel registry, an error is returned.
 // If a lane has not been allocated for this payment channel, an error is returned.
-func (r *RetrievalClientNodeConnector) CreatePaymentVoucher(ctx context.Context, paymentChannel address.Address, amount abi.TokenAmount, lane int64) (*paych.SignedVoucher, error) {
-	r.pmChanLk.RLock()
-	pe, ok := r.pmtChanReg[paymentChannel]
-	r.pmChanLk.RUnlock()
-	if !ok {
-		return nil, errors.New("paymentChannel not registered")
-	}
-	if pe.fundsAvail.LessThan(amount) {
-		return nil, errors.New("not enough funds in channel")
+func (r *RetrievalClientNodeConnector) CreatePaymentVoucher(ctx context.Context, paymentChannel address.Address, amount tokenamount.TokenAmount, lane uint64) (*gfm_types.SignedVoucher, error) {
+	payer, pce, found := r.getPaychEntry(paymentChannel)
+	if !found {
+		return nil, errors.New("payment channel not registered")
 	}
 
-	height, err := r.getBlockHeight()
-	if err != nil {
-		return nil, err
+	if pce.fundsAvail.LessThan(types.NewAttoFIL(amount.Int)) {
+		return nil, errors.New("not enough funds in payment channel")
 	}
 
-	r.laneRegLk.RLock()
-	pcLane, ok := r.laneReg[paymentChannel]
-	r.laneRegLk.RUnlock()
-	if !ok {
-		return nil, errors.New("no lane registered for payment channel")
-	}
-	if pcLane < lane {
-		return nil, errors.New("requested lane exceeds registered lanes")
+	lanes, ok := r.laneStore[payer]
+	if !ok || len(lanes) == 0 {
+		return nil, errors.New("payment channel has no lanes allocated")
 	}
 
-	nonce, err := r.actAPI.NextNonce(ctx, paymentChannel)
-	if err != nil {
-		return nil, err
-	}
+	// add the allocated amount to the lane
+	lanes[lane].val = types.NewAttoFIL(amount.Int)
 
-	v, err := r.createSignedVoucher(lane, nonce, amount, height)
+	v, err := r.createSignedVoucher(ctx, payer, lane, amount)
 	if err != nil {
 		return nil, err
 	}
 	return v, nil
 }
-
-func (r *RetrievalClientNodeConnector) ListRegisteredChannels() []address.Address {
-	r.pmChanLk.RLock()
-	defer r.pmChanLk.RUnlock()
-	list := make([]address.Address, len(r.pmtChanReg))
-	i := 0
-	for k := range r.pmtChanReg {
-		list[i] = k
-		i++
+func (r *RetrievalClientNodeConnector) createSignedVoucher(ctx context.Context, payer address.Address, lane uint64, amount tokenamount.TokenAmount) (*gfm_types.SignedVoucher, error) {
+	height, err := r.getBlockHeight()
+	if err != nil {
+		return nil, err
 	}
-	return list
-}
-func (r *RetrievalClientNodeConnector) ListRegisteredLanes() []address.Address {
-	r.laneRegLk.RLock()
-	defer r.laneRegLk.RUnlock()
-	list := make([]address.Address, len(r.laneReg))
-	i := 0
-	for k := range r.pmtChanReg {
-		list[i] = k
-		i++
-	}
-	return list
-}
 
-func (r *RetrievalClientNodeConnector) createSignedVoucher(lane uint64, nonce uint64, amount tokenamount.TokenAmount, height uint64) (*gfm_types.SignedVoucher, error) {
+	fcPayer, err := GoAddrToFcAddr(payer)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce, err := r.actAPI.NextNonce(ctx, fcPayer)
+	if err != nil {
+		return nil, err
+	}
+
 	v := gfm_types.SignedVoucher{
 		TimeLock:       0,   // TODO
 		SecretPreimage: nil, // TODO
@@ -276,13 +262,13 @@ func (r *RetrievalClientNodeConnector) createSignedVoucher(lane uint64, nonce ui
 		return nil, err
 	}
 
-	sigdata, err := r.signer.SignBytes(buf.Bytes(), signingAddr)
+	sig, err := r.signer.SignBytes(buf.Bytes(), signingAddr)
 	if err != nil {
 		return nil, err
 	}
-	signature, err := gfm_types.SignatureFromBytes(sigdata)
-	if err != nil {
-		return nil, err
+	signature := gfm_types.Signature{
+		Type: gfm_types.KTBLS,
+		Data: sig,
 	}
 	v.Signature = &signature
 	return &v, nil
@@ -290,37 +276,31 @@ func (r *RetrievalClientNodeConnector) createSignedVoucher(lane uint64, nonce ui
 
 // updatePaymentChannelEntry updates the entry with the result of the payment channel creation message
 func (r *RetrievalClientNodeConnector) updatePaymentChannelEntry(_ *block.Block, sm *types.SignedMessage, mr *types.MessageReceipt) error {
-
-	to, err := address.NewFromBytes(sm.Message.From.Bytes())
+	from, err := FcAddrToGoAddr(sm.Message.From)
 	if err != nil {
 		return err // should never happen
 	}
-	r.pmChanLk.Lock()
-	defer r.pmChanLk.Unlock()
-	pce, ok := r.pmtChanReg[to]
+	r.payChLk.Lock()
+	defer r.payChLk.Unlock()
+	pce, ok := r.payChStore[from]
 
 	if !ok {
 		return errors.New("payment channel inconceivably not registered") // should never happen
 	}
 
 	if mr.ExitCode != 0 {
-		pce.err = paymentbroker.Errors[mr.ExitCode]
+		pce.lastErr = paymentbroker.Errors[mr.ExitCode]
+		r.payChStore[from] = pce
+		return pce.lastErr
 	}
 
 	// createChannel returns channelID
-	val, err := abi.Deserialize(mr.Return[0], abi.ChannelID)
+	chid, err := address.NewFromBytes(mr.Return[0])
 	if err != nil {
-		pce.err = err
+		return err
 	}
-
-	chid, ok := val.Val.(types.ChannelID)
-	if !ok {
-		pce.err = errors.New("could not deserialize message return")
-	} else {
-		pce.pmtChannel = chid
-	}
-
-	r.pmtChanReg[to] = pce
+	pce.chid = chid
+	r.payChStore[from] = pce
 	return nil
 }
 
@@ -333,3 +313,25 @@ func (r *RetrievalClientNodeConnector) getBlockHeight() (uint64, error) {
 	return ts.Height()
 }
 
+func (r *RetrievalClientNodeConnector) getPaychEntry(paymentChannel address.Address) (address.Address, *paychEntry, bool) {
+	r.payChLk.RLock()
+	defer r.payChLk.RUnlock()
+	var payer address.Address
+	var entry *paychEntry
+	var found bool
+	for payer, entry = range r.payChStore {
+		if entry.chid == paymentChannel {
+			found = true
+			break
+		}
+	}
+	return payer, entry, found
+}
+
+func GoAddrToFcAddr(addr address.Address) (fcaddr.Address, error) {
+	return fcaddr.NewFromBytes(addr.Bytes())
+}
+
+func FcAddrToGoAddr(addr fcaddr.Address) (address.Address, error) {
+	return address.NewFromBytes(addr.Bytes())
+}

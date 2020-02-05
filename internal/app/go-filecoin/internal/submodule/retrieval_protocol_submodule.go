@@ -11,11 +11,9 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/host"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
-	retrievalmarketconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
+	retmkt "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -30,19 +28,35 @@ type WorkerGetter func(ctx context.Context, minerAddr address.Address, baseKey b
 
 // NewRetrievalProtocolSubmodule creates a new retrieval protocol submodule.
 func NewRetrievalProtocolSubmodule(
-	ob *message.Outbox,
-	smAPI piecemanager.StorageMinerAPI,
+	bs *blockstore.Blockstore,
+	c *ChainSubmodule,
+	mw retmkt.MsgWaiter,
 	host host.Host,
 	providerAddr address.Address,
-	c *ChainSubmodule,
+	ob *message.Outbox,
 	ps piecestore.PieceStore,
-	bs *blockstore.Blockstore) (RetrievalProtocolSubmodule, error) {
+	signer types.Signer,
+	wal retmkt.WalletAPI,
+	aapi retmkt.ActorAPI,
+	smapi retmkt.SmAPI,
+	pbapi retmkt.PaymentBrokerAPI,
+) (RetrievalProtocolSubmodule, error) {
 	panic("TODO: go-fil-markets integration")
 
 	netwk := network.NewFromLibp2pHost(host)
-	pnode := retrievalmarketconnector.NewRetrievalProviderNodeConnector(netwk, ps, bs)
-	cnode := retrievalmarketconnector.NewRetrievalClientNodeConnector(bs, c.ChainReader...)
-	rsvlr := retrievalmarketconnector.NewRetrievalPeerResolverConnector()
+	pnode := retmkt.NewRetrievalProviderNodeConnector(netwk, ps, bs)
+	cnode := retmkt.NewRetrievalClientNodeConnector(bs,
+		c.ChainReader,
+		mw,
+		ob,
+		ps,
+		smapi,
+		signer,
+		aapi,
+		wal,
+		pbapi,
+	)
+	rsvlr := retmkt.NewRetrievalPeerResolverConnector()
 
 	return RetrievalProtocolSubmodule{
 		RetrievalClient:   impl.NewClient(netwk, *bs, cnode, rsvlr),
