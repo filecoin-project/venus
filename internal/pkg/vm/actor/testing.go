@@ -3,9 +3,6 @@ package actor
 import (
 	"reflect"
 
-	cid "github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -13,6 +10,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
+	"github.com/ipfs/go-cid"
 )
 
 // FakeActorStorage is storage for our fake actor. It contains a single
@@ -92,23 +91,13 @@ var signatures = dispatch.Exports{
 }
 
 // InitializeState stores this actors
-func (a *FakeActor) InitializeState(storage runtime.LegacyStorage, initializerData interface{}) error {
+func (a *FakeActor) InitializeState(vms storage.VMStorage, initializerData interface{}) (cid.Cid, error) {
 	st, ok := initializerData.(*FakeActorStorage)
 	if !ok {
-		return errors.NewFaultError("Initial state to fake actor is not a FakeActorStorage struct")
+		return cid.Undef, errors.NewFaultError("Initial state to fake actor is not a FakeActorStorage struct")
 	}
 
-	stateBytes, err := encoding.Encode(st)
-	if err != nil {
-		return err
-	}
-
-	id, err := storage.Put(stateBytes)
-	if err != nil {
-		return err
-	}
-
-	return storage.LegacyCommit(id, cid.Undef)
+	return vms.Put(st)
 }
 
 // Method returns method definition for a given method id.

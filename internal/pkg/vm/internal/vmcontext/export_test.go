@@ -9,11 +9,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gastracker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -129,7 +128,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 					Return: nil,
 				},
 			}),
-			Error:  "makeTypedExport must receive a function with signature: func (runtime.Runtime) (uint8, error), but got: func() (uint8, error)",
+			Error:  "makeTypedExport must receive a function with signature: func (runtime.InvocationContext) (uint8, error), but got: func() (uint8, error)",
 			Method: One,
 		},
 		{
@@ -140,7 +139,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 					Return: nil,
 				},
 			}),
-			Error:  "makeTypedExport must receive a function with signature: func (runtime.Runtime) (uint8, error), but got: func(runtime.Runtime) error",
+			Error:  "makeTypedExport must receive a function with signature: func (runtime.InvocationContext) (uint8, error), but got: func(runtime.InvocationContext) error",
 			Method: Three,
 		},
 		{
@@ -151,7 +150,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 					Return: []abi.Type{abi.Bytes},
 				},
 			}),
-			Error:  "makeTypedExport must receive a function with signature: func (runtime.Runtime) ([]byte, uint8, error), but got: func(runtime.Runtime) (uint8, error)",
+			Error:  "makeTypedExport must receive a function with signature: func (runtime.InvocationContext) ([]byte, uint8, error), but got: func(runtime.InvocationContext) (uint8, error)",
 			Method: Two,
 		},
 		{
@@ -162,7 +161,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 					Return: []abi.Type{abi.Bytes, abi.Bytes},
 				},
 			}),
-			Error:  "makeTypedExport must receive a function with signature: func (runtime.Runtime) ([]byte, []byte, uint8, error), but got: func(runtime.Runtime) (uint8, error)",
+			Error:  "makeTypedExport must receive a function with signature: func (runtime.InvocationContext) ([]byte, []byte, uint8, error), but got: func(runtime.InvocationContext) (uint8, error)",
 			Method: Two,
 		},
 	}
@@ -234,36 +233,41 @@ func (*impl) one() (uint8, error) {
 	return 0, nil
 }
 
-func (*impl) two(ctx runtime.Runtime) (uint8, error) {
+func (*impl) two(ctx runtime.InvocationContext) (uint8, error) {
 	return 0, nil
 }
 
-func (*impl) three(ctx runtime.Runtime) error {
+func (*impl) three(ctx runtime.InvocationContext) error {
 	return nil
 }
 
-func (*impl) four(ctx runtime.Runtime) ([]byte, uint8, error) {
+func (*impl) four(ctx runtime.InvocationContext) ([]byte, uint8, error) {
 	return []byte("hello"), 0, nil
 }
 
-func (*impl) five(ctx runtime.Runtime) ([]byte, uint8, error) {
+func (*impl) five(ctx runtime.InvocationContext) ([]byte, uint8, error) {
 	return nil, 2, errors.NewRevertError("fail5")
 }
 
-func (*impl) six(ctx runtime.Runtime) (uint8, error) {
+func (*impl) six(ctx runtime.InvocationContext) (uint8, error) {
 	return 0, fmt.Errorf("NOT A REVERT OR FAULT -- PROGRAMMER ERROR")
 }
 
-func makeCtx(method types.MethodID) *VMContext {
+func makeCtx(method types.MethodID) *invocationContext {
 	addrGetter := address.NewForTestGetter()
 
-	vmCtxParams := NewContextParams{
-		Message:     types.NewUnsignedMessage(addrGetter(), addrGetter(), 0, types.ZeroAttoFIL, method, nil),
-		GasTracker:  gastracker.NewLegacyGasTracker(),
-		BlockHeight: types.NewBlockHeight(0),
-		Actors:      builtin.DefaultActors,
-		To:          &actor.Actor{},
+	msg := internalMessage{
+		miner:         addrGetter(),
+		from:          addrGetter(),
+		to:            addrGetter(),
+		value:         types.ZeroAttoFIL,
+		method:        method,
+		params:        []byte{},
+		callSeqNumber: 0,
 	}
 
-	return NewVMContext(vmCtxParams)
+	gasTank := gas.NewTracker(gas.SystemGasLimit)
+	ctx := newInvocationContext(nil, msg, &actor.Actor{}, &gasTank)
+
+	return &ctx
 }

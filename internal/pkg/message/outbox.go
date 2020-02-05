@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -27,7 +26,7 @@ type Outbox struct {
 	// Signs messages
 	signer types.Signer
 	// Validates messages before sending them.
-	validator consensus.MessageValidator
+	validator messageValidator
 	// Holds messages sent from this node but not yet mined.
 	queue *Queue
 	// Publishes a signed message to the network.
@@ -44,6 +43,11 @@ type Outbox struct {
 	journal journal.Writer
 }
 
+type messageValidator interface {
+	// Validate checks a message for validity.
+	Validate(ctx context.Context, msg *types.UnsignedMessage, fromActor *actor.Actor) error
+}
+
 type actorProvider interface {
 	// GetActorAt returns the actor state defined by the chain up to some tipset
 	GetActorAt(ctx context.Context, tipset block.TipSetKey, addr address.Address) (*actor.Actor, error)
@@ -56,7 +60,7 @@ type publisher interface {
 var msgSendErrCt = metrics.NewInt64Counter("message_sender_error", "Number of errors encountered while sending a message")
 
 // NewOutbox creates a new outbox
-func NewOutbox(signer types.Signer, validator consensus.MessageValidator, queue *Queue,
+func NewOutbox(signer types.Signer, validator messageValidator, queue *Queue,
 	publisher publisher, policy QueuePolicy, chains chainProvider, actors actorProvider, jw journal.Writer) *Outbox {
 	return &Outbox{
 		signer:    signer,

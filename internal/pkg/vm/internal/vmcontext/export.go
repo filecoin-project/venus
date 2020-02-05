@@ -34,7 +34,7 @@ func makeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (Exp
 	t := fn.Type()
 
 	badImpl := func() {
-		params := []string{"runtime.Runtime"}
+		params := []string{"runtime.InvocationContext"}
 		for _, p := range signature.Params {
 			params = append(params, p.String())
 		}

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ipfs/go-block-format"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -158,7 +158,7 @@ func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey block.Ti
 		return nil, errors.Wrap(err, "failed to load latest state")
 	}
 
-	idAddr, found, err := consensus.ResolveAddress(ctx, addr, state.NewCachedTree(st), vm.NewStorageMap(chn.bstore), vm.NewLegacyGasTracker())
+	idAddr, found, err := consensus.ResolveAddress(ctx, addr, state.NewCachedTree(st), vm.NewStorage(chn.bstore))
 	if err != nil {
 		return nil, err
 	}

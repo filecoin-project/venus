@@ -74,7 +74,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		pTipSet := th.RequireNewTipSet(t, genesisBlock)
 
-		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorageMap(bstore), kis)
+		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorage(bstore), kis)
 		as := testActorState(ctx, t, minerToWorker)
 		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), as, th.BlockTimeTest, &consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{}, &proofs.ElectionPoster{})
 
@@ -133,7 +133,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
 		require.NoError(t, err)
 
-		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorageMap(bstore), kis)
+		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorage(bstore), kis)
 		as := testActorState(ctx, t, minerToWorker)
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), as, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &proofs.ElectionPoster{})
 
@@ -162,7 +162,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
 		require.NoError(t, err)
 
-		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorageMap(bstore), kis)
+		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorage(bstore), kis)
 		as := testActorState(ctx, t, minerToWorker)
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), as, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &proofs.ElectionPoster{})
 
@@ -195,7 +195,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
 		require.NoError(t, err)
 
-		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorageMap(bstore), kis)
+		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorage(bstore), kis)
 		as := testActorState(ctx, t, minerToWorker)
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), as, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FailingTicketValidator{}, &proofs.ElectionPoster{})
 
@@ -215,7 +215,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
 		require.NoError(t, err)
 
-		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorageMap(bstore), kis)
+		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorage(bstore), kis)
 		as := testActorState(ctx, t, minerToWorker)
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), as, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &proofs.ElectionPoster{})
 
@@ -237,7 +237,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
 		require.NoError(t, err)
 
-		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorageMap(bstore), kis)
+		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorage(bstore), kis)
 		as := testActorState(ctx, t, minerToWorker)
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), as, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &proofs.ElectionPoster{})
 
@@ -282,7 +282,7 @@ func requireMakeNBlocks(t *testing.T, n int, pTipSet block.TipSet, root cid.Cid,
 	return blocks
 }
 
-func minerToWorkerFromAddrs(ctx context.Context, t *testing.T, tree state.Tree, vms vm.StorageMap, kis []types.KeyInfo) ([]address.Address, map[address.Address]address.Address) {
+func minerToWorkerFromAddrs(ctx context.Context, t *testing.T, tree state.Tree, vms vm.Storage, kis []types.KeyInfo) ([]address.Address, map[address.Address]address.Address) {
 	minerAddrs := make([]address.Address, len(kis))
 	require.Equal(t, len(kis), len(minerAddrs))
 	minerToWorker := make(map[address.Address]address.Address, len(kis))
@@ -308,7 +308,7 @@ func setTree(ctx context.Context, t *testing.T, kis []types.KeyInfo, cstore *ham
 	require.NoError(t, err)
 	miners := make([]address.Address, len(kis))
 	m2w := make(map[address.Address]address.Address, len(kis))
-	vms := vm.NewStorageMap(bstore)
+	vms := vm.NewStorage(bstore)
 	for i, ki := range kis {
 		workerAddr, err := ki.Address()
 		require.NoError(t, err)
