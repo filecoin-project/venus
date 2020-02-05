@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -67,22 +66,20 @@ func (cs ActorStateStore) Snapshot(ctx context.Context, baseKey block.TipSetKey)
 
 // StateTreeSnapshot returns a snapshot representation of a state tree at an optional block height
 func (cs ActorStateStore) StateTreeSnapshot(st state.Tree, bh *types.BlockHeight) ActorStateSnapshot {
-	return newProcessorQueryer(st, vm.NewStorageMap(cs.bs), bh, cs.processor)
+	return newProcessorQueryer(st, bh, cs.processor)
 }
 
 // processorSnapshot queries the chain at a particular tipset
 type processorSnapshot struct {
 	st        state.Tree
-	vms       vm.StorageMap
 	height    *types.BlockHeight
 	processor QueryProcessor
 }
 
 // newProcessorQueryer creates an ActorStateSnapshot
-func newProcessorQueryer(st state.Tree, vms vm.StorageMap, height *types.BlockHeight, processor QueryProcessor) ActorStateSnapshot {
+func newProcessorQueryer(st state.Tree, height *types.BlockHeight, processor QueryProcessor) ActorStateSnapshot {
 	return &processorSnapshot{
 		st:        st,
-		vms:       vms,
 		height:    height,
 		processor: processor,
 	}

@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -45,7 +44,7 @@ func RequireMakeStateTree(t *testing.T, cst *hamt.CborIpldStore, acts map[addres
 
 // RequireNewMinerActor creates a new miner actor with the given owner, pledge, and collateral,
 // and requires that its steps succeed.
-func RequireNewMinerActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, owner address.Address, pledge uint64, pid peer.ID, coll types.AttoFIL) (*actor.Actor, address.Address) {
+func RequireNewMinerActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.Storage, owner address.Address, pledge uint64, pid peer.ID, coll types.AttoFIL) (*actor.Actor, address.Address) {
 	// Dragons: re-write
 
 	// cachedTree := state.NewCachedTree(st)
@@ -81,7 +80,7 @@ func RequireNewMinerActor(ctx context.Context, t *testing.T, st state.Tree, vms 
 }
 
 // RequireLookupActor converts the given address to an id address before looking up the actor in the state tree
-func RequireLookupActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, actorAddr address.Address) (*actor.Actor, address.Address) {
+func RequireLookupActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.Storage, actorAddr address.Address) (*actor.Actor, address.Address) {
 	// Dragons: delete
 
 	// if actorAddr.Protocol() == address.ID {
@@ -124,29 +123,31 @@ func RequireNewAccountActor(t *testing.T, value types.AttoFIL) *actor.Actor {
 
 // RequireNewFakeActor instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActor(t *testing.T, vms vm.StorageMap, addr address.Address, codeCid cid.Cid) *actor.Actor {
+func RequireNewFakeActor(t *testing.T, vms vm.Storage, addr address.Address, codeCid cid.Cid) *actor.Actor {
 	return RequireNewFakeActorWithTokens(t, vms, addr, codeCid, types.NewAttoFILFromFIL(100))
 }
 
 // RequireNewFakeActorWithTokens instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActorWithTokens(t *testing.T, vms vm.StorageMap, addr address.Address, codeCid cid.Cid, amt types.AttoFIL) *actor.Actor {
+func RequireNewFakeActorWithTokens(t *testing.T, vms vm.Storage, addr address.Address, codeCid cid.Cid, amt types.AttoFIL) *actor.Actor {
 	act := actor.NewActor(codeCid, amt)
-	store := vms.NewStorage(addr, act)
-	err := (&actor.FakeActor{}).InitializeState(store, &actor.FakeActorStorage{})
+	var err error
+	act.Head, err = (&actor.FakeActor{}).InitializeState(vms, &actor.FakeActorStorage{})
 	require.NoError(t, err)
 	require.NoError(t, vms.Flush())
 	return act
 }
 
 // RequireNewInitActor instantiates and returns a new init actor
-func RequireNewInitActor(t *testing.T, vms vm.StorageMap) *actor.Actor {
-	act := actor.NewActor(types.InitActorCodeCid, types.ZeroAttoFIL)
-	store := vms.NewStorage(address.InitAddress, act)
-	err := (&initactor.Actor{}).InitializeState(store, "test")
-	require.NoError(t, err)
-	require.NoError(t, vms.Flush())
-	return act
+func RequireNewInitActor(t *testing.T, vms vm.Storage) *actor.Actor {
+	// Dragons: why do we need this? remove
+	// act := actor.NewActor(types.InitActorCodeCid, types.ZeroAttoFIL)
+	// store := vms.NewStorage(address.InitAddress, act)
+	// err := (&initactor.Actor{}).InitializeState(store, "test")
+	// require.NoError(t, err)
+	// require.NoError(t, vms.Flush())
+	// return act
+	return nil
 }
 
 // RequireRandomPeerID returns a new libp2p peer ID or panics.
@@ -175,14 +176,14 @@ func (v *MockMessagePoolValidator) Validate(ctx context.Context, msg *types.Sign
 }
 
 // VMStorage creates a new storage object backed by an in memory datastore
-func VMStorage() vm.StorageMap {
-	return vm.NewStorageMap(blockstore.NewBlockstore(datastore.NewMapDatastore()))
+func VMStorage() vm.Storage {
+	return vm.NewStorage(blockstore.NewBlockstore(datastore.NewMapDatastore()))
 }
 
 // CreateTestMiner creates a new test miner with the given peerID and miner
 // owner address within the state tree defined by st and vms with 100 FIL as
 // collateral.
-func CreateTestMiner(t *testing.T, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, pid peer.ID) address.Address {
+func CreateTestMiner(t *testing.T, st state.Tree, vms vm.Storage, minerOwnerAddr address.Address, pid peer.ID) address.Address {
 	return CreateTestMinerWith(types.NewAttoFILFromFIL(100), t, st, vms, minerOwnerAddr, pid, 0)
 }
 
@@ -192,7 +193,7 @@ func CreateTestMinerWith(
 	collateral types.AttoFIL,
 	t *testing.T,
 	st state.Tree,
-	vms vm.StorageMap,
+	vms vm.Storage,
 	minerOwnerAddr address.Address,
 	pid peer.ID,
 	height uint64,
@@ -216,7 +217,7 @@ func CreateTestMinerWith(
 }
 
 // RequireGetActor adds an account actor to the state tree if none exists
-func RequireGetActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, addr address.Address) *actor.Actor {
+func RequireGetActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.Storage, addr address.Address) *actor.Actor {
 	idAddr, found, err := consensus.ResolveAddress(ctx, addr, state.NewCachedTree(st), vms)
 	require.NoError(t, err)
 	require.True(t, found, "test actor not found")
@@ -227,7 +228,7 @@ func RequireGetActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.St
 }
 
 // RequireInitAccountActor initializes an account actor
-func RequireInitAccountActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, addr address.Address, balance types.AttoFIL) (*actor.Actor, address.Address) {
+func RequireInitAccountActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.Storage, addr address.Address, balance types.AttoFIL) (*actor.Actor, address.Address) {
 	// Dragons: how do you NOT have an init actor on the state? Delete this method
 
 	// cachedTree := state.NewCachedTree(st)
@@ -270,7 +271,7 @@ func RequireInitAccountActor(ctx context.Context, t *testing.T, st state.Tree, v
 }
 
 // GetTotalPower get total miner power from storage market
-func GetTotalPower(t *testing.T, st state.Tree, vms vm.StorageMap) *types.BytesAmount {
+func GetTotalPower(t *testing.T, st state.Tree, vms vm.Storage) *types.BytesAmount {
 	res, err := CreateAndApplyTestMessage(t, st, vms, address.StorageMarketAddress, 0, 0, storagemarket.GetTotalStorage, nil)
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
@@ -281,7 +282,7 @@ func GetTotalPower(t *testing.T, st state.Tree, vms vm.StorageMap) *types.BytesA
 
 // RequireGetNonce returns the next nonce of the actor at address a within
 // state tree st, failing on error.
-func RequireGetNonce(t *testing.T, st state.Tree, vms vm.StorageMap, a address.Address) uint64 {
+func RequireGetNonce(t *testing.T, st state.Tree, vms vm.Storage, a address.Address) uint64 {
 	ctx := context.Background()
 	actr, _ := RequireLookupActor(ctx, t, st, vms, a)
 	nonce, err := actor.NextNonce(actr)
@@ -290,7 +291,7 @@ func RequireGetNonce(t *testing.T, st state.Tree, vms vm.StorageMap, a address.A
 }
 
 // RequireCreateStorages creates an empty state tree and storage map.
-func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.StorageMap) {
+func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.Storage) {
 	cst := hamt.NewCborStore()
 	d := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(d)
@@ -300,7 +301,7 @@ func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.St
 	st, err := state.NewTreeLoader().LoadStateTree(ctx, cst, blk.StateRoot)
 	require.NoError(t, err)
 
-	vms := vm.NewStorageMap(bs)
+	vms := vm.NewStorage(bs)
 
 	return st, vms
 }

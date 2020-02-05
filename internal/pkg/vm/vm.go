@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -35,14 +34,6 @@ func NewVM(st state.Tree, store *storage.VMStorage) Interpreter {
 // NewStorage creates a new Storage for the VM.
 func NewStorage(bs blockstore.Blockstore) Storage {
 	return storage.NewStorage(bs)
-}
-
-// StorageMap manages Storages.
-type StorageMap = storagemap.StorageMap
-
-// NewStorageMap returns a storage object for the given datastore.
-func NewStorageMap(bs blockstore.Blockstore) StorageMap {
-	return storagemap.NewStorageMap(bs)
 }
 
 // FunctionSignature describes the signature of a single function.

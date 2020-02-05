@@ -140,7 +140,7 @@ func (ms testSigner) SignBytes(data []byte, addr address.Address) (types.Signatu
 }
 
 // RequireActorIDAddress looks up an actor address in the init actor and returns the associated id address
-func RequireActorIDAddress(ctx context.Context, t *testing.T, st state.Tree, store vm.StorageMap, addr address.Address) address.Address {
+func RequireActorIDAddress(ctx context.Context, t *testing.T, st state.Tree, store vm.Storage, addr address.Address) address.Address {
 	// Dragons: why is this needed? delete
 
 	// processor := consensus.NewConfiguredProcessor(builtin.DefaultActors)
@@ -163,22 +163,22 @@ func RequireActorIDAddress(ctx context.Context, t *testing.T, st state.Tree, sto
 
 // ApplyTestMessage sends a message directly to the vm, bypassing message
 // validation
-func ApplyTestMessage(st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
+func ApplyTestMessage(st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
 	return applyTestMessageWithAncestors(builtin.DefaultActors, st, store, msg, bh, nil)
 }
 
 // ApplyTestMessageWithActors sends a message directly to the vm with a given set of builtin actors
-func ApplyTestMessageWithActors(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
+func ApplyTestMessageWithActors(actors builtin.Actors, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
 	return applyTestMessageWithAncestors(actors, st, store, msg, bh, nil)
 }
 
 // ApplyTestMessageWithGas uses the FakeBlockRewarder but the default SignedMessageValidator
-func ApplyTestMessageWithGas(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight, minerOwner address.Address) (*consensus.ApplicationResult, error) {
+func ApplyTestMessageWithGas(actors builtin.Actors, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh *types.BlockHeight, minerOwner address.Address) (*consensus.ApplicationResult, error) {
 	applier := consensus.NewConfiguredProcessor(actors)
 	return newMessageApplier(msg, applier, st, store, bh, minerOwner, nil)
 }
 
-func newMessageApplier(msg *types.UnsignedMessage, processor *consensus.DefaultProcessor, st state.Tree, storageMap vm.StorageMap, bh *types.BlockHeight, minerOwner address.Address, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
+func newMessageApplier(msg *types.UnsignedMessage, processor *consensus.DefaultProcessor, st state.Tree, vms vm.Storage, bh *types.BlockHeight, minerOwner address.Address, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
 	// Dragons: support for this feature no longer exists, delete or resurect
 
 	// amr, err := processor.ApplyMessagesAndPayRewards(context.Background(), st, storageMap, []*types.UnsignedMessage{msg}, minerOwner, bh, ancestors)
@@ -201,7 +201,7 @@ func newMessageApplier(msg *types.UnsignedMessage, processor *consensus.DefaultP
 }
 
 // CreateAndApplyTestMessageFrom wraps the given parameters in a message and calls ApplyTestMessage.
-func CreateAndApplyTestMessageFrom(t *testing.T, st state.Tree, vms vm.StorageMap, from address.Address, to address.Address, val, bh uint64, method types.MethodID, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
+func CreateAndApplyTestMessageFrom(t *testing.T, st state.Tree, vms vm.Storage, from address.Address, to address.Address, val, bh uint64, method types.MethodID, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
 	t.Helper()
 
 	pdata := actor.MustConvertParams(params...)
@@ -211,11 +211,11 @@ func CreateAndApplyTestMessageFrom(t *testing.T, st state.Tree, vms vm.StorageMa
 
 // CreateAndApplyTestMessage wraps the given parameters in a message and calls
 // CreateAndApplyTestMessageFrom sending the message from address.TestAddress
-func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.StorageMap, to address.Address, val, bh uint64, method types.MethodID, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
+func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.Storage, to address.Address, val, bh uint64, method types.MethodID, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
 	return CreateAndApplyTestMessageFrom(t, st, vms, address.TestAddress, to, val, bh, method, ancestors, params...)
 }
 
-func applyTestMessageWithAncestors(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
+func applyTestMessageWithAncestors(actors builtin.Actors, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh *types.BlockHeight, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
 	msg.GasPrice = types.NewGasPrice(1)
 	msg.GasLimit = types.NewGasUnits(300)
 

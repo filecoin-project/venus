@@ -285,7 +285,7 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 	ctx := context.TODO()
 	d := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(d)
-	vms := vm.NewStorageMap(bs)
+	vms := vm.NewStorage(bs)
 
 	addr1, addr2, addr3, addr5 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2], mockSigner.Addresses[4]
 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
@@ -616,7 +616,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 
 	// Set actor nonce past nonce of message in pool.
 	// Have to do this here to get a permanent error in the pool.
-	act, actID := th.RequireLookupActor(ctx, t, st, vm.NewStorageMap(bs), addrs[1])
+	act, actID := th.RequireLookupActor(ctx, t, st, vm.NewStorage(bs), addrs[1])
 	require.NoError(t, err)
 
 	act.CallSeqNum = types.Uint64(2)
@@ -666,7 +666,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		return nil, nil
 	}
 	minerAddr := addrs[3]
-	th.RequireInitAccountActor(ctx, t, st, vm.NewStorageMap(bs), addrs[4], types.ZeroAttoFIL)
+	th.RequireInitAccountActor(ctx, t, st, vm.NewStorage(bs), addrs[4], types.ZeroAttoFIL)
 	minerOwnerAddr := addrs[4]
 
 	messages := chain.NewMessageStore(bs)
