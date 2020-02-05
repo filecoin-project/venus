@@ -11,7 +11,6 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	vmerrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 )
@@ -30,76 +29,6 @@ func MarshalStorage(in interface{}) ([]byte, error) {
 // UnmarshalStorage decodes the passed in bytes into the given object.
 func UnmarshalStorage(raw []byte, to interface{}) error {
 	return encoding.Decode(raw, to)
-}
-
-// WithState is a helper method that makes dealing with storage serialization
-// easier for implementors.
-// It is designed to be used like:
-//
-// var st MyStorage
-// ret, err := WithState(ctx, &st, func() (interface{}, error) {
-//   fmt.Println("hey look, my storage is loaded: ", st)
-//   return st.Thing, nil
-// })
-//
-// Note that if 'f' returns an error, modifications to the storage are not
-// saved.
-func WithState(ctx runtime.InvocationContext, st interface{}, f func() (interface{}, error)) (interface{}, error) {
-	if err := ReadState(ctx, st); err != nil {
-		return nil, err
-	}
-
-	ret, err := f()
-	if err != nil {
-		return nil, err
-	}
-
-	stage := ctx.Runtime().LegacyStorage()
-
-	cid, err := stage.Put(st)
-	if err != nil {
-		return nil, vmerrors.RevertErrorWrap(err, "Could not stage memory chunk")
-	}
-
-	err = stage.LegacyCommit(cid, stage.LegacyHead())
-	if err != nil {
-		return nil, vmerrors.RevertErrorWrap(err, "Could not commit actor memory")
-	}
-
-	return ret, nil
-}
-
-// ReadState is a helper method to read the cbor node at the actor's Head into the given struct
-func ReadState(ctx runtime.InvocationContext, st interface{}) error {
-	storage := ctx.Runtime().LegacyStorage()
-
-	memory, err := storage.Get(storage.LegacyHead())
-	if err != nil {
-		return vmerrors.FaultErrorWrap(err, "Could not read actor storage")
-	}
-
-	if err := UnmarshalStorage(memory, st); err != nil {
-		return vmerrors.FaultErrorWrap(err, "Could not unmarshall actor storage")
-	}
-
-	return nil
-}
-
-// WriteState stores state and commits it as the actor's head
-func WriteState(ctx runtime.InvocationContext, state interface{}) error {
-	stage := ctx.Runtime().LegacyStorage()
-
-	cid, err := stage.Put(state)
-	if err != nil {
-		return vmerrors.RevertErrorWrap(err, "Could not stage memory chunk")
-	}
-
-	err = stage.LegacyCommit(cid, stage.LegacyHead())
-	if err != nil {
-		return vmerrors.RevertErrorWrap(err, "Could not commit actor memory")
-	}
-
-	return nil
 }
 
 // SetKeyValue convenience method to load a lookup, set one key value pair and commit.

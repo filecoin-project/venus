@@ -160,7 +160,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, sectorSize *typ
 	}
 
 	var state State
-	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+	ret, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		if !isSupportedSectorSize(state.ProofsMode, sectorSize) {
 			return nil, Errors[ErrUnsupportedSectorSize]
 		}
@@ -230,7 +230,7 @@ func (*impl) updateStorage(vmctx runtime.InvocationContext, delta *types.BytesAm
 	}
 
 	var state State
-	_, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+	_, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		miner := vmctx.Message().Caller()
 		ctx := context.Background()
 
@@ -265,7 +265,7 @@ func (a *impl) getLateMiners(vmctx runtime.InvocationContext) (*map[string]uint6
 	var state State
 	ctx := context.Background()
 
-	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+	ret, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		miners := map[string]uint64{}
 		lu, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.Miners)
 		if err != nil {
@@ -311,7 +311,7 @@ func (*impl) getTotalStorage(vmctx runtime.InvocationContext) (*types.BytesAmoun
 	}
 
 	var state State
-	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+	ret, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		return state.TotalCommittedStorage, nil
 	})
 	if err != nil {
@@ -333,7 +333,7 @@ func (*impl) getProofsMode(vmctx runtime.InvocationContext) (types.ProofsMode, u
 	}
 
 	var state State
-	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+	ret, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		return state.ProofsMode, nil
 	})
 	if err != nil {

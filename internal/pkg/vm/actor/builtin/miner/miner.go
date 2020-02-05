@@ -481,7 +481,7 @@ func (*Impl) AddAsk(ctx invocationContext, price types.AttoFIL, expiry *big.Int)
 	}
 
 	var state State
-	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	out, err := ctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		if ctx.Message().Caller() != state.Worker {
 			return nil, Errors[ErrCallerUnauthorized]
 		}
@@ -531,7 +531,7 @@ func (*Impl) GetAsks(ctx invocationContext) ([]types.Uint64, uint8, error) {
 		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	var state State
-	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	out, err := ctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		var askids []types.Uint64
 		for _, ask := range state.Asks {
 			if !ask.ID.IsUint64() {
@@ -561,7 +561,7 @@ func (*Impl) GetAsk(ctx invocationContext, askid *big.Int) ([]byte, uint8, error
 	}
 
 	var state State
-	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	out, err := ctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		var ask *Ask
 		for _, a := range state.Asks {
 			if a.ID.Cmp(askid) == 0 {
@@ -600,7 +600,7 @@ func (*Impl) GetOwner(ctx invocationContext) (address.Address, uint8, error) {
 	}
 
 	var state State
-	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	out, err := ctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		return state.Owner, nil
 	})
 	if err != nil {
@@ -621,7 +621,7 @@ func (*Impl) GetLastUsedSectorID(ctx invocationContext) (uint64, uint8, error) {
 		return 0, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	var state State
-	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	out, err := ctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		return state.LastUsedSectorID, nil
 	})
 	if err != nil {
@@ -646,7 +646,7 @@ func (a *Impl) IsBootstrapMiner(ctx invocationContext) (bool, uint8, error) {
 // late or after the generation attack threshold.
 func (*Impl) GetPoStState(ctx invocationContext) (*big.Int, uint8, error) {
 	var state State
-	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	out, err := ctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		// Don't check lateness unless there is storage to prove
 		if state.ProvingSet.Size() == 0 {
 			return int64(PoStStateNoStorage), nil
@@ -675,10 +675,7 @@ func (*Impl) GetProvingSetCommitments(ctx invocationContext) (map[string]types.C
 	}
 
 	var state State
-	err := actor.ReadState(ctx, &state)
-	if err != nil {
-		return map[string]types.Commitments{}, errors.CodeError(err), err
-	}
+	ctx.StateHandle().Readonly(&state)
 
 	commitments := NewSectorSet()
 	for _, sectorID := range state.ProvingSet.Values() {
@@ -699,7 +696,7 @@ func (*Impl) GetSectorSize(ctx invocationContext) (*types.BytesAmount, uint8, er
 	}
 
 	var state State
-	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	out, err := ctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		return state.SectorSize, nil
 	})
 	if err != nil {
@@ -731,7 +728,7 @@ func (a *Impl) CommitSector(ctx invocationContext, sectorID uint64, commD, commR
 	}
 
 	var state State
-	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	_, err := ctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		// As with submitPoSt messages, bootstrap miner actors don't verify
 		// the commitSector messages that they are sent.
 		//
@@ -818,7 +815,7 @@ func (*Impl) ChangeWorker(ctx invocationContext, worker address.Address) (uint8,
 	}
 
 	var state State
-	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	_, err := ctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		if ctx.Message().Caller() != state.Owner {
 			return nil, Errors[ErrCallerUnauthorized]
 		}
@@ -841,7 +838,7 @@ func (*Impl) GetWorker(ctx invocationContext) (address.Address, uint8, error) {
 	}
 
 	var state State
-	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	out, err := ctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		return state.Worker, nil
 	})
 	if err != nil {
@@ -863,11 +860,7 @@ func (*Impl) GetPeerID(ctx invocationContext) (peer.ID, uint8, error) {
 	}
 
 	var state State
-
-	err := actor.ReadState(ctx, &state)
-	if err != nil {
-		return peer.ID(""), errors.CodeError(err), err
-	}
+	ctx.StateHandle().Readonly(&state)
 
 	return state.PeerID, 0, nil
 }
@@ -879,7 +872,7 @@ func (*Impl) UpdatePeerID(ctx invocationContext, pid peer.ID) (uint8, error) {
 	}
 
 	var storage State
-	_, err := actor.WithState(ctx, &storage, func() (interface{}, error) {
+	_, err := ctx.StateHandle().Transaction(&storage, func() (interface{}, error) {
 		// verify that the caller is authorized to perform update
 		if ctx.Message().Caller() != storage.Worker {
 			return nil, Errors[ErrCallerUnauthorized]
@@ -903,7 +896,7 @@ func (*Impl) GetPower(ctx invocationContext) (*types.BytesAmount, uint8, error) 
 	}
 
 	var state State
-	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	ret, err := ctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		return state.Power, nil
 	})
 	if err != nil {
@@ -925,7 +918,7 @@ func (*Impl) GetActiveCollateral(ctx invocationContext) (types.AttoFIL, uint8, e
 		return types.ZeroAttoFIL, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	var state State
-	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	ret, err := ctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		return state.ActiveCollateral, nil
 	})
 	if err != nil {
@@ -946,7 +939,7 @@ func (*Impl) AddFaults(ctx invocationContext, faults types.FaultSet) (uint8, err
 	}
 
 	var state State
-	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	_, err := ctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		challengeBlockHeight := provingWindowStart(state)
 
 		epoch := ctx.Runtime().CurrentEpoch()
@@ -978,7 +971,7 @@ func (a *Impl) SubmitPoSt(ctx invocationContext, poStProof types.PoStProof, faul
 	chainHeight := ctx.Runtime().CurrentEpoch()
 	sender := ctx.Message().Caller()
 	var state State
-	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	_, err := ctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		// verify that the caller is authorized to perform update
 		if sender != state.Worker {
 			return nil, Errors[ErrCallerUnauthorized]
@@ -1086,7 +1079,7 @@ func (*Impl) SlashStorageFault(ctx invocationContext) (uint8, error) {
 
 	chainHeight := ctx.Runtime().CurrentEpoch()
 	var state State
-	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	_, err := ctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		// You can only be slashed once for missing your PoSt.
 		if !state.SlashedAt.IsZero() {
 			return nil, errors.NewCodedRevertError(ErrMinerAlreadySlashed, "miner already slashed")
@@ -1143,10 +1136,7 @@ func (*Impl) SlashStorageFault(ctx invocationContext) (uint8, error) {
 // GetProvingWindow returns the proving period start and proving period end
 func (*Impl) GetProvingWindow(ctx invocationContext) ([]types.Uint64, uint8, error) {
 	var state State
-	err := actor.ReadState(ctx, &state)
-	if err != nil {
-		return nil, errors.CodeError(err), err
-	}
+	ctx.StateHandle().Readonly(&state)
 
 	return []types.Uint64{
 		types.Uint64(provingWindowStart(state).AsBigInt().Uint64()),
@@ -1158,10 +1148,7 @@ func (*Impl) GetProvingWindow(ctx invocationContext) ([]types.Uint64, uint8, err
 // power and proving period.
 func (a *Impl) CalculateLateFee(ctx invocationContext, height *types.BlockHeight) (types.AttoFIL, uint8, error) {
 	var state State
-	err := actor.ReadState(ctx, &state)
-	if err != nil {
-		return types.ZeroAttoFIL, errors.CodeError(err), err
-	}
+	ctx.StateHandle().Readonly(&state)
 
 	epoch := ctx.Runtime().CurrentEpoch()
 	collateral := a.getPledgeCollateralRequirement(state, &epoch)

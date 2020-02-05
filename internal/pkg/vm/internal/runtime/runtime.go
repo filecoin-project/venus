@@ -21,10 +21,6 @@ type Runtime interface {
 	//
 	// Note: this is required for custom data structures.
 	Storage() Storage
-	// LegacyStorage is the raw store for IPLD objects.
-	//
-	// Note: this is required for custom data structures.
-	LegacyStorage() LegacyStorage
 }
 
 // MessageInfo contains information available to the actor about the executing message.

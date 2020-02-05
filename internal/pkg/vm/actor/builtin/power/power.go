@@ -229,7 +229,7 @@ func (*impl) removeStorageMiner(vmctx runtime.InvocationContext, delAddr address
 	// TODO #3649 we need proper authentication.  Totally insecure as it is.
 
 	var state State
-	_, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+	_, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		ctx := context.Background()
 		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
 			// Find entry to delete.
@@ -271,7 +271,7 @@ func (*impl) getTotalPower(vmctx runtime.InvocationContext) (*types.BytesAmount,
 	// TODO #3649 we need proper authentication. Totally insecure without.
 
 	var state State
-	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+	ret, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		ctx := context.Background()
 		total := types.NewBytesAmount(0)
 		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
@@ -300,7 +300,7 @@ func (*impl) getPowerReport(vmctx runtime.InvocationContext, addr address.Addres
 	}
 
 	var state State
-	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+	ret, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		ctx := context.Background()
 		var tableEntry TableEntry
 		var report types.PowerReport
@@ -330,7 +330,7 @@ func (*impl) getSectorSize(vmctx runtime.InvocationContext, addr address.Address
 	}
 
 	var state State
-	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+	ret, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		ctx := context.Background()
 		ss := types.NewBytesAmount(0)
 		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
