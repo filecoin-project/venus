@@ -210,11 +210,7 @@ func (*Impl) GetNetwork(ctx runtime.InvocationContext) (string, uint8, error) {
 	}
 
 	var state State
-	err := actor.ReadState(ctx, &state)
-	if err != nil {
-		return "", errors.CodeError(err), err
-	}
-
+	ctx.StateHandle().Readonly(&state)
 	return state.Network, 0, nil
 }
 
@@ -241,19 +237,16 @@ func (a *Impl) GetActorIDForAddress(ctx invocationContext, addr address.Address)
 }
 
 // GetAddressForActorID looks up the address for an actor id.
-func (a *Impl) GetAddressForActorID(rt runtime.InvocationContext, actorID types.Uint64) (address.Address, uint8, error) {
-	if err := rt.Charge(actor.DefaultGasCost); err != nil {
+func (a *Impl) GetAddressForActorID(vmctx runtime.InvocationContext, actorID types.Uint64) (address.Address, uint8, error) {
+	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return address.Undef, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
-	err := actor.ReadState(rt, &state)
-	if err != nil {
-		return address.Undef, errors.CodeError(err), err
-	}
+	vmctx.StateHandle().Readonly(state)
 
 	ctx := context.TODO()
-	lookup, err := actor.LoadLookup(ctx, rt.Runtime().Storage(), state.IDMap)
+	lookup, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.IDMap)
 	if err != nil {
 		return address.Undef, errors.CodeError(err), errors.RevertErrorWrapf(err, "could not load lookup for cid: %s", state.IDMap)
 	}

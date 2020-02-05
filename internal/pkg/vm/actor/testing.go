@@ -155,7 +155,7 @@ func (*impl) ChargeGasAndRevertError(ctx runtime.InvocationContext) (uint8, erro
 // revert error.
 func (*impl) ReturnRevertError(ctx runtime.InvocationContext) (uint8, error) {
 	fastore := &FakeActorStorage{}
-	_, err := WithState(ctx, fastore, func() (interface{}, error) {
+	_, err := ctx.StateHandle().Transaction(fastore, func() (interface{}, error) {
 		fastore.Changed = true
 		return nil, nil
 	})
@@ -168,7 +168,7 @@ func (*impl) ReturnRevertError(ctx runtime.InvocationContext) (uint8, error) {
 // GoodCall sets a bit inside fakeActor's storage.
 func (*impl) GoodCall(ctx runtime.InvocationContext) (uint8, error) {
 	fastore := &FakeActorStorage{}
-	_, err := WithState(ctx, fastore, func() (interface{}, error) {
+	_, err := ctx.StateHandle().Transaction(fastore, func() (interface{}, error) {
 		fastore.Changed = true
 		return nil, nil
 	})

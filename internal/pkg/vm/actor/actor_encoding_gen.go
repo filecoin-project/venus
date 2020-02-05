@@ -12,7 +12,6 @@ import (
 
 func init() {
 	encoding.RegisterIpldCborType(Actor{})
-	encoding.RegisterIpldCborType(FakeActorStorage{})
 }
 
 //
