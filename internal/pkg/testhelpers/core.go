@@ -45,7 +45,7 @@ func RequireMakeStateTree(t *testing.T, cst *hamt.CborIpldStore, acts map[addres
 // RequireNewMinerActor creates a new miner actor with the given owner, pledge, and collateral,
 // and requires that its steps succeed.
 func RequireNewMinerActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.Storage, owner address.Address, pledge uint64, pid peer.ID, coll types.AttoFIL) (*actor.Actor, address.Address) {
-	// Dragons: re-write
+	// Dragons: re-write using the new actor states structures directly
 
 	// cachedTree := state.NewCachedTree(st)
 	// initActor, _, err := cachedTree.GetOrCreateActor(ctx, address.InitAddress, func() (*actor.Actor, address.Address, error) {
@@ -81,7 +81,7 @@ func RequireNewMinerActor(ctx context.Context, t *testing.T, st state.Tree, vms 
 
 // RequireLookupActor converts the given address to an id address before looking up the actor in the state tree
 func RequireLookupActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.Storage, actorAddr address.Address) (*actor.Actor, address.Address) {
-	// Dragons: delete
+	// Dragons: delete, nothing outside the vm should be concerned about actor id indexes
 
 	// if actorAddr.Protocol() == address.ID {
 	// 	return state.MustGetActor(st, actorAddr), actorAddr

@@ -313,9 +313,8 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 		return message.Failure(exitcode.OutOfGas, gas.Zero), msgCost.Cost(msg.GasPrice)
 	}
 
-	// Dragons: from address need to be normalized here
-
 	// 2. load actor from global state
+	msg.From = vm.normalizeFrom(msg.From)
 	// Dragons: change this to actor, ok, error ok for found or not, err are non-recoverable IO errors and such
 	fromActor, err := vm.state.GetActor(context.Background(), msg.From)
 	if fromActor == nil || err != nil {
