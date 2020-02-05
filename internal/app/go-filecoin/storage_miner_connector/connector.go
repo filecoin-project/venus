@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -158,7 +158,7 @@ func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, pieces ..
 	mcid, cerr, err := m.outbox.Send(
 		ctx,
 		m.workerAddr,
-		fcaddr.StorageMarketAddress,
+		vmaddr.StorageMarketAddress,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
 		types.NewGasUnits(300),

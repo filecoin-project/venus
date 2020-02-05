@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	fcsm "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -112,7 +112,7 @@ func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address
 	mcid, cerr, err := c.outbox.Send(
 		ctx,
 		fromAddr,
-		fcaddr.StorageMarketAddress,
+		vmaddr.StorageMarketAddress,
 		types.NewAttoFIL(amount.Int),
 		types.NewGasPrice(1),
 		types.NewGasUnits(300),
@@ -152,7 +152,7 @@ func (c *connectorCommon) SignBytes(ctx context.Context, signer address.Address,
 
 func (c *connectorCommon) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {
 	var smState spasm.StorageMarketActorState
-	err := c.chainStore.GetActorStateAt(ctx, c.chainStore.Head(), fcaddr.StorageMarketAddress, &smState)
+	err := c.chainStore.GetActorStateAt(ctx, c.chainStore.Head(), vmaddr.StorageMarketAddress, &smState)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}
@@ -247,7 +247,7 @@ func decodeSectorId(msg *types.SignedMessage) (uint64, error) {
 
 func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
 	var smState spasm.StorageMarketActorState
-	err := c.chainStore.GetActorStateAt(ctx, c.chainStore.Head(), fcaddr.StorageMarketAddress, &smState)
+	err := c.chainStore.GetActorStateAt(ctx, c.chainStore.Head(), vmaddr.StorageMarketAddress, &smState)
 	if err != nil {
 		return nil, err
 	}

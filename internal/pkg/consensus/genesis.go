@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -36,10 +36,10 @@ var (
 
 func init() {
 	defaultAccounts = map[address.Address]types.AttoFIL{
-		fcaddr.LegacyNetworkAddress: types.NewAttoFILFromFIL(10000000000),
-		fcaddr.BurntFundsAddress:    types.NewAttoFILFromFIL(0),
-		fcaddr.TestAddress:          types.NewAttoFILFromFIL(50000),
-		fcaddr.TestAddress2:         types.NewAttoFILFromFIL(60000),
+		vmaddr.LegacyNetworkAddress: types.NewAttoFILFromFIL(10000000000),
+		vmaddr.BurntFundsAddress:    types.NewAttoFILFromFIL(0),
+		vmaddr.TestAddress:          types.NewAttoFILFromFIL(50000),
+		vmaddr.TestAddress2:         types.NewAttoFILFromFIL(60000),
 	}
 }
 
@@ -185,7 +185,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			}
 			val := genCfg.accounts[addr]
 
-			_, err = vm.ApplyGenesisMessage(fcaddr.LegacyNetworkAddress, fcaddr.InitAddress,
+			_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, vmaddr.InitAddress,
 				initactor.ExecMethodID, val, types.AccountActorCodeCid, []interface{}{addr})
 			if err != nil {
 				return nil, err
@@ -279,14 +279,14 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 		return &a
 	}
 
-	createActor(fcaddr.InitAddress, types.InitActorCodeCid, initactor.State{
+	createActor(vmaddr.InitAddress, types.InitActorCodeCid, initactor.State{
 		Network: network,
 		NextID:  100,
 	})
 
-	createActor(fcaddr.StoragePowerAddress, types.PowerActorCodeCid, power.State{})
+	createActor(vmaddr.StoragePowerAddress, types.PowerActorCodeCid, power.State{})
 
-	createActor(fcaddr.StorageMarketAddress, types.StorageMarketActorCodeCid, storagemarket.State{
+	createActor(vmaddr.StorageMarketAddress, types.StorageMarketActorCodeCid, storagemarket.State{
 		TotalCommittedStorage: types.NewBytesAmount(0),
 		ProofsMode:            storeType,
 	})
@@ -315,7 +315,7 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 				return err
 			}
 		} else {
-			_, err = vm.ApplyGenesisMessage(fcaddr.LegacyNetworkAddress, fcaddr.InitAddress, initactor.ExecMethodID, val, types.AccountActorCodeCid, []interface{}{addr})
+			_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, vmaddr.InitAddress, initactor.ExecMethodID, val, types.AccountActorCodeCid, []interface{}{addr})
 			if err != nil {
 				return err
 			}

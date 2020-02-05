@@ -8,7 +8,7 @@ import (
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // TODO: tests that check the exact serialization of different inputs.
@@ -18,7 +18,7 @@ import (
 func TestBasicEncodingRoundTrip(t *testing.T) {
 	tf.UnitTest(t)
 
-	addrGetter := fcaddr.NewForTestGetter()
+	addrGetter := vmaddr.NewForTestGetter()
 
 	cases := map[string][]interface{}{
 		"empty":      nil,
@@ -38,7 +38,7 @@ func TestBasicEncodingRoundTrip(t *testing.T) {
 			},
 		},
 		"miner post states": {
-			&map[string]uint64{fcaddr.TestAddress.String(): 1, fcaddr.TestAddress2.String(): 2},
+			&map[string]uint64{vmaddr.TestAddress.String(): 1, vmaddr.TestAddress2.String(): 2},
 		},
 	}
 

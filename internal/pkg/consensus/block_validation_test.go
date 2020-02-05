@@ -16,7 +16,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestBlockValidSemantic(t *testing.T) {
@@ -101,7 +101,7 @@ func TestBlockValidSyntax(t *testing.T) {
 
 	validTs := types.Uint64(mclock.Now().Unix())
 	validSt := types.NewCidForTestGetter()()
-	validAd := fcaddr.NewForTestGetter()()
+	validAd := vmaddr.NewForTestGetter()()
 	validTi := block.Ticket{VRFProof: []byte{1}}
 	validCandidate := block.NewEPoStCandidate(1, []byte{1}, 1)
 	validPoStInfo := block.NewEPoStInfo([]byte{1}, []byte{1}, validCandidate)

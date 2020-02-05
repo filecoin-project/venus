@@ -13,7 +13,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
@@ -167,7 +167,7 @@ func TestLargestNonce(t *testing.T) {
 		m := types.NewSignedMsgs(2, mockSigner)
 		reqAdd(t, p, 0, m[0], m[1])
 
-		_, found := p.LargestNonce(fcaddr.NewForTestGetter()())
+		_, found := p.LargestNonce(vmaddr.NewForTestGetter()())
 		assert.False(t, found)
 	})
 

@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
@@ -1036,7 +1036,7 @@ func (a *Impl) SubmitPoSt(ctx invocationContext, poStProof types.PoStProof, faul
 		delta := newPower.Sub(oldPower)
 
 		if !delta.IsZero() {
-			_, ret, err := ctx.LegacySend(fcaddr.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{delta})
+			_, ret, err := ctx.LegacySend(vmaddr.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{delta})
 			if err != nil {
 				return nil, err
 			}
@@ -1099,7 +1099,7 @@ func (*Impl) SlashStorageFault(ctx invocationContext) (uint8, error) {
 
 		// Strip the miner of their power.
 		powerDelta := types.ZeroBytes.Sub(state.Power) // negate bytes amount
-		_, ret, err := ctx.LegacySend(fcaddr.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{powerDelta})
+		_, ret, err := ctx.LegacySend(vmaddr.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{powerDelta})
 		if err != nil {
 			return nil, err
 		}
@@ -1165,7 +1165,7 @@ func (a *Impl) CalculateLateFee(ctx invocationContext, height *types.BlockHeight
 //
 
 func (*Impl) burnFunds(ctx invocationContext, amount types.AttoFIL) error {
-	_, _, err := ctx.LegacySend(fcaddr.BurntFundsAddress, types.SendMethodID, amount, []interface{}{})
+	_, _, err := ctx.LegacySend(vmaddr.BurntFundsAddress, types.SendMethodID, amount, []interface{}{})
 	return err
 }
 
@@ -1192,7 +1192,7 @@ func getPoStChallengeSeed(ctx invocationContext, state State, sampleAt *types.Bl
 // GetProofsMode returns the genesis block-configured proofs mode.
 func GetProofsMode(ctx invocationContext) (types.ProofsMode, error) {
 	var proofsMode types.ProofsMode
-	msgResult, _, err := ctx.LegacySend(fcaddr.StorageMarketAddress, Storagemarket_GetProofsMode, types.ZeroAttoFIL, nil)
+	msgResult, _, err := ctx.LegacySend(vmaddr.StorageMarketAddress, Storagemarket_GetProofsMode, types.ZeroAttoFIL, nil)
 	if err != nil {
 		return types.TestProofsMode, xerrors.Wrap(err, "'GetProofsMode' message failed")
 	}

@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
@@ -37,9 +37,9 @@ func (tppp *testProtocolParamsPlumbing) ChainHeadKey() block.TipSetKey {
 }
 
 func (tppp *testProtocolParamsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
-	if to == fcaddr.StorageMarketAddress && method == storagemarket.GetProofsMode {
+	if to == vmaddr.StorageMarketAddress && method == storagemarket.GetProofsMode {
 		return [][]byte{{byte(types.TestProofsMode)}}, nil
-	} else if to == fcaddr.InitAddress && method == initactor.GetNetworkMethodID {
+	} else if to == vmaddr.InitAddress && method == initactor.GetNetworkMethodID {
 		return [][]byte{[]byte("protocolTest")}, nil
 	}
 	return [][]byte{}, errors.Errorf("call to unknown method %s", method)

@@ -21,7 +21,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestBlockTopicValidator(t *testing.T) {
@@ -83,7 +83,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 	require.NoError(t, err)
 
 	// generate a miner address for blocks
-	miner := fcaddr.NewForTestGetter()()
+	miner := vmaddr.NewForTestGetter()()
 
 	mclock.Advance(blocktime) // enter epoch 1
 

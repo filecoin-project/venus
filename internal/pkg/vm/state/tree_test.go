@@ -15,7 +15,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestStatePutGet(t *testing.T) {
@@ -31,7 +31,7 @@ func TestStatePutGet(t *testing.T) {
 	act2.IncrementSeqNum()
 	act2.IncrementSeqNum()
 
-	addrGetter := fcaddr.NewForTestGetter()
+	addrGetter := vmaddr.NewForTestGetter()
 	addr1 := addrGetter()
 	addr2 := addrGetter()
 
@@ -67,7 +67,7 @@ func TestStateErrors(t *testing.T) {
 	cst := hamt.NewCborStore()
 	tree := NewTree(cst)
 
-	a, err := tree.GetActor(ctx, fcaddr.NewForTestGetter()())
+	a, err := tree.GetActor(ctx, vmaddr.NewForTestGetter()())
 	assert.Nil(t, a)
 	assert.Error(t, err)
 	assert.True(t, IsActorNotFoundError(err))
@@ -87,7 +87,7 @@ func TestStateGetOrCreate(t *testing.T) {
 	cst := hamt.NewCborStore()
 	tree := NewTree(cst)
 
-	addr := fcaddr.NewForTestGetter()()
+	addr := vmaddr.NewForTestGetter()()
 
 	// no actor - error
 	t.Run("no actor - error", func(t *testing.T) {
@@ -124,7 +124,7 @@ func TestGetAllActors(t *testing.T) {
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 	tree := NewTree(cst)
-	addr := fcaddr.NewForTestGetter()()
+	addr := vmaddr.NewForTestGetter()()
 
 	actor := actor.Actor{Code: types.AccountActorCodeCid, CallSeqNum: 1234, Balance: types.NewAttoFILFromFIL(123)}
 	err := tree.SetActor(ctx, addr, &actor)

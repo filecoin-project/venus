@@ -31,7 +31,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -207,7 +207,7 @@ func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, k
 	if err != nil {
 		return err
 	}
-	err = st.SetActor(context.Background(), fcaddr.LegacyNetworkAddress, netact)
+	err = st.SetActor(context.Background(), vmaddr.LegacyNetworkAddress, netact)
 	if err != nil {
 		return err
 	}
@@ -225,7 +225,7 @@ func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, k
 			return err
 		}
 
-		_, err = vm.ApplyGenesisMessage(fcaddr.LegacyNetworkAddress, fcaddr.InitAddress,
+		_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, vmaddr.InitAddress,
 			initactor.ExecMethodID, types.NewAttoFILFromFIL(valint), types.AccountActorCodeCid, []interface{}{addr})
 		if err != nil {
 			return err
@@ -260,12 +260,12 @@ func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*types.KeyInfo, m
 		}
 
 		// give collateral to account actor
-		_, err = vm.ApplyGenesisMessage(fcaddr.LegacyNetworkAddress, addr, types.SendMethodID, types.NewAttoFILFromFIL(100000))
+		_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, addr, types.SendMethodID, types.NewAttoFILFromFIL(100000))
 		if err != nil {
 			return nil, err
 		}
 
-		ret, err := vm.ApplyGenesisMessage(addr, fcaddr.StoragePowerAddress, power.CreateStorageMiner, types.NewAttoFILFromFIL(100000), addr, addr, pid, types.NewBytesAmount(m.SectorSize))
+		ret, err := vm.ApplyGenesisMessage(addr, vmaddr.StoragePowerAddress, power.CreateStorageMiner, types.NewAttoFILFromFIL(100000), addr, addr, pid, types.NewBytesAmount(m.SectorSize))
 		if err != nil {
 			return nil, err
 		}
@@ -283,7 +283,7 @@ func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*types.KeyInfo, m
 		for i := uint64(0); i < m.NumCommittedSectors; i++ {
 			powerReport := types.NewPowerReport(m.SectorSize*m.NumCommittedSectors, 0)
 
-			_, err := vm.ApplyGenesisMessage(addr, fcaddr.StoragePowerAddress, power.ProcessPowerReport, types.NewAttoFILFromFIL(0), powerReport, mIDAddr)
+			_, err := vm.ApplyGenesisMessage(addr, vmaddr.StoragePowerAddress, power.ProcessPowerReport, types.NewAttoFILFromFIL(0), powerReport, mIDAddr)
 			if err != nil {
 				return nil, err
 			}

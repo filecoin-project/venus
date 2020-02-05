@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -43,7 +43,7 @@ func TestWalletSimple(t *testing.T) {
 	assert.Equal(t, fs, backend)
 
 	t.Log("find unknown address")
-	randomAddr := fcaddr.NewForTestGetter()()
+	randomAddr := vmaddr.NewForTestGetter()()
 
 	assert.False(t, w.HasAddress(randomAddr))
 

@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	fcsm "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -110,7 +110,7 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 	mcid, cerr, err := s.outbox.Send(
 		ctx,
 		workerAddr,
-		fcaddr.StorageMarketAddress,
+		vmaddr.StorageMarketAddress,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
 		types.NewGasUnits(300),
@@ -160,7 +160,7 @@ func (s *StorageProviderNodeConnector) OnDealComplete(ctx context.Context, deal 
 // LocatePieceForDealWithinSector finds the sector, offset and length of a piece associated with the given deal id
 func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx context.Context, dealID uint64) (sectorNumber uint64, offset uint64, length uint64, err error) {
 	var smState spasm.StorageMarketActorState
-	err = s.chainStore.GetActorStateAt(ctx, s.chainStore.Head(), fcaddr.StorageMarketAddress, &smState)
+	err = s.chainStore.GetActorStateAt(ctx, s.chainStore.Head(), vmaddr.StorageMarketAddress, &smState)
 	if err != nil {
 		return 0, 0, 0, err
 	}

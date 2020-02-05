@@ -24,7 +24,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -83,7 +83,7 @@ func (s *StorageClientNodeConnector) ListClientDeals(ctx context.Context, addr a
 func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context) ([]*storagemarket.StorageProviderInfo, error) {
 	head := s.chainStore.Head()
 	var spState spapow.StoragePowerActorState
-	err := s.chainStore.GetActorStateAt(ctx, head, fcaddr.StoragePowerAddress, &spState)
+	err := s.chainStore.GetActorStateAt(ctx, head, vmaddr.StoragePowerAddress, &spState)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 		return 0, xerrors.Errorf("deal wasn't published by storage provider: from=%s, provider=%s", unsigned.From, deal.Proposal.Provider)
 	}
 
-	if unsigned.To != fcaddr.StorageMarketAddress {
+	if unsigned.To != vmaddr.StorageMarketAddress {
 		return 0, xerrors.Errorf("deal publish message wasn't set to StorageMarket actor (to=%s)", unsigned.To)
 	}
 

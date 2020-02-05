@@ -11,7 +11,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,7 +35,7 @@ func TestCachedStateGetCommit(t *testing.T) {
 	act2Cid := requireCid(t, "world")
 	act2.Head = act2Cid
 
-	addrGetter := fcaddr.NewForTestGetter()
+	addrGetter := vmaddr.NewForTestGetter()
 	addr1, addr2 := addrGetter(), addrGetter()
 
 	// add actors to underlying cache
@@ -96,7 +96,7 @@ func TestCachedStateGetOrCreate(t *testing.T) {
 	actorToCreate := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 
 	// can create actor in cache
-	addr := fcaddr.NewForTestGetter()()
+	addr := vmaddr.NewForTestGetter()()
 	actor, _, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, address.Address, error) {
 		return actorToCreate, addr, nil
 	})

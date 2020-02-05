@@ -5,7 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -49,7 +49,7 @@ func requireValidTicket(t *testing.T, parent block.Ticket, signer types.Signer, 
 func TestNextTicketFailsWithInvalidSigner(t *testing.T) {
 	parent := consensus.MakeFakeTicketForTest()
 	signer, _ := types.NewMockSignersAndKeyInfo(1)
-	badAddr := fcaddr.TestAddress
+	badAddr := vmaddr.TestAddress
 	tm := consensus.TicketMachine{}
 	badTicket, err := tm.NextTicket(parent, badAddr, signer)
 	assert.Error(t, err)

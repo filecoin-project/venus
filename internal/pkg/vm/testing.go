@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
@@ -43,7 +43,7 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 	randomness := make([]byte, 32)
 	copy(randomness[:], []byte("only random in the figurative sense"))
 
-	addressGetter := fcaddr.NewForTestGetter()
+	addressGetter := vmaddr.NewForTestGetter()
 	aux := FakeVMContext{
 		MessageValue:            message,
 		StorageValue:            &testStorage{state: state},

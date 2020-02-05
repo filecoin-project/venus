@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	fcaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // SectorInfo provides information about a sector construction
@@ -95,7 +95,7 @@ func (pp *ProtocolParams) IsSupportedSectorSize(sectorSize *types.BytesAmount) b
 
 func getProofsMode(ctx context.Context, plumbing protocolParamsPlumbing) (types.ProofsMode, error) {
 	var proofsMode types.ProofsMode
-	values, err := plumbing.MessageQuery(ctx, address.Address{}, fcaddr.StorageMarketAddress, storagemarket.GetProofsMode, plumbing.ChainHeadKey())
+	values, err := plumbing.MessageQuery(ctx, address.Address{}, vmaddr.StorageMarketAddress, storagemarket.GetProofsMode, plumbing.ChainHeadKey())
 	if err != nil {
 		return 0, errors.Wrap(err, "'GetProofsMode' query message failed")
 	}
@@ -108,7 +108,7 @@ func getProofsMode(ctx context.Context, plumbing protocolParamsPlumbing) (types.
 }
 
 func getNetworkName(ctx context.Context, plumbing protocolParamsPlumbing) (string, error) {
-	nameBytes, err := plumbing.MessageQuery(ctx, address.Address{}, fcaddr.InitAddress, initactor.GetNetworkMethodID, plumbing.ChainHeadKey())
+	nameBytes, err := plumbing.MessageQuery(ctx, address.Address{}, vmaddr.InitAddress, initactor.GetNetworkMethodID, plumbing.ChainHeadKey())
 	if err != nil {
 		return "", errors.Wrap(err, "'getNetwork' query message failed")
 	}
