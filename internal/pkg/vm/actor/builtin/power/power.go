@@ -124,19 +124,9 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSi
 }
 
 // InitializeState stores the actor's initial data structure.
-func (*Actor) InitializeState(storage runtime.LegacyStorage, _ interface{}) error {
-	initStorage := &State{}
-	stateBytes, err := encoding.Encode(initStorage)
-	if err != nil {
-		return err
-	}
-
-	id, err := storage.Put(stateBytes)
-	if err != nil {
-		return err
-	}
-
-	return storage.LegacyCommit(id, cid.Undef)
+func (*Actor) InitializeState(handle runtime.ActorStateHandle, _ interface{}) error {
+	handle.Create(&State{})
+	return nil
 }
 
 //

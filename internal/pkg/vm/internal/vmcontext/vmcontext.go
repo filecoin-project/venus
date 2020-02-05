@@ -442,7 +442,7 @@ func (vm *VM) getMinerOwner(minerAddr address.Address) address.Address {
 	var stateHandle = NewReadonlyStateHandle(vm.Storage(), minerActorEntry.Head)
 
 	// get a view into the actor state
-	minerView := miner.NewView(stateHandle, vm.LegacyStorage())
+	minerView := miner.NewView(stateHandle, vm.Storage())
 
 	return minerView.Owner()
 }
@@ -518,11 +518,6 @@ func (vm *VM) Randomness(epoch types.BlockHeight) runtime.Randomness {
 // Storage implements runtime.Runtime.
 func (vm *VM) Storage() runtime.Storage {
 	return actorStorage{inner: vm.store}
-}
-
-// LegacyStorage implements runtime.Runtime.
-func (vm *VM) LegacyStorage() runtime.LegacyStorage {
-	panic("legacy code invoked")
 }
 
 //

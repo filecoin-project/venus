@@ -112,7 +112,7 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSi
 }
 
 // InitializeState stores the actor's initial data structure.
-func (*Actor) InitializeState(storage runtime.LegacyStorage, proofsModeInterface interface{}) error {
+func (*Actor) InitializeState(handle runtime.ActorStateHandle, proofsModeInterface interface{}) error {
 	proofsMode, ok := proofsModeInterface.(types.ProofsMode)
 	if !ok {
 		return errors.NewRevertError("storage market actor init parameter is not a proofs mode")
@@ -122,17 +122,9 @@ func (*Actor) InitializeState(storage runtime.LegacyStorage, proofsModeInterface
 		TotalCommittedStorage: types.NewBytesAmount(0),
 		ProofsMode:            proofsMode,
 	}
-	stateBytes, err := encoding.Encode(initStorage)
-	if err != nil {
-		return err
-	}
+	handle.Create(&initStorage)
 
-	id, err := storage.Put(stateBytes)
-	if err != nil {
-		return err
-	}
-
-	return storage.LegacyCommit(id, cid.Undef)
+	return nil
 }
 
 //

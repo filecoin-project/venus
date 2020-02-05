@@ -192,12 +192,3 @@ type Storage interface {
 	// CidOf returns the content-addressable ID of an object WITHOUT storing it.
 	CidOf(interface{}) cid.Cid
 }
-
-// LegacyStorage defines the storage module exposed to actors.
-type LegacyStorage interface {
-	LegacyHead() cid.Cid
-	Put(interface{}) (cid.Cid, error)
-	CidOf(interface{}) (cid.Cid, error)
-	Get(cid.Cid) ([]byte, error)
-	LegacyCommit(cid.Cid, cid.Cid) error
-}

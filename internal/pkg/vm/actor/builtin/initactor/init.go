@@ -143,7 +143,7 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSi
 }
 
 // InitializeState for init actor.
-func (*Actor) InitializeState(storage runtime.LegacyStorage, params interface{}) error {
+func (*Actor) InitializeState(handle runtime.ActorStateHandle, params interface{}) error {
 	network, ok := params.(string)
 	if !ok {
 		return errors.NewRevertError("init actor network parameter is not a string")
@@ -153,17 +153,9 @@ func (*Actor) InitializeState(storage runtime.LegacyStorage, params interface{})
 		Network: network,
 		NextID:  100,
 	}
-	stateBytes, err := encoding.Encode(initStorage)
-	if err != nil {
-		return err
-	}
+	handle.Create(initStorage)
 
-	id, err := storage.Put(stateBytes)
-	if err != nil {
-		return err
-	}
-
-	return storage.LegacyCommit(id, cid.Undef)
+	return nil
 }
 
 //

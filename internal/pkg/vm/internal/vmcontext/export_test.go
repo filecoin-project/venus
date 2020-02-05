@@ -223,10 +223,6 @@ func (a *mockActor) Method(id types.MethodID) (dispatch.Method, *dispatch.Functi
 	}
 }
 
-func (a *mockActor) InitializeState(storage runtime.LegacyStorage, initializerData interface{}) error {
-	return nil
-}
-
 type impl mockActor
 
 func (*impl) one() (uint8, error) {

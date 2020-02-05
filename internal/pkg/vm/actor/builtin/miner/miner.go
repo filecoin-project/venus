@@ -118,7 +118,7 @@ type State struct {
 // View is a readonly view into the actor state
 type View struct {
 	state State
-	store runtime.LegacyStorage
+	store runtime.Storage
 }
 
 // Ask is a price advertisement by the miner
@@ -185,7 +185,7 @@ func NewState(owner, worker address.Address, pid peer.ID, sectorSize *types.Byte
 }
 
 // NewView creates a new init actor state view.
-func NewView(stateHandle runtime.ReadonlyActorStateHandle, store runtime.LegacyStorage) View {
+func NewView(stateHandle runtime.ReadonlyActorStateHandle, store runtime.Storage) View {
 	// load state as readonly
 	var state State
 	stateHandle.Readonly(&state)
