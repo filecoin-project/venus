@@ -6,7 +6,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 )
@@ -85,16 +84,6 @@ type ExtendedInvocationContext interface {
 	// This methods returns `True` when 'signature' is signed hash of 'msg'
 	// using the public key belonging to the `signer`.
 	VerifySignature(signer address.Address, signature types.Signature, msg []byte) bool
-}
-
-// LegacyInvocationContext are the methods from the old VM we have not removed yet.
-//
-// WARNING: Every method in this interface is to be considered DEPRECATED.
-type LegacyInvocationContext interface {
-	InvocationContext
-	LegacyMessage() *types.UnsignedMessage
-	LegacyAddressForNewActor() (address.Address, error)
-	LegacyVerifier() verification.Verifier
 }
 
 // ActorStateHandle handles the actor state, allowing actors to lock on the state.

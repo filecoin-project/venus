@@ -208,23 +208,6 @@ func (*FakeVMContext) VerifySignature(signer address.Address, signature types.Si
 	return types.IsValidSignature(msg, signer, signature)
 }
 
-var _ runtime.LegacyInvocationContext = (*FakeVMContext)(nil)
-
-// LegacyVerifier provides an interface to the proofs verifier
-func (tc *FakeVMContext) LegacyVerifier() verification.Verifier {
-	return tc.VerifierValue
-}
-
-// LegacyMessage is the message that triggered this invocation
-func (tc *FakeVMContext) LegacyMessage() *types.UnsignedMessage {
-	return tc.MessageValue
-}
-
-// LegacyAddressForNewActor creates an address to be used to create a new actor
-func (tc *FakeVMContext) LegacyAddressForNewActor() (address.Address, error) {
-	return tc.Addresser()
-}
-
 // AllowSideEffects determines wether or not the actor code is allowed to produce side-effects.
 //
 // At this time, any `Send` to the same or another actor is considered a side-effect.
