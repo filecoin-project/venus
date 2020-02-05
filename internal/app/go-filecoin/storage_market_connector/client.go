@@ -5,7 +5,7 @@ import (
 	"context"
 	"time"
 
-	cborutil "github.com/filecoin-project/go-cbor-util"
+	smcborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-leb128"
 	"github.com/ipfs/go-hamt-ipld"
 	xerrors "github.com/pkg/errors"
@@ -206,7 +206,7 @@ func (s *StorageClientNodeConnector) GetDefaultWalletAddress(ctx context.Context
 // ValidateAskSignature ensures the given ask has been signed correctly
 func (s *StorageClientNodeConnector) ValidateAskSignature(signed *smtypes.SignedStorageAsk) error {
 	ask := signed.Ask
-	data, err := cborutil.Dump(ask)
+	data, err := smcborutil.Dump(ask)
 	if err != nil {
 		return err
 	}
