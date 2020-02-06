@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
@@ -74,22 +73,6 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 		assert.Contains(t, err.Error(), "fail5")
 		assert.Equal(t, exitCode, uint8(2))
 		assert.Nil(t, ret)
-	})
-
-	t.Run("with error that is not revert or fault", func(t *testing.T) {
-		a := newMockActor(map[types.MethodID]*dispatch.FunctionSignature{
-			Six: {
-				Params: nil,
-				Return: nil,
-			},
-		})
-
-		fn, ok := makeTypedExport(a, Six)
-		require.True(t, ok)
-
-		assert.Panics(t, func() {
-			_, _, _ = fn(makeCtx(Six))
-		})
 	})
 }
 
@@ -223,10 +206,6 @@ func (a *mockActor) Method(id types.MethodID) (dispatch.Method, *dispatch.Functi
 	}
 }
 
-func (a *mockActor) InitializeState(storage runtime.LegacyStorage, initializerData interface{}) error {
-	return nil
-}
-
 type impl mockActor
 
 func (*impl) one() (uint8, error) {
@@ -246,7 +225,7 @@ func (*impl) four(ctx runtime.InvocationContext) ([]byte, uint8, error) {
 }
 
 func (*impl) five(ctx runtime.InvocationContext) ([]byte, uint8, error) {
-	return nil, 2, errors.NewRevertError("fail5")
+	return nil, 2, fmt.Errorf("fail5")
 }
 
 func (*impl) six(ctx runtime.InvocationContext) (uint8, error) {

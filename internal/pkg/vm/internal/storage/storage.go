@@ -6,7 +6,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -177,7 +176,7 @@ func (s *VMStorage) toNode(v interface{}) (ipld.Node, error) {
 		nd, err = cbor.WrapObject(v, types.DefaultHashFunction, -1)
 	}
 	if err != nil {
-		return nil, internal.Errors[internal.ErrDecode]
+		return nil, err
 	}
 	return nd, nil
 }

@@ -7,7 +7,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 )
 
@@ -80,7 +79,7 @@ func makeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (Exp
 	return func(ctx ExportContext) ([]interface{}, uint8, error) {
 		params, err := abi.DecodeValues(ctx.Params(), signature.Params)
 		if err != nil {
-			return nil, 1, errors.RevertErrorWrap(err, "invalid params")
+			return nil, 1, fmt.Errorf("invalid params.  %s", err)
 		}
 
 		args := []reflect.Value{
@@ -96,15 +95,6 @@ func makeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (Exp
 
 		outErr, ok := out[len(out)-1].Interface().(error)
 		if ok {
-			if !(errors.ShouldRevert(outErr) || errors.IsFault(outErr)) {
-				var paramStr []string
-				for _, param := range params {
-					paramStr = append(paramStr, param.String())
-				}
-				msg := fmt.Sprintf("actor: %#+v, method: %v, args: %v, error: %s", actor, method, paramStr, outErr.Error())
-				panic(fmt.Sprintf("you are a bad person: error must be either a reverterror or a fault: %v", msg))
-			}
-
 			return nil, exitCode, outErr
 		}
 

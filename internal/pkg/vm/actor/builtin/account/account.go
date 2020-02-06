@@ -1,6 +1,7 @@
 package account
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/filecoin-project/go-address"
@@ -8,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
@@ -71,11 +71,11 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSi
 func (*Actor) InitializeState(handle runtime.ActorStateHandle, initializerData interface{}) error {
 	inputState, ok := initializerData.(*State)
 	if !ok {
-		return errors.NewFaultError("Initial state to account actor is not a account.State struct")
+		return fmt.Errorf("Initial state to account actor is not a account.State struct")
 	}
 
 	if inputState.Address.Protocol() != address.SECP256K1 && inputState.Address.Protocol() != address.BLS {
-		return errors.NewRevertError("Attempt to create account actor with wrong type of address")
+		return fmt.Errorf("Attempt to create account actor with wrong type of address")
 	}
 
 	var state State
@@ -104,7 +104,7 @@ func (impl *Impl) Constructor(ctx runtime.InvocationContext, addr address.Addres
 
 	err := (*Actor)(impl).InitializeState(ctx.StateHandle(), NewState(addr))
 	if err != nil {
-		return errors.CodeError(err), errors.RevertErrorWrap(err, "Could not initialize account state")
+		return 1, err
 	}
 	return 0, nil
 }

@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
@@ -432,5 +431,5 @@ func actorAddressFromParam(maybeAddress interface{}) (address.Address, error) {
 		return addrInt.Val.(address.Address), nil
 	}
 
-	return address.Undef, errors.NewRevertError("address parameter is not an address")
+	return address.Undef, fmt.Errorf("address parameter is not an address")
 }

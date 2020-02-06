@@ -6,7 +6,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 )
@@ -47,9 +46,6 @@ type InvocationContext interface {
 	ValidateCaller(CallerPattern)
 	// StateHandle handles access to the actor state.
 	StateHandle() ActorStateHandle
-	// LegacySend allows actors to invoke methods on other actors
-	// TODO: remove after all legacy actor code is gone (issue #???)
-	LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
 	// Send allows actors to invoke methods on other actors
 	Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{}
 	// Balance is the current balance on the current actors account.
@@ -85,16 +81,6 @@ type ExtendedInvocationContext interface {
 	// This methods returns `True` when 'signature' is signed hash of 'msg'
 	// using the public key belonging to the `signer`.
 	VerifySignature(signer address.Address, signature types.Signature, msg []byte) bool
-}
-
-// LegacyInvocationContext are the methods from the old VM we have not removed yet.
-//
-// WARNING: Every method in this interface is to be considered DEPRECATED.
-type LegacyInvocationContext interface {
-	InvocationContext
-	LegacyMessage() *types.UnsignedMessage
-	LegacyAddressForNewActor() (address.Address, error)
-	LegacyVerifier() verification.Verifier
 }
 
 // ActorStateHandle handles the actor state, allowing actors to lock on the state.
@@ -202,13 +188,4 @@ type Storage interface {
 	GetRaw(cid cid.Cid) ([]byte, bool)
 	// CidOf returns the content-addressable ID of an object WITHOUT storing it.
 	CidOf(interface{}) cid.Cid
-}
-
-// LegacyStorage defines the storage module exposed to actors.
-type LegacyStorage interface {
-	LegacyHead() cid.Cid
-	Put(interface{}) (cid.Cid, error)
-	CidOf(interface{}) (cid.Cid, error)
-	Get(cid.Cid) ([]byte, error)
-	LegacyCommit(cid.Cid, cid.Cid) error
 }

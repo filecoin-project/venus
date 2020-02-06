@@ -1,13 +1,13 @@
 package actor
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
@@ -95,7 +95,7 @@ var signatures = dispatch.Exports{
 func (a *FakeActor) InitializeState(vms storage.VMStorage, initializerData interface{}) (cid.Cid, error) {
 	st, ok := initializerData.(*FakeActorStorage)
 	if !ok {
-		return cid.Undef, errors.NewFaultError("Initial state to fake actor is not a FakeActorStorage struct")
+		return cid.Undef, fmt.Errorf("Initial state to fake actor is not a FakeActorStorage struct")
 	}
 
 	return vms.Put(st)
@@ -138,7 +138,7 @@ type impl FakeActor
 // HasReturnValue is a dummy method that does nothing.
 func (*impl) HasReturnValue(ctx runtime.InvocationContext) (address.Address, uint8, error) {
 	if err := ctx.Charge(100); err != nil {
-		return address.Undef, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return address.Undef, internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
 	}
 
 	return address.Undef, 0, nil
@@ -149,7 +149,7 @@ func (*impl) ChargeGasAndRevertError(ctx runtime.InvocationContext) (uint8, erro
 	if err := ctx.Charge(100); err != nil {
 		panic("Unexpected error charging gas")
 	}
-	return 1, errors.NewRevertError("boom")
+	return 1, fmt.Errorf("boom")
 }
 
 // ReturnRevertError sets a bit inside fakeActor's storage and returns a
@@ -163,7 +163,7 @@ func (*impl) ReturnRevertError(ctx runtime.InvocationContext) (uint8, error) {
 	if err != nil {
 		panic(err.Error())
 	}
-	return 1, errors.NewRevertError("boom")
+	return 1, fmt.Errorf("boom")
 }
 
 // GoodCall sets a bit inside fakeActor's storage.
@@ -181,65 +181,68 @@ func (*impl) GoodCall(ctx runtime.InvocationContext) (uint8, error) {
 
 // NonZeroExitCode returns a nonzero exit code but no error.
 func (*impl) NonZeroExitCode(ctx runtime.InvocationContext) (uint8, error) {
+	// Dragons: delete
 	return 42, nil
 }
 
 // NestedBalance sends 100 to the given address.
 func (*impl) NestedBalance(ctx runtime.InvocationContext, target address.Address) (uint8, error) {
-	_, code, err := ctx.LegacySend(target, types.SendMethodID, types.NewAttoFILFromFIL(100), nil)
-	return code, err
+	// Dragons: change return to ()
+	ctx.Send(target, types.SendMethodID, types.NewAttoFILFromFIL(100), nil)
+	return 0, nil
 }
 
 // SendTokens sends 100 to the given address.
 func (*impl) SendTokens(ctx runtime.InvocationContext, target address.Address) (uint8, error) {
-	_, code, err := ctx.LegacySend(target, types.SendMethodID, types.NewAttoFILFromFIL(100), nil)
-	return code, err
+	// Dragons: change return to ()
+	ctx.Send(target, types.SendMethodID, types.NewAttoFILFromFIL(100), nil)
+	return 0, nil
 }
 
 // CallSendTokens tells the target to invoke SendTokens to send tokens to the
 // to address (that is, it calls target.SendTokens(to)).
 func (*impl) CallSendTokens(ctx runtime.InvocationContext, target address.Address, to address.Address) (uint8, error) {
-	_, code, err := ctx.LegacySend(target, sendTokensID, types.ZeroAttoFIL, []interface{}{to})
-	return code, err
+	// Dragons: change return to ()
+	ctx.Send(target, sendTokensID, types.ZeroAttoFIL, []interface{}{to})
+	return 0, nil
 }
 
 // AttemptMultiSpend1 attempts to re-spend already spent tokens using a double reentrant call.
 func (*impl) AttemptMultiSpend1(ctx runtime.InvocationContext, self, target address.Address) (uint8, error) {
+	// Dragons: change return to ()
 	// This will transfer 100 tokens legitimately.
-	_, code, err := ctx.LegacySend(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
-	if code != 0 || err != nil {
-		return code, errors.FaultErrorWrap(err, "failed first callSendTokens")
-	}
+	ctx.Send(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
+
 	// Try to double spend
-	_, code, err = ctx.LegacySend(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
-	if code != 0 || err != nil {
-		return code, errors.FaultErrorWrap(err, "failed second callSendTokens")
-	}
-	return code, err
+	ctx.Send(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
+
+	return 0, nil
 }
 
 // AttemptMultiSpend2 attempts to re-spend already spent tokens using a reentrant call followed by a direct spend call.
 func (a *impl) AttemptMultiSpend2(ctx runtime.InvocationContext, self, target address.Address) (uint8, error) {
+	// Dragons: change return to ()
+
 	// This will transfer 100 tokens legitimately.
-	_, code, err := ctx.LegacySend(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
-	if code != 0 || err != nil {
-		return code, errors.FaultErrorWrap(err, "failed first callSendTokens")
-	}
+	ctx.Send(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
+
 	// Try to triple spend
-	code, err = a.SendTokens(ctx, target)
+	code, err := a.SendTokens(ctx, target)
 	if code != 0 || err != nil {
-		return code, errors.FaultErrorWrap(err, "failed sendTokens")
+		return code, fmt.Errorf("failed sendTokens")
 	}
+
 	return code, err
 }
 
 // RunsAnotherMessage sends a message
 func (*impl) RunsAnotherMessage(ctx runtime.InvocationContext, target address.Address) (uint8, error) {
 	if err := ctx.Charge(100); err != nil {
-		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
 	}
-	_, code, err := ctx.LegacySend(target, HasReturnValueID, types.ZeroAttoFIL, []interface{}{})
-	return code, err
+
+	ctx.Send(target, HasReturnValueID, types.ZeroAttoFIL, []interface{}{})
+	return 0, nil
 }
 
 // BlockLimitTestMethod is designed to be used with block gas limit tests. It consumes 1/4 of the

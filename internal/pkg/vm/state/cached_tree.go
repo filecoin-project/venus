@@ -2,11 +2,11 @@ package state
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 )
 
 // CachedTree is a read-through cache on top of a state tree.
@@ -65,7 +65,7 @@ func (t *CachedTree) Commit(ctx context.Context) error {
 	for addr, actor := range t.cache {
 		err := t.st.SetActor(ctx, addr, actor)
 		if err != nil {
-			return errors.FaultErrorWrap(err, "Could not commit cached actors to state tree.")
+			return fmt.Errorf("Could not commit cached actors to state tree. %s", err)
 		}
 	}
 	t.cache = make(map[address.Address]*actor.Actor)

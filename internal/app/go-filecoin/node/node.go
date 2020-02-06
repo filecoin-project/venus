@@ -36,7 +36,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
-	vmerr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 )
 
 var log = logging.Logger("node") // nolint: deadcode
@@ -562,9 +561,7 @@ func (node *Node) handleSubscription(ctx context.Context, sub pubsub.Subscriptio
 
 		if err := handler(ctx, received); err != nil {
 			handlerName := runtime.FuncForPC(reflect.ValueOf(handler).Pointer()).Name()
-			if vmerr.ShouldRevert(err) {
-				log.Infof("error in handler %s for topic %s: %s", handlerName, sub.Topic(), err)
-			} else if err != context.Canceled {
+			if err != context.Canceled {
 				log.Errorf("error in handler %s for topic %s: %s", handlerName, sub.Topic(), err)
 			}
 		}

@@ -21,7 +21,6 @@ import (
 type FakeVMContext struct {
 	MessageValue            *types.UnsignedMessage
 	StorageValue            runtime.Storage
-	LegacyStorageValue      runtime.LegacyStorage
 	BalanceValue            types.AttoFIL
 	BlockHeightValue        *types.BlockHeight
 	VerifierValue           verification.Verifier
@@ -47,7 +46,6 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 	aux := FakeVMContext{
 		MessageValue:            message,
 		StorageValue:            &testStorage{state: state},
-		LegacyStorageValue:      &testLegacyStorage{state: state},
 		BlockHeightValue:        types.NewBlockHeight(0),
 		BalanceValue:            types.ZeroAttoFIL,
 		RandomnessValue:         randomness,
@@ -73,7 +71,7 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 		},
 		allowSideEffects: true,
 	}
-	aux.stateHandle = vmcontext.NewActorStateHandle(&aux, aux.LegacyStorageValue.LegacyHead())
+	aux.stateHandle = vmcontext.NewActorStateHandle(&aux, aux.StorageValue.CidOf(state))
 	return &aux
 }
 
@@ -173,11 +171,6 @@ func (tc *FakeVMContext) Storage() runtime.Storage {
 	return tc.StorageValue
 }
 
-// LegacyStorage provides and interface to actor state
-func (tc *FakeVMContext) LegacyStorage() runtime.LegacyStorage {
-	return tc.LegacyStorageValue
-}
-
 // Charge charges gas for the current action
 func (tc *FakeVMContext) Charge(cost types.GasUnits) error {
 	return tc.Charger(cost)
@@ -206,23 +199,6 @@ func (tc *FakeVMContext) CreateActor(actorID types.Uint64, code cid.Cid, params 
 // VerifySignature implemenets the ExtendedInvocationContext interface.
 func (*FakeVMContext) VerifySignature(signer address.Address, signature types.Signature, msg []byte) bool {
 	return types.IsValidSignature(msg, signer, signature)
-}
-
-var _ runtime.LegacyInvocationContext = (*FakeVMContext)(nil)
-
-// LegacyVerifier provides an interface to the proofs verifier
-func (tc *FakeVMContext) LegacyVerifier() verification.Verifier {
-	return tc.VerifierValue
-}
-
-// LegacyMessage is the message that triggered this invocation
-func (tc *FakeVMContext) LegacyMessage() *types.UnsignedMessage {
-	return tc.MessageValue
-}
-
-// LegacyAddressForNewActor creates an address to be used to create a new actor
-func (tc *FakeVMContext) LegacyAddressForNewActor() (address.Address, error) {
-	return tc.Addresser()
 }
 
 // AllowSideEffects determines wether or not the actor code is allowed to produce side-effects.
@@ -293,79 +269,6 @@ func (ts *testStorage) CidOf(obj interface{}) cid.Cid {
 		return cid.Undef
 	}
 	raw, err := encoding.Encode(obj)
-	if err != nil {
-		panic("failed to encode")
-	}
-	return cid.NewCidV1(cid.Raw, raw)
-}
-
-type testLegacyStorage struct {
-	state interface{}
-}
-
-// NewTestLegacyStorage returns a new "testLegacyStorage"
-func NewTestLegacyStorage(state interface{}) runtime.LegacyStorage {
-	return &testLegacyStorage{
-		state: state,
-	}
-}
-
-var _ runtime.LegacyStorage = (*testLegacyStorage)(nil)
-
-// Put satisfies the Storage interface
-func (ts *testLegacyStorage) Put(v interface{}) (cid.Cid, error) {
-	ts.state = v
-	if cm, ok := v.(cbg.CBORMarshaler); ok {
-		buf := new(bytes.Buffer)
-		err := cm.MarshalCBOR(buf)
-		if err == nil {
-			nd, err := cbor.Decode(buf.Bytes(), types.DefaultHashFunction, -1)
-			if err != nil {
-				panic("failed to decode")
-			}
-			return nd.Cid(), err
-		}
-	}
-	raw, err := encoding.Encode(v)
-	if err != nil {
-		panic("failed to encode")
-	}
-	return cid.NewCidV1(cid.Raw, raw), nil
-}
-
-// Get returns the internal state variable encoded into bytes
-func (ts testLegacyStorage) Get(cid.Cid) ([]byte, error) {
-	node, err := cbor.WrapObject(ts.state, types.DefaultHashFunction, -1)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	return node.RawData(), nil
-}
-
-// CidOf returns the Cid of the object.
-func (ts testLegacyStorage) CidOf(v interface{}) (cid.Cid, error) {
-	if v == nil {
-		return cid.Undef, nil
-	}
-	raw, err := encoding.Encode(v)
-	if err != nil {
-		return cid.Undef, err
-	}
-	return cid.NewCidV1(cid.Raw, raw), nil
-}
-
-// LegacyCommit satisfies the Storage interface but does nothing
-func (ts testLegacyStorage) LegacyCommit(cid.Cid, cid.Cid) error {
-	return nil
-}
-
-// LegacyHead returns the Cid of the current state.
-func (ts testLegacyStorage) LegacyHead() cid.Cid {
-	if ts.state == nil {
-		return cid.Undef
-	}
-	raw, err := encoding.Encode(ts.state)
 	if err != nil {
 		panic("failed to encode")
 	}
