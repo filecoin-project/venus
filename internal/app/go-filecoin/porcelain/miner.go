@@ -21,8 +21,12 @@ import (
 	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
+<<<<<<< HEAD
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	vmErrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+=======
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+>>>>>>> xxx removed vmerrors
 )
 
 // mcAPI is the subset of the plumbing.API that MinerCreate uses.
@@ -81,7 +85,8 @@ func MinerCreate(
 	var minerAddr address.Address
 	err = plumbing.MessageWait(ctx, smsgCid, func(blk *block.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) (err error) {
 		if receipt.ExitCode != uint8(0) {
-			return vmErrors.VMExitCodeToError(receipt.ExitCode, storagemarket.Errors)
+			// Dragons: do we want to have this back?
+			return fmt.Errorf("Error executing actor code (exitcode: %d)", receipt.ExitCode)
 		}
 		minerAddr, err = address.NewFromBytes(receipt.Return[0])
 		return err
@@ -201,7 +206,8 @@ func MinerSetPrice(ctx context.Context, plumbing mspAPI, from address.Address, m
 		res.BlockCid = blk.Cid()
 
 		if receipt.ExitCode != uint8(0) {
-			return vmErrors.VMExitCodeToError(receipt.ExitCode, minerActor.Errors)
+			// Dragons: do we want to have this back?
+			return fmt.Errorf("Error executing actor code (exitcode: %d)", receipt.ExitCode)
 		}
 		return nil
 	})

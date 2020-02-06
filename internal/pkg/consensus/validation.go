@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
@@ -10,7 +11,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+<<<<<<< HEAD
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+=======
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+>>>>>>> xxx removed vmerrors
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -23,16 +28,16 @@ var errNonceTooHighCt *metrics.Int64Counter
 var (
 	// These errors are only to be used by ApplyMessage; they shouldn't be
 	// used in any other context as they are an implementation detail.
-	errGasAboveBlockLimit = errors.NewRevertError("message gas limit above block gas limit")
-	errGasPriceZero       = errors.NewRevertError("message gas price is zero")
-	errNonceTooHigh       = errors.NewRevertError("nonce too high")
-	errNonceTooLow        = errors.NewRevertError("nonce too low")
-	errNonAccountActor    = errors.NewRevertError("message from non-account actor")
-	errNegativeValue      = errors.NewRevertError("negative value")
-	errInsufficientGas    = errors.NewRevertError("balance insufficient to cover transfer+gas")
-	errInvalidSignature   = errors.NewRevertError("invalid signature by sender over message data")
+	errGasAboveBlockLimit = fmt.Errorf("message gas limit above block gas limit")
+	errGasPriceZero       = fmt.Errorf("message gas price is zero")
+	errNonceTooHigh       = fmt.Errorf("nonce too high")
+	errNonceTooLow        = fmt.Errorf("nonce too low")
+	errNonAccountActor    = fmt.Errorf("message from non-account actor")
+	errNegativeValue      = fmt.Errorf("negative value")
+	errInsufficientGas    = fmt.Errorf("balance insufficient to cover transfer+gas")
+	errInvalidSignature   = fmt.Errorf("invalid signature by sender over message data")
 	// TODO we'll eventually handle sending to self.
-	errSelfSend = errors.NewRevertError("cannot send to self")
+	errSelfSend = fmt.Errorf("cannot send to self")
 )
 
 func init() {
@@ -163,7 +168,7 @@ func (v *IngestionValidator) Validate(ctx context.Context, smsg *types.SignedMes
 
 	// check that message nonce is not too high
 	if msg.CallSeqNum > fromActor.CallSeqNum && msg.CallSeqNum-fromActor.CallSeqNum > v.cfg.MaxNonceGap {
-		return errors.NewRevertErrorf("message nonce (%d) is too much greater than actor nonce (%d)", msg.CallSeqNum, fromActor.CallSeqNum)
+		return fmt.Errorf("message nonce (%d) is too much greater than actor nonce (%d)", msg.CallSeqNum, fromActor.CallSeqNum)
 	}
 
 	return v.validator.Validate(ctx, &msg, fromActor)

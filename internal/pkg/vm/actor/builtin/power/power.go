@@ -2,6 +2,7 @@ package power
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
@@ -15,8 +16,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+<<<<<<< HEAD
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+=======
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+>>>>>>> xxx removed vmerrors
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
@@ -146,9 +151,9 @@ const (
 
 // Errors map error codes to revert errors this actor may return.
 var Errors = map[uint8]error{
-	ErrDeleteMinerWithPower: errors.NewCodedRevertError(ErrDeleteMinerWithPower, "cannot delete miner with power from power table"),
-	ErrUnknownEntry:         errors.NewCodedRevertError(ErrUnknownEntry, "cannot find address in power table"),
-	ErrDuplicateEntry:       errors.NewCodedRevertError(ErrDuplicateEntry, "duplicate create power table entry attempt"),
+	ErrDeleteMinerWithPower: fmt.Errorf("cannot delete miner with power from power table"),
+	ErrUnknownEntry:         fmt.Errorf("cannot find address in power table"),
+	ErrDuplicateEntry:       fmt.Errorf("duplicate create power table entry attempt"),
 }
 
 // CreateStorageMiner creates a new record of a miner in the power table.
@@ -156,7 +161,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, ownerAddr, work
 	vmctx.ValidateCaller(pattern.Any{})
 
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return address.Undef, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return address.Undef, internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
 	}
 
 	actorCodeCid := types.MinerActorCodeCid
@@ -183,7 +188,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, ownerAddr, work
 				if err == nil {
 					return Errors[ErrDuplicateEntry]
 				}
-				return errors.FaultErrorWrapf(err, "Error looking for new entry in power table at addres %s", actorIDAddr.String())
+				return fmt.Errorf("Error looking for new entry in power table at addres %s", actorIDAddr.String())
 			}
 
 			// Create fresh entry
@@ -195,7 +200,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, ownerAddr, work
 				SectorSize:             sectorSize,
 			})
 			if err != nil {
-				return errors.FaultErrorWrapf(err, "Could not set power table at address: %s", actorIDAddr.String())
+				return fmt.Errorf("Could not set power table at address: %s", actorIDAddr.String())
 			}
 			return nil
 		})
@@ -206,7 +211,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, ownerAddr, work
 		return actorIDAddr, nil
 	})
 	if err != nil {
-		return address.Undef, errors.CodeError(err), err
+		return address.Undef, 1, err
 	}
 
 	return ret.(address.Address), 0, nil
@@ -216,7 +221,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, ownerAddr, work
 // the miner has any power remaining in the table or if the actor does not already exit in the table.
 func (*impl) removeStorageMiner(vmctx runtime.InvocationContext, delAddr address.Address) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
 	}
 	// TODO #3649 we need proper authentication.  Totally insecure as it is.
 
@@ -231,7 +236,7 @@ func (*impl) removeStorageMiner(vmctx runtime.InvocationContext, delAddr address
 				if err == hamt.ErrNotFound {
 					return Errors[ErrUnknownEntry]
 				}
-				return errors.FaultErrorWrapf(err, "Could not retrieve power table entry with ID: %s", delAddr.String())
+				return fmt.Errorf("Could not retrieve power table entry with ID: %s", delAddr.String())
 			}
 
 			// Never delete an entry that still has power
@@ -249,7 +254,7 @@ func (*impl) removeStorageMiner(vmctx runtime.InvocationContext, delAddr address
 		return nil, nil
 	})
 	if err != nil {
-		return errors.CodeError(err), err
+		return 1, err
 	}
 	return 0, nil
 }
@@ -257,7 +262,7 @@ func (*impl) removeStorageMiner(vmctx runtime.InvocationContext, delAddr address
 // GetTotalPower returns the total power (in bytes) held by all miners registered in the system
 func (*impl) getTotalPower(vmctx runtime.InvocationContext) (*types.BytesAmount, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
 	}
 
 	// TODO #3649 we need proper authentication. Totally insecure without.
@@ -271,7 +276,7 @@ func (*impl) getTotalPower(vmctx runtime.InvocationContext) (*types.BytesAmount,
 			return lookup.ForEachValue(ctx, TableEntry{}, func(k string, value interface{}) error {
 				entry, ok := value.(TableEntry)
 				if !ok {
-					return errors.NewFaultError("Expected TableEntry from power table lookup")
+					return fmt.Errorf("Expected TableEntry from power table lookup")
 				}
 				total = total.Add(entry.ActivePower)
 				total = total.Add(entry.InactivePower)
@@ -281,14 +286,14 @@ func (*impl) getTotalPower(vmctx runtime.InvocationContext) (*types.BytesAmount,
 		return total, err
 	})
 	if err != nil {
-		return nil, errors.CodeError(err), err
+		return nil, 1, err
 	}
 	return ret.(*types.BytesAmount), 0, nil
 }
 
 func (*impl) getPowerReport(vmctx runtime.InvocationContext, addr address.Address) (types.PowerReport, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return types.PowerReport{}, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return types.PowerReport{}, internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
 	}
 
 	var state State
@@ -302,7 +307,7 @@ func (*impl) getPowerReport(vmctx runtime.InvocationContext, addr address.Addres
 				if err == hamt.ErrNotFound {
 					return Errors[ErrUnknownEntry]
 				}
-				return errors.FaultErrorWrapf(err, "Could not retrieve power table entry with ID: %s", addr.String())
+				return fmt.Errorf("Could not retrieve power table entry with ID: %s", addr.String())
 			}
 			report.ActivePower = tableEntry.ActivePower
 			report.InactivePower = tableEntry.InactivePower
@@ -311,14 +316,14 @@ func (*impl) getPowerReport(vmctx runtime.InvocationContext, addr address.Addres
 		return report, err
 	})
 	if err != nil {
-		return types.PowerReport{}, errors.CodeError(err), err
+		return types.PowerReport{}, 1, err
 	}
 	return ret.(types.PowerReport), 0, nil
 }
 
 func (*impl) getSectorSize(vmctx runtime.InvocationContext, addr address.Address) (*types.BytesAmount, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
 	}
 
 	var state State
@@ -329,7 +334,7 @@ func (*impl) getSectorSize(vmctx runtime.InvocationContext, addr address.Address
 			return lookup.ForEachValue(ctx, TableEntry{}, func(k string, value interface{}) error {
 				entry, ok := value.(TableEntry)
 				if !ok {
-					return errors.NewFaultError("Expected TableEntry from power table lookup")
+					return fmt.Errorf("Expected TableEntry from power table lookup")
 				}
 				ss = entry.SectorSize
 				return nil
@@ -338,7 +343,7 @@ func (*impl) getSectorSize(vmctx runtime.InvocationContext, addr address.Address
 		return ss, err
 	})
 	if err != nil {
-		return nil, errors.CodeError(err), err
+		return nil, 1, err
 	}
 	return ret.(*types.BytesAmount), 0, nil
 }
@@ -348,7 +353,7 @@ func (*impl) processPowerReport(vmctx runtime.InvocationContext, report types.Po
 	vmctx.ValidateCaller(pattern.Any{})
 
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
 	}
 
 	var state State
@@ -362,7 +367,7 @@ func (*impl) processPowerReport(vmctx runtime.InvocationContext, report types.Po
 				if err == hamt.ErrNotFound {
 					return Errors[ErrUnknownEntry]
 				}
-				return errors.FaultErrorWrapf(err, "Could not retrieve power table entry with ID: %s", updateAddr.String())
+				return fmt.Errorf("Could not retrieve power table entry with ID: %s", updateAddr.String())
 			}
 			// All clear to update
 			updateEntry.ActivePower = report.ActivePower
@@ -376,7 +381,7 @@ func (*impl) processPowerReport(vmctx runtime.InvocationContext, report types.Po
 		return nil, nil
 	})
 	if err != nil {
-		return errors.CodeError(err), err
+		return 1, err
 	}
 	return 0, nil
 }

@@ -1,13 +1,18 @@
 package actor
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+<<<<<<< HEAD
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+=======
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+>>>>>>> xxx removed vmerrors
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
@@ -95,7 +100,7 @@ var signatures = dispatch.Exports{
 func (a *FakeActor) InitializeState(vms storage.VMStorage, initializerData interface{}) (cid.Cid, error) {
 	st, ok := initializerData.(*FakeActorStorage)
 	if !ok {
-		return cid.Undef, errors.NewFaultError("Initial state to fake actor is not a FakeActorStorage struct")
+		return cid.Undef, fmt.Errorf("Initial state to fake actor is not a FakeActorStorage struct")
 	}
 
 	return vms.Put(st)
@@ -138,7 +143,7 @@ type impl FakeActor
 // HasReturnValue is a dummy method that does nothing.
 func (*impl) HasReturnValue(ctx runtime.InvocationContext) (address.Address, uint8, error) {
 	if err := ctx.Charge(100); err != nil {
-		return address.Undef, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return address.Undef, internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
 	}
 
 	return address.Undef, 0, nil
@@ -149,7 +154,7 @@ func (*impl) ChargeGasAndRevertError(ctx runtime.InvocationContext) (uint8, erro
 	if err := ctx.Charge(100); err != nil {
 		panic("Unexpected error charging gas")
 	}
-	return 1, errors.NewRevertError("boom")
+	return 1, fmt.Errorf("boom")
 }
 
 // ReturnRevertError sets a bit inside fakeActor's storage and returns a
@@ -163,7 +168,7 @@ func (*impl) ReturnRevertError(ctx runtime.InvocationContext) (uint8, error) {
 	if err != nil {
 		panic(err.Error())
 	}
-	return 1, errors.NewRevertError("boom")
+	return 1, fmt.Errorf("boom")
 }
 
 // GoodCall sets a bit inside fakeActor's storage.
@@ -229,7 +234,7 @@ func (a *impl) AttemptMultiSpend2(ctx runtime.InvocationContext, self, target ad
 	// Try to triple spend
 	code, err := a.SendTokens(ctx, target)
 	if code != 0 || err != nil {
-		return code, errors.FaultErrorWrap(err, "failed sendTokens")
+		return code, fmt.Errorf("failed sendTokens")
 	}
 
 	return code, err
@@ -238,7 +243,7 @@ func (a *impl) AttemptMultiSpend2(ctx runtime.InvocationContext, self, target ad
 // RunsAnotherMessage sends a message
 func (*impl) RunsAnotherMessage(ctx runtime.InvocationContext, target address.Address) (uint8, error) {
 	if err := ctx.Charge(100); err != nil {
-		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
 	}
 
 	ctx.Send(target, HasReturnValueID, types.ZeroAttoFIL, []interface{}{})

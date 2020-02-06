@@ -1,10 +1,10 @@
 package miner
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 )
 
 // Note that this type's interface is a bit of a placeholder.  We expect to
@@ -56,7 +56,7 @@ func (ss SectorSet) IDs() ([]uint64, error) {
 	for idStr := range ss {
 		id, err := str2ID(idStr)
 		if err != nil {
-			return nil, errors.RevertErrorWrap(err, "corrupt sectorset id")
+			return nil, fmt.Errorf("corrupt sectorset id. %s", err)
 		}
 		ids = append(ids, id)
 	}

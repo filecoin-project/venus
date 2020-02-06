@@ -2,6 +2,7 @@ package initactor
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"reflect"
 
@@ -13,7 +14,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+<<<<<<< HEAD
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+=======
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+>>>>>>> xxx removed vmerrors
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
@@ -146,7 +151,7 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSi
 func (*Actor) InitializeState(handle runtime.ActorStateHandle, params interface{}) error {
 	network, ok := params.(string)
 	if !ok {
-		return errors.NewRevertError("init actor network parameter is not a string")
+		return fmt.Errorf("init actor network parameter is not a string")
 	}
 
 	initStorage := &State{
@@ -172,7 +177,7 @@ func LookupIDAddress(rt runtime.InvocationContext, addr address.Address) (uint64
 		if err == hamt.ErrNotFound {
 			return 0, false, nil
 		}
-		return 0, false, errors.FaultErrorWrap(err, "could not lookup actor id")
+		return 0, false, fmt.Errorf("could not lookup actor id")
 	}
 
 	return uint64(id.(types.Uint64)), true, nil
@@ -199,7 +204,7 @@ type Impl Actor
 // GetNetwork returns the network name for this network
 func (*Impl) GetNetwork(ctx runtime.InvocationContext) (string, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return "", internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return "", internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
 	}
 
 	var state State
@@ -212,7 +217,7 @@ func (a *Impl) GetActorIDForAddress(ctx invocationContext, addr address.Address)
 	ctx.ValidateCaller(pattern.Any{})
 
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return big.NewInt(0), internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return big.NewInt(0), internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
 	}
 
 	var state State
@@ -221,9 +226,9 @@ func (a *Impl) GetActorIDForAddress(ctx invocationContext, addr address.Address)
 	})
 	if err != nil {
 		if err == hamt.ErrNotFound {
-			return nil, ErrNotFound, errors.NewCodedRevertErrorf(ErrNotFound, "actor id not found for address: %s", addr)
+			return nil, ErrNotFound, fmt.Errorf("actor id not found for address: %s", addr)
 		}
-		return nil, errors.CodeError(err), errors.FaultErrorWrap(err, "could not lookup actor id")
+		return nil, 1, fmt.Errorf("could not lookup actor id")
 	}
 
 	return big.NewInt(int64(id.(types.Uint64))), 0, nil
@@ -232,7 +237,7 @@ func (a *Impl) GetActorIDForAddress(ctx invocationContext, addr address.Address)
 // GetAddressForActorID looks up the address for an actor id.
 func (a *Impl) GetAddressForActorID(vmctx runtime.InvocationContext, actorID types.Uint64) (address.Address, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return address.Undef, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return address.Undef, internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
 	}
 
 	var state State
@@ -241,21 +246,21 @@ func (a *Impl) GetAddressForActorID(vmctx runtime.InvocationContext, actorID typ
 	ctx := context.TODO()
 	lookup, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.IDMap)
 	if err != nil {
-		return address.Undef, errors.CodeError(err), errors.RevertErrorWrapf(err, "could not load lookup for cid: %s", state.IDMap)
+		return address.Undef, 1, fmt.Errorf("could not load lookup for cid: %s", state.IDMap)
 	}
 
 	key, err := keyForActorID(actorID)
 	if err != nil {
-		return address.Undef, errors.CodeError(err), errors.FaultErrorWrapf(err, "could not encode actor id: %d", actorID)
+		return address.Undef, 1, fmt.Errorf("could not encode actor id: %d", actorID)
 	}
 
 	var addr address.Address
 	err = lookup.Find(ctx, key, &addr)
 	if err != nil {
 		if err == hamt.ErrNotFound {
-			return address.Undef, ErrNotFound, errors.NewCodedRevertErrorf(ErrNotFound, "actor address not found for id: %d", actorID)
+			return address.Undef, ErrNotFound, fmt.Errorf("actor address not found for id: %d", actorID)
 		}
-		return address.Undef, errors.CodeError(err), errors.FaultErrorWrap(err, "could not lookup actor address")
+		return address.Undef, 1, fmt.Errorf("could not lookup actor address")
 	}
 
 	return addr, 0, nil
@@ -274,7 +279,7 @@ func (a *Impl) Exec(vmctx invocationContext, codeCID cid.Cid, params []interface
 		return actorID, nil
 	})
 	if err != nil {
-		return address.Undef, errors.CodeError(err), err
+		return address.Undef, 1, err
 	}
 
 	actorID := out.(types.Uint64)
@@ -288,18 +293,18 @@ func (a *Impl) Exec(vmctx invocationContext, codeCID cid.Cid, params []interface
 		ctx := context.TODO()
 		state.AddressMap, err = setID(ctx, vmctx.Runtime().Storage(), state.AddressMap, actorAddr, actorID)
 		if err != nil {
-			return nil, errors.FaultErrorWrap(err, "could not save id by address")
+			return nil, fmt.Errorf("could not save id by address")
 		}
 
 		state.IDMap, err = setAddress(ctx, vmctx.Runtime().Storage(), state.IDMap, actorID, actorAddr)
 		if err != nil {
-			return nil, errors.FaultErrorWrap(err, "could not save address by id")
+			return nil, fmt.Errorf("could not save address by id")
 		}
 
 		return nil, nil
 	})
 	if err != nil {
-		return address.Undef, errors.CodeError(err), err
+		return address.Undef, 1, err
 	}
 
 	// Dragons: the idaddress is returned by the spec
@@ -310,7 +315,7 @@ func lookupIDAddress(vmctx runtime.InvocationContext, state State, addr address.
 	ctx := context.TODO()
 	lookup, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.AddressMap)
 	if err != nil {
-		return 0, errors.RevertErrorWrapf(err, "could not load lookup for cid: %s", state.IDMap)
+		return 0, fmt.Errorf("could not load lookup for cid: %s", state.IDMap)
 	}
 
 	var id types.Uint64
@@ -325,7 +330,7 @@ func lookupIDAddress(vmctx runtime.InvocationContext, state State, addr address.
 func setAddress(ctx context.Context, storage runtime.Storage, idMap cid.Cid, actorID types.Uint64, addr address.Address) (cid.Cid, error) {
 	lookup, err := actor.LoadLookup(ctx, storage, idMap)
 	if err != nil {
-		return cid.Undef, errors.RevertErrorWrapf(err, "could not load lookup for cid: %s", idMap)
+		return cid.Undef, fmt.Errorf("could not load lookup for cid: %s", idMap)
 	}
 
 	key, err := keyForActorID(actorID)
@@ -335,7 +340,7 @@ func setAddress(ctx context.Context, storage runtime.Storage, idMap cid.Cid, act
 
 	err = lookup.Set(ctx, key, addr)
 	if err != nil {
-		return cid.Undef, errors.FaultErrorWrapf(err, "could not set address")
+		return cid.Undef, fmt.Errorf("could not set address")
 	}
 
 	return lookup.Commit(ctx)
@@ -344,12 +349,12 @@ func setAddress(ctx context.Context, storage runtime.Storage, idMap cid.Cid, act
 func setID(ctx context.Context, storage runtime.Storage, addressMap cid.Cid, addr address.Address, actorID types.Uint64) (cid.Cid, error) {
 	lookup, err := actor.LoadLookup(ctx, storage, addressMap)
 	if err != nil {
-		return cid.Undef, errors.RevertErrorWrapf(err, "could not load lookup for cid: %s", addressMap)
+		return cid.Undef, fmt.Errorf("could not load lookup for cid: %s", addressMap)
 	}
 
 	err = lookup.Set(ctx, addr.String(), actorID)
 	if err != nil {
-		return cid.Undef, errors.FaultErrorWrapf(err, "could not set id")
+		return cid.Undef, fmt.Errorf("could not set id")
 	}
 
 	return lookup.Commit(ctx)
@@ -358,7 +363,7 @@ func setID(ctx context.Context, storage runtime.Storage, addressMap cid.Cid, add
 func keyForActorID(actorID types.Uint64) (string, error) {
 	key, err := encoding.Encode(actorID)
 	if err != nil {
-		return "", errors.FaultErrorWrapf(err, "could not encode actor id: %d", actorID)
+		return "", fmt.Errorf("could not encode actor id: %d", actorID)
 	}
 
 	return string(key), nil

@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"go.opencensus.io/trace"
@@ -11,7 +12,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
+<<<<<<< HEAD
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+=======
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+>>>>>>> xxx removed vmerrors
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -67,7 +72,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 
 	h, err := ts.Height()
 	if err != nil {
-		return nil, errors.FaultErrorWrap(err, "processing empty tipset")
+		return nil, fmt.Errorf("processing empty tipset")
 	}
 	epoch := types.NewBlockHeight(h)
 
