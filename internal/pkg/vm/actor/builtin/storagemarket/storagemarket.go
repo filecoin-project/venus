@@ -168,6 +168,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, sectorSize *typ
 		initParams := []interface{}{vmctx.Message().Caller(), vmctx.Message().Caller(), pid, sectorSize}
 
 		// create miner actor by messaging the init actor and sending it collateral
+<<<<<<< HEAD
 		ret, _, err := vmctx.LegacySend(vmaddr.InitAddress, initactor.ExecMethodID, vmctx.Message().ValueReceived(), []interface{}{actorCodeCid, initParams})
 		if err != nil {
 			return nil, err
@@ -177,6 +178,10 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, sectorSize *typ
 		if err != nil {
 			return nil, errors.FaultErrorWrap(err, "could not convert init.Exec return value to address")
 		}
+=======
+		ret := vmctx.Send(address.InitAddress, initactor.ExecMethodID, vmctx.Message().ValueReceived(), []interface{}{actorCodeCid, initParams})
+		addr := ret.(address.Address)
+>>>>>>> xxx removed LegacySend
 
 		// retrieve id to key miner
 		actorIDAddr, err := retreiveActorID(vmctx, addr)
@@ -202,17 +207,17 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, sectorSize *typ
 
 // retriveActorId uses init actor to map an actorAddress to an id address
 func retreiveActorID(vmctx runtime.InvocationContext, actorAddr address.Address) (address.Address, error) {
+<<<<<<< HEAD
 	ret, _, err := vmctx.LegacySend(vmaddr.InitAddress, initactor.GetActorIDForAddressMethodID, types.ZeroAttoFIL, []interface{}{actorAddr})
 	if err != nil {
 		return address.Undef, err
 	}
+=======
+	ret := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddressMethodID, types.ZeroAttoFIL, []interface{}{actorAddr})
+	actorIDVal := ret.(big.Int)
+>>>>>>> xxx removed LegacySend
 
-	actorIDVal, err := abi.Deserialize(ret[0], abi.Integer)
-	if err != nil {
-		return address.Undef, errors.FaultErrorWrap(err, "could not convert actor id to big.Int")
-	}
-
-	return address.NewIDAddress(actorIDVal.Val.(*big.Int).Uint64())
+	return address.NewIDAddress(actorIDVal.Uint64())
 }
 
 // UpdateStorage is called to reflect a change in the overall power of the network.
@@ -343,17 +348,9 @@ func (*impl) getProofsMode(vmctx runtime.InvocationContext) (types.ProofsMode, u
 }
 
 func (*impl) getMinerPoStState(vmctx runtime.InvocationContext, minerAddr address.Address) (uint64, error) {
-	msgResult, _, err := vmctx.LegacySend(minerAddr, miner.GetPoStState, types.ZeroAttoFIL, nil)
-	if err != nil {
-		return 0, err
-	}
-
-	res, err := abi.Deserialize(msgResult[0], abi.Integer)
-	if err != nil {
-		return 0, err
-	}
-	resbi := res.Val.(*big.Int)
-	return resbi.Uint64(), nil
+	out := vmctx.Send(minerAddr, miner.GetPoStState, types.ZeroAttoFIL, nil)
+	res := out.(*big.Int)
+	return res.Uint64(), nil
 }
 
 // isSupportedSectorSize produces a boolean indicating whether or not the

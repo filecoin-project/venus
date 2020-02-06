@@ -46,9 +46,6 @@ type InvocationContext interface {
 	ValidateCaller(CallerPattern)
 	// StateHandle handles access to the actor state.
 	StateHandle() ActorStateHandle
-	// LegacySend allows actors to invoke methods on other actors
-	// TODO: remove after all legacy actor code is gone (issue #???)
-	LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
 	// Send allows actors to invoke methods on other actors
 	Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{}
 	// Balance is the current balance on the current actors account.
