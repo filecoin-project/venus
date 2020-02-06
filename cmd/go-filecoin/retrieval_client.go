@@ -25,27 +25,27 @@ var clientRetrievePieceCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		panic("TODO: go-fil-markets integration")
 
-		// minerAddr, err := address.NewFromString(req.Arguments[0])
-		// if err != nil {
+		//minerAddr, err := address.NewFromString(req.Arguments[0])
+		//if err != nil {
 		//	return err
-		// }
+		//}
 		//
-		// pieceCID, err := cid.Decode(req.Arguments[1])
-		// if err != nil {
+		//pieceCID, err := cid.Decode(req.Arguments[1])
+		//if err != nil {
 		//	return err
-		// }
+		//}
 		//
-		// mpid, err := GetPorcelainAPI(env).MinerGetPeerID(req.Context, minerAddr)
-		// if err != nil {
+		//mpid, err := GetPorcelainAPI(env).MinerGetPeerID(req.Context, minerAddr)
+		//if err != nil {
 		//	return err
-		// }
+		//}
 		//
-		// readCloser, err := GetRetrievalAPI(env).RetrievePiece(req.Context, pieceCID, mpid, minerAddr)
-		// if err != nil {
+		//readCloser, err := GetRetrievalAPI(env).RetrievePiece(req.Context, pieceCID, mpid, minerAddr)
+		//if err != nil {
 		//	return err
-		// }
+		//}
 		//
-		// return re.Emit(readCloser)
+		//return re.Emit(readCloser)
 
 		return nil
 	},

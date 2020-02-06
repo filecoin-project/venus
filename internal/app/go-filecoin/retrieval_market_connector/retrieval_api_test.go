@@ -137,21 +137,6 @@ func (tapa *retrievalMarketClientTestAPI) GetPaymentChannelID(ctx context.Contex
 	return entry.channelID, nil
 }
 
-// // GetPaymentChannelByChannelID searches for a payment channel by its ID
-// // It assumes the PaymentChannel has been created, and returns empty payment channel
-// // + error if the channel ID is not found
-// func (tapa *retrievalMarketClientTestAPI) GetPaymentChannelByChannelID(_ context.Context, payer address.Address, id *types.ChannelID) (*paymentbroker.PaymentChannel, error) {
-// 	entry, ok := tapa.expectedPmtChans[payer]
-// 	if !ok || !entry.channelID.Equal(id) {
-// 		return &paymentbroker.PaymentChannel{}, errors.New("payment channel not found")
-// 	}
-//
-// 	return &paymentbroker.PaymentChannel{
-// 		Target: entry.payee,
-// 		Amount: types.NewAttoFIL(entry.fundsAvail.Int),
-// 	}, nil
-// }
-
 func (tapa *retrievalMarketClientTestAPI) AllocateLane(_ context.Context, _ address.Address, chid address.Address) (uint64, error) {
 	lane, ok := tapa.expectedLanes[chid]
 	if ok {
