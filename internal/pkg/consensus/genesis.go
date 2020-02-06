@@ -6,6 +6,7 @@ import (
 	"time"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
@@ -22,12 +23,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
-type GenesisInitFunc func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error)
+type GenesisInitFunc func(cst *hamt.BasicCborIpldStore, bs blockstore.Blockstore) (*block.Block, error)
 
 var (
 	defaultAccounts map[address.Address]types.AttoFIL
@@ -35,10 +36,10 @@ var (
 
 func init() {
 	defaultAccounts = map[address.Address]types.AttoFIL{
-		address.LegacyNetworkAddress: types.NewAttoFILFromFIL(10000000000),
-		address.BurntFundsAddress:    types.NewAttoFILFromFIL(0),
-		address.TestAddress:          types.NewAttoFILFromFIL(50000),
-		address.TestAddress2:         types.NewAttoFILFromFIL(60000),
+		vmaddr.LegacyNetworkAddress: types.NewAttoFILFromFIL(10000000000),
+		vmaddr.BurntFundsAddress:    types.NewAttoFILFromFIL(0),
+		vmaddr.TestAddress:          types.NewAttoFILFromFIL(50000),
+		vmaddr.TestAddress2:         types.NewAttoFILFromFIL(60000),
 	}
 }
 
@@ -152,7 +153,7 @@ type GenesisVM interface {
 
 // MakeGenesisFunc returns a genesis function configured by a set of options.
 func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
-	return func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+	return func(cst *hamt.BasicCborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
 		ctx := context.Background()
 		st := state.NewTree(cst)
 		store := vm.NewStorage(bs)
@@ -184,7 +185,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			}
 			val := genCfg.accounts[addr]
 
-			_, err = vm.ApplyGenesisMessage(address.LegacyNetworkAddress, address.InitAddress,
+			_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, vmaddr.InitAddress,
 				initactor.ExecMethodID, val, types.AccountActorCodeCid, []interface{}{addr})
 			if err != nil {
 				return nil, err
@@ -278,14 +279,14 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 		return &a
 	}
 
-	createActor(address.InitAddress, types.InitActorCodeCid, initactor.State{
+	createActor(vmaddr.InitAddress, types.InitActorCodeCid, initactor.State{
 		Network: network,
 		NextID:  100,
 	})
 
-	createActor(address.StoragePowerAddress, types.PowerActorCodeCid, power.State{})
+	createActor(vmaddr.StoragePowerAddress, types.PowerActorCodeCid, power.State{})
 
-	createActor(address.StorageMarketAddress, types.StorageMarketActorCodeCid, storagemarket.State{
+	createActor(vmaddr.StorageMarketAddress, types.StorageMarketActorCodeCid, storagemarket.State{
 		TotalCommittedStorage: types.NewBytesAmount(0),
 		ProofsMode:            storeType,
 	})
@@ -314,7 +315,7 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 				return err
 			}
 		} else {
-			_, err = vm.ApplyGenesisMessage(address.LegacyNetworkAddress, address.InitAddress, initactor.ExecMethodID, val, types.AccountActorCodeCid, []interface{}{addr})
+			_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, vmaddr.InitAddress, initactor.ExecMethodID, val, types.AccountActorCodeCid, []interface{}{addr})
 			if err != nil {
 				return err
 			}

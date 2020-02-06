@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -16,7 +17,6 @@ import (
 	errPkg "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	typegen "github.com/whyrusleeping/cbor-gen"
 )
 

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,10 +16,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func connect(t *testing.T, nd1, nd2 *Node) {
@@ -55,13 +54,13 @@ func requireMineOnce(ctx context.Context, t *testing.T, minerNode *Node) *block.
 	next := <-out
 	wg.Wait() // wait for wonElection to be set
 	assert.True(t, wonElection)
-	assert.NoError(t, next.Err)
+	require.NoError(t, next.Err)
 
 	return next.NewBlock
 }
 
 func TestBlockPropsManyNodes(t *testing.T) {
-	t.Skip("Skip pending storage market integration")
+	t.Skip("Skip pending miner actor integration #3731")
 	tf.UnitTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -104,7 +103,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 }
 
 func TestChainSync(t *testing.T) {
-	t.Skip("Skip pending storage market integration #3731")
+	t.Skip("Skip pending miner actor integration #3731")
 	tf.UnitTest(t)
 
 	ctx := context.Background()
@@ -154,8 +153,6 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 	minerNode := builder.Build(ctx)
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, _ := seed.GiveMiner(t, minerNode, 0)
-	_, err := storage.NewMiner()
-	assert.NoError(t, err)
 
 	nodes := []*Node{minerNode}
 

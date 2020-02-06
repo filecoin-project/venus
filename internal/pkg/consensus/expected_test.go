@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
@@ -20,7 +21,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -149,7 +150,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		require.NoError(t, err)
 
 		blsMessages := make([][]*types.UnsignedMessage, tipSet.Len())
-		msg := types.NewUnsignedMessage(blsAddr, address.TestAddress2, 0, types.NewAttoFILFromFIL(0), types.InvalidMethodID, []byte{})
+		msg := types.NewUnsignedMessage(blsAddr, vmaddr.TestAddress2, 0, types.NewAttoFILFromFIL(0), types.InvalidMethodID, []byte{})
 		blsMessages[0] = append(blsMessages[0], msg)
 
 		_, _, err = exp.RunStateTransition(ctx, tipSet, blsMessages, emptyMessages, []block.TipSet{pTipSet}, uint64(nextBlocks[0].ParentWeight), nextBlocks[0].StateRoot, nextBlocks[0].MessageReceipts)
@@ -178,7 +179,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		require.NoError(t, err)
 
 		secpMessages := make([][]*types.SignedMessage, tipSet.Len())
-		msg := types.NewUnsignedMessage(blsAddr, address.TestAddress2, 0, types.NewAttoFILFromFIL(0), types.InvalidMethodID, []byte{})
+		msg := types.NewUnsignedMessage(blsAddr, vmaddr.TestAddress2, 0, types.NewAttoFILFromFIL(0), types.InvalidMethodID, []byte{})
 		smsg := &types.SignedMessage{
 			Message:   *msg,
 			Signature: []byte("not a signature"),
@@ -264,7 +265,7 @@ func emptyMessages(numBlocks int) ([][]*types.UnsignedMessage, [][]*types.Signed
 	return emptyBLSMessages, emptyMessages
 }
 
-func setupCborBlockstore() (*hamt.CborIpldStore, blockstore.Blockstore) {
+func setupCborBlockstore() (*hamt.BasicCborIpldStore, blockstore.Blockstore) {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	cis := hamt.CSTFromBstore(bs)
 
@@ -303,7 +304,7 @@ func testActorState(ctx context.Context, t *testing.T, m2w map[address.Address]a
 	return consensus.NewFakeActorStateStore(minerPower, totalPower, m2w)
 }
 
-func setTree(ctx context.Context, t *testing.T, kis []types.KeyInfo, cstore *hamt.CborIpldStore, bstore blockstore.Blockstore, inRoot cid.Cid) (cid.Cid, []address.Address, map[address.Address]address.Address) {
+func setTree(ctx context.Context, t *testing.T, kis []types.KeyInfo, cstore hamt.CborIpldStore, bstore blockstore.Blockstore, inRoot cid.Cid) (cid.Cid, []address.Address, map[address.Address]address.Address) {
 	tree, err := state.NewTreeLoader().LoadStateTree(ctx, cstore, inRoot)
 	require.NoError(t, err)
 	miners := make([]address.Address, len(kis))

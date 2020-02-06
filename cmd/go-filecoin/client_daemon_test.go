@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-ipfs-files"
+	"github.com/filecoin-project/go-address"
+	files "github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"

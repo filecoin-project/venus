@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -17,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
@@ -25,7 +25,7 @@ import (
 // ChainSeed is a generalized struct for configuring node
 type ChainSeed struct {
 	info   *gengen.RenderedGenInfo
-	cst    *hamt.CborIpldStore
+	cst    hamt.CborIpldStore
 	bstore blockstore.Blockstore
 }
 
@@ -49,7 +49,7 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 }
 
 // GenesisInitFunc is a th.GenesisInitFunc using the chain seed
-func (cs *ChainSeed) GenesisInitFunc(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+func (cs *ChainSeed) GenesisInitFunc(cst *hamt.BasicCborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
 	keys, err := cs.bstore.AllKeysChan(context.TODO())
 	if err != nil {
 		return nil, err

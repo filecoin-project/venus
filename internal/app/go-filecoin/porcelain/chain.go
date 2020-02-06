@@ -4,12 +4,13 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -83,7 +84,7 @@ func retrieveActorIDForActorAddress(ctx context.Context, plumbing getStableActor
 	}
 
 	head := plumbing.ChainHeadKey()
-	ret, err := plumbing.MessageQuery(ctx, address.Undef, address.InitAddress, initactor.GetActorIDForAddressMethodID, head, addr)
+	ret, err := plumbing.MessageQuery(ctx, address.Undef, vmaddr.InitAddress, initactor.GetActorIDForAddressMethodID, head, addr)
 	if err != nil {
 		return address.Undef, err
 	}

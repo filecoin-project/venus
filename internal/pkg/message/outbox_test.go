@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func newOutboxTestJournal(t *testing.T) journal.Writer {
@@ -47,7 +47,7 @@ func TestOutbox(t *testing.T) {
 	t.Run("send message enqueues and calls Publish, but respects bcast flag for broadcasting", func(t *testing.T) {
 		w, _ := types.NewMockSignersAndKeyInfo(1)
 		sender := w.Addresses[0]
-		toAddr := address.NewForTestGetter()()
+		toAddr := vmaddr.NewForTestGetter()()
 		queue := message.NewQueue()
 		publisher := &message.MockPublisher{}
 		provider := message.NewFakeProvider(t)
@@ -90,7 +90,7 @@ func TestOutbox(t *testing.T) {
 
 		w, _ := types.NewMockSignersAndKeyInfo(1)
 		sender := w.Addresses[0]
-		toAddr := address.NewForTestGetter()()
+		toAddr := vmaddr.NewForTestGetter()()
 		queue := message.NewQueue()
 		publisher := &message.MockPublisher{}
 		provider := message.NewFakeProvider(t)
@@ -143,7 +143,7 @@ func TestOutbox(t *testing.T) {
 	t.Run("fails with non-account actor", func(t *testing.T) {
 		w, _ := types.NewMockSignersAndKeyInfo(1)
 		sender := w.Addresses[0]
-		toAddr := address.NewForTestGetter()()
+		toAddr := vmaddr.NewForTestGetter()()
 		queue := message.NewQueue()
 		publisher := &message.MockPublisher{}
 		provider := message.NewFakeProvider(t)

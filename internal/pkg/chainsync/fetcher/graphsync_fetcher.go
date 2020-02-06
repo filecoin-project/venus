@@ -18,6 +18,7 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	ipldselector "github.com/ipld/go-ipld-prime/traversal/selector"
 	selectorbuilder "github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
@@ -56,7 +57,7 @@ var _ syncer.Fetcher = (*GraphSyncFetcher)(nil)
 // GraphExchange is an interface wrapper to Graphsync so it can be stubbed in
 // unit testing
 type GraphExchange interface {
-	Request(ctx context.Context, p peer.ID, root ipld.Link, selector ipld.Node) (<-chan graphsync.ResponseProgress, <-chan error)
+	Request(ctx context.Context, p peer.ID, root ipld.Link, selector ipld.Node, extensions ...graphsync.ExtensionData) (<-chan graphsync.ResponseProgress, <-chan error)
 }
 
 type graphsyncFallbackPeerTracker interface {
@@ -286,7 +287,7 @@ func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, selGen func() ipld
 
 func (gsf *GraphSyncFetcher) fetchThroughAMTSelector(recursionDepth uint32) selectorbuilder.SelectorSpec {
 	return gsf.ssb.ExploreIndex(amtHeadNodeFieldIndex,
-		gsf.ssb.ExploreRecursive(int(recursionDepth),
+		gsf.ssb.ExploreRecursive(ipldselector.RecursionLimitDepth(int(recursionDepth)),
 			gsf.ssb.ExploreUnion(
 				gsf.ssb.ExploreIndex(amtNodeLinksFieldIndex, gsf.ssb.ExploreAll(gsf.ssb.ExploreRecursiveEdge())),
 				gsf.ssb.ExploreIndex(amtNodeValuesFieldIndex, gsf.ssb.ExploreAll(gsf.ssb.Matcher())))))
@@ -323,7 +324,7 @@ func (gsf *GraphSyncFetcher) recFullBlockSel(recursionDepth int) ipld.Node {
 	//   - fetch all parent blocks, with messages
 	//   - with exactly the first parent block, repeat again for its parents
 	//   - continue up to recursion depth
-	selector := gsf.ssb.ExploreRecursive(recursionDepth, gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
+	selector := gsf.ssb.ExploreRecursive(ipldselector.RecursionLimitDepth(recursionDepth), gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 		efsb.Insert("parents", gsf.ssb.ExploreUnion(
 			gsf.ssb.ExploreAll(
 				gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
@@ -341,7 +342,7 @@ func (gsf *GraphSyncFetcher) recFullBlockSel(recursionDepth int) ipld.Node {
 
 // recHeaderSel generates a selector for a chain of only block headers.
 func (gsf *GraphSyncFetcher) recHeaderSel(recursionDepth int) ipld.Node {
-	selector := gsf.ssb.ExploreRecursive(recursionDepth, gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
+	selector := gsf.ssb.ExploreRecursive(ipldselector.RecursionLimitDepth(recursionDepth), gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 		efsb.Insert("parents", gsf.ssb.ExploreUnion(
 			gsf.ssb.ExploreAll(
 				gsf.ssb.Matcher(),

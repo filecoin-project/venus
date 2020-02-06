@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 )
@@ -47,7 +47,7 @@ var queryDhtCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 
-		id, err := peer.IDB58Decode(req.Arguments[0])
+		id, err := peer.Decode(req.Arguments[0])
 		if err != nil {
 			return cmds.ClientError("invalid peer ID")
 		}
@@ -248,7 +248,7 @@ var findPeerDhtCmd = &cmds.Command{
 		cmdkit.StringArg("peerID", true, false, "The ID of the peer to search for."),
 	},
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
-		peerID, err := peer.IDB58Decode(req.Arguments[0])
+		peerID, err := peer.Decode(req.Arguments[0])
 		if err != nil {
 			return err
 		}

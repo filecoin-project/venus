@@ -3,11 +3,11 @@ package consensus
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -29,7 +29,7 @@ type ActorStateStore struct {
 	// To get the head tipset state root.
 	chainReader chainStateChainReader
 	// To load the tree for the head tipset state root.
-	cst *hamt.CborIpldStore
+	cst hamt.CborIpldStore
 	// For vm storage.
 	bs bstore.Blockstore
 	// executable actors
@@ -37,7 +37,7 @@ type ActorStateStore struct {
 }
 
 // NewActorStateStore constructs a ActorStateStore.
-func NewActorStateStore(chainReader chainStateChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore, processor QueryProcessor) *ActorStateStore {
+func NewActorStateStore(chainReader chainStateChainReader, cst hamt.CborIpldStore, bs bstore.Blockstore, processor QueryProcessor) *ActorStateStore {
 	return &ActorStateStore{chainReader, cst, bs, processor}
 }
 

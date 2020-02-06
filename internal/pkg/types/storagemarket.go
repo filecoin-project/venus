@@ -1,6 +1,6 @@
 package types
 
-import "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+import "github.com/filecoin-project/go-address"
 
 // StorageDealProposal represents a storage client's desire that a storage miner
 // store one of its pieces for a specified quantity of time.

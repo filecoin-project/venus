@@ -44,7 +44,7 @@ func testWaitHelp(wg *sync.WaitGroup, t *testing.T, waiter *Waiter, expectMsg *t
 type smsgs []*types.SignedMessage
 type smsgsSet [][]*types.SignedMessage
 
-func setupTest(t *testing.T) (*hamt.CborIpldStore, *chain.Store, *chain.MessageStore, *Waiter) {
+func setupTest(t *testing.T) (hamt.CborIpldStore, *chain.Store, *chain.MessageStore, *Waiter) {
 	d := requiredCommonDeps(t, th.DefaultGenesis)
 	return d.cst, d.chainStore, d.messages, NewWaiter(d.chainStore, d.messages, d.blockstore, d.cst)
 }
@@ -59,7 +59,7 @@ func TestWait(t *testing.T) {
 	testWaitNew(ctx, t, cst, chainStore, msgStore, waiter)
 }
 
-func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
+func testWaitExisting(ctx context.Context, t *testing.T, cst hamt.CborIpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
 	m1, m2 := newSignedMessage(), newSignedMessage()
 	head := chainStore.GetHead()
 	headTipSet, err := chainStore.GetTipSet(head)
@@ -78,7 +78,7 @@ func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore
 	testWaitHelp(nil, t, waiter, m2, false, nil)
 }
 
-func testWaitNew(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
+func testWaitNew(ctx context.Context, t *testing.T, cst hamt.CborIpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
 	var wg sync.WaitGroup
 
 	_, _ = newSignedMessage(), newSignedMessage() // flush out so we get distinct messages from testWaitExisting
@@ -114,7 +114,7 @@ func TestWaitError(t *testing.T) {
 	testWaitError(ctx, t, cst, chainStore, msgStore, waiter)
 }
 
-func testWaitError(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
+func testWaitError(ctx context.Context, t *testing.T, cst hamt.CborIpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
 	m1, m2, m3, m4 := newSignedMessage(), newSignedMessage(), newSignedMessage(), newSignedMessage()
 	head := chainStore.GetHead()
 	headTipSet, err := chainStore.GetTipSet(head)
@@ -160,7 +160,7 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 // and stores them in the given store.  Note the msg arguments are slices of
 // slices of messages -- each slice of slices goes into a successive tipset,
 // and each slice within this slice goes into a block of that tipset
-func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStore, root block.TipSet, msgSets ...[][]*types.SignedMessage) []block.TipSet {
+func newChainWithMessages(store hamt.CborIpldStore, msgStore *chain.MessageStore, root block.TipSet, msgSets ...[][]*types.SignedMessage) []block.TipSet {
 	var tipSets []block.TipSet
 	parents := root
 	height := uint64(0)
@@ -243,7 +243,7 @@ func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStor
 }
 
 // mustPut stores the thingy in the store or panics if it cannot.
-func mustPut(store *hamt.CborIpldStore, thingy interface{}) cid.Cid {
+func mustPut(store hamt.CborIpldStore, thingy interface{}) cid.Cid {
 	cid, err := store.Put(context.Background(), thingy)
 	if err != nil {
 		panic(err)

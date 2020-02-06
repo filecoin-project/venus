@@ -5,13 +5,15 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -42,7 +44,7 @@ func (cla *claPlumbing) ActorLs(ctx context.Context) (<-chan state.GetAllActorsR
 					Error: errors.New("ACTOR CHANNEL FAILURE"),
 				}
 			} else {
-				cla.MinerAddress = address.NewForTestGetter()()
+				cla.MinerAddress = vmaddr.NewForTestGetter()()
 				actor := actor.Actor{Code: types.MinerActorCodeCid}
 				out <- state.GetAllActorsResult{
 					Address: cla.MinerAddress.String(),

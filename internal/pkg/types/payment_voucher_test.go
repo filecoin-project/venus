@@ -7,11 +7,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestPaymentVoucherEncodingRoundTrip(t *testing.T) {
-	addrGetter := address.NewForTestGetter()
+	addrGetter := vmaddr.NewForTestGetter()
 	addr1 := addrGetter()
 	addr2 := addrGetter()
 
@@ -48,7 +48,7 @@ func TestPaymentVoucherEncodingRoundTrip(t *testing.T) {
 
 func TestSortVouchersByValidAt(t *testing.T) {
 	var pvs []*PaymentVoucher
-	addrGetter := address.NewForTestGetter()
+	addrGetter := vmaddr.NewForTestGetter()
 
 	validAts := []uint64{8, 2, 9, 22, 1}
 

@@ -4,18 +4,15 @@ import (
 	"encoding/binary"
 	"math/big"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/util/convert"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
-
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-address"
 	sector "github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/util/convert"
 )
 
 // ElectionMachine generates and validates PoSt partial tickets and PoSt

@@ -3,13 +3,14 @@ package consensus_test
 import (
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestGenValidTicketChain(t *testing.T) {
@@ -48,7 +49,7 @@ func requireValidTicket(t *testing.T, parent block.Ticket, signer types.Signer, 
 func TestNextTicketFailsWithInvalidSigner(t *testing.T) {
 	parent := consensus.MakeFakeTicketForTest()
 	signer, _ := types.NewMockSignersAndKeyInfo(1)
-	badAddr := address.TestAddress
+	badAddr := vmaddr.TestAddress
 	tm := consensus.TicketMachine{}
 	badTicket, err := tm.NextTicket(parent, badAddr, signer)
 	assert.Error(t, err)

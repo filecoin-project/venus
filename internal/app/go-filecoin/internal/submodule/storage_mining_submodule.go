@@ -5,6 +5,7 @@ import (
 
 	storageminerconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/storage_miner_connector"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-storage-miner"
 	"github.com/ipfs/go-datastore"
@@ -12,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // StorageMiningSubmodule enhances the `Node` with storage mining capabilities.
@@ -29,17 +29,17 @@ type StorageMiningSubmodule struct {
 }
 
 // NewStorageMiningSubmodule creates a new storage mining submodule.
-func NewStorageMiningSubmodule(minerAddr, workerAddr address.Address, ds datastore.Batching, s sectorbuilder.Interface, c *ChainSubmodule, m *MessagingSubmodule, mw *msg.Waiter, w *WalletSubmodule) (StorageMiningSubmodule, error) {
-	minerNode := storageminerconnector.NewStorageMinerNodeAdapter(minerAddr, workerAddr, c.ChainReader, c.State, m.Outbox, mw, w.Wallet)
+func NewStorageMiningSubmodule(minerAddr, workerAddr address.Address, ds datastore.Batching, s sectorbuilder.Interface, c *ChainSubmodule, m *MessagingSubmodule, mw *msg.Waiter, w *WalletSubmodule) (*StorageMiningSubmodule, error) {
+	minerNode := storageminerconnector.NewStorageMinerNodeConnector(minerAddr, workerAddr, c.ChainReader, c.State, m.Outbox, mw, w.Wallet)
 	storageMiner, err := storage.NewMiner(minerNode, ds, s)
 	if err != nil {
-		return StorageMiningSubmodule{}, err
+		return nil, err
 	}
 
 	smbe := piecemanager.NewStorageMinerBackEnd(storageMiner, s)
 	sbbe := postgenerator.NewSectorBuilderBackEnd(s)
 
-	modu := StorageMiningSubmodule{
+	modu := &StorageMiningSubmodule{
 		PieceManager:  smbe,
 		PoStGenerator: sbbe,
 	}

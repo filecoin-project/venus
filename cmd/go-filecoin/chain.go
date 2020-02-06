@@ -156,7 +156,7 @@ var storeSyncCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		syncPid, err := peer.IDB58Decode(req.Arguments[0])
+		syncPid, err := peer.Decode(req.Arguments[0])
 		if err != nil {
 			return err
 		}

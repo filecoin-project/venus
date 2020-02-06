@@ -8,20 +8,8 @@ import (
 	"strconv"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-cid"
@@ -33,6 +21,18 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	mh "github.com/multiformats/go-multihash"
 	typegen "github.com/whyrusleeping/cbor-gen"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // CreateStorageMinerConfig holds configuration options used to create a storage
@@ -111,7 +111,7 @@ type RenderedMinerInfo struct {
 // the final genesis block.
 //
 // WARNING: Do not use maps in this code, they will make this code non deterministic.
-func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*RenderedGenInfo, error) {
+func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.BasicCborIpldStore, bs blockstore.Blockstore) (*RenderedGenInfo, error) {
 	pnrg := mrand.New(mrand.NewSource(cfg.Seed))
 	keys, err := genKeys(cfg.Keys, pnrg)
 	if err != nil {
@@ -207,7 +207,7 @@ func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, k
 	if err != nil {
 		return err
 	}
-	err = st.SetActor(context.Background(), address.LegacyNetworkAddress, netact)
+	err = st.SetActor(context.Background(), vmaddr.LegacyNetworkAddress, netact)
 	if err != nil {
 		return err
 	}
@@ -225,7 +225,7 @@ func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, k
 			return err
 		}
 
-		_, err = vm.ApplyGenesisMessage(address.LegacyNetworkAddress, address.InitAddress,
+		_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, vmaddr.InitAddress,
 			initactor.ExecMethodID, types.NewAttoFILFromFIL(valint), types.AccountActorCodeCid, []interface{}{addr})
 		if err != nil {
 			return err
@@ -245,7 +245,7 @@ func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*types.KeyInfo, m
 
 		var pid peer.ID
 		if m.PeerID != "" {
-			p, err := peer.IDB58Decode(m.PeerID)
+			p, err := peer.Decode(m.PeerID)
 			if err != nil {
 				return nil, err
 			}
@@ -260,12 +260,12 @@ func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*types.KeyInfo, m
 		}
 
 		// give collateral to account actor
-		_, err = vm.ApplyGenesisMessage(address.LegacyNetworkAddress, addr, types.SendMethodID, types.NewAttoFILFromFIL(100000))
+		_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, addr, types.SendMethodID, types.NewAttoFILFromFIL(100000))
 		if err != nil {
 			return nil, err
 		}
 
-		ret, err := vm.ApplyGenesisMessage(addr, address.StoragePowerAddress, power.CreateStorageMiner, types.NewAttoFILFromFIL(100000), addr, addr, pid, types.NewBytesAmount(m.SectorSize))
+		ret, err := vm.ApplyGenesisMessage(addr, vmaddr.StoragePowerAddress, power.CreateStorageMiner, types.NewAttoFILFromFIL(100000), addr, addr, pid, types.NewBytesAmount(m.SectorSize))
 		if err != nil {
 			return nil, err
 		}
@@ -283,7 +283,7 @@ func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*types.KeyInfo, m
 		for i := uint64(0); i < m.NumCommittedSectors; i++ {
 			powerReport := types.NewPowerReport(m.SectorSize*m.NumCommittedSectors, 0)
 
-			_, err := vm.ApplyGenesisMessage(addr, address.StoragePowerAddress, power.ProcessPowerReport, types.NewAttoFILFromFIL(0), powerReport, mIDAddr)
+			_, err := vm.ApplyGenesisMessage(addr, vmaddr.StoragePowerAddress, power.ProcessPowerReport, types.NewAttoFILFromFIL(0), powerReport, mIDAddr)
 			if err != nil {
 				return nil, err
 			}

@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 )
 
 // MustFlush flushes the StateTree or panics if it can't.
@@ -123,7 +123,7 @@ func (m *MockStateTree) GetActorCode(c cid.Cid, protocol uint64) (dispatch.Execu
 // can be avoided when we are able to change cborStore to an interface and then
 // making a test implementation of the cbor store that can map test cids to test
 // states.
-func TreeFromString(t *testing.T, s string, cst *hamt.CborIpldStore) Tree {
+func TreeFromString(t *testing.T, s string, cst hamt.CborIpldStore) Tree {
 	tree := NewTree(cst)
 	strAddr, err := address.NewSecp256k1Address([]byte(s))
 	require.NoError(t, err)

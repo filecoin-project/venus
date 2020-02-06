@@ -6,11 +6,13 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gas"
@@ -142,7 +144,7 @@ func (ctx *invocationContext) invoke() interface{} {
 // Otherwise, this method will abort execution.
 func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Actor, address.Address) {
 	// resolve the target address via the InitActor, and attempt to load state.
-	initActorEntry, err := ctx.rt.state.GetActor(context.Background(), address.InitAddress)
+	initActorEntry, err := ctx.rt.state.GetActor(context.Background(), vmaddr.InitAddress)
 	if err != nil {
 		panic(fmt.Errorf("init actor not found. %s", err))
 	}
@@ -167,7 +169,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 	// - precond: address must be a pub-key
 	// - sent init actor a msg to create the new account
 
-	if !target.IsPubKey() {
+	if target.Protocol() != address.SECP256K1 && target.Protocol() != address.BLS {
 		// Don't implicitly create an account actor for an address without an associated key.
 		runtime.Abort(exitcode.ActorNotFound)
 	}
@@ -181,7 +183,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 	}
 	newMsg := internalMessage{
 		from:   ctx.msg.from,
-		to:     address.InitAddress,
+		to:     vmaddr.InitAddress,
 		value:  types.ZeroAttoFIL,
 		method: initactor.ExecMethodID,
 		params: encodedParams,
@@ -413,6 +415,11 @@ func actorAddressFromParam(maybeAddress interface{}) (address.Address, error) {
 	addr, ok := maybeAddress.(address.Address)
 	if ok {
 		return addr, nil
+	}
+
+	stringAddr, ok := maybeAddress.(string)
+	if ok {
+		maybeAddress = []byte(stringAddr)
 	}
 
 	serialized, ok := maybeAddress.([]byte)

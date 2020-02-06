@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
+
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -18,7 +21,7 @@ import (
 	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	vmErrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 )
 
@@ -63,7 +66,7 @@ func MinerCreate(
 	smsgCid, _, err := plumbing.MessageSend(
 		ctx,
 		minerOwnerAddr,
-		address.StorageMarketAddress,
+		vmaddr.StorageMarketAddress,
 		collateral,
 		gasPrice,
 		gasLimit,
@@ -128,7 +131,7 @@ func MinerPreviewCreate(
 	usedGas, err = plumbing.MessagePreview(
 		ctx,
 		fromAddr,
-		address.StorageMarketAddress,
+		vmaddr.StorageMarketAddress,
 		storagemarket.CreateStorageMiner,
 		sectorSize,
 		pid,
@@ -274,6 +277,25 @@ func MinerGetOwnerAddress(ctx context.Context, plumbing minerQueryAndDeserialize
 // MinerGetWorkerAddress queries for the worker address of the given miner
 func MinerGetWorkerAddress(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error) {
 	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, minerActor.GetWorker, baseKey)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	workerAddr, err := address.NewFromBytes(res[0])
+	if err != nil {
+		return address.Undef, err
+	}
+
+	if minerAddr.Protocol() != address.ID {
+		return workerAddr, nil
+	}
+
+	id, err := address.IDFromAddress(minerAddr)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	res, err = plumbing.MessageQuery(ctx, address.Undef, vmaddr.InitAddress, initactor.GetAddressForActorIDMethodID, baseKey, big.NewInt(int64(id)))
 	if err != nil {
 		return address.Undef, err
 	}
@@ -460,7 +482,7 @@ func MinerGetPower(ctx context.Context, plumbing mgaAPI, minerAddr address.Addre
 	bytes, err := plumbing.MessageQuery(
 		ctx,
 		address.Undef,
-		address.StoragePowerAddress,
+		vmaddr.StoragePowerAddress,
 		power.GetPowerReport,
 		plumbing.ChainHeadKey(),
 		minerAddr,
@@ -481,7 +503,7 @@ func MinerGetPower(ctx context.Context, plumbing mgaAPI, minerAddr address.Addre
 	bytes, err = plumbing.MessageQuery(
 		ctx,
 		address.Undef,
-		address.StoragePowerAddress,
+		vmaddr.StoragePowerAddress,
 		power.GetTotalPower,
 		plumbing.ChainHeadKey(),
 	)

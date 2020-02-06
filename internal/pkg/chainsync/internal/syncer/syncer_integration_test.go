@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -18,7 +19,6 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 
 	"github.com/stretchr/testify/assert"
@@ -187,10 +187,10 @@ type integrationStateBuilder struct {
 	t    *testing.T
 	c512 cid.Cid
 	cGen cid.Cid
-	cst  *hamt.CborIpldStore
+	cst  hamt.CborIpldStore
 }
 
-func newIntegrationStateBuilder(t *testing.T, cst *hamt.CborIpldStore) *integrationStateBuilder {
+func newIntegrationStateBuilder(t *testing.T, cst hamt.CborIpldStore) *integrationStateBuilder {
 	return &integrationStateBuilder{
 		t:    t,
 		c512: cid.Undef,
@@ -293,7 +293,7 @@ func (fs *forkSnapshotGen) StateTreeSnapshot(st state.Tree, bh *types.BlockHeigh
 // that implements the needed interface and grabs blocks from the builder as
 // needed.  Once #3078 is in place we will have the flexibility to use a
 // testing type as the cbor store.
-func dumpBlocksToCborStore(t *testing.T, builder *chain.Builder, cst *hamt.CborIpldStore, heads ...block.TipSet) {
+func dumpBlocksToCborStore(t *testing.T, builder *chain.Builder, cst hamt.CborIpldStore, heads ...block.TipSet) {
 	cids := make(map[cid.Cid]struct{})
 	// traverse builder frontier adding cids to the map. Traverse
 	// duplicates over doing anything clever.

@@ -212,16 +212,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	nd.ProofVerification = submodule.NewProofVerificationSubmodule()
 
-	nd.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.StorageProtocol")
-	}
-
-	nd.RetrievalProtocol, err = submodule.NewRetrievalProtocolSubmodule(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.RetrievalProtocol")
-	}
-
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Chain:        nd.chain.State,
 		Sync:         cst.NewChainSyncProvider(nd.syncer.ChainSyncManager),

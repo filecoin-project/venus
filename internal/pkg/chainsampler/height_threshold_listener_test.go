@@ -4,17 +4,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-
+	"github.com/filecoin-project/go-address"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-storage-miner"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestNewHeightThresholdListener(t *testing.T) {

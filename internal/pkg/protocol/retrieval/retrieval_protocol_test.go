@@ -2,9 +2,9 @@ package retrieval_test
 
 import (
 	"context"
-	"io/ioutil"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
@@ -13,8 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/retrieval"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // NOTE: The test TestRetrievalProtocolHappyPath has been deleted due to flakiness.
@@ -25,37 +23,38 @@ func TestRetrievalProtocolPieceNotFound(t *testing.T) {
 	t.Skip("Skip pending retrieval market shared component")
 	tf.UnitTest(t)
 
-	ctx := context.Background()
+	//ctx := context.Background()
 
-	minerNode, _, minerAddr, _ := configureMinerAndClient(t)
+	//minerNode, _, minerAddr, _ := configureMinerAndClient(t)
 
-	require.NoError(t, minerNode.StartMining(ctx))
-	defer minerNode.StopMining(ctx)
+	//require.NoError(t, minerNode.StartMining(ctx))
+	//defer minerNode.StopMining(ctx)
 
-	someRandomCid := types.NewCidForTestGetter()()
+	//someRandomCid := types.NewCidForTestGetter()()
+	//
+	//minerPID, err := minerNode.PorcelainAPI.MinerGetPeerID(ctx, minerAddr)
+	//require.NoError(t, err)
 
-	minerPID, err := minerNode.PorcelainAPI.MinerGetPeerID(ctx, minerAddr)
-	require.NoError(t, err)
-
-	_, err = retrievePieceBytes(ctx, minerNode.RetrievalProtocol.RetrievalAPI, someRandomCid, minerPID, minerAddr)
-	require.Error(t, err)
+	//_, err = retrievePieceBytes(ctx, minerNode.RetrievalProtocol.RetrievalProvider, someRandomCid, minerPID, minerAddr)
+	//require.Error(t, err)
 }
 
-func retrievePieceBytes(ctx context.Context, retrievalAPI *retrieval.API, data cid.Cid, minerPID peer.ID, addr address.Address) ([]byte, error) {
-	r, err := retrievalAPI.RetrievePiece(ctx, data, minerPID, addr)
-	if err != nil {
-		return nil, err
-	}
-
-	slice, err := ioutil.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-
-	return slice, nil
+func retrievePieceBytes(ctx context.Context, retrievalAPI *retrieval.API, data cid.Cid, minerPID peer.ID, addr address.Address) ([]byte, error) { // nolint: deadcode
+	//r, err := retrievalAPI.RetrievePiece(ctx, data, minerPID, addr)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//slice, err := ioutil.ReadAll(r)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//return slice, nil
+	return nil, nil
 }
 
-func configureMinerAndClient(t *testing.T) (minerNode *node.Node, clientNode *node.Node, minerAddr address.Address, minerOwnerAddr address.Address) {
+func configureMinerAndClient(t *testing.T) (minerNode *node.Node, clientNode *node.Node, minerAddr address.Address, minerOwnerAddr address.Address) { // nolint: deadcode
 	ctx := context.Background()
 
 	seed := node.MakeChainSeed(t, node.TestGenCfg)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-storage-miner"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
@@ -21,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -47,10 +48,10 @@ type StorageMinerNodeConnector struct {
 
 var _ storage.NodeAPI = new(StorageMinerNodeConnector)
 
-// NewStorageMinerNodeAdapter produces a StorageMinerNodeConnector, which adapts
+// NewStorageMinerNodeConnector produces a StorageMinerNodeConnector, which adapts
 // types in this codebase to the interface representing "the node" which is
 // expected by the go-storage-miner project.
-func NewStorageMinerNodeAdapter(minerAddress address.Address, workerAddress address.Address, chainStore *chain.Store, chainState *cst.ChainStateReadWriter, outbox *message.Outbox, waiter *msg.Waiter, wallet *wallet.Wallet) *StorageMinerNodeConnector {
+func NewStorageMinerNodeConnector(minerAddress address.Address, workerAddress address.Address, chainStore *chain.Store, chainState *cst.ChainStateReadWriter, outbox *message.Outbox, waiter *msg.Waiter, wallet *wallet.Wallet) *StorageMinerNodeConnector {
 	return &StorageMinerNodeConnector{
 		minerAddr:    minerAddress,
 		workerAddr:   workerAddress,
@@ -157,7 +158,7 @@ func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, pieces ..
 	mcid, cerr, err := m.outbox.Send(
 		ctx,
 		m.workerAddr,
-		address.StorageMarketAddress,
+		vmaddr.StorageMarketAddress,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
 		types.NewGasUnits(300),

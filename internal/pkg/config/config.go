@@ -9,10 +9,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // Config is an in memory representation of the filecoin configuration file

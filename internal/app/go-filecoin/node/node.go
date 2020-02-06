@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"runtime"
 
-	a2 "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -36,9 +36,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
-
-	// TODO: replace this with go-address module #3719
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	vmerr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 )
 
@@ -96,8 +93,8 @@ type Node struct {
 	//
 
 	VersionTable      *version.ProtocolVersionTable
-	StorageProtocol   submodule.StorageProtocolSubmodule
-	RetrievalProtocol submodule.RetrievalProtocolSubmodule
+	StorageProtocol   *submodule.StorageProtocolSubmodule
+	RetrievalProtocol *submodule.RetrievalProtocolSubmodule
 }
 
 // Start boots up the node.
@@ -129,8 +126,9 @@ func (node *Node) Start(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to set up protocols:")
 	}
+
 	// DRAGONS: uncomment when we have retrieval market integration
-	//node.RetrievalProtocol.RetrievalMiner = retrieval.NewMiner()
+	//node.RetrievalProtocol.RetrievalProvider = retrieval.NewMiner()
 
 	var syncCtx context.Context
 	syncCtx, node.syncer.CancelChainSync = context.WithCancel(context.Background())
@@ -399,11 +397,6 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return err
 	}
 
-	minerAddr2, err := a2.NewFromBytes(minerAddr.Bytes())
-	if err != nil {
-		return err
-	}
-
 	repoPath, err := node.Repo.Path()
 	if err != nil {
 		return err
@@ -416,7 +409,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 
 	sectorBuilder, err := sectorbuilder.New(&sectorbuilder.Config{
 		SectorSize:    sectorSize.Uint64(),
-		Miner:         minerAddr2,
+		Miner:         minerAddr,
 		WorkerThreads: 1,
 		Dir:           sectorDir,
 	}, namespace.Wrap(node.Repo.Datastore(), ds.NewKey("/sectorbuilder")))
@@ -431,12 +424,36 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 
 	waiter := msg.NewWaiter(node.chain.ChainReader, node.chain.MessageStore, node.Blockstore.Blockstore, node.Blockstore.CborStore)
 
-	sub, err := submodule.NewStorageMiningSubmodule(minerAddr, workerAddr, node.Repo.Datastore(), sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet)
+	// TODO: rework these modules so they can be at least partially constructed during the building phase #3738
+	node.StorageMining, err = submodule.NewStorageMiningSubmodule(minerAddr, workerAddr, node.Repo.Datastore(), sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet)
 	if err != nil {
 		return err
 	}
 
-	node.StorageMining = &sub
+	node.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(
+		ctx,
+		minerAddr,
+		address.Undef, // TODO: This is for setting up mining, we need to pass the client address in if this is going to be a storage client also
+		&node.chain,
+		&node.Messaging,
+		waiter,
+		node.StorageMining.PieceManager,
+		node.Wallet.Wallet,
+		node.Host(),
+		node.Repo.Datastore(),
+		node.Blockstore.Blockstore,
+		node.network.GraphExchange,
+		repoPath,
+		node.PorcelainAPI.MinerGetWorkerAddress)
+	if err != nil {
+		return errors.Wrap(err, "error initializing storage protocol")
+	}
+
+	// TODO: Retrieval Market Integration
+	//node.RetrievalProtocol, err = submodule.NewRetrievalProtocolSubmodule(minerAddr2, piecestore.NewPieceStore(node.Repo.Datastore()), node.Blockstore.Blockstore)
+	//if err != nil {
+	//	return err
+	//}
 
 	return nil
 }
@@ -501,6 +518,13 @@ func (node *Node) StartMining(ctx context.Context) error {
 		fmt.Printf("error starting storage miner: %s\n", err)
 	}
 
+	node.StorageProtocol.StorageProvider.Run(ctx, node.Host())
+
+	// TODO: Retrieval Market Integration
+	//if err := node.RetrievalProtocol.RetrievalProvider.Start(); err != nil {
+	//	fmt.Printf("error starting retrieval provider: %s\n", err)
+	//}
+
 	node.setIsMining(true)
 
 	return nil
@@ -518,7 +542,12 @@ func (node *Node) StopMining(ctx context.Context) {
 		node.BlockMining.MiningDoneWg.Wait()
 	}
 
-	// TODO: stop node.StorageProtocol.StorageMiner
+	if node.StorageMining != nil {
+		err := node.StorageMining.Stop(ctx)
+		if err != nil {
+			log.Warn("Error stopping storage miner", err)
+		}
+	}
 }
 
 func (node *Node) handleSubscription(ctx context.Context, sub pubsub.Subscription, handler pubSubHandler) {
@@ -558,17 +587,6 @@ func (node *Node) setupProtocols() error {
 	)
 
 	node.BlockMining.BlockMiningAPI = &blockMiningAPI
-
-	// set up retrieval client and api
-	// DRAGONS: uncomment when we have a real retrieval client implementation
-	//retapi := retrieval.NewAPI(retrieval.NewClient())
-	//node.RetrievalProtocol.RetrievalAPI = &retapi
-
-	// set up storage client and api
-	// DRAGONS: uncomment when we have a storage market
-	//smc := storage.NewClient()
-	//smcAPI := storage.NewAPI(smc)
-	//node.StorageProtocol.StorageAPI = &smcAPI
 	return nil
 }
 
@@ -660,7 +678,7 @@ func (node *Node) BlockService() bserv.BlockService {
 }
 
 // CborStore returns the nodes cborStore.
-func (node *Node) CborStore() *hamt.CborIpldStore {
+func (node *Node) CborStore() hamt.CborIpldStore {
 	return node.Blockstore.CborStore
 }
 

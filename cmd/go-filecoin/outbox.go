@@ -3,11 +3,11 @@ package commands
 import (
 	"io"
 
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	"github.com/filecoin-project/go-address"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 var outboxCmd = &cmds.Command{

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
@@ -33,7 +34,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -281,8 +281,10 @@ func (api *API) SignedMessageSend(ctx context.Context, smsg *types.SignedMessage
 }
 
 // MessageFind returns a message and receipt from the blockchain, if it exists.
-func (api *API) MessageFind(ctx context.Context, msgCid cid.Cid) (*msg.ChainMessage, bool, error) {
-	return api.msgWaiter.Find(ctx, msgCid)
+func (api *API) MessageFind(ctx context.Context, mcid cid.Cid) (*msg.ChainMessage, bool, error) {
+	return api.msgWaiter.Find(ctx, func(msg *types.SignedMessage, msgCid cid.Cid) bool {
+		return msgCid.Equals(mcid)
+	})
 }
 
 // MessageWait invokes the callback when a message with the given cid appears on chain.

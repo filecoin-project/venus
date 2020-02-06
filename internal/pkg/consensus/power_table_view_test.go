@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 	"github.com/stretchr/testify/assert"
@@ -59,7 +59,7 @@ func TestMiner(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64) (*hamt.CborIpldStore, bstore.Blockstore, address.Address, state.Tree) {
+func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64) (hamt.CborIpldStore, bstore.Blockstore, address.Address, state.Tree) {
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()

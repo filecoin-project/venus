@@ -27,13 +27,13 @@ const (
 // ChainSelector weighs and compares chains according to the deprecated v0
 // Storage Power Consensus Protocol
 type ChainSelector struct {
-	cstore     *hamt.CborIpldStore
+	cstore     hamt.CborIpldStore
 	actorState SnapshotGenerator
 	genesisCid cid.Cid
 }
 
 // NewChainSelector is the constructor for chain selection module.
-func NewChainSelector(cs *hamt.CborIpldStore, actorState SnapshotGenerator, gCid cid.Cid) *ChainSelector {
+func NewChainSelector(cs hamt.CborIpldStore, actorState SnapshotGenerator, gCid cid.Cid) *ChainSelector {
 	return &ChainSelector{
 		cstore:     cs,
 		actorState: actorState,

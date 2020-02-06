@@ -1,23 +1,30 @@
 package submodule
 
 import (
-	"context"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/retrieval"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
+	iface "github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
-// RetrievalProtocolSubmodule enhances the `Node` with "Retrieval" protocol capabilities.
+// RetrievalProtocolSubmodule enhances the node with retrieval protocol
+// capabilities.
 type RetrievalProtocolSubmodule struct {
-	RetrievalAPI *retrieval.API
-
-	// Retrieval Interfaces
-	RetrievalMiner *retrieval.Miner
+	RetrievalClient   iface.RetrievalClient
+	RetrievalProvider iface.RetrievalProvider
 }
 
 // NewRetrievalProtocolSubmodule creates a new retrieval protocol submodule.
-func NewRetrievalProtocolSubmodule(ctx context.Context) (RetrievalProtocolSubmodule, error) {
-	return RetrievalProtocolSubmodule{
-		// RetrievalAPI: nil,
-		// RetrievalMiner: nil,
-	}, nil
+func NewRetrievalProtocolSubmodule(providerAddr address.Address, ps piecestore.PieceStore, bs blockstore.Blockstore) (*RetrievalProtocolSubmodule, error) {
+	panic("TODO: go-fil-markets integration")
+
+	//pnode := retrievalmarketconnector.NewRetrievalProviderNodeConnector()
+	//cnode := retrievalmarketconnector.NewRetrievalClientNodeConnector()
+	//netwk := retrievalmarketconnector.NewRetrievalMarketNetworkConnector()
+	//rsvlr := retrievalmarketconnector.NewRetrievalPeerResolverConnector()
+	//
+	//return &RetrievalProtocolSubmodule{
+	//	RetrievalClient:   impl.NewClient(netwk, bs, cnode, rsvlr),
+	//	RetrievalProvider: impl.NewProvider(providerAddr, pnode, netwk, ps, bs),
+	//}, nil
 }

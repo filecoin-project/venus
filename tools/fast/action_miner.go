@@ -4,12 +4,12 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // MinerCreate runs the `miner create` command against the filecoin process

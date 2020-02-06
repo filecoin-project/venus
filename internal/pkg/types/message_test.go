@@ -8,13 +8,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestMessageMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
-	addrGetter := address.NewForTestGetter()
+	addrGetter := vmaddr.NewForTestGetter()
 
 	// TODO: allow more types than just strings for the params
 	// currently []interface{} results in type information getting lost when doing
@@ -56,7 +56,7 @@ func TestMessageMarshal(t *testing.T) {
 func TestMessageCid(t *testing.T) {
 	tf.UnitTest(t)
 
-	addrGetter := address.NewForTestGetter()
+	addrGetter := vmaddr.NewForTestGetter()
 
 	msg1 := NewUnsignedMessage(
 		addrGetter(),
@@ -87,7 +87,7 @@ func TestMessageCid(t *testing.T) {
 func TestMessageString(t *testing.T) {
 	tf.UnitTest(t)
 
-	addrGetter := address.NewForTestGetter()
+	addrGetter := vmaddr.NewForTestGetter()
 
 	msg := NewUnsignedMessage(
 		addrGetter(),

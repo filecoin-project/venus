@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
@@ -24,7 +25,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 

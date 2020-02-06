@@ -5,18 +5,19 @@ import (
 	"math/big"
 	"reflect"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
 )
 
 // Actor is the builtin actor responsible for network initialization.
@@ -120,8 +121,8 @@ var signatures = dispatch.Exports{
 		Return: []abi.Type{abi.Integer},
 	},
 	GetAddressForActorIDMethodID: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.Address},
-		Return: []abi.Type{abi.Integer},
+		Params: []abi.Type{abi.Integer},
+		Return: []abi.Type{abi.Address},
 	},
 }
 

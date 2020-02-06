@@ -12,7 +12,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/multiformats/go-multiaddr"
 
-	"github.com/ipfs/iptb/testbed/interfaces"
+	testbedi "github.com/ipfs/iptb/testbed/interfaces"
 )
 
 var log = logging.Logger("util")

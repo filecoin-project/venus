@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +18,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestAddrsNewAndList(t *testing.T) {
@@ -61,7 +62,7 @@ func TestWalletBalance(t *testing.T) {
 	assert.Equal(t, "0", balance.ReadStdoutTrimNewlines())
 
 	t.Log("[success] balance 9999900000")
-	balance = cmdClient.RunSuccess(ctx, "wallet", "balance", address.LegacyNetworkAddress.String())
+	balance = cmdClient.RunSuccess(ctx, "wallet", "balance", vmaddr.LegacyNetworkAddress.String())
 	assert.Equal(t, "949999900000", balance.ReadStdoutTrimNewlines())
 
 	t.Log("[success] newly generated one")

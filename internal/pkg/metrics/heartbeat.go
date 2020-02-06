@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -16,7 +17,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/ipfs/go-cid"
 )
 
@@ -231,7 +231,7 @@ func (hbs *HeartbeatService) Connect(ctx context.Context) error {
 		return err
 	}
 
-	peerid, err := peer.IDB58Decode(pid)
+	peerid, err := peer.Decode(pid)
 	if err != nil {
 		return err
 	}
@@ -239,7 +239,7 @@ func (hbs *HeartbeatService) Connect(ctx context.Context) error {
 	// Decapsulate the /p2p/<peerID> part from the target
 	// /ip4/<a.b.c.d>/p2p/<peer> becomes /ip4/<a.b.c.d>
 	targetPeerAddr, _ := ma.NewMultiaddr(
-		fmt.Sprintf("/p2p/%s", peer.IDB58Encode(peerid)))
+		fmt.Sprintf("/p2p/%s", peer.Encode(peerid)))
 	targetAddr := targetMaddr.Decapsulate(targetPeerAddr)
 
 	hbs.Host.Peerstore().AddAddr(peerid, targetAddr, peerstore.PermanentAddrTTL)

@@ -4,13 +4,14 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -34,7 +35,7 @@ func TestCachedStateGetCommit(t *testing.T) {
 	act2Cid := requireCid(t, "world")
 	act2.Head = act2Cid
 
-	addrGetter := address.NewForTestGetter()
+	addrGetter := vmaddr.NewForTestGetter()
 	addr1, addr2 := addrGetter(), addrGetter()
 
 	// add actors to underlying cache
@@ -95,7 +96,7 @@ func TestCachedStateGetOrCreate(t *testing.T) {
 	actorToCreate := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 
 	// can create actor in cache
-	addr := address.NewForTestGetter()()
+	addr := vmaddr.NewForTestGetter()()
 	actor, _, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, address.Address, error) {
 		return actorToCreate, addr, nil
 	})

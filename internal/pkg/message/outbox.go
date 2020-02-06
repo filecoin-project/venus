@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // Outbox validates and marshals messages for sending and maintains the outbound message queue.

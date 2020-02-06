@@ -32,7 +32,7 @@ type waiterChainReader interface {
 type Waiter struct {
 	chainReader     waiterChainReader
 	messageProvider chain.MessageProvider
-	cst             *hamt.CborIpldStore
+	cst             hamt.CborIpldStore
 	bs              bstore.Blockstore
 }
 
@@ -43,8 +43,11 @@ type ChainMessage struct {
 	Receipt *types.MessageReceipt
 }
 
+// WaitPredicate is a function that identifies a message and returns true when found.
+type WaitPredicate func(msg *types.SignedMessage, msgCid cid.Cid) bool
+
 // NewWaiter returns a new Waiter.
-func NewWaiter(chainStore waiterChainReader, messages chain.MessageProvider, bs bstore.Blockstore, cst *hamt.CborIpldStore) *Waiter {
+func NewWaiter(chainStore waiterChainReader, messages chain.MessageProvider, bs bstore.Blockstore, cst hamt.CborIpldStore) *Waiter {
 	return &Waiter{
 		chainReader:     chainStore,
 		cst:             cst,
@@ -53,16 +56,16 @@ func NewWaiter(chainStore waiterChainReader, messages chain.MessageProvider, bs 
 	}
 }
 
-// Find searches the blockchain history for a message (but doesn't wait).
-func (w *Waiter) Find(ctx context.Context, msgCid cid.Cid) (*ChainMessage, bool, error) {
+// Find searches the blockchain history (but doesn't wait).
+func (w *Waiter) Find(ctx context.Context, pred WaitPredicate) (*ChainMessage, bool, error) {
 	headTipSet, err := w.chainReader.GetTipSet(w.chainReader.GetHead())
 	if err != nil {
 		return nil, false, err
 	}
-	return w.findMessage(ctx, headTipSet, msgCid)
+	return w.findMessage(ctx, headTipSet, pred)
 }
 
-// Wait invokes the callback when a message with the given cid appears on chain.
+// WaitPredicate invokes the callback when the passed predicate succeeds.
 // See api description.
 //
 // Note: this method does too much -- the callback should just receive the tipset
@@ -74,13 +77,11 @@ func (w *Waiter) Find(ctx context.Context, msgCid cid.Cid) (*ChainMessage, bool,
 // TODO: This implementation will become prohibitively expensive since it
 // traverses the entire chain. We should use an index instead.
 // https://github.com/filecoin-project/go-filecoin/issues/1518
-func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
-	log.Infof("Calling Waiter.Wait CID: %s", msgCid.String())
-
+func (w *Waiter) WaitPredicate(ctx context.Context, pred WaitPredicate, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	ch := w.chainReader.HeadEvents().Sub(chain.NewHeadTopic)
 	defer w.chainReader.HeadEvents().Unsub(ch, chain.NewHeadTopic)
 
-	chainMsg, found, err := w.Find(ctx, msgCid)
+	chainMsg, found, err := w.Find(ctx, pred)
 	if err != nil {
 		return err
 	}
@@ -88,7 +89,7 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block,
 		return cb(chainMsg.Block, chainMsg.Message, chainMsg.Receipt)
 	}
 
-	chainMsg, found, err = w.waitForMessage(ctx, ch, msgCid)
+	chainMsg, found, err = w.waitForMessage(ctx, ch, pred)
 	if err != nil {
 		return err
 	}
@@ -98,13 +99,24 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block,
 	return err
 }
 
-// findMessage looks for a message CID in the chain and returns the message,
+// Wait invokes the callback when a message with the given cid appears on chain.
+func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+	log.Infof("Calling Waiter.Wait CID: %s", msgCid.String())
+
+	pred := func(msg *types.SignedMessage, c cid.Cid) bool {
+		return c.Equals(msgCid)
+	}
+
+	return w.WaitPredicate(ctx, pred, cb)
+}
+
+// findMessage looks for a matching in the chain and returns the message,
 // block and receipt, when it is found. Returns the found message/block or nil
 // if now block with the given CID exists in the chain.
-func (w *Waiter) findMessage(ctx context.Context, ts block.TipSet, msgCid cid.Cid) (*ChainMessage, bool, error) {
+func (w *Waiter) findMessage(ctx context.Context, ts block.TipSet, pred WaitPredicate) (*ChainMessage, bool, error) {
 	var err error
 	for iterator := chain.IterAncestors(ctx, w.chainReader, ts); err == nil && !iterator.Complete(); err = iterator.Next() {
-		msg, found, err := w.receiptForTipset(ctx, iterator.Value(), msgCid)
+		msg, found, err := w.receiptForTipset(ctx, iterator.Value(), pred)
 		if err != nil {
 			log.Errorf("Waiter.Wait: %s", err)
 			return nil, false, err
@@ -116,11 +128,11 @@ func (w *Waiter) findMessage(ctx context.Context, ts block.TipSet, msgCid cid.Ci
 	return nil, false, err
 }
 
-// waitForMessage looks for a message CID in a channel of tipsets and returns
+// waitForMessage looks for a matching message in a channel of tipsets and returns
 // the message, block and receipt, when it is found. Reads until the channel is
 // closed or the context done. Returns the found message/block (or nil if the
 // channel closed without finding it), whether it was found, or an error.
-func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgCid cid.Cid) (*ChainMessage, bool, error) {
+func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, pred WaitPredicate) (*ChainMessage, bool, error) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -135,7 +147,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgC
 				log.Errorf("Waiter.Wait: %s", e)
 				return nil, false, e
 			case block.TipSet:
-				msg, found, err := w.receiptForTipset(ctx, raw, msgCid)
+				msg, found, err := w.receiptForTipset(ctx, raw, pred)
 				if err != nil {
 					return nil, false, err
 				}
@@ -150,7 +162,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgC
 	}
 }
 
-func (w *Waiter) receiptForTipset(ctx context.Context, ts block.TipSet, targetMsg cid.Cid) (*ChainMessage, bool, error) {
+func (w *Waiter) receiptForTipset(ctx context.Context, ts block.TipSet, pred WaitPredicate) (*ChainMessage, bool, error) {
 	// The targetMsg might be the CID of either a signed SECP message or an unsigned
 	// BLS message.
 	// This accumulates the CIDs of the messages as they appear on chain (signed or unsigned)
@@ -188,10 +200,10 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts block.TipSet, targetMs
 		}
 		tsMessages[i] = unwrappedMsgs
 
-		for k, uwmsg := range unwrappedMsgs {
-			if originalCids[k].Equals(targetMsg) {
+		for k, wrapped := range wrappedMsgs {
+			if pred(wrapped, originalCids[k]) {
 				// Take CID of the unwrapped message, which might be different from the original.
-				unwrappedTarget, err := uwmsg.Cid()
+				unwrappedTarget, err := wrapped.Message.Cid()
 				if err != nil {
 					return nil, false, err
 				}

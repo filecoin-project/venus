@@ -3,10 +3,11 @@ package mining
 import (
 	"context"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/pkg/errors"
 )
 

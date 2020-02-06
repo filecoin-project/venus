@@ -15,7 +15,7 @@ import (
 
 	blk "github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestTriangleEncoding(t *testing.T) {
@@ -35,7 +35,7 @@ func TestTriangleEncoding(t *testing.T) {
 	// into a block (second half of the second case). I don't claim this is ideal,
 	// see: https://github.com/filecoin-project/go-filecoin/issues/599
 
-	newAddress := address.NewForTestGetter()
+	newAddress := vmaddr.NewForTestGetter()
 
 	testRoundTrip := func(t *testing.T, exp *blk.Block) {
 		jb, err := json.Marshal(exp)
@@ -121,7 +121,7 @@ func TestDecodeBlock(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("successfully decodes raw bytes to a Filecoin block", func(t *testing.T) {
-		addrGetter := address.NewForTestGetter()
+		addrGetter := vmaddr.NewForTestGetter()
 
 		c1 := types.CidFromString(t, "a")
 		c2 := types.CidFromString(t, "b")
@@ -197,7 +197,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
 	var parent, child blk.Block
-	child.Miner = address.NewForTestGetter()()
+	child.Miner = vmaddr.NewForTestGetter()()
 	child.Height = 1
 	child.Parents = blk.NewTipSetKey(parent.Cid())
 	child.StateRoot = parent.Cid()
@@ -226,7 +226,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 
 func TestSignatureData(t *testing.T) {
 	tf.UnitTest(t)
-	newAddress := address.NewForTestGetter()
+	newAddress := vmaddr.NewForTestGetter()
 	candidate1 := blk.NewEPoStCandidate(5, []byte{0x05}, 52)
 	candidate2 := blk.NewEPoStCandidate(3, []byte{0x04}, 3000)
 	postInfo := blk.NewEPoStInfo([]byte{0x07}, []byte{0x02, 0x06}, candidate1, candidate2)

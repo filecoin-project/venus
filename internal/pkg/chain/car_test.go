@@ -6,21 +6,21 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipld-cbor"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/whyrusleeping/cbor-gen"
+	typegen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestChainImportExportGenesis(t *testing.T) {

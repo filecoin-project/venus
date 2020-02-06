@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/ipfs/go-cid"
@@ -20,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 var msgCmd = &cmds.Command{

@@ -8,12 +8,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/pkg/errors"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // Generate returns a new block created from the messages in the pool.

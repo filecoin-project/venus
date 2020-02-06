@@ -1,11 +1,10 @@
 package types
 
 import (
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	logging "github.com/ipfs/go-log"
 	"github.com/minio/blake2b-simd"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 var log = logging.Logger("types")

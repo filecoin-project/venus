@@ -3,11 +3,11 @@ package fast
 import (
 	"context"
 
+	"github.com/filecoin-project/go-address"
 	cid "github.com/ipfs/go-cid"
 
 	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // MessageSend runs the `message send` command against the filecoin process.

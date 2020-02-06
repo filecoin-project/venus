@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // RetrievalClientRetrievePiece runs the retrieval-client retrieve-piece commands against the filecoin process.
