@@ -417,6 +417,11 @@ func actorAddressFromParam(maybeAddress interface{}) (address.Address, error) {
 		return addr, nil
 	}
 
+	stringAddr, ok := maybeAddress.(string)
+	if ok {
+		maybeAddress = []byte(stringAddr)
+	}
+
 	serialized, ok := maybeAddress.([]byte)
 	if ok {
 		addrInt, err := abi.Deserialize(serialized, abi.Address)
