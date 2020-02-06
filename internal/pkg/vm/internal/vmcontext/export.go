@@ -79,7 +79,7 @@ func makeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (Exp
 	return func(ctx ExportContext) ([]interface{}, uint8, error) {
 		params, err := abi.DecodeValues(ctx.Params(), signature.Params)
 		if err != nil {
-			return nil, 1, fmt.Errorf("invalid params")
+			return nil, 1, fmt.Errorf("invalid params.  %s", err)
 		}
 
 		args := []reflect.Value{
