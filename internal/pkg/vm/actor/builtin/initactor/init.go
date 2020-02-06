@@ -121,8 +121,8 @@ var signatures = dispatch.Exports{
 		Return: []abi.Type{abi.Integer},
 	},
 	GetAddressForActorIDMethodID: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.Address},
-		Return: []abi.Type{abi.Integer},
+		Params: []abi.Type{abi.Integer},
+		Return: []abi.Type{abi.Address},
 	},
 }
 
