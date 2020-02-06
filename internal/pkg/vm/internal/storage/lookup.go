@@ -10,6 +10,7 @@ import (
 type ValueCallbackFunc func(k string, v interface{}) error
 
 // Lookup defines an internal interface for actor storage.
+// Dragons: delete once we import new actors
 type Lookup interface {
 	Find(ctx context.Context, k string, out interface{}) error
 	Set(ctx context.Context, k string, v interface{}) error
