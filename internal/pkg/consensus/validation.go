@@ -11,11 +11,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-<<<<<<< HEAD
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-=======
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
->>>>>>> xxx removed vmerrors
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 

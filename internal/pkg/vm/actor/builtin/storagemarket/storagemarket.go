@@ -17,12 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-<<<<<<< HEAD
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-=======
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
->>>>>>> xxx removed vmerrors
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
@@ -172,20 +167,8 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, sectorSize *typ
 		initParams := []interface{}{vmctx.Message().Caller(), vmctx.Message().Caller(), pid, sectorSize}
 
 		// create miner actor by messaging the init actor and sending it collateral
-<<<<<<< HEAD
-		ret, _, err := vmctx.LegacySend(vmaddr.InitAddress, initactor.ExecMethodID, vmctx.Message().ValueReceived(), []interface{}{actorCodeCid, initParams})
-		if err != nil {
-			return nil, err
-		}
-
-		addr, err := address.NewFromBytes(ret[0])
-		if err != nil {
-			return nil, errors.FaultErrorWrap(err, "could not convert init.Exec return value to address")
-		}
-=======
-		ret := vmctx.Send(address.InitAddress, initactor.ExecMethodID, vmctx.Message().ValueReceived(), []interface{}{actorCodeCid, initParams})
+		ret := vmctx.Send(vmaddr.InitAddress, initactor.ExecMethodID, vmctx.Message().ValueReceived(), []interface{}{actorCodeCid, initParams})
 		addr := ret.(address.Address)
->>>>>>> xxx removed LegacySend
 
 		// retrieve id to key miner
 		actorIDAddr, err := retreiveActorID(vmctx, addr)
@@ -211,15 +194,8 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, sectorSize *typ
 
 // retriveActorId uses init actor to map an actorAddress to an id address
 func retreiveActorID(vmctx runtime.InvocationContext, actorAddr address.Address) (address.Address, error) {
-<<<<<<< HEAD
-	ret, _, err := vmctx.LegacySend(vmaddr.InitAddress, initactor.GetActorIDForAddressMethodID, types.ZeroAttoFIL, []interface{}{actorAddr})
-	if err != nil {
-		return address.Undef, err
-	}
-=======
-	ret := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddressMethodID, types.ZeroAttoFIL, []interface{}{actorAddr})
+	ret := vmctx.Send(vmaddr.InitAddress, initactor.GetActorIDForAddressMethodID, types.ZeroAttoFIL, []interface{}{actorAddr})
 	actorIDVal := ret.(big.Int)
->>>>>>> xxx removed LegacySend
 
 	return address.NewIDAddress(actorIDVal.Uint64())
 }

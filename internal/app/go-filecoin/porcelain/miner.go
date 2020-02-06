@@ -21,12 +21,7 @@ import (
 	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-<<<<<<< HEAD
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	vmErrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-=======
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
->>>>>>> xxx removed vmerrors
 )
 
 // mcAPI is the subset of the plumbing.API that MinerCreate uses.

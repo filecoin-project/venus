@@ -7,11 +7,6 @@ import (
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-<<<<<<< HEAD
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-=======
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
->>>>>>> xxx removed vmerrors
 )
 
 // CachedTree is a read-through cache on top of a state tree.

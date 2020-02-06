@@ -12,12 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
-<<<<<<< HEAD
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-=======
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
->>>>>>> xxx removed vmerrors
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"

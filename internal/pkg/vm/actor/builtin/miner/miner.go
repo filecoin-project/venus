@@ -15,12 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-<<<<<<< HEAD
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-=======
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
->>>>>>> xxx removed vmerrors
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
@@ -1037,17 +1032,7 @@ func (a *Impl) SubmitPoSt(ctx invocationContext, poStProof types.PoStProof, faul
 		delta := newPower.Sub(oldPower)
 
 		if !delta.IsZero() {
-<<<<<<< HEAD
-			_, ret, err := ctx.LegacySend(vmaddr.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{delta})
-			if err != nil {
-				return nil, err
-			}
-			if ret != 0 {
-				return nil, Errors[ErrStoragemarketCallFailed]
-			}
-=======
-			ctx.Send(address.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{delta})
->>>>>>> xxx removed LegacySend
+			ctx.Send(vmaddr.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{delta})
 		}
 
 		// Update SectorSet, DoneSet and ProvingSet
@@ -1104,18 +1089,8 @@ func (*Impl) SlashStorageFault(ctx invocationContext) (uint8, error) {
 
 		// Strip the miner of their power.
 		powerDelta := types.ZeroBytes.Sub(state.Power) // negate bytes amount
-<<<<<<< HEAD
-		_, ret, err := ctx.LegacySend(vmaddr.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{powerDelta})
-		if err != nil {
-			return nil, err
-		}
-		if ret != 0 {
-			return nil, Errors[ErrStoragemarketCallFailed]
-		}
-=======
-		ctx.Send(address.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{powerDelta})
+		ctx.Send(vmaddr.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{powerDelta})
 
->>>>>>> xxx removed LegacySend
 		state.Power = types.NewBytesAmount(0)
 
 		// record what has been slashed
@@ -1175,13 +1150,8 @@ func (a *Impl) CalculateLateFee(ctx invocationContext, height *types.BlockHeight
 //
 
 func (*Impl) burnFunds(ctx invocationContext, amount types.AttoFIL) error {
-<<<<<<< HEAD
-	_, _, err := ctx.LegacySend(vmaddr.BurntFundsAddress, types.SendMethodID, amount, []interface{}{})
-	return err
-=======
-	ctx.Send(address.BurntFundsAddress, types.SendMethodID, amount, []interface{}{})
+	ctx.Send(vmaddr.BurntFundsAddress, types.SendMethodID, amount, []interface{}{})
 	return nil
->>>>>>> xxx removed LegacySend
 }
 
 func (*Impl) getPledgeCollateralRequirement(state State, height *types.BlockHeight) types.AttoFIL {
@@ -1206,21 +1176,9 @@ func getPoStChallengeSeed(ctx invocationContext, state State, sampleAt *types.Bl
 
 // GetProofsMode returns the genesis block-configured proofs mode.
 func GetProofsMode(ctx invocationContext) (types.ProofsMode, error) {
-<<<<<<< HEAD
-	var proofsMode types.ProofsMode
-	msgResult, _, err := ctx.LegacySend(vmaddr.StorageMarketAddress, Storagemarket_GetProofsMode, types.ZeroAttoFIL, nil)
-	if err != nil {
-		return types.TestProofsMode, xerrors.Wrap(err, "'GetProofsMode' message failed")
-	}
-	if err := encoding.Decode(msgResult[0], &proofsMode); err != nil {
-		return types.TestProofsMode, xerrors.Wrap(err, "could not unmarshall sector store type")
-	}
-	return proofsMode, nil
-=======
-	out := ctx.Send(address.StorageMarketAddress, Storagemarket_GetProofsMode, types.ZeroAttoFIL, nil)
+	out := ctx.Send(vmaddr.StorageMarketAddress, Storagemarket_GetProofsMode, types.ZeroAttoFIL, nil)
 	mode := out.(types.ProofsMode)
 	return mode, nil
->>>>>>> xxx removed LegacySend
 }
 
 // CollateralForSector returns the collateral required to commit a sector of the

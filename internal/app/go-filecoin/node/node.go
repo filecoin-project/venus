@@ -36,13 +36,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
-<<<<<<< HEAD
-	vmerr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-=======
-
-	// TODO: replace this with go-address module #3719
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
->>>>>>> xxx removed vmerrors
 )
 
 var log = logging.Logger("node") // nolint: deadcode
