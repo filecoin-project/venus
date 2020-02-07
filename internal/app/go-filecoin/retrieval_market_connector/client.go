@@ -19,9 +19,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
+// TODO: make this the right method
+var CreatePaymentChannelMethod = storagemarket.CreateStorageMiner
+
 type RetrievalClientNodeConnector struct {
-	bs         blockstore.Blockstore
-	cs         *chain.Store
+	bs blockstore.Blockstore
+	cs *chain.Store
 
 	laneStore map[address.Address]laneEntries
 	laneLk    sync.RWMutex
@@ -31,13 +34,19 @@ type RetrievalClientNodeConnector struct {
 	signer RetrievalSigner
 	mw     MsgWaiter
 	outbox MsgSender
-	pbAPI  PaymentBrokerAPI
+	pbAPI  PaymentChannelAPI
 	ps     piecestore.PieceStore
 	sm     SmAPI
 	wal    WalletAPI
 }
 
 type laneEntries []types.AttoFIL
+
+type ChannelInfo struct {
+	Payee    address.Address
+	Amount   types.AttoFIL
+	Redeemed types.AttoFIL
+}
 
 // smAPI is the subset of the StorageMinerAPI that the retrieval provider node will need
 // for unsealing and getting sector info
@@ -64,15 +73,13 @@ type MsgSender interface {
 type WalletAPI interface {
 	// GetBalance gets the balance in AttoFIL for a given address
 	GetBalance(ctx context.Context, address address.Address) (types.AttoFIL, error)
-	// GetDefaultWalletAddress retrieves the wallet addressed used to sign data and pay fees
-	GetDefaultWalletAddress() (address.Address, error)
 }
 
-type PaymentBrokerAPI interface {
-	// GetPaymentChannelID queries for the address of a payment channel for a payer/payee
-	GetPaymentChannelID(ctx context.Context, payer, payee address.Address) (address.Address, error)
+type PaymentChannelAPI interface {
+	// GetChannel queries for the address of a payment channel for a payer/Payee
+	GetChannel(ctx context.Context, payer, payee address.Address) (address.Address, error)
 	// GetClientAddrByChannelID returns the PaymentChannel struct for a given payment channel
-	GetPaymentChannelInfo(ctx context.Context, paymentChannel address.Address) (address.Address, paymentbroker.PaymentChannel, error)
+	GetChannelInfo(ctx context.Context, paymentChannel address.Address) (address.Address, ChannelInfo, error)
 }
 
 type RetrievalSigner interface {
@@ -89,20 +96,20 @@ func NewRetrievalClientNodeConnector(
 	signer RetrievalSigner,
 	aapi ActorAPI,
 	wal WalletAPI,
-	pbapi PaymentBrokerAPI,
+	pbapi PaymentChannelAPI,
 ) *RetrievalClientNodeConnector {
 	return &RetrievalClientNodeConnector{
-		bs:         bs,
-		cs:         cs,
-		mw:         mw,
-		outbox:     ob,
-		ps:         ps,
-		sm:         sm,
-		signer:     signer,
-		actAPI:     aapi,
-		wal:        wal,
-		pbAPI:      pbapi,
-		laneStore:  make(map[address.Address]laneEntries),
+		bs:        bs,
+		cs:        cs,
+		mw:        mw,
+		outbox:    ob,
+		ps:        ps,
+		sm:        sm,
+		signer:    signer,
+		actAPI:    aapi,
+		wal:       wal,
+		pbAPI:     pbapi,
+		laneStore: make(map[address.Address]laneEntries),
 	}
 }
 
@@ -115,7 +122,7 @@ func (r *RetrievalClientNodeConnector) GetOrCreatePaymentChannel(ctx context.Con
 		return address.Undef, errors.New("empty address")
 	}
 
-	chid, err := r.pbAPI.GetPaymentChannelID(ctx, clientWallet, minerWallet)
+	chid, err := r.pbAPI.GetChannel(ctx, clientWallet, minerWallet)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -138,21 +145,15 @@ func (r *RetrievalClientNodeConnector) GetOrCreatePaymentChannel(ctx context.Con
 		}
 		validAt := height + 1 // valid almost immediately since a retrieval could theoretically happen in 1 block
 
-		to, err := GoAddrFromFcAddr(fcaddr.LegacyPaymentBrokerAddress)
-		if err != nil {
-			return address.Undef, err
-		}
-
-		fcMiner, err  := FcAddrFromGoAddr(minerWallet)
 		msgCid, _, err := r.outbox.Send(ctx,
-			clientWallet,                           // from
-			to,                                     // to
-			types.ZeroAttoFIL,                      // value
-			types.NewAttoFILFromFIL(1),             // gasPrice
-			types.NewGasUnits(10),                  // gasLimit
-			true,                                   // broadcast to network
-			paymentbroker.CreateChannel,            // command
-			fcMiner, validAt, // params: payment address, valid block height
+			clientWallet,                // from
+			minerWallet,                 // to
+			types.ZeroAttoFIL,           // value
+			types.NewAttoFILFromFIL(1),  // gasPrice
+			types.NewGasUnits(10),       // gasLimit
+			true,                        // broadcast to network
+			CreatePaymentChannelMethod, // command
+			minerWallet, validAt,        // params: payment address, valid block height
 		)
 		r.mw.Wait(ctx, msgCid, r.handleMessageReceived)
 
@@ -167,7 +168,7 @@ func (r *RetrievalClientNodeConnector) GetOrCreatePaymentChannel(ctx context.Con
 // Assumes AllocateLane is called after GetOrCreatePaymentChannel
 //func (r *RetrievalClientNodeConnector) AllocateLane(paymentChannel address.Address) (int64, error) {
 func (r *RetrievalClientNodeConnector) AllocateLane(paymentChannel address.Address) (uint64, error) {
-	payer, err := r.getPayerFromChannelID(paymentChannel)
+	payer, err := r.getPayerForChannel(paymentChannel)
 	if err != nil {
 		return 0, err
 	}
@@ -185,14 +186,14 @@ func (r *RetrievalClientNodeConnector) AllocateLane(paymentChannel address.Addre
 // CreatePaymentVoucher creates a payment voucher for the retrieval client.
 // If there is not enough value stored in the payment channel registry, an error is returned.
 // If a lane has not been allocated for this payment channel, an error is returned.
-func (r *RetrievalClientNodeConnector) CreatePaymentVoucher(ctx context.Context, paymentChannel address.Address, amount tokenamount.TokenAmount, lane uint64) (*gfm_types.SignedVoucher, error) {
-	payer, err := r.getPayerFromChannelID(paymentChannel)
+func (r *RetrievalClientNodeConnector) CreatePaymentVoucher(ctx context.Context, channelAddr address.Address, amount tokenamount.TokenAmount, lane uint64) (*gfm_types.SignedVoucher, error) {
+	payer, err := r.getPayerForChannel(channelAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	_, pinfo, err := r.pbAPI.GetPaymentChannelInfo(ctx, paymentChannel)
-	payChBal := pinfo.Amount.Sub(pinfo.AmountRedeemed)
+	_, pinfo, err := r.pbAPI.GetChannelInfo(ctx, channelAddr)
+	payChBal := pinfo.Amount.Sub(pinfo.Redeemed)
 
 	if err != nil {
 		return nil, err
@@ -241,12 +242,7 @@ func (r *RetrievalClientNodeConnector) createSignedVoucher(ctx context.Context, 
 		return nil, err
 	}
 
-	signingAddr, err := r.wal.GetDefaultWalletAddress()
-	if err != nil {
-		return nil, err
-	}
-
-	sig, err := r.signer.SignBytes(buf.Bytes(), signingAddr)
+	sig, err := r.signer.SignBytes(buf.Bytes(), payer)
 	if err != nil {
 		return nil, err
 	}
@@ -273,20 +269,10 @@ func (r *RetrievalClientNodeConnector) getBlockHeight() (uint64, error) {
 	return ts.Height()
 }
 
-func (r *RetrievalClientNodeConnector) getPayerFromChannelID(paymentChannel address.Address) (address.Address, error) {
-	payer, _, err := r.pbAPI.GetPaymentChannelInfo(context.TODO(), paymentChannel)
-	if err != nil  {
+func (r *RetrievalClientNodeConnector) getPayerForChannel(paymentChannel address.Address) (address.Address, error) {
+	payer, _, err := r.pbAPI.GetChannelInfo(context.TODO(), paymentChannel)
+	if err != nil {
 		return address.Undef, err
 	}
 	return payer, nil
-}
-
-// TODO: temporary until vm/address is replaced by go-address
-func FcAddrFromGoAddr(addr address.Address) (fcaddr.Address, error) {
-	return fcaddr.NewFromBytes(addr.Bytes())
-}
-
-// TODO: temporary until vm/address is replaced by go-address
-func GoAddrFromFcAddr(addr fcaddr.Address) (address.Address, error) {
-	return address.NewFromBytes(addr.Bytes())
 }

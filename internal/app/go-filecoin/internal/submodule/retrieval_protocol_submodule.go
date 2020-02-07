@@ -38,7 +38,7 @@ func NewRetrievalProtocolSubmodule(
 	wal retmkt.WalletAPI,
 	aapi retmkt.ActorAPI,
 	smapi retmkt.SmAPI,
-	pbapi retmkt.PaymentBrokerAPI,
+	pbapi retmkt.PaymentChannelAPI,
 ) (RetrievalProtocolSubmodule, error) {
 	panic("TODO: go-fil-markets integration")
 
