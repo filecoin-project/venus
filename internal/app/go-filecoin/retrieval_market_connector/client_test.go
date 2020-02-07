@@ -1,4 +1,4 @@
-package retrieval_market_connector_test
+package retrievalmarketconnector_test
 
 import (
 	"context"
