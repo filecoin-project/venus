@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"sync"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -19,15 +18,17 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
+// CreatePaymentChannelMethod is the method to call to create a new payment channel (actor)
 // TODO: make this the right method
 var CreatePaymentChannelMethod = storagemarket.CreateStorageMiner
 
+// RetrievalClientNodeConnector is the glue between go-filecoin and go-fil-markets'
+// retrieval market interface
 type RetrievalClientNodeConnector struct {
 	bs blockstore.Blockstore
 	cs *chain.Store
 
 	laneStore map[address.Address]laneEntries
-	laneLk    sync.RWMutex
 
 	// APIs/interfaces
 	actAPI ActorAPI
@@ -36,45 +37,43 @@ type RetrievalClientNodeConnector struct {
 	outbox MsgSender
 	pbAPI  PaymentChannelAPI
 	ps     piecestore.PieceStore
-	sm     SmAPI
 	wal    WalletAPI
 }
 
 type laneEntries []types.AttoFIL
 
+// ChannelInfo is a temporary struct for storing
 type ChannelInfo struct {
 	Payee    address.Address
 	Amount   types.AttoFIL
 	Redeemed types.AttoFIL
 }
 
-// smAPI is the subset of the StorageMinerAPI that the retrieval provider node will need
-// for unsealing and getting sector info
-type SmAPI interface {
-	// GetSectorInfo(sectorID uint64) (storage.SectorInfo, error)
-	// UnsealSector(ctx context.Context, sectorID uint64) (io.ReadCloser, error)
-}
-
+// ActorAPI is the subset of the Actor interface needed by the retrieval client node
 type ActorAPI interface {
-	// GetWorkerAddress gets the go-filecoin address of a (miner) worker owned by addr
-	GetWorkerAddress(ctx context.Context, addr address.Address, baseKey block.TipSetKey) (address.Address, error)
 	// GetNonce gets the current message nonce
 	NextNonce(ctx context.Context, addr address.Address) (uint64, error)
 }
+
+// MsgWaiter is an interface for waiting for a message to appear on chain
 type MsgWaiter interface {
 	Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 }
 
+// MsgSender is an interface for something that can post messages on chain
 type MsgSender interface {
 	// Send sends a message to the chain
 	Send(ctx context.Context, from, to address.Address, value types.AttoFIL,
 		gasPrice types.AttoFIL, gasLimit types.GasUnits, bcast bool, method types.MethodID, params ...interface{}) (out cid.Cid, pubErrCh chan error, err error)
 }
+
+// WalletAPI is the subset of the Wallet interface needed by the retrieval client node
 type WalletAPI interface {
 	// GetBalance gets the balance in AttoFIL for a given address
 	GetBalance(ctx context.Context, address address.Address) (types.AttoFIL, error)
 }
 
+// PaymentChannelAPI is the subset of the PaymentChannel interface needed by the retrieval client node
 type PaymentChannelAPI interface {
 	// GetChannel queries for the address of a payment channel for a payer/Payee
 	GetChannel(ctx context.Context, payer, payee address.Address) (address.Address, error)
@@ -82,17 +81,18 @@ type PaymentChannelAPI interface {
 	GetChannelInfo(ctx context.Context, paymentChannel address.Address) (address.Address, ChannelInfo, error)
 }
 
+// RetrievalSigner is an interface with the ability to sign data
 type RetrievalSigner interface {
 	SignBytes(data []byte, addr address.Address) (types.Signature, error)
 }
 
+// NewRetrievalClientNodeConnector creates a new RetrievalClientNodeConnector
 func NewRetrievalClientNodeConnector(
 	bs blockstore.Blockstore,
 	cs *chain.Store,
 	mw MsgWaiter,
 	ob MsgSender,
 	ps piecestore.PieceStore,
-	sm SmAPI,
 	signer RetrievalSigner,
 	aapi ActorAPI,
 	wal WalletAPI,
@@ -104,7 +104,6 @@ func NewRetrievalClientNodeConnector(
 		mw:        mw,
 		outbox:    ob,
 		ps:        ps,
-		sm:        sm,
 		signer:    signer,
 		actAPI:    aapi,
 		wal:       wal,
@@ -146,18 +145,22 @@ func (r *RetrievalClientNodeConnector) GetOrCreatePaymentChannel(ctx context.Con
 		validAt := height + 1 // valid almost immediately since a retrieval could theoretically happen in 1 block
 
 		msgCid, _, err := r.outbox.Send(ctx,
-			clientWallet,                // from
-			minerWallet,                 // to
-			types.ZeroAttoFIL,           // value
-			types.NewAttoFILFromFIL(1),  // gasPrice
-			types.NewGasUnits(10),       // gasLimit
-			true,                        // broadcast to network
+			clientWallet,               // from
+			minerWallet,                // to
+			types.ZeroAttoFIL,          // value
+			types.NewAttoFILFromFIL(1), // gasPrice
+			types.NewGasUnits(10),      // gasLimit
+			true,                       // broadcast to network
 			CreatePaymentChannelMethod, // command
-			minerWallet, validAt,        // params: payment address, valid block height
+			minerWallet, validAt,       // params: payment address, valid block height
 		)
-		r.mw.Wait(ctx, msgCid, r.handleMessageReceived)
-
-		return address.Undef, err
+		if err != nil {
+			return address.Undef, err
+		}
+		err = r.mw.Wait(ctx, msgCid, r.handleMessageReceived)
+		if err != nil {
+			return address.Undef, err
+		}
 	}
 
 	// Not a real actor, just plays one on PaymentChannels.

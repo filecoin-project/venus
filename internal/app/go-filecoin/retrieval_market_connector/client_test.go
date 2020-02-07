@@ -32,10 +32,10 @@ func TestNewRetrievalClientNodeConnector(t *testing.T) {
 
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	cs := requireNewChainStoreWithBlock(ctx, t)
-	rmFake := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
+	rmc := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
 
 	ps := tut.RequireMakeTestPieceStore(t)
-	rcnc := NewRetrievalClientNodeConnector(bs, cs, rmFake, rmFake, ps, rmFake, rmFake, rmFake, rmFake, rmFake)
+	rcnc := NewRetrievalClientNodeConnector(bs, cs, rmc, rmc, ps, rmc, rmc, rmc, rmc)
 	assert.NotNil(t, rcnc)
 }
 
@@ -45,14 +45,14 @@ func TestRetrievalClientNodeConnector_GetOrCreatePaymentChannel(t *testing.T) {
 	bs, cs, ps, clientAddr, minerAddr, channelAmount := testSetup(ctx, t)
 
 	t.Run("Errors if clientWallet get balance fails", func(t *testing.T) {
-		tapa := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
-		tapa.BalanceErr = errors.New("boom")
+		rmc := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
+		rmc.BalanceErr = errors.New("boom")
 
-		rcnc := NewRetrievalClientNodeConnector(bs, cs, tapa, tapa, ps, tapa, tapa, tapa, tapa, tapa)
+		rcnc := NewRetrievalClientNodeConnector(bs, cs, rmc, rmc, ps, rmc, rmc, rmc, rmc)
 		res, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
 		assert.EqualError(t, err, "boom")
 		assert.Equal(t, address.Undef, res)
-		tapa.BalanceErr = nil
+		rmc.BalanceErr = nil
 	})
 
 	t.Run("if the payment channel does not exist", func(t *testing.T) {
@@ -62,22 +62,22 @@ func TestRetrievalClientNodeConnector_GetOrCreatePaymentChannel(t *testing.T) {
 		ps := tut.RequireMakeTestPieceStore(t)
 
 		t.Run("creates a new payment channel registry entry and posts createChannel message", func(t *testing.T) {
-			tapa := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
-			tapa.StubMessageResponse(t, clientAddr, minerAddr, types.NewAttoFIL(channelAmount.Int))
+			rmc := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
+			rmc.StubMessageResponse(t, clientAddr, minerAddr, types.NewAttoFIL(channelAmount.Int))
 
-			rcnc := NewRetrievalClientNodeConnector(bs, cs, tapa, tapa, ps, tapa, tapa, tapa, tapa, tapa)
+			rcnc := NewRetrievalClientNodeConnector(bs, cs, rmc, rmc, ps, rmc, rmc, rmc, rmc)
 
-			nonce := tapa.Nonce
+			nonce := rmc.Nonce
 			res, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
 			assert.NoError(t, err)
 			assert.Equal(t, address.Undef, res)
-			assert.NotNil(t, tapa.ExpectedPmtChans[minerAddr])
-			assert.Equal(t, nonce+1, tapa.Nonce)
+			assert.NotNil(t, rmc.ExpectedPmtChans[minerAddr])
+			assert.Equal(t, nonce+1, rmc.Nonce)
 		})
 		t.Run("Errors if there aren't enough funds in wallet", func(t *testing.T) {
-			tapa := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
+			rmc := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
 
-			rcnc := NewRetrievalClientNodeConnector(bs, cs, tapa, tapa, ps, tapa, tapa, tapa, tapa, tapa)
+			rcnc := NewRetrievalClientNodeConnector(bs, cs, rmc, rmc, ps, rmc, rmc, rmc, rmc)
 
 			res, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, tokenamount.FromInt(2000))
 			assert.EqualError(t, err, "not enough funds in wallet")
@@ -85,9 +85,9 @@ func TestRetrievalClientNodeConnector_GetOrCreatePaymentChannel(t *testing.T) {
 		})
 
 		t.Run("Errors if client or minerWallet addr is invalid", func(t *testing.T) {
-			tapa := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
+			rmc := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
 
-			rcnc := NewRetrievalClientNodeConnector(bs, cs, tapa, tapa, ps, tapa, tapa, tapa, tapa, tapa)
+			rcnc := NewRetrievalClientNodeConnector(bs, cs, rmc, rmc, ps, rmc, rmc, rmc, rmc)
 			_, err := rcnc.GetOrCreatePaymentChannel(ctx, address.Undef, minerAddr, channelAmount)
 			assert.EqualError(t, err, "empty address")
 
@@ -98,8 +98,8 @@ func TestRetrievalClientNodeConnector_GetOrCreatePaymentChannel(t *testing.T) {
 		t.Run("Errors if can't get block height/head tipset", func(t *testing.T) {
 			_, _, _, localCs := requireNewEmptyChainStore(ctx, t)
 
-			tapa := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
-			rcnc := NewRetrievalClientNodeConnector(bs, localCs, tapa, tapa, ps, tapa, tapa, tapa, tapa, tapa)
+			rmc := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
+			rcnc := NewRetrievalClientNodeConnector(bs, localCs, rmc, rmc, ps, rmc, rmc, rmc, rmc)
 			res, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
 			assert.EqualError(t, err, "Key not found in tipindex")
 			assert.Equal(t, address.Undef, res)
@@ -108,10 +108,10 @@ func TestRetrievalClientNodeConnector_GetOrCreatePaymentChannel(t *testing.T) {
 
 	t.Run("if payment channel exists", func(t *testing.T) {
 		t.Run("Retrieves existing payment channel address", func(t *testing.T) {
-			tapa := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
-			tapa.StubMessageResponse(t, clientAddr, minerAddr, types.NewAttoFIL(channelAmount.Int))
+			rmc := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
+			rmc.StubMessageResponse(t, clientAddr, minerAddr, types.NewAttoFIL(channelAmount.Int))
 
-			rcnc := NewRetrievalClientNodeConnector(bs, cs, tapa, tapa, ps, tapa, tapa, tapa, tapa, tapa)
+			rcnc := NewRetrievalClientNodeConnector(bs, cs, rmc, rmc, ps, rmc, rmc, rmc, rmc)
 			expectedChID, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
 			require.NoError(t, err)
 			assert.Equal(t, address.Undef, expectedChID)
@@ -119,9 +119,9 @@ func TestRetrievalClientNodeConnector_GetOrCreatePaymentChannel(t *testing.T) {
 			actualChID, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
 			require.NoError(t, err)
 			assert.NotEqual(t, "", actualChID.String())
-			assert.Len(t, tapa.ActualPmtChans, 1)
-			assert.Equal(t, tapa.ActualPmtChans[clientAddr].ChannelID, tapa.ExpectedPmtChans[clientAddr].ChannelID)
-			assert.Equal(t, tapa.ExpectedPmtChans[clientAddr].ChannelID.Bytes(), actualChID.Bytes())
+			assert.Len(t, rmc.ActualPmtChans, 1)
+			assert.Equal(t, rmc.ActualPmtChans[clientAddr].ChannelID, rmc.ExpectedPmtChans[clientAddr].ChannelID)
+			assert.Equal(t, rmc.ExpectedPmtChans[clientAddr].ChannelID.Bytes(), actualChID.Bytes())
 		})
 	})
 }
@@ -131,8 +131,8 @@ func TestRetrievalClientNodeConnector_AllocateLane(t *testing.T) {
 	bs, cs, ps, clientAddr, minerAddr, channelAmount := testSetup(ctx, t)
 
 	t.Run("Errors if payment channel does not exist", func(t *testing.T) {
-		tapa := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
-		rcnc := NewRetrievalClientNodeConnector(bs, cs, tapa, tapa, ps, tapa, tapa, tapa, tapa, tapa)
+		rmc := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
+		rcnc := NewRetrievalClientNodeConnector(bs, cs, rmc, rmc, ps, rmc, rmc, rmc, rmc)
 
 		addr, err := address.NewIDAddress(12345)
 		require.NoError(t, err)
@@ -141,21 +141,21 @@ func TestRetrievalClientNodeConnector_AllocateLane(t *testing.T) {
 		assert.Zero(t, res)
 	})
 	t.Run("Increments and returns lastLane val", func(t *testing.T) {
-		tapa := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
-		tapa.StubMessageResponse(t, clientAddr, minerAddr, types.NewAttoFIL(channelAmount.Int))
+		rmc := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
+		rmc.StubMessageResponse(t, clientAddr, minerAddr, types.NewAttoFIL(channelAmount.Int))
 
-		rcnc := NewRetrievalClientNodeConnector(bs, cs, tapa, tapa, ps, tapa, tapa, tapa, tapa, tapa)
+		rcnc := NewRetrievalClientNodeConnector(bs, cs, rmc, rmc, ps, rmc, rmc, rmc, rmc)
 		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
 		require.NoError(t, err)
 
-		pce, ok := tapa.ActualPmtChans[clientAddr]
+		pce, ok := rmc.ActualPmtChans[clientAddr]
 		require.True(t, ok)
 
 		gochid, err := address.NewFromBytes(pce.ChannelID.Bytes())
 		require.NoError(t, err)
 		lane, err := rcnc.AllocateLane(gochid)
 		require.NoError(t, err)
-		assert.Equal(t, lane, tapa.ExpectedLanes[pce.ChannelID])
+		assert.Equal(t, lane, rmc.ExpectedLanes[pce.ChannelID])
 	})
 }
 
@@ -164,10 +164,10 @@ func TestRetrievalClientNodeConnector_CreatePaymentVoucher(t *testing.T) {
 	bs, cs, ps, clientAddr, minerAddr, channelAmount := testSetup(ctx, t)
 
 	t.Run("Returns a voucher with a signature", func(t *testing.T) {
-		tapa := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
-		tapa.StubMessageResponse(t, clientAddr, minerAddr, types.NewAttoFIL(channelAmount.Int))
+		rmc := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
+		rmc.StubMessageResponse(t, clientAddr, minerAddr, types.NewAttoFIL(channelAmount.Int))
 
-		rcnc := NewRetrievalClientNodeConnector(bs, cs, tapa, tapa, ps, tapa, tapa, tapa, tapa, tapa)
+		rcnc := NewRetrievalClientNodeConnector(bs, cs, rmc, rmc, ps, rmc, rmc, rmc, rmc)
 		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
 		require.NoError(t, err)
 
@@ -178,7 +178,7 @@ func TestRetrievalClientNodeConnector_CreatePaymentVoucher(t *testing.T) {
 
 		expectedAmt := tokenamount.FromInt(100)
 
-		currentNonce := tapa.Nonce
+		currentNonce := rmc.Nonce
 		voucher, err := rcnc.CreatePaymentVoucher(ctx, chid, expectedAmt, lane)
 		require.NoError(t, err)
 		assert.Equal(t, expectedAmt, voucher.Amount)
@@ -188,10 +188,10 @@ func TestRetrievalClientNodeConnector_CreatePaymentVoucher(t *testing.T) {
 	})
 
 	t.Run("Errors if payment channel does not exist", func(t *testing.T) {
-		tapa := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
-		tapa.StubMessageResponse(t, clientAddr, minerAddr, types.NewAttoFIL(channelAmount.Int))
+		rmc := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
+		rmc.StubMessageResponse(t, clientAddr, minerAddr, types.NewAttoFIL(channelAmount.Int))
 
-		rcnc := NewRetrievalClientNodeConnector(bs, cs, tapa, tapa, ps, tapa, tapa, tapa, tapa, tapa)
+		rcnc := NewRetrievalClientNodeConnector(bs, cs, rmc, rmc, ps, rmc, rmc, rmc, rmc)
 		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
 		require.NoError(t, err)
 
@@ -202,9 +202,9 @@ func TestRetrievalClientNodeConnector_CreatePaymentVoucher(t *testing.T) {
 		assert.Nil(t, voucher)
 	})
 	t.Run("Errors if there aren't enough funds in payment channel", func(t *testing.T) {
-		tapa := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
-		tapa.StubMessageResponse(t, clientAddr, minerAddr, types.ZeroAttoFIL)
-		rcnc := NewRetrievalClientNodeConnector(bs, cs, tapa, tapa, ps, tapa, tapa, tapa, tapa, tapa)
+		rmc := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
+		rmc.StubMessageResponse(t, clientAddr, minerAddr, types.ZeroAttoFIL)
+		rcnc := NewRetrievalClientNodeConnector(bs, cs, rmc, rmc, ps, rmc, rmc, rmc, rmc)
 		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
 		require.NoError(t, err)
 		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, tokenamount.FromInt(0))
@@ -218,12 +218,12 @@ func TestRetrievalClientNodeConnector_CreatePaymentVoucher(t *testing.T) {
 	})
 
 	t.Run("Errors if payment channel lane doesn't exist", func(t *testing.T) {
-		tapa := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
+		rmc := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
 
 		channelAmt := tokenamount.FromInt(200)
-		tapa.StubMessageResponse(t, clientAddr, minerAddr, types.NewAttoFIL(channelAmt.Int))
+		rmc.StubMessageResponse(t, clientAddr, minerAddr, types.NewAttoFIL(channelAmt.Int))
 
-		rcnc := NewRetrievalClientNodeConnector(bs, cs, tapa, tapa, ps, tapa, tapa, tapa, tapa, tapa)
+		rcnc := NewRetrievalClientNodeConnector(bs, cs, rmc, rmc, ps, rmc, rmc, rmc, rmc)
 		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt)
 		require.NoError(t, err)
 		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, tokenamount.FromInt(0))
@@ -235,11 +235,11 @@ func TestRetrievalClientNodeConnector_CreatePaymentVoucher(t *testing.T) {
 	})
 
 	t.Run("Errors if can't get nonce", func(t *testing.T) {
-		tapa := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
-		tapa.NonceErr = errors.New("no noncense")
+		rmc := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
+		rmc.NonceErr = errors.New("no noncense")
 
-		tapa.StubMessageResponse(t, clientAddr, minerAddr, types.NewAttoFIL(channelAmount.Int))
-		rcnc := NewRetrievalClientNodeConnector(bs, cs, tapa, tapa, ps, tapa, tapa, tapa, tapa, tapa)
+		rmc.StubMessageResponse(t, clientAddr, minerAddr, types.NewAttoFIL(channelAmount.Int))
+		rcnc := NewRetrievalClientNodeConnector(bs, cs, rmc, rmc, ps, rmc, rmc, rmc, rmc)
 		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
 		require.NoError(t, err)
 		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, tokenamount.FromInt(0))
@@ -254,11 +254,11 @@ func TestRetrievalClientNodeConnector_CreatePaymentVoucher(t *testing.T) {
 	})
 
 	t.Run("Errors if can't sign bytes", func(t *testing.T) {
-		tapa := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
-		tapa.SigErr = errors.New("signature failure")
+		rmc := NewRetrievalMarketClientFakeAPI(t, tokenamount.FromInt(1000))
+		rmc.SigErr = errors.New("signature failure")
 
-		tapa.StubMessageResponse(t, clientAddr, minerAddr, types.NewAttoFIL(channelAmount.Int))
-		rcnc := NewRetrievalClientNodeConnector(bs, cs, tapa, tapa, ps, tapa, tapa, tapa, tapa, tapa)
+		rmc.StubMessageResponse(t, clientAddr, minerAddr, types.NewAttoFIL(channelAmount.Int))
+		rcnc := NewRetrievalClientNodeConnector(bs, cs, rmc, rmc, ps, rmc, rmc, rmc, rmc)
 		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
 		require.NoError(t, err)
 		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, tokenamount.FromInt(0))

@@ -16,6 +16,7 @@ import (
 	xerrors "github.com/pkg/errors"
 )
 
+// RetrievalProviderConnector is the glue between go-filecoin and retrieval market provider API
 type RetrievalProviderConnector struct {
 	vs  map[string]voucherEntry
 	ps  piecestore.PieceStore
@@ -32,8 +33,8 @@ type voucherEntry struct {
 	expectedAmt tokenamount.TokenAmount
 }
 
-
-func NewRetrievalProviderNodeConnector(network rmnet.RetrievalMarketNetwork, pieceStore piecestore.PieceStore, bs *blockstore.Blockstore) *RetrievalProviderConnector {
+// NewRetrievalProviderNodeConnector creates a new RetrievalProviderNodeConnector
+func NewRetrievalProviderNodeConnector(network rmnet.RetrievalMarketNetwork, pieceStore piecestore.PieceStore, bs blockstore.Blockstore) *RetrievalProviderConnector {
 	return &RetrievalProviderConnector{
 		vs:  make(map[string]voucherEntry),
 		ps:  pieceStore,
@@ -42,10 +43,12 @@ func NewRetrievalProviderNodeConnector(network rmnet.RetrievalMarketNetwork, pie
 	}
 }
 
-func (r *RetrievalProviderNodeConnector) UnsealSector(ctx context.Context, sectorId uint64, offset uint64, length uint64) (io.ReadCloser, error) {
-	panic("TODO: go-fil-markets integration")
+// UnsealSector unseals the sector given by sectorId and offset with length `length`
+func (r *RetrievalProviderConnector) UnsealSector(ctx context.Context, sectorId uint64, offset uint64, length uint64) (io.ReadCloser, error) {
+	panic("implement me")
 }
 
+// SavePaymentVoucher stores the provided payment voucher with the payment channel actor
 func (r *RetrievalProviderNodeConnector) SavePaymentVoucher(_ context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount) (abi.TokenAmount, error) {
 	var tokenamt tokenamount.TokenAmount
 
@@ -65,6 +68,7 @@ func (r *RetrievalProviderNodeConnector) SavePaymentVoucher(_ context.Context, p
 	return voucher.Amount, nil
 }
 
+// voucherStoreKeyFor converts a signed voucher to a store key
 func (r *RetrievalProviderConnector) voucherStoreKeyFor(voucher *rtypes.SignedVoucher) (string, error) {
 	venc, err := voucher.EncodedString()
 	if err != nil {

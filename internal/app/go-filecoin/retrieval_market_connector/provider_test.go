@@ -59,9 +59,10 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 		proof2 := []byte("newproof")
 		dealAmount2 := tokenamount.FromInt(rand.Uint64())
 		pchan2, err := address.NewIDAddress(rand.Uint64())
+		require.NoError(t, err)
 		tokenamt2, err := rpc.SavePaymentVoucher(ctx, pchan2, voucher, proof2, dealAmount2)
 		assert.EqualError(t, err, "voucher exists")
-		assert.Equal(t, tokenamount.TokenAmount{nil}, tokenamt2)
+		assert.Equal(t, tokenamount.TokenAmount{}, tokenamt2)
 	})
 	t.Run("errors if cannot create a key for the voucher store", func(t *testing.T) {
 		rpc := NewRetrievalProviderNodeConnector(rmnet, ps, bs)

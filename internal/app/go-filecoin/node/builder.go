@@ -213,13 +213,13 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.ProofVerification = submodule.NewProofVerificationSubmodule()
 
 	panic("provider NewStorageProtocolSubmodule the arguments it demands")
-	nd.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(nil, nil, nil, nil, nil, nil, nil, nil)
+	nd.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(ctx, address.Undef, address.Undef, nil, nil, nil, nil, nil, nil, nil, nil, nil, "", nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.StorageProtocol")
 	}
 
 	panic("provider NewRetrievalProtocolSubmodule the arguments it demands")
-	nd.RetrievalProtocol, err = submodule.NewRetrievalProtocolSubmodule(address.Undef, nil, nil)
+	nd.RetrievalProtocol, err = submodule.NewRetrievalProtocolSubmodule(nil, nil, nil, nil, address.Undef, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.RetrievalProtocol")
 	}

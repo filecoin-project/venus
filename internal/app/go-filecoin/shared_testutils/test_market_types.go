@@ -1,4 +1,4 @@
-package shared_testutils
+package sharedtestutils
 
 import (
 	"testing"
@@ -7,7 +7,8 @@ import (
 	gfm_tut "github.com/filecoin-project/go-fil-markets/shared_testutil"
 )
 
-func RequireMakeTestPieceStore(t *testing.T) piecestore.PieceStore{
+// RequireMakeTestPieceStore generates a test piecestore
+func RequireMakeTestPieceStore(t *testing.T) piecestore.PieceStore {
 	pieceStore := gfm_tut.NewTestPieceStore()
 
 	expectedCIDs := gfm_tut.GenerateCids(3)
@@ -28,7 +29,7 @@ func RequireMakeTestPieceStore(t *testing.T) piecestore.PieceStore{
 		pieceStore.ExpectPiece(piece, piecestore.PieceInfo{
 			Deals: []piecestore.DealInfo{
 				{
-					Length: uint64(i+1),
+					Length: uint64(i + 1),
 				},
 			},
 		})

@@ -17,6 +17,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 )
 
+// RetrievalMarketClientFakeAPI is a test API that satisfies all needed interface methods
+// for a RetrievalMarketClient
 type RetrievalMarketClientFakeAPI struct {
 	AllocateLaneErr error
 
@@ -42,7 +44,9 @@ type RetrievalMarketClientFakeAPI struct {
 	ExpectedMsgReceipt *types.MessageReceipt
 	ExpectedSignedMsg  *types.SignedMessage
 }
-// PmtChanEntry is a record of a created payment channel with funds available.
+
+// PmtChanEntry is a mock record of a created payment channel with funds available.
+// TODO: this will change to reflect it being an actor
 type PmtChanEntry struct {
 	Payee      address.Address
 	Redeemed   tokenamount.TokenAmount
@@ -50,6 +54,8 @@ type PmtChanEntry struct {
 	FundsAvail tokenamount.TokenAmount
 }
 
+// NewRetrievalMarketClientFakeAPI creates an instance of a test API that satisfies all needed
+// interface methods for a RetrievalMarketClient.
 func NewRetrievalMarketClientFakeAPI(t *testing.T, bal tokenamount.TokenAmount) *RetrievalMarketClientFakeAPI {
 	return &RetrievalMarketClientFakeAPI{
 		Balance:          bal,
@@ -61,12 +67,13 @@ func NewRetrievalMarketClientFakeAPI(t *testing.T, bal tokenamount.TokenAmount) 
 	}
 }
 
+// GetChannelInfo mocks getting payment channel info
 func (rmFake *RetrievalMarketClientFakeAPI) GetChannelInfo(_ context.Context, paymentChannel address.Address) (address.Address, ChannelInfo, error) {
 	for payer, entry := range rmFake.ActualPmtChans {
 		if entry.ChannelID == paymentChannel {
 			pch := ChannelInfo{
-				Payee:         entry.Payee,
-				Amount:         types.NewAttoFIL(entry.FundsAvail.Int),
+				Payee:    entry.Payee,
+				Amount:   types.NewAttoFIL(entry.FundsAvail.Int),
 				Redeemed: types.NewAttoFIL(entry.Redeemed.Int),
 			}
 
@@ -76,6 +83,8 @@ func (rmFake *RetrievalMarketClientFakeAPI) GetChannelInfo(_ context.Context, pa
 	return address.Undef, ChannelInfo{}, errors.New("no such ChannelID")
 }
 
+// Wait mocks waiting for a message with a given CID to appear on chain, then actually calls
+// the provided callback
 func (rmFake *RetrievalMarketClientFakeAPI) Wait(_ context.Context, _ cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	if rmFake.WaitErr != nil {
 		return rmFake.WaitErr
@@ -84,25 +93,26 @@ func (rmFake *RetrievalMarketClientFakeAPI) Wait(_ context.Context, _ cid.Cid, c
 	clientAddr := rmFake.ExpectedSignedMsg.Message.From
 	rmFake.ActualPmtChans[clientAddr] = rmFake.ExpectedPmtChans[clientAddr]
 
-	cb(rmFake.ExpectedBlock, rmFake.ExpectedSignedMsg, rmFake.ExpectedMsgReceipt)
-	return nil
+	return cb(rmFake.ExpectedBlock, rmFake.ExpectedSignedMsg, rmFake.ExpectedMsgReceipt)
 }
 
+// GetBalance mocks getting an actor's balance in AttoFIL
 func (rmFake *RetrievalMarketClientFakeAPI) GetBalance(_ context.Context, _ address.Address) (types.AttoFIL, error) {
 	return types.NewAttoFIL(rmFake.Balance.Int), rmFake.BalanceErr
 }
-func (rmFake *RetrievalMarketClientFakeAPI) GetWorkerAddress(_ context.Context, _ address.Address, _ block.TipSetKey) (address.Address, error) {
-	return rmFake.WorkerAddr, rmFake.WorkerAddrErr
-}
+
+// NextNonce mocks getting an actor's next nonce
 func (rmFake *RetrievalMarketClientFakeAPI) NextNonce(_ context.Context, _ address.Address) (uint64, error) {
 	rmFake.Nonce++
 	return rmFake.Nonce, rmFake.NonceErr
 }
 
+// SignBytes mocks signing data
 func (rmFake *RetrievalMarketClientFakeAPI) SignBytes(_ []byte, _ address.Address) (types.Signature, error) {
 	return rmFake.Sig.Data, rmFake.SigErr
 }
 
+// Send mocks sending a message on chain
 func (rmFake *RetrievalMarketClientFakeAPI) Send(_ context.Context, _, _ address.Address, _ types.AttoFIL,
 	gasPrice types.AttoFIL, gasLimit types.GasUnits, bcast bool, method types.MethodID, params ...interface{}) (out cid.Cid, pubErrCh chan error, err error) {
 	rmFake.Nonce++
@@ -113,7 +123,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) Send(_ context.Context, _, _ address
 	return rmFake.MsgSendCid, nil, rmFake.MsgSendErr
 }
 
-// GetPaymentChannelIDByPayee searches for a payment channel for a payer + Payee.
+// GetChannel searches for a payment channel for a payer + Payee.
 // It does not assume the payment channel has been created. If not found, returns
 // 0 channel ID and nil.
 func (rmFake *RetrievalMarketClientFakeAPI) GetChannel(ctx context.Context, payer, _ address.Address) (address.Address, error) {
@@ -125,14 +135,17 @@ func (rmFake *RetrievalMarketClientFakeAPI) GetChannel(ctx context.Context, paye
 	return entry.ChannelID, nil
 }
 
+// AllocateLane mocks allocation of a new lane in a payment channel
 func (rmFake *RetrievalMarketClientFakeAPI) AllocateLane(_ context.Context, _ address.Address, chid address.Address) (uint64, error) {
 	lane, ok := rmFake.ExpectedLanes[chid]
 	if ok {
-		rmFake.ExpectedLanes[chid] = lane+1
+		rmFake.ExpectedLanes[chid] = lane + 1
 	}
 	return lane, nil
 }
 
+// StubMessageResponse sets up a message, message receipt and return value for a create payment
+// channel message
 func (rmFake *RetrievalMarketClientFakeAPI) StubMessageResponse(t *testing.T, from, to address.Address, value types.AttoFIL) {
 	params, err := abi.ToEncodedValues(to, uint64(1))
 	require.NoError(t, err)
@@ -181,6 +194,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) StubMessageResponse(t *testing.T, fr
 	}
 }
 
+// requireMakeTestFcAddr generates a random ID addr for test
 func requireMakeTestFcAddr(t *testing.T) address.Address {
 	res, err := address.NewIDAddress(rand.Uint64())
 	require.NoError(t, err)
