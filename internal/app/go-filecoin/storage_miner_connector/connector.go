@@ -100,6 +100,8 @@ func (m *StorageMinerNodeConnector) StopHeightListener() {
 	m.listenerDone <- struct{}{}
 }
 
+// CancelHeightListener removes on
+
 func (m *StorageMinerNodeConnector) handleNewTipSet(ctx context.Context, previousHead block.TipSet) (block.TipSet, error) {
 	newHeadKey := m.chainStore.GetHead()
 	newHead, err := m.chainStore.GetTipSet(newHeadKey)
@@ -114,7 +116,7 @@ func (m *StorageMinerNodeConnector) handleNewTipSet(ctx context.Context, previou
 
 	newListeners := make([]*chainsampler.HeightThresholdListener, len(m.heightListeners))
 	for _, listener := range m.heightListeners {
-		valid, err := listener.Handle(ctx, newTips, m.chainState.SampleRandomness)
+		valid, err := listener.Handle(ctx, newTips)
 		if err != nil {
 			log.Error("Error checking storage miner chainStore listener", err)
 		}
@@ -378,8 +380,9 @@ func (m *StorageMinerNodeConnector) GetChainHead(ctx context.Context) (storageno
 // responsible for choosing an interval-value, which is a quantity of blocks to
 // wait (after the block in which the pre-commit message is mined) before
 // computing and sampling a seed.
-func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMsg cid.Cid, interval uint64) (<-chan storagenode.SealSeed, <-chan storagenode.SeedInvalidated, <-chan storagenode.FinalityReached, <-chan storagenode.GetSealSeedError) {
+<unc (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMsg cid.Cid, interval uint64) (<-chan storagenode.SealSeed, <-chan storagenode.SeedInvalidated, <-chan storagenode.FinalityReached, <-chan storagenode.GetSealSeedError) {
 	sc := make(chan storagenode.SealSeed)
+	hc := make(chan block.TipSetKey)
 	ec := make(chan storagenode.GetSealSeedError)
 	ic := make(chan storagenode.SeedInvalidated)
 	dc := make(chan storagenode.FinalityReached)
@@ -397,7 +400,42 @@ func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMs
 			return
 		}
 
-		m.newListener <- chainsampler.NewHeightThresholdListener(h+interval, sc, ic, dc, ec)
+		m.newListener <- chainsampler.NewHeightThresholdListener(h+interval, hc, ec, ic, dc)
+	}()
+
+	// translate tipset key to seal seed handler
+	go func() {
+		for {
+			select {
+			case key := <-hc:
+				ts, err := m.chainState.GetTipSet(key)
+				if err != nil {
+					ec <- err
+					break
+				}
+
+				tsHeight, err := ts.Height()
+				if err != nil {
+					ec <- err
+					break
+				}
+
+				randomness, err := m.chainState.SampleRandomness(ctx, types.NewBlockHeight(tsHeight))
+				if err != nil {
+					ec <- err
+					break
+				}
+
+				sc <- storage.SealSeed{
+					BlockrHeight: tsHeight,
+					TicketBytes: randomness,
+				}
+			case <-dc:
+				return
+			case <-ctx.Done():
+				return
+			}
+		}
 	}()
 
 	return sc, ic, dc, ec

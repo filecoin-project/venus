@@ -2,7 +2,6 @@ package verification
 
 import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 // FFIBackedProofVerifier calls into rust-fil-proofs through CGO/FFI in order
@@ -20,7 +19,7 @@ func (f FFIBackedProofVerifier) VerifySeal(
 	sectorID uint64,
 	proof []byte,
 ) (bool, error) {
-	return ffi.VerifySeal(abi.SectorSize(sectorSize), commR, commD, proverID, ticket, seed, abi.SectorNumber(sectorID), proof)
+	return ffi.VerifySeal(sectorSize, commR, commD, proverID, ticket, seed, sectorID, proof)
 }
 
 // VerifyPoSt returns a value indicating the validity of the provided proof
@@ -33,7 +32,7 @@ func (f FFIBackedProofVerifier) VerifyPoSt(
 	winners []ffi.Candidate,
 	proverID [32]byte,
 ) (bool, error) {
-	return ffi.VerifyPoSt(abi.SectorSize(sectorSize), sectorInfo, randomness, challengeCount, proof, winners, proverID)
+	return ffi.VerifyPoSt(sectorSize, sectorInfo, randomness, challengeCount, proof, winners, proverID)
 }
 
 // NewFFIBackedProofVerifier produces an FFIBackedProofVerifier which delegates

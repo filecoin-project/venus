@@ -3,34 +3,28 @@ package chainsampler
 import (
 	"context"
 
-	storage "github.com/filecoin-project/go-storage-miner/apis/node"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-storage-miner"
 )
-
-// ChainSampler is a function which samples randomness from the chainStore at the
-// given height.
-type ChainSampler func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
 
 // HeightThresholdListener listens for new heaviest chains and notifies when a height threshold is crossed.
 type HeightThresholdListener struct {
 	target    uint64
 	targetHit bool
 
-	seedCh    chan storage.SealSeed
-	errCh     chan storage.GetSealSeedError
-	invalidCh chan storage.SeedInvalidated
-	doneCh    chan storage.FinalityReached
+	hitCh     chan block.TipSetKey
+	errCh     chan error
+	invalidCh chan struct{}
+	doneCh    chan struct{}
 }
 
 // NewHeightThresholdListener creates a new listener
-func NewHeightThresholdListener(target uint64, seedCh chan storage.SealSeed, invalidCh chan storage.SeedInvalidated, doneCh chan storage.FinalityReached, errCh chan storage.GetSealSeedError) *HeightThresholdListener {
+func NewHeightThresholdListener(target uint64, hitCh chan block.TipSetKey, errCh chan error, invalidCh, doneCh chan struct{}) *HeightThresholdListener {
 	return &HeightThresholdListener{
 		target:    target,
 		targetHit: false,
-		seedCh:    seedCh,
+		hitCh:     hitCh,
 		errCh:     errCh,
 		invalidCh: invalidCh,
 		doneCh:    doneCh,
@@ -43,7 +37,7 @@ func NewHeightThresholdListener(target uint64, seedCh chan storage.SealSeed, inv
 // all the common ancestors of the new tipset to the greatest common ancestor.
 // The tipsets must be ordered from newest (highest block height) to oldest.
 // Returns false if this handler is no longer valid.
-func (l *HeightThresholdListener) Handle(ctx context.Context, chain []block.TipSet, sampler ChainSampler) (bool, error) {
+func (l *HeightThresholdListener) Handle(ctx context.Context, chain []block.TipSet) (bool, error) {
 	if len(chain) < 1 {
 		return true, nil
 	}
@@ -72,8 +66,8 @@ func (l *HeightThresholdListener) Handle(ctx context.Context, chain []block.TipS
 			l.targetHit = false
 			// if we've re-orged to a point before the target
 		} else if lcaHeight < l.target {
-			l.invalidCh <- storage.SeedInvalidated{}
-			err := l.sendRandomness(ctx, chain, sampler)
+			l.invalidCh <- struct{}{}
+			err := l.sendHit(ctx, chain)
 			if err != nil {
 				return true, err
 			}
@@ -84,7 +78,7 @@ func (l *HeightThresholdListener) Handle(ctx context.Context, chain []block.TipS
 	// otherwise send randomness if we've hit the height
 	if h >= l.target {
 		l.targetHit = true
-		err := l.sendRandomness(ctx, chain, sampler)
+		err := l.sendHit(ctx, chain)
 		if err != nil {
 			return true, err
 		}
@@ -92,7 +86,7 @@ func (l *HeightThresholdListener) Handle(ctx context.Context, chain []block.TipS
 	return true, nil
 }
 
-func (l *HeightThresholdListener) sendRandomness(ctx context.Context, chain []block.TipSet, sampler ChainSampler) error {
+func (l *HeightThresholdListener) sendHit(ctx context.Context, chain []block.TipSet) error {
 	// assume chainStore not empty and first tipset height greater than target
 	firstTargetTipset := chain[0]
 	for _, ts := range chain {
@@ -107,19 +101,6 @@ func (l *HeightThresholdListener) sendRandomness(ctx context.Context, chain []bl
 		firstTargetTipset = ts
 	}
 
-	tsHeight, err := firstTargetTipset.Height()
-	if err != nil {
-		return err
-	}
-
-	randomness, err := sampler(ctx, types.NewBlockHeight(tsHeight))
-	if err != nil {
-		return err
-	}
-
-	l.seedCh <- storage.SealSeed{
-		BlockHeight: tsHeight,
-		TicketBytes: randomness,
-	}
+	l.hitCh <- firstTargetTipset.Key()
 	return nil
 }
