@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -134,8 +135,9 @@ func RequireNewFakeActor(t *testing.T, vms vm.Storage, addr address.Address, cod
 func RequireNewFakeActorWithTokens(t *testing.T, vms vm.Storage, addr address.Address, codeCid cid.Cid, amt types.AttoFIL) *actor.Actor {
 	act := actor.NewActor(codeCid, amt)
 	var err error
-	act.Head, err = (&actor.FakeActor{}).InitializeState(vms, &actor.FakeActorStorage{})
+	rawHead, err := (&actor.FakeActor{}).InitializeState(vms, &actor.FakeActorStorage{})
 	require.NoError(t, err)
+	act.Head = e.NewCid(rawHead)
 	require.NoError(t, vms.Flush())
 	return act
 }
@@ -293,7 +295,7 @@ func RequireGetNonce(t *testing.T, st state.Tree, vms vm.Storage, a address.Addr
 }
 
 // RequireCreateStorages creates an empty state tree and storage map.
-func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.StorageMap) {
+func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.Storage) {
 	d := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(d)
 	cst := cborutil.NewIpldStore(bs)

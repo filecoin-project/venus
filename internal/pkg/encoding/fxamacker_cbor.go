@@ -105,11 +105,6 @@ func (encoder *FxamackerCborEncoder) EncodeMap(obj interface{}) error {
 
 // EncodeStruct encodes a struct.
 func (encoder *FxamackerCborEncoder) EncodeStruct(obj interface{}) error {
-	// handle cbg user defined marshalling
-	if m, ok := obj.(cborMarshalerStreamed); ok {
-		return m.MarshalCBOR(&encoder.b)
-	}
-
 	return encoder.encodeCbor(obj)
 }
 
@@ -119,7 +114,10 @@ func (encoder FxamackerCborEncoder) Bytes() []byte {
 }
 
 func (encoder *FxamackerCborEncoder) encodeCbor(obj interface{}) error {
-	// check for object implementing cborMarshaller
+	// check for object implementing cborMarshallerStreamed
+	if m, ok := obj.(cborMarshalerStreamed); ok {
+		return m.MarshalCBOR(&encoder.b)
+	}
 
 	// get cbor encoded bytes
 	raw, err := cbor.Marshal(obj, cbor.EncOptions{})
@@ -154,15 +152,16 @@ func (decoder *FxamackerCborDecoder) DecodeMap(obj interface{}) error {
 
 // DecodeStruct decodes a struct.
 func (decoder *FxamackerCborDecoder) DecodeStruct(obj interface{}) error {
-	// handle cbg unmarshalling
-	if u, ok := obj.(cborUnmarshalerStreamed); ok {
-		return u.UnmarshalCBOR(bytes.NewBuffer(decoder.raw))
-	}
 
 	return decoder.decodeCbor(obj)
 }
 
 func (decoder *FxamackerCborDecoder) decodeCbor(obj interface{}) error {
+	// check for object implementing cborUnmarshallerStreamed
+	if u, ok := obj.(cborUnmarshalerStreamed); ok {
+		return u.UnmarshalCBOR(bytes.NewBuffer(decoder.raw))
+	}
+
 	// decode the bytes into a cbor object
 	if err := cbor.Unmarshal(decoder.raw, obj); err != nil {
 		return err

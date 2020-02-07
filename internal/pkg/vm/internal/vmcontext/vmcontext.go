@@ -6,11 +6,6 @@ import (
 	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/cron"
@@ -132,7 +127,7 @@ func (vm *VM) normalizeFrom(from address.Address) address.Address {
 	}
 
 	// build state handle
-	var stateHandle = NewReadonlyStateHandle(vm.Storage(), initActorEntry.Head)
+	var stateHandle = NewReadonlyStateHandle(vm.Storage(), initActorEntry.Head.Cid)
 
 	// get a view into the actor state
 	initView := initactor.NewView(stateHandle, vm.Storage())
@@ -444,7 +439,7 @@ func (vm *VM) getMinerOwner(minerAddr address.Address) address.Address {
 	}
 
 	// build state handle
-	var stateHandle = NewReadonlyStateHandle(vm.Storage(), minerActorEntry.Head)
+	var stateHandle = NewReadonlyStateHandle(vm.Storage(), minerActorEntry.Head.Cid)
 
 	// get a view into the actor state
 	minerView := miner.NewView(stateHandle, vm.Storage())

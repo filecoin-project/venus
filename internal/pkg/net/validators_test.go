@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-
 	"github.com/filecoin-project/go-address"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"

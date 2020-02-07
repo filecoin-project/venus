@@ -181,7 +181,7 @@ func (chn *ChainStateReadWriter) GetActorStateAt(ctx context.Context, tipKey blo
 		return err
 	}
 
-	blk, err := chn.bstore.Get(act.Head)
+	blk, err := chn.bstore.Get(act.Head.Cid)
 	if err != nil {
 		return err
 	}
