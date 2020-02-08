@@ -7,8 +7,10 @@ import (
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-amt-ipld"
+	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
+
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -231,7 +233,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			return nil, err
 		}
 
-		emptyAMTCid, err := amt.FromArray(amt.WrapBlockstore(bs), []typegen.CBORMarshaler{})
+		emptyAMTCid, err := amt.FromArray(ctx, cborutil.NewIpldStore(bs), []typegen.CBORMarshaler{})
 		if err != nil {
 			return nil, err
 		}

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-amt-ipld"
+	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -37,7 +37,7 @@ func TestChainImportExportGenesis(t *testing.T) {
 	assert.Equal(t, gene.Key(), importedKey)
 
 	// walk the blockstore and assert it had all blocks imported
-	validateBlockstoreImport(t, gene.Key(), gene.Key(), bstore)
+	validateBlockstoreImport(ctx, t, gene.Key(), gene.Key(), bstore)
 }
 
 func TestChainImportExportSingleTip(t *testing.T) {
@@ -54,7 +54,7 @@ func TestChainImportExportSingleTip(t *testing.T) {
 	assert.Equal(t, headTS.Key(), importedKey)
 
 	// walk the blockstore and assert it had all blocks imported
-	validateBlockstoreImport(t, headTS.Key(), gene.Key(), bstore)
+	validateBlockstoreImport(ctx, t, headTS.Key(), gene.Key(), bstore)
 }
 
 func TestChainImportExportWideTip(t *testing.T) {
@@ -71,7 +71,7 @@ func TestChainImportExportWideTip(t *testing.T) {
 	assert.Equal(t, headTS.Key(), importedKey)
 
 	// walk the blockstore and assert it had all blocks imported
-	validateBlockstoreImport(t, headTS.Key(), gene.Key(), bstore)
+	validateBlockstoreImport(ctx, t, headTS.Key(), gene.Key(), bstore)
 }
 
 func TestChainImportExportMultiTip(t *testing.T) {
@@ -89,7 +89,7 @@ func TestChainImportExportMultiTip(t *testing.T) {
 	assert.Equal(t, headTS.Key(), importedKey)
 
 	// walk the blockstore and assert it had all blocks imported
-	validateBlockstoreImport(t, headTS.Key(), gene.Key(), bstore)
+	validateBlockstoreImport(ctx, t, headTS.Key(), gene.Key(), bstore)
 }
 
 func TestChainImportExportMultiWideTip(t *testing.T) {
@@ -108,7 +108,7 @@ func TestChainImportExportMultiWideTip(t *testing.T) {
 	assert.Equal(t, headTS.Key(), importedKey)
 
 	// walk the blockstore and assert it had all blocks imported
-	validateBlockstoreImport(t, headTS.Key(), gene.Key(), bstore)
+	validateBlockstoreImport(ctx, t, headTS.Key(), gene.Key(), bstore)
 }
 
 func TestChainImportExportMultiWideBaseTip(t *testing.T) {
@@ -127,7 +127,7 @@ func TestChainImportExportMultiWideBaseTip(t *testing.T) {
 	assert.Equal(t, headTS.Key(), importedKey)
 
 	// walk the blockstore and assert it had all blocks imported
-	validateBlockstoreImport(t, headTS.Key(), gene.Key(), bstore)
+	validateBlockstoreImport(ctx, t, headTS.Key(), gene.Key(), bstore)
 }
 
 func TestChainImportExportMultiWideTips(t *testing.T) {
@@ -146,7 +146,7 @@ func TestChainImportExportMultiWideTips(t *testing.T) {
 	assert.Equal(t, headTS.Key(), importedKey)
 
 	// walk the blockstore and assert it had all blocks imported
-	validateBlockstoreImport(t, headTS.Key(), gene.Key(), bstore)
+	validateBlockstoreImport(ctx, t, headTS.Key(), gene.Key(), bstore)
 }
 
 func TestChainImportExportMessages(t *testing.T) {
@@ -178,7 +178,7 @@ func TestChainImportExportMessages(t *testing.T) {
 	assert.Equal(t, ts2.Key(), importedKey)
 
 	// walk the blockstore and assert it had all blocks imported
-	validateBlockstoreImport(t, ts2.Key(), gene.Key(), bstore)
+	validateBlockstoreImport(ctx, t, ts2.Key(), gene.Key(), bstore)
 }
 
 func TestChainImportExportMultiTipSetWithMessages(t *testing.T) {
@@ -215,7 +215,7 @@ func TestChainImportExportMultiTipSetWithMessages(t *testing.T) {
 	assert.Equal(t, ts3.Key(), importedKey)
 
 	// walk the blockstore and assert it had all blocks imported
-	validateBlockstoreImport(t, ts3.Key(), gene.Key(), bstore)
+	validateBlockstoreImport(ctx, t, ts3.Key(), gene.Key(), bstore)
 }
 
 func mustExportToBuffer(ctx context.Context, t *testing.T, head block.TipSet, cb *chain.Builder, msr *mockStateReader, carW *bufio.Writer) {
@@ -249,8 +249,8 @@ func setupDeps(t *testing.T) (context.Context, block.TipSet, *chain.Builder, *bu
 
 }
 
-func validateBlockstoreImport(t *testing.T, start, stop block.TipSetKey, bstore blockstore.Blockstore) {
-	as := amt.WrapBlockstore(bstore)
+func validateBlockstoreImport(ctx context.Context, t *testing.T, start, stop block.TipSetKey, bstore blockstore.Blockstore) {
+	as := cbor.NewCborStore(bstore)
 
 	// walk the blockstore and assert it had all blocks imported
 	cur := start
@@ -262,23 +262,23 @@ func validateBlockstoreImport(t *testing.T, start, stop block.TipSetKey, bstore 
 			blk, err := block.DecodeBlock(bsBlk.RawData())
 			assert.NoError(t, err)
 
-			secpAMT, err := amt.LoadAMT(as, blk.Messages.SecpRoot.Cid)
+			secpAMT, err := amt.LoadAMT(ctx, as, blk.Messages.SecpRoot.Cid)
 			require.NoError(t, err)
 
 			var smsg types.SignedMessage
-			requireAMTDecoding(t, bstore, secpAMT, &smsg)
+			requireAMTDecoding(ctx, t, bstore, secpAMT, &smsg)
 
-			blsAMT, err := amt.LoadAMT(as, blk.Messages.BLSRoot.Cid)
+			blsAMT, err := amt.LoadAMT(ctx, as, blk.Messages.BLSRoot.Cid)
 			require.NoError(t, err)
 
 			var umsg types.UnsignedMessage
-			requireAMTDecoding(t, bstore, blsAMT, &umsg)
+			requireAMTDecoding(ctx, t, bstore, blsAMT, &umsg)
 
-			rectAMT, err := amt.LoadAMT(as, blk.MessageReceipts.Cid)
+			rectAMT, err := amt.LoadAMT(ctx, as, blk.MessageReceipts.Cid)
 			require.NoError(t, err)
 
 			var rect types.MessageReceipt
-			requireAMTDecoding(t, bstore, rectAMT, &rect)
+			requireAMTDecoding(ctx, t, bstore, rectAMT, &rect)
 
 			for _, p := range blk.Parents.ToSlice() {
 				parents = append(parents, p)
@@ -291,8 +291,8 @@ func validateBlockstoreImport(t *testing.T, start, stop block.TipSetKey, bstore 
 	}
 }
 
-func requireAMTDecoding(t *testing.T, bstore blockstore.Blockstore, root *amt.Root, dest interface{}) {
-	err := root.ForEach(func(_ uint64, d *typegen.Deferred) error {
+func requireAMTDecoding(ctx context.Context, t *testing.T, bstore blockstore.Blockstore, root *amt.Root, dest interface{}) {
+	err := root.ForEach(ctx, func(_ uint64, d *typegen.Deferred) error {
 		var c cid.Cid
 		if err := cbor.DecodeInto(d.Raw, &c); err != nil {
 			return err
