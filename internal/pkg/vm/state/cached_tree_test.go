@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -29,11 +30,11 @@ func TestCachedStateGetCommit(t *testing.T) {
 	// create some actors
 	act1 := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 	act1Cid := requireCid(t, "hello")
-	act1.Head = act1Cid
+	act1.Head = e.NewCid(act1Cid)
 	act1.IncrementSeqNum()
 	act2 := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 	act2Cid := requireCid(t, "world")
-	act2.Head = act2Cid
+	act2.Head = e.NewCid(act2Cid)
 
 	addrGetter := vmaddr.NewForTestGetter()
 	addr1, addr2 := addrGetter(), addrGetter()
@@ -47,18 +48,18 @@ func TestCachedStateGetCommit(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, uint64(1), uint64(cAct1.CallSeqNum))
-	assert.Equal(t, act1Cid, cAct1.Head)
+	assert.Equal(t, act1Cid, cAct1.Head.Cid)
 
 	// altering act1 doesn't alter it in underlying cache
 	cAct1.IncrementSeqNum()
 	cAct1Cid := requireCid(t, "goodbye")
-	cAct1.Head = cAct1Cid
+	cAct1.Head = e.NewCid(cAct1Cid)
 
 	uAct1, err := underlying.GetActor(ctx, addr1)
 	require.NoError(t, err)
 
 	assert.Equal(t, uint64(1), uint64(uAct1.CallSeqNum))
-	assert.Equal(t, act1.Head, uAct1.Head)
+	assert.Equal(t, act1.Head.Cid, uAct1.Head.Cid)
 
 	// retrieving from the cache again returns the same instance
 	cAct1Again, err := tree.GetActor(ctx, addr1)
@@ -73,14 +74,14 @@ func TestCachedStateGetCommit(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, uint64(2), uint64(uAct1Again.CallSeqNum))
-	assert.Equal(t, cAct1Cid, uAct1Again.Head)
+	assert.Equal(t, cAct1Cid, uAct1Again.Head.Cid)
 
 	// commit doesn't affect untouched actors
 	uAct2, err := underlying.GetActor(ctx, addr2)
 	require.NoError(t, err)
 
 	assert.Equal(t, uint64(0), uint64(uAct2.CallSeqNum))
-	assert.Equal(t, act2Cid, uAct2.Head)
+	assert.Equal(t, act2Cid, uAct2.Head.Cid)
 }
 
 func TestCachedStateGetOrCreate(t *testing.T) {

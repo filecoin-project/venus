@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -59,10 +59,10 @@ func TestMiner(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64) (hamt.CborIpldStore, bstore.Blockstore, address.Address, state.Tree) {
+func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64) (*cborutil.IpldStore, bstore.Blockstore, address.Address, state.Tree) {
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
-	cst := hamt.NewCborStore()
+	cst := cborutil.NewIpldStore(bs)
 
 	// set up genesis block containing some miners with non-zero power
 	genCfg := &gengen.GenesisCfg{
@@ -83,7 +83,7 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 	var calcGenBlk block.Block
 	require.NoError(t, cst.Get(ctx, info.GenesisCid, &calcGenBlk))
 
-	stateTree, err := state.NewTreeLoader().LoadStateTree(ctx, cst, calcGenBlk.StateRoot)
+	stateTree, err := state.NewTreeLoader().LoadStateTree(ctx, cst, calcGenBlk.StateRoot.Cid)
 	require.NoError(t, err)
 
 	return cst, bs, info.Miners[0].Address, stateTree

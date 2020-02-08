@@ -34,6 +34,22 @@ type IntSet struct {
 	ba bitarray.BitArray
 }
 
+// MarshalBinary serializes the intset to its representative bitarray
+func (is IntSet) MarshalBinary() ([]byte, error) {
+	bs, _, err := rleplus.Encode(is.Values())
+	return bs, err
+}
+
+// UnmarshalBinary creates an intset out of an rleplus bitarray
+func (is *IntSet) UnmarshalBinary(bs []byte) error {
+	ints, err := rleplus.Decode(bs)
+	if err != nil {
+		return err
+	}
+	*is = NewIntSet(ints...)
+	return nil
+}
+
 // NewIntSet returns a new IntSet, optionally initialized with integers
 func NewIntSet(ints ...uint64) IntSet {
 	// We are ignoring errors from SetBit, GetBit since SparseBitArrays never return errors for those methods

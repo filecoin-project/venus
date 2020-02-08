@@ -127,7 +127,7 @@ func (vm *VM) normalizeFrom(from address.Address) address.Address {
 	}
 
 	// build state handle
-	var stateHandle = NewReadonlyStateHandle(vm.Storage(), initActorEntry.Head)
+	var stateHandle = NewReadonlyStateHandle(vm.Storage(), initActorEntry.Head.Cid)
 
 	// get a view into the actor state
 	initView := initactor.NewView(stateHandle, vm.Storage())
@@ -439,7 +439,7 @@ func (vm *VM) getMinerOwner(minerAddr address.Address) address.Address {
 	}
 
 	// build state handle
-	var stateHandle = NewReadonlyStateHandle(vm.Storage(), minerActorEntry.Head)
+	var stateHandle = NewReadonlyStateHandle(vm.Storage(), minerActorEntry.Head.Cid)
 
 	// get a view into the actor state
 	minerView := miner.NewView(stateHandle, vm.Storage())

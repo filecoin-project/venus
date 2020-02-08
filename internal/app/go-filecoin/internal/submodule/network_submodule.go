@@ -13,7 +13,6 @@ import (
 	"github.com/ipfs/go-graphsync/ipldbridge"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
-	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	offroute "github.com/ipfs/go-ipfs-routing/offline"
@@ -33,6 +32,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
@@ -159,7 +159,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 }
 
 func retrieveNetworkName(ctx context.Context, genCid cid.Cid, bs bstore.Blockstore) (string, error) {
-	cborStore := hamt.CSTFromBstore(bs)
+	cborStore := cborutil.NewIpldStore(bs)
 	var genesis block.Block
 
 	err := cborStore.Get(ctx, genCid, &genesis)
@@ -167,16 +167,16 @@ func retrieveNetworkName(ctx context.Context, genCid cid.Cid, bs bstore.Blocksto
 		return "", errors.Wrapf(err, "failed to get block %s", genCid.String())
 	}
 
-	tree, err := state.NewTreeLoader().LoadStateTree(ctx, cborStore, genesis.StateRoot)
+	tree, err := state.NewTreeLoader().LoadStateTree(ctx, cborStore, genesis.StateRoot.Cid)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to load node for %s", genesis.StateRoot)
+		return "", errors.Wrapf(err, "failed to load node for %s", genesis.StateRoot.Cid)
 	}
 	initActor, err := tree.GetActor(ctx, address.InitAddress)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to load init actor at %s", address.InitAddress.String())
 	}
 
-	block, err := bs.Get(initActor.Head)
+	block, err := bs.Get(initActor.Head.Cid)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to load init actor state at %s", initActor.Head)
 	}

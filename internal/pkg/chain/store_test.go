@@ -11,7 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ipfs/go-hamt-ipld"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -37,7 +39,7 @@ func requirePutTestChain(ctx context.Context, t *testing.T, chainStore *chain.St
 	for _, ts := range tss {
 		tsas := &chain.TipSetMetadata{
 			TipSet:          ts,
-			TipSetStateRoot: ts.At(0).StateRoot,
+			TipSetStateRoot: ts.At(0).StateRoot.Cid,
 			TipSetReceipts:  types.EmptyReceiptsCID,
 		}
 		require.NoError(t, chainStore.PutTipSetMetadata(ctx, tsas))
@@ -76,7 +78,7 @@ func TestPutTipSet(t *testing.T) {
 
 	genTsas := &chain.TipSetMetadata{
 		TipSet:          genTS,
-		TipSetStateRoot: genTS.At(0).StateRoot,
+		TipSetStateRoot: genTS.At(0).StateRoot.Cid,
 		TipSetReceipts:  types.EmptyReceiptsCID,
 	}
 	err := cs.PutTipSetMetadata(ctx, genTsas)
@@ -123,17 +125,19 @@ func TestGetByKey(t *testing.T) {
 	assert.Equal(t, link3, got3TS)
 	assert.Equal(t, link4, got4TS)
 
-	assert.Equal(t, genTS.At(0).StateRoot, gotGTSSR)
-	assert.Equal(t, link1.At(0).StateRoot, got1TSSR)
-	assert.Equal(t, link2.At(0).StateRoot, got2TSSR)
-	assert.Equal(t, link3.At(0).StateRoot, got3TSSR)
-	assert.Equal(t, link4.At(0).StateRoot, got4TSSR)
+	assert.Equal(t, genTS.At(0).StateRoot.Cid, gotGTSSR)
+	assert.Equal(t, link1.At(0).StateRoot.Cid, got1TSSR)
+	assert.Equal(t, link2.At(0).StateRoot.Cid, got2TSSR)
+	assert.Equal(t, link3.At(0).StateRoot.Cid, got3TSSR)
+	assert.Equal(t, link4.At(0).StateRoot.Cid, got4TSSR)
 }
 
 // Tipset state is loaded correctly
 func TestGetTipSetState(t *testing.T) {
 	ctx := context.Background()
-	cst := hamt.NewCborStore()
+	ds := repo.NewInMemoryRepo().ChainDatastore()
+	bs := bstore.NewBlockstore(ds)
+	cst := cborutil.NewIpldStore(bs)
 
 	// setup testing state
 	fakeCode := types.CidFromString(t, "somecid")
@@ -153,8 +157,6 @@ func TestGetTipSetState(t *testing.T) {
 	})
 
 	// setup chain store
-	r := repo.NewInMemoryRepo()
-	ds := r.Datastore()
 	store := chain.NewStore(ds, cst, state.NewTreeLoader(), chain.NewStatusReporter(), gen.At(0).Cid())
 
 	// add tipset and state to chain store
@@ -170,7 +172,7 @@ func TestGetTipSetState(t *testing.T) {
 	for actRes := range st2.GetAllActors(ctx) {
 		assert.NoError(t, actRes.Error)
 		assert.Equal(t, addr.String(), actRes.Address)
-		assert.Equal(t, fakeCode, actRes.Actor.Code)
+		assert.Equal(t, fakeCode, actRes.Actor.Code.Cid)
 		assert.Equal(t, testActor.Head, actRes.Actor.Head)
 		assert.Equal(t, types.Uint64(0), actRes.Actor.CallSeqNum)
 		assert.Equal(t, balance, actRes.Actor.Balance)
@@ -208,11 +210,11 @@ func TestGetByParent(t *testing.T) {
 	assert.Equal(t, link3, got3[0].TipSet)
 	assert.Equal(t, link4, got4[0].TipSet)
 
-	assert.Equal(t, genTS.At(0).StateRoot, gotG[0].TipSetStateRoot)
-	assert.Equal(t, link1.At(0).StateRoot, got1[0].TipSetStateRoot)
-	assert.Equal(t, link2.At(0).StateRoot, got2[0].TipSetStateRoot)
-	assert.Equal(t, link3.At(0).StateRoot, got3[0].TipSetStateRoot)
-	assert.Equal(t, link4.At(0).StateRoot, got4[0].TipSetStateRoot)
+	assert.Equal(t, genTS.At(0).StateRoot.Cid, gotG[0].TipSetStateRoot)
+	assert.Equal(t, link1.At(0).StateRoot.Cid, got1[0].TipSetStateRoot)
+	assert.Equal(t, link2.At(0).StateRoot.Cid, got2[0].TipSetStateRoot)
+	assert.Equal(t, link3.At(0).StateRoot.Cid, got3[0].TipSetStateRoot)
+	assert.Equal(t, link4.At(0).StateRoot.Cid, got4[0].TipSetStateRoot)
 }
 
 func TestGetMultipleByParent(t *testing.T) {
@@ -248,7 +250,7 @@ func TestGetMultipleByParent(t *testing.T) {
 		if tsas.TipSet.Len() == 1 {
 			assert.Equal(t, otherRoot1, tsas.TipSetStateRoot)
 		} else {
-			assert.Equal(t, link1.At(0).StateRoot, tsas.TipSetStateRoot)
+			assert.Equal(t, link1.At(0).StateRoot.Cid, tsas.TipSetStateRoot)
 		}
 	}
 }
@@ -369,7 +371,7 @@ func TestLoadAndReboot(t *testing.T) {
 	genTS := builder.NewGenesis()
 	rPriv := repo.NewInMemoryRepo()
 	ds := rPriv.Datastore()
-	cst := hamt.NewCborStore()
+	cst := cborutil.NewIpldStore(bstore.NewBlockstore(ds))
 
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)

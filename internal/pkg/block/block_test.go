@@ -3,6 +3,7 @@ package block_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"reflect"
 	"testing"
@@ -10,10 +11,12 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	blk "github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
@@ -44,16 +47,13 @@ func TestTriangleEncoding(t *testing.T) {
 		err = json.Unmarshal(jb, &jsonRoundTrip)
 		require.NoError(t, err)
 
-		ipldNodeOrig, err := encoding.Encode(exp)
+		ipldNodeOrig, err := encoding.Encode(jsonRoundTrip)
 		assert.NoError(t, err)
-		// NOTICE: skips the intermediate json steps from above.
 		var cborJSONRoundTrip blk.Block
 		err = encoding.Decode(ipldNodeOrig, &cborJSONRoundTrip)
 		assert.NoError(t, err)
-
-		types.AssertHaveSameCid(t, &jsonRoundTrip, &cborJSONRoundTrip)
+		types.AssertHaveSameCid(t, exp, &cborJSONRoundTrip)
 	}
-
 	t.Run("encoding block with zero fields works", func(t *testing.T) {
 		testRoundTrip(t, &blk.Block{})
 	})
@@ -68,23 +68,27 @@ func TestTriangleEncoding(t *testing.T) {
 			Miner:           newAddress(),
 			Ticket:          blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
 			Height:          types.Uint64(2),
-			Messages:        types.TxMeta{SecpRoot: types.CidFromString(t, "somecid"), BLSRoot: types.EmptyMessagesCID},
-			MessageReceipts: types.CidFromString(t, "somecid"),
+			Messages:        types.TxMeta{SecpRoot: e.NewCid(types.CidFromString(t, "somecid")), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
+			MessageReceipts: e.NewCid(types.CidFromString(t, "somecid")),
 			Parents:         blk.NewTipSetKey(types.CidFromString(t, "somecid")),
 			ParentWeight:    types.Uint64(1000),
-			StateRoot:       types.CidFromString(t, "somecid"),
+			StateRoot:       e.NewCid(types.CidFromString(t, "somecid")),
 			Timestamp:       types.Uint64(1),
 			BlockSig:        []byte{0x3},
 			BLSAggregateSig: []byte{0x3},
 			EPoStInfo:       postInfo,
+			ForkSignaling:   types.Uint64(6),
 		}
 		s := reflect.TypeOf(*b)
+		cidBytesOld, err := cbor.DumpObject(types.CidFromString(t, "somecid"))
+		require.NoError(t, err)
+		fmt.Printf("old cid bytes: %x\n", cidBytesOld)
 		// This check is here to request that you add a non-zero value for new fields
 		// to the above (and update the field count below).
 		// Also please add non zero fields to "b" and "diff" in TestSignatureData
 		// and add a new check that different values of the new field result in
 		// different output data.
-		require.Equal(t, 15, s.NumField()) // Note: this also counts private fields
+		require.Equal(t, 16, s.NumField()) // Note: this also counts private fields
 		testRoundTrip(t, b)
 	})
 }
@@ -93,7 +97,6 @@ func TestBlockString(t *testing.T) {
 	tf.UnitTest(t)
 
 	var b blk.Block
-
 	cid := b.Cid()
 
 	got := b.String()
@@ -133,9 +136,9 @@ func TestDecodeBlock(t *testing.T) {
 			Ticket:          blk.Ticket{VRFProof: []uint8{}},
 			Parents:         blk.NewTipSetKey(c1),
 			Height:          2,
-			Messages:        types.TxMeta{SecpRoot: cM, BLSRoot: types.EmptyMessagesCID},
-			StateRoot:       c2,
-			MessageReceipts: cR,
+			Messages:        types.TxMeta{SecpRoot: e.NewCid(cM), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
+			StateRoot:       e.NewCid(c2),
+			MessageReceipts: e.NewCid(cR),
 		}
 
 		after, err := blk.DecodeBlock(before.ToNode().RawData())
@@ -147,7 +150,7 @@ func TestDecodeBlock(t *testing.T) {
 	t.Run("decode failure results in an error", func(t *testing.T) {
 		_, err := blk.DecodeBlock([]byte{1, 2, 3})
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "malformed stream")
+		assert.Contains(t, err.Error(), "cbor: cannot unmarshal")
 	})
 }
 
@@ -163,15 +166,15 @@ func TestEquals(t *testing.T) {
 	var h1 types.Uint64 = 1
 	var h2 types.Uint64 = 2
 
-	b1 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s1, Height: h1}
-	b2 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s1, Height: h1}
-	b3 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s2, Height: h1}
-	b4 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s1, Height: h1}
-	b5 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s1, Height: h2}
-	b6 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s1, Height: h2}
-	b7 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s2, Height: h2}
-	b8 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s2, Height: h1}
-	b9 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s2, Height: h2}
+	b1 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: e.NewCid(s1), Height: h1}
+	b2 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: e.NewCid(s1), Height: h1}
+	b3 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: e.NewCid(s2), Height: h1}
+	b4 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: e.NewCid(s1), Height: h1}
+	b5 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: e.NewCid(s1), Height: h2}
+	b6 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: e.NewCid(s1), Height: h2}
+	b7 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: e.NewCid(s2), Height: h2}
+	b8 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: e.NewCid(s2), Height: h1}
+	b9 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: e.NewCid(s2), Height: h2}
 	assert.True(t, b1.Equals(b1))
 	assert.True(t, b1.Equals(b2))
 	assert.False(t, b1.Equals(b3))
@@ -200,14 +203,15 @@ func TestBlockJsonMarshal(t *testing.T) {
 	child.Miner = vmaddr.NewForTestGetter()()
 	child.Height = 1
 	child.Parents = blk.NewTipSetKey(parent.Cid())
-	child.StateRoot = parent.Cid()
+	child.StateRoot = e.NewCid(parent.Cid())
 
-	child.Messages = types.TxMeta{SecpRoot: types.CidFromString(t, "somecid"), BLSRoot: types.EmptyMessagesCID}
-	child.MessageReceipts = types.CidFromString(t, "somecid")
+	child.Messages = types.TxMeta{SecpRoot: e.NewCid(types.CidFromString(t, "somecid")), BLSRoot: e.NewCid(types.EmptyMessagesCID)}
+	child.MessageReceipts = e.NewCid(types.CidFromString(t, "somecid"))
 
 	marshalled, e1 := json.Marshal(&child)
 	assert.NoError(t, e1)
 	str := string(marshalled)
+	fmt.Printf("json str: %s\n", str)
 
 	assert.Contains(t, str, child.Miner.String())
 	assert.Contains(t, str, parent.Cid().String())
@@ -235,12 +239,12 @@ func TestSignatureData(t *testing.T) {
 		Miner:           newAddress(),
 		Ticket:          blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
 		Height:          types.Uint64(2),
-		Messages:        types.TxMeta{SecpRoot: types.CidFromString(t, "somecid"), BLSRoot: types.EmptyMessagesCID},
-		MessageReceipts: types.CidFromString(t, "somecid"),
+		Messages:        types.TxMeta{SecpRoot: e.NewCid(types.CidFromString(t, "somecid")), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
+		MessageReceipts: e.NewCid(types.CidFromString(t, "somecid")),
 		Parents:         blk.NewTipSetKey(types.CidFromString(t, "somecid")),
 		ParentWeight:    types.Uint64(1000),
 		ForkSignaling:   types.Uint64(3),
-		StateRoot:       types.CidFromString(t, "somecid"),
+		StateRoot:       e.NewCid(types.CidFromString(t, "somecid")),
 		Timestamp:       types.Uint64(1),
 		EPoStInfo:       postInfo,
 		BlockSig:        []byte{0x3},
@@ -254,12 +258,12 @@ func TestSignatureData(t *testing.T) {
 		Miner:           newAddress(),
 		Ticket:          blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
 		Height:          types.Uint64(3),
-		Messages:        types.TxMeta{SecpRoot: types.CidFromString(t, "someothercid"), BLSRoot: types.EmptyMessagesCID},
-		MessageReceipts: types.CidFromString(t, "someothercid"),
+		Messages:        types.TxMeta{SecpRoot: e.NewCid(types.CidFromString(t, "someothercid")), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
+		MessageReceipts: e.NewCid(types.CidFromString(t, "someothercid")),
 		Parents:         blk.NewTipSetKey(types.CidFromString(t, "someothercid")),
 		ParentWeight:    types.Uint64(1001),
 		ForkSignaling:   types.Uint64(2),
-		StateRoot:       types.CidFromString(t, "someothercid"),
+		StateRoot:       e.NewCid(types.CidFromString(t, "someothercid")),
 		Timestamp:       types.Uint64(4),
 		EPoStInfo:       diffPoStInfo,
 		BlockSig:        []byte{0x4},

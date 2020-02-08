@@ -3,9 +3,9 @@ package types
 // Commitments is a struct containing the replica and data commitments produced
 // when sealing a sector.
 type Commitments struct {
-	CommD     CommD
-	CommR     CommR
-	CommRStar CommRStar
+	CommD     *CommD
+	CommR     *CommR
+	CommRStar *CommRStar
 }
 
 // PoStChallengeSeedBytesLen is the number of bytes in the Proof of SpaceTime challenge seed.

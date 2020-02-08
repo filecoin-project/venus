@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -25,7 +26,6 @@ import (
 // ChainSeed is a generalized struct for configuring node
 type ChainSeed struct {
 	info   *gengen.RenderedGenInfo
-	cst    hamt.CborIpldStore
 	bstore blockstore.Blockstore
 }
 
@@ -36,20 +36,19 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 
 	mds := ds.NewMapDatastore()
 	bstore := blockstore.NewBlockstore(mds)
-	cst := hamt.CSTFromBstore(bstore)
+	cst := cborutil.NewIpldStore(bstore)
 
 	info, err := gengen.GenGen(context.TODO(), cfg, cst, bstore)
 	require.NoError(t, err)
 
 	return &ChainSeed{
 		info:   info,
-		cst:    cst,
 		bstore: bstore,
 	}
 }
 
 // GenesisInitFunc is a th.GenesisInitFunc using the chain seed
-func (cs *ChainSeed) GenesisInitFunc(cst *hamt.BasicCborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+func (cs *ChainSeed) GenesisInitFunc(cst hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
 	keys, err := cs.bstore.AllKeysChan(context.TODO())
 	if err != nil {
 		return nil, err

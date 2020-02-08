@@ -19,8 +19,9 @@ import (
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -73,7 +74,7 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 		stateBuilder: sb,
 		stamper:      stamper,
 		bs:           bs,
-		cstore:       hamt.CSTFromBstore(bs),
+		cstore:       cborutil.NewIpldStore(bs),
 		messages:     NewMessageStore(bs),
 		tipStateCids: make(map[string]cid.Cid),
 	}
@@ -182,7 +183,6 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 	require.NoError(f.t, err)
 
 	emptyBLSSig := (*bls.Aggregate([]bls.Signature{}))[:]
-
 	for i := 0; i < width; i++ {
 		ticket := block.Ticket{}
 		ticket.VRFProof = block.VRFPi(make([]byte, binary.Size(f.seq)))
@@ -195,15 +195,15 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 			ParentWeight:    types.Uint64(parentWeight),
 			Parents:         parent.Key(),
 			Height:          height,
-			Messages:        types.TxMeta{SecpRoot: types.EmptyMessagesCID, BLSRoot: types.EmptyMessagesCID},
-			MessageReceipts: types.EmptyReceiptsCID,
+			Messages:        types.TxMeta{SecpRoot: e.NewCid(types.EmptyMessagesCID), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
+			MessageReceipts: e.NewCid(types.EmptyReceiptsCID),
 			BLSAggregateSig: emptyBLSSig,
 			// Omitted fields below
 			//StateRoot:       stateRoot,
-			//Proof            PoStProof
+			//EPoStInfo:       ePoStInfo,
+			//ForkSignaling:   forkSig,
 			Timestamp: f.stamper.Stamp(uint64(height)),
 		}
-		// Nonce intentionally omitted as it will go away.
 
 		if build != nil {
 			build(&BlockBuilder{b, f.t, f.messages}, i)
@@ -214,8 +214,9 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 		prevState := f.StateForKey(parent.Key())
 		smsgs, umsgs, err := f.messages.LoadMessages(ctx, b.Messages)
 		require.NoError(f.t, err)
-		b.StateRoot, _, err = f.stateBuilder.ComputeState(prevState, [][]*types.UnsignedMessage{umsgs}, [][]*types.SignedMessage{smsgs})
+		stateRootRaw, _, err := f.stateBuilder.ComputeState(prevState, [][]*types.UnsignedMessage{umsgs}, [][]*types.SignedMessage{smsgs})
 		require.NoError(f.t, err)
+		b.StateRoot = e.NewCid(stateRootRaw)
 
 		// add block to cstore
 		_, err = f.cstore.Put(ctx, b)
@@ -225,6 +226,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 	tip := th.RequireNewTipSet(f.t, blocks...)
 	// Compute and remember state for the tipset.
 	f.tipStateCids[tip.Key().String()] = f.ComputeState(tip)
+
 	return tip
 }
 
@@ -315,7 +317,7 @@ func (bb *BlockBuilder) AddMessages(secpmsgs []*types.SignedMessage, blsMsgs []*
 
 // SetStateRoot sets the block's state root.
 func (bb *BlockBuilder) SetStateRoot(root cid.Cid) {
-	bb.block.StateRoot = root
+	bb.block.StateRoot = e.NewCid(root)
 }
 
 ///// State builder /////

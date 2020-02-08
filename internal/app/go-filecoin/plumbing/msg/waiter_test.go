@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -69,8 +70,8 @@ func testWaitExisting(ctx context.Context, t *testing.T, cst hamt.CborIpldStore,
 	require.Equal(t, 1, ts.Len())
 	require.NoError(t, chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
-		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
-		TipSetReceipts:  ts.ToSlice()[0].MessageReceipts,
+		TipSetStateRoot: ts.ToSlice()[0].StateRoot.Cid,
+		TipSetReceipts:  ts.ToSlice()[0].MessageReceipts.Cid,
 	}))
 	require.NoError(t, chainStore.SetHead(ctx, ts))
 
@@ -97,8 +98,8 @@ func testWaitNew(ctx context.Context, t *testing.T, cst hamt.CborIpldStore, chai
 	require.Equal(t, 1, ts.Len())
 	require.NoError(t, chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
-		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
-		TipSetReceipts:  ts.ToSlice()[0].MessageReceipts,
+		TipSetStateRoot: ts.ToSlice()[0].StateRoot.Cid,
+		TipSetReceipts:  ts.ToSlice()[0].MessageReceipts.Cid,
 	}))
 	require.NoError(t, chainStore.SetHead(ctx, ts))
 
@@ -194,7 +195,7 @@ func newChainWithMessages(store hamt.CborIpldStore, msgStore *chain.MessageStore
 				Height:          types.Uint64(height),
 				Parents:         parents.Key(),
 				Messages:        emptyTxMeta,
-				MessageReceipts: emptyReceiptsCid,
+				MessageReceipts: e.NewCid(emptyReceiptsCid),
 			}
 			mustPut(store, child)
 			blocks = append(blocks, child)
@@ -216,7 +217,7 @@ func newChainWithMessages(store hamt.CborIpldStore, msgStore *chain.MessageStore
 				Messages:  txMeta,
 				Parents:   parents.Key(),
 				Height:    types.Uint64(height),
-				StateRoot: stateRootCidGetter(), // Differentiate all blocks
+				StateRoot: e.NewCid(stateRootCidGetter()), // Differentiate all blocks
 			}
 			blocks = append(blocks, child)
 		}
@@ -226,7 +227,7 @@ func newChainWithMessages(store hamt.CborIpldStore, msgStore *chain.MessageStore
 		}
 
 		for _, blk := range blocks {
-			blk.MessageReceipts = receiptCid
+			blk.MessageReceipts = e.NewCid(receiptCid)
 			mustPut(store, blk)
 		}
 

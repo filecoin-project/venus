@@ -18,12 +18,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -144,7 +147,7 @@ func Test_Mine(t *testing.T) {
 
 	newCid := types.NewCidForTestGetter()
 	stateRoot := newCid()
-	baseBlock := &block.Block{Height: 0, StateRoot: stateRoot, Ticket: block.Ticket{VRFProof: []byte{0}}}
+	baseBlock := &block.Block{Height: 0, StateRoot: e.NewCid(stateRoot), Ticket: block.Ticket{VRFProof: []byte{0}}}
 	tipSet := th.RequireNewTipSet(t, baseBlock)
 
 	st, pool, addrs, bs := sharedSetup(t, mockSignerVal)
@@ -272,7 +275,9 @@ func Test_Mine(t *testing.T) {
 }
 
 func sharedSetupInitial() (hamt.CborIpldStore, *message.Pool, cid.Cid) {
-	cst := hamt.NewCborStore()
+	r := repo.NewInMemoryRepo()
+	bs := blockstore.NewBlockstore(r.Datastore())
+	cst := cborutil.NewIpldStore(bs)
 	pool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.AccountActorCodeCid
@@ -361,7 +366,7 @@ func TestApplyBLSMessages(t *testing.T) {
 
 	newCid := types.NewCidForTestGetter()
 	stateRoot := newCid()
-	baseBlock := &block.Block{Height: 0, StateRoot: stateRoot, Ticket: block.Ticket{VRFProof: []byte{0}}}
+	baseBlock := &block.Block{Height: 0, StateRoot: e.NewCid(stateRoot), Ticket: block.Ticket{VRFProof: []byte{0}}}
 	tipSet := th.RequireNewTipSet(t, baseBlock)
 
 	st, pool, addrs, bs := sharedSetup(t, mockSignerVal)
@@ -530,15 +535,15 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	assert.Equal(t, types.EmptyMessagesCID, blk.Messages.SecpRoot)
+	assert.Equal(t, types.EmptyMessagesCID, blk.Messages.SecpRoot.Cid)
 
 	expectedStateRoot, err := meta.GetTipSetStateRoot(parentTipset.Key())
 	require.NoError(t, err)
-	assert.Equal(t, expectedStateRoot, blk.StateRoot)
+	assert.Equal(t, expectedStateRoot, blk.StateRoot.Cid)
 
 	expectedReceipts, err := meta.GetTipSetReceiptsRoot(parentTipset.Key())
 	require.NoError(t, err)
-	assert.Equal(t, expectedReceipts, blk.MessageReceipts)
+	assert.Equal(t, expectedReceipts, blk.MessageReceipts.Cid)
 
 	assert.Equal(t, types.Uint64(101), blk.Height)
 	assert.Equal(t, types.Uint64(120), blk.ParentWeight)
@@ -630,7 +635,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	baseBlock := block.Block{
 		Parents:   block.NewTipSetKey(newCid()),
 		Height:    types.Uint64(100),
-		StateRoot: stateRoot,
+		StateRoot: e.NewCid(stateRoot),
 	}
 	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
 
@@ -698,7 +703,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	baseBlock := block.Block{
 		Height:       h,
 		ParentWeight: w,
-		StateRoot:    newCid(),
+		StateRoot:    e.NewCid(newCid()),
 	}
 	baseTipSet := th.RequireNewTipSet(t, &baseBlock)
 	ticket := mining.NthTicket(7)
@@ -761,7 +766,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	baseBlock := block.Block{
 		Parents:   block.NewTipSetKey(newCid()),
 		Height:    types.Uint64(100),
-		StateRoot: newCid(),
+		StateRoot: e.NewCid(newCid()),
 	}
 	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
 	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, 0, fakePoStInfo)
@@ -769,8 +774,8 @@ func TestGenerateWithoutMessages(t *testing.T) {
 
 	assert.Len(t, pool.Pending(), 0) // This is the temporary failure.
 
-	assert.Equal(t, types.EmptyMessagesCID, blk.Messages.SecpRoot)
-	assert.Equal(t, types.EmptyMessagesCID, blk.Messages.BLSRoot)
+	assert.Equal(t, types.EmptyMessagesCID, blk.Messages.SecpRoot.Cid)
+	assert.Equal(t, types.EmptyMessagesCID, blk.Messages.BLSRoot.Cid)
 }
 
 // If something goes wrong while generating a new block, even as late as when flushing it,
@@ -825,7 +830,7 @@ func TestGenerateError(t *testing.T) {
 	baseBlock := block.Block{
 		Parents:   block.NewTipSetKey(newCid()),
 		Height:    types.Uint64(100),
-		StateRoot: newCid(),
+		StateRoot: e.NewCid(newCid()),
 	}
 	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
 	baseTipSet := th.RequireNewTipSet(t, &baseBlock)

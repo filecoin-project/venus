@@ -3,12 +3,17 @@ package actor
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
 
+	fxamackercbor "github.com/fxamacker/cbor"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+
 	"github.com/pkg/errors"
 
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -35,9 +40,9 @@ const DefaultGasCost = 100
 type Actor struct {
 	// Code is a CID of the VM code for this actor's implementation (or a constant for actors implemented in Go code).
 	// Code may be nil for an uninitialized actor (which exists because it has received a balance).
-	Code cid.Cid `refmt:",omitempty"`
+	Code e.Cid
 	// Head is the CID of the root of the actor's state tree.
-	Head cid.Cid `refmt:",omitempty"`
+	Head e.Cid
 	// CallSeqNum is the number expected on the next message from this actor.
 	// Messages are processed in strict, contiguous order.
 	CallSeqNum types.Uint64
@@ -48,8 +53,7 @@ type Actor struct {
 // NewActor constructs a new actor.
 func NewActor(code cid.Cid, balance types.AttoFIL) *Actor {
 	return &Actor{
-		Code:       code,
-		Head:       cid.Undef,
+		Code:       e.NewCid(code),
 		CallSeqNum: 0,
 		Balance:    balance,
 	}
@@ -68,9 +72,13 @@ func (a *Actor) IncrementSeqNum() {
 // Cid returns the canonical CID for the actor.
 // TODO: can we avoid returning an error?
 func (a *Actor) Cid() (cid.Cid, error) {
-	obj, err := cbor.WrapObject(a, types.DefaultHashFunction, -1)
+	bs, err := encoding.Encode(a)
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to marshal to cbor")
+	}
+	obj, err := cbor.Decode(bs, types.DefaultHashFunction, -1)
+	if err != nil {
+		return cid.Undef, errors.Wrap(err, "failed to cast cbor bytes to ipld node")
 	}
 
 	return obj.Cid(), nil
@@ -78,17 +86,36 @@ func (a *Actor) Cid() (cid.Cid, error) {
 
 // Unmarshal a actor from the given bytes.
 func (a *Actor) Unmarshal(b []byte) error {
-	return encoding.Decode(b, a)
+	return fxamackercbor.Unmarshal(b, a)
 }
 
 // Marshal the actor into bytes.
 func (a *Actor) Marshal() ([]byte, error) {
-	return encoding.Encode(a)
+	return fxamackercbor.Marshal(a, fxamackercbor.EncOptions{})
+}
+
+// UnmarshalCBOR must implement cbg.Unmarshaller to insert this into a hamt.
+func (a *Actor) UnmarshalCBOR(r io.Reader) error {
+	bs, err := ioutil.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	return a.Unmarshal(bs)
+}
+
+// MarshalCBOR must implement cbg.Marshaller to insert this into a hamt.
+func (a *Actor) MarshalCBOR(w io.Writer) error {
+	bs, err := a.Marshal()
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(bs)
+	return err
 }
 
 // Format implements fmt.Formatter.
 func (a *Actor) Format(f fmt.State, c rune) {
-	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", types.ActorCodeTypeName(a.Code), a, a.Balance, a.CallSeqNum))) // nolint: errcheck
+	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", types.ActorCodeTypeName(a.Code.Cid), a, a.Balance, a.CallSeqNum))) // nolint: errcheck
 }
 
 ///// Utility functions (non-methods) /////
@@ -108,23 +135,23 @@ func NextNonce(actor *Actor) (uint64, error) {
 
 // InitBuiltinActorCodeObjs writes all builtin actor code objects to `cst`. This method should be called when initializing a genesis
 // block to ensure all IPLD links referenced by the state tree exist.
-func InitBuiltinActorCodeObjs(cst *hamt.BasicCborIpldStore) error {
-	if err := cst.Blocks.AddBlock(types.StorageMarketActorCodeObj); err != nil {
+func InitBuiltinActorCodeObjs(bs blockstore.Blockstore) error {
+	if err := bs.Put(types.StorageMarketActorCodeObj); err != nil {
 		return err
 	}
-	if err := cst.Blocks.AddBlock(types.MinerActorCodeObj); err != nil {
+	if err := bs.Put(types.MinerActorCodeObj); err != nil {
 		return err
 	}
-	if err := cst.Blocks.AddBlock(types.BootstrapMinerActorCodeObj); err != nil {
+	if err := bs.Put(types.BootstrapMinerActorCodeObj); err != nil {
 		return err
 	}
-	if err := cst.Blocks.AddBlock(types.AccountActorCodeObj); err != nil {
+	if err := bs.Put(types.AccountActorCodeObj); err != nil {
 		return err
 	}
-	if err := cst.Blocks.AddBlock(types.PowerActorCodeObj); err != nil {
+	if err := bs.Put(types.PowerActorCodeObj); err != nil {
 		return err
 	}
 
-	return cst.Blocks.AddBlock(types.InitActorCodeObj)
+	return bs.Put(types.InitActorCodeObj)
 
 }

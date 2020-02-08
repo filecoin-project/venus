@@ -16,6 +16,7 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	errPkg "github.com/pkg/errors"
 
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	typegen "github.com/whyrusleeping/cbor-gen"
 )
@@ -183,8 +184,9 @@ func NewGasUnits(cost uint64) GasUnits {
 
 // TxMeta tracks the merkleroots of both secp and bls messages separately
 type TxMeta struct {
-	SecpRoot cid.Cid `json:"secpRoot"`
-	BLSRoot  cid.Cid `json:"blsRoot"`
+	_        struct{} `cbor:",toarray"`
+	SecpRoot e.Cid    `json:"secpRoot"`
+	BLSRoot  e.Cid    `json:"blsRoot"`
 }
 
 // String returns a readable printing string of TxMeta

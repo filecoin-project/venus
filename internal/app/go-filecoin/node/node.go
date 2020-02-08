@@ -13,7 +13,6 @@ import (
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	"github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
@@ -23,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
@@ -675,7 +675,7 @@ func (node *Node) BlockService() bserv.BlockService {
 }
 
 // CborStore returns the nodes cborStore.
-func (node *Node) CborStore() hamt.CborIpldStore {
+func (node *Node) CborStore() *cborutil.IpldStore {
 	return node.Blockstore.CborStore
 }
 

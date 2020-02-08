@@ -11,6 +11,7 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
@@ -41,7 +42,7 @@ func TestLoadFork(t *testing.T) {
 
 	repo := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(repo.Datastore())
-	cborStore := hamt.CSTFromBstore(bs)
+	cborStore := cborutil.NewIpldStore(bs)
 	store := chain.NewStore(repo.ChainDatastore(), cborStore, state.NewTreeLoader(), chain.NewStatusReporter(), genesis.At(0).Cid())
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: genStateRoot, TipSet: genesis, TipSetReceipts: types.EmptyReceiptsCID}))
 	require.NoError(t, store.SetHead(ctx, genesis))
@@ -121,7 +122,9 @@ func TestLoadFork(t *testing.T) {
 // All blocks in this test follow protocol version 1 upgrade weighting rules.
 func TestSyncerWeighsPower(t *testing.T) {
 	t.Skip("turn back on once the vm integration is complete")
-	cst := hamt.NewCborStore()
+	repo := repo.NewInMemoryRepo()
+	bs := bstore.NewBlockstore(repo.Datastore())
+	cst := cborutil.NewIpldStore(bs)
 	ctx := context.Background()
 	isb := newIntegrationStateBuilder(t, cst)
 	builder := chain.NewBuilderWithDeps(t, address.Undef, isb, &chain.ZeroTimestamper{})
@@ -156,8 +159,8 @@ func TestSyncerWeighsPower(t *testing.T) {
 	// Verify that the syncer selects fork 2 (15 > 12)
 	as := newForkSnapshotGen(t, types.NewBytesAmount(1), types.NewBytesAmount(512), isb.c512)
 	dumpBlocksToCborStore(t, builder, cst, head1, head2)
-	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), cst, state.NewTreeLoader(), chain.NewStatusReporter(), gen.At(0).Cid())
-	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: gen.At(0).StateRoot, TipSet: gen, TipSetReceipts: gen.At(0).MessageReceipts}))
+	store := chain.NewStore(repo.ChainDatastore(), cst, state.NewTreeLoader(), chain.NewStatusReporter(), gen.At(0).Cid())
+	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: gen.At(0).StateRoot.Cid, TipSet: gen, TipSetReceipts: gen.At(0).MessageReceipts.Cid}))
 	require.NoError(t, store.SetHead(ctx, gen))
 	eval := &integrationStateEvaluator{c512: isb.c512}
 	syncer, err := syncer.NewSyncer(eval, eval, consensus.NewChainSelector(cst, as, gen.At(0).Cid()), store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)), &noopFaultDetector{})
@@ -232,7 +235,8 @@ func (isb *integrationStateBuilder) Weigh(tip block.TipSet, pstate cid.Cid) (uin
 	}
 	as := newForkSnapshotGen(isb.t, types.NewBytesAmount(1), types.NewBytesAmount(512), isb.c512)
 	sel := consensus.NewChainSelector(isb.cst, as, isb.cGen)
-	return sel.Weight(context.Background(), tip, pstate)
+	w, err := sel.Weight(context.Background(), tip, pstate)
+	return w, err
 }
 
 // integrationStateEvaluator returns the parent state root.  If there are multiple
@@ -243,11 +247,11 @@ type integrationStateEvaluator struct {
 
 func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ []block.TipSet, _ uint64, stateID cid.Cid, rCid cid.Cid) (cid.Cid, []*types.MessageReceipt, error) {
 	for i := 0; i < ts.Len(); i++ {
-		if ts.At(i).StateRoot.Equals(n.c512) {
+		if ts.At(i).StateRoot.Cid.Equals(n.c512) {
 			return n.c512, []*types.MessageReceipt{}, nil
 		}
 	}
-	return ts.At(0).StateRoot, []*types.MessageReceipt{}, nil
+	return ts.At(0).StateRoot.Cid, []*types.MessageReceipt{}, nil
 }
 
 func (n *integrationStateEvaluator) ValidateSemantic(_ context.Context, _ *block.Block, _ block.TipSet) error {

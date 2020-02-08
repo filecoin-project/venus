@@ -7,6 +7,7 @@ import (
 
 	"github.com/cskr/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -48,8 +49,8 @@ type ipldSource struct {
 }
 
 type tsState struct {
-	StateRoot cid.Cid
-	Reciepts  cid.Cid
+	StateRoot e.Cid
+	Reciepts  e.Cid
 }
 
 func newSource(cst ipldStore) *ipldSource {
@@ -236,7 +237,7 @@ func (store *Store) loadStateRootAndReceipts(ts block.TipSet) (cid.Cid, cid.Cid,
 		return cid.Undef, cid.Undef, errors.Wrapf(err, "failed to decode tip set metadata %s", ts.String())
 	}
 
-	return metadata.StateRoot, metadata.Reciepts, nil
+	return metadata.StateRoot.Cid, metadata.Reciepts.Cid, nil
 }
 
 // PutTipSetMetadata persists the blocks of a tipset and the tipset index.
@@ -277,7 +278,7 @@ func (store *Store) GetGenesisState(ctx context.Context) (state.Tree, error) {
 	}
 
 	// create state tree
-	return store.stateTreeLoader.LoadStateTree(ctx, store.stateAndBlockSource.cborStore, genesis.StateRoot)
+	return store.stateTreeLoader.LoadStateTree(ctx, store.stateAndBlockSource.cborStore, genesis.StateRoot.Cid)
 }
 
 // GetGenesisBlock returns the genesis block held by the chain store.
@@ -391,8 +392,8 @@ func (store *Store) writeTipSetMetadata(tsm *TipSetMetadata) error {
 	}
 
 	metadata := tsState{
-		StateRoot: tsm.TipSetStateRoot,
-		Reciepts:  tsm.TipSetReceipts,
+		StateRoot: e.NewCid(tsm.TipSetStateRoot),
+		Reciepts:  e.NewCid(tsm.TipSetReceipts),
 	}
 	val, err := encoding.Encode(metadata)
 	if err != nil {

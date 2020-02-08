@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -19,6 +20,7 @@ func TestFaultSetCborMarshaling(t *testing.T) {
 		out, err := encoding.Encode(faultSet)
 		assert.NoError(t, err)
 
+		fmt.Printf("out bytes: %x\n", out)
 		err = encoding.Decode(out, &decoded)
 		assert.NoError(t, err)
 

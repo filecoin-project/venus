@@ -171,7 +171,7 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consens
 		return nil, err
 	}
 
-	gif := func(cst *hamt.BasicCborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+	gif := func(cst hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
 		return genesisBlk, err
 	}
 

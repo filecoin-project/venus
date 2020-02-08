@@ -7,11 +7,15 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 	mh "github.com/multiformats/go-multihash"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -22,7 +26,9 @@ func TestStatePutGet(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	cst := hamt.NewCborStore()
+
+	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
+	cst := cborutil.NewIpldStore(bs)
 	tree := NewTree(cst)
 
 	act1 := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
@@ -64,7 +70,8 @@ func TestStateErrors(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	cst := hamt.NewCborStore()
+	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
+	cst := cborutil.NewIpldStore(bs)
 	tree := NewTree(cst)
 
 	a, err := tree.GetActor(ctx, vmaddr.NewForTestGetter()())
@@ -84,7 +91,8 @@ func TestStateGetOrCreate(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	cst := hamt.NewCborStore()
+	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
+	cst := cborutil.NewIpldStore(bs)
 	tree := NewTree(cst)
 
 	addr := vmaddr.NewForTestGetter()()
@@ -122,11 +130,12 @@ func TestGetAllActors(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	cst := hamt.NewCborStore()
+	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
+	cst := cborutil.NewIpldStore(bs)
 	tree := NewTree(cst)
 	addr := vmaddr.NewForTestGetter()()
 
-	actor := actor.Actor{Code: types.AccountActorCodeCid, CallSeqNum: 1234, Balance: types.NewAttoFILFromFIL(123)}
+	actor := actor.Actor{Code: e.NewCid(types.AccountActorCodeCid), CallSeqNum: 1234, Balance: types.NewAttoFILFromFIL(123)}
 	err := tree.SetActor(ctx, addr, &actor)
 	assert.NoError(t, err)
 	_, err = tree.Flush(ctx)

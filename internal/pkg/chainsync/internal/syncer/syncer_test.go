@@ -2,6 +2,7 @@ package syncer_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -9,13 +10,14 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
@@ -39,11 +41,13 @@ func TestOneBlock(t *testing.T) {
 	ctx := context.Background()
 	builder, store, syncer := setup(ctx, t)
 	genesis := builder.RequireTipSet(store.GetHead())
+	fmt.Printf("built genesis: %v\n", genesis)
 
 	t1 := builder.AppendOn(genesis, 1)
+	fmt.Printf("built head: %v\n", t1.At(0))
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", t1.Key(), heightFromTip(t, t1)), false))
 
-	verifyTip(t, store, t1, t1.At(0).StateRoot)
+	verifyTip(t, store, t1, t1.At(0).StateRoot.Cid)
 	require.NoError(t, syncer.SetStagedHead(ctx))
 	verifyHead(t, store, t1)
 }
@@ -548,8 +552,11 @@ func setupWithValidator(ctx context.Context, t *testing.T, fullVal syncer.FullBl
 	genesis := builder.NewGenesis()
 	genStateRoot, err := builder.GetTipSetStateRoot(genesis.Key())
 	require.NoError(t, err)
+	ds := repo.NewInMemoryRepo().ChainDatastore()
+	bs := bstore.NewBlockstore(ds)
+	cst := cborutil.NewIpldStore(bs)
 
-	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), hamt.NewCborStore(), state.NewTreeLoader(), chain.NewStatusReporter(), genesis.At(0).Cid())
+	store := chain.NewStore(ds, cst, state.NewTreeLoader(), chain.NewStatusReporter(), genesis.At(0).Cid())
 	// Initialize chainStore store genesis state and tipset as head.
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: genStateRoot, TipSet: genesis, TipSetReceipts: types.EmptyReceiptsCID}))
 	require.NoError(t, store.SetHead(ctx, genesis))

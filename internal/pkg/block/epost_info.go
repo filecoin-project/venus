@@ -13,6 +13,7 @@ func init() {
 
 // EPoStInfo wraps all data needed to verify an election post proof
 type EPoStInfo struct {
+	_              struct{} `cbor:",toarray"`
 	PoStProof      types.PoStProof
 	PoStRandomness VRFPi
 	Winners        []EPoStCandidate
@@ -20,6 +21,7 @@ type EPoStInfo struct {
 
 // EPoStCandidate wraps the input data needed to verify an election PoSt
 type EPoStCandidate struct {
+	_                    struct{} `cbor:",toarray"`
 	PartialTicket        []byte
 	SectorID             types.Uint64
 	SectorChallengeIndex types.Uint64

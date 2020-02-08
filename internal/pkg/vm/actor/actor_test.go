@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 
@@ -19,7 +20,7 @@ func TestActorCid(t *testing.T) {
 
 	actor1 := NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 	actor2 := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(5))
-	actor2.Head = requireCid(t, "Actor 2 State")
+	actor2.Head = e.NewCid(requireCid(t, "Actor 2 State"))
 	actor1.IncrementSeqNum()
 
 	c1, err := actor1.Cid()

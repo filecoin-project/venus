@@ -40,6 +40,18 @@ func (z BlockHeight) MarshalJSON() ([]byte, error) {
 	return json.Marshal(z.val)
 }
 
+// MarshalBinary converts a blockheight to bytes
+func (z *BlockHeight) MarshalBinary() ([]byte, error) {
+	return z.Bytes(), nil
+}
+
+// UnmarshalBinary converts bytes to a blockheight
+func (z *BlockHeight) UnmarshalBinary(b []byte) error {
+	bh := NewBlockHeightFromBytes(b)
+	*z = *bh
+	return nil
+}
+
 // An BlockHeight is a signed multi-precision integer.
 type BlockHeight struct{ val *big.Int }
 

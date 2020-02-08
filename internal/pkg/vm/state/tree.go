@@ -207,7 +207,9 @@ func (t *tree) getActorsFromPointers(ctx context.Context, out chan<- GetAllActor
 	for _, p := range ps {
 		for _, kv := range p.KVs {
 			var a actor.Actor
+
 			if err := encoding.Decode(kv.Value.Raw, &a); err != nil {
+				fmt.Printf("bad raw bytes: %x\n", kv.Value.Raw)
 				panic(err) // uhm, ignoring errors is bad
 			}
 

@@ -23,8 +23,10 @@ import (
 	typegen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -111,7 +113,7 @@ type RenderedMinerInfo struct {
 // the final genesis block.
 //
 // WARNING: Do not use maps in this code, they will make this code non deterministic.
-func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.BasicCborIpldStore, bs blockstore.Blockstore) (*RenderedGenInfo, error) {
+func GenGen(ctx context.Context, cfg *GenesisCfg, cst hamt.CborIpldStore, bs blockstore.Blockstore) (*RenderedGenInfo, error) {
 	pnrg := mrand.New(mrand.NewSource(cfg.Seed))
 	keys, err := genKeys(cfg.Keys, pnrg)
 	if err != nil {
@@ -122,7 +124,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.BasicCborIpldStore, 
 	store := vm.NewStorage(bs)
 	vm := vm.NewVM(st, &store).(consensus.GenesisVM)
 
-	if err := actor.InitBuiltinActorCodeObjs(cst); err != nil {
+	if err := actor.InitBuiltinActorCodeObjs(bs); err != nil {
 		return nil, err
 	}
 
@@ -158,9 +160,9 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.BasicCborIpldStore, 
 	emptyBLSSignature := bls.Aggregate([]bls.Signature{})
 
 	geneblk := &block.Block{
-		StateRoot:       stateRoot,
-		Messages:        types.TxMeta{SecpRoot: emptyAMTCid, BLSRoot: emptyAMTCid},
-		MessageReceipts: emptyAMTCid,
+		StateRoot:       e.NewCid(stateRoot),
+		Messages:        types.TxMeta{SecpRoot: e.NewCid(emptyAMTCid), BLSRoot: e.NewCid(emptyAMTCid)},
+		MessageReceipts: e.NewCid(emptyAMTCid),
 		BLSAggregateSig: emptyBLSSignature[:],
 		Ticket:          block.Ticket{VRFProof: []byte{0xec}},
 		Timestamp:       types.Uint64(cfg.Time),
@@ -298,14 +300,14 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (*RenderedGenInfo, error) {
 	ctx := context.Background()
 
 	bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
-	cst := hamt.CSTFromBstore(bstore)
+	cst := cborutil.NewIpldStore(bstore)
 	dserv := dag.NewDAGService(bserv.New(bstore, offline.Exchange(bstore)))
 
 	info, err := GenGen(ctx, cfg, cst, bstore)
 	if err != nil {
 		return nil, err
 	}
-
+	fmt.Printf("gengenesis car\n")
 	return info, car.WriteCar(ctx, dserv, []cid.Cid{info.GenesisCid}, out)
 }
 

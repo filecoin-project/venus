@@ -6,11 +6,12 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 var showCmd = &cmds.Command{
@@ -150,7 +151,7 @@ the filecoin block header.`,
 
 		messages, err := GetPorcelainAPI(env).ChainGetMessages(
 			req.Context,
-			types.TxMeta{SecpRoot: cid, BLSRoot: types.EmptyMessagesCID},
+			types.TxMeta{SecpRoot: e.NewCid(cid), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
 		)
 		if err != nil {
 			return err

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -19,8 +18,10 @@ import (
 	net "github.com/libp2p/go-libp2p-core/network"
 	ma "github.com/multiformats/go-multiaddr"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -192,8 +193,8 @@ func mustMakeTipset(t *testing.T, height types.Uint64) block.TipSet {
 		Parents:         block.TipSetKey{},
 		ParentWeight:    0,
 		Height:          height,
-		MessageReceipts: types.EmptyMessagesCID,
-		Messages:        types.TxMeta{SecpRoot: types.EmptyReceiptsCID, BLSRoot: types.EmptyMessagesCID},
+		MessageReceipts: e.NewCid(types.EmptyMessagesCID),
+		Messages:        types.TxMeta{SecpRoot: e.NewCid(types.EmptyReceiptsCID), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
 	})
 	if err != nil {
 		t.Fatal(err)

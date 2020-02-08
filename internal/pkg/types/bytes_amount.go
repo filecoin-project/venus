@@ -63,6 +63,17 @@ func (z BytesAmount) MarshalJSON() ([]byte, error) {
 	return json.Marshal(z.val.String())
 }
 
+// MarshalBinary returns the address bytes
+func (z *BytesAmount) MarshalBinary() ([]byte, error) {
+	return z.Bytes(), nil
+}
+
+// UnmarshalBinary unmarshals the address bytes into an address
+func (z *BytesAmount) UnmarshalBinary(b []byte) error {
+	*z = *NewBytesAmountFromBytes(b)
+	return nil
+}
+
 // An BytesAmount represents a signed multi-precision integer.
 // The zero value for a BytesAmount represents the value 0.
 type BytesAmount struct{ val *big.Int }

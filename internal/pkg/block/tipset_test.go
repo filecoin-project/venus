@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	blk "github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -36,9 +38,9 @@ func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWei
 		Parents:         blk.NewTipSetKey(parentCid),
 		ParentWeight:    types.Uint64(parentWeight),
 		Height:          types.Uint64(42 + uint64(height)),
-		Messages:        types.TxMeta{SecpRoot: cidGetter(), BLSRoot: types.EmptyMessagesCID},
-		StateRoot:       cidGetter(),
-		MessageReceipts: cidGetter(),
+		Messages:        types.TxMeta{SecpRoot: e.NewCid(cidGetter()), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
+		StateRoot:       e.NewCid(cidGetter()),
+		MessageReceipts: e.NewCid(cidGetter()),
 		Timestamp:       types.Uint64(timestamp),
 	}
 }

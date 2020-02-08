@@ -40,6 +40,18 @@ func (z ChannelID) MarshalJSON() ([]byte, error) {
 	return json.Marshal(z.val)
 }
 
+// MarshalBinary converts a ChannelID to bytes
+func (z *ChannelID) MarshalBinary() ([]byte, error) {
+	return z.Bytes(), nil
+}
+
+// UnmarshalBinary converts bytes to a ChannelID
+func (z *ChannelID) UnmarshalBinary(b []byte) error {
+	chID := NewChannelIDFromBytes(b)
+	*z = *chID
+	return nil
+}
+
 // An ChannelID is a signed multi-precision integer.
 type ChannelID struct{ val *big.Int }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	typegen "github.com/whyrusleeping/cbor-gen"
 
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -28,7 +29,7 @@ import (
 )
 
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
-type GenesisInitFunc func(cst *hamt.BasicCborIpldStore, bs blockstore.Blockstore) (*block.Block, error)
+type GenesisInitFunc func(cst hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error)
 
 var (
 	defaultAccounts map[address.Address]types.AttoFIL
@@ -153,7 +154,7 @@ type GenesisVM interface {
 
 // MakeGenesisFunc returns a genesis function configured by a set of options.
 func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
-	return func(cst *hamt.BasicCborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+	return func(cst hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
 		ctx := context.Background()
 		st := state.NewTree(cst)
 		store := vm.NewStorage(bs)
@@ -216,8 +217,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 				return nil, err
 			}
 		}
-
-		if err := actor.InitBuiltinActorCodeObjs(cst); err != nil {
+		if err := actor.InitBuiltinActorCodeObjs(bs); err != nil {
 			return nil, err
 		}
 
@@ -239,9 +239,9 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 		emptyBLSSignature := bls.Aggregate([]bls.Signature{})
 
 		genesis := &block.Block{
-			StateRoot:       c,
-			Messages:        types.TxMeta{SecpRoot: emptyAMTCid, BLSRoot: emptyAMTCid},
-			MessageReceipts: emptyAMTCid,
+			StateRoot:       e.NewCid(c),
+			Messages:        types.TxMeta{SecpRoot: e.NewCid(emptyAMTCid), BLSRoot: e.NewCid(emptyAMTCid)},
+			MessageReceipts: e.NewCid(emptyAMTCid),
 			BLSAggregateSig: emptyBLSSignature[:],
 			Ticket:          block.Ticket{VRFProof: []byte{0xec}},
 			Timestamp:       types.Uint64(genCfg.genesisTimestamp.Unix()),
@@ -260,17 +260,17 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 	createActor := func(addr address.Address, codeCid cid.Cid, state interface{}) *actor.Actor {
 
 		a := actor.Actor{
-			Head:       cid.Undef,
-			Code:       codeCid,
+			Code:       e.NewCid(codeCid),
 			CallSeqNum: 0,
 			Balance:    types.ZeroAttoFIL,
 		}
 		if state != nil {
 			var err error
-			a.Head, err = store.Put(state)
+			headCid, err := store.Put(state)
 			if err != nil {
 				panic("failed to store state")
 			}
+			a.Head = e.NewCid(headCid)
 		}
 		if err := st.SetActor(context.Background(), addr, &a); err != nil {
 			panic("failed to create actor during genesis block creation")
@@ -304,7 +304,6 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 			return err
 		}
 		val := defaultAccounts[addr]
-
 		if addr.Protocol() == address.ID {
 			a, err := account.NewActor(val)
 			if err != nil {
@@ -325,5 +324,6 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 			return err
 		}
 	}
+
 	return nil
 }

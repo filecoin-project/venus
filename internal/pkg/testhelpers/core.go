@@ -15,7 +15,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -133,8 +135,9 @@ func RequireNewFakeActor(t *testing.T, vms vm.Storage, addr address.Address, cod
 func RequireNewFakeActorWithTokens(t *testing.T, vms vm.Storage, addr address.Address, codeCid cid.Cid, amt types.AttoFIL) *actor.Actor {
 	act := actor.NewActor(codeCid, amt)
 	var err error
-	act.Head, err = (&actor.FakeActor{}).InitializeState(vms, &actor.FakeActorStorage{})
+	rawHead, err := (&actor.FakeActor{}).InitializeState(vms, &actor.FakeActorStorage{})
 	require.NoError(t, err)
+	act.Head = e.NewCid(rawHead)
 	require.NoError(t, vms.Flush())
 	return act
 }
@@ -293,13 +296,13 @@ func RequireGetNonce(t *testing.T, st state.Tree, vms vm.Storage, a address.Addr
 
 // RequireCreateStorages creates an empty state tree and storage map.
 func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.Storage) {
-	cst := hamt.NewCborStore()
 	d := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(d)
+	cst := cborutil.NewIpldStore(bs)
 	blk, err := DefaultGenesis(cst, bs)
 	require.NoError(t, err)
 
-	st, err := state.NewTreeLoader().LoadStateTree(ctx, cst, blk.StateRoot)
+	st, err := state.NewTreeLoader().LoadStateTree(ctx, cst, blk.StateRoot.Cid)
 	require.NoError(t, err)
 
 	vms := vm.NewStorage(bs)
@@ -308,6 +311,6 @@ func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.St
 }
 
 // DefaultGenesis creates a test network genesis block with default accounts and actors installed.
-func DefaultGenesis(cst *hamt.BasicCborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+func DefaultGenesis(cst hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
 	return consensus.MakeGenesisFunc(consensus.Network(version.TEST))(cst, bs)
 }

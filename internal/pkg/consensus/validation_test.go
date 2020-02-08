@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -53,7 +54,7 @@ func TestMessageValidator(t *testing.T) {
 
 	t.Run("non-account actor fails", func(t *testing.T) {
 		badActor := newActor(t, 1000, 100)
-		badActor.Code = types.CidFromString(t, "somecid")
+		badActor.Code = e.NewCid(types.CidFromString(t, "somecid"))
 		msg := newMessage(t, alice, bob, 100, 5, 1, 0)
 		assert.Errorf(t, validator.Validate(ctx, msg, badActor), "account")
 	})

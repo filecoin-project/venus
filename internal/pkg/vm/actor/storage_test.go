@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 
@@ -15,7 +16,7 @@ func TestActorMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
 	actor := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(1))
-	actor.Head = requireCid(t, "Actor Storage")
+	actor.Head = e.NewCid(requireCid(t, "Actor Storage"))
 	actor.IncrementSeqNum()
 
 	marshalled, err := actor.Marshal()

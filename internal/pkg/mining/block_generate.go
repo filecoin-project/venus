@@ -13,6 +13,7 @@ import (
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -105,11 +106,11 @@ func (w *DefaultWorker) Generate(
 		Miner:           w.minerAddr,
 		Height:          types.Uint64(blockHeight),
 		Messages:        txMeta,
-		MessageReceipts: baseReceiptRoot,
+		MessageReceipts: e.NewCid(baseReceiptRoot),
 		Parents:         baseTipSet.Key(),
 		ParentWeight:    types.Uint64(weight),
 		EPoStInfo:       ePoStInfo,
-		StateRoot:       baseStateRoot,
+		StateRoot:       e.NewCid(baseStateRoot),
 		Ticket:          ticket,
 		Timestamp:       types.Uint64(now.Unix()),
 		BLSAggregateSig: blsAggregateSig,

@@ -455,7 +455,7 @@ func MinerGetProvingWindow(ctx context.Context, plumbing minerQueryAndDeserializ
 	if err != nil {
 		return MinerProvingWindow{}, errors.Wrap(err, "query method failed")
 	}
-
+	fmt.Printf("bad bytes: %x\n", res[0])
 	commitmentsVal, err := abi.Deserialize(res[0], sig.Return[0])
 	if err != nil {
 		return MinerProvingWindow{}, errors.Wrap(err, "deserialization failed")

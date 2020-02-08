@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 
@@ -72,6 +73,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID ci
 	}
 	pSt, err := c.loadStateTree(ctx, pStateID)
 	if err != nil {
+		fmt.Printf("error loading state tree\n")
 		return uint64(0), err
 	}
 	powerTableView := c.createPowerTableView(pSt)
@@ -83,6 +85,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID ci
 	innerTerm.Add(innerTerm, roughLogTotalBytes)
 
 	w.Add(w, innerTerm)
+	fmt.Printf("totalBytes: %s, roughLogTotalBytes: %s, ts: %s, state cid: %s\n", totalBytes, roughLogTotalBytes.String(), ts.String(), pStateID.String())
 
 	return types.BigToFixed(w)
 }

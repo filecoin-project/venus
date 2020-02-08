@@ -2,6 +2,7 @@ package block_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -131,6 +132,7 @@ func TestTipSetKeyCborRoundtrip(t *testing.T) {
 	exp := blk.NewTipSetKey(makeCid(), makeCid(), makeCid())
 	buf, err := encoding.Encode(exp)
 	assert.NoError(t, err)
+	fmt.Printf("tipset key bytes: %x\n", buf)
 
 	var act blk.TipSetKey
 	err = encoding.Decode(buf, &act)

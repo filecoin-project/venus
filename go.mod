@@ -15,7 +15,7 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.3.3 // indirect
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20191221090835-c7bbef445934
-	github.com/filecoin-project/go-address v0.0.0-20200107215422-da8eea2842b5
+	github.com/filecoin-project/go-address v0.0.1
 	github.com/filecoin-project/go-amt-ipld v0.0.0-20190920035751-ae3c37184616
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-data-transfer v0.0.0-20191219005021-4accf56bd2ce
@@ -26,6 +26,7 @@ require (
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storage-miner v0.0.0-20200122233640-6a01988b8217
 	github.com/filecoin-project/specs-actors v0.0.0-20200129043607-2106ca04a5c9
+	github.com/fxamacker/cbor v1.5.0
 	github.com/go-check/check v0.0.0-20190902080502-41f04d3bba15 // indirect
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/golangci/golangci-lint v1.21.0
@@ -36,7 +37,7 @@ require (
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.3-0.20190908200855-f22eea50656c
 	github.com/ipfs/go-car v0.0.3-0.20200124090545-1a340009d896
-	github.com/ipfs/go-cid v0.0.4
+	github.com/ipfs/go-cid v0.0.5
 	github.com/ipfs/go-datastore v0.1.1
 	github.com/ipfs/go-ds-badger v0.0.7
 	github.com/ipfs/go-fs-lock v0.0.1
@@ -51,7 +52,7 @@ require (
 	github.com/ipfs/go-ipfs-files v0.0.4
 	github.com/ipfs/go-ipfs-keystore v0.0.1
 	github.com/ipfs/go-ipfs-routing v0.1.0
-	github.com/ipfs/go-ipld-cbor v0.0.3
+	github.com/ipfs/go-ipld-cbor v0.0.4
 	github.com/ipfs/go-ipld-format v0.0.2
 	github.com/ipfs/go-log v1.0.1
 	github.com/ipfs/go-log/v2 v2.0.2 // indirect
@@ -85,7 +86,7 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/multiformats/go-multiaddr-net v0.1.1
 	github.com/multiformats/go-multibase v0.0.1
-	github.com/multiformats/go-multihash v0.0.10
+	github.com/multiformats/go-multihash v0.0.13
 	github.com/onsi/ginkgo v1.10.3 // indirect
 	github.com/onsi/gomega v1.7.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
@@ -100,18 +101,18 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.5.0 // indirect
 	github.com/stretchr/testify v1.4.0
-	github.com/whyrusleeping/cbor-gen v0.0.0-20200123233031-1cdf64d27158
+	github.com/whyrusleeping/cbor-gen v0.0.0-20200206220010-03c9665e2a66
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
 	go.opencensus.io v0.22.2
 	go.uber.org/atomic v1.5.1 // indirect
 	go.uber.org/zap v1.13.0
-	golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
+	golang.org/x/crypto v0.0.0-20200206161412-a0c6ece9d31a
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
 	golang.org/x/net v0.0.0-20191101175033-0deb6923b6d9 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/sys v0.0.0-20200116001909-b77594299b42 // indirect
+	golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	golang.org/x/tools v0.0.0-20191216173652-a0e659d51361
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543

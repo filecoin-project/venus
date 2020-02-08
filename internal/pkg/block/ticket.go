@@ -8,6 +8,7 @@ import (
 // of randomness for proofs of storage and leader election.  It is generated
 // by the miner of a block using a VRF.
 type Ticket struct {
+	_ struct{} `cbor:",toarray"`
 	// A proof output by running a VRF on the VRFProof of the parent ticket
 	VRFProof VRFPi
 }
