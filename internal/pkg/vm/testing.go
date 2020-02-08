@@ -28,7 +28,7 @@ type FakeVMContext struct {
 	RandomnessValue         []byte
 	IsFromAccountActorValue bool
 	LegacySender            func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
-	Sender                  func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{}
+	Sender                  func(to address.Address, method types.MethodID, value types.AttoFIL, params interface{}) interface{}
 	Addresser               func() (address.Address, error)
 	Charger                 func(cost types.GasUnits) error
 	Sampler                 func(sampleHeight *types.BlockHeight) ([]byte, error)
@@ -60,7 +60,7 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 		LegacySender: func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 			return [][]byte{}, 0, nil
 		},
-		Sender: func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{} {
+		Sender: func(to address.Address, method types.MethodID, value types.AttoFIL, params interface{}) interface{} {
 			return nil
 		},
 		Addresser: func() (address.Address, error) {
@@ -105,7 +105,7 @@ func (tc *FakeVMContext) LegacySend(to address.Address, method types.MethodID, v
 }
 
 // Send allows actors to invoke methods on other actors
-func (tc *FakeVMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{} {
+func (tc *FakeVMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params interface{}) interface{} {
 	// check if side-effects are allowed
 	if !tc.allowSideEffects {
 		runtime.Abortf(exitcode.MethodAbort, "Calling Send() is not allowed during side-effet lock")
@@ -179,7 +179,7 @@ func (tc *FakeVMContext) Charge(cost types.GasUnits) error {
 var _ runtime.ExtendedInvocationContext = (*FakeVMContext)(nil)
 
 // CreateActor implemenets the ExtendedInvocationContext interface.
-func (tc *FakeVMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) (address.Address, address.Address) {
+func (tc *FakeVMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []byte) (address.Address, address.Address) {
 	addr, err := tc.Addresser()
 	if err != nil {
 		runtime.Abortf(exitcode.MethodAbort, "Could not create address")

@@ -47,7 +47,7 @@ type InvocationContext interface {
 	// StateHandle handles access to the actor state.
 	StateHandle() ActorStateHandle
 	// Send allows actors to invoke methods on other actors
-	Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{}
+	Send(to address.Address, method types.MethodID, value types.AttoFIL, params interface{}) interface{}
 	// Balance is the current balance on the current actors account.
 	//
 	// Note: the value received for this invocation is already reflected on the balance.
@@ -75,7 +75,7 @@ type ExtendedInvocationContext interface {
 	// This will determine a reorg "stable" address for the actor and call its `Constructor()` method.
 	//
 	// WARNING: May only be called by InitActor.
-	CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) (address.Address, address.Address)
+	CreateActor(actorID types.Uint64, code cid.Cid, constructorParams []byte) (address.Address, address.Address)
 	// VerifySignature cryptographically verifies the signature.
 	//
 	// This methods returns `True` when 'signature' is signed hash of 'msg'
@@ -158,7 +158,10 @@ func (p ExecutionPanic) Code() exitcode.ExitCode {
 }
 
 func (p ExecutionPanic) String() string {
-	return p.msg
+	if p.msg != "" {
+		return p.msg
+	}
+	return fmt.Sprintf("ExitCode(%d)", p.Code())
 }
 
 // Abort aborts the VM execution and sets the executing message return to the given `code`.

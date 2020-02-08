@@ -53,7 +53,7 @@ type getStableActorPlumbing interface {
 	ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error)
 	ChainHeadKey() block.TipSetKey
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
-	ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ *vm.FunctionSignature, err error)
+	ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ vm.ActorMethodSignature, err error)
 }
 
 // GetStableActor looks up an actor by address. If the address is an actor address it will first convert it to an id address.
@@ -68,7 +68,7 @@ func GetStableActor(ctx context.Context, plumbing getStableActorPlumbing, addr a
 }
 
 // GetStableActorSignature looks up and actor method signature by address. If the addresss is an actor address it will first convert it to an id address.
-func GetStableActorSignature(ctx context.Context, plumbing getStableActorPlumbing, actorAddr address.Address, method types.MethodID) (_ *vm.FunctionSignature, err error) {
+func GetStableActorSignature(ctx context.Context, plumbing getStableActorPlumbing, actorAddr address.Address, method types.MethodID) (_ vm.ActorMethodSignature, err error) {
 	stateAddr, err := retrieveActorIDForActorAddress(ctx, plumbing, actorAddr)
 	if err != nil {
 		return nil, err

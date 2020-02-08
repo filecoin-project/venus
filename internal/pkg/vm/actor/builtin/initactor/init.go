@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"reflect"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
@@ -12,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
@@ -105,40 +103,13 @@ func (v *View) GetIDAddressByAddress(target address.Address) (address.Address, b
 //
 
 // Ensure InitActor is an ExecutableActor at compile time.
-var _ dispatch.ExecutableActor = (*Actor)(nil)
+var _ dispatch.Actor = (*Actor)(nil)
 
-var signatures = dispatch.Exports{
-	GetNetworkMethodID: &dispatch.FunctionSignature{
-		Params: []abi.Type{},
-		Return: []abi.Type{abi.String},
-	},
-	ExecMethodID: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.Cid, abi.Parameters},
-		Return: []abi.Type{abi.Address},
-	},
-	GetActorIDForAddressMethodID: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.Address},
-		Return: []abi.Type{abi.Integer},
-	},
-	GetAddressForActorIDMethodID: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.Integer},
-		Return: []abi.Type{abi.Address},
-	},
-}
-
-// Method returns method definition for a given method id.
-func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSignature, bool) {
-	switch id {
-	case ExecMethodID:
-		return reflect.ValueOf((*Impl)(a).Exec), signatures[ExecMethodID], true
-	case GetActorIDForAddressMethodID:
-		return reflect.ValueOf((*Impl)(a).GetActorIDForAddress), signatures[GetActorIDForAddressMethodID], true
-	case GetAddressForActorIDMethodID:
-		return reflect.ValueOf((*Impl)(a).GetAddressForActorID), signatures[GetAddressForActorIDMethodID], true
-	case GetNetworkMethodID:
-		return reflect.ValueOf((*Impl)(a).GetNetwork), signatures[GetNetworkMethodID], true
-	default:
-		return nil, nil, false
+// Exports implements `dispatch.Actor`
+func (a *Actor) Exports() []interface{} {
+	return []interface{}{
+		ExecMethodID:                 (*Impl)(a).Exec,
+		GetActorIDForAddressMethodID: (*Impl)(a).GetActorIDForAddress,
 	}
 }
 
@@ -190,7 +161,7 @@ const (
 // invocationContext is the context for the init actor.
 type invocationContext interface {
 	runtime.InvocationContext
-	CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) (address.Address, address.Address)
+	CreateActor(actorID types.Uint64, code cid.Cid, params []byte) (address.Address, address.Address)
 }
 
 // Impl is the VM implementation of the actor.
@@ -261,8 +232,14 @@ func (a *Impl) GetAddressForActorID(vmctx runtime.InvocationContext, actorID typ
 	return addr, 0, nil
 }
 
+// ExecParams are the params for the Exec method.
+type ExecParams struct {
+	ActorCodeCid      cid.Cid
+	ConstructorParams []byte
+}
+
 // Exec creates a new builtin actor.
-func (a *Impl) Exec(vmctx invocationContext, codeCID cid.Cid, params []interface{}) (address.Address, uint8, error) {
+func (a *Impl) Exec(vmctx invocationContext, params ExecParams) (address.Address, uint8, error) {
 	vmctx.ValidateCaller(pattern.Any{})
 
 	// Dragons: clean this up to match spec
@@ -279,7 +256,7 @@ func (a *Impl) Exec(vmctx invocationContext, codeCID cid.Cid, params []interface
 
 	actorID := out.(types.Uint64)
 
-	actorIdAddr, actorAddr := vmctx.CreateActor(actorID, codeCID, params)
+	actorIDAddr, actorAddr := vmctx.CreateActor(actorID, params.ActorCodeCid, params.ConstructorParams)
 
 	_, err = vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		var err error
@@ -303,7 +280,7 @@ func (a *Impl) Exec(vmctx invocationContext, codeCID cid.Cid, params []interface
 	}
 
 	// Dragons: the idaddress is returned by the spec
-	return actorIdAddr, 0, nil
+	return actorIDAddr, 0, nil
 }
 
 func lookupIDAddress(vmctx runtime.InvocationContext, state State, addr address.Address) (types.Uint64, error) {

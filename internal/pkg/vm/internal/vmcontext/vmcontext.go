@@ -6,6 +6,7 @@ import (
 	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/cron"
@@ -45,7 +46,7 @@ type RandomnessSource interface {
 
 // ActorImplLookup provides access to upgradeable actor code.
 type ActorImplLookup interface {
-	GetActorImpl(code cid.Cid, epoch types.BlockHeight) (dispatch.ExecutableActor, error)
+	GetActorImpl(code cid.Cid) (dispatch.Dispatcher, error)
 }
 
 // MinerPenaltyFIL is just a alias for FIL used to penalize the miner
@@ -80,11 +81,17 @@ func NewVM(rnd RandomnessSource, actorImpls ActorImplLookup, store *storage.VMSt
 // ApplyGenesisMessage forces the execution of a message in the vm actor.
 //
 // This method is intended to be used in the generation of the genesis block only.
-func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method types.MethodID, value types.AttoFIL, params ...interface{}) (interface{}, error) {
-	// get the params into bytes
-	encodedParams, err := abi.ToEncodedValues(params...)
-	if err != nil {
-		return nil, err
+func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method types.MethodID, value types.AttoFIL, params interface{}) (interface{}, error) {
+	// get the params
+	// try to use the bytes directly
+	encodedParams, ok := params.([]byte)
+	if !ok {
+		// we got an object, encode it
+		var err error
+		encodedParams, err = encoding.Encode(params)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// normalize from addr
@@ -135,7 +142,7 @@ func (vm *VM) normalizeFrom(from address.Address) address.Address {
 	// lookup the ActorID based on the address
 	targetIDAddr, ok := initView.GetIDAddressByAddress(from)
 	if !ok {
-		panic("TODO")
+		runtime.Abort(exitcode.ActorNotFound)
 	}
 
 	return targetIDAddr
@@ -491,8 +498,8 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 	return
 }
 
-func (vm *VM) getActorImpl(code cid.Cid) dispatch.ExecutableActor {
-	actorImpl, err := vm.actorImpls.GetActorImpl(code, vm.currentEpoch)
+func (vm *VM) getActorImpl(code cid.Cid) dispatch.Dispatcher {
+	actorImpl, err := vm.actorImpls.GetActorImpl(code)
 	if err != nil {
 		runtime.Abort(exitcode.ActorCodeNotFound)
 	}

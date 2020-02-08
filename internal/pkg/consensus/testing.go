@@ -16,9 +16,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -121,7 +121,7 @@ func (tsmv *FakeMessageValidator) Validate(ctx context.Context, msg *types.Unsig
 }
 
 // NewFakeProcessor creates a processor with a test validator and test rewarder
-func NewFakeProcessor(actors builtin.Actors) *DefaultProcessor {
+func NewFakeProcessor(actors vm.ActorCodeLoader) *DefaultProcessor {
 	return &DefaultProcessor{
 		actors: actors,
 	}

@@ -108,7 +108,7 @@ func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Acto
 // ActorGetSignature returns the signature of the given actor's given method.
 // The function signature is typically used to enable a caller to decode the
 // output of an actor method call (message).
-func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ *vm.FunctionSignature, err error) {
+func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ vm.ActorMethodSignature, err error) {
 	return api.chain.GetActorSignature(ctx, actorAddr, method)
 }
 

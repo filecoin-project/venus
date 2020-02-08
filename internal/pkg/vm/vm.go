@@ -3,6 +3,7 @@ package vm
 import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
@@ -27,7 +28,7 @@ type MessageReceipt = message.Receipt
 
 // NewVM creates a new VM interpreter.
 func NewVM(st state.Tree, store *storage.VMStorage) Interpreter {
-	vm := vmcontext.NewVM(vmcontext.NewProdRandomnessSource(), dispatcher.DefaultActors, store, st)
+	vm := vmcontext.NewVM(vmcontext.NewProdRandomnessSource(), builtin.DefaultActors, store, st)
 	return &vm
 }
 
@@ -37,7 +38,7 @@ func NewStorage(bs blockstore.Blockstore) Storage {
 }
 
 // DefaultActors is a code loader with the built-in actors that come with the system.
-var DefaultActors = dispatch.DefaultActors
+var DefaultActors = builtin.DefaultActors
 
 // ActorCodeLoader allows yo to load an actor's code based on its id an epoch.
 type ActorCodeLoader = dispatch.CodeLoader

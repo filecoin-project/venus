@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
-
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -151,7 +151,7 @@ func NewEmptyConfig() *Config {
 
 // GenesisVM is the view into the VM used during genesis block creation.
 type GenesisVM interface {
-	ApplyGenesisMessage(from address.Address, to address.Address, method types.MethodID, value types.AttoFIL, params ...interface{}) (interface{}, error)
+	ApplyGenesisMessage(from address.Address, to address.Address, method types.MethodID, value types.AttoFIL, params interface{}) (interface{}, error)
 }
 
 // MakeGenesisFunc returns a genesis function configured by a set of options.
@@ -188,8 +188,15 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			}
 			val := genCfg.accounts[addr]
 
+			constructorParams, err := encoding.Encode(addr)
+			if err != nil {
+				return nil, err
+			}
 			_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, vmaddr.InitAddress,
-				initactor.ExecMethodID, val, types.AccountActorCodeCid, []interface{}{addr})
+				initactor.ExecMethodID, val, initactor.ExecParams{
+					ActorCodeCid:      types.AccountActorCodeCid,
+					ConstructorParams: constructorParams,
+				})
 			if err != nil {
 				return nil, err
 			}
@@ -316,7 +323,14 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 				return err
 			}
 		} else {
-			_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, vmaddr.InitAddress, initactor.ExecMethodID, val, types.AccountActorCodeCid, []interface{}{addr})
+			constructorParams, err := encoding.Encode(addr)
+			if err != nil {
+				return err
+			}
+			_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, vmaddr.InitAddress, initactor.ExecMethodID, val, initactor.ExecParams{
+				ActorCodeCid:      types.AccountActorCodeCid,
+				ConstructorParams: constructorParams,
+			})
 			if err != nil {
 				return err
 			}

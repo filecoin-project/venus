@@ -96,14 +96,8 @@ func (d *actorDispatcher) signature(methodID types.MethodID) (*methodSignature, 
 		return nil, fmt.Errorf("Method undefined. method: %d, code: %s", methodID, d.code)
 	}
 
-	// for the moment, we only support dispatching if the entry in the export table is a method pointer.
-	m, ok := entry.(method)
-	if !ok {
-		// Note: the entry defined in the actor code is not a method pointer, check the `spec-actors` repo code.
-		return nil, fmt.Errorf("Unsupported method definition. method: %d, code: %s", methodID, d.code)
-	}
-
-	return &methodSignature{method: m}, nil
+	ventry := reflect.ValueOf(entry)
+	return &methodSignature{method: ventry}, nil
 }
 
 // Signature implements `Dispatcher`.

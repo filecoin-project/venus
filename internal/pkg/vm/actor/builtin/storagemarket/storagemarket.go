@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"reflect"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
@@ -67,47 +65,11 @@ func NewActor() *actor.Actor {
 // ExecutableActor impl for Actor
 //
 
-var _ dispatch.ExecutableActor = (*Actor)(nil)
+var _ dispatch.Actor = (*Actor)(nil)
 
-var signatures = dispatch.Exports{
-	CreateStorageMiner: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.BytesAmount, abi.PeerID},
-		Return: []abi.Type{abi.Address},
-	},
-	UpdateStorage: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.BytesAmount},
-		Return: nil,
-	},
-	GetTotalStorage: &dispatch.FunctionSignature{
-		Params: []abi.Type{},
-		Return: []abi.Type{abi.BytesAmount},
-	},
-	GetProofsMode: &dispatch.FunctionSignature{
-		Params: []abi.Type{},
-		Return: []abi.Type{abi.ProofsMode},
-	},
-	GetLateMiners: &dispatch.FunctionSignature{
-		Params: nil,
-		Return: []abi.Type{abi.MinerPoStStates},
-	},
-}
-
-// Method returns method definition for a given method id.
-func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSignature, bool) {
-	switch id {
-	case CreateStorageMiner:
-		return reflect.ValueOf((*impl)(a).createStorageMiner), signatures[CreateStorageMiner], true
-	case UpdateStorage:
-		return reflect.ValueOf((*impl)(a).updateStorage), signatures[UpdateStorage], true
-	case GetTotalStorage:
-		return reflect.ValueOf((*impl)(a).getTotalStorage), signatures[GetTotalStorage], true
-	case GetProofsMode:
-		return reflect.ValueOf((*impl)(a).getProofsMode), signatures[GetProofsMode], true
-	case GetLateMiners:
-		return reflect.ValueOf((*impl)(a).getLateMiners), signatures[GetLateMiners], true
-	default:
-		return nil, nil, false
-	}
+// Exports implements `dispatch.Actor`
+func (a *Actor) Exports() []interface{} {
+	return []interface{}{}
 }
 
 // InitializeState stores the actor's initial data structure.

@@ -262,7 +262,7 @@ func MinerPreviewSetPrice(ctx context.Context, plumbing mpspAPI, from address.Ad
 type minerQueryAndDeserialize interface {
 	ChainHeadKey() block.TipSetKey
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
-	ActorGetStableSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*vm.FunctionSignature, error)
+	ActorGetStableSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (vm.ActorMethodSignature, error)
 }
 
 // MinerGetOwnerAddress queries for the owner address of the given miner
@@ -307,7 +307,7 @@ func MinerGetWorkerAddress(ctx context.Context, plumbing minerQueryAndDeserializ
 // queryAndDeserialize is a convenience method. It sends a query message to a
 // miner and, based on the method return-type, deserializes to the appropriate
 // ABI type.
-func queryAndDeserialize(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address, method types.MethodID, baseKey block.TipSetKey, params ...interface{}) (*abi.Value, error) {
+func queryAndDeserialize(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address, method types.MethodID, baseKey block.TipSetKey, params ...interface{}) (interface{}, error) {
 	rets, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, method, baseKey, params...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "'%s' query message failed", method)
@@ -318,22 +318,17 @@ func queryAndDeserialize(ctx context.Context, plumbing minerQueryAndDeserialize,
 		return nil, errors.Wrapf(err, "failed to acquire '%s' signature", method)
 	}
 
-	abiValue, err := abi.Deserialize(rets[0], methodSignature.Return[0])
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to deserialize returned value")
-	}
-
-	return abiValue, nil
+	return methodSignature.ReturnInterface(rets[0])
 }
 
 // MinerGetSectorSize queries for the sector size of the given miner.
 func MinerGetSectorSize(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (*types.BytesAmount, error) {
-	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, minerActor.GetSectorSize, plumbing.ChainHeadKey())
+	out, err := queryAndDeserialize(ctx, plumbing, minerAddr, minerActor.GetSectorSize, plumbing.ChainHeadKey())
 	if err != nil {
 		return nil, errors.Wrap(err, "query and deserialize failed")
 	}
 
-	sectorSize, ok := abiVal.Val.(*types.BytesAmount)
+	sectorSize, ok := out.(*types.BytesAmount)
 	if !ok {
 		return nil, errors.New("failed to convert returned ABI value")
 	}
@@ -343,12 +338,12 @@ func MinerGetSectorSize(ctx context.Context, plumbing minerQueryAndDeserialize, 
 
 // MinerCalculateLateFee calculates the fee due if a miner's PoSt were to be mined at `height`.
 func MinerCalculateLateFee(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address, height *types.BlockHeight) (types.AttoFIL, error) {
-	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, minerActor.CalculateLateFee, plumbing.ChainHeadKey(), height)
+	out, err := queryAndDeserialize(ctx, plumbing, minerAddr, minerActor.CalculateLateFee, plumbing.ChainHeadKey(), height)
 	if err != nil {
 		return types.ZeroAttoFIL, errors.Wrap(err, "query and deserialize failed")
 	}
 
-	coll, ok := abiVal.Val.(types.AttoFIL)
+	coll, ok := out.(types.AttoFIL)
 	if !ok {
 		return types.ZeroAttoFIL, errors.New("failed to convert returned ABI value")
 	}
@@ -359,12 +354,12 @@ func MinerCalculateLateFee(ctx context.Context, plumbing minerQueryAndDeserializ
 // MinerGetLastCommittedSectorID queries for the id of the last sector committed
 // by the given miner.
 func MinerGetLastCommittedSectorID(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (uint64, error) {
-	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, minerActor.GetLastUsedSectorID, plumbing.ChainHeadKey())
+	out, err := queryAndDeserialize(ctx, plumbing, minerAddr, minerActor.GetLastUsedSectorID, plumbing.ChainHeadKey())
 	if err != nil {
 		return 0, errors.Wrap(err, "query and deserialize failed")
 	}
 
-	lastUsedSectorID, ok := abiVal.Val.(uint64)
+	lastUsedSectorID, ok := out.(uint64)
 	if !ok {
 		return 0, errors.New("failed to convert returned ABI value")
 	}
@@ -456,11 +451,11 @@ func MinerGetProvingWindow(ctx context.Context, plumbing minerQueryAndDeserializ
 		return MinerProvingWindow{}, errors.Wrap(err, "query method failed")
 	}
 	fmt.Printf("bad bytes: %x\n", res[0])
-	commitmentsVal, err := abi.Deserialize(res[0], sig.Return[0])
+	commitmentsVal, err := sig.ReturnInterface(res[0])
 	if err != nil {
 		return MinerProvingWindow{}, errors.Wrap(err, "deserialization failed")
 	}
-	commitments, ok := commitmentsVal.Val.(map[string]types.Commitments)
+	commitments, ok := commitmentsVal.(map[string]types.Commitments)
 	if !ok {
 		return MinerProvingWindow{}, errors.New("type assertion failed")
 	}

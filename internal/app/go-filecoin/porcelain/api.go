@@ -53,7 +53,7 @@ func (a *API) ActorGetStable(ctx context.Context, addr address.Address) (*actor.
 }
 
 // ActorGetStableSignature gets an actor signature by address, converting the address to an id address if necessary
-func (a *API) ActorGetStableSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ *vm.FunctionSignature, err error) {
+func (a *API) ActorGetStableSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ vm.ActorMethodSignature, err error) {
 	return GetStableActorSignature(ctx, a, actorAddr, method)
 }
 

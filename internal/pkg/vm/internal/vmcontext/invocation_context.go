@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-address"
 
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -95,24 +96,10 @@ func (ctx *invocationContext) invoke() interface{} {
 	ctx.stateHandle = &stateHandle
 
 	// dispatch
-	// 1. check method exists
-	// 2. invoke method on actor
-
-	// 1. check method exists
-	exportedFn, ok := makeTypedExport(actorImpl, ctx.msg.method)
-	if !ok {
-		runtime.Abort(exitcode.InvalidMethod)
-	}
-
-	// 2. invoke method on actor
-	vals, code, err := exportedFn(ctx)
-
-	// handle legacy errors and codes
+	out, err := actorImpl.Dispatch(ctx.msg.method, ctx, ctx.msg.params)
 	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "Legacy actor code returned an error. %s", err)
-	}
-	if code != 0 {
-		runtime.Abortf(exitcode.MethodAbort, "Legacy actor code returned with non-zero error code, code: %d", code)
+		// Dragons: this could be a deserialization error too
+		runtime.Abort(exitcode.InvalidMethod)
 	}
 
 	// post-dispatch
@@ -131,10 +118,7 @@ func (ctx *invocationContext) invoke() interface{} {
 	ctx.toActor.Head = e.NewCid(stateHandle.head)
 
 	// 3. success! build the receipt
-	if len(vals) > 0 {
-		return vals[0]
-	}
-	return nil
+	return out
 }
 
 // resolveTarget loads and actor and returns its ActorID address.
@@ -236,13 +220,8 @@ func (ctx *invocationContext) StateHandle() runtime.ActorStateHandle {
 	return ctx.stateHandle
 }
 
-// LegacySend implements runtime.InvocationContext.
-func (ctx *invocationContext) LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
-	panic("legacy code invoked")
-}
-
 // Send implements runtime.InvocationContext.
-func (ctx *invocationContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{} {
+func (ctx *invocationContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params interface{}) interface{} {
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {
 		runtime.Abortf(exitcode.MethodAbort, "Calling Send() is not allowed during side-effet lock")
@@ -257,10 +236,15 @@ func (ctx *invocationContext) Send(to address.Address, method types.MethodID, va
 	fromActor := ctx.toActor
 
 	// 2. build internal message
-	encodedParams, err := abi.ToEncodedValues(params...)
-	if err != nil {
-		runtime.Abortf(exitcode.EncodingError, "failed to encode params. %s", err)
+	encodedParams, ok := params.([]byte)
+	if !ok {
+		var err error
+		encodedParams, err = encoding.Encode(params)
+		if err != nil {
+			runtime.Abortf(exitcode.EncodingError, "failed to encode params. %s", err)
+		}
 	}
+
 	newMsg := internalMessage{
 		from:   from,
 		to:     to,
@@ -302,7 +286,7 @@ func (ctx *invocationContext) Charge(cost types.GasUnits) error {
 var _ runtime.ExtendedInvocationContext = (*invocationContext)(nil)
 
 /// CreateActor implements runtime.ExtendedInvocationContext.
-func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) (address.Address, address.Address) {
+func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, constructorParams []byte) (address.Address, address.Address) {
 	// Dragons: code it over, there were some changes in spec, revise
 	if !isBuiltinActor(code) {
 		runtime.Abortf(exitcode.MethodAbort, "Can only create built-in actors.")
@@ -316,11 +300,8 @@ func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, pa
 	var actorAddr address.Address
 	var err error
 	if types.AccountActorCodeCid.Equals(code) {
-		// address for account actor comes from first parameter
-		if len(params) < 1 {
-			runtime.Abortf(exitcode.MethodAbort, "Missing address parameter for account actor creation")
-		}
-		actorAddr, err = actorAddressFromParam(params[0])
+		var actorAddr address.Address
+		err = encoding.Decode(constructorParams, &actorAddr)
 		if err != nil {
 			runtime.Abortf(exitcode.MethodAbort, "Parameter for account actor creation is not an address")
 		}
@@ -355,7 +336,7 @@ func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, pa
 	newActor.Code = e.NewCid(code)
 
 	// send message containing actor's initial balance to construct it with the given params
-	ctx.Send(idAddr, types.ConstructorMethodID, ctx.Message().ValueReceived(), params)
+	ctx.Send(idAddr, types.ConstructorMethodID, ctx.Message().ValueReceived(), constructorParams)
 
 	return idAddr, actorAddr
 }
@@ -363,16 +344,6 @@ func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, pa
 /// VerifySignature implements runtime.ExtendedInvocationContext.
 func (ctx *invocationContext) VerifySignature(signer address.Address, signature types.Signature, msg []byte) bool {
 	return types.IsValidSignature(msg, signer, signature)
-}
-
-//
-// implement ExportContext for invocationContext
-//
-
-var _ ExportContext = (*invocationContext)(nil)
-
-func (ctx *invocationContext) Params() []byte {
-	return ctx.msg.params
 }
 
 // patternContext implements the PatternContext
