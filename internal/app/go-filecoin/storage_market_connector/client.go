@@ -5,9 +5,7 @@ import (
 	"context"
 
 	"github.com/ipfs/go-cid"
-
 	smcborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/ipfs/go-hamt-ipld"
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-address"
@@ -32,14 +30,14 @@ type StorageClientNodeConnector struct {
 	connectorCommon
 
 	clientAddr address.Address
-	cborStore  hamt.CborIpldStore
+	cborStore  cbor.IpldStore
 }
 
 var _ storagemarket.StorageClientNode = &StorageClientNodeConnector{}
 
 // NewStorageClientNodeConnector creates a new connector
 func NewStorageClientNodeConnector(
-	cbor hamt.CborIpldStore,
+	cbor cbor.IpldStore,
 	cs chainReader,
 	w *msg.Waiter,
 	wlt *wallet.Wallet,
@@ -88,7 +86,7 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context) (
 	}
 
 	infos := []*storagemarket.StorageProviderInfo{}
-	powerHamt, err := hamt.LoadNode(ctx, s.cborStore, spState.PowerTable)
+	powerHamt, err := cbor.LoadNode(ctx, s.cborStore, spState.PowerTable)
 	if err != nil {
 		return nil, err
 	}

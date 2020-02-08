@@ -10,11 +10,11 @@ import (
 
 // ToCid gets the Cid for the argument passed in
 func ToCid(object interface{}) (cid.Cid, error) {
-	cborNode, err := cbor.WrapObject(object, types.DefaultHashFunction, -1)
+	cbor, err := cbor.WrapObject(object, types.DefaultHashFunction, -1)
 	if err != nil {
 		return cid.Cid{}, errors.Wrap(err, "failed to get cid of proposal")
 	}
-	return cborNode.Cid(), nil
+	return cbor.Cid(), nil
 }
 
 // To32ByteArray creates a 32-byte array of NUL bytes, and then copies the first

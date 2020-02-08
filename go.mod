@@ -52,7 +52,7 @@ require (
 	github.com/ipfs/go-ipfs-files v0.0.4
 	github.com/ipfs/go-ipfs-keystore v0.0.1
 	github.com/ipfs/go-ipfs-routing v0.1.0
-	github.com/ipfs/go-ipld-cbor v0.0.4
+	github.com/ipfs/go-ipld-cbor v0.0.5-0.20200204214505-252690b78669
 	github.com/ipfs/go-ipld-format v0.0.2
 	github.com/ipfs/go-log v1.0.1
 	github.com/ipfs/go-log/v2 v2.0.2 // indirect
@@ -107,7 +107,7 @@ require (
 	go.opencensus.io v0.22.2
 	go.uber.org/atomic v1.5.1 // indirect
 	go.uber.org/zap v1.13.0
-	golang.org/x/crypto v0.0.0-20200206161412-a0c6ece9d31a
+	golang.org/x/crypto v0.0.0-20200207205829-a95e85b341fd
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
 	golang.org/x/net v0.0.0-20191101175033-0deb6923b6d9 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45

@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	dag "github.com/ipfs/go-merkledag"
 
@@ -274,7 +273,7 @@ func Test_Mine(t *testing.T) {
 	})
 }
 
-func sharedSetupInitial() (hamt.CborIpldStore, *message.Pool, cid.Cid) {
+func sharedSetupInitial() (cbor.IpldStore, *message.Pool, cid.Cid) {
 	r := repo.NewInMemoryRepo()
 	bs := blockstore.NewBlockstore(r.Datastore())
 	cst := cborutil.NewIpldStore(bs)

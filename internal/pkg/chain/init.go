@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/pkg/errors"
 
@@ -15,7 +14,7 @@ import (
 )
 
 // Init initializes a DefaultSycner in the given repo.
-func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst hamt.CborIpldStore, gen consensus.GenesisInitFunc) (*Store, error) {
+func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst cbor.IpldStore, gen consensus.GenesisInitFunc) (*Store, error) {
 	// TODO the following should be wrapped in the chain.Store or a sub
 	// interface.
 	// Generate the genesis tipset.

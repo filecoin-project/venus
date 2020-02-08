@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -179,7 +178,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, ownerAddr, work
 		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
 			// Do not overwrite table entry if it already exists
 			err := lookup.Find(ctx, actorIDAddr.String(), nil)
-			if err != hamt.ErrNotFound { // we expect to not find the power table entry
+			if err != cbor.ErrNotFound { // we expect to not find the power table entry
 				if err == nil {
 					return Errors[ErrDuplicateEntry]
 				}
@@ -228,7 +227,7 @@ func (*impl) removeStorageMiner(vmctx runtime.InvocationContext, delAddr address
 			var delEntry TableEntry
 			err := lookup.Find(ctx, delAddr.String(), &delEntry)
 			if err != nil {
-				if err == hamt.ErrNotFound {
+				if err == cbor.ErrNotFound {
 					return Errors[ErrUnknownEntry]
 				}
 				return fmt.Errorf("Could not retrieve power table entry with ID: %s", delAddr.String())
@@ -299,7 +298,7 @@ func (*impl) getPowerReport(vmctx runtime.InvocationContext, addr address.Addres
 		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
 			err := lookup.Find(ctx, addr.String(), &tableEntry)
 			if err != nil {
-				if err == hamt.ErrNotFound {
+				if err == cbor.ErrNotFound {
 					return Errors[ErrUnknownEntry]
 				}
 				return fmt.Errorf("Could not retrieve power table entry with ID: %s", addr.String())
@@ -359,7 +358,7 @@ func (*impl) processPowerReport(vmctx runtime.InvocationContext, report types.Po
 			var updateEntry TableEntry
 			err := lookup.Find(ctx, updateAddr.String(), &updateEntry)
 			if err != nil {
-				if err == hamt.ErrNotFound {
+				if err == cbor.ErrNotFound {
 					return Errors[ErrUnknownEntry]
 				}
 				return fmt.Errorf("Could not retrieve power table entry with ID: %s", updateAddr.String())

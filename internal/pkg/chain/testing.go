@@ -11,7 +11,6 @@ import (
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	syncds "github.com/ipfs/go-datastore/sync"
-	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
@@ -41,7 +40,7 @@ type Builder struct {
 	stateBuilder StateBuilder
 	stamper      TimeStamper
 	bs           blockstore.Blockstore
-	cstore       hamt.CborIpldStore
+	cstore       cbor.IpldStore
 	messages     *MessageStore
 	seq          uint64 // For unique tickets
 

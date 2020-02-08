@@ -5,7 +5,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -28,7 +27,7 @@ type Previewer struct {
 	// To get the head tipset state root.
 	chainReader previewerChainReader
 	// To load the tree for the head tipset state root.
-	cst hamt.CborIpldStore
+	cst cbor.IpldStore
 	// For vm storage.
 	bs bstore.Blockstore
 	// To to preview messages
@@ -36,7 +35,7 @@ type Previewer struct {
 }
 
 // NewPreviewer constructs a Previewer.
-func NewPreviewer(chainReader previewerChainReader, cst hamt.CborIpldStore, bs bstore.Blockstore, processor messagePreviewer) *Previewer {
+func NewPreviewer(chainReader previewerChainReader, cst cbor.IpldStore, bs bstore.Blockstore, processor messagePreviewer) *Previewer {
 	return &Previewer{chainReader, cst, bs, processor}
 }
 

@@ -35,7 +35,7 @@ var logStore = logging.Logger("chain.store")
 // HeadKey is the key at which the head tipset cid's are written in the datastore.
 var HeadKey = datastore.NewKey("/chain/heaviestTipSet")
 
-// ipldStore defines an interface for interacting with a hamt.CborIpldStore.
+// ipldStore defines an interface for interacting with a cbor.IpldStore.
 // TODO #3078 use go-ipld-cbor export
 type ipldStore interface {
 	Put(ctx context.Context, v interface{}) (cid.Cid, error)

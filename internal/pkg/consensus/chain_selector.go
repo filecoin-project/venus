@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -28,13 +27,13 @@ const (
 // ChainSelector weighs and compares chains according to the deprecated v0
 // Storage Power Consensus Protocol
 type ChainSelector struct {
-	cstore     hamt.CborIpldStore
+	cstore     cbor.IpldStore
 	actorState SnapshotGenerator
 	genesisCid cid.Cid
 }
 
 // NewChainSelector is the constructor for chain selection module.
-func NewChainSelector(cs hamt.CborIpldStore, actorState SnapshotGenerator, gCid cid.Cid) *ChainSelector {
+func NewChainSelector(cs cbor.IpldStore, actorState SnapshotGenerator, gCid cid.Cid) *ChainSelector {
 	return &ChainSelector{
 		cstore:     cs,
 		actorState: actorState,

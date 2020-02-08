@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
 	typegen "github.com/whyrusleeping/cbor-gen"
@@ -29,7 +28,7 @@ import (
 )
 
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
-type GenesisInitFunc func(cst hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error)
+type GenesisInitFunc func(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error)
 
 var (
 	defaultAccounts map[address.Address]types.AttoFIL
@@ -154,7 +153,7 @@ type GenesisVM interface {
 
 // MakeGenesisFunc returns a genesis function configured by a set of options.
 func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
-	return func(cst hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+	return func(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
 		ctx := context.Background()
 		st := state.NewTree(cst)
 		store := vm.NewStorage(bs)

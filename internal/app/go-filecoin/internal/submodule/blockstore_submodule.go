@@ -19,7 +19,7 @@ type BlockstoreSubmodule struct {
 	// Blockstore is the un-networked blocks interface
 	Blockstore bstore.Blockstore
 
-	// cborStore is a wrapper for a `hamt.CborIpldStore` that works on the local IPLD-Cbor objects stored in `Blockstore`.
+	// cborStore is a wrapper for a `cbor.IpldStore` that works on the local IPLD-Cbor objects stored in `Blockstore`.
 	CborStore *cborutil.IpldStore
 }
 

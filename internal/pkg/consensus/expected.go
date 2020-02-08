@@ -14,7 +14,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
@@ -106,7 +105,7 @@ type Expected struct {
 	TicketValidator
 
 	// cstore is used for loading state trees during message running.
-	cstore hamt.CborIpldStore
+	cstore cbor.IpldStore
 
 	// bstore contains data referenced by actors within the state
 	// during message running.  Additionally bstore is used for
@@ -129,7 +128,7 @@ type Expected struct {
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, actorState SnapshotGenerator, bt time.Duration, ev ElectionValidator, tv TicketValidator, pv verification.PoStVerifier) *Expected {
+func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processor, actorState SnapshotGenerator, bt time.Duration, ev ElectionValidator, tv TicketValidator, pv verification.PoStVerifier) *Expected {
 	return &Expected{
 		cstore:            cs,
 		blockTime:         bt,

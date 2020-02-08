@@ -7,7 +7,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	cbor "github.com/fxamacker/cbor"
 	cid "github.com/ipfs/go-cid"
-	olcbor "github.com/ipfs/go-ipld-cbor"
+	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -24,11 +24,11 @@ func TestCborRoundTrip(t *testing.T) {
 	cbytes, err := cbor.Marshal(w, cbor.EncOptions{})
 	require.NoError(t, err)
 
-	olcbytes, err := olcbor.DumpObject(c)
+	olcbytes, err := ipldcbor.DumpObject(c)
 	require.NoError(t, err)
 	assert.Equal(t, olcbytes, cbytes)
 	var rtOlC cid.Cid
-	err = olcbor.DecodeInto(olcbytes, &rtOlC)
+	err = ipldcbor.DecodeInto(olcbytes, &rtOlC)
 	require.NoError(t, err)
 
 	var newC Cid

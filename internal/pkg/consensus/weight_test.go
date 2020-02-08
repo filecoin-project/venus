@@ -7,7 +7,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/ipfs/go-hamt-ipld"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -19,7 +18,7 @@ import (
 
 func TestWeight(t *testing.T) {
 	t.Skip("turn back on once vm integration is complete")
-	cst := hamt.NewCborStore()
+	cst := cbor.NewCborStore()
 	ctx := context.Background()
 	fakeTree := state.TreeFromString(t, "test-Weight-StateCid", cst)
 	fakeRoot, err := fakeTree.Flush(ctx)

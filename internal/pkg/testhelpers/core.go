@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -30,7 +29,7 @@ import (
 
 // RequireMakeStateTree takes a map of addresses to actors and stores them on
 // the state tree, requiring that all its steps succeed.
-func RequireMakeStateTree(t *testing.T, cst hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, state.Tree) {
+func RequireMakeStateTree(t *testing.T, cst cbor.IpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, state.Tree) {
 	ctx := context.Background()
 	tree := state.NewTree(cst)
 
@@ -311,6 +310,6 @@ func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.St
 }
 
 // DefaultGenesis creates a test network genesis block with default accounts and actors installed.
-func DefaultGenesis(cst hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+func DefaultGenesis(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
 	return consensus.MakeGenesisFunc(consensus.Network(version.TEST))(cst, bs)
 }
