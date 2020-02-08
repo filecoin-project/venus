@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
@@ -21,7 +21,7 @@ type commonDeps struct {
 	chainStore *chain.Store
 	messages   *chain.MessageStore
 	blockstore bstore.Blockstore
-	cst        hamt.CborIpldStore
+	cst        cbor.IpldStore
 }
 
 func requiredCommonDeps(t *testing.T, gif consensus.GenesisInitFunc) *commonDeps { // nolint: deadcode

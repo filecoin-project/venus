@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/ipfs/go-cid"
-
 	smcborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-address"
@@ -19,6 +17,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	smtypes "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/ipfs/go-hamt-ipld"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
@@ -32,14 +32,14 @@ type StorageClientNodeConnector struct {
 	connectorCommon
 
 	clientAddr address.Address
-	cborStore  hamt.CborIpldStore
+	cborStore  cbor.IpldStore
 }
 
 var _ storagemarket.StorageClientNode = &StorageClientNodeConnector{}
 
 // NewStorageClientNodeConnector creates a new connector
 func NewStorageClientNodeConnector(
-	cbor hamt.CborIpldStore,
+	cbor cbor.IpldStore,
 	cs chainReader,
 	w *msg.Waiter,
 	wlt *wallet.Wallet,

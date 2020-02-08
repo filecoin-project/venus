@@ -7,8 +7,8 @@ import (
 	"github.com/cskr/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 
@@ -32,7 +32,7 @@ type waiterChainReader interface {
 type Waiter struct {
 	chainReader     waiterChainReader
 	messageProvider chain.MessageProvider
-	cst             hamt.CborIpldStore
+	cst             cbor.IpldStore
 	bs              bstore.Blockstore
 }
 
@@ -47,7 +47,7 @@ type ChainMessage struct {
 type WaitPredicate func(msg *types.SignedMessage, msgCid cid.Cid) bool
 
 // NewWaiter returns a new Waiter.
-func NewWaiter(chainStore waiterChainReader, messages chain.MessageProvider, bs bstore.Blockstore, cst hamt.CborIpldStore) *Waiter {
+func NewWaiter(chainStore waiterChainReader, messages chain.MessageProvider, bs bstore.Blockstore, cst cbor.IpldStore) *Waiter {
 	return &Waiter{
 		chainReader:     chainStore,
 		cst:             cst,

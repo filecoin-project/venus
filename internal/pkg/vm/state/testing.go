@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -123,7 +123,7 @@ func (m *MockStateTree) GetActorCode(c cid.Cid, protocol uint64) (dispatch.Execu
 // can be avoided when we are able to change cborStore to an interface and then
 // making a test implementation of the cbor store that can map test cids to test
 // states.
-func TreeFromString(t *testing.T, s string, cst hamt.CborIpldStore) Tree {
+func TreeFromString(t *testing.T, s string, cst cbor.IpldStore) Tree {
 	tree := NewTree(cst)
 	strAddr, err := address.NewSecp256k1Address([]byte(s))
 	fmt.Printf("strAddr: %s\n", strAddr)

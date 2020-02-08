@@ -13,7 +13,7 @@ import (
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	cbornode "github.com/ipfs/go-ipld-cbor"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -294,7 +294,7 @@ func validateBlockstoreImport(t *testing.T, start, stop block.TipSetKey, bstore 
 func requireAMTDecoding(t *testing.T, bstore blockstore.Blockstore, root *amt.Root, dest interface{}) {
 	err := root.ForEach(func(_ uint64, d *typegen.Deferred) error {
 		var c cid.Cid
-		if err := cbornode.DecodeInto(d.Raw, &c); err != nil {
+		if err := cbor.DecodeInto(d.Raw, &c); err != nil {
 			return err
 		}
 
@@ -302,7 +302,7 @@ func requireAMTDecoding(t *testing.T, bstore blockstore.Blockstore, root *amt.Ro
 		if err != nil {
 			return err
 		}
-		return cbornode.DecodeInto(b.RawData(), dest)
+		return cbor.DecodeInto(b.RawData(), dest)
 	})
 	require.NoError(t, err)
 

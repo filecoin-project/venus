@@ -16,7 +16,7 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	offroute "github.com/ipfs/go-ipfs-routing/offline"
-	cbornode "github.com/ipfs/go-ipld-cbor"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p"
 	autonatsvc "github.com/libp2p/go-libp2p-autonat-svc"
 	circuit "github.com/libp2p/go-libp2p-circuit"
@@ -181,7 +181,7 @@ func retrieveNetworkName(ctx context.Context, genCid cid.Cid, bs bstore.Blocksto
 		return "", errors.Wrapf(err, "failed to load init actor state at %s", initActor.Head)
 	}
 
-	node, err := cbornode.DecodeBlock(block)
+	node, err := cbor.DecodeBlock(block)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to decode init actor state")
 	}
