@@ -345,8 +345,8 @@ func (store *Store) SetHead(ctx context.Context, ts block.TipSet) error {
 	return nil
 }
 
-// Provides a read-only IPLD store for access to chain state.
-func (store *Store) ReadonlyIpldStore() cborutil.ReadOnlyIpldStore {
+// ReadOnlyStateStore provides a read-only IPLD store for access to chain state.
+func (store *Store) ReadOnlyStateStore() cborutil.ReadOnlyIpldStore {
 	return cborutil.ReadOnlyIpldStore{IpldStore: store.stateAndBlockSource.cborStore}
 }
 

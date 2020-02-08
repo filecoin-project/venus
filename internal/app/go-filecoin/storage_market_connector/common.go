@@ -310,6 +310,7 @@ func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) (
 	return deals, nil
 }
 
+// StoreFromCbor wraps a cbor store for ADT access.
 func StoreFromCbor(ctx context.Context, ipldStore cbor.IpldStore) adt.Store {
 	return &cstore{ctx, ipldStore}
 }

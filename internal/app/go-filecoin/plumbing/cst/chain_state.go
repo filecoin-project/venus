@@ -37,7 +37,7 @@ type chainReadWriter interface {
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
 	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
 	SetHead(context.Context, block.TipSet) error
-	ReadonlyIpldStore() cborutil.ReadOnlyIpldStore
+	ReadOnlyStateStore() cborutil.ReadOnlyIpldStore
 }
 
 // ChainStateReadWriter composes a:
@@ -90,7 +90,7 @@ func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider
 		bstore:            bs,
 		messageProvider:   messages,
 		actors:            ba,
-		ReadOnlyIpldStore: crw.ReadonlyIpldStore(),
+		ReadOnlyIpldStore: crw.ReadOnlyStateStore(),
 	}
 }
 
@@ -240,8 +240,9 @@ func (chn *ChainStateReadWriter) SetHead(ctx context.Context, key block.TipSetKe
 	return chn.readWriter.SetHead(ctx, headTs)
 }
 
-func (chn *ChainStateReadWriter) ReadonlyIpldStore() cborutil.ReadOnlyIpldStore {
-	return chn.readWriter.ReadonlyIpldStore()
+// ReadOnlyStateStore returns a read-only state store.
+func (chn *ChainStateReadWriter) ReadOnlyStateStore() cborutil.ReadOnlyIpldStore {
+	return chn.readWriter.ReadOnlyStateStore()
 }
 
 // ChainExport exports the chain from `head` up to and including the genesis block to `out`

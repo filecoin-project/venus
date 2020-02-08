@@ -4,15 +4,15 @@ import (
 	"context"
 	"io"
 
-	"github.com/ipfs/go-cid"
-	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	spasm "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	spaminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/ipfs/go-cid"
+	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
@@ -183,7 +183,7 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 		}
 		sectorNumber = uint64(k)
 
-		for _, deal := range sectorInfo.Info.DealIDs{
+		for _, deal := range sectorInfo.Info.DealIDs {
 			if uint64(deal) == dealID {
 				offset = uint64(0)
 				for _, did := range sectorInfo.Info.DealIDs {
