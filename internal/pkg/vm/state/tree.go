@@ -6,6 +6,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -161,7 +163,7 @@ func forEachActor(ctx context.Context, cst cbor.IpldStore, nd *hamt.Node, walkFn
 			}
 		}
 		if p.Link.Defined() {
-			n, err := cbor.LoadNode(context.Background(), cst, p.Link, hamt.UseTreeBitWidth(TreeBitWidth))
+			n, err := hamt.LoadNode(context.Background(), cst, p.Link, hamt.UseTreeBitWidth(TreeBitWidth))
 			if err != nil {
 				return err
 			}
@@ -190,7 +192,7 @@ func (t *tree) debugPointer(ps []*hamt.Pointer) {
 			fmt.Printf("%s: %X\n", kv.Key, kv.Value)
 		}
 		if p.Link.Defined() {
-			n, err := cbor.LoadNode(context.Background(), t.store, p.Link, hamt.UseTreeBitWidth(TreeBitWidth))
+			n, err := hamt.LoadNode(context.Background(), t.store, p.Link, hamt.UseTreeBitWidth(TreeBitWidth))
 			if err != nil {
 				fmt.Printf("unable to print link: %s: %s\n", p.Link.String(), err)
 				continue
@@ -226,7 +228,7 @@ func (t *tree) getActorsFromPointers(ctx context.Context, out chan<- GetAllActor
 			}
 		}
 		if p.Link.Defined() {
-			n, err := cbor.LoadNode(context.Background(), t.store, p.Link, hamt.UseTreeBitWidth(TreeBitWidth))
+			n, err := hamt.LoadNode(context.Background(), t.store, p.Link, hamt.UseTreeBitWidth(TreeBitWidth))
 			// Even if we hit an error and can't follow this link, we should
 			// keep traversing its siblings.
 			if err != nil {

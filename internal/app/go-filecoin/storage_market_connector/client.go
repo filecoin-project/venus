@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/ipfs/go-cid"
 	smcborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-address"
@@ -17,6 +17,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	smtypes "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/ipfs/go-hamt-ipld"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
@@ -86,7 +88,7 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context) (
 	}
 
 	infos := []*storagemarket.StorageProviderInfo{}
-	powerHamt, err := cbor.LoadNode(ctx, s.cborStore, spState.PowerTable)
+	powerHamt, err := hamt.LoadNode(ctx, s.cborStore, spState.PowerTable)
 	if err != nil {
 		return nil, err
 	}

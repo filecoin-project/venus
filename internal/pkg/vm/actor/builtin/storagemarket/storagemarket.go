@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -219,7 +220,7 @@ func (*impl) updateStorage(vmctx runtime.InvocationContext, delta *types.BytesAm
 
 		err = miners.Find(ctx, miner.String(), nil)
 		if err != nil {
-			if err == cbor.ErrNotFound {
+			if err == hamt.ErrNotFound {
 				return nil, Errors[ErrUnknownMiner]
 			}
 			return nil, fmt.Errorf("could not load lookup for miner with address: %s", miner)

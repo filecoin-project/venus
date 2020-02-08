@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/ipfs/go-graphsync"
+	"github.com/ipfs/go-hamt-ipld"
 
 	"github.com/filecoin-project/go-address"
 	graphsyncimpl "github.com/filecoin-project/go-data-transfer/impl/graphsync"

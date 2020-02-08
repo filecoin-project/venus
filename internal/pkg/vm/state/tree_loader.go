@@ -4,7 +4,10 @@ import (
 	"context"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
 	"github.com/pkg/errors"
+
+	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 // TreeLoader defines an interfaces for loading a state tree from an IpldStore.
@@ -28,7 +31,7 @@ func (stl *treeLoader) LoadStateTree(ctx context.Context, store cbor.IpldStore, 
 
 func loadStateTree(ctx context.Context, store cbor.IpldStore, c cid.Cid) (Tree, error) {
 	// TODO ideally this assertion can go away when #3078 lands in go-ipld-cbor
-	root, err := cbor.LoadNode(ctx, store, c, cbor.UseTreeBitWidth(TreeBitWidth))
+	root, err := hamt.LoadNode(ctx, store, c, hamt.UseTreeBitWidth(TreeBitWidth))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load node for %s", c)
 	}

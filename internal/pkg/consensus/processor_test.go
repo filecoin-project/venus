@@ -47,7 +47,7 @@ package consensus_test
 
 // 	newAddress := address.NewForTestGetter()
 // 	ctx := context.Background()
-// 	cst := cbor.NewCborStore()
+// 	cst := cbor.NewMemCborStore()
 
 // 	startingNetworkBalance := types.NewAttoFILFromFIL(1000000)
 
@@ -107,7 +107,7 @@ package consensus_test
 // 	startingNetworkBalance := types.NewAttoFILFromFIL(1000000)
 
 // 	ctx := context.Background()
-// 	cst := cbor.NewCborStore()
+// 	cst := cbor.NewMemCborStore()
 // 	vms := th.VMStorage()
 // 	mockSigner, _ := types.NewMockSignersAndKeyInfo(2)
 
@@ -159,7 +159,7 @@ package consensus_test
 
 // 	newAddress := address.NewForTestGetter()
 // 	ctx := context.Background()
-// 	cst := cbor.NewCborStore()
+// 	cst := cbor.NewMemCborStore()
 // 	vms := th.VMStorage()
 
 // 	minerOwnerAddr := newAddress()
@@ -192,7 +192,7 @@ package consensus_test
 // 	tf.BadUnitTestWithSideEffects(t)
 
 // 	ctx := context.Background()
-// 	cst := cbor.NewCborStore()
+// 	cst := cbor.NewMemCborStore()
 // 	vms := th.VMStorage()
 
 // 	newAddress := address.NewForTestGetter()
@@ -256,7 +256,7 @@ package consensus_test
 
 // 	newAddress := address.NewForTestGetter()
 // 	ctx := context.TODO()
-// 	cst := cbor.NewCborStore()
+// 	cst := cbor.NewMemCborStore()
 // 	vms := th.VMStorage()
 // 	_, st := requireMakeStateTree(t, cst, map[address.Address]*actor.Actor{})
 
@@ -282,7 +282,7 @@ package consensus_test
 
 // 	newAddress := address.NewForTestGetter()
 // 	ctx := context.TODO()
-// 	cst := cbor.NewCborStore()
+// 	cst := cbor.NewMemCborStore()
 // 	vms := th.VMStorage()
 // 	_, st := requireMakeStateTree(t, cst, map[address.Address]*actor.Actor{})
 
@@ -304,7 +304,7 @@ package consensus_test
 
 // 	t.Run("Errors when nonce too high", func(t *testing.T) {
 // 		ctx := context.TODO()
-// 		cst := cbor.NewCborStore()
+// 		cst := cbor.NewMemCborStore()
 // 		vms := th.VMStorage()
 // 		mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 
@@ -321,7 +321,7 @@ package consensus_test
 
 // 	t.Run("Errors when nonce too low", func(t *testing.T) {
 // 		ctx := context.Background()
-// 		cst := cbor.NewCborStore()
+// 		cst := cbor.NewMemCborStore()
 // 		vms := th.VMStorage()
 // 		mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 
@@ -367,7 +367,7 @@ package consensus_test
 
 // 	t.Run("errors when sender is not an actor", func(t *testing.T) {
 // 		ctx := context.TODO()
-// 		cst := cbor.NewCborStore()
+// 		cst := cbor.NewMemCborStore()
 // 		vms := th.VMStorage()
 // 		mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 
@@ -386,7 +386,7 @@ package consensus_test
 
 // 	t.Run("errors on attempt to transfer negative value", func(t *testing.T) {
 // 		ctx := context.Background()
-// 		cst := cbor.NewCborStore()
+// 		cst := cbor.NewMemCborStore()
 // 		vms := th.VMStorage()
 // 		mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 // 		_, st := requireMakeStateTree(t, cst, map[address.Address]*actor.Actor{})
@@ -435,7 +435,7 @@ package consensus_test
 
 // 	newAddress := address.NewForTestGetter()
 // 	ctx := context.Background()
-// 	cst := cbor.NewCborStore()
+// 	cst := cbor.NewMemCborStore()
 // 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 // 	vms := vm.NewStorageMap(bs)
 
@@ -489,7 +489,7 @@ package consensus_test
 // 	tf.BadUnitTestWithSideEffects(t)
 
 // 	newAddress := address.NewForTestGetter()
-// 	cst := cbor.NewCborStore()
+// 	cst := cbor.NewMemCborStore()
 // 	vms := th.VMStorage()
 // 	ctx := context.TODO()
 
@@ -537,7 +537,7 @@ package consensus_test
 // 	tf.UnitTest(t)
 
 // 	ctx := context.Background()
-// 	cst := cbor.NewCborStore()
+// 	cst := cbor.NewMemCborStore()
 
 // 	mockSigner, _ := types.NewMockSignersAndKeyInfo(3)
 // 	_, st := requireMakeStateTree(t, cst, map[address.Address]*actor.Actor{})
@@ -587,7 +587,7 @@ package consensus_test
 
 // 	newAddress := address.NewForTestGetter()
 // 	ctx := context.Background()
-// 	cst := cbor.NewCborStore()
+// 	cst := cbor.NewMemCborStore()
 // 	vms := th.VMStorage()
 
 // 	// Install the fake actor so we can execute it.
@@ -874,7 +874,7 @@ package consensus_test
 // 	// networkActor
 // 	act4 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(10000000))
 
-// 	cst := cbor.NewCborStore()
+// 	cst := cbor.NewMemCborStore()
 // 	cid, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 // 		addresses[1]:                 act1,
 // 		addresses[2]:                 act2,
@@ -891,7 +891,7 @@ package consensus_test
 
 // func mustSetup2Actors(t *testing.T, balance1 types.AttoFIL, balance2 types.AttoFIL) (address.Address, *actor.Actor, address.Address, *actor.Actor, state.Tree, vm.StorageMap, types.MockSigner) {
 // 	ctx := context.TODO()
-// 	cst := cbor.NewCborStore()
+// 	cst := cbor.NewMemCborStore()
 // 	vms := th.VMStorage()
 // 	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 

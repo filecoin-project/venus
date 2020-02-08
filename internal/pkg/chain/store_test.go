@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -28,7 +29,7 @@ import (
 
 // newChainStore creates a new chain store for tests.
 func newChainStore(r repo.Repo, genCid cid.Cid) *chain.Store {
-	return chain.NewStore(r.Datastore(), cbor.NewCborStore(), state.NewTreeLoader(), chain.NewStatusReporter(), genCid)
+	return chain.NewStore(r.Datastore(), cbor.NewMemCborStore(), state.NewTreeLoader(), chain.NewStatusReporter(), genCid)
 }
 
 // requirePutTestChain puts the count tipsets preceding head in the source to
@@ -36,7 +37,6 @@ func newChainStore(r repo.Repo, genCid cid.Cid) *chain.Store {
 func requirePutTestChain(ctx context.Context, t *testing.T, chainStore *chain.Store, head block.TipSetKey, source *chain.Builder, count int) {
 	tss := source.RequireTipSets(head, count)
 	for _, ts := range tss {
-		ß
 		tsas := &chain.TipSetMetadata{
 			TipSet:          ts,
 			TipSetStateRoot: ts.At(0).StateRoot.Cid,
@@ -283,7 +283,7 @@ func TestHead(t *testing.T) {
 	genTS := builder.NewGenesis()
 	r := repo.NewInMemoryRepo()
 	sr := chain.NewStatusReporter()
-	cs := chain.NewStore(r.Datastore(), cbor.NewCborStore(), state.NewTreeLoader(), sr, genTS.At(0).Cid())
+	cs := chain.NewStore(r.Datastore(), cbor.NewMemCborStore(), state.NewTreeLoader(), sr, genTS.At(0).Cid())
 
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)

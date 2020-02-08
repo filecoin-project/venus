@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -19,7 +20,7 @@ import (
 func TestCachedStateGetCommit(t *testing.T) {
 	tf.UnitTest(t)
 
-	cst := cbor.NewCborStore()
+	cst := cbor.NewMemCborStore()
 	ctx := context.Background()
 
 	// set up state tree and cache wrapper
@@ -86,7 +87,7 @@ func TestCachedStateGetCommit(t *testing.T) {
 func TestCachedStateGetOrCreate(t *testing.T) {
 	tf.UnitTest(t)
 
-	cst := cbor.NewCborStore()
+	cst := cbor.NewMemCborStore()
 	ctx := context.Background()
 
 	// set up state tree and cache wrapper
