@@ -27,7 +27,7 @@ type MessageReceipt = message.Receipt
 
 // NewVM creates a new VM interpreter.
 func NewVM(st state.Tree, store *storage.VMStorage) Interpreter {
-	vm := vmcontext.NewVM(vmcontext.NewProdRandomnessSource(), vmcontext.NewProdActorImplTable(), store, st)
+	vm := vmcontext.NewVM(vmcontext.NewProdRandomnessSource(), dispatcher.DefaultActors, store, st)
 	return &vm
 }
 
@@ -36,7 +36,11 @@ func NewStorage(bs blockstore.Blockstore) Storage {
 	return storage.NewStorage(bs)
 }
 
-// FunctionSignature describes the signature of a single function.
-//
-// Dragons: this signature should not be neede on the outside
-type FunctionSignature = dispatch.FunctionSignature
+// DefaultActors is a code loader with the built-in actors that come with the system.
+var DefaultActors = dispatch.DefaultActors
+
+// ActorCodeLoader allows yo to load an actor's code based on its id an epoch.
+type ActorCodeLoader = dispatch.CodeLoader
+
+// ActorMethodSignature wraps a specific method and allows you to encode/decodes input/output bytes into concrete types.
+type ActorMethodSignature = dispatch.MethodSignature
