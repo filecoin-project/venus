@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
@@ -17,6 +18,7 @@ import (
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
@@ -119,11 +121,23 @@ type CreateStorageMinerParams struct {
 }
 
 // CreateStorageMiner creates a new record of a miner in the power table.
-func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateStorageMinerParams) (address.Address, uint8, error) {
+func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateStorageMinerParams) address.Address {
 	vmctx.ValidateCaller(pattern.Any{})
 
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return address.Undef, internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
+		runtime.Abort(exitcode.OutOfGas)
+	}
+
+	initParams := miner.ConstructorParams{
+		OwnerAddr:  vmctx.Message().Caller(),
+		WorkerAddr: vmctx.Message().Caller(),
+		PeerID:     params.PeerID,
+		SectorSize: params.SectorSize,
+	}
+
+	constructorParams, err := encoding.Encode(initParams)
+	if err != nil {
+		panic(err)
 	}
 
 	actorCodeCid := types.MinerActorCodeCid
@@ -132,15 +146,16 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateSt
 		actorCodeCid = types.BootstrapMinerActorCodeCid
 	}
 
-	initParams := []interface{}{vmctx.Message().Caller(), vmctx.Message().Caller(), params.PeerID, params.SectorSize}
-
 	// create miner actor by messaging the init actor and sending it collateral
-	ret := vmctx.Send(vmaddr.InitAddress, initactor.ExecMethodID, vmctx.Message().ValueReceived(), []interface{}{actorCodeCid, initParams})
+	ret := vmctx.Send(vmaddr.InitAddress, initactor.ExecMethodID, vmctx.Message().ValueReceived(), initactor.ExecParams{
+		ActorCodeCid:      actorCodeCid,
+		ConstructorParams: constructorParams,
+	})
 
 	actorIDAddr := ret.(address.Address)
 
 	var state State
-	ret, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
+	ret, err = vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		// Update power table.
 		ctx := context.Background()
 		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
@@ -173,10 +188,10 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateSt
 		return actorIDAddr, nil
 	})
 	if err != nil {
-		return address.Undef, 1, err
+		panic(err)
 	}
 
-	return ret.(address.Address), 0, nil
+	return ret.(address.Address)
 }
 
 // RemoveStorageMiner removes the given miner address from the power table.  This call will fail if
@@ -317,11 +332,11 @@ type ProcessPowerReportParams struct {
 }
 
 // ProcessPowerReport updates a registered miner's power table entry according to the power report.
-func (*impl) processPowerReport(vmctx runtime.InvocationContext, params ProcessPowerReportParams) (uint8, error) {
+func (*impl) processPowerReport(vmctx runtime.InvocationContext, params ProcessPowerReportParams) {
 	vmctx.ValidateCaller(pattern.Any{})
 
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
+		runtime.Abort(exitcode.OutOfGas)
 	}
 
 	var state State
@@ -349,7 +364,6 @@ func (*impl) processPowerReport(vmctx runtime.InvocationContext, params ProcessP
 		return nil, nil
 	})
 	if err != nil {
-		return 1, err
+		panic(err)
 	}
-	return 0, nil
 }

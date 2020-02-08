@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
@@ -239,7 +240,7 @@ type ExecParams struct {
 }
 
 // Exec creates a new builtin actor.
-func (a *Impl) Exec(vmctx invocationContext, params ExecParams) (address.Address, uint8, error) {
+func (a *Impl) Exec(vmctx invocationContext, params ExecParams) address.Address {
 	vmctx.ValidateCaller(pattern.Any{})
 
 	// Dragons: clean this up to match spec
@@ -251,7 +252,7 @@ func (a *Impl) Exec(vmctx invocationContext, params ExecParams) (address.Address
 		return actorID, nil
 	})
 	if err != nil {
-		return address.Undef, 1, err
+		panic(err)
 	}
 
 	actorID := out.(types.Uint64)
@@ -276,11 +277,10 @@ func (a *Impl) Exec(vmctx invocationContext, params ExecParams) (address.Address
 		return nil, nil
 	})
 	if err != nil {
-		return address.Undef, 1, err
+		runtime.Abort(exitcode.MethodAbort)
 	}
 
-	// Dragons: the idaddress is returned by the spec
-	return actorIDAddr, 0, nil
+	return actorIDAddr
 }
 
 func lookupIDAddress(vmctx runtime.InvocationContext, state State, addr address.Address) (types.Uint64, error) {

@@ -312,15 +312,22 @@ type invocationContext interface {
 	LegacyMessage() *types.UnsignedMessage
 }
 
+// ConstructorParams is what it is.
+type ConstructorParams struct {
+	OwnerAddr  address.Address
+	WorkerAddr address.Address
+	PeerID     peer.ID
+	SectorSize *types.BytesAmount
+}
+
 // Constructor initializes the actor's state
-func (impl *Impl) Constructor(ctx runtime.InvocationContext, owner, worker address.Address, pid peer.ID, sectorSize *types.BytesAmount) (uint8, error) {
+func (impl *Impl) Constructor(ctx runtime.InvocationContext, params ConstructorParams) {
 	ctx.ValidateCaller(pattern.IsAInitActor{})
 
-	err := (*Actor)(impl).InitializeState(ctx.StateHandle(), NewState(owner, worker, pid, sectorSize))
+	err := (*Actor)(impl).InitializeState(ctx.StateHandle(), NewState(params.OwnerAddr, params.WorkerAddr, params.PeerID, params.SectorSize))
 	if err != nil {
-		return 1, err
+		panic(err)
 	}
-	return 0, nil
 }
 
 // AddAsk adds an ask to this miners ask list

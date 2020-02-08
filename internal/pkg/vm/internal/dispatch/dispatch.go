@@ -60,7 +60,8 @@ func (d *actorDispatcher) Dispatch(methodID types.MethodID, ctx interface{}, arg
 		}
 
 		// push decoded arg to args list
-		args = append(args, reflect.ValueOf(obj))
+		// Note: the `Elem()` call is to dereference the pointer created by `ArgInterface()`
+		args = append(args, reflect.ValueOf(obj).Elem())
 	} else {
 		// the argument was not in raw bytes, let it be coerced
 		args = append(args, reflect.ValueOf(arg1))
@@ -80,7 +81,7 @@ func (d *actorDispatcher) Dispatch(methodID types.MethodID, ctx interface{}, arg
 	}
 
 	// forward return
-	return out[1].Interface(), nil
+	return out[0].Interface(), nil
 }
 
 func (d *actorDispatcher) signature(methodID types.MethodID) (*methodSignature, error) {

@@ -237,7 +237,7 @@ func (ctx *invocationContext) Send(to address.Address, method types.MethodID, va
 
 	// 2. build internal message
 	encodedParams, ok := params.([]byte)
-	if !ok {
+	if !ok && params != nil {
 		var err error
 		encodedParams, err = encoding.Encode(params)
 		if err != nil {
@@ -300,7 +300,6 @@ func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, co
 	var actorAddr address.Address
 	var err error
 	if types.AccountActorCodeCid.Equals(code) {
-		var actorAddr address.Address
 		err = encoding.Decode(constructorParams, &actorAddr)
 		if err != nil {
 			runtime.Abortf(exitcode.MethodAbort, "Parameter for account actor creation is not an address")

@@ -85,7 +85,7 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 	// get the params
 	// try to use the bytes directly
 	encodedParams, ok := params.([]byte)
-	if !ok {
+	if !ok && params != nil {
 		// we got an object, encode it
 		var err error
 		encodedParams, err = encoding.Encode(params)

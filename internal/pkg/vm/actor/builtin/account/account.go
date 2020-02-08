@@ -87,12 +87,11 @@ func (*Actor) InitializeState(handle runtime.ActorStateHandle, initializerData i
 type Impl Actor
 
 // Constructor initializes the actor's state
-func (impl *Impl) Constructor(ctx runtime.InvocationContext, addr address.Address) (uint8, error) {
+func (impl *Impl) Constructor(ctx runtime.InvocationContext, addr address.Address) {
 	ctx.ValidateCaller(pattern.IsAInitActor{})
 
 	err := (*Actor)(impl).InitializeState(ctx.StateHandle(), NewState(addr))
 	if err != nil {
-		return 1, err
+		panic(err)
 	}
-	return 0, nil
 }
