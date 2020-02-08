@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-amt-ipld"
+	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
 	blocks "github.com/ipfs/go-block-format"
@@ -451,9 +451,9 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 
 // loadAndProcessAMTData processes data loaded from an AMT that is stored in the fetcher's datastore.
 func (gsf *GraphSyncFetcher) loadAndProcessAMTData(ctx context.Context, c cid.Cid, processFn func(b blocks.Block) error) error {
-	as := amt.WrapBlockstore(gsf.store)
+	as := cbor.NewCborStore(gsf.store)
 
-	a, err := amt.LoadAMT(as, c)
+	a, err := amt.LoadAMT(ctx, as, c)
 	if err != nil {
 		if err == bstore.ErrNotFound {
 			return err
@@ -461,7 +461,7 @@ func (gsf *GraphSyncFetcher) loadAndProcessAMTData(ctx context.Context, c cid.Ci
 		return errors.Wrapf(err, "fetched data (cid %s) could not be decoded as an AMT", c.String())
 	}
 
-	return a.ForEach(func(index uint64, deferred *typegen.Deferred) error {
+	return a.ForEach(ctx, func(index uint64, deferred *typegen.Deferred) error {
 		var c cid.Cid
 		if err := cbor.DecodeInto(deferred.Raw, &c); err != nil {
 			return errors.Wrapf(err, "cid from amt could not be decoded as a Cid (index %d)", index)

@@ -3,7 +3,8 @@ package chain
 import (
 	"context"
 
-	"github.com/filecoin-project/go-amt-ipld"
+	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/ipfs/go-block-format"
@@ -156,8 +157,8 @@ func (ms *MessageStore) StoreReceipts(ctx context.Context, receipts []*types.Mes
 }
 
 func (ms *MessageStore) loadAMTCids(ctx context.Context, c cid.Cid) ([]cid.Cid, error) {
-	as := amt.WrapBlockstore(ms.bs)
-	a, err := amt.LoadAMT(as, c)
+	as := cborutil.NewIpldStore(ms.bs)
+	a, err := amt.LoadAMT(ctx, as, c)
 	if err != nil {
 		return []cid.Cid{}, err
 	}
@@ -165,7 +166,7 @@ func (ms *MessageStore) loadAMTCids(ctx context.Context, c cid.Cid) ([]cid.Cid, 
 	cids := make([]cid.Cid, a.Count)
 	for i := uint64(0); i < a.Count; i++ {
 		var c cid.Cid
-		if err := a.Get(i, &c); err != nil {
+		if err := a.Get(ctx, i, &c); err != nil {
 			return nil, errors.Wrapf(err, "could not retrieve %d cid from AMT", i)
 		}
 
@@ -240,12 +241,12 @@ func makeBlock(obj interface{}) (blocks.Block, error) {
 }
 
 func (ms *MessageStore) storeAMTCids(ctx context.Context, cids []cid.Cid) (cid.Cid, error) {
-	as := amt.WrapBlockstore(ms.bs)
+	as := cborutil.NewIpldStore(ms.bs)
 
 	cidMarshallers := make([]cbg.CBORMarshaler, len(cids))
 	for i, c := range cids {
 		cidMarshaller := cbg.CborCid(c)
 		cidMarshallers[i] = &cidMarshaller
 	}
-	return amt.FromArray(as, cidMarshallers)
+	return amt.FromArray(ctx, as, cidMarshallers)
 }

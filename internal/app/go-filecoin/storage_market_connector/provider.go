@@ -4,15 +4,15 @@ import (
 	"context"
 	"io"
 
+	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
-
+	"golang.org/x/xerrors"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	spasm "github.com/filecoin-project/specs-actors/actors/builtin/storage_market"
-	spaminer "github.com/filecoin-project/specs-actors/actors/builtin/storage_miner"
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	spasm "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	spaminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
@@ -159,35 +159,53 @@ func (s *StorageProviderNodeConnector) OnDealComplete(ctx context.Context, deal 
 
 // LocatePieceForDealWithinSector finds the sector, offset and length of a piece associated with the given deal id
 func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx context.Context, dealID uint64) (sectorNumber uint64, offset uint64, length uint64, err error) {
-	var smState spasm.StorageMarketActorState
+	var smState spasm.State
 	err = s.chainStore.GetActorStateAt(ctx, s.chainStore.Head(), vmaddr.StorageMarketAddress, &smState)
 	if err != nil {
 		return 0, 0, 0, err
 	}
 
-	var minerState spaminer.StorageMinerActorState
+	stateStore := StoreFromCbor(ctx, s.chainStore)
+	proposals := adt.AsArray(stateStore, smState.Proposals)
+
+	var minerState spaminer.State
 	err = s.chainStore.GetActorStateAt(ctx, s.chainStore.Head(), s.minerAddr, &minerState)
 	if err != nil {
 		return 0, 0, 0, err
 	}
 
-	for sectorNumber, sectorInfo := range minerState.PreCommittedSectors {
-		for _, deal := range sectorInfo.Info.DealIDs.Items {
+	precommitted := adt.AsMap(stateStore, minerState.PreCommittedSectors)
+	var sectorInfo spaminer.SectorPreCommitOnChainInfo
+	err = precommitted.ForEach(&sectorInfo, func(key string) error {
+		k, err := adt.ParseIntKey(key)
+		if err != nil {
+			return err
+		}
+		sectorNumber = uint64(k)
+
+		for _, deal := range sectorInfo.Info.DealIDs{
 			if uint64(deal) == dealID {
-				offset := uint64(0)
-				for _, did := range sectorInfo.Info.DealIDs.Items {
-					deal, ok := smState.Deals[did]
-					if !ok {
-						return 0, 0, 0, errors.Errorf("Could not find miner deal %d in storage market state", did)
+				offset = uint64(0)
+				for _, did := range sectorInfo.Info.DealIDs {
+					var proposal spasm.DealProposal
+					found, err := proposals.Get(uint64(did), &proposal)
+					if err != nil {
+						return err
+					}
+					if !found {
+						return errors.Errorf("Could not find miner deal %d in storage market state", did)
 					}
 
 					if uint64(did) == dealID {
-						return uint64(sectorNumber), offset, uint64(deal.Deal.Proposal.PieceSize.Total()), nil
+						sectorNumber = uint64(k)
+						length = uint64(proposal.PieceSize)
+						return nil // Found!
 					}
-					offset += uint64(deal.Deal.Proposal.PieceSize.Total())
+					offset += uint64(proposal.PieceSize)
 				}
 			}
 		}
-	}
-	return 0, 0, 0, errors.New("Deal not found")
+		return errors.New("Deal not found")
+	})
+	return
 }

@@ -2,13 +2,14 @@ package types
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-amt-ipld"
+	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -16,6 +17,7 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	errPkg "github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	typegen "github.com/whyrusleeping/cbor-gen"
@@ -50,7 +52,7 @@ var EmptyMessagesCID cid.Cid
 var EmptyReceiptsCID cid.Cid
 
 func init() {
-	emptyAMTCid, err := amt.FromArray(amt.WrapBlockstore(blockstore.NewBlockstore(datastore.NewMapDatastore())), []typegen.CBORMarshaler{})
+	emptyAMTCid, err := amt.FromArray(context.Background(), cborutil.NewIpldStore(blockstore.NewBlockstore(datastore.NewMapDatastore())), []typegen.CBORMarshaler{})
 	if err != nil {
 		panic("could not create CID for empty AMT")
 	}

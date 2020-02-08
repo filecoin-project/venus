@@ -18,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -36,6 +37,7 @@ type chainReadWriter interface {
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
 	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
 	SetHead(context.Context, block.TipSet) error
+	ReadonlyIpldStore() cborutil.ReadOnlyIpldStore
 }
 
 // ChainStateReadWriter composes a:
@@ -46,6 +48,7 @@ type ChainStateReadWriter struct {
 	bstore          blockstore.Blockstore // Provides chain blocks.
 	messageProvider chain.MessageProvider
 	actors          builtin.Actors
+	cborutil.ReadOnlyIpldStore
 }
 
 type carStore struct {
@@ -83,10 +86,11 @@ var (
 // NewChainStateReadWriter returns a new ChainStateReadWriter.
 func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider, bs blockstore.Blockstore, ba builtin.Actors) *ChainStateReadWriter {
 	return &ChainStateReadWriter{
-		readWriter:      crw,
-		bstore:          bs,
-		messageProvider: messages,
-		actors:          ba,
+		readWriter:        crw,
+		bstore:            bs,
+		messageProvider:   messages,
+		actors:            ba,
+		ReadOnlyIpldStore: crw.ReadonlyIpldStore(),
 	}
 }
 
@@ -234,6 +238,10 @@ func (chn *ChainStateReadWriter) SetHead(ctx context.Context, key block.TipSetKe
 		return err
 	}
 	return chn.readWriter.SetHead(ctx, headTs)
+}
+
+func (chn *ChainStateReadWriter) ReadonlyIpldStore() cborutil.ReadOnlyIpldStore {
+	return chn.readWriter.ReadonlyIpldStore()
 }
 
 // ChainExport exports the chain from `head` up to and including the genesis block to `out`

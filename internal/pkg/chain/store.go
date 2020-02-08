@@ -7,10 +7,12 @@ import (
 
 	"github.com/cskr/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
@@ -35,17 +37,10 @@ var logStore = logging.Logger("chain.store")
 // HeadKey is the key at which the head tipset cid's are written in the datastore.
 var HeadKey = datastore.NewKey("/chain/heaviestTipSet")
 
-// ipldStore defines an interface for interacting with a cbor.IpldStore.
-// TODO #3078 use go-ipld-cbor export
-type ipldStore interface {
-	Put(ctx context.Context, v interface{}) (cid.Cid, error)
-	Get(ctx context.Context, c cid.Cid, out interface{}) error
-}
-
 type ipldSource struct {
 	// cst is a store allowing access
 	// (un)marshalling and interop with go-ipld-hamt.
-	cborStore ipldStore
+	cborStore cbor.IpldStore
 }
 
 type tsState struct {
@@ -53,7 +48,7 @@ type tsState struct {
 	Reciepts  e.Cid
 }
 
-func newSource(cst ipldStore) *ipldSource {
+func newSource(cst cbor.IpldStore) *ipldSource {
 	return &ipldSource{
 		cborStore: cst,
 	}
@@ -109,7 +104,7 @@ type Store struct {
 }
 
 // NewStore constructs a new default store.
-func NewStore(ds repo.Datastore, cst ipldStore, stl state.TreeLoader, sr Reporter, genesisCid cid.Cid) *Store {
+func NewStore(ds repo.Datastore, cst cbor.IpldStore, stl state.TreeLoader, sr Reporter, genesisCid cid.Cid) *Store {
 	return &Store{
 		stateAndBlockSource: newSource(cst),
 		stateTreeLoader:     stl,
@@ -348,6 +343,11 @@ func (store *Store) SetHead(ctx context.Context, ts block.TipSet) error {
 	store.HeadEvents().Pub(ts, NewHeadTopic)
 
 	return nil
+}
+
+// Provides a read-only IPLD store for access to chain state.
+func (store *Store) ReadonlyIpldStore() cborutil.ReadOnlyIpldStore {
+	return cborutil.ReadOnlyIpldStore{IpldStore: store.stateAndBlockSource.cborStore}
 }
 
 func (store *Store) setHeadPersistent(ctx context.Context, ts block.TipSet) (bool, error) {

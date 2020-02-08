@@ -76,8 +76,9 @@ func WithLookupForReading(ctx context.Context, storage runtime.Storage, id cid.C
 // LoadLookup loads hamt-ipld node from storage if the cid exists, or creates a new one if it is nil.
 // The lookup provides access to a HAMT/CHAMP tree stored in storage.
 func LoadLookup(ctx context.Context, storage runtime.Storage, cid cid.Cid) (storage.Lookup, error) {
-	cborStore := &hamt.BasicCborIpldStore{
-		Blocks: &storageAsBlocks{s: storage},
+	// We can use the cbor library's BasicIpldStore here because all on-chain types implement the CBOR methods.
+	cborStore := &cbor.BasicIpldStore{
+		Blocks: &storageAsIpldBlockstore{s: storage},
 		Atlas:  &cbor.CborAtlas,
 	}
 	var root *hamt.Node
@@ -95,19 +96,19 @@ func LoadLookup(ctx context.Context, storage runtime.Storage, cid cid.Cid) (stor
 	return &lookup{n: root, s: storage}, nil
 }
 
-// storageAsBlocks allows us to use an runtime.LegacyStorage as a Blockstore
-type storageAsBlocks struct {
+// storageAsIpldBlockstore allows us to use an runtime.LegacyStorage as an IpldBlockstore
+type storageAsIpldBlockstore struct {
 	s runtime.Storage
 }
 
 // GetBlock gets a block from underlying storage by cid
-func (sab *storageAsBlocks) GetBlock(ctx context.Context, c cid.Cid) (block.Block, error) {
+func (sab *storageAsIpldBlockstore) Get(c cid.Cid) (block.Block, error) {
 	chunk, _ := sab.s.GetRaw(c)
 	return block.NewBlock(chunk), nil
 }
 
 // AddBlock add a block to underlying storage
-func (sab *storageAsBlocks) AddBlock(b block.Block) error {
+func (sab *storageAsIpldBlockstore) Put(b block.Block) error {
 	sab.s.Put(b)
 	return nil
 }

@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	fcsm "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	spaminer "github.com/filecoin-project/specs-actors/actors/builtin/storage_miner"
-	spapow "github.com/filecoin-project/specs-actors/actors/builtin/storage_power"
+	spaminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	spapow "github.com/filecoin-project/specs-actors/actors/builtin/power"
 
 	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	smtypes "github.com/filecoin-project/go-fil-markets/shared/types"
@@ -81,14 +81,14 @@ func (s *StorageClientNodeConnector) ListClientDeals(ctx context.Context, addr a
 // ListStorageProviders finds all miners that will provide storage
 func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context) ([]*storagemarket.StorageProviderInfo, error) {
 	head := s.chainStore.Head()
-	var spState spapow.StoragePowerActorState
+	var spState spapow.State
 	err := s.chainStore.GetActorStateAt(ctx, head, vmaddr.StoragePowerAddress, &spState)
 	if err != nil {
 		return nil, err
 	}
 
 	infos := []*storagemarket.StorageProviderInfo{}
-	powerHamt, err := hamt.LoadNode(ctx, s.cborStore, spState.PowerTable)
+	powerHamt, err := hamt.LoadNode(ctx, s.cborStore, spState.Claims)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context) (
 			return err
 		}
 
-		var mState spaminer.StorageMinerActorState
+		var mState spaminer.State
 		err = s.chainStore.GetActorStateAt(ctx, head, minerAddr, &mState)
 		if err != nil {
 			return err

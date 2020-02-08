@@ -3,6 +3,9 @@ package storagemarketconnector
 import (
 	"context"
 
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
@@ -14,8 +17,7 @@ import (
 	smtypes "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	spaabi "github.com/filecoin-project/specs-actors/actors/abi"
-	spasm "github.com/filecoin-project/specs-actors/actors/builtin/storage_market"
-	spautil "github.com/filecoin-project/specs-actors/actors/util"
+	spasm "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -31,6 +33,7 @@ type chainReader interface {
 	Head() block.TipSetKey
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
 	GetActorStateAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address, out interface{}) error
+	cbor.IpldStore
 }
 
 // Implements storagemarket.StateKey
@@ -151,21 +154,20 @@ func (c *connectorCommon) SignBytes(ctx context.Context, signer address.Address,
 }
 
 func (c *connectorCommon) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {
-	var smState spasm.StorageMarketActorState
+	var smState spasm.State
 	err := c.chainStore.GetActorStateAt(ctx, c.chainStore.Head(), vmaddr.StorageMarketAddress, &smState)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}
 
-	// Dragons: Balance or similar should be an exported method on StorageMarketState. Do it ourselves for now.
-	available, ok := spautil.BalanceTable_GetEntry(smState.EscrowTable, addr)
-	if !ok {
-		available = spaabi.NewTokenAmount(0)
+	available, err := c.getBalance(ctx, smState.EscrowTable, addr)
+	if err != nil {
+		return storagemarket.Balance{}, err
 	}
 
-	locked, ok := spautil.BalanceTable_GetEntry(smState.LockedReqTable, addr)
-	if !ok {
-		locked = spaabi.NewTokenAmount(0)
+	locked, err := c.getBalance(ctx, smState.LockedTable, addr)
+	if err != nil {
+		return storagemarket.Balance{}, err
 	}
 
 	return storagemarket.Balance{
@@ -245,30 +247,56 @@ func decodeSectorID(msg *types.SignedMessage) (uint64, error) {
 	return uint64(commitInfo.SectorID), nil
 }
 
+func (c *connectorCommon) getBalance(ctx context.Context, root cid.Cid, addr address.Address) (spaabi.TokenAmount, error) {
+	table := adt.AsBalanceTable(StoreFromCbor(ctx, c.chainStore), root)
+	hasBalance, err := table.Has(addr)
+	if err != nil {
+		return big.Zero(), err
+	}
+	balance := spaabi.NewTokenAmount(0)
+	if hasBalance {
+		balance, err = table.Get(addr)
+		if err != nil {
+			return big.Zero(), err
+		}
+	}
+	return balance, nil
+}
+
 func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
-	var smState spasm.StorageMarketActorState
+	var smState spasm.State
 	err := c.chainStore.GetActorStateAt(ctx, c.chainStore.Head(), vmaddr.StorageMarketAddress, &smState)
 	if err != nil {
 		return nil, err
 	}
 
 	// Dragons: ListDeals or similar should be an exported method on StorageMarketState. Do it ourselves for now.
-	providerDealIds, ok := smState.CachedDealIDsByParty[addr]
-	if !ok {
-		return nil, errors.Errorf("No deals for %s", addr.String())
+	stateStore := StoreFromCbor(ctx, c.chainStore)
+	byParty := spasm.AsSetMultimap(stateStore, smState.DealIDsByParty)
+	var providerDealIds []spaabi.DealID
+	if err = byParty.ForEach(adt.AddrKey(addr), func(i int64) error {
+		providerDealIds = append(providerDealIds, spaabi.DealID(i))
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
+	proposals := adt.AsArray(stateStore, smState.Proposals)
+
 	deals := []storagemarket.StorageDeal{}
-	for dealID := range providerDealIds {
-		onChainDeal, ok := smState.Deals[dealID]
-		if !ok {
+	for _, dealID := range providerDealIds {
+		var proposal spasm.DealProposal
+		found, err := proposals.Get(uint64(dealID), &proposal)
+		if err != nil {
+			return nil, err
+		}
+		if !found {
 			return nil, errors.Errorf("Could not find deal for id %d", dealID)
 		}
-		proposal := onChainDeal.Deal.Proposal
 		deals = append(deals, storagemarket.StorageDeal{
 			// Dragons: We're almost certainly looking for a CommP here.
 			PieceRef:             proposal.PieceCID.Bytes(),
-			PieceSize:            uint64(proposal.PieceSize.Total()),
+			PieceSize:            uint64(proposal.PieceSize),
 			Client:               proposal.Client,
 			Provider:             proposal.Provider,
 			ProposalExpiration:   uint64(proposal.EndEpoch),
@@ -280,4 +308,17 @@ func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) (
 	}
 
 	return deals, nil
+}
+
+func StoreFromCbor(ctx context.Context, ipldStore cbor.IpldStore) adt.Store {
+	return &cstore{ctx, ipldStore}
+}
+
+type cstore struct {
+	ctx context.Context
+	cbor.IpldStore
+}
+
+func (s *cstore) Context() context.Context {
+	return s.ctx
 }
