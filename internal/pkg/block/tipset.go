@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"sort"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 )
@@ -134,11 +134,11 @@ func (ts TipSet) Parents() (TipSetKey, error) {
 }
 
 // ParentWeight returns the tipset's ParentWeight in fixed point form.
-func (ts TipSet) ParentWeight() (uint64, error) {
+func (ts TipSet) ParentWeight() (fbig.Int, error) {
 	if len(ts.blocks) == 0 {
-		return 0, errUndefTipSet
+		return fbig.Zero(), errUndefTipSet
 	}
-	return types.BigToUint64(ts.blocks[0].ParentWeight)
+	return ts.blocks[0].ParentWeight, nil
 }
 
 // Equals tests whether the tipset contains the same blocks as another.

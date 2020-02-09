@@ -192,7 +192,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 		b := &block.Block{
 			Ticket:          ticket,
 			Miner:           f.minerAddress,
-			ParentWeight:    types.Uint64(parentWeight),
+			ParentWeight:    types.Uint64ToBig(parentWeight),
 			Parents:         parent.Key(),
 			Height:          height,
 			Messages:        types.TxMeta{SecpRoot: e.NewCid(types.EmptyMessagesCID), BLSRoot: e.NewCid(types.EmptyMessagesCID)},

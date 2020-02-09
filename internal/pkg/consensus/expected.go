@@ -192,7 +192,7 @@ func (c *Expected) validateMining(
 	ancestors []block.TipSet,
 	blsMsgs [][]*types.UnsignedMessage,
 	secpMsgs [][]*types.SignedMessage,
-	parentWeight uint64,
+	expectedParentWeight uint64,
 	parentStateRoot cid.Cid,
 	parentReceiptRoot cid.Cid) error {
 
@@ -224,7 +224,11 @@ func (c *Expected) validateMining(
 			return ErrReceiptRootMismatch
 		}
 
-		if uint64(blk.ParentWeight) != parentWeight {
+		parentWeight, err := types.BigToUint64(blk.ParentWeight)
+		if err != nil {
+			return err
+		}
+		if parentWeight != expectedParentWeight {
 			return errors.Errorf("block %s has invalid parent weight %d", blk.Cid().String(), parentWeight)
 		}
 		workerAddr, err := powerTable.WorkerAddr(ctx, blk.Miner)
