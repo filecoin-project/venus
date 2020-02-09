@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"sort"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 )
@@ -121,7 +122,7 @@ func (ts TipSet) Height() (uint64, error) {
 	if len(ts.blocks) == 0 {
 		return 0, errUndefTipSet
 	}
-	return uint64(ts.blocks[0].Height), nil
+	return types.BigToUint64(ts.blocks[0].Height)
 }
 
 // Parents returns the CIDs of the parents of the blocks in the tipset.
@@ -137,7 +138,7 @@ func (ts TipSet) ParentWeight() (uint64, error) {
 	if len(ts.blocks) == 0 {
 		return 0, errUndefTipSet
 	}
-	return uint64(ts.blocks[0].ParentWeight), nil
+	return types.BigToUint64(ts.blocks[0].ParentWeight)
 }
 
 // Equals tests whether the tipset contains the same blocks as another.
