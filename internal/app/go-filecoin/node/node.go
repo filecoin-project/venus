@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"	
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -635,10 +636,10 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 }
 
 // getWeight is the default GetWeight function for the mining worker.
-func (node *Node) getWeight(ctx context.Context, ts block.TipSet) (uint64, error) {
+func (node *Node) getWeight(ctx context.Context, ts block.TipSet) (fbig.Int, error) {
 	parent, err := ts.Parents()
 	if err != nil {
-		return uint64(0), err
+		return fbig.Zero(), err
 	}
 	// TODO handle genesis cid more gracefully
 	if parent.Len() == 0 {
@@ -646,7 +647,7 @@ func (node *Node) getWeight(ctx context.Context, ts block.TipSet) (uint64, error
 	}
 	root, err := node.chain.ChainReader.GetTipSetStateRoot(parent)
 	if err != nil {
-		return uint64(0), err
+		return fbig.Zero(), err
 	}
 	return node.syncer.ChainSelector.Weight(ctx, ts, root)
 }

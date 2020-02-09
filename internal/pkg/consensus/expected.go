@@ -8,9 +8,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
@@ -20,6 +18,9 @@ import (
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
+	ffi "github.com/filecoin-project/filecoin-ffi"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
@@ -150,7 +151,7 @@ func (c *Expected) BlockTime() time.Duration {
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight uint64, parentStateRoot cid.Cid, parentReceiptRoot cid.Cid) (root cid.Cid, receipts []*types.MessageReceipt, err error) {
+func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight fbig.Int, parentStateRoot cid.Cid, parentReceiptRoot cid.Cid) (root cid.Cid, receipts []*types.MessageReceipt, err error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -192,7 +193,7 @@ func (c *Expected) validateMining(
 	ancestors []block.TipSet,
 	blsMsgs [][]*types.UnsignedMessage,
 	secpMsgs [][]*types.SignedMessage,
-	expectedParentWeight uint64,
+	parentWeight fbig.Int,
 	parentStateRoot cid.Cid,
 	parentReceiptRoot cid.Cid) error {
 
@@ -224,11 +225,7 @@ func (c *Expected) validateMining(
 			return ErrReceiptRootMismatch
 		}
 
-		parentWeight, err := types.BigToUint64(blk.ParentWeight)
-		if err != nil {
-			return err
-		}
-		if parentWeight != expectedParentWeight {
+		if !parentWeight.Equals(blk.ParentWeight) {
 			return errors.Errorf("block %s has invalid parent weight %d", blk.Cid().String(), parentWeight)
 		}
 		workerAddr, err := powerTable.WorkerAddr(ctx, blk.Miner)
@@ -253,7 +250,7 @@ func (c *Expected) validateMining(
 		}
 
 		// Verify PoStRandomness
-		nullBlkCount := uint64(blk.Height) - prevHeight - 1
+		nullBlkCount := blk.Height - prevHeight - 1
 		if !c.VerifyPoStRandomness(blk.EPoStInfo.PoStRandomness, electionTicket, workerAddr, nullBlkCount) {
 			return errors.New("PoStRandomness invalid")
 		}

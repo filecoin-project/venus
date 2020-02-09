@@ -104,15 +104,15 @@ func (w *DefaultWorker) Generate(
 	now := w.clock.Now()
 	next := &block.Block{
 		Miner:           w.minerAddr,
-		Height:          types.Uint64(blockHeight),
+		Height:          blockHeight,
 		Messages:        txMeta,
 		MessageReceipts: e.NewCid(baseReceiptRoot),
 		Parents:         baseTipSet.Key(),
-		ParentWeight:    types.Uint64(weight),
+		ParentWeight:    weight,
 		EPoStInfo:       ePoStInfo,
 		StateRoot:       e.NewCid(baseStateRoot),
 		Ticket:          ticket,
-		Timestamp:       types.Uint64(now.Unix()),
+		Timestamp:       uint64(now.Unix()),
 		BLSAggregateSig: blsAggregateSig,
 	}
 

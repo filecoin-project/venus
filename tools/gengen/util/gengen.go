@@ -165,7 +165,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst cbor.IpldStore, bs blockst
 		MessageReceipts: e.NewCid(emptyAMTCid),
 		BLSAggregateSig: emptyBLSSignature[:],
 		Ticket:          block.Ticket{VRFProof: []byte{0xec}},
-		Timestamp:       types.Uint64(cfg.Time),
+		Timestamp:       cfg.Time,
 	}
 
 	c, err := cst.Put(ctx, geneblk)

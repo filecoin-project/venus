@@ -40,7 +40,7 @@ type Block struct {
 	ParentWeight fbig.Int `json:"parentWeight"`
 
 	// Height is the chain height of this block.
-	Height fbig.Int `json:"height"`
+	Height uint64 `json:"height"`
 
 	// StateRoot is a cid pointer to the state tree after application of the
 	// transactions state transitions.
@@ -56,7 +56,7 @@ type Block struct {
 	BLSAggregateSig types.Signature `json:"blsAggregateSig"`
 
 	// The timestamp, in seconds since the Unix epoch, at which this block was created.
-	Timestamp types.Uint64 `json:"timestamp"`
+	Timestamp uint64 `json:"timestamp"`
 
 	// The signature of the miner's worker key over the block
 	BlockSig types.Signature `json:"blocksig"`

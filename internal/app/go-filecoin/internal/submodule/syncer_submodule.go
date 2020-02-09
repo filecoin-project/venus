@@ -4,11 +4,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/fetcher"
@@ -41,7 +42,7 @@ type syncerConfig interface {
 }
 
 type nodeChainSelector interface {
-	Weight(context.Context, block.TipSet, cid.Cid) (uint64, error)
+	Weight(context.Context, block.TipSet, cid.Cid) (fbig.Int, error)
 	IsHeavier(ctx context.Context, a, b block.TipSet, aStateID, bStateID cid.Cid) (bool, error)
 }
 

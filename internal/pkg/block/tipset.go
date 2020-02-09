@@ -122,7 +122,7 @@ func (ts TipSet) Height() (uint64, error) {
 	if len(ts.blocks) == 0 {
 		return 0, errUndefTipSet
 	}
-	return types.BigToUint64(ts.blocks[0].Height)
+	return ts.blocks[0].Height, nil
 }
 
 // Parents returns the CIDs of the parents of the blocks in the tipset.

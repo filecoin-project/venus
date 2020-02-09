@@ -375,7 +375,7 @@ func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMs
 
 type heightAndExitCode struct {
 	exitCode uint8
-	height   types.Uint64
+	height   uint64
 }
 
 func (m *StorageMinerNodeConnector) waitForMessageHeight(ctx context.Context, mcid cid.Cid) (uint64, uint8, error) {

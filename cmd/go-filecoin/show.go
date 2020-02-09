@@ -55,12 +55,8 @@ all other block properties will be included as well.`,
 	Type: block.FullBlock{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, block *block.FullBlock) error {
-			wStr, err := types.FixedStr(uint64(block.Header.ParentWeight))
-			if err != nil {
-				return err
-			}
-
-			_, err = fmt.Fprintf(w, `Block Details
+			wStr := block.Header.ParentWeight.String()
+			_, err := fmt.Fprintf(w, `Block Details
 Miner:  %s
 Weight: %s
 Height: %s
@@ -112,12 +108,8 @@ all other block properties will be included as well.`,
 	Type: block.Block{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, block *block.Block) error {
-			wStr, err := types.FixedStr(uint64(block.ParentWeight))
-			if err != nil {
-				return err
-			}
-
-			_, err = fmt.Fprintf(w, `Block Details
+			wStr := block.ParentWeight.String()
+			_, err := fmt.Fprintf(w, `Block Details
 Miner:  %s
 Weight: %s
 Height: %s

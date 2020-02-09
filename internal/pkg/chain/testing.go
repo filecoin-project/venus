@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -170,7 +171,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 	require.True(f.t, width > 0)
 	var blocks []*block.Block
 
-	height := types.Uint64(0)
+	height := uint64(0)
 	grandparentKey := block.NewTipSetKey()
 	if parent.Defined() {
 		var err error
@@ -295,13 +296,13 @@ func (bb *BlockBuilder) SetTicket(raw []byte) {
 }
 
 // SetTimestamp sets the block's timestamp.
-func (bb *BlockBuilder) SetTimestamp(timestamp types.Uint64) {
+func (bb *BlockBuilder) SetTimestamp(timestamp uint64) {
 	bb.block.Timestamp = timestamp
 }
 
 // IncHeight increments the block's height, implying a number of null blocks before this one
 // is mined.
-func (bb *BlockBuilder) IncHeight(nullBlocks types.Uint64) {
+func (bb *BlockBuilder) IncHeight(nullBlocks uint64) {
 	bb.block.Height += nullBlocks
 }
 
@@ -385,7 +386,7 @@ func (FakeStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.Unsign
 
 // Weigh computes a tipset's weight as its parent weight plus one for each block in the tipset.
 func (FakeStateBuilder) Weigh(tip block.TipSet, state cid.Cid) (uint64, error) {
-	parentWeight := uint64(0)
+	parentWeight := fbig.Zero()
 	if tip.Defined() {
 		var err error
 		parentWeight, err = tip.ParentWeight()
@@ -393,22 +394,27 @@ func (FakeStateBuilder) Weigh(tip block.TipSet, state cid.Cid) (uint64, error) {
 			return 0, err
 		}
 	}
-	return parentWeight + uint64(tip.Len()), nil
+	uParentWeight, err := types.BigToUint64(parentWeight)
+	if err != nil {
+		return 0, err
+	}
+
+	return uParentWeight + uint64(tip.Len()), nil
 }
 
 ///// Timestamper /////
 
 // TimeStamper is an object that timestamps blocks
 type TimeStamper interface {
-	Stamp(uint64) types.Uint64
+	Stamp(uint64) uint64
 }
 
 // ZeroTimestamper writes a default of 0 to the timestamp
 type ZeroTimestamper struct{}
 
 // Stamp returns a stamp for the current block
-func (zt *ZeroTimestamper) Stamp(height uint64) types.Uint64 {
-	return types.Uint64(0)
+func (zt *ZeroTimestamper) Stamp(height uint64) uint64 {
+	return uint64(0)
 }
 
 // ClockTimestamper writes timestamps based on a blocktime and genesis time
