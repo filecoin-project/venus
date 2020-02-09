@@ -55,7 +55,7 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 			if !blk.Parents.Equals(parents) {
 				return UndefTipSet, errors.Errorf("Inconsistent block parents %s and %s", parents.String(), blk.Parents.String())
 			}
-			if blk.ParentWeight != weight {
+			if !blk.ParentWeight.Equals(weight) {
 				return UndefTipSet, errors.Errorf("Inconsistent block parent weights %d and %d", weight, blk.ParentWeight)
 			}
 		}

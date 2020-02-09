@@ -422,7 +422,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
 		blk := simpleBlock()
 		blk.Height = 1
-		blk.Timestamp = types.Uint64(chainClock.StartTimeOfEpoch(types.NewBlockHeight(uint64(blk.Height))).Unix())
+		blk.Timestamp = uint64(chainClock.StartTimeOfEpoch(types.NewBlockHeight(uint64(blk.Height))).Unix())
 		key := block.NewTipSetKey(blk.Cid())
 		chain0 := block.NewChainInfo(pid0, pid0, key, uint64(blk.Height))
 		invalidSyntaxLoader := simpleLoader([]format.Node{blk.ToNode()})

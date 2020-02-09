@@ -193,7 +193,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 		b := &block.Block{
 			Ticket:          ticket,
 			Miner:           f.minerAddress,
-			ParentWeight:    types.Uint64ToBig(parentWeight),
+			ParentWeight:    parentWeight,
 			Parents:         parent.Key(),
 			Height:          height,
 			Messages:        types.TxMeta{SecpRoot: e.NewCid(types.EmptyMessagesCID), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
@@ -326,7 +326,7 @@ func (bb *BlockBuilder) SetStateRoot(root cid.Cid) {
 // StateBuilder abstracts the computation of state root CIDs from the chain builder.
 type StateBuilder interface {
 	ComputeState(prev cid.Cid, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, []*types.MessageReceipt, error)
-	Weigh(tip block.TipSet, state cid.Cid) (uint64, error)
+	Weigh(tip block.TipSet, state cid.Cid) (fbig.Int, error)
 }
 
 // FakeStateBuilder computes a fake state CID by hashing the CIDs of a block's parents and messages.
@@ -385,21 +385,17 @@ func (FakeStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.Unsign
 }
 
 // Weigh computes a tipset's weight as its parent weight plus one for each block in the tipset.
-func (FakeStateBuilder) Weigh(tip block.TipSet, state cid.Cid) (uint64, error) {
+func (FakeStateBuilder) Weigh(tip block.TipSet, state cid.Cid) (fbig.Int, error) {
 	parentWeight := fbig.Zero()
 	if tip.Defined() {
 		var err error
 		parentWeight, err = tip.ParentWeight()
 		if err != nil {
-			return 0, err
+			return fbig.Zero(), err
 		}
 	}
-	uParentWeight, err := types.BigToUint64(parentWeight)
-	if err != nil {
-		return 0, err
-	}
 
-	return uParentWeight + uint64(tip.Len()), nil
+	return fbig.Add(parentWeight, fbig.NewInt(int64(tip.Len()))), nil
 }
 
 ///// Timestamper /////
@@ -431,11 +427,10 @@ func NewClockTimestamper(chainClock clock.ChainEpochClock) *ClockTimestamper {
 
 // Stamp assigns a valid timestamp given genesis time and block time to
 // a block of the provided height.
-func (ct *ClockTimestamper) Stamp(height uint64) types.Uint64 {
+func (ct *ClockTimestamper) Stamp(height uint64) uint64 {
 	startTime := ct.c.StartTimeOfEpoch(types.NewBlockHeight(height))
 
-	timestamp := uint64(startTime.Unix())
-	return types.Uint64(timestamp)
+	return uint64(startTime.Unix())
 }
 
 ///// State evaluator /////
@@ -446,7 +441,7 @@ type FakeStateEvaluator struct {
 }
 
 // RunStateTransition delegates to StateBuilder.ComputeState.
-func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight uint64, stateID cid.Cid, receiptCid cid.Cid) (cid.Cid, []*types.MessageReceipt, error) {
+func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight fbig.Int, stateID cid.Cid, receiptCid cid.Cid) (cid.Cid, []*types.MessageReceipt, error) {
 	return e.ComputeState(stateID, blsMessages, secpMessages)
 }
 
@@ -472,11 +467,11 @@ func (e *FakeChainSelector) IsHeavier(ctx context.Context, a, b block.TipSet, aS
 	if err != nil {
 		return false, err
 	}
-	return aw > bw, nil
+	return aw.GreaterThan(bw), nil
 }
 
 // Weight delegates to the statebuilder
-func (e *FakeChainSelector) Weight(ctx context.Context, ts block.TipSet, stID cid.Cid) (uint64, error) {
+func (e *FakeChainSelector) Weight(ctx context.Context, ts block.TipSet, stID cid.Cid) (fbig.Int, error) {
 	return e.Weigh(ts, stID)
 }
 

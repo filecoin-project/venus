@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"

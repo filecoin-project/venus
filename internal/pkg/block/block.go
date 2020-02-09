@@ -62,7 +62,7 @@ type Block struct {
 	BlockSig types.Signature `json:"blocksig"`
 
 	// ForkSignaling is extra data used by miners to communicate
-	ForkSignaling fbig.Int
+	ForkSignaling uint64
 
 	cachedCid cid.Cid
 

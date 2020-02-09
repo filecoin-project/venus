@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -65,17 +66,17 @@ func TestTriangleEncoding(t *testing.T) {
 		b := &blk.Block{
 			Miner:           newAddress(),
 			Ticket:          blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-			Height:          types.Uint64(2),
+			Height:          2,
 			Messages:        types.TxMeta{SecpRoot: e.NewCid(types.CidFromString(t, "somecid")), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
 			MessageReceipts: e.NewCid(types.CidFromString(t, "somecid")),
 			Parents:         blk.NewTipSetKey(types.CidFromString(t, "somecid")),
-			ParentWeight:    types.Uint64(1000),
+			ParentWeight:    fbig.NewInt(1000),
 			StateRoot:       e.NewCid(types.CidFromString(t, "somecid")),
-			Timestamp:       types.Uint64(1),
+			Timestamp:       1,
 			BlockSig:        []byte{0x3},
 			BLSAggregateSig: []byte{0x3},
 			EPoStInfo:       postInfo,
-			ForkSignaling:   types.Uint64(6),
+			ForkSignaling:   6,
 		}
 		s := reflect.TypeOf(*b)
 		cidBytesOld, err := cbor.DumpObject(types.CidFromString(t, "somecid"))
@@ -117,6 +118,7 @@ func TestDecodeBlock(t *testing.T) {
 			Ticket:          blk.Ticket{VRFProof: []uint8{}},
 			Parents:         blk.NewTipSetKey(c1),
 			Height:          2,
+			ParentWeight:    fbig.Zero(),
 			Messages:        types.TxMeta{SecpRoot: e.NewCid(cM), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
 			StateRoot:       e.NewCid(c2),
 			MessageReceipts: e.NewCid(cR),
@@ -144,8 +146,8 @@ func TestEquals(t *testing.T) {
 	s1 := types.CidFromString(t, "state1")
 	s2 := types.CidFromString(t, "state2")
 
-	var h1 types.Uint64 = 1
-	var h2 types.Uint64 = 2
+	var h1 uint64 = 1
+	var h2 uint64 = 2
 
 	b1 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: e.NewCid(s1), Height: h1}
 	b2 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: e.NewCid(s1), Height: h1}
@@ -183,6 +185,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 	var parent, child blk.Block
 	child.Miner = vmaddr.NewForTestGetter()()
 	child.Height = 1
+	child.ParentWeight = fbig.Zero()
 	child.Parents = blk.NewTipSetKey(parent.Cid())
 	child.StateRoot = e.NewCid(parent.Cid())
 
@@ -192,7 +195,6 @@ func TestBlockJsonMarshal(t *testing.T) {
 	marshalled, e1 := json.Marshal(&child)
 	assert.NoError(t, e1)
 	str := string(marshalled)
-	fmt.Printf("json str: %s\n", str)
 
 	assert.Contains(t, str, child.Miner.String())
 	assert.Contains(t, str, parent.Cid().String())
@@ -219,14 +221,14 @@ func TestSignatureData(t *testing.T) {
 	b := &blk.Block{
 		Miner:           newAddress(),
 		Ticket:          blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-		Height:          types.Uint64(2),
+		Height:          2,
 		Messages:        types.TxMeta{SecpRoot: e.NewCid(types.CidFromString(t, "somecid")), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
 		MessageReceipts: e.NewCid(types.CidFromString(t, "somecid")),
 		Parents:         blk.NewTipSetKey(types.CidFromString(t, "somecid")),
-		ParentWeight:    types.Uint64(1000),
-		ForkSignaling:   types.Uint64(3),
+		ParentWeight:    fbig.NewInt(1000),
+		ForkSignaling:   3,
 		StateRoot:       e.NewCid(types.CidFromString(t, "somecid")),
-		Timestamp:       types.Uint64(1),
+		Timestamp:       1,
 		EPoStInfo:       postInfo,
 		BlockSig:        []byte{0x3},
 	}
@@ -238,14 +240,14 @@ func TestSignatureData(t *testing.T) {
 	diff := &blk.Block{
 		Miner:           newAddress(),
 		Ticket:          blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
-		Height:          types.Uint64(3),
+		Height:          3,
 		Messages:        types.TxMeta{SecpRoot: e.NewCid(types.CidFromString(t, "someothercid")), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
 		MessageReceipts: e.NewCid(types.CidFromString(t, "someothercid")),
 		Parents:         blk.NewTipSetKey(types.CidFromString(t, "someothercid")),
-		ParentWeight:    types.Uint64(1001),
-		ForkSignaling:   types.Uint64(2),
+		ParentWeight:    fbig.NewInt(1001),
+		ForkSignaling:   2,
 		StateRoot:       e.NewCid(types.CidFromString(t, "someothercid")),
-		Timestamp:       types.Uint64(4),
+		Timestamp:       4,
 		EPoStInfo:       diffPoStInfo,
 		BlockSig:        []byte{0x4},
 	}

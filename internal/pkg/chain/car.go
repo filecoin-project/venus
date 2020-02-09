@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/ipfs/go-block-format"
@@ -174,7 +173,6 @@ type carStore interface {
 
 // Import imports a chain from `in` to `bs`.
 func Import(ctx context.Context, cs carStore, in io.Reader) (block.TipSetKey, error) {
-	fmt.Printf("about to load car\n")
 	header, err := car.LoadCar(cs, in)
 	if err != nil {
 		return block.UndefTipSet.Key(), err

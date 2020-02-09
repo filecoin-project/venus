@@ -6,9 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-
 	"github.com/filecoin-project/go-address"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -21,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -419,7 +419,7 @@ func newPoisonValidator(t *testing.T, headerFailure, fullFailure uint64) *poison
 	return &poisonValidator{headerFailureTS: headerFailure, fullFailureTS: fullFailure}
 }
 
-func (pv *poisonValidator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ []block.TipSet, _ uint64, _ cid.Cid, _ cid.Cid) (cid.Cid, []*types.MessageReceipt, error) {
+func (pv *poisonValidator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ []block.TipSet, _ fbig.Int, _ cid.Cid, _ cid.Cid) (cid.Cid, []*types.MessageReceipt, error) {
 	stamp := ts.At(0).Timestamp
 	if pv.fullFailureTS == uint64(stamp) {
 		return cid.Undef, nil, errors.New("run state transition fails on poison timestamp")

@@ -91,7 +91,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 	// create an invalid block
 	invalidBlk := &block.Block{
 		Height:    1,
-		Timestamp: types.Uint64(now.Add(time.Second * 60).Unix()), // invalid timestamp, 60 seconds in future
+		Timestamp: uint64(now.Add(time.Second * 60).Unix()), // invalid timestamp, 60 seconds in future
 		StateRoot: e.NewCid(types.NewCidForTestGetter()()),
 		Miner:     miner,
 		Ticket:    block.Ticket{VRFProof: []byte{0}},
@@ -107,7 +107,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 	validTime := chainClock.StartTimeOfEpoch(types.NewBlockHeight(uint64(1)))
 	validBlk := &block.Block{
 		Height:    1,
-		Timestamp: types.Uint64(uint64(validTime.Unix())),
+		Timestamp: uint64(validTime.Unix()),
 		StateRoot: e.NewCid(types.NewCidForTestGetter()()),
 		Miner:     miner,
 		Ticket:    block.Ticket{VRFProof: []byte{0}},

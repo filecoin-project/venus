@@ -192,7 +192,7 @@ func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, ro
 		// add a tipset with no messages and a single block to the chain
 		if len(tsMsgs) == 0 {
 			child := &block.Block{
-				Height:          types.Uint64(height),
+				Height:          height,
 				Parents:         parents.Key(),
 				Messages:        emptyTxMeta,
 				MessageReceipts: e.NewCid(emptyReceiptsCid),
@@ -216,7 +216,7 @@ func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, ro
 			child := &block.Block{
 				Messages:  txMeta,
 				Parents:   parents.Key(),
-				Height:    types.Uint64(height),
+				Height:    height,
 				StateRoot: e.NewCid(stateRootCidGetter()), // Differentiate all blocks
 			}
 			blocks = append(blocks, child)

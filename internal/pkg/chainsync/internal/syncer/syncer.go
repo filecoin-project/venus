@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
@@ -18,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 // Syncer updates its chain.Store according to the methods of its

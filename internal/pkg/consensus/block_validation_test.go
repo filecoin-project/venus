@@ -33,13 +33,13 @@ func TestBlockValidSemantic(t *testing.T) {
 
 	t.Run("reject block with same height as parents", func(t *testing.T) {
 		// passes with valid height
-		c := &block.Block{Height: 2, Timestamp: types.Uint64(ts.Add(blockTime).Unix())}
-		p := &block.Block{Height: 1, Timestamp: types.Uint64(ts.Unix())}
+		c := &block.Block{Height: 2, Timestamp: uint64(ts.Add(blockTime).Unix())}
+		p := &block.Block{Height: 1, Timestamp: uint64(ts.Unix())}
 		parents := consensus.RequireNewTipSet(require.New(t), p)
 		require.NoError(t, validator.ValidateSemantic(ctx, c, parents))
 
 		// invalidate parent by matching child height
-		p = &block.Block{Height: 2, Timestamp: types.Uint64(ts.Unix())}
+		p = &block.Block{Height: 2, Timestamp: uint64(ts.Unix())}
 		parents = consensus.RequireNewTipSet(require.New(t), p)
 
 		err := validator.ValidateSemantic(ctx, c, parents)
@@ -60,11 +60,11 @@ func TestMismatchedTime(t *testing.T) {
 	fc.Advance(blockTime)
 
 	// Passes with correct timestamp
-	c := &block.Block{Height: 1, Timestamp: types.Uint64(fc.Now().Unix())}
+	c := &block.Block{Height: 1, Timestamp: uint64(fc.Now().Unix())}
 	require.NoError(t, validator.TimeMatchesEpoch(c))
 
 	// fails with invalid timestamp
-	c = &block.Block{Height: 1, Timestamp: types.Uint64(genTime.Unix())}
+	c = &block.Block{Height: 1, Timestamp: uint64(genTime.Unix())}
 	err := validator.TimeMatchesEpoch(c)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "wrong epoch")
@@ -80,7 +80,7 @@ func TestFutureEpoch(t *testing.T) {
 	validator := consensus.NewDefaultBlockValidator(mclock)
 
 	// Fails in future epoch
-	c := &block.Block{Height: 1, Timestamp: types.Uint64(genTime.Add(blockTime).Unix())}
+	c := &block.Block{Height: 1, Timestamp: uint64(genTime.Add(blockTime).Unix())}
 	err := validator.NotFutureBlock(c)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "future epoch")
@@ -98,7 +98,7 @@ func TestBlockValidSyntax(t *testing.T) {
 
 	validator := consensus.NewDefaultBlockValidator(chainClock)
 
-	validTs := types.Uint64(mclock.Now().Unix())
+	validTs := uint64(mclock.Now().Unix())
 	validSt := e.NewCid(types.NewCidForTestGetter()())
 	validAd := vmaddr.NewForTestGetter()()
 	validTi := block.Ticket{VRFProof: []byte{1}}
@@ -120,7 +120,7 @@ func TestBlockValidSyntax(t *testing.T) {
 	// validation, then revalidate the block
 
 	// invalidate timestamp
-	blk.Timestamp = types.Uint64(ts.Add(time.Duration(3) * blockTime).Unix())
+	blk.Timestamp = uint64(ts.Add(time.Duration(3) * blockTime).Unix())
 	require.Error(t, validator.ValidateSyntax(ctx, blk))
 	blk.Timestamp = validTs
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))

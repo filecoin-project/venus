@@ -238,7 +238,7 @@ func (ctp *clientTestAPI) ChainHeadKey() block.TipSetKey {
 }
 
 func (ctp *clientTestAPI) ChainTipSet(_ block.TipSetKey) (block.TipSet, error) {
-	return block.NewTipSet(&block.Block{Height: types.Uint64(ctp.blockHeight)})
+	return block.NewTipSet(&block.Block{Height: ctp.blockHeight})
 }
 
 func (ctp *clientTestAPI) DAGGetFileSize(context.Context, cid.Cid) (uint64, error) {

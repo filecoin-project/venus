@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -222,16 +224,16 @@ func (isb *integrationStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*
 	return prev, []*types.MessageReceipt{}, nil
 }
 
-func (isb *integrationStateBuilder) Weigh(tip block.TipSet, pstate cid.Cid) (uint64, error) {
+func (isb *integrationStateBuilder) Weigh(tip block.TipSet, pstate cid.Cid) (fbig.Int, error) {
 	if tip.Equals(block.UndefTipSet) {
-		return uint64(0), nil
+		return fbig.Zero(), nil
 	}
 	if isb.cGen.Equals(cid.Undef) && tip.Len() == 1 {
 		isb.cGen = tip.At(0).Cid()
 	}
 
 	if tip.At(0).Cid().Equals(isb.cGen) {
-		return uint64(0), nil
+		return fbig.Zero(), nil
 	}
 	as := newForkSnapshotGen(isb.t, types.NewBytesAmount(1), types.NewBytesAmount(512), isb.c512)
 	sel := consensus.NewChainSelector(isb.cst, as, isb.cGen)
@@ -245,7 +247,7 @@ type integrationStateEvaluator struct {
 	c512 cid.Cid
 }
 
-func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ []block.TipSet, _ uint64, stateID cid.Cid, rCid cid.Cid) (cid.Cid, []*types.MessageReceipt, error) {
+func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ []block.TipSet, _ fbig.Int, stateID cid.Cid, rCid cid.Cid) (cid.Cid, []*types.MessageReceipt, error) {
 	for i := 0; i < ts.Len(); i++ {
 		if ts.At(i).StateRoot.Cid.Equals(n.c512) {
 			return n.c512, []*types.MessageReceipt{}, nil
