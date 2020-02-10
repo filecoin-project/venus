@@ -51,10 +51,10 @@ func (x *EPoStCandidate) ToFFICandidate() ffi.Candidate {
 	copy(pt[:], x.PartialTicket)
 
 	return ffi.Candidate{
-		SectorID:             uint64(x.SectorID),
+		SectorID:             x.SectorID,
 		PartialTicket:        pt,
 		Ticket:               [32]byte{}, // note: this field is ignored
-		SectorChallengeIndex: uint64(x.SectorChallengeIndex),
+		SectorChallengeIndex: x.SectorChallengeIndex,
 	}
 }
 

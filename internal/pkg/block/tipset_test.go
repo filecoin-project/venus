@@ -95,7 +95,7 @@ func TestTipSet(t *testing.T) {
 
 	t.Run("height", func(t *testing.T) {
 		tsHeight, _ := RequireNewTipSet(t, b1).Height()
-		assert.Equal(t, uint64(b1.Height), tsHeight)
+		assert.Equal(t, b1.Height, tsHeight)
 	})
 
 	t.Run("parents", func(t *testing.T) {
