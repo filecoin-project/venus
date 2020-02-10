@@ -126,3 +126,5 @@ require (
 )
 
 replace github.com/filecoin-project/filecoin-ffi => ./vendors/filecoin-ffi
+
+replace github.com/filecoin-project/specs-actors => /Users/zenground0/Ground/go/src/github.com/filecoin-project/specs-actors
