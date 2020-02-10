@@ -546,8 +546,8 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, expectedReceipts, blk.MessageReceipts.Cid)
 
-	assert.Equal(t, types.Uint64(101), blk.Height)
-	assert.Equal(t, types.Uint64(120), blk.ParentWeight)
+	assert.Equal(t, uint64(101), blk.Height)
+	assert.Equal(t, fbig.NewInt(120), blk.ParentWeight)
 	assert.Equal(t, block.Ticket{VRFProof: []byte{2}}, blk.Ticket)
 }
 
