@@ -103,5 +103,5 @@ func (d *actorDispatcher) signature(methodID types.MethodID) (*methodSignature, 
 
 // Signature implements `Dispatcher`.
 func (d *actorDispatcher) Signature(methodID types.MethodID) (MethodSignature, error) {
-	return d.Signature(methodID)
+	return d.signature(methodID)
 }
