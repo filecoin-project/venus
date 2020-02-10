@@ -380,27 +380,3 @@ func computeActorAddress(creator address.Address, nonce uint64) (address.Address
 
 	return address.NewActorAddress(buf.Bytes())
 }
-
-func actorAddressFromParam(maybeAddress interface{}) (address.Address, error) {
-	addr, ok := maybeAddress.(address.Address)
-	if ok {
-		return addr, nil
-	}
-
-	stringAddr, ok := maybeAddress.(string)
-	if ok {
-		maybeAddress = []byte(stringAddr)
-	}
-
-	serialized, ok := maybeAddress.([]byte)
-	if ok {
-		addrInt, err := abi.Deserialize(serialized, abi.Address)
-		if err != nil {
-			return address.Undef, err
-		}
-
-		return addrInt.Val.(address.Address), nil
-	}
-
-	return address.Undef, fmt.Errorf("address parameter is not an address")
-}

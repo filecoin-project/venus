@@ -21,7 +21,7 @@ type Dispatcher interface {
 	// - The `ctx` argument will be coerced to the type the method expects in its first argument.
 	// - If arg1 is `[]byte`, it will attempt to decode the value based on second argument in the target method.
 	Dispatch(method types.MethodID, ctx interface{}, arg1 interface{}) (interface{}, error)
-	// Signature is a helper function taht returns the signature for a given method.
+	// Signature is a helper function that returns the signature for a given method.
 	//
 	// Note: This is intended to be used by tests and tools.
 	Signature(method types.MethodID) (MethodSignature, error)
