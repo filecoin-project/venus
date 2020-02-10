@@ -6,9 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-
 	"github.com/filecoin-project/go-address"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -21,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -381,7 +381,7 @@ func TestBlocksNotATipSetRejected(t *testing.T) {
 	b2 := builder.AppendBlockOnBlocks(b1)
 
 	badKey := block.NewTipSetKey(b1.Cid(), b2.Cid())
-	err := syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", badKey, uint64(b1.Height)), false)
+	err := syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", badKey, b1.Height), false)
 	assert.Error(t, err)
 
 	_, err = store.GetTipSet(badKey)
@@ -419,16 +419,16 @@ func newPoisonValidator(t *testing.T, headerFailure, fullFailure uint64) *poison
 	return &poisonValidator{headerFailureTS: headerFailure, fullFailureTS: fullFailure}
 }
 
-func (pv *poisonValidator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ []block.TipSet, _ uint64, _ cid.Cid, _ cid.Cid) (cid.Cid, []*types.MessageReceipt, error) {
+func (pv *poisonValidator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ []block.TipSet, _ fbig.Int, _ cid.Cid, _ cid.Cid) (cid.Cid, []*types.MessageReceipt, error) {
 	stamp := ts.At(0).Timestamp
-	if pv.fullFailureTS == uint64(stamp) {
+	if pv.fullFailureTS == stamp {
 		return cid.Undef, nil, errors.New("run state transition fails on poison timestamp")
 	}
 	return cid.Undef, nil, nil
 }
 
 func (pv *poisonValidator) ValidateSemantic(_ context.Context, header *block.Block, _ block.TipSet) error {
-	if pv.headerFailureTS == uint64(header.Timestamp) {
+	if pv.headerFailureTS == header.Timestamp {
 		return errors.New("val semantic fails on poison timestamp")
 	}
 	return nil

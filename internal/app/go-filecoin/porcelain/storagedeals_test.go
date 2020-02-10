@@ -107,7 +107,7 @@ func (trp *testRedeemPlumbing) ChainHeadKey() block.TipSetKey {
 }
 
 func (trp *testRedeemPlumbing) ChainTipSet(_ block.TipSetKey) (block.TipSet, error) {
-	return block.NewTipSet(&block.Block{Height: types.Uint64(trp.blockHeight)})
+	return block.NewTipSet(&block.Block{Height: trp.blockHeight})
 }
 
 func (trp *testRedeemPlumbing) DealGet(_ context.Context, c cid.Cid) (*storagedeal.Deal, error) {

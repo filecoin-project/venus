@@ -23,16 +23,16 @@ type EPoStInfo struct {
 type EPoStCandidate struct {
 	_                    struct{} `cbor:",toarray"`
 	PartialTicket        []byte
-	SectorID             types.Uint64
-	SectorChallengeIndex types.Uint64
+	SectorID             uint64
+	SectorChallengeIndex uint64
 }
 
 // NewEPoStCandidate constructs an epost candidate from data
 func NewEPoStCandidate(sID uint64, pt []byte, sci uint64) EPoStCandidate {
 	return EPoStCandidate{
-		SectorID:             types.Uint64(sID),
+		SectorID:             sID,
 		PartialTicket:        pt,
-		SectorChallengeIndex: types.Uint64(sci),
+		SectorChallengeIndex: sci,
 	}
 }
 
@@ -51,10 +51,10 @@ func (x *EPoStCandidate) ToFFICandidate() ffi.Candidate {
 	copy(pt[:], x.PartialTicket)
 
 	return ffi.Candidate{
-		SectorID:             uint64(x.SectorID),
+		SectorID:             x.SectorID,
 		PartialTicket:        pt,
 		Ticket:               [32]byte{}, // note: this field is ignored
-		SectorChallengeIndex: uint64(x.SectorChallengeIndex),
+		SectorChallengeIndex: x.SectorChallengeIndex,
 	}
 }
 
@@ -72,8 +72,8 @@ func ToFFICandidates(candidates ...EPoStCandidate) []ffi.Candidate {
 func FromFFICandidate(candidate ffi.Candidate) EPoStCandidate {
 	return EPoStCandidate{
 		PartialTicket:        candidate.PartialTicket[:],
-		SectorID:             types.Uint64(candidate.SectorID),
-		SectorChallengeIndex: types.Uint64(candidate.SectorChallengeIndex),
+		SectorID:             candidate.SectorID,
+		SectorChallengeIndex: candidate.SectorChallengeIndex,
 	}
 }
 

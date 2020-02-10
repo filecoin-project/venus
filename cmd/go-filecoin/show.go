@@ -55,12 +55,8 @@ all other block properties will be included as well.`,
 	Type: block.FullBlock{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, block *block.FullBlock) error {
-			wStr, err := types.FixedStr(uint64(block.Header.ParentWeight))
-			if err != nil {
-				return err
-			}
-
-			_, err = fmt.Fprintf(w, `Block Details
+			wStr := block.Header.ParentWeight.String()
+			_, err := fmt.Fprintf(w, `Block Details
 Miner:  %s
 Weight: %s
 Height: %s
@@ -69,9 +65,9 @@ Timestamp:  %s
 `,
 				block.Header.Miner,
 				wStr,
-				strconv.FormatUint(uint64(block.Header.Height), 10),
+				strconv.FormatUint(block.Header.Height, 10),
 				block.Header.Messages.String(),
-				strconv.FormatUint(uint64(block.Header.Timestamp), 10),
+				strconv.FormatUint(block.Header.Timestamp, 10),
 			)
 			if err != nil {
 				return err
@@ -112,12 +108,8 @@ all other block properties will be included as well.`,
 	Type: block.Block{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, block *block.Block) error {
-			wStr, err := types.FixedStr(uint64(block.ParentWeight))
-			if err != nil {
-				return err
-			}
-
-			_, err = fmt.Fprintf(w, `Block Details
+			wStr := block.ParentWeight.String()
+			_, err := fmt.Fprintf(w, `Block Details
 Miner:  %s
 Weight: %s
 Height: %s
@@ -125,8 +117,8 @@ Timestamp:  %s
 `,
 				block.Miner,
 				wStr,
-				strconv.FormatUint(uint64(block.Height), 10),
-				strconv.FormatUint(uint64(block.Timestamp), 10),
+				strconv.FormatUint(block.Height, 10),
+				strconv.FormatUint(block.Timestamp, 10),
 			)
 			return err
 		}),

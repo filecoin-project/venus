@@ -19,6 +19,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 // MaxFixedPointIntegralNum is the largest whole number that can be encoded
@@ -26,35 +28,37 @@ import (
 const MaxFixedPointIntegralNum = 18014398509481983 // (2^54 - 1)
 
 // BigToFixed takes in a big Float and returns a uint64 encoded fixed point.
-func BigToFixed(f *big.Float) (uint64, error) {
+func BigToFixed(f *big.Float) (fbig.Int, error) {
 	// check that f is not too big.
 	if cmp := f.Cmp(big.NewFloat(float64(MaxFixedPointIntegralNum))); cmp == 1 {
-		return uint64(0), errors.New("float too big to store in fixed point")
+		return fbig.Zero(), errors.New("float too big to store in fixed point")
 	}
 
 	s := fmt.Sprintf("%.3f", f) // nolint: govet
 	parts := strings.Split(s, ".")
 	integral, err := strconv.ParseUint(parts[0], 10, 64)
 	if err != nil {
-		return uint64(0), err
+		return fbig.Zero(), err
 	}
 	fractional, err := strconv.ParseUint(parts[1], 10, 64)
 	if err != nil {
-		return uint64(0), err
+		return fbig.Zero(), err
 	}
 
 	fixed := integral * 1000
 	fixed += fractional
-	return fixed, nil
+	return Uint64ToBig(fixed), nil
 }
 
 // FixedToBig takes in a uint64 encoded fixed point and returns a big Float.
-func FixedToBig(fixed uint64) (*big.Float, error) {
-	if fixed > uint64((MaxFixedPointIntegralNum+1)*1000) {
-		return nil, errors.New("uint64 does not validly encode fixed point")
+func FixedToBig(fixed fbig.Int) (*big.Float, error) {
+	uFixed, err := BigToUint64(fixed)
+	if err != nil {
+		return nil, err
 	}
-	q := int64(fixed / 1000)
-	m := int64(fixed % 1000)
+
+	q := int64(uFixed / 1000)
+	m := int64(uFixed % 1000)
 
 	integral := big.NewFloat(0.0).SetInt64(q)
 	integral.SetPrec(64)
@@ -69,7 +73,7 @@ func FixedToBig(fixed uint64) (*big.Float, error) {
 
 // FixedStr returns a printable string with the correct decimal place for the
 // input uint64 encoded fixed point number.
-func FixedStr(fixed uint64) (string, error) {
+func FixedStr(fixed fbig.Int) (string, error) {
 	b, err := FixedToBig(fixed)
 	if err != nil {
 		return "", err

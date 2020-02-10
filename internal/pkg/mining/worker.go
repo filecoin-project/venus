@@ -12,6 +12,7 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
@@ -55,7 +56,7 @@ type GetStateTree func(context.Context, block.TipSetKey) (state.Tree, error)
 
 // GetWeight is a function that calculates the weight of a TipSet.  Weight is
 // expressed as two uint64s comprising a rational number.
-type GetWeight func(context.Context, block.TipSet) (uint64, error)
+type GetWeight func(context.Context, block.TipSet) (fbig.Int, error)
 
 // GetAncestors is a function that returns the necessary ancestor chain to
 // process the input tipset.

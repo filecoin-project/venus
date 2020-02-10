@@ -150,7 +150,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	startHeight := headTs.At(0).Height
 	logStore.Infof("start loading chain at tipset: %s, height: %d", headTsKey.String(), startHeight)
 	// Ensure we only produce 10 log messages regardless of the chain height.
-	logStatusEvery := uint64(startHeight / 10)
+	logStatusEvery := startHeight / 10
 
 	var genesii block.TipSet
 	// Provide tipsets directly from the block store, not from the tipset index which is

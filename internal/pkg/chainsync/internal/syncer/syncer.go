@@ -3,20 +3,21 @@ package syncer
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 // Syncer updates its chain.Store according to the methods of its
@@ -98,7 +99,7 @@ type ChainSelector interface {
 	// tipset b is heavier than tipset a.
 	IsHeavier(ctx context.Context, a, b block.TipSet, aStateID, bStateID cid.Cid) (bool, error)
 	// Weight returns the weight of a tipset after the upgrade to version 1
-	Weight(ctx context.Context, ts block.TipSet, stRoot cid.Cid) (uint64, error)
+	Weight(ctx context.Context, ts block.TipSet, stRoot cid.Cid) (fbig.Int, error)
 }
 
 // HeaderValidator does semanitc validation on headers
@@ -112,7 +113,7 @@ type HeaderValidator interface {
 type FullBlockValidator interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight uint64, stateID cid.Cid, receiptRoot cid.Cid) (cid.Cid, []*types.MessageReceipt, error)
+	RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight fbig.Int, stateID cid.Cid, receiptRoot cid.Cid) (cid.Cid, []*types.MessageReceipt, error)
 }
 
 // faultDetector tracks data for detecting consensus faults and emits faults
@@ -323,13 +324,13 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 
 // TODO #3537 this should be stored the first time it is computed and retrieved
 // from disk just like aggregate state roots.
-func (syncer *Syncer) calculateParentWeight(ctx context.Context, parent, grandParent block.TipSet) (uint64, error) {
+func (syncer *Syncer) calculateParentWeight(ctx context.Context, parent, grandParent block.TipSet) (fbig.Int, error) {
 	if grandParent.Equals(block.UndefTipSet) {
 		return syncer.chainSelector.Weight(ctx, parent, cid.Undef)
 	}
 	gpStRoot, err := syncer.chainStore.GetTipSetStateRoot(grandParent.Key())
 	if err != nil {
-		return 0, err
+		return fbig.Zero(), err
 	}
 	return syncer.chainSelector.Weight(ctx, parent, gpStRoot)
 }

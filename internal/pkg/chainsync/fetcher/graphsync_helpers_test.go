@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
@@ -352,7 +354,7 @@ func simpleBlock() *block.Block {
 		BLSRoot:  e.NewCid(types.EmptyMessagesCID),
 	}
 	return &block.Block{
-		ParentWeight:    0,
+		ParentWeight:    fbig.Zero(),
 		Parents:         block.NewTipSetKey(),
 		Height:          0,
 		StateRoot:       e.NewCid(types.EmptyMessagesCID),

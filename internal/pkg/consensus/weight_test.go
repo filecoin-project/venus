@@ -6,11 +6,12 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -29,7 +30,7 @@ func TestWeight(t *testing.T) {
 	as := consensus.NewFakeActorStateStore(types.NewBytesAmount(1), types.NewBytesAmount(16), make(map[address.Address]address.Address))
 	ticket := consensus.MakeFakeTicketForTest()
 	toWeigh := th.RequireNewTipSet(t, &block.Block{
-		ParentWeight: 0,
+		ParentWeight: fbig.Zero(),
 		Ticket:       ticket,
 	})
 	sel := consensus.NewChainSelector(cst, as, types.CidFromString(t, "genesisCid"))
@@ -69,7 +70,7 @@ func TestWeight(t *testing.T) {
 		parentWeight, err := types.BigToFixed(new(big.Float).SetInt64(int64(49)))
 		require.NoError(t, err)
 		toWeighWithParent := th.RequireNewTipSet(t, &block.Block{
-			ParentWeight: types.Uint64(parentWeight),
+			ParentWeight: parentWeight,
 			Ticket:       ticket,
 		})
 
@@ -82,19 +83,19 @@ func TestWeight(t *testing.T) {
 	t.Run("many blocks", func(t *testing.T) {
 		toWeighThreeBlock := th.RequireNewTipSet(t,
 			&block.Block{
-				ParentWeight: 0,
+				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
-				Timestamp:    types.Uint64(0),
+				Timestamp:    0,
 			},
 			&block.Block{
-				ParentWeight: 0,
+				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
-				Timestamp:    types.Uint64(1),
+				Timestamp:    1,
 			},
 			&block.Block{
-				ParentWeight: 0,
+				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
-				Timestamp:    types.Uint64(2),
+				Timestamp:    2,
 			},
 		)
 		// 0 + 1[2*3 + 5] = 11
@@ -105,7 +106,7 @@ func TestWeight(t *testing.T) {
 }
 
 // helper for turning fixed point reprs of int weights to ints
-func requireFixedToInt(t *testing.T, fixedX uint64) int {
+func requireFixedToInt(t *testing.T, fixedX fbig.Int) int {
 	floatX, err := types.FixedToBig(fixedX)
 	require.NoError(t, err)
 	intX, _ := floatX.Int64()
@@ -113,7 +114,7 @@ func requireFixedToInt(t *testing.T, fixedX uint64) int {
 }
 
 // helper for asserting equality between int and fixed
-func assertEqualInt(t *testing.T, i int, fixed uint64) {
+func assertEqualInt(t *testing.T, i int, fixed fbig.Int) {
 	fixed2int := requireFixedToInt(t, fixed)
 	assert.Equal(t, i, fixed2int)
 }

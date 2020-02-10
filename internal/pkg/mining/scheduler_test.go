@@ -86,7 +86,7 @@ func TestMineOnce10Null(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, result.Err)
 	block := result.NewBlock
-	assert.Equal(t, uint64(10+1), uint64(block.Height))
+	assert.Equal(t, uint64(10+1), block.Height)
 	assert.NotEqual(t, baseBlock.Ticket, block.Ticket)
 }
 
@@ -158,8 +158,8 @@ func TestMineOneEpoch10Null(t *testing.T) {
 	blk, err := MineOneEpoch(context.Background(), *worker, baseTs, 10, chainClock)
 	assert.NoError(t, err)
 	require.NotNil(t, blk)
-	assert.Equal(t, uint64(10+1), uint64(blk.Height))
-	assert.Equal(t, chainClock.EpochAtTime(time.Unix(int64(blk.Timestamp), 0)), types.NewBlockHeight(uint64(blk.Height)))
+	assert.Equal(t, uint64(10+1), blk.Height)
+	assert.Equal(t, chainClock.EpochAtTime(time.Unix(int64(blk.Timestamp), 0)), types.NewBlockHeight(blk.Height))
 }
 
 // Mining loop unit tests

@@ -330,7 +330,7 @@ func TestUpdateMessagePool(t *testing.T) {
 
 			head = next
 		}
-		require.Equal(t, types.Uint64(11), head.At(0).Height)
+		require.Equal(t, uint64(11), head.At(0).Height)
 
 		// next tipset times out first message only
 		next := requireChainWithMessages(t, chainProvider.Builder, head, msgsSet{msgs{}})[0]
@@ -344,7 +344,7 @@ func TestUpdateMessagePool(t *testing.T) {
 			msgsSet{msgs{}},
 			msgsSet{msgs{}},
 		)
-		require.Equal(t, types.Uint64(16), newChain[0].At(0).Height)
+		require.Equal(t, uint64(16), newChain[0].At(0).Height)
 		assert.NoError(t, ib.HandleNewHead(ctx, nil, newChain))
 		assertPoolEquals(t, p, m[5:]...)
 	})
@@ -368,7 +368,7 @@ func TestUpdateMessagePool(t *testing.T) {
 			// update pool with tipset that has no messages and four
 			// null blocks
 			next := chainProvider.BuildOneOn(head, func(bb *chain.BlockBuilder) {
-				bb.IncHeight(types.Uint64(4)) // 4 null blocks
+				bb.IncHeight(4) // 4 null blocks
 			})
 
 			assert.NoError(t, ib.HandleNewHead(ctx, nil, []block.TipSet{next}))

@@ -11,6 +11,7 @@ import (
 
 	blk "github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -36,12 +37,12 @@ func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWei
 	return &blk.Block{
 		Ticket:          blk.Ticket{VRFProof: ticket},
 		Parents:         blk.NewTipSetKey(parentCid),
-		ParentWeight:    types.Uint64(parentWeight),
-		Height:          types.Uint64(42 + uint64(height)),
+		ParentWeight:    fbig.NewInt(int64(parentWeight)),
+		Height:          42 + uint64(height),
 		Messages:        types.TxMeta{SecpRoot: e.NewCid(cidGetter()), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
 		StateRoot:       e.NewCid(cidGetter()),
 		MessageReceipts: e.NewCid(cidGetter()),
-		Timestamp:       types.Uint64(timestamp),
+		Timestamp:       timestamp,
 	}
 }
 
@@ -94,7 +95,7 @@ func TestTipSet(t *testing.T) {
 
 	t.Run("height", func(t *testing.T) {
 		tsHeight, _ := RequireNewTipSet(t, b1).Height()
-		assert.Equal(t, uint64(b1.Height), tsHeight)
+		assert.Equal(t, b1.Height, tsHeight)
 	})
 
 	t.Run("parents", func(t *testing.T) {
@@ -104,7 +105,7 @@ func TestTipSet(t *testing.T) {
 
 	t.Run("parent weight", func(t *testing.T) {
 		tsParentWeight, _ := RequireNewTipSet(t, b1).ParentWeight()
-		assert.Equal(t, parentWeight, tsParentWeight)
+		assert.Equal(t, types.Uint64ToBig(parentWeight), tsParentWeight)
 	})
 
 	t.Run("min ticket", func(t *testing.T) {
@@ -186,7 +187,7 @@ func TestTipSet(t *testing.T) {
 
 	t.Run("mismatched parent weight fails new tipset", func(t *testing.T) {
 		b1, b2, b3 = makeTestBlocks(t)
-		b1.ParentWeight = types.Uint64(3000)
+		b1.ParentWeight = fbig.NewInt(3000)
 		ts, err := blk.NewTipSet(b1, b2, b3)
 		assert.Error(t, err)
 		assert.False(t, ts.Defined())

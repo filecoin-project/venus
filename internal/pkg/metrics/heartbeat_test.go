@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -140,7 +141,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 	filecoin := newEndpoint(t, 0)
 
 	// create a tipset, we will assert on it in the SetStreamHandler method
-	expHeight := types.Uint64(444)
+	expHeight := uint64(444)
 	expTs := mustMakeTipset(t, expHeight)
 
 	addr, err := address.NewSecp256k1Address([]byte("miner address"))
@@ -186,12 +187,12 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 	assert.Error(t, runCtx.Err(), context.Canceled.Error())
 }
 
-func mustMakeTipset(t *testing.T, height types.Uint64) block.TipSet {
+func mustMakeTipset(t *testing.T, height uint64) block.TipSet {
 	ts, err := block.NewTipSet(&block.Block{
 		Miner:           vmaddr.NewForTestGetter()(),
 		Ticket:          block.Ticket{VRFProof: []byte{0}},
 		Parents:         block.TipSetKey{},
-		ParentWeight:    0,
+		ParentWeight:    fbig.Zero(),
 		Height:          height,
 		MessageReceipts: e.NewCid(types.EmptyMessagesCID),
 		Messages:        types.TxMeta{SecpRoot: e.NewCid(types.EmptyReceiptsCID), BLSRoot: e.NewCid(types.EmptyMessagesCID)},

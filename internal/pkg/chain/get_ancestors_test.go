@@ -225,7 +225,7 @@ func TestGetRecentAncestors(t *testing.T) {
 	head := th.RequireNewTipSet(t, headBlock)
 
 	epochs := uint64(100)
-	sampleHeight := types.NewBlockHeight(uint64(headBlock.Height + 1)).Sub(types.NewBlockHeight(epochs))
+	sampleHeight := types.NewBlockHeight(headBlock.Height + 1).Sub(types.NewBlockHeight(epochs))
 	ancestors, err := chain.GetRecentAncestors(ctx, head, builder, sampleHeight)
 	require.NoError(t, err)
 	assert.Equal(t, ancestors[0], head)

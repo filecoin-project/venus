@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -47,18 +48,18 @@ func NewChainSelector(cs cbor.IpldStore, actorState SnapshotGenerator, gCid cid.
 //
 // w(i) = w(i-1) + V * num_blks + X
 // X = log_2(total_storage(pSt))
-func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID cid.Cid) (uint64, error) {
+func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID cid.Cid) (fbig.Int, error) {
 	if ts.Len() > 0 && ts.At(0).Cid().Equals(c.genesisCid) {
-		return uint64(0), nil
+		return fbig.Zero(), nil
 	}
 	// Retrieve parent weight.
 	parentW, err := ts.ParentWeight()
 	if err != nil {
-		return uint64(0), err
+		return fbig.Zero(), err
 	}
 	w, err := types.FixedToBig(parentW)
 	if err != nil {
-		return uint64(0), err
+		return fbig.Zero(), err
 	}
 
 	// Each block adds ECV to the weight's inner term
@@ -69,17 +70,17 @@ func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID ci
 
 	// Add bitnum(total storage power) to the weight's inner term
 	if !pStateID.Defined() {
-		return uint64(0), errors.New("undefined state passed to chain selector new weight")
+		return fbig.Zero(), errors.New("undefined state passed to chain selector new weight")
 	}
 	pSt, err := c.loadStateTree(ctx, pStateID)
 	if err != nil {
 		fmt.Printf("error loading state tree\n")
-		return uint64(0), err
+		return fbig.Zero(), err
 	}
 	powerTableView := c.createPowerTableView(pSt)
 	totalBytes, err := powerTableView.Total(ctx)
 	if err != nil {
-		return uint64(0), err
+		return fbig.Zero(), err
 	}
 	roughLogTotalBytes := new(big.Float).SetInt64(int64(totalBytes.BigInt().BitLen()))
 	innerTerm.Add(innerTerm, roughLogTotalBytes)
@@ -107,8 +108,8 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b block.TipSet, aState
 		return false, err
 	}
 	// Without ties pass along the comparison.
-	if aW != bW {
-		return aW > bW, nil
+	if !aW.Equals(bW) {
+		return aW.GreaterThan(bW), nil
 	}
 
 	// To break ties compare the min tickets.

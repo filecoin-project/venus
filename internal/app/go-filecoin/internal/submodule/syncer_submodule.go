@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
-
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
@@ -16,7 +14,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 // SyncerSubmodule enhances the node with chain syncing capabilities
@@ -41,7 +41,7 @@ type syncerConfig interface {
 }
 
 type nodeChainSelector interface {
-	Weight(context.Context, block.TipSet, cid.Cid) (uint64, error)
+	Weight(context.Context, block.TipSet, cid.Cid) (fbig.Int, error)
 	IsHeavier(ctx context.Context, a, b block.TipSet, aStateID, bStateID cid.Cid) (bool, error)
 }
 

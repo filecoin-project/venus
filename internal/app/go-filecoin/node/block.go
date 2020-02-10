@@ -32,7 +32,7 @@ func (node *Node) AddNewBlock(ctx context.Context, b *block.Block) (err error) {
 			log.Errorf("error publishing new block on block topic %s", err)
 		}
 	}()
-	ci := block.NewChainInfo(node.Host().ID(), node.Host().ID(), block.NewTipSetKey(blkCid), uint64(b.Height))
+	ci := block.NewChainInfo(node.Host().ID(), node.Host().ID(), block.NewTipSetKey(blkCid), b.Height)
 	return node.syncer.ChainSyncManager.BlockProposer().SendOwnBlock(ci)
 }
 
@@ -64,7 +64,7 @@ func (node *Node) processBlock(ctx context.Context, msg pubsub.Message) (err err
 	// See https://github.com/filecoin-project/go-filecoin/issues/2962
 	// TODO Implement principled trusting of ChainInfo's
 	// to address in #2674
-	err = node.syncer.ChainSyncManager.BlockProposer().SendGossipBlock(block.NewChainInfo(source, sender, block.NewTipSetKey(blk.Cid()), uint64(blk.Height)))
+	err = node.syncer.ChainSyncManager.BlockProposer().SendGossipBlock(block.NewChainInfo(source, sender, block.NewTipSetKey(blk.Cid()), blk.Height))
 	if err != nil {
 		return errors.Wrapf(err, "failed to notify syncer of new block, block: %s", blk.Cid())
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -36,10 +37,10 @@ type Block struct {
 	Parents TipSetKey `json:"parents"`
 
 	// ParentWeight is the aggregate chain weight of the parent set.
-	ParentWeight types.Uint64 `json:"parentWeight"`
+	ParentWeight fbig.Int `json:"parentWeight"`
 
 	// Height is the chain height of this block.
-	Height types.Uint64 `json:"height"`
+	Height uint64 `json:"height"`
 
 	// StateRoot is a cid pointer to the state tree after application of the
 	// transactions state transitions.
@@ -55,13 +56,13 @@ type Block struct {
 	BLSAggregateSig types.Signature `json:"blsAggregateSig"`
 
 	// The timestamp, in seconds since the Unix epoch, at which this block was created.
-	Timestamp types.Uint64 `json:"timestamp"`
+	Timestamp uint64 `json:"timestamp"`
 
 	// The signature of the miner's worker key over the block
 	BlockSig types.Signature `json:"blocksig"`
 
 	// ForkSignaling is extra data used by miners to communicate
-	ForkSignaling types.Uint64
+	ForkSignaling uint64
 
 	cachedCid cid.Cid
 
@@ -152,14 +153,6 @@ func DecodeBlock(b []byte) (*Block, error) {
 	out.cachedBytes = b
 
 	return &out, nil
-}
-
-// Score returns the score of this block. Naively this will just return the
-// height. But in the future this will return a more sophisticated metric to be
-// used in the fork choice rule
-// Choosing height as the score gives us the same consensus rules as bitcoin
-func (b *Block) Score() uint64 {
-	return uint64(b.Height)
 }
 
 // Equals returns true if the Block is equal to other.

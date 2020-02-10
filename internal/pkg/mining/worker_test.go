@@ -9,6 +9,7 @@ import (
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -545,8 +546,8 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, expectedReceipts, blk.MessageReceipts.Cid)
 
-	assert.Equal(t, types.Uint64(101), blk.Height)
-	assert.Equal(t, types.Uint64(120), blk.ParentWeight)
+	assert.Equal(t, uint64(101), blk.Height)
+	assert.Equal(t, fbig.NewInt(120), blk.ParentWeight)
 	assert.Equal(t, block.Ticket{VRFProof: []byte{2}}, blk.Ticket)
 }
 
@@ -634,7 +635,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 
 	baseBlock := block.Block{
 		Parents:   block.NewTipSetKey(newCid()),
-		Height:    types.Uint64(100),
+		Height:    100,
 		StateRoot: e.NewCid(stateRoot),
 	}
 	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
@@ -698,8 +699,8 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
 	})
 
-	h := types.Uint64(100)
-	w := types.Uint64(1000)
+	h := uint64(100)
+	w := fbig.NewInt(1000)
 	baseBlock := block.Block{
 		Height:       h,
 		ParentWeight: w,
@@ -719,7 +720,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, h+2, blk.Height)
-	assert.Equal(t, w+10.0, blk.ParentWeight)
+	assert.Equal(t, fbig.Add(w, fbig.NewInt(10.0)), blk.ParentWeight)
 	assert.Equal(t, minerAddr, blk.Miner)
 }
 
@@ -765,7 +766,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	assert.Len(t, pool.Pending(), 0)
 	baseBlock := block.Block{
 		Parents:   block.NewTipSetKey(newCid()),
-		Height:    types.Uint64(100),
+		Height:    100,
 		StateRoot: e.NewCid(newCid()),
 	}
 	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
@@ -829,7 +830,7 @@ func TestGenerateError(t *testing.T) {
 	assert.Len(t, pool.Pending(), 1)
 	baseBlock := block.Block{
 		Parents:   block.NewTipSetKey(newCid()),
-		Height:    types.Uint64(100),
+		Height:    100,
 		StateRoot: e.NewCid(newCid()),
 	}
 	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
@@ -841,13 +842,13 @@ func TestGenerateError(t *testing.T) {
 	assert.Len(t, pool.Pending(), 1) // No messages are removed from the pool.
 }
 
-func getWeightTest(_ context.Context, ts block.TipSet) (uint64, error) {
+func getWeightTest(_ context.Context, ts block.TipSet) (fbig.Int, error) {
 	w, err := ts.ParentWeight()
 	if err != nil {
-		return uint64(0), err
+		return fbig.Zero(), err
 	}
 	// consensus.ecV = 10
-	return w + uint64(ts.Len())*10, nil
+	return fbig.Add(w, fbig.NewInt(int64(ts.Len()*10))), nil
 }
 
 func setupSigner() (types.MockSigner, address.Address) {
