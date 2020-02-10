@@ -181,7 +181,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		b.chainClock = clock.NewChainClock(uint64(geneBlk.Timestamp), b.blockTime)
+		b.chainClock = clock.NewChainClock(geneBlk.Timestamp, b.blockTime)
 	}
 	nd.ChainClock = b.chainClock
 

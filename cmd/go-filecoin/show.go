@@ -65,9 +65,9 @@ Timestamp:  %s
 `,
 				block.Header.Miner,
 				wStr,
-				strconv.FormatUint(uint64(block.Header.Height), 10),
+				strconv.FormatUint(block.Header.Height, 10),
 				block.Header.Messages.String(),
-				strconv.FormatUint(uint64(block.Header.Timestamp), 10),
+				strconv.FormatUint(block.Header.Timestamp, 10),
 			)
 			if err != nil {
 				return err
@@ -117,8 +117,8 @@ Timestamp:  %s
 `,
 				block.Miner,
 				wStr,
-				strconv.FormatUint(uint64(block.Height), 10),
-				strconv.FormatUint(uint64(block.Timestamp), 10),
+				strconv.FormatUint(block.Height, 10),
+				strconv.FormatUint(block.Timestamp, 10),
 			)
 			return err
 		}),

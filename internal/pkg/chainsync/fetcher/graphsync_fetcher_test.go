@@ -422,9 +422,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
 		blk := simpleBlock()
 		blk.Height = 1
-		blk.Timestamp = uint64(chainClock.StartTimeOfEpoch(types.NewBlockHeight(uint64(blk.Height))).Unix())
+		blk.Timestamp = uint64(chainClock.StartTimeOfEpoch(types.NewBlockHeight(blk.Height)).Unix())
 		key := block.NewTipSetKey(blk.Cid())
-		chain0 := block.NewChainInfo(pid0, pid0, key, uint64(blk.Height))
+		chain0 := block.NewChainInfo(pid0, pid0, key, blk.Height)
 		invalidSyntaxLoader := simpleLoader([]format.Node{blk.ToNode()})
 		mgs.stubResponseWithLoader(pid0, layer1Selector, invalidSyntaxLoader, blk.Cid())
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, newFakePeerTracker(chain0))
@@ -439,7 +439,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		blk := requireSimpleValidBlock(t, 3, address.Undef)
 		blk.Messages = types.TxMeta{SecpRoot: e.NewCid(notDecodableBlock.Cid()), BLSRoot: e.NewCid(types.EmptyMessagesCID)}
 		key := block.NewTipSetKey(blk.Cid())
-		chain0 := block.NewChainInfo(pid0, pid0, key, uint64(blk.Height))
+		chain0 := block.NewChainInfo(pid0, pid0, key, blk.Height)
 		nd, err := (&types.SignedMessage{}).ToNode()
 		require.NoError(t, err)
 		notDecodableLoader := simpleLoader([]format.Node{blk.ToNode(), notDecodableBlock, nd})
@@ -732,7 +732,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 		blk := requireSimpleValidBlock(t, 3, address.Undef)
 		blk.Messages = types.TxMeta{SecpRoot: e.NewCid(notDecodableBlock.Cid()), BLSRoot: e.NewCid(types.EmptyMessagesCID)}
 		key := block.NewTipSetKey(blk.Cid())
-		chain0 := block.NewChainInfo(pid0, pid0, key, uint64(blk.Height))
+		chain0 := block.NewChainInfo(pid0, pid0, key, blk.Height)
 		nd, err := (&types.SignedMessage{}).ToNode()
 		require.NoError(t, err)
 		notDecodableLoader := simpleLoader([]format.Node{blk.ToNode(), notDecodableBlock, nd})

@@ -397,7 +397,7 @@ func (m *StorageMinerNodeConnector) waitForMessageHeight(ctx context.Context, mc
 
 	select {
 	case h := <-height:
-		return uint64(h.height), h.exitCode, nil
+		return h.height, h.exitCode, nil
 	case err := <-errChan:
 		return 0, 0, err
 	case <-ctx.Done():

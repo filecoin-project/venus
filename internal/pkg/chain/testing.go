@@ -203,7 +203,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 			//StateRoot:       stateRoot,
 			//EPoStInfo:       ePoStInfo,
 			//ForkSignaling:   forkSig,
-			Timestamp: f.stamper.Stamp(uint64(height)),
+			Timestamp: f.stamper.Stamp(height),
 		}
 
 		if build != nil {
