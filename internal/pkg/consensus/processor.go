@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -32,7 +31,7 @@ type ApplyMessageResult struct {
 
 // DefaultProcessor handles all block processing.
 type DefaultProcessor struct {
-	actors builtin.Actors
+	actors vm.ActorCodeLoader
 }
 
 var _ Processor = (*DefaultProcessor)(nil)
@@ -40,12 +39,12 @@ var _ Processor = (*DefaultProcessor)(nil)
 // NewDefaultProcessor creates a default processor from the given state tree and vms.
 func NewDefaultProcessor() *DefaultProcessor {
 	return &DefaultProcessor{
-		actors: builtin.DefaultActors,
+		actors: vm.DefaultActors,
 	}
 }
 
 // NewConfiguredProcessor creates a default processor with custom validation and rewards.
-func NewConfiguredProcessor(actors builtin.Actors) *DefaultProcessor {
+func NewConfiguredProcessor(actors vm.ActorCodeLoader) *DefaultProcessor {
 	return &DefaultProcessor{
 		actors: actors,
 	}

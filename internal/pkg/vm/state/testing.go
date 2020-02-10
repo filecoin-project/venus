@@ -47,7 +47,7 @@ type MockStateTree struct {
 	mock.Mock
 
 	NoMocks       bool
-	BuiltinActors map[cid.Cid]dispatch.ExecutableActor
+	BuiltinActors map[cid.Cid]dispatch.Dispatcher
 }
 
 // GetActorStorage implements Tree interface
@@ -110,7 +110,7 @@ func (m *MockStateTree) GetAllActors(ctx context.Context) <-chan GetAllActorsRes
 }
 
 // GetActorCode implements StateTree.GetActorCode
-func (m *MockStateTree) GetActorCode(c cid.Cid, protocol uint64) (dispatch.ExecutableActor, error) {
+func (m *MockStateTree) GetActorCode(c cid.Cid, protocol uint64) (dispatch.Dispatcher, error) {
 	a, ok := m.BuiltinActors[c]
 	if !ok {
 		return nil, fmt.Errorf("unknown actor: %v", c.String())

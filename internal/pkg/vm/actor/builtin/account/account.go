@@ -2,12 +2,10 @@ package account
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
@@ -48,23 +46,13 @@ const (
 //
 
 // Ensure AccountActor is an ExecutableActor at compile time.
-var _ dispatch.ExecutableActor = (*Actor)(nil)
+var _ dispatch.Actor = (*Actor)(nil)
 
-// signatures are the publicly (externally callable) methods of the AccountActor.
-var signatures = dispatch.Exports{
-	Constructor: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.Address},
-		Return: []abi.Type{},
-	},
-}
-
-// Method returns method definition for a given method id.
-func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSignature, bool) {
-	switch id {
-	case Constructor:
-		return reflect.ValueOf((*Impl)(a).Constructor), signatures[Constructor], true
+// Exports implements `dispatch.Actor`
+func (a *Actor) Exports() []interface{} {
+	return []interface{}{
+		Constructor: (*Impl)(a).Constructor,
 	}
-	return nil, nil, false
 }
 
 // InitializeState for account actors does nothing.
@@ -99,12 +87,11 @@ func (*Actor) InitializeState(handle runtime.ActorStateHandle, initializerData i
 type Impl Actor
 
 // Constructor initializes the actor's state
-func (impl *Impl) Constructor(ctx runtime.InvocationContext, addr address.Address) (uint8, error) {
+func (impl *Impl) Constructor(ctx runtime.InvocationContext, addr address.Address) {
 	ctx.ValidateCaller(pattern.IsAInitActor{})
 
 	err := (*Actor)(impl).InitializeState(ctx.StateHandle(), NewState(addr))
 	if err != nil {
-		return 1, err
+		panic(err)
 	}
-	return 0, nil
 }

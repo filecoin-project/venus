@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -47,7 +46,7 @@ type ChainStateReadWriter struct {
 	readWriter      chainReadWriter
 	bstore          blockstore.Blockstore // Provides chain blocks.
 	messageProvider chain.MessageProvider
-	actors          builtin.Actors
+	actors          vm.ActorCodeLoader
 	cborutil.ReadOnlyIpldStore
 }
 
@@ -84,7 +83,7 @@ var (
 )
 
 // NewChainStateReadWriter returns a new ChainStateReadWriter.
-func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider, bs blockstore.Blockstore, ba builtin.Actors) *ChainStateReadWriter {
+func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider, bs blockstore.Blockstore, ba vm.ActorCodeLoader) *ChainStateReadWriter {
 	return &ChainStateReadWriter{
 		readWriter:        crw,
 		bstore:            bs,
@@ -205,7 +204,7 @@ func (chn *ChainStateReadWriter) LsActors(ctx context.Context) (<-chan state.Get
 // GetActorSignature returns the signature of the given actor's given method.
 // The function signature is typically used to enable a caller to decode the
 // output of an actor method call (message).
-func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*vm.FunctionSignature, error) {
+func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (vm.ActorMethodSignature, error) {
 	if method == types.SendMethodID {
 		return nil, ErrNoMethod
 	}
@@ -217,14 +216,14 @@ func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAdd
 		return nil, ErrNoActorImpl
 	}
 
-	// TODO: use chain height to determine protocol version (#3360)
-	executable, err := chn.actors.GetActorCode(actor.Code.Cid, 0)
+	// Dragons: this is broken, we need to ask the VM for the impl, it might need to apply migrations based on epoch
+	executable, err := chn.actors.GetActorImpl(actor.Code.Cid)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load actor code")
 	}
 
-	_, signature, ok := executable.Method(method)
-	if !ok {
+	signature, err := executable.Signature(method)
+	if err != nil {
 		return nil, fmt.Errorf("missing export: %s", method)
 	}
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 
 	"github.com/filecoin-project/go-address"
@@ -17,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -133,13 +133,14 @@ func RequireNewFakeActor(t *testing.T, vms vm.Storage, addr address.Address, cod
 // RequireNewFakeActorWithTokens instantiates and returns a new fake actor and requires
 // that its steps succeed.
 func RequireNewFakeActorWithTokens(t *testing.T, vms vm.Storage, addr address.Address, codeCid cid.Cid, amt types.AttoFIL) *actor.Actor {
-	act := actor.NewActor(codeCid, amt)
-	var err error
-	rawHead, err := (&actor.FakeActor{}).InitializeState(vms, &actor.FakeActorStorage{})
-	require.NoError(t, err)
-	act.Head = e.NewCid(rawHead)
-	require.NoError(t, vms.Flush())
-	return act
+	// act := actor.NewActor(codeCid, amt)
+	// var err error
+	// rawHead, err := (&actor.FakeActor{}).InitializeState(vms, &actor.FakeActorStorage{})
+	// require.NoError(t, err)
+	// act.Head = e.NewCid(rawHead)
+	// require.NoError(t, vms.Flush())
+	// return act
+	return nil
 }
 
 // RequireNewInitActor instantiates and returns a new init actor
@@ -203,7 +204,10 @@ func CreateTestMinerWith(
 	height uint64,
 ) address.Address {
 	ctx := context.TODO()
-	pdata := actor.MustConvertParams(types.OneKiBSectorSize, pid)
+	pdata, err := encoding.Encode([]interface{}{types.OneKiBSectorSize, pid})
+	if err != nil {
+		panic(err)
+	}
 	idAddr, found, err := consensus.ResolveAddress(ctx, minerOwnerAddr, state.NewCachedTree(st), vms)
 	require.NoError(t, err)
 	require.True(t, found)

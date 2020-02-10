@@ -28,8 +28,7 @@ func main() {
 	logging.SetAllLoggers(logging.LevelDebug)
 
 	if err := gen.WriteToFile(filepath.Join(base, "actor/actor_encoding_gen.go"), gen.IpldCborTypeEncodingGenerator{}, "actor",
-		actor.Actor{},            // actor/actor.go
-		actor.FakeActorStorage{}, // actor/testing.go
+		actor.Actor{}, // actor/actor.go
 	); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

@@ -12,10 +12,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -131,7 +130,7 @@ func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *block.Block
 
 // NewFakeProcessor creates a processor with a test validator and test rewarder
 func NewFakeProcessor() *consensus.DefaultProcessor {
-	return consensus.NewConfiguredProcessor(builtin.DefaultActors)
+	return consensus.NewConfiguredProcessor(vm.DefaultActors)
 }
 
 type testSigner struct{}
@@ -144,7 +143,7 @@ func (ms testSigner) SignBytes(data []byte, addr address.Address) (types.Signatu
 func RequireActorIDAddress(ctx context.Context, t *testing.T, st state.Tree, store vm.Storage, addr address.Address) address.Address {
 	// Dragons: why is this needed? delete
 
-	// processor := consensus.NewConfiguredProcessor(builtin.DefaultActors)
+	// processor := consensus.NewConfiguredProcessor(vm.DefaultActors)
 	// params, err := abi.ToEncodedValues(addr)
 	// require.NoError(t, err)
 
@@ -165,16 +164,16 @@ func RequireActorIDAddress(ctx context.Context, t *testing.T, st state.Tree, sto
 // ApplyTestMessage sends a message directly to the vm, bypassing message
 // validation
 func ApplyTestMessage(st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
-	return applyTestMessageWithAncestors(builtin.DefaultActors, st, store, msg, bh, nil)
+	return applyTestMessageWithAncestors(vm.DefaultActors, st, store, msg, bh, nil)
 }
 
 // ApplyTestMessageWithActors sends a message directly to the vm with a given set of builtin actors
-func ApplyTestMessageWithActors(actors builtin.Actors, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
+func ApplyTestMessageWithActors(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
 	return applyTestMessageWithAncestors(actors, st, store, msg, bh, nil)
 }
 
 // ApplyTestMessageWithGas uses the FakeBlockRewarder but the default SignedMessageValidator
-func ApplyTestMessageWithGas(actors builtin.Actors, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh *types.BlockHeight, minerOwner address.Address) (*consensus.ApplicationResult, error) {
+func ApplyTestMessageWithGas(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh *types.BlockHeight, minerOwner address.Address) (*consensus.ApplicationResult, error) {
 	applier := consensus.NewConfiguredProcessor(actors)
 	return newMessageApplier(msg, applier, st, store, bh, minerOwner, nil)
 }
@@ -205,9 +204,12 @@ func newMessageApplier(msg *types.UnsignedMessage, processor *consensus.DefaultP
 func CreateAndApplyTestMessageFrom(t *testing.T, st state.Tree, vms vm.Storage, from address.Address, to address.Address, val, bh uint64, method types.MethodID, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
 	t.Helper()
 
-	pdata := actor.MustConvertParams(params...)
+	pdata, err := encoding.Encode(params)
+	if err != nil {
+		panic(err)
+	}
 	msg := types.NewUnsignedMessage(from, to, 0, types.NewAttoFILFromFIL(val), method, pdata)
-	return applyTestMessageWithAncestors(builtin.DefaultActors, st, vms, msg, types.NewBlockHeight(bh), ancestors)
+	return applyTestMessageWithAncestors(vm.DefaultActors, st, vms, msg, types.NewBlockHeight(bh), ancestors)
 }
 
 // CreateAndApplyTestMessage wraps the given parameters in a message and calls
@@ -216,7 +218,7 @@ func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.Storage, to a
 	return CreateAndApplyTestMessageFrom(t, st, vms, address.TestAddress, to, val, bh, method, ancestors, params...)
 }
 
-func applyTestMessageWithAncestors(actors builtin.Actors, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh *types.BlockHeight, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
+func applyTestMessageWithAncestors(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh *types.BlockHeight, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
 	msg.GasPrice = types.NewGasPrice(1)
 	msg.GasLimit = types.NewGasUnits(300)
 
@@ -224,6 +226,6 @@ func applyTestMessageWithAncestors(actors builtin.Actors, st state.Tree, store v
 	return newMessageApplier(msg, ta, st, store, bh, address.Undef, ancestors)
 }
 
-func newTestApplier(actors builtin.Actors) *consensus.DefaultProcessor {
+func newTestApplier(actors vm.ActorCodeLoader) *consensus.DefaultProcessor {
 	return consensus.NewConfiguredProcessor(actors)
 }

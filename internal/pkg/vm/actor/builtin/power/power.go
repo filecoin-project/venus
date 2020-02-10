@@ -3,9 +3,9 @@ package power
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
@@ -14,11 +14,11 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
@@ -74,52 +74,13 @@ func NewActor() *actor.Actor {
 // ExecutableActor impl for Actor
 //
 
-var _ dispatch.ExecutableActor = (*Actor)(nil)
+var _ dispatch.Actor = (*Actor)(nil)
 
-var signatures = dispatch.Exports{
-	CreateStorageMiner: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.Address, abi.Address, abi.PeerID, abi.BytesAmount},
-		Return: []abi.Type{abi.Address},
-	},
-	RemoveStorageMiner: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.Address},
-		Return: nil,
-	},
-	GetTotalPower: &dispatch.FunctionSignature{
-		Params: nil,
-		Return: []abi.Type{abi.BytesAmount},
-	},
-	ProcessPowerReport: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.PowerReport, abi.Address},
-		Return: nil,
-	},
-	GetPowerReport: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.Address},
-		Return: []abi.Type{abi.PowerReport},
-	},
-	GetSectorSize: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.Address},
-		Return: []abi.Type{abi.BytesAmount},
-	},
-}
-
-// Method returns method definition for a given method id.
-func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSignature, bool) {
-	switch id {
-	case CreateStorageMiner:
-		return reflect.ValueOf((*impl)(a).createStorageMiner), signatures[CreateStorageMiner], true
-	case RemoveStorageMiner:
-		return reflect.ValueOf((*impl)(a).removeStorageMiner), signatures[RemoveStorageMiner], true
-	case GetTotalPower:
-		return reflect.ValueOf((*impl)(a).getTotalPower), signatures[GetTotalPower], true
-	case ProcessPowerReport:
-		return reflect.ValueOf((*impl)(a).processPowerReport), signatures[ProcessPowerReport], true
-	case GetPowerReport:
-		return reflect.ValueOf((*impl)(a).getPowerReport), signatures[GetPowerReport], true
-	case GetSectorSize:
-		return reflect.ValueOf((*impl)(a).getSectorSize), signatures[GetSectorSize], true
-	default:
-		return nil, nil, false
+// Exports implements `dispatch.Actor`
+func (a *Actor) Exports() []interface{} {
+	return []interface{}{
+		CreateStorageMiner: (*impl)(a).createStorageMiner,
+		ProcessPowerReport: (*impl)(a).processPowerReport,
 	}
 }
 
@@ -151,12 +112,32 @@ var Errors = map[uint8]error{
 	ErrDuplicateEntry:       fmt.Errorf("duplicate create power table entry attempt"),
 }
 
+// CreateStorageMinerParams is the params for the CreateStorageMiner method.
+type CreateStorageMinerParams struct {
+	OwnerAddr  address.Address
+	WorkerAddr address.Address
+	PeerID     peer.ID
+	SectorSize *types.BytesAmount
+}
+
 // CreateStorageMiner creates a new record of a miner in the power table.
-func (*impl) createStorageMiner(vmctx runtime.InvocationContext, ownerAddr, workerAddr address.Address, pid peer.ID, sectorSize *types.BytesAmount) (address.Address, uint8, error) {
+func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateStorageMinerParams) address.Address {
 	vmctx.ValidateCaller(pattern.Any{})
 
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return address.Undef, internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
+		runtime.Abort(exitcode.OutOfGas)
+	}
+
+	initParams := miner.ConstructorParams{
+		OwnerAddr:  vmctx.Message().Caller(),
+		WorkerAddr: vmctx.Message().Caller(),
+		PeerID:     params.PeerID,
+		SectorSize: params.SectorSize,
+	}
+
+	constructorParams, err := encoding.Encode(initParams)
+	if err != nil {
+		panic(err)
 	}
 
 	actorCodeCid := types.MinerActorCodeCid
@@ -165,15 +146,16 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, ownerAddr, work
 		actorCodeCid = types.BootstrapMinerActorCodeCid
 	}
 
-	initParams := []interface{}{vmctx.Message().Caller(), vmctx.Message().Caller(), pid, sectorSize}
-
 	// create miner actor by messaging the init actor and sending it collateral
-	ret := vmctx.Send(vmaddr.InitAddress, initactor.ExecMethodID, vmctx.Message().ValueReceived(), []interface{}{actorCodeCid, initParams})
+	ret := vmctx.Send(vmaddr.InitAddress, initactor.ExecMethodID, vmctx.Message().ValueReceived(), initactor.ExecParams{
+		ActorCodeCid:      actorCodeCid,
+		ConstructorParams: constructorParams,
+	})
 
 	actorIDAddr := ret.(address.Address)
 
 	var state State
-	ret, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
+	ret, err = vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
 		// Update power table.
 		ctx := context.Background()
 		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
@@ -192,7 +174,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, ownerAddr, work
 				InactivePower:          types.NewBytesAmount(0),
 				AvailableBalance:       types.ZeroAttoFIL,
 				LockedPledgeCollateral: types.ZeroAttoFIL,
-				SectorSize:             sectorSize,
+				SectorSize:             params.SectorSize,
 			})
 			if err != nil {
 				return fmt.Errorf("Could not set power table at address: %s", actorIDAddr.String())
@@ -206,10 +188,10 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, ownerAddr, work
 		return actorIDAddr, nil
 	})
 	if err != nil {
-		return address.Undef, 1, err
+		panic(err)
 	}
 
-	return ret.(address.Address), 0, nil
+	return ret.(address.Address)
 }
 
 // RemoveStorageMiner removes the given miner address from the power table.  This call will fail if
@@ -343,12 +325,18 @@ func (*impl) getSectorSize(vmctx runtime.InvocationContext, addr address.Address
 	return ret.(*types.BytesAmount), 0, nil
 }
 
+// ProcessPowerReportParams is what is says.
+type ProcessPowerReportParams struct {
+	Report     types.PowerReport
+	UpdateAddr address.Address
+}
+
 // ProcessPowerReport updates a registered miner's power table entry according to the power report.
-func (*impl) processPowerReport(vmctx runtime.InvocationContext, report types.PowerReport, updateAddr address.Address) (uint8, error) {
+func (*impl) processPowerReport(vmctx runtime.InvocationContext, params ProcessPowerReportParams) {
 	vmctx.ValidateCaller(pattern.Any{})
 
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
+		runtime.Abort(exitcode.OutOfGas)
 	}
 
 	var state State
@@ -357,17 +345,17 @@ func (*impl) processPowerReport(vmctx runtime.InvocationContext, report types.Po
 		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
 			// Find entry to update.
 			var updateEntry TableEntry
-			err := lookup.Find(ctx, updateAddr.String(), &updateEntry)
+			err := lookup.Find(ctx, params.UpdateAddr.String(), &updateEntry)
 			if err != nil {
 				if err == hamt.ErrNotFound {
 					return Errors[ErrUnknownEntry]
 				}
-				return fmt.Errorf("Could not retrieve power table entry with ID: %s", updateAddr.String())
+				return fmt.Errorf("Could not retrieve power table entry with ID: %s", params.UpdateAddr.String())
 			}
 			// All clear to update
-			updateEntry.ActivePower = report.ActivePower
-			updateEntry.InactivePower = report.InactivePower
-			return lookup.Set(ctx, updateAddr.String(), updateEntry)
+			updateEntry.ActivePower = params.Report.ActivePower
+			updateEntry.InactivePower = params.Report.InactivePower
+			return lookup.Set(ctx, params.UpdateAddr.String(), updateEntry)
 		})
 		if err != nil {
 			return nil, err
@@ -376,7 +364,6 @@ func (*impl) processPowerReport(vmctx runtime.InvocationContext, report types.Po
 		return nil, nil
 	})
 	if err != nil {
-		return 1, err
+		panic(err)
 	}
-	return 0, nil
 }

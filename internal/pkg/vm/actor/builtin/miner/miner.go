@@ -3,7 +3,6 @@ package miner
 import (
 	"fmt"
 	"math/big"
-	"reflect"
 
 	"github.com/filecoin-project/go-address"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -13,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
@@ -204,160 +202,12 @@ func (view *View) Owner() address.Address {
 // ExecutableActor impl for Actor
 //
 
-var _ dispatch.ExecutableActor = (*Actor)(nil)
+var _ dispatch.Actor = (*Actor)(nil)
 
-var signatures = dispatch.Exports{
-	Constructor: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.Address, abi.Address, abi.PeerID, abi.BytesAmount},
-		Return: []abi.Type{},
-	},
-	// addAsk is not in the spec, but there's not yet another mechanism to discover asks.
-	AddAsk: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.AttoFIL, abi.Integer},
-		Return: []abi.Type{abi.Integer},
-	},
-	GetOwner: &dispatch.FunctionSignature{
-		Params: nil,
-		Return: []abi.Type{abi.Address},
-	},
-	CommitSector: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.SectorID, abi.Bytes, abi.Bytes, abi.Bytes, abi.PoRepProof},
-		Return: []abi.Type{},
-	},
-	GetWorker: &dispatch.FunctionSignature{
-		Params: []abi.Type{},
-		Return: []abi.Type{abi.Address},
-	},
-	GetPeerID: &dispatch.FunctionSignature{
-		Params: []abi.Type{},
-		Return: []abi.Type{abi.PeerID},
-	},
-	UpdatePeerID: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.PeerID},
-		Return: []abi.Type{},
-	},
-	GetPower: &dispatch.FunctionSignature{
-		Params: []abi.Type{},
-		Return: []abi.Type{abi.BytesAmount},
-	},
-	AddFaults: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.FaultSet},
-		Return: []abi.Type{},
-	},
-	SubmitPoSt: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.PoStProof, abi.FaultSet, abi.IntSet},
-		Return: []abi.Type{},
-	},
-	SlashStorageFault: &dispatch.FunctionSignature{
-		Params: []abi.Type{},
-		Return: []abi.Type{},
-	},
-	ChangeWorker: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.Address},
-		Return: []abi.Type{},
-	},
-	// verifyPieceInclusion is not in spec, but should be.
-	VerifyPieceInclusion: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.Bytes, abi.BytesAmount, abi.SectorID, abi.Bytes},
-		Return: []abi.Type{},
-	},
-	GetSectorSize: &dispatch.FunctionSignature{
-		Params: nil,
-		Return: []abi.Type{abi.BytesAmount},
-	},
-
-	// Non-exported methods below here.
-	// These methods are not part of the actor's protocol specification and should not be exported,
-	// but are because we lack a mechanism to invoke actor methods without going through the
-	// queryMessage infrastructure. These should be removed when we have another way of invoking
-	// them from worker code. https://github.com/filecoin-project/go-filecoin/issues/2973
-	GetAsks: &dispatch.FunctionSignature{
-		Params: nil,
-		Return: []abi.Type{abi.UintArray},
-	},
-	GetAsk: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.Integer},
-		Return: []abi.Type{abi.Bytes},
-	},
-	GetLastUsedSectorID: &dispatch.FunctionSignature{
-		Params: nil,
-		Return: []abi.Type{abi.SectorID},
-	},
-	GetProvingSetCommitments: &dispatch.FunctionSignature{
-		Params: nil,
-		Return: []abi.Type{abi.CommitmentsMap},
-	},
-	IsBootstrapMiner: &dispatch.FunctionSignature{
-		Params: nil,
-		Return: []abi.Type{abi.Boolean},
-	},
-	GetPoStState: &dispatch.FunctionSignature{
-		Params: nil,
-		Return: []abi.Type{abi.Integer},
-	},
-	GetProvingWindow: &dispatch.FunctionSignature{
-		Params: []abi.Type{},
-		Return: []abi.Type{abi.UintArray},
-	},
-	CalculateLateFee: &dispatch.FunctionSignature{
-		Params: []abi.Type{abi.BlockHeight},
-		Return: []abi.Type{abi.AttoFIL},
-	},
-	GetActiveCollateral: &dispatch.FunctionSignature{
-		Params: []abi.Type{},
-		Return: []abi.Type{abi.AttoFIL},
-	},
-}
-
-// Method returns method definition for a given method id.
-func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSignature, bool) {
-	switch id {
-	case Constructor:
-		return reflect.ValueOf((*Impl)(a).Constructor), signatures[Constructor], true
-	case AddAsk:
-		return reflect.ValueOf((*Impl)(a).AddAsk), signatures[AddAsk], true
-	case GetOwner:
-		return reflect.ValueOf((*Impl)(a).GetOwner), signatures[GetOwner], true
-	case CommitSector:
-		return reflect.ValueOf((*Impl)(a).CommitSector), signatures[CommitSector], true
-	case GetWorker:
-		return reflect.ValueOf((*Impl)(a).GetWorker), signatures[GetWorker], true
-	case GetPeerID:
-		return reflect.ValueOf((*Impl)(a).GetPeerID), signatures[GetPeerID], true
-	case UpdatePeerID:
-		return reflect.ValueOf((*Impl)(a).UpdatePeerID), signatures[UpdatePeerID], true
-	case GetPower:
-		return reflect.ValueOf((*Impl)(a).GetPower), signatures[GetPower], true
-	case AddFaults:
-		return reflect.ValueOf((*Impl)(a).AddFaults), signatures[AddFaults], true
-	case SubmitPoSt:
-		return reflect.ValueOf((*Impl)(a).SubmitPoSt), signatures[SubmitPoSt], true
-	case SlashStorageFault:
-		return reflect.ValueOf((*Impl)(a).SlashStorageFault), signatures[SlashStorageFault], true
-	case ChangeWorker:
-		return reflect.ValueOf((*Impl)(a).ChangeWorker), signatures[ChangeWorker], true
-	case GetSectorSize:
-		return reflect.ValueOf((*Impl)(a).GetSectorSize), signatures[GetSectorSize], true
-	case GetAsks:
-		return reflect.ValueOf((*Impl)(a).GetAsks), signatures[GetAsks], true
-	case GetAsk:
-		return reflect.ValueOf((*Impl)(a).GetAsk), signatures[GetAsk], true
-	case GetLastUsedSectorID:
-		return reflect.ValueOf((*Impl)(a).GetLastUsedSectorID), signatures[GetLastUsedSectorID], true
-	case GetProvingSetCommitments:
-		return reflect.ValueOf((*Impl)(a).GetProvingSetCommitments), signatures[GetProvingSetCommitments], true
-	case IsBootstrapMiner:
-		return reflect.ValueOf((*Impl)(a).IsBootstrapMiner), signatures[IsBootstrapMiner], true
-	case GetPoStState:
-		return reflect.ValueOf((*Impl)(a).GetPoStState), signatures[GetPoStState], true
-	case GetProvingWindow:
-		return reflect.ValueOf((*Impl)(a).GetProvingWindow), signatures[GetProvingWindow], true
-	case CalculateLateFee:
-		return reflect.ValueOf((*Impl)(a).CalculateLateFee), signatures[CalculateLateFee], true
-	case GetActiveCollateral:
-		return reflect.ValueOf((*Impl)(a).GetActiveCollateral), signatures[GetActiveCollateral], true
-	default:
-		return nil, nil, false
+// Exports implements `dispatch.Actor`
+func (a *Actor) Exports() []interface{} {
+	return []interface{}{
+		Constructor: (*Impl)(a).Constructor,
 	}
 }
 
@@ -462,15 +312,22 @@ type invocationContext interface {
 	LegacyMessage() *types.UnsignedMessage
 }
 
+// ConstructorParams is what it is.
+type ConstructorParams struct {
+	OwnerAddr  address.Address
+	WorkerAddr address.Address
+	PeerID     peer.ID
+	SectorSize *types.BytesAmount
+}
+
 // Constructor initializes the actor's state
-func (impl *Impl) Constructor(ctx runtime.InvocationContext, owner, worker address.Address, pid peer.ID, sectorSize *types.BytesAmount) (uint8, error) {
+func (impl *Impl) Constructor(ctx runtime.InvocationContext, params ConstructorParams) {
 	ctx.ValidateCaller(pattern.IsAInitActor{})
 
-	err := (*Actor)(impl).InitializeState(ctx.StateHandle(), NewState(owner, worker, pid, sectorSize))
+	err := (*Actor)(impl).InitializeState(ctx.StateHandle(), NewState(params.OwnerAddr, params.WorkerAddr, params.PeerID, params.SectorSize))
 	if err != nil {
-		return 1, err
+		panic(err)
 	}
-	return 0, nil
 }
 
 // AddAsk adds an ask to this miners ask list
