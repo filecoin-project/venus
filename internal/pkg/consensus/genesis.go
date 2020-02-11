@@ -246,10 +246,15 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 		}
 
 		emptyBLSSignature := bls.Aggregate([]bls.Signature{})
+		emptyMeta := types.TxMeta{SecpRoot: e.NewCid(emptyAMTCid), BLSRoot: e.NewCid(emptyAMTCid)}
+		emptyMetaCid, err := cst.Put(ctx, emptyMeta)
+		if err != nil {
+			return nil, err
+		}
 
 		genesis := &block.Block{
 			StateRoot:       e.NewCid(c),
-			Messages:        types.TxMeta{SecpRoot: e.NewCid(emptyAMTCid), BLSRoot: e.NewCid(emptyAMTCid)},
+			Messages:        e.NewCid(emptyMetaCid),
 			MessageReceipts: e.NewCid(emptyAMTCid),
 			BLSAggregateSig: emptyBLSSignature[:],
 			Ticket:          block.Ticket{VRFProof: []byte{0xec}},

@@ -204,7 +204,7 @@ func TestBlockDaemon(t *testing.T) {
 		assert.Equal(t, from, blockGetBlock.Messages[0].Message.From)
 
 		// Full block matches show messages
-		messagesGetLine := cmdClient.RunSuccessFirstLine(ctx, "show", "messages", blockGetBlock.Header.Messages.SecpRoot.String(), "--enc", "json")
+		messagesGetLine := cmdClient.RunSuccessFirstLine(ctx, "show", "messages", blockGetBlock.Header.Messages.String(), "--enc", "json")
 		var messages []*types.SignedMessage
 		require.NoError(t, json.Unmarshal([]byte(messagesGetLine), &messages))
 		assert.Equal(t, blockGetBlock.Messages, messages)

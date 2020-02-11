@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 
 	"github.com/ipfs/go-cid"
@@ -127,9 +126,9 @@ Timestamp:  %s
 
 var showMessagesCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Show a filecoin message collection by its CID",
+		Tagline: "Show a filecoin message collection by txmeta CID",
 		ShortDescription: `Prints info for all messages in a collection,
-at the given CID.  Message collection CIDs are found in the "Messages" field of 
+at the given CID.  This CID is found in the "Messages" field of 
 the filecoin block header.`,
 	},
 	Arguments: []cmdkit.Argument{
@@ -141,10 +140,7 @@ the filecoin block header.`,
 			return err
 		}
 
-		messages, err := GetPorcelainAPI(env).ChainGetMessages(
-			req.Context,
-			types.TxMeta{SecpRoot: e.NewCid(cid), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
-		)
+		messages, err := GetPorcelainAPI(env).ChainGetMessages(req.Context, cid)
 		if err != nil {
 			return err
 		}

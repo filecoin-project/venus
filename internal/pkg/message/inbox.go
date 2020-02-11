@@ -29,7 +29,7 @@ type Inbox struct {
 
 // messageProvider provides message collections given their cid.
 type messageProvider interface {
-	LoadMessages(context.Context, types.TxMeta) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
+	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
 }
 
 // NewInbox constructs a new inbox.
@@ -77,7 +77,7 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []block.T
 	for _, tipset := range oldChain {
 		for i := 0; i < tipset.Len(); i++ {
 			block := tipset.At(i)
-			secpMsgs, _, err := ib.messageProvider.LoadMessages(ctx, block.Messages)
+			secpMsgs, _, err := ib.messageProvider.LoadMessages(ctx, block.Messages.Cid)
 			if err != nil {
 				return err
 			}
@@ -97,7 +97,7 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []block.T
 	var removeCids []cid.Cid
 	for _, tipset := range newChain {
 		for i := 0; i < tipset.Len(); i++ {
-			secpMsgs, _, err := ib.messageProvider.LoadMessages(ctx, tipset.At(i).Messages)
+			secpMsgs, _, err := ib.messageProvider.LoadMessages(ctx, tipset.At(i).Messages.Cid)
 			if err != nil {
 				return err
 			}

@@ -349,16 +349,12 @@ func requireBlockStorePut(t *testing.T, bs bstore.Blockstore, data format.Node) 
 }
 
 func simpleBlock() *block.Block {
-	meta := types.TxMeta{
-		SecpRoot: e.NewCid(types.EmptyMessagesCID),
-		BLSRoot:  e.NewCid(types.EmptyMessagesCID),
-	}
 	return &block.Block{
 		ParentWeight:    fbig.Zero(),
 		Parents:         block.NewTipSetKey(),
 		Height:          0,
 		StateRoot:       e.NewCid(types.EmptyMessagesCID),
-		Messages:        meta,
+		Messages:        e.NewCid(types.EmptyTxMetaCID),
 		MessageReceipts: e.NewCid(types.EmptyReceiptsCID),
 	}
 }

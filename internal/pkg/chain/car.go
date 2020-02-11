@@ -80,25 +80,38 @@ func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carM
 				filter[hdr.Cid()] = true
 			}
 
-			secpMsgs, blsMsgs, err := mr.LoadMessages(ctx, hdr.Messages)
+			meta, err := mr.LoadTxMeta(ctx, hdr.Messages.Cid)
 			if err != nil {
 				return err
 			}
 
-			if !filter[hdr.Messages.SecpRoot.Cid] {
-				logCar.Debugf("writing message collection: %s", hdr.Messages)
+			if !filter[hdr.Messages.Cid] {
+				logCar.Debugf("writing txMeta: %s", hdr.Messages)
+				if err := exportTxMeta(ctx, out, meta); err != nil {
+					return err
+				}
+				filter[hdr.Messages.Cid] = true
+			}
+
+			secpMsgs, blsMsgs, err := mr.LoadMessages(ctx, hdr.Messages.Cid)
+			if err != nil {
+				return err
+			}
+
+			if !filter[meta.SecpRoot.Cid] {
+				logCar.Debugf("writing secp message collection: %s", hdr.Messages)
 				if err := exportAMTSignedMessages(ctx, out, secpMsgs); err != nil {
 					return err
 				}
-				filter[hdr.Messages.SecpRoot.Cid] = true
+				filter[meta.SecpRoot.Cid] = true
 			}
 
-			if !filter[hdr.Messages.BLSRoot.Cid] {
-				logCar.Debugf("writing message collection: %s", hdr.Messages)
+			if !filter[meta.BLSRoot.Cid] {
+				logCar.Debugf("writing bls message collection: %s", hdr.Messages)
 				if err := exportAMTUnsignedMessages(ctx, out, blsMsgs); err != nil {
 					return err
 				}
-				filter[hdr.Messages.BLSRoot.Cid] = true
+				filter[meta.BLSRoot.Cid] = true
 			}
 
 			// TODO(#3473) we can remove MessageReceipts from the exported file once addressed.
@@ -160,6 +173,12 @@ func exportAMTReceipts(ctx context.Context, out io.Writer, receipts []*types.Mes
 	ms := carWritingMessageStore(out)
 
 	_, err := ms.StoreReceipts(ctx, receipts)
+	return err
+}
+
+func exportTxMeta(ctx context.Context, out io.Writer, meta types.TxMeta) error {
+	ms := carWritingMessageStore(out)
+	_, err := ms.StoreTxMeta(ctx, meta)
 	return err
 }
 

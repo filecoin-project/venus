@@ -194,7 +194,7 @@ func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, ro
 			child := &block.Block{
 				Height:          height,
 				Parents:         parents.Key(),
-				Messages:        emptyTxMeta,
+				Messages:        e.NewCid(emptyTxMeta),
 				MessageReceipts: e.NewCid(emptyReceiptsCid),
 			}
 			mustPut(store, child)
@@ -214,7 +214,7 @@ func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, ro
 			}
 
 			child := &block.Block{
-				Messages:  txMeta,
+				Messages:  e.NewCid(txMeta),
 				Parents:   parents.Key(),
 				Height:    height,
 				StateRoot: e.NewCid(stateRootCidGetter()), // Differentiate all blocks

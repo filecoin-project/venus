@@ -159,10 +159,15 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst cbor.IpldStore, bs blockst
 	}
 
 	emptyBLSSignature := bls.Aggregate([]bls.Signature{})
+	meta := types.TxMeta{SecpRoot: e.NewCid(emptyAMTCid), BLSRoot: e.NewCid(emptyAMTCid)}
+	metaCid, err := cst.Put(ctx, meta)
+	if err != nil {
+		return nil, err
+	}
 
 	geneblk := &block.Block{
 		StateRoot:       e.NewCid(stateRoot),
-		Messages:        types.TxMeta{SecpRoot: e.NewCid(emptyAMTCid), BLSRoot: e.NewCid(emptyAMTCid)},
+		Messages:        e.NewCid(metaCid),
 		MessageReceipts: e.NewCid(emptyAMTCid),
 		BLSAggregateSig: emptyBLSSignature[:],
 		Ticket:          block.Ticket{VRFProof: []byte{0xec}},

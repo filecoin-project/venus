@@ -39,7 +39,7 @@ func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWei
 		Parents:         blk.NewTipSetKey(parentCid),
 		ParentWeight:    fbig.NewInt(int64(parentWeight)),
 		Height:          42 + uint64(height),
-		Messages:        types.TxMeta{SecpRoot: e.NewCid(cidGetter()), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
+		Messages:        e.NewCid(cidGetter()),
 		StateRoot:       e.NewCid(cidGetter()),
 		MessageReceipts: e.NewCid(cidGetter()),
 		Timestamp:       timestamp,

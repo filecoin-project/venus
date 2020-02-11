@@ -196,7 +196,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 			ParentWeight:    parentWeight,
 			Parents:         parent.Key(),
 			Height:          height,
-			Messages:        types.TxMeta{SecpRoot: e.NewCid(types.EmptyMessagesCID), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
+			Messages:        e.NewCid(types.EmptyTxMetaCID),
 			MessageReceipts: e.NewCid(types.EmptyReceiptsCID),
 			BLSAggregateSig: emptyBLSSig,
 			// Omitted fields below
@@ -213,7 +213,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 		// Compute state root for this block.
 		ctx := context.Background()
 		prevState := f.StateForKey(parent.Key())
-		smsgs, umsgs, err := f.messages.LoadMessages(ctx, b.Messages)
+		smsgs, umsgs, err := f.messages.LoadMessages(ctx, b.Messages.Cid)
 		require.NoError(f.t, err)
 		stateRootRaw, _, err := f.stateBuilder.ComputeState(prevState, [][]*types.UnsignedMessage{umsgs}, [][]*types.SignedMessage{smsgs})
 		require.NoError(f.t, err)
@@ -266,7 +266,7 @@ func (f *Builder) tipMessages(tip block.TipSet) [][]*types.SignedMessage {
 	ctx := context.Background()
 	var msgs [][]*types.SignedMessage
 	for i := 0; i < tip.Len(); i++ {
-		smsgs, _, err := f.messages.LoadMessages(ctx, tip.At(i).Messages)
+		smsgs, _, err := f.messages.LoadMessages(ctx, tip.At(i).Messages.Cid)
 		require.NoError(f.t, err)
 		msgs = append(msgs, smsgs)
 	}
@@ -313,7 +313,7 @@ func (bb *BlockBuilder) AddMessages(secpmsgs []*types.SignedMessage, blsMsgs []*
 	meta, err := bb.messages.StoreMessages(ctx, secpmsgs, blsMsgs)
 	require.NoError(bb.t, err)
 
-	bb.block.Messages = meta
+	bb.block.Messages = e.NewCid(meta)
 }
 
 // SetStateRoot sets the block's state root.
@@ -572,8 +572,8 @@ func (f *Builder) RequireTipSets(head block.TipSetKey, count int) []block.TipSet
 }
 
 // LoadMessages returns the message collections tracked by the builder.
-func (f *Builder) LoadMessages(ctx context.Context, meta types.TxMeta) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
-	return f.messages.LoadMessages(ctx, meta)
+func (f *Builder) LoadMessages(ctx context.Context, metaCid cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
+	return f.messages.LoadMessages(ctx, metaCid)
 }
 
 // LoadReceipts returns the message collections tracked by the builder.
@@ -581,9 +581,19 @@ func (f *Builder) LoadReceipts(ctx context.Context, c cid.Cid) ([]*types.Message
 	return f.messages.LoadReceipts(ctx, c)
 }
 
+// LoadTxMeta returns the tx meta wrapper tracked by the builder.
+func (f *Builder) LoadTxMeta(ctx context.Context, metaCid cid.Cid) (types.TxMeta, error) {
+	return f.messages.LoadTxMeta(ctx, metaCid)
+}
+
 // StoreReceipts stores message receipts and returns a commitment.
 func (f *Builder) StoreReceipts(ctx context.Context, receipts []*types.MessageReceipt) (cid.Cid, error) {
 	return f.messages.StoreReceipts(ctx, receipts)
+}
+
+// StoreTxMeta stores a tx meta
+func (f *Builder) StoreTxMeta(ctx context.Context, meta types.TxMeta) (cid.Cid, error) {
+	return f.messages.StoreTxMeta(ctx, meta)
 }
 
 ///// Internals /////
