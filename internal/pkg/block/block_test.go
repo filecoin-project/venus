@@ -67,7 +67,7 @@ func TestTriangleEncoding(t *testing.T) {
 			Miner:           newAddress(),
 			Ticket:          blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
 			Height:          2,
-			Messages:        types.TxMeta{SecpRoot: e.NewCid(types.CidFromString(t, "somecid")), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
+			Messages:        e.NewCid(types.CidFromString(t, "somecid")),
 			MessageReceipts: e.NewCid(types.CidFromString(t, "somecid")),
 			Parents:         blk.NewTipSetKey(types.CidFromString(t, "somecid")),
 			ParentWeight:    fbig.NewInt(1000),
@@ -119,7 +119,7 @@ func TestDecodeBlock(t *testing.T) {
 			Parents:         blk.NewTipSetKey(c1),
 			Height:          2,
 			ParentWeight:    fbig.Zero(),
-			Messages:        types.TxMeta{SecpRoot: e.NewCid(cM), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
+			Messages:        e.NewCid(cM),
 			StateRoot:       e.NewCid(c2),
 			MessageReceipts: e.NewCid(cR),
 		}
@@ -189,7 +189,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 	child.Parents = blk.NewTipSetKey(parent.Cid())
 	child.StateRoot = e.NewCid(parent.Cid())
 
-	child.Messages = types.TxMeta{SecpRoot: e.NewCid(types.CidFromString(t, "somecid")), BLSRoot: e.NewCid(types.EmptyMessagesCID)}
+	child.Messages = e.NewCid(types.CidFromString(t, "somecid"))
 	child.MessageReceipts = e.NewCid(types.CidFromString(t, "somecid"))
 
 	marshalled, e1 := json.Marshal(&child)
@@ -198,7 +198,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 
 	assert.Contains(t, str, child.Miner.String())
 	assert.Contains(t, str, parent.Cid().String())
-	assert.Contains(t, str, child.Messages.SecpRoot.String())
+	assert.Contains(t, str, child.Messages.String())
 	assert.Contains(t, str, child.MessageReceipts.String())
 
 	// marshal/unmarshal symmetry
@@ -222,7 +222,7 @@ func TestSignatureData(t *testing.T) {
 		Miner:           newAddress(),
 		Ticket:          blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
 		Height:          2,
-		Messages:        types.TxMeta{SecpRoot: e.NewCid(types.CidFromString(t, "somecid")), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
+		Messages:        e.NewCid(types.CidFromString(t, "somecid")),
 		MessageReceipts: e.NewCid(types.CidFromString(t, "somecid")),
 		Parents:         blk.NewTipSetKey(types.CidFromString(t, "somecid")),
 		ParentWeight:    fbig.NewInt(1000),
@@ -241,7 +241,7 @@ func TestSignatureData(t *testing.T) {
 		Miner:           newAddress(),
 		Ticket:          blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
 		Height:          3,
-		Messages:        types.TxMeta{SecpRoot: e.NewCid(types.CidFromString(t, "someothercid")), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
+		Messages:        e.NewCid(types.CidFromString(t, "someothercid")),
 		MessageReceipts: e.NewCid(types.CidFromString(t, "someothercid")),
 		Parents:         blk.NewTipSetKey(types.CidFromString(t, "someothercid")),
 		ParentWeight:    fbig.NewInt(1001),

@@ -427,7 +427,7 @@ func TestApplyBLSMessages(t *testing.T) {
 	block := r.NewBlock
 
 	t.Run("messages are divided into bls and secp messages", func(t *testing.T) {
-		secpMessages, blsMessages, err := msgStore.LoadMessages(ctx, block.Messages)
+		secpMessages, blsMessages, err := msgStore.LoadMessages(ctx, block.Messages.Cid)
 		require.NoError(t, err)
 
 		assert.Len(t, secpMessages, 5)
@@ -443,7 +443,7 @@ func TestApplyBLSMessages(t *testing.T) {
 	})
 
 	t.Run("all 10 messages are stored", func(t *testing.T) {
-		secpMessages, blsMessages, err := msgStore.LoadMessages(ctx, block.Messages)
+		secpMessages, blsMessages, err := msgStore.LoadMessages(ctx, block.Messages.Cid)
 		require.NoError(t, err)
 
 		assert.Len(t, secpMessages, 5)
@@ -454,7 +454,7 @@ func TestApplyBLSMessages(t *testing.T) {
 		digests := []bls.Digest{}
 		keys := []bls.PublicKey{}
 
-		_, blsMessages, err := msgStore.LoadMessages(ctx, block.Messages)
+		_, blsMessages, err := msgStore.LoadMessages(ctx, block.Messages.Cid)
 		require.NoError(t, err)
 		for _, msg := range blsMessages {
 			msgBytes, err := msg.Marshal()
@@ -533,10 +533,11 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
 
 	blk, err := worker.Generate(ctx, baseTipset, block.Ticket{VRFProof: []byte{2}}, 0, fakePoStInfo)
-
 	assert.NoError(t, err)
 
-	assert.Equal(t, types.EmptyMessagesCID, blk.Messages.SecpRoot.Cid)
+	txMeta, err := messages.LoadTxMeta(ctx, blk.Messages.Cid)
+	require.NoError(t, err)
+	assert.Equal(t, types.EmptyMessagesCID, txMeta.SecpRoot.Cid)
 
 	expectedStateRoot, err := meta.GetTipSetStateRoot(parentTipset.Key())
 	require.NoError(t, err)
@@ -651,7 +652,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 
 	// message and receipts can be loaded from message store and have
 	// length 1.
-	msgs, _, err := messages.LoadMessages(ctx, blk.Messages)
+	msgs, _, err := messages.LoadMessages(ctx, blk.Messages.Cid)
 	require.NoError(t, err)
 	assert.Len(t, msgs, 1) // This is the good message
 }
@@ -774,9 +775,10 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, pool.Pending(), 0) // This is the temporary failure.
-
-	assert.Equal(t, types.EmptyMessagesCID, blk.Messages.SecpRoot.Cid)
-	assert.Equal(t, types.EmptyMessagesCID, blk.Messages.BLSRoot.Cid)
+	txMeta, err := messages.LoadTxMeta(ctx, blk.Messages.Cid)
+	require.NoError(t, err)
+	assert.Equal(t, types.EmptyMessagesCID, txMeta.SecpRoot.Cid)
+	assert.Equal(t, types.EmptyMessagesCID, txMeta.BLSRoot.Cid)
 }
 
 // If something goes wrong while generating a new block, even as late as when flushing it,

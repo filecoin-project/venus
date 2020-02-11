@@ -195,7 +195,7 @@ func mustMakeTipset(t *testing.T, height uint64) block.TipSet {
 		ParentWeight:    fbig.Zero(),
 		Height:          height,
 		MessageReceipts: e.NewCid(types.EmptyMessagesCID),
-		Messages:        types.TxMeta{SecpRoot: e.NewCid(types.EmptyReceiptsCID), BLSRoot: e.NewCid(types.EmptyMessagesCID)},
+		Messages:        e.NewCid(types.EmptyTxMetaCID),
 	})
 	if err != nil {
 		t.Fatal(err)

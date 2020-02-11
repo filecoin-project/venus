@@ -26,6 +26,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -389,12 +390,15 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 	}
 
 	err = gsf.loadAndVerifySubComponents(ctx, tip, incomplete,
-		func(blk *block.Block) cid.Cid { return blk.Messages.SecpRoot.Cid }, func(rawBlock blocks.Block) error {
+		func(meta types.TxMeta) cid.Cid {
+			return meta.SecpRoot.Cid
+		},
+		func(rawBlock blocks.Block) error {
 			messages := []*types.SignedMessage{}
 
 			err := gsf.loadAndProcessAMTData(ctx, rawBlock.Cid(), func(msgBlock blocks.Block) error {
 				var message types.SignedMessage
-				if err := cbor.DecodeInto(msgBlock.RawData(), &message); err != nil {
+				if err := encoding.Decode(msgBlock.RawData(), &message); err != nil {
 					return errors.Wrapf(err, "could not decode secp message (cid %s)", msgBlock.Cid())
 				}
 				messages = append(messages, &message)
@@ -414,12 +418,15 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 	}
 
 	err = gsf.loadAndVerifySubComponents(ctx, tip, incomplete,
-		func(blk *block.Block) cid.Cid { return blk.Messages.BLSRoot.Cid }, func(rawBlock blocks.Block) error {
+		func(meta types.TxMeta) cid.Cid {
+			return meta.BLSRoot.Cid
+		},
+		func(rawBlock blocks.Block) error {
 			messages := []*types.UnsignedMessage{}
 
 			err := gsf.loadAndProcessAMTData(ctx, rawBlock.Cid(), func(msgBlock blocks.Block) error {
 				var message types.UnsignedMessage
-				if err := cbor.DecodeInto(msgBlock.RawData(), &message); err != nil {
+				if err := encoding.Decode(msgBlock.RawData(), &message); err != nil {
 					return errors.Wrapf(err, "could not decode bls message (cid %s)", msgBlock.Cid())
 				}
 				messages = append(messages, &message)
@@ -489,6 +496,19 @@ func (gsf *GraphSyncFetcher) loadAndProcessAMTData(ctx context.Context, c cid.Ci
 	})
 }
 
+func (gsf *GraphSyncFetcher) loadTxMeta(c cid.Cid) (types.TxMeta, error) {
+	rawMetaBlock, err := gsf.store.Get(c)
+	if err != nil {
+		return types.TxMeta{}, err
+	}
+	var ret types.TxMeta
+	err = encoding.Decode(rawMetaBlock.RawData(), &ret)
+	if err != nil {
+		return types.TxMeta{}, err
+	}
+	return ret, nil
+}
+
 // Loads and validates the block headers for a tipset. Returns the tipset if complete,
 // else the cids of blocks which are not yet stored.
 func (gsf *GraphSyncFetcher) loadTipHeaders(ctx context.Context, key block.TipSetKey, incomplete map[cid.Cid]struct{}) (block.TipSet, error) {
@@ -518,7 +538,7 @@ func (gsf *GraphSyncFetcher) loadTipHeaders(ctx context.Context, key block.TipSe
 	return tip, err
 }
 
-type getBlockComponentFn func(*block.Block) cid.Cid
+type getMetaComponentFn func(types.TxMeta) cid.Cid
 type verifyComponentFn func(blocks.Block) error
 
 // Loads and validates the block messages for a tipset. Returns the tipset if complete,
@@ -526,14 +546,25 @@ type verifyComponentFn func(blocks.Block) error
 func (gsf *GraphSyncFetcher) loadAndVerifySubComponents(ctx context.Context,
 	tip block.TipSet,
 	incomplete map[cid.Cid]struct{},
-	getBlockComponent getBlockComponentFn,
+	getMetaComponent getMetaComponentFn,
 	verifyComponent verifyComponentFn) error {
 	subComponents := make([]blocks.Block, 0, tip.Len())
 
 	// Check that nested structures are also stored, recording any that are missing as incomplete.
 	for i := 0; i < tip.Len(); i++ {
 		blk := tip.At(i)
-		link := getBlockComponent(blk)
+
+		meta, err := gsf.loadTxMeta(blk.Messages.Cid)
+		if err == bstore.ErrNotFound {
+			// exit early as we can't load anything else without txmeta
+			incomplete[blk.Cid()] = struct{}{}
+			continue
+		}
+		if err != nil {
+			return err
+		}
+
+		link := getMetaComponent(meta)
 		ok, err := gsf.store.Has(link)
 		if err != nil {
 			return err

@@ -9,7 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -19,7 +19,10 @@ import (
 	"github.com/stretchr/testify/require"
 	typegen "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -262,13 +265,18 @@ func validateBlockstoreImport(ctx context.Context, t *testing.T, start, stop blo
 			blk, err := block.DecodeBlock(bsBlk.RawData())
 			assert.NoError(t, err)
 
-			secpAMT, err := amt.LoadAMT(ctx, as, blk.Messages.SecpRoot.Cid)
+			txMetaBlk, err := bstore.Get(blk.Messages.Cid)
+			require.NoError(t, err)
+			var meta types.TxMeta
+			require.NoError(t, encoding.Decode(txMetaBlk.RawData(), &meta))
+
+			secpAMT, err := amt.LoadAMT(ctx, as, meta.SecpRoot.Cid)
 			require.NoError(t, err)
 
 			var smsg types.SignedMessage
 			requireAMTDecoding(ctx, t, bstore, secpAMT, &smsg)
 
-			blsAMT, err := amt.LoadAMT(ctx, as, blk.Messages.BLSRoot.Cid)
+			blsAMT, err := amt.LoadAMT(ctx, as, meta.BLSRoot.Cid)
 			require.NoError(t, err)
 
 			var umsg types.UnsignedMessage
@@ -293,16 +301,16 @@ func validateBlockstoreImport(ctx context.Context, t *testing.T, start, stop blo
 
 func requireAMTDecoding(ctx context.Context, t *testing.T, bstore blockstore.Blockstore, root *amt.Root, dest interface{}) {
 	err := root.ForEach(ctx, func(_ uint64, d *typegen.Deferred) error {
-		var c cid.Cid
-		if err := cbor.DecodeInto(d.Raw, &c); err != nil {
+		var c e.Cid
+		if err := encoding.Decode(d.Raw, &c); err != nil {
 			return err
 		}
 
-		b, err := bstore.Get(c)
+		b, err := bstore.Get(c.Cid)
 		if err != nil {
 			return err
 		}
-		return cbor.DecodeInto(b.RawData(), dest)
+		return encoding.Decode(b.RawData(), dest)
 	})
 	require.NoError(t, err)
 

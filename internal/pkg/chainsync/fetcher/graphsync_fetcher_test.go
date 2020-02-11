@@ -101,6 +101,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.NoError(t, err)
 		return s
 	}
+	msgStore := chain.NewMessageStore(bs)
 
 	pid1 := th.RequireIntPeerID(t, 1)
 	pid2 := th.RequireIntPeerID(t, 2)
@@ -128,12 +129,11 @@ func TestGraphsyncFetcher(t *testing.T) {
 			blk := ts.At(i)
 
 			// use fetcher blockstore to retrieve messages
-			msgStore := chain.NewMessageStore(bs)
-			secpMsgs, blsMsgs, err := msgStore.LoadMessages(ctx, blk.Messages)
+			secpMsgs, blsMsgs, err := msgStore.LoadMessages(ctx, blk.Messages.Cid)
 			require.NoError(t, err)
 
 			// get expected messages from builders block store
-			expectedSecpMessages, expectedBLSMsgs, err := builder.LoadMessages(ctx, blk.Messages)
+			expectedSecpMessages, expectedBLSMsgs, err := builder.LoadMessages(ctx, blk.Messages.Cid)
 			require.NoError(t, err)
 
 			require.True(t, reflect.DeepEqual(secpMsgs, expectedSecpMessages))
@@ -226,7 +226,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.NoError(t, err)
 		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
-		errorOnMessagesLoader := errorOnCidsLoader(loader, final.At(2).Messages.SecpRoot.Cid)
+		final2Meta, err := builder.LoadTxMeta(ctx, final.At(2).Messages.Cid)
+		require.NoError(t, err)
+		errorOnMessagesLoader := errorOnCidsLoader(loader, final2Meta.SecpRoot.Cid)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorOnMessagesLoader, final.Key().ToSlice()...)
 
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, newFakePeerTracker(chain0))
@@ -437,7 +439,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 	t.Run("blocks present but messages don't decode", func(t *testing.T) {
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
 		blk := requireSimpleValidBlock(t, 3, address.Undef)
-		blk.Messages = types.TxMeta{SecpRoot: e.NewCid(notDecodableBlock.Cid()), BLSRoot: e.NewCid(types.EmptyMessagesCID)}
+		metaCid, err := msgStore.StoreTxMeta(ctx, types.TxMeta{SecpRoot: e.NewCid(notDecodableBlock.Cid()), BLSRoot: e.NewCid(types.EmptyMessagesCID)})
+		require.NoError(t, err)
+		blk.Messages = e.NewCid(metaCid)
 		key := block.NewTipSetKey(blk.Cid())
 		chain0 := block.NewChainInfo(pid0, pid0, key, blk.Height)
 		nd, err := (&types.SignedMessage{}).ToNode()
@@ -697,7 +701,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	verifyNoMessages := func(t *testing.T, ts block.TipSet) {
 		for i := 0; i < ts.Len(); i++ {
 			blk := ts.At(i)
-			stored, err := bs.Has(blk.Messages.SecpRoot.Cid)
+			stored, err := bs.Has(blk.Messages.Cid)
 			require.NoError(t, err)
 			require.False(t, stored)
 		}
@@ -730,7 +734,9 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	t.Run("fetch succeeds when messages don't decode", func(t *testing.T) {
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
 		blk := requireSimpleValidBlock(t, 3, address.Undef)
-		blk.Messages = types.TxMeta{SecpRoot: e.NewCid(notDecodableBlock.Cid()), BLSRoot: e.NewCid(types.EmptyMessagesCID)}
+		metaCid, err := builder.StoreTxMeta(ctx, types.TxMeta{SecpRoot: e.NewCid(notDecodableBlock.Cid()), BLSRoot: e.NewCid(types.EmptyMessagesCID)})
+		require.NoError(t, err)
+		blk.Messages = e.NewCid(metaCid)
 		key := block.NewTipSetKey(blk.Cid())
 		chain0 := block.NewChainInfo(pid0, pid0, key, blk.Height)
 		nd, err := (&types.SignedMessage{}).ToNode()
@@ -843,11 +849,7 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, stored)
 
-		stored, err = bs.Has(ts.At(0).Messages.SecpRoot.Cid)
-		require.NoError(t, err)
-		assert.False(t, stored)
-
-		stored, err = bs.Has(ts.At(0).Messages.BLSRoot.Cid)
+		stored, err = bs.Has(ts.At(0).Messages.Cid)
 		require.NoError(t, err)
 		assert.False(t, stored)
 
@@ -940,7 +942,13 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, stored)
 
-		stored, err = bs.Has(ts.At(0).Messages.SecpRoot.Cid)
+		rawMeta, err := bs.Get(ts.At(0).Messages.Cid)
+		require.NoError(t, err)
+		var meta types.TxMeta
+		err = encoding.Decode(rawMeta.RawData(), &meta)
+		require.NoError(t, err)
+
+		stored, err = bs.Has(meta.SecpRoot.Cid)
 		require.NoError(t, err)
 		assert.True(t, stored)
 	}

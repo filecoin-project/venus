@@ -88,7 +88,7 @@ type ChainReaderWriter interface {
 }
 
 type messageStore interface {
-	LoadMessages(context.Context, types.TxMeta) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
+	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
 	LoadReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
 	StoreReceipts(context.Context, []*types.MessageReceipt) (cid.Cid, error)
 }
@@ -269,7 +269,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 	var nextBlsMessages [][]*types.UnsignedMessage
 	for i := 0; i < next.Len(); i++ {
 		blk := next.At(i)
-		secpMsgs, blsMsgs, err := syncer.messageProvider.LoadMessages(ctx, blk.Messages)
+		secpMsgs, blsMsgs, err := syncer.messageProvider.LoadMessages(ctx, blk.Messages.Cid)
 		if err != nil {
 			return errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", next.Key(), blk.Messages, blk.Cid())
 		}

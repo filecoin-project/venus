@@ -51,13 +51,21 @@ var EmptyMessagesCID cid.Cid
 // EmptyReceiptsCID is the cid of an empty collection of receipts.
 var EmptyReceiptsCID cid.Cid
 
+// EmptyTxMetaCID is the cid of a TxMeta wrapping empty cids
+var EmptyTxMetaCID cid.Cid
+
 func init() {
-	emptyAMTCid, err := amt.FromArray(context.Background(), cborutil.NewIpldStore(blockstore.NewBlockstore(datastore.NewMapDatastore())), []typegen.CBORMarshaler{})
+	tmpCst := cborutil.NewIpldStore(blockstore.NewBlockstore(datastore.NewMapDatastore()))
+	emptyAMTCid, err := amt.FromArray(context.Background(), tmpCst, []typegen.CBORMarshaler{})
 	if err != nil {
 		panic("could not create CID for empty AMT")
 	}
 	EmptyMessagesCID = emptyAMTCid
 	EmptyReceiptsCID = emptyAMTCid
+	EmptyTxMetaCID, err = tmpCst.Put(context.Background(), TxMeta{SecpRoot: e.NewCid(EmptyMessagesCID), BLSRoot: e.NewCid(EmptyMessagesCID)})
+	if err != nil {
+		panic("could not create CID for empty TxMeta")
+	}
 }
 
 var (

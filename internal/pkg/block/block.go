@@ -50,7 +50,7 @@ type Block struct {
 	MessageReceipts e.Cid `json:"messageReceipts,omitempty"`
 
 	// Messages is the set of messages included in this block
-	Messages types.TxMeta `json:"messages,omitempty"`
+	Messages e.Cid `json:"messages,omitempty"`
 
 	// The aggregate signature of all BLS signed messages in the block
 	BLSAggregateSig types.Signature `json:"blsAggregateSig"`
