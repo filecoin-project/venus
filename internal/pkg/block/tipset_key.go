@@ -152,6 +152,11 @@ func (s *TipSetKey) UnmarshalJSON(b []byte) error {
 
 // MarshalCBOR marshals the tipset key as an array of cids
 func (s TipSetKey) MarshalCBOR() ([]byte, error) {
+	// encode the zero value as length zero slice instead of nil per spec
+	if s.cids == nil {
+		encodableZero := make([]e.Cid, 0)
+		return encoding.Encode(encodableZero)
+	}
 	return encoding.Encode(s.cids)
 }
 
