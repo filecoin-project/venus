@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	cbu "github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
@@ -25,8 +26,10 @@ var helloMsgErrCt = metrics.NewInt64Counter("hello_message_error", "Number of er
 
 // HelloMessage is the data structure of a single message in the hello protocol.
 type HelloMessage struct {
+	_ struct{}
 	HeaviestTipSetCids   block.TipSetKey
 	HeaviestTipSetHeight uint64
+	HeaviestTipSetWeight fbig.Int
 	GenesisHash          cid.Cid
 }
 
@@ -112,11 +115,16 @@ func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 	if err != nil {
 		return nil, err
 	}
+	weight, err := heaviest.ParentWeight()
+	if err != nil {
+		return nil, err
+	}
 
 	return &HelloMessage{
 		GenesisHash:          h.genesis,
 		HeaviestTipSetCids:   heaviest.Key(),
 		HeaviestTipSetHeight: height,
+		HeaviestTipSetWeight: weight,
 	}, nil
 }
 
