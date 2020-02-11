@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -10,16 +11,17 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	net "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	cbu "github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 )
 
 var log = logging.Logger("/fil/hello")
+// helloProtocolID is the libp2p protocol identifier for the hello protocol.
+const helloProtocolID = "/fil/hello/1.0.0"
 
 var genesisErrCt = metrics.NewInt64Counter("hello_genesis_error", "Number of errors encountered in hello protocol due to incorrect genesis block")
 var helloMsgErrCt = metrics.NewInt64Counter("hello_message_error", "Number of errors encountered in hello protocol due to malformed message")
@@ -58,11 +60,6 @@ type peerDiscoveredCallback func(ci *block.ChainInfo)
 
 type getTipSetFunc func() (block.TipSet, error)
 
-// protocol is the libp2p protocol identifier for the hello protocol.
-func helloProtocolID(networkName string) protocol.ID {
-	return protocol.ID(fmt.Sprintf("/filecoin/hello/%s", networkName))
-}
-
 // NewHelloProtocolHandler creates a new instance of the hello protocol `Handler` and registers it to
 // the given `host.Host`.
 func NewHelloProtocolHandler(h host.Host, gen cid.Cid, networkName string) *HelloProtocolHandler {
@@ -80,7 +77,7 @@ func (h *HelloProtocolHandler) Register(peerDiscoveredCallback peerDiscoveredCal
 	h.getHeaviestTipSet = getHeaviestTipSet
 
 	// register a handle for when a new connection against someone is created
-	h.host.SetStreamHandler(helloProtocolID(h.networkName), h.handleNewStream)
+	h.host.SetStreamHandler(helloProtocolID, h.handleNewStream)
 
 	// register for connection notifications
 	h.host.Network().Notify((*helloProtocolNotifiee)(h))
@@ -88,9 +85,35 @@ func (h *HelloProtocolHandler) Register(peerDiscoveredCallback peerDiscoveredCal
 
 func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	defer s.Close() // nolint: errcheck
-	if err := h.sendHello(s); err != nil {
-		log.Debugf("failed to send hello message:%s", err)
+	ctx := context.Background()
+	hello, err := h.receiveHello(ctx, s)
+	if err != nil {
+		log.Debugf("failed to receive hello message:%s", err)
+		// can't process a hello received in error, but leave this connection
+		// open because we connections are innocent until proven guilty 
+		// (with bad genesis)
+		return
 	}
+	
+	// process the hello message
+	from := s.Conn().RemotePeer()
+	ci, err := h.processHelloMessage(from, hello)
+	switch {
+	// no error
+	case err == nil:
+		// notify the local node of the new `block.ChainInfo`
+		h.peerDiscovered(ci)
+	// processing errors
+	case err == ErrBadGenesis:
+		log.Debugf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, h.genesis, from)
+		genesisErrCt.Inc(context.Background(), 1)
+		_ = s.Conn().Close()
+		return
+	default:
+		// Note: we do not know why it failed, but we do not wish to shut down all protocols because of it
+		log.Error(err)
+	}	
+
 	return
 }
 
@@ -128,16 +151,15 @@ func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 	}, nil
 }
 
-func (h *HelloProtocolHandler) receiveHello(ctx context.Context, p peer.ID) (*HelloMessage, error) {
-	s, err := h.host.NewStream(ctx, p, helloProtocolID(h.networkName))
+func (h *HelloProtocolHandler) receiveHello(ctx context.Context, s net.Stream) (*HelloMessage, error) {
+	var hello HelloMessage
+	// Read cbor bytes from stream into hello message
+	rawHello, err := ioutil.ReadAll(s)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = s.Close() }()
-
-	var hello HelloMessage
-	if err := cbu.NewMsgReader(s).ReadMsg(&hello); err != nil {
-		helloMsgErrCt.Inc(ctx, 1)
+	err = encoding.Decode(rawHello, &hello)
+	if err != nil {
 		return nil, err
 	}
 	return &hello, nil
@@ -149,7 +171,18 @@ func (h *HelloProtocolHandler) sendHello(s net.Stream) error {
 	if err != nil {
 		return err
 	}
-	return cbu.NewMsgWriter(s).WriteMsg(&msg)
+	msgRaw, err := encoding.Encode(msg)
+	if err != nil {
+		return err
+	}
+	n, err := s.Write(msgRaw)
+	if err != nil {
+		return err
+	}
+	if n != len(msgRaw) {
+		return fmt.Errorf("could not write all hello message bytes")
+	}
+	return nil
 }
 
 // Note: hide `net.Notifyee` impl using a new-type
@@ -179,33 +212,22 @@ func (hn *helloProtocolNotifiee) Connected(n net.Network, c net.Conn) {
 		// add timeout
 		ctx, cancel := context.WithTimeout(context.Background(), helloTimeout)
 		defer cancel()
-
-		// receive the hello message
-		from := c.RemotePeer()
-		hello, err := hn.asHandler().receiveHello(ctx, from)
+		s, err := hn.asHandler().host.NewStream(ctx, c.RemotePeer(), helloProtocolID)
 		if err != nil {
-			log.Debugf("failed to receive hello handshake from peer %s: %s", from, err)
-			_ = c.Close()
+			// If peer does not do hello keep connection open
+			return
+		}
+		defer func() { _ = s.Close() }()
+
+		// send out the hello message
+		err = hn.asHandler().sendHello(s)
+		if err != nil {
+			log.Debugf("failed to send hello handshake to peer %s: %s", c.RemotePeer(), err)
+			// Don't close connection for failed hello protocol impl 
 			return
 		}
 
-		// process the hello message
-		ci, err := hn.asHandler().processHelloMessage(from, hello)
-		switch {
-		// no error
-		case err == nil:
-			// notify the local node of the new `block.ChainInfo`
-			hn.asHandler().peerDiscovered(ci)
-		// processing errors
-		case err == ErrBadGenesis:
-			log.Debugf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, hn.asHandler().genesis, from)
-			genesisErrCt.Inc(context.Background(), 1)
-			_ = c.Close()
-			return
-		default:
-			// Note: we do not know why it failed, but we do not wish to shut down all protocols because of it
-			log.Error(err)
-		}
+		
 	}()
 }
 
