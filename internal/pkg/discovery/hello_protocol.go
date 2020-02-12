@@ -205,7 +205,6 @@ func (h *HelloProtocolHandler) sendHello(s net.Stream) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("finished writing to stream\n")
 	if n != len(msgRaw) {
 		return fmt.Errorf("could not write all hello message bytes")
 	}
@@ -254,7 +253,6 @@ func (hn *helloProtocolNotifiee) Connected(n net.Network, c net.Conn) {
 		defer cancel()
 		s, err := hn.asHandler().host.NewStream(ctx, c.RemotePeer(), helloProtocolID)
 		if err != nil {
-			fmt.Printf("erroring on open stream\n")
 			// If peer does not do hello keep connection open
 			return
 		}
@@ -268,7 +266,7 @@ func (hn *helloProtocolNotifiee) Connected(n net.Network, c net.Conn) {
 		}
 
 		// now receive latency message
-		_, err = hn.asHandler().receiveLatency(ctx, s) // Dragons: we drop this on the floor.  We should use it.
+		_, err = hn.asHandler().receiveLatency(ctx, s)
 		if err != nil {
 			log.Debugf("failed to receive hello latency msg from peer %s: %s", c.RemotePeer(), err)
 			return
