@@ -3,26 +3,22 @@ package consensus
 import (
 	"context"
 	"encoding/binary"
-	"errors"
-	"fmt"
 	"testing"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/stretchr/testify/require"
 )
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
@@ -33,83 +29,14 @@ func RequireNewTipSet(require *require.Assertions, blks ...*block.Block) block.T
 	return ts
 }
 
-// FakeActorStateStore provides a snapshot that responds to power table view queries with the given parameters
-type FakeActorStateStore struct {
-	minerPower    *types.BytesAmount
-	totalPower    *types.BytesAmount
-	minerToWorker map[address.Address]address.Address
+// FakePowerStateViewer is a fake power state viewer.
+type FakePowerStateViewer struct {
+	Views map[cid.Cid]*state.FakeStateView
 }
 
-// NewFakeActorStateStore creates an actor state store that produces snapshots such that PowerTableView queries return predefined results
-func NewFakeActorStateStore(minerPower, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) *FakeActorStateStore {
-	return &FakeActorStateStore{
-		minerPower:    minerPower,
-		totalPower:    totalPower,
-		minerToWorker: minerToWorker,
-	}
-}
-
-// StateTreeSnapshot returns a Snapshot suitable for PowerTableView queries
-func (t *FakeActorStateStore) StateTreeSnapshot(st state.Tree, bh *types.BlockHeight) ActorStateSnapshot {
-	return &FakePowerTableViewSnapshot{
-		MinerPower:    t.minerPower,
-		SectorSize:    t.minerPower,
-		TotalPower:    t.totalPower,
-		MinerToWorker: t.minerToWorker,
-	}
-}
-
-// FakePowerTableViewSnapshot returns a snapshot that can be fed into a PowerTableView to produce specific values
-// Dragons: once the power table no longer has a faked out SortedSectorInfos method we'll need to expand this
-// to also fake that out.
-type FakePowerTableViewSnapshot struct {
-	MinerPower    *types.BytesAmount
-	TotalPower    *types.BytesAmount
-	SectorSize    *types.BytesAmount
-	MinerToWorker map[address.Address]address.Address
-}
-
-// Query produces test logic in response to PowerTableView queries.
-func (tq *FakePowerTableViewSnapshot) Query(ctx context.Context, optFrom, to address.Address, method types.MethodID, params ...interface{}) ([][]byte, error) {
-	// Note: this currently happens to work as is, but it's wrong
-	// Note: a better mock is recommended to make sure the correct methods get dispatched
-	if method == power.GetTotalPower {
-		if tq.TotalPower != nil {
-			return [][]byte{tq.TotalPower.Bytes()}, nil
-		}
-		return [][]byte{}, errors.New("something went wrong with the total power")
-	} else if method == power.GetPowerReport {
-		if tq.MinerPower != nil {
-			powerReport := types.NewPowerReport(tq.MinerPower.Uint64(), 0)
-			val := abi.Value{
-				Val:  powerReport,
-				Type: abi.PowerReport,
-			}
-			raw, err := val.Serialize()
-			return [][]byte{raw}, err
-		}
-		return [][]byte{}, errors.New("something went wrong with the miner power")
-	} else if method == miner.GetWorker {
-		if tq.MinerToWorker != nil {
-			return [][]byte{tq.MinerToWorker[to].Bytes()}, nil
-		}
-	} else if method == power.GetSectorSize {
-		if tq.SectorSize != nil {
-			return [][]byte{tq.SectorSize.Bytes()}, nil
-		}
-		return [][]byte{}, errors.New("something went wrong with sector size")
-	}
-	return [][]byte{}, fmt.Errorf("unknown method for TestQueryer '%s'", method)
-}
-
-// NewFakePowerTableView creates a test power view with the given total power
-func NewFakePowerTableView(minerPower *types.BytesAmount, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) PowerTableView {
-	tq := &FakePowerTableViewSnapshot{
-		MinerPower:    minerPower,
-		TotalPower:    totalPower,
-		MinerToWorker: minerToWorker,
-	}
-	return NewPowerTableView(tq)
+// StateView returns the state view for a root.
+func (f *FakePowerStateViewer) StateView(root cid.Cid) PowerStateView {
+	return f.Views[root]
 }
 
 // FakeMessageValidator is a validator that doesn't validate to simplify message creation in tests.

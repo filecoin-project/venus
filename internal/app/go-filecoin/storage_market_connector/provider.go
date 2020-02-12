@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	fcsm "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
@@ -165,7 +166,7 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 		return 0, 0, 0, err
 	}
 
-	stateStore := StoreFromCbor(ctx, s.chainStore)
+	stateStore := state.StoreFromCbor(ctx, s.chainStore)
 	proposals := adt.AsArray(stateStore, smState.Proposals)
 
 	var minerState spaminer.State

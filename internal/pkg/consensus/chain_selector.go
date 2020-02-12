@@ -11,13 +11,13 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // Parameters used by the weighting funcion
@@ -30,15 +30,15 @@ const (
 // Storage Power Consensus Protocol
 type ChainSelector struct {
 	cstore     cbor.IpldStore
-	actorState SnapshotGenerator
+	state      StateViewer
 	genesisCid cid.Cid
 }
 
 // NewChainSelector is the constructor for chain selection module.
-func NewChainSelector(cs cbor.IpldStore, actorState SnapshotGenerator, gCid cid.Cid) *ChainSelector {
+func NewChainSelector(cs cbor.IpldStore, state StateViewer, gCid cid.Cid) *ChainSelector {
 	return &ChainSelector{
 		cstore:     cs,
-		actorState: actorState,
+		state:      state,
 		genesisCid: gCid,
 	}
 }
@@ -72,17 +72,12 @@ func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID ci
 	if !pStateID.Defined() {
 		return fbig.Zero(), errors.New("undefined state passed to chain selector new weight")
 	}
-	pSt, err := c.loadStateTree(ctx, pStateID)
-	if err != nil {
-		fmt.Printf("error loading state tree\n")
-		return fbig.Zero(), err
-	}
-	powerTableView := c.createPowerTableView(pSt)
+	powerTableView := NewPowerTableView(c.state.StateView(pStateID))
 	totalBytes, err := powerTableView.Total(ctx)
 	if err != nil {
 		return fbig.Zero(), err
 	}
-	roughLogTotalBytes := new(big.Float).SetInt64(int64(totalBytes.BigInt().BitLen()))
+	roughLogTotalBytes := new(big.Float).SetInt64(int64(totalBytes.BitLen()))
 	innerTerm.Add(innerTerm, roughLogTotalBytes)
 
 	w.Add(w, innerTerm)
@@ -137,11 +132,6 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b block.TipSet, aState
 		return false, ErrUnorderedTipSets
 	}
 	return cmp == 1, nil
-}
-
-func (c *ChainSelector) createPowerTableView(st state.Tree) PowerTableView {
-	snapshot := c.actorState.StateTreeSnapshot(st, nil)
-	return NewPowerTableView(snapshot)
 }
 
 func (c *ChainSelector) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, error) {

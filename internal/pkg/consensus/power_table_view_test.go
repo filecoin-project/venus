@@ -5,61 +5,57 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestTotal(t *testing.T) {
 	tf.UnitTest(t)
-	t.Skip("using legacy vm")
+	t.Skip("requires new init actor address resolution")
 
 	ctx := context.Background()
 
 	numCommittedSectors := uint64(19)
-	cst, bs, _, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
+	cst, _, root := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
 
-	as := consensus.NewActorStateStore(nil, cst, bs, consensus.NewDefaultProcessor())
-	snapshot := as.StateTreeSnapshot(st, types.NewBlockHeight(0))
-
-	actual, err := consensus.NewPowerTableView(snapshot).Total(ctx)
+	table := consensus.NewPowerTableView(state.NewView(cst, root))
+	actual, err := table.Total(ctx)
 	require.NoError(t, err)
 
-	expected := types.NewBytesAmount(types.OneKiBSectorSize.Uint64() * numCommittedSectors)
-
-	assert.True(t, expected.Equal(actual))
+	expected := abi.NewStoragePower(int64(types.OneKiBSectorSize.Uint64() * numCommittedSectors))
+	assert.True(t, expected.Equals(actual))
 }
 
 func TestMiner(t *testing.T) {
 	tf.UnitTest(t)
-	t.Skip("using legacy vm")
+	t.Skip("requires new init actor address resolution")
 
 	ctx := context.Background()
 
 	numCommittedSectors := uint64(12)
-	cst, bs, addr, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
+	cst, addr, root := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
 
-	as := consensus.NewActorStateStore(nil, cst, bs, consensus.NewDefaultProcessor())
-	snapshot := as.StateTreeSnapshot(st, types.NewBlockHeight(0))
-
-	actual, err := consensus.NewPowerTableView(snapshot).Miner(ctx, addr)
+	table := consensus.NewPowerTableView(state.NewView(cst, root))
+	actual, err := table.MinerClaim(ctx, addr)
 	require.NoError(t, err)
 
 	expected := types.NewBytesAmount(types.OneKiBSectorSize.Uint64() * numCommittedSectors)
-
 	assert.Equal(t, expected, actual)
 }
 
-func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64) (*cborutil.IpldStore, bstore.Blockstore, address.Address, state.Tree) {
+func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64) (*cborutil.IpldStore, address.Address, cid.Cid) {
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := cborutil.NewIpldStore(bs)
@@ -80,11 +76,7 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 	info, err := gengen.GenGen(ctx, genCfg, cst, bs)
 	require.NoError(t, err)
 
-	var calcGenBlk block.Block
-	require.NoError(t, cst.Get(ctx, info.GenesisCid, &calcGenBlk))
-
-	stateTree, err := state.NewTreeLoader().LoadStateTree(ctx, cst, calcGenBlk.StateRoot.Cid)
-	require.NoError(t, err)
-
-	return cst, bs, info.Miners[0].Address, stateTree
+	var genesis block.Block
+	require.NoError(t, cst.Get(ctx, info.GenesisCid, &genesis))
+	return cst, info.Miners[0].Address, genesis.StateRoot.Cid
 }

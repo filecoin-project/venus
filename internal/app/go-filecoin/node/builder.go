@@ -170,7 +170,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Blockservice")
 	}
 
-	nd.chain, err = submodule.NewChainSubmodule(ctx, (*builder)(b), b.repo, &nd.Blockstore)
+	nd.chain, err = submodule.NewChainSubmodule((*builder)(b), b.repo, &nd.Blockstore)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}

@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -22,13 +24,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 var (
@@ -92,9 +93,9 @@ type ElectionValidator interface {
 	VerifyPoStRandomness(rand block.VRFPi, ticket block.Ticket, candidateAddr address.Address, nullBlockCount uint64) bool
 }
 
-// SnapshotGenerator produces snapshots to examine actor state
-type SnapshotGenerator interface {
-	StateTreeSnapshot(st state.Tree, bh *types.BlockHeight) ActorStateSnapshot
+// StateViewer provides views into the chain state.
+type StateViewer interface {
+	StateView(root cid.Cid) PowerStateView
 }
 
 // Expected implements expected consensus.
@@ -116,8 +117,8 @@ type Expected struct {
 	// processor is what we use to process messages and pay rewards
 	processor Processor
 
-	// actorState provides produces snapshots
-	actorState SnapshotGenerator
+	// state provides produces snapshots
+	state StateViewer
 
 	blockTime time.Duration
 
@@ -129,13 +130,13 @@ type Expected struct {
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processor, actorState SnapshotGenerator, bt time.Duration, ev ElectionValidator, tv TicketValidator, pv verification.PoStVerifier) *Expected {
+func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processor, state StateViewer, bt time.Duration, ev ElectionValidator, tv TicketValidator, pv verification.PoStVerifier) *Expected {
 	return &Expected{
 		cstore:            cs,
 		blockTime:         bt,
 		bstore:            bs,
 		processor:         processor,
-		actorState:        actorState,
+		state:             state,
 		ElectionValidator: ev,
 		TicketValidator:   tv,
 		postVerifier:      pv,
@@ -155,18 +156,17 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsM
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
+	if err := c.validateMining(ctx, ts, parentStateRoot, ancestors[0], ancestors, blsMessages, secpMessages, parentWeight, parentReceiptRoot); err != nil {
+		return cid.Undef, []*types.MessageReceipt{}, err
+	}
+
 	priorState, err := c.loadStateTree(ctx, parentStateRoot)
 	if err != nil {
 		return cid.Undef, []*types.MessageReceipt{}, err
 	}
-
-	if err := c.validateMining(ctx, priorState, ts, ancestors[0], ancestors, blsMessages, secpMessages, parentWeight, parentStateRoot, parentReceiptRoot); err != nil {
-		return cid.Undef, []*types.MessageReceipt{}, err
-	}
-
 	vms := vm.NewStorage(c.bstore)
-	var st state.Tree
-	st, receipts, err = c.runMessages(ctx, priorState, vms, ts, blsMessages, secpMessages, ancestors)
+	var newState state.Tree
+	newState, receipts, err = c.runMessages(ctx, priorState, vms, ts, blsMessages, secpMessages, ancestors)
 	if err != nil {
 		return cid.Undef, []*types.MessageReceipt{}, err
 	}
@@ -175,7 +175,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsM
 		return cid.Undef, []*types.MessageReceipt{}, err
 	}
 
-	root, err = st.Flush(ctx)
+	root, err = newState.Flush(ctx)
 	if err != nil {
 		return cid.Undef, []*types.MessageReceipt{}, err
 	}
@@ -186,14 +186,13 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsM
 // address of every block in the tipset.
 func (c *Expected) validateMining(
 	ctx context.Context,
-	st state.Tree,
 	ts block.TipSet,
+	parentStateRoot cid.Cid,
 	parentTs block.TipSet,
 	ancestors []block.TipSet,
 	blsMsgs [][]*types.UnsignedMessage,
 	secpMsgs [][]*types.SignedMessage,
 	parentWeight fbig.Int,
-	parentStateRoot cid.Cid,
 	parentReceiptRoot cid.Cid) error {
 
 	electionTicket, err := sampling.SampleNthTicket(ElectionLookback-1, ancestors)
@@ -209,7 +208,7 @@ func (c *Expected) validateMining(
 		return errors.Wrap(err, "failed to read parent height")
 	}
 
-	powerTable := c.createPowerTableView(st)
+	powerTable := NewPowerTableView(c.state.StateView(parentStateRoot))
 
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
@@ -270,7 +269,8 @@ func (c *Expected) validateMining(
 		hasher := hasher.NewHasher()
 		for i, candidate := range blk.EPoStInfo.Winners {
 			hasher.Bytes(candidate.PartialTicket)
-			if !c.ElectionValidator.CandidateWins(hasher.Hash(), sectorNum, 0, networkPower.Uint64(), sectorSize.Uint64()) {
+			// Dragons: must pass fault count value here, not zero.
+			if !c.ElectionValidator.CandidateWins(hasher.Hash(), sectorNum, 0, networkPower.Uint64(), uint64(sectorSize)) {
 				return errors.Errorf("partial ticket %d lost election", i)
 			}
 		}
@@ -280,7 +280,7 @@ func (c *Expected) validateMining(
 		if err != nil {
 			return errors.Wrapf(err, "failed to read sector infos from power table")
 		}
-		valid, err := c.VerifyPoSt(c.postVerifier, allSectorInfos, sectorSize.Uint64(), blk.EPoStInfo.PoStRandomness, blk.EPoStInfo.PoStProof, blk.EPoStInfo.Winners, blk.Miner)
+		valid, err := c.VerifyPoSt(c.postVerifier, allSectorInfos, uint64(sectorSize), blk.EPoStInfo.PoStRandomness, blk.EPoStInfo.PoStProof, blk.EPoStInfo.Winners, blk.Miner)
 		if err != nil {
 			return errors.Wrapf(err, "error checking PoSt")
 		}
@@ -343,13 +343,23 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 	return st, auxReceipts, nil
 }
 
-func (c *Expected) createPowerTableView(st state.Tree) PowerTableView {
-	snapshot := c.actorState.StateTreeSnapshot(st, nil)
-	return NewPowerTableView(snapshot)
-}
-
 func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, error) {
 	return state.NewTreeLoader().LoadStateTree(ctx, c.cstore, id)
+}
+
+// PowerStateViewer a state viewer to the power state view interface.
+type PowerStateViewer struct {
+	*appstate.Viewer
+}
+
+// AsPowerStateViewer adapts a state viewer to a power state viewer.
+func AsPowerStateViewer(v *appstate.Viewer) PowerStateViewer {
+	return PowerStateViewer{v}
+}
+
+// StateView returns a power state view for a state root.
+func (p *PowerStateViewer) StateView(root cid.Cid) PowerStateView {
+	return p.Viewer.StateView(root)
 }
 
 // verifyBLSMessageAggregate errors if the bls signature is not a valid aggregate of message signatures
