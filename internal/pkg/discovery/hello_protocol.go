@@ -124,6 +124,7 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	}
 	
 	// Send the latendy message
+	latencyMsg.TSent = time.Now().UnixNano()
 	err = h.sendLatency(latencyMsg, s)
 	if err != nil {
 		log.Error(err)
