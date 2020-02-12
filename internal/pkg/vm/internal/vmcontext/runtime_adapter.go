@@ -1,4 +1,4 @@
-package adapter
+package vmcontext
 
 import (
 	"context"
@@ -14,12 +14,7 @@ import (
 )
 
 type runtimeAdapter struct {
-	ctx runtime.ExtendedInvocationContext
-}
-
-// NewAdapter creates a new Runtime adapter.
-func NewAdapter(ctx runtime.ExtendedInvocationContext) specsruntime.Runtime {
-	return &runtimeAdapter{ctx: ctx}
+	ctx invocationContext
 }
 
 var _ specsruntime.Runtime = (*runtimeAdapter)(nil)
@@ -66,8 +61,11 @@ func (a *runtimeAdapter) CurrentBalance() abi.TokenAmount {
 
 // GetActorCodeCID implements Runtime.
 func (a *runtimeAdapter) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) {
-	// Dragons: this is being used for validating an address is of some code cid
-	panic("TODO")
+	entry, err := a.ctx.rt.state.GetActor(context.Background(), addr)
+	if err != nil {
+		return cid.Undef, false
+	}
+	return entry.Code.Cid, true
 }
 
 // GetRandomness implements Runtime.
