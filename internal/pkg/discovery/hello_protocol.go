@@ -35,6 +35,14 @@ type HelloMessage struct {
 	GenesisHash          cid.Cid
 }
 
+// LatencyMessage is written in response to a hello message for measuring peer
+// latency.
+type LatencyMessage struct {
+	_ struct{}
+	TArrival int64
+	TSent int64
+}
+
 // HelloProtocolHandler implements the 'Hello' protocol handler.
 //
 // Upon connecting to a new node, we send them a message
@@ -86,6 +94,7 @@ func (h *HelloProtocolHandler) Register(peerDiscoveredCallback peerDiscoveredCal
 func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	defer s.Close() // nolint: errcheck
 	ctx := context.Background()
+	fmt.Printf("waiting to receive hello\n")
 	hello, err := h.receiveHello(ctx, s)
 	if err != nil {
 		log.Debugf("failed to receive hello message:%s", err)
@@ -94,9 +103,11 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 		// (with bad genesis)
 		return
 	}
+	latencyMsg := &LatencyMessage{TArrival: time.Now().UnixNano()}
 	
 	// process the hello message
 	from := s.Conn().RemotePeer()
+	fmt.Printf("processing hello message\n")	
 	ci, err := h.processHelloMessage(from, hello)
 	switch {
 	// no error
@@ -112,7 +123,13 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	default:
 		// Note: we do not know why it failed, but we do not wish to shut down all protocols because of it
 		log.Error(err)
-	}	
+	}
+	
+	// Send the latendy message
+	err = h.sendLatency(latencyMsg, s)
+	if err != nil {
+		log.Error(err)
+	}
 
 	return
 }
@@ -154,15 +171,35 @@ func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 func (h *HelloProtocolHandler) receiveHello(ctx context.Context, s net.Stream) (*HelloMessage, error) {
 	var hello HelloMessage
 	// Read cbor bytes from stream into hello message
-	rawHello, err := ioutil.ReadAll(s)
+	fmt.Printf("read from the stream\n")
+	buf := make([]byte, 128)
+	n, err := s.Read(buf)
 	if err != nil {
 		return nil, err
 	}
+	if n == 128 {
+		return nil, fmt.Errorf("hello message too big")
+	}
+	rawHello := buf[:n]
+	fmt.Printf("read bytes %x from the stream\n", rawHello)
 	err = encoding.Decode(rawHello, &hello)
 	if err != nil {
 		return nil, err
 	}
 	return &hello, nil
+}
+
+func (h *HelloProtocolHandler) receiveLatency(ctx context.Context, s net.Stream) (*LatencyMessage, error) {
+	var latency LatencyMessage
+	rawLatency, err := ioutil.ReadAll(s)
+	if err != nil {
+		return nil, err
+	}
+	err = encoding.Decode(rawLatency, &latency)
+	if err != nil {
+		return nil, err
+	}
+	return &latency, nil
 }
 
 // sendHello send a hello message on stream `s`.
@@ -179,8 +216,24 @@ func (h *HelloProtocolHandler) sendHello(s net.Stream) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("finished writing to stream\n")
 	if n != len(msgRaw) {
 		return fmt.Errorf("could not write all hello message bytes")
+	}
+	return nil
+}
+
+func (h *HelloProtocolHandler) sendLatency(msg *LatencyMessage, s net.Stream) error {
+	msgRaw, err := encoding.Encode(msg)
+	if err != nil {
+		return err
+	}
+	n, err := s.Write(msgRaw)
+	if err != nil {
+		return err
+	}
+	if n != len(msgRaw) {
+		return fmt.Errorf("could not write all latency message bytes")
 	}
 	return nil
 }
@@ -201,24 +254,22 @@ func (hn *helloProtocolNotifiee) asHandler() *HelloProtocolHandler {
 func (hn *helloProtocolNotifiee) Connected(n net.Network, c net.Conn) {
 	// Connected is invoked when a connection is made to a libp2p node.
 	//
-	// - read `hello.Message` from connection `c` on a new thread.
-	// - process the `hello.Message`.
-	// - notify the local `Node` of the new `block.ChainInfo`.
+	// - open stream on connection
+	// - send HelloMessage` on stream
+	// - read LatencyMessage response on stream
 	//
-	// Terminate the connection if it fails to:
-	//	   * validate, or
-	//	   * pass the message information to its handlers callback function.
+	// Terminate the connection if it has a different genesis block
 	go func() {
 		// add timeout
 		ctx, cancel := context.WithTimeout(context.Background(), helloTimeout)
 		defer cancel()
 		s, err := hn.asHandler().host.NewStream(ctx, c.RemotePeer(), helloProtocolID)
 		if err != nil {
+			fmt.Printf("erroring on open stream\n")
 			// If peer does not do hello keep connection open
 			return
 		}
 		defer func() { _ = s.Close() }()
-
 		// send out the hello message
 		err = hn.asHandler().sendHello(s)
 		if err != nil {
@@ -227,6 +278,12 @@ func (hn *helloProtocolNotifiee) Connected(n net.Network, c net.Conn) {
 			return
 		}
 
+		// now recieve latency message
+		_, err = hn.asHandler().receiveLatency(ctx, s) // Dragons: we drop this on the floor.  We should use it.
+		if err != nil {
+			log.Debugf("failed to receive hello latency msg from peer %s: %s", c.RemotePeer(), err)
+			return
+		}
 		
 	}()
 }
