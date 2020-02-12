@@ -29,6 +29,9 @@ func NewFxamackerCborDecoder(b []byte) FxamackerCborDecoder {
 	}
 }
 
+// FxamackerNewStreamDecoder initializes a new fxamacker cbor stream decoder
+var FxamackerNewStreamDecoder = cbor.NewDecoder
+
 //
 // FxamackerCborEncoder
 //
