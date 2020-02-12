@@ -163,7 +163,9 @@ func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
 
 // DeleteActor implements Runtime.
 func (a *runtimeAdapter) DeleteActor() {
-	a.ctx.rt.state.DeleteActor(a.Context(), a.ctx.msg.to)
+	if err := a.ctx.rt.state.DeleteActor(a.Context(), a.ctx.msg.to); err != nil {
+		panic(err)
+	}
 }
 
 // Syscalls implements Runtime.
@@ -174,7 +176,7 @@ func (a *runtimeAdapter) Syscalls() specsruntime.Syscalls {
 
 // Context implements Runtime.
 func (a *runtimeAdapter) Context() context.Context {
-	// Dragons: this can dissapear once we have the storage abstraction
+	// Dragons: this can disappear once we have the storage abstraction
 	return a.ctx.rt.context
 }
 
@@ -190,7 +192,6 @@ func (a *runtimeAdapter) StartSpan(name string) specsruntime.TraceSpan {
 
 // Dragons: have the VM take a SysCalls object on construction (it will need a wrapper to charge gas)
 type syscallsWrapper struct {
-	ctx runtime.ExtendedInvocationContext
 }
 
 var _ specsruntime.Syscalls = (*syscallsWrapper)(nil)
@@ -201,7 +202,7 @@ func (w syscallsWrapper) VerifySignature(signature crypto.Signature, signer addr
 }
 
 // Hash_SHA256 implements Syscalls.
-func (w syscallsWrapper) Hash_SHA256(data []byte) []byte {
+func (w syscallsWrapper) Hash_SHA256(data []byte) []byte { // nolint: golint
 	// Review: why the underscore?
 	panic("TODO")
 }
