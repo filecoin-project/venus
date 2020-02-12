@@ -16,6 +16,8 @@ type Cid struct {
 	cid.Cid
 }
 
+var Undef = NewCid(cid.Undef)
+
 // NewCid creates an Cid struct from a cid
 func NewCid(c cid.Cid) Cid {
 	return Cid{c}

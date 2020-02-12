@@ -187,7 +187,6 @@ This command waits for the ask to be mined.`,
 		cmdkit.StringOption("miner", "The address of the miner owning the ask"),
 		priceOption,
 		limitOption,
-		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		price, ok := types.NewAttoFILFromFILString(req.Arguments[0])
@@ -213,26 +212,9 @@ This command waits for the ask to be mined.`,
 			return fmt.Errorf("expiry must be a valid integer")
 		}
 
-		gasPrice, gasLimit, preview, err := parseGasOptions(req)
+		gasPrice, gasLimit, _, err := parseGasOptions(req)
 		if err != nil {
 			return err
-		}
-
-		if preview {
-			usedGas, err := GetPorcelainAPI(env).MinerPreviewSetPrice(
-				req.Context,
-				fromAddr,
-				minerAddr,
-				price,
-				expiry)
-			if err != nil {
-				return err
-			}
-			return re.Emit(&MinerSetPriceResult{
-				GasUsed:               usedGas,
-				Preview:               true,
-				MinerSetPriceResponse: porcelain.MinerSetPriceResponse{},
-			})
 		}
 
 		res, err := GetPorcelainAPI(env).MinerSetPrice(

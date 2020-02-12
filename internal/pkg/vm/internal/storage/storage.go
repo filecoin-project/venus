@@ -70,7 +70,7 @@ func (s *VMStorage) Get(cid cid.Cid, obj interface{}) error {
 	if err != nil {
 		return err
 	}
-	return encoding.DecodeDeprecated(raw, obj)
+	return encoding.Decode(raw, obj)
 }
 
 // GetRaw retrieves the raw bytes stored, returns true if it exists.
@@ -173,7 +173,11 @@ func (s *VMStorage) toNode(v interface{}) (ipld.Node, error) {
 			nd, err = cbor.Decode(buf.Bytes(), types.DefaultHashFunction, -1)
 		}
 	} else {
-		nd, err = cbor.WrapObject(v, types.DefaultHashFunction, -1)
+		raw, err := encoding.Encode(v)
+		if err != nil {
+			return nil, err
+		}
+		nd, err = cbor.Decode(raw, types.DefaultHashFunction, -1)
 	}
 	if err != nil {
 		return nil, err

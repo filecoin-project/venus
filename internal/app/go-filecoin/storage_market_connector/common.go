@@ -272,7 +272,7 @@ func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) (
 	stateStore := state.StoreFromCbor(ctx, c.chainStore)
 	byParty := spasm.AsSetMultimap(stateStore, smState.DealIDsByParty)
 	var providerDealIds []spaabi.DealID
-	if err = byParty.ForEach(adt.AddrKey(addr), func(i int64) error {
+	if err = byParty.ForEach(addr, func(i spaabi.DealID) error {
 		providerDealIds = append(providerDealIds, spaabi.DealID(i))
 		return nil
 	}); err != nil {

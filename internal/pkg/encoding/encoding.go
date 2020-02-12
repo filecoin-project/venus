@@ -87,12 +87,6 @@ func Encode(obj interface{}) ([]byte, error) {
 	return encode(obj, reflect.ValueOf(obj), encoder)
 }
 
-// EncodeDeprecated uses the deprecated refmt cbor encoding
-func EncodeDeprecated(obj interface{}) ([]byte, error) {
-	var encoder Encoder = &deprecatedEncoder{}
-	return encode(obj, reflect.ValueOf(obj), encoder)
-}
-
 // EncodeWith encodes an object using the encoder provided returning a byte array.
 func EncodeWith(obj interface{}, encoder Encoder) ([]byte, error) {
 	return encode(obj, reflect.ValueOf(obj), encoder)
@@ -175,15 +169,6 @@ func DecodeWith(obj interface{}, decoder Decoder) error {
 // Decode decodes a decodable type, and populates a pointer to the type.
 func Decode(raw []byte, obj interface{}) error {
 	var decoder Decoder = &defaultDecoder{
-		raw: raw,
-	}
-
-	return decode(obj, reflect.ValueOf(obj), decoder)
-}
-
-// DecodeDeprecated decodes using the deprecated refmt cbor encoding
-func DecodeDeprecated(raw []byte, obj interface{}) error {
-	var decoder Decoder = &deprecatedDecoder{
 		raw: raw,
 	}
 

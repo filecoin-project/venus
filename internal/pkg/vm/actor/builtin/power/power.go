@@ -4,23 +4,22 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-
 	"github.com/filecoin-project/go-address"
-	"github.com/ipfs/go-cid"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/libp2p/go-libp2p-core/peer"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 func init() {
@@ -36,7 +35,7 @@ type Actor struct{}
 // State keeps track of power and collateral of registered miner actors
 type State struct {
 	// PowerTable is a lookup mapping actorAddr -> PowerTableEntry
-	PowerTable cid.Cid `refmt:",omitempty"`
+	PowerTable enccid.Cid
 }
 
 // TableEntry tracks a single miner actor's power and collateral
@@ -153,7 +152,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateSt
 	ret, err = vmctx.State().Transaction(&state, func() (interface{}, error) {
 		// Update power table.
 		ctx := context.Background()
-		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable.Cid, func(lookup storage.Lookup) error {
 			// Do not overwrite table entry if it already exists
 			err := lookup.Find(ctx, string(actorIDAddr.Bytes()), nil)
 			if err != hamt.ErrNotFound { // we expect to not find the power table entry
@@ -179,7 +178,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateSt
 		if err != nil {
 			return nil, err
 		}
-		state.PowerTable = newPowerTable
+		state.PowerTable = enccid.NewCid(newPowerTable)
 		return actorIDAddr, nil
 	})
 	if err != nil {
@@ -197,7 +196,7 @@ func (*impl) removeStorageMiner(vmctx runtime.InvocationContext, delAddr address
 	var state State
 	_, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		ctx := context.Background()
-		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable.Cid, func(lookup storage.Lookup) error {
 			// Find entry to delete.
 			var delEntry TableEntry
 			err := lookup.Find(ctx, string(delAddr.Bytes()), &delEntry)
@@ -219,7 +218,7 @@ func (*impl) removeStorageMiner(vmctx runtime.InvocationContext, delAddr address
 		if err != nil {
 			return nil, err
 		}
-		state.PowerTable = newPowerTable
+		state.PowerTable = enccid.NewCid(newPowerTable)
 		return nil, nil
 	})
 	if err != nil {
@@ -236,7 +235,7 @@ func (*impl) getTotalPower(vmctx runtime.InvocationContext) (*types.BytesAmount,
 	ret, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		ctx := context.Background()
 		total := types.NewBytesAmount(0)
-		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable.Cid, func(lookup storage.Lookup) error {
 			// TODO https://github.com/filecoin-project/specs/issues/634 this is inefficient
 			return lookup.ForEachValue(ctx, TableEntry{}, func(k string, value interface{}) error {
 				entry, ok := value.(TableEntry)
@@ -262,7 +261,7 @@ func (*impl) getPowerReport(vmctx runtime.InvocationContext, addr address.Addres
 		ctx := context.Background()
 		var tableEntry TableEntry
 		var report types.PowerReport
-		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable.Cid, func(lookup storage.Lookup) error {
 			err := lookup.Find(ctx, string(addr.Bytes()), &tableEntry)
 			if err != nil {
 				if err == hamt.ErrNotFound {
@@ -287,7 +286,7 @@ func (*impl) getSectorSize(vmctx runtime.InvocationContext, addr address.Address
 	ret, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		ctx := context.Background()
 		ss := types.NewBytesAmount(0)
-		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable.Cid, func(lookup storage.Lookup) error {
 			return lookup.ForEachValue(ctx, TableEntry{}, func(k string, value interface{}) error {
 				entry, ok := value.(TableEntry)
 				if !ok {
@@ -318,7 +317,7 @@ func (*impl) processPowerReport(vmctx runtime.InvocationContext, params ProcessP
 	var state State
 	_, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		ctx := context.Background()
-		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable.Cid, func(lookup storage.Lookup) error {
 			// Find entry to update.
 			var updateEntry TableEntry
 			err := lookup.Find(ctx, string(params.UpdateAddr.Bytes()), &updateEntry)
@@ -336,7 +335,7 @@ func (*impl) processPowerReport(vmctx runtime.InvocationContext, params ProcessP
 		if err != nil {
 			return nil, err
 		}
-		state.PowerTable = newPowerTable
+		state.PowerTable = enccid.NewCid(newPowerTable)
 		return nil, nil
 	})
 	if err != nil {

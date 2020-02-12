@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 )
 
 // Viewer builds state views from state root CIDs.
@@ -48,6 +49,15 @@ func NewView(store cbor.IpldStore, root cid.Cid) *View {
 		ipldStore: store,
 		root:      root,
 	}
+}
+
+// InitNetworkName returns the network name from the init actor state.
+func (v *View) InitNetworkName(ctx context.Context) (string, error) {
+	initState, err := v.loadInitActor(ctx)
+	if err != nil {
+		return "", err
+	}
+	return initState.Network, nil
 }
 
 // MinerSectorSize returns a miner's sector size.
@@ -106,6 +116,16 @@ func (v *View) MinerClaimedPower(ctx context.Context, miner addr.Address) (abi.S
 		return big.Zero(), errors.Errorf("no registered miner %v", miner)
 	}
 	return claim.Power, nil
+}
+
+func (v *View) loadInitActor(ctx context.Context) (*initactor.State, error) {
+	actr, err := v.loadActor(ctx, builtin.InitActorAddr)
+	if err != nil {
+		return nil, err
+	}
+	var state initactor.State
+	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
+	return &state, err
 }
 
 func (v *View) loadMinerActor(ctx context.Context, address addr.Address) (*miner.State, error) {

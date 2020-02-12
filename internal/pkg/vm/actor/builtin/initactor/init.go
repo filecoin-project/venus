@@ -6,17 +6,18 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 )
 
 // Actor is the builtin actor responsible for network initialization.
@@ -27,8 +28,8 @@ type Actor struct{}
 type State struct {
 	Network string
 	// Address -> ActorID
-	AddressMap cid.Cid `refmt:",omitempty"`
-	IDMap      cid.Cid `refmt:",omitempty"`
+	AddressMap enccid.Cid
+	IDMap      enccid.Cid
 	NextID     types.Uint64
 }
 
@@ -78,7 +79,7 @@ func (v *View) GetIDAddressByAddress(target address.Address) (address.Address, b
 	if target.Protocol() == address.ID {
 		return target, true
 	}
-	lookup, err := actor.LoadLookup(context.Background(), v.store, v.state.AddressMap)
+	lookup, err := actor.LoadLookup(context.Background(), v.store, v.state.AddressMap.Cid)
 	if err != nil {
 		panic("could not load internal state")
 	}
@@ -199,7 +200,7 @@ func (a *Impl) GetAddressForActorID(vmctx runtime.InvocationContext, actorID typ
 	vmctx.State().Readonly(state)
 
 	ctx := context.TODO()
-	lookup, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.IDMap)
+	lookup, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.IDMap.Cid)
 	if err != nil {
 		return address.Undef, 1, fmt.Errorf("could not load lookup for cid: %s", state.IDMap)
 	}
@@ -252,12 +253,12 @@ func (a *Impl) Exec(vmctx invocationContext, params ExecParams) address.Address 
 
 		// map id to address and vice versa
 		ctx := context.TODO()
-		state.AddressMap, err = setID(ctx, vmctx.Runtime().Storage(), state.AddressMap, actorAddr, actorID)
+		state.AddressMap, err = setID(ctx, vmctx.Runtime().Storage(), state.AddressMap.Cid, actorAddr, actorID)
 		if err != nil {
 			return nil, fmt.Errorf("could not save id by address")
 		}
 
-		state.IDMap, err = setAddress(ctx, vmctx.Runtime().Storage(), state.IDMap, actorID, actorAddr)
+		state.IDMap, err = setAddress(ctx, vmctx.Runtime().Storage(), state.IDMap.Cid, actorID, actorAddr)
 		if err != nil {
 			return nil, fmt.Errorf("could not save address by id")
 		}
@@ -273,7 +274,7 @@ func (a *Impl) Exec(vmctx invocationContext, params ExecParams) address.Address 
 
 func lookupIDAddress(vmctx runtime.InvocationContext, state State, addr address.Address) (types.Uint64, error) {
 	ctx := context.TODO()
-	lookup, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.AddressMap)
+	lookup, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.AddressMap.Cid)
 	if err != nil {
 		return 0, fmt.Errorf("could not load lookup for cid: %s", state.IDMap)
 	}
@@ -287,41 +288,42 @@ func lookupIDAddress(vmctx runtime.InvocationContext, state State, addr address.
 	return id, nil
 }
 
-func setAddress(ctx context.Context, storage runtime.Storage, idMap cid.Cid, actorID types.Uint64, addr address.Address) (cid.Cid, error) {
+func setAddress(ctx context.Context, storage runtime.Storage, idMap cid.Cid, actorID types.Uint64, addr address.Address) (enccid.Cid, error) {
 	lookup, err := actor.LoadLookup(ctx, storage, idMap)
 	if err != nil {
-		return cid.Undef, fmt.Errorf("could not load lookup for cid: %s", idMap)
+		return enccid.Undef, fmt.Errorf("could not load lookup for cid: %s", idMap)
 	}
 
 	key, err := keyForActorID(actorID)
 	if err != nil {
-		return cid.Undef, err
+		return enccid.Undef, err
 	}
 
 	err = lookup.Set(ctx, key, addr)
 	if err != nil {
-		return cid.Undef, fmt.Errorf("could not set address")
+		return enccid.Undef, fmt.Errorf("could not set address")
 	}
 
-	return lookup.Commit(ctx)
+	c, err := lookup.Commit(ctx)
+	return enccid.NewCid(c), err
 }
 
-func setID(ctx context.Context, storage runtime.Storage, addressMap cid.Cid, addr address.Address, actorID types.Uint64) (cid.Cid, error) {
+func setID(ctx context.Context, storage runtime.Storage, addressMap cid.Cid, addr address.Address, actorID types.Uint64) (enccid.Cid, error) {
 	lookup, err := actor.LoadLookup(ctx, storage, addressMap)
 	if err != nil {
-		return cid.Undef, fmt.Errorf("could not load lookup for cid: %s", addressMap)
+		return enccid.Undef, fmt.Errorf("could not load lookup for cid: %s", addressMap)
 	}
 
 	err = lookup.Set(ctx, string(addr.Bytes()), actorID)
 	if err != nil {
-		return cid.Undef, fmt.Errorf("could not set id")
+		return enccid.Undef, fmt.Errorf("could not set id")
 	}
-
-	return lookup.Commit(ctx)
+	c, err := lookup.Commit(ctx)
+	return enccid.NewCid(c), err
 }
 
 func keyForActorID(actorID types.Uint64) (string, error) {
-	key, err := encoding.EncodeDeprecated(actorID)
+	key, err := encoding.Encode(actorID)
 	if err != nil {
 		return "", fmt.Errorf("could not encode actor id: %d", actorID)
 	}
