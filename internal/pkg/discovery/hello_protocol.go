@@ -94,7 +94,6 @@ func (h *HelloProtocolHandler) Register(peerDiscoveredCallback peerDiscoveredCal
 func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	defer s.Close() // nolint: errcheck
 	ctx := context.Background()
-	fmt.Printf("waiting to receive hello\n")
 	hello, err := h.receiveHello(ctx, s)
 	if err != nil {
 		log.Debugf("failed to receive hello message:%s", err)
@@ -107,7 +106,6 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	
 	// process the hello message
 	from := s.Conn().RemotePeer()
-	fmt.Printf("processing hello message\n")	
 	ci, err := h.processHelloMessage(from, hello)
 	switch {
 	// no error
@@ -171,17 +169,18 @@ func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 func (h *HelloProtocolHandler) receiveHello(ctx context.Context, s net.Stream) (*HelloMessage, error) {
 	var hello HelloMessage
 	// Read cbor bytes from stream into hello message
-	fmt.Printf("read from the stream\n")
-	buf := make([]byte, 128)
+	// Dragons: this handles ~9 head cids.  We should reduce assumptions
+	buf := make([]byte, 512) 
 	n, err := s.Read(buf)
 	if err != nil {
 		return nil, err
 	}
-	if n == 128 {
+	if n == 512 {
+		// Dragons when reducing assumptions we could read in a loop
+		// and abstract all of this.  (We could also use a cbor aware reader)
 		return nil, fmt.Errorf("hello message too big")
 	}
 	rawHello := buf[:n]
-	fmt.Printf("read bytes %x from the stream\n", rawHello)
 	err = encoding.Decode(rawHello, &hello)
 	if err != nil {
 		return nil, err
