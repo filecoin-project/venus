@@ -124,7 +124,7 @@ func (a *runtimeAdapter) Abortf(errExitCode exitcode.ExitCode, msg string, args 
 func (a *runtimeAdapter) NewActorAddress() address.Address {
 	actorAddr, err := computeActorAddress(a.ctx.msg.from, uint64(a.ctx.msg.callSeqNumber))
 	if err != nil {
-		runtime.Abortf(exitcode.SysErrInternal, "Could not create address for actor")
+		panic("Could not create address for actor")
 	}
 	return actorAddr
 }
@@ -134,11 +134,11 @@ func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
 	// Dragons: replace the method in invocation context once the new actors land
 	// Dragons: there were some changes in spec, revise
 	if !isBuiltinActor(codeID) {
-		runtime.Abortf(exitcode.SysErrInternal, "Can only create built-in actors.")
+		runtime.Abortf(exitcode.ErrIllegalArgument, "Can only create built-in actors.")
 	}
 
 	if isSingletonActor(codeID) {
-		runtime.Abortf(exitcode.SysErrInternal, "Can only have one instance of singleton actors.")
+		runtime.Abortf(exitcode.ErrIllegalArgument, "Can only have one instance of singleton actors.")
 	}
 
 	// Check existing address. If nothing there, create empty actor.
@@ -149,11 +149,11 @@ func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
 	})
 
 	if err != nil {
-		runtime.Abortf(exitcode.SysErrInternal, "Could not get or create actor")
+		panic(err)
 	}
 
 	if !newActor.Empty() {
-		runtime.Abortf(exitcode.SysErrInternal, "Actor address already exists")
+		runtime.Abortf(exitcode.ErrIllegalArgument, "Actor address already exists")
 	}
 
 	newActor.Balance = abi.NewTokenAmount(0)
@@ -203,7 +203,6 @@ func (w syscallsWrapper) VerifySignature(signature crypto.Signature, signer addr
 
 // Hash_SHA256 implements Syscalls.
 func (w syscallsWrapper) Hash_SHA256(data []byte) []byte { // nolint: golint
-	// Review: why the underscore?
 	panic("TODO")
 }
 

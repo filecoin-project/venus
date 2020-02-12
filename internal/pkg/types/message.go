@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -185,7 +186,7 @@ func (msg *UnsignedMessage) Equals(other *UnsignedMessage) bool {
 
 // NewGasPrice constructs a gas price (in AttoFIL) from the given number.
 func NewGasPrice(price int64) AttoFIL {
-	return NewAttoFILFromFIL(uint64(price))
+	return NewAttoFIL(big.NewInt(price))
 }
 
 // NewGasUnits constructs a new GasUnits from the given number.
@@ -216,5 +217,5 @@ func (x GasUnits) Cost(price abi.TokenAmount) abi.TokenAmount {
 	bigx := abi.NewTokenAmount((int64)(x))
 
 	// cost = gas * price
-	return big.Mul(bigx, price)
+	return specsbig.Mul(bigx, price)
 }

@@ -74,7 +74,7 @@ func (ctx *invocationContext) invoke() interface{} {
 
 	// assert from address is an ID address.
 	if ctx.msg.from.Protocol() != address.ID {
-		runtime.Abortf(exitcode.ErrForbidden, "Sender address MUST be an ID address at invocation time")
+		panic("bad code: sender address MUST be an ID address at invocation time")
 	}
 
 	// 1. charge gas for msg
@@ -115,7 +115,7 @@ func (ctx *invocationContext) invoke() interface{} {
 
 	// 1. check caller was validated
 	if !ctx.isCallerValidated {
-		runtime.Abortf(exitcode.SysErrInternal, "Caller MUST be validated during method execution")
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "Caller MUST be validated during method execution")
 	}
 
 	// 2. validate state access
@@ -213,10 +213,10 @@ func (ctx *invocationContext) Message() specsruntime.Message {
 // ValidateCaller implements runtime.InvocationContext.
 func (ctx *invocationContext) ValidateCaller(pattern runtime.CallerPattern) {
 	if ctx.isCallerValidated {
-		runtime.Abortf(exitcode.SysErrInternal, "Method must validate caller identity exactly once")
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "Method must validate caller identity exactly once")
 	}
 	if !pattern.IsMatch((*patternContext2)(ctx)) {
-		runtime.Abortf(exitcode.SysErrInternal, "Method invoked by incorrect caller")
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "Method invoked by incorrect caller")
 	}
 	ctx.isCallerValidated = true
 }
@@ -230,7 +230,7 @@ func (ctx *invocationContext) State() runtime.ActorStateHandle {
 func (ctx *invocationContext) Send(to address.Address, method types.MethodID, value abi.TokenAmount, params interface{}) interface{} {
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {
-		runtime.Abortf(exitcode.SysErrInternal, "Calling Send() is not allowed during side-effet lock")
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "Calling Send() is not allowed during side-effet lock")
 	}
 
 	// prepare
@@ -295,11 +295,11 @@ var _ runtime.ExtendedInvocationContext = (*invocationContext)(nil)
 func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, constructorParams []byte) (address.Address, address.Address) {
 	// Dragons: code it over, there were some changes in spec, revise
 	if !isBuiltinActor(code) {
-		runtime.Abortf(exitcode.SysErrInternal, "Can only create built-in actors.")
+		runtime.Abortf(exitcode.ErrIllegalArgument, "Can only create built-in actors.")
 	}
 
 	if isSingletonActor(code) {
-		runtime.Abortf(exitcode.SysErrInternal, "Can only have one instance of singleton actors.")
+		runtime.Abortf(exitcode.ErrIllegalArgument, "Can only have one instance of singleton actors.")
 	}
 
 	// create address for actor
@@ -308,18 +308,18 @@ func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, co
 	if types.AccountActorCodeCid.Equals(code) {
 		err = encoding.Decode(constructorParams, &actorAddr)
 		if err != nil {
-			runtime.Abortf(exitcode.SysErrInternal, "Parameter for account actor creation is not an address")
+			runtime.Abortf(exitcode.SysErrorIllegalActor, "Parameter for account actor creation is not an address")
 		}
 	} else {
 		actorAddr, err = computeActorAddress(ctx.msg.from, uint64(ctx.msg.callSeqNumber))
 		if err != nil {
-			runtime.Abortf(exitcode.SysErrInternal, "Could not create address for actor")
+			panic("Could not create address for actor")
 		}
 	}
 
 	idAddr, err := address.NewIDAddress(uint64(actorID))
 	if err != nil {
-		runtime.Abortf(exitcode.SysErrInternal, "Could not create IDAddress for actor")
+		panic("Could not create IDAddress for actor")
 	}
 
 	// Check existing address. If nothing there, create empty actor.
@@ -330,11 +330,11 @@ func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, co
 	})
 
 	if err != nil {
-		runtime.Abortf(exitcode.SysErrInternal, "Could not get or create actor")
+		panic(err)
 	}
 
 	if !newActor.Empty() {
-		runtime.Abortf(exitcode.SysErrInternal, "Actor address already exists")
+		runtime.Abortf(exitcode.ErrIllegalArgument, "Actor address already exists")
 	}
 
 	newActor.Balance = abi.NewTokenAmount(0)

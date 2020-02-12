@@ -63,7 +63,7 @@ var _ runtime.ActorStateHandle = (*actorStateHandle)(nil)
 
 func (h *actorStateHandle) Create(obj interface{}) {
 	if h.head != cid.Undef {
-		runtime.Abortf(exitcode.SysErrInternal, "Actor state already initialized")
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "Actor state already initialized")
 	}
 
 	// store state
@@ -79,7 +79,7 @@ func (h *actorStateHandle) Readonly(obj interface{}) {
 	if h.usedObj == nil {
 		h.usedObj = obj
 	} else if h.usedObj != obj {
-		runtime.Abortf(exitcode.SysErrInternal, "Must use the same state variable on repeated calls")
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "Must use the same state variable on repeated calls")
 	}
 
 	// Dragons: needed while we can get actor state modified directly by actor code
@@ -90,7 +90,7 @@ func (h *actorStateHandle) Readonly(obj interface{}) {
 	readonlyHead := h.head
 
 	if readonlyHead == cid.Undef {
-		runtime.Abortf(exitcode.SysErrInternal, "Nil state can not be accessed via Readonly(), use Transaction() instead")
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "Nil state can not be accessed via Readonly(), use Transaction() instead")
 	}
 
 	h.ctx.Storage().Get(readonlyHead, obj)
@@ -101,14 +101,14 @@ type transactionFn = func() (interface{}, error)
 // Transaction is the implementation of the ActorStateHandle interface.
 func (h *actorStateHandle) Transaction(obj interface{}, f transactionFn) (interface{}, error) {
 	if obj == nil {
-		runtime.Abortf(exitcode.SysErrInternal, "Must not pass nil to Transaction()")
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil to Transaction()")
 	}
 
 	// track the variable used by the caller
 	if h.usedObj == nil {
 		h.usedObj = obj
 	} else if h.usedObj != obj {
-		runtime.Abortf(exitcode.SysErrInternal, "Must use the same state variable on repeated calls")
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "Must use the same state variable on repeated calls")
 	}
 
 	// Dragons: needed while we can get actor state modified directly by actor code
@@ -155,7 +155,7 @@ func (h *actorStateHandle) Validate() {
 		// verify the obj has not changed
 		usedCid := h.ctx.Storage().CidOf(h.usedObj)
 		if usedCid != h.head {
-			runtime.Abortf(exitcode.SysErrInternal, "State mutated outside of Transaction() scope")
+			runtime.Abortf(exitcode.SysErrorIllegalActor, "State mutated outside of Transaction() scope")
 		}
 	}
 }

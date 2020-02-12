@@ -327,12 +327,15 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 	// Dragons: get rid of this map, unify types.MessageReceipt and have it be the vm.MessageReceipt all across the code
 	auxReceipts := []*types.MessageReceipt{}
 	for i := 0; i < len(receipts); i++ {
+		aux := types.NewAttoFILFromFIL(0)
+		aux.AsBigInt().SetBits(receipts[i].GasUsed.ToTokens(abi.NewTokenAmount(0)).Bits())
+
 		r := types.MessageReceipt{
 			// Review: this are all translations to get it compiling past this point
 			//         the legacy messagereceipt type is no longer valid and will be replaced with vm.MessageReceipt
 			ExitCode:   uint8(receipts[i].ExitCode),
 			Return:     [][]byte{receipts[i].ReturnValue},
-			GasAttoFIL: types.NewAttoFILFromFIL(uint64(receipts[i].GasUsed.ToTokens(abi.NewTokenAmount(1)).Int64())),
+			GasAttoFIL: aux,
 		}
 		auxReceipts = append(auxReceipts, &r)
 	}
