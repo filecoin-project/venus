@@ -6,18 +6,16 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
-
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
@@ -191,70 +189,7 @@ func MinerSetPrice(ctx context.Context, plumbing mspAPI, from address.Address, m
 	}
 
 	// create ask
-	res.AddAskCid, _, err = plumbing.MessageSend(ctx, from, res.MinerAddr, types.ZeroAttoFIL, gasPrice, gasLimit, minerActor.AddAsk, price, expiry)
-	if err != nil {
-		return res, errors.Wrap(err, "couldn't send message")
-	}
-
-	// wait for ask to be mined
-	err = plumbing.MessageWait(ctx, res.AddAskCid, func(blk *block.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) error {
-		res.BlockCid = blk.Cid()
-
-		if receipt.ExitCode != uint8(0) {
-			// Dragons: do we want to have this back?
-			return fmt.Errorf("Error executing actor code (exitcode: %d)", receipt.ExitCode)
-		}
-		return nil
-	})
-	return res, err
-}
-
-// mpspAPI is the subset of the plumbing.API that MinerPreviewSetPrice uses.
-type mpspAPI interface {
-	ConfigGet(dottedPath string) (interface{}, error)
-	ConfigSet(dottedKey string, jsonString string) error
-	MessagePreview(ctx context.Context, optFrom, to address.Address, method types.MethodID, params ...interface{}) (types.GasUnits, error)
-}
-
-// MinerPreviewSetPrice calculates the amount of Gas needed for a call to MinerSetPrice.
-// This method accepts all the same arguments as MinerSetPrice.
-func MinerPreviewSetPrice(ctx context.Context, plumbing mpspAPI, from address.Address, miner address.Address, price types.AttoFIL, expiry *big.Int) (types.GasUnits, error) {
-	// get miner address if not provided
-	if miner.Empty() {
-		minerValue, err := plumbing.ConfigGet("mining.minerAddress")
-		if err != nil {
-			return types.NewGasUnits(0), errors.Wrap(err, "Could not get miner address in config")
-		}
-		minerAddr, ok := minerValue.(address.Address)
-		if !ok {
-			return types.NewGasUnits(0), errors.Wrap(err, "Configured miner is not an address")
-		}
-		miner = minerAddr
-	}
-
-	// set price
-	jsonPrice, err := json.Marshal(price)
-	if err != nil {
-		return types.NewGasUnits(0), errors.New("Could not marshal price")
-	}
-	if err := plumbing.ConfigSet("mining.storagePrice", string(jsonPrice)); err != nil {
-		return types.NewGasUnits(0), err
-	}
-
-	// create ask
-	usedGas, err := plumbing.MessagePreview(
-		ctx,
-		from,
-		miner,
-		minerActor.AddAsk,
-		price,
-		expiry,
-	)
-	if err != nil {
-		return types.NewGasUnits(0), errors.Wrap(err, "couldn't preview message")
-	}
-
-	return usedGas, nil
+	panic("implement me in terms of storage market module")
 }
 
 // minerQueryAndDeserialize is the subset of the plumbing.API that provides
@@ -371,21 +306,6 @@ func MinerGetLastCommittedSectorID(ctx context.Context, plumbing minerQueryAndDe
 type mgaAPI interface {
 	ChainHeadKey() block.TipSetKey
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
-}
-
-// MinerGetAsk queries for an ask of the given miner
-func MinerGetAsk(ctx context.Context, plumbing mgaAPI, minerAddr address.Address, askID uint64) (minerActor.Ask, error) {
-	ret, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, minerActor.GetAsk, plumbing.ChainHeadKey(), big.NewInt(int64(askID)))
-	if err != nil {
-		return minerActor.Ask{}, err
-	}
-
-	var ask minerActor.Ask
-	if err := encoding.Decode(ret[0], &ask); err != nil {
-		return minerActor.Ask{}, err
-	}
-
-	return ask, nil
 }
 
 // mgpidAPI is the subset of the plumbing.API that MinerGetPeerID uses.

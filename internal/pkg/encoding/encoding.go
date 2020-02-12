@@ -67,10 +67,6 @@ type Decoder interface {
 type defaultEncoder = FxamackerCborEncoder
 type defaultDecoder = FxamackerCborDecoder
 
-// Dragons: get rid of this when the new actor code lands
-type deprecatedEncoder = IpldCborEncoder
-type deprecatedDecoder = IpldCborDecoder
-
 var defaultNewStreamDecoder = FxamackerNewStreamDecoder
 
 // NewStreamDecoder is a function initializing a new stream decoder
@@ -84,12 +80,6 @@ type StreamDecoder interface {
 // Encode encodes an object, returning a byte array.
 func Encode(obj interface{}) ([]byte, error) {
 	var encoder Encoder = &defaultEncoder{}
-	return encode(obj, reflect.ValueOf(obj), encoder)
-}
-
-// EncodeDeprecated uses the deprecated refmt cbor encoding
-func EncodeDeprecated(obj interface{}) ([]byte, error) {
-	var encoder Encoder = &deprecatedEncoder{}
 	return encode(obj, reflect.ValueOf(obj), encoder)
 }
 
@@ -175,15 +165,6 @@ func DecodeWith(obj interface{}, decoder Decoder) error {
 // Decode decodes a decodable type, and populates a pointer to the type.
 func Decode(raw []byte, obj interface{}) error {
 	var decoder Decoder = &defaultDecoder{
-		raw: raw,
-	}
-
-	return decode(obj, reflect.ValueOf(obj), decoder)
-}
-
-// DecodeDeprecated decodes using the deprecated refmt cbor encoding
-func DecodeDeprecated(raw []byte, obj interface{}) error {
-	var decoder Decoder = &deprecatedDecoder{
 		raw: raw,
 	}
 
