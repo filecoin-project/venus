@@ -2,6 +2,7 @@ package vmcontext
 
 import (
 	"context"
+	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
@@ -70,7 +71,6 @@ func (a *runtimeAdapter) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok 
 
 // GetRandomness implements Runtime.
 func (a *runtimeAdapter) GetRandomness(epoch abi.ChainEpoch) abi.RandomnessSeed {
-	// Dragons: type missmatch
 	return a.ctx.Runtime().Randomness(epoch)
 }
 
@@ -89,10 +89,27 @@ func (a *runtimeAdapter) Store() specsruntime.Store {
 }
 
 // Send implements Runtime.
-func (a *runtimeAdapter) Send(toAddr address.Address, methodNum abi.MethodNum, params specsruntime.CBORMarshaler, value abi.TokenAmount) (specsruntime.SendReturn, exitcode.ExitCode) {
-	// Dragons: needs to catch panic and flatten it out
-	// Dragons: PR for use unmarshable
-	panic("TODO")
+func (a *runtimeAdapter) Send(toAddr address.Address, methodNum abi.MethodNum, params specsruntime.CBORMarshaler, value abi.TokenAmount) (ret specsruntime.SendReturn, errcode exitcode.ExitCode) {
+	// Dragons: move impl to actual send once we delete the old actors and can change the signature
+	defer func() {
+		if r := recover(); r != nil {
+			switch r.(type) {
+			case runtime.ExecutionPanic:
+				p := r.(runtime.ExecutionPanic)
+				// TODO: log
+				ret = nil
+				errcode = p.Code()
+				return
+			default:
+				// do not trap unknown panics
+				debug.PrintStack()
+				panic(r)
+			}
+		}
+	}()
+
+	panic("update actors first")
+	// return a.ctx.Send(to, methodNum, value, params)
 }
 
 // Abortf implements Runtime.
@@ -102,8 +119,11 @@ func (a *runtimeAdapter) Abortf(errExitCode exitcode.ExitCode, msg string, args 
 
 // NewActorAddress implements Runtime.
 func (a *runtimeAdapter) NewActorAddress() address.Address {
-	// Dragons: Could potentially be removed
-	panic("TODO")
+	actorAddr, err := computeActorAddress(a.ctx.msg.from, uint64(a.ctx.msg.callSeqNumber))
+	if err != nil {
+		runtime.Abortf(exitcode.SysErrInternal, "Could not create address for actor")
+	}
+	return actorAddr
 }
 
 // CreateActor implements Runtime.
