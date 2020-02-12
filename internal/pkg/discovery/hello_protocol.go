@@ -15,6 +15,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 )
@@ -172,23 +173,9 @@ func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 func (h *HelloProtocolHandler) receiveHello(ctx context.Context, s net.Stream) (*HelloMessage, error) {
 	var hello HelloMessage
 	// Read cbor bytes from stream into hello message
-	// Dragons: this handles ~9 head cids.  We should reduce assumptions
-	buf := make([]byte, 512)
-	n, err := s.Read(buf)
-	if err != nil {
-		return nil, err
-	}
-	if n == 512 {
-		// Dragons when reducing assumptions we could read in a loop
-		// and abstract all of this.  (We could also use a cbor aware reader)
-		return nil, fmt.Errorf("hello message too big")
-	}
-	rawHello := buf[:n]
-	err = encoding.Decode(rawHello, &hello)
-	if err != nil {
-		return nil, err
-	}
-	return &hello, nil
+	mr := cborutil.NewMsgReader(s)
+	err := mr.ReadMsg(&hello)
+	return &hello, err
 }
 
 func (h *HelloProtocolHandler) receiveLatency(ctx context.Context, s net.Stream) (*LatencyMessage, error) {

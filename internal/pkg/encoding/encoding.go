@@ -2,6 +2,7 @@ package encoding
 
 import (
 	"fmt"
+	"io"
 	"reflect"
 )
 
@@ -69,6 +70,16 @@ type defaultDecoder = FxamackerCborDecoder
 // Dragons: get rid of this when the new actor code lands
 type deprecatedEncoder = IpldCborEncoder
 type deprecatedDecoder = IpldCborDecoder
+
+var defaultNewStreamDecoder = FxamackerNewStreamDecoder
+
+// NewStreamDecoder is a function initializing a new stream decoder
+type NewStreamDecoder func(io.Reader) StreamDecoder
+
+// StreamDecoder wraps a stream of bytes and decodes them into an object
+type StreamDecoder interface {
+	Decode(v interface{}) error
+}
 
 // Encode encodes an object, returning a byte array.
 func Encode(obj interface{}) ([]byte, error) {
@@ -237,4 +248,10 @@ func decode(obj interface{}, v reflect.Value, decoder Decoder) error {
 	default:
 		return fmt.Errorf("unsupported type for decoding: %T, kind: %v", obj, k)
 	}
+}
+
+// StreamDecode decodes a decodable type from a reader.
+func StreamDecode(r io.Reader, obj interface{}) error {
+	streamDecoder := defaultNewStreamDecoder(r)
+	return streamDecoder.Decode(obj)
 }
