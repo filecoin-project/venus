@@ -1,8 +1,7 @@
 package vmcontext
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 type prodRndSource struct {
@@ -15,7 +14,7 @@ func NewProdRandomnessSource() RandomnessSource {
 
 var _ RandomnessSource = (*prodRndSource)(nil)
 
-func (*prodRndSource) Randomness(epoch types.BlockHeight) runtime.Randomness {
+func (*prodRndSource) Randomness(epoch abi.ChainEpoch) abi.RandomnessSeed {
 	// TODO: implement randomness based on new spec (issue: #3717)
 	return []byte{}
 }

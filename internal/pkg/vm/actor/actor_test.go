@@ -11,6 +11,7 @@ import (
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
@@ -18,8 +19,8 @@ import (
 func TestActorCid(t *testing.T) {
 	tf.UnitTest(t)
 
-	actor1 := NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
-	actor2 := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(5))
+	actor1 := NewActor(types.AccountActorCodeCid, abi.NewTokenAmount(0))
+	actor2 := NewActor(types.AccountActorCodeCid, abi.NewTokenAmount(5))
 	actor2.Head = e.NewCid(requireCid(t, "Actor 2 State"))
 	actor1.IncrementSeqNum()
 
@@ -34,18 +35,18 @@ func TestActorCid(t *testing.T) {
 func TestActorFormat(t *testing.T) {
 	tf.UnitTest(t)
 
-	accountActor := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(5))
+	accountActor := NewActor(types.AccountActorCodeCid, abi.NewTokenAmount(5))
 
 	formatted := fmt.Sprintf("%v", accountActor)
 	assert.Contains(t, formatted, "AccountActor")
 	assert.Contains(t, formatted, "balance: 5")
 	assert.Contains(t, formatted, "nonce: 0")
 
-	minerActor := NewActor(types.MinerActorCodeCid, types.NewAttoFILFromFIL(5))
+	minerActor := NewActor(types.MinerActorCodeCid, abi.NewTokenAmount(5))
 	formatted = fmt.Sprintf("%v", minerActor)
 	assert.Contains(t, formatted, "MinerActor")
 
-	storageMarketActor := NewActor(types.StorageMarketActorCodeCid, types.NewAttoFILFromFIL(5))
+	storageMarketActor := NewActor(types.StorageMarketActorCodeCid, abi.NewTokenAmount(5))
 	formatted = fmt.Sprintf("%v", storageMarketActor)
 	assert.Contains(t, formatted, "StorageMarketActor")
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
@@ -118,7 +119,7 @@ func RequireLookupActor(ctx context.Context, t *testing.T, st state.Tree, vms vm
 }
 
 // RequireNewAccountActor creates a new account actor without adding it to state
-func RequireNewAccountActor(t *testing.T, value types.AttoFIL) *actor.Actor {
+func RequireNewAccountActor(t *testing.T, value abi.TokenAmount) *actor.Actor {
 	act, err := account.NewActor(value)
 	require.NoError(t, err)
 	return act

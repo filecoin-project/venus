@@ -172,7 +172,7 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 			ZeroAttoFIL,
 			InvalidMethodID,
 			[]byte("params"),
-			NewGasPrice(0),
+			ZeroAttoFIL,
 			NewGasUnits(0))
 		smsg, err := NewSignedMessage(*msg, &ms)
 		if err != nil {
@@ -259,7 +259,7 @@ func NewSignedMsgs(n uint, ms MockSigner) []*SignedMessage {
 		msg := newMsg()
 		msg.From = ms.Addresses[0]
 		msg.CallSeqNum = Uint64(i)
-		msg.GasPrice = NewGasPrice(1)
+		msg.GasPrice = ZeroAttoFIL // NewGasPrice(1)
 		msg.GasLimit = NewGasUnits(0)
 		smsgs[i], err = NewSignedMessage(*msg, ms)
 		if err != nil {

@@ -11,15 +11,17 @@ import (
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 )
 
@@ -71,7 +73,9 @@ func (ctx *invocationContext) invoke() interface{} {
 	// 6. create target state handle
 
 	// assert from address is an ID address.
-	runtime.Assert(ctx.msg.from.Protocol() == address.ID)
+	if ctx.msg.from.Protocol() != address.ID {
+		runtime.Abortf(exitcode.ErrForbidden, "Sender address MUST be an ID address at invocation time")
+	}
 
 	// 1. charge gas for msg
 	ctx.gasTank.Charge(gascost.OnMethodInvocation(&ctx.msg))
@@ -96,10 +100,12 @@ func (ctx *invocationContext) invoke() interface{} {
 	ctx.stateHandle = &stateHandle
 
 	// dispatch
+	// Dragons: uncomment and send this over when we delete the existing actors and bring the new ones
+	// adapter := adapter.NewAdapter(ctx)
 	out, err := actorImpl.Dispatch(ctx.msg.method, ctx, ctx.msg.params)
 	if err != nil {
 		// Dragons: this could be a deserialization error too
-		runtime.Abort(exitcode.InvalidMethod)
+		runtime.Abort(exitcode.SysErrInvalidMethod)
 	}
 
 	// post-dispatch
@@ -109,7 +115,7 @@ func (ctx *invocationContext) invoke() interface{} {
 
 	// 1. check caller was validated
 	if !ctx.isCallerValidated {
-		runtime.Abortf(exitcode.MethodAbort, "Caller MUST be validated during method execution")
+		runtime.Abortf(exitcode.SysErrInternal, "Caller MUST be validated during method execution")
 	}
 
 	// 2. validate state access
@@ -155,20 +161,20 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 
 	if target.Protocol() != address.SECP256K1 && target.Protocol() != address.BLS {
 		// Don't implicitly create an account actor for an address without an associated key.
-		runtime.Abort(exitcode.ActorNotFound)
+		runtime.Abort(exitcode.SysErrActorNotFound)
 	}
 
 	// send init actor msg to create the account actor
 	params := []interface{}{types.AccountActorCodeCid, []interface{}{target}}
 
-	encodedParams, err := abi.ToEncodedValues(params...)
+	encodedParams, err := encoding.Encode(params)
 	if err != nil {
-		runtime.Abortf(exitcode.EncodingError, "failed to encode params. %s", err)
+		runtime.Abortf(exitcode.SysErrSerialization, "failed to encode params. %s", err)
 	}
 	newMsg := internalMessage{
 		from:   ctx.msg.from,
 		to:     vmaddr.InitAddress,
-		value:  types.ZeroAttoFIL,
+		value:  big.Zero(),
 		method: initactor.ExecMethodID,
 		params: encodedParams,
 	}
@@ -200,31 +206,31 @@ func (ctx *invocationContext) Runtime() runtime.Runtime {
 }
 
 // Message implements runtime.InvocationContext.
-func (ctx *invocationContext) Message() runtime.MessageInfo {
+func (ctx *invocationContext) Message() specsruntime.Message {
 	return ctx.msg
 }
 
 // ValidateCaller implements runtime.InvocationContext.
 func (ctx *invocationContext) ValidateCaller(pattern runtime.CallerPattern) {
 	if ctx.isCallerValidated {
-		runtime.Abortf(exitcode.MethodAbort, "Method must validate caller identity exactly once")
+		runtime.Abortf(exitcode.SysErrInternal, "Method must validate caller identity exactly once")
 	}
 	if !pattern.IsMatch((*patternContext2)(ctx)) {
-		runtime.Abortf(exitcode.MethodAbort, "Method invoked by incorrect caller")
+		runtime.Abortf(exitcode.SysErrInternal, "Method invoked by incorrect caller")
 	}
 	ctx.isCallerValidated = true
 }
 
-// StateHandle implements runtime.InvocationContext.
-func (ctx *invocationContext) StateHandle() runtime.ActorStateHandle {
+// State implements runtime.InvocationContext.
+func (ctx *invocationContext) State() runtime.ActorStateHandle {
 	return ctx.stateHandle
 }
 
 // Send implements runtime.InvocationContext.
-func (ctx *invocationContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params interface{}) interface{} {
+func (ctx *invocationContext) Send(to address.Address, method types.MethodID, value abi.TokenAmount, params interface{}) interface{} {
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {
-		runtime.Abortf(exitcode.MethodAbort, "Calling Send() is not allowed during side-effet lock")
+		runtime.Abortf(exitcode.SysErrInternal, "Calling Send() is not allowed during side-effet lock")
 	}
 
 	// prepare
@@ -241,7 +247,7 @@ func (ctx *invocationContext) Send(to address.Address, method types.MethodID, va
 		var err error
 		encodedParams, err = encoding.Encode(params)
 		if err != nil {
-			runtime.Abortf(exitcode.EncodingError, "failed to encode params. %s", err)
+			runtime.Abortf(exitcode.SysErrSerialization, "failed to encode params. %s", err)
 		}
 	}
 
@@ -269,12 +275,12 @@ func (ctx *invocationContext) Send(to address.Address, method types.MethodID, va
 }
 
 /// Balance implements runtime.InvocationContext.
-func (ctx *invocationContext) Balance() types.AttoFIL {
+func (ctx *invocationContext) Balance() abi.TokenAmount {
 	return ctx.toActor.Balance
 }
 
 // Charge implements runtime.InvocationContext.
-func (ctx *invocationContext) Charge(cost types.GasUnits) error {
+func (ctx *invocationContext) Charge(cost gas.Unit) error {
 	ctx.gasTank.Charge(cost)
 	return nil
 }
@@ -289,11 +295,11 @@ var _ runtime.ExtendedInvocationContext = (*invocationContext)(nil)
 func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, constructorParams []byte) (address.Address, address.Address) {
 	// Dragons: code it over, there were some changes in spec, revise
 	if !isBuiltinActor(code) {
-		runtime.Abortf(exitcode.MethodAbort, "Can only create built-in actors.")
+		runtime.Abortf(exitcode.SysErrInternal, "Can only create built-in actors.")
 	}
 
 	if isSingletonActor(code) {
-		runtime.Abortf(exitcode.MethodAbort, "Can only have one instance of singleton actors.")
+		runtime.Abortf(exitcode.SysErrInternal, "Can only have one instance of singleton actors.")
 	}
 
 	// create address for actor
@@ -302,18 +308,18 @@ func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, co
 	if types.AccountActorCodeCid.Equals(code) {
 		err = encoding.Decode(constructorParams, &actorAddr)
 		if err != nil {
-			runtime.Abortf(exitcode.MethodAbort, "Parameter for account actor creation is not an address")
+			runtime.Abortf(exitcode.SysErrInternal, "Parameter for account actor creation is not an address")
 		}
 	} else {
 		actorAddr, err = computeActorAddress(ctx.msg.from, uint64(ctx.msg.callSeqNumber))
 		if err != nil {
-			runtime.Abortf(exitcode.MethodAbort, "Could not create address for actor")
+			runtime.Abortf(exitcode.SysErrInternal, "Could not create address for actor")
 		}
 	}
 
 	idAddr, err := address.NewIDAddress(uint64(actorID))
 	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "Could not create IDAddress for actor")
+		runtime.Abortf(exitcode.SysErrInternal, "Could not create IDAddress for actor")
 	}
 
 	// Check existing address. If nothing there, create empty actor.
@@ -324,13 +330,14 @@ func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, co
 	})
 
 	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "Could not get or create actor")
+		runtime.Abortf(exitcode.SysErrInternal, "Could not get or create actor")
 	}
 
 	if !newActor.Empty() {
-		runtime.Abortf(exitcode.MethodAbort, "Actor address already exists")
+		runtime.Abortf(exitcode.SysErrInternal, "Actor address already exists")
 	}
 
+	newActor.Balance = abi.NewTokenAmount(0)
 	// make this the right 'type' of actor
 	newActor.Code = e.NewCid(code)
 
@@ -350,8 +357,12 @@ type patternContext2 invocationContext
 
 var _ runtime.PatternContext = (*patternContext2)(nil)
 
-func (ctx *patternContext2) Code() cid.Cid {
+func (ctx *patternContext2) CallerCode() cid.Cid {
 	return ctx.fromActor.Code.Cid
+}
+
+func (ctx *patternContext2) CallerAddr() address.Address {
+	return ctx.msg.from
 }
 
 func isBuiltinActor(code cid.Cid) bool {

@@ -10,6 +10,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-leb128"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/polydawn/refmt/obj/atlas"
 )
 
@@ -86,6 +88,16 @@ func NewAttoFIL(x *big.Int) AttoFIL {
 func NewAttoFILFromFIL(x uint64) AttoFIL {
 	xAsBigInt := big.NewInt(0).SetUint64(x)
 	return NewAttoFIL(xAsBigInt.Mul(xAsBigInt, tenToTheEighteen))
+}
+
+var tenToTheEighteenTokens = specsbig.Exp(specsbig.NewInt(10), specsbig.NewInt(18))
+
+// NewAttoTokenFromToken should be moved when we cleanup the types
+// Dragons: clean up and likely move to specs-actors
+func NewAttoTokenFromToken(x uint64) abi.TokenAmount {
+	xAsBigInt := abi.NewTokenAmount(0)
+	xAsBigInt.SetUint64(x)
+	return specsbig.Mul(xAsBigInt, tenToTheEighteenTokens)
 }
 
 // NewAttoFILFromBytes allocates and returns a new AttoFIL set

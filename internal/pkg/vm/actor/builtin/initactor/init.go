@@ -13,10 +13,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 )
 
 // Actor is the builtin actor responsible for network initialization.
@@ -56,11 +56,11 @@ const (
 
 // NewActor returns a init actor.
 func NewActor() *actor.Actor {
-	return actor.NewActor(types.InitActorCodeCid, types.ZeroAttoFIL)
+	return actor.NewActor(types.InitActorCodeCid, abi.NewTokenAmount(0))
 }
 
 // NewView creates a new init actor state view.
-func NewView(stateHandle runtime.ReadonlyActorStateHandle, store runtime.Storage) View {
+func NewView(stateHandle runtime.ActorStateHandle, store runtime.Storage) View {
 	// load state as readonly
 	var state State
 	stateHandle.Readonly(&state)
@@ -137,7 +137,7 @@ func (*Actor) InitializeState(handle runtime.ActorStateHandle, params interface{
 // LookupIDAddress returns the the ActorID for a given address.
 func LookupIDAddress(rt runtime.InvocationContext, addr address.Address) (uint64, bool, error) {
 	var state State
-	id, err := rt.StateHandle().Transaction(&state, func() (interface{}, error) {
+	id, err := rt.State().Transaction(&state, func() (interface{}, error) {
 		return lookupIDAddress(rt, state, addr)
 	})
 	if err != nil {
@@ -170,12 +170,8 @@ type Impl Actor
 
 // GetNetwork returns the network name for this network
 func (*Impl) GetNetwork(ctx runtime.InvocationContext) (string, uint8, error) {
-	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return "", internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
-	}
-
 	var state State
-	ctx.StateHandle().Readonly(&state)
+	ctx.State().Readonly(&state)
 	return state.Network, 0, nil
 }
 
@@ -183,12 +179,8 @@ func (*Impl) GetNetwork(ctx runtime.InvocationContext) (string, uint8, error) {
 func (a *Impl) GetActorIDForAddress(ctx invocationContext, addr address.Address) (*big.Int, uint8, error) {
 	ctx.ValidateCaller(pattern.Any{})
 
-	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return big.NewInt(0), internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
-	}
-
 	var state State
-	id, err := ctx.StateHandle().Transaction(&state, func() (interface{}, error) {
+	id, err := ctx.State().Transaction(&state, func() (interface{}, error) {
 		return lookupIDAddress(ctx, state, addr)
 	})
 	if err != nil {
@@ -203,12 +195,8 @@ func (a *Impl) GetActorIDForAddress(ctx invocationContext, addr address.Address)
 
 // GetAddressForActorID looks up the address for an actor id.
 func (a *Impl) GetAddressForActorID(vmctx runtime.InvocationContext, actorID types.Uint64) (address.Address, uint8, error) {
-	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return address.Undef, internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
-	}
-
 	var state State
-	vmctx.StateHandle().Readonly(state)
+	vmctx.State().Readonly(state)
 
 	ctx := context.TODO()
 	lookup, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.IDMap)
@@ -245,7 +233,7 @@ func (a *Impl) Exec(vmctx invocationContext, params ExecParams) address.Address 
 
 	// Dragons: clean this up to match spec
 	var state State
-	out, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
+	out, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		// create id address
 		actorID := state.assignNewID()
 
@@ -259,7 +247,7 @@ func (a *Impl) Exec(vmctx invocationContext, params ExecParams) address.Address 
 
 	actorIDAddr, actorAddr := vmctx.CreateActor(actorID, params.ActorCodeCid, params.ConstructorParams)
 
-	_, err = vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
+	_, err = vmctx.State().Transaction(&state, func() (interface{}, error) {
 		var err error
 
 		// map id to address and vice versa
@@ -277,7 +265,7 @@ func (a *Impl) Exec(vmctx invocationContext, params ExecParams) address.Address 
 		return nil, nil
 	})
 	if err != nil {
-		runtime.Abort(exitcode.MethodAbort)
+		runtime.Abort(exitcode.SysErrInternal)
 	}
 
 	return actorIDAddr

@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
@@ -331,7 +332,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 			//         the legacy messagereceipt type is no longer valid and will be replaced with vm.MessageReceipt
 			ExitCode:   uint8(receipts[i].ExitCode),
 			Return:     [][]byte{receipts[i].ReturnValue},
-			GasAttoFIL: receipts[i].GasUsed.Cost(types.ZeroAttoFIL),
+			GasAttoFIL: types.NewAttoFILFromFIL(uint64(receipts[i].GasUsed.ToTokens(abi.NewTokenAmount(1)).Int64())),
 		}
 		auxReceipts = append(auxReceipts, &r)
 	}

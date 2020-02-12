@@ -16,6 +16,7 @@ import (
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 // DefaultGasCost is default gas cost for the actor calls.
@@ -47,11 +48,11 @@ type Actor struct {
 	// Messages are processed in strict, contiguous order.
 	CallSeqNum types.Uint64
 	// Balance is the amount of FIL in the actor's account.
-	Balance types.AttoFIL
+	Balance abi.TokenAmount
 }
 
 // NewActor constructs a new actor.
-func NewActor(code cid.Cid, balance types.AttoFIL) *Actor {
+func NewActor(code cid.Cid, balance abi.TokenAmount) *Actor {
 	return &Actor{
 		Code:       e.NewCid(code),
 		CallSeqNum: 0,

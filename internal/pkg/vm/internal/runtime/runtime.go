@@ -7,31 +7,21 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 )
 
 // Runtime has operations in the VM that are exposed to all actors.
 type Runtime interface {
 	// CurrentEpoch is the current chain epoch.
-	CurrentEpoch() types.BlockHeight
+	CurrentEpoch() abi.ChainEpoch
 	// Randomness gives the actors access to sampling peudo-randomess from the chain.
-	Randomness(epoch types.BlockHeight) Randomness
+	Randomness(epoch abi.ChainEpoch) abi.RandomnessSeed
 	// Storage is the raw store for IPLD objects.
 	//
 	// Note: this is required for custom data structures.
 	Storage() Storage
-}
-
-// MessageInfo contains information available to the actor about the executing message.
-type MessageInfo interface {
-	// BlockMiner is the address for the actor who mined the block in which the initial on-chain message appears.
-	BlockMiner() address.Address
-	// ValueReceived is the amount of FIL received by this actor during this method call.
-	//
-	// Note: the value has already been deposited on the actors account and is reflected in the balance.
-	ValueReceived() types.AttoFIL
-	// Caller is the immediate caller to the current executing method.
-	Caller() address.Address
 }
 
 // InvocationContext is passed to the actors on each method call.
@@ -39,27 +29,19 @@ type InvocationContext interface {
 	// Runtime exposes some methods on the runtime to the actor.
 	Runtime() Runtime
 	// Message contains information available to the actor about the executing message.
-	Message() MessageInfo
+	Message() specsruntime.Message
 	// ValidateCaller validates the caller against a patter.
 	//
 	// All actor methods MUST call this method before returning.
 	ValidateCaller(CallerPattern)
 	// StateHandle handles access to the actor state.
-	StateHandle() ActorStateHandle
+	State() ActorStateHandle
 	// Send allows actors to invoke methods on other actors
-	Send(to address.Address, method types.MethodID, value types.AttoFIL, params interface{}) interface{}
+	Send(to address.Address, method types.MethodID, value abi.TokenAmount, params interface{}) interface{}
 	// Balance is the current balance on the current actors account.
 	//
 	// Note: the value received for this invocation is already reflected on the balance.
-	Balance() types.AttoFIL
-	// Charge allows actor code to charge extra.
-	//
-	// This method should be rarely used, the VM takes care of charging the gas on calls.
-	//
-	// Methods with extra complexity that is not accounted by other means (i.e. external calls, storage calls)
-	// will have to charge extra.
-	// Dragons: move up to runtime
-	Charge(units types.GasUnits) error
+	Balance() abi.TokenAmount
 }
 
 // ExtendedInvocationContext is a set of convenience functions built on top external ABI calls.
@@ -84,12 +66,16 @@ type ExtendedInvocationContext interface {
 }
 
 // ActorStateHandle handles the actor state, allowing actors to lock on the state.
+// Dragons: delete once the new actors are in
 type ActorStateHandle interface {
-	ReadonlyActorStateHandle
 	// Create initializes the state to the given value.
 	//
 	// This operation is only valid if the value has never been set before.
 	Create(obj interface{})
+	// Readonly loads a readonly copy of the state into the argument.
+	//
+	// Any modification to the state is illegal and will result in an `Abort`.
+	Readonly(obj interface{})
 	// Transaction loads a mutable version of the state into the `obj` argument and protects
 	// the execution from side effects.
 	//
@@ -124,20 +110,10 @@ type ActorStateHandle interface {
 	Transaction(obj interface{}, f func() (interface{}, error)) (interface{}, error)
 }
 
-// ReadonlyActorStateHandle handles the actor state loading for view only.
-type ReadonlyActorStateHandle interface {
-	// Readonly loads a readonly copy of the state into the argument.
-	//
-	// Any modification to the state is illegal and will result in an `Abort`.
-	Readonly(obj interface{})
-}
-
-// Randomness is a string of random bytes
-type Randomness []byte
-
 // PatternContext is the context a pattern gets access to in order to determine if the caller matches.
 type PatternContext interface {
-	Code() cid.Cid
+	CallerCode() cid.Cid
+	CallerAddr() address.Address
 }
 
 // CallerPattern checks if the caller matches the pattern.
@@ -172,13 +148,6 @@ func Abort(code exitcode.ExitCode) {
 // Abortf will stop the VM execution and return an the error to the caller.
 func Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
 	panic(ExecutionPanic{code: code, msg: fmt.Sprintf(msg, args...)})
-}
-
-// Assert will abort if the condition is `False` and return an abort error to the caller.
-func Assert(cond bool) {
-	if !cond {
-		Abortf(exitcode.MethodAbort, "assertion failure in actor code.")
-	}
 }
 
 // Storage defines the storage module exposed to actors.

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cfg"
@@ -38,7 +39,9 @@ func newWdaTestPlumbing(t *testing.T) *wdaTestPlumbing {
 }
 
 func (wbtp *wbTestPlumbing) ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	testActor := actor.NewActor(cid.Undef, wbtp.balance)
+	aux := abi.NewTokenAmount(0)
+	aux.SetBits(wbtp.balance.AsBigInt().Bits())
+	testActor := actor.NewActor(cid.Undef, aux)
 	return testActor, nil
 }
 
@@ -64,14 +67,13 @@ func TestWalletBalance(t *testing.T) {
 	t.Run("Returns the correct value for wallet balance", func(t *testing.T) {
 		ctx := context.Background()
 
-		expectedBalance := types.NewAttoFILFromFIL(20)
 		plumbing := &wbTestPlumbing{
-			balance: expectedBalance,
+			balance: types.NewAttoFILFromFIL(20),
 		}
 		balance, err := porcelain.WalletBalance(ctx, plumbing, address.Undef)
 		require.NoError(t, err)
 
-		assert.Equal(t, expectedBalance, balance)
+		assert.Equal(t, types.NewAttoTokenFromToken(20), balance)
 	})
 }
 

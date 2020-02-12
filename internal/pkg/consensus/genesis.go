@@ -11,6 +11,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -34,26 +36,26 @@ import (
 type GenesisInitFunc func(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error)
 
 var (
-	defaultAccounts map[address.Address]types.AttoFIL
+	defaultAccounts map[address.Address]abi.TokenAmount
 )
 
 func init() {
-	defaultAccounts = map[address.Address]types.AttoFIL{
-		vmaddr.LegacyNetworkAddress: types.NewAttoFILFromFIL(10000000000),
-		vmaddr.BurntFundsAddress:    types.NewAttoFILFromFIL(0),
-		vmaddr.TestAddress:          types.NewAttoFILFromFIL(50000),
-		vmaddr.TestAddress2:         types.NewAttoFILFromFIL(60000),
+	defaultAccounts = map[address.Address]abi.TokenAmount{
+		vmaddr.LegacyNetworkAddress: abi.NewTokenAmount(10000000000),
+		vmaddr.BurntFundsAddress:    abi.NewTokenAmount(0),
+		vmaddr.TestAddress:          abi.NewTokenAmount(50000),
+		vmaddr.TestAddress2:         abi.NewTokenAmount(60000),
 	}
 }
 
 type minerActorConfig struct {
 	state   *miner.State
-	balance types.AttoFIL
+	balance abi.TokenAmount
 }
 
 // Config is used to configure values in the GenesisInitFunction.
 type Config struct {
-	accounts         map[address.Address]types.AttoFIL
+	accounts         map[address.Address]abi.TokenAmount
 	nonces           map[address.Address]uint64
 	actors           map[address.Address]*actor.Actor
 	miners           map[address.Address]*minerActorConfig
@@ -66,7 +68,7 @@ type Config struct {
 type GenOption func(*Config) error
 
 // ActorAccount returns a config option that sets up an actor account.
-func ActorAccount(addr address.Address, amt types.AttoFIL) GenOption {
+func ActorAccount(addr address.Address, amt abi.TokenAmount) GenOption {
 	return func(gc *Config) error {
 		gc.accounts[addr] = amt
 		return nil
@@ -74,7 +76,7 @@ func ActorAccount(addr address.Address, amt types.AttoFIL) GenOption {
 }
 
 // MinerActor returns a config option that sets up an miner actor account.
-func MinerActor(addr address.Address, owner address.Address, pid peer.ID, coll types.AttoFIL, sectorSize *types.BytesAmount) GenOption {
+func MinerActor(addr address.Address, owner address.Address, pid peer.ID, coll abi.TokenAmount, sectorSize *types.BytesAmount) GenOption {
 	return func(gc *Config) error {
 		gc.miners[addr] = &minerActorConfig{
 			state:   miner.NewState(owner, owner, pid, sectorSize),
@@ -139,7 +141,7 @@ var defaultGenesisTimestamp = time.Unix(123456789, 0)
 // NewEmptyConfig inits and returns an empty config
 func NewEmptyConfig() *Config {
 	return &Config{
-		accounts:         make(map[address.Address]types.AttoFIL),
+		accounts:         make(map[address.Address]abi.TokenAmount),
 		nonces:           make(map[address.Address]uint64),
 		actors:           make(map[address.Address]*actor.Actor),
 		miners:           make(map[address.Address]*minerActorConfig),
@@ -151,7 +153,7 @@ func NewEmptyConfig() *Config {
 
 // GenesisVM is the view into the VM used during genesis block creation.
 type GenesisVM interface {
-	ApplyGenesisMessage(from address.Address, to address.Address, method types.MethodID, value types.AttoFIL, params interface{}) (interface{}, error)
+	ApplyGenesisMessage(from address.Address, to address.Address, method types.MethodID, value abi.TokenAmount, params interface{}) (interface{}, error)
 }
 
 // MakeGenesisFunc returns a genesis function configured by a set of options.
@@ -276,7 +278,7 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 		a := actor.Actor{
 			Code:       e.NewCid(codeCid),
 			CallSeqNum: 0,
-			Balance:    types.ZeroAttoFIL,
+			Balance:    big.Zero(),
 		}
 		if state != nil {
 			var err error

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -50,7 +51,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 	t.Run("test send after reverted message", func(t *testing.T) {
 		provider := message.NewFakeProvider(t)
 		root := provider.NewGenesis()
-		actr, _ := account.NewActor(types.ZeroAttoFIL)
+		actr, _ := account.NewActor(abi.NewTokenAmount(0))
 		actr.CallSeqNum = 42
 		provider.SetHeadAndActor(t, root.Key(), sender, actr)
 

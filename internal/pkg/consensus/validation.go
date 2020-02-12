@@ -3,15 +3,16 @@ package consensus
 import (
 	"context"
 	"fmt"
-	"math/big"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 var errNegativeValueCt *metrics.Int64Counter
@@ -117,8 +118,10 @@ func (v *DefaultMessageValidator) Validate(ctx context.Context, msg *types.Unsig
 // Note that this is an imperfect test, since nested messages invoked by this one may transfer
 // more value from the actor's balance.
 func canCoverGasLimit(msg *types.UnsignedMessage, actor *actor.Actor) bool {
-	maximumGasCharge := msg.GasPrice.MulBigInt(big.NewInt(int64(msg.GasLimit)))
-	return maximumGasCharge.LessEqual(actor.Balance.Sub(msg.Value))
+	// balance >= (gasprice*gasLimit + value)
+	gascost := specsbig.Mul(abi.NewTokenAmount(msg.GasPrice.AsBigInt().Int64()), abi.NewTokenAmount(int64(msg.GasLimit)))
+	expense := specsbig.Add(gascost, abi.NewTokenAmount(msg.Value.AsBigInt().Int64()))
+	return actor.Balance.GreaterThanEqual(expense)
 }
 
 // IngestionValidatorAPI allows the validator to access latest state
@@ -155,7 +158,8 @@ func (v *IngestionValidator) Validate(ctx context.Context, smsg *types.SignedMes
 	fromActor, err := v.api.GetActor(ctx, msg.From)
 	if err != nil {
 		if state.IsActorNotFoundError(err) {
-			fromActor = &actor.Actor{}
+			// Dragons: we have this "empty" actor line in too many places
+			fromActor = &actor.Actor{Balance: abi.NewTokenAmount(0)}
 		} else {
 			return err
 		}

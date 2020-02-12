@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -55,7 +56,7 @@ func TestOutbox(t *testing.T) {
 		head := provider.BuildOneOn(block.UndefTipSet, func(b *chain.BlockBuilder) {
 			b.IncHeight(1000)
 		})
-		actr, _ := account.NewActor(types.ZeroAttoFIL)
+		actr, _ := account.NewActor(abi.NewTokenAmount(0))
 		actr.CallSeqNum = 42
 		provider.SetHeadAndActor(t, head.Key(), sender, actr)
 
@@ -99,7 +100,7 @@ func TestOutbox(t *testing.T) {
 		head := provider.BuildOneOn(block.UndefTipSet, func(b *chain.BlockBuilder) {
 			b.IncHeight(1000)
 		})
-		actr, _ := account.NewActor(types.ZeroAttoFIL)
+		actr, _ := account.NewActor(abi.NewTokenAmount(0))
 		actr.CallSeqNum = 42
 		provider.SetHeadAndActor(t, head.Key(), sender, actr)
 

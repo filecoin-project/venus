@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -17,8 +18,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 func init() {
@@ -58,7 +59,7 @@ const (
 
 // NewActor returns a new storage market actor.
 func NewActor() *actor.Actor {
-	return actor.NewActor(types.StorageMarketActorCodeCid, types.ZeroAttoFIL)
+	return actor.NewActor(types.StorageMarketActorCodeCid, abi.NewTokenAmount(0))
 }
 
 //
@@ -110,19 +111,15 @@ var Errors = map[uint8]error{
 // CreateStorageMiner creates a new miner which will commit sectors of the
 // given size. The miners collateral is set by the value in the message.
 func (*impl) createStorageMiner(vmctx runtime.InvocationContext, sectorSize *types.BytesAmount, pid peer.ID) (address.Address, uint8, error) {
-	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return address.Undef, internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
-	}
-
 	var state State
-	ret, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
+	ret, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		if !isSupportedSectorSize(state.ProofsMode, sectorSize) {
 			return nil, Errors[ErrUnsupportedSectorSize]
 		}
 
 		actorCodeCid := types.MinerActorCodeCid
 		epoch := vmctx.Runtime().CurrentEpoch()
-		if epoch.Equal(types.NewBlockHeight(0)) {
+		if epoch == 0 {
 			actorCodeCid = types.BootstrapMinerActorCodeCid
 		}
 
@@ -156,7 +153,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, sectorSize *typ
 
 // retriveActorId uses init actor to map an actorAddress to an id address
 func retreiveActorID(vmctx runtime.InvocationContext, actorAddr address.Address) (address.Address, error) {
-	ret := vmctx.Send(vmaddr.InitAddress, initactor.GetActorIDForAddressMethodID, types.ZeroAttoFIL, []interface{}{actorAddr})
+	ret := vmctx.Send(vmaddr.InitAddress, initactor.GetActorIDForAddressMethodID, specsbig.Zero(), []interface{}{actorAddr})
 	actorIDVal := ret.(big.Int)
 
 	return address.NewIDAddress(actorIDVal.Uint64())
@@ -166,12 +163,8 @@ func retreiveActorID(vmctx runtime.InvocationContext, actorAddr address.Address)
 // This occurs either when a miner adds a new commitment, or when one is removed
 // (via slashing, faults or willful removal). The delta is in number of bytes.
 func (*impl) updateStorage(vmctx runtime.InvocationContext, delta *types.BytesAmount) (uint8, error) {
-	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
-	}
-
 	var state State
-	_, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
+	_, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		miner := vmctx.Message().Caller()
 		ctx := context.Background()
 
@@ -200,13 +193,10 @@ func (*impl) updateStorage(vmctx runtime.InvocationContext, delta *types.BytesAm
 }
 
 func (a *impl) getLateMiners(vmctx runtime.InvocationContext) (*map[string]uint64, uint8, error) {
-	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
-	}
 	var state State
 	ctx := context.Background()
 
-	ret, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
+	ret, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		miners := map[string]uint64{}
 		lu, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.Miners)
 		if err != nil {
@@ -247,12 +237,8 @@ func (a *impl) getLateMiners(vmctx runtime.InvocationContext) (*map[string]uint6
 
 // GetTotalStorage returns the total amount of proven storage in the system.
 func (*impl) getTotalStorage(vmctx runtime.InvocationContext) (*types.BytesAmount, uint8, error) {
-	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
-	}
-
 	var state State
-	ret, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
+	ret, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		return state.TotalCommittedStorage, nil
 	})
 	if err != nil {
@@ -269,12 +255,8 @@ func (*impl) getTotalStorage(vmctx runtime.InvocationContext) (*types.BytesAmoun
 
 // GetSectorSize returns the sector size of the block chain
 func (*impl) getProofsMode(vmctx runtime.InvocationContext) (types.ProofsMode, uint8, error) {
-	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return 0, internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
-	}
-
 	var state State
-	ret, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
+	ret, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		return state.ProofsMode, nil
 	})
 	if err != nil {
@@ -290,7 +272,7 @@ func (*impl) getProofsMode(vmctx runtime.InvocationContext) (types.ProofsMode, u
 }
 
 func (*impl) getMinerPoStState(vmctx runtime.InvocationContext, minerAddr address.Address) (uint64, error) {
-	out := vmctx.Send(minerAddr, miner.GetPoStState, types.ZeroAttoFIL, nil)
+	out := vmctx.Send(minerAddr, miner.GetPoStState, specsbig.Zero(), nil)
 	res := out.(*big.Int)
 	return res.Uint64(), nil
 }

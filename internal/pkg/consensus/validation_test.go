@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -182,7 +183,7 @@ func TestIngestionValidator(t *testing.T) {
 }
 
 func newActor(t *testing.T, balanceAF int, nonce uint64) *actor.Actor {
-	actor, err := account.NewActor(attoFil(balanceAF))
+	actor, err := account.NewActor(abi.NewTokenAmount(int64(balanceAF)))
 	require.NoError(t, err)
 	actor.CallSeqNum = types.Uint64(nonce)
 	return actor
@@ -204,11 +205,6 @@ func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF in
 	)
 }
 
-func attoFil(v int) types.AttoFIL {
-	val, _ := types.NewAttoFILFromString(fmt.Sprintf("%d", v), 10)
-	return val
-}
-
 // FakeIngestionValidatorAPI provides a latest state
 type FakeIngestionValidatorAPI struct {
 	ActorAddr address.Address
@@ -225,5 +221,7 @@ func (api *FakeIngestionValidatorAPI) GetActor(ctx context.Context, a address.Ad
 	if a == api.ActorAddr {
 		return api.Actor, nil
 	}
-	return &actor.Actor{}, nil
+	return &actor.Actor{
+		Balance: abi.NewTokenAmount(0),
+	}, nil
 }

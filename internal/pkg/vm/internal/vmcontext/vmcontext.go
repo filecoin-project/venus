@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/cron"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
@@ -16,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemining"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
@@ -24,6 +22,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 )
@@ -36,12 +38,12 @@ type VM struct {
 	actorImpls   ActorImplLookup
 	store        *storage.VMStorage
 	state        *state.CachedTree
-	currentEpoch types.BlockHeight
+	currentEpoch abi.ChainEpoch
 }
 
 // RandomnessSource provides randomness to actors.
 type RandomnessSource interface {
-	Randomness(epoch types.BlockHeight) runtime.Randomness
+	Randomness(epoch abi.ChainEpoch) abi.RandomnessSeed
 }
 
 // ActorImplLookup provides access to upgradeable actor code.
@@ -50,13 +52,13 @@ type ActorImplLookup interface {
 }
 
 // MinerPenaltyFIL is just a alias for FIL used to penalize the miner
-type MinerPenaltyFIL = types.AttoFIL
+type MinerPenaltyFIL = abi.TokenAmount
 
 type internalMessage struct {
 	miner         address.Address
 	from          address.Address
 	to            address.Address
-	value         types.AttoFIL
+	value         abi.TokenAmount
 	method        types.MethodID
 	params        []byte
 	callSeqNumber types.Uint64
@@ -74,14 +76,14 @@ func NewVM(rnd RandomnessSource, actorImpls ActorImplLookup, store *storage.VMSt
 		actorImpls:   actorImpls,
 		store:        store,
 		state:        state.NewCachedTree(st),
-		currentEpoch: *types.NewBlockHeight(0),
+		currentEpoch: 0,
 	}
 }
 
 // ApplyGenesisMessage forces the execution of a message in the vm actor.
 //
 // This method is intended to be used in the generation of the genesis block only.
-func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method types.MethodID, value types.AttoFIL, params interface{}) (interface{}, error) {
+func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method types.MethodID, value abi.TokenAmount, params interface{}) (interface{}, error) {
 	// get the params
 	// try to use the bytes directly
 	encodedParams, ok := params.([]byte)
@@ -142,7 +144,7 @@ func (vm *VM) normalizeFrom(from address.Address) address.Address {
 	// lookup the ActorID based on the address
 	targetIDAddr, ok := initView.GetIDAddressByAddress(from)
 	if !ok {
-		runtime.Abort(exitcode.ActorNotFound)
+		runtime.Abort(exitcode.SysErrActorNotFound)
 	}
 
 	return targetIDAddr
@@ -153,7 +155,7 @@ func (vm *VM) normalizeFrom(from address.Address) address.Address {
 var _ interpreter.VMInterpreter = (*VM)(nil)
 
 // ApplyTipSetMessages implements interpreter.VMInterpreter
-func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch types.BlockHeight) ([]message.Receipt, error) {
+func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch abi.ChainEpoch) ([]message.Receipt, error) {
 	receipts := []message.Receipt{}
 
 	// update current epoch
@@ -176,7 +178,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 
 		// initial miner penalty
 		// Note: certain msg execution failures can cause the miner to pay for the gas
-		minerPenaltyTotal := types.ZeroAttoFIL
+		minerPenaltyTotal := big.Zero()
 
 		// Process BLS messages from the block
 		for _, m := range blk.BLSMessages {
@@ -190,7 +192,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 			receipt, minerPenaltyCurr := vm.applyMessage(m, m.OnChainLen(), blk.Miner)
 
 			// accumulate result
-			minerPenaltyTotal = minerPenaltyTotal.Add(minerPenaltyCurr)
+			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)
 			receipts = append(receipts, receipt)
 
 			// flag msg as seen
@@ -213,7 +215,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 			receipt, minerPenaltyCurr := vm.applyMessage(&m, sm.OnChainLen(), blk.Miner)
 
 			// accumulate result
-			minerPenaltyTotal = minerPenaltyTotal.Add(minerPenaltyCurr)
+			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)
 			receipts = append(receipts, receipt)
 
 			// flag msg as seen
@@ -296,12 +298,17 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) (out interface{}, err e
 
 // applyMessage applies the message to the current state.
 func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, miner address.Address) (message.Receipt, MinerPenaltyFIL) {
+	// Dragons: temp until we remove legacy types
+	var msgGasLimit gas.Unit = gas.NewLegacyGas(msg.GasLimit)
+	var msgGasPrice abi.TokenAmount = abi.NewTokenAmount(int64(msg.GasLimit))
+	var msgValue abi.TokenAmount = abi.NewTokenAmount(msg.Value.AsBigInt().Int64())
+
 	// This method does not actually execute the message itself,
 	// but rather deals with the pre/post processing of a message.
 	// (see: `invocationContext.invoke()` for the dispatch and execution)
 
 	// initiate gas tracking
-	gasTank := gas.NewTracker(msg.GasLimit)
+	gasTank := gas.NewTracker(msgGasLimit)
 
 	// pre-send
 	// 1. charge for message existence
@@ -313,12 +320,12 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 	// 7. checkpoint state
 
 	// 1. charge for bytes used in chain
-	msgCost := gascost.OnChainMessage(onChainMsgSize)
-	ok := gasTank.TryCharge(msgCost)
+	msgGasCost := gascost.OnChainMessage(onChainMsgSize)
+	ok := gasTank.TryCharge(msgGasCost)
 	if !ok {
 		// Invalid message; insufficient gas limit to pay for the on-chain message size.
 		// Note: the miner needs to pay the full msg cost, not what might have been partially consumed
-		return message.Failure(exitcode.OutOfGas, gas.Zero), msgCost.Cost(msg.GasPrice)
+		return message.Failure(exitcode.SysErrOutOfGas, gas.Zero), msgGasCost.ToTokens(msgGasPrice)
 	}
 
 	// 2. load actor from global state
@@ -327,21 +334,21 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 	fromActor, err := vm.state.GetActor(context.Background(), msg.From)
 	if fromActor == nil || err != nil {
 		// Execution error; sender does not exist at time of message execution.
-		return message.Failure(exitcode.ActorNotFound, gas.Zero), gasTank.GasConsumed().Cost(msg.GasPrice)
+		return message.Failure(exitcode.SysErrActorNotFound, gas.Zero), gasTank.GasConsumed().ToTokens(msgGasPrice)
 	}
 
 	// 3. make sure this is the right message order for fromActor
 	if msg.CallSeqNum != fromActor.CallSeqNum {
 		// Execution error; invalid seq number.
-		return message.Failure(exitcode.InvalidCallSeqNum, gas.Zero), gasTank.GasConsumed().Cost(msg.GasPrice)
+		return message.Failure(exitcode.SysErrInvalidCallSeqNum, gas.Zero), gasTank.GasConsumed().ToTokens(msgGasPrice)
 	}
 
 	// 4. Check sender balance (gas + value being sent)
-	gasLimitCost := msg.GasLimit.Cost(msg.GasPrice)
-	totalCost := msg.Value.Add(gasLimitCost)
+	gasLimitCost := msgGasLimit.ToTokens(msgGasPrice)
+	totalCost := big.Add(msgValue, gasLimitCost)
 	if fromActor.Balance.LessThan(totalCost) {
 		// Execution error; sender does not have sufficient funds to pay for the gas limit.
-		return message.Failure(exitcode.InsufficientFunds, gas.Zero), gasTank.GasConsumed().Cost(msg.GasPrice)
+		return message.Failure(exitcode.SysErrInsufficientFunds, gas.Zero), gasTank.GasConsumed().ToTokens(msgGasPrice)
 	}
 
 	// 5. Increment sender CallSeqNum
@@ -373,7 +380,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 		miner:         miner,
 		from:          msg.From,
 		to:            msg.To,
-		value:         msg.Value,
+		value:         msgValue,
 		method:        msg.Method,
 		params:        msg.Params,
 		callSeqNumber: msg.CallSeqNum,
@@ -429,14 +436,14 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 		minerOwner := vm.getMinerOwner(miner)
 
 		// have the sender pay the outstanding bill and get the rest of the money back
-		vm.settleGasBill(msg.From, &gasTank, minerOwner, msg.GasPrice)
+		vm.settleGasBill(msg.From, &gasTank, minerOwner, msgGasPrice)
 
 		// Note: we are charging the caller not the miner, there is ZERO miner penalty
-		return message.Failure(exitcode.OutOfGas, gasTank.GasConsumed()), types.ZeroAttoFIL
+		return message.Failure(exitcode.SysErrOutOfGas, gasTank.GasConsumed()), big.Zero()
 	}
 
 	// 2. Success!
-	return receipt, types.ZeroAttoFIL
+	return receipt, big.Zero()
 }
 
 func (vm *VM) getMinerOwner(minerAddr address.Address) address.Address {
@@ -454,11 +461,11 @@ func (vm *VM) getMinerOwner(minerAddr address.Address) address.Address {
 	return minerView.Owner()
 }
 
-func (vm *VM) settleGasBill(sender address.Address, gasTank *gas.Tracker, payee address.Address, gasPrice types.AttoFIL) {
+func (vm *VM) settleGasBill(sender address.Address, gasTank *gas.Tracker, payee address.Address, gasPrice abi.TokenAmount) {
 	// release unused funds that were withheld
-	vm.transfer(vmaddr.BurntFundsAddress, sender, gasTank.RemainingGas().Cost(gasPrice))
+	vm.transfer(vmaddr.BurntFundsAddress, sender, gasTank.RemainingGas().ToTokens(gasPrice))
 	// pay miner for gas
-	vm.transfer(vmaddr.BurntFundsAddress, payee, gasTank.GasConsumed().Cost(gasPrice))
+	vm.transfer(vmaddr.BurntFundsAddress, payee, gasTank.GasConsumed().ToTokens(gasPrice))
 }
 
 // transfer debits money from one account and credits it to another.
@@ -466,9 +473,10 @@ func (vm *VM) settleGasBill(sender address.Address, gasTank *gas.Tracker, payee 
 // WARNING: this method will panic if the the amount is negative, accounts dont exist, or have inssuficient funds.
 //
 // Note: this is not idiomatic, it follows the Spec expectations for this method.
-func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amount types.AttoFIL) {
+func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amount abi.TokenAmount) {
 	// allow only for positive amounts
-	if amount.IsNegative() {
+	// Dragons: can we please please add some happy functions and a propper type
+	if amount.LessThan(abi.NewTokenAmount(0)) {
 		panic("unreachable: negative funds transfer not allowed")
 	}
 
@@ -492,8 +500,8 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 	}
 
 	// move funds
-	fromActor.Balance = fromActor.Balance.Sub(amount)
-	toActor.Balance = toActor.Balance.Add(amount)
+	fromActor.Balance = big.Sub(fromActor.Balance, amount)
+	toActor.Balance = big.Add(toActor.Balance, amount)
 
 	return
 }
@@ -501,7 +509,7 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 func (vm *VM) getActorImpl(code cid.Cid) dispatch.Dispatcher {
 	actorImpl, err := vm.actorImpls.GetActorImpl(code)
 	if err != nil {
-		runtime.Abort(exitcode.ActorCodeNotFound)
+		runtime.Abort(exitcode.SysErrActorCodeNotFound)
 	}
 	return actorImpl
 }
@@ -513,12 +521,12 @@ func (vm *VM) getActorImpl(code cid.Cid) dispatch.Dispatcher {
 var _ runtime.Runtime = (*VM)(nil)
 
 // CurrentEpoch implements runtime.Runtime.
-func (vm *VM) CurrentEpoch() types.BlockHeight {
+func (vm *VM) CurrentEpoch() abi.ChainEpoch {
 	return vm.currentEpoch
 }
 
 // Randomness implements runtime.Runtime.
-func (vm *VM) Randomness(epoch types.BlockHeight) runtime.Randomness {
+func (vm *VM) Randomness(epoch abi.ChainEpoch) abi.RandomnessSeed {
 	return vm.rnd.Randomness(epoch)
 }
 
@@ -531,7 +539,7 @@ func (vm *VM) Storage() runtime.Storage {
 // implement runtime.MessageInfo for internalMessage
 //
 
-var _ runtime.MessageInfo = (*internalMessage)(nil)
+var _ specsruntime.Message = (*internalMessage)(nil)
 
 // BlockMiner implements runtime.MessageInfo.
 func (msg internalMessage) BlockMiner() address.Address {
@@ -539,13 +547,18 @@ func (msg internalMessage) BlockMiner() address.Address {
 }
 
 // ValueReceived implements runtime.MessageInfo.
-func (msg internalMessage) ValueReceived() types.AttoFIL {
+func (msg internalMessage) ValueReceived() abi.TokenAmount {
 	return msg.value
 }
 
 // Caller implements runtime.MessageInfo.
 func (msg internalMessage) Caller() address.Address {
 	return msg.from
+}
+
+// Receiver implements runtime.MessageInfo.
+func (msg internalMessage) Receiver() address.Address {
+	return msg.to
 }
 
 //
@@ -599,7 +612,7 @@ func (s actorStorage) GetRaw(cid cid.Cid) ([]byte, bool) {
 func msgCID(msg *types.UnsignedMessage) cid.Cid {
 	cid, err := msg.Cid()
 	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "Could not compute CID for message")
+		runtime.Abortf(exitcode.SysErrInternal, "Could not compute CID for message")
 	}
 	return cid
 }
@@ -609,15 +622,15 @@ func makeEpostMessage(blockMiner address.Address) internalMessage {
 		miner:  blockMiner,
 		from:   vmaddr.SystemAddress,
 		to:     blockMiner,
-		value:  types.ZeroAttoFIL,
+		value:  big.Zero(),
 		method: storagemining.ProcessVerifiedElectionPoStMethodID,
 		params: []byte{},
 	}
 }
 
-func makeBlockRewardMessage(blockMiner address.Address, penalty types.AttoFIL) internalMessage {
+func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount) internalMessage {
 	params := []interface{}{blockMiner, penalty}
-	encoded, err := abi.ToEncodedValues(params...)
+	encoded, err := encoding.Encode(params)
 	if err != nil {
 		panic(fmt.Errorf("failed to encode built-in block reward. %s", err))
 	}
@@ -625,7 +638,7 @@ func makeBlockRewardMessage(blockMiner address.Address, penalty types.AttoFIL) i
 		miner:  blockMiner,
 		from:   vmaddr.SystemAddress,
 		to:     vmaddr.RewardAddress,
-		value:  types.ZeroAttoFIL,
+		value:  big.Zero(),
 		method: reward.AwardBlockRewardMethodID,
 		params: encoded,
 	}
@@ -636,7 +649,7 @@ func makeCronTickMessage(blockMiner address.Address) internalMessage {
 		miner:  blockMiner,
 		from:   vmaddr.SystemAddress,
 		to:     vmaddr.CronAddress,
-		value:  types.ZeroAttoFIL,
+		value:  big.Zero(),
 		method: cron.EpochTickMethodID,
 		params: []byte{},
 	}

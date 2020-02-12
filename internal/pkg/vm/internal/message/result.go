@@ -2,8 +2,8 @@ package message
 
 import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gas"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 )
 
 // Receipt is what is returned by executing a message on the vm.
@@ -28,7 +28,7 @@ func Ok() Receipt {
 func Value(obj interface{}) Receipt {
 	aux, err := encoding.Encode(obj)
 	if err != nil {
-		return Receipt{ExitCode: exitcode.EncodingError}
+		return Receipt{ExitCode: exitcode.SysErrSerialization}
 	}
 
 	return Receipt{

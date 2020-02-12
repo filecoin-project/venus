@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -184,7 +185,7 @@ func (msg *UnsignedMessage) Equals(other *UnsignedMessage) bool {
 
 // NewGasPrice constructs a gas price (in AttoFIL) from the given number.
 func NewGasPrice(price int64) AttoFIL {
-	return NewAttoFIL(big.NewInt(price))
+	return NewAttoFILFromFIL(uint64(price))
 }
 
 // NewGasUnits constructs a new GasUnits from the given number.
@@ -210,14 +211,10 @@ func (id MethodID) String() string {
 }
 
 // Cost returns the cost of the gas given the price.
-func (x GasUnits) Cost(price AttoFIL) AttoFIL {
+func (x GasUnits) Cost(price abi.TokenAmount) abi.TokenAmount {
 	// turn the gas into a bigint
-	bigx := big.NewInt((int64)(x))
+	bigx := abi.NewTokenAmount((int64)(x))
 
 	// cost = gas * price
-	// Note: the `bigint.Mul` works by replacing the pointer with the multiplication result.
-	out := big.NewInt(0)
-	out.Mul(bigx, price.AsBigInt())
-
-	return NewAttoFIL(out)
+	return big.Mul(bigx, price)
 }

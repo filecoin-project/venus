@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 func TestMiningGenBlock(t *testing.T) {
@@ -42,7 +43,7 @@ func TestMiningGenBlock(t *testing.T) {
 	attoFILAfter, err := n.PorcelainAPI.WalletBalance(ctx, addr)
 	require.NoError(t, err)
 
-	assert.Equal(t, attoFILBefore.Add(types.NewAttoFILFromFIL(1000)), attoFILAfter)
+	assert.Equal(t, specsbig.Add(attoFILBefore, types.NewAttoTokenFromToken(1000)), attoFILAfter)
 }
 
 func TestMiningAddPieceAndSealNow(t *testing.T) {

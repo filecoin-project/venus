@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -179,7 +180,7 @@ func (a *API) ProtocolParameters(ctx context.Context) (*ProtocolParams, error) {
 }
 
 // WalletBalance returns the current balance of the given wallet address.
-func (a *API) WalletBalance(ctx context.Context, address address.Address) (types.AttoFIL, error) {
+func (a *API) WalletBalance(ctx context.Context, address address.Address) (abi.TokenAmount, error) {
 	return WalletBalance(ctx, a, address)
 }
 
