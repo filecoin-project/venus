@@ -6,13 +6,13 @@ import (
 	"io/ioutil"
 	"time"
 
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	net "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -20,6 +20,7 @@ import (
 )
 
 var log = logging.Logger("/fil/hello")
+
 // helloProtocolID is the libp2p protocol identifier for the hello protocol.
 const helloProtocolID = "/fil/hello/1.0.0"
 
@@ -28,7 +29,7 @@ var helloMsgErrCt = metrics.NewInt64Counter("hello_message_error", "Number of er
 
 // HelloMessage is the data structure of a single message in the hello protocol.
 type HelloMessage struct {
-	_ struct{}
+	_                    struct{}
 	HeaviestTipSetCids   block.TipSetKey
 	HeaviestTipSetHeight uint64
 	HeaviestTipSetWeight fbig.Int
@@ -38,9 +39,9 @@ type HelloMessage struct {
 // LatencyMessage is written in response to a hello message for measuring peer
 // latency.
 type LatencyMessage struct {
-	_ struct{}
+	_        struct{}
 	TArrival int64
-	TSent int64
+	TSent    int64
 }
 
 // HelloProtocolHandler implements the 'Hello' protocol handler.
@@ -96,14 +97,15 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	ctx := context.Background()
 	hello, err := h.receiveHello(ctx, s)
 	if err != nil {
+		helloMsgErrCt.Inc(ctx, 1)
 		log.Debugf("failed to receive hello message:%s", err)
 		// can't process a hello received in error, but leave this connection
-		// open because we connections are innocent until proven guilty 
+		// open because we connections are innocent until proven guilty
 		// (with bad genesis)
 		return
 	}
 	latencyMsg := &LatencyMessage{TArrival: time.Now().UnixNano()}
-	
+
 	// process the hello message
 	from := s.Conn().RemotePeer()
 	ci, err := h.processHelloMessage(from, hello)
@@ -122,7 +124,7 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 		// Note: we do not know why it failed, but we do not wish to shut down all protocols because of it
 		log.Error(err)
 	}
-	
+
 	// Send the latendy message
 	latencyMsg.TSent = time.Now().UnixNano()
 	err = h.sendLatency(latencyMsg, s)
@@ -171,7 +173,7 @@ func (h *HelloProtocolHandler) receiveHello(ctx context.Context, s net.Stream) (
 	var hello HelloMessage
 	// Read cbor bytes from stream into hello message
 	// Dragons: this handles ~9 head cids.  We should reduce assumptions
-	buf := make([]byte, 512) 
+	buf := make([]byte, 512)
 	n, err := s.Read(buf)
 	if err != nil {
 		return nil, err
@@ -274,17 +276,17 @@ func (hn *helloProtocolNotifiee) Connected(n net.Network, c net.Conn) {
 		err = hn.asHandler().sendHello(s)
 		if err != nil {
 			log.Debugf("failed to send hello handshake to peer %s: %s", c.RemotePeer(), err)
-			// Don't close connection for failed hello protocol impl 
+			// Don't close connection for failed hello protocol impl
 			return
 		}
 
-		// now recieve latency message
+		// now receive latency message
 		_, err = hn.asHandler().receiveLatency(ctx, s) // Dragons: we drop this on the floor.  We should use it.
 		if err != nil {
 			log.Debugf("failed to receive hello latency msg from peer %s: %s", c.RemotePeer(), err)
 			return
 		}
-		
+
 	}()
 }
 
