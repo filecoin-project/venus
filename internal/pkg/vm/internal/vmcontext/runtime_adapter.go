@@ -5,6 +5,8 @@ import (
 	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -27,6 +29,7 @@ func (a *runtimeAdapter) Message() specsruntime.Message {
 
 // NetworkName implements Runtime.
 func (a *runtimeAdapter) NetworkName() string {
+	// Dragons: get PR on specs-actors to remove this
 	panic("Will get nuked")
 }
 
@@ -127,14 +130,40 @@ func (a *runtimeAdapter) NewActorAddress() address.Address {
 }
 
 // CreateActor implements Runtime.
-func (a *runtimeAdapter) CreateActor(codeID cid.Cid, address address.Address) {
-	// Dragons: contract missmatch
-	a.ctx.CreateActor(0, codeID, nil)
+func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
+	// Dragons: replace the method in invocation context once the new actors land
+	// Dragons: there were some changes in spec, revise
+	if !isBuiltinActor(codeID) {
+		runtime.Abortf(exitcode.SysErrInternal, "Can only create built-in actors.")
+	}
+
+	if isSingletonActor(codeID) {
+		runtime.Abortf(exitcode.SysErrInternal, "Can only have one instance of singleton actors.")
+	}
+
+	// Check existing address. If nothing there, create empty actor.
+	//
+	// Note: we are storing the actors by ActorID *address*
+	newActor, _, err := a.ctx.rt.state.GetOrCreateActor(context.TODO(), addr, func() (*actor.Actor, address.Address, error) {
+		return &actor.Actor{}, addr, nil
+	})
+
+	if err != nil {
+		runtime.Abortf(exitcode.SysErrInternal, "Could not get or create actor")
+	}
+
+	if !newActor.Empty() {
+		runtime.Abortf(exitcode.SysErrInternal, "Actor address already exists")
+	}
+
+	newActor.Balance = abi.NewTokenAmount(0)
+	// make this the right 'type' of actor
+	newActor.Code = e.NewCid(codeID)
 }
 
 // DeleteActor implements Runtime.
 func (a *runtimeAdapter) DeleteActor() {
-	panic("TODO")
+	a.ctx.rt.state.DeleteActor(a.Context(), a.ctx.msg.to)
 }
 
 // Syscalls implements Runtime.
@@ -143,18 +172,20 @@ func (a *runtimeAdapter) Syscalls() specsruntime.Syscalls {
 	panic("TODO")
 }
 
-// Dragons: this can dissapear once we have the storage abstraction
-
 // Context implements Runtime.
 func (a *runtimeAdapter) Context() context.Context {
-	panic("TODO")
+	// Dragons: this can dissapear once we have the storage abstraction
+	return a.ctx.rt.context
 }
+
+type nullTraceSpan struct{}
+
+func (*nullTraceSpan) End() {}
 
 // StartSpan implements Runtime.
 func (a *runtimeAdapter) StartSpan(name string) specsruntime.TraceSpan {
-	// Review: why here? and why in this form?
 	// Dragons: leeave empty for now, add TODO to add this into gfc
-	panic("TODO")
+	return &nullTraceSpan{}
 }
 
 // Dragons: have the VM take a SysCalls object on construction (it will need a wrapper to charge gas)

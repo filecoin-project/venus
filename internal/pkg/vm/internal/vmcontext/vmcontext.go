@@ -39,6 +39,7 @@ type VM struct {
 	store        *storage.VMStorage
 	state        *state.CachedTree
 	currentEpoch abi.ChainEpoch
+	context      context.Context
 }
 
 // RandomnessSource provides randomness to actors.
@@ -77,6 +78,7 @@ func NewVM(rnd RandomnessSource, actorImpls ActorImplLookup, store *storage.VMSt
 		store:        store,
 		state:        state.NewCachedTree(st),
 		currentEpoch: 0,
+		context:      context.Background(),
 	}
 }
 
