@@ -31,6 +31,13 @@ func NewHeightThresholdListener(target uint64, hitCh chan block.TipSetKey, errCh
 	}
 }
 
+// NewTriggeredHeightThresholdListener creates a new listener
+func NewTriggeredHeightThresholdListener(target uint64, hitCh chan block.TipSetKey, errCh chan error, invalidCh, doneCh chan struct{}) *HeightThresholdListener {
+	l := NewHeightThresholdListener(target, hitCh, errCh, invalidCh, doneCh)
+	l.targetHit = true
+	return l
+}
+
 // Handle a chainStore update by sending appropriate status messages back to the channels.
 // newChain is all the tipsets that are new since the last head update.
 // Normally, this will be a single tipset, but in the case of a re-org it will contain
