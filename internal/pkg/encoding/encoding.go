@@ -67,10 +67,6 @@ type Decoder interface {
 type defaultEncoder = FxamackerCborEncoder
 type defaultDecoder = FxamackerCborDecoder
 
-// Dragons: get rid of this when the new actor code lands
-type deprecatedEncoder = IpldCborEncoder
-type deprecatedDecoder = IpldCborDecoder
-
 var defaultNewStreamDecoder = FxamackerNewStreamDecoder
 
 // NewStreamDecoder is a function initializing a new stream decoder

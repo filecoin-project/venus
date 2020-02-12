@@ -173,7 +173,7 @@ func (s *VMStorage) toNode(v interface{}) (ipld.Node, error) {
 			nd, err = cbor.Decode(buf.Bytes(), types.DefaultHashFunction, -1)
 		}
 	} else {
-		raw, err := encoding.Encode(v)
+		raw, err = encoding.Encode(v)
 		if err != nil {
 			return nil, err
 		}
