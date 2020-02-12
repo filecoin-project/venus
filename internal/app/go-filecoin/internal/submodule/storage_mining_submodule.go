@@ -3,13 +3,8 @@ package submodule
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-
-	storageminerconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/storage_miner_connector"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-storage-miner"
 	"github.com/ipfs/go-datastore"
@@ -17,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	storageminerconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/storage_miner_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/poster"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 )
@@ -32,10 +28,12 @@ type StorageMiningSubmodule struct {
 	PoStGenerator postgenerator.PoStGenerator
 
 	minerAddr     address.Address
+	outbox        *message.Outbox
 	sectorbuilder sectorbuilder.Interface
 	minerNode     *storageminerconnector.StorageMinerNodeConnector
 	storageMiner  *storage.Miner
 	chain         *ChainSubmodule
+	poster        *poster.Poster
 }
 
 // NewStorageMiningSubmodule creates a new storage mining submodule.
@@ -54,9 +52,11 @@ func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching,
 		PoStGenerator: sbbe,
 		minerNode:     minerNode,
 		storageMiner:  storageMiner,
+		outbox:        m.Outbox,
 		chain:         c,
 		sectorbuilder: s,
 		minerAddr:     minerAddr,
+		poster:        poster.NewPoster(minerAddr, m.Outbox, s, minerNode, storageMiner, c.HeaviestTipSetCh, c.State),
 	}
 
 	return modu, nil
@@ -74,34 +74,11 @@ func (s *StorageMiningSubmodule) Start(ctx context.Context) error {
 		return err
 	}
 
+	s.poster.StartPoSting(ctx)
+
 	s.started = true
 
 	return nil
-}
-
-func (s *StorageMiningSubmodule) StartPoSting(ctx context.Context) {
-	go func() {
-		for {
-			select {
-			case ts, ok := <-s.chain.HeaviestTipSetCh:
-				if !ok {
-					return
-				}
-				newHead, ok := ts.(block.TipSet)
-				if !ok {
-					log.Warn("non-tipset published on heaviest tipset channel")
-					continue
-				}
-
-				var minerState miner.State
-				s.chain.State.GetActorStateAt(ctx, newHead.Key(), s.minerAddr)
-
-				if err := handler.HandleNewHead(ctx, newHead); err != nil {
-					log.Error(err)
-				}
-			}
-		}
-	}()
 }
 
 // Stop stops the StorageMiningSubmodule
@@ -115,6 +92,8 @@ func (s *StorageMiningSubmodule) Stop(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	s.poster.StopPoSting()
 
 	s.started = false
 

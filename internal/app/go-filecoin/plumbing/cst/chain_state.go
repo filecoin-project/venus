@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	initactor "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -22,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -51,6 +51,15 @@ type ChainStateReadWriter struct {
 	messageProvider chain.MessageProvider
 	actors          vm.ActorCodeLoader
 	cborutil.ReadOnlyIpldStore
+}
+
+type actorStore struct {
+	ctx context.Context
+	cborutil.ReadOnlyIpldStore
+}
+
+func (as *actorStore) Context() context.Context {
+	return as.ctx
 }
 
 type carStore struct {
@@ -170,12 +179,9 @@ func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey block.Ti
 		return nil, errors.Wrap(err, "failed to load latest state")
 	}
 
-	idAddr, found, err := consensus.ResolveAddress(ctx, addr, state.NewCachedTree(st), vm.NewStorage(chn.bstore))
+	idAddr, err := chn.ResolveAddressAt(ctx, tipKey, addr)
 	if err != nil {
 		return nil, err
-	}
-	if !found {
-		return nil, actorNotRegisteredError{} // signal that the actor doesn't exist
 	}
 
 	actr, err := st.GetActor(ctx, idAddr)
@@ -198,6 +204,32 @@ func (chn *ChainStateReadWriter) GetActorStateAt(ctx context.Context, tipKey blo
 	}
 
 	return encoding.Decode(blk.RawData(), out)
+}
+
+// resolve ID address for actor
+func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (address.Address, error) {
+	st, err := chn.readWriter.GetTipSetState(ctx, tipKey)
+	if err != nil {
+		return address.Undef, errors.Wrap(err, "failed to load latest state")
+	}
+
+	init, err := st.GetActor(ctx, builtin.InitActorAddr)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	blk, err := chn.bstore.Get(init.Head.Cid)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	var state initactor.State
+	err = encoding.Decode(blk.RawData(), &state)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return state.ResolveAddress(&actorStore{ctx, chn.ReadOnlyIpldStore}, addr)
 }
 
 // LsActors returns a channel with actors from the latest state on the chain
