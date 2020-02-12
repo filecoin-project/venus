@@ -8,11 +8,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore/query"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -27,13 +22,19 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/strgdls"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -52,7 +53,7 @@ type API struct {
 	expected     consensus.Protocol
 	msgPool      *message.Pool
 	msgPreviewer *msg.Previewer
-	actorState   *consensus.ActorStateStore
+	actorState   *appstate.TipSetStateViewer
 	msgWaiter    *msg.Waiter
 	network      *net.Network
 	outbox       *message.Outbox
@@ -64,7 +65,7 @@ type API struct {
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
 	Chain        *cst.ChainStateReadWriter
-	ActState     *consensus.ActorStateStore
+	ActState     *appstate.TipSetStateViewer
 	Sync         *cst.ChainSyncProvider
 	Config       *cfg.Config
 	DAG          *dag.DAG
@@ -260,9 +261,14 @@ func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, m
 	return [][]byte{}, nil
 }
 
-// Snapshot returns a interface to the chain state a a particular tipset
-func (api *API) Snapshot(ctx context.Context, baseKey block.TipSetKey) (consensus.ActorStateSnapshot, error) {
-	return api.actorState.Snapshot(ctx, baseKey)
+// StateView loads the state view for a tipset, i.e. the state *after* the application of the tipset's messages.
+func (api *API) StateView(baseKey block.TipSetKey) (*appstate.View, error) {
+	return api.actorState.StateView(baseKey)
+}
+
+// PowerStateView interprets StateView as a power state view
+func (api *API) PowerStateView(baseKey block.TipSetKey) (consensus.PowerStateView, error) {
+	return api.StateView(baseKey)
 }
 
 // MessageSend sends a message. It uses the default from address if none is given and signs the

@@ -3,27 +3,25 @@ package storagemarketconnector
 import (
 	"context"
 
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
-
-	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	smtypes "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	spaabi "github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	spasm "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	fcsm "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
@@ -248,7 +246,8 @@ func decodeSectorID(msg *types.SignedMessage) (uint64, error) {
 }
 
 func (c *connectorCommon) getBalance(ctx context.Context, root cid.Cid, addr address.Address) (spaabi.TokenAmount, error) {
-	table := adt.AsBalanceTable(StoreFromCbor(ctx, c.chainStore), root)
+	// These should be replaced with methods on the state view
+	table := adt.AsBalanceTable(state.StoreFromCbor(ctx, c.chainStore), root)
 	hasBalance, err := table.Has(addr)
 	if err != nil {
 		return big.Zero(), err
@@ -270,8 +269,8 @@ func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) (
 		return nil, err
 	}
 
-	// Dragons: ListDeals or similar should be an exported method on StorageMarketState. Do it ourselves for now.
-	stateStore := StoreFromCbor(ctx, c.chainStore)
+	// These should be replaced with methods on the state view
+	stateStore := state.StoreFromCbor(ctx, c.chainStore)
 	byParty := spasm.AsSetMultimap(stateStore, smState.DealIDsByParty)
 	var providerDealIds []spaabi.DealID
 	if err = byParty.ForEach(adt.AddrKey(addr), func(i int64) error {
@@ -308,18 +307,4 @@ func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) (
 	}
 
 	return deals, nil
-}
-
-// StoreFromCbor wraps a cbor store for ADT access.
-func StoreFromCbor(ctx context.Context, ipldStore cbor.IpldStore) adt.Store {
-	return &cstore{ctx, ipldStore}
-}
-
-type cstore struct {
-	ctx context.Context
-	cbor.IpldStore
-}
-
-func (s *cstore) Context() context.Context {
-	return s.ctx
 }

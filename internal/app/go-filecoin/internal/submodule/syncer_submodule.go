@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
@@ -16,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 )
 
 // SyncerSubmodule enhances the node with chain syncing capabilities
@@ -64,8 +65,9 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 	}
 
 	// set up consensus
-	nodeConsensus := consensus.NewExpected(blockstore.CborStore, blockstore.Blockstore, chn.Processor, chn.ActorState, config.BlockTime(), consensus.ElectionMachine{}, consensus.TicketMachine{}, postVerifier)
-	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, chn.ActorState, config.GenesisCid())
+	stateViewer := consensus.AsPowerStateViewer(state.NewViewer(blockstore.CborStore))
+	nodeConsensus := consensus.NewExpected(blockstore.CborStore, blockstore.Blockstore, chn.Processor, &stateViewer, config.BlockTime(), consensus.ElectionMachine{}, consensus.TicketMachine{}, postVerifier)
+	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, &stateViewer, config.GenesisCid())
 
 	// setup fecher
 	fetcher := fetcher.NewGraphSyncFetcher(ctx, network.GraphExchange, blockstore.Blockstore, blkValid, config.ChainClock(), discovery.PeerTracker)

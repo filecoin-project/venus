@@ -1,14 +1,15 @@
 package testhelpers
 
 import (
-	"context"
 	"crypto/rand"
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -17,29 +18,37 @@ const BlockTimeTest = time.Second
 
 // FakeWorkerPorcelainAPI implements the WorkerPorcelainAPI>
 type FakeWorkerPorcelainAPI struct {
-	blockTime     time.Duration
-	workerAddr    address.Address
-	totalPower    uint64
-	minerToWorker map[address.Address]address.Address
+	blockTime time.Duration
+	stateView *state.FakeStateView
 }
 
 // NewDefaultFakeWorkerPorcelainAPI returns a FakeWorkerPorcelainAPI.
 func NewDefaultFakeWorkerPorcelainAPI(signer address.Address) *FakeWorkerPorcelainAPI {
 	return &FakeWorkerPorcelainAPI{
-		blockTime:  BlockTimeTest,
-		workerAddr: signer,
-		totalPower: 1,
+		blockTime: BlockTimeTest,
+		stateView: &state.FakeStateView{
+			NetworkPower: abi.NewStoragePower(1),
+			Miners:       map[address.Address]*state.FakeMinerState{},
+		},
 	}
 }
 
 // NewFakeWorkerPorcelainAPI produces an api suitable to use as the worker's porcelain api.
 func NewFakeWorkerPorcelainAPI(signer address.Address, totalPower uint64, minerToWorker map[address.Address]address.Address) *FakeWorkerPorcelainAPI {
-	return &FakeWorkerPorcelainAPI{
-		blockTime:     BlockTimeTest,
-		workerAddr:    signer,
-		totalPower:    totalPower,
-		minerToWorker: minerToWorker,
+	f := &FakeWorkerPorcelainAPI{
+		blockTime: BlockTimeTest,
+		stateView: &state.FakeStateView{
+			NetworkPower: abi.NewStoragePower(int64(totalPower)),
+			Miners:       map[address.Address]*state.FakeMinerState{},
+		},
 	}
+	for k, v := range minerToWorker {
+		f.stateView.Miners[k] = &state.FakeMinerState{
+			Owner:  v,
+			Worker: v,
+		}
+	}
+	return f
 }
 
 // BlockTime returns the blocktime FakeWorkerPorcelainAPI is configured with.
@@ -47,19 +56,9 @@ func (t *FakeWorkerPorcelainAPI) BlockTime() time.Duration {
 	return t.blockTime
 }
 
-// MinerGetWorkerAddress returns the worker address set in FakeWorkerPorcelainAPI
-func (t *FakeWorkerPorcelainAPI) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ block.TipSetKey) (address.Address, error) {
-	return t.workerAddr, nil
-}
-
-// Snapshot returns a snapshot object for the given tipset
-func (t *FakeWorkerPorcelainAPI) Snapshot(ctx context.Context, tsk block.TipSetKey) (consensus.ActorStateSnapshot, error) {
-	return &consensus.FakePowerTableViewSnapshot{
-		MinerPower:    types.NewBytesAmount(1),
-		TotalPower:    types.NewBytesAmount(t.totalPower),
-		SectorSize:    types.NewBytesAmount(1),
-		MinerToWorker: t.minerToWorker,
-	}, nil
+// PowerStateView returns the state view.
+func (t *FakeWorkerPorcelainAPI) PowerStateView(_ block.TipSetKey) (consensus.PowerStateView, error) {
+	return t.stateView, nil
 }
 
 // MakeCommitment creates a random commitment.

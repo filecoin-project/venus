@@ -3,14 +3,15 @@ package submodule
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // ChainSubmodule enhances the `Node` with chain capabilities.
@@ -22,7 +23,7 @@ type ChainSubmodule struct {
 	// https://github.com/filecoin-project/go-filecoin/issues/2309
 	HeaviestTipSetCh chan interface{}
 
-	ActorState *consensus.ActorStateStore
+	ActorState *appstate.TipSetStateViewer
 	Processor  *consensus.DefaultProcessor
 
 	StatusReporter *chain.StatusReporter
@@ -50,7 +51,7 @@ type chainConfig interface {
 }
 
 // NewChainSubmodule creates a new chain submodule.
-func NewChainSubmodule(ctx context.Context, config chainConfig, repo chainRepo, blockstore *BlockstoreSubmodule) (ChainSubmodule, error) {
+func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *BlockstoreSubmodule) (ChainSubmodule, error) {
 	// initialize chain store
 	chainStatusReporter := chain.NewStatusReporter()
 	chainStore := chain.NewStore(repo.ChainDatastore(), blockstore.CborStore, state.NewTreeLoader(), chainStatusReporter, config.GenesisCid())
@@ -58,7 +59,7 @@ func NewChainSubmodule(ctx context.Context, config chainConfig, repo chainRepo, 
 	// set up processor
 	processor := consensus.NewDefaultProcessor()
 
-	actorState := consensus.NewActorStateStore(chainStore, blockstore.CborStore, blockstore.Blockstore, processor)
+	actorState := appstate.NewTipSetStateViewer(chainStore, blockstore.CborStore)
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, builtin.DefaultActors)
 

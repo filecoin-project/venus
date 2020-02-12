@@ -5,21 +5,22 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 func TestWeight(t *testing.T) {
-	t.Skip("turn back on once vm integration is complete")
 	cst := cbor.NewMemCborStore()
 	ctx := context.Background()
 	fakeTree := state.TreeFromString(t, "test-Weight-StateCid", cst)
@@ -27,13 +28,13 @@ func TestWeight(t *testing.T) {
 	require.NoError(t, err)
 	// We only care about total power for the weight function
 	// Total is 16, so bitlen is 5
-	as := consensus.NewFakeActorStateStore(types.NewBytesAmount(1), types.NewBytesAmount(16), make(map[address.Address]address.Address))
+	viewer := makeStateViewer(fakeRoot, abi.NewStoragePower(16))
 	ticket := consensus.MakeFakeTicketForTest()
 	toWeigh := th.RequireNewTipSet(t, &block.Block{
 		ParentWeight: fbig.Zero(),
 		Ticket:       ticket,
 	})
-	sel := consensus.NewChainSelector(cst, as, types.CidFromString(t, "genesisCid"))
+	sel := consensus.NewChainSelector(cst, &viewer, types.CidFromString(t, "genesisCid"))
 
 	t.Run("basic happy path", func(t *testing.T) {
 		// 0 + 1[2*1 + 5] = 7
@@ -43,24 +44,24 @@ func TestWeight(t *testing.T) {
 	})
 
 	t.Run("total power adjusts as expected", func(t *testing.T) {
-		asLowerX := consensus.NewFakeActorStateStore(types.NewBytesAmount(1), types.NewBytesAmount(15), make(map[address.Address]address.Address))
-		asSameX := consensus.NewFakeActorStateStore(types.NewBytesAmount(1), types.NewBytesAmount(31), make(map[address.Address]address.Address))
-		asHigherX := consensus.NewFakeActorStateStore(types.NewBytesAmount(1), types.NewBytesAmount(32), make(map[address.Address]address.Address))
+		asLowerX := makeStateViewer(fakeRoot, abi.NewStoragePower(15))
+		asSameX := makeStateViewer(fakeRoot, abi.NewStoragePower(31))
+		asHigherX := makeStateViewer(fakeRoot, abi.NewStoragePower(32))
 
 		// Weight is 1 lower than total = 16 with total = 15
-		selLower := consensus.NewChainSelector(cst, asLowerX, types.CidFromString(t, "genesisCid"))
+		selLower := consensus.NewChainSelector(cst, &asLowerX, types.CidFromString(t, "genesisCid"))
 		fixWeight, err := selLower.Weight(ctx, toWeigh, fakeRoot)
 		assert.NoError(t, err)
 		assertEqualInt(t, 6, fixWeight)
 
 		// Weight is same as total = 16 with total = 31
-		selSame := consensus.NewChainSelector(cst, asSameX, types.CidFromString(t, "genesisCid"))
+		selSame := consensus.NewChainSelector(cst, &asSameX, types.CidFromString(t, "genesisCid"))
 		fixWeight, err = selSame.Weight(ctx, toWeigh, fakeRoot)
 		assert.NoError(t, err)
 		assertEqualInt(t, 7, fixWeight)
 
 		// Weight is 1 higher than total = 16 with total = 32
-		selHigher := consensus.NewChainSelector(cst, asHigherX, types.CidFromString(t, "genesisCid"))
+		selHigher := consensus.NewChainSelector(cst, &asHigherX, types.CidFromString(t, "genesisCid"))
 		fixWeight, err = selHigher.Weight(ctx, toWeigh, fakeRoot)
 		assert.NoError(t, err)
 		assertEqualInt(t, 8, fixWeight)
@@ -103,6 +104,14 @@ func TestWeight(t *testing.T) {
 		assert.NoError(t, err)
 		assertEqualInt(t, 11, fixWeight)
 	})
+}
+
+func makeStateViewer(stateRoot cid.Cid, networkPower abi.StoragePower) consensus.FakePowerStateViewer {
+	return consensus.FakePowerStateViewer{
+		Views: map[cid.Cid]*appstate.FakeStateView{
+			stateRoot: appstate.NewFakeStateView(networkPower),
+		},
+	}
 }
 
 // helper for turning fixed point reprs of int weights to ints

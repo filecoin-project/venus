@@ -8,21 +8,19 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
-
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
@@ -77,8 +75,7 @@ type MessageApplier interface {
 
 type workerPorcelainAPI interface {
 	BlockTime() time.Duration
-	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error)
-	Snapshot(ctx context.Context, baseKey block.TipSetKey) (consensus.ActorStateSnapshot, error)
+	PowerStateView(baseKey block.TipSetKey) (consensus.PowerStateView, error)
 }
 
 type electionUtil interface {
@@ -184,7 +181,12 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	}
 
 	// Read uncached worker address
-	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr, base.Key())
+	view, err := w.api.PowerStateView(base.Key())
+	if err != nil {
+		outCh <- Output{Err: err}
+		return
+	}
+	_, workerAddr, err := view.MinerControlAddresses(ctx, w.minerAddr)
 	if err != nil {
 		outCh <- Output{Err: err}
 		return
@@ -290,7 +292,9 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	for _, candidate := range candidates {
 		hasher.Bytes(candidate.PartialTicket[:])
 		challengeTicket := hasher.Hash()
-		if w.election.CandidateWins(challengeTicket, sectorNum, 0, networkPower.Uint64(), sectorSize.Uint64()) {
+		// Dragons: converting to uint64 here is not safe
+		// Dragons: must set fault count, not zero
+		if w.election.CandidateWins(challengeTicket, sectorNum, 0, networkPower.Uint64(), uint64(sectorSize)) {
 			winners = append(winners, candidate)
 		}
 	}
@@ -338,9 +342,9 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 }
 
 func (w *DefaultWorker) getPowerTable(ctx context.Context, baseKey block.TipSetKey) (consensus.PowerTableView, error) {
-	snapshot, err := w.api.Snapshot(ctx, baseKey)
+	view, err := w.api.PowerStateView(baseKey)
 	if err != nil {
 		return consensus.PowerTableView{}, err
 	}
-	return consensus.NewPowerTableView(snapshot), nil
+	return consensus.NewPowerTableView(view), nil
 }

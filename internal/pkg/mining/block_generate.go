@@ -36,7 +36,7 @@ func (w *DefaultWorker) Generate(
 		return nil, errors.Wrap(err, "get power table")
 	}
 
-	hasPower, err := powerTable.HasPower(ctx, w.minerAddr)
+	hasPower, err := powerTable.HasClaimedPower(ctx, w.minerAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,11 @@ func (w *DefaultWorker) Generate(
 		BLSAggregateSig: blsAggregateSig,
 	}
 
-	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr, baseTipSet.Key())
+	view, err := w.api.PowerStateView(baseTipSet.Key())
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to read state view")
+	}
+	_, workerAddr, err := view.MinerControlAddresses(ctx, w.minerAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read workerAddr during block generation")
 	}

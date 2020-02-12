@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
-
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
@@ -19,13 +21,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // Syncer is capable of recovering from a fork reorg after the store is loaded.
@@ -158,14 +158,19 @@ func TestSyncerWeighsPower(t *testing.T) {
 	// 3 + 1*delta = 3 + 1[V*1 + bits(2^9)] = 3 + 2 + 10 = 15
 	head2 := builder.AppendOn(fork2, 1)
 
+	viewer := consensus.FakePowerStateViewer{
+		Views: map[cid.Cid]*appstate.FakeStateView{},
+	}
+	viewer.Views[isb.cGen] = appstate.NewFakeStateView(abi.NewStoragePower(1))
+	viewer.Views[isb.c512] = appstate.NewFakeStateView(abi.NewStoragePower(512))
+
 	// Verify that the syncer selects fork 2 (15 > 12)
-	as := newForkSnapshotGen(t, types.NewBytesAmount(1), types.NewBytesAmount(512), isb.c512)
 	dumpBlocksToCborStore(t, builder, cst, head1, head2)
 	store := chain.NewStore(repo.ChainDatastore(), cst, state.NewTreeLoader(), chain.NewStatusReporter(), gen.At(0).Cid())
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: gen.At(0).StateRoot.Cid, TipSet: gen, TipSetReceipts: gen.At(0).MessageReceipts.Cid}))
 	require.NoError(t, store.SetHead(ctx, gen))
 	eval := &integrationStateEvaluator{c512: isb.c512}
-	syncer, err := syncer.NewSyncer(eval, eval, consensus.NewChainSelector(cst, as, gen.At(0).Cid()), store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)), &noopFaultDetector{})
+	syncer, err := syncer.NewSyncer(eval, eval, consensus.NewChainSelector(cst, &viewer, gen.At(0).Cid()), store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)), &noopFaultDetector{})
 	require.NoError(t, err)
 	require.NoError(t, syncer.InitStaged())
 
@@ -235,8 +240,13 @@ func (isb *integrationStateBuilder) Weigh(tip block.TipSet, pstate cid.Cid) (fbi
 	if tip.At(0).Cid().Equals(isb.cGen) {
 		return fbig.Zero(), nil
 	}
-	as := newForkSnapshotGen(isb.t, types.NewBytesAmount(1), types.NewBytesAmount(512), isb.c512)
-	sel := consensus.NewChainSelector(isb.cst, as, isb.cGen)
+	viewer := consensus.FakePowerStateViewer{
+		Views: map[cid.Cid]*appstate.FakeStateView{},
+	}
+	viewer.Views[isb.cGen] = appstate.NewFakeStateView(abi.NewStoragePower(1))
+	viewer.Views[isb.c512] = appstate.NewFakeStateView(abi.NewStoragePower(512))
+
+	sel := consensus.NewChainSelector(isb.cst, &viewer, isb.cGen)
 	w, err := sel.Weight(context.Background(), tip, pstate)
 	return w, err
 }
@@ -258,40 +268,6 @@ func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts blo
 
 func (n *integrationStateEvaluator) ValidateSemantic(_ context.Context, _ *block.Block, _ block.TipSet) error {
 	return nil
-}
-
-// forkSnapshotGen reads power from fake state tree root cids.  It reads
-// power of `forkPower` from cid `forkRoot` and `defaultPower` from all others.
-type forkSnapshotGen struct {
-	forkPower    *types.BytesAmount
-	defaultPower *types.BytesAmount
-	forkRoot     cid.Cid
-	t            *testing.T
-}
-
-func newForkSnapshotGen(t *testing.T, dp, fp *types.BytesAmount, root cid.Cid) *forkSnapshotGen {
-	return &forkSnapshotGen{
-		t:            t,
-		defaultPower: dp,
-		forkPower:    fp,
-		forkRoot:     root,
-	}
-}
-
-func (fs *forkSnapshotGen) StateTreeSnapshot(st state.Tree, bh *types.BlockHeight) consensus.ActorStateSnapshot {
-	totalPower := fs.defaultPower
-
-	root, err := st.Flush(context.Background())
-	require.NoError(fs.t, err)
-	if root.Equals(fs.forkRoot) {
-		totalPower = fs.forkPower
-	}
-
-	return &consensus.FakePowerTableViewSnapshot{
-		MinerPower:    types.NewBytesAmount(0),
-		TotalPower:    totalPower,
-		MinerToWorker: make(map[address.Address]address.Address),
-	}
 }
 
 // dumpBlocksToCborStore is a helper method that
