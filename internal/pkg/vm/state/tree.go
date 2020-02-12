@@ -35,7 +35,7 @@ type ActorWalkFn func(address.Address, *actor.Actor) error
 // GetAllActorsResult is the struct returned via a channel by the GetAllActors
 // method. This struct contains only an address string and the actor itself.
 type GetAllActorsResult struct {
-	Address string
+	Address address.Address
 	Actor   *actor.Actor
 	Error   error
 }
@@ -81,7 +81,7 @@ func (t *tree) Flush(ctx context.Context) (cid.Cid, error) {
 // for which IsActorNotFoundError(err) is true.
 func (t *tree) GetActor(ctx context.Context, a address.Address) (*actor.Actor, error) {
 	var act actor.Actor
-	err := t.root.Find(ctx, a.String(), &act)
+	err := t.root.Find(ctx, string(a.Bytes()), &act)
 	if err == hamt.ErrNotFound {
 		return nil, &actorNotFoundError{}
 	} else if err != nil {
@@ -104,7 +104,7 @@ func (t *tree) GetOrCreateActor(ctx context.Context, addr address.Address, creat
 // SetActor sets the memory slot at address 'a' to the given actor.
 // This operation can overwrite existing actors at that address.
 func (t *tree) SetActor(ctx context.Context, a address.Address, act *actor.Actor) error {
-	if err := t.root.Set(ctx, a.String(), act); err != nil {
+	if err := t.root.Set(ctx, string(a.Bytes()), act); err != nil {
 		return errors.Wrap(err, "setting actor in state tree failed")
 	}
 	return nil
@@ -223,7 +223,7 @@ func (t *tree) getActorsFromPointers(ctx context.Context, out chan<- GetAllActor
 
 			if err := encoding.Decode(kv.Value.Raw, &a); err != nil {
 				fmt.Printf("bad raw bytes: %x\n", kv.Value.Raw)
-				panic(err) // uhm, ignoring errors is bad
+				panic(err)
 			}
 
 			select {
@@ -233,8 +233,13 @@ func (t *tree) getActorsFromPointers(ctx context.Context, out chan<- GetAllActor
 				}
 				return
 			default:
+				addr, err := address.NewFromBytes([]byte(kv.Key))
+				if err != nil {
+					fmt.Printf("bad address key bytes: %x\n", kv.Value.Raw)
+					panic(err)
+				}
 				out <- GetAllActorsResult{
-					Address: kv.Key,
+					Address: addr,
 					Actor:   &a,
 				}
 			}

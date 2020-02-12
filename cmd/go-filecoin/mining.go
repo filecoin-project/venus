@@ -169,8 +169,8 @@ End:           %s
 Proving Set:   %s
 
 `, strconv.FormatBool(res.Active),
-				res.Miner.String(),
-				res.Owner.String(),
+				res.Miner,
+				res.Owner,
 				res.Collateral.String(),
 				res.Power.Power.String(), res.Power.Total.String(),
 				res.ProvingPeriod.Start.String(),

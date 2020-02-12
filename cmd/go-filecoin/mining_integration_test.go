@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-address"
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,8 +30,7 @@ func TestMiningGenBlock(t *testing.T) {
 	n := builder.BuildAndStart(ctx)
 	defer n.Stop(ctx)
 
-	addr, err := address.NewFromString(fixtures.TestAddresses[0])
-	require.NoError(t, err)
+	addr := fixtures.TestAddresses[0]
 
 	attoFILBefore, err := n.PorcelainAPI.WalletBalance(ctx, addr)
 	require.NoError(t, err)

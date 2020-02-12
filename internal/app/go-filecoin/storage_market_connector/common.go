@@ -194,8 +194,7 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 			return false
 		}
 
-		// TODO: compare addresses directly when they share a type #3719
-		if m.From.String() != provider.String() {
+		if m.From != provider {
 			return false
 		}
 

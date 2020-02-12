@@ -60,7 +60,7 @@ type TestDaemon struct {
 	containerDir     string // Path to directory containing repo and sectors
 	genesisFile      string
 	keyFiles         []string
-	withMiner        string
+	withMiner        address.Address
 	autoSealInterval string
 	isRelay          bool
 
@@ -75,7 +75,7 @@ type TestDaemon struct {
 	process        *exec.Cmd
 	test           *testing.T
 	cmdTimeout     time.Duration
-	defaultAddress string
+	defaultAddress address.Address
 	daemonArgs     []string
 }
 
@@ -407,12 +407,12 @@ func (td *TestDaemon) WaitForAPI() error {
 // and returns the address of the new miner
 // equivalent to:
 //     `go-filecoin miner create --from $TEST_ACCOUNT 20`
-func (td *TestDaemon) CreateStorageMinerAddr(peer *TestDaemon, fromAddr string) address.Address {
+func (td *TestDaemon) CreateStorageMinerAddr(peer *TestDaemon, fromAddr address.Address) address.Address {
 	var wg sync.WaitGroup
 	var minerAddr address.Address
 	wg.Add(1)
 	go func() {
-		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "--gas-price", "1", "--gas-limit", "100", "20")
+		miner := td.RunSuccess("miner", "create", "--from", fromAddr.String(), "--gas-price", "1", "--gas-limit", "100", "20")
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		require.NoError(td.test, err)
 		require.NotEqual(td.test, addr, address.Undef)
@@ -426,10 +426,10 @@ func (td *TestDaemon) CreateStorageMinerAddr(peer *TestDaemon, fromAddr string) 
 
 // MinerSetPrice creates an ask for a CURRENTLY MINING test daemon and waits for it to appears on chain. It returns the
 // cid of the AddAsk message so other daemons can `message wait` for it.
-func (td *TestDaemon) MinerSetPrice(minerAddr string, fromAddr string, price string, expiry string) cid.Cid {
+func (td *TestDaemon) MinerSetPrice(minerAddr address.Address, fromAddr address.Address, price string, expiry string) cid.Cid {
 	setPriceReturn := td.RunSuccess("miner", "set-price",
-		"--from", fromAddr,
-		"--miner", minerAddr,
+		"--from", fromAddr.String(),
+		"--miner", minerAddr.String(),
 		"--gas-price", "1",
 		"--gas-limit", "300",
 		"--enc", "json",
@@ -639,7 +639,7 @@ func KeyFile(kf string) func(*TestDaemon) {
 }
 
 // DefaultAddress specifies a key file for this daemon to add to their wallet during init
-func DefaultAddress(defaultAddr string) func(*TestDaemon) {
+func DefaultAddress(defaultAddr address.Address) func(*TestDaemon) {
 	return func(td *TestDaemon) {
 		td.defaultAddress = defaultAddr
 	}
@@ -660,7 +660,7 @@ func GenesisFile(a string) func(*TestDaemon) {
 }
 
 // WithMiner allows setting the --with-miner flag on init.
-func WithMiner(m string) func(*TestDaemon) {
+func WithMiner(m address.Address) func(*TestDaemon) {
 	return func(td *TestDaemon) {
 		td.withMiner = m
 	}
@@ -709,11 +709,11 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		initopts = append(initopts, fmt.Sprintf("--genesisfile=%s", td.genesisFile))
 	}
 
-	if td.withMiner != "" {
+	if td.withMiner != address.Undef {
 		initopts = append(initopts, fmt.Sprintf("--with-miner=%s", td.withMiner))
 	}
 
-	if td.defaultAddress != "" {
+	if td.defaultAddress != address.Undef {
 		initopts = append(initopts, fmt.Sprintf("--default-address=%s", td.defaultAddress))
 	}
 

@@ -265,10 +265,10 @@ This command waits for the ask to be mined.`,
 	Published ask, cid: %s.
 	Ask confirmed on chain in block: %s.
 `,
-				res.MinerSetPriceResponse.MinerAddr.String(),
-				res.MinerSetPriceResponse.Price.String(),
-				res.MinerSetPriceResponse.AddAskCid.String(),
-				res.MinerSetPriceResponse.BlockCid.String(),
+				res.MinerSetPriceResponse.MinerAddr,
+				res.MinerSetPriceResponse.Price,
+				res.MinerSetPriceResponse.AddAskCid,
+				res.MinerSetPriceResponse.BlockCid,
 			)
 			return err
 		}),
@@ -558,7 +558,7 @@ var minerWorkerAddressCmd = &cmds.Command{
 		}
 
 		res := MinerWorkerResult{WorkerAddress: workerAddr}
-		fmt.Printf("workerAddr: %s", res.WorkerAddress.String())
+		fmt.Printf("workerAddr: %s", res.WorkerAddress)
 		return re.Emit(&res)
 	},
 	Type: &MinerWorkerResult{},

@@ -48,7 +48,7 @@ func (cla *claPlumbing) ActorLs(ctx context.Context) (<-chan state.GetAllActorsR
 				cla.MinerAddress = vmaddr.NewForTestGetter()()
 				actor := actor.Actor{Code: e.NewCid(types.MinerActorCodeCid)}
 				out <- state.GetAllActorsResult{
-					Address: cla.MinerAddress.String(),
+					Address: cla.MinerAddress,
 					Actor:   &actor,
 				}
 			}

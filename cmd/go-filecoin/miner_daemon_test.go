@@ -118,8 +118,7 @@ func TestMinerCreate(t *testing.T) {
 	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 
-	testAddr, err := address.NewFromString(fixtures.TestAddresses[2])
-	require.NoError(t, err)
+	testAddr := fixtures.TestAddresses[2]
 
 	t.Run("success", func(t *testing.T) {
 
@@ -263,8 +262,7 @@ func TestMinerCreateChargesGas(t *testing.T) {
 	tf.IntegrationTest(t)
 	t.Skip("new runtime")
 
-	// miningMinerOwnerAddr, err := address.NewFromString(fixtures.TestAddresses[0])
-	// require.NoError(t, err)
+	// miningMinerOwnerAddr := fixtures.TestAddresses[0]
 
 	// d1 := makeTestDaemonWithMinerAndStart(t)
 	// defer d1.ShutdownSuccess()
@@ -485,7 +483,7 @@ func TestMinerWorker(t *testing.T) {
 		res, err := minerNode.MinerWorker(ctx)
 		fmt.Println(minerNode.LastCmdStdErrStr())
 		require.NoError(t, err)
-		assert.Equal(t, workerAddr.String(), res.WorkerAddress.String())
+		assert.Equal(t, workerAddr, res.WorkerAddress)
 	})
 }
 
@@ -528,6 +526,6 @@ func TestMinerSetWorker(t *testing.T) {
 		res2, err := minerNode.MinerWorker(ctx)
 		require.NoError(t, err)
 
-		assert.Equal(t, newAddr.String(), res2.WorkerAddress.String())
+		assert.Equal(t, newAddr, res2.WorkerAddress)
 	})
 }

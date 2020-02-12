@@ -16,15 +16,13 @@ import (
 func (f *Filecoin) MinerCreate(ctx context.Context, collateral *big.Int, options ...ActionOption) (address.Address, error) {
 	var out commands.MinerCreateResult
 
-	sCollateral := collateral.String()
-
 	args := []string{"go-filecoin", "miner", "create"}
 
 	for _, option := range options {
 		args = append(args, option()...)
 	}
 
-	args = append(args, sCollateral)
+	args = append(args, collateral.String())
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
 		return address.Undef, err
@@ -56,9 +54,7 @@ func (f *Filecoin) MinerUpdatePeerid(ctx context.Context, minerAddr address.Addr
 func (f *Filecoin) MinerOwner(ctx context.Context, minerAddr address.Address) (address.Address, error) {
 	var out address.Address
 
-	sMinerAddr := minerAddr.String()
-
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "owner", sMinerAddr); err != nil {
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "owner", minerAddr.String()); err != nil {
 		return address.Undef, err
 	}
 
@@ -69,9 +65,7 @@ func (f *Filecoin) MinerOwner(ctx context.Context, minerAddr address.Address) (a
 func (f *Filecoin) MinerPower(ctx context.Context, minerAddr address.Address) (porcelain.MinerPower, error) {
 	var out porcelain.MinerPower
 
-	sMinerAddr := minerAddr.String()
-
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "power", sMinerAddr); err != nil {
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "power", minerAddr.String()); err != nil {
 		return porcelain.MinerPower{}, err
 	}
 
@@ -82,7 +76,6 @@ func (f *Filecoin) MinerPower(ctx context.Context, minerAddr address.Address) (p
 func (f *Filecoin) MinerSetPrice(ctx context.Context, fil *big.Float, expiry *big.Int, options ...ActionOption) (*porcelain.MinerSetPriceResponse, error) {
 	var out commands.MinerSetPriceResult
 
-	sExpiry := expiry.String()
 	sFil := fil.Text('f', -1)
 
 	args := []string{"go-filecoin", "miner", "set-price"}
@@ -91,7 +84,7 @@ func (f *Filecoin) MinerSetPrice(ctx context.Context, fil *big.Float, expiry *bi
 		args = append(args, option()...)
 	}
 
-	args = append(args, sFil, sExpiry)
+	args = append(args, sFil, expiry.String())
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
 		return nil, err

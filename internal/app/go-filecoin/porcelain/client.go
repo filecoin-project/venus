@@ -6,11 +6,11 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
@@ -61,21 +61,18 @@ func ClientListAsks(ctx context.Context, plumbing claPlubming) <-chan Ask {
 	return out
 }
 
-func listAsksFromActorResult(ctx context.Context, plumbing claPlubming, actorResult state.GetAllActorsResult, out chan Ask) error {
-	if actorResult.Error != nil {
-		return actorResult.Error
+func listAsksFromActorResult(ctx context.Context, plumbing claPlubming, res state.GetAllActorsResult, out chan Ask) error {
+	if res.Error != nil {
+		return res.Error
 	}
 
-	addr, _ := address.NewFromString(actorResult.Address)
-	actor := actorResult.Actor
-
-	if !types.MinerActorCodeCid.Equals(actor.Code.Cid) && !types.BootstrapMinerActorCodeCid.Equals(actor.Code.Cid) {
+	if !types.MinerActorCodeCid.Equals(res.Actor.Code.Cid) && !types.BootstrapMinerActorCodeCid.Equals(res.Actor.Code.Cid) {
 		return nil
 	}
 
 	// TODO: at some point, we will need to check that the miners are actually part of the storage market
 	// for now, its impossible for them not to be.
-	ret, err := plumbing.MessageQuery(ctx, address.Undef, addr, miner.GetAsks, plumbing.ChainHeadKey())
+	ret, err := plumbing.MessageQuery(ctx, address.Undef, res.Address, miner.GetAsks, plumbing.ChainHeadKey())
 	if err != nil {
 		return err
 	}
@@ -87,7 +84,7 @@ func listAsksFromActorResult(ctx context.Context, plumbing claPlubming, actorRes
 	fmt.Printf("asksIds: %v\n", asksIds)
 
 	for _, id := range asksIds {
-		ask, err := getAskByID(ctx, plumbing, addr, uint64(id))
+		ask, err := getAskByID(ctx, plumbing, res.Address, uint64(id))
 		if err != nil {
 			return err
 		}
