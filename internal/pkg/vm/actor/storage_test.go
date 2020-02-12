@@ -8,6 +8,7 @@ import (
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
@@ -15,7 +16,7 @@ import (
 func TestActorMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
-	actor := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(1))
+	actor := NewActor(types.AccountActorCodeCid, abi.NewTokenAmount(1))
 	actor.Head = e.NewCid(requireCid(t, "Actor Storage"))
 	actor.IncrementSeqNum()
 

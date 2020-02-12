@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -21,7 +22,7 @@ import (
 type Actor struct{}
 
 // NewActor creates a new account actor.
-func NewActor(balance types.AttoFIL) (*actor.Actor, error) {
+func NewActor(balance abi.TokenAmount) (*actor.Actor, error) {
 	return actor.NewActor(types.AccountActorCodeCid, balance), nil
 }
 
@@ -90,7 +91,7 @@ type Impl Actor
 func (impl *Impl) Constructor(ctx runtime.InvocationContext, addr address.Address) {
 	ctx.ValidateCaller(pattern.IsAInitActor{})
 
-	err := (*Actor)(impl).InitializeState(ctx.StateHandle(), NewState(addr))
+	err := (*Actor)(impl).InitializeState(ctx.State(), NewState(addr))
 	if err != nil {
 		panic(err)
 	}

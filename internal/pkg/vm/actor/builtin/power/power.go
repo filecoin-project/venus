@@ -17,11 +17,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 func init() {
@@ -67,7 +66,7 @@ const (
 
 // NewActor returns a new power actor
 func NewActor() *actor.Actor {
-	return actor.NewActor(types.PowerActorCodeCid, types.ZeroAttoFIL)
+	return actor.NewActor(types.PowerActorCodeCid, abi.NewTokenAmount(0))
 }
 
 //
@@ -124,10 +123,6 @@ type CreateStorageMinerParams struct {
 func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateStorageMinerParams) address.Address {
 	vmctx.ValidateCaller(pattern.Any{})
 
-	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		runtime.Abort(exitcode.OutOfGas)
-	}
-
 	initParams := miner.ConstructorParams{
 		OwnerAddr:  vmctx.Message().Caller(),
 		WorkerAddr: vmctx.Message().Caller(),
@@ -142,7 +137,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateSt
 
 	actorCodeCid := types.MinerActorCodeCid
 	epoch := vmctx.Runtime().CurrentEpoch()
-	if epoch.Equal(types.NewBlockHeight(0)) {
+	if epoch == 0 {
 		actorCodeCid = types.BootstrapMinerActorCodeCid
 	}
 
@@ -155,7 +150,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateSt
 	actorIDAddr := ret.(address.Address)
 
 	var state State
-	ret, err = vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
+	ret, err = vmctx.State().Transaction(&state, func() (interface{}, error) {
 		// Update power table.
 		ctx := context.Background()
 		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
@@ -197,13 +192,10 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateSt
 // RemoveStorageMiner removes the given miner address from the power table.  This call will fail if
 // the miner has any power remaining in the table or if the actor does not already exit in the table.
 func (*impl) removeStorageMiner(vmctx runtime.InvocationContext, delAddr address.Address) (uint8, error) {
-	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
-	}
 	// TODO #3649 we need proper authentication.  Totally insecure as it is.
 
 	var state State
-	_, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
+	_, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		ctx := context.Background()
 		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
 			// Find entry to delete.
@@ -238,14 +230,10 @@ func (*impl) removeStorageMiner(vmctx runtime.InvocationContext, delAddr address
 
 // GetTotalPower returns the total power (in bytes) held by all miners registered in the system
 func (*impl) getTotalPower(vmctx runtime.InvocationContext) (*types.BytesAmount, uint8, error) {
-	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
-	}
-
 	// TODO #3649 we need proper authentication. Totally insecure without.
 
 	var state State
-	ret, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
+	ret, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		ctx := context.Background()
 		total := types.NewBytesAmount(0)
 		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
@@ -269,12 +257,8 @@ func (*impl) getTotalPower(vmctx runtime.InvocationContext) (*types.BytesAmount,
 }
 
 func (*impl) getPowerReport(vmctx runtime.InvocationContext, addr address.Address) (types.PowerReport, uint8, error) {
-	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return types.PowerReport{}, internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
-	}
-
 	var state State
-	ret, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
+	ret, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		ctx := context.Background()
 		var tableEntry TableEntry
 		var report types.PowerReport
@@ -299,12 +283,8 @@ func (*impl) getPowerReport(vmctx runtime.InvocationContext, addr address.Addres
 }
 
 func (*impl) getSectorSize(vmctx runtime.InvocationContext, addr address.Address) (*types.BytesAmount, uint8, error) {
-	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, internal.ErrInsufficientGas, fmt.Errorf("Insufficient gas")
-	}
-
 	var state State
-	ret, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
+	ret, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		ctx := context.Background()
 		ss := types.NewBytesAmount(0)
 		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
@@ -335,12 +315,8 @@ type ProcessPowerReportParams struct {
 func (*impl) processPowerReport(vmctx runtime.InvocationContext, params ProcessPowerReportParams) {
 	vmctx.ValidateCaller(pattern.Any{})
 
-	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		runtime.Abort(exitcode.OutOfGas)
-	}
-
 	var state State
-	_, err := vmctx.StateHandle().Transaction(&state, func() (interface{}, error) {
+	_, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		ctx := context.Background()
 		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
 			// Find entry to update.

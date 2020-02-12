@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -19,17 +19,16 @@ type wbPlumbing interface {
 }
 
 // WalletBalance gets the current balance associated with an address
-func WalletBalance(ctx context.Context, plumbing wbPlumbing, addr address.Address) (types.AttoFIL, error) {
+func WalletBalance(ctx context.Context, plumbing wbPlumbing, addr address.Address) (abi.TokenAmount, error) {
 	act, err := plumbing.ActorGet(ctx, addr)
 	if err != nil {
 		if state.IsActorNotFoundError(err) {
 			// if the account doesn't exit, the balance should be zero
-			return types.NewAttoFILFromFIL(0), nil
+			return abi.NewTokenAmount(0), nil
 		}
 
-		return types.ZeroAttoFIL, err
+		return abi.NewTokenAmount(0), err
 	}
-
 	return act.Balance, nil
 }
 

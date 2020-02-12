@@ -10,6 +10,7 @@ import (
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-cid"
@@ -211,7 +212,7 @@ func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, k
 		return fmt.Errorf("keys do not match prealloc")
 	}
 
-	netact, err := account.NewActor(types.NewAttoFILFromFIL(1000000000000))
+	netact, err := account.NewActor(abi.NewTokenAmount(1000000000000))
 	if err != nil {
 		return err
 	}
@@ -239,7 +240,7 @@ func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, k
 		}
 
 		_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, vmaddr.InitAddress,
-			initactor.ExecMethodID, types.NewAttoFILFromFIL(valint), initactor.ExecParams{
+			initactor.ExecMethodID, abi.NewTokenAmount(int64(valint)), initactor.ExecParams{
 				ActorCodeCid:      types.AccountActorCodeCid,
 				ConstructorParams: constructorParams,
 			})
@@ -276,12 +277,12 @@ func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*types.KeyInfo, m
 		}
 
 		// give collateral to account actor
-		_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, addr, types.SendMethodID, types.NewAttoFILFromFIL(100000), nil)
+		_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, addr, types.SendMethodID, abi.NewTokenAmount(100000), nil)
 		if err != nil {
 			return nil, err
 		}
 
-		ret, err := vm.ApplyGenesisMessage(addr, vmaddr.StoragePowerAddress, power.CreateStorageMiner, types.NewAttoFILFromFIL(100000), power.CreateStorageMinerParams{
+		ret, err := vm.ApplyGenesisMessage(addr, vmaddr.StoragePowerAddress, power.CreateStorageMiner, abi.NewTokenAmount(100000), power.CreateStorageMinerParams{
 			OwnerAddr:  addr,
 			WorkerAddr: addr,
 			PeerID:     pid,
@@ -304,7 +305,7 @@ func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*types.KeyInfo, m
 		for i := uint64(0); i < m.NumCommittedSectors; i++ {
 			powerReport := types.NewPowerReport(m.SectorSize*m.NumCommittedSectors, 0)
 
-			_, err := vm.ApplyGenesisMessage(addr, vmaddr.StoragePowerAddress, power.ProcessPowerReport, types.NewAttoFILFromFIL(0), power.ProcessPowerReportParams{
+			_, err := vm.ApplyGenesisMessage(addr, vmaddr.StoragePowerAddress, power.ProcessPowerReport, abi.NewTokenAmount(0), power.ProcessPowerReportParams{
 				Report:     powerReport,
 				UpdateAddr: mIDAddr,
 			})

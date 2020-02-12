@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -141,7 +142,7 @@ func TestGetTipSetState(t *testing.T) {
 
 	// setup testing state
 	fakeCode := types.CidFromString(t, "somecid")
-	balance := types.NewAttoFILFromFIL(1000000)
+	balance := abi.NewTokenAmount(1000000)
 	testActor := actor.NewActor(fakeCode, balance)
 	addr := vmaddr.NewForTestGetter()()
 	st1 := state.NewTree(cst)

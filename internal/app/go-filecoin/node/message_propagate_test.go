@@ -11,6 +11,7 @@ import (
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
@@ -33,7 +34,7 @@ func TestMessagePropagation(t *testing.T) {
 	senderAddress, err := ki.Address()
 	require.NoError(t, err)
 	genesis := consensus.MakeGenesisFunc(
-		consensus.ActorAccount(senderAddress, types.NewAttoFILFromFIL(100)),
+		consensus.ActorAccount(senderAddress, abi.NewTokenAmount(100)),
 		consensus.Network(version.TEST),
 	)
 

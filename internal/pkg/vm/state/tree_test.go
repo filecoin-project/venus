@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	mh "github.com/multiformats/go-multihash"
@@ -31,9 +32,9 @@ func TestStatePutGet(t *testing.T) {
 	cst := cborutil.NewIpldStore(bs)
 	tree := NewTree(cst)
 
-	act1 := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
+	act1 := actor.NewActor(types.AccountActorCodeCid, abi.NewTokenAmount(0))
 	act1.IncrementSeqNum()
-	act2 := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
+	act2 := actor.NewActor(types.AccountActorCodeCid, abi.NewTokenAmount(0))
 	act2.IncrementSeqNum()
 	act2.IncrementSeqNum()
 
@@ -115,7 +116,7 @@ func TestStateGetOrCreate(t *testing.T) {
 	})
 
 	t.Run("actor exists", func(t *testing.T) {
-		a := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(10))
+		a := actor.NewActor(cid.Undef, abi.NewTokenAmount(10))
 		assert.NoError(t, tree.SetActor(ctx, addr, a))
 
 		actorBack, _, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, address.Address, error) {
@@ -135,7 +136,7 @@ func TestGetAllActors(t *testing.T) {
 	tree := NewTree(cst)
 	addr := vmaddr.NewForTestGetter()()
 
-	actor := actor.Actor{Code: e.NewCid(types.AccountActorCodeCid), CallSeqNum: 1234, Balance: types.NewAttoFILFromFIL(123)}
+	actor := actor.Actor{Code: e.NewCid(types.AccountActorCodeCid), CallSeqNum: 1234, Balance: abi.NewTokenAmount(123)}
 	err := tree.SetActor(ctx, addr, &actor)
 	assert.NoError(t, err)
 	_, err = tree.Flush(ctx)

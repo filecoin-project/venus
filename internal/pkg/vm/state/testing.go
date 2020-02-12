@@ -109,6 +109,17 @@ func (m *MockStateTree) GetAllActors(ctx context.Context) <-chan GetAllActorsRes
 	panic("do not call me")
 }
 
+// DeleteActor remove the actor from the storage.
+// This method will NOT return an error if the actor was not found.
+func (m *MockStateTree) DeleteActor(ctx context.Context, addr address.Address) error {
+	if m.NoMocks {
+		return nil
+	}
+
+	args := m.Called(ctx, addr)
+	return args.Error(0)
+}
+
 // GetActorCode implements StateTree.GetActorCode
 func (m *MockStateTree) GetActorCode(c cid.Cid, protocol uint64) (dispatch.Dispatcher, error) {
 	a, ok := m.BuiltinActors[c]

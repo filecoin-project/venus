@@ -11,9 +11,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 )
 
@@ -21,14 +24,14 @@ import (
 type FakeVMContext struct {
 	MessageValue            *types.UnsignedMessage
 	StorageValue            runtime.Storage
-	BalanceValue            types.AttoFIL
-	BlockHeightValue        *types.BlockHeight
+	BalanceValue            abi.TokenAmount
+	BlockHeightValue        abi.ChainEpoch
 	VerifierValue           verification.Verifier
 	BlockMinerValue         address.Address
 	RandomnessValue         []byte
 	IsFromAccountActorValue bool
 	LegacySender            func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
-	Sender                  func(to address.Address, method types.MethodID, value types.AttoFIL, params interface{}) interface{}
+	Sender                  func(to address.Address, method types.MethodID, value abi.TokenAmount, params interface{}) interface{}
 	Addresser               func() (address.Address, error)
 	Charger                 func(cost types.GasUnits) error
 	Sampler                 func(sampleHeight *types.BlockHeight) ([]byte, error)
@@ -46,8 +49,8 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 	aux := FakeVMContext{
 		MessageValue:            message,
 		StorageValue:            &testStorage{state: state},
-		BlockHeightValue:        types.NewBlockHeight(0),
-		BalanceValue:            types.ZeroAttoFIL,
+		BlockHeightValue:        0,
+		BalanceValue:            big.Zero(),
 		RandomnessValue:         randomness,
 		IsFromAccountActorValue: true,
 		BlockMinerValue:         address.Undef,
@@ -60,7 +63,7 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 		LegacySender: func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 			return [][]byte{}, 0, nil
 		},
-		Sender: func(to address.Address, method types.MethodID, value types.AttoFIL, params interface{}) interface{} {
+		Sender: func(to address.Address, method types.MethodID, value abi.TokenAmount, params interface{}) interface{} {
 			return nil
 		},
 		Addresser: func() (address.Address, error) {
@@ -85,13 +88,13 @@ func NewFakeVMContextWithVerifier(message *types.UnsignedMessage, state interfac
 var _ runtime.Runtime = &FakeVMContext{}
 
 // CurrentEpoch is the current chain height
-func (tc *FakeVMContext) CurrentEpoch() types.BlockHeight {
-	return *tc.BlockHeightValue
+func (tc *FakeVMContext) CurrentEpoch() abi.ChainEpoch {
+	return tc.BlockHeightValue
 }
 
 // Randomness provides random bytes used in verification challenges
-func (tc *FakeVMContext) Randomness(epoch types.BlockHeight) runtime.Randomness {
-	rnd, _ := tc.Sampler(&epoch)
+func (tc *FakeVMContext) Randomness(epoch abi.ChainEpoch) abi.RandomnessSeed {
+	rnd, _ := tc.Sampler(types.NewBlockHeight((uint64)(epoch)))
 	return rnd
 }
 
@@ -99,21 +102,21 @@ func (tc *FakeVMContext) Randomness(epoch types.BlockHeight) runtime.Randomness 
 func (tc *FakeVMContext) LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 	// check if side-effects are allowed
 	if !tc.allowSideEffects {
-		runtime.Abortf(exitcode.MethodAbort, "Calling LegacySend() is not allowed during side-effet lock")
+		runtime.Abortf(exitcode.SysErrInternal, "Calling LegacySend() is not allowed during side-effet lock")
 	}
 	return tc.LegacySender(to, method, value, params)
 }
 
 // Send allows actors to invoke methods on other actors
-func (tc *FakeVMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params interface{}) interface{} {
+func (tc *FakeVMContext) Send(to address.Address, method types.MethodID, value abi.TokenAmount, params interface{}) interface{} {
 	// check if side-effects are allowed
 	if !tc.allowSideEffects {
-		runtime.Abortf(exitcode.MethodAbort, "Calling Send() is not allowed during side-effet lock")
+		runtime.Abortf(exitcode.SysErrInternal, "Calling Send() is not allowed during side-effet lock")
 	}
 	return tc.Sender(to, method, value, params)
 }
 
-var _ runtime.MessageInfo = &FakeVMContext{}
+var _ specsruntime.Message = &FakeVMContext{}
 
 // BlockMiner is the address for the actor miner who mined the block in which the initial on-chain message appears.
 func (tc *FakeVMContext) BlockMiner() address.Address {
@@ -125,11 +128,17 @@ func (tc *FakeVMContext) Caller() address.Address {
 	return tc.MessageValue.From
 }
 
+// Receiver implements Message.
+func (tc *FakeVMContext) Receiver() address.Address {
+	return tc.MessageValue.To
+}
+
 // ValueReceived is the amount of FIL received by this actor during this method call.
 //
 // Note: the value is already been deposited on the actors account and is reflected on the balance.
-func (tc *FakeVMContext) ValueReceived() types.AttoFIL {
-	return tc.MessageValue.Value
+func (tc *FakeVMContext) ValueReceived() abi.TokenAmount {
+	// Dragons: temp until we remove legacy types
+	return abi.NewTokenAmount(tc.MessageValue.Value.AsBigInt().Int64())
 }
 
 var _ runtime.InvocationContext = &FakeVMContext{}
@@ -140,7 +149,7 @@ func (tc *FakeVMContext) Runtime() runtime.Runtime {
 }
 
 // Message implements the interface.
-func (tc *FakeVMContext) Message() runtime.MessageInfo {
+func (tc *FakeVMContext) Message() specsruntime.Message {
 	return tc
 }
 
@@ -150,19 +159,19 @@ func (tc *FakeVMContext) Message() runtime.MessageInfo {
 func (tc *FakeVMContext) ValidateCaller(pattern runtime.CallerPattern) {
 	// Note: the FakeVMContext is currently harcoded to a single pattern
 	if !tc.IsFromAccountActorValue {
-		runtime.Abortf(exitcode.MethodAbort, "Method invoked by incorrect caller")
+		runtime.Abortf(exitcode.SysErrInternal, "Method invoked by incorrect caller")
 	}
 }
 
-// StateHandle handles access to the actor state.
-func (tc *FakeVMContext) StateHandle() runtime.ActorStateHandle {
+// State handles access to the actor state.
+func (tc *FakeVMContext) State() runtime.ActorStateHandle {
 	return tc.stateHandle
 }
 
 // Balance is the current balance on the current actors account.
 //
 // Note: the value received for this invocation is already reflected on the balance.
-func (tc *FakeVMContext) Balance() types.AttoFIL {
+func (tc *FakeVMContext) Balance() abi.TokenAmount {
 	return tc.BalanceValue
 }
 
@@ -182,15 +191,15 @@ var _ runtime.ExtendedInvocationContext = (*FakeVMContext)(nil)
 func (tc *FakeVMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []byte) (address.Address, address.Address) {
 	addr, err := tc.Addresser()
 	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "Could not create address")
+		runtime.Abortf(exitcode.SysErrInternal, "Could not create address")
 	}
 	idAddr, err := address.NewIDAddress(uint64(actorID))
 	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "Could not create IDAddress for actor")
+		runtime.Abortf(exitcode.SysErrInternal, "Could not create IDAddress for actor")
 	}
 	err = tc.ActorCreator(idAddr, code)
 	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "Could not create actor")
+		runtime.Abortf(exitcode.SysErrInternal, "Could not create actor")
 	}
 
 	return idAddr, addr

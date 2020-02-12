@@ -10,6 +10,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -210,14 +212,10 @@ func (id MethodID) String() string {
 }
 
 // Cost returns the cost of the gas given the price.
-func (x GasUnits) Cost(price AttoFIL) AttoFIL {
+func (x GasUnits) Cost(price abi.TokenAmount) abi.TokenAmount {
 	// turn the gas into a bigint
-	bigx := big.NewInt((int64)(x))
+	bigx := abi.NewTokenAmount((int64)(x))
 
 	// cost = gas * price
-	// Note: the `bigint.Mul` works by replacing the pointer with the multiplication result.
-	out := big.NewInt(0)
-	out.Mul(bigx, price.AsBigInt())
-
-	return NewAttoFIL(out)
+	return specsbig.Mul(bigx, price)
 }

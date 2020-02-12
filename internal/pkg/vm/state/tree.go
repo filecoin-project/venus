@@ -23,6 +23,8 @@ type Tree interface {
 	GetOrCreateActor(ctx context.Context, a address.Address, c func() (*actor.Actor, address.Address, error)) (*actor.Actor, address.Address, error)
 	SetActor(ctx context.Context, a address.Address, act *actor.Actor) error
 
+	DeleteActor(ctx context.Context, a address.Address) error
+
 	ForEachActor(ctx context.Context, walkFn ActorWalkFn) error
 	GetAllActors(ctx context.Context) <-chan GetAllActorsResult
 }
@@ -121,6 +123,16 @@ func (t *tree) GetAllActors(ctx context.Context) <-chan GetAllActorsResult {
 		t.getActorsFromPointers(ctx, out, t.root.Pointers)
 	}()
 	return out
+}
+
+// DeleteActor remove the actor from the storage.
+// This method will NOT return an error if the actor was not found.
+func (t *tree) DeleteActor(ctx context.Context, addr address.Address) error {
+	err := t.root.Delete(ctx, addr.String())
+	if err == hamt.ErrNotFound {
+		return nil
+	}
+	return err
 }
 
 // IsActorNotFoundError is true of the error returned by

@@ -60,6 +60,19 @@ func (t *CachedTree) GetOrCreateActor(ctx context.Context,
 	return actor, mappedAddr, nil
 }
 
+// DeleteActor remove the actor from the storage.
+// This method will NOT return an error if the actor was not found.
+func (t *CachedTree) DeleteActor(ctx context.Context, addr address.Address) error {
+	// delete from cache
+	_, found := t.cache[addr]
+	if found {
+		delete(t.cache, addr)
+	}
+
+	// delete from store
+	return t.st.DeleteActor(ctx, addr)
+}
+
 // Commit takes all the cached actors and sets them into the underlying cache.
 func (t *CachedTree) Commit(ctx context.Context) error {
 	for addr, actor := range t.cache {

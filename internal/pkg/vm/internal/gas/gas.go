@@ -2,18 +2,41 @@ package gas
 
 import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 )
 
 // Unit is the unit of gas.
-type Unit = types.GasUnits
+type Unit big.Int
 
 // Zero is the zero value for Gas.
-const Zero = types.ZeroGas
+var Zero = NewGas(0)
 
 // SystemGasLimit is the maximum gas for implicit system messages.
-var SystemGasLimit = types.NewGasUnits(uint64(1000000000000000000)) // 10^18
+var SystemGasLimit = NewGas(1000000000000000000) // 10^18
+
+// NewGas creates a gas value object.
+func NewGas(value int64) Unit {
+	return Unit(big.NewInt(value))
+}
+
+// NewLegacyGas is legacy and will be deleted
+// Dragons: delete once we finish changing to the new types
+func NewLegacyGas(v types.GasUnits) Unit {
+	return NewGas((int64)(v))
+}
+
+func (gas Unit) asBigInt() big.Int {
+	return (big.Int)(gas)
+}
+
+// ToTokens returns the cost of the gas given the price.
+func (gas Unit) ToTokens(price abi.TokenAmount) abi.TokenAmount {
+	// cost = gas * price
+	return big.Mul(gas.asBigInt(), price)
+}
 
 // Tracker maintains the state of gas usage throughout the execution of a message.
 type Tracker struct {
@@ -25,7 +48,7 @@ type Tracker struct {
 func NewTracker(limit Unit) Tracker {
 	return Tracker{
 		gasLimit:    limit,
-		gasConsumed: types.ZeroGas,
+		gasConsumed: Zero,
 	}
 }
 
@@ -34,7 +57,7 @@ func NewTracker(limit Unit) Tracker {
 // WARNING: this method will panic if there is no sufficient gas left.
 func (t *Tracker) Charge(amount Unit) {
 	if ok := t.TryCharge(amount); !ok {
-		runtime.Abort(exitcode.OutOfGas)
+		runtime.Abort(exitcode.SysErrOutOfGas)
 	}
 }
 
@@ -43,12 +66,13 @@ func (t *Tracker) Charge(amount Unit) {
 // Returns `True` if the there was enough gas to pay for `amount`.
 func (t *Tracker) TryCharge(amount Unit) bool {
 	// check for limit
-	if t.gasConsumed+amount > t.gasLimit {
+	aux := big.Add(t.gasConsumed.asBigInt(), amount.asBigInt())
+	if aux.GreaterThan(t.gasLimit.asBigInt()) {
 		t.gasConsumed = t.gasLimit
 		return false
 	}
 
-	t.gasConsumed += amount
+	t.gasConsumed = Unit(aux)
 	return true
 }
 
@@ -59,5 +83,5 @@ func (t Tracker) GasConsumed() Unit {
 
 // RemainingGas returns the gas remaining.
 func (t Tracker) RemainingGas() Unit {
-	return t.gasLimit - t.gasConsumed
+	return Unit(big.Sub(t.gasLimit.asBigInt(), t.gasConsumed.asBigInt()))
 }

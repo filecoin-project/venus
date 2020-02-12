@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -68,11 +69,11 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 	if err != nil {
 		return nil, fmt.Errorf("processing empty tipset")
 	}
-	epoch := types.NewBlockHeight(h)
+	var epoch abi.ChainEpoch = (abi.ChainEpoch)(h)
 
 	vm := vm.NewVM(st, &vms)
 
-	return vm.ApplyTipSetMessages(msgs, *epoch)
+	return vm.ApplyTipSetMessages(msgs, epoch)
 }
 
 // ResolveAddress looks up associated id address. If the given address is already and id address, it is returned unchanged.
