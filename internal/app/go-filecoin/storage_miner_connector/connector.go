@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
@@ -31,8 +30,6 @@ import (
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
-
-var log = logging.Logger("connector") // nolint: deadcode
 
 // StorageMinerNodeConnector is a struct which satisfies the go-storage-miner
 // needs of "the node," e.g. interacting with the blockchain, persisting sector

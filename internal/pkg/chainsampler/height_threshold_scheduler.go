@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 )
 
+// HeightThresholdScheduler listens for changes to chain height and notifies when the threshold is hit or invalidated
 type HeightThresholdScheduler struct {
 	newListener     chan *HeightThresholdListener
 	cancelListener  chan *HeightThresholdListener
@@ -17,6 +18,7 @@ type HeightThresholdScheduler struct {
 	chainStore      *chain.Store
 }
 
+// NewHeightThresholdScheduler creates a new scheduler
 func NewHeightThresholdScheduler(chainStore *chain.Store) *HeightThresholdScheduler {
 	return &HeightThresholdScheduler{
 		newListener:    make(chan *HeightThresholdListener),
@@ -80,6 +82,7 @@ func (m *HeightThresholdScheduler) CancelListener(listener *HeightThresholdListe
 	listener.doneCh <- struct{}{}
 }
 
+// HandleNewTipSet must be called when the chain head changes.
 func (m *HeightThresholdScheduler) HandleNewTipSet(ctx context.Context, previousHead block.TipSet) (block.TipSet, error) {
 	newHeadKey := m.chainStore.GetHead()
 	newHead, err := m.chainStore.GetTipSet(newHeadKey)

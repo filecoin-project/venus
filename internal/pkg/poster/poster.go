@@ -90,7 +90,10 @@ func (p *Poster) StartPoSting(ctx context.Context) {
 					continue
 				}
 
-				p.startPoStIfNeeded(ctx, newHead)
+				err := p.startPoStIfNeeded(ctx, newHead)
+				if err != nil {
+					log.Error("error attempting fallback post", err)
+				}
 			case <-ctx.Done():
 				return
 			}

@@ -206,7 +206,7 @@ func (chn *ChainStateReadWriter) GetActorStateAt(ctx context.Context, tipKey blo
 	return encoding.Decode(blk.RawData(), out)
 }
 
-// resolve ID address for actor
+// ResolveAddressAt resolves ID address for actor
 func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (address.Address, error) {
 	st, err := chn.readWriter.GetTipSetState(ctx, tipKey)
 	if err != nil {
