@@ -78,7 +78,7 @@ func TestFaucetSendFunds(t *testing.T) {
 	// Start Tests
 
 	// Make request for funds
-	msgcid := MustSendFundsFaucet(t, "localhost:9797", targetAddr.Addresses[0])
+	msgcid := MustSendFundsFaucet(t, "localhost:9797", targetAddr.Addresses[0].String())
 
 	// Wait around for message to appear
 	msgctx, msgcancel := context.WithTimeout(context.Background(), blockTime*3)
@@ -87,7 +87,7 @@ func TestFaucetSendFunds(t *testing.T) {
 
 	// Read wallet balance
 	var balanceStr string
-	node1.MustRunCmdJSON(ctx, &balanceStr, "go-filecoin", "wallet", "balance", targetAddr.Addresses[0])
+	node1.MustRunCmdJSON(ctx, &balanceStr, "go-filecoin", "wallet", "balance", targetAddr.Addresses[0].String())
 	balance, err := strconv.ParseInt(balanceStr, 10, 64)
 	require.NoError(t, err)
 

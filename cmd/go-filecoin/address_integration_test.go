@@ -98,18 +98,18 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 	minerPidForUpdate := th.RequireRandomPeerID(t)
 
 	// capture original, pre-update miner pid
-	lookupOutA := cmdClient.RunSuccessFirstLine(ctx, "address", "lookup", minerAddr)
+	lookupOutA := cmdClient.RunSuccessFirstLine(ctx, "address", "lookup", minerAddr.String())
 
 	// Not a miner address, should fail.
-	cmdClient.RunFail(ctx, "failed to find", "address", "lookup", addr)
+	cmdClient.RunFail(ctx, "failed to find", "address", "lookup", addr.String())
 
 	// update the miner's peer ID
 	updateMsg := cmdClient.RunSuccessFirstLine(ctx,
 		"miner", "update-peerid",
-		"--from", addr,
+		"--from", addr.String(),
 		"--gas-price", "1",
 		"--gas-limit", "300",
-		minerAddr,
+		minerAddr.String(),
 		minerPidForUpdate.Pretty(),
 	)
 
@@ -122,7 +122,7 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	// use the address lookup command to ensure update happened
-	lookupOutB := cmdClient.RunSuccessFirstLine(ctx, "address", "lookup", minerAddr)
+	lookupOutB := cmdClient.RunSuccessFirstLine(ctx, "address", "lookup", minerAddr.String())
 	assert.Equal(t, minerPidForUpdate.Pretty(), lookupOutB)
 	assert.NotEqual(t, lookupOutA, lookupOutB)
 }
@@ -150,7 +150,7 @@ func TestWalletLoadFromFile(t *testing.T) {
 	}
 
 	// assert default amount of funds were allocated to address during genesis
-	wb := cmdClient.RunSuccess(ctx, "wallet", "balance", fixtures.TestAddresses[0]).ReadStdoutTrimNewlines()
+	wb := cmdClient.RunSuccess(ctx, "wallet", "balance", fixtures.TestAddresses[0].String()).ReadStdoutTrimNewlines()
 	assert.Contains(t, wb, "10000")
 }
 

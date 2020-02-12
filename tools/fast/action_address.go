@@ -22,22 +22,10 @@ func (f *Filecoin) AddressNew(ctx context.Context) (address.Address, error) {
 func (f *Filecoin) AddressLs(ctx context.Context) ([]address.Address, error) {
 	// the command returns an AddressListResult
 	var alr commands.AddressLsResult
-	// we expect to interact with an array of address
-	var out []address.Address
-
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &alr, "go-filecoin", "address", "ls"); err != nil {
 		return nil, err
 	}
-
-	// transform the AddressListResult to an array of addresses
-	for _, addr := range alr.Addresses {
-		a, err := address.NewFromString(addr)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, a)
-	}
-	return out, nil
+	return alr.Addresses, nil
 }
 
 // AddressLookup runs the address lookup command against the filecoin process.

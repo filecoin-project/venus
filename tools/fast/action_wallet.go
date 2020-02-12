@@ -24,22 +24,10 @@ func (f *Filecoin) WalletBalance(ctx context.Context, addr address.Address) (typ
 func (f *Filecoin) WalletImport(ctx context.Context, file files.File) ([]address.Address, error) {
 	// the command returns an AddressListResult
 	var alr commands.AddressLsResult
-	// we expect to interact with an array of address
-	var out []address.Address
-
 	if err := f.RunCmdJSONWithStdin(ctx, file, &alr, "go-filecoin", "wallet", "import"); err != nil {
 		return nil, err
 	}
-
-	// transform the AddressListResult to an array of addresses
-	for _, addr := range alr.Addresses {
-		a, err := address.NewFromString(addr)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, a)
-	}
-	return out, nil
+	return alr.Addresses, nil
 }
 
 // WalletExport run the wallet export command against the filecoin process.

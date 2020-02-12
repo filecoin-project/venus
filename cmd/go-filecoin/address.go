@@ -39,12 +39,12 @@ var addrsCmd = &cmds.Command{
 }
 
 type addressResult struct {
-	Address string
+	Address address.Address
 }
 
 // AddressLsResult is the result of running the address list command.
 type AddressLsResult struct {
-	Addresses []string
+	Addresses []address.Address
 }
 
 var addrsNewCmd = &cmds.Command{
@@ -54,7 +54,7 @@ var addrsNewCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		return re.Emit(&addressResult{addr.String()})
+		return re.Emit(&addressResult{addr})
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("type", "The type of address to create: bls or secp256k1 (default)").WithDefault(types.SECP256K1),
@@ -62,7 +62,7 @@ var addrsNewCmd = &cmds.Command{
 	Type: &addressResult{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *addressResult) error {
-			_, err := fmt.Fprintln(w, a.Address)
+			_, err := fmt.Fprintln(w, a.Address.String())
 			return err
 		}),
 	},
@@ -74,7 +74,7 @@ var addrsLsCmd = &cmds.Command{
 
 		var alr AddressLsResult
 		for _, addr := range addrs {
-			alr.Addresses = append(alr.Addresses, addr.String())
+			alr.Addresses = append(alr.Addresses, addr)
 		}
 
 		return re.Emit(&alr)
@@ -83,7 +83,7 @@ var addrsLsCmd = &cmds.Command{
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addrs *AddressLsResult) error {
 			for _, addr := range addrs.Addresses {
-				_, err := fmt.Fprintln(w, addr)
+				_, err := fmt.Fprintln(w, addr.String())
 				if err != nil {
 					return err
 				}
@@ -105,7 +105,7 @@ var addrsLookupCmd = &cmds.Command{
 
 		v, err := GetPorcelainAPI(env).MinerGetPeerID(req.Context, addr)
 		if err != nil {
-			return errors.Wrapf(err, "failed to find miner with address %s", addr.String())
+			return errors.Wrapf(err, "failed to find miner with address %s", addr)
 		}
 		return re.Emit(v.Pretty())
 	},
@@ -125,12 +125,12 @@ var defaultAddressCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(&addressResult{addr.String()})
+		return re.Emit(&addressResult{addr})
 	},
 	Type: &addressResult{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *addressResult) error {
-			_, err := fmt.Fprintln(w, a.Address)
+			_, err := fmt.Fprintln(w, a.Address.String())
 			return err
 		}),
 	},
@@ -197,7 +197,7 @@ var walletImportCmd = &cmds.Command{
 
 		var alr AddressLsResult
 		for _, addr := range addrs {
-			alr.Addresses = append(alr.Addresses, addr.String())
+			alr.Addresses = append(alr.Addresses, addr)
 		}
 
 		return re.Emit(&alr)
@@ -206,7 +206,7 @@ var walletImportCmd = &cmds.Command{
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addrs *AddressLsResult) error {
 			for _, addr := range addrs.Addresses {
-				_, err := fmt.Fprintln(w, addr)
+				_, err := fmt.Fprintln(w, addr.String())
 				if err != nil {
 					return err
 				}
@@ -249,7 +249,7 @@ var walletExportCmd = &cmds.Command{
 					return err
 				}
 				privateKeyInBase64 := base64.StdEncoding.EncodeToString(k.PrivateKey)
-				_, err = fmt.Fprintf(w, "Address:\t%s\nPrivateKey:\t%s\nCurve:\t\t%s\n\n", a.String(), privateKeyInBase64, k.CryptSystem)
+				_, err = fmt.Fprintf(w, "Address:\t%s\nPrivateKey:\t%s\nCurve:\t\t%s\n\n", a, privateKeyInBase64, k.CryptSystem)
 				if err != nil {
 					return err
 				}

@@ -84,7 +84,7 @@ func (v *View) GetIDAddressByAddress(target address.Address) (address.Address, b
 	}
 
 	var id types.Uint64
-	err = lookup.Find(context.Background(), target.String(), &id)
+	err = lookup.Find(context.Background(), string(target.Bytes()), &id)
 	if err != nil {
 		if err == hamt.ErrNotFound {
 			return address.Undef, false
@@ -279,7 +279,7 @@ func lookupIDAddress(vmctx runtime.InvocationContext, state State, addr address.
 	}
 
 	var id types.Uint64
-	err = lookup.Find(ctx, addr.String(), &id)
+	err = lookup.Find(ctx, string(addr.Bytes()), &id)
 	if err != nil {
 		return 0, err
 	}
@@ -312,7 +312,7 @@ func setID(ctx context.Context, storage runtime.Storage, addressMap cid.Cid, add
 		return cid.Undef, fmt.Errorf("could not load lookup for cid: %s", addressMap)
 	}
 
-	err = lookup.Set(ctx, addr.String(), actorID)
+	err = lookup.Set(ctx, string(addr.Bytes()), actorID)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("could not set id")
 	}

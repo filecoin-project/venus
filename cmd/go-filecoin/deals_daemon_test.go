@@ -58,7 +58,7 @@ func TestDealsList(t *testing.T) {
 	addAskCid := minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
 	clientDaemon.WaitForMessageRequireSuccess(addAskCid)
 	dataCid := clientDaemon.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
-	proposeDealOutput := clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStdoutTrimNewlines()
+	proposeDealOutput := clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0].String(), dataCid, "0", "5").ReadStdoutTrimNewlines()
 	splitOnSpace := strings.Split(proposeDealOutput, " ")
 	dealCid1 := splitOnSpace[len(splitOnSpace)-1]
 
@@ -66,7 +66,7 @@ func TestDealsList(t *testing.T) {
 	dataCid = clientDaemon.RunWithStdin(strings.NewReader("FREEASINBEER"), "client", "import").ReadStdoutTrimNewlines()
 	addAskCid = minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "0", "10")
 	clientDaemon.WaitForMessageRequireSuccess(addAskCid)
-	proposeDealOutput = clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "1", "5").ReadStdoutTrimNewlines()
+	proposeDealOutput = clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0].String(), dataCid, "1", "5").ReadStdoutTrimNewlines()
 	splitOnSpace = strings.Split(proposeDealOutput, " ")
 	dealCid2 := splitOnSpace[len(splitOnSpace)-1]
 
@@ -165,7 +165,7 @@ func TestDealsShow(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, uint64(10), res.Duration)
-		assert.Equal(t, ask.Miner.String(), res.Miner.String())
+		assert.Equal(t, ask.Miner, res.Miner)
 		assert.Equal(t, storagedeal.Accepted, res.State)
 
 		duri64 := int64(res.Duration)
@@ -357,11 +357,11 @@ func assertEqualVoucherResults(t *testing.T, expected, actual []*commands.Paymen
 	var channelID *types.ChannelID
 	for i, vr := range expected {
 		assert.Equal(t, vr.Index, actual[i].Index)
-		assert.Equal(t, vr.Payer.String(), actual[i].Payer.String())
+		assert.Equal(t, vr.Payer, actual[i].Payer)
 
 		if vr.Condition != nil {
 			assert.Equal(t, vr.Condition.Method, actual[i].Condition.Method)
-			assert.Equal(t, vr.Condition.To.String(), actual[i].Condition.To.String())
+			assert.Equal(t, vr.Condition.To, actual[i].Condition.To)
 		} else {
 			assert.Nil(t, actual[i].Condition)
 		}

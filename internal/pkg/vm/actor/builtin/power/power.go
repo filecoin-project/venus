@@ -155,16 +155,16 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateSt
 		ctx := context.Background()
 		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
 			// Do not overwrite table entry if it already exists
-			err := lookup.Find(ctx, actorIDAddr.String(), nil)
+			err := lookup.Find(ctx, string(actorIDAddr.Bytes()), nil)
 			if err != hamt.ErrNotFound { // we expect to not find the power table entry
 				if err == nil {
 					return Errors[ErrDuplicateEntry]
 				}
-				return fmt.Errorf("Error looking for new entry in power table at addres %s", actorIDAddr.String())
+				return fmt.Errorf("Error looking for new entry in power table at addres %s", actorIDAddr)
 			}
 
 			// Create fresh entry
-			err = lookup.Set(ctx, actorIDAddr.String(), TableEntry{
+			err = lookup.Set(ctx, string(actorIDAddr.Bytes()), TableEntry{
 				ActivePower:            types.NewBytesAmount(0),
 				InactivePower:          types.NewBytesAmount(0),
 				AvailableBalance:       types.ZeroAttoFIL,
@@ -172,7 +172,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateSt
 				SectorSize:             params.SectorSize,
 			})
 			if err != nil {
-				return fmt.Errorf("Could not set power table at address: %s", actorIDAddr.String())
+				return fmt.Errorf("Could not set power table at address: %s", actorIDAddr)
 			}
 			return nil
 		})
@@ -200,12 +200,12 @@ func (*impl) removeStorageMiner(vmctx runtime.InvocationContext, delAddr address
 		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
 			// Find entry to delete.
 			var delEntry TableEntry
-			err := lookup.Find(ctx, delAddr.String(), &delEntry)
+			err := lookup.Find(ctx, string(delAddr.Bytes()), &delEntry)
 			if err != nil {
 				if err == hamt.ErrNotFound {
 					return Errors[ErrUnknownEntry]
 				}
-				return fmt.Errorf("Could not retrieve power table entry with ID: %s", delAddr.String())
+				return fmt.Errorf("Could not retrieve power table entry with ID: %s", delAddr)
 			}
 
 			// Never delete an entry that still has power
@@ -214,7 +214,7 @@ func (*impl) removeStorageMiner(vmctx runtime.InvocationContext, delAddr address
 			}
 
 			// All clear to delete
-			return lookup.Delete(ctx, delAddr.String())
+			return lookup.Delete(ctx, string(delAddr.Bytes()))
 		})
 		if err != nil {
 			return nil, err
@@ -263,12 +263,12 @@ func (*impl) getPowerReport(vmctx runtime.InvocationContext, addr address.Addres
 		var tableEntry TableEntry
 		var report types.PowerReport
 		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
-			err := lookup.Find(ctx, addr.String(), &tableEntry)
+			err := lookup.Find(ctx, string(addr.Bytes()), &tableEntry)
 			if err != nil {
 				if err == hamt.ErrNotFound {
 					return Errors[ErrUnknownEntry]
 				}
-				return fmt.Errorf("Could not retrieve power table entry with ID: %s", addr.String())
+				return fmt.Errorf("Could not retrieve power table entry with ID: %s", addr)
 			}
 			report.ActivePower = tableEntry.ActivePower
 			report.InactivePower = tableEntry.InactivePower
@@ -321,17 +321,17 @@ func (*impl) processPowerReport(vmctx runtime.InvocationContext, params ProcessP
 		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
 			// Find entry to update.
 			var updateEntry TableEntry
-			err := lookup.Find(ctx, params.UpdateAddr.String(), &updateEntry)
+			err := lookup.Find(ctx, string(params.UpdateAddr.Bytes()), &updateEntry)
 			if err != nil {
 				if err == hamt.ErrNotFound {
 					return Errors[ErrUnknownEntry]
 				}
-				return fmt.Errorf("Could not retrieve power table entry with ID: %s", params.UpdateAddr.String())
+				return fmt.Errorf("Could not retrieve power table entry with ID: %s", params.UpdateAddr)
 			}
 			// All clear to update
 			updateEntry.ActivePower = params.Report.ActivePower
 			updateEntry.InactivePower = params.Report.InactivePower
-			return lookup.Set(ctx, params.UpdateAddr.String(), updateEntry)
+			return lookup.Set(ctx, string(params.UpdateAddr.Bytes()), updateEntry)
 		})
 		if err != nil {
 			return nil, err

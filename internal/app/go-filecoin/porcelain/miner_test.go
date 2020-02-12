@@ -685,7 +685,7 @@ func TestMinerSetWorkerAddress(t *testing.T) {
 
 		_, err := MinerSetWorkerAddress(context.Background(), plumbing, workerAddr, gprice, glimit)
 		assert.NoError(t, err)
-		assert.Equal(t, workerAddr.String(), plumbing.workerAddr.String())
+		assert.Equal(t, workerAddr, plumbing.workerAddr)
 	})
 
 	testCases := []struct {

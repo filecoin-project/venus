@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
@@ -17,11 +18,11 @@ func TestOutbox(t *testing.T) {
 	tf.IntegrationTest(t)
 	t.Skip("not working")
 
-	sendMessage := func(ctx context.Context, cmdClient *test.Client, from string, to string) *th.CmdOutput {
+	sendMessage := func(ctx context.Context, cmdClient *test.Client, from address.Address, to address.Address) *th.CmdOutput {
 		return cmdClient.RunSuccess(ctx, "message", "send",
-			"--from", from,
+			"--from", from.String(),
 			"--gas-price", "1", "--gas-limit", "300",
-			"--value=10", to,
+			"--value=10", to.String(),
 		)
 	}
 	cs := node.FixtureChainSeed(t)
@@ -48,7 +49,7 @@ func TestOutbox(t *testing.T) {
 		assert.Contains(t, out, c3)
 
 		// With address filter
-		out = cmdClient.RunSuccess(ctx, "outbox", "ls", fixtures.TestAddresses[1]).ReadStdout()
+		out = cmdClient.RunSuccess(ctx, "outbox", "ls", fixtures.TestAddresses[1].String()).ReadStdout()
 		assert.NotContains(t, out, fixtures.TestAddresses[0])
 		assert.Contains(t, out, fixtures.TestAddresses[1])
 		assert.NotContains(t, out, c1)
@@ -71,7 +72,7 @@ func TestOutbox(t *testing.T) {
 		c3 := sendMessage(ctx, cmdClient, fixtures.TestAddresses[1], fixtures.TestAddresses[2]).ReadStdoutTrimNewlines()
 
 		// With address filter
-		cmdClient.RunSuccess(ctx, "outbox", "clear", fixtures.TestAddresses[1])
+		cmdClient.RunSuccess(ctx, "outbox", "clear", fixtures.TestAddresses[1].String())
 		out := cmdClient.RunSuccess(ctx, "outbox", "ls").ReadStdout()
 		assert.Contains(t, out, fixtures.TestAddresses[0])
 		assert.NotContains(t, out, fixtures.TestAddresses[1]) // Cleared

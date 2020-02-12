@@ -145,7 +145,7 @@ func TestGetAllActors(t *testing.T) {
 	results := tree.GetAllActors(ctx)
 
 	for result := range results {
-		assert.Equal(t, addr.String(), result.Address)
+		assert.Equal(t, addr, result.Address)
 		assert.Equal(t, actor.Code, result.Actor.Code)
 		assert.Equal(t, actor.CallSeqNum, result.Actor.CallSeqNum)
 		assert.Equal(t, actor.Balance, result.Actor.Balance)

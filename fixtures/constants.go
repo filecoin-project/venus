@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/filecoin-project/go-address"
 	cid "github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/build/project"
@@ -25,13 +26,13 @@ import (
 // cat ./fixtures/setup.json | ./tools/gengen/gengen --json --keypath fixtures > fixtures/genesis.car 2> fixtures/gen.json
 
 // TestAddresses is a list of pregenerated addresses.
-var TestAddresses []string
+var TestAddresses []address.Address
 
 // testKeys is a list of filenames, which contain the private keys of the pregenerated addresses.
 var testKeys []string
 
 // TestMiners is a list of pregenerated miner acccounts. They are owned by the matching TestAddress.
-var TestMiners []string
+var TestMiners []address.Address
 
 // TestGenGenConfig is the gengen config used to make the default test genesis block.
 var TestGenGenConfig gen.GenesisCfg
@@ -40,7 +41,7 @@ type detailsStruct struct {
 	Keys   []*types.KeyInfo
 	Miners []struct {
 		Owner               int
-		Address             string
+		Address             address.Address
 		NumCommittedSectors uint64
 	}
 	GenesisCid cid.Cid `refmt:",omitempty"`
@@ -106,7 +107,7 @@ func init() {
 		if err != nil {
 			panic(err)
 		}
-		TestAddresses = append(TestAddresses, addr.String())
+		TestAddresses = append(TestAddresses, addr)
 		testKeys = append(testKeys, fmt.Sprintf("%d.key", key))
 	}
 
