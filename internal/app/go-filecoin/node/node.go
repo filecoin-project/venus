@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/go-sectorbuilder/fs"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -398,7 +399,6 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	sectorSize := status.SectorSize
 
 	repoPath, err := node.Repo.Path()
 	if err != nil {
@@ -411,10 +411,16 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 	}
 
 	sectorBuilder, err := sectorbuilder.New(&sectorbuilder.Config{
-		SectorSize:    uint64(sectorSize),
+		SectorSize:    status.SectorSize,
 		Miner:         minerAddr,
 		WorkerThreads: 1,
-		Dir:           sectorDir,
+		Paths: []fs.PathConfig{
+			{
+				Path:   sectorDir,
+				Cache:  false,
+				Weight: 1,
+			},
+		},
 	}, namespace.Wrap(node.Repo.Datastore(), ds.NewKey("/sectorbuilder")))
 	if err != nil {
 		return err
@@ -428,16 +434,11 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return status.WorkerAddress, nil
 	}
 
-	workerAddr, err := getWorker(ctx, minerAddr, node.Chain().ChainReader.GetHead())
-	if err != nil {
-		return err
-	}
-
 	waiter := msg.NewWaiter(node.chain.ChainReader, node.chain.MessageStore, node.Blockstore.Blockstore, node.Blockstore.CborStore)
 
 	// TODO: rework these modules so they can be at least partially constructed during the building phase #3738
-	node.StorageMining, err = submodule.NewStorageMiningSubmodule(minerAddr, workerAddr, node.Repo.Datastore(),
-		sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet)
+	node.StorageMining, err = submodule.NewStorageMiningSubmodule(minerAddr, node.Repo.Datastore(),
+		sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet, getWorker)
 	if err != nil {
 		return err
 	}
@@ -530,7 +531,9 @@ func (node *Node) StartMining(ctx context.Context) error {
 		fmt.Printf("error starting storage miner: %s\n", err)
 	}
 
-	node.StorageProtocol.StorageProvider.Run(ctx, node.Host())
+	if err := node.StorageProtocol.StorageProvider.Start(ctx); err != nil {
+		fmt.Printf("error starting storage provider: %s\n", err)
+	}
 
 	// TODO: Retrieval Market Integration
 	//if err := node.RetrievalProtocol.RetrievalProvider.Start(); err != nil {

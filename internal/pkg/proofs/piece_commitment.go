@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-sectorbuilder"
 )
@@ -49,7 +51,7 @@ func GeneratePieceCommitment(req GeneratePieceCommitmentRequest) (res GeneratePi
 		return
 	}
 
-	commP, err := sectorbuilder.GeneratePieceCommitment(file, req.PieceSize.Uint64())
+	commP, err := sectorbuilder.GeneratePieceCommitment(file, abi.UnpaddedPieceSize(req.PieceSize.Uint64()))
 	if err != nil {
 		retErr = err
 		return

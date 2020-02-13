@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"math/big"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	sector "github.com/filecoin-project/go-sectorbuilder"
@@ -31,7 +33,7 @@ func (em ElectionMachine) GeneratePoStRandomness(ticket block.Ticket, candidateA
 // GenerateCandidates creates candidate partial tickets for consideration in
 // block reward election
 func (em ElectionMachine) GenerateCandidates(poStRand []byte, sectorInfos ffi.SortedPublicSectorInfo, ep postgenerator.PoStGenerator) ([]ffi.Candidate, error) {
-	dummyFaults := []uint64{}
+	dummyFaults := []abi.SectorNumber{}
 	return ep.GenerateEPostCandidates(sectorInfos, convert.To32ByteArray(poStRand), dummyFaults)
 }
 

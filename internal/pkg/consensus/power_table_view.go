@@ -76,8 +76,8 @@ func (v PowerTableView) SortedSectorInfos(ctx context.Context, mAddr addr.Addres
 			return err
 		}
 		infos = append(infos, ffi.PublicSectorInfo{
-			SectorID: uint64(id),
-			CommR:    commRChecked,
+			SectorNum: abi.SectorNumber(uint64(id)),
+			CommR:     commRChecked,
 		})
 		return nil
 	})

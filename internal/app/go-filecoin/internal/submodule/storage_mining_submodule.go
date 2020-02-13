@@ -29,9 +29,9 @@ type StorageMiningSubmodule struct {
 }
 
 // NewStorageMiningSubmodule creates a new storage mining submodule.
-func NewStorageMiningSubmodule(minerAddr, workerAddr address.Address, ds datastore.Batching, s sectorbuilder.Interface, c *ChainSubmodule, m *MessagingSubmodule, mw *msg.Waiter, w *WalletSubmodule) (*StorageMiningSubmodule, error) {
-	minerNode := storageminerconnector.NewStorageMinerNodeConnector(minerAddr, workerAddr, c.ChainReader, c.State, m.Outbox, mw, w.Wallet)
-	storageMiner, err := storage.NewMiner(minerNode, ds, s)
+func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching, s sectorbuilder.Interface, c *ChainSubmodule, m *MessagingSubmodule, mw *msg.Waiter, w *WalletSubmodule, workerGetter storageminerconnector.WorkerGetter) (*StorageMiningSubmodule, error) {
+	minerNode := storageminerconnector.NewStorageMinerNodeConnector(minerAddr, c.ChainReader, c.State, m.Outbox, mw, w.Wallet, workerGetter)
+	storageMiner, err := storage.NewMiner(minerNode, ds, s, minerAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func NewStorageMiningSubmodule(minerAddr, workerAddr address.Address, ds datasto
 	modu.startFunc = func(ctx context.Context) error {
 		if !modu.started {
 			minerNode.StartHeightListener(ctx, c.HeaviestTipSetCh)
-			err := storageMiner.Start(ctx)
+			err := storageMiner.Run(ctx)
 			if err != nil {
 				return err
 			}

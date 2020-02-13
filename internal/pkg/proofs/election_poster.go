@@ -4,6 +4,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/convert"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
@@ -36,16 +37,16 @@ func (ep *ElectionPoster) ComputeElectionPoSt(sectorInfo ffi.SortedPublicSectorI
 }
 
 // GenerateEPostCandidates generates election post candidates
-func (ep *ElectionPoster) GenerateEPostCandidates(sectorInfo ffi.SortedPublicSectorInfo, challengeSeed [32]byte, faults []uint64) ([]ffi.Candidate, error) {
+func (ep *ElectionPoster) GenerateEPostCandidates(sectorInfo ffi.SortedPublicSectorInfo, challengeSeed [32]byte, faults []abi.SectorNumber) ([]ffi.Candidate, error) {
 	// Current fake behavior: generate one partial ticket per sector,
 	// each partial ticket is the hash of the challengeSeed and sectorID
 	var candidates []ffi.Candidate
 	hasher := hasher.NewHasher()
 	for i, si := range sectorInfo.Values() {
-		hasher.Int(si.SectorID)
+		hasher.Int(uint64(si.SectorNum))
 		hasher.Bytes(challengeSeed[:])
 		nextCandidate := ffi.Candidate{
-			SectorID:             si.SectorID,
+			SectorNum:            si.SectorNum,
 			PartialTicket:        convert.To32ByteArray(hasher.Hash()),
 			Ticket:               [32]byte{},
 			SectorChallengeIndex: uint64(i), //fake value of sector idx
