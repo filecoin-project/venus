@@ -7,6 +7,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-address"
@@ -104,6 +105,28 @@ func (w *Wallet) SignBytes(data []byte, addr address.Address) (types.Signature, 
 		return nil, errors.Wrapf(err, "could not find address: %s", addr)
 	}
 	return backend.SignBytes(data, addr)
+}
+
+// SignBytesV2 returns a spec-actors crypto.Signature
+func (w *Wallet) SignBytesV2(data []byte, addr address.Address) (*crypto.Signature, error) {
+	var err error
+
+	sig, err := w.SignBytes(data, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	var sigType crypto.SigType
+	if addr.Protocol() == address.BLS {
+		sigType = crypto.SigTypeBLS
+	} else {
+		sigType = crypto.SigTypeSecp256k1
+	}
+
+	return &crypto.Signature{
+		Type: sigType,
+		Data: sig[:],
+	}, nil
 }
 
 // NewAddress creates a new account address on the default wallet backend.

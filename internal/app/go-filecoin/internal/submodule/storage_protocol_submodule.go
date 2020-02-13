@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	iface "github.com/filecoin-project/go-fil-markets/storagemarket"
 	impl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	smnetwork "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -70,13 +71,13 @@ func NewStorageProtocolSubmodule(
 
 	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync)
 
-	provider, err := impl.NewProvider(ds, bs, fs, piecestore.NewPieceStore(ds), dt, pnode, minerAddr)
+	provider, err := impl.NewProvider(smnetwork.NewFromLibp2pHost(h), ds, bs, fs, piecestore.NewPieceStore(ds), dt, pnode, minerAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating graphsync provider")
 	}
 
 	return &StorageProtocolSubmodule{
-		StorageClient:   impl.NewClient(h, bs, fs, dt, nil, nil, cnode),
+		StorageClient:   impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, dt, nil, nil, cnode),
 		StorageProvider: provider,
 	}, nil
 }

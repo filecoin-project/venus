@@ -25,7 +25,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.TODO())
 
 		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(11, sc, ec, ic, dc)
+		listener := NewHeightThresholdListener(11, sc, ic, dc, ec)
 
 		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
 			return sampleHeight.Bytes(), nil
@@ -47,7 +47,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 
 	t.Run("add tipset at target height sends seed", func(t *testing.T) {
 		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(7, sc, ec, ic, dc)
+		listener := NewHeightThresholdListener(7, sc, ic, dc, ec)
 
 		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
 			return sampleHeight.Bytes(), nil
@@ -66,7 +66,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 
 	t.Run("invalidates when new fork head is lower than target", func(t *testing.T) {
 		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(8, sc, ec, ic, dc)
+		listener := NewHeightThresholdListener(8, sc, ic, dc, ec)
 
 		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
 			return sampleHeight.Bytes(), nil
@@ -95,7 +95,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 
 	t.Run("invalidates and then sends new seed when new fork head is higher than target with a lower lca", func(t *testing.T) {
 		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(8, sc, ec, ic, dc)
+		listener := NewHeightThresholdListener(8, sc, ic, dc, ec)
 
 		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
 			return sampleHeight.Bytes(), nil
@@ -135,7 +135,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.TODO())
 
 		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(8, sc, ec, ic, dc)
+		listener := NewHeightThresholdListener(8, sc, ic, dc, ec)
 
 		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
 			return sampleHeight.Bytes(), nil
@@ -170,7 +170,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 
 	t.Run("sends on done channel when finality is crossed", func(t *testing.T) {
 		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(8, sc, ec, ic, dc)
+		listener := NewHeightThresholdListener(8, sc, ic, dc, ec)
 
 		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
 			return sampleHeight.Bytes(), nil

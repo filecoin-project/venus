@@ -3,7 +3,7 @@ package chainsampler
 import (
 	"context"
 
-	"github.com/filecoin-project/go-storage-miner"
+	storage "github.com/filecoin-project/go-storage-miner/apis/node"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
@@ -20,13 +20,13 @@ type HeightThresholdListener struct {
 	targetHit bool
 
 	seedCh    chan storage.SealSeed
-	errCh     chan error
-	invalidCh chan struct{}
-	doneCh    chan struct{}
+	errCh     chan storage.GetSealSeedError
+	invalidCh chan storage.SeedInvalidated
+	doneCh    chan storage.FinalityReached
 }
 
 // NewHeightThresholdListener creates a new listener
-func NewHeightThresholdListener(target uint64, seedCh chan storage.SealSeed, errCh chan error, invalidCh, doneCh chan struct{}) *HeightThresholdListener {
+func NewHeightThresholdListener(target uint64, seedCh chan storage.SealSeed, invalidCh chan storage.SeedInvalidated, doneCh chan storage.FinalityReached, errCh chan storage.GetSealSeedError) *HeightThresholdListener {
 	return &HeightThresholdListener{
 		target:    target,
 		targetHit: false,
@@ -55,7 +55,7 @@ func (l *HeightThresholdListener) Handle(ctx context.Context, chain []block.TipS
 
 	// check if we've hit finality and should stop listening
 	if h >= l.target+consensus.FinalityEpochs {
-		l.doneCh <- struct{}{}
+		l.doneCh <- storage.FinalityReached{}
 		return false, nil
 	}
 
@@ -68,11 +68,11 @@ func (l *HeightThresholdListener) Handle(ctx context.Context, chain []block.TipS
 	if l.targetHit {
 		// if we've completely reverted
 		if h < l.target {
-			l.invalidCh <- struct{}{}
+			l.invalidCh <- storage.SeedInvalidated{}
 			l.targetHit = false
 			// if we've re-orged to a point before the target
 		} else if lcaHeight < l.target {
-			l.invalidCh <- struct{}{}
+			l.invalidCh <- storage.SeedInvalidated{}
 			err := l.sendRandomness(ctx, chain, sampler)
 			if err != nil {
 				return true, err
