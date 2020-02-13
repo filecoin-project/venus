@@ -23,7 +23,9 @@ var (
 // TODO do not export these fields as it increases the chances of producing a
 // `SignedMessage` with an empty signature.
 type SignedMessage struct {
-	_         struct{}        `cbor:",toarray"`
+	// control field for encoding struct as an array
+	_ struct{} `cbor:",toarray"`
+
 	Message   UnsignedMessage `json:"meteredMessage"`
 	Signature Signature       `json:"signature"`
 	// Pay attention to Equals() if updating this struct.
