@@ -46,7 +46,7 @@ type Actor struct {
 	Head e.Cid
 	// CallSeqNum is the number expected on the next message from this actor.
 	// Messages are processed in strict, contiguous order.
-	CallSeqNum types.Uint64
+	CallSeqNum uint64
 	// Balance is the amount of FIL in the actor's account.
 	Balance abi.TokenAmount
 }
@@ -131,7 +131,7 @@ func NextNonce(actor *Actor) (uint64, error) {
 	if !(actor.Empty() || actor.Code.Equals(types.AccountActorCodeCid)) {
 		return 0, errors.New("next nonce only defined for account or empty actors")
 	}
-	return uint64(actor.CallSeqNum), nil
+	return actor.CallSeqNum, nil
 }
 
 // InitBuiltinActorCodeObjs writes all builtin actor code objects to `cst`. This method should be called when initializing a genesis

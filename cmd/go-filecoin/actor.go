@@ -108,7 +108,7 @@ func makeActorView(act *actor.Actor, addr address.Address, actType interface{}) 
 		ActorType: actorType,
 		Address:   addr.String(),
 		Code:      act.Code.Cid,
-		Nonce:     uint64(act.CallSeqNum),
+		Nonce:     act.CallSeqNum,
 		Balance:   types.NewAttoFILFromFIL(uint64(act.Balance.Int64())),
 		Head:      act.Head.Cid,
 	}

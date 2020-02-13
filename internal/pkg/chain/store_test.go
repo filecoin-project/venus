@@ -175,7 +175,7 @@ func TestGetTipSetState(t *testing.T) {
 		assert.Equal(t, addr, actRes.Address)
 		assert.Equal(t, fakeCode, actRes.Actor.Code.Cid)
 		assert.Equal(t, testActor.Head, actRes.Actor.Head)
-		assert.Equal(t, types.Uint64(0), actRes.Actor.CallSeqNum)
+		assert.Equal(t, uint64(0), actRes.Actor.CallSeqNum)
 		assert.Equal(t, balance, actRes.Actor.Balance)
 	}
 }

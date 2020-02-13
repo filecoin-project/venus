@@ -217,7 +217,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			if err != nil {
 				return nil, err
 			}
-			a.CallSeqNum = types.Uint64(nonce)
+			a.CallSeqNum = nonce
 			if err := st.SetActor(ctx, addr, a); err != nil {
 				return nil, err
 			}

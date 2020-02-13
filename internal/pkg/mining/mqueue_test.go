@@ -26,7 +26,7 @@ func TestMessageQueueOrder(t *testing.T) {
 		msg := types.UnsignedMessage{
 			From:       from,
 			To:         to,
-			CallSeqNum: types.Uint64(nonce),
+			CallSeqNum: nonce,
 			GasPrice:   types.NewGasPrice(price),
 			GasLimit:   types.NewGasUnits(units),
 		}
@@ -68,9 +68,9 @@ func TestMessageQueueOrder(t *testing.T) {
 		for msg, more := q.Pop(); more == true; msg, more = q.Pop() {
 			last, seen := lastFromAddr[msg.Message.From]
 			if seen {
-				assert.True(t, last <= uint64(msg.Message.CallSeqNum))
+				assert.True(t, last <= msg.Message.CallSeqNum)
 			}
-			lastFromAddr[msg.Message.From] = uint64(msg.Message.CallSeqNum)
+			lastFromAddr[msg.Message.From] = msg.Message.CallSeqNum
 		}
 		assert.True(t, q.Empty())
 	})

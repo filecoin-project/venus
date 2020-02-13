@@ -106,11 +106,11 @@ func (mq *Queue) RemoveNext(ctx context.Context, sender address.Address, expecte
 	q := mq.queues[sender]
 	if len(q) > 0 {
 		head := q[0]
-		if expectedNonce == uint64(head.Msg.Message.CallSeqNum) {
+		if expectedNonce == head.Msg.Message.CallSeqNum {
 			mq.queues[sender] = q[1:] // pop the head
 			msg = head.Msg
 			found = true
-		} else if expectedNonce > uint64(head.Msg.Message.CallSeqNum) {
+		} else if expectedNonce > head.Msg.Message.CallSeqNum {
 			err = errors.Errorf("Next message for %s has nonce %d, expected %d", sender, head.Msg.Message.CallSeqNum, expectedNonce)
 		}
 		// else expected nonce was before the head of the queue, already removed
@@ -169,7 +169,7 @@ func (mq *Queue) LargestNonce(sender address.Address) (largest uint64, found boo
 	defer mq.lk.RUnlock()
 	q := mq.queues[sender]
 	if len(q) > 0 {
-		return uint64(q[len(q)-1].Msg.Message.CallSeqNum), true
+		return q[len(q)-1].Msg.Message.CallSeqNum, true
 	}
 	return 0, false
 }

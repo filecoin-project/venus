@@ -628,7 +628,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	act, actID := th.RequireLookupActor(ctx, t, st, vm.NewStorage(bs), addrs[1])
 	require.NoError(t, err)
 
-	act.CallSeqNum = types.Uint64(2)
+	act.CallSeqNum = 2
 	err = st.SetActor(ctx, actID, act)
 	require.NoError(t, err)
 

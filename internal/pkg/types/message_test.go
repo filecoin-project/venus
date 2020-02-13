@@ -32,7 +32,7 @@ func TestMessageMarshal(t *testing.T) {
 
 	// This check requests that you add a non-zero value for new fields above,
 	// then update the field count below.
-	require.Equal(t, 8, reflect.TypeOf(*msg).NumField())
+	require.Equal(t, 9, reflect.TypeOf(*msg).NumField())
 
 	marshalled, err := msg.Marshal()
 	assert.NoError(t, err)

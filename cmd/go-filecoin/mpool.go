@@ -93,7 +93,7 @@ Signature: %s
 `,
 				msg.To,
 				msg.From,
-				strconv.FormatUint(uint64(msg.CallSeqNum), 10),
+				strconv.FormatUint(msg.CallSeqNum, 10),
 				msg.Value,
 				msg.Method,
 				base64.StdEncoding.EncodeToString(msg.Params),

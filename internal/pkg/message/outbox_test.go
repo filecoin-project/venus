@@ -66,7 +66,7 @@ func TestOutbox(t *testing.T) {
 
 		testCases := []struct {
 			bcast  bool
-			nonce  types.Uint64
+			nonce  uint64
 			height int
 		}{{true, actr.CallSeqNum, 1000}, {false, actr.CallSeqNum + 1, 1000}}
 
@@ -130,13 +130,13 @@ func TestOutbox(t *testing.T) {
 		nonces := map[uint64]bool{}
 		for _, message := range enqueued {
 			assert.Equal(t, uint64(1000), message.Stamp)
-			_, found := nonces[uint64(message.Msg.Message.CallSeqNum)]
+			_, found := nonces[message.Msg.Message.CallSeqNum]
 			require.False(t, found)
-			nonces[uint64(message.Msg.Message.CallSeqNum)] = true
+			nonces[message.Msg.Message.CallSeqNum] = true
 		}
 
 		for i := 0; i < 60; i++ {
-			assert.True(t, nonces[uint64(actr.CallSeqNum)+uint64(i)])
+			assert.True(t, nonces[actr.CallSeqNum+uint64(i)])
 
 		}
 	})
