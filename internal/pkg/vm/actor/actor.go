@@ -66,9 +66,8 @@ func (a *Actor) Empty() bool {
 }
 
 // IncrementSeqNum increments the seq number.
-func (a *Actor) IncrementSeqNum() types.Uint64 {
+func (a *Actor) IncrementSeqNum() {
 	a.CallSeqNum = a.CallSeqNum + 1
-	return a.CallSeqNum
 }
 
 // Cid returns the canonical CID for the actor.
