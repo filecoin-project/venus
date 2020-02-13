@@ -77,14 +77,14 @@ var (
 
 // UnsignedMessage is an exchange of information between two actors modeled
 // as a function call.
-// Messages are the equivalent of transactions in Ethereum.
 type UnsignedMessage struct {
+	_ struct{}	`cbor:",toarray"`
 	To   address.Address `json:"to"`
 	From address.Address `json:"from"`
 	// When receiving a message from a user account the nonce in
 	// the message must match the expected nonce in the from actor.
 	// This prevents replay attacks.
-	CallSeqNum Uint64 `json:"callSeqNum"`
+	CallSeqNum uint64 `json:"callSeqNum"`
 
 	Value AttoFIL `json:"value"`
 
@@ -101,7 +101,7 @@ func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, m
 	return &UnsignedMessage{
 		From:       from,
 		To:         to,
-		CallSeqNum: Uint64(nonce),
+		CallSeqNum: nonce,
 		Value:      value,
 		Method:     method,
 		Params:     params,
@@ -113,7 +113,7 @@ func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, me
 	return &UnsignedMessage{
 		From:       from,
 		To:         to,
-		CallSeqNum: Uint64(nonce),
+		CallSeqNum: nonce,
 		Value:      value,
 		Method:     method,
 		Params:     params,
