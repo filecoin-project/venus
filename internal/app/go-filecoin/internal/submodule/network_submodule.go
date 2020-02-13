@@ -13,7 +13,6 @@ import (
 	"github.com/ipfs/go-graphsync/ipldbridge"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	offroute "github.com/ipfs/go-ipfs-routing/offline"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -32,12 +31,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 )
 
 // NetworkSubmodule enhances the `Node` with networking capabilities.
@@ -81,7 +78,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	bandwidthTracker := p2pmetrics.NewBandwidthCounter()
 	libP2pOpts := append(config.Libp2pOpts(), libp2p.BandwidthReporter(bandwidthTracker))
 
-	networkName, err := retrieveNetworkName(ctx, config.GenesisCid(), blockstore.Blockstore)
+	networkName, err := retrieveNetworkName(ctx, config.GenesisCid(), blockstore.CborStore)
 	if err != nil {
 		return NetworkSubmodule{}, err
 	}
@@ -158,40 +155,14 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	}, nil
 }
 
-func retrieveNetworkName(ctx context.Context, genCid cid.Cid, bs bstore.Blockstore) (string, error) {
-	cborStore := cborutil.NewIpldStore(bs)
+func retrieveNetworkName(ctx context.Context, genCid cid.Cid, cborStore cbor.IpldStore) (string, error) {
 	var genesis block.Block
-
 	err := cborStore.Get(ctx, genCid, &genesis)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get block %s", genCid.String())
 	}
 
-	tree, err := state.NewTreeLoader().LoadStateTree(ctx, cborStore, genesis.StateRoot.Cid)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to load node for %s", genesis.StateRoot.Cid)
-	}
-	initActor, err := tree.GetActor(ctx, address.InitAddress)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to load init actor at %s", address.InitAddress.String())
-	}
-
-	block, err := bs.Get(initActor.Head.Cid)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to load init actor state at %s", initActor.Head)
-	}
-
-	node, err := cbor.DecodeBlock(block)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to decode init actor state")
-	}
-
-	networkName, _, err := node.Resolve([]string{"network"})
-	if err != nil || networkName == nil {
-		return "", errors.Wrapf(err, "failed to retrieve network name")
-	}
-
-	return networkName.(string), nil
+	return appstate.NewView(cborStore, genesis.StateRoot.Cid).InitNetworkName(ctx)
 }
 
 // buildHost determines if we are publically dialable.  If so use public

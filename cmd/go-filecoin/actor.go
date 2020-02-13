@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
@@ -94,7 +96,7 @@ var actorLsCmd = &cmds.Command{
 	},
 }
 
-func makeActorView(act *actor.Actor, addr string, actType interface{}) *ActorView {
+func makeActorView(act *actor.Actor, addr address.Address, actType interface{}) *ActorView {
 	var actorType string
 	if actType == nil {
 		actorType = "UnknownActor"
@@ -104,7 +106,7 @@ func makeActorView(act *actor.Actor, addr string, actType interface{}) *ActorVie
 
 	return &ActorView{
 		ActorType: actorType,
-		Address:   addr,
+		Address:   addr.String(),
 		Code:      act.Code.Cid,
 		Nonce:     uint64(act.CallSeqNum),
 		Balance:   types.NewAttoFILFromFIL(uint64(act.Balance.Int64())),

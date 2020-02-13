@@ -56,7 +56,7 @@ type connectorCommon struct {
 }
 
 // MostRecentStateId returns the state key from the current head of the chain.
-func (c *connectorCommon) MostRecentStateId(ctx context.Context) (storagemarket.StateKey, error) { // nolint: golint
+func (c *connectorCommon) MostRecentStateId(_ context.Context) (storagemarket.StateKey, error) { // nolint: golint
 	key := c.chainStore.Head()
 	ts, err := c.chainStore.GetTipSet(key)
 	if err != nil {
@@ -131,7 +131,7 @@ func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address
 }
 
 // SignBytes uses the local wallet to sign the bytes with the given address
-func (c *connectorCommon) SignBytes(ctx context.Context, signer address.Address, b []byte) (*smtypes.Signature, error) {
+func (c *connectorCommon) SignBytes(_ context.Context, signer address.Address, b []byte) (*smtypes.Signature, error) {
 	var err error
 
 	fcSig, err := c.wallet.SignBytes(b, signer)
@@ -194,8 +194,7 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 			return false
 		}
 
-		// TODO: compare addresses directly when they share a type #3719
-		if m.From.String() != provider.String() {
+		if m.From != provider {
 			return false
 		}
 
@@ -273,8 +272,8 @@ func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) (
 	stateStore := state.StoreFromCbor(ctx, c.chainStore)
 	byParty := spasm.AsSetMultimap(stateStore, smState.DealIDsByParty)
 	var providerDealIds []spaabi.DealID
-	if err = byParty.ForEach(adt.AddrKey(addr), func(i int64) error {
-		providerDealIds = append(providerDealIds, spaabi.DealID(i))
+	if err = byParty.ForEach(addr, func(i spaabi.DealID) error {
+		providerDealIds = append(providerDealIds, i)
 		return nil
 	}); err != nil {
 		return nil, err

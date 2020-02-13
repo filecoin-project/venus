@@ -7,9 +7,9 @@ import (
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
@@ -20,16 +20,6 @@ const (
 	// store its state
 	TreeBitWidth = 5
 )
-
-// MarshalStorage encodes the passed in data into bytes.
-func MarshalStorage(in interface{}) ([]byte, error) {
-	return encoding.EncodeDeprecated(in)
-}
-
-// UnmarshalStorage decodes the passed in bytes into the given object.
-func UnmarshalStorage(raw []byte, to interface{}) error {
-	return encoding.DecodeDeprecated(raw, to)
-}
 
 // SetKeyValue convenience method to load a lookup, set one key value pair and commit.
 // This function is inefficient when multiple values need to be set into the lookup.
@@ -76,11 +66,7 @@ func WithLookupForReading(ctx context.Context, storage runtime.Storage, id cid.C
 // LoadLookup loads hamt-ipld node from storage if the cid exists, or creates a new one if it is nil.
 // The lookup provides access to a HAMT/CHAMP tree stored in storage.
 func LoadLookup(ctx context.Context, storage runtime.Storage, cid cid.Cid) (storage.Lookup, error) {
-	// We can use the cbor library's BasicIpldStore here because all on-chain types implement the CBOR methods.
-	cborStore := &cbor.BasicIpldStore{
-		Blocks: &storageAsIpldBlockstore{s: storage},
-		Atlas:  &cbor.CborAtlas,
-	}
+	cborStore := cborutil.NewIpldStore(&storageAsIpldBlockstore{s: storage})
 	var root *hamt.Node
 	var err error
 
@@ -165,7 +151,7 @@ func (l *lookup) ForEachValue(ctx context.Context, valueType interface{}, callba
 		var decodedValue interface{}
 		if vt != nil {
 			to := reflect.New(vt).Interface()
-			if err := encoding.DecodeDeprecated(valueAsDeferred.Raw, to); err != nil {
+			if err := encoding.Decode(valueAsDeferred.Raw, to); err != nil {
 				return err
 			}
 			decodedValue = reflect.ValueOf(to).Elem().Interface()

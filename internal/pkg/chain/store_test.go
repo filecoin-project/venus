@@ -172,7 +172,7 @@ func TestGetTipSetState(t *testing.T) {
 	assert.NoError(t, err)
 	for actRes := range st2.GetAllActors(ctx) {
 		assert.NoError(t, actRes.Error)
-		assert.Equal(t, addr.String(), actRes.Address)
+		assert.Equal(t, addr, actRes.Address)
 		assert.Equal(t, fakeCode, actRes.Actor.Code.Cid)
 		assert.Equal(t, testActor.Head, actRes.Actor.Head)
 		assert.Equal(t, types.Uint64(0), actRes.Actor.CallSeqNum)

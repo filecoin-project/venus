@@ -2,7 +2,6 @@ package cborutil
 
 import (
 	"bufio"
-	"encoding/binary"
 	"fmt"
 	"io"
 
@@ -27,25 +26,7 @@ func NewMsgReader(r io.Reader) *MsgReader {
 	}
 }
 
-// ReadMsg reads a length delimited cbor message into the given object
+// ReadMsg reads a cbor message into the given object
 func (mr *MsgReader) ReadMsg(i interface{}) error {
-	l, err := binary.ReadUvarint(mr.br)
-	if err != nil {
-		return err
-	}
-
-	if l > MaxMessageSize {
-		return ErrMessageTooLarge
-	}
-
-	// TODO: add a method in ipldcbor that accepts a reader so we can use the streaming unmarshalers
-	// refmtcbor.NewUnmarshallerAtlased(mr.br, ipldcbor.Atlas)
-
-	buf := make([]byte, l)
-	_, err = io.ReadFull(mr.br, buf)
-	if err != nil {
-		return err
-	}
-
-	return encoding.Decode(buf, i)
+	return encoding.StreamDecode(mr.br, i)
 }

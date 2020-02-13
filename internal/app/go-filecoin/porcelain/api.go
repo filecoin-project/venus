@@ -109,7 +109,7 @@ func (a *API) MinerPreviewCreate(
 
 // MinerGetAsk queries for an ask of the given miner
 func (a *API) MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (minerActor.Ask, error) {
-	return MinerGetAsk(ctx, a, minerAddr, askID)
+	panic("implement me in terms of the storage market module")
 }
 
 // MinerGetOwnerAddress queries for the owner address of the given miner
@@ -162,18 +162,6 @@ func (a *API) MinerGetCollateral(ctx context.Context, minerAddr address.Address)
 	return MinerGetCollateral(ctx, a, minerAddr)
 }
 
-// MinerPreviewSetPrice calculates the amount of Gas needed for a call to MinerSetPrice.
-// This method accepts all the same arguments as MinerSetPrice.
-func (a *API) MinerPreviewSetPrice(
-	ctx context.Context,
-	from address.Address,
-	miner address.Address,
-	price types.AttoFIL,
-	expiry *big.Int,
-) (types.GasUnits, error) {
-	return MinerPreviewSetPrice(ctx, a, from, miner, price, expiry)
-}
-
 // ProtocolParameters fetches the current protocol configuration parameters.
 func (a *API) ProtocolParameters(ctx context.Context) (*ProtocolParams, error) {
 	return ProtocolParameters(ctx, a)
@@ -192,12 +180,12 @@ func (a *API) WalletDefaultAddress() (address.Address, error) {
 
 // ClientListAsks returns a channel with asks from the latest chain state
 func (a *API) ClientListAsks(ctx context.Context) <-chan Ask {
-	return ClientListAsks(ctx, a)
+	panic("implement me in terms of the storage market module")
 }
 
 // ClientValidateDeal checks to see that a storage deal is in the `Complete` state, and that its PIP is valid
 func (a *API) ClientValidateDeal(ctx context.Context, proposalCid cid.Cid, proofInfo *storagedeal.ProofInfo) error {
-	return ClientVerifyStorageDeal(ctx, a, proposalCid, proofInfo)
+	panic("implement me in terms of the storage market module")
 }
 
 // SealPieceIntoNewSector writes the provided piece into a new sector

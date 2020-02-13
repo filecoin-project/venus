@@ -7,10 +7,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/ipfs/go-cid"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/libp2p/go-libp2p-core/peer"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -19,7 +20,6 @@ import (
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
-	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 func init() {
@@ -32,7 +32,7 @@ type Actor struct{}
 
 // State is the storage market's storage.
 type State struct {
-	Miners cid.Cid `refmt:",omitempty"`
+	Miners enccid.Cid
 
 	// TODO: Determine correct unit of measure. Could be denominated in the
 	// smallest sector size supported by the network.
@@ -137,7 +137,8 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, sectorSize *typ
 
 		ctx := context.Background()
 
-		state.Miners, err = actor.SetKeyValue(ctx, vmctx.Runtime().Storage(), state.Miners, actorIDAddr.String(), true)
+		newMiners, err := actor.SetKeyValue(ctx, vmctx.Runtime().Storage(), state.Miners.Cid, string(actorIDAddr.Bytes()), true)
+		state.Miners = enccid.NewCid(newMiners)
 		if err != nil {
 			return nil, fmt.Errorf("could not set miner key value for lookup with CID: %s", state.Miners)
 		}
@@ -168,12 +169,12 @@ func (*impl) updateStorage(vmctx runtime.InvocationContext, delta *types.BytesAm
 		miner := vmctx.Message().Caller()
 		ctx := context.Background()
 
-		miners, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.Miners)
+		miners, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.Miners.Cid)
 		if err != nil {
 			return nil, fmt.Errorf("could not load lookup for miner with CID: %s", state.Miners)
 		}
 
-		err = miners.Find(ctx, miner.String(), nil)
+		err = miners.Find(ctx, string(miner.Bytes()), nil)
 		if err != nil {
 			if err == hamt.ErrNotFound {
 				return nil, Errors[ErrUnknownMiner]
@@ -192,19 +193,19 @@ func (*impl) updateStorage(vmctx runtime.InvocationContext, delta *types.BytesAm
 	return 0, nil
 }
 
-func (a *impl) getLateMiners(vmctx runtime.InvocationContext) (*map[string]uint64, uint8, error) {
+func (a *impl) getLateMiners(vmctx runtime.InvocationContext) (*map[address.Address]uint64, uint8, error) {
 	var state State
 	ctx := context.Background()
 
 	ret, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
-		miners := map[string]uint64{}
-		lu, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.Miners)
+		miners := map[address.Address]uint64{}
+		lu, err := actor.LoadLookup(ctx, vmctx.Runtime().Storage(), state.Miners.Cid)
 		if err != nil {
 			return &miners, err
 		}
 
 		err = lu.ForEachValue(ctx, nil, func(key string, _ interface{}) error {
-			addr, err := address.NewFromString(key)
+			addr, err := address.NewFromBytes([]byte(key))
 			if err != nil {
 				return err
 			}
@@ -216,7 +217,7 @@ func (a *impl) getLateMiners(vmctx runtime.InvocationContext) (*map[string]uint6
 			}
 
 			if poStState == miner.PoStStateUnrecoverable {
-				miners[addr.String()] = poStState
+				miners[addr] = poStState
 			}
 			return nil
 		})
@@ -227,7 +228,7 @@ func (a *impl) getLateMiners(vmctx runtime.InvocationContext) (*map[string]uint6
 		return nil, 1, err
 	}
 
-	res, ok := ret.(*map[string]uint64)
+	res, ok := ret.(*map[address.Address]uint64)
 	if !ok {
 		return res, 1, fmt.Errorf("expected []address.Address to be returned, but got %T instead", ret)
 	}

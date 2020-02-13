@@ -81,32 +81,32 @@ func (v *DefaultMessageValidator) Validate(ctx context.Context, msg *types.Unsig
 	}
 
 	if msg.Value.IsNegative() {
-		log.Debugf("Cannot transfer negative value: %s from actor: %s", msg.Value.String(), msg.From.String())
+		log.Debugf("Cannot transfer negative value: %s from actor: %s", msg.Value, msg.From)
 		errNegativeValueCt.Inc(ctx, 1)
 		return errNegativeValue
 	}
 
 	if msg.GasLimit > types.BlockGasLimit {
-		log.Debugf("Message: %s gas limit from actor: %s above block limit: %s", msg.String(), msg.From.String(), string(types.BlockGasLimit))
+		log.Debugf("Message: %s gas limit from actor: %s above block limit: %s", msg, msg.From, types.BlockGasLimit)
 		errGasAboveBlockLimitCt.Inc(ctx, 1)
 		return errGasAboveBlockLimit
 	}
 
 	// Avoid processing messages for actors that cannot pay.
 	if !canCoverGasLimit(msg, fromActor) {
-		log.Debugf("Insufficient funds for message: %s to cover gas limit from actor: %s", msg.String(), msg.From.String())
+		log.Debugf("Insufficient funds for message: %s to cover gas limit from actor: %s", msg, msg.From)
 		errInsufficientGasCt.Inc(ctx, 1)
 		return errInsufficientGas
 	}
 
 	if msg.CallSeqNum < fromActor.CallSeqNum {
-		log.Debugf("Message: %s nonce lower than actor nonce: %s from actor: %s", msg.String(), fromActor.CallSeqNum, msg.From.String())
+		log.Debugf("Message: %s nonce lower than actor nonce: %s from actor: %s", msg, fromActor.CallSeqNum, msg.From)
 		errNonceTooLowCt.Inc(ctx, 1)
 		return errNonceTooLow
 	}
 
 	if !v.allowHighNonce && msg.CallSeqNum > fromActor.CallSeqNum {
-		log.Debugf("Message: %s nonce greater than actor nonce: %s from actor: %s", msg.String(), fromActor.CallSeqNum, msg.From.String())
+		log.Debugf("Message: %s nonce greater than actor nonce: %s from actor: %s", msg, fromActor.CallSeqNum, msg.From)
 		errNonceTooHighCt.Inc(ctx, 1)
 		return errNonceTooHigh
 	}

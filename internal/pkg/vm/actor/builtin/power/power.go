@@ -4,23 +4,22 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-
 	"github.com/filecoin-project/go-address"
-	"github.com/ipfs/go-cid"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/libp2p/go-libp2p-core/peer"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 func init() {
@@ -36,7 +35,7 @@ type Actor struct{}
 // State keeps track of power and collateral of registered miner actors
 type State struct {
 	// PowerTable is a lookup mapping actorAddr -> PowerTableEntry
-	PowerTable cid.Cid `refmt:",omitempty"`
+	PowerTable enccid.Cid
 }
 
 // TableEntry tracks a single miner actor's power and collateral
@@ -153,18 +152,18 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateSt
 	ret, err = vmctx.State().Transaction(&state, func() (interface{}, error) {
 		// Update power table.
 		ctx := context.Background()
-		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable.Cid, func(lookup storage.Lookup) error {
 			// Do not overwrite table entry if it already exists
-			err := lookup.Find(ctx, actorIDAddr.String(), nil)
+			err := lookup.Find(ctx, string(actorIDAddr.Bytes()), nil)
 			if err != hamt.ErrNotFound { // we expect to not find the power table entry
 				if err == nil {
 					return Errors[ErrDuplicateEntry]
 				}
-				return fmt.Errorf("Error looking for new entry in power table at addres %s", actorIDAddr.String())
+				return fmt.Errorf("Error looking for new entry in power table at addres %s", actorIDAddr)
 			}
 
 			// Create fresh entry
-			err = lookup.Set(ctx, actorIDAddr.String(), TableEntry{
+			err = lookup.Set(ctx, string(actorIDAddr.Bytes()), TableEntry{
 				ActivePower:            types.NewBytesAmount(0),
 				InactivePower:          types.NewBytesAmount(0),
 				AvailableBalance:       types.ZeroAttoFIL,
@@ -172,14 +171,14 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateSt
 				SectorSize:             params.SectorSize,
 			})
 			if err != nil {
-				return fmt.Errorf("Could not set power table at address: %s", actorIDAddr.String())
+				return fmt.Errorf("Could not set power table at address: %s", actorIDAddr)
 			}
 			return nil
 		})
 		if err != nil {
 			return nil, err
 		}
-		state.PowerTable = newPowerTable
+		state.PowerTable = enccid.NewCid(newPowerTable)
 		return actorIDAddr, nil
 	})
 	if err != nil {
@@ -197,15 +196,15 @@ func (*impl) removeStorageMiner(vmctx runtime.InvocationContext, delAddr address
 	var state State
 	_, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		ctx := context.Background()
-		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable.Cid, func(lookup storage.Lookup) error {
 			// Find entry to delete.
 			var delEntry TableEntry
-			err := lookup.Find(ctx, delAddr.String(), &delEntry)
+			err := lookup.Find(ctx, string(delAddr.Bytes()), &delEntry)
 			if err != nil {
 				if err == hamt.ErrNotFound {
 					return Errors[ErrUnknownEntry]
 				}
-				return fmt.Errorf("Could not retrieve power table entry with ID: %s", delAddr.String())
+				return fmt.Errorf("Could not retrieve power table entry with ID: %s", delAddr)
 			}
 
 			// Never delete an entry that still has power
@@ -214,12 +213,12 @@ func (*impl) removeStorageMiner(vmctx runtime.InvocationContext, delAddr address
 			}
 
 			// All clear to delete
-			return lookup.Delete(ctx, delAddr.String())
+			return lookup.Delete(ctx, string(delAddr.Bytes()))
 		})
 		if err != nil {
 			return nil, err
 		}
-		state.PowerTable = newPowerTable
+		state.PowerTable = enccid.NewCid(newPowerTable)
 		return nil, nil
 	})
 	if err != nil {
@@ -236,7 +235,7 @@ func (*impl) getTotalPower(vmctx runtime.InvocationContext) (*types.BytesAmount,
 	ret, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		ctx := context.Background()
 		total := types.NewBytesAmount(0)
-		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable.Cid, func(lookup storage.Lookup) error {
 			// TODO https://github.com/filecoin-project/specs/issues/634 this is inefficient
 			return lookup.ForEachValue(ctx, TableEntry{}, func(k string, value interface{}) error {
 				entry, ok := value.(TableEntry)
@@ -262,13 +261,13 @@ func (*impl) getPowerReport(vmctx runtime.InvocationContext, addr address.Addres
 		ctx := context.Background()
 		var tableEntry TableEntry
 		var report types.PowerReport
-		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
-			err := lookup.Find(ctx, addr.String(), &tableEntry)
+		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable.Cid, func(lookup storage.Lookup) error {
+			err := lookup.Find(ctx, string(addr.Bytes()), &tableEntry)
 			if err != nil {
 				if err == hamt.ErrNotFound {
 					return Errors[ErrUnknownEntry]
 				}
-				return fmt.Errorf("Could not retrieve power table entry with ID: %s", addr.String())
+				return fmt.Errorf("Could not retrieve power table entry with ID: %s", addr)
 			}
 			report.ActivePower = tableEntry.ActivePower
 			report.InactivePower = tableEntry.InactivePower
@@ -287,7 +286,7 @@ func (*impl) getSectorSize(vmctx runtime.InvocationContext, addr address.Address
 	ret, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		ctx := context.Background()
 		ss := types.NewBytesAmount(0)
-		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		err := actor.WithLookupForReading(ctx, vmctx.Runtime().Storage(), state.PowerTable.Cid, func(lookup storage.Lookup) error {
 			return lookup.ForEachValue(ctx, TableEntry{}, func(k string, value interface{}) error {
 				entry, ok := value.(TableEntry)
 				if !ok {
@@ -318,25 +317,25 @@ func (*impl) processPowerReport(vmctx runtime.InvocationContext, params ProcessP
 	var state State
 	_, err := vmctx.State().Transaction(&state, func() (interface{}, error) {
 		ctx := context.Background()
-		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		newPowerTable, err := actor.WithLookup(ctx, vmctx.Runtime().Storage(), state.PowerTable.Cid, func(lookup storage.Lookup) error {
 			// Find entry to update.
 			var updateEntry TableEntry
-			err := lookup.Find(ctx, params.UpdateAddr.String(), &updateEntry)
+			err := lookup.Find(ctx, string(params.UpdateAddr.Bytes()), &updateEntry)
 			if err != nil {
 				if err == hamt.ErrNotFound {
 					return Errors[ErrUnknownEntry]
 				}
-				return fmt.Errorf("Could not retrieve power table entry with ID: %s", params.UpdateAddr.String())
+				return fmt.Errorf("Could not retrieve power table entry with ID: %s", params.UpdateAddr)
 			}
 			// All clear to update
 			updateEntry.ActivePower = params.Report.ActivePower
 			updateEntry.InactivePower = params.Report.InactivePower
-			return lookup.Set(ctx, params.UpdateAddr.String(), updateEntry)
+			return lookup.Set(ctx, string(params.UpdateAddr.Bytes()), updateEntry)
 		})
 		if err != nil {
 			return nil, err
 		}
-		state.PowerTable = newPowerTable
+		state.PowerTable = enccid.NewCid(newPowerTable)
 		return nil, nil
 	})
 	if err != nil {

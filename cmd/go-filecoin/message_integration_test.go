@@ -22,8 +22,7 @@ func TestMessageSend(t *testing.T) {
 	tf.IntegrationTest(t)
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
-	defaultAddr, err := address.NewFromString(fixtures.TestAddresses[0])
-	require.NoError(t, err)
+	defaultAddr := fixtures.TestAddresses[0]
 
 	cs := node.FixtureChainSeed(t)
 	builder.WithGenesisInit(cs.GenesisInitFunc)
@@ -35,7 +34,7 @@ func TestMessageSend(t *testing.T) {
 	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
-	_, err = n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
+	_, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
 	require.NoError(t, err)
 
 	from, err := n.PorcelainAPI.WalletDefaultAddress() // this should = fixtures.TestAddresses[0]
@@ -58,7 +57,7 @@ func TestMessageSend(t *testing.T) {
 		"--from", from.String(),
 		"--gas-price", "1",
 		"--gas-limit", "300",
-		fixtures.TestAddresses[3],
+		fixtures.TestAddresses[3].String(),
 	)
 
 	t.Log("[success] with from and int value")
@@ -69,7 +68,7 @@ func TestMessageSend(t *testing.T) {
 		"--gas-price", "1",
 		"--gas-limit", "300",
 		"--value", "10",
-		fixtures.TestAddresses[3],
+		fixtures.TestAddresses[3].String(),
 	)
 
 	t.Log("[success] with from and decimal value")
@@ -80,7 +79,7 @@ func TestMessageSend(t *testing.T) {
 		"--gas-price", "1",
 		"--gas-limit", "300",
 		"--value", "5.5",
-		fixtures.TestAddresses[3],
+		fixtures.TestAddresses[3].String(),
 	)
 }
 
@@ -96,10 +95,10 @@ func TestMessageWait(t *testing.T) {
 
 	t.Run("[success] transfer only", func(t *testing.T) {
 		msg := cmdClient.RunSuccess(ctx, "message", "send",
-			"--from", fixtures.TestAddresses[0],
+			"--from", fixtures.TestAddresses[0].String(),
 			"--gas-price", "1",
 			"--gas-limit", "300",
-			fixtures.TestAddresses[1],
+			fixtures.TestAddresses[1].String(),
 		)
 		msgcid := msg.ReadStdoutTrimNewlines()
 
@@ -137,8 +136,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
-	defaultAddr, err := address.NewFromString(fixtures.TestAddresses[0])
-	require.NoError(t, err)
+	defaultAddr := fixtures.TestAddresses[0]
 
 	buildWithMiner(t, builder)
 	builder.WithConfig(node.DefaultAddressConfigOpt(defaultAddr))
@@ -155,7 +153,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 			"block gas limit",
 			"message", "send",
 			"--gas-price", "1", "--gas-limit", doubleTheBlockGasLimit,
-			"--value=10", fixtures.TestAddresses[1],
+			"--value=10", fixtures.TestAddresses[1].String(),
 		)
 	})
 
@@ -164,7 +162,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 			ctx,
 			"message", "send",
 			"--gas-price", "1", "--gas-limit", halfTheBlockGasLimit,
-			"--value=10", fixtures.TestAddresses[1],
+			"--value=10", fixtures.TestAddresses[1].String(),
 		)
 
 		blk, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
@@ -193,10 +191,10 @@ func TestMessageStatus(t *testing.T) {
 		msg := cmdClient.RunSuccess(
 			ctx,
 			"message", "send",
-			"--from", fixtures.TestAddresses[0],
+			"--from", fixtures.TestAddresses[0].String(),
 			"--gas-price", "1", "--gas-limit", "300",
 			"--value=1234",
-			fixtures.TestAddresses[1],
+			fixtures.TestAddresses[1].String(),
 		)
 
 		msgcid := msg.ReadStdoutTrimNewlines()

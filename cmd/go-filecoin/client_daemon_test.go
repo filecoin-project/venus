@@ -33,7 +33,7 @@ func TestListAsks(t *testing.T) {
 	minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
 
 	listAsksOutput := minerDaemon.RunSuccess("client", "list-asks").ReadStdoutTrimNewlines()
-	assert.Equal(t, fixtures.TestMiners[0]+" 000 20 11", listAsksOutput)
+	assert.Equal(t, fixtures.TestMiners[0].String()+" 000 20 11", listAsksOutput)
 }
 
 func TestStorageDealsAfterRestart(t *testing.T) {
@@ -62,7 +62,7 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 	clientDaemon.WaitForMessageRequireSuccess(addAskCid)
 	dataCid := clientDaemon.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
 
-	proposeDealOutput := clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStdoutTrimNewlines()
+	proposeDealOutput := clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0].String(), dataCid, "0", "5").ReadStdoutTrimNewlines()
 
 	splitOnSpace := strings.Split(proposeDealOutput, " ")
 
@@ -227,7 +227,7 @@ func TestVoucherPersistenceAndPayments(t *testing.T) {
 	miner.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
 	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
 
-	proposeDealOutput := client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "3000").ReadStdoutTrimNewlines()
+	proposeDealOutput := client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0].String(), dataCid, "0", "3000").ReadStdoutTrimNewlines()
 
 	splitOnSpace := strings.Split(proposeDealOutput, " ")
 
@@ -274,7 +274,7 @@ func TestPieceRejectionInProposeStorageDeal(t *testing.T) {
 
 	dataCid := clientDaemon.RunWithStdin(bytes.NewReader(make([]byte, 3000)), "client", "import").ReadStdoutTrimNewlines()
 
-	proposeDealErrors := clientDaemon.Run("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStderr()
+	proposeDealErrors := clientDaemon.Run("client", "propose-storage-deal", fixtures.TestMiners[0].String(), dataCid, "0", "5").ReadStderr()
 
 	assert.Contains(t, proposeDealErrors, "piece is 3000 bytes but sector size is 1016 bytes")
 }

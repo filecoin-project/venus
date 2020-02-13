@@ -239,7 +239,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	}
 	sortedSectorInfos, err := powerTable.SortedSectorInfos(ctx, w.minerAddr)
 	if err != nil {
-		log.Warnf("Worker.Mine failed to get ssi for %s", w.minerAddr.String())
+		log.Warnf("Worker.Mine failed to get ssi for %s", w.minerAddr)
 		outCh <- Output{Err: err}
 		return
 	}
