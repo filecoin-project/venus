@@ -11,11 +11,13 @@ import (
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
+	mh "github.com/multiformats/go-multihash"
 	errPkg "github.com/pkg/errors"
 	typegen "github.com/whyrusleeping/cbor-gen"
 
@@ -116,7 +118,25 @@ func (msg *UnsignedMessage) Marshal() ([]byte, error) {
 // ToNode converts the Message to an IPLD node.
 func (msg *UnsignedMessage) ToNode() (ipld.Node, error) {
 	// Use 32 byte / 256 bit digest.
-	obj, err := cbor.WrapObject(msg, DefaultHashFunction, -1)
+	mhType := uint64(mh.BLAKE2B_MIN + 31)
+	mhLen := -1
+
+	data, err := encoding.Encode(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	hash, err := mh.Sum(data, mhType, mhLen)
+	if err != nil {
+		return nil, err
+	}
+	c := cid.NewCidV1(cid.DagCBOR, hash)
+
+	blk, err := blocks.NewBlockWithCid(data, c)
+	if err != nil {
+		return nil, err
+	}
+	obj, err := cbor.DecodeBlock(blk)
 	if err != nil {
 		return nil, err
 	}

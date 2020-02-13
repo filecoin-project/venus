@@ -114,7 +114,6 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 		return nil, err
 	}
 	// TODO: update state root (issue: #3718)
-
 	return ret, nil
 }
 

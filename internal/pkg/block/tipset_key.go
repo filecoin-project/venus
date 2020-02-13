@@ -9,23 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
-	"github.com/polydawn/refmt/obj/atlas"
 )
-
-func init() {
-	// A TipSetKey serializes as a sorted array of CIDs.
-	// Deserialization will sort the CIDs, if they're not already.
-	encoding.RegisterIpldCborType(atlas.BuildEntry(TipSetKey{}).Transform().
-		TransformMarshal(atlas.MakeMarshalTransformFunc(
-			func(s TipSetKey) ([]cid.Cid, error) {
-				return s.ToSlice(), nil
-			})).
-		TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
-			func(cids []cid.Cid) (TipSetKey, error) {
-				return NewTipSetKeyFromUnique(cids...)
-			})).
-		Complete())
-}
 
 // TipSetKey is an immutable set of CIDs forming a unique key for a TipSet.
 // Equal keys will have equivalent iteration order, but note that the CIDs are *not* maintained in

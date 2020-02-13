@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
+	mh "github.com/multiformats/go-multihash"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
@@ -65,9 +67,8 @@ func (smsg *SignedMessage) Marshal() ([]byte, error) {
 }
 
 // Cid returns the canonical CID for the SignedMessage.
-// TODO: can we avoid returning an error?
 func (smsg *SignedMessage) Cid() (cid.Cid, error) {
-	obj, err := cbor.WrapObject(smsg, DefaultHashFunction, -1)
+	obj, err := smsg.ToNode()
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to marshal to cbor")
 	}
@@ -78,12 +79,31 @@ func (smsg *SignedMessage) Cid() (cid.Cid, error) {
 // ToNode converts the SignedMessage to an IPLD node.
 func (smsg *SignedMessage) ToNode() (ipld.Node, error) {
 	// Use 32 byte / 256 bit digest.
-	obj, err := cbor.WrapObject(smsg, DefaultHashFunction, -1)
+	mhType := uint64(mh.BLAKE2B_MIN + 31)
+	mhLen := -1
+
+	data, err := encoding.Encode(smsg)
+	if err != nil {
+		return nil, err
+	}
+
+	hash, err := mh.Sum(data, mhType, mhLen)
+	if err != nil {
+		return nil, err
+	}
+	c := cid.NewCidV1(cid.DagCBOR, hash)
+
+	blk, err := blocks.NewBlockWithCid(data, c)
+	if err != nil {
+		return nil, err
+	}
+	obj, err := cbor.DecodeBlock(blk)
 	if err != nil {
 		return nil, err
 	}
 
 	return obj, nil
+
 }
 
 // VerifySignature returns true iff the signature is valid for the message content and from address.

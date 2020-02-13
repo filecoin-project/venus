@@ -13,8 +13,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	bserv "github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-car"
-	"github.com/ipfs/go-cid"
+	car "github.com/ipfs/go-car"
+	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
@@ -140,7 +140,6 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst cbor.IpldStore, bs blockst
 	if err != nil {
 		return nil, err
 	}
-
 	stateRoot, err := st.Flush(ctx)
 	if err != nil {
 		return nil, err
@@ -308,7 +307,6 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (*RenderedGenInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("gengenesis car\n")
 	return info, car.WriteCar(ctx, dserv, []cid.Cid{info.GenesisCid}, out)
 }
 

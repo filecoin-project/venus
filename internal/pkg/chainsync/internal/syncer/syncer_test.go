@@ -2,7 +2,6 @@ package syncer_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -43,10 +42,8 @@ func TestOneBlock(t *testing.T) {
 	ctx := context.Background()
 	builder, store, syncer := setup(ctx, t)
 	genesis := builder.RequireTipSet(store.GetHead())
-	fmt.Printf("built genesis: %v\n", genesis)
 
 	t1 := builder.AppendOn(genesis, 1)
-	fmt.Printf("built head: %v\n", t1.At(0))
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", t1.Key(), heightFromTip(t, t1)), false))
 
 	verifyTip(t, store, t1, t1.At(0).StateRoot.Cid)
