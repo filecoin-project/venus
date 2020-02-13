@@ -79,8 +79,8 @@ var (
 // as a function call.
 type UnsignedMessage struct {
 	// control field for encoding struct as an array
-	_    struct{}        `cbor:",toarray"`
-	
+	_ struct{} `cbor:",toarray"`
+
 	To   address.Address `json:"to"`
 	From address.Address `json:"from"`
 	// When receiving a message from a user account the nonce in
