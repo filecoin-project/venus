@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
 func init() {
@@ -65,7 +66,7 @@ const (
 
 // NewActor returns a new power actor
 func NewActor() *actor.Actor {
-	return actor.NewActor(types.PowerActorCodeCid, abi.NewTokenAmount(0))
+	return actor.NewActor(builtin.StoragePowerActorCodeID, abi.NewTokenAmount(0))
 }
 
 //
@@ -134,7 +135,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateSt
 		panic(err)
 	}
 
-	actorCodeCid := types.MinerActorCodeCid
+	actorCodeCid := builtin.StorageMinerActorCodeID
 	epoch := vmctx.Runtime().CurrentEpoch()
 	if epoch == 0 {
 		actorCodeCid = types.BootstrapMinerActorCodeCid

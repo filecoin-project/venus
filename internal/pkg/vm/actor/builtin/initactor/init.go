@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
 // Actor is the builtin actor responsible for network initialization.
@@ -57,7 +58,7 @@ const (
 
 // NewActor returns a init actor.
 func NewActor() *actor.Actor {
-	return actor.NewActor(types.InitActorCodeCid, abi.NewTokenAmount(0))
+	return actor.NewActor(builtin.InitActorCodeID, abi.NewTokenAmount(0))
 }
 
 // NewView creates a new init actor state view.
@@ -329,16 +330,4 @@ func keyForActorID(actorID types.Uint64) (string, error) {
 	}
 
 	return string(key), nil
-}
-
-func (a *Impl) isBuiltinActor(code cid.Cid) bool {
-	return code.Equals(types.StorageMarketActorCodeCid) ||
-		code.Equals(types.InitActorCodeCid) ||
-		code.Equals(types.MinerActorCodeCid) ||
-		code.Equals(types.BootstrapMinerActorCodeCid)
-}
-
-func (a *Impl) isSingletonActor(code cid.Cid) bool {
-	return code.Equals(types.StorageMarketActorCodeCid) ||
-		code.Equals(types.InitActorCodeCid)
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
@@ -57,17 +58,17 @@ var actorLsCmd = &cmds.Command{
 			switch {
 			case result.Actor.Empty(): // empty (balance only) actors have no Code.
 				output = makeActorView(result.Actor, result.Address, nil)
-			case result.Actor.Code.Equals(types.AccountActorCodeCid):
+			case result.Actor.Code.Equals(builtin.AccountActorCodeID):
 				output = makeActorView(result.Actor, result.Address, &account.Actor{})
-			case result.Actor.Code.Equals(types.InitActorCodeCid):
+			case result.Actor.Code.Equals(builtin.InitActorCodeID):
 				output = makeActorView(result.Actor, result.Address, &initactor.Actor{})
-			case result.Actor.Code.Equals(types.StorageMarketActorCodeCid):
+			case result.Actor.Code.Equals(builtin.StorageMarketActorCodeID):
 				output = makeActorView(result.Actor, result.Address, &storagemarket.Actor{})
-			case result.Actor.Code.Equals(types.PowerActorCodeCid):
+			case result.Actor.Code.Equals(builtin.StoragePowerActorCodeID):
 				output = makeActorView(result.Actor, result.Address, &power.Actor{})
-			case result.Actor.Code.Equals(types.MinerActorCodeCid):
-				output = makeActorView(result.Actor, result.Address, &miner.Actor{})
 			case result.Actor.Code.Equals(types.BootstrapMinerActorCodeCid):
+				output = makeActorView(result.Actor, result.Address, &miner.Actor{})
+			case result.Actor.Code.Equals(builtin.StorageMinerActorCodeID):
 				output = makeActorView(result.Actor, result.Address, &miner.Actor{})
 			default:
 				output = makeActorView(result.Actor, result.Address, nil)

@@ -6,11 +6,6 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/ipfs/go-hamt-ipld"
-	"github.com/libp2p/go-libp2p-core/peer"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -20,6 +15,11 @@ import (
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/ipfs/go-hamt-ipld"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 )
 
 func init() {
@@ -59,7 +59,7 @@ const (
 
 // NewActor returns a new storage market actor.
 func NewActor() *actor.Actor {
-	return actor.NewActor(types.StorageMarketActorCodeCid, abi.NewTokenAmount(0))
+	return actor.NewActor(builtin.StorageMarketActorCodeID, abi.NewTokenAmount(0))
 }
 
 //
@@ -117,7 +117,7 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, sectorSize *typ
 			return nil, Errors[ErrUnsupportedSectorSize]
 		}
 
-		actorCodeCid := types.MinerActorCodeCid
+		actorCodeCid := builtin.StorageMinerActorCodeID
 		epoch := vmctx.Runtime().CurrentEpoch()
 		if epoch == 0 {
 			actorCodeCid = types.BootstrapMinerActorCodeCid

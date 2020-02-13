@@ -72,7 +72,7 @@ func RequireNewMinerActor(ctx context.Context, t *testing.T, st state.Tree, vms 
 	// 	Actors:     builtin.DefaultActors,
 	// })
 
-	// actorAddr, _, err := (&initactor.Impl{}).Exec(vmctx, types.MinerActorCodeCid, []interface{}{owner, owner, pid, types.OneKiBSectorSize})
+	// actorAddr, _, err := (&initactor.Impl{}).Exec(vmctx, builtin.StorageMinerActorCodeID, []interface{}{owner, owner, pid, types.OneKiBSectorSize})
 	// require.NoError(t, err)
 
 	// require.NoError(t, cachedTree.Commit(ctx))
@@ -257,7 +257,7 @@ func RequireInitAccountActor(ctx context.Context, t *testing.T, st state.Tree, v
 
 	// // create actor
 	// vmctx := vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, State: cachedTree, StorageMap: vms, To: network, ToAddr: address.LegacyNetworkAddress})
-	// vmctx.Send(address.InitAddress, initactor.ExecMethodID, balance, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
+	// vmctx.Send(address.InitAddress, initactor.ExecMethodID, balance, []interface{}{builtin.AccountActorCodeID, []interface{}{addr}})
 
 	// // fetch id address for actor from init actor
 	// gt := vm.NewLegacyGasTracker()

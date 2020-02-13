@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	mh "github.com/multiformats/go-multihash"
@@ -18,7 +19,6 @@ import (
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
@@ -32,9 +32,9 @@ func TestStatePutGet(t *testing.T) {
 	cst := cborutil.NewIpldStore(bs)
 	tree := NewTree(cst)
 
-	act1 := actor.NewActor(types.AccountActorCodeCid, abi.NewTokenAmount(0))
+	act1 := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0))
 	act1.IncrementSeqNum()
-	act2 := actor.NewActor(types.AccountActorCodeCid, abi.NewTokenAmount(0))
+	act2 := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0))
 	act2.IncrementSeqNum()
 	act2.IncrementSeqNum()
 
@@ -136,7 +136,7 @@ func TestGetAllActors(t *testing.T) {
 	tree := NewTree(cst)
 	addr := vmaddr.NewForTestGetter()()
 
-	actor := actor.Actor{Code: e.NewCid(types.AccountActorCodeCid), CallSeqNum: 1234, Balance: abi.NewTokenAmount(123)}
+	actor := actor.Actor{Code: e.NewCid(builtin.AccountActorCodeID), CallSeqNum: 1234, Balance: abi.NewTokenAmount(123)}
 	err := tree.SetActor(ctx, addr, &actor)
 	assert.NoError(t, err)
 	_, err = tree.Flush(ctx)

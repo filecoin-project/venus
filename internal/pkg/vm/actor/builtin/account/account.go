@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -23,7 +24,7 @@ type Actor struct{}
 
 // NewActor creates a new account actor.
 func NewActor(balance abi.TokenAmount) (*actor.Actor, error) {
-	return actor.NewActor(types.AccountActorCodeCid, balance), nil
+	return actor.NewActor(builtin.AccountActorCodeID, balance), nil
 }
 
 // State is the account actors storage.

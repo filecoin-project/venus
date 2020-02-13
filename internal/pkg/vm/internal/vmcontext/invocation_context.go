@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
@@ -165,7 +166,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 	}
 
 	// send init actor msg to create the account actor
-	params := []interface{}{types.AccountActorCodeCid, []interface{}{target}}
+	params := []interface{}{builtin.AccountActorCodeID, []interface{}{target}}
 
 	encodedParams, err := encoding.Encode(params)
 	if err != nil {
@@ -305,7 +306,7 @@ func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, co
 	// create address for actor
 	var actorAddr address.Address
 	var err error
-	if types.AccountActorCodeCid.Equals(code) {
+	if builtin.AccountActorCodeID.Equals(code) {
 		err = encoding.Decode(constructorParams, &actorAddr)
 		if err != nil {
 			runtime.Abortf(exitcode.SysErrorIllegalActor, "Parameter for account actor creation is not an address")
@@ -365,17 +366,26 @@ func (ctx *patternContext2) CallerAddr() address.Address {
 	return ctx.msg.from
 }
 
+// Dragons: move this to specs-actors
 func isBuiltinActor(code cid.Cid) bool {
-	return code.Equals(types.AccountActorCodeCid) ||
-		code.Equals(types.StorageMarketActorCodeCid) ||
-		code.Equals(types.InitActorCodeCid) ||
-		code.Equals(types.MinerActorCodeCid) ||
+	return code.Equals(builtin.AccountActorCodeID) ||
+		code.Equals(builtin.CronActorCodeID) ||
+		code.Equals(builtin.InitActorCodeID) ||
+		code.Equals(builtin.MultisigActorCodeID) ||
+		code.Equals(builtin.PaymentChannelActorCodeID) ||
+		code.Equals(builtin.RewardActorCodeID) ||
+		code.Equals(builtin.StorageMarketActorCodeID) ||
+		code.Equals(builtin.StorageMinerActorCodeID) ||
+		code.Equals(builtin.StoragePowerActorCodeID) ||
 		code.Equals(types.BootstrapMinerActorCodeCid)
 }
 
+// Dragons: move this to specs-actors
 func isSingletonActor(code cid.Cid) bool {
-	return code.Equals(types.StorageMarketActorCodeCid) ||
-		code.Equals(types.InitActorCodeCid)
+	return code.Equals(builtin.CronActorCodeID) ||
+		code.Equals(builtin.InitActorCodeID) ||
+		code.Equals(builtin.StorageMarketActorCodeID) ||
+		code.Equals(builtin.StoragePowerActorCodeID)
 }
 
 func computeActorAddress(creator address.Address, nonce uint64) (address.Address, error) {

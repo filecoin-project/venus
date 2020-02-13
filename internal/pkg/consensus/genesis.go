@@ -10,16 +10,8 @@ import (
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-core/peer"
-	typegen "github.com/whyrusleeping/cbor-gen"
-
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -30,6 +22,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/ipfs/go-cid"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/libp2p/go-libp2p-core/peer"
+	typegen "github.com/whyrusleeping/cbor-gen"
 )
 
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
@@ -196,7 +196,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			}
 			_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, vmaddr.InitAddress,
 				initactor.ExecMethodID, val, initactor.ExecParams{
-					ActorCodeCid:      types.AccountActorCodeCid,
+					ActorCodeCid:      builtin.AccountActorCodeID,
 					ConstructorParams: constructorParams,
 				})
 			if err != nil {
@@ -228,10 +228,6 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 				return nil, err
 			}
 		}
-		if err := actor.InitBuiltinActorCodeObjs(bs); err != nil {
-			return nil, err
-		}
-
 		err := store.Flush()
 		if err != nil {
 			return nil, err
@@ -295,14 +291,14 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 		return &a
 	}
 
-	createActor(vmaddr.InitAddress, types.InitActorCodeCid, initactor.State{
+	createActor(vmaddr.InitAddress, builtin.InitActorCodeID, initactor.State{
 		Network: network,
 		NextID:  100,
 	})
 
-	createActor(vmaddr.StoragePowerAddress, types.PowerActorCodeCid, power.State{})
+	createActor(vmaddr.StoragePowerAddress, builtin.StoragePowerActorCodeID, power.State{})
 
-	createActor(vmaddr.StorageMarketAddress, types.StorageMarketActorCodeCid, storagemarket.State{
+	createActor(vmaddr.StorageMarketAddress, builtin.StorageMarketActorCodeID, storagemarket.State{
 		TotalCommittedStorage: types.NewBytesAmount(0),
 		ProofsMode:            storeType,
 	})
@@ -335,7 +331,7 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 				return err
 			}
 			_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, vmaddr.InitAddress, initactor.ExecMethodID, val, initactor.ExecParams{
-				ActorCodeCid:      types.AccountActorCodeCid,
+				ActorCodeCid:      builtin.AccountActorCodeID,
 				ConstructorParams: constructorParams,
 			})
 			if err != nil {
