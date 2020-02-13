@@ -122,7 +122,7 @@ func (a *runtimeAdapter) Abortf(errExitCode exitcode.ExitCode, msg string, args 
 
 // NewActorAddress implements Runtime.
 func (a *runtimeAdapter) NewActorAddress() address.Address {
-	actorAddr, err := computeActorAddress(a.ctx.msg.from, uint64(a.ctx.msg.callSeqNumber))
+	actorAddr, err := computeActorAddress(a.ctx.msg.from, a.ctx.msg.callSeqNumber)
 	if err != nil {
 		panic("Could not create address for actor")
 	}

@@ -311,7 +311,7 @@ func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, co
 			runtime.Abortf(exitcode.SysErrorIllegalActor, "Parameter for account actor creation is not an address")
 		}
 	} else {
-		actorAddr, err = computeActorAddress(ctx.msg.from, uint64(ctx.msg.callSeqNumber))
+		actorAddr, err = computeActorAddress(ctx.msg.from, ctx.msg.callSeqNumber)
 		if err != nil {
 			panic("Could not create address for actor")
 		}

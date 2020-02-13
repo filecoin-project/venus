@@ -59,7 +59,7 @@ func TestCachedStateGetCommit(t *testing.T) {
 	uAct1, err := underlying.GetActor(ctx, addr1)
 	require.NoError(t, err)
 
-	assert.Equal(t, uint64(1), uint64(uAct1.CallSeqNum))
+	assert.Equal(t, uint64(1), uAct1.CallSeqNum)
 	assert.Equal(t, act1.Head.Cid, uAct1.Head.Cid)
 
 	// retrieving from the cache again returns the same instance
@@ -74,7 +74,7 @@ func TestCachedStateGetCommit(t *testing.T) {
 	uAct1Again, err := underlying.GetActor(ctx, addr1)
 	require.NoError(t, err)
 
-	assert.Equal(t, uint64(2), uint64(uAct1Again.CallSeqNum))
+	assert.Equal(t, uint64(2), uAct1Again.CallSeqNum)
 	assert.Equal(t, cAct1Cid, uAct1Again.Head.Cid)
 
 	// commit doesn't affect untouched actors
