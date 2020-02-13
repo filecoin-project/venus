@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -29,11 +30,11 @@ func TestCachedStateGetCommit(t *testing.T) {
 	tree := NewCachedTree(underlying)
 
 	// create some actors
-	act1 := actor.NewActor(types.AccountActorCodeCid, abi.NewTokenAmount(0))
+	act1 := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0))
 	act1Cid := requireCid(t, "hello")
 	act1.Head = e.NewCid(act1Cid)
 	act1.IncrementSeqNum()
-	act2 := actor.NewActor(types.AccountActorCodeCid, abi.NewTokenAmount(0))
+	act2 := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0))
 	act2Cid := requireCid(t, "world")
 	act2.Head = e.NewCid(act2Cid)
 
@@ -95,7 +96,7 @@ func TestCachedStateGetOrCreate(t *testing.T) {
 	underlying := NewTree(cst)
 	tree := NewCachedTree(underlying)
 
-	actorToCreate := actor.NewActor(types.AccountActorCodeCid, abi.NewTokenAmount(0))
+	actorToCreate := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0))
 
 	// can create actor in cache
 	addr := vmaddr.NewForTestGetter()()

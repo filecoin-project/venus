@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-cid"
@@ -31,7 +32,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
@@ -125,10 +125,6 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst cbor.IpldStore, bs blockst
 	st := state.NewTree(cst)
 	store := vm.NewStorage(bs)
 	vm := vm.NewVM(st, &store).(consensus.GenesisVM)
-
-	if err := actor.InitBuiltinActorCodeObjs(bs); err != nil {
-		return nil, err
-	}
 
 	if err := consensus.SetupDefaultActors(ctx, vm, &store, st, cfg.ProofsMode, cfg.Network); err != nil {
 		return nil, err
@@ -241,7 +237,7 @@ func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, k
 
 		_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, vmaddr.InitAddress,
 			initactor.ExecMethodID, abi.NewTokenAmount(int64(valint)), initactor.ExecParams{
-				ActorCodeCid:      types.AccountActorCodeCid,
+				ActorCodeCid:      builtin.AccountActorCodeID,
 				ConstructorParams: constructorParams,
 			})
 		if err != nil {
@@ -323,6 +319,7 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (*RenderedGenInfo, error) {
 	ctx := context.Background()
 
 	bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
+	bstore = blockstore.NewIdStore(bstore)
 	cst := cborutil.NewIpldStore(bstore)
 	dserv := dag.NewDAGService(bserv.New(bstore, offline.Exchange(bstore)))
 

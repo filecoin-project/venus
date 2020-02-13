@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -282,7 +283,7 @@ func sharedSetupInitial() (cbor.IpldStore, *message.Pool, cid.Cid) {
 	cst := cborutil.NewIpldStore(bs)
 	pool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 	// Install the fake actor so we can execute it.
-	fakeActorCodeCid := types.AccountActorCodeCid
+	fakeActorCodeCid := builtin.AccountActorCodeID
 	return cst, pool, fakeActorCodeCid
 }
 

@@ -8,7 +8,6 @@ import (
 
 	fxamackercbor "github.com/fxamacker/cbor"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/pkg/errors"
@@ -17,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
 // DefaultGasCost is default gas cost for the actor calls.
@@ -66,8 +66,9 @@ func (a *Actor) Empty() bool {
 }
 
 // IncrementSeqNum increments the seq number.
-func (a *Actor) IncrementSeqNum() {
+func (a *Actor) IncrementSeqNum() types.Uint64 {
 	a.CallSeqNum = a.CallSeqNum + 1
+	return a.CallSeqNum
 }
 
 // Cid returns the canonical CID for the actor.
@@ -119,8 +120,6 @@ func (a *Actor) Format(f fmt.State, c rune) {
 	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", types.ActorCodeTypeName(a.Code.Cid), a, a.Balance, a.CallSeqNum))) // nolint: errcheck
 }
 
-///// Utility functions (non-methods) /////
-
 // NextNonce returns the nonce value for an account actor, which is the nonce expected on the
 // next message to be sent from that actor.
 // Returns zero for a nil actor, which is the value expected on the first message.
@@ -128,31 +127,8 @@ func NextNonce(actor *Actor) (uint64, error) {
 	if actor == nil {
 		return 0, nil
 	}
-	if !(actor.Empty() || actor.Code.Equals(types.AccountActorCodeCid)) {
+	if !(actor.Empty() || actor.Code.Equals(builtin.AccountActorCodeID)) {
 		return 0, errors.New("next nonce only defined for account or empty actors")
 	}
 	return actor.CallSeqNum, nil
-}
-
-// InitBuiltinActorCodeObjs writes all builtin actor code objects to `cst`. This method should be called when initializing a genesis
-// block to ensure all IPLD links referenced by the state tree exist.
-func InitBuiltinActorCodeObjs(bs blockstore.Blockstore) error {
-	if err := bs.Put(types.StorageMarketActorCodeObj); err != nil {
-		return err
-	}
-	if err := bs.Put(types.MinerActorCodeObj); err != nil {
-		return err
-	}
-	if err := bs.Put(types.BootstrapMinerActorCodeObj); err != nil {
-		return err
-	}
-	if err := bs.Put(types.AccountActorCodeObj); err != nil {
-		return err
-	}
-	if err := bs.Put(types.PowerActorCodeObj); err != nil {
-		return err
-	}
-
-	return bs.Put(types.InitActorCodeObj)
-
 }

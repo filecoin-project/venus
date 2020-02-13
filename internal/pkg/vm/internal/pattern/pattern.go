@@ -2,8 +2,8 @@ package pattern
 
 import (
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 )
 
@@ -13,7 +13,7 @@ type IsAccountActor struct{}
 
 // IsMatch returns "True" if the patterns matches
 func (IsAccountActor) IsMatch(ctx runtime.PatternContext) bool {
-	return types.AccountActorCodeCid.Equals(ctx.CallerCode())
+	return builtin.AccountActorCodeID.Equals(ctx.CallerCode())
 }
 
 // IsAInitActor pattern checks if the caller is the init actor.
@@ -22,7 +22,7 @@ type IsAInitActor struct{}
 
 // IsMatch returns "True" if the patterns matches
 func (IsAInitActor) IsMatch(ctx runtime.PatternContext) bool {
-	return types.InitActorCodeCid.Equals(ctx.CallerCode())
+	return builtin.InitActorCodeID.Equals(ctx.CallerCode())
 }
 
 // Any patterns always passses.

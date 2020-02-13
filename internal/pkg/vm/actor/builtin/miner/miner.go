@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -155,7 +156,7 @@ const (
 
 // NewActor returns a new miner actor with the provided balance.
 func NewActor() *actor.Actor {
-	return actor.NewActor(types.MinerActorCodeCid, abi.NewTokenAmount(0))
+	return actor.NewActor(builtin.StorageMinerActorCodeID, abi.NewTokenAmount(0))
 }
 
 // NewState creates a miner state struct

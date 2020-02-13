@@ -572,11 +572,11 @@ package consensus_test
 // 	// get all 3 actors
 // 	act1 := state.MustGetActor(st, addr1ID)
 // 	assert.Equal(t, types.NewAttoFILFromFIL(500), act1.Balance)
-// 	assert.True(t, types.AccountActorCodeCid.Equals(act1.Code))
+// 	assert.True(t, builtin.AccountActorCodeID.Equals(act1.Code))
 
 // 	act2, _ := th.RequireLookupActor(ctx, t, st, vms, addr2)
 // 	assert.Equal(t, types.NewAttoFILFromFIL(200), act2.Balance)
-// 	assert.True(t, types.AccountActorCodeCid.Equals(act2.Code))
+// 	assert.True(t, builtin.AccountActorCodeID.Equals(act2.Code))
 
 // 	act3, _ := th.RequireLookupActor(ctx, t, st, vms, addr3)
 // 	assert.Equal(t, types.NewAttoFILFromFIL(300), act3.Balance)

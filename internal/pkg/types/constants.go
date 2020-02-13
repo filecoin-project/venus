@@ -1,88 +1,53 @@
 package types
 
 import (
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
-	ipld "github.com/ipfs/go-ipld-format"
-	dag "github.com/ipfs/go-merkledag"
 	mh "github.com/multiformats/go-multihash"
 )
 
 // DefaultHashFunction represents the default hashing function to use
 const DefaultHashFunction = mh.BLAKE2B_MIN + 31
 
-// AccountActorCodeObj is the code representation of the builtin account actor.
-var AccountActorCodeObj ipld.Node
-
-// AccountActorCodeCid is the cid of the above object
-var AccountActorCodeCid cid.Cid
-
-// StorageMarketActorCodeObj is the code representation of the builtin storage market actor.
-var StorageMarketActorCodeObj ipld.Node
-
-// StorageMarketActorCodeCid is the cid of the above object
-var StorageMarketActorCodeCid cid.Cid
-
-// PowerActorCodeObj is the code representation of the builtin power actor
-var PowerActorCodeObj ipld.Node
-
-// PowerActorCodeCid is the cid of the above object
-var PowerActorCodeCid cid.Cid
-
-// MinerActorCodeObj is the code representation of the builtin miner actor.
-var MinerActorCodeObj ipld.Node
-
-// MinerActorCodeCid is the cid of the above object
-var MinerActorCodeCid cid.Cid
-
-// BootstrapMinerActorCodeObj is the code representation of the bootstrap miner actor.
-var BootstrapMinerActorCodeObj ipld.Node
-
 // BootstrapMinerActorCodeCid is the cid of the above object
+// Dragons: this needs to be deleted once we bring the new actors in
 var BootstrapMinerActorCodeCid cid.Cid
 
-// InitActorCodeObj is the code representation of the builtin init actor.
-var InitActorCodeObj ipld.Node
-
-// InitActorCodeCid is the cid of the above object
-var InitActorCodeCid cid.Cid
-
-// ActorCodeCidTypeNames maps Actor codeCid's to the name of the associated Actor type.
-var ActorCodeCidTypeNames = make(map[cid.Cid]string)
-
 func init() {
-	AccountActorCodeObj = dag.NewRawNode([]byte("accountactor"))
-	AccountActorCodeCid = AccountActorCodeObj.Cid()
-	StorageMarketActorCodeObj = dag.NewRawNode([]byte("storagemarket"))
-	StorageMarketActorCodeCid = StorageMarketActorCodeObj.Cid()
-	PowerActorCodeObj = dag.NewRawNode([]byte("power"))
-	PowerActorCodeCid = PowerActorCodeObj.Cid()
-	MinerActorCodeObj = dag.NewRawNode([]byte("mineractor"))
-	MinerActorCodeCid = MinerActorCodeObj.Cid()
-	BootstrapMinerActorCodeObj = dag.NewRawNode([]byte("bootstrapmineractor"))
-	BootstrapMinerActorCodeCid = BootstrapMinerActorCodeObj.Cid()
-	InitActorCodeObj = dag.NewRawNode([]byte("initactor"))
-	InitActorCodeCid = InitActorCodeObj.Cid()
+	builder := cid.V1Builder{Codec: cid.Raw, MhType: mh.IDENTITY}
+	makeBuiltin := func(s string) cid.Cid {
+		c, err := builder.Sum([]byte(s))
+		if err != nil {
+			panic(err)
+		}
+		return c
+	}
 
-	// New Actors need to be added here.
-	// TODO: Make this work with reflection -- but note that nasty import cycles lie on that path.
-	// This is good enough for now.
-	ActorCodeCidTypeNames[AccountActorCodeCid] = "AccountActor"
-	ActorCodeCidTypeNames[StorageMarketActorCodeCid] = "StorageMarketActor"
-	ActorCodeCidTypeNames[PowerActorCodeCid] = "PowerActor"
-	ActorCodeCidTypeNames[MinerActorCodeCid] = "MinerActor"
-	ActorCodeCidTypeNames[BootstrapMinerActorCodeCid] = "MinerActor"
-	ActorCodeCidTypeNames[InitActorCodeCid] = "InitActor"
+	BootstrapMinerActorCodeCid = makeBuiltin("fil/1/bootstrap")
 }
 
 // ActorCodeTypeName returns the (string) name of the Go type of the actor with cid, code.
+// Dragons: remove or we migh want to add support for it from the actors repo
 func ActorCodeTypeName(code cid.Cid) string {
 	if !code.Defined() {
 		return "EmptyActor"
 	}
 
-	name, ok := ActorCodeCidTypeNames[code]
-	if ok {
-		return name
+	names := map[cid.Cid]string{
+		builtin.InitActorCodeID:           "InitActor",
+		builtin.StoragePowerActorCodeID:   "PowerActor",
+		builtin.StorageMarketActorCodeID:  "StorageMarketActor",
+		builtin.AccountActorCodeID:        "AccountActor",
+		builtin.StorageMinerActorCodeID:   "MinerActor",
+		BootstrapMinerActorCodeCid:        "MinerActor",
+		builtin.CronActorCodeID:           "CronActor",
+		builtin.MultisigActorCodeID:       "MultisigActor",
+		builtin.PaymentChannelActorCodeID: "PaymentChannelActor",
+		builtin.RewardActorCodeID:         "RewardActor",
 	}
-	return "UnknownActor"
+	name, ok := names[code]
+	if !ok {
+		return "UnknownActor"
+	}
+	return name
 }
