@@ -3,14 +3,12 @@ package block_test
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"reflect"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -79,9 +77,6 @@ func TestTriangleEncoding(t *testing.T) {
 			ForkSignaling:   6,
 		}
 		s := reflect.TypeOf(*b)
-		cidBytesOld, err := cbor.DumpObject(types.CidFromString(t, "somecid"))
-		require.NoError(t, err)
-		fmt.Printf("old cid bytes: %x\n", cidBytesOld)
 		// This check is here to request that you add a non-zero value for new fields
 		// to the above (and update the field count below).
 		// Also please add non zero fields to "b" and "diff" in TestSignatureData

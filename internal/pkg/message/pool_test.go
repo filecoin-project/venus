@@ -206,7 +206,7 @@ func TestLargestNonce(t *testing.T) {
 	})
 }
 
-func mustSetNonce(signer types.Signer, message *types.SignedMessage, nonce types.Uint64) *types.SignedMessage {
+func mustSetNonce(signer types.Signer, message *types.SignedMessage, nonce uint64) *types.SignedMessage {
 	return mustResignMessage(signer, message, func(m *types.UnsignedMessage) {
 		m.CallSeqNum = nonce
 	})

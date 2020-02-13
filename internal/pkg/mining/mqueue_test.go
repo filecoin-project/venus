@@ -26,7 +26,7 @@ func TestMessageQueueOrder(t *testing.T) {
 		msg := types.UnsignedMessage{
 			From:       from,
 			To:         to,
-			CallSeqNum: types.Uint64(nonce),
+			CallSeqNum: nonce,
 			GasPrice:   types.NewGasPrice(price),
 			GasLimit:   types.NewGasUnits(units),
 		}

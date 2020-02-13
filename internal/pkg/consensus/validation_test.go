@@ -185,7 +185,7 @@ func TestIngestionValidator(t *testing.T) {
 func newActor(t *testing.T, balanceAF int, nonce uint64) *actor.Actor {
 	actor, err := account.NewActor(abi.NewTokenAmount(int64(balanceAF)))
 	require.NoError(t, err)
-	actor.CallSeqNum = types.Uint64(nonce)
+	actor.CallSeqNum = nonce
 	return actor
 }
 

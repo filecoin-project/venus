@@ -62,7 +62,7 @@ type internalMessage struct {
 	value         abi.TokenAmount
 	method        types.MethodID
 	params        []byte
-	callSeqNumber types.Uint64
+	callSeqNumber uint64
 }
 
 // actorStorage hides the storage methods from the actors and turns the errors into runtime panics.

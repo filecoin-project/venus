@@ -91,7 +91,7 @@ func makeMessage(t *testing.T, signer MockSigner, nonce uint64) *SignedMessage {
 
 	// This check requests that you add a non-zero value for new fields above,
 	// then update the field count below.
-	require.Equal(t, 2, reflect.TypeOf(*smsg).NumField())
+	require.Equal(t, 3, reflect.TypeOf(*smsg).NumField())
 
 	return smsg
 }

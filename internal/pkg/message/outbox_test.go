@@ -66,7 +66,7 @@ func TestOutbox(t *testing.T) {
 
 		testCases := []struct {
 			bcast  bool
-			nonce  types.Uint64
+			nonce  uint64
 			height int
 		}{{true, actr.CallSeqNum, 1000}, {false, actr.CallSeqNum + 1, 1000}}
 

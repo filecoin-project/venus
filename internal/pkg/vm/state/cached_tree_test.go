@@ -48,7 +48,7 @@ func TestCachedStateGetCommit(t *testing.T) {
 	cAct1, err := tree.GetActor(ctx, addr1)
 	require.NoError(t, err)
 
-	assert.Equal(t, uint64(1), uint64(cAct1.CallSeqNum))
+	assert.Equal(t, uint64(1), cAct1.CallSeqNum)
 	assert.Equal(t, act1Cid, cAct1.Head.Cid)
 
 	// altering act1 doesn't alter it in underlying cache
@@ -81,7 +81,7 @@ func TestCachedStateGetCommit(t *testing.T) {
 	uAct2, err := underlying.GetActor(ctx, addr2)
 	require.NoError(t, err)
 
-	assert.Equal(t, uint64(0), uint64(uAct2.CallSeqNum))
+	assert.Equal(t, uint64(0), uAct2.CallSeqNum)
 	assert.Equal(t, act2Cid, uAct2.Head.Cid)
 }
 

@@ -205,7 +205,7 @@ type MessagePoolConfig struct {
 	// MaxPoolSize is the maximum number of pending messages will will allow in the message pool at any time
 	MaxPoolSize uint `json:"maxPoolSize"`
 	// MaxNonceGap is the maximum nonce of a message past the last received on chain
-	MaxNonceGap types.Uint64 `json:"maxNonceGap"`
+	MaxNonceGap uint64 `json:"maxNonceGap"`
 }
 
 func newDefaultMessagePoolConfig() *MessagePoolConfig {

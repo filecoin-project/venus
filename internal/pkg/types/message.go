@@ -78,7 +78,7 @@ var (
 // UnsignedMessage is an exchange of information between two actors modeled
 // as a function call.
 type UnsignedMessage struct {
-	_ struct{}	`cbor:",toarray"`
+	_    struct{}        `cbor:",toarray"`
 	To   address.Address `json:"to"`
 	From address.Address `json:"from"`
 	// When receiving a message from a user account the nonce in
