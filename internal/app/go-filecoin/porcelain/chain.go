@@ -2,17 +2,10 @@ package porcelain
 
 import (
 	"context"
-	"math/big"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
-	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -47,53 +40,4 @@ func GetFullBlock(ctx context.Context, plumbing fullBlockPlumbing, id cid.Cid) (
 	}
 
 	return &out, nil
-}
-
-type getStableActorPlumbing interface {
-	ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error)
-	ChainHeadKey() block.TipSetKey
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
-	ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ vm.ActorMethodSignature, err error)
-}
-
-// GetStableActor looks up an actor by address. If the address is an actor address it will first convert it to an id address.
-func GetStableActor(ctx context.Context, plumbing getStableActorPlumbing, addr address.Address) (*actor.Actor, error) {
-	stateAddr, err := retrieveActorIDForActorAddress(ctx, plumbing, addr)
-	if err != nil {
-		return nil, err
-	}
-
-	// get actor
-	return plumbing.ActorGet(ctx, stateAddr)
-}
-
-// GetStableActorSignature looks up and actor method signature by address. If the addresss is an actor address it will first convert it to an id address.
-func GetStableActorSignature(ctx context.Context, plumbing getStableActorPlumbing, actorAddr address.Address, method types.MethodID) (_ vm.ActorMethodSignature, err error) {
-	stateAddr, err := retrieveActorIDForActorAddress(ctx, plumbing, actorAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	// get actor
-	return plumbing.ActorGetSignature(ctx, stateAddr, method)
-}
-
-func retrieveActorIDForActorAddress(ctx context.Context, plumbing getStableActorPlumbing, addr address.Address) (address.Address, error) {
-	if addr.Protocol() != address.Actor {
-		return addr, nil
-	}
-
-	head := plumbing.ChainHeadKey()
-	ret, err := plumbing.MessageQuery(ctx, address.Undef, vmaddr.InitAddress, initactor.GetActorIDForAddressMethodID, head, addr)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	idVal, err := abi.Deserialize(ret[0], abi.Integer)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	return address.NewIDAddress(idVal.Val.(*big.Int).Uint64())
-
 }
