@@ -142,14 +142,14 @@ func (v *View) MinerClaimedPower(ctx context.Context, miner addr.Address) (abi.S
 	if err != nil {
 		return big.Zero(), err
 	}
-	claim, err := v.loadPowerClaim(err, ctx, powerState, miner)
+	claim, err := v.loadPowerClaim(ctx, powerState, miner)
 	if err != nil {
 		return big.Zero(), err
 	}
 	return claim.Power, nil
 }
 
-func (v *View) loadPowerClaim(err error, ctx context.Context, powerState *power.State, miner addr.Address) (*power.Claim, error) {
+func (v *View) loadPowerClaim(ctx context.Context, powerState *power.State, miner addr.Address) (*power.Claim, error) {
 	var claim power.Claim
 	found, err := v.asMap(ctx, powerState.Claims).Get(adt.AddrKey(miner), &claim)
 	if err != nil {
@@ -166,7 +166,7 @@ func (v *View) MinerPledgeCollateral(ctx context.Context, miner addr.Address) (l
 	if err != nil {
 		return big.Zero(), big.Zero(), err
 	}
-	claim, err := v.loadPowerClaim(err, ctx, powerState, miner)
+	claim, err := v.loadPowerClaim(ctx, powerState, miner)
 	if err != nil {
 		return big.Zero(), big.Zero(), err
 	}

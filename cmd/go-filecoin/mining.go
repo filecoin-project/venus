@@ -96,8 +96,8 @@ var miningStartCmd = &cmds.Command{
 
 // MiningStatusResult is the type returned when get mining status.
 type MiningStatusResult struct {
-	Miner         address.Address              `json:"minerAddress"`
-	Active        bool                         `json:"active"`
+	Miner  address.Address `json:"minerAddress"`
+	Active bool            `json:"active"`
 }
 
 var miningStatusCmd = &cmds.Command{
@@ -114,8 +114,8 @@ var miningStatusCmd = &cmds.Command{
 		}
 
 		return re.Emit(&MiningStatusResult{
-			Miner:         minerAddress,
-			Active:        isMining,
+			Miner:  minerAddress,
+			Active: isMining,
 		})
 	},
 	Type: &MiningStatusResult{},

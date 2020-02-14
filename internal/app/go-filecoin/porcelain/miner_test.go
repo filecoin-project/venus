@@ -168,8 +168,8 @@ func (p *mSetWorkerPlumbing) MinerStateView(baseKey block.TipSetKey) (MinerState
 	return &state.FakeStateView{
 		Miners: map[address.Address]*state.FakeMinerState{
 			p.minerAddr: {
-				Owner:        p.ownerAddr,
-				Worker:       p.workerAddr,
+				Owner:  p.ownerAddr,
+				Worker: p.workerAddr,
 			},
 		},
 	}, nil

@@ -212,8 +212,10 @@ func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr
 	if err != nil {
 		return MinerStatus{}, err
 	}
-
 	requirement, balance, err := view.MinerPledgeCollateral(ctx, minerAddr)
+	if err != nil {
+		return MinerStatus{}, err
+	}
 
 	return MinerStatus{
 		ActorAddress:  minerAddr,

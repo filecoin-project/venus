@@ -175,11 +175,11 @@ func (a *API) MessageWaitDone(ctx context.Context, msgCid cid.Cid) (*types.Messa
 }
 
 // PowerStateView interprets StateView as a power state view
-func (api *API) PowerStateView(baseKey block.TipSetKey) (consensus.PowerStateView, error) {
-	return api.StateView(baseKey)
+func (a *API) PowerStateView(baseKey block.TipSetKey) (consensus.PowerStateView, error) {
+	return a.StateView(baseKey)
 }
 
 // MinerStateView interprets StateView as a power state view
-func (api *API) MinerStateView(baseKey block.TipSetKey) (MinerStateView, error) {
-	return api.StateView(baseKey)
+func (a *API) MinerStateView(baseKey block.TipSetKey) (MinerStateView, error) {
+	return a.StateView(baseKey)
 }
