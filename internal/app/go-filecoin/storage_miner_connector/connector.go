@@ -6,8 +6,14 @@ import (
 	"math"
 
 	"github.com/filecoin-project/go-address"
+	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-storage-miner"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
@@ -21,7 +27,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -123,21 +128,21 @@ func (m *StorageMinerNodeConnector) handleNewTipSet(ctx context.Context, previou
 
 // SendSelfDeals creates self-deals and sends them to the network.
 func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, pieces ...storage.PieceInfo) (cid.Cid, error) {
-	proposals := make([]types.StorageDealProposal, len(pieces))
+	proposals := make([]market.ClientDealProposal, len(pieces))
 	for i, piece := range pieces {
-		proposals[i] = types.StorageDealProposal{
-			PieceRef:             piece.CommP[:],
-			PieceSize:            types.Uint64(piece.Size),
+		prop := market.DealProposal{
+			PieceCID:             commcid.PieceCommitmentV1ToCID(piece.CommP[:]),
+			PieceSize:            abi.PaddedPieceSize(piece.Size),
 			Client:               m.workerAddr,
 			Provider:             m.minerAddr,
-			ProposalExpiration:   math.MaxUint64,
-			Duration:             math.MaxUint64 / 2, // /2 because overflows
-			StoragePricePerEpoch: 0,
-			StorageCollateral:    0,
-			ProposerSignature:    nil,
+			StartEpoch:           0,             // TODO populate when the miner module provides this value
+			EndEpoch:             math.MaxInt32, // TODO populate when the miner module provides this value
+			StoragePricePerEpoch: big.Zero(),
+			ProviderCollateral:   big.Zero(),
+			ClientCollateral:     big.Zero(),
 		}
 
-		proposalBytes, err := encoding.Encode(proposals[i])
+		proposalBytes, err := encoding.Encode(&proposals[i])
 		if err != nil {
 			return cid.Undef, err
 		}
@@ -147,10 +152,19 @@ func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, pieces ..
 			return cid.Undef, err
 		}
 
-		proposals[i].ProposerSignature = &sig
+		proposals[i] = market.ClientDealProposal{
+			Proposal: prop,
+			ClientSignature: crypto.Signature{
+				// We know it's BLS from an unrelated requirement.
+				// This will go away when we use the new signature type in wallet
+				Type: crypto.SigTypeBLS,
+				Data: sig,
+			},
+		}
 	}
 
-	dealParams, err := abi.ToEncodedValues(proposals)
+	params := market.PublishStorageDealsParams{Deals: proposals}
+	paramBytes, err := encoding.Encode(&params)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -164,7 +178,7 @@ func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, pieces ..
 		types.NewGasUnits(300),
 		true,
 		types.MethodID(builtin.MethodsMarket.PublishStorageDeals),
-		dealParams,
+		paramBytes,
 	)
 	if err != nil {
 		return cid.Undef, err
@@ -201,16 +215,16 @@ func (m *StorageMinerNodeConnector) WaitForSelfDeals(ctx context.Context, mcid c
 			return nil, receipt.ExitCode, nil
 		}
 
-		dealIDValues, err := abi.Deserialize(receipt.Return[0], abi.UintArray)
+		var ret market.PublishStorageDealsReturn
+		err := encoding.Decode(receipt.Return[0], &ret)
 		if err != nil {
 			return nil, 0, err
 		}
 
-		dealIds, ok := dealIDValues.Val.([]uint64)
-		if !ok {
-			return nil, 0, errors.New("decoded deal ids are not a []uint64")
+		dealIds := make([]uint64, len(ret.IDs))
+		for i, id := range ret.IDs {
+			dealIds[i] = uint64(id)
 		}
-
 		return dealIds, 0, nil
 	case err := <-errChan:
 		return nil, 0, err
@@ -222,20 +236,20 @@ func (m *StorageMinerNodeConnector) WaitForSelfDeals(ctx context.Context, mcid c
 // SendPreCommitSector creates a pre-commit sector message and sends it to the
 // network.
 func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sectorID uint64, commR []byte, ticket storage.SealTicket, pieces ...storage.Piece) (cid.Cid, error) {
-	dealIds := make([]types.Uint64, len(pieces))
+	dealIds := make([]abi.DealID, len(pieces))
 	for i, piece := range pieces {
-		dealIds[i] = types.Uint64(piece.DealID)
+		dealIds[i] = abi.DealID(piece.DealID)
 	}
 
-	info := &types.SectorPreCommitInfo{
-		SectorNumber: types.Uint64(sectorID),
-
-		CommR:     commR,
-		SealEpoch: types.Uint64(ticket.BlockHeight),
-		DealIDs:   dealIds,
+	params := miner.SectorPreCommitInfo{
+		SectorNumber: abi.SectorNumber(sectorID),
+		SealedCID:    commcid.ReplicaCommitmentV1ToCID(commR),
+		SealEpoch:    abi.ChainEpoch(ticket.BlockHeight),
+		DealIDs:      dealIds,
+		Expiration:   abi.ChainEpoch(0), // TODO populate when the miner module provides this value.
 	}
 
-	precommitParams, err := abi.ToEncodedValues(info)
+	paramsBytes, err := encoding.Encode(&params)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -249,7 +263,7 @@ func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sec
 		types.NewGasUnits(300),
 		true,
 		types.MethodID(builtin.MethodsMiner.PreCommitSector),
-		precommitParams,
+		paramsBytes,
 	)
 	if err != nil {
 		return cid.Undef, err
@@ -278,13 +292,12 @@ func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, s
 		dealIds[i] = types.Uint64(deal)
 	}
 
-	info := &types.SectorProveCommitInfo{
-		Proof:    proof,
-		SectorID: types.Uint64(sectorID),
-		DealIDs:  dealIds,
+	params := miner.ProveCommitSectorParams{
+		SectorNumber: abi.SectorNumber(sectorID),
+		Proof:        abi.SealProof{ProofBytes: proof},
 	}
 
-	commitParams, err := abi.ToEncodedValues(info)
+	paramsBytes, err := encoding.Encode(&params)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -298,7 +311,7 @@ func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, s
 		types.NewGasUnits(300),
 		true,
 		types.MethodID(builtin.MethodsMiner.ProveCommitSector),
-		commitParams,
+		paramsBytes,
 	)
 	if err != nil {
 		return cid.Undef, err

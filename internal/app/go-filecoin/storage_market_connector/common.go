@@ -1,15 +1,18 @@
 package storagemarketconnector
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	smtypes "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	spaabi "github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	spasm "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -21,8 +24,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
-	fcsm "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -105,7 +106,8 @@ func (c *connectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan 
 }
 
 func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address, addr address.Address, amount tokenamount.TokenAmount) error {
-	params, err := abi.ToEncodedValues(addr)
+	var params bytes.Buffer
+	err := addr.MarshalCBOR(&params)
 	if err != nil {
 		return err
 	}
@@ -118,7 +120,7 @@ func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address
 		types.NewGasPrice(1),
 		types.NewGasUnits(300),
 		true,
-		fcsm.AddBalance,
+		types.MethodID(builtin.MethodsMarket.AddBalance),
 		params,
 	)
 	if err != nil {
@@ -190,7 +192,7 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 
 	pred := func(msg *types.SignedMessage, msgCid cid.Cid) bool {
 		m := msg.Message
-		if m.Method != fcsm.CommitSector {
+		if m.Method != types.MethodID(builtin.MethodsMiner.PreCommitSector) {
 			return false
 		}
 
@@ -198,13 +200,13 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 			return false
 		}
 
-		values, err := abi.DecodeValues(m.Params, []abi.Type{abi.SectorProveCommitInfo})
+		var params miner.SectorPreCommitInfo
+		err := params.UnmarshalCBOR(bytes.NewReader(m.Params))
 		if err != nil {
 			return false
 		}
 
-		commitInfo := values[0].Val.(*types.SectorProveCommitInfo)
-		for _, id := range commitInfo.DealIDs {
+		for _, id := range params.DealIDs {
 			if uint64(id) == dealID {
 				return true
 			}
@@ -231,27 +233,23 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 }
 
 func decodeSectorID(msg *types.SignedMessage) (uint64, error) {
-	values, err := abi.DecodeValues(msg.Message.Params, []abi.Type{abi.SectorProveCommitInfo})
+	var params miner.SectorPreCommitInfo
+	err := params.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
 	if err != nil {
-		return 0, err
+		return 0, nil
 	}
 
-	commitInfo, ok := values[0].Val.(*types.SectorProveCommitInfo)
-	if !ok {
-		return 0, errors.Errorf("Expected message params to be SectorProveCommitInfo, but was %v", values[0].Type)
-	}
-
-	return uint64(commitInfo.SectorID), nil
+	return uint64(params.SectorNumber), nil
 }
 
-func (c *connectorCommon) getBalance(ctx context.Context, root cid.Cid, addr address.Address) (spaabi.TokenAmount, error) {
+func (c *connectorCommon) getBalance(ctx context.Context, root cid.Cid, addr address.Address) (abi.TokenAmount, error) {
 	// These should be replaced with methods on the state view
 	table := adt.AsBalanceTable(state.StoreFromCbor(ctx, c.chainStore), root)
 	hasBalance, err := table.Has(addr)
 	if err != nil {
 		return big.Zero(), err
 	}
-	balance := spaabi.NewTokenAmount(0)
+	balance := abi.NewTokenAmount(0)
 	if hasBalance {
 		balance, err = table.Get(addr)
 		if err != nil {
@@ -271,8 +269,8 @@ func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) (
 	// These should be replaced with methods on the state view
 	stateStore := state.StoreFromCbor(ctx, c.chainStore)
 	byParty := spasm.AsSetMultimap(stateStore, smState.DealIDsByParty)
-	var providerDealIds []spaabi.DealID
-	if err = byParty.ForEach(addr, func(i spaabi.DealID) error {
+	var providerDealIds []abi.DealID
+	if err = byParty.ForEach(addr, func(i abi.DealID) error {
 		providerDealIds = append(providerDealIds, i)
 		return nil
 	}); err != nil {

@@ -4,25 +4,23 @@ import (
 	"bytes"
 	"context"
 
-	smcborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/ipfs/go-cid"
-	xerrors "github.com/pkg/errors"
-
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
-	fcsm "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	spaminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	spapow "github.com/filecoin-project/specs-actors/actors/builtin/power"
-
+	smcborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	smtypes "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	spaminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	spapow "github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -152,7 +150,7 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 		return 0, xerrors.Errorf("deal publish message wasn't set to StorageMarket actor (to=%s)", unsigned.To)
 	}
 
-	if unsigned.Method != fcsm.PublishStorageDeals {
+	if unsigned.Method != types.MethodID(builtin.MethodsMarket.PublishStorageDeals) {
 		return 0, xerrors.Errorf("deal publish message called incorrect method (method=%s)", unsigned.Method)
 	}
 
