@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
-	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 func TestMiningGenBlock(t *testing.T) {
@@ -98,10 +99,10 @@ func TestMiningAddPieceAndSealNow(t *testing.T) {
 	// We know the miner has sealed and committed a sector if their power increases on chain.
 	// Wait up to 300 seconds for that to happen.
 	for i := 0; i < 300; i++ {
-		power, err := minerNode.MinerPower(ctx, miningAddress)
+		power, err := minerNode.MinerStatus(ctx, miningAddress)
 		require.NoError(t, err)
 
-		if power.Power.GreaterThan(types.ZeroBytes) {
+		if power.Power.GreaterThan(fbig.Zero()) {
 			// miner has gained power, so seal was successful
 			return
 		}

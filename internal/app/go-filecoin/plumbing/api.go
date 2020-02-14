@@ -266,11 +266,6 @@ func (api *API) StateView(baseKey block.TipSetKey) (*appstate.View, error) {
 	return api.actorState.StateView(baseKey)
 }
 
-// PowerStateView interprets StateView as a power state view
-func (api *API) PowerStateView(baseKey block.TipSetKey) (consensus.PowerStateView, error) {
-	return api.StateView(baseKey)
-}
-
 // MessageSend sends a message. It uses the default from address if none is given and signs the
 // message using the wallet. This call "sends" in the sense that it enqueues the
 // message in the msg pool and broadcasts it to the network; it does not wait for the

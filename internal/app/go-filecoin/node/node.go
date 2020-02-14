@@ -392,10 +392,12 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return err
 	}
 
-	sectorSize, err := node.PorcelainAPI.MinerGetSectorSize(ctx, minerAddr)
+	head := node.Chain().ChainReader.GetHead()
+	status, err := node.PorcelainAPI.MinerGetStatus(ctx, minerAddr, head)
 	if err != nil {
 		return err
 	}
+	sectorSize := status.SectorSize
 
 	repoPath, err := node.Repo.Path()
 	if err != nil {
@@ -408,7 +410,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 	}
 
 	sectorBuilder, err := sectorbuilder.New(&sectorbuilder.Config{
-		SectorSize:    sectorSize.Uint64(),
+		SectorSize:    uint64(sectorSize),
 		Miner:         minerAddr,
 		WorkerThreads: 1,
 		Dir:           sectorDir,
@@ -417,7 +419,15 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return err
 	}
 
-	workerAddr, err := node.PorcelainAPI.MinerGetWorkerAddress(ctx, minerAddr, node.Chain().ChainReader.GetHead())
+	getWorker := func(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error) {
+		status, err := node.PorcelainAPI.MinerGetStatus(ctx, minerAddr, baseKey)
+		if err != nil {
+			return address.Undef, err
+		}
+		return status.WorkerAddress, nil
+	}
+
+	workerAddr, err := getWorker(ctx, minerAddr, node.Chain().ChainReader.GetHead())
 	if err != nil {
 		return err
 	}
@@ -425,7 +435,8 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 	waiter := msg.NewWaiter(node.chain.ChainReader, node.chain.MessageStore, node.Blockstore.Blockstore, node.Blockstore.CborStore)
 
 	// TODO: rework these modules so they can be at least partially constructed during the building phase #3738
-	node.StorageMining, err = submodule.NewStorageMiningSubmodule(minerAddr, workerAddr, node.Repo.Datastore(), sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet)
+	node.StorageMining, err = submodule.NewStorageMiningSubmodule(minerAddr, workerAddr, node.Repo.Datastore(),
+		sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet)
 	if err != nil {
 		return err
 	}
@@ -444,7 +455,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		node.Blockstore.Blockstore,
 		node.network.GraphExchange,
 		repoPath,
-		node.PorcelainAPI.MinerGetWorkerAddress)
+		getWorker)
 	if err != nil {
 		return errors.Wrap(err, "error initializing storage protocol")
 	}
@@ -606,7 +617,8 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 		return nil, errors.Wrap(err, "failed to get mining address")
 	}
 
-	minerOwnerAddr, err := node.PorcelainAPI.MinerGetOwnerAddress(ctx, minerAddr)
+	head := node.PorcelainAPI.ChainHeadKey()
+	minerStatus, err := node.PorcelainAPI.MinerGetStatus(ctx, minerAddr, head)
 	if err != nil {
 		log.Errorf("could not get owner address of miner actor")
 		return nil, err
@@ -616,7 +628,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 		API: node.PorcelainAPI,
 
 		MinerAddr:      minerAddr,
-		MinerOwnerAddr: minerOwnerAddr,
+		MinerOwnerAddr: minerStatus.OwnerAddress,
 		WorkerSigner:   node.Wallet.Wallet,
 
 		GetStateTree:   node.chain.ChainReader.GetTipSetState,

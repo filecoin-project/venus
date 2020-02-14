@@ -50,23 +50,12 @@ func (f *Filecoin) MinerUpdatePeerid(ctx context.Context, minerAddr address.Addr
 	return out.Cid, nil
 }
 
-// MinerOwner runs the `miner owner` command against the filecoin process
-func (f *Filecoin) MinerOwner(ctx context.Context, minerAddr address.Address) (address.Address, error) {
-	var out address.Address
+// MinerStatus runs the `miner power` command against the filecoin process
+func (f *Filecoin) MinerStatus(ctx context.Context, minerAddr address.Address) (porcelain.MinerStatus, error) {
+	var out porcelain.MinerStatus
 
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "owner", minerAddr.String()); err != nil {
-		return address.Undef, err
-	}
-
-	return out, nil
-}
-
-// MinerPower runs the `miner power` command against the filecoin process
-func (f *Filecoin) MinerPower(ctx context.Context, minerAddr address.Address) (porcelain.MinerPower, error) {
-	var out porcelain.MinerPower
-
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "power", minerAddr.String()); err != nil {
-		return porcelain.MinerPower{}, err
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "status", minerAddr.String()); err != nil {
+		return porcelain.MinerStatus{}, err
 	}
 
 	return out, nil
@@ -90,28 +79,10 @@ func (f *Filecoin) MinerSetPrice(ctx context.Context, fil *big.Float, expiry *bi
 		return nil, err
 	}
 
-	return &out.MinerSetPriceResponse, nil
-}
-
-// MinerProvingWindow runs the `miner proving-window` command against the filecoin process
-func (f *Filecoin) MinerProvingWindow(ctx context.Context, miner address.Address) (porcelain.MinerProvingWindow, error) {
-	var out porcelain.MinerProvingWindow
-
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "proving-window", miner.String()); err != nil {
-		return porcelain.MinerProvingWindow{}, err
-	}
-
-	return out, nil
-}
-
-// MinerWorker runs the `miner worker` command against the filecoin process
-func (f *Filecoin) MinerWorker(ctx context.Context) (commands.MinerWorkerResult, error) {
-	var out commands.MinerWorkerResult
-
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "worker"); err != nil {
-		return out, err
-	}
-	return out, nil
+	return &porcelain.MinerSetPriceResponse{
+		MinerAddr: out.MinerAddress,
+		Price:     out.Price,
+	}, nil
 }
 
 // MinerSetWorker runs the `miner set-worker` command against the filecoin process

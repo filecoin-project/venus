@@ -10,7 +10,6 @@ import (
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	files "github.com/ipfs/go-ipfs-files"
-	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -33,7 +32,6 @@ var addrsCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
 		"ls":      addrsLsCmd,
 		"new":     addrsNewCmd,
-		"lookup":  addrsLookupCmd,
 		"default": defaultAddressCmd,
 	},
 }
@@ -89,31 +87,6 @@ var addrsLsCmd = &cmds.Command{
 				}
 			}
 			return nil
-		}),
-	},
-}
-
-var addrsLookupCmd = &cmds.Command{
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("address", true, false, "Miner address to find peerId for"),
-	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		addr, err := address.NewFromString(req.Arguments[0])
-		if err != nil {
-			return err
-		}
-
-		v, err := GetPorcelainAPI(env).MinerGetPeerID(req.Context, addr)
-		if err != nil {
-			return errors.Wrapf(err, "failed to find miner with address %s", addr)
-		}
-		return re.Emit(v.Pretty())
-	},
-	Type: string(""),
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, pid string) error {
-			_, err := fmt.Fprintln(w, pid)
-			return err
 		}),
 	},
 }

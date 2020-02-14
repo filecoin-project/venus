@@ -9,9 +9,6 @@ import (
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
-
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 var miningCmd = &cmds.Command{
@@ -99,12 +96,8 @@ var miningStartCmd = &cmds.Command{
 
 // MiningStatusResult is the type returned when get mining status.
 type MiningStatusResult struct {
-	Active        bool                         `json:"active"`
-	Miner         address.Address              `json:"minerAddress"`
-	Owner         address.Address              `json:"owner"`
-	Collateral    types.AttoFIL                `json:"collateral"`
-	ProvingPeriod porcelain.MinerProvingWindow `json:"provingPeriod,omitempty"`
-	Power         porcelain.MinerPower         `json:"minerPower"`
+	Miner  address.Address `json:"minerAddress"`
+	Active bool            `json:"active"`
 }
 
 var miningStatusCmd = &cmds.Command{
@@ -120,62 +113,18 @@ var miningStatusCmd = &cmds.Command{
 			return err
 		}
 
-		mpp, err := GetPorcelainAPI(env).MinerGetProvingWindow(req.Context, minerAddress)
-		if err != nil {
-			return err
-		}
-
-		owner, err := GetPorcelainAPI(env).MinerGetOwnerAddress(req.Context, minerAddress)
-		if err != nil {
-			return err
-		}
-
-		collateral, err := GetPorcelainAPI(env).MinerGetCollateral(req.Context, minerAddress)
-		if err != nil {
-			return err
-		}
-
-		power, err := GetPorcelainAPI(env).MinerGetPower(req.Context, minerAddress)
-		if err != nil {
-			return err
-		}
-
 		return re.Emit(&MiningStatusResult{
-			Active:        isMining,
-			Miner:         minerAddress,
-			Owner:         owner,
-			Collateral:    collateral,
-			Power:         power,
-			ProvingPeriod: mpp,
+			Miner:  minerAddress,
+			Active: isMining,
 		})
 	},
 	Type: &MiningStatusResult{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MiningStatusResult) error {
-			var pSet []string
-			for p := range res.ProvingPeriod.ProvingSet {
-				pSet = append(pSet, p)
-			}
 			_, err := fmt.Fprintf(w, `Mining Status
 Active:     %s
 Address:    %s
-Owner:      %s
-Collateral: %s
-Power:      %s / %s
-
-Proving Period
-Start:         %s
-End:           %s
-Proving Set:   %s
-
-`, strconv.FormatBool(res.Active),
-				res.Miner,
-				res.Owner,
-				res.Collateral.String(),
-				res.Power.Power.String(), res.Power.Total.String(),
-				res.ProvingPeriod.Start.String(),
-				res.ProvingPeriod.End.String(),
-				pSet)
+`, strconv.FormatBool(res.Active), res.Miner)
 
 			return err
 		}),
