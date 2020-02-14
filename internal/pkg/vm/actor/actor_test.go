@@ -39,17 +39,17 @@ func TestActorFormat(t *testing.T) {
 	accountActor := NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(5))
 
 	formatted := fmt.Sprintf("%v", accountActor)
-	assert.Contains(t, formatted, "AccountActor")
+	assert.Contains(t, formatted, "account")
 	assert.Contains(t, formatted, "balance: 5")
 	assert.Contains(t, formatted, "nonce: 0")
 
 	minerActor := NewActor(builtin.StorageMinerActorCodeID, abi.NewTokenAmount(5))
 	formatted = fmt.Sprintf("%v", minerActor)
-	assert.Contains(t, formatted, "MinerActor")
+	assert.Contains(t, formatted, "miner")
 
 	storageMarketActor := NewActor(builtin.StorageMarketActorCodeID, abi.NewTokenAmount(5))
 	formatted = fmt.Sprintf("%v", storageMarketActor)
-	assert.Contains(t, formatted, "StorageMarketActor")
+	assert.Contains(t, formatted, "market")
 }
 
 func requireCid(t *testing.T, data string) cid.Cid {

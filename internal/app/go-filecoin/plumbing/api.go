@@ -247,20 +247,6 @@ func (api *API) MessagePreview(ctx context.Context, from, to address.Address, me
 	return api.msgPreviewer.Preview(ctx, from, to, method, params...)
 }
 
-// MessageQuery calls an actor's method using the most recent chain state. It is read-only,
-// it does not change any state. It is use to interrogate actor state. The from address
-// is optional; if not provided, an address will be chosen from the node's wallet.
-func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error) {
-	// Dragons: delete
-
-	// snapshot, err := api.actorState.Snapshot(ctx, baseKey)
-	// if err != nil {
-	// 	return [][]byte{}, err
-	// }
-	// return snapshot.Query(ctx, optFrom, to, method, params...)
-	return [][]byte{}, nil
-}
-
 // StateView loads the state view for a tipset, i.e. the state *after* the application of the tipset's messages.
 func (api *API) StateView(baseKey block.TipSetKey) (*appstate.View, error) {
 	return api.actorState.StateView(baseKey)

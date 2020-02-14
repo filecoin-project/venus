@@ -116,7 +116,7 @@ func (a *Actor) MarshalCBOR(w io.Writer) error {
 
 // Format implements fmt.Formatter.
 func (a *Actor) Format(f fmt.State, c rune) {
-	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", types.ActorCodeTypeName(a.Code.Cid), a, a.Balance, a.CallSeqNum))) // nolint: errcheck
+	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", NameByCode(a.Code.Cid), a, a.Balance, a.CallSeqNum))) // nolint: errcheck
 }
 
 // NextNonce returns the nonce value for an account actor, which is the nonce expected on the
@@ -130,4 +130,13 @@ func NextNonce(actor *Actor) (uint64, error) {
 		return 0, errors.New("next nonce only defined for account or empty actors")
 	}
 	return actor.CallSeqNum, nil
+}
+
+// NameByCode returns the (string) name of the Go type of the actor with cid, code.
+// Dragons: remove once we get rid of the bootstrap actor
+func NameByCode(code cid.Cid) string {
+	if code.Equals(types.BootstrapMinerActorCodeCid) {
+		return "fil/1/miner"
+	}
+	return builtin.ActorNameByCode(code)
 }

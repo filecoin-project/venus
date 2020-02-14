@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
@@ -25,12 +26,6 @@ var _ specsruntime.Runtime = (*runtimeAdapter)(nil)
 // Message implements Runtime.
 func (a *runtimeAdapter) Message() specsruntime.Message {
 	return a.ctx.Message()
-}
-
-// NetworkName implements Runtime.
-func (a *runtimeAdapter) NetworkName() string {
-	// Dragons: get PR on specs-actors to remove this
-	panic("Will get nuked")
 }
 
 // CurrEpoch implements Runtime.
@@ -137,7 +132,7 @@ func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
 		runtime.Abortf(exitcode.ErrIllegalArgument, "Can only create built-in actors.")
 	}
 
-	if isSingletonActor(codeID) {
+	if builtin.IsSingletonActor(codeID) {
 		runtime.Abortf(exitcode.ErrIllegalArgument, "Can only have one instance of singleton actors.")
 	}
 
