@@ -28,12 +28,6 @@ func (a *runtimeAdapter) Message() specsruntime.Message {
 	return a.ctx.Message()
 }
 
-// NetworkName implements Runtime.
-func (a *runtimeAdapter) NetworkName() string {
-	// Dragons: get PR on specs-actors to remove this
-	panic("Will get nuked")
-}
-
 // CurrEpoch implements Runtime.
 func (a *runtimeAdapter) CurrEpoch() abi.ChainEpoch {
 	return a.ctx.Runtime().CurrentEpoch()
