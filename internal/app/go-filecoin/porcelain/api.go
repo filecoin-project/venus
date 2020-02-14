@@ -7,16 +7,17 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 )
 
@@ -107,59 +108,19 @@ func (a *API) MinerPreviewCreate(
 	return MinerPreviewCreate(ctx, a, fromAddr, sectorSize, pid)
 }
 
+// MinerGetStatus queries for status of a miner.
+func (a *API) MinerGetStatus(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (MinerStatus, error) {
+	return MinerGetStatus(ctx, a, minerAddr, baseKey)
+}
+
 // MinerGetAsk queries for an ask of the given miner
 func (a *API) MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (minerActor.Ask, error) {
 	panic("implement me in terms of the storage market module")
 }
 
-// MinerGetOwnerAddress queries for the owner address of the given miner
-func (a *API) MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
-	return MinerGetOwnerAddress(ctx, a, minerAddr)
-}
-
-// MinerGetWorkerAddress queries for the worker address of the given miner
-func (a *API) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error) {
-	return MinerGetWorkerAddress(ctx, a, minerAddr, baseKey)
-}
-
-// MinerGetSectorSize queries for the sector size of the given miner.
-func (a *API) MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error) {
-	return MinerGetSectorSize(ctx, a, minerAddr)
-}
-
-// MinerCalculateLateFee queries for the fee required for a PoSt submitted at some height.
-func (a *API) MinerCalculateLateFee(ctx context.Context, minerAddr address.Address, height *types.BlockHeight) (types.AttoFIL, error) {
-	return MinerCalculateLateFee(ctx, a, minerAddr, height)
-}
-
-// MinerGetLastCommittedSectorID queries for the sector size of the given miner.
-func (a *API) MinerGetLastCommittedSectorID(ctx context.Context, minerAddr address.Address) (uint64, error) {
-	return MinerGetLastCommittedSectorID(ctx, a, minerAddr)
-}
-
-// MinerGetPeerID queries for the peer id of the given miner
-func (a *API) MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error) {
-	return MinerGetPeerID(ctx, a, minerAddr)
-}
-
 // MinerSetPrice configures the price of storage. See implementation for details.
 func (a *API) MinerSetPrice(ctx context.Context, from address.Address, miner address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, price types.AttoFIL, expiry *big.Int) (MinerSetPriceResponse, error) {
-	return MinerSetPrice(ctx, a, from, miner, gasPrice, gasLimit, price, expiry)
-}
-
-// MinerGetPower queries for the power of the given miner
-func (a *API) MinerGetPower(ctx context.Context, minerAddr address.Address) (MinerPower, error) {
-	return MinerGetPower(ctx, a, minerAddr)
-}
-
-// MinerGetProvingWindow queries for the proving period of the given miner
-func (a *API) MinerGetProvingWindow(ctx context.Context, minerAddr address.Address) (MinerProvingWindow, error) {
-	return MinerGetProvingWindow(ctx, a, minerAddr)
-}
-
-// MinerGetCollateral queries for the proving period of the given miner
-func (a *API) MinerGetCollateral(ctx context.Context, minerAddr address.Address) (types.AttoFIL, error) {
-	return MinerGetCollateral(ctx, a, minerAddr)
+	panic("implement me in terms of the storage market module")
 }
 
 // ProtocolParameters fetches the current protocol configuration parameters.
@@ -211,4 +172,14 @@ func (a *API) MinerSetWorkerAddress(ctx context.Context, toAddr address.Address,
 // MessageWaitDone blocks until the message is on chain
 func (a *API) MessageWaitDone(ctx context.Context, msgCid cid.Cid) (*types.MessageReceipt, error) {
 	return MessageWaitDone(ctx, a, msgCid)
+}
+
+// PowerStateView interprets StateView as a power state view
+func (api *API) PowerStateView(baseKey block.TipSetKey) (consensus.PowerStateView, error) {
+	return api.StateView(baseKey)
+}
+
+// MinerStateView interprets StateView as a power state view
+func (api *API) MinerStateView(baseKey block.TipSetKey) (MinerStateView, error) {
+	return api.StateView(baseKey)
 }
