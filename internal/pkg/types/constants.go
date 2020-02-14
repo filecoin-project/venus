@@ -1,7 +1,6 @@
 package types
 
 import (
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
 )
@@ -24,30 +23,4 @@ func init() {
 	}
 
 	BootstrapMinerActorCodeCid = makeBuiltin("fil/1/bootstrap")
-}
-
-// ActorCodeTypeName returns the (string) name of the Go type of the actor with cid, code.
-// Dragons: remove or we migh want to add support for it from the actors repo
-func ActorCodeTypeName(code cid.Cid) string {
-	if !code.Defined() {
-		return "EmptyActor"
-	}
-
-	names := map[cid.Cid]string{
-		builtin.InitActorCodeID:           "InitActor",
-		builtin.StoragePowerActorCodeID:   "PowerActor",
-		builtin.StorageMarketActorCodeID:  "StorageMarketActor",
-		builtin.AccountActorCodeID:        "AccountActor",
-		builtin.StorageMinerActorCodeID:   "MinerActor",
-		BootstrapMinerActorCodeCid:        "MinerActor",
-		builtin.CronActorCodeID:           "CronActor",
-		builtin.MultisigActorCodeID:       "MultisigActor",
-		builtin.PaymentChannelActorCodeID: "PaymentChannelActor",
-		builtin.RewardActorCodeID:         "RewardActor",
-	}
-	name, ok := names[code]
-	if !ok {
-		return "UnknownActor"
-	}
-	return name
 }
