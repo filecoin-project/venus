@@ -13,6 +13,7 @@ import (
 
 // FakeStateView is a fake state view.
 type FakeStateView struct {
+	NetworkName  string
 	NetworkPower abi.StoragePower
 	Miners       map[address.Address]*FakeMinerState
 }
@@ -44,6 +45,10 @@ type FakeMinerState struct {
 type FakeSectorInfo struct {
 	ID        abi.SectorNumber
 	SealedCID cid.Cid
+}
+
+func (v *FakeStateView) InitNetworkName(_ context.Context) (string, error) {
+	return v.NetworkName, nil
 }
 
 // MinerSectorSize reports a miner's sector size.

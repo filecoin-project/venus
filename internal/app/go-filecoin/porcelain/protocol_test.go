@@ -6,18 +6,14 @@ import (
 	"time"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/pkg/errors"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 const protocolTestParamBlockTime = time.Second
@@ -36,17 +32,14 @@ func (tppp *testProtocolParamsPlumbing) ChainHeadKey() block.TipSetKey {
 	return block.NewTipSetKey()
 }
 
-func (tppp *testProtocolParamsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
-	if to == vmaddr.StorageMarketAddress && method == storagemarket.GetProofsMode {
-		return [][]byte{{byte(types.TestProofsMode)}}, nil
-	} else if to == vmaddr.InitAddress && method == initactor.GetNetworkMethodID {
-		return [][]byte{[]byte("protocolTest")}, nil
-	}
-	return [][]byte{}, errors.Errorf("call to unknown method %s", method)
-}
-
 func (tppp *testProtocolParamsPlumbing) BlockTime() time.Duration {
 	return protocolTestParamBlockTime
+}
+
+func (tppp *testProtocolParamsPlumbing) ProtocolStateView(_ block.TipSetKey) (porcelain.ProtocolStateView, error) {
+	return &state.FakeStateView{
+		NetworkName: "protocolTest",
+	}, nil
 }
 
 func TestProtocolParams(t *testing.T) {
@@ -60,15 +53,14 @@ func TestProtocolParams(t *testing.T) {
 			autoSealInterval: 120,
 		}
 
-		sectorSize := types.OneKiBSectorSize
-		maxUserBytes := types.NewBytesAmount(ffi.GetMaxUserBytesPerStagedSector(sectorSize.Uint64()))
-
 		expected := &porcelain.ProtocolParams{
 			AutoSealInterval: 120,
 			Network:          "protocolTest",
-			ProofsMode:       types.TestProofsMode,
-			SupportedSectors: []porcelain.SectorInfo{{sectorSize, maxUserBytes}},
-			BlockTime:        protocolTestParamBlockTime,
+			SupportedSectors: []porcelain.SectorInfo{
+				{types.OneKiBSectorSize, types.NewBytesAmount(ffi.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize.Uint64()))},
+				{types.TwoHundredFiftySixMiBSectorSize, types.NewBytesAmount(ffi.GetMaxUserBytesPerStagedSector(types.TwoHundredFiftySixMiBSectorSize.Uint64()))},
+			},
+			BlockTime: protocolTestParamBlockTime,
 		}
 
 		out, err := porcelain.ProtocolParameters(context.TODO(), plumbing)

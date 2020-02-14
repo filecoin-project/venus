@@ -360,7 +360,8 @@ func (node *Node) SetupMining(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get mining address")
 	}
-	_, err = node.PorcelainAPI.ActorGetStable(ctx, minerAddr)
+	head := node.PorcelainAPI.ChainHeadKey()
+	_, err = node.PorcelainAPI.MinerGetStatus(ctx, minerAddr, head)
 	if err != nil {
 		return errors.Wrap(err, "failed to get miner actor")
 	}

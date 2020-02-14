@@ -5,7 +5,6 @@ import (
 	"io"
 	"math/big"
 	"strconv"
-	"strings"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
@@ -62,27 +61,9 @@ additional sectors.`,
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		var err error
 
-		pp, err := GetPorcelainAPI(env).ProtocolParameters(req.Context)
+		sectorSize, err := optionalSectorSizeWithDefault(req.Options["sectorsize"], types.OneKiBSectorSize)
 		if err != nil {
 			return err
-		}
-
-		sectorSize, err := optionalSectorSizeWithDefault(req.Options["sectorsize"], pp.SupportedSectors[0].Size)
-		if err != nil {
-			return err
-		}
-
-		// TODO: It may become the case that the protocol does not specify an
-		// enumeration of supported sector sizes, but rather that any sector
-		// size for which a miner has Groth parameters and a verifying key is
-		// supported.
-		// https://github.com/filecoin-project/specs/pull/318
-		if !pp.IsSupportedSectorSize(sectorSize) {
-			supportedStrs := make([]string, len(pp.SupportedSectors))
-			for i, si := range pp.SupportedSectors {
-				supportedStrs[i] = si.Size.String()
-			}
-			return fmt.Errorf("unsupported sector size: %s (supported sizes: %s)", sectorSize, strings.Join(supportedStrs, ", "))
 		}
 
 		fromAddr, err := fromAddrOrDefault(req, env)

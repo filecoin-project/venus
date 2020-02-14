@@ -16,8 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 )
 
@@ -47,16 +45,6 @@ type API struct {
 // New returns a new porcelain.API.
 func New(plumbing *plumbing.API) *API {
 	return &API{plumbing}
-}
-
-// ActorGetStable gets an actor by address, converting the address to an id address if necessary
-func (a *API) ActorGetStable(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	return GetStableActor(ctx, a, addr)
-}
-
-// ActorGetStableSignature gets an actor signature by address, converting the address to an id address if necessary
-func (a *API) ActorGetStableSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ vm.ActorMethodSignature, err error) {
-	return GetStableActorSignature(ctx, a, actorAddr, method)
 }
 
 // ChainHead returns the current head tipset
@@ -174,12 +162,14 @@ func (a *API) MessageWaitDone(ctx context.Context, msgCid cid.Cid) (*types.Messa
 	return MessageWaitDone(ctx, a, msgCid)
 }
 
-// PowerStateView interprets StateView as a power state view
 func (a *API) PowerStateView(baseKey block.TipSetKey) (consensus.PowerStateView, error) {
 	return a.StateView(baseKey)
 }
 
-// MinerStateView interprets StateView as a power state view
 func (a *API) MinerStateView(baseKey block.TipSetKey) (MinerStateView, error) {
+	return a.StateView(baseKey)
+}
+
+func (a *API) ProtocolStateView(baseKey block.TipSetKey) (ProtocolStateView, error) {
 	return a.StateView(baseKey)
 }

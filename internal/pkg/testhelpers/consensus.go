@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	cid "github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
+
+	bls "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
@@ -131,34 +132,6 @@ func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *block.Block
 // NewFakeProcessor creates a processor with a test validator and test rewarder
 func NewFakeProcessor() *consensus.DefaultProcessor {
 	return consensus.NewConfiguredProcessor(vm.DefaultActors)
-}
-
-type testSigner struct{}
-
-func (ms testSigner) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
-	return types.Signature{}, nil
-}
-
-// RequireActorIDAddress looks up an actor address in the init actor and returns the associated id address
-func RequireActorIDAddress(ctx context.Context, t *testing.T, st state.Tree, store vm.Storage, addr address.Address) address.Address {
-	// Dragons: why is this needed? delete
-
-	// processor := consensus.NewConfiguredProcessor(vm.DefaultActors)
-	// params, err := abi.ToEncodedValues(addr)
-	// require.NoError(t, err)
-
-	// result, _, err := processor.CallQueryMethod(ctx, st, store, address.InitAddress, initactor.GetActorIDForAddressMethodID, params, address.Undef, nil)
-	// require.NoError(t, err)
-
-	// idVal, err := abi.Deserialize(result[0], abi.Integer)
-	// require.NoError(t, err)
-
-	// idAddr, err := address.NewIDAddress(idVal.Val.(*big.Int).Uint64())
-	// require.NoError(t, err)
-
-	// return idAddr
-
-	return address.Undef
 }
 
 // ApplyTestMessage sends a message directly to the vm, bypassing message
