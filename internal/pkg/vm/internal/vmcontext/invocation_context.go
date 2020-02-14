@@ -299,7 +299,7 @@ func (ctx *invocationContext) CreateActor(actorID types.Uint64, code cid.Cid, co
 		runtime.Abortf(exitcode.ErrIllegalArgument, "Can only create built-in actors.")
 	}
 
-	if isSingletonActor(code) {
+	if builtin.IsSingletonActor(code) {
 		runtime.Abortf(exitcode.ErrIllegalArgument, "Can only have one instance of singleton actors.")
 	}
 
@@ -366,26 +366,12 @@ func (ctx *patternContext2) CallerAddr() address.Address {
 	return ctx.msg.from
 }
 
-// Dragons: move this to specs-actors
+// Dragons: delete once we remove the bootstrap miner
 func isBuiltinActor(code cid.Cid) bool {
-	return code.Equals(builtin.AccountActorCodeID) ||
-		code.Equals(builtin.CronActorCodeID) ||
-		code.Equals(builtin.InitActorCodeID) ||
-		code.Equals(builtin.MultisigActorCodeID) ||
-		code.Equals(builtin.PaymentChannelActorCodeID) ||
-		code.Equals(builtin.RewardActorCodeID) ||
-		code.Equals(builtin.StorageMarketActorCodeID) ||
-		code.Equals(builtin.StorageMinerActorCodeID) ||
-		code.Equals(builtin.StoragePowerActorCodeID) ||
-		code.Equals(types.BootstrapMinerActorCodeCid)
-}
-
-// Dragons: move this to specs-actors
-func isSingletonActor(code cid.Cid) bool {
-	return code.Equals(builtin.CronActorCodeID) ||
-		code.Equals(builtin.InitActorCodeID) ||
-		code.Equals(builtin.StorageMarketActorCodeID) ||
-		code.Equals(builtin.StoragePowerActorCodeID)
+	if code.Equals(types.BootstrapMinerActorCodeCid) {
+		return true
+	}
+	return builtin.IsBuiltinActor(code)
 }
 
 func computeActorAddress(creator address.Address, nonce uint64) (address.Address, error) {
