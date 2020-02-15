@@ -5,20 +5,18 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -26,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/stretchr/testify/require"
 )
 
 // RequireMakeStateTree takes a map of addresses to actors and stores them on
@@ -118,13 +115,6 @@ func RequireLookupActor(ctx context.Context, t *testing.T, st state.Tree, vms vm
 	return nil, address.Undef
 }
 
-// RequireNewAccountActor creates a new account actor without adding it to state
-func RequireNewAccountActor(t *testing.T, value abi.TokenAmount) *actor.Actor {
-	act, err := account.NewActor(value)
-	require.NoError(t, err)
-	return act
-}
-
 // RequireNewFakeActor instantiates and returns a new fake actor and requires
 // that its steps succeed.
 func RequireNewFakeActor(t *testing.T, vms vm.Storage, addr address.Address, codeCid cid.Cid) *actor.Actor {
@@ -214,6 +204,7 @@ func CreateTestMinerWith(
 	require.True(t, found)
 
 	nonce := RequireGetNonce(t, st, vms, idAddr)
+	// Change this to go to the power actor when the new actors are integrated
 	msg := types.NewUnsignedMessage(minerOwnerAddr, vmaddr.StorageMarketAddress, nonce, collateral, storagemarket.CreateStorageMiner, pdata)
 
 	result, err := ApplyTestMessage(st, vms, msg, types.NewBlockHeight(height))

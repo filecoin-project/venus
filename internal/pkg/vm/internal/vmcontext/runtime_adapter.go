@@ -5,16 +5,17 @@ import (
 	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
+
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
 type runtimeAdapter struct {
@@ -68,7 +69,7 @@ func (a *runtimeAdapter) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok 
 }
 
 // GetRandomness implements Runtime.
-func (a *runtimeAdapter) GetRandomness(epoch abi.ChainEpoch) abi.RandomnessSeed {
+func (a *runtimeAdapter) GetRandomness(tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) abi.Randomness {
 	return a.ctx.Runtime().Randomness(epoch)
 }
 
@@ -196,8 +197,8 @@ func (w syscallsWrapper) VerifySignature(signature crypto.Signature, signer addr
 	panic("TODO")
 }
 
-// Hash_SHA256 implements Syscalls.
-func (w syscallsWrapper) Hash_SHA256(data []byte) []byte { // nolint: golint
+// HashBlake2b implements Syscalls.
+func (w syscallsWrapper) HashBlake2b(data []byte) [8]byte { // nolint: golint
 	panic("TODO")
 }
 

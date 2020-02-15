@@ -93,7 +93,7 @@ func (tc *FakeVMContext) CurrentEpoch() abi.ChainEpoch {
 }
 
 // Randomness provides random bytes used in verification challenges
-func (tc *FakeVMContext) Randomness(epoch abi.ChainEpoch) abi.RandomnessSeed {
+func (tc *FakeVMContext) Randomness(epoch abi.ChainEpoch) abi.Randomness {
 	rnd, _ := tc.Sampler(types.NewBlockHeight((uint64)(epoch)))
 	return rnd
 }

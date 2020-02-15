@@ -7,6 +7,8 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
+	logging "github.com/ipfs/go-log"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding/gen"
@@ -14,11 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	logging "github.com/ipfs/go-log"
 )
 
 // var base = "/tmp/encoding_gen"
@@ -34,36 +31,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := gen.WriteToFile(filepath.Join(base, "actor/builtin/initactor/initactor_encoding_gen.go"), gen.IpldCborTypeEncodingGenerator{}, "initactor",
-		initactor.State{}, // actor/builtin/initactor/init.go
-	); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	if err := gen.WriteToFile(filepath.Join(base, "actor/builtin/miner/miner_encoding_gen.go"), gen.IpldCborTypeEncodingGenerator{}, "miner",
-		miner.State{}, // actor/builtin/miner/miner.go
-		miner.Ask{},   // actor/builtin/miner/miner.go
-	); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	if err := gen.WriteToFile(filepath.Join(base, "actor/builtin/account/account_encoding_gen.go"), gen.IpldCborTypeEncodingGenerator{}, "account",
-		account.State{}, // actor/builtin/account/account.go
-	); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
 	// cbor.BigIntAtlasEntry,          // actor/built-in/miner.go XXX: atlas
-
-	if err := gen.WriteToFile(filepath.Join(base, "actor/builtin/storagemarket/storagemarket_encoding_gen.go"), gen.IpldCborTypeEncodingGenerator{}, "storagemarket",
-		storagemarket.State{}, // actor/builtin/storagemarket/storagemarket.go
-	); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
 
 	// struct{}{},                     // actor/built-in/storagemarket.go XXX: unit aint working
 	// address.Address{}, // address/address.go XXX: custom

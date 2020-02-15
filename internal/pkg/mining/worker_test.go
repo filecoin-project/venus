@@ -6,17 +6,19 @@ import (
 	"testing"
 	"time"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	dag "github.com/ipfs/go-merkledag"
+
+	bls "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -47,12 +49,12 @@ func TestLookbackElection(t *testing.T) {
 	mockSigner := &mockSignerVal
 
 	builder := chain.NewBuilder(t, address.Undef)
-	lookback := consensus.ElectionLookback
+	lookback := miner.ElectionLookback
 	head := builder.NewGenesis()
-	for i := 1; i < lookback; i++ {
+	for i := 1; i < int(lookback); i++ {
 		head = builder.AppendOn(head, 1)
 	}
-	ancestors := builder.RequireTipSets(head.Key(), lookback)
+	ancestors := builder.RequireTipSets(head.Key(), int(lookback))
 
 	st, pool, addrs, bs := sharedSetup(t, mockSignerVal)
 	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
@@ -299,7 +301,7 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 	addr1, addr2, addr3, addr5 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2], mockSigner.Addresses[4]
 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward failures.
-		vmaddr.LegacyNetworkAddress: th.RequireNewAccountActor(t, abi.NewTokenAmount(1000000)),
+		vmaddr.LegacyNetworkAddress: actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(1000000)),
 	})
 	th.RequireInitAccountActor(ctx, t, st, vms, addr1, types.NewAttoFILFromFIL(100))
 	th.RequireInitAccountActor(ctx, t, st, vms, addr2, types.NewAttoFILFromFIL(100))

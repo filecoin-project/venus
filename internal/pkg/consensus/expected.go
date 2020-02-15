@@ -1,8 +1,5 @@
 package consensus
 
-// This is to implement Expected Consensus protocol
-// See: https://github.com/filecoin-project/specs/blob/master/expected-consensus.md
-
 import (
 	"context"
 	"math/big"
@@ -11,6 +8,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -28,7 +27,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -56,10 +54,6 @@ var (
 	ErrReceiptRootMismatch = errors.New("blocks receipt root does not match parent tip set")
 )
 
-// ElectionLookback is the number of tipsets past the head (inclusive)) that
-// must be traversed to sample the election ticket.
-const ElectionLookback = 1
-
 // challengeBits is the number of bits in the challenge ticket's domain
 const challengeBits = 256
 
@@ -73,7 +67,7 @@ const expectedLeadersPerEpoch = 5
 // largest sector size - this constant will need to be reconsidered.
 // https://github.com/filecoin-project/specs/pull/318
 // NOTE(anorth): This height is excessive, but safe, with the Rational PoSt construction.
-var AncestorRoundsNeeded = max(miner.LargestSectorSizeProvingPeriodBlocks+miner.PoStChallengeWindowBlocks, ElectionLookback)
+var AncestorRoundsNeeded = max(miner.ProvingPeriod+power.WindowedPostChallengeDuration, miner.ElectionLookback)
 
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
@@ -195,7 +189,7 @@ func (c *Expected) validateMining(
 	parentWeight fbig.Int,
 	parentReceiptRoot cid.Cid) error {
 
-	electionTicket, err := sampling.SampleNthTicket(ElectionLookback-1, ancestors)
+	electionTicket, err := sampling.SampleNthTicket(int(miner.ElectionLookback-1), ancestors)
 	if err != nil {
 		return errors.Wrap(err, "failed to sample election ticket from ancestors")
 	}
@@ -380,7 +374,7 @@ func verifyBLSMessageAggregate(sig types.Signature, msgs []*types.UnsignedMessag
 	return nil
 }
 
-func max(a, b int) int {
+func max(a, b abi.ChainEpoch) abi.ChainEpoch {
 	if a >= b {
 		return a
 	}

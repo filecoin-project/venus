@@ -6,14 +6,13 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	aabi "github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
@@ -72,7 +71,7 @@ func MinerCreate(
 		collateral,
 		gasPrice,
 		gasLimit,
-		storagemarket.CreateStorageMiner,
+		types.MethodID(builtin.MethodsPower.CreateMiner),
 		sectorSize,
 		pid,
 	)
@@ -135,7 +134,7 @@ func MinerPreviewCreate(
 		ctx,
 		fromAddr,
 		vmaddr.StorageMarketAddress,
-		storagemarket.CreateStorageMiner,
+		types.MethodID(builtin.MethodsPower.CreateMiner),
 		sectorSize,
 		pid,
 	)
@@ -280,7 +279,7 @@ func MinerSetWorkerAddress(
 		types.ZeroAttoFIL,
 		gasPrice,
 		gasLimit,
-		minerActor.ChangeWorker,
+		types.MethodID(builtin.MethodsMiner.ChangeWorkerAddress),
 		workerAddr)
 	return c, err
 }
