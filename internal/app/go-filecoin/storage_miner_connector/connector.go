@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-storage-miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
@@ -21,7 +22,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -163,7 +163,7 @@ func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, pieces ..
 		types.NewGasPrice(1),
 		types.NewGasUnits(300),
 		true,
-		storagemarket.PublishStorageDeals,
+		types.MethodID(builtin.MethodsMarket.PublishStorageDeals),
 		dealParams,
 	)
 	if err != nil {
@@ -248,7 +248,7 @@ func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sec
 		types.NewGasPrice(1),
 		types.NewGasUnits(300),
 		true,
-		storagemarket.PreCommitSector,
+		types.MethodID(builtin.MethodsMiner.PreCommitSector),
 		precommitParams,
 	)
 	if err != nil {
@@ -297,7 +297,7 @@ func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, s
 		types.NewGasPrice(1),
 		types.NewGasUnits(300),
 		true,
-		storagemarket.CommitSector,
+		types.MethodID(builtin.MethodsMiner.ProveCommitSector),
 		commitParams,
 	)
 	if err != nil {

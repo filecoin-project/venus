@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -91,14 +92,14 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		nextRoot, miners, m2w := setTree(ctx, t, kis, cistore, bstore, genesisBlock.StateRoot.Cid)
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
 		ancestors := make([]block.TipSet, 5)
-		for i := 0; i < consensus.ElectionLookback; i++ {
+		for i := 0; i < int(miner.ElectionLookback); i++ {
 			ancestorBlk := requireMakeNBlocks(t, 1, pTipSet, nextRoot, types.EmptyReceiptsCID, miners, m2w, mockSigner)
 			ancestors[i] = th.RequireNewTipSet(t, ancestorBlk...)
 			pTipSet = ancestors[i]
 		}
 
 		isLookingBack := func(ticket block.Ticket) {
-			expTicket, err := ancestors[consensus.ElectionLookback-1].MinTicket()
+			expTicket, err := ancestors[miner.ElectionLookback-1].MinTicket()
 			require.NoError(t, err)
 			assert.Equal(t, expTicket, ticket)
 		}

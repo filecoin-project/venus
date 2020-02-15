@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
@@ -219,7 +220,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- Output{Err: err}
 		return
 	}
-	electionTicket, err := sampling.SampleNthTicket(consensus.ElectionLookback-1, ancestors)
+	electionTicket, err := sampling.SampleNthTicket(int(miner.ElectionLookback-1), ancestors)
 	if err != nil {
 		log.Warnf("Worker.Mine couldn't read parent ticket %s", err)
 		outCh <- Output{Err: err}

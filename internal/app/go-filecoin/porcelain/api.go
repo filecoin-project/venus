@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 )
 
 // API is the porcelain implementation, a set of convenience calls written on the
@@ -99,11 +98,6 @@ func (a *API) MinerPreviewCreate(
 // MinerGetStatus queries for status of a miner.
 func (a *API) MinerGetStatus(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (MinerStatus, error) {
 	return MinerGetStatus(ctx, a, minerAddr, baseKey)
-}
-
-// MinerGetAsk queries for an ask of the given miner
-func (a *API) MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (minerActor.Ask, error) {
-	panic("implement me in terms of the storage market module")
 }
 
 // MinerSetPrice configures the price of storage. See implementation for details.

@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
@@ -57,9 +58,9 @@ func TestGenGenLoading(t *testing.T) {
 	o := td.Run("actor", "ls").AssertSuccess()
 
 	stdout := o.ReadStdout()
-	assert.Contains(t, stdout, `"MinerActor"`)
-	assert.Contains(t, stdout, `"StoragemarketActor"`)
-	assert.Contains(t, stdout, `"InitActor"`)
+	assert.Contains(t, stdout, builtin.StoragePowerActorCodeID.String())
+	assert.Contains(t, stdout, builtin.StorageMarketActorCodeID.String())
+	assert.Contains(t, stdout, builtin.InitActorCodeID.String())
 }
 
 func TestGenGenDeterministicBetweenBuilds(t *testing.T) {

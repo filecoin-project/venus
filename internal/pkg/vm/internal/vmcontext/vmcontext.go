@@ -44,7 +44,7 @@ type VM struct {
 
 // RandomnessSource provides randomness to actors.
 type RandomnessSource interface {
-	Randomness(epoch abi.ChainEpoch) abi.RandomnessSeed
+	Randomness(epoch abi.ChainEpoch) abi.Randomness
 }
 
 // ActorImplLookup provides access to upgradeable actor code.
@@ -528,7 +528,7 @@ func (vm *VM) CurrentEpoch() abi.ChainEpoch {
 }
 
 // Randomness implements runtime.Runtime.
-func (vm *VM) Randomness(epoch abi.ChainEpoch) abi.RandomnessSeed {
+func (vm *VM) Randomness(epoch abi.ChainEpoch) abi.Randomness {
 	return vm.rnd.Randomness(epoch)
 }
 

@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 )
 
 var minerCmd = &cmds.Command{
@@ -264,7 +264,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 				req.Context,
 				fromAddr,
 				minerAddr,
-				miner.UpdatePeerID,
+				types.MethodID(builtin.MethodsMiner.ChangePeerID),
 				newPid,
 			)
 			if err != nil {
@@ -285,7 +285,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			types.ZeroAttoFIL,
 			gasPrice,
 			gasLimit,
-			miner.UpdatePeerID,
+			types.MethodID(builtin.MethodsMiner.ChangePeerID),
 			newPid,
 		)
 		if err != nil {

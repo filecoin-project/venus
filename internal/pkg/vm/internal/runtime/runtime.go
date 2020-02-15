@@ -17,7 +17,7 @@ type Runtime interface {
 	// CurrentEpoch is the current chain epoch.
 	CurrentEpoch() abi.ChainEpoch
 	// Randomness gives the actors access to sampling peudo-randomess from the chain.
-	Randomness(epoch abi.ChainEpoch) abi.RandomnessSeed
+	Randomness(epoch abi.ChainEpoch) abi.Randomness
 	// Storage is the raw store for IPLD objects.
 	//
 	// Note: this is required for custom data structures.

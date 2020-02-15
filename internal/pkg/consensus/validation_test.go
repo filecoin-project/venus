@@ -5,16 +5,17 @@ import (
 	"fmt"
 	"testing"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -183,8 +184,7 @@ func TestIngestionValidator(t *testing.T) {
 }
 
 func newActor(t *testing.T, balanceAF int, nonce uint64) *actor.Actor {
-	actor, err := account.NewActor(abi.NewTokenAmount(int64(balanceAF)))
-	require.NoError(t, err)
+	actor := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(int64(balanceAF)))
 	actor.CallSeqNum = nonce
 	return actor
 }

@@ -6,10 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
@@ -17,8 +21,6 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
@@ -56,7 +58,7 @@ func TestOutbox(t *testing.T) {
 		head := provider.BuildOneOn(block.UndefTipSet, func(b *chain.BlockBuilder) {
 			b.IncHeight(1000)
 		})
-		actr, _ := account.NewActor(abi.NewTokenAmount(0))
+		actr := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0))
 		actr.CallSeqNum = 42
 		provider.SetHeadAndActor(t, head.Key(), sender, actr)
 
@@ -100,7 +102,7 @@ func TestOutbox(t *testing.T) {
 		head := provider.BuildOneOn(block.UndefTipSet, func(b *chain.BlockBuilder) {
 			b.IncHeight(1000)
 		})
-		actr, _ := account.NewActor(abi.NewTokenAmount(0))
+		actr := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0))
 		actr.CallSeqNum = 42
 		provider.SetHeadAndActor(t, head.Key(), sender, actr)
 
@@ -150,7 +152,7 @@ func TestOutbox(t *testing.T) {
 		provider := message.NewFakeProvider(t)
 
 		head := provider.NewGenesis()
-		actr := storagemarket.NewActor() // Not an account actor
+		actr := actor.NewActor(builtin.StorageMarketActorCodeID, abi.NewTokenAmount(0))
 		provider.SetHeadAndActor(t, head.Key(), sender, actr)
 
 		ob := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, message.NullPolicy{}, provider, provider, newOutboxTestJournal(t))

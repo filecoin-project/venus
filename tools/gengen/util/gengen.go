@@ -8,6 +8,8 @@ import (
 	"strconv"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -32,7 +34,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -208,11 +209,8 @@ func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, k
 		return fmt.Errorf("keys do not match prealloc")
 	}
 
-	netact, err := account.NewActor(abi.NewTokenAmount(1000000000000))
-	if err != nil {
-		return err
-	}
-	err = st.SetActor(context.Background(), vmaddr.LegacyNetworkAddress, netact)
+	netact := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(1000000000000))
+	err := st.SetActor(context.Background(), vmaddr.LegacyNetworkAddress, netact)
 	if err != nil {
 		return err
 	}

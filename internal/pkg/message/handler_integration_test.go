@@ -5,7 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +21,6 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 )
 
 // TestNewHeadHandlerIntegration tests inbox and outbox policy consistency.
@@ -51,7 +54,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 	t.Run("test send after reverted message", func(t *testing.T) {
 		provider := message.NewFakeProvider(t)
 		root := provider.NewGenesis()
-		actr, _ := account.NewActor(abi.NewTokenAmount(0))
+		actr := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0))
 		actr.CallSeqNum = 42
 		provider.SetHeadAndActor(t, root.Key(), sender, actr)
 

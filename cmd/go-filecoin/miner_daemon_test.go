@@ -21,7 +21,6 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
@@ -119,6 +118,7 @@ func TestMinerCreate(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	testAddr := fixtures.TestAddresses[2]
+	minCollateral, _ := types.NewAttoFILFromFILString("0.001")
 
 	t.Run("success", func(t *testing.T) {
 
@@ -140,7 +140,7 @@ func TestMinerCreate(t *testing.T) {
 				args = append(args, "--peerid", pid.Pretty())
 			}
 
-			collateral := miner.MinimumCollateralPerSector.CalculatePrice(types.NewBytesAmount(1000000 * types.OneKiBSectorSize.Uint64()))
+			collateral := minCollateral.CalculatePrice(types.NewBytesAmount(1000000 * types.OneKiBSectorSize.Uint64()))
 			args = append(args, collateral.String())
 
 			var wg sync.WaitGroup

@@ -14,7 +14,7 @@ func NewProdRandomnessSource() RandomnessSource {
 
 var _ RandomnessSource = (*prodRndSource)(nil)
 
-func (*prodRndSource) Randomness(epoch abi.ChainEpoch) abi.RandomnessSeed {
+func (*prodRndSource) Randomness(epoch abi.ChainEpoch) abi.Randomness {
 	// TODO: implement randomness based on new spec (issue: #3717)
 	return []byte{}
 }

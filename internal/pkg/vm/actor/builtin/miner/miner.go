@@ -984,7 +984,8 @@ func GetProofsMode(ctx invocationContext) (types.ProofsMode, error) {
 func CollateralForSector(sectorSize *types.BytesAmount) types.AttoFIL {
 	// TODO: Replace this function with the baseline pro-rata construction.
 	// https://github.com/filecoin-project/go-filecoin/issues/2866
-	return MinimumCollateralPerSector
+	f, _ := types.NewAttoFILFromFILString("0.001")
+	return f
 }
 
 // LatePoStGracePeriod is the number of blocks after a proving period ends
