@@ -25,7 +25,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.1
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200114015900-4103afa82689
 	github.com/filecoin-project/go-storage-miner v0.0.0-20200122233640-6a01988b8217
-	github.com/filecoin-project/specs-actors v0.0.0-20200214230118-d4471a94e805
+	github.com/filecoin-project/specs-actors v0.0.0-20200214231017-c3be15e301c4
 	github.com/fxamacker/cbor v1.5.0
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/golangci/golangci-lint v1.21.0

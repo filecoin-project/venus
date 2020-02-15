@@ -1,14 +1,22 @@
 package storagemarketconnector
 
 import (
+	"bytes"
 	"context"
 	"io"
+	"math"
 
 	"github.com/filecoin-project/go-address"
+	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	aabi "github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	spasm "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	spaminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
@@ -20,7 +28,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
-	fcsm "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -81,24 +88,31 @@ func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr add
 
 // PublishDeals publishes storage deals on chain
 func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (storagemarket.DealID, cid.Cid, error) {
-	sig := types.Signature(deal.Proposal.ProposerSignature.Data)
-
-	fcStorageProposal := types.StorageDealProposal{
-		PieceRef:  deal.Proposal.PieceRef,
-		PieceSize: types.Uint64(deal.Proposal.PieceSize),
-
-		Client:   deal.Proposal.Client,
-		Provider: deal.Proposal.Provider,
-
-		ProposalExpiration: types.Uint64(deal.Proposal.ProposalExpiration),
-		Duration:           types.Uint64(deal.Proposal.Duration),
-
-		StoragePricePerEpoch: types.Uint64(deal.Proposal.StoragePricePerEpoch.Uint64()),
-		StorageCollateral:    types.Uint64(deal.Proposal.StorageCollateral.Uint64()),
-
-		ProposerSignature: &sig,
+	fcStorageProposal := market.DealProposal{
+		PieceCID:             commcid.PieceCommitmentV1ToCID(deal.Proposal.PieceRef),
+		PieceSize:            aabi.PaddedPieceSize(deal.Proposal.PieceSize),
+		Client:               deal.Proposal.Client,
+		Provider:             deal.Proposal.Provider,
+		StartEpoch:           0,             // TODO populate when the miner module provides this value
+		EndEpoch:             math.MaxInt32, // TODO populate when the miner module provides this value
+		StoragePricePerEpoch: aabi.TokenAmount(deal.Proposal.StoragePricePerEpoch),
+		ProviderCollateral:   aabi.TokenAmount(deal.Proposal.StorageCollateral),
+		ClientCollateral:     big.Zero(),
 	}
-	params, err := abi.ToEncodedValues([]types.StorageDealProposal{fcStorageProposal})
+
+	params := market.PublishStorageDealsParams{Deals: []market.ClientDealProposal{
+		{
+			Proposal: fcStorageProposal,
+			// TODO populate when the miner module provides this value
+			ClientSignature: crypto.Signature{
+				Type: crypto.SigTypeUnknown,
+				Data: deal.Proposal.ProposerSignature.Data,
+			},
+		},
+	}}
+
+	var paramBytes bytes.Buffer
+	err := params.MarshalCBOR(&paramBytes)
 	if err != nil {
 		return 0, cid.Undef, err
 	}
@@ -116,8 +130,8 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 		types.NewGasPrice(1),
 		types.NewGasUnits(300),
 		true,
-		fcsm.PublishStorageDeals,
-		params,
+		types.MethodID(builtin.MethodsMarket.PublishStorageDeals),
+		paramBytes,
 	)
 	if err != nil {
 		return 0, cid.Undef, err
