@@ -14,7 +14,6 @@ func init() {
 	encoding.RegisterIpldCborType(Commitments{})
 	encoding.RegisterIpldCborType(FaultSet{})
 	encoding.RegisterIpldCborType(KeyInfo{})
-	encoding.RegisterIpldCborType(MessageReceipt{})
 	encoding.RegisterIpldCborType(UnsignedMessage{})
 	encoding.RegisterIpldCborType(TxMeta{})
 	encoding.RegisterIpldCborType(Predicate{})

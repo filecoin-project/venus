@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
@@ -23,11 +25,11 @@ var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
 
 var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
 
-func testWaitHelp(wg *sync.WaitGroup, t *testing.T, waiter *Waiter, expectMsg *types.SignedMessage, expectError bool, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) {
+func testWaitHelp(wg *sync.WaitGroup, t *testing.T, waiter *Waiter, expectMsg *types.SignedMessage, expectError bool, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) {
 	expectCid, err := expectMsg.Cid()
 	if cb == nil {
 		cb = func(b *block.Block, msg *types.SignedMessage,
-			rcp *types.MessageReceipt) error {
+			rcp *vm.MessageReceipt) error {
 			assert.True(t, types.SmsgCidsEqual(expectMsg, msg))
 			if wg != nil {
 				wg.Done()
@@ -135,7 +137,7 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 	_, _, _, waiter := setupTest(t)
 
 	failIfCalledCb := func(b *block.Block, msg *types.SignedMessage,
-		rcp *types.MessageReceipt) error {
+		rcp *vm.MessageReceipt) error {
 		assert.Fail(t, "Should not be called -- message doesnt exist")
 		return nil
 	}
@@ -180,14 +182,14 @@ func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, ro
 	if err != nil {
 		panic(err)
 	}
-	emptyReceiptsCid, err := msgStore.StoreReceipts(context.Background(), []*types.MessageReceipt{})
+	emptyReceiptsCid, err := msgStore.StoreReceipts(context.Background(), []vm.MessageReceipt{})
 	if err != nil {
 		panic(err)
 	}
 
 	for _, tsMsgs := range msgSets {
 		var blocks []*block.Block
-		receipts := []*types.MessageReceipt{}
+		receipts := []vm.MessageReceipt{}
 		// If a message set does not contain a slice of messages then
 		// add a tipset with no messages and a single block to the chain
 		if len(tsMsgs) == 0 {
@@ -206,7 +208,7 @@ func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, ro
 				if err != nil {
 					panic(err)
 				}
-				receipts = append(receipts, &types.MessageReceipt{ExitCode: 0, Return: [][]byte{c.Bytes()}, GasAttoFIL: types.ZeroAttoFIL})
+				receipts = append(receipts, vm.MessageReceipt{ExitCode: 0, ReturnValue: c.Bytes(), GasUsed: gas.Zero})
 			}
 			txMeta, err := msgStore.StoreMessages(context.Background(), msgs, []*types.UnsignedMessage{})
 			if err != nil {

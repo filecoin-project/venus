@@ -188,7 +188,7 @@ var signedMsgSendCmd = &cmds.Command{
 // WaitResult is the result of a message wait call.
 type WaitResult struct {
 	Message   *types.SignedMessage
-	Receipt   *types.MessageReceipt
+	Receipt   *vm.MessageReceipt
 	Signature vm.ActorMethodSignature
 }
 
@@ -223,7 +223,7 @@ var msgWaitCmd = &cmds.Command{
 		ctx, cancel := context.WithTimeout(req.Context, timeoutDuration)
 		defer cancel()
 
-		err = GetPorcelainAPI(env).MessageWait(ctx, msgCid, func(blk *block.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
+		err = GetPorcelainAPI(env).MessageWait(ctx, msgCid, func(blk *block.Block, msg *types.SignedMessage, receipt *vm.MessageReceipt) error {
 			found = true
 			sig, err := GetPorcelainAPI(env).ActorGetSignature(req.Context, msg.Message.To, msg.Message.Method)
 			if err != nil && err != cst.ErrNoMethod && err != cst.ErrNoActorImpl {
@@ -270,7 +270,7 @@ var msgWaitCmd = &cmds.Command{
 			}
 
 			if returnOpt && res.Receipt != nil && res.Signature != nil {
-				val, err := res.Signature.ReturnInterface(res.Receipt.Return[0])
+				val, err := res.Signature.ReturnInterface(res.Receipt.ReturnValue)
 				if err != nil {
 					return errors.Wrap(err, "unable to deserialize return value")
 				}

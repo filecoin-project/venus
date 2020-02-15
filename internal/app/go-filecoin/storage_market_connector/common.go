@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -72,8 +73,8 @@ func (c *connectorCommon) MostRecentStateId(_ context.Context) (storagemarket.St
 	return &stateKey{key, height}, nil
 }
 
-func (c *connectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan error) (*types.MessageReceipt, error) {
-	receiptChan := make(chan *types.MessageReceipt)
+func (c *connectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan error) (*vm.MessageReceipt, error) {
+	receiptChan := make(chan *vm.MessageReceipt)
 	errChan := make(chan error)
 
 	err := <-pubErrCh
@@ -82,7 +83,7 @@ func (c *connectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan 
 	}
 
 	go func() {
-		err := c.waiter.Wait(ctx, mcid, func(b *block.Block, message *types.SignedMessage, r *types.MessageReceipt) error {
+		err := c.waiter.Wait(ctx, mcid, func(b *block.Block, message *types.SignedMessage, r *vm.MessageReceipt) error {
 			receiptChan <- r
 			return nil
 		})
@@ -225,7 +226,7 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 		return err
 	}
 
-	return c.waiter.WaitPredicate(ctx, pred, func(_ *block.Block, msg *types.SignedMessage, _ *types.MessageReceipt) error {
+	return c.waiter.WaitPredicate(ctx, pred, func(_ *block.Block, msg *types.SignedMessage, _ *vm.MessageReceipt) error {
 		sectorID, err := decodeSectorID(msg)
 		cb(sectorID, err)
 		return err

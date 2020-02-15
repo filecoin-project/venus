@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -19,7 +18,7 @@ import (
 // ExecutionError might be set and the message can still be applied successfully.
 // See ApplyMessage() for details.
 type ApplicationResult struct {
-	Receipt        *types.MessageReceipt
+	Receipt        *vm.MessageReceipt
 	ExecutionError error
 }
 

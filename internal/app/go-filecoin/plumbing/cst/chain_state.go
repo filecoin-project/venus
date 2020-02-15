@@ -131,7 +131,7 @@ func (chn *ChainStateReadWriter) GetMessages(ctx context.Context, metaCid cid.Ci
 }
 
 // GetReceipts gets a receipt collection by CID.
-func (chn *ChainStateReadWriter) GetReceipts(ctx context.Context, id cid.Cid) ([]*types.MessageReceipt, error) {
+func (chn *ChainStateReadWriter) GetReceipts(ctx context.Context, id cid.Cid) ([]vm.MessageReceipt, error) {
 	return chn.messageProvider.LoadReceipts(ctx, id)
 }
 

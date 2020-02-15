@@ -175,7 +175,7 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 		bytes.Equal([]byte(*proposal.ProposerSignature), deal.Proposal.ProposerSignature.Data)
 
 	if equals {
-		sectorIDVal, err := abi.Deserialize(chnMsg.Receipt.Return[0], abi.SectorID)
+		sectorIDVal, err := abi.Deserialize(chnMsg.Receipt.ReturnValue, abi.SectorID)
 		if err != nil {
 			return 0, err
 		}

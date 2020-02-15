@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	aabi "github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -62,13 +64,13 @@ func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Addres
 	return mpc.msgCid, nil, nil
 }
 
-func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
 	assert.Equal(mpc.testing, msgCid, msgCid)
-	receipt := &types.MessageReceipt{
-		Return:   [][]byte{mpc.address.Bytes()},
-		ExitCode: uint8(0),
+	receipt := vm.MessageReceipt{
+		ReturnValue: mpc.address.Bytes(),
+		ExitCode:    exitcode.Ok,
 	}
-	return cb(nil, nil, receipt)
+	return cb(nil, nil, &receipt)
 }
 
 func (mpc *minerCreate) WalletDefaultAddress() (address.Address, error) {
@@ -183,7 +185,7 @@ func (p *mSetWorkerPlumbing) MessageSend(ctx context.Context, from, to address.A
 	return types.EmptyMessagesCID, nil, nil
 }
 
-func (p *mSetWorkerPlumbing) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+func (p *mSetWorkerPlumbing) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
 	if p.msgWaitFail {
 		return errors.New("MsgWaitFail")
 	}

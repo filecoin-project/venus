@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 // BlockValidator defines an interface used to validate a blocks syntax and
@@ -41,7 +42,7 @@ type MessageSyntaxValidator interface {
 	ValidateMessagesSyntax(ctx context.Context, messages []*types.SignedMessage) error
 	ValidateUnsignedMessagesSyntax(ctx context.Context, messages []*types.UnsignedMessage) error
 	// TODO: Remove receipt validation when they're no longer fetched, #3489
-	ValidateReceiptsSyntax(ctx context.Context, receipts []*types.MessageReceipt) error
+	ValidateReceiptsSyntax(ctx context.Context, receipts []vm.MessageReceipt) error
 }
 
 // DefaultBlockValidator implements the BlockValidator interface.
@@ -145,6 +146,6 @@ func (dv *DefaultBlockValidator) ValidateUnsignedMessagesSyntax(ctx context.Cont
 // ValidateReceiptsSyntax validates a set of receipts are correctly formed.
 // TODO: Create a real implementation
 // See: https://github.com/filecoin-project/go-filecoin/issues/3312
-func (dv *DefaultBlockValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []*types.MessageReceipt) error {
+func (dv *DefaultBlockValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []vm.MessageReceipt) error {
 	return nil
 }

@@ -211,7 +211,7 @@ func CreateTestMinerWith(
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NoError(t, result.ExecutionError)
-	addr, err := address.NewFromBytes(result.Receipt.Return[0])
+	addr, err := address.NewFromBytes(result.Receipt.ReturnValue)
 	require.NoError(t, err)
 	return addr
 }
@@ -276,8 +276,7 @@ func GetTotalPower(t *testing.T, st state.Tree, vms vm.Storage) *types.BytesAmou
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 	require.Equal(t, uint8(0), res.Receipt.ExitCode)
-	require.Equal(t, 1, len(res.Receipt.Return))
-	return types.NewBytesAmountFromBytes(res.Receipt.Return[0])
+	return types.NewBytesAmountFromBytes(res.Receipt.ReturnValue)
 }
 
 // RequireGetNonce returns the next nonce of the actor at address a within

@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -196,11 +197,11 @@ func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, pieces ..
 // mined into a block, producing a slice of deal IDs and an exit code when it is
 // mined into a block (or an error, if encountered).
 func (m *StorageMinerNodeConnector) WaitForSelfDeals(ctx context.Context, mcid cid.Cid) ([]uint64, uint8, error) {
-	receiptChan := make(chan *types.MessageReceipt)
+	receiptChan := make(chan *vm.MessageReceipt)
 	errChan := make(chan error)
 
 	go func() {
-		err := m.waiter.Wait(ctx, mcid, func(b *block.Block, message *types.SignedMessage, r *types.MessageReceipt) error {
+		err := m.waiter.Wait(ctx, mcid, func(b *block.Block, message *types.SignedMessage, r *vm.MessageReceipt) error {
 			receiptChan <- r
 			return nil
 		})
@@ -212,11 +213,11 @@ func (m *StorageMinerNodeConnector) WaitForSelfDeals(ctx context.Context, mcid c
 	select {
 	case receipt := <-receiptChan:
 		if receipt.ExitCode != 0 {
-			return nil, receipt.ExitCode, nil
+			return nil, (uint8)(receipt.ExitCode), nil
 		}
 
 		var ret market.PublishStorageDealsReturn
-		err := encoding.Decode(receipt.Return[0], &ret)
+		err := encoding.Decode(receipt.ReturnValue, &ret)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -396,10 +397,10 @@ func (m *StorageMinerNodeConnector) waitForMessageHeight(ctx context.Context, mc
 	errChan := make(chan error)
 
 	go func() {
-		err := m.waiter.Wait(ctx, mcid, func(b *block.Block, message *types.SignedMessage, r *types.MessageReceipt) error {
+		err := m.waiter.Wait(ctx, mcid, func(b *block.Block, message *types.SignedMessage, r *vm.MessageReceipt) error {
 			height <- heightAndExitCode{
 				height:   b.Height,
-				exitCode: r.ExitCode,
+				exitCode: (uint8)(r.ExitCode),
 			}
 			return nil
 		})

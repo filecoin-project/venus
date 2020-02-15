@@ -92,8 +92,7 @@ func main() {
 		types.Commitments{}, // types/commitments.go
 		types.FaultSet{},    // types/fault_set.go
 		// types.IntSet{},      // types/intset.go XXX: custom
-		types.KeyInfo{},        // types/keyinfo.go
-		types.MessageReceipt{}, // types/message_receipts.go
+		types.KeyInfo{}, // types/keyinfo.go
 		// types.MessageCollection{}, // types/message.go // XXX: array
 		// types.ReceiptCollection{}, // types/message.go // XXX: array
 		types.UnsignedMessage{}, // types/message.go

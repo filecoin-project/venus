@@ -150,7 +150,7 @@ func (api *API) ChainGetMessages(ctx context.Context, metaCid cid.Cid) ([]*types
 }
 
 // ChainGetReceipts gets a receipt collection by CID
-func (api *API) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]*types.MessageReceipt, error) {
+func (api *API) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]vm.MessageReceipt, error) {
 	return api.chain.GetReceipts(ctx, id)
 }
 
@@ -279,7 +279,7 @@ func (api *API) MessageFind(ctx context.Context, mcid cid.Cid) (*msg.ChainMessag
 // the case that it appears in a newly mined block. An error is returned if one is
 // encountered or if the context is canceled. Otherwise, it waits forever for the message
 // to appear on chain.
-func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
 	return api.msgWaiter.Wait(ctx, msgCid, cb)
 }
 

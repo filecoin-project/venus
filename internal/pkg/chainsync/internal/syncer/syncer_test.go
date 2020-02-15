@@ -25,6 +25,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -419,7 +420,7 @@ func newPoisonValidator(t *testing.T, headerFailure, fullFailure uint64) *poison
 	return &poisonValidator{headerFailureTS: headerFailure, fullFailureTS: fullFailure}
 }
 
-func (pv *poisonValidator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ []block.TipSet, _ fbig.Int, _ cid.Cid, _ cid.Cid) (cid.Cid, []*types.MessageReceipt, error) {
+func (pv *poisonValidator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ []block.TipSet, _ fbig.Int, _ cid.Cid, _ cid.Cid) (cid.Cid, []vm.MessageReceipt, error) {
 	stamp := ts.At(0).Timestamp
 	if pv.fullFailureTS == stamp {
 		return cid.Undef, nil, errors.New("run state transition fails on poison timestamp")
@@ -443,7 +444,7 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 
 	// Build a chain with messages that will fail semantic header validation
 	kis := types.MustGenerateKeyInfo(1, 42)
-	mm := types.NewMessageMaker(t, kis)
+	mm := vm.NewMessageMaker(t, kis)
 	alice := mm.Addresses()[0]
 	m1 := mm.NewSignedMessage(alice, 0)
 	m2 := mm.NewSignedMessage(alice, 1)
@@ -522,7 +523,7 @@ func TestStoresMessageReceipts(t *testing.T) {
 	genesis := builder.RequireTipSet(store.GetHead())
 
 	keys := types.MustGenerateKeyInfo(1, 42)
-	mm := types.NewMessageMaker(t, keys)
+	mm := vm.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
 	t1 := builder.Build(genesis, 4, func(b *chain.BlockBuilder, i int) {
 		b.AddMessages([]*types.SignedMessage{}, []*types.UnsignedMessage{mm.NewUnsignedMessage(alice, uint64(i))})

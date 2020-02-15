@@ -14,8 +14,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/reward"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemining"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
@@ -271,7 +271,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) (out interface{}, err e
 	}()
 
 	// implicit messages gas is tracked separatly and not paid by the miner
-	gasTank := gas.NewTracker(gas.SystemGasLimit)
+	gasTank := NewGasTracker(gas.SystemGasLimit)
 
 	// the execution of the implicit messages is simpler than full external/actor-actor messages
 	// execution:
@@ -310,7 +310,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 	// (see: `invocationContext.invoke()` for the dispatch and execution)
 
 	// initiate gas tracking
-	gasTank := gas.NewTracker(msgGasLimit)
+	gasTank := NewGasTracker(msgGasLimit)
 
 	// pre-send
 	// 1. charge for message existence
@@ -463,7 +463,7 @@ func (vm *VM) getMinerOwner(minerAddr address.Address) address.Address {
 	return minerView.Owner()
 }
 
-func (vm *VM) settleGasBill(sender address.Address, gasTank *gas.Tracker, payee address.Address, gasPrice abi.TokenAmount) {
+func (vm *VM) settleGasBill(sender address.Address, gasTank *GasTracker, payee address.Address, gasPrice abi.TokenAmount) {
 	// release unused funds that were withheld
 	vm.transfer(vmaddr.BurntFundsAddress, sender, gasTank.RemainingGas().ToTokens(gasPrice))
 	// pay miner for gas

@@ -7,10 +7,11 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
 var showCmd = &cmds.Command{
@@ -128,7 +129,7 @@ var showMessagesCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Show a filecoin message collection by txmeta CID",
 		ShortDescription: `Prints info for all messages in a collection,
-at the given CID.  This CID is found in the "Messages" field of 
+at the given CID.  This CID is found in the "Messages" field of
 the filecoin block header.`,
 	},
 	Arguments: []cmdkit.Argument{
@@ -183,9 +184,9 @@ field of the filecoin block header.`,
 
 		return re.Emit(receipts)
 	},
-	Type: []*types.MessageReceipt{},
+	Type: []vm.MessageReceipt{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, receipts []*types.MessageReceipt) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, receipts []vm.MessageReceipt) error {
 			outStr := "Receipt Details\n"
 			for _, r := range receipts {
 				outStr += r.String() + "\n"

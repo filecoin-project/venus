@@ -25,6 +25,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
@@ -83,7 +85,7 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 	ctx := context.TODO()
 	_, err := b.messages.StoreMessages(ctx, []*types.SignedMessage{}, []*types.UnsignedMessage{})
 	require.NoError(t, err)
-	_, err = b.messages.StoreReceipts(ctx, []*types.MessageReceipt{})
+	_, err = b.messages.StoreReceipts(ctx, []vm.MessageReceipt{})
 	require.NoError(t, err)
 
 	nullState := types.CidFromString(t, "null")
@@ -325,7 +327,7 @@ func (bb *BlockBuilder) SetStateRoot(root cid.Cid) {
 
 // StateBuilder abstracts the computation of state root CIDs from the chain builder.
 type StateBuilder interface {
-	ComputeState(prev cid.Cid, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, []*types.MessageReceipt, error)
+	ComputeState(prev cid.Cid, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, []vm.MessageReceipt, error)
 	Weigh(tip block.TipSet, state cid.Cid) (fbig.Int, error)
 }
 
@@ -338,8 +340,8 @@ type FakeStateBuilder struct {
 // is the same as the input state.
 // This differs from the true state transition function in that messages that are duplicated
 // between blocks in the tipset are not ignored.
-func (FakeStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, []*types.MessageReceipt, error) {
-	receipts := []*types.MessageReceipt{}
+func (FakeStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, []vm.MessageReceipt, error) {
+	receipts := []vm.MessageReceipt{}
 
 	// Accumulate the cids of the previous state and of all messages in the tipset.
 	inputs := []cid.Cid{prev}
@@ -347,13 +349,13 @@ func (FakeStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.Unsign
 		for _, msg := range blockMessages {
 			mCId, err := msg.Cid()
 			if err != nil {
-				return cid.Undef, []*types.MessageReceipt{}, err
+				return cid.Undef, []vm.MessageReceipt{}, err
 			}
 			inputs = append(inputs, mCId)
-			receipts = append(receipts, &types.MessageReceipt{
-				ExitCode:   0,
-				Return:     [][]byte{mCId.Bytes()},
-				GasAttoFIL: types.NewGasPrice(3),
+			receipts = append(receipts, vm.MessageReceipt{
+				ExitCode:    0,
+				ReturnValue: mCId.Bytes(),
+				GasUsed:     gas.NewGas(3),
 			})
 		}
 	}
@@ -361,13 +363,13 @@ func (FakeStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.Unsign
 		for _, msg := range blockMessages {
 			mCId, err := msg.Cid()
 			if err != nil {
-				return cid.Undef, []*types.MessageReceipt{}, err
+				return cid.Undef, []vm.MessageReceipt{}, err
 			}
 			inputs = append(inputs, mCId)
-			receipts = append(receipts, &types.MessageReceipt{
-				ExitCode:   0,
-				Return:     [][]byte{mCId.Bytes()},
-				GasAttoFIL: types.NewGasPrice(3),
+			receipts = append(receipts, vm.MessageReceipt{
+				ExitCode:    0,
+				ReturnValue: mCId.Bytes(),
+				GasUsed:     gas.NewGas(3),
 			})
 		}
 	}
@@ -379,7 +381,7 @@ func (FakeStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.Unsign
 
 	root, err := makeCid(inputs)
 	if err != nil {
-		return cid.Undef, []*types.MessageReceipt{}, err
+		return cid.Undef, []vm.MessageReceipt{}, err
 	}
 	return root, receipts, nil
 }
@@ -441,7 +443,7 @@ type FakeStateEvaluator struct {
 }
 
 // RunStateTransition delegates to StateBuilder.ComputeState.
-func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight fbig.Int, stateID cid.Cid, receiptCid cid.Cid) (cid.Cid, []*types.MessageReceipt, error) {
+func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight fbig.Int, stateID cid.Cid, receiptCid cid.Cid) (cid.Cid, []vm.MessageReceipt, error) {
 	return e.ComputeState(stateID, blsMessages, secpMessages)
 }
 
@@ -577,7 +579,7 @@ func (f *Builder) LoadMessages(ctx context.Context, metaCid cid.Cid) ([]*types.S
 }
 
 // LoadReceipts returns the message collections tracked by the builder.
-func (f *Builder) LoadReceipts(ctx context.Context, c cid.Cid) ([]*types.MessageReceipt, error) {
+func (f *Builder) LoadReceipts(ctx context.Context, c cid.Cid) ([]vm.MessageReceipt, error) {
 	return f.messages.LoadReceipts(ctx, c)
 }
 
@@ -587,7 +589,7 @@ func (f *Builder) LoadTxMeta(ctx context.Context, metaCid cid.Cid) (types.TxMeta
 }
 
 // StoreReceipts stores message receipts and returns a commitment.
-func (f *Builder) StoreReceipts(ctx context.Context, receipts []*types.MessageReceipt) (cid.Cid, error) {
+func (f *Builder) StoreReceipts(ctx context.Context, receipts []vm.MessageReceipt) (cid.Cid, error) {
 	return f.messages.StoreReceipts(ctx, receipts)
 }
 

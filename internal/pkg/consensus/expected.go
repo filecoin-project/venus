@@ -145,33 +145,33 @@ func (c *Expected) BlockTime() time.Duration {
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight fbig.Int, parentStateRoot cid.Cid, parentReceiptRoot cid.Cid) (root cid.Cid, receipts []*types.MessageReceipt, err error) {
+func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight fbig.Int, parentStateRoot cid.Cid, parentReceiptRoot cid.Cid) (root cid.Cid, receipts []vm.MessageReceipt, err error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
 	if err := c.validateMining(ctx, ts, parentStateRoot, ancestors[0], ancestors, blsMessages, secpMessages, parentWeight, parentReceiptRoot); err != nil {
-		return cid.Undef, []*types.MessageReceipt{}, err
+		return cid.Undef, []vm.MessageReceipt{}, err
 	}
 
 	priorState, err := c.loadStateTree(ctx, parentStateRoot)
 	if err != nil {
-		return cid.Undef, []*types.MessageReceipt{}, err
+		return cid.Undef, []vm.MessageReceipt{}, err
 	}
 	vms := vm.NewStorage(c.bstore)
 	var newState state.Tree
 	newState, receipts, err = c.runMessages(ctx, priorState, vms, ts, blsMessages, secpMessages, ancestors)
 	if err != nil {
-		return cid.Undef, []*types.MessageReceipt{}, err
+		return cid.Undef, []vm.MessageReceipt{}, err
 	}
 	err = vms.Flush()
 	if err != nil {
-		return cid.Undef, []*types.MessageReceipt{}, err
+		return cid.Undef, []vm.MessageReceipt{}, err
 	}
 
 	root, err = newState.Flush(ctx)
 	if err != nil {
-		return cid.Undef, []*types.MessageReceipt{}, err
+		return cid.Undef, []vm.MessageReceipt{}, err
 	}
 	return root, receipts, err
 }
@@ -296,7 +296,7 @@ func (c *Expected) validateMining(
 // for the entire tipset. The output state must be flushed after calling to
 // guarantee that the state transitions propagate.
 // Messages that fail to apply are dropped on the floor (and no receipt is emitted).
-func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storage, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet) (state.Tree, []*types.MessageReceipt, error) {
+func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storage, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet) (state.Tree, []vm.MessageReceipt, error) {
 	msgs := []vm.BlockMessagesInfo{}
 
 	// build message information per block
@@ -318,23 +318,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 		return nil, nil, errors.Wrap(err, "error validating tipset")
 	}
 
-	// Dragons: get rid of this map, unify types.MessageReceipt and have it be the vm.MessageReceipt all across the code
-	auxReceipts := []*types.MessageReceipt{}
-	for i := 0; i < len(receipts); i++ {
-		aux := types.NewAttoFILFromFIL(0)
-		aux.AsBigInt().SetBits(receipts[i].GasUsed.ToTokens(abi.NewTokenAmount(0)).Bits())
-
-		r := types.MessageReceipt{
-			// Review: this are all translations to get it compiling past this point
-			//         the legacy messagereceipt type is no longer valid and will be replaced with vm.MessageReceipt
-			ExitCode:   uint8(receipts[i].ExitCode),
-			Return:     [][]byte{receipts[i].ReturnValue},
-			GasAttoFIL: aux,
-		}
-		auxReceipts = append(auxReceipts, &r)
-	}
-
-	return st, auxReceipts, nil
+	return st, receipts, nil
 }
 
 func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, error) {

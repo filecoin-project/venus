@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
@@ -89,8 +90,8 @@ type ChainReaderWriter interface {
 
 type messageStore interface {
 	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
-	LoadReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
-	StoreReceipts(context.Context, []*types.MessageReceipt) (cid.Cid, error)
+	LoadReceipts(context.Context, cid.Cid) ([]vm.MessageReceipt, error)
+	StoreReceipts(context.Context, []vm.MessageReceipt) (cid.Cid, error)
 }
 
 // ChainSelector chooses the heaviest between chains.
@@ -113,7 +114,7 @@ type HeaderValidator interface {
 type FullBlockValidator interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight fbig.Int, stateID cid.Cid, receiptRoot cid.Cid) (cid.Cid, []*types.MessageReceipt, error)
+	RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight fbig.Int, stateID cid.Cid, receiptRoot cid.Cid) (cid.Cid, []vm.MessageReceipt, error)
 }
 
 // faultDetector tracks data for detecting consensus faults and emits faults

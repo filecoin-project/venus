@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gas"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
@@ -30,7 +30,7 @@ type invocationContext struct {
 	rt                *VM
 	msg               internalMessage
 	fromActor         *actor.Actor
-	gasTank           *gas.Tracker
+	gasTank           *GasTracker
 	isCallerValidated bool
 	allowSideEffects  bool
 	toActor           *actor.Actor
@@ -42,7 +42,7 @@ type internalActorStateHandle interface {
 	Validate()
 }
 
-func newInvocationContext(rt *VM, msg internalMessage, fromActor *actor.Actor, gasTank *gas.Tracker) invocationContext {
+func newInvocationContext(rt *VM, msg internalMessage, fromActor *actor.Actor, gasTank *GasTracker) invocationContext {
 	// Note: the toActor and stateHandle are loaded during the `invoke()`
 	return invocationContext{
 		rt:                rt,

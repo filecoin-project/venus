@@ -142,7 +142,7 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 		return 0, cid.Undef, err
 	}
 
-	dealIDValues, err := abi.Deserialize(receipt.Return[0], abi.UintArray)
+	dealIDValues, err := abi.Deserialize(receipt.ReturnValue, abi.UintArray)
 	if err != nil {
 		return 0, cid.Undef, err
 	}
