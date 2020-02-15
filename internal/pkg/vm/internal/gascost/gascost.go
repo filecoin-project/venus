@@ -1,7 +1,7 @@
 package gascost
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gas"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 )
 

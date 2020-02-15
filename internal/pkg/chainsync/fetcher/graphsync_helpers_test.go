@@ -33,6 +33,7 @@ import (
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 // fakeRequest captures the parameters necessary to uniquely
@@ -396,7 +397,7 @@ func (mv mockSyntaxValidator) ValidateUnsignedMessagesSyntax(ctx context.Context
 	return nil
 }
 
-func (mv mockSyntaxValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []*types.MessageReceipt) error {
+func (mv mockSyntaxValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []vm.MessageReceipt) error {
 	return mv.validateReceiptsError
 }
 

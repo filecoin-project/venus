@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
@@ -142,7 +143,7 @@ func TestBlockDaemon(t *testing.T) {
 
 		emptyReceiptsLine := cmdClient.RunSuccessFirstLine(ctx, "show", "receipts", types.EmptyReceiptsCID.String(), "--enc", "json")
 
-		var receipts []*types.MessageReceipt
+		var receipts []vm.MessageReceipt
 		require.NoError(t, json.Unmarshal([]byte(emptyReceiptsLine), &receipts))
 
 		assert.Equal(t, 0, len(receipts))

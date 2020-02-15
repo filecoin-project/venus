@@ -28,7 +28,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/build/project"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -463,10 +463,10 @@ func (td *TestDaemon) UpdatePeerID() {
 
 // WaitForMessageRequireSuccess accepts a message cid and blocks until a message with matching cid is included in a
 // block. The receipt is then inspected to ensure that the corresponding message receipt had a 0 exit code.
-func (td *TestDaemon) WaitForMessageRequireSuccess(msgCid cid.Cid) *types.MessageReceipt {
+func (td *TestDaemon) WaitForMessageRequireSuccess(msgCid cid.Cid) *vm.MessageReceipt {
 	args := []string{"message", "wait", msgCid.String(), "--receipt=true", "--message=false"}
 	trim := strings.Trim(td.RunSuccess(args...).ReadStdout(), "\n")
-	rcpt := &types.MessageReceipt{}
+	rcpt := &vm.MessageReceipt{}
 	require.NoError(td.test, json.Unmarshal([]byte(trim), rcpt))
 	require.Equal(td.test, 0, int(rcpt.ExitCode))
 	return rcpt

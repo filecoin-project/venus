@@ -1,34 +1,35 @@
-package types
+package vm
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 
 // MessageMaker creates unique, signed messages for use in tests.
 type MessageMaker struct {
-	DefaultGasPrice AttoFIL
-	DefaultGasUnits GasUnits
+	DefaultGasPrice types.AttoFIL
+	DefaultGasUnits types.GasUnits
 
-	signer *MockSigner
+	signer *types.MockSigner
 	seq    uint
 	t      *testing.T
 }
 
 // NewMessageMaker creates a new message maker with a set of signing keys.
-func NewMessageMaker(t *testing.T, keys []KeyInfo) *MessageMaker {
+func NewMessageMaker(t *testing.T, keys []types.KeyInfo) *MessageMaker {
 	addresses := make([]address.Address, len(keys))
-	signer := NewMockSigner(keys)
+	signer := types.NewMockSigner(keys)
 
 	for i, key := range keys {
 		addr, _ := key.Address()
 		addresses[i] = addr
 	}
 
-	return &MessageMaker{ZeroAttoFIL, NewGasUnits(0), &signer, 0, t}
+	return &MessageMaker{types.ZeroAttoFIL, types.NewGasUnits(0), &signer, 0, t}
 }
 
 // Addresses returns the addresses for which this maker can sign messages.
@@ -37,31 +38,31 @@ func (mm *MessageMaker) Addresses() []address.Address {
 }
 
 // Signer returns the signer with which this maker signs messages.
-func (mm *MessageMaker) Signer() *MockSigner {
+func (mm *MessageMaker) Signer() *types.MockSigner {
 	return mm.signer
 }
 
 // NewUnsignedMessage creates a new message.
-func (mm *MessageMaker) NewUnsignedMessage(from address.Address, nonce uint64) *UnsignedMessage {
+func (mm *MessageMaker) NewUnsignedMessage(from address.Address, nonce uint64) *types.UnsignedMessage {
 	seq := mm.seq
 	mm.seq++
 	to, err := address.NewSecp256k1Address([]byte("destination"))
 	require.NoError(mm.t, err)
-	return NewMeteredMessage(
+	return types.NewMeteredMessage(
 		from,
 		to,
 		nonce,
-		ZeroAttoFIL,
-		MethodID(9000+seq),
+		types.ZeroAttoFIL,
+		types.MethodID(9000+seq),
 		[]byte("params"),
 		mm.DefaultGasPrice,
 		mm.DefaultGasUnits)
 }
 
 // NewSignedMessage creates a new signed message.
-func (mm *MessageMaker) NewSignedMessage(from address.Address, nonce uint64) *SignedMessage {
+func (mm *MessageMaker) NewSignedMessage(from address.Address, nonce uint64) *types.SignedMessage {
 	msg := mm.NewUnsignedMessage(from, nonce)
-	signed, err := NewSignedMessage(*msg, mm.signer)
+	signed, err := types.NewSignedMessage(*msg, mm.signer)
 	require.NoError(mm.t, err)
 	return signed
 }
@@ -86,8 +87,8 @@ func NewReceiptMaker() *ReceiptMaker {
 }
 
 // NewReceipt creates a new distinct receipt.
-func (rm *ReceiptMaker) NewReceipt() *MessageReceipt {
+func (rm *ReceiptMaker) NewReceipt() MessageReceipt {
 	seq := rm.seq
 	rm.seq++
-	return &MessageReceipt{Return: [][]byte{[]byte(fmt.Sprintf("%d", seq))}}
+	return MessageReceipt{ReturnValue: []byte(fmt.Sprintf("%d", seq))}
 }

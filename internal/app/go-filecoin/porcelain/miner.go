@@ -7,12 +7,14 @@ import (
 	"github.com/filecoin-project/go-address"
 	aabi "github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
@@ -21,7 +23,7 @@ type mcAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedPath string, paramJSON string) error
 	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error)
-	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error
 	WalletDefaultAddress() (address.Address, error)
 }
 
@@ -80,12 +82,12 @@ func MinerCreate(
 	}
 
 	var minerAddr address.Address
-	err = plumbing.MessageWait(ctx, smsgCid, func(blk *block.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) (err error) {
-		if receipt.ExitCode != uint8(0) {
+	err = plumbing.MessageWait(ctx, smsgCid, func(blk *block.Block, smsg *types.SignedMessage, receipt *vm.MessageReceipt) (err error) {
+		if receipt.ExitCode != exitcode.Ok {
 			// Dragons: do we want to have this back?
 			return fmt.Errorf("Error executing actor code (exitcode: %d)", receipt.ExitCode)
 		}
-		minerAddr, err = address.NewFromBytes(receipt.Return[0])
+		minerAddr, err = address.NewFromBytes(receipt.ReturnValue)
 		return err
 	})
 	if err != nil {

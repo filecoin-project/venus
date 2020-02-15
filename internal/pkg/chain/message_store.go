@@ -8,9 +8,10 @@ import (
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/ipfs/go-block-format"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/multiformats/go-multihash"
 	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -20,7 +21,7 @@ import (
 // MessageStore.
 type MessageProvider interface {
 	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
-	LoadReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
+	LoadReceipts(context.Context, cid.Cid) ([]vm.MessageReceipt, error)
 	LoadTxMeta(context.Context, cid.Cid) (types.TxMeta, error)
 }
 
@@ -28,7 +29,7 @@ type MessageProvider interface {
 // MessageStore.
 type MessageWriter interface {
 	StoreMessages(ctx context.Context, secpMessages []*types.SignedMessage, blsMessages []*types.UnsignedMessage) (cid.Cid, error)
-	StoreReceipts(context.Context, []*types.MessageReceipt) (cid.Cid, error)
+	StoreReceipts(context.Context, []vm.MessageReceipt) (cid.Cid, error)
 	StoreTxMeta(context.Context, types.TxMeta) (cid.Cid, error)
 }
 
@@ -128,22 +129,22 @@ func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types
 
 // LoadReceipts loads the signed messages in the collection with cid c from ipld
 // storage and returns the slice implied by the collection
-func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]*types.MessageReceipt, error) {
+func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]vm.MessageReceipt, error) {
 	receiptCids, err := ms.loadAMTCids(ctx, c)
 	if err != nil {
 		return nil, err
 	}
 
 	// load receipts from cids
-	receipts := make([]*types.MessageReceipt, len(receiptCids))
+	receipts := make([]vm.MessageReceipt, len(receiptCids))
 	for i, c := range receiptCids {
 		receiptBlock, err := ms.bs.Get(c)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to get receipt %s", c)
 		}
 
-		receipt := &types.MessageReceipt{}
-		if err := encoding.Decode(receiptBlock.RawData(), receipt); err != nil {
+		receipt := vm.MessageReceipt{}
+		if err := encoding.Decode(receiptBlock.RawData(), &receipt); err != nil {
 			return nil, errors.Wrapf(err, "could not decode receipt %s", c)
 		}
 		receipts[i] = receipt
@@ -154,7 +155,7 @@ func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]*types.M
 
 // StoreReceipts puts the input signed messages to a collection and then writes
 // this collection to ipld storage.  The cid of the collection is returned.
-func (ms *MessageStore) StoreReceipts(ctx context.Context, receipts []*types.MessageReceipt) (cid.Cid, error) {
+func (ms *MessageStore) StoreReceipts(ctx context.Context, receipts []vm.MessageReceipt) (cid.Cid, error) {
 	// store secp messages
 	cids, err := ms.storeMessageReceipts(receipts)
 	if err != nil {
@@ -227,7 +228,7 @@ func (ms *MessageStore) StoreTxMeta(ctx context.Context, meta types.TxMeta) (cid
 	return ms.storeBlock(meta)
 }
 
-func (ms *MessageStore) storeMessageReceipts(receipts []*types.MessageReceipt) ([]cid.Cid, error) {
+func (ms *MessageStore) storeMessageReceipts(receipts []vm.MessageReceipt) ([]cid.Cid, error) {
 	cids := make([]cid.Cid, len(receipts))
 	var err error
 	for i, msg := range receipts {

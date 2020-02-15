@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 func TestMessageQueue(t *testing.T) {
@@ -19,7 +20,7 @@ func TestMessageQueue(t *testing.T) {
 
 	// Individual tests share a MessageMaker so not parallel (but quick)
 	keys := types.MustGenerateKeyInfo(2, 42)
-	mm := types.NewMessageMaker(t, keys)
+	mm := vm.NewMessageMaker(t, keys)
 
 	alice := mm.Addresses()[0]
 	bob := mm.Addresses()[1]

@@ -25,6 +25,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -139,7 +140,7 @@ func TestSyncerWeighsPower(t *testing.T) {
 	split := builder.BuildOn(gen, 2, func(bb *chain.BlockBuilder, i int) {
 		if i == 1 {
 			keys := types.MustGenerateKeyInfo(1, 42)
-			mm := types.NewMessageMaker(t, keys)
+			mm := vm.NewMessageMaker(t, keys)
 			addr := mm.Addresses()[0]
 			bb.AddMessages(
 				[]*types.SignedMessage{mm.NewSignedMessage(addr, 1)},
@@ -209,13 +210,13 @@ func newIntegrationStateBuilder(t *testing.T, cst cbor.IpldStore) *integrationSt
 	}
 }
 
-func (isb *integrationStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, []*types.MessageReceipt, error) {
+func (isb *integrationStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, []vm.MessageReceipt, error) {
 	// setup genesis with a state we can fetch from cborstor
 	if prev.Equals(types.CidFromString(isb.t, "null")) {
 		treeGen := state.TreeFromString(isb.t, "1Power", isb.cst)
 		genRoot, err := treeGen.Flush(context.Background())
 		require.NoError(isb.t, err)
-		return genRoot, []*types.MessageReceipt{}, nil
+		return genRoot, []vm.MessageReceipt{}, nil
 	}
 	// Setup fork with state we associate with more power.
 	// This fork is distiguished by a block with a single secp message.
@@ -224,9 +225,9 @@ func (isb *integrationStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*
 		forkRoot, err := treeFork.Flush(context.Background())
 		require.NoError(isb.t, err)
 		isb.c512 = forkRoot
-		return forkRoot, []*types.MessageReceipt{}, nil
+		return forkRoot, []vm.MessageReceipt{}, nil
 	}
-	return prev, []*types.MessageReceipt{}, nil
+	return prev, []vm.MessageReceipt{}, nil
 }
 
 func (isb *integrationStateBuilder) Weigh(tip block.TipSet, pstate cid.Cid) (fbig.Int, error) {
@@ -257,13 +258,13 @@ type integrationStateEvaluator struct {
 	c512 cid.Cid
 }
 
-func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ []block.TipSet, _ fbig.Int, stateID cid.Cid, rCid cid.Cid) (cid.Cid, []*types.MessageReceipt, error) {
+func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ []block.TipSet, _ fbig.Int, stateID cid.Cid, rCid cid.Cid) (cid.Cid, []vm.MessageReceipt, error) {
 	for i := 0; i < ts.Len(); i++ {
 		if ts.At(i).StateRoot.Cid.Equals(n.c512) {
-			return n.c512, []*types.MessageReceipt{}, nil
+			return n.c512, []vm.MessageReceipt{}, nil
 		}
 	}
-	return ts.At(0).StateRoot.Cid, []*types.MessageReceipt{}, nil
+	return ts.At(0).StateRoot.Cid, []vm.MessageReceipt{}, nil
 }
 
 func (n *integrationStateEvaluator) ValidateSemantic(_ context.Context, _ *block.Block, _ block.TipSet) error {

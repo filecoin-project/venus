@@ -88,7 +88,7 @@ func (fbv *FakeBlockValidator) ValidateUnsignedMessagesSyntax(ctx context.Contex
 }
 
 // ValidateReceiptsSyntax does nothing
-func (fbv *FakeBlockValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []*types.MessageReceipt) error {
+func (fbv *FakeBlockValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []vm.MessageReceipt) error {
 	return nil
 }
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/cskr/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -40,7 +41,7 @@ type Waiter struct {
 type ChainMessage struct {
 	Message *types.SignedMessage
 	Block   *block.Block
-	Receipt *types.MessageReceipt
+	Receipt *vm.MessageReceipt
 }
 
 // WaitPredicate is a function that identifies a message and returns true when found.
@@ -77,7 +78,7 @@ func (w *Waiter) Find(ctx context.Context, pred WaitPredicate) (*ChainMessage, b
 // TODO: This implementation will become prohibitively expensive since it
 // traverses the entire chain. We should use an index instead.
 // https://github.com/filecoin-project/go-filecoin/issues/1518
-func (w *Waiter) WaitPredicate(ctx context.Context, pred WaitPredicate, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+func (w *Waiter) WaitPredicate(ctx context.Context, pred WaitPredicate, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
 	ch := w.chainReader.HeadEvents().Sub(chain.NewHeadTopic)
 	defer w.chainReader.HeadEvents().Unsub(ch, chain.NewHeadTopic)
 
@@ -100,7 +101,7 @@ func (w *Waiter) WaitPredicate(ctx context.Context, pred WaitPredicate, cb func(
 }
 
 // Wait invokes the callback when a message with the given cid appears on chain.
-func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
 	log.Infof("Calling Waiter.Wait CID: %s", msgCid.String())
 
 	pred := func(msg *types.SignedMessage, c cid.Cid) bool {
@@ -219,7 +220,7 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts block.TipSet, pred Wai
 	return nil, false, nil
 }
 
-func (w *Waiter) receiptByIndex(ctx context.Context, tsKey block.TipSetKey, targetCid cid.Cid, messages [][]*types.UnsignedMessage) (*types.MessageReceipt, error) {
+func (w *Waiter) receiptByIndex(ctx context.Context, tsKey block.TipSetKey, targetCid cid.Cid, messages [][]*types.UnsignedMessage) (*vm.MessageReceipt, error) {
 	receiptCid, err := w.chainReader.GetTipSetReceiptsRoot(tsKey)
 	if err != nil {
 		return nil, err
@@ -247,7 +248,7 @@ func (w *Waiter) receiptByIndex(ctx context.Context, tsKey block.TipSetKey, targ
 				if receiptIndex >= len(receipts) {
 					return nil, errors.Errorf("could not find message receipt at index %d", receiptIndex)
 				}
-				return receipts[receiptIndex], nil
+				return &receipts[receiptIndex], nil
 			}
 			receiptIndex++
 		}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/ipfs/go-block-format"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-car"
 	carutil "github.com/ipfs/go-car/util"
 	"github.com/ipfs/go-cid"
@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 var logCar = logging.Logger("chain/car")
@@ -169,7 +170,7 @@ func exportAMTUnsignedMessages(ctx context.Context, out io.Writer, umsgs []*type
 	return err
 }
 
-func exportAMTReceipts(ctx context.Context, out io.Writer, receipts []*types.MessageReceipt) error {
+func exportAMTReceipts(ctx context.Context, out io.Writer, receipts []vm.MessageReceipt) error {
 	ms := carWritingMessageStore(out)
 
 	_, err := ms.StoreReceipts(ctx, receipts)

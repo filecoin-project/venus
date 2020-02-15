@@ -1,16 +1,19 @@
 package message
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gas"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 )
 
 // Receipt is what is returned by executing a message on the vm.
 type Receipt struct {
-	ExitCode    exitcode.ExitCode
-	ReturnValue []byte
-	GasUsed     gas.Unit
+	ExitCode    exitcode.ExitCode `json:"exitCode"`
+	ReturnValue []byte            `json:"return"`
+	GasUsed     gas.Unit          `json:"gasUsed"`
 }
 
 // Ok returns an empty succesfull result.
@@ -51,4 +54,14 @@ func Failure(exitCode exitcode.ExitCode, gasAmount gas.Unit) Receipt {
 func (r Receipt) WithGas(amount gas.Unit) Receipt {
 	r.GasUsed = amount
 	return r
+}
+
+func (r *Receipt) String() string {
+	errStr := "(error encoding MessageReceipt)"
+
+	js, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		return errStr
+	}
+	return fmt.Sprintf("MessageReceipt: %s", string(js))
 }
