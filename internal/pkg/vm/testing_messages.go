@@ -90,8 +90,7 @@ func NewReceiptMaker() *ReceiptMaker {
 func (rm *ReceiptMaker) NewReceipt() MessageReceipt {
 	seq := rm.seq
 	rm.seq++
-	return &MessageReceipt{
-		ReturnValue: [][]byte{[]byte(fmt.Sprintf("%d", seq))},
-		GasAttoFIL:  ZeroAttoFIL,
+	return MessageReceipt{
+		ReturnValue: []byte(fmt.Sprintf("%d", seq)),
 	}
 }

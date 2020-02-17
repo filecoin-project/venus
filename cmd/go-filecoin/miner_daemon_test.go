@@ -119,8 +119,6 @@ func TestMinerCreate(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	testAddr := fixtures.TestAddresses[2]
-	minCollateral, _ := types.NewAttoFILFromFILString("0.001")
-
 	t.Run("success", func(t *testing.T) {
 
 		var err error
