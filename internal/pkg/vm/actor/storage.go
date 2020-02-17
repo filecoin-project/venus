@@ -1,8 +1,8 @@
 package actor
 
 import (
-	"fmt"
 	"context"
+	"fmt"
 	"reflect"
 
 	block "github.com/ipfs/go-block-format"

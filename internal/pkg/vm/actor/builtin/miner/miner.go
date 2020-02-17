@@ -604,7 +604,6 @@ func (a *Impl) CommitSector(ctx invocationContext, sectorID uint64, commD, commR
 		// 	return nil, Errors[ErrInsufficientCollateral]
 		// }
 
-
 		// Case 1: If the miner is not currently proving any sectors,
 		// start proving immediately on this sector.
 		//
