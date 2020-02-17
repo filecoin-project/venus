@@ -226,7 +226,7 @@ func (av *Value) Serialize() ([]byte, error) {
 		if !ok {
 			return nil, &typeError{types.AttoFIL{}, av.Val}
 		}
-		return ba.Bytes(), nil
+		return ba.Bytes()
 	case BytesAmount:
 		ba, ok := av.Val.(*types.BytesAmount)
 		if !ok {
@@ -482,9 +482,13 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Val:  addr,
 		}, nil
 	case AttoFIL:
+		af, err := types.NewAttoFILFromBytes(data)
+		if err != nil {
+			return nil, err
+		}
 		return &Value{
 			Type: t,
-			Val:  types.NewAttoFILFromBytes(data),
+			Val:  af,
 		}, nil
 	case Bytes:
 		return &Value{

@@ -12,15 +12,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
@@ -140,7 +141,7 @@ func TestMinerCreate(t *testing.T) {
 				args = append(args, "--peerid", pid.Pretty())
 			}
 
-			collateral := minCollateral.CalculatePrice(types.NewBytesAmount(1000000 * types.OneKiBSectorSize.Uint64()))
+			collateral := big.NewInt(0).Mul(big.NewInt(int64(1000000*types.OneKiBSectorSize.Uint64())), miner.MinimumCollateralPerSector.Int)
 			args = append(args, collateral.String())
 
 			var wg sync.WaitGroup

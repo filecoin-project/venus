@@ -253,7 +253,7 @@ const LargestSectorSizeProvingPeriodBlocks = 300
 const PoStChallengeWindowBlocks = 150
 
 // MinimumCollateralPerSector is the minimum amount of collateral required per sector
-var MinimumCollateralPerSector, _ = types.NewAttoFILFromFILString("0.001")
+var MinimumCollateralPerSector = types.NewAttoFIL(big.NewInt(0))
 
 const (
 	// ErrInvalidSector indicates and invalid sector id.
@@ -599,12 +599,11 @@ func (a *Impl) CommitSector(ctx invocationContext, sectorID uint64, commD, commR
 		}
 
 		// make sure the miner has enough collateral to add more storage
-		collateral := CollateralForSector(state.SectorSize)
+		// collateral := CollateralForSector(state.SectorSize)
 		// if collateral.GreaterThan(ctx.Balance().Sub(state.ActiveCollateral)) {
 		// 	return nil, Errors[ErrInsufficientCollateral]
 		// }
 
-		state.ActiveCollateral = state.ActiveCollateral.Add(collateral)
 
 		// Case 1: If the miner is not currently proving any sectors,
 		// start proving immediately on this sector.
@@ -1010,14 +1009,13 @@ func ProvingPeriodDuration(sectorSize *types.BytesAmount) uint64 {
 // If the submission is on-time, the fee is zero. If the submission is after the maximum allowed lateness
 // the fee amounts to the entire pledge collateral.
 func latePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHeight, chainHeight *types.BlockHeight, maxRoundsLate *types.BlockHeight) types.AttoFIL {
-	lateState, roundsLate := lateState(provingPeriodEnd, chainHeight, maxRoundsLate)
+	lateState, _ := lateState(provingPeriodEnd, chainHeight, maxRoundsLate)
 
 	if lateState == PoStStateUnrecoverable {
 		return pledgeCollateral
 	} else if lateState == PoStStateAfterProvingPeriod {
 		// fee = collateral * (roundsLate / maxRoundsLate)
 		var fee big.Int
-		fee.Mul(pledgeCollateral.AsBigInt(), roundsLate.AsBigInt())
 		fee.Div(&fee, maxRoundsLate.AsBigInt()) // Integer division in AttoFIL, rounds towards zero.
 		return types.NewAttoFIL(&fee)
 	}
