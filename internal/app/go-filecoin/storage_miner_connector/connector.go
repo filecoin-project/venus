@@ -140,7 +140,7 @@ func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, pieces ..
 		proposals[i] = market.ClientDealProposal{
 			Proposal: market.DealProposal{
 				PieceCID:             piece.PieceCID,
-				PieceSize:            abi.PaddedPieceSize(piece.Size),
+				PieceSize:            piece.Size,
 				Client:               waddr,
 				Provider:             m.minerAddr,
 				StartEpoch:           0, // TODO: Does this have to be set to current height?
@@ -245,7 +245,7 @@ func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sec
 
 	dealIds := make([]abi.DealID, len(pieces))
 	for i, piece := range pieces {
-		dealIds[i] = abi.DealID(piece.DealID)
+		dealIds[i] = piece.DealID
 	}
 
 	params := miner.SectorPreCommitInfo{
