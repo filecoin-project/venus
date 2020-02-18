@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -78,6 +79,7 @@ func TestMessagePropagation(t *testing.T) {
 			types.NewGasPrice(1),
 			types.NewGasUnits(0),
 			fooMethod,
+			&adt.EmptyValue{},
 		)
 		require.NoError(t, err)
 

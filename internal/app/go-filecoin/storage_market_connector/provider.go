@@ -1,7 +1,6 @@
 package storagemarketconnector
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"math"
@@ -10,7 +9,7 @@ import (
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	aabi "github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -23,11 +22,11 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -90,13 +89,13 @@ func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr add
 func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (storagemarket.DealID, cid.Cid, error) {
 	fcStorageProposal := market.DealProposal{
 		PieceCID:             commcid.PieceCommitmentV1ToCID(deal.Proposal.PieceRef),
-		PieceSize:            aabi.PaddedPieceSize(deal.Proposal.PieceSize),
+		PieceSize:            abi.PaddedPieceSize(deal.Proposal.PieceSize),
 		Client:               deal.Proposal.Client,
 		Provider:             deal.Proposal.Provider,
 		StartEpoch:           0,             // TODO populate when the miner module provides this value
 		EndEpoch:             math.MaxInt32, // TODO populate when the miner module provides this value
-		StoragePricePerEpoch: aabi.TokenAmount(deal.Proposal.StoragePricePerEpoch),
-		ProviderCollateral:   aabi.TokenAmount(deal.Proposal.StorageCollateral),
+		StoragePricePerEpoch: abi.TokenAmount(deal.Proposal.StoragePricePerEpoch),
+		ProviderCollateral:   abi.TokenAmount(deal.Proposal.StorageCollateral),
 		ClientCollateral:     big.Zero(),
 	}
 
@@ -110,12 +109,6 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 			},
 		},
 	}}
-
-	var paramBytes bytes.Buffer
-	err := params.MarshalCBOR(&paramBytes)
-	if err != nil {
-		return 0, cid.Undef, err
-	}
 
 	workerAddr, err := s.GetMinerWorker(ctx, s.minerAddr)
 	if err != nil {
@@ -131,7 +124,7 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 		types.NewGasUnits(300),
 		true,
 		types.MethodID(builtin.MethodsMarket.PublishStorageDeals),
-		paramBytes,
+		&params,
 	)
 	if err != nil {
 		return 0, cid.Undef, err
@@ -142,21 +135,17 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 		return 0, cid.Undef, err
 	}
 
-	dealIDValues, err := abi.Deserialize(receipt.ReturnValue, abi.UintArray)
+	var ret market.PublishStorageDealsReturn
+	err = encoding.Decode(receipt.ReturnValue, &ret)
 	if err != nil {
 		return 0, cid.Undef, err
 	}
 
-	dealIds, ok := dealIDValues.Val.([]uint64)
-	if !ok {
-		return 0, cid.Undef, xerrors.New("decoded deal ids are not a []uint64")
-	}
-
-	if len(dealIds) < 1 {
+	if len(ret.IDs) < 1 {
 		return 0, cid.Undef, xerrors.New("Successful call to publish storage deals did not return deal ids")
 	}
 
-	return storagemarket.DealID(dealIds[0]), mcid, err
+	return storagemarket.DealID(ret.IDs[0]), mcid, err
 }
 
 // ListProviderDeals lists all deals for the given provider

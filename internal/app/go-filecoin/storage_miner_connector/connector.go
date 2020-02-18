@@ -165,11 +165,6 @@ func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, pieces ..
 	}
 
 	params := market.PublishStorageDealsParams{Deals: proposals}
-	paramBytes, err := encoding.Encode(&params)
-	if err != nil {
-		return cid.Undef, err
-	}
-
 	mcid, cerr, err := m.outbox.Send(
 		ctx,
 		m.workerAddr,
@@ -179,7 +174,7 @@ func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, pieces ..
 		types.NewGasUnits(300),
 		true,
 		types.MethodID(builtin.MethodsMarket.PublishStorageDeals),
-		paramBytes,
+		&params,
 	)
 	if err != nil {
 		return cid.Undef, err
@@ -250,11 +245,6 @@ func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sec
 		Expiration:   abi.ChainEpoch(0), // TODO populate when the miner module provides this value.
 	}
 
-	paramsBytes, err := encoding.Encode(&params)
-	if err != nil {
-		return cid.Undef, err
-	}
-
 	mcid, cerr, err := m.outbox.Send(
 		ctx,
 		m.workerAddr,
@@ -264,7 +254,7 @@ func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sec
 		types.NewGasUnits(300),
 		true,
 		types.MethodID(builtin.MethodsMiner.PreCommitSector),
-		paramsBytes,
+		&params,
 	)
 	if err != nil {
 		return cid.Undef, err
@@ -298,11 +288,6 @@ func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, s
 		Proof:        abi.SealProof{ProofBytes: proof},
 	}
 
-	paramsBytes, err := encoding.Encode(&params)
-	if err != nil {
-		return cid.Undef, err
-	}
-
 	mcid, cerr, err := m.outbox.Send(
 		ctx,
 		m.workerAddr,
@@ -312,7 +297,7 @@ func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, s
 		types.NewGasUnits(300),
 		true,
 		types.MethodID(builtin.MethodsMiner.ProveCommitSector),
-		paramsBytes,
+		&params,
 	)
 	if err != nil {
 		return cid.Undef, err
