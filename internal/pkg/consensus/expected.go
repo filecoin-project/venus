@@ -251,10 +251,10 @@ func (c *Expected) validateMining(
 		challengeIndexes := make(map[uint64]struct{})
 		for _, winner := range blk.EPoStInfo.Winners {
 			index := winner.SectorChallengeIndex
-			if _, dup := challengeIndexes[uint64(index)]; dup {
+			if _, dup := challengeIndexes[index]; dup {
 				return errors.Errorf("Duplicate partial ticket submitted, challenge idx: %d", index)
 			}
-			challengeIndexes[uint64(index)] = struct{}{}
+			challengeIndexes[index] = struct{}{}
 		}
 
 		// Verify all partial tickets are winners
