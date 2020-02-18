@@ -71,7 +71,7 @@ func (v *DefaultMessageValidator) Validate(ctx context.Context, msg *types.Unsig
 		return errSelfSend
 	}
 
-	if msg.GasPrice.LessEqual(types.ZeroAttoFIL) {
+	if msg.GasPrice.LessThanEqual(types.ZeroAttoFIL) {
 		return errGasPriceZero
 	}
 
@@ -81,7 +81,7 @@ func (v *DefaultMessageValidator) Validate(ctx context.Context, msg *types.Unsig
 		return errNonAccountActor
 	}
 
-	if msg.Value.IsNegative() {
+	if msg.Value.LessThan(specsbig.Zero()) {
 		log.Debugf("Cannot transfer negative value: %s from actor: %s", msg.Value, msg.From)
 		errNegativeValueCt.Inc(ctx, 1)
 		return errNegativeValue
@@ -120,8 +120,8 @@ func (v *DefaultMessageValidator) Validate(ctx context.Context, msg *types.Unsig
 // more value from the actor's balance.
 func canCoverGasLimit(msg *types.UnsignedMessage, actor *actor.Actor) bool {
 	// balance >= (gasprice*gasLimit + value)
-	gascost := specsbig.Mul(abi.NewTokenAmount(msg.GasPrice.AsBigInt().Int64()), abi.NewTokenAmount(int64(msg.GasLimit)))
-	expense := specsbig.Add(gascost, abi.NewTokenAmount(msg.Value.AsBigInt().Int64()))
+	gascost := specsbig.Mul(abi.NewTokenAmount(msg.GasPrice.Int.Int64()), abi.NewTokenAmount(int64(msg.GasLimit)))
+	expense := specsbig.Add(gascost, abi.NewTokenAmount(msg.Value.Int.Int64()))
 	return actor.Balance.GreaterThanEqual(expense)
 }
 

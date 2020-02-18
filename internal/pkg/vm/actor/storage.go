@@ -2,6 +2,7 @@ package actor
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	block "github.com/ipfs/go-block-format"
@@ -42,10 +43,12 @@ func SetKeyValue(ctx context.Context, storage runtime.Storage, id cid.Cid, key s
 func WithLookup(ctx context.Context, storage runtime.Storage, id cid.Cid, f func(storage.Lookup) error) (cid.Cid, error) {
 	lookup, err := LoadLookup(ctx, storage, id)
 	if err != nil {
+		fmt.Printf("load lookup error\n")
 		return cid.Undef, err
 	}
 
 	if err = f(lookup); err != nil {
+		fmt.Printf("f lookup error\n")
 		return cid.Undef, err
 	}
 

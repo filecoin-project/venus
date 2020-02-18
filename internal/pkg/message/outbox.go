@@ -88,8 +88,8 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 			msgSendErrCt.Inc(ctx, 1)
 		}
 		ob.journal.Write("Send",
-			"to", to.String(), "from", from.String(), "value", value.AsBigInt().Uint64(), "method", method,
-			"gasPrice", gasPrice.AsBigInt().Uint64(), "gasLimit", uint64(gasLimit), "bcast", bcast,
+			"to", to.String(), "from", from.String(), "value", value.Int.Uint64(), "method", method,
+			"gasPrice", gasPrice.Int.Uint64(), "gasLimit", uint64(gasLimit), "bcast", bcast,
 			"params", params, "error", err, "cid", out.String())
 	}()
 

@@ -40,7 +40,7 @@ func newWdaTestPlumbing(t *testing.T) *wdaTestPlumbing {
 
 func (wbtp *wbTestPlumbing) ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error) {
 	aux := abi.NewTokenAmount(0)
-	aux.SetBits(wbtp.balance.AsBigInt().Bits())
+	aux.SetBits(wbtp.balance.Int.Bits())
 	testActor := actor.NewActor(cid.Undef, aux)
 	return testActor, nil
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/go-address"
+	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/stretchr/testify/require"
 )
@@ -90,5 +90,7 @@ func NewReceiptMaker() *ReceiptMaker {
 func (rm *ReceiptMaker) NewReceipt() MessageReceipt {
 	seq := rm.seq
 	rm.seq++
-	return MessageReceipt{ReturnValue: []byte(fmt.Sprintf("%d", seq))}
+	return MessageReceipt{
+		ReturnValue: []byte(fmt.Sprintf("%d", seq)),
+	}
 }

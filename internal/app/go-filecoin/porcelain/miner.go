@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/go-address"
+	address "github.com/filecoin-project/go-address"
 	aabi "github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 

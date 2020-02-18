@@ -138,7 +138,7 @@ func (tc *FakeVMContext) Receiver() address.Address {
 // Note: the value is already been deposited on the actors account and is reflected on the balance.
 func (tc *FakeVMContext) ValueReceived() abi.TokenAmount {
 	// Dragons: temp until we remove legacy types
-	return abi.NewTokenAmount(tc.MessageValue.Value.AsBigInt().Int64())
+	return tc.MessageValue.Value
 }
 
 var _ runtime.InvocationContext = &FakeVMContext{}
