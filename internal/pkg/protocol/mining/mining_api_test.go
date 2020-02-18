@@ -135,7 +135,7 @@ func TestMiningAPI_MiningTogether(t *testing.T) {
 }
 
 func newAPI(t *testing.T) (bapi.API, *node.Node) {
-	seed := node.MakeChainSeed(t, node.TestGenCfg)
+	seed := node.MakeChainSeed(t, node.MakeTestGenCfg(t))
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
 	builder.WithGenesisInit(seed.GenesisInitFunc)

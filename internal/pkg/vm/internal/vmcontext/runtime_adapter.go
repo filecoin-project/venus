@@ -57,7 +57,7 @@ func (a *runtimeAdapter) CurrentBalance() abi.TokenAmount {
 
 // ResolveAddress implements Runtime.
 func (a *runtimeAdapter) ResolveAddress(addr address.Address) (address.Address, bool) {
-	return a.ctx.rt.normalizeFrom(addr)
+	return a.ctx.rt.normalizeAddress(addr)
 }
 
 // GetActorCodeCID implements Runtime.

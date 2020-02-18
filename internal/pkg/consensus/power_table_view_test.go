@@ -60,6 +60,8 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := cborutil.NewIpldStore(bs)
+	commCfgs, err := gengen.MakeNCommitCfgs(int(numCommittedSectors))
+	require.NoError(t, err)
 
 	// set up genesis block containing some miners with non-zero power
 	genCfg := &gengen.GenesisCfg{
@@ -67,14 +69,14 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 		Keys:       1,
 		Miners: []*gengen.CreateStorageMinerConfig{
 			{
-				NumCommittedSectors: numCommittedSectors,
-				SectorSize:          constants.DevSectorSize,
+				CommittedSectors: commCfgs,
+				SectorSize:       constants.DevSectorSize,
 			},
 		},
 		Network: "ptvtest",
 	}
 
-	info, err := gengen.GenGen(ctx, genCfg, cst, bs)
+	info, err := gengen.GenGen(ctx, genCfg, bs)
 	require.NoError(t, err)
 
 	var genesis block.Block

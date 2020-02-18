@@ -15,7 +15,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
@@ -37,9 +36,8 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 
 	mds := ds.NewMapDatastore()
 	bstore := blockstore.NewBlockstore(mds)
-	cst := cborutil.NewIpldStore(bstore)
 
-	info, err := gengen.GenGen(context.TODO(), cfg, cst, bstore)
+	info, err := gengen.GenGen(context.TODO(), cfg, bstore)
 	require.NoError(t, err)
 
 	return &ChainSeed{
@@ -202,23 +200,27 @@ var PeerKeys = []crypto.PrivKey{
 	mustGenKey(102),
 }
 
-// TestGenCfg is a genesis configuration used for tests.
-var TestGenCfg = &gengen.GenesisCfg{
-	ProofsMode: types.TestProofsMode,
-	Keys:       2,
-	Miners: []*gengen.CreateStorageMinerConfig{
-		{
-			Owner:               0,
-			NumCommittedSectors: 100,
-			PeerID:              mustPeerID(PeerKeys[0]).Pretty(),
-			SectorSize:          constants.DevSectorSize,
+// MakeTestGenCfg returns a genesis configuration used for tests.
+func MakeTestGenCfg(t *testing.T) *gengen.GenesisCfg {
+	commCfgs, err := gengen.MakeNCommitCfgs(100)
+	require.NoError(t, err)
+	return &gengen.GenesisCfg{
+		ProofsMode: types.TestProofsMode,
+		Keys:       2,
+		Miners: []*gengen.CreateStorageMinerConfig{
+			{
+				Owner:            0,
+				PeerID:           mustPeerID(PeerKeys[0]).Pretty(),
+				CommittedSectors: commCfgs,
+				SectorSize:       constants.DevSectorSize,
+			},
 		},
-	},
-	Network: "go-filecoin-test",
-	PreAlloc: []string{
-		"10000",
-		"10000",
-	},
+		Network: "go-filecoin-test",
+		PreAlloc: []string{
+			"10000",
+			"10000",
+		},
+	}
 }
 
 func mustGenKey(seed int64) crypto.PrivKey {

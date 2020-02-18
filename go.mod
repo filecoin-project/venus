@@ -121,3 +121,5 @@ require (
 )
 
 replace github.com/filecoin-project/filecoin-ffi => ./vendors/filecoin-ffi
+
+replace github.com/ipfs/go-car => /Users/zenground0/Ground/go/src/github.com/ipfs/go-car

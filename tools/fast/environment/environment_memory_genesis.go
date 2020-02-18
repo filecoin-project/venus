@@ -229,6 +229,10 @@ func (e *MemoryGenesis) startGenesisServer() error {
 
 // buildGenesis builds a genesis with the specified funds.
 func (e *MemoryGenesis) buildGenesis(funds *big.Int) error {
+	commCfgs, err := gengen.MakeNCommitCfgs(100)
+	if err != nil {
+		return err
+	}
 	cfg := &gengen.GenesisCfg{
 		Keys: 1,
 		PreAlloc: []string{
@@ -236,8 +240,8 @@ func (e *MemoryGenesis) buildGenesis(funds *big.Int) error {
 		},
 		Miners: []*gengen.CreateStorageMinerConfig{
 			{
-				Owner:               0,
-				NumCommittedSectors: 128,
+				Owner:            0,
+				CommittedSectors: commCfgs,
 			},
 		},
 		Network:    "go-filecoin-test",

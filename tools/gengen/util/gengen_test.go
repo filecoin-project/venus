@@ -9,7 +9,6 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -17,27 +16,35 @@ import (
 	. "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-var testConfig = &GenesisCfg{
-	ProofsMode: types.TestProofsMode,
-	Keys:       4,
-	PreAlloc:   []string{"10", "50"},
-	Miners: []*CreateStorageMinerConfig{
-		{
-			Owner:               0,
-			NumCommittedSectors: 50,
-			SectorSize:          constants.DevSectorSize,
+func testConfig(t *testing.T) *GenesisCfg {
+	fiftyCommCfgs, err := MakeNCommitCfgs(50)
+	require.NoError(t, err)
+	tenCommCfgs, err := MakeNCommitCfgs(10)
+	require.NoError(t, err)
+
+	return &GenesisCfg{
+		ProofsMode: types.TestProofsMode,
+		Keys:       4,
+		PreAlloc:   []string{"10", "50"},
+		Miners: []*CreateStorageMinerConfig{
+			{
+				Owner:            0,
+				CommittedSectors: fiftyCommCfgs,
+				SectorSize:       constants.DevSectorSize,
+			},
+			{
+				Owner:            1,
+				CommittedSectors: tenCommCfgs,
+				SectorSize:       constants.DevSectorSize,
+			},
 		},
-		{
-			Owner:               1,
-			NumCommittedSectors: 10,
-			SectorSize:          constants.DevSectorSize,
-		},
-	},
-	Network: "go-filecoin-test",
-	Seed:    defaultSeed,
-	Time:    defaultTime,
+		Network: "go-filecoin-test",
+		Seed:    defaultSeed,
+		Time:    defaultTime,
+	}
 }
 
 const defaultSeed = 4
@@ -49,7 +56,7 @@ func TestGenGenLoading(t *testing.T) {
 	fi, err := ioutil.TempFile("", "gengentest")
 	assert.NoError(t, err)
 
-	_, err = GenGenesisCar(testConfig, fi)
+	_, err = GenGenesisCar(testConfig(t), fi)
 	assert.NoError(t, err)
 	assert.NoError(t, fi.Close())
 
@@ -72,8 +79,7 @@ func TestGenGenDeterministicBetweenBuilds(t *testing.T) {
 	var info *RenderedGenInfo
 	for i := 0; i < 50; i++ {
 		bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
-		cst := cborutil.NewIpldStore(bstore)
-		inf, err := GenGen(ctx, testConfig, cst, bstore)
+		inf, err := GenGen(ctx, testConfig(t), bstore)
 		assert.NoError(t, err)
 		if info == nil {
 			info = inf

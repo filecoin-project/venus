@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -31,6 +33,8 @@ type idResult struct {
 // filecoin node with the provided funds. The GenesisInfo can be used with MustImportGenesisMiner
 func RequireGenerateGenesis(t *testing.T, funds int64, dir string, genesisTime time.Time) *GenesisInfo {
 	// Setup, generate a genesis and key file
+	commCfgs, err := gengen.MakeNCommitCfgs(1)
+	require.NoError(t, err)
 	cfg := &gengen.GenesisCfg{
 		Seed:       0,
 		ProofsMode: types.TestProofsMode,
@@ -40,9 +44,9 @@ func RequireGenerateGenesis(t *testing.T, funds int64, dir string, genesisTime t
 		},
 		Miners: []*gengen.CreateStorageMinerConfig{
 			{
-				Owner:               0,
-				NumCommittedSectors: 1,
-				SectorSize:          constants.DevSectorSize,
+				Owner:            0,
+				CommittedSectors: commCfgs,
+				SectorSize:       constants.DevSectorSize,
 			},
 		},
 		Network: "go-filecoin-test",

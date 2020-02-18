@@ -141,7 +141,7 @@ func TestChainSync(t *testing.T) {
 
 // makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
 func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*Node, th.FakeClock, time.Duration) {
-	seed := MakeChainSeed(t, TestGenCfg)
+	seed := MakeChainSeed(t, MakeTestGenCfg(t))
 	ctx := context.Background()
 	fc := th.NewFakeClock(time.Unix(1234567890, 0))
 	blockTime := 100 * time.Millisecond

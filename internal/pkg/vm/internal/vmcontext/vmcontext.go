@@ -84,7 +84,7 @@ func NewVM(actorImpls ActorImplLookup, store *storage.VMStorage, st state.Tree) 
 func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}, rnd crypto.RandomnessSource) (interface{}, error) {
 	// normalize from addr
 	var ok bool
-	if from, ok = vm.normalizeFrom(from); !ok {
+	if from, ok = vm.normalizeAddress(from); !ok {
 		runtime.Abort(exitcode.SysErrActorNotFound)
 	}
 
@@ -136,10 +136,10 @@ func (vm *VM) ContextStore() adt.Store {
 	return &contextStore{context: vm.context, store: vm.store}
 }
 
-func (vm *VM) normalizeFrom(from address.Address) (address.Address, bool) {
+func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 	// short-circuit if the address is already an ID address
-	if from.Protocol() == address.ID {
-		return from, true
+	if addr.Protocol() == address.ID {
+		return addr, true
 	}
 
 	// resolve the target address via the InitActor, and attempt to load state.
@@ -158,7 +158,7 @@ func (vm *VM) normalizeFrom(from address.Address) (address.Address, bool) {
 	var state notinit.State
 	stateHandle.Readonly(&state)
 
-	idAddr, err := state.ResolveAddress(vm.ContextStore(), from)
+	idAddr, err := state.ResolveAddress(vm.ContextStore(), addr)
 	if err != nil {
 		return address.Undef, false
 	}
@@ -309,7 +309,6 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 
 	// 3. build context
 	ctx := newInvocationContext(vm, imsg, fromActor, &gasTank, rnd)
-
 	// 4. invoke message
 	return ctx.invoke(), nil
 }
@@ -347,7 +346,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, rn
 	}
 
 	// 2. load actor from global state
-	if msg.From, ok = vm.normalizeFrom(msg.From); !ok {
+	if msg.From, ok = vm.normalizeAddress(msg.From); !ok {
 		return message.Failure(exitcode.SysErrActorNotFound, gas.Zero), gasTank.GasConsumed().ToTokens(msgGasPrice), big.Zero()
 	}
 
