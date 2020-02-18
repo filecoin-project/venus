@@ -129,7 +129,12 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) er
 		return err
 	}
 
-	if minerState.PoStState.SurpriseChallengeEpoch == 0 {
+	tipsetHeight, err := newHead.Height()
+	if err != nil {
+		return err
+	}
+
+	if uint64(minerState.PoStState.ProvingPeriodStart) <= tipsetHeight {
 		// it's not time to PoSt
 		return nil
 	}
@@ -150,7 +155,7 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) er
 			return
 		}
 
-		challengeSeed, err := p.getChallengeSeed(ctx, newHead)
+		challengeSeed, err := p.getChallengeSeed(ctx, uint64(minerState.PoStState.ProvingPeriodStart))
 		if err != nil {
 			log.Error("error getting challenge seed", err)
 			return
@@ -193,14 +198,12 @@ func (p *Poster) sendPoSt(ctx context.Context, minerState miner.State, tipKey bl
 		}
 	}
 
-	surprisePoSt := miner.SubmitSurprisePoStResponseParams{
-		OnChainInfo: spaabi.OnChainSurprisePoStVerifyInfo{
-			RegisteredProof: spaabi.RegisteredProof_StackedDRG32GiBPoSt,
-			Candidates:      poStCandidates,
-			Proofs:          []spaabi.PoStProof{{ProofBytes: proof}},
-		},
+	windowedPost := spaabi.OnChainPoStVerifyInfo{
+		ProofType:  spaabi.RegisteredProof_StackedDRG32GiBPoSt,
+		Candidates: poStCandidates,
+		Proofs:     []spaabi.PoStProof{{ProofBytes: proof}},
 	}
-	surprisePostParams, err := abi.ToEncodedValues(surprisePoSt)
+	surprisePostParams, err := abi.ToEncodedValues(windowedPost)
 	if err != nil {
 		return err
 	}
@@ -213,7 +216,7 @@ func (p *Poster) sendPoSt(ctx context.Context, minerState miner.State, tipKey bl
 		types.NewGasPrice(1),
 		types.NewGasUnits(300),
 		true,
-		types.MethodID(builtin.MethodsMiner.SubmitSurprisePoStResponse),
+		types.MethodID(builtin.MethodsMiner.SubmitWindowedPoSt),
 		surprisePostParams,
 	)
 	if err != nil {
@@ -269,15 +272,10 @@ func (p *Poster) getFaults(ctx context.Context, minerState miner.State) ([]uint6
 	return minerState.FaultSet.All(sectorCount)
 }
 
-func (p *Poster) getChallengeSeed(ctx context.Context, newHead block.TipSet) ([32]byte, error) {
+func (p *Poster) getChallengeSeed(ctx context.Context, challengeHeight uint64) ([32]byte, error) {
 	var challengeSeed [32]byte
 
-	height, err := newHead.Height()
-	if err != nil {
-		return challengeSeed, err
-	}
-
-	randomness, err := p.chain.SampleRandomness(ctx, types.NewBlockHeight(height))
+	randomness, err := p.chain.SampleRandomness(ctx, types.NewBlockHeight(challengeHeight))
 	if err != nil {
 		return challengeSeed, err
 	}
