@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	commcid "github.com/filecoin-project/go-fil-commcid"
+	storagenode "github.com/filecoin-project/go-storage-miner/apis/node"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -155,12 +156,12 @@ func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, pieces ..
 			return cid.Undef, err
 		}
 
-		sig, err := m.wallet.SignBytesV2(buf.Bytes(), waddr)
+		sig, err := m.wallet.SignBytesV2(buf, waddr)
 		if err != nil {
 			return cid.Undef, err
 		}
 
-		proposals[i].ProposerSignature = &sig
+		proposals[i].ClientSignature = *sig
 	}
 
 	params := market.PublishStorageDealsParams{Deals: proposals}
@@ -248,7 +249,7 @@ func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sec
 	}
 
 	params := miner.SectorPreCommitInfo{
-		SectorNumber: abi.SectorNumber(sectorID),
+		SectorNumber: sectorNum,
 		SealedCID:    commcid.ReplicaCommitmentV1ToCID(commR),
 		SealEpoch:    abi.ChainEpoch(ticket.BlockHeight),
 		DealIDs:      dealIds,
@@ -299,7 +300,7 @@ func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, s
 	}
 
 	params := miner.ProveCommitSectorParams{
-		SectorNumber: abi.SectorNumber(sectorID),
+		SectorNumber: sectorNum,
 		Proof:        abi.SealProof{ProofBytes: proof},
 	}
 
