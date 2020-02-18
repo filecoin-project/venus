@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	aabi "github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
@@ -55,7 +55,7 @@ func (mpc *minerCreate) ConfigSet(dottedPath string, paramJSON string) error {
 	return mpc.config.Set(dottedPath, paramJSON)
 }
 
-func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error) {
+func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params interface{}) (cid.Cid, chan error, error) {
 	if mpc.msgFail {
 		return cid.Cid{}, nil, errors.New("test Error")
 	}
@@ -129,12 +129,12 @@ func (p *mStatusPlumbing) ChainHeadKey() block.TipSetKey {
 
 func (p *mStatusPlumbing) MinerStateView(baseKey block.TipSetKey) (MinerStateView, error) {
 	return &state.FakeStateView{
-		NetworkPower: aabi.NewStoragePower(4),
+		NetworkPower: abi.NewStoragePower(4),
 		Miners: map[address.Address]*state.FakeMinerState{
 			vmaddr.TestAddress: {
 				Owner:        vmaddr.TestAddress2,
 				Worker:       vmaddr.TestAddress2,
-				ClaimedPower: aabi.NewStoragePower(2),
+				ClaimedPower: abi.NewStoragePower(2),
 			},
 		},
 	}, nil
@@ -177,7 +177,7 @@ func (p *mSetWorkerPlumbing) MinerStateView(baseKey block.TipSetKey) (MinerState
 	}, nil
 }
 
-func (p *mSetWorkerPlumbing) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error) {
+func (p *mSetWorkerPlumbing) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params interface{}) (cid.Cid, chan error, error) {
 
 	if p.msgFail {
 		return cid.Cid{}, nil, errors.New("MsgFail")

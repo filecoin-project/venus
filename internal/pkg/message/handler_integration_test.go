@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -63,7 +64,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		inbox := handler.Inbox
 
 		// First, send a message and expect to find it in the message queue and pool.
-		mid1, donePub1, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasUnits, true, types.MethodID(9000001))
+		mid1, donePub1, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasUnits, true, types.MethodID(9000001), &adt.EmptyValue{})
 		require.NoError(t, err)
 		require.NotNil(t, donePub1)
 		require.Equal(t, 1, len(outbox.Queue().List(sender))) // Message is in the queue.
@@ -93,7 +94,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 
 		// Send another message from the same account.
 		// First, send a message and expect to find it in the message queue and pool.
-		mid2, donePub2, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasUnits, true, types.MethodID(9000002))
+		mid2, donePub2, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasUnits, true, types.MethodID(9000002), &adt.EmptyValue{})
 		// This case causes the nonce to be wrongly calculated, since the first, now-unmined message
 		// is not in the outbox, and actor state has not updated, but the message pool already has
 		// a message with the same nonce.

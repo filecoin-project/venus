@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	address "github.com/filecoin-project/go-address"
-	aabi "github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	cid "github.com/ipfs/go-cid"
@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
@@ -22,7 +23,7 @@ import (
 type mcAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedPath string, paramJSON string) error
-	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params interface{}) (cid.Cid, chan error, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error
 	WalletDefaultAddress() (address.Address, error)
 }
@@ -30,11 +31,11 @@ type mcAPI interface {
 type MinerStateView interface {
 	MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error)
 	MinerPeerID(ctx context.Context, maddr address.Address) (peer.ID, error)
-	MinerSectorSize(ctx context.Context, maddr address.Address) (aabi.SectorSize, error)
-	MinerProvingPeriod(ctx context.Context, maddr address.Address) (start aabi.ChainEpoch, end aabi.ChainEpoch, failureCount int, err error)
-	NetworkTotalPower(ctx context.Context) (aabi.StoragePower, error)
-	MinerClaimedPower(ctx context.Context, miner address.Address) (aabi.StoragePower, error)
-	MinerPledgeCollateral(ctx context.Context, miner address.Address) (locked aabi.TokenAmount, total aabi.TokenAmount, err error)
+	MinerSectorSize(ctx context.Context, maddr address.Address) (abi.SectorSize, error)
+	MinerProvingPeriod(ctx context.Context, maddr address.Address) (start abi.ChainEpoch, end abi.ChainEpoch, failureCount int, err error)
+	NetworkTotalPower(ctx context.Context) (abi.StoragePower, error)
+	MinerClaimedPower(ctx context.Context, miner address.Address) (abi.StoragePower, error)
+	MinerPledgeCollateral(ctx context.Context, miner address.Address) (locked abi.TokenAmount, total abi.TokenAmount, err error)
 }
 
 // MinerCreate creates a new miner actor for the given account and returns its address.
@@ -66,6 +67,13 @@ func MinerCreate(
 		return nil, fmt.Errorf("can only have one miner per node")
 	}
 
+	params := power.CreateStorageMinerParams{
+		OwnerAddr:  minerOwnerAddr,
+		WorkerAddr: minerOwnerAddr,
+		PeerID:     pid,
+		SectorSize: sectorSize,
+	}
+
 	smsgCid, _, err := plumbing.MessageSend(
 		ctx,
 		minerOwnerAddr,
@@ -74,8 +82,7 @@ func MinerCreate(
 		gasPrice,
 		gasLimit,
 		types.MethodID(builtin.MethodsPower.CreateMiner),
-		sectorSize,
-		pid,
+		&params,
 	)
 	if err != nil {
 		return nil, err
@@ -171,16 +178,16 @@ type MinerStatus struct {
 	OwnerAddress  address.Address
 	WorkerAddress address.Address
 	PeerID        peer.ID
-	SectorSize    aabi.SectorSize
+	SectorSize    abi.SectorSize
 
-	Power             aabi.StoragePower
-	PledgeRequirement aabi.TokenAmount
-	PledgeBalance     aabi.TokenAmount
+	Power             abi.StoragePower
+	PledgeRequirement abi.TokenAmount
+	PledgeBalance     abi.TokenAmount
 
-	ProvingPeriodStart aabi.ChainEpoch
-	ProvingPeriodEnd   aabi.ChainEpoch
+	ProvingPeriodStart abi.ChainEpoch
+	ProvingPeriodEnd   abi.ChainEpoch
 	PoStFailureCount   int
-	NetworkPower       aabi.StoragePower
+	NetworkPower       abi.StoragePower
 }
 
 // MinerGetStatus queries the power of a given miner.
@@ -241,7 +248,7 @@ type mwapi interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ChainHeadKey() block.TipSetKey
 	MinerStateView(baseKey block.TipSetKey) (MinerStateView, error)
-	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params interface{}) (cid.Cid, chan error, error)
 }
 
 // MinerSetWorkerAddress sets the worker address of the miner actor to the provided new address,
@@ -282,6 +289,6 @@ func MinerSetWorkerAddress(
 		gasPrice,
 		gasLimit,
 		types.MethodID(builtin.MethodsMiner.ChangeWorkerAddress),
-		workerAddr)
+		&workerAddr)
 	return c, err
 }
