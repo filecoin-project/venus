@@ -23,12 +23,12 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
-	"github.com/ipfs/go-ipfs-files"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
+	files "github.com/ipfs/go-ipfs-files"
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
@@ -253,7 +253,7 @@ func main() {
 	// WaitForDealState
 	// 9. Query deal till complete
 
-	var deals []*storageimpl.Response
+	var deals []*network.Response
 
 	for _, miner := range miners {
 		err = series.InitAndStart(ctx, miner)

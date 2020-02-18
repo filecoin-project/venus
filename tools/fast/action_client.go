@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
+
 	"github.com/filecoin-project/go-address"
-	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 
@@ -37,9 +38,9 @@ func (f *Filecoin) ClientImport(ctx context.Context, data files.File) (cid.Cid, 
 
 // ClientProposeStorageDeal runs the client propose-storage-deal command against the filecoin process.
 func (f *Filecoin) ClientProposeStorageDeal(ctx context.Context, data cid.Cid,
-	miner address.Address, ask uint64, duration uint64, options ...ActionOption) (*storageimpl.Response, error) {
+	miner address.Address, ask uint64, duration uint64, options ...ActionOption) (*network.Response, error) {
 
-	var out storageimpl.Response
+	var out network.Response
 	sData := data.String()
 	sMiner := miner.String()
 	sAsk := fmt.Sprintf("%d", ask)
@@ -57,8 +58,8 @@ func (f *Filecoin) ClientProposeStorageDeal(ctx context.Context, data cid.Cid,
 }
 
 // ClientQueryStorageDeal runs the client query-storage-deal command against the filecoin process.
-func (f *Filecoin) ClientQueryStorageDeal(ctx context.Context, prop cid.Cid) (*storageimpl.Response, error) {
-	var out storageimpl.Response
+func (f *Filecoin) ClientQueryStorageDeal(ctx context.Context, prop cid.Cid) (*network.Response, error) {
+	var out network.Response
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "client", "query-storage-deal", prop.String()); err != nil {
 		return nil, err
