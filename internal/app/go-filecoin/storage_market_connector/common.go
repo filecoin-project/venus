@@ -208,16 +208,6 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 	})
 }
 
-func decodeSectorID(msg *types.SignedMessage) (uint64, error) {
-	var params miner.SectorPreCommitInfo
-	err := params.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
-	if err != nil {
-		return 0, nil
-	}
-
-	return uint64(params.SectorNumber), nil
-}
-
 func (c *connectorCommon) getBalance(ctx context.Context, root cid.Cid, addr address.Address) (abi.TokenAmount, error) {
 	// These should be replaced with methods on the state view
 	table := adt.AsBalanceTable(state.StoreFromCbor(ctx, c.chainStore), root)
@@ -285,6 +275,6 @@ func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) (
 	return deals, nil
 }
 
-func (s *connectorCommon) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) bool {
+func (c *connectorCommon) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) bool {
 	panic("implement me")
 }
