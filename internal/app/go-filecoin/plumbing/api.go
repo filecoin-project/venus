@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore/query"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/metrics"
@@ -21,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
@@ -29,7 +27,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -58,7 +55,6 @@ type API struct {
 	network      *net.Network
 	outbox       *message.Outbox
 	pieceManager func() piecemanager.PieceManager
-	storagedeals *strgdls.Store
 	wallet       *wallet.Wallet
 }
 
@@ -69,7 +65,6 @@ type APIDeps struct {
 	Sync         *cst.ChainSyncProvider
 	Config       *cfg.Config
 	DAG          *dag.DAG
-	Deals        *strgdls.Store
 	Expected     consensus.Protocol
 	MsgPool      *message.Pool
 	MsgPreviewer *msg.Previewer
@@ -96,7 +91,6 @@ func New(deps *APIDeps) *API {
 		network:      deps.Network,
 		outbox:       deps.Outbox,
 		pieceManager: deps.PieceManager,
-		storagedeals: deps.Deals,
 		wallet:       deps.Wallet,
 	}
 }
@@ -199,16 +193,6 @@ func (api *API) ChainExport(ctx context.Context, head block.TipSetKey, out io.Wr
 // ChainImport imports a chain from `in`.
 func (api *API) ChainImport(ctx context.Context, in io.Reader) (block.TipSetKey, error) {
 	return api.chain.ChainImport(ctx, in)
-}
-
-// DealsIterator returns an iterator to access all deals
-func (api *API) DealsIterator() (*query.Results, error) {
-	return api.storagedeals.Iterator()
-}
-
-// DealPut puts a given deal in the datastore
-func (api *API) DealPut(storageDeal *storagedeal.Deal) error {
-	return api.storagedeals.Put(storageDeal)
 }
 
 // OutboxQueues lists addresses with non-empty outbox queues (in no particular order).

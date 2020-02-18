@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"io"
 
+	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	files "github.com/ipfs/go-ipfs-files"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 var clientCmd = &cmds.Command{
@@ -25,7 +24,6 @@ var clientCmd = &cmds.Command{
 		"query-storage-deal":   clientQueryStorageDealCmd,
 		"verify-storage-deal":  clientVerifyStorageDealCmd,
 		"list-asks":            clientListAsksCmd,
-		"payments":             paymentsCmd,
 	},
 }
 
@@ -153,12 +151,12 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 		//
 		//return re.Emit(resp)
 	},
-	Type: storagedeal.Response{},
+	Type: storageimpl.Response{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storagedeal.Response) error {
-			fmt.Fprintf(w, "State:   %s\n", resp.State.String())       // nolint: errcheck
-			fmt.Fprintf(w, "Message: %s\n", resp.Message)              // nolint: errcheck
-			fmt.Fprintf(w, "DealID:  %s\n", resp.ProposalCid.String()) // nolint: errcheck
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storageimpl.Response) error {
+			fmt.Fprintf(w, "State:   %d\n", resp.State)               // nolint: errcheck
+			fmt.Fprintf(w, "Message: %s\n", resp.Message)             // nolint: errcheck
+			fmt.Fprintf(w, "Message CID:  %s\n", resp.PublishMessage) // nolint: errcheck
 			return nil
 		}),
 	},
@@ -191,11 +189,11 @@ format is specified with the --enc flag.
 		//
 		//return re.Emit(resp)
 	},
-	Type: storagedeal.SignedResponse{},
+	Type: storageimpl.SignedResponse{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storagedeal.SignedResponse) error {
-			fmt.Fprintf(w, "Status: %s\n", resp.State.String()) // nolint: errcheck
-			fmt.Fprintf(w, "Message: %s\n", resp.Message)       // nolint: errcheck
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storageimpl.SignedResponse) error {
+			fmt.Fprintf(w, "Status: %d\n", resp.Response.State)    // nolint: errcheck
+			fmt.Fprintf(w, "Message: %s\n", resp.Response.Message) // nolint: errcheck
 			return nil
 		}),
 	},
@@ -267,51 +265,6 @@ respectively.
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ask *porcelain.Ask) error {
 			fmt.Fprintf(w, "%s %.3d %s %s\n", ask.Miner, ask.ID, ask.Price, ask.Expiry) // nolint: errcheck
-			return nil
-		}),
-	},
-}
-
-var paymentsCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
-		Tagline:          "List payments for a given deal",
-		ShortDescription: "List payments for a given deal",
-	},
-	Options: []cmdkit.Option{},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("dealCid", true, false, "Channel id from which to list vouchers"),
-	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		panic("not implemented pending full storage market integration")
-
-		//dealCid, err := cid.Decode(req.Arguments[0])
-		//if err != nil {
-		//	return fmt.Errorf("invalid channel id")
-		//}
-		//
-		//vouchers, err := GetStorageAPI(env).Payments(req.Context, dealCid)
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//return re.Emit(vouchers)
-	},
-	Type: []*types.PaymentVoucher{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, vouchers []*types.PaymentVoucher) error {
-			if _, err := fmt.Println("Channel\tAmount\tValidAt\tEncoded Voucher"); err != nil {
-				return err
-			}
-			for _, voucher := range vouchers {
-				encodedVoucher, err := voucher.EncodeBase58()
-				if err != nil {
-					return err
-				}
-				_, err = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", voucher.Channel.String(), voucher.Amount.String(), voucher.ValidAt.String(), encodedVoucher)
-				if err != nil {
-					return err
-				}
-			}
 			return nil
 		}),
 	},

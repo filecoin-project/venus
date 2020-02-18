@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
@@ -217,7 +216,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		Sync:         cst.NewChainSyncProvider(nd.syncer.ChainSyncManager),
 		Config:       cfg.NewConfig(b.repo),
 		DAG:          dag.NewDAG(merkledag.NewDAGService(nd.Blockservice.Blockservice)),
-		Deals:        strgdls.New(b.repo.DealsDatastore()),
 		Expected:     nd.syncer.Consensus,
 		MsgPool:      nd.Messaging.MsgPool,
 		MsgPreviewer: msg.NewPreviewer(nd.chain.ChainReader, nd.Blockstore.CborStore, nd.Blockstore.Blockstore, nd.chain.Processor),

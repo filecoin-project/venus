@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
@@ -55,16 +54,6 @@ func (a *API) ChainHead() (block.TipSet, error) {
 // ChainGetFullBlock returns the full block given the header cid
 func (a *API) ChainGetFullBlock(ctx context.Context, id cid.Cid) (*block.FullBlock, error) {
 	return GetFullBlock(ctx, a, id)
-}
-
-// DealGet returns a single deal matching a given cid or an error
-func (a *API) DealGet(ctx context.Context, proposalCid cid.Cid) (*storagedeal.Deal, error) {
-	return DealGet(ctx, a, proposalCid)
-}
-
-// DealsLs returns a channel with all deals
-func (a *API) DealsLs(ctx context.Context) (<-chan *StorageDealLsResult, error) {
-	return DealsLs(ctx, a)
 }
 
 // MessagePoolWait waits for the message pool to have at least messageCount unmined messages.
@@ -124,11 +113,6 @@ func (a *API) WalletDefaultAddress() (address.Address, error) {
 
 // ClientListAsks returns a channel with asks from the latest chain state
 func (a *API) ClientListAsks(ctx context.Context) <-chan Ask {
-	panic("implement me in terms of the storage market module")
-}
-
-// ClientValidateDeal checks to see that a storage deal is in the `Complete` state, and that its PIP is valid
-func (a *API) ClientValidateDeal(ctx context.Context, proposalCid cid.Cid, proofInfo *storagedeal.ProofInfo) error {
 	panic("implement me in terms of the storage market module")
 }
 

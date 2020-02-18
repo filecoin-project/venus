@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding/gen"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/retrieval"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
@@ -70,20 +69,6 @@ func main() {
 
 	// storage.dealsAwaitingSeal{}, // protocol/storage/deals_awaiting_seal.go XXX: private struct
 
-	if err := gen.WriteToFile(filepath.Join(base, "protocol/storage/storagedeal/storagedeal_encoding_gen.go"), gen.IpldCborTypeEncodingGenerator{}, "storagedeal",
-		storagedeal.PaymentInfo{},    // protocol/storage/storagedeal/types.go
-		storagedeal.Proposal{},       // protocol/storage/storagedeal/types.go
-		storagedeal.SignedProposal{}, // protocol/storage/storagedeal/types.go
-		storagedeal.Response{},       // protocol/storage/storagedeal/types.go
-		storagedeal.SignedResponse{}, // protocol/storage/storagedeal/types.go
-		storagedeal.ProofInfo{},      // protocol/storage/storagedeal/types.go
-		storagedeal.QueryRequest{},   // protocol/storage/storagedeal/types.go
-		storagedeal.Deal{},           // protocol/storage/storagedeal/types.go
-	); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
 	if err := gen.WriteToFile(filepath.Join(base, "types/types_encoding_gen.go"), gen.IpldCborTypeEncodingGenerator{}, "types",
 		// types.AttoFIL{}, // types/atto_file.go XXX: custom
 		// types.BlockHeight{}, // types/block_height.go XXX: custom
@@ -97,8 +82,6 @@ func main() {
 		// types.ReceiptCollection{}, // types/message.go // XXX: array
 		types.UnsignedMessage{}, // types/message.go
 		types.TxMeta{},          // types/message.go
-		types.Predicate{},       // types/payment_voucher.go
-		types.PaymentVoucher{},  // types/payment_voucher.go
 		types.SignedMessage{},   // types/signed_message.go
 		// types.SignedMessageCollection{}, // types/signed_message.go // XXX: array
 		// types.Uint64(0),   // types/uint64.go XXX: CUSTOM

@@ -11,7 +11,6 @@ import (
 	"crypto/rand"
 	flg "flag"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -23,12 +22,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/ipfs/go-ipfs-files"
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
 
 	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
@@ -252,7 +253,7 @@ func main() {
 	// WaitForDealState
 	// 9. Query deal till complete
 
-	var deals []*storagedeal.Response
+	var deals []*storageimpl.Response
 
 	for _, miner := range miners {
 		err = series.InitAndStart(ctx, miner)
@@ -305,7 +306,7 @@ func main() {
 	}
 
 	for _, deal := range deals {
-		_, err = series.WaitForDealState(ctx, genesis, deal, storagedeal.Complete)
+		_, err = series.WaitForDealState(ctx, genesis, deal, storagemarket.StorageDealCommitted)
 		if err != nil {
 			exitcode = handleError(err, "failed series.WaitForDealState;")
 			return
