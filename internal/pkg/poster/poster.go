@@ -4,21 +4,20 @@ import (
 	"context"
 	"sync"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-storage-miner"
 	spaabi "github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/prometheus/common/log"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	storageminerconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/storage_miner_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 )
@@ -48,6 +47,7 @@ type Poster struct {
 	storageMiner     *storage.Miner
 	heaviestTipsetCh chan interface{}
 	chain            *cst.ChainStateReadWriter
+	stateViewer      *appstate.Viewer
 }
 
 // NewPoster creates a Poster struct
@@ -58,7 +58,8 @@ func NewPoster(
 	connector *storageminerconnector.StorageMinerNodeConnector,
 	miner *storage.Miner,
 	htc chan interface{},
-	chain *cst.ChainStateReadWriter) *Poster {
+	chain *cst.ChainStateReadWriter,
+	stateViewer *appstate.Viewer) *Poster {
 
 	return &Poster{
 		minerAddr:        minerAddr,
@@ -68,6 +69,7 @@ func NewPoster(
 		storageMiner:     miner,
 		heaviestTipsetCh: htc,
 		chain:            chain,
+		stateViewer:      stateViewer,
 	}
 }
 
@@ -123,18 +125,23 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) er
 		return nil
 	}
 
-	var minerState miner.State
-	err := p.chain.GetActorStateAt(ctx, newHead.Key(), p.minerAddr, &minerState)
-	if err != nil {
-		return err
-	}
-
 	tipsetHeight, err := newHead.Height()
 	if err != nil {
 		return err
 	}
 
-	if uint64(minerState.PoStState.ProvingPeriodStart) <= tipsetHeight {
+	root, err := p.chain.GetTipStateStateRoot(ctx, newHead.Key())
+	if err != nil {
+		return err
+	}
+
+	stateView := p.stateViewer.StateView(root)
+	provingPeriodStart, _, _, err := stateView.MinerProvingPeriod(ctx, p.minerAddr)
+	if err != nil {
+		return nil
+	}
+
+	if uint64(provingPeriodStart) <= tipsetHeight {
 		// it's not time to PoSt
 		return nil
 	}
@@ -143,19 +150,19 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) er
 	go func() {
 		defer p.cancelPost()
 
-		sortedSectorInfo, err := p.getProvingSet(ctx, minerState)
+		sortedSectorInfo, err := p.getProvingSet(ctx, stateView)
 		if err != nil {
 			log.Error("error getting proving set", err)
 			return
 		}
 
-		faults, err := p.getFaults(ctx, minerState)
+		faults, err := stateView.MinerFaults(ctx, p.minerAddr)
 		if err != nil {
 			log.Error("error getting faults", err)
 			return
 		}
 
-		challengeSeed, err := p.getChallengeSeed(ctx, uint64(minerState.PoStState.ProvingPeriodStart))
+		challengeSeed, err := p.getChallengeSeed(ctx, uint64(provingPeriodStart))
 		if err != nil {
 			log.Error("error getting challenge seed", err)
 			return
@@ -167,7 +174,7 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) er
 			return
 		}
 
-		err = p.sendPoSt(ctx, minerState, newHead.Key(), candidates, proof)
+		err = p.sendPoSt(ctx, stateView, newHead.Key(), candidates, proof)
 		if err != nil {
 			log.Error("error sending fallback PoSt", err)
 			return
@@ -177,8 +184,8 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) er
 	return nil
 }
 
-func (p *Poster) sendPoSt(ctx context.Context, minerState miner.State, tipKey block.TipSetKey, candidates []sectorbuilder.EPostCandidate, proof []byte) error {
-	minerIDAddr, err := p.chain.ResolveAddressAt(ctx, tipKey, p.minerAddr)
+func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, tipKey block.TipSetKey, candidates []sectorbuilder.EPostCandidate, proof []byte) error {
+	minerIDAddr, err := stateView.InitResolveAddress(ctx, p.minerAddr)
 	if err != nil {
 		return err
 	}
@@ -208,9 +215,14 @@ func (p *Poster) sendPoSt(ctx context.Context, minerState miner.State, tipKey bl
 		return err
 	}
 
+	_, workerAddr, err := stateView.MinerControlAddresses(ctx, p.minerAddr)
+	if err != nil {
+		return err
+	}
+
 	_, _, err = p.outbox.Send(
 		ctx,
-		minerState.Info.Worker,
+		workerAddr,
 		p.minerAddr,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
@@ -226,50 +238,8 @@ func (p *Poster) sendPoSt(ctx context.Context, minerState miner.State, tipKey bl
 	return nil
 }
 
-func (p *Poster) getProvingSet(ctx context.Context, minerState miner.State) (sectorbuilder.SortedPublicSectorInfo, error) {
-	store := &actorStore{ctx, *p.chain}
-
-	provingSet := adt.AsArray(store, minerState.ProvingSet)
-	var sectorInfos []ffi.PublicSectorInfo
-	var sector miner.SectorOnChainInfo
-	err := provingSet.ForEach(&sector, func(idx int64) error {
-		commRbytes, err := commcid.CIDToReplicaCommitmentV1(sector.Info.SealedCID)
-		if err != nil {
-			return err
-		}
-
-		var commR [sectorbuilder.CommLen]byte
-		copy(commR[:], commRbytes)
-
-		sectorInfo := ffi.PublicSectorInfo{
-			SectorID: uint64(sector.Info.SectorNumber),
-			CommR:    commR,
-		}
-		sectorInfos = append(sectorInfos, sectorInfo)
-		return nil
-	})
-	if err != nil {
-		return sectorbuilder.SortedPublicSectorInfo{}, err
-	}
-
-	return ffi.NewSortedPublicSectorInfo(sectorInfos...), nil
-}
-
-func (p *Poster) getFaults(ctx context.Context, minerState miner.State) ([]uint64, error) {
-	store := &actorStore{ctx, *p.chain}
-
-	// compute size of sectors to determine max faults (this may be overkill but it avoids a consensus parameter)
-	var sector miner.SectorOnChainInfo
-	sectorCount := uint64(0)
-	err := adt.AsArray(store, minerState.Sectors).ForEach(&sector, func(idx int64) error {
-		sectorCount++
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return minerState.FaultSet.All(sectorCount)
+func (p *Poster) getProvingSet(ctx context.Context, stateView *appstate.View) (sectorbuilder.SortedPublicSectorInfo, error) {
+	return consensus.NewPowerTableView(stateView).SortedSectorInfos(ctx, p.minerAddr)
 }
 
 func (p *Poster) getChallengeSeed(ctx context.Context, challengeHeight uint64) ([32]byte, error) {
@@ -283,15 +253,6 @@ func (p *Poster) getChallengeSeed(ctx context.Context, challengeHeight uint64) (
 	copy(challengeSeed[:], randomness)
 
 	return challengeSeed, nil
-}
-
-func (p *Poster) getMinerID(ctx context.Context, newHead block.TipSet) (uint64, error) {
-	addr, err := p.chain.ResolveAddressAt(ctx, newHead.Key(), p.minerAddr)
-	if err != nil {
-		return 0, err
-	}
-
-	return address.IDFromAddress(addr)
 }
 
 func (p *Poster) cancelPost() {

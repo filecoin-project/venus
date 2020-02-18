@@ -61,6 +61,23 @@ func (v *View) InitNetworkName(ctx context.Context) (string, error) {
 	return initState.NetworkName, nil
 }
 
+// Returns ID address if public key address is given.
+func (v *View) InitResolveAddress(ctx context.Context, a addr.Address) (addr.Address, error) {
+	if a.Protocol() == addr.ID {
+		return a, nil
+	}
+
+	initState, err := v.loadInitActor(ctx)
+	if err != nil {
+		return addr.Undef, err
+	}
+
+	state := &notinit.State{
+		AddressMap: initState.AddressMap,
+	}
+	return state.ResolveAddress(StoreFromCbor(ctx, v.ipldStore), a)
+}
+
 func (v *View) MinerControlAddresses(ctx context.Context, maddr addr.Address) (owner, worker addr.Address, err error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
@@ -112,6 +129,16 @@ func (v *View) MinerProvingSetForEach(ctx context.Context, maddr addr.Address,
 		// Add more fields here as required by new callers.
 		return f(sector.Info.SectorNumber, sector.Info.SealedCID)
 	})
+}
+
+// Returns all sector ids that are faults
+func (v *View) MinerFaults(ctx context.Context, maddr addr.Address) ([]uint64, error) {
+	minerState, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	return minerState.FaultSet.All(miner.MaxFaultsCount)
 }
 
 // Returns the storage power actor's value for network total power.

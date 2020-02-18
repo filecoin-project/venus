@@ -56,7 +56,7 @@ func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching,
 		chain:         c,
 		sectorbuilder: s,
 		minerAddr:     minerAddr,
-		poster:        poster.NewPoster(minerAddr, m.Outbox, s, minerNode, storageMiner, c.HeaviestTipSetCh, c.State),
+		poster:        poster.NewPoster(minerAddr, m.Outbox, s, minerNode, storageMiner, c.HeaviestTipSetCh, c.State, stateViewer),
 	}
 
 	return modu, nil
