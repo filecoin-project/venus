@@ -17,6 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	address "github.com/filecoin-project/go-address"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -139,7 +141,7 @@ func TestMinerCreate(t *testing.T) {
 				args = append(args, "--peerid", pid.Pretty())
 			}
 
-			collateral := big.NewInt(0).Mul(big.NewInt(int64(1000000*types.OneKiBSectorSize.Uint64())), miner.MinimumCollateralPerSector.Int)
+			collateral := specsbig.Mul(specsbig.NewInt(int64(1000000*types.OneKiBSectorSize.Uint64())), miner.MinimumCollateralPerSector)
 			args = append(args, collateral.String())
 
 			var wg sync.WaitGroup

@@ -149,22 +149,6 @@ func TestAttoFILSubtraction(t *testing.T) {
 	})
 }
 
-func TestDivCeil(t *testing.T) {
-	tf.UnitTest(t)
-
-	x := NewAttoFIL(big.NewInt(200))
-
-	t.Run("returns exactly the dividend when y divides x", func(t *testing.T) {
-		actual := DivCeil(x, NewAttoFIL(big.NewInt(10)))
-		assert.Equal(t, NewAttoFIL(big.NewInt(20)), actual)
-	})
-
-	t.Run("rounds up when y does not divide x", func(t *testing.T) {
-		actual := DivCeil(x, NewAttoFIL(big.NewInt(9)))
-		assert.Equal(t, NewAttoFIL(big.NewInt(23)), actual)
-	})
-}
-
 func TestAttoFILCborMarshaling(t *testing.T) {
 	tf.UnitTest(t)
 

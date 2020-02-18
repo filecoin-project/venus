@@ -27,7 +27,7 @@ var attoFILAtlasEntry = atlas.BuildEntry(AttoFIL{}).Transform().
 	Complete()
 
 var attoPower = 18
-var tenToTheEighteen = big.NewInt(10).Exp(big.NewInt(10), big.NewInt(18), nil)
+var tenToTheEighteen = specsbig.Exp(specsbig.NewInt(10), specsbig.NewInt(18))
 
 // ZeroAttoFIL is the zero value for an AttoFIL, exported for consistency in construction of AttoFILs
 var ZeroAttoFIL = specsbig.Zero()
@@ -49,8 +49,8 @@ func NewAttoFIL(x *big.Int) AttoFIL {
 // NewAttoFILFromFIL returns a new AttoFIL representing a quantity
 // of attofilecoin equal to x filecoin.
 func NewAttoFILFromFIL(x uint64) AttoFIL {
-	xAsBigInt := big.NewInt(0).SetUint64(x)
-	return NewAttoFIL(xAsBigInt.Mul(xAsBigInt, tenToTheEighteen))
+	xAsBigInt := specsbig.NewInt(int64(x))
+	return specsbig.Mul(xAsBigInt, tenToTheEighteen)
 }
 
 var tenToTheEighteenTokens = specsbig.Exp(specsbig.NewInt(10), specsbig.NewInt(18))
@@ -102,18 +102,4 @@ func NewAttoFILFromString(s string, base int) (AttoFIL, bool) {
 	out := specsbig.NewInt(0)
 	_, isErr := out.Int.SetString(s, base)
 	return out, isErr
-}
-
-// DivCeil returns the minimum number of times this value can be divided into smaller amounts
-// such that none of the smaller amounts are greater than the given divisor.
-// Equal to ceil(z/y) if AttoFIL could be fractional.
-// If y is zero a panic will occur.
-func DivCeil(z, y AttoFIL) AttoFIL {
-	value, remainder := big.NewInt(0).DivMod(z.Int, y.Int, big.NewInt(0))
-
-	if remainder.Cmp(big.NewInt(0)) == 0 {
-		return NewAttoFIL(value)
-	}
-
-	return NewAttoFIL(big.NewInt(0).Add(value, big.NewInt(1)))
 }

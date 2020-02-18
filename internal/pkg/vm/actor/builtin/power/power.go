@@ -172,7 +172,6 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateSt
 				SectorSize:             params.SectorSize,
 			})
 			if err != nil {
-				fmt.Printf("here it is: %s\n", err)
 				return fmt.Errorf("Could not set power table at address: %s", actorIDAddr)
 			}
 			return nil
@@ -184,7 +183,6 @@ func (*impl) createStorageMiner(vmctx runtime.InvocationContext, params CreateSt
 		return actorIDAddr, nil
 	})
 	if err != nil {
-		fmt.Printf("power actor panic %s\n", err)
 		panic(err)
 	}
 
