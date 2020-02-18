@@ -8,11 +8,12 @@ import (
 	"testing"
 
 	manet "github.com/multiformats/go-multiaddr-net"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDaemonStartupMessage(t *testing.T) {

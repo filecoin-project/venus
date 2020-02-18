@@ -5,15 +5,15 @@ import (
 	"testing"
 	"time"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const protocolTestParamBlockTime = time.Second
@@ -57,8 +57,8 @@ func TestProtocolParams(t *testing.T) {
 			AutoSealInterval: 120,
 			Network:          "protocolTest",
 			SupportedSectors: []porcelain.SectorInfo{
-				{types.OneKiBSectorSize, types.NewBytesAmount(ffi.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize.Uint64()))},
-				{types.TwoHundredFiftySixMiBSectorSize, types.NewBytesAmount(ffi.GetMaxUserBytesPerStagedSector(types.TwoHundredFiftySixMiBSectorSize.Uint64()))},
+				{types.OneKiBSectorSize, types.NewBytesAmount(uint64(abi.PaddedPieceSize(types.OneKiBSectorSize.Uint64()).Unpadded()))},
+				{types.TwoHundredFiftySixMiBSectorSize, types.NewBytesAmount(uint64(abi.PaddedPieceSize(types.TwoHundredFiftySixMiBSectorSize.Uint64()).Unpadded()))},
 			},
 			BlockTime: protocolTestParamBlockTime,
 		}

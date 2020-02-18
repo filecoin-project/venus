@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
+
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -151,9 +152,9 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 		//
 		//return re.Emit(resp)
 	},
-	Type: storageimpl.Response{},
+	Type: network.Response{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storageimpl.Response) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *network.Response) error {
 			fmt.Fprintf(w, "State:   %d\n", resp.State)               // nolint: errcheck
 			fmt.Fprintf(w, "Message: %s\n", resp.Message)             // nolint: errcheck
 			fmt.Fprintf(w, "Message CID:  %s\n", resp.PublishMessage) // nolint: errcheck
@@ -189,9 +190,9 @@ format is specified with the --enc flag.
 		//
 		//return re.Emit(resp)
 	},
-	Type: storageimpl.SignedResponse{},
+	Type: network.SignedResponse{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storageimpl.SignedResponse) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *network.SignedResponse) error {
 			fmt.Fprintf(w, "Status: %d\n", resp.Response.State)    // nolint: errcheck
 			fmt.Fprintf(w, "Message: %s\n", resp.Response.Message) // nolint: errcheck
 			return nil
