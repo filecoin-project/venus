@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 )
 
 // TODO: replace with state.NewStore
@@ -205,14 +204,10 @@ func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, tipKey 
 		}
 	}
 
-	windowedPost := spaabi.OnChainPoStVerifyInfo{
+	windowedPost := &spaabi.OnChainPoStVerifyInfo{
 		ProofType:  spaabi.RegisteredProof_StackedDRG32GiBPoSt,
 		Candidates: poStCandidates,
 		Proofs:     []spaabi.PoStProof{{ProofBytes: proof}},
-	}
-	surprisePostParams, err := abi.ToEncodedValues(windowedPost)
-	if err != nil {
-		return err
 	}
 
 	_, workerAddr, err := stateView.MinerControlAddresses(ctx, p.minerAddr)
@@ -229,7 +224,7 @@ func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, tipKey 
 		types.NewGasUnits(300),
 		true,
 		types.MethodID(builtin.MethodsMiner.SubmitWindowedPoSt),
-		surprisePostParams,
+		windowedPost,
 	)
 	if err != nil {
 		return err
