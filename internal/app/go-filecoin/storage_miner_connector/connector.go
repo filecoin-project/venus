@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -432,25 +433,76 @@ func (m *StorageMinerNodeConnector) GetMinerWorkerAddressFromChainHead(ctx conte
 }
 
 func (m *StorageMinerNodeConnector) SendReportFaults(ctx context.Context, sectorIDs ...abi.SectorNumber) (cid.Cid, error) {
-	panic("TODO: go-storage-miner integration")
+	waddr, err := m.GetMinerWorkerAddressFromChainHead(ctx, m.minerAddr)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	bf := abi.NewBitField()
+	for _, id := range sectorIDs {
+		bf.Set(uint64(id))
+	}
+
+	params := miner.DeclareTemporaryFaultsParams{
+		SectorNumbers: bf,
+
+		// TODO: use a real value here
+		Duration: abi.ChainEpoch(miner.ProvingPeriod),
+	}
+
+	mcid, cerr, err := m.outbox.Send(
+		ctx,
+		waddr,
+		m.minerAddr,
+		types.ZeroAttoFIL,
+		types.NewGasPrice(1),
+		types.NewGasUnits(300),
+		true,
+		types.MethodID(builtin.MethodsMiner.DeclareTemporaryFaults),
+		&params,
+	)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	err = <-cerr
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return mcid, nil
 }
 
-func (m *StorageMinerNodeConnector) WaitForReportFaults(context.Context, cid.Cid) (uint8, error) {
-	panic("TODO: go-storage-miner integration")
+func (m *StorageMinerNodeConnector) WaitForReportFaults(ctx context.Context, msgCid cid.Cid) (uint8, error) {
+	_, exitCode, err := m.waitForMessageHeight(ctx, msgCid)
+	return exitCode, err
 }
 
 func (m *StorageMinerNodeConnector) GetReplicaCommitmentByID(ctx context.Context, sectorNum abi.SectorNumber) (commR []byte, wasFound bool, err error) {
-	panic("TODO: go-storage-miner integration")
+	var minerState miner.State
+	err = m.chainState.GetActorStateAt(ctx, m.chainState.Head(), m.minerAddr, &minerState)
+
+	if err != nil {
+		return nil, false, err
+	}
+
+	preCommitInfo, found, err := minerState.GetPrecommittedSector(state.StoreFromCbor(ctx, m.chainState.IpldStore), sectorNum)
+
+	if !found || err != nil {
+		return nil, found, err
+	}
+
+	return preCommitInfo.Info.SealedCID.Bytes(), true, nil
 }
 
 func (m *StorageMinerNodeConnector) CheckPieces(ctx context.Context, sectorNum abi.SectorNumber, pieces []storagenode.Piece) *storagenode.CheckPiecesError {
-	panic("TODO: go-storage-miner integration")
+	return nil
 }
 
 func (m *StorageMinerNodeConnector) CheckSealing(ctx context.Context, commD []byte, dealIDs []abi.DealID, ticket storagenode.SealTicket) *storagenode.CheckSealingError {
-	panic("TODO: go-storage-miner integration")
+	return nil
 }
 
 func (m *StorageMinerNodeConnector) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
-	panic("TODO: go-storage-miner integration")
+	return m.wallet.HasAddress(addr), nil
 }
