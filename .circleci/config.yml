@@ -37,7 +37,7 @@ jobs:
           command: |
             echo 'export PATH="/usr/local/go/bin:${HOME}/.cargo/bin:${PATH}:${HOME}/go/bin:${HOME}/.bin"' >> $BASH_ENV
             echo 'export GO111MODULE=on' >> $BASH_ENV
-            echo 'export FILECOIN_PARAMETER_CACHE="${HOME}/filecoin-proof-parameters/"' >> $BASH_ENV
+            echo 'export FIL_PROOFS_PARAMETER_CACHE="${HOME}/filecoin-proof-parameters/"' >> $BASH_ENV
             echo 'export FILECOIN_USE_PRECOMPILED_RUST_PROOFS=yes' >> $BASH_ENV
       - add_ssh_keys:
           fingerprints:
@@ -446,7 +446,7 @@ jobs:
           command: |
             export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
             export ARTIFACT_TAG="${CIRCLE_TAG:-$SHORT_GIT_SHA}"
-            export FILECOIN_PARAMETER_CACHE="./filecoin-proof-parameters"
+            export FIL_PROOFS_PARAMETER_CACHE="./filecoin-proof-parameters"
             tar -xf "bundle/filecoin-$ARTIFACT_TAG-Linux.tar.gz"
             ./filecoin/paramcache
             docker build -f ./docker/Dockerfile.ci.filecoin --label "version=$SHORT_GIT_SHA" -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA --cache-from filecoin:all .
@@ -799,7 +799,7 @@ commands:
           name: Configure environment variables
           command: |
             echo 'export PATH="${HOME}/.cargo/bin:${PATH}"' >> $BASH_ENV
-            echo 'export FILECOIN_PARAMETER_CACHE="${HOME}/filecoin-proof-parameters/"' >> $BASH_ENV
+            echo 'export FIL_PROOFS_PARAMETER_CACHE="${HOME}/filecoin-proof-parameters/"' >> $BASH_ENV
             echo 'export FILECOIN_USE_PRECOMPILED_RUST_PROOFS=yes' >> $BASH_ENV
             echo 'export GO111MODULE=on' >> $BASH_ENV
   mkdir_test_results:
