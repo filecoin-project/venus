@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	cid "github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	multihash "github.com/multiformats/go-multihash"
@@ -16,10 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
-	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
-
 	"github.com/filecoin-project/go-filecoin/fixtures"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -158,12 +157,12 @@ func TestDealsShow(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("showDeal outputs correct information", func(t *testing.T) {
-		res, err := clientNode.DealsShow(ctx, deal.ProposalCid)
+		res, err := clientNode.DealsShow(ctx, deal.Proposal)
 		require.NoError(t, err)
 
 		assert.Equal(t, uint64(10), res.Duration)
 		assert.Equal(t, ask.Miner, res.Miner)
-		assert.Equal(t, storagedeal.Accepted, res.State)
+		assert.Equal(t, storagemarket.StorageDealProposalAccepted, res.State)
 
 		duri64 := int64(res.Duration)
 		durXmax := specsbig.NewInt(duri64 * maxBytesi64)
@@ -174,8 +173,8 @@ func TestDealsShow(t *testing.T) {
 	})
 
 	t.Run("When deal does not exist says deal not found", func(t *testing.T) {
-		deal.ProposalCid = requireTestCID(t, []byte("anything"))
-		showDeal, err := clientNode.DealsShow(ctx, deal.ProposalCid)
+		deal.Proposal = requireTestCID(t, []byte("anything"))
+		showDeal, err := clientNode.DealsShow(ctx, deal.Proposal)
 		assert.Error(t, err, "Error: deal not found")
 		assert.Nil(t, showDeal)
 	})

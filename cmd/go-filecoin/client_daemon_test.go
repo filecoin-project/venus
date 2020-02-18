@@ -9,12 +9,13 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
@@ -126,7 +127,7 @@ func TestDuplicateDeals(t *testing.T) {
 		dealResp, err := minerClientMakeDealWithAllowDupes(ctx, t, true, minerDaemon, clientDaemon, ask.ID, duration)
 		assert.NoError(t, err)
 		require.NotNil(t, dealResp)
-		assert.Equal(t, storagedeal.Accepted, dealResp.State)
+		assert.Equal(t, storagemarket.StorageDealProposalAccepted, dealResp.State)
 	})
 	t.Run("Cannot make a second deal --allow-duplicates is NOT passed", func(t *testing.T) {
 		dealResp, err := minerClientMakeDealWithAllowDupes(ctx, t, false, minerDaemon, clientDaemon, ask.ID, duration)
@@ -136,7 +137,7 @@ func TestDuplicateDeals(t *testing.T) {
 }
 
 // requireMakeDeal creates a deal with allowDuplicates set to true
-func minerClientMakeDealWithAllowDupes(ctx context.Context, t *testing.T, allowDupes bool, minerDaemon, clientDaemon *fast.Filecoin, askID uint64, duration uint64) (*storagedeal.Response, error) {
+func minerClientMakeDealWithAllowDupes(ctx context.Context, t *testing.T, allowDupes bool, minerDaemon, clientDaemon *fast.Filecoin, askID uint64, duration uint64) (*storageimpl.Response, error) {
 	f := files.NewBytesFile([]byte("HODLHODLHODL"))
 	dataCid, err := clientDaemon.ClientImport(ctx, f)
 	require.NoError(t, err)
@@ -195,13 +196,13 @@ func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
 	series.CtxMiningNext(ctx, 1)
 	_, deal, err := series.ImportAndStore(ctx, clientDaemon, ask1, files.NewBytesFile(data))
 	require.NoError(t, err)
-	require.Equal(t, storagedeal.Accepted, deal.State)
+	require.Equal(t, storagemarket.StorageDealProposalAccepted, deal.State)
 
 	// Make storage deal with second miner using same data and assert no error (mining the payment channel creation)
 	series.CtxMiningNext(ctx, 1)
 	_, deal, err = series.ImportAndStore(ctx, clientDaemon, ask2, files.NewBytesFile(data))
 	assert.NoError(t, err)
-	assert.Equal(t, storagedeal.Accepted, deal.State)
+	assert.Equal(t, storagemarket.StorageDealProposalAccepted, deal.State)
 }
 
 func TestVoucherPersistenceAndPayments(t *testing.T) {

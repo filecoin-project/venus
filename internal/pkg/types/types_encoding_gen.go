@@ -16,8 +16,6 @@ func init() {
 	encoding.RegisterIpldCborType(KeyInfo{})
 	encoding.RegisterIpldCborType(UnsignedMessage{})
 	encoding.RegisterIpldCborType(TxMeta{})
-	encoding.RegisterIpldCborType(Predicate{})
-	encoding.RegisterIpldCborType(PaymentVoucher{})
 	encoding.RegisterIpldCborType(SignedMessage{})
 }
 
