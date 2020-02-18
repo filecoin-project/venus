@@ -284,3 +284,7 @@ func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) (
 
 	return deals, nil
 }
+
+func (s *connectorCommon) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) bool {
+	panic("implement me")
+}

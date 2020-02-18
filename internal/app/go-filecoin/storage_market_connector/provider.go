@@ -8,8 +8,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	spasm "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	spaminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
@@ -82,7 +82,7 @@ func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr add
 
 // PublishDeals publishes storage deals on chain
 func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (storagemarket.DealID, cid.Cid, error) {
-	params := spasm.PublishStorageDealsParams{Deals: []spasm.ClientDealProposal{deal.ClientDealProposal}}
+	params := market.PublishStorageDealsParams{Deals: []market.ClientDealProposal{deal.ClientDealProposal}}
 
 	workerAddr, err := s.GetMinerWorker(ctx, s.minerAddr)
 	if err != nil {
@@ -97,7 +97,7 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 		types.NewGasPrice(1),
 		types.NewGasUnits(300),
 		true,
-		fcsm.PublishStorageDeals,
+		types.MethodID(builtin.MethodsMarket.PublishStorageDeals),
 		params,
 	)
 	if err != nil {
@@ -137,7 +137,7 @@ func (s *StorageProviderNodeConnector) OnDealComplete(ctx context.Context, deal 
 
 // LocatePieceForDealWithinSector finds the sector, offset and length of a piece associated with the given deal id
 func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx context.Context, dealID uint64) (sectorNumber uint64, offset uint64, length uint64, err error) {
-	var smState spasm.State
+	var smState market.State
 	err = s.chainStore.GetActorStateAt(ctx, s.chainStore.Head(), vmaddr.StorageMarketAddress, &smState)
 	if err != nil {
 		return 0, 0, 0, err
@@ -165,7 +165,7 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 			if uint64(deal) == dealID {
 				offset = uint64(0)
 				for _, did := range sectorInfo.Info.DealIDs {
-					var proposal spasm.DealProposal
+					var proposal market.DealProposal
 					found, err := proposals.Get(uint64(did), &proposal)
 					if err != nil {
 						return err
