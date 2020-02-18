@@ -9,10 +9,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
@@ -82,18 +82,18 @@ func (ob *Outbox) Queue() *Queue {
 // Send marshals and sends a message, retaining it in the outbound message queue.
 // If bcast is true, the publisher broadcasts the message to the network at the current block height.
 func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value types.AttoFIL,
-	gasPrice types.AttoFIL, gasLimit types.GasUnits, bcast bool, method types.MethodID, params ...interface{}) (out cid.Cid, pubErrCh chan error, err error) {
+	gasPrice types.AttoFIL, gasLimit types.GasUnits, bcast bool, method types.MethodID, params interface{}) (out cid.Cid, pubErrCh chan error, err error) {
 	defer func() {
 		if err != nil {
 			msgSendErrCt.Inc(ctx, 1)
 		}
 		ob.journal.Write("Send",
-			"to", to.String(), "from", from.String(), "value", value.AsBigInt().Uint64(), "method", method,
-			"gasPrice", gasPrice.AsBigInt().Uint64(), "gasLimit", uint64(gasLimit), "bcast", bcast,
+			"to", to.String(), "from", from.String(), "value", value.Int.Uint64(), "method", method,
+			"gasPrice", gasPrice.Int.Uint64(), "gasLimit", uint64(gasLimit), "bcast", bcast,
 			"params", params, "error", err, "cid", out.String())
 	}()
 
-	encodedParams, err := abi.ToEncodedValues(params...)
+	encodedParams, err := encoding.Encode(params)
 	if err != nil {
 		return cid.Undef, nil, errors.Wrap(err, "invalid params")
 	}

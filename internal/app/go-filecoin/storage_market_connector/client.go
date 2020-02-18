@@ -10,6 +10,7 @@ import (
 	smtypes "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	spaminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	spapow "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/ipfs/go-cid"
@@ -18,9 +19,9 @@ import (
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -154,37 +155,35 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 		return 0, xerrors.Errorf("deal publish message called incorrect method (method=%s)", unsigned.Method)
 	}
 
-	values, err := abi.DecodeValues(unsigned.Params, []abi.Type{abi.StorageDealProposals})
+	var params market.PublishStorageDealsParams
+	err = encoding.Decode(unsigned.Params, &params)
 	if err != nil {
 		return 0, err
 	}
 
-	msgProposals := values[0].Val.([]types.StorageDealProposal)
-
-	proposal := msgProposals[0] // TODO: Support more than one deal
+	proposal := params.Deals[0] // TODO: Support more than one deal
+	// The return value doesn't recapitulate the whole deal. If inspection is required, we should look up the deal
+	// in the market actor state.
 
 	// TODO: find a better way to do this
-	equals := bytes.Equal(proposal.PieceRef, deal.Proposal.PieceRef) &&
-		uint64(proposal.PieceSize) == deal.Proposal.PieceSize &&
+	equals := bytes.Equal(proposal.Proposal.PieceCID.Bytes(), deal.Proposal.PieceRef) &&
+		uint64(proposal.Proposal.PieceSize) == deal.Proposal.PieceSize &&
 		//proposal.Client == deal.Proposal.Client &&
 		//proposal.Provider == deal.Proposal.Provider &&
-		uint64(proposal.ProposalExpiration) == deal.Proposal.ProposalExpiration &&
-		uint64(proposal.Duration) == deal.Proposal.Duration &&
-		uint64(proposal.StoragePricePerEpoch) == deal.Proposal.StoragePricePerEpoch.Uint64() &&
-		uint64(proposal.StorageCollateral) == deal.Proposal.StorageCollateral.Uint64() &&
-		bytes.Equal([]byte(*proposal.ProposerSignature), deal.Proposal.ProposerSignature.Data)
+		//uint64(proposal.ProposalExpiration) == deal.Proposal.ProposalExpiration &&
+		//uint64(proposal.Duration) == deal.Proposal.Duration &&
+		proposal.Proposal.StoragePricePerEpoch.Uint64() == deal.Proposal.StoragePricePerEpoch.Uint64() &&
+		proposal.Proposal.ProviderCollateral.Uint64() == deal.Proposal.StorageCollateral.Uint64() &&
+		bytes.Equal(proposal.ClientSignature.Data, deal.Proposal.ProposerSignature.Data)
 
 	if equals {
-		sectorIDVal, err := abi.Deserialize(chnMsg.Receipt.ReturnValue, abi.SectorID)
+		var ret market.PublishStorageDealsReturn
+		err := encoding.Decode(chnMsg.Receipt.ReturnValue, &ret)
 		if err != nil {
 			return 0, err
 		}
-
-		sectorID, ok := sectorIDVal.Val.(uint64)
-		if !ok {
-			return 0, xerrors.New("publish deal return is not a sector ID")
-		}
-		return sectorID, nil
+		sectorID := ret.IDs[0]
+		return uint64(sectorID), nil
 	}
 
 	return 0, xerrors.Errorf("published deal does not match ClientDeal")

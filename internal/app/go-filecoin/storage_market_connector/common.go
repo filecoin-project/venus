@@ -107,12 +107,6 @@ func (c *connectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan 
 }
 
 func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address, addr address.Address, amount tokenamount.TokenAmount) error {
-	var params bytes.Buffer
-	err := addr.MarshalCBOR(&params)
-	if err != nil {
-		return err
-	}
-
 	mcid, cerr, err := c.outbox.Send(
 		ctx,
 		fromAddr,
@@ -122,7 +116,7 @@ func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address
 		types.NewGasUnits(300),
 		true,
 		types.MethodID(builtin.MethodsMarket.AddBalance),
-		params,
+		&addr,
 	)
 	if err != nil {
 		return err

@@ -303,7 +303,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 	// Dragons: temp until we remove legacy types
 	var msgGasLimit gas.Unit = gas.NewLegacyGas(msg.GasLimit)
 	var msgGasPrice abi.TokenAmount = abi.NewTokenAmount(int64(msg.GasLimit))
-	var msgValue abi.TokenAmount = abi.NewTokenAmount(msg.Value.AsBigInt().Int64())
+	var msgValue abi.TokenAmount = msg.Value
 
 	// This method does not actually execute the message itself,
 	// but rather deals with the pre/post processing of a message.

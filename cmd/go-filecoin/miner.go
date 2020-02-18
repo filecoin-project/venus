@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -278,6 +279,8 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			})
 		}
 
+		params := miner.ChangePeerIDParams{NewID: newPid}
+
 		c, _, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
@@ -286,7 +289,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			gasPrice,
 			gasLimit,
 			types.MethodID(builtin.MethodsMiner.ChangePeerID),
-			newPid,
+			&params,
 		)
 		if err != nil {
 			return err

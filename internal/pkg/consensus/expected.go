@@ -5,12 +5,12 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/filecoin-project/go-address"
+	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
@@ -245,6 +245,16 @@ func (c *Expected) validateMining(
 		nullBlkCount := blk.Height - prevHeight - 1
 		if !c.VerifyPoStRandomness(blk.EPoStInfo.PoStRandomness, electionTicket, workerAddr, nullBlkCount) {
 			return errors.New("PoStRandomness invalid")
+		}
+
+		// Verify no duplicate challenge indexes
+		challengeIndexes := make(map[uint64]struct{})
+		for _, winner := range blk.EPoStInfo.Winners {
+			index := winner.SectorChallengeIndex
+			if _, dup := challengeIndexes[index]; dup {
+				return errors.Errorf("Duplicate partial ticket submitted, challenge idx: %d", index)
+			}
+			challengeIndexes[index] = struct{}{}
 		}
 
 		// Verify all partial tickets are winners

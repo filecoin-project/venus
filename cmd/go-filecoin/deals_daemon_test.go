@@ -9,13 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
-	"github.com/multiformats/go-multihash"
+	multihash "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
@@ -165,11 +166,11 @@ func TestDealsShow(t *testing.T) {
 		assert.Equal(t, storagedeal.Accepted, res.State)
 
 		duri64 := int64(res.Duration)
-		durXmax := big.NewInt(duri64 * maxBytesi64)
+		durXmax := specsbig.NewInt(duri64 * maxBytesi64)
 
-		totalPrice := ask.Price.MulBigInt(durXmax)
+		totalPrice := specsbig.Mul(ask.Price, durXmax)
 
-		assert.True(t, totalPrice.Equal(*res.TotalPrice))
+		assert.True(t, totalPrice.Equals(*res.TotalPrice))
 	})
 
 	t.Run("When deal does not exist says deal not found", func(t *testing.T) {

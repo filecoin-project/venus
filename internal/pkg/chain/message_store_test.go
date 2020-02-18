@@ -60,6 +60,5 @@ func TestMessageStoreReceiptsHappy(t *testing.T) {
 
 	rtReceipts, err := ms.LoadReceipts(ctx, receiptCids)
 	assert.NoError(t, err)
-
 	assert.Equal(t, receipts, rtReceipts)
 }

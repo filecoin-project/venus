@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/filecoin-project/go-address"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -94,8 +95,8 @@ func (pq queueHeap) Len() int { return len(pq) }
 
 // Less implements Heap.Interface.Less to compare items on gas price and sender address.
 func (pq queueHeap) Less(i, j int) bool {
-	delta := pq[i][0].Message.GasPrice.Sub(pq[j][0].Message.GasPrice)
-	if !delta.Equal(types.ZeroAttoFIL) {
+	delta := specsbig.Sub(pq[i][0].Message.GasPrice, pq[j][0].Message.GasPrice)
+	if !delta.IsZero() {
 		// We want Pop to give us the highest gas price, so use GreaterThan.
 		return delta.GreaterThan(types.ZeroAttoFIL)
 	}

@@ -179,9 +179,9 @@ func (msg *UnsignedMessage) Equals(other *UnsignedMessage) bool {
 	return msg.To == other.To &&
 		msg.From == other.From &&
 		msg.CallSeqNum == other.CallSeqNum &&
-		msg.Value.Equal(other.Value) &&
+		msg.Value.Equals(other.Value) &&
 		msg.Method == other.Method &&
-		msg.GasPrice.Equal(other.GasPrice) &&
+		msg.GasPrice.Equals(other.GasPrice) &&
 		msg.GasLimit == other.GasLimit &&
 		bytes.Equal(msg.Params, other.Params)
 }
