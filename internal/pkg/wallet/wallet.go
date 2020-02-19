@@ -7,12 +7,12 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-address"
 
-	crypto2 "github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -110,7 +110,7 @@ func (w *Wallet) SignBytes(data []byte, addr address.Address) (types.Signature, 
 }
 
 // SignBytesV2 returns a spec-actors crypto.Signature
-func (w *Wallet) SignBytesV2(data []byte, addr address.Address) (*crypto.Signature, error) {
+func (w *Wallet) SignBytesV2(data []byte, addr address.Address) (*acrypto.Signature, error) {
 	var err error
 
 	sig, err := w.SignBytes(data, addr)
@@ -118,14 +118,14 @@ func (w *Wallet) SignBytesV2(data []byte, addr address.Address) (*crypto.Signatu
 		return nil, err
 	}
 
-	var sigType crypto.SigType
+	var sigType acrypto.SigType
 	if addr.Protocol() == address.BLS {
-		sigType = crypto.SigTypeBLS
+		sigType = acrypto.SigTypeBLS
 	} else {
-		sigType = crypto.SigTypeSecp256k1
+		sigType = acrypto.SigTypeSecp256k1
 	}
 
-	return &crypto.Signature{
+	return &acrypto.Signature{
 		Type: sigType,
 		Data: sig[:],
 	}, nil
@@ -154,30 +154,30 @@ func (w *Wallet) GetPubKeyForAddress(addr address.Address) ([]byte, error) {
 }
 
 // NewKeyInfo creates a new KeyInfo struct in the wallet backend and returns it
-func (w *Wallet) NewKeyInfo() (*crypto2.KeyInfo, error) {
+func (w *Wallet) NewKeyInfo() (*crypto.KeyInfo, error) {
 	newAddr, err := NewAddress(w, address.SECP256K1)
 	if err != nil {
-		return &crypto2.KeyInfo{}, err
+		return &crypto.KeyInfo{}, err
 	}
 
 	return w.keyInfoForAddr(newAddr)
 }
 
-func (w *Wallet) keyInfoForAddr(addr address.Address) (*crypto2.KeyInfo, error) {
+func (w *Wallet) keyInfoForAddr(addr address.Address) (*crypto.KeyInfo, error) {
 	backend, err := w.Find(addr)
 	if err != nil {
-		return &crypto2.KeyInfo{}, err
+		return &crypto.KeyInfo{}, err
 	}
 
 	info, err := backend.GetKeyInfo(addr)
 	if err != nil {
-		return &crypto2.KeyInfo{}, err
+		return &crypto.KeyInfo{}, err
 	}
 	return info, nil
 }
 
 // Import adds the given keyinfos to the wallet
-func (w *Wallet) Import(kinfos ...*crypto2.KeyInfo) ([]address.Address, error) {
+func (w *Wallet) Import(kinfos ...*crypto.KeyInfo) ([]address.Address, error) {
 	dsb := w.Backends(DSBackendType)
 	if len(dsb) != 1 {
 		return nil, fmt.Errorf("expected exactly one datastore wallet backend")
@@ -204,8 +204,8 @@ func (w *Wallet) Import(kinfos ...*crypto2.KeyInfo) ([]address.Address, error) {
 }
 
 // Export returns the KeyInfos for the given wallet addresses
-func (w *Wallet) Export(addrs []address.Address) ([]*crypto2.KeyInfo, error) {
-	out := make([]*crypto2.KeyInfo, len(addrs))
+func (w *Wallet) Export(addrs []address.Address) ([]*crypto.KeyInfo, error) {
+	out := make([]*crypto.KeyInfo, len(addrs))
 	for i, addr := range addrs {
 		bck, err := w.Find(addr)
 		if err != nil {

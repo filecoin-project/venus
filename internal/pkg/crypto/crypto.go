@@ -113,4 +113,3 @@ func NewBLSKeyRandom() KeyInfo {
 func EcRecover(msg, signature []byte) ([]byte, error) {
 	return secp256k1.RecoverPubkey(msg, signature)
 }
-
