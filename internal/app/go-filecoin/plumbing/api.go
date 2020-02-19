@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
@@ -335,9 +336,9 @@ func (api *API) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) 
 // WalletNewAddress generates a new wallet address
 func (api *API) WalletNewAddress(addressType string) (address.Address, error) {
 	switch strings.ToLower(addressType) { //this assumes that any additions to types/helpers.go will be lowercase
-	case types.BLS:
+	case crypto.BLS:
 		return wallet.NewAddress(api.wallet, address.BLS)
-	case types.SECP256K1:
+	case crypto.SECP256K1:
 		return wallet.NewAddress(api.wallet, address.SECP256K1)
 	default:
 		return address.Undef, fmt.Errorf("invalid address type: %s", addressType)
@@ -345,12 +346,12 @@ func (api *API) WalletNewAddress(addressType string) (address.Address, error) {
 }
 
 // WalletImport adds a given set of KeyInfos to the wallet
-func (api *API) WalletImport(kinfos ...*types.KeyInfo) ([]address.Address, error) {
+func (api *API) WalletImport(kinfos ...*crypto.KeyInfo) ([]address.Address, error) {
 	return api.wallet.Import(kinfos...)
 }
 
 // WalletExport returns the KeyInfos for the given wallet addresses
-func (api *API) WalletExport(addrs []address.Address) ([]*types.KeyInfo, error) {
+func (api *API) WalletExport(addrs []address.Address) ([]*crypto.KeyInfo, error) {
 	return api.wallet.Export(addrs)
 }
 

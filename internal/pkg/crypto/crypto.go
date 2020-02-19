@@ -1,14 +1,21 @@
 package crypto
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/rand"
 	"io"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
 	secp256k1 "github.com/ipsn/go-secp256k1"
+
+	bls "github.com/filecoin-project/filecoin-ffi"
+)
+
+// These constants should be replaced with values imported from a shared signature type.
+const (
+	// SECP256K1 is a cryptosystem used to compute private keys
+	SECP256K1 = "secp256k1"
+	// BLS is a public/private key system that supports aggregate signatures
+	BLS = "bls"
 )
 
 // PrivateKeyBytes is the size of a serialized private key.
@@ -34,11 +41,6 @@ func SignBLS(sk, msg []byte) ([]byte, error) {
 	copy(privateKey[:], sk)
 	sig := bls.PrivateKeySign(privateKey, msg)
 	return sig[:], nil
-}
-
-// Equals compares two private key for equality and returns true if they are the same.
-func Equals(sk, other []byte) bool {
-	return bytes.Equal(sk, other)
 }
 
 // VerifySecp checks the given signature is a secp256k1 signature and returns true if it is valid.
@@ -80,11 +82,11 @@ func VerifyBLSAggregate(pubKeys, msgs [][]byte, signature []byte) bool {
 	return bls.Verify(&blsSig, digests, keys)
 }
 
-// GenerateKeyFromSeed generates a new key from the given reader.
-func GenerateKeyFromSeed(seed io.Reader) ([]byte, error) {
+// NewSecpKeyFromSeed generates a new key from the given reader.
+func NewSecpKeyFromSeed(seed io.Reader) (KeyInfo, error) {
 	key, err := ecdsa.GenerateKey(secp256k1.S256(), seed)
 	if err != nil {
-		return nil, err
+		return KeyInfo{}, err
 	}
 
 	privkey := make([]byte, PrivateKeyBytes)
@@ -93,12 +95,18 @@ func GenerateKeyFromSeed(seed io.Reader) ([]byte, error) {
 	// the length is guaranteed to be fixed, given the serialization rules for secp2561k curve points.
 	copy(privkey[PrivateKeyBytes-len(blob):], blob)
 
-	return privkey, nil
+	return KeyInfo{
+		PrivateKey:  privkey,
+		CryptSystem: SECP256K1,
+	}, nil
 }
 
-// GenerateKey creates a new key using secure randomness from crypto.rand.
-func GenerateKey() ([]byte, error) {
-	return GenerateKeyFromSeed(rand.Reader)
+func NewBLSKeyRandom() KeyInfo {
+	k := bls.PrivateKeyGenerate()
+	return KeyInfo{
+		PrivateKey:  k[:],
+		CryptSystem: BLS,
+	}
 }
 
 // EcRecover recovers the public key from a message, signature pair.

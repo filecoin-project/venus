@@ -1,9 +1,8 @@
 package crypto_test
 
 import (
-	"math/rand"
+	"bytes"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,10 +15,10 @@ import (
 func TestGenerateSecpKey(t *testing.T) {
 	tf.UnitTest(t)
 
-	rand.Seed(time.Now().UnixNano())
-
-	sk, err := crypto.GenerateKey()
+	token := bytes.Repeat([]byte{42}, 512)
+	ki, err := crypto.NewSecpKeyFromSeed(bytes.NewReader(token))
 	assert.NoError(t, err)
+	sk := ki.PrivateKey
 
 	assert.Equal(t, len(sk), 32)
 
@@ -42,13 +41,13 @@ func TestGenerateSecpKey(t *testing.T) {
 	// invalid signature - different message
 	msg2 := make([]byte, 32)
 	copy(msg2, msg)
-	rand.Shuffle(len(msg2), func(i, j int) { msg2[i], msg2[j] = msg2[j], msg2[i] })
+	msg2[0] = 42
 	assert.False(t, crypto.VerifySecp(pk, msg2, digest))
 
 	// invalid signature - different digest
 	digest2 := make([]byte, 65)
 	copy(digest2, digest)
-	rand.Shuffle(len(digest2), func(i, j int) { digest2[i], digest2[j] = digest2[j], digest2[i] })
+	digest2[0] = 42
 	assert.False(t, crypto.VerifySecp(pk, msg, digest2))
 
 	// invalid signature - digest too short

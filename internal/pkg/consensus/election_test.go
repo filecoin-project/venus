@@ -4,10 +4,12 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -56,7 +58,7 @@ func TestNextTicketFailsWithInvalidSigner(t *testing.T) {
 	assert.Nil(t, badTicket.VRFProof)
 }
 
-func requireAddress(t *testing.T, ki *types.KeyInfo) address.Address {
+func requireAddress(t *testing.T, ki *crypto.KeyInfo) address.Address {
 	addr, err := ki.Address()
 	require.NoError(t, err)
 	return addr

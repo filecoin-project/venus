@@ -1,4 +1,4 @@
-package types
+package crypto
 
 import (
 	"bytes"
@@ -7,7 +7,6 @@ import (
 	"github.com/pkg/errors"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
 
@@ -75,7 +74,7 @@ func (ki *KeyInfo) PublicKey() []byte {
 		return publicKey[:]
 	}
 	if ki.CryptSystem == SECP256K1 {
-		return crypto.PublicKey(ki.PrivateKey)
+		return PublicKey(ki.PrivateKey)
 	}
 	return []byte{}
 }

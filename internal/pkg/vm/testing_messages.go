@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	address "github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // MessageMaker creates unique, signed messages for use in tests.
@@ -20,7 +22,7 @@ type MessageMaker struct {
 }
 
 // NewMessageMaker creates a new message maker with a set of signing keys.
-func NewMessageMaker(t *testing.T, keys []types.KeyInfo) *MessageMaker {
+func NewMessageMaker(t *testing.T, keys []crypto.KeyInfo) *MessageMaker {
 	addresses := make([]address.Address, len(keys))
 	signer := types.NewMockSigner(keys)
 
