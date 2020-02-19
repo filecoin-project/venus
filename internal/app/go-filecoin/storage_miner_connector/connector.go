@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -32,8 +33,6 @@ import (
 )
 
 var log = logging.Logger("connector") // nolint: deadcode
-
-type WorkerGetter func(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error)
 
 // StorageMinerNodeConnector is a struct which satisfies the go-storage-miner
 // needs of "the node," e.g. interacting with the blockchain, persisting sector
@@ -51,7 +50,7 @@ type StorageMinerNodeConnector struct {
 	waiter     *msg.Waiter
 	wallet     *wallet.Wallet
 
-	workerGetter WorkerGetter
+	stateViewer *appstate.Viewer
 }
 
 var _ storagenode.Interface = new(StorageMinerNodeConnector)
@@ -59,7 +58,7 @@ var _ storagenode.Interface = new(StorageMinerNodeConnector)
 // NewStorageMinerNodeConnector produces a StorageMinerNodeConnector, which adapts
 // types in this codebase to the interface representing "the node" which is
 // expected by the go-storage-miner project.
-func NewStorageMinerNodeConnector(minerAddress address.Address, chainStore *chain.Store, chainState *cst.ChainStateReadWriter, outbox *message.Outbox, waiter *msg.Waiter, wallet *wallet.Wallet, workerGetter WorkerGetter) *StorageMinerNodeConnector {
+func NewStorageMinerNodeConnector(minerAddress address.Address, chainStore *chain.Store, chainState *cst.ChainStateReadWriter, outbox *message.Outbox, waiter *msg.Waiter, wallet *wallet.Wallet, stateViewer *appstate.Viewer) *StorageMinerNodeConnector {
 	return &StorageMinerNodeConnector{
 		minerAddr:    minerAddress,
 		listenerDone: make(chan struct{}),
@@ -68,7 +67,7 @@ func NewStorageMinerNodeConnector(minerAddress address.Address, chainStore *chai
 		outbox:       outbox,
 		waiter:       waiter,
 		wallet:       wallet,
-		workerGetter: workerGetter,
+		stateViewer:  stateViewer,
 	}
 }
 
@@ -424,12 +423,17 @@ func (m *StorageMinerNodeConnector) waitForMessageHeight(ctx context.Context, mc
 }
 
 func (m *StorageMinerNodeConnector) GetMinerWorkerAddressFromChainHead(ctx context.Context, maddr address.Address) (address.Address, error) {
-	ts, err := m.chainStore.GetTipSet(m.chainStore.GetHead())
+	root, err := m.chainState.GetTipSetStateRoot(ctx, m.chainStore.GetHead())
 	if err != nil {
-		return address.Undef, xerrors.Errorf("getting head ts for SealTicket failed: %w", err)
+		return address.Undef, xerrors.Errorf("failed to get tip state: %w", err)
 	}
 
-	return m.workerGetter(ctx, maddr, ts.Key())
+	_, waddr, err := m.stateViewer.StateView(root).MinerControlAddresses(ctx, m.minerAddr)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to get miner control addresses: %w", err)
+	}
+
+	return waddr, nil
 }
 
 func (m *StorageMinerNodeConnector) SendReportFaults(ctx context.Context, sectorIDs ...abi.SectorNumber) (cid.Cid, error) {

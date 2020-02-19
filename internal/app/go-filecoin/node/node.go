@@ -36,6 +36,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	mining_protocol "github.com/filecoin-project/go-filecoin/internal/pkg/protocol/mining"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 )
@@ -434,11 +435,13 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return status.WorkerAddress, nil
 	}
 
-	waiter := msg.NewWaiter(node.chain.ChainReader, node.chain.MessageStore, node.Blockstore.Blockstore, node.Blockstore.CborStore)
+	cborStore := node.Blockstore.CborStore
+
+	waiter := msg.NewWaiter(node.chain.ChainReader, node.chain.MessageStore, node.Blockstore.Blockstore, cborStore)
 
 	// TODO: rework these modules so they can be at least partially constructed during the building phase #3738
 	node.StorageMining, err = submodule.NewStorageMiningSubmodule(minerAddr, node.Repo.Datastore(),
-		sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet, getWorker)
+		sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet, state.NewViewer(cborStore))
 	if err != nil {
 		return err
 	}
