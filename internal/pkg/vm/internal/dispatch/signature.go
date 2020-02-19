@@ -31,11 +31,11 @@ func (ms *methodSignature) ArgInterface(argBytes []byte) (interface{}, error) {
 
 	// Dragons: fix this on our encoding library
 	obj := v.Elem().Interface()
-	if unmarsh, ok := obj.(runtime.CBORUnmarshaler); ok {
+	if _, ok := obj.(runtime.CBORUnmarshaler); ok {
 		buf := bytes.NewBuffer(argBytes)
 		auxv := reflect.New(t.Elem())
 		obj = auxv.Interface()
-		unmarsh = obj.(runtime.CBORUnmarshaler)
+		unmarsh := obj.(runtime.CBORUnmarshaler)
 		if err := unmarsh.UnmarshalCBOR(buf); err != nil {
 			return nil, err
 		}
