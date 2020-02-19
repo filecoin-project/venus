@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-storage-miner"
 	spaabi "github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/prometheus/common/log"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
@@ -20,18 +19,6 @@ import (
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
-
-// TODO: replace with state.NewStore
-type actorStore struct {
-	ctx context.Context
-	cst.ChainStateReadWriter
-}
-
-func (as *actorStore) Context() context.Context {
-	return as.ctx
-}
-
-var _ adt.Store = new(actorStore)
 
 // Poster listens for changes to the chain head and generates and submits a PoSt if one is required.
 type Poster struct {
