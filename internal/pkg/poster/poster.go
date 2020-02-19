@@ -6,7 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
-	spaabi "github.com/filecoin-project/specs-actors/actors/abi"
+	abi "github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/prometheus/common/log"
 
@@ -125,41 +125,43 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) er
 	}
 
 	ctx, p.postCancel = context.WithCancel(ctx)
-	go func() {
-		defer p.cancelPost()
-
-		sortedSectorInfo, err := p.getProvingSet(ctx, stateView)
-		if err != nil {
-			log.Error("error getting proving set", err)
-			return
-		}
-
-		faults, err := stateView.MinerFaults(ctx, p.minerAddr)
-		if err != nil {
-			log.Error("error getting faults", err)
-			return
-		}
-
-		challengeSeed, err := p.getChallengeSeed(ctx, uint64(provingPeriodStart))
-		if err != nil {
-			log.Error("error getting challenge seed", err)
-			return
-		}
-
-		candidates, proof, err := p.sectorbuilder.GenerateFallbackPoSt(sortedSectorInfo, challengeSeed, faults)
-		if err != nil {
-			log.Error("error generating fallback PoSt", err)
-			return
-		}
-
-		err = p.sendPoSt(ctx, stateView, newHead.Key(), candidates, proof)
-		if err != nil {
-			log.Error("error sending fallback PoSt", err)
-			return
-		}
-	}()
+	go p.doPoSt(ctx, stateView, provingPeriodStart, newHead.Key())
 
 	return nil
+}
+
+func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, provingPeriodStart abi.ChainEpoch, head block.TipSetKey) {
+	defer p.cancelPost()
+
+	sortedSectorInfo, err := p.getProvingSet(ctx, stateView)
+	if err != nil {
+		log.Error("error getting proving set", err)
+		return
+	}
+
+	faults, err := stateView.MinerFaults(ctx, p.minerAddr)
+	if err != nil {
+		log.Error("error getting faults", err)
+		return
+	}
+
+	challengeSeed, err := p.getChallengeSeed(ctx, uint64(provingPeriodStart))
+	if err != nil {
+		log.Error("error getting challenge seed", err)
+		return
+	}
+
+	candidates, proof, err := p.sectorbuilder.GenerateFallbackPoSt(sortedSectorInfo, challengeSeed, faults)
+	if err != nil {
+		log.Error("error generating fallback PoSt", err)
+		return
+	}
+
+	err = p.sendPoSt(ctx, stateView, head, candidates, proof)
+	if err != nil {
+		log.Error("error sending fallback PoSt", err)
+		return
+	}
 }
 
 func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, tipKey block.TipSetKey, candidates []sectorbuilder.EPostCandidate, proof []byte) error {
@@ -173,20 +175,20 @@ func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, tipKey 
 		return err
 	}
 
-	poStCandidates := make([]spaabi.PoStCandidate, len(candidates))
+	poStCandidates := make([]abi.PoStCandidate, len(candidates))
 	for i, candidate := range candidates {
-		poStCandidates[i] = spaabi.PoStCandidate{
-			RegisteredProof: spaabi.RegisteredProof_WinStackedDRG32GiBPoSt,
-			PartialTicket:   spaabi.PartialTicket(candidate.PartialTicket[:]),
-			SectorID:        spaabi.SectorID{Miner: spaabi.ActorID(minerID), Number: spaabi.SectorNumber(candidate.SectorID)},
+		poStCandidates[i] = abi.PoStCandidate{
+			RegisteredProof: abi.RegisteredProof_WinStackedDRG32GiBPoSt,
+			PartialTicket:   abi.PartialTicket(candidate.PartialTicket[:]),
+			SectorID:        abi.SectorID{Miner: abi.ActorID(minerID), Number: abi.SectorNumber(candidate.SectorID)},
 			ChallengeIndex:  int64(candidate.SectorChallengeIndex),
 		}
 	}
 
-	windowedPost := &spaabi.OnChainPoStVerifyInfo{
-		ProofType:  spaabi.RegisteredProof_StackedDRG32GiBPoSt,
+	windowedPost := &abi.OnChainPoStVerifyInfo{
+		ProofType:  abi.RegisteredProof_StackedDRG32GiBPoSt,
 		Candidates: poStCandidates,
-		Proofs:     []spaabi.PoStProof{{ProofBytes: proof}},
+		Proofs:     []abi.PoStProof{{ProofBytes: proof}},
 	}
 
 	_, workerAddr, err := stateView.MinerControlAddresses(ctx, p.minerAddr)
