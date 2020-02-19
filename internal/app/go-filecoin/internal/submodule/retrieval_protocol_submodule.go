@@ -30,8 +30,6 @@ func NewRetrievalProtocolSubmodule(
 	ps piecestore.PieceStore,
 	signer retmkt.RetrievalSigner,
 	wal retmkt.WalletAPI,
-	aapi retmkt.ActorAPI,
-	pbapi retmkt.PaymentChannelAPI,
 ) (*RetrievalProtocolSubmodule, error) {
 	panic("TODO: go-fil-markets integration")
 
@@ -43,9 +41,7 @@ func NewRetrievalProtocolSubmodule(
 		ob,
 		ps,
 		signer,
-		aapi,
 		wal,
-		pbapi,
 	)
 	rsvlr := retmkt.NewRetrievalPeerResolverConnector()
 

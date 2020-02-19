@@ -28,16 +28,13 @@ type RetrievalClientNodeConnector struct {
 	bs blockstore.Blockstore
 	cs *chain.Store
 
-	laneStore map[address.Address]laneEntries
-
 	// APIs/interfaces
-	actAPI ActorAPI
 	signer RetrievalSigner
 	mw     MsgWaiter
 	outbox MsgSender
-	pbAPI  PaymentChannelAPI
 	ps     piecestore.PieceStore
 	wal    WalletAPI
+	pchMgr PchMgrAPI
 }
 
 type laneEntries []types.AttoFIL
@@ -49,22 +46,21 @@ type ChannelInfo struct {
 	Redeemed types.AttoFIL
 }
 
-// ActorAPI is the subset of the Actor interface needed by the retrieval client node
-type ActorAPI interface {
-	// GetNonce gets the current message nonce
-	NextNonce(ctx context.Context, addr address.Address) (uint64, error)
-}
-
 // MsgWaiter is an interface for waiting for a message to appear on chain
 type MsgWaiter interface {
-	Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+	Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error
 }
 
 // MsgSender is an interface for something that can post messages on chain
 type MsgSender interface {
 	// Send sends a message to the chain
-	Send(ctx context.Context, from, to address.Address, value types.AttoFIL,
-		gasPrice types.AttoFIL, gasLimit types.GasUnits, bcast bool, method types.MethodID, params ...interface{}) (out cid.Cid, pubErrCh chan error, err error)
+	Send(ctx context.Context,
+		from, to address.Address,
+		value types.AttoFIL,
+		gasPrice types.AttoFIL, gasLimit types.GasUnits,
+		bcast bool,
+		method types.MethodID,
+		params interface{}) (out cid.Cid, pubErrCh chan error, err error)
 }
 
 // WalletAPI is the subset of the Wallet interface needed by the retrieval client node
@@ -73,17 +69,16 @@ type WalletAPI interface {
 	GetBalance(ctx context.Context, address address.Address) (types.AttoFIL, error)
 }
 
-// PaymentChannelAPI is the subset of the PaymentChannel interface needed by the retrieval client node
-type PaymentChannelAPI interface {
-	// GetChannel queries for the address of a payment channel for a payer/Payee
-	GetChannel(ctx context.Context, payer, payee address.Address) (address.Address, error)
-	// GetClientAddrByChannelID returns the PaymentChannel struct for a given payment channel
-	GetChannelInfo(ctx context.Context, paymentChannel address.Address) (address.Address, ChannelInfo, error)
-}
-
 // RetrievalSigner is an interface with the ability to sign data
 type RetrievalSigner interface {
 	SignBytes(data []byte, addr address.Address) (types.Signature, error)
+}
+
+type PchMgrAPI interface {
+	AllocateLane(paychAddr address.Address) (uint64, error)
+	GetPaymentChannelInfo(paychAddr address.Address)
+	CreatePaymentChannel(payer, payee address.Address) (ChannelInfo, error)
+	UpdatePaymentChannel(paychAddr address.Address) error
 }
 
 // NewRetrievalClientNodeConnector creates a new RetrievalClientNodeConnector
@@ -94,21 +89,16 @@ func NewRetrievalClientNodeConnector(
 	ob MsgSender,
 	ps piecestore.PieceStore,
 	signer RetrievalSigner,
-	aapi ActorAPI,
 	wal WalletAPI,
-	pbapi PaymentChannelAPI,
 ) *RetrievalClientNodeConnector {
 	return &RetrievalClientNodeConnector{
-		bs:        bs,
-		cs:        cs,
-		mw:        mw,
-		outbox:    ob,
-		ps:        ps,
-		signer:    signer,
-		actAPI:    aapi,
-		wal:       wal,
-		pbAPI:     pbapi,
-		laneStore: make(map[address.Address]laneEntries),
+		bs:     bs,
+		cs:     cs,
+		mw:     mw,
+		outbox: ob,
+		ps:     ps,
+		signer: signer,
+		wal:    wal,
 	}
 }
 
@@ -121,10 +111,11 @@ func (r *RetrievalClientNodeConnector) GetOrCreatePaymentChannel(ctx context.Con
 		return address.Undef, errors.New("empty address")
 	}
 
-	chid, err := r.pbAPI.GetChannel(ctx, clientWallet, minerWallet)
-	if err != nil {
-		return address.Undef, err
-	}
+	var chid address.Address
+	//chid, err := address.Undef
+	//if err != nil {
+	//	return address.Undef, err
+	//}
 
 	if chid == address.Undef {
 		// create the payment channel
@@ -144,15 +135,20 @@ func (r *RetrievalClientNodeConnector) GetOrCreatePaymentChannel(ctx context.Con
 		}
 		validAt := height + 1 // valid almost immediately since a retrieval could theoretically happen in 1 block
 
-		msgCid, _, err := r.outbox.Send(ctx,
+		params := struct {
+			pa address.Address
+			bh uint64
+		}{minerWallet, validAt} // params: payment address, valid block height}
+		msgCid, _, err := r.outbox.Send(
+			ctx,
 			clientWallet,               // from
 			minerWallet,                // to
 			types.ZeroAttoFIL,          // value
 			types.NewAttoFILFromFIL(1), // gasPrice
-			types.NewGasUnits(10),      // gasLimit
+			types.NewGasUnits(300),     // gasLimit
 			true,                       // broadcast to network
 			CreatePaymentChannelMethod, // command
-			minerWallet, validAt,       // params: payment address, valid block height
+			params,
 		)
 		if err != nil {
 			return address.Undef, err
@@ -170,17 +166,17 @@ func (r *RetrievalClientNodeConnector) GetOrCreatePaymentChannel(ctx context.Con
 // AllocateLane creates a new lane for this paymentChannel with 0 FIL in the lane
 // Assumes AllocateLane is called after GetOrCreatePaymentChannel
 //func (r *RetrievalClientNodeConnector) AllocateLane(paymentChannel address.Address) (int64, error) {
-func (r *RetrievalClientNodeConnector) AllocateLane(paymentChannel address.Address) (uint64, error) {
-	payer, err := r.getPayerForChannel(paymentChannel)
-	if err != nil {
-		return 0, err
-	}
-
-	if r.laneStore[payer] == nil {
-		r.laneStore[payer] = []types.AttoFIL{}
-	}
-	r.laneStore[payer] = append(r.laneStore[payer], types.NewAttoFILFromFIL(0))
-	lane := uint64(len(r.laneStore[payer]) - 1)
+func (r *RetrievalClientNodeConnector) AllocateLane(paymentChannel address.Address) (lane uint64, err error) {
+	//payer, err := r.getPayerForChannel(paymentChannel)
+	//if err != nil {
+	//	return 0, err
+	//}
+	//
+	//if r.laneStore[payer] == nil {
+	//	r.laneStore[payer] = []types.AttoFIL{}
+	//}
+	//r.laneStore[payer] = append(r.laneStore[payer], types.NewAttoFILFromFIL(0))
+	//lane := uint64(len(r.laneStore[payer]) - 1)
 
 	return lane, nil
 }
@@ -190,30 +186,7 @@ func (r *RetrievalClientNodeConnector) AllocateLane(paymentChannel address.Addre
 // If there is not enough value stored in the payment channel registry, an error is returned.
 // If a lane has not been allocated for this payment channel, an error is returned.
 func (r *RetrievalClientNodeConnector) CreatePaymentVoucher(ctx context.Context, channelAddr address.Address, amount tokenamount.TokenAmount, lane uint64) (*gfm_types.SignedVoucher, error) {
-	payer, err := r.getPayerForChannel(channelAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	_, pinfo, err := r.pbAPI.GetChannelInfo(ctx, channelAddr)
-	payChBal := pinfo.Amount.Sub(pinfo.Redeemed)
-
-	if err != nil {
-		return nil, err
-	}
-	if payChBal.LessThan(types.NewAttoFIL(amount.Int)) {
-		return nil, errors.New("not enough funds in payment channel")
-	}
-
-	lanes, ok := r.laneStore[payer]
-	if !ok || len(lanes) == 0 {
-		return nil, errors.New("payment channel has no lanes allocated")
-	}
-
-	// set the allocated amount of the lane
-	lanes[lane] = types.NewAttoFIL(amount.Int)
-
-	v, err := r.createSignedVoucher(ctx, payer, lane, amount)
+	v, err := r.createSignedVoucher(ctx, channelAddr, lane, amount)
 	if err != nil {
 		return nil, err
 	}
@@ -225,10 +198,11 @@ func (r *RetrievalClientNodeConnector) createSignedVoucher(ctx context.Context, 
 		return nil, err
 	}
 
-	nonce, err := r.actAPI.NextNonce(ctx, payer)
-	if err != nil {
-		return nil, err
-	}
+	//nonce, err := r.NextNonce(ctx, payer)
+	//if err != nil {
+	//	return nil, err
+	//}
+	var nonce uint64
 
 	v := gfm_types.SignedVoucher{
 		TimeLock:       0,   // TODO
@@ -272,10 +246,6 @@ func (r *RetrievalClientNodeConnector) getBlockHeight() (uint64, error) {
 	return ts.Height()
 }
 
-func (r *RetrievalClientNodeConnector) getPayerForChannel(paymentChannel address.Address) (address.Address, error) {
-	payer, _, err := r.pbAPI.GetChannelInfo(context.TODO(), paymentChannel)
-	if err != nil {
-		return address.Undef, err
-	}
+func (r *RetrievalClientNodeConnector) getPayerForChannel(paymentChannel address.Address) (payer address.Address, err error) {
 	return payer, nil
 }

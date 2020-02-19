@@ -14,7 +14,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 // RetrievalMarketClientFakeAPI is a test API that satisfies all needed interface methods
@@ -41,7 +42,7 @@ type RetrievalMarketClientFakeAPI struct {
 	WaitErr       error
 
 	ExpectedBlock      *block.Block
-	ExpectedMsgReceipt *types.MessageReceipt
+	ExpectedMsgReceipt *vm.MessageReceipt
 	ExpectedSignedMsg  *types.SignedMessage
 }
 
@@ -85,7 +86,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) GetChannelInfo(_ context.Context, pa
 
 // Wait mocks waiting for a message with a given CID to appear on chain, then actually calls
 // the provided callback
-func (rmFake *RetrievalMarketClientFakeAPI) Wait(_ context.Context, _ cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+func (rmFake *RetrievalMarketClientFakeAPI) Wait(_ context.Context, _ cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
 	if rmFake.WaitErr != nil {
 		return rmFake.WaitErr
 	}
@@ -147,8 +148,9 @@ func (rmFake *RetrievalMarketClientFakeAPI) AllocateLane(_ context.Context, _ ad
 // StubMessageResponse sets up a message, message receipt and return value for a create payment
 // channel message
 func (rmFake *RetrievalMarketClientFakeAPI) StubMessageResponse(t *testing.T, from, to address.Address, value types.AttoFIL) {
-	params, err := abi.ToEncodedValues(to, uint64(1))
-	require.NoError(t, err)
+	//params, err := abi.ToEncodedValues(to, uint64(1))
+
+	//require.NoError(t, err)
 
 	unsignedMsg := types.UnsignedMessage{
 		To:         to,
@@ -156,7 +158,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) StubMessageResponse(t *testing.T, fr
 		CallSeqNum: 0,
 		Value:      value,
 		Method:     CreatePaymentChannelMethod,
-		Params:     params,
+		Params:     nil,
 		GasPrice:   types.AttoFIL{},
 		GasLimit:   0,
 	}
@@ -165,15 +167,15 @@ func (rmFake *RetrievalMarketClientFakeAPI) StubMessageResponse(t *testing.T, fr
 	require.NoError(t, err)
 	rmFake.ExpectedPmtChans[from] = PmtChanEntry{
 		ChannelID:  newAddr,
-		FundsAvail: tokenamount.TokenAmount{Int: value.AsBigInt()},
+		FundsAvail: tokenamount.TokenAmount{Int: value.Int},
 		Redeemed:   tokenamount.FromInt(0),
 	}
 
 	require.NoError(t, err)
-	rmFake.ExpectedMsgReceipt = &types.MessageReceipt{
-		ExitCode:   0,
-		Return:     [][]byte{newAddr.Bytes()},
-		GasAttoFIL: types.AttoFIL{},
+	rmFake.ExpectedMsgReceipt = &vm.MessageReceipt{
+		ExitCode:    0,
+		ReturnValue: newAddr.Bytes(),
+		GasUsed:     gas.Unit{},
 	}
 
 	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
