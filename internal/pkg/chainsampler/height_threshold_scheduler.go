@@ -14,7 +14,7 @@ type HeightThresholdScheduler struct {
 	newListener     chan *HeightThresholdListener
 	cancelListener  chan *HeightThresholdListener
 	heightListeners []*HeightThresholdListener
-	listenerDone    chan struct{}
+	schedulerDone   chan struct{}
 	chainStore      *chain.Store
 }
 
@@ -23,7 +23,7 @@ func NewHeightThresholdScheduler(chainStore *chain.Store) *HeightThresholdSchedu
 	return &HeightThresholdScheduler{
 		newListener:    make(chan *HeightThresholdListener),
 		cancelListener: make(chan *HeightThresholdListener),
-		listenerDone:   make(chan struct{}),
+		schedulerDone:  make(chan struct{}),
 		chainStore:     chainStore,
 	}
 }
@@ -51,7 +51,7 @@ func (m *HeightThresholdScheduler) StartHeightListener(ctx context.Context, htc 
 					}
 				}
 				m.heightListeners = listeners
-			case <-m.listenerDone:
+			case <-m.schedulerDone:
 				return
 			case <-ctx.Done():
 				return
@@ -62,7 +62,7 @@ func (m *HeightThresholdScheduler) StartHeightListener(ctx context.Context, htc 
 
 // Stop stops the scheduler.
 func (m *HeightThresholdScheduler) Stop() {
-	m.listenerDone <- struct{}{}
+	m.schedulerDone <- struct{}{}
 }
 
 // AddListener adds a new listener for the target height
