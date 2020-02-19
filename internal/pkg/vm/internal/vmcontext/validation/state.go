@@ -273,6 +273,6 @@ func (s *keyStore) Sign(ctx context.Context, addr address.Address, data []byte) 
 		}
 		return digest, nil
 	default:
-		return nil, fmt.Errorf("unknown key type: %s for address: %s", ki.Type, addr)
+		return nil, fmt.Errorf("unknown key type: %s for address: %s", ki.Type(), addr)
 	}
 }
