@@ -1,7 +1,6 @@
 package storagemarketconnector
 
 import (
-	"bytes"
 	"context"
 
 	"github.com/filecoin-project/go-address"
@@ -20,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -179,7 +179,7 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 		}
 
 		var params miner.SectorPreCommitInfo
-		err := params.UnmarshalCBOR(bytes.NewReader(m.Params))
+		err := encoding.Decode(m.Params, &params)
 		if err != nil {
 			return false
 		}

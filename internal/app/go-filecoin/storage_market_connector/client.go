@@ -1,7 +1,6 @@
 package storagemarketconnector
 
 import (
-	"bytes"
 	"context"
 
 	"github.com/filecoin-project/go-address"
@@ -181,12 +180,9 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 
 // SignProposal uses the local wallet to sign the given proposal
 func (s *StorageClientNodeConnector) SignProposal(ctx context.Context, signer address.Address, proposal market.DealProposal) (*market.ClientDealProposal, error) {
-	buf := new(bytes.Buffer)
-	if err := proposal.MarshalCBOR(buf); err != nil {
-		return nil, err
-	}
+	buf, err := encoding.Encode(proposal)
 
-	signature, err := s.SignBytes(ctx, signer, buf.Bytes())
+	signature, err := s.SignBytes(ctx, signer, buf)
 	if err != nil {
 		return nil, err
 	}
@@ -206,12 +202,12 @@ func (s *StorageClientNodeConnector) GetDefaultWalletAddress(ctx context.Context
 func (s *StorageClientNodeConnector) ValidateAskSignature(signed *storagemarket.SignedStorageAsk) error {
 	ask := signed.Ask
 
-	buf := new(bytes.Buffer)
-	if err := ask.MarshalCBOR(buf); err != nil {
+	buf, err := encoding.Encode(ask)
+	if err != nil {
 		return err
 	}
 
-	if s.VerifySignature(*signed.Signature, ask.Miner, buf.Bytes()) {
+	if s.VerifySignature(*signed.Signature, ask.Miner, buf) {
 		return nil
 	}
 
