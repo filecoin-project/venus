@@ -1,4 +1,4 @@
-package types
+package crypto_test
 
 import (
 	"testing"
@@ -12,18 +12,15 @@ import (
 func TestKeyInfoMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
-	testKey, err := crypto.GenerateKey()
-	assert.NoError(t, err)
-	testType := "test_key_type"
-	ki := &KeyInfo{
-		PrivateKey:  testKey,
-		CryptSystem: testType,
+	ki := crypto.KeyInfo{
+		PrivateKey:  []byte{1, 2, 3, 4},
+		CryptSystem: crypto.SECP256K1,
 	}
 
 	marshaled, err := ki.Marshal()
 	assert.NoError(t, err)
 
-	kiBack := &KeyInfo{}
+	kiBack := &crypto.KeyInfo{}
 	err = kiBack.Unmarshal(marshaled)
 	assert.NoError(t, err)
 

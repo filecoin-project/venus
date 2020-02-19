@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"testing"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	bls "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -89,7 +91,7 @@ func TestWalletBLSKeys(t *testing.T) {
 	t.Run("key uses BLS cryptography", func(t *testing.T) {
 		ki, err := wb.GetKeyInfo(addr)
 		require.NoError(t, err)
-		assert.Equal(t, types.BLS, ki.CryptSystem)
+		assert.Equal(t, crypto.BLS, ki.CryptSystem)
 	})
 
 	t.Run("valid signatures verify", func(t *testing.T) {

@@ -90,7 +90,7 @@ type GenesisCfg struct {
 // RenderedGenInfo contains information about a genesis block creation
 type RenderedGenInfo struct {
 	// Keys is the set of keys generated
-	Keys []*types.KeyInfo
+	Keys []*crypto.KeyInfo
 
 	// Miners is the list of addresses of miners created
 	Miners []RenderedMinerInfo
@@ -184,26 +184,17 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst cbor.IpldStore, bs blockst
 	}, nil
 }
 
-func genKeys(cfgkeys int, pnrg io.Reader) ([]*types.KeyInfo, error) {
-	keys := make([]*types.KeyInfo, cfgkeys)
+func genKeys(cfgkeys int, pnrg io.Reader) ([]*crypto.KeyInfo, error) {
+	keys := make([]*crypto.KeyInfo, cfgkeys)
 	for i := 0; i < cfgkeys; i++ {
-		sk, err := crypto.GenerateKeyFromSeed(pnrg) // TODO: GenerateKey should return a KeyInfo
-		if err != nil {
-			return nil, err
-		}
-
-		ki := &types.KeyInfo{
-			PrivateKey:  sk,
-			CryptSystem: types.SECP256K1,
-		}
-
-		keys[i] = ki
+		ki := crypto.NewBLSKeyRandom() // use seed
+		keys[i] = &ki
 	}
 
 	return keys, nil
 }
 
-func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, keys []*types.KeyInfo, prealloc []string) error {
+func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, keys []*crypto.KeyInfo, prealloc []string) error {
 
 	if len(keys) < len(prealloc) {
 		return fmt.Errorf("keys do not match prealloc")
@@ -245,7 +236,7 @@ func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, k
 	return nil
 }
 
-func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*types.KeyInfo, miners []*CreateStorageMinerConfig, pnrg io.Reader) ([]RenderedMinerInfo, error) {
+func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*crypto.KeyInfo, miners []*CreateStorageMinerConfig, pnrg io.Reader) ([]RenderedMinerInfo, error) {
 	var minfos []RenderedMinerInfo
 
 	for _, m := range miners {

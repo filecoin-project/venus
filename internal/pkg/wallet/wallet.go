@@ -11,6 +11,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-address"
+
+	crypto2 "github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -152,30 +154,30 @@ func (w *Wallet) GetPubKeyForAddress(addr address.Address) ([]byte, error) {
 }
 
 // NewKeyInfo creates a new KeyInfo struct in the wallet backend and returns it
-func (w *Wallet) NewKeyInfo() (*types.KeyInfo, error) {
+func (w *Wallet) NewKeyInfo() (*crypto2.KeyInfo, error) {
 	newAddr, err := NewAddress(w, address.SECP256K1)
 	if err != nil {
-		return &types.KeyInfo{}, err
+		return &crypto2.KeyInfo{}, err
 	}
 
 	return w.keyInfoForAddr(newAddr)
 }
 
-func (w *Wallet) keyInfoForAddr(addr address.Address) (*types.KeyInfo, error) {
+func (w *Wallet) keyInfoForAddr(addr address.Address) (*crypto2.KeyInfo, error) {
 	backend, err := w.Find(addr)
 	if err != nil {
-		return &types.KeyInfo{}, err
+		return &crypto2.KeyInfo{}, err
 	}
 
 	info, err := backend.GetKeyInfo(addr)
 	if err != nil {
-		return &types.KeyInfo{}, err
+		return &crypto2.KeyInfo{}, err
 	}
 	return info, nil
 }
 
 // Import adds the given keyinfos to the wallet
-func (w *Wallet) Import(kinfos ...*types.KeyInfo) ([]address.Address, error) {
+func (w *Wallet) Import(kinfos ...*crypto2.KeyInfo) ([]address.Address, error) {
 	dsb := w.Backends(DSBackendType)
 	if len(dsb) != 1 {
 		return nil, fmt.Errorf("expected exactly one datastore wallet backend")
@@ -202,8 +204,8 @@ func (w *Wallet) Import(kinfos ...*types.KeyInfo) ([]address.Address, error) {
 }
 
 // Export returns the KeyInfos for the given wallet addresses
-func (w *Wallet) Export(addrs []address.Address) ([]*types.KeyInfo, error) {
-	out := make([]*types.KeyInfo, len(addrs))
+func (w *Wallet) Export(addrs []address.Address) ([]*crypto2.KeyInfo, error) {
+	out := make([]*crypto2.KeyInfo, len(addrs))
 	for i, addr := range addrs {
 		bck, err := w.Find(addr)
 		if err != nil {

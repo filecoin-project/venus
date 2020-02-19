@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	crypto2 "github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -21,8 +21,8 @@ const defaultPeerKeyBits = 2048
 // initCfg contains configuration for initializing a node's repo.
 type initCfg struct {
 	peerKey     crypto.PrivKey
-	defaultKey  *types.KeyInfo
-	initImports []*types.KeyInfo
+	defaultKey  *crypto2.KeyInfo
+	initImports []*crypto2.KeyInfo
 }
 
 // InitOpt is an option for initialization of a node's repo.
@@ -38,14 +38,14 @@ func PeerKeyOpt(k crypto.PrivKey) InitOpt {
 
 // DefaultKeyOpt sets the private key for the wallet's default account.
 // If unspecified, initialization will create a new one.
-func DefaultKeyOpt(ki *types.KeyInfo) InitOpt {
+func DefaultKeyOpt(ki *crypto2.KeyInfo) InitOpt {
 	return func(opts *initCfg) {
 		opts.defaultKey = ki
 	}
 }
 
 // ImportKeyOpt imports the provided key during initialization.
-func ImportKeyOpt(ki *types.KeyInfo) InitOpt {
+func ImportKeyOpt(ki *crypto2.KeyInfo) InitOpt {
 	return func(opts *initCfg) {
 		opts.initImports = append(opts.initImports, ki)
 	}
@@ -112,7 +112,7 @@ func initPeerKey(store keystore.Keystore, key crypto.PrivKey) error {
 	return nil
 }
 
-func initDefaultKey(w *wallet.Wallet, key *types.KeyInfo) (*types.KeyInfo, error) {
+func initDefaultKey(w *wallet.Wallet, key *crypto2.KeyInfo) (*crypto2.KeyInfo, error) {
 	var err error
 	if key == nil {
 		key, err = w.NewKeyInfo()
@@ -127,7 +127,7 @@ func initDefaultKey(w *wallet.Wallet, key *types.KeyInfo) (*types.KeyInfo, error
 	return key, nil
 }
 
-func importInitKeys(w *wallet.Wallet, importKeys []*types.KeyInfo) error {
+func importInitKeys(w *wallet.Wallet, importKeys []*crypto2.KeyInfo) error {
 	for _, ki := range importKeys {
 		_, err := w.Import(ki)
 		if err != nil {

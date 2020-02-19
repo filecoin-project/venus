@@ -65,6 +65,7 @@ func TestGenGenLoading(t *testing.T) {
 
 func TestGenGenDeterministicBetweenBuilds(t *testing.T) {
 	tf.UnitTest(t)
+	t.Skip("Non-deterministic BLS key generation https://github.com/filecoin-project/go-filecoin/issues/3781")
 
 	ctx := context.Background()
 	var info *RenderedGenInfo

@@ -13,6 +13,7 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
@@ -207,9 +208,9 @@ func NFakeSectorInfos(numSectors uint64) ffi.SortedPublicSectorInfo {
 // inputs as miner power might be so low that winning a ticket is very
 // unlikely.  However runtime is deterministic so if it runs fast once on
 // given inputs is safe to use in tests.
-func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, networkPower, numSectors, sectorSize uint64) block.Ticket {
+func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *crypto.KeyInfo, networkPower, numSectors, sectorSize uint64) block.Ticket {
 	tm := TicketMachine{}
-	signer := types.NewMockSigner([]types.KeyInfo{*ki})
+	signer := types.NewMockSigner([]crypto.KeyInfo{*ki})
 	wAddr, err := ki.Address()
 	require.NoError(t, err)
 
@@ -238,8 +239,8 @@ func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, networkPow
 	}
 }
 
-func winsAtEpoch(t *testing.T, epoch uint64, ticket block.Ticket, ki *types.KeyInfo, networkPower, numSectors, sectorSize uint64, sectorInfos ffi.SortedPublicSectorInfo) bool {
-	signer := types.NewMockSigner([]types.KeyInfo{*ki})
+func winsAtEpoch(t *testing.T, epoch uint64, ticket block.Ticket, ki *crypto.KeyInfo, networkPower, numSectors, sectorSize uint64, sectorInfos ffi.SortedPublicSectorInfo) bool {
+	signer := types.NewMockSigner([]crypto.KeyInfo{*ki})
 	wAddr, err := ki.Address()
 	require.NoError(t, err)
 	em := ElectionMachine{}
@@ -263,13 +264,13 @@ func winsAtEpoch(t *testing.T, epoch uint64, ticket block.Ticket, ki *types.KeyI
 	return false
 }
 
-func losesAtEpoch(t *testing.T, epoch uint64, ticket block.Ticket, ki *types.KeyInfo, networkPower, numSectors, sectorSize uint64, sectorInfos ffi.SortedPublicSectorInfo) bool {
+func losesAtEpoch(t *testing.T, epoch uint64, ticket block.Ticket, ki *crypto.KeyInfo, networkPower, numSectors, sectorSize uint64, sectorInfos ffi.SortedPublicSectorInfo) bool {
 	return !winsAtEpoch(t, epoch, ticket, ki, networkPower, numSectors, sectorSize, sectorInfos)
 }
 
 // SeedLoserInNRounds returns a ticket that loses with a null block count of N.
-func SeedLoserInNRounds(t *testing.T, n int, ki *types.KeyInfo, networkPower, numSectors, sectorSize uint64) block.Ticket {
-	signer := types.NewMockSigner([]types.KeyInfo{*ki})
+func SeedLoserInNRounds(t *testing.T, n int, ki *crypto.KeyInfo, networkPower, numSectors, sectorSize uint64) block.Ticket {
+	signer := types.NewMockSigner([]crypto.KeyInfo{*ki})
 	wAddr, err := ki.Address()
 	require.NoError(t, err)
 	tm := TicketMachine{}

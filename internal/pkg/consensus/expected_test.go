@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
@@ -276,7 +277,7 @@ func requireMakeNBlocks(t *testing.T, n int, pTipSet block.TipSet, root cid.Cid,
 	return blocks
 }
 
-func minerToWorkerFromAddrs(ctx context.Context, t *testing.T, tree state.Tree, vms vm.Storage, kis []types.KeyInfo) ([]address.Address, map[address.Address]address.Address) {
+func minerToWorkerFromAddrs(ctx context.Context, t *testing.T, tree state.Tree, vms vm.Storage, kis []crypto.KeyInfo) ([]address.Address, map[address.Address]address.Address) {
 	minerAddrs := make([]address.Address, len(kis))
 	require.Equal(t, len(kis), len(minerAddrs))
 	minerToWorker := make(map[address.Address]address.Address, len(kis))
@@ -291,7 +292,7 @@ func minerToWorkerFromAddrs(ctx context.Context, t *testing.T, tree state.Tree, 
 	return minerAddrs, minerToWorker
 }
 
-func setTree(ctx context.Context, t *testing.T, kis []types.KeyInfo, cstore cbor.IpldStore, bstore blockstore.Blockstore, inRoot cid.Cid) (cid.Cid, []address.Address, map[address.Address]address.Address) {
+func setTree(ctx context.Context, t *testing.T, kis []crypto.KeyInfo, cstore cbor.IpldStore, bstore blockstore.Blockstore, inRoot cid.Cid) (cid.Cid, []address.Address, map[address.Address]address.Address) {
 	tree, err := state.NewTreeLoader().LoadStateTree(ctx, cstore, inRoot)
 	require.NoError(t, err)
 	miners := make([]address.Address, len(kis))

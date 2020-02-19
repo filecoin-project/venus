@@ -7,11 +7,11 @@ import (
 	"os"
 
 	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
-func writeKey(ki *types.KeyInfo, name string, jsonout bool) error {
+func writeKey(ki *crypto.KeyInfo, name string, jsonout bool) error {
 	addr, err := ki.Address()
 	if err != nil {
 		return err
