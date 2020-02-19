@@ -490,26 +490,26 @@ func (m *StorageMinerNodeConnector) WaitForReportFaults(ctx context.Context, msg
 	return exitCode, err
 }
 
-func (m *StorageMinerNodeConnector) GetReplicaCommitment(ctx context.Context, tok storagenode.TipSetToken, sectorNum abi.SectorNumber) (commR []byte, wasFound bool, err error) {
+func (m *StorageMinerNodeConnector) GetSealedCID(ctx context.Context, tok storagenode.TipSetToken, sectorNum abi.SectorNumber) (sealedCID cid.Cid, wasFound bool, err error) {
 	var tsk block.TipSetKey
 	if err := tsk.UnmarshalCBOR(tok); err != nil {
-		return nil, false, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
+		return cid.Undef, false, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
 	}
 
 	var minerState miner.State
 	err = m.chainState.GetActorStateAt(ctx, tsk, m.minerAddr, &minerState)
 
 	if err != nil {
-		return nil, false, err
+		return cid.Undef, false, err
 	}
 
 	preCommitInfo, found, err := minerState.GetPrecommittedSector(state.StoreFromCbor(ctx, m.chainState.IpldStore), sectorNum)
 
 	if !found || err != nil {
-		return nil, found, err
+		return cid.Undef, found, err
 	}
 
-	return preCommitInfo.Info.SealedCID.Bytes(), true, nil
+	return preCommitInfo.Info.SealedCID, true, nil
 }
 
 func (m *StorageMinerNodeConnector) CheckPieces(ctx context.Context, sectorNum abi.SectorNumber, pieces []storagenode.Piece) *storagenode.CheckPiecesError {
