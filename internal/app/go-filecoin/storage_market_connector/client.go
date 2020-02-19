@@ -121,7 +121,7 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context) (
 
 // ValidatePublishedDeal validates a deal has been published correctly
 // Adapted from https://github.com/filecoin-project/lotus/blob/3b34eba6124d16162b712e971f0db2ee108e0f67/markets/storageadapter/client.go#L156
-func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (uint64, error) {
+func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (dealID uint64, err error) {
 	// Fetch receipt to return dealId
 	chnMsg, found, err := s.waiter.Find(ctx, func(msg *types.SignedMessage, c cid.Cid) bool {
 		return c.Equals(*deal.PublishMessage)
@@ -170,8 +170,8 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 			if err != nil {
 				return 0, err
 			}
-			sectorID := ret.IDs[0]
-			return uint64(sectorID), nil
+			dealID := ret.IDs[0]
+			return uint64(dealID), nil
 		}
 	}
 
