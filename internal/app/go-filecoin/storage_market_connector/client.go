@@ -181,6 +181,9 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 // SignProposal uses the local wallet to sign the given proposal
 func (s *StorageClientNodeConnector) SignProposal(ctx context.Context, signer address.Address, proposal market.DealProposal) (*market.ClientDealProposal, error) {
 	buf, err := encoding.Encode(proposal)
+	if err != nil {
+		return nil, err
+	}
 
 	signature, err := s.SignBytes(ctx, signer, buf)
 	if err != nil {
