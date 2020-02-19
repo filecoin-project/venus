@@ -365,19 +365,19 @@ func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMs
 				ts, err := m.chainState.GetTipSet(key)
 				if err != nil {
 					ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFatalError)
-					break
+					continue
 				}
 
 				tsHeight, err := ts.Height()
 				if err != nil {
 					ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFatalError)
-					break
+					continue
 				}
 
 				randomness, err := m.chainState.SampleRandomness(ctx, types.NewBlockHeight(tsHeight))
 				if err != nil {
 					ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFatalError)
-					break
+					continue
 				}
 
 				sc <- storagenode.SealSeed{
