@@ -6,11 +6,10 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // SilentWriter writes to a stream, stopping after the first error and discarding output until
@@ -101,14 +100,14 @@ func optionalAddr(o interface{}) (ret address.Address, err error) {
 	return
 }
 
-func optionalSectorSizeWithDefault(o interface{}, def *types.BytesAmount) (*types.BytesAmount, error) {
+func optionalSectorSizeWithDefault(o interface{}, def abi.SectorSize) (abi.SectorSize, error) {
 	if o != nil {
 		n, err := strconv.ParseUint(o.(string), 10, 64)
 		if err != nil || n == 0 {
-			return nil, fmt.Errorf("invalid sector size: %s", o.(string))
+			return abi.SectorSize(0), fmt.Errorf("invalid sector size: %s", o.(string))
 		}
 
-		return types.NewBytesAmount(n), nil
+		return abi.SectorSize(n), nil
 	}
 
 	return def, nil

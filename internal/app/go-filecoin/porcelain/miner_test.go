@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/constants"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cfg"
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -92,7 +93,7 @@ func TestMinerCreate(t *testing.T) {
 			address.Address{},
 			types.NewGasPrice(0),
 			types.NewGasUnits(100),
-			types.OneKiBSectorSize,
+			constants.DevSectorSize,
 			"",
 			collateral,
 		)
@@ -111,7 +112,7 @@ func TestMinerCreate(t *testing.T) {
 			address.Address{},
 			types.NewGasPrice(0),
 			types.NewGasUnits(100),
-			types.OneKiBSectorSize,
+			constants.DevSectorSize,
 			"",
 			collateral,
 		)

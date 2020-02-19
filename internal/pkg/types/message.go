@@ -25,8 +25,14 @@ import (
 	typegen "github.com/whyrusleeping/cbor-gen"
 )
 
-// MethodID is an identifier of a method (in an actor).
+// MethodID has been DEPRECATED
+// Dragons: delete
 type MethodID Uint64
+
+// ToMethodNum is a temporary compatibility method.
+func (id MethodID) ToMethodNum() abi.MethodNum {
+	return (abi.MethodNum)(id)
+}
 
 const (
 	// InvalidMethodID is the value of an invalid method id.

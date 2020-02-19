@@ -15,6 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/constants"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -62,7 +63,7 @@ additional sectors.`,
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		var err error
 
-		sectorSize, err := optionalSectorSizeWithDefault(req.Options["sectorsize"], types.OneKiBSectorSize)
+		sectorSize, err := optionalSectorSizeWithDefault(req.Options["sectorsize"], constants.DevSectorSize)
 		if err != nil {
 			return err
 		}

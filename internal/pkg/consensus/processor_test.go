@@ -21,7 +21,6 @@ package consensus_test
 // 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 // 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 // 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
-// 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 // 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 // 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 // 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -215,7 +214,7 @@ package consensus_test
 // 	act2 := th.RequireNewFakeActor(t, vms, toAddr, fakeActorCodeCid)
 // 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 // 		address.LegacyNetworkAddress: th.RequireNewAccountActor(t, startingNetworkBalance),
-// 		address.InitAddress:          th.RequireNewInitActor(t, vms),
+// 		builtin.InitActorAddr:          th.RequireNewInitActor(t, vms),
 // 		toAddr:                       act2,
 // 	})
 // 	_, fromID := th.RequireInitAccountActor(ctx, t, st, vms, fromAddr, types.NewAttoFILFromFIL(1000))
@@ -552,8 +551,8 @@ package consensus_test
 // 	_, err := NewDefaultProcessor().ApplyMessage(ctx, st, vms, msg, addr4, types.NewBlockHeight(0), vm.NewLegacyGasTracker(), nil)
 // 	require.NoError(t, err)
 
-// 	initActor, _ := st.GetActor(ctx, address.InitAddress)
-// 	s := vms.NewStorage(address.InitAddress, initActor)
+// 	initActor, _ := st.GetActor(ctx, builtin.InitActorAddr)
+// 	s := vms.NewStorage(builtin.InitActorAddr, initActor)
 
 // 	_, err = s.Get(initActor.Head)
 // 	require.NoError(t, err)
@@ -563,8 +562,8 @@ package consensus_test
 // 	_, err = NewDefaultProcessor().ApplyMessage(ctx, st, vms, msg, addr4, types.NewBlockHeight(0), vm.NewLegacyGasTracker(), nil)
 // 	require.NoError(t, err)
 
-// 	initActor, _ = st.GetActor(ctx, address.InitAddress)
-// 	s = vms.NewStorage(address.InitAddress, initActor)
+// 	initActor, _ = st.GetActor(ctx, builtin.InitActorAddr)
+// 	s = vms.NewStorage(builtin.InitActorAddr, initActor)
 
 // 	_, err = s.Get(initActor.Head)
 // 	require.NoError(t, err)

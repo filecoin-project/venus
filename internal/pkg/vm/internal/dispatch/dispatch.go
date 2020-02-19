@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 )
 
@@ -20,11 +21,11 @@ type Dispatcher interface {
 	//
 	// - The `ctx` argument will be coerced to the type the method expects in its first argument.
 	// - If arg1 is `[]byte`, it will attempt to decode the value based on second argument in the target method.
-	Dispatch(method types.MethodID, ctx interface{}, arg1 interface{}) (interface{}, error)
+	Dispatch(method abi.MethodNum, ctx interface{}, arg1 interface{}) (interface{}, error)
 	// Signature is a helper function that returns the signature for a given method.
 	//
 	// Note: This is intended to be used by tests and tools.
-	Signature(method types.MethodID) (MethodSignature, error)
+	Signature(method abi.MethodNum) (MethodSignature, error)
 }
 
 type actorDispatcher struct {
@@ -40,9 +41,9 @@ type method interface {
 var _ Dispatcher = (*actorDispatcher)(nil)
 
 // Dispatch implements `Dispatcher`.
-func (d *actorDispatcher) Dispatch(methodID types.MethodID, ctx interface{}, arg1 interface{}) (interface{}, error) {
+func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, ctx interface{}, arg1 interface{}) (interface{}, error) {
 	// get method signature
-	m, err := d.signature(methodID)
+	m, err := d.signature(methodNum)
 	if err != nil {
 		return nil, err
 	}
@@ -53,6 +54,7 @@ func (d *actorDispatcher) Dispatch(methodID types.MethodID, ctx interface{}, arg
 		reflect.ValueOf(ctx),
 	}
 
+	// Dragons: simplify this to arginterface
 	if raw, ok := arg1.([]byte); ok {
 		obj, err := m.ArgInterface(raw)
 		if err != nil {
@@ -60,8 +62,15 @@ func (d *actorDispatcher) Dispatch(methodID types.MethodID, ctx interface{}, arg
 		}
 
 		// push decoded arg to args list
-		// Note: the `Elem()` call is to dereference the pointer created by `ArgInterface()`
-		args = append(args, reflect.ValueOf(obj).Elem())
+		args = append(args, reflect.ValueOf(obj))
+	} else if raw, ok := arg1.(runtime.CBORBytes); ok {
+		obj, err := m.ArgInterface(raw)
+		if err != nil {
+			return nil, err
+		}
+
+		// push decoded arg to args list
+		args = append(args, reflect.ValueOf(obj))
 	} else {
 		// the argument was not in raw bytes, let it be coerced
 		args = append(args, reflect.ValueOf(arg1))
@@ -72,7 +81,7 @@ func (d *actorDispatcher) Dispatch(methodID types.MethodID, ctx interface{}, arg
 
 	// Note: we only support single objects being returned
 	if len(out) > 1 {
-		return nil, fmt.Errorf("actor method returned more than one object. method: %d, code: %s", methodID, d.code)
+		return nil, fmt.Errorf("actor method returned more than one object. method: %d, code: %s", methodNum, d.code)
 	}
 
 	// method returns unit
@@ -84,7 +93,7 @@ func (d *actorDispatcher) Dispatch(methodID types.MethodID, ctx interface{}, arg
 	return out[0].Interface(), nil
 }
 
-func (d *actorDispatcher) signature(methodID types.MethodID) (*methodSignature, error) {
+func (d *actorDispatcher) signature(methodID abi.MethodNum) (*methodSignature, error) {
 	exports := d.actor.Exports()
 
 	// get method entry
@@ -102,6 +111,6 @@ func (d *actorDispatcher) signature(methodID types.MethodID) (*methodSignature, 
 }
 
 // Signature implements `Dispatcher`.
-func (d *actorDispatcher) Signature(methodID types.MethodID) (MethodSignature, error) {
-	return d.signature(methodID)
+func (d *actorDispatcher) Signature(methodNum abi.MethodNum) (MethodSignature, error) {
+	return d.signature(methodNum)
 }
