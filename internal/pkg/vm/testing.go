@@ -45,7 +45,7 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 	copy(randomness[:], []byte("only random in the figurative sense"))
 
 	addressGetter := vmaddr.NewForTestGetter()
-	store := &testStorage{state: state}
+	store := &TestStorage{state: state}
 	aux := FakeVMContext{
 		MessageValue:            message,
 		StorageValue:            store,
@@ -195,20 +195,22 @@ func (tc *FakeVMContext) AllowSideEffects(allow bool) {
 	tc.allowSideEffects = allow
 }
 
-type testStorage struct {
+// TestStorage is a fake storage used for testing.
+type TestStorage struct {
 	state interface{}
 }
 
-// NewTestStorage returns a new "testStorage"
-func NewTestStorage(state interface{}) *testStorage {
-	return &testStorage{
+// NewTestStorage returns a new "TestStorage"
+func NewTestStorage(state interface{}) *TestStorage {
+	return &TestStorage{
 		state: state,
 	}
 }
 
-var _ specsruntime.Store = (*testStorage)(nil)
+var _ specsruntime.Store = (*TestStorage)(nil)
 
-func (ts *testStorage) Put(v specsruntime.CBORMarshaler) cid.Cid {
+// Put implements runtime.Store.
+func (ts *TestStorage) Put(v specsruntime.CBORMarshaler) cid.Cid {
 	ts.state = v
 	if cm, ok := v.(cbg.CBORMarshaler); ok {
 		buf := new(bytes.Buffer)
@@ -224,7 +226,8 @@ func (ts *testStorage) Put(v specsruntime.CBORMarshaler) cid.Cid {
 	return cid.NewCidV1(cid.Raw, raw)
 }
 
-func (ts *testStorage) Get(cid cid.Cid, obj specsruntime.CBORUnmarshaler) bool {
+// Get implements runtime.Store.
+func (ts *TestStorage) Get(cid cid.Cid, obj specsruntime.CBORUnmarshaler) bool {
 	node, err := cbor.WrapObject(ts.state, types.DefaultHashFunction, -1)
 	if err != nil {
 		return false
@@ -238,7 +241,8 @@ func (ts *testStorage) Get(cid cid.Cid, obj specsruntime.CBORUnmarshaler) bool {
 	return true
 }
 
-func (ts *testStorage) CidOf(obj interface{}) cid.Cid {
+// CidOf returns the cid of the object.
+func (ts *TestStorage) CidOf(obj interface{}) cid.Cid {
 	if obj == nil {
 		return cid.Undef
 	}

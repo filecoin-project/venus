@@ -30,8 +30,8 @@ import (
 type MethodID Uint64
 
 // ToMethodNum is a temporary compatibility method.
-func (x MethodID) ToMethodNum() abi.MethodNum {
-	return (abi.MethodNum)(x)
+func (id MethodID) ToMethodNum() abi.MethodNum {
+	return (abi.MethodNum)(id)
 }
 
 const (

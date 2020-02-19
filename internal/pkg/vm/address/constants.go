@@ -40,7 +40,7 @@ var (
 	// TestAddress2 is an account with some initial funds in it.
 	TestAddress2 address.Address
 
-	// Dragons: delete all thsi adddresses
+	// Dragons: delete all the following adddresses
 
 	// SystemAddress is the hard-coded address of the filecoin system actor.
 	SystemAddress address.Address
