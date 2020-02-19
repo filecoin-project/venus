@@ -1,18 +1,16 @@
 package storagemarketconnector
 
 import (
-	"bytes"
 	"context"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
-	smtypes "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	spasm "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -21,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -42,8 +41,8 @@ type stateKey struct {
 	height uint64
 }
 
-func (k *stateKey) Height() uint64 {
-	return k.height
+func (k *stateKey) Height() abi.ChainEpoch {
+	return abi.ChainEpoch(k.height)
 }
 
 // WorkerGetter is a function that can retrieve the miner worker for the given address from actor state
@@ -106,7 +105,7 @@ func (c *connectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan 
 	}
 }
 
-func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address, addr address.Address, amount tokenamount.TokenAmount) error {
+func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address, addr address.Address, amount abi.TokenAmount) error {
 	mcid, cerr, err := c.outbox.Send(
 		ctx,
 		fromAddr,
@@ -128,24 +127,8 @@ func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address
 }
 
 // SignBytes uses the local wallet to sign the bytes with the given address
-func (c *connectorCommon) SignBytes(_ context.Context, signer address.Address, b []byte) (*smtypes.Signature, error) {
-	var err error
-
-	fcSig, err := c.wallet.SignBytes(b, signer)
-	if err != nil {
-		return nil, err
-	}
-
-	var sigType string
-	if signer.Protocol() == address.BLS {
-		sigType = smtypes.KTBLS
-	} else {
-		sigType = smtypes.KTSecp256k1
-	}
-	return &smtypes.Signature{
-		Type: sigType,
-		Data: fcSig[:],
-	}, nil
+func (c *connectorCommon) SignBytes(_ context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
+	return c.wallet.SignBytesV2(b, signer)
 }
 
 func (c *connectorCommon) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {
@@ -166,8 +149,8 @@ func (c *connectorCommon) GetBalance(ctx context.Context, addr address.Address) 
 	}
 
 	return storagemarket.Balance{
-		Available: tokenamount.FromInt(available.Int.Uint64()),
-		Locked:    tokenamount.FromInt(locked.Int.Uint64()),
+		Available: abi.NewTokenAmount(available.Int64()),
+		Locked:    abi.NewTokenAmount(locked.Int64()),
 	}, nil
 }
 
@@ -196,7 +179,7 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 		}
 
 		var params miner.SectorPreCommitInfo
-		err := params.UnmarshalCBOR(bytes.NewReader(m.Params))
+		err := encoding.Decode(m.Params, &params)
 		if err != nil {
 			return false
 		}
@@ -209,32 +192,20 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 		return false
 	}
 
-	msg, found, err := c.waiter.Find(ctx, pred)
+	_, found, err := c.waiter.Find(ctx, pred)
 	if err != nil {
-		cb(0, err)
+		cb(err)
 		return err
 	}
 	if found {
-		sectorID, err := decodeSectorID(msg.Message)
-		cb(sectorID, err)
+		cb(err)
 		return err
 	}
 
 	return c.waiter.WaitPredicate(ctx, pred, func(_ *block.Block, msg *types.SignedMessage, _ *vm.MessageReceipt) error {
-		sectorID, err := decodeSectorID(msg)
-		cb(sectorID, err)
+		cb(err)
 		return err
 	})
-}
-
-func decodeSectorID(msg *types.SignedMessage) (uint64, error) {
-	var params miner.SectorPreCommitInfo
-	err := params.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
-	if err != nil {
-		return 0, nil
-	}
-
-	return uint64(params.SectorNumber), nil
 }
 
 func (c *connectorCommon) getBalance(ctx context.Context, root cid.Cid, addr address.Address) (abi.TokenAmount, error) {
@@ -273,6 +244,7 @@ func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) (
 	}
 
 	proposals := adt.AsArray(stateStore, smState.Proposals)
+	dealStates := adt.AsArray(stateStore, smState.States)
 
 	deals := []storagemarket.StorageDeal{}
 	for _, dealID := range providerDealIds {
@@ -282,21 +254,27 @@ func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) (
 			return nil, err
 		}
 		if !found {
-			return nil, errors.Errorf("Could not find deal for id %d", dealID)
+			return nil, errors.Errorf("Could not find deal proposal for id %d", dealID)
 		}
+
+		var ds spasm.DealState
+		found, err = dealStates.Get(uint64(dealID), &ds)
+		if err != nil {
+			return nil, err
+		}
+		if !found {
+			return nil, errors.Errorf("Could not find deal state for id %d", dealID)
+		}
+
 		deals = append(deals, storagemarket.StorageDeal{
-			// Dragons: We're almost certainly looking for a CommP here.
-			PieceRef:             proposal.PieceCID.Bytes(),
-			PieceSize:            uint64(proposal.PieceSize),
-			Client:               proposal.Client,
-			Provider:             proposal.Provider,
-			ProposalExpiration:   uint64(proposal.EndEpoch),
-			Duration:             uint64(proposal.Duration()),
-			StoragePricePerEpoch: tokenamount.FromInt(proposal.StoragePricePerEpoch.Int.Uint64()),
-			StorageCollateral:    tokenamount.FromInt(proposal.ProviderCollateral.Int.Uint64()),
-			ActivationEpoch:      uint64(proposal.StartEpoch),
+			DealProposal: proposal,
+			DealState:    ds,
 		})
 	}
 
 	return deals, nil
+}
+
+func (c *connectorCommon) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) bool {
+	panic("implement me")
 }

@@ -35,6 +35,7 @@ type chainReadWriter interface {
 	GetHead() block.TipSetKey
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
 	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
+	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
 	SetHead(context.Context, block.TipSet) error
 	ReadOnlyStateStore() cborutil.ReadOnlyIpldStore
 }
@@ -153,6 +154,11 @@ func (chn *ChainStateReadWriter) SampleRandomness(ctx context.Context, sampleHei
 // GetActor returns an actor from the latest state on the chain
 func (chn *ChainStateReadWriter) GetActor(ctx context.Context, addr address.Address) (*actor.Actor, error) {
 	return chn.GetActorAt(ctx, chn.readWriter.GetHead(), addr)
+}
+
+// GetTipSetStateRoot produces the state root for the provided tipset key.
+func (chn *ChainStateReadWriter) GetTipSetStateRoot(ctx context.Context, tipKey block.TipSetKey) (cid.Cid, error) {
+	return chn.readWriter.GetTipSetStateRoot(tipKey)
 }
 
 // GetActorAt returns an actor at a specified tipset key.

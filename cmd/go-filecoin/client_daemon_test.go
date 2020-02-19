@@ -10,7 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -137,7 +137,7 @@ func TestDuplicateDeals(t *testing.T) {
 }
 
 // requireMakeDeal creates a deal with allowDuplicates set to true
-func minerClientMakeDealWithAllowDupes(ctx context.Context, t *testing.T, allowDupes bool, minerDaemon, clientDaemon *fast.Filecoin, askID uint64, duration uint64) (*storageimpl.Response, error) {
+func minerClientMakeDealWithAllowDupes(ctx context.Context, t *testing.T, allowDupes bool, minerDaemon, clientDaemon *fast.Filecoin, askID uint64, duration uint64) (*network.Response, error) {
 	f := files.NewBytesFile([]byte("HODLHODLHODL"))
 	dataCid, err := clientDaemon.ClientImport(ctx, f)
 	require.NoError(t, err)

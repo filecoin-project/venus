@@ -14,17 +14,16 @@ require (
 	github.com/docker/docker v0.7.3-0.20190315170154-87d593639c77
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.3.3 // indirect
-	github.com/filecoin-project/filecoin-ffi v0.0.0-20191221090835-c7bbef445934
+	github.com/filecoin-project/filecoin-ffi v0.0.0-20200210194142-cb6019e08542
 	github.com/filecoin-project/go-address v0.0.1
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
-	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-data-transfer v0.0.0-20191219005021-4accf56bd2ce
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
-	github.com/filecoin-project/go-fil-markets v0.0.0-20200204152108-87675b3f9b04
+	github.com/filecoin-project/go-fil-markets v0.0.0-20200212222958-2202549b86ee
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-paramfetch v0.0.1
-	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200114015900-4103afa82689
-	github.com/filecoin-project/go-storage-miner v0.0.0-20200122233640-6a01988b8217
+	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200211164318-76f24b9797d4
+	github.com/filecoin-project/go-storage-miner v0.0.0-20200218205809-c258369a5ba0
 	github.com/filecoin-project/specs-actors v0.0.0-20200214231017-c3be15e301c4
 	github.com/fxamacker/cbor v1.5.0
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
@@ -35,7 +34,7 @@ require (
 	github.com/ipfs/go-bitswap v0.1.8
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.3-0.20190908200855-f22eea50656c
-	github.com/ipfs/go-car v0.0.3-0.20200124090545-1a340009d896
+	github.com/ipfs/go-car v0.0.3-0.20200131220434-3f68f6ebd093
 	github.com/ipfs/go-cid v0.0.5
 	github.com/ipfs/go-datastore v0.4.2
 	github.com/ipfs/go-ds-badger v0.2.1
@@ -81,7 +80,6 @@ require (
 	github.com/multiformats/go-multiaddr v0.2.0
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/multiformats/go-multiaddr-net v0.1.2
-	github.com/multiformats/go-multibase v0.0.1
 	github.com/multiformats/go-multihash v0.0.13
 	github.com/onsi/ginkgo v1.10.3 // indirect
 	github.com/onsi/gomega v1.7.1 // indirect
@@ -103,13 +101,14 @@ require (
 	go.opencensus.io v0.22.2
 	go.uber.org/atomic v1.5.1 // indirect
 	go.uber.org/zap v1.13.0
-	golang.org/x/crypto v0.0.0-20200207205829-a95e85b341fd
-	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
+	golang.org/x/crypto v0.0.0-20200210222208-86ce3cb69678
+	golang.org/x/lint v0.0.0-20200130185559-910be7a94367 // indirect
 	golang.org/x/net v0.0.0-20191101175033-0deb6923b6d9 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5 // indirect
+	golang.org/x/sys v0.0.0-20200212091648-12a6c2dcc1e4 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
+	golang.org/x/tools v0.0.0-20200213153358-0abbfa5d31cd // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	google.golang.org/api v0.13.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect

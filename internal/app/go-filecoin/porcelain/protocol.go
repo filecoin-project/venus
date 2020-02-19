@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/pkg/errors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -57,7 +59,7 @@ func ProtocolParameters(ctx context.Context, plumbing protocolParamsPlumbing) (*
 
 	var supportedSectors []SectorInfo
 	for _, sectorSize := range sectorSizes {
-		maxUserBytes := types.NewBytesAmount(ffi.GetMaxUserBytesPerStagedSector(sectorSize.Uint64()))
+		maxUserBytes := types.NewBytesAmount(uint64(ffi.GetMaxUserBytesPerStagedSector(abi.SectorSize(sectorSize.Uint64()))))
 		supportedSectors = append(supportedSectors, SectorInfo{sectorSize, maxUserBytes})
 	}
 

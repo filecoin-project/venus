@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"testing"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
@@ -78,7 +80,7 @@ func (fem *FakeElectionMachine) GeneratePoStRandomness(_ block.Ticket, _ address
 func (fem *FakeElectionMachine) GenerateCandidates(_ []byte, _ ffi.SortedPublicSectorInfo, _ postgenerator.PoStGenerator) ([]ffi.Candidate, error) {
 	return []ffi.Candidate{
 		{
-			SectorID:             0,
+			SectorNum:            0,
 			PartialTicket:        [32]byte{0xf},
 			Ticket:               [32]byte{0xe},
 			SectorChallengeIndex: 0,
@@ -184,8 +186,8 @@ func NFakeSectorInfos(numSectors uint64) ffi.SortedPublicSectorInfo {
 		var fakeCommRi [ffi.CommitmentBytesLen]byte
 		copy(fakeCommRi[:], buf)
 		infos = append(infos, ffi.PublicSectorInfo{
-			SectorID: i,
-			CommR:    fakeCommRi,
+			SectorNum: abi.SectorNumber(i),
+			CommR:     fakeCommRi,
 		})
 	}
 

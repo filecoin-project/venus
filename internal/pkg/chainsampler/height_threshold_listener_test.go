@@ -5,14 +5,15 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	storagenodeapi "github.com/filecoin-project/go-storage-miner/apis/node"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-storage-miner"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewHeightThresholdListener(t *testing.T) {
@@ -25,7 +26,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.TODO())
 
 		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(11, sc, ec, ic, dc)
+		listener := NewHeightThresholdListener(11, sc, ic, dc, ec)
 
 		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
 			return sampleHeight.Bytes(), nil
@@ -47,7 +48,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 
 	t.Run("add tipset at target height sends seed", func(t *testing.T) {
 		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(7, sc, ec, ic, dc)
+		listener := NewHeightThresholdListener(7, sc, ic, dc, ec)
 
 		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
 			return sampleHeight.Bytes(), nil
@@ -66,7 +67,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 
 	t.Run("invalidates when new fork head is lower than target", func(t *testing.T) {
 		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(8, sc, ec, ic, dc)
+		listener := NewHeightThresholdListener(8, sc, ic, dc, ec)
 
 		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
 			return sampleHeight.Bytes(), nil
@@ -95,7 +96,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 
 	t.Run("invalidates and then sends new seed when new fork head is higher than target with a lower lca", func(t *testing.T) {
 		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(8, sc, ec, ic, dc)
+		listener := NewHeightThresholdListener(8, sc, ic, dc, ec)
 
 		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
 			return sampleHeight.Bytes(), nil
@@ -135,7 +136,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.TODO())
 
 		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(8, sc, ec, ic, dc)
+		listener := NewHeightThresholdListener(8, sc, ic, dc, ec)
 
 		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
 			return sampleHeight.Bytes(), nil
@@ -170,7 +171,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 
 	t.Run("sends on done channel when finality is crossed", func(t *testing.T) {
 		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(8, sc, ec, ic, dc)
+		listener := NewHeightThresholdListener(8, sc, ic, dc, ec)
 
 		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
 			return sampleHeight.Bytes(), nil
@@ -219,11 +220,11 @@ func TestNewHeightThresholdListener(t *testing.T) {
 	})
 }
 
-func setupChannels() (chan storage.SealSeed, chan error, chan struct{}, chan struct{}) {
-	return make(chan storage.SealSeed), make(chan error), make(chan struct{}), make(chan struct{})
+func setupChannels() (chan storagenodeapi.SealSeed, chan storagenodeapi.GetSealSeedError, chan storagenodeapi.SeedInvalidated, chan storagenodeapi.FinalityReached) {
+	return make(chan storagenodeapi.SealSeed), make(chan storagenodeapi.GetSealSeedError), make(chan storagenodeapi.SeedInvalidated), make(chan storagenodeapi.FinalityReached)
 }
 
-func waitForSeed(t *testing.T, sc chan storage.SealSeed, ec chan error, ic, dc chan struct{}) storage.SealSeed {
+func waitForSeed(t *testing.T, sc chan storagenodeapi.SealSeed, ec chan storagenodeapi.GetSealSeedError, ic chan storagenodeapi.SeedInvalidated, dc chan storagenodeapi.FinalityReached) storagenodeapi.SealSeed {
 	select {
 	case seed := <-sc:
 		return seed
@@ -236,7 +237,7 @@ func waitForSeed(t *testing.T, sc chan storage.SealSeed, ec chan error, ic, dc c
 	}
 }
 
-func expectCancelBeforeOutput(ctx context.Context, sc chan storage.SealSeed, ec chan error, ic, dc chan struct{}) {
+func expectCancelBeforeOutput(ctx context.Context, sc chan storagenodeapi.SealSeed, ec chan storagenodeapi.GetSealSeedError, ic chan storagenodeapi.SeedInvalidated, dc chan storagenodeapi.FinalityReached) {
 	select {
 	case <-sc:
 		panic("unexpected sample seed")
@@ -251,7 +252,7 @@ func expectCancelBeforeOutput(ctx context.Context, sc chan storage.SealSeed, ec 
 	}
 }
 
-func waitForInvalidation(t *testing.T, sc chan storage.SealSeed, ec chan error, ic, dc chan struct{}) {
+func waitForInvalidation(t *testing.T, sc chan storagenodeapi.SealSeed, ec chan storagenodeapi.GetSealSeedError, ic chan storagenodeapi.SeedInvalidated, dc chan storagenodeapi.FinalityReached) {
 	select {
 	case <-sc:
 		panic("got seed when we expected invalidation")

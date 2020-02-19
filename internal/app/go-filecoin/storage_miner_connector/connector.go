@@ -7,13 +7,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	commcid "github.com/filecoin-project/go-fil-commcid"
-	"github.com/filecoin-project/go-storage-miner"
+	storagenode "github.com/filecoin-project/go-storage-miner/apis/node"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
@@ -26,6 +24,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -38,8 +38,7 @@ var log = logging.Logger("connector") // nolint: deadcode
 // needs of "the node," e.g. interacting with the blockchain, persisting sector
 // states to disk, and so forth.
 type StorageMinerNodeConnector struct {
-	minerAddr  address.Address
-	workerAddr address.Address
+	minerAddr address.Address
 
 	newListener     chan *chainsampler.HeightThresholdListener
 	heightListeners []*chainsampler.HeightThresholdListener
@@ -50,23 +49,25 @@ type StorageMinerNodeConnector struct {
 	outbox     *message.Outbox
 	waiter     *msg.Waiter
 	wallet     *wallet.Wallet
+
+	stateViewer *appstate.Viewer
 }
 
-var _ storage.NodeAPI = new(StorageMinerNodeConnector)
+var _ storagenode.Interface = new(StorageMinerNodeConnector)
 
 // NewStorageMinerNodeConnector produces a StorageMinerNodeConnector, which adapts
 // types in this codebase to the interface representing "the node" which is
 // expected by the go-storage-miner project.
-func NewStorageMinerNodeConnector(minerAddress address.Address, workerAddress address.Address, chainStore *chain.Store, chainState *cst.ChainStateReadWriter, outbox *message.Outbox, waiter *msg.Waiter, wallet *wallet.Wallet) *StorageMinerNodeConnector {
+func NewStorageMinerNodeConnector(minerAddress address.Address, chainStore *chain.Store, chainState *cst.ChainStateReadWriter, outbox *message.Outbox, waiter *msg.Waiter, wallet *wallet.Wallet, stateViewer *appstate.Viewer) *StorageMinerNodeConnector {
 	return &StorageMinerNodeConnector{
 		minerAddr:    minerAddress,
-		workerAddr:   workerAddress,
 		listenerDone: make(chan struct{}),
 		chainStore:   chainStore,
 		chainState:   chainState,
 		outbox:       outbox,
 		waiter:       waiter,
 		wallet:       wallet,
+		stateViewer:  stateViewer,
 	}
 }
 
@@ -128,46 +129,46 @@ func (m *StorageMinerNodeConnector) handleNewTipSet(ctx context.Context, previou
 }
 
 // SendSelfDeals creates self-deals and sends them to the network.
-func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, pieces ...storage.PieceInfo) (cid.Cid, error) {
+func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, pieces ...abi.PieceInfo) (cid.Cid, error) {
+	waddr, err := m.GetMinerWorkerAddressFromChainHead(ctx, m.minerAddr)
+	if err != nil {
+		return cid.Undef, err
+	}
+
 	proposals := make([]market.ClientDealProposal, len(pieces))
 	for i, piece := range pieces {
-		prop := market.DealProposal{
-			PieceCID:             commcid.PieceCommitmentV1ToCID(piece.CommP[:]),
-			PieceSize:            abi.PaddedPieceSize(piece.Size),
-			Client:               m.workerAddr,
-			Provider:             m.minerAddr,
-			StartEpoch:           0,             // TODO populate when the miner module provides this value
-			EndEpoch:             math.MaxInt32, // TODO populate when the miner module provides this value
-			StoragePricePerEpoch: big.Zero(),
-			ProviderCollateral:   big.Zero(),
-			ClientCollateral:     big.Zero(),
-		}
-
-		proposalBytes, err := encoding.Encode(&proposals[i])
-		if err != nil {
-			return cid.Undef, err
-		}
-
-		sig, err := m.wallet.SignBytes(proposalBytes, m.workerAddr)
-		if err != nil {
-			return cid.Undef, err
-		}
-
 		proposals[i] = market.ClientDealProposal{
-			Proposal: prop,
-			ClientSignature: crypto.Signature{
-				// We know it's BLS from an unrelated requirement.
-				// This will go away when we use the new signature type in wallet
-				Type: crypto.SigTypeBLS,
-				Data: sig,
+			Proposal: market.DealProposal{
+				PieceCID:             piece.PieceCID,
+				PieceSize:            piece.Size,
+				Client:               waddr,
+				Provider:             m.minerAddr,
+				StartEpoch:           0, // TODO: Does this have to be set to current height?
+				EndEpoch:             abi.ChainEpoch(math.MaxInt32),
+				StoragePricePerEpoch: abi.NewTokenAmount(0),
+				ProviderCollateral:   abi.NewTokenAmount(0),
+				ClientCollateral:     abi.NewTokenAmount(0),
 			},
 		}
+
+		buf, err := encoding.Encode(proposals[i])
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		sig, err := m.wallet.SignBytesV2(buf, waddr)
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		proposals[i].ClientSignature = *sig
 	}
 
 	params := market.PublishStorageDealsParams{Deals: proposals}
+
 	mcid, cerr, err := m.outbox.Send(
 		ctx,
-		m.workerAddr,
+		waddr,
 		vmaddr.StorageMarketAddress,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
@@ -191,7 +192,7 @@ func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, pieces ..
 // WaitForSelfDeals blocks until the provided storage deal-publishing message is
 // mined into a block, producing a slice of deal IDs and an exit code when it is
 // mined into a block (or an error, if encountered).
-func (m *StorageMinerNodeConnector) WaitForSelfDeals(ctx context.Context, mcid cid.Cid) ([]uint64, uint8, error) {
+func (m *StorageMinerNodeConnector) WaitForSelfDeals(ctx context.Context, mcid cid.Cid) ([]abi.DealID, uint8, error) {
 	receiptChan := make(chan *vm.MessageReceipt)
 	errChan := make(chan error)
 
@@ -221,7 +222,12 @@ func (m *StorageMinerNodeConnector) WaitForSelfDeals(ctx context.Context, mcid c
 		for i, id := range ret.IDs {
 			dealIds[i] = uint64(id)
 		}
-		return dealIds, 0, nil
+		dealIdsPrime := make([]abi.DealID, len(dealIds))
+		for idx := range dealIds {
+			dealIdsPrime[idx] = abi.DealID(dealIds[idx])
+		}
+
+		return dealIdsPrime, 0, nil
 	case err := <-errChan:
 		return nil, 0, err
 	case <-ctx.Done():
@@ -231,14 +237,19 @@ func (m *StorageMinerNodeConnector) WaitForSelfDeals(ctx context.Context, mcid c
 
 // SendPreCommitSector creates a pre-commit sector message and sends it to the
 // network.
-func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sectorID uint64, commR []byte, ticket storage.SealTicket, pieces ...storage.Piece) (cid.Cid, error) {
+func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sectorNum abi.SectorNumber, commR []byte, ticket storagenode.SealTicket, pieces ...storagenode.Piece) (cid.Cid, error) {
+	waddr, err := m.GetMinerWorkerAddressFromChainHead(ctx, m.minerAddr)
+	if err != nil {
+		return cid.Undef, err
+	}
+
 	dealIds := make([]abi.DealID, len(pieces))
 	for i, piece := range pieces {
-		dealIds[i] = abi.DealID(piece.DealID)
+		dealIds[i] = piece.DealID
 	}
 
 	params := miner.SectorPreCommitInfo{
-		SectorNumber: abi.SectorNumber(sectorID),
+		SectorNumber: sectorNum,
 		SealedCID:    commcid.ReplicaCommitmentV1ToCID(commR),
 		SealEpoch:    abi.ChainEpoch(ticket.BlockHeight),
 		DealIDs:      dealIds,
@@ -247,7 +258,7 @@ func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sec
 
 	mcid, cerr, err := m.outbox.Send(
 		ctx,
-		m.workerAddr,
+		waddr,
 		m.minerAddr,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
@@ -277,20 +288,25 @@ func (m *StorageMinerNodeConnector) WaitForPreCommitSector(ctx context.Context, 
 
 // SendProveCommitSector creates a commit sector message and sends it to the
 // network.
-func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, sectorID uint64, proof []byte, deals ...uint64) (cid.Cid, error) {
+func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, sectorNum abi.SectorNumber, proof []byte, deals ...abi.DealID) (cid.Cid, error) {
+	waddr, err := m.GetMinerWorkerAddressFromChainHead(ctx, m.minerAddr)
+	if err != nil {
+		return cid.Undef, err
+	}
+
 	dealIds := make([]types.Uint64, len(deals))
 	for i, deal := range deals {
 		dealIds[i] = types.Uint64(deal)
 	}
 
 	params := miner.ProveCommitSectorParams{
-		SectorNumber: abi.SectorNumber(sectorID),
+		SectorNumber: sectorNum,
 		Proof:        abi.SealProof{ProofBytes: proof},
 	}
 
 	mcid, cerr, err := m.outbox.Send(
 		ctx,
-		m.workerAddr,
+		waddr,
 		m.minerAddr,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
@@ -315,29 +331,30 @@ func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, s
 // been mined into the chainStore, producing the height of the block in which the
 // message was mined (and the message's exit code) or an error if any is
 // encountered.
-func (m *StorageMinerNodeConnector) WaitForProveCommitSector(ctx context.Context, mcid cid.Cid) (uint64, uint8, error) {
-	return m.waitForMessageHeight(ctx, mcid)
+func (m *StorageMinerNodeConnector) WaitForProveCommitSector(ctx context.Context, mcid cid.Cid) (uint8, error) {
+	_, exitCode, err := m.waitForMessageHeight(ctx, mcid)
+	return exitCode, err
 }
 
 // GetSealTicket produces the seal ticket used when pre-committing a sector at
 // the moment it is called
-func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context) (storage.SealTicket, error) {
+func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context) (storagenode.SealTicket, error) {
 	ts, err := m.chainStore.GetTipSet(m.chainStore.GetHead())
 	if err != nil {
-		return storage.SealTicket{}, xerrors.Errorf("getting head ts for SealTicket failed: %w", err)
+		return storagenode.SealTicket{}, xerrors.Errorf("getting head ts for SealTicket failed: %w", err)
 	}
 
 	h, err := ts.Height()
 	if err != nil {
-		return storage.SealTicket{}, err
+		return storagenode.SealTicket{}, err
 	}
 
 	r, err := m.chainState.SampleRandomness(ctx, types.NewBlockHeight(h-consensus.FinalityEpochs))
 	if err != nil {
-		return storage.SealTicket{}, xerrors.Errorf("getting randomness for SealTicket failed: %w", err)
+		return storagenode.SealTicket{}, xerrors.Errorf("getting randomness for SealTicket failed: %w", err)
 	}
 
-	return storage.SealTicket{
+	return storagenode.SealTicket{
 		BlockHeight: h,
 		TicketBytes: r,
 	}, nil
@@ -348,28 +365,29 @@ func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context) (storage.
 // responsible for choosing an interval-value, which is a quantity of blocks to
 // wait (after the block in which the pre-commit message is mined) before
 // computing and sampling a seed.
-func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMsg cid.Cid, interval uint64) (seed <-chan storage.SealSeed, err <-chan error, invalidated <-chan struct{}, done <-chan struct{}) {
-	sc := make(chan storage.SealSeed)
-	ec := make(chan error)
-	ic := make(chan struct{})
-	dc := make(chan struct{})
+func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMsg cid.Cid, interval uint64) (<-chan storagenode.SealSeed, <-chan storagenode.SeedInvalidated, <-chan storagenode.FinalityReached, <-chan storagenode.GetSealSeedError) {
+	sc := make(chan storagenode.SealSeed)
+	ec := make(chan storagenode.GetSealSeedError)
+	ic := make(chan storagenode.SeedInvalidated)
+	dc := make(chan storagenode.FinalityReached)
 
 	go func() {
 		h, exitCode, err := m.waitForMessageHeight(ctx, preCommitMsg)
 		if err != nil {
-			ec <- err
+			ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFailedError)
 			return
 		}
 
 		if exitCode != 0 {
-			ec <- xerrors.Errorf("non-zero exit code for pre-commit message %d", exitCode)
+			err := xerrors.Errorf("non-zero exit code for pre-commit message %d", exitCode)
+			ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFailedError)
 			return
 		}
 
-		m.newListener <- chainsampler.NewHeightThresholdListener(h+interval, sc, ec, ic, dc)
+		m.newListener <- chainsampler.NewHeightThresholdListener(h+interval, sc, ic, dc, ec)
 	}()
 
-	return sc, ec, ic, dc
+	return sc, ic, dc, ec
 }
 
 type heightAndExitCode struct {
@@ -402,4 +420,93 @@ func (m *StorageMinerNodeConnector) waitForMessageHeight(ctx context.Context, mc
 	case <-ctx.Done():
 		return 0, 0, errors.New("context ended prematurely")
 	}
+}
+
+func (m *StorageMinerNodeConnector) GetMinerWorkerAddressFromChainHead(ctx context.Context, maddr address.Address) (address.Address, error) {
+	root, err := m.chainState.GetTipSetStateRoot(ctx, m.chainStore.GetHead())
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to get tip state: %w", err)
+	}
+
+	_, waddr, err := m.stateViewer.StateView(root).MinerControlAddresses(ctx, m.minerAddr)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to get miner control addresses: %w", err)
+	}
+
+	return waddr, nil
+}
+
+func (m *StorageMinerNodeConnector) SendReportFaults(ctx context.Context, sectorIDs ...abi.SectorNumber) (cid.Cid, error) {
+	waddr, err := m.GetMinerWorkerAddressFromChainHead(ctx, m.minerAddr)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	bf := abi.NewBitField()
+	for _, id := range sectorIDs {
+		bf.Set(uint64(id))
+	}
+
+	params := miner.DeclareTemporaryFaultsParams{
+		SectorNumbers: bf,
+
+		// TODO: use a real value here
+		Duration: abi.ChainEpoch(miner.ProvingPeriod),
+	}
+
+	mcid, cerr, err := m.outbox.Send(
+		ctx,
+		waddr,
+		m.minerAddr,
+		types.ZeroAttoFIL,
+		types.NewGasPrice(1),
+		types.NewGasUnits(300),
+		true,
+		types.MethodID(builtin.MethodsMiner.DeclareTemporaryFaults),
+		&params,
+	)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	err = <-cerr
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return mcid, nil
+}
+
+func (m *StorageMinerNodeConnector) WaitForReportFaults(ctx context.Context, msgCid cid.Cid) (uint8, error) {
+	_, exitCode, err := m.waitForMessageHeight(ctx, msgCid)
+	return exitCode, err
+}
+
+func (m *StorageMinerNodeConnector) GetReplicaCommitmentByID(ctx context.Context, sectorNum abi.SectorNumber) (commR []byte, wasFound bool, err error) {
+	var minerState miner.State
+	err = m.chainState.GetActorStateAt(ctx, m.chainState.Head(), m.minerAddr, &minerState)
+
+	if err != nil {
+		return nil, false, err
+	}
+
+	preCommitInfo, found, err := minerState.GetPrecommittedSector(state.StoreFromCbor(ctx, m.chainState.IpldStore), sectorNum)
+
+	if !found || err != nil {
+		return nil, found, err
+	}
+
+	return preCommitInfo.Info.SealedCID.Bytes(), true, nil
+}
+
+func (m *StorageMinerNodeConnector) CheckPieces(ctx context.Context, sectorNum abi.SectorNumber, pieces []storagenode.Piece) *storagenode.CheckPiecesError {
+	return nil
+}
+
+func (m *StorageMinerNodeConnector) CheckSealing(ctx context.Context, commD []byte, dealIDs []abi.DealID, ticket storagenode.SealTicket) *storagenode.CheckSealingError {
+	return nil
+}
+
+func (m *StorageMinerNodeConnector) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
+	return m.wallet.HasAddress(addr), nil
 }

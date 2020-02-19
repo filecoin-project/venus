@@ -10,14 +10,12 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	cid "github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	multihash "github.com/multiformats/go-multihash"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -25,6 +23,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDealsList(t *testing.T) {
@@ -181,7 +182,7 @@ func TestDealsShow(t *testing.T) {
 }
 
 func getMaxUserBytesPerStagedSector() uint64 {
-	return ffi.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize.Uint64())
+	return uint64(abi.PaddedPieceSize(types.OneKiBSectorSize.Uint64()).Unpadded())
 }
 
 func requireTestCID(t *testing.T, data []byte) cid.Cid {
