@@ -338,7 +338,7 @@ func (m *StorageMinerNodeConnector) GetChainHead(ctx context.Context) (storageno
 // computing and sampling a seed.
 func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMsg cid.Cid, interval uint64) (<-chan storagenode.SealSeed, <-chan storagenode.SeedInvalidated, <-chan storagenode.FinalityReached, <-chan storagenode.GetSealSeedError) {
 	sc := make(chan storagenode.SealSeed)
-	_ := make(chan block.TipSetKey)
+	hc := make(chan block.TipSetKey)
 	ec := make(chan storagenode.GetSealSeedError)
 	ic := make(chan storagenode.SeedInvalidated)
 	dc := make(chan storagenode.FinalityReached)
