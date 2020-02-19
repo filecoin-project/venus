@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-storage-miner"
 	"github.com/ipfs/go-datastore"
@@ -27,13 +26,10 @@ type StorageMiningSubmodule struct {
 	// PoStGenerator generates election PoSts
 	PoStGenerator postgenerator.PoStGenerator
 
-	minerAddr     address.Address
-	outbox        *message.Outbox
-	sectorbuilder sectorbuilder.Interface
-	minerNode     *storageminerconnector.StorageMinerNodeConnector
-	storageMiner  *storage.Miner
-	chain         *ChainSubmodule
-	poster        *poster.Poster
+	minerNode        *storageminerconnector.StorageMinerNodeConnector
+	storageMiner     *storage.Miner
+	heaviestTipSetCh chan interface{}
+	poster           *poster.Poster
 }
 
 // NewStorageMiningSubmodule creates a new storage mining submodule.
@@ -48,15 +44,12 @@ func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching,
 	sbbe := postgenerator.NewSectorBuilderBackEnd(s)
 
 	modu := &StorageMiningSubmodule{
-		PieceManager:  smbe,
-		PoStGenerator: sbbe,
-		minerNode:     minerNode,
-		storageMiner:  storageMiner,
-		outbox:        m.Outbox,
-		chain:         c,
-		sectorbuilder: s,
-		minerAddr:     minerAddr,
-		poster:        poster.NewPoster(minerAddr, m.Outbox, s, minerNode, storageMiner, c.HeaviestTipSetCh, c.State, stateViewer),
+		PieceManager:     smbe,
+		PoStGenerator:    sbbe,
+		minerNode:        minerNode,
+		storageMiner:     storageMiner,
+		heaviestTipSetCh: c.HeaviestTipSetCh,
+		poster:           poster.NewPoster(minerAddr, m.Outbox, s, minerNode, storageMiner, c.HeaviestTipSetCh, c.State, stateViewer),
 	}
 
 	return modu, nil
@@ -68,7 +61,7 @@ func (s *StorageMiningSubmodule) Start(ctx context.Context) error {
 		return nil
 	}
 
-	s.minerNode.StartHeightListener(ctx, s.chain.HeaviestTipSetCh)
+	s.minerNode.StartHeightListener(ctx, s.heaviestTipSetCh)
 	err := s.storageMiner.Run(ctx)
 	if err != nil {
 		return err
