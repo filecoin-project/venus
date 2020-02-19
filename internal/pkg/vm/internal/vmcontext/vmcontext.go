@@ -191,7 +191,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 			}
 
 			// apply message
-			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(m, m.OnChainLen(), blk.Miner)
+			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.ApplyMessage(m, m.OnChainLen(), blk.Miner)
 
 			// accumulate result
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)
@@ -215,7 +215,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 
 			// apply message
 			// Note: the on-chain size for SECP messages is different
-			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(&m, sm.OnChainLen(), blk.Miner)
+			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.ApplyMessage(&m, sm.OnChainLen(), blk.Miner)
 
 			// accumulate result
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)
@@ -305,7 +305,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) (out interface{}, err e
 }
 
 // applyMessage applies the message to the current state.
-func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, miner address.Address) (message.Receipt, minerPenaltyFIL, gasRewardFIL) {
+func (vm *VM) ApplyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, miner address.Address) (message.Receipt, minerPenaltyFIL, gasRewardFIL) {
 	// Dragons: temp until we remove legacy types
 	var msgGasLimit gas.Unit = gas.NewLegacyGas(msg.GasLimit)
 	var msgGasPrice abi.TokenAmount = abi.NewTokenAmount(int64(msg.GasLimit))
@@ -328,6 +328,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 	// 7. checkpoint state
 
 	// 1. charge for bytes used in chain
+	msg.OnChainLen()
 	msgGasCost := gascost.OnChainMessage(onChainMsgSize)
 	ok := gasTank.TryCharge(msgGasCost)
 	if !ok {
