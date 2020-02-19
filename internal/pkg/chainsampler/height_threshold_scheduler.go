@@ -79,7 +79,7 @@ func (m *HeightThresholdScheduler) AddListener(target uint64) *HeightThresholdLi
 // CancelListener stops a listener from listening and sends a message over its done channel
 func (m *HeightThresholdScheduler) CancelListener(listener *HeightThresholdListener) {
 	m.cancelListener <- listener
-	listener.doneCh <- struct{}{}
+	listener.DoneCh <- struct{}{}
 }
 
 // HandleNewTipSet must be called when the chain head changes.

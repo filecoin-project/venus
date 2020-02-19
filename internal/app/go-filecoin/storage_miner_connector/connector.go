@@ -15,7 +15,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -31,6 +30,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
+type randomnessSampler interface {
+	SampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
+	GetTipSet(key block.TipSetKey) (block.TipSet, error)
+	Head() block.TipSetKey
+}
+
 // StorageMinerNodeConnector is a struct which satisfies the go-storage-miner
 // needs of "the node," e.g. interacting with the blockchain, persisting sector
 // states to disk, and so forth.
@@ -40,7 +45,7 @@ type StorageMinerNodeConnector struct {
 	chainHeightScheduler *chainsampler.HeightThresholdScheduler
 
 	chainStore *chain.Store
-	chainState *cst.ChainStateReadWriter
+	chainState randomnessSampler
 	outbox     *message.Outbox
 	waiter     *msg.Waiter
 	wallet     *wallet.Wallet
@@ -53,7 +58,7 @@ var _ storagenode.Interface = new(StorageMinerNodeConnector)
 // NewStorageMinerNodeConnector produces a StorageMinerNodeConnector, which adapts
 // types in this codebase to the interface representing "the node" which is
 // expected by the go-storage-miner project.
-func NewStorageMinerNodeConnector(minerAddress address.Address, chainStore *chain.Store, chainState *cst.ChainStateReadWriter, outbox *message.Outbox, waiter *msg.Waiter, wallet *wallet.Wallet, stateViewer *appstate.Viewer) *StorageMinerNodeConnector {
+func NewStorageMinerNodeConnector(minerAddress address.Address, chainStore *chain.Store, chainState randomnessSampler, outbox *message.Outbox, waiter *msg.Waiter, wallet *wallet.Wallet, stateViewer *appstate.Viewer) *StorageMinerNodeConnector {
 	return &StorageMinerNodeConnector{
 		minerAddr:            minerAddress,
 		chainHeightScheduler: chainsampler.NewHeightThresholdScheduler(chainStore),
@@ -62,6 +67,7 @@ func NewStorageMinerNodeConnector(minerAddress address.Address, chainStore *chai
 		outbox:               outbox,
 		waiter:               waiter,
 		wallet:               wallet,
+		stateViewer:          stateViewer,
 	}
 }
 
@@ -74,8 +80,6 @@ func (m *StorageMinerNodeConnector) StartHeightListener(ctx context.Context, htc
 func (m *StorageMinerNodeConnector) StopHeightListener() {
 	m.chainHeightScheduler.Stop()
 }
-
-// CancelHeightListener removes on
 
 func (m *StorageMinerNodeConnector) handleNewTipSet(ctx context.Context, previousHead block.TipSet) (block.TipSet, error) {
 
@@ -334,7 +338,7 @@ func (m *StorageMinerNodeConnector) GetChainHead(ctx context.Context) (storageno
 // computing and sampling a seed.
 func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMsg cid.Cid, interval uint64) (<-chan storagenode.SealSeed, <-chan storagenode.SeedInvalidated, <-chan storagenode.FinalityReached, <-chan storagenode.GetSealSeedError) {
 	sc := make(chan storagenode.SealSeed)
-	hc := make(chan block.TipSetKey)
+	_ := make(chan block.TipSetKey)
 	ec := make(chan storagenode.GetSealSeedError)
 	ic := make(chan storagenode.SeedInvalidated)
 	dc := make(chan storagenode.FinalityReached)
@@ -352,14 +356,12 @@ func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMs
 			return
 		}
 
-		m.chainHeightScheduler.AddListener(h + interval)
-	}()
+		listener := m.chainHeightScheduler.AddListener(h + interval)
 
-	// translate tipset key to seal seed handler
-	go func() {
+		// translate tipset key to seal seed handler
 		for {
 			select {
-			case key := <-hc:
+			case key := <-listener.HitCh:
 				ts, err := m.chainState.GetTipSet(key)
 				if err != nil {
 					ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFatalError)
@@ -382,9 +384,15 @@ func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMs
 					BlockHeight: tsHeight,
 					TicketBytes: randomness,
 				}
-			case <-dc:
+			case err := <-listener.ErrCh:
+				ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFailedError)
+			case <-listener.InvalidCh:
+				ic <- storagenode.SeedInvalidated{}
+			case <-listener.DoneCh:
+				dc <- storagenode.FinalityReached{}
 				return
 			case <-ctx.Done():
+				m.chainHeightScheduler.CancelListener(listener)
 				return
 			}
 		}

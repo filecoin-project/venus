@@ -5,7 +5,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-storage-miner"
 )
 
 // HeightThresholdListener listens for new heaviest chains and notifies when a height threshold is crossed.
@@ -13,10 +12,10 @@ type HeightThresholdListener struct {
 	target    uint64
 	targetHit bool
 
-	hitCh     chan block.TipSetKey
-	errCh     chan error
-	invalidCh chan struct{}
-	doneCh    chan struct{}
+	HitCh     chan block.TipSetKey
+	ErrCh     chan error
+	InvalidCh chan struct{}
+	DoneCh    chan struct{}
 }
 
 // NewHeightThresholdListener creates a new listener
@@ -24,10 +23,10 @@ func NewHeightThresholdListener(target uint64, hitCh chan block.TipSetKey, errCh
 	return &HeightThresholdListener{
 		target:    target,
 		targetHit: false,
-		hitCh:     hitCh,
-		errCh:     errCh,
-		invalidCh: invalidCh,
-		doneCh:    doneCh,
+		HitCh:     hitCh,
+		ErrCh:     errCh,
+		InvalidCh: invalidCh,
+		DoneCh:    doneCh,
 	}
 }
 
@@ -56,7 +55,7 @@ func (l *HeightThresholdListener) Handle(ctx context.Context, chain []block.TipS
 
 	// check if we've hit finality and should stop listening
 	if h >= l.target+consensus.FinalityEpochs {
-		l.doneCh <- storage.FinalityReached{}
+		l.DoneCh <- struct{}{}
 		return false, nil
 	}
 
@@ -69,11 +68,11 @@ func (l *HeightThresholdListener) Handle(ctx context.Context, chain []block.TipS
 	if l.targetHit {
 		// if we've completely reverted
 		if h < l.target {
-			l.invalidCh <- storage.SeedInvalidated{}
+			l.InvalidCh <- struct{}{}
 			l.targetHit = false
 			// if we've re-orged to a point before the target
 		} else if lcaHeight < l.target {
-			l.invalidCh <- struct{}{}
+			l.InvalidCh <- struct{}{}
 			err := l.sendHit(ctx, chain)
 			if err != nil {
 				return true, err
@@ -108,6 +107,6 @@ func (l *HeightThresholdListener) sendHit(ctx context.Context, chain []block.Tip
 		firstTargetTipset = ts
 	}
 
-	l.hitCh <- firstTargetTipset.Key()
+	l.HitCh <- firstTargetTipset.Key()
 	return nil
 }
