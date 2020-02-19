@@ -6,13 +6,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/go-storage-miner"
 	spaabi "github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/prometheus/common/log"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
-	storageminerconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/storage_miner_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
@@ -29,8 +27,6 @@ type Poster struct {
 	minerAddr        address.Address
 	outbox           *message.Outbox
 	sectorbuilder    sectorbuilder.Interface
-	minerNode        *storageminerconnector.StorageMinerNodeConnector
-	storageMiner     *storage.Miner
 	heaviestTipsetCh chan interface{}
 	chain            *cst.ChainStateReadWriter
 	stateViewer      *appstate.Viewer
@@ -41,8 +37,6 @@ func NewPoster(
 	minerAddr address.Address,
 	outbox *message.Outbox,
 	sb sectorbuilder.Interface,
-	connector *storageminerconnector.StorageMinerNodeConnector,
-	miner *storage.Miner,
 	htc chan interface{},
 	chain *cst.ChainStateReadWriter,
 	stateViewer *appstate.Viewer) *Poster {
@@ -51,8 +45,6 @@ func NewPoster(
 		minerAddr:        minerAddr,
 		outbox:           outbox,
 		sectorbuilder:    sb,
-		minerNode:        connector,
-		storageMiner:     miner,
 		heaviestTipsetCh: htc,
 		chain:            chain,
 		stateViewer:      stateViewer,
