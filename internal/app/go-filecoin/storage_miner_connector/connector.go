@@ -365,7 +365,7 @@ func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context, tok stora
 }
 
 func (m *StorageMinerNodeConnector) GetChainHead(ctx context.Context) (storagenode.TipSetToken, error) {
-	tok, err := m.chainState.Head().MarshalCBOR()
+	tok, err := encoding.Encode(m.chainState.Head())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to marshal TipSetKey to CBOR byte slice for TipSetToken")
 	}
@@ -437,7 +437,7 @@ func (m *StorageMinerNodeConnector) waitForMessageHeight(ctx context.Context, mc
 
 func (m *StorageMinerNodeConnector) GetMinerWorkerAddress(ctx context.Context, tok storagenode.TipSetToken) (address.Address, error) {
 	var tsk block.TipSetKey
-	if err := tsk.UnmarshalCBOR(tok); err != nil {
+	if err := encoding.Decode(tok, &tsk); err != nil {
 		return address.Undef, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
 	}
 
