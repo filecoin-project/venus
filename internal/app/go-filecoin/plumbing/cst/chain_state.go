@@ -228,7 +228,7 @@ func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAdd
 		return nil, errors.Wrap(err, "failed to load actor code")
 	}
 
-	signature, err := executable.Signature(method)
+	signature, err := executable.Signature(method.ToMethodNum())
 	if err != nil {
 		return nil, fmt.Errorf("missing export: %s", method)
 	}

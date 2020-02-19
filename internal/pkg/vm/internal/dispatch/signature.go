@@ -1,9 +1,11 @@
 package dispatch
 
 import (
+	"bytes"
 	"reflect"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/pkg/errors"
 )
 
@@ -26,11 +28,26 @@ func (ms *methodSignature) ArgInterface(argBytes []byte) (interface{}, error) {
 	// decode arg1 (this is the payload for the actor method)
 	t := ms.method.Type().In(1)
 	v := reflect.New(t)
+
+	// Dragons: fix this on our encoding library
+	obj := v.Elem().Interface()
+	if unmarsh, ok := obj.(runtime.CBORUnmarshaler); ok {
+		buf := bytes.NewBuffer(argBytes)
+		auxv := reflect.New(t.Elem())
+		obj = auxv.Interface()
+		unmarsh = obj.(runtime.CBORUnmarshaler)
+		if err := unmarsh.UnmarshalCBOR(buf); err != nil {
+			return nil, err
+		}
+		return unmarsh, nil
+	}
+
 	if err := encoding.Decode(argBytes, v.Interface()); err != nil {
 		return nil, errors.Wrap(err, "failed to decode bytes as method argument")
 	}
 
-	return v.Interface(), nil
+	// dereference the extra pointer created by `reflect.New()`
+	return v.Elem().Interface(), nil
 }
 
 // ReturnInterface implement MethodSignature.

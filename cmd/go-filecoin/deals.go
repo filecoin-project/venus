@@ -5,12 +5,12 @@ import (
 	"io"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 )
 
 const (
@@ -64,12 +64,12 @@ deals, active deals, finished deals and cancelled deals.
 
 // DealsShowResult contains Deal output with Payment Vouchers.
 type DealsShowResult struct {
-	DealCID    cid.Cid             `json:"deal_cid"`
-	State      storagemarket.State `json:"state"`
-	Miner      *address.Address    `json:"miner_address"`
-	Duration   uint64              `json:"duration_blocks"`
-	Size       *types.BytesAmount  `json:"deal_size"`
-	TotalPrice *types.AttoFIL      `json:"total_price"`
+	DealCID    cid.Cid            `json:"deal_cid"`
+	State      market.State       `json:"state"`
+	Miner      *address.Address   `json:"miner_address"`
+	Duration   uint64             `json:"duration_blocks"`
+	Size       *types.BytesAmount `json:"deal_size"`
+	TotalPrice *types.AttoFIL     `json:"total_price"`
 }
 
 var dealsShowCmd = &cmds.Command{

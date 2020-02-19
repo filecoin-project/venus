@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-cid"
@@ -31,11 +32,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -219,16 +217,8 @@ func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, k
 			return err
 		}
 
-		constructorParams, err := encoding.Encode(addr)
-		if err != nil {
-			return err
-		}
-
-		_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, vmaddr.InitAddress,
-			initactor.ExecMethodID, abi.NewTokenAmount(int64(valint)), initactor.ExecParams{
-				ActorCodeCid:      builtin.AccountActorCodeID,
-				ConstructorParams: constructorParams,
-			})
+		_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, addr,
+			builtin.MethodSend, abi.NewTokenAmount(int64(valint)), nil)
 		if err != nil {
 			return err
 		}
@@ -262,42 +252,43 @@ func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*crypto.KeyInfo, 
 		}
 
 		// give collateral to account actor
-		_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, addr, types.SendMethodID, abi.NewTokenAmount(100000), nil)
+		_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, addr, builtin.MethodSend, abi.NewTokenAmount(100000), nil)
 		if err != nil {
 			return nil, err
 		}
 
-		ret, err := vm.ApplyGenesisMessage(addr, vmaddr.StoragePowerAddress, power.CreateStorageMiner, abi.NewTokenAmount(100000), power.CreateStorageMinerParams{
-			OwnerAddr:  addr,
-			WorkerAddr: addr,
-			PeerID:     pid,
-			SectorSize: types.NewBytesAmount(m.SectorSize),
+		// Note: the owner of the miner is implicit in the msg. The owner will be the `from` address.
+		out, err := vm.ApplyGenesisMessage(addr, vmaddr.StoragePowerAddress, builtin.MethodsPower.CreateMiner, abi.NewTokenAmount(100000), &power.CreateMinerParams{
+			Worker:     addr,
+			Peer:       pid,
+			SectorSize: abi.SectorSize(m.SectorSize),
 		})
 		if err != nil {
 			return nil, err
 		}
 
 		// get miner ID address
-		mIDAddr := ret.(address.Address)
+		ret := out.(*power.CreateMinerReturn)
 
 		minfos = append(minfos, RenderedMinerInfo{
-			Address: mIDAddr,
+			Address: ret.IDAddress,
 			Owner:   m.Owner,
 			Power:   types.NewBytesAmount(m.SectorSize * m.NumCommittedSectors),
 		})
 
-		// add power directly to power table
-		for i := uint64(0); i < m.NumCommittedSectors; i++ {
-			powerReport := types.NewPowerReport(m.SectorSize*m.NumCommittedSectors, 0)
+		// Dragons: we need a new way of doing this
+		// // add power directly to power table
+		// for i := uint64(0); i < m.NumCommittedSectors; i++ {
+		// 	powerReport := types.NewPowerReport(m.SectorSize*m.NumCommittedSectors, 0)
 
-			_, err := vm.ApplyGenesisMessage(addr, vmaddr.StoragePowerAddress, power.ProcessPowerReport, abi.NewTokenAmount(0), power.ProcessPowerReportParams{
-				Report:     powerReport,
-				UpdateAddr: mIDAddr,
-			})
-			if err != nil {
-				return nil, err
-			}
-		}
+		// 	_, err := vm.ApplyGenesisMessage(addr, vmaddr.StoragePowerAddress, power.ProcessPowerReport, abi.NewTokenAmount(0), power.ProcessPowerReportParams{
+		// 		Report:     powerReport,
+		// 		UpdateAddr: mIDAddr,
+		// 	})
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
+		// }
 	}
 
 	return minfos, nil

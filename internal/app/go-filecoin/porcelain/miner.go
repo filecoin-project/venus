@@ -7,6 +7,7 @@ import (
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	cid "github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -15,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
@@ -48,7 +48,7 @@ func MinerCreate(
 	minerOwnerAddr address.Address,
 	gasPrice types.AttoFIL,
 	gasLimit types.GasUnits,
-	sectorSize *types.BytesAmount,
+	sectorSize abi.SectorSize,
 	pid peer.ID,
 	collateral types.AttoFIL,
 ) (_ *address.Address, err error) {
@@ -67,10 +67,9 @@ func MinerCreate(
 		return nil, fmt.Errorf("can only have one miner per node")
 	}
 
-	params := power.CreateStorageMinerParams{
-		OwnerAddr:  minerOwnerAddr,
-		WorkerAddr: minerOwnerAddr,
-		PeerID:     pid,
+	params := power.CreateMinerParams{
+		Worker:     minerOwnerAddr,
+		Peer:       pid,
 		SectorSize: sectorSize,
 	}
 
@@ -121,7 +120,7 @@ func MinerPreviewCreate(
 	ctx context.Context,
 	plumbing mpcAPI,
 	fromAddr address.Address,
-	sectorSize *types.BytesAmount,
+	sectorSize abi.SectorSize,
 	pid peer.ID,
 ) (usedGas types.GasUnits, err error) {
 	if fromAddr.Empty() {

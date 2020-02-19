@@ -4,10 +4,11 @@ import (
 	"context"
 
 	addr "github.com/filecoin-project/go-address"
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	notinit "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
@@ -16,8 +17,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
-	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 )
 
 // Viewer builds state views from state root CIDs.
@@ -59,7 +58,7 @@ func (v *View) InitNetworkName(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return initState.Network, nil
+	return initState.NetworkName, nil
 }
 
 func (v *View) MinerControlAddresses(ctx context.Context, maddr addr.Address) (owner, worker addr.Address, err error) {
@@ -67,7 +66,7 @@ func (v *View) MinerControlAddresses(ctx context.Context, maddr addr.Address) (o
 	if err != nil {
 		return addr.Undef, addr.Undef, err
 	}
-	return minerState.Owner, minerState.Worker, nil
+	return minerState.Info.Owner, minerState.Info.Worker, nil
 }
 
 func (v *View) MinerPeerID(ctx context.Context, maddr addr.Address) (peer.ID, error) {
@@ -75,7 +74,7 @@ func (v *View) MinerPeerID(ctx context.Context, maddr addr.Address) (peer.ID, er
 	if err != nil {
 		return "", err
 	}
-	return minerState.PeerID, nil
+	return minerState.Info.PeerId, nil
 }
 
 func (v *View) MinerSectorSize(ctx context.Context, maddr addr.Address) (abi.SectorSize, error) {
@@ -83,7 +82,7 @@ func (v *View) MinerSectorSize(ctx context.Context, maddr addr.Address) (abi.Sec
 	if err != nil {
 		return 0, err
 	}
-	return abi.SectorSize(minerState.SectorSize.Uint64()), nil
+	return minerState.Info.SectorSize, nil
 }
 
 // Returns the start and end of the miner's current/next proving window.
@@ -92,9 +91,10 @@ func (v *View) MinerProvingPeriod(ctx context.Context, maddr addr.Address) (star
 	if err != nil {
 		return 0, 0, 0, err
 	}
-	end = abi.ChainEpoch(minerState.ProvingPeriodEnd.AsBigInt().Uint64())
-	start = end - minerActor.LargestSectorSizeProvingPeriodBlocks
-	failureCount = 0
+	start = minerState.PoStState.ProvingPeriodStart
+	end = start + power.WindowedPostChallengeDuration
+	// Dragons: change the return to be int64 and all its uses to support it
+	failureCount = (int)(minerState.PoStState.NumConsecutiveFailures)
 	return
 }
 
@@ -106,25 +106,12 @@ func (v *View) MinerProvingSetForEach(ctx context.Context, maddr addr.Address,
 		return err
 	}
 
-	for _, id := range minerState.ProvingSet.Values() {
-		comms, found := minerState.SectorCommitments.Get(id)
-		if !found {
-			return errors.Errorf("inconsistent miner state, no sector %v", id)
-		}
-		sealedCID := commcid.ReplicaCommitmentV1ToCID(comms.CommR[:])
-		err := f(abi.SectorNumber(id), sealedCID)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-
 	// This version for the new actors
-	//var sector miner.SectorOnChainInfo
-	//return v.asArray(ctx, minerState.ProvingSet).ForEach(&sector, func(i int64) error {
-	//	// Add more fields here as required by new callers.
-	//	return f(sector.Info.SectorNumber, sector.Info.SealedCID)
-	//})
+	var sector miner.SectorOnChainInfo
+	return v.asArray(ctx, minerState.ProvingSet).ForEach(&sector, func(i int64) error {
+		// Add more fields here as required by new callers.
+		return f(sector.Info.SectorNumber, sector.Info.SealedCID)
+	})
 }
 
 // Returns the storage power actor's value for network total power.
@@ -179,22 +166,22 @@ func (v *View) MinerPledgeCollateral(ctx context.Context, miner addr.Address) (l
 	return
 }
 
-func (v *View) loadInitActor(ctx context.Context) (*initactor.State, error) {
+func (v *View) loadInitActor(ctx context.Context) (*notinit.State, error) {
 	actr, err := v.loadActor(ctx, builtin.InitActorAddr)
 	if err != nil {
 		return nil, err
 	}
-	var state initactor.State
+	var state notinit.State
 	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
 	return &state, err
 }
 
-func (v *View) loadMinerActor(ctx context.Context, address addr.Address) (*minerActor.State, error) {
+func (v *View) loadMinerActor(ctx context.Context, address addr.Address) (*miner.State, error) {
 	actr, err := v.loadActor(ctx, address)
 	if err != nil {
 		return nil, err
 	}
-	var state minerActor.State
+	var state miner.State
 	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
 	return &state, err
 }

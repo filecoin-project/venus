@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"runtime/debug"
 	"sort"
 	"time"
 
@@ -11,20 +12,19 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	notinit "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -42,7 +42,7 @@ var (
 func init() {
 	defaultAccounts = map[address.Address]abi.TokenAmount{
 		vmaddr.LegacyNetworkAddress: abi.NewTokenAmount(10000000000),
-		vmaddr.BurntFundsAddress:    abi.NewTokenAmount(0),
+		builtin.BurntFundsActorAddr: abi.NewTokenAmount(0),
 		vmaddr.TestAddress:          abi.NewTokenAmount(50000),
 		vmaddr.TestAddress2:         abi.NewTokenAmount(60000),
 	}
@@ -76,10 +76,14 @@ func ActorAccount(addr address.Address, amt abi.TokenAmount) GenOption {
 }
 
 // MinerActor returns a config option that sets up an miner actor account.
-func MinerActor(addr address.Address, owner address.Address, pid peer.ID, coll abi.TokenAmount, sectorSize *types.BytesAmount) GenOption {
+func MinerActor(store adt.Store, addr address.Address, owner address.Address, pid peer.ID, coll abi.TokenAmount, sectorSize abi.SectorSize) GenOption {
 	return func(gc *Config) error {
+		st, err := miner.ConstructState(store, owner, owner, pid, sectorSize)
+		if err != nil {
+			return err
+		}
 		gc.miners[addr] = &minerActorConfig{
-			state:   miner.NewState(owner, owner, pid, sectorSize),
+			state:   st,
 			balance: coll,
 		}
 		return nil
@@ -153,7 +157,8 @@ func NewEmptyConfig() *Config {
 
 // GenesisVM is the view into the VM used during genesis block creation.
 type GenesisVM interface {
-	ApplyGenesisMessage(from address.Address, to address.Address, method types.MethodID, value abi.TokenAmount, params interface{}) (interface{}, error)
+	ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (interface{}, error)
+	ContextStore() adt.Store
 }
 
 // MakeGenesisFunc returns a genesis function configured by a set of options.
@@ -190,15 +195,8 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			}
 			val := genCfg.accounts[addr]
 
-			constructorParams, err := encoding.Encode(addr)
-			if err != nil {
-				return nil, err
-			}
-			_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, vmaddr.InitAddress,
-				initactor.ExecMethodID, val, initactor.ExecParams{
-					ActorCodeCid:      builtin.AccountActorCodeID,
-					ConstructorParams: constructorParams,
-				})
+			_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, addr,
+				builtin.MethodSend, val, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -206,8 +204,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 
 		// Initialize miner actors
 		for addr, val := range genCfg.miners {
-			a := miner.NewActor()
-			a.Balance = val.balance
+			a := actor.NewActor(builtin.StorageMinerActorCodeID, val.balance)
 			if err := st.SetActor(context.Background(), addr, a); err != nil {
 				return nil, err
 			}
@@ -269,17 +266,22 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 
 // SetupDefaultActors inits the builtin actors that are required to run filecoin.
 func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st state.Tree, storeType types.ProofsMode, network string) error {
-	createActor := func(addr address.Address, codeCid cid.Cid, state interface{}) *actor.Actor {
+	createActor := func(addr address.Address, codeCid cid.Cid, balance abi.TokenAmount, stateFn func() (interface{}, error)) *actor.Actor {
 
 		a := actor.Actor{
 			Code:       e.NewCid(codeCid),
 			CallSeqNum: 0,
-			Balance:    big.Zero(),
+			Balance:    balance,
 		}
-		if state != nil {
-			var err error
+		if stateFn != nil {
+			state, err := stateFn()
+			if err != nil {
+				debug.PrintStack()
+				panic("failed to create state")
+			}
 			headCid, err := store.Put(state)
 			if err != nil {
+				debug.PrintStack()
 				panic("failed to store state")
 			}
 			a.Head = e.NewCid(headCid)
@@ -291,16 +293,16 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 		return &a
 	}
 
-	createActor(vmaddr.InitAddress, builtin.InitActorCodeID, initactor.State{
-		Network: network,
-		NextID:  100,
+	createActor(builtin.InitActorAddr, builtin.InitActorCodeID, big.Zero(), func() (interface{}, error) {
+		return notinit.ConstructState(vm.ContextStore(), network)
 	})
 
-	createActor(vmaddr.StoragePowerAddress, builtin.StoragePowerActorCodeID, power.State{})
+	createActor(builtin.StoragePowerActorAddr, builtin.StoragePowerActorCodeID, big.Zero(), func() (interface{}, error) {
+		return power.ConstructState(vm.ContextStore())
+	})
 
-	createActor(vmaddr.StorageMarketAddress, builtin.StorageMarketActorCodeID, storagemarket.State{
-		TotalCommittedStorage: types.NewBytesAmount(0),
-		ProofsMode:            storeType,
+	createActor(builtin.StorageMarketActorAddr, builtin.StorageMarketActorCodeID, big.Zero(), func() (interface{}, error) {
+		return market.ConstructState(vm.ContextStore())
 	})
 
 	// sort addresses so genesis generation will be stable
@@ -317,23 +319,13 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 		}
 		val := defaultAccounts[addr]
 		if addr.Protocol() == address.ID {
-			a, err := account.NewActor(val)
-			if err != nil {
-				return err
-			}
+			a := actor.NewActor(builtin.AccountActorCodeID, val)
 
 			if err := st.SetActor(ctx, addr, a); err != nil {
 				return err
 			}
 		} else {
-			constructorParams, err := encoding.Encode(addr)
-			if err != nil {
-				return err
-			}
-			_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, vmaddr.InitAddress, initactor.ExecMethodID, val, initactor.ExecParams{
-				ActorCodeCid:      builtin.AccountActorCodeID,
-				ConstructorParams: constructorParams,
-			})
+			_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, addr, builtin.MethodSend, val, nil)
 			if err != nil {
 				return err
 			}

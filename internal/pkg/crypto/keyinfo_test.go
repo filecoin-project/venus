@@ -28,3 +28,16 @@ func TestKeyInfoMarshal(t *testing.T) {
 	assert.Equal(t, ki.Type(), kiBack.Type())
 	assert.True(t, ki.Equals(kiBack))
 }
+
+func TestBLSPublicKey(t *testing.T) {
+	tf.UnitTest(t)
+	t.Skip("Dragons: BLS is broken")
+
+	testKey, err := crypto.GenerateKey()
+	assert.NoError(t, err)
+	ki := &KeyInfo{
+		PrivateKey:  testKey,
+		CryptSystem: BLS,
+	}
+	ki.PublicKey()
+}
