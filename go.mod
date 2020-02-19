@@ -8,7 +8,6 @@ require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/Microsoft/go-winio v0.4.12 // indirect
-	github.com/Workiva/go-datastructures v1.0.50
 	github.com/cskr/pubsub v1.0.2
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v0.7.3-0.20190315170154-87d593639c77
@@ -16,7 +15,6 @@ require (
 	github.com/docker/go-units v0.3.3 // indirect
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200210194142-cb6019e08542
 	github.com/filecoin-project/go-address v0.0.1
-	github.com/filecoin-project/go-amt-ipld v1.0.0
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
 	github.com/filecoin-project/go-data-transfer v0.0.0-20191219005021-4accf56bd2ce
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
@@ -24,7 +22,7 @@ require (
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-paramfetch v0.0.1
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200211164318-76f24b9797d4
-	github.com/filecoin-project/go-storage-miner v0.0.0-20200219183610-a3cfe4033120
+	github.com/filecoin-project/go-storage-miner v0.0.0-20200219222018-c835b9cb4fc5
 	github.com/filecoin-project/specs-actors v0.0.0-20200219204052-73c232aae190
 	github.com/fxamacker/cbor v1.5.0
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
@@ -90,7 +88,6 @@ require (
 	github.com/pelletier/go-toml v1.6.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
-	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
 	github.com/prometheus/client_golang v1.2.1
 	github.com/prometheus/common v0.7.0
 	github.com/spf13/afero v1.2.2 // indirect
