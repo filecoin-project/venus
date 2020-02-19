@@ -130,7 +130,7 @@ func (m *StorageMinerNodeConnector) handleNewTipSet(ctx context.Context, previou
 
 // SendSelfDeals creates self-deals and sends them to the network.
 func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, pieces ...abi.PieceInfo) (cid.Cid, error) {
-	waddr, err := m.GetMinerWorkerAddressFromChainHead(ctx, m.minerAddr)
+	waddr, err := m.getMinerWorkerAddress(ctx, m.chainState.Head())
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -238,7 +238,7 @@ func (m *StorageMinerNodeConnector) WaitForSelfDeals(ctx context.Context, mcid c
 // SendPreCommitSector creates a pre-commit sector message and sends it to the
 // network.
 func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sectorNum abi.SectorNumber, commR []byte, ticket storagenode.SealTicket, pieces ...storagenode.Piece) (cid.Cid, error) {
-	waddr, err := m.GetMinerWorkerAddressFromChainHead(ctx, m.minerAddr)
+	waddr, err := m.getMinerWorkerAddress(ctx, m.chainState.Head())
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -289,7 +289,7 @@ func (m *StorageMinerNodeConnector) WaitForPreCommitSector(ctx context.Context, 
 // SendProveCommitSector creates a commit sector message and sends it to the
 // network.
 func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, sectorNum abi.SectorNumber, proof []byte, deals ...abi.DealID) (cid.Cid, error) {
-	waddr, err := m.GetMinerWorkerAddressFromChainHead(ctx, m.minerAddr)
+	waddr, err := m.getMinerWorkerAddress(ctx, m.chainState.Head())
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -336,10 +336,14 @@ func (m *StorageMinerNodeConnector) WaitForProveCommitSector(ctx context.Context
 	return exitCode, err
 }
 
-// GetSealTicket produces the seal ticket used when pre-committing a sector at
-// the moment it is called
-func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context) (storagenode.SealTicket, error) {
-	ts, err := m.chainStore.GetTipSet(m.chainStore.GetHead())
+// GetSealTicket produces the seal ticket used when pre-committing a sector.
+func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context, tok storagenode.TipSetToken) (storagenode.SealTicket, error) {
+	var tsk block.TipSetKey
+	if err := tsk.UnmarshalCBOR(tok); err != nil {
+		return storagenode.SealTicket{}, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
+	}
+
+	ts, err := m.chainStore.GetTipSet(tsk)
 	if err != nil {
 		return storagenode.SealTicket{}, xerrors.Errorf("getting head ts for SealTicket failed: %w", err)
 	}
@@ -358,6 +362,15 @@ func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context) (storagen
 		BlockHeight: h,
 		TicketBytes: r,
 	}, nil
+}
+
+func (m *StorageMinerNodeConnector) GetChainHead(ctx context.Context) (storagenode.TipSetToken, error) {
+	tok, err := m.chainState.Head().MarshalCBOR()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to marshal TipSetKey to CBOR byte slice for TipSetToken")
+	}
+
+	return tok, nil
 }
 
 // GetSealSeed is used to acquire the seal seed for the provided pre-commit
@@ -422,22 +435,17 @@ func (m *StorageMinerNodeConnector) waitForMessageHeight(ctx context.Context, mc
 	}
 }
 
-func (m *StorageMinerNodeConnector) GetMinerWorkerAddressFromChainHead(ctx context.Context, maddr address.Address) (address.Address, error) {
-	root, err := m.chainState.GetTipSetStateRoot(ctx, m.chainStore.GetHead())
-	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to get tip state: %w", err)
+func (m *StorageMinerNodeConnector) GetMinerWorkerAddress(ctx context.Context, tok storagenode.TipSetToken) (address.Address, error) {
+	var tsk block.TipSetKey
+	if err := tsk.UnmarshalCBOR(tok); err != nil {
+		return address.Undef, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
 	}
 
-	_, waddr, err := m.stateViewer.StateView(root).MinerControlAddresses(ctx, m.minerAddr)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to get miner control addresses: %w", err)
-	}
-
-	return waddr, nil
+	return m.getMinerWorkerAddress(ctx, tsk)
 }
 
 func (m *StorageMinerNodeConnector) SendReportFaults(ctx context.Context, sectorIDs ...abi.SectorNumber) (cid.Cid, error) {
-	waddr, err := m.GetMinerWorkerAddressFromChainHead(ctx, m.minerAddr)
+	waddr, err := m.getMinerWorkerAddress(ctx, m.chainState.Head())
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -482,9 +490,14 @@ func (m *StorageMinerNodeConnector) WaitForReportFaults(ctx context.Context, msg
 	return exitCode, err
 }
 
-func (m *StorageMinerNodeConnector) GetReplicaCommitmentByID(ctx context.Context, sectorNum abi.SectorNumber) (commR []byte, wasFound bool, err error) {
+func (m *StorageMinerNodeConnector) GetReplicaCommitment(ctx context.Context, tok storagenode.TipSetToken, sectorNum abi.SectorNumber) (commR []byte, wasFound bool, err error) {
+	var tsk block.TipSetKey
+	if err := tsk.UnmarshalCBOR(tok); err != nil {
+		return nil, false, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
+	}
+
 	var minerState miner.State
-	err = m.chainState.GetActorStateAt(ctx, m.chainState.Head(), m.minerAddr, &minerState)
+	err = m.chainState.GetActorStateAt(ctx, tsk, m.minerAddr, &minerState)
 
 	if err != nil {
 		return nil, false, err
@@ -509,4 +522,18 @@ func (m *StorageMinerNodeConnector) CheckSealing(ctx context.Context, commD []by
 
 func (m *StorageMinerNodeConnector) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
 	return m.wallet.HasAddress(addr), nil
+}
+
+func (m *StorageMinerNodeConnector) getMinerWorkerAddress(ctx context.Context, tsk block.TipSetKey) (address.Address, error) {
+	root, err := m.chainState.GetTipSetStateRoot(ctx, tsk)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to get tip state: %w", err)
+	}
+
+	_, waddr, err := m.stateViewer.StateView(root).MinerControlAddresses(ctx, m.minerAddr)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to get miner control addresses: %w", err)
+	}
+
+	return waddr, nil
 }
