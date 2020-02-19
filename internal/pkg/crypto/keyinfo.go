@@ -15,7 +15,7 @@ type KeyInfo struct {
 	// Private key.
 	PrivateKey []byte `json:"privateKey"`
 	// Cryptographic system used to generate private key.
-	CryptSystem string `json:"cryptSystem"`
+	SigType SigType `json:"sigType"`
 }
 
 // Unmarshal decodes raw cbor bytes into KeyInfo.
@@ -34,8 +34,8 @@ func (ki *KeyInfo) Key() []byte {
 }
 
 // Type returns the type of curve used to generate the private key
-func (ki *KeyInfo) Type() string {
-	return ki.CryptSystem
+func (ki *KeyInfo) Type() SigType {
+	return ki.SigType
 }
 
 // Equals returns true if the KeyInfo is equal to other.
@@ -46,7 +46,7 @@ func (ki *KeyInfo) Equals(other *KeyInfo) bool {
 	if ki == nil || other == nil {
 		return false
 	}
-	if ki.CryptSystem != other.CryptSystem {
+	if ki.SigType != other.SigType {
 		return false
 	}
 
@@ -55,26 +55,26 @@ func (ki *KeyInfo) Equals(other *KeyInfo) bool {
 
 // Address returns the address for this keyinfo
 func (ki *KeyInfo) Address() (address.Address, error) {
-	if ki.CryptSystem == BLS {
+	if ki.SigType == SigTypeBLS {
 		return address.NewBLSAddress(ki.PublicKey())
 	}
-	if ki.CryptSystem == SECP256K1 {
+	if ki.SigType == SigTypeSecp256k1 {
 		return address.NewSecp256k1Address(ki.PublicKey())
 	}
-	return address.Undef, errors.Errorf("can not generate address for unknown crypto system: %s", ki.CryptSystem)
+	return address.Undef, errors.Errorf("can not generate address for unknown crypto system: %d", ki.SigType)
 }
 
-// PublicKey returns the public key part as uncompressed bytes.
+// Returns the public key part as uncompressed bytes.
 func (ki *KeyInfo) PublicKey() []byte {
-	if ki.CryptSystem == BLS {
+	if ki.SigType == SigTypeBLS {
 		var blsPrivateKey bls.PrivateKey
 		copy(blsPrivateKey[:], ki.PrivateKey)
 		publicKey := bls.PrivateKeyPublicKey(blsPrivateKey)
 
 		return publicKey[:]
 	}
-	if ki.CryptSystem == SECP256K1 {
-		return PublicKey(ki.PrivateKey)
+	if ki.SigType == SigTypeSecp256k1 {
+		return PublicKeyForSecpSecretKey(ki.PrivateKey)
 	}
 	return []byte{}
 }

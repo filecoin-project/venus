@@ -99,7 +99,7 @@ Signature: %s
 				base64.StdEncoding.EncodeToString(msg.Params),
 				msg.GasPrice.String(),
 				strconv.FormatUint(uint64(msg.GasLimit), 10),
-				base64.StdEncoding.EncodeToString(smsg.Signature),
+				base64.StdEncoding.EncodeToString(smsg.Signature.Data),
 			)
 			return err
 		}),

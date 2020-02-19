@@ -6,21 +6,12 @@ import (
 	"sort"
 	"time"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	notinit "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
@@ -30,6 +21,17 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	typegen "github.com/whyrusleeping/cbor-gen"
+
+	bls "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
@@ -251,9 +253,12 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			StateRoot:       e.NewCid(c),
 			Messages:        e.NewCid(emptyMetaCid),
 			MessageReceipts: e.NewCid(emptyAMTCid),
-			BLSAggregateSig: emptyBLSSignature[:],
-			Ticket:          block.Ticket{VRFProof: []byte{0xec}},
-			Timestamp:       uint64(genCfg.genesisTimestamp.Unix()),
+			BLSAggregateSig: crypto.Signature{
+				Type: crypto.SigTypeBLS,
+				Data: emptyBLSSignature[:],
+			},
+			Ticket:    block.Ticket{VRFProof: []byte{0xec}},
+			Timestamp: uint64(genCfg.genesisTimestamp.Unix()),
 		}
 
 		if _, err := cst.Put(ctx, genesis); err != nil {
@@ -294,7 +299,7 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 	}
 
 	createActor(builtin.InitActorAddr, builtin.InitActorCodeID, big.Zero(), func() (interface{}, error) {
-		return notinit.ConstructState(vm.ContextStore(), network)
+		return init_.ConstructState(vm.ContextStore(), network)
 	})
 
 	createActor(builtin.StoragePowerActorAddr, builtin.StoragePowerActorCodeID, big.Zero(), func() (interface{}, error) {

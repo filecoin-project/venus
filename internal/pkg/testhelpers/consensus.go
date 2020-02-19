@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -25,7 +25,10 @@ import (
 func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, stateRootCid cid.Cid, receiptRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer types.Signer) *block.Block {
 	electionProof := consensus.MakeFakePoStForTest()
 	ticket := consensus.MakeFakeTicketForTest()
-	emptyBLSSig := (*bls.Aggregate([]bls.Signature{}))[:]
+	emptyBLSSig := crypto.Signature{
+		Type: crypto.SigTypeBLS,
+		Data: (*bls.Aggregate([]bls.Signature{}))[:],
+	}
 	winner := block.NewEPoStCandidate(0, []byte{0xe}, 0)
 	postRandomness := []byte{0xff}
 	postInfo := block.NewEPoStInfo(electionProof, postRandomness, winner)

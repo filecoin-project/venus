@@ -10,13 +10,9 @@ import (
 	bls "github.com/filecoin-project/filecoin-ffi"
 )
 
-// These constants should be replaced with values imported from a shared signature type.
-const (
-	// SECP256K1 is a cryptosystem used to compute private keys
-	SECP256K1 = "secp256k1"
-	// BLS is a public/private key system that supports aggregate signatures
-	BLS = "bls"
-)
+//
+// Abstract SECP and BLS crypto operations.
+//
 
 // PrivateKeyBytes is the size of a serialized private key.
 const PrivateKeyBytes = 32
@@ -24,8 +20,8 @@ const PrivateKeyBytes = 32
 // PublicKeyBytes is the size of a serialized public key.
 const PublicKeyBytes = 65
 
-// PublicKey returns the public key for this private key.
-func PublicKey(sk []byte) []byte {
+// PublicKeyForSecpSecretKey returns the public key for this private key.
+func PublicKeyForSecpSecretKey(sk []byte) []byte {
 	x, y := secp256k1.S256().ScalarBaseMult(sk)
 	return elliptic.Marshal(secp256k1.S256(), x, y)
 }
@@ -96,16 +92,16 @@ func NewSecpKeyFromSeed(seed io.Reader) (KeyInfo, error) {
 	copy(privkey[PrivateKeyBytes-len(blob):], blob)
 
 	return KeyInfo{
-		PrivateKey:  privkey,
-		CryptSystem: SECP256K1,
+		PrivateKey: privkey,
+		SigType:    SigTypeSecp256k1,
 	}, nil
 }
 
 func NewBLSKeyRandom() KeyInfo {
 	k := bls.PrivateKeyGenerate()
 	return KeyInfo{
-		PrivateKey:  k[:],
-		CryptSystem: BLS,
+		PrivateKey: k[:],
+		SigType:    SigTypeBLS,
 	}
 }
 

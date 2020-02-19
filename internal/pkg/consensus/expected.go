@@ -225,12 +225,12 @@ func (c *Expected) validateMining(
 			return errors.Wrap(err, "failed to read worker address of block miner")
 		}
 		// Validate block signature
-		if valid := types.IsValidSignature(blk.SignatureData(), workerAddr, blk.BlockSig); !valid {
+		if valid := crypto.IsValidSignature(blk.SignatureData(), workerAddr, blk.BlockSig); !valid {
 			return errors.New("block signature invalid")
 		}
 
 		// Verify that the BLS signature is correct
-		if err := verifyBLSMessageAggregate(blk.BLSAggregateSig, blsMsgs[i]); err != nil {
+		if err := verifyBLSMessageAggregate(blk.BLSAggregateSig.Data, blsMsgs[i]); err != nil {
 			return errors.Wrapf(err, "bls message verification failed for block %s", blk.Cid())
 		}
 
@@ -351,7 +351,7 @@ func (p *PowerStateViewer) StateView(root cid.Cid) PowerStateView {
 }
 
 // verifyBLSMessageAggregate errors if the bls signature is not a valid aggregate of message signatures
-func verifyBLSMessageAggregate(sig types.Signature, msgs []*types.UnsignedMessage) error {
+func verifyBLSMessageAggregate(sig []byte, msgs []*types.UnsignedMessage) error {
 	pubKeys := [][]byte{}
 	marshalledMsgs := [][]byte{}
 	for _, msg := range msgs {

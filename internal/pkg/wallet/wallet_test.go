@@ -11,8 +11,6 @@ import (
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
@@ -91,22 +89,25 @@ func TestWalletBLSKeys(t *testing.T) {
 	t.Run("key uses BLS cryptography", func(t *testing.T) {
 		ki, err := wb.GetKeyInfo(addr)
 		require.NoError(t, err)
-		assert.Equal(t, crypto.BLS, ki.CryptSystem)
+		assert.Equal(t, crypto.SigTypeBLS, ki.SigType)
 	})
 
 	t.Run("valid signatures verify", func(t *testing.T) {
-		verified := types.IsValidSignature(data, addr, sig)
+		verified := crypto.IsValidSignature(data, addr, sig)
 		assert.True(t, verified)
 	})
 
 	t.Run("invalid signatures do not verify", func(t *testing.T) {
 		notTheData := []byte("not the data")
-		verified := types.IsValidSignature(notTheData, addr, sig)
+		verified := crypto.IsValidSignature(notTheData, addr, sig)
 		assert.False(t, verified)
 
-		notTheSig := [bls.SignatureBytes]byte{}
-		copy(notTheSig[:], []byte("not the sig"))
-		verified = types.IsValidSignature(data, addr, notTheSig[:])
+		notTheSig := crypto.Signature{
+			Type: crypto.SigTypeBLS,
+			Data: make([]byte, bls.SignatureBytes),
+		}
+		copy(notTheSig.Data[:], "not the sig")
+		verified = crypto.IsValidSignature(data, addr, notTheSig)
 		assert.False(t, verified)
 	})
 }
@@ -144,13 +145,13 @@ func TestSimpleSignAndVerify(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Log("verify signed content")
-	valid := types.IsValidSignature(dataA, addr, sig)
+	valid := crypto.IsValidSignature(dataA, addr, sig)
 	assert.True(t, valid)
 
 	// data that is unsigned
 	dataB := []byte("I AM UNSIGNED DATA!")
 	t.Log("verify fails for unsigned content")
-	secondValid := types.IsValidSignature(dataB, addr, sig)
+	secondValid := crypto.IsValidSignature(dataB, addr, sig)
 	assert.False(t, secondValid)
 }
 

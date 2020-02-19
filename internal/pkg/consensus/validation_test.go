@@ -22,7 +22,6 @@ import (
 )
 
 var keys = types.MustGenerateKeyInfo(2, 42)
-var signer = types.NewMockSigner(keys)
 var addresses = make([]address.Address, len(keys))
 
 var methodID = abi.MethodNum(21231)
@@ -137,6 +136,7 @@ func TestOutboundMessageValidator(t *testing.T) {
 
 func TestIngestionValidator(t *testing.T) {
 	tf.UnitTest(t)
+	var signer = types.NewMockSigner(keys)
 
 	alice := addresses[0]
 	bob := addresses[1]

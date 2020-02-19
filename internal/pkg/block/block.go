@@ -12,6 +12,7 @@ import (
 	node "github.com/ipfs/go-ipld-format"
 	mh "github.com/multiformats/go-multihash"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -53,13 +54,13 @@ type Block struct {
 	Messages e.Cid `json:"messages,omitempty"`
 
 	// The aggregate signature of all BLS signed messages in the block
-	BLSAggregateSig types.Signature `json:"blsAggregateSig"`
+	BLSAggregateSig crypto.Signature `json:"blsAggregateSig"`
 
 	// The timestamp, in seconds since the Unix epoch, at which this block was created.
 	Timestamp uint64 `json:"timestamp"`
 
 	// The signature of the miner's worker key over the block
-	BlockSig types.Signature `json:"blocksig"`
+	BlockSig crypto.Signature `json:"blocksig"`
 
 	// ForkSignaling is extra data used by miners to communicate
 	ForkSignaling uint64

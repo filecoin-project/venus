@@ -7,9 +7,6 @@ import (
 	mrand "math/rand"
 	"strconv"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -27,6 +24,7 @@ import (
 	mh "github.com/multiformats/go-multihash"
 	typegen "github.com/whyrusleeping/cbor-gen"
 
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
@@ -34,6 +32,7 @@ import (
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -165,9 +164,12 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst cbor.IpldStore, bs blockst
 		StateRoot:       e.NewCid(stateRoot),
 		Messages:        e.NewCid(metaCid),
 		MessageReceipts: e.NewCid(emptyAMTCid),
-		BLSAggregateSig: emptyBLSSignature[:],
-		Ticket:          block.Ticket{VRFProof: []byte{0xec}},
-		Timestamp:       cfg.Time,
+		BLSAggregateSig: crypto.Signature{
+			Type: crypto.SigTypeBLS,
+			Data: emptyBLSSignature[:],
+		},
+		Ticket:    block.Ticket{VRFProof: []byte{0xec}},
+		Timestamp: cfg.Time,
 	}
 
 	c, err := cst.Put(ctx, geneblk)
@@ -185,7 +187,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst cbor.IpldStore, bs blockst
 func genKeys(cfgkeys int, pnrg io.Reader) ([]*crypto.KeyInfo, error) {
 	keys := make([]*crypto.KeyInfo, cfgkeys)
 	for i := 0; i < cfgkeys; i++ {
-		ki := crypto.NewBLSKeyRandom() // use seed
+		ki := crypto.NewBLSKeyRandom() // TODO: use seed, https://github.com/filecoin-project/go-filecoin/issues/3781
 		keys[i] = &ki
 	}
 
@@ -316,8 +318,8 @@ type signer struct{}
 
 var _ types.Signer = (*signer)(nil)
 
-func (ggs *signer) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
-	return nil, nil
+func (ggs *signer) SignBytes(data []byte, addr address.Address) (crypto.Signature, error) {
+	return crypto.Signature{}, nil
 }
 
 // ApplyProofsModeDefaults mutates the given genesis configuration, setting the

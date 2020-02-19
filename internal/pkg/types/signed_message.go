@@ -5,18 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/pkg/errors"
-)
 
-var (
-	// ErrMessageSigned is returned when `Sign()` is called on a signedmessage that has previously been signed
-	ErrMessageSigned = errors.New("message already contains a signature")
-	// ErrMessageUnsigned is returned when `RecoverAddress` is called on a signedmessage that does not contain a signature
-	ErrMessageUnsigned = errors.New("message does not contain a signature")
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
 
 // SignedMessage contains a message and its signature
@@ -26,8 +21,8 @@ type SignedMessage struct {
 	// control field for encoding struct as an array
 	_ struct{} `cbor:",toarray"`
 
-	Message   UnsignedMessage `json:"meteredMessage"`
-	Signature Signature       `json:"signature"`
+	Message   UnsignedMessage  `json:"meteredMessage"`
+	Signature crypto.Signature `json:"signature"`
 	// Pay attention to Equals() if updating this struct.
 }
 
@@ -95,10 +90,9 @@ func (smsg *SignedMessage) ToNode() (ipld.Node, error) {
 func (smsg *SignedMessage) VerifySignature() bool {
 	bmsg, err := smsg.Message.Marshal()
 	if err != nil {
-		log.Infof("invalid signature: %s", err)
 		return false
 	}
-	return IsValidSignature(bmsg, smsg.Message.From, smsg.Signature)
+	return crypto.IsValidSignature(bmsg, smsg.Message.From, smsg.Signature)
 }
 
 // OnChainLen returns the amount of bytes used to represent the message on chain.
@@ -122,5 +116,6 @@ func (smsg *SignedMessage) String() string {
 // Equals tests whether two signed messages are equal.
 func (smsg *SignedMessage) Equals(other *SignedMessage) bool {
 	return smsg.Message.Equals(&other.Message) &&
-		bytes.Equal(smsg.Signature, other.Signature)
+		smsg.Signature.Type == other.Signature.Type &&
+		bytes.Equal(smsg.Signature.Data, other.Signature.Data)
 }

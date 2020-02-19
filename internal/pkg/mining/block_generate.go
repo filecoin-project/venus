@@ -13,6 +13,7 @@ import (
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -132,24 +133,29 @@ func (w *DefaultWorker) Generate(
 	return next, nil
 }
 
-func aggregateBLS(blsMessages []*types.SignedMessage) ([]*types.UnsignedMessage, types.Signature, error) {
-	sigs := []bls.Signature{}
-	unwrappedMsgs := []*types.UnsignedMessage{}
+func aggregateBLS(blsMessages []*types.SignedMessage) ([]*types.UnsignedMessage, crypto.Signature, error) {
+	var sigs []bls.Signature
+	var unwrappedMsgs []*types.UnsignedMessage
 	for _, msg := range blsMessages {
 		// unwrap messages
 		unwrappedMsgs = append(unwrappedMsgs, &msg.Message)
-		sig := msg.Signature
+		if msg.Signature.Type != crypto.SigTypeBLS {
+			return []*types.UnsignedMessage{}, crypto.Signature{}, errors.New("non-BLS message signature")
+		}
 
 		// store message signature as bls signature
 		blsSig := bls.Signature{}
-		copy(blsSig[:], sig)
+		copy(blsSig[:], msg.Signature.Data)
 		sigs = append(sigs, blsSig)
 	}
 	blsAggregateSig := bls.Aggregate(sigs)
 	if blsAggregateSig == nil {
-		return []*types.UnsignedMessage{}, types.Signature{}, errors.New("could not aggregate signatures")
+		return []*types.UnsignedMessage{}, crypto.Signature{}, errors.New("could not aggregate signatures")
 	}
-	return unwrappedMsgs, blsAggregateSig[:], nil
+	return unwrappedMsgs, crypto.Signature{
+		Type: crypto.SigTypeBLS,
+		Data: blsAggregateSig[:],
+	}, nil
 }
 
 // When a block is validated, BLS messages are processed first, so for simplicity all BLS

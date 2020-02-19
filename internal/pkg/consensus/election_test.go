@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
@@ -16,11 +17,18 @@ import (
 )
 
 func TestGenValidTicketChain(t *testing.T) {
+	tf.UnitTest(t)
 	// Start with an arbitrary ticket
 	base := consensus.MakeFakeTicketForTest()
 
 	// Interleave 3 signers
-	signer, kis := types.NewMockSignersAndKeyInfo(3)
+	kis := []crypto.KeyInfo{
+		crypto.NewBLSKeyRandom(),
+		crypto.NewBLSKeyRandom(),
+		crypto.NewBLSKeyRandom(),
+	}
+
+	signer := types.NewMockSigner(kis)
 	addr1 := requireAddress(t, &kis[0])
 	addr2 := requireAddress(t, &kis[1])
 	addr3 := requireAddress(t, &kis[2])

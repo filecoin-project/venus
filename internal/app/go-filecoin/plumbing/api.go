@@ -2,9 +2,7 @@ package plumbing
 
 import (
 	"context"
-	"fmt"
 	"io"
-	"strings"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -315,7 +313,7 @@ func (api *API) NetworkPeers(ctx context.Context, verbose, latency, streams bool
 }
 
 // SignBytes uses private key information associated with the given address to sign the given bytes.
-func (api *API) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
+func (api *API) SignBytes(data []byte, addr address.Address) (crypto.Signature, error) {
 	return api.wallet.SignBytes(data, addr)
 }
 
@@ -335,15 +333,8 @@ func (api *API) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) 
 }
 
 // WalletNewAddress generates a new wallet address
-func (api *API) WalletNewAddress(addressType string) (address.Address, error) {
-	switch strings.ToLower(addressType) { //this assumes that any additions to types/helpers.go will be lowercase
-	case crypto.BLS:
-		return wallet.NewAddress(api.wallet, address.BLS)
-	case crypto.SECP256K1:
-		return wallet.NewAddress(api.wallet, address.SECP256K1)
-	default:
-		return address.Undef, fmt.Errorf("invalid address type: %s", addressType)
-	}
+func (api *API) WalletNewAddress(protocol address.Protocol) (address.Address, error) {
+	return wallet.NewAddress(api.wallet, protocol)
 }
 
 // WalletImport adds a given set of KeyInfos to the wallet

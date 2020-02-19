@@ -114,12 +114,12 @@ func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, pieces ..
 			return cid.Undef, err
 		}
 
-		sig, err := m.wallet.SignBytesV2(buf, waddr)
+		sig, err := m.wallet.SignBytes(buf, waddr)
 		if err != nil {
 			return cid.Undef, err
 		}
 
-		proposals[i].ClientSignature = *sig
+		proposals[i].ClientSignature = sig
 	}
 
 	params := market.PublishStorageDealsParams{Deals: proposals}

@@ -4,20 +4,21 @@ import (
 	"bytes"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-	"github.com/ipfs/go-cid"
 )
 
 // FakeVMContext creates the scaffold for faking out the vm context for direct calls to actors
@@ -184,8 +185,8 @@ func (tc *FakeVMContext) CreateActor(code cid.Cid, addr address.Address) {
 }
 
 // VerifySignature implemenets the ExtendedInvocationContext interface.
-func (*FakeVMContext) VerifySignature(signer address.Address, signature types.Signature, msg []byte) bool {
-	return types.IsValidSignature(msg, signer, signature)
+func (*FakeVMContext) VerifySignature(signer address.Address, signature crypto.Signature, msg []byte) bool {
+	return crypto.IsValidSignature(msg, signer, signature)
 }
 
 // AllowSideEffects determines wether or not the actor code is allowed to produce side-effects.

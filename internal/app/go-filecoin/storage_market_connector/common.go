@@ -128,7 +128,8 @@ func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address
 
 // SignBytes uses the local wallet to sign the bytes with the given address
 func (c *connectorCommon) SignBytes(_ context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
-	return c.wallet.SignBytesV2(b, signer)
+	sig, err := c.wallet.SignBytes(b, signer)
+	return &sig, err
 }
 
 func (c *connectorCommon) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {

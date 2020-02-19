@@ -471,7 +471,7 @@ func TestApplyBLSMessages(t *testing.T) {
 		}
 
 		blsSig := bls.Signature{}
-		copy(blsSig[:], block.BLSAggregateSig)
+		copy(blsSig[:], block.BLSAggregateSig.Data)
 		valid := bls.Verify(&blsSig, digests, keys)
 
 		assert.True(t, valid)

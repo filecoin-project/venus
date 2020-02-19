@@ -7,13 +7,10 @@ import (
 	"sort"
 	"sync"
 
-	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-address"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-address"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 var (
@@ -100,35 +97,13 @@ func (w *Wallet) Backends(kind reflect.Type) []Backend {
 
 // SignBytes cryptographically signs `data` using the private key corresponding to
 // address `addr`
-func (w *Wallet) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
+func (w *Wallet) SignBytes(data []byte, addr address.Address) (crypto.Signature, error) {
 	// Check that we are storing the address to sign for.
 	backend, err := w.Find(addr)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not find address: %s", addr)
+		return crypto.Signature{}, errors.Wrapf(err, "could not find address: %s", addr)
 	}
 	return backend.SignBytes(data, addr)
-}
-
-// SignBytesV2 returns a spec-actors crypto.Signature
-func (w *Wallet) SignBytesV2(data []byte, addr address.Address) (*acrypto.Signature, error) {
-	var err error
-
-	sig, err := w.SignBytes(data, addr)
-	if err != nil {
-		return nil, err
-	}
-
-	var sigType acrypto.SigType
-	if addr.Protocol() == address.BLS {
-		sigType = acrypto.SigTypeBLS
-	} else {
-		sigType = acrypto.SigTypeSecp256k1
-	}
-
-	return &acrypto.Signature{
-		Type: sigType,
-		Data: sig[:],
-	}, nil
 }
 
 // NewAddress creates a new account address on the default wallet backend.

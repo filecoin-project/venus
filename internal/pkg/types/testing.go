@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,9 +36,9 @@ func NewMockSigner(kis []crypto.KeyInfo) MockSigner {
 
 		var newAddr address.Address
 		var err error
-		if k.CryptSystem == crypto.SECP256K1 {
+		if k.SigType == crypto.SigTypeSecp256k1 {
 			newAddr, err = address.NewSecp256k1Address(pub)
-		} else if k.CryptSystem == crypto.BLS {
+		} else if k.SigType == crypto.SigTypeBLS {
 			newAddr, err = address.NewBLSAddress(pub)
 		}
 		if err != nil {
@@ -100,20 +99,15 @@ func MustGenerateKeyInfo(n int, seed byte) []crypto.KeyInfo {
 }
 
 // SignBytes cryptographically signs `data` using the Address `addr`.
-func (ms MockSigner) SignBytes(data []byte, addr address.Address) (Signature, error) {
+func (ms MockSigner) SignBytes(data []byte, addr address.Address) (crypto.Signature, error) {
 	ki, ok := ms.AddrKeyInfo[addr]
 	if !ok {
-		return nil, errors.New("Unknown address -- can't sign")
+		return crypto.Signature{}, errors.New("unknown address")
 	}
-
-	if ki.CryptSystem == crypto.SECP256K1 {
-		hash := blake2b.Sum256(data)
-		return crypto.SignSecp(ki.Key(), hash[:])
-	}
-	return crypto.SignBLS(ki.PrivateKey, data)
+	return crypto.Sign(data, ki.Key(), ki.SigType)
 }
 
-// GetAddressForPubKey looks up a KeyInfo address associated with a given PublicKey for a MockSigner
+// GetAddressForPubKey looks up a KeyInfo address associated with a given PublicKeyForSecpSecretKey for a MockSigner
 func (ms MockSigner) GetAddressForPubKey(pk []byte) (address.Address, error) {
 	var addr address.Address
 
