@@ -28,7 +28,7 @@ func TestMessageQueueOrder(t *testing.T) {
 			To:         to,
 			CallSeqNum: nonce,
 			GasPrice:   types.NewGasPrice(price),
-			GasLimit:   types.NewGasUnits(units),
+			GasLimit:   types.GasUnits(units),
 		}
 		s, err := types.NewSignedMessage(msg, &mockSigner)
 		require.NoError(t, err)

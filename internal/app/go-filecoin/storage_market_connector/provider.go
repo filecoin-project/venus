@@ -95,7 +95,7 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 		vmaddr.StorageMarketAddress,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
-		types.NewGasUnits(300),
+		types.GasUnits(300),
 		true,
 		types.MethodID(builtin.MethodsMarket.PublishStorageDeals),
 		params,

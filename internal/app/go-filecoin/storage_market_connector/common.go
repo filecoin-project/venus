@@ -112,7 +112,7 @@ func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address
 		vmaddr.StorageMarketAddress,
 		types.NewAttoFIL(amount.Int),
 		types.NewGasPrice(1),
-		types.NewGasUnits(300),
+		types.GasUnits(300),
 		true,
 		types.MethodID(builtin.MethodsMarket.AddBalance),
 		&addr,

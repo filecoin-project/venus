@@ -85,7 +85,7 @@ func makeMessage(t *testing.T, signer MockSigner, nonce uint64) *SignedMessage {
 		MethodID(2352),
 		[]byte("params"),
 		NewGasPrice(1000),
-		NewGasUnits(100))
+		GasUnits(100))
 	smsg, err := NewSignedMessage(*msg, &signer)
 	require.NoError(t, err)
 

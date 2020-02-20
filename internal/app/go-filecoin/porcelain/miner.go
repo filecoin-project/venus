@@ -126,7 +126,7 @@ func MinerPreviewCreate(
 	if fromAddr.Empty() {
 		fromAddr, err = plumbing.WalletDefaultAddress()
 		if err != nil {
-			return types.NewGasUnits(0), err
+			return types.GasUnits(0), err
 		}
 	}
 
@@ -135,7 +135,7 @@ func MinerPreviewCreate(
 	}
 
 	if _, err := plumbing.ConfigGet("mining.minerAddress"); err != nil {
-		return types.NewGasUnits(0), fmt.Errorf("can only have one miner per node")
+		return types.GasUnits(0), fmt.Errorf("can only have one miner per node")
 	}
 
 	usedGas, err = plumbing.MessagePreview(
@@ -147,7 +147,7 @@ func MinerPreviewCreate(
 		pid,
 	)
 	if err != nil {
-		return types.NewGasUnits(0), errors.Wrap(err, "Could not create miner. Please consult the documentation to setup your wallet and genesis block correctly")
+		return types.GasUnits(0), errors.Wrap(err, "Could not create miner. Please consult the documentation to setup your wallet and genesis block correctly")
 	}
 
 	return usedGas, nil

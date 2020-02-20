@@ -127,7 +127,7 @@ additional sectors.`,
 
 		return re.Emit(&MinerCreateResult{
 			Address: *addr,
-			GasUsed: types.NewGasUnits(0),
+			GasUsed: types.GasUnits(0),
 			Preview: false,
 		})
 	},
@@ -298,7 +298,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 
 		return re.Emit(&MinerUpdatePeerIDResult{
 			Cid:     c,
-			GasUsed: types.NewGasUnits(0),
+			GasUsed: types.GasUnits(0),
 			Preview: false,
 		})
 	},

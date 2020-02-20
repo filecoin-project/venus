@@ -31,7 +31,7 @@ func NewMessageMaker(t *testing.T, keys []crypto.KeyInfo) *MessageMaker {
 		addresses[i] = addr
 	}
 
-	return &MessageMaker{types.ZeroAttoFIL, types.NewGasUnits(0), &signer, 0, t}
+	return &MessageMaker{types.ZeroAttoFIL, types.GasUnits(0), &signer, 0, t}
 }
 
 // Addresses returns the addresses for which this maker can sign messages.

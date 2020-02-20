@@ -122,7 +122,7 @@ var msgSendCmd = &cmds.Command{
 
 		return re.Emit(&MessageSendResult{
 			Cid:     c,
-			GasUsed: types.NewGasUnits(0),
+			GasUsed: types.GasUnits(0),
 			Preview: false,
 		})
 	},
@@ -170,7 +170,7 @@ var signedMsgSendCmd = &cmds.Command{
 
 		return re.Emit(&MessageSendResult{
 			Cid:     c,
-			GasUsed: types.NewGasUnits(0),
+			GasUsed: types.GasUnits(0),
 			Preview: false,
 		})
 	},

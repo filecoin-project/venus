@@ -38,7 +38,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 	// accepted.
 	maxAge := uint(10)
 	gasPrice := types.NewGasPrice(1)
-	gasUnits := types.NewGasUnits(1000)
+	gasUnits := types.GasUnits(1000)
 
 	makeHandler := func(provider *message.FakeProvider, root block.TipSet) *message.HeadHandler {
 		mpool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
