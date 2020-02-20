@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -110,8 +111,8 @@ func AOPayer(payer address.Address) ActionOption {
 }
 
 // AOValidAt provides the `--validate=<blockheight>` option to actions
-func AOValidAt(bh *types.BlockHeight) ActionOption {
-	sBH := bh.String()
+func AOValidAt(bh abi.ChainEpoch) ActionOption {
+	sBH := strconv.FormatInt(int64(bh), 10)
 	return func() []string {
 		return []string{"--validat", sBH}
 	}

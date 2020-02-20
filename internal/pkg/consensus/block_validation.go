@@ -62,7 +62,7 @@ func NewDefaultBlockValidator(c clock.ChainEpochClock) *DefaultBlockValidator {
 // the chain clock.
 func (dv *DefaultBlockValidator) NotFutureBlock(b *block.Block) error {
 	currentEpoch := dv.EpochAtTime(dv.Now())
-	if types.NewBlockHeight(b.Height).GreaterThan(currentEpoch) {
+	if b.Height > currentEpoch {
 		return fmt.Errorf("block %s with timestamp %d generate in future epoch %d", b.Cid().String(), b.Timestamp, b.Height)
 	}
 	return nil
@@ -72,15 +72,15 @@ func (dv *DefaultBlockValidator) NotFutureBlock(b *block.Block) error {
 // chain clock.
 func (dv *DefaultBlockValidator) TimeMatchesEpoch(b *block.Block) error {
 	earliestExpected, latestExpected := dv.EpochRangeAtTimestamp(b.Timestamp)
-	blockEpoch := types.NewBlockHeight(b.Height)
-	if !earliestExpected.LessEqual(blockEpoch) || !latestExpected.GreaterEqual(blockEpoch) {
+	blockEpoch := b.Height
+	if (blockEpoch < earliestExpected) || (blockEpoch > latestExpected) {
 		return fmt.Errorf(
 			"block %s with timestamp %d generated in wrong epoch %d, expected epoch in range [%d, %d]",
 			b.Cid().String(),
 			b.Timestamp,
 			b.Height,
-			earliestExpected.AsBigInt().Int64(),
-			latestExpected.AsBigInt().Int64(),
+			earliestExpected,
+			latestExpected,
 		)
 	}
 	return nil

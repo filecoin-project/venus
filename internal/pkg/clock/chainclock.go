@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 // DefaultEpochDuration is the default duration of epochs
@@ -12,10 +12,10 @@ const DefaultEpochDuration = 15 * time.Second
 
 // ChainEpochClock is an interface for a clock that represents epochs of the protocol.
 type ChainEpochClock interface {
-	EpochAtTime(t time.Time) *types.BlockHeight
-	EpochRangeAtTimestamp(t uint64) (*types.BlockHeight, *types.BlockHeight)
-	StartTimeOfEpoch(e *types.BlockHeight) time.Time
-	WaitNextEpoch(ctx context.Context) *types.BlockHeight
+	EpochAtTime(t time.Time) abi.ChainEpoch
+	EpochRangeAtTimestamp(t uint64) (abi.ChainEpoch, abi.ChainEpoch)
+	StartTimeOfEpoch(e abi.ChainEpoch) time.Time
+	WaitNextEpoch(ctx context.Context) abi.ChainEpoch
 	Clock
 }
 
@@ -49,17 +49,17 @@ func NewChainClockFromClock(genesisSeconds uint64, blockTime time.Duration, c Cl
 // EpochAtTime returns the ChainEpoch corresponding to t.
 // It first subtracts GenesisTime, then divides by EpochDuration
 // and returns the resulting number of epochs.
-func (cc *chainClock) EpochAtTime(t time.Time) *types.BlockHeight {
+func (cc *chainClock) EpochAtTime(t time.Time) abi.ChainEpoch {
 	difference := t.Sub(cc.GenesisTime)
 	epochs := difference / cc.EpochDuration
-	return types.NewBlockHeight(uint64(epochs))
+	return abi.ChainEpoch(epochs)
 }
 
 // EpochRangeAtTimestamp returns the possible epoch number range a given
 // unix second timestamp value can validly belong to.  This method can go
 // away once integration tests work well enough to not require subsecond
 // block times.
-func (cc *chainClock) EpochRangeAtTimestamp(seconds uint64) (*types.BlockHeight, *types.BlockHeight) {
+func (cc *chainClock) EpochRangeAtTimestamp(seconds uint64) (abi.ChainEpoch, abi.ChainEpoch) {
 	earliest := time.Unix(int64(seconds), 0)
 	first := cc.EpochAtTime(earliest)
 	latest := earliest.Add(time.Second)
@@ -68,16 +68,15 @@ func (cc *chainClock) EpochRangeAtTimestamp(seconds uint64) (*types.BlockHeight,
 }
 
 // StartTimeOfEpoch returns the start time of the given epoch.
-func (cc *chainClock) StartTimeOfEpoch(e *types.BlockHeight) time.Time {
-	bigE := e.AsBigInt()
-	addedTime := cc.GenesisTime.Add(cc.EpochDuration * time.Duration(bigE.Int64()))
+func (cc *chainClock) StartTimeOfEpoch(e abi.ChainEpoch) time.Time {
+	addedTime := cc.GenesisTime.Add(cc.EpochDuration * time.Duration(e))
 	return addedTime
 }
 
 // WaitNextEpoch returns after the next epoch occurs or ctx is done.
-func (cc *chainClock) WaitNextEpoch(ctx context.Context) *types.BlockHeight {
+func (cc *chainClock) WaitNextEpoch(ctx context.Context) abi.ChainEpoch {
 	currEpoch := cc.EpochAtTime(cc.Now())
-	nextEpoch := currEpoch.Add(types.NewBlockHeight(uint64(1)))
+	nextEpoch := currEpoch + 1
 	nextEpochStart := cc.StartTimeOfEpoch(nextEpoch)
 	nowB4 := cc.Now()
 	waitDur := nextEpochStart.Sub(nowB4)

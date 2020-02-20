@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	net "github.com/libp2p/go-libp2p-core/network"
@@ -16,8 +16,11 @@ import (
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 )
 
 // HeartbeatProtocol is the libp2p protocol used for the heartbeat service
@@ -36,7 +39,7 @@ type Heartbeat struct {
 	// Head represents the heaviest tipset the nodes is mining on
 	Head string
 	// Height represents the current height of the Tipset
-	Height uint64
+	Height abi.ChainEpoch
 	// Nickname is the nickname given to the filecoin node by the user
 	Nickname string
 	// TODO: add when implemented

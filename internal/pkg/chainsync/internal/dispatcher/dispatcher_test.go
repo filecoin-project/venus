@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/dispatcher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -134,10 +135,10 @@ func TestQueueHappy(t *testing.T) {
 	out2 := requirePop(t, testQ)
 	out3 := requirePop(t, testQ)
 
-	assert.Equal(t, uint64(47), out0.ChainInfo.Height)
-	assert.Equal(t, uint64(2), out1.ChainInfo.Height)
-	assert.Equal(t, uint64(1), out2.ChainInfo.Height)
-	assert.Equal(t, uint64(0), out3.ChainInfo.Height)
+	assert.Equal(t, abi.ChainEpoch(47), out0.ChainInfo.Height)
+	assert.Equal(t, abi.ChainEpoch(2), out1.ChainInfo.Height)
+	assert.Equal(t, abi.ChainEpoch(1), out2.ChainInfo.Height)
+	assert.Equal(t, abi.ChainEpoch(0), out3.ChainInfo.Height)
 
 	assert.Equal(t, 0, testQ.Len())
 }
@@ -158,14 +159,14 @@ func TestQueueDuplicates(t *testing.T) {
 
 	// Pop
 	first := requirePop(t, testQ)
-	assert.Equal(t, uint64(0), first.ChainInfo.Height)
+	assert.Equal(t, abi.ChainEpoch(0), first.ChainInfo.Height)
 
 	// Now if we push the duplicate it goes back on
 	testQ.Push(sR0dup)
 	assert.Equal(t, 1, testQ.Len())
 
 	second := requirePop(t, testQ)
-	assert.Equal(t, uint64(0), second.ChainInfo.Height)
+	assert.Equal(t, abi.ChainEpoch(0), second.ChainInfo.Height)
 }
 
 func TestQueueEmptyPopErrors(t *testing.T) {
@@ -205,6 +206,6 @@ func chainInfoFromHeight(t *testing.T, h int) *block.ChainInfo {
 	c := types.CidFromString(t, hStr)
 	return &block.ChainInfo{
 		Head:   block.NewTipSetKey(c),
-		Height: uint64(h),
+		Height: abi.ChainEpoch(h),
 	}
 }

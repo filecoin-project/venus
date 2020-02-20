@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -174,7 +175,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 	require.True(f.t, width > 0)
 	var blocks []*block.Block
 
-	height := uint64(0)
+	height := abi.ChainEpoch(0)
 	grandparentKey := block.NewTipSetKey()
 	if parent.Defined() {
 		var err error
@@ -308,7 +309,7 @@ func (bb *BlockBuilder) SetTimestamp(timestamp uint64) {
 
 // IncHeight increments the block's height, implying a number of null blocks before this one
 // is mined.
-func (bb *BlockBuilder) IncHeight(nullBlocks uint64) {
+func (bb *BlockBuilder) IncHeight(nullBlocks abi.ChainEpoch) {
 	bb.block.Height += nullBlocks
 }
 
@@ -408,14 +409,14 @@ func (FakeStateBuilder) Weigh(tip block.TipSet, state cid.Cid) (fbig.Int, error)
 
 // TimeStamper is an object that timestamps blocks
 type TimeStamper interface {
-	Stamp(uint64) uint64
+	Stamp(abi.ChainEpoch) uint64
 }
 
 // ZeroTimestamper writes a default of 0 to the timestamp
 type ZeroTimestamper struct{}
 
 // Stamp returns a stamp for the current block
-func (zt *ZeroTimestamper) Stamp(height uint64) uint64 {
+func (zt *ZeroTimestamper) Stamp(height abi.ChainEpoch) uint64 {
 	return uint64(0)
 }
 
@@ -433,8 +434,8 @@ func NewClockTimestamper(chainClock clock.ChainEpochClock) *ClockTimestamper {
 
 // Stamp assigns a valid timestamp given genesis time and block time to
 // a block of the provided height.
-func (ct *ClockTimestamper) Stamp(height uint64) uint64 {
-	startTime := ct.c.StartTimeOfEpoch(types.NewBlockHeight(height))
+func (ct *ClockTimestamper) Stamp(height abi.ChainEpoch) uint64 {
+	startTime := ct.c.StartTimeOfEpoch(height)
 
 	return uint64(startTime.Unix())
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -129,7 +130,7 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []block.T
 func timeoutMessages(ctx context.Context, pool *Pool, chains chain.TipSetProvider, head block.TipSet, maxAgeTipsets uint) error {
 	var err error
 
-	var minimumHeight uint64
+	var minimumHeight abi.ChainEpoch
 	itr := chain.IterAncestors(ctx, chains, head)
 
 	// Walk back maxAgeTipsets+1 tipsets to determine lowest block height to prune.

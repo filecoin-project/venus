@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -29,7 +30,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
-func heightFromTip(t *testing.T, tip block.TipSet) uint64 {
+func heightFromTip(t *testing.T, tip block.TipSet) abi.ChainEpoch {
 	h, err := tip.Height()
 	if err != nil {
 		t.Fatal(err)
@@ -215,7 +216,7 @@ func TestRejectFinalityFork(t *testing.T) {
 	builder, store, s := setup(ctx, t)
 	genesis := builder.RequireTipSet(store.GetHead())
 
-	head := builder.AppendManyOn(consensus.FinalityEpochs+2, genesis)
+	head := builder.AppendManyOn(int(consensus.FinalityEpochs+2), genesis)
 	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", head.Key(), heightFromTip(t, head)), false))
 
 	// Differentiate fork for a new chain.  Fork has FinalityEpochs + 1
@@ -224,7 +225,7 @@ func TestRejectFinalityFork(t *testing.T) {
 	forkFinalityBase := builder.BuildOneOn(genesis, func(bb *chain.BlockBuilder) {
 		bb.SetTicket([]byte{0xbe})
 	})
-	forkFinalityHead := builder.AppendManyOn(consensus.FinalityEpochs, forkFinalityBase)
+	forkFinalityHead := builder.AppendManyOn(int(consensus.FinalityEpochs), forkFinalityBase)
 	assert.Error(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", forkFinalityHead.Key(), heightFromTip(t, forkFinalityHead)), false))
 }
 
@@ -474,19 +475,19 @@ func TestSyncerStatus(t *testing.T) {
 	s0 := syncer.Status()
 	assert.Equal(t, int64(0), s0.SyncingStarted)
 	assert.Equal(t, block.UndefTipSet.Key(), s0.SyncingHead)
-	assert.Equal(t, uint64(0), s0.SyncingHeight)
+	assert.Equal(t, abi.ChainEpoch(0), s0.SyncingHeight)
 	assert.Equal(t, false, s0.SyncingTrusted)
 	assert.Equal(t, true, s0.SyncingComplete)
 	assert.Equal(t, true, s0.SyncingFetchComplete)
 	assert.Equal(t, block.UndefTipSet.Key(), s0.FetchingHead)
-	assert.Equal(t, uint64(0), s0.FetchingHeight)
+	assert.Equal(t, abi.ChainEpoch(0), s0.FetchingHeight)
 
 	// initial sync and status check
 	t1 := builder.AppendOn(genesis, 1)
 	require.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", t1.Key(), heightFromTip(t, t1)), false))
 	s1 := syncer.Status()
 	assert.Equal(t, t1.Key(), s1.FetchingHead)
-	assert.Equal(t, uint64(1), s1.FetchingHeight)
+	assert.Equal(t, abi.ChainEpoch(1), s1.FetchingHeight)
 
 	assert.Equal(t, true, s1.SyncingFetchComplete)
 	assert.Equal(t, true, s1.SyncingComplete)
@@ -498,7 +499,7 @@ func TestSyncerStatus(t *testing.T) {
 	assert.Equal(t, false, s2.SyncingTrusted)
 
 	assert.Equal(t, t2.Key(), s2.FetchingHead)
-	assert.Equal(t, uint64(2), s2.FetchingHeight)
+	assert.Equal(t, abi.ChainEpoch(2), s2.FetchingHeight)
 
 	assert.Equal(t, true, s2.SyncingFetchComplete)
 	assert.Equal(t, true, s2.SyncingComplete)
@@ -510,7 +511,7 @@ func TestSyncerStatus(t *testing.T) {
 	assert.Equal(t, false, s2.SyncingTrusted)
 
 	assert.Equal(t, t1.Key(), s2.FetchingHead)
-	assert.Equal(t, uint64(1), s2.FetchingHeight)
+	assert.Equal(t, abi.ChainEpoch(1), s2.FetchingHeight)
 
 	assert.Equal(t, true, s2.SyncingFetchComplete)
 	assert.Equal(t, true, s2.SyncingComplete)
@@ -579,7 +580,7 @@ type syncStoreReader interface {
 	GetHead() block.TipSetKey
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
 	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
-	GetTipSetAndStatesByParentsAndHeight(block.TipSetKey, uint64) ([]*chain.TipSetMetadata, error)
+	GetTipSetAndStatesByParentsAndHeight(block.TipSetKey, abi.ChainEpoch) ([]*chain.TipSetMetadata, error)
 }
 
 // Verifies that a tipset and associated state root are stored in the chain store.

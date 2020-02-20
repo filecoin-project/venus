@@ -2,6 +2,7 @@ package porcelain
 
 import (
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -10,7 +11,7 @@ import (
 type Ask struct {
 	Miner  address.Address
 	Price  types.AttoFIL
-	Expiry *types.BlockHeight
+	Expiry abi.ChainEpoch
 	ID     uint64
 
 	Error error

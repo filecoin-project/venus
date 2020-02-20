@@ -82,7 +82,7 @@ func TestOutbox(t *testing.T) {
 			assert.NoError(t, pubErr)
 			require.NotNil(t, publisher.Message)
 			assert.Equal(t, test.nonce, publisher.Message.Message.CallSeqNum)
-			assert.Equal(t, uint64(test.height), publisher.Height)
+			assert.Equal(t, abi.ChainEpoch(test.height), publisher.Height)
 			assert.Equal(t, test.bcast, publisher.Bcast)
 		}
 

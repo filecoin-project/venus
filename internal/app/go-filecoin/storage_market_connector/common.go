@@ -37,11 +37,11 @@ type chainReader interface {
 // Implements storagemarket.StateKey
 type stateKey struct {
 	ts     block.TipSetKey
-	height uint64
+	height abi.ChainEpoch
 }
 
 func (k *stateKey) Height() abi.ChainEpoch {
-	return abi.ChainEpoch(k.height)
+	return k.height
 }
 
 // WorkerGetter is a function that can retrieve the miner worker for the given address from actor state

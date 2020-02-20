@@ -3,14 +3,14 @@ package version
 import (
 	"sort"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/pkg/errors"
 )
 
 // protocolVersion specifies that a particular protocol version goes into effect at a particular block height
 type protocolVersion struct {
 	Version     uint64
-	EffectiveAt *types.BlockHeight
+	EffectiveAt abi.ChainEpoch
 }
 
 // ProtocolVersionTable is a data structure capable of specifying which protocol versions are active at which block heights.
@@ -21,10 +21,10 @@ type ProtocolVersionTable struct {
 }
 
 // VersionAt returns the protocol versions at the given block height for this PVT's network.
-func (pvt *ProtocolVersionTable) VersionAt(height *types.BlockHeight) (uint64, error) {
+func (pvt *ProtocolVersionTable) VersionAt(height abi.ChainEpoch) (uint64, error) {
 	// find index of first version that is not yet active (or len(versions) if they are all active.
 	idx := sort.Search(len(pvt.versions), func(i int) bool {
-		return height.LessThan(pvt.versions[i].EffectiveAt)
+		return height < pvt.versions[i].EffectiveAt
 	})
 
 	// providing a height less than the first version is an error
@@ -32,8 +32,8 @@ func (pvt *ProtocolVersionTable) VersionAt(height *types.BlockHeight) (uint64, e
 		if len(pvt.versions) == 0 {
 			return 0, errors.Errorf("no protocol versions")
 		}
-		return 0, errors.Errorf("chain height %s is less than effective start of first version %s",
-			height.String(), pvt.versions[0].EffectiveAt.String())
+		return 0, errors.Errorf("chain height %d is less than effective start of first version %d",
+			height, pvt.versions[0].EffectiveAt)
 	}
 
 	// return the version just prior to the index to get the last version in effect.
@@ -55,7 +55,7 @@ func NewProtocolVersionTableBuilder(network string) *ProtocolVersionTableBuilder
 }
 
 // Add configures an version for a network. If the network doesn't match the current network, this version will be ignored.
-func (pvtb *ProtocolVersionTableBuilder) Add(network string, version uint64, effectiveAt *types.BlockHeight) *ProtocolVersionTableBuilder {
+func (pvtb *ProtocolVersionTableBuilder) Add(network string, version uint64, effectiveAt abi.ChainEpoch) *ProtocolVersionTableBuilder {
 	// ignore version if not part of our network
 	if network != pvtb.network {
 		return pvtb
@@ -85,7 +85,7 @@ func (pvtb *ProtocolVersionTableBuilder) Build() (*ProtocolVersionTable, error) 
 	if len(versions) == 0 {
 		return nil, errors.Errorf("no protocol versions specified for network %s", pvtb.network)
 	}
-	if !versions[0].EffectiveAt.Equal(types.NewBlockHeight(0)) {
+	if versions[0].EffectiveAt != abi.ChainEpoch(0) {
 		return nil, errors.Errorf("no protocol version at genesis for network %s", pvtb.network)
 	}
 
@@ -93,8 +93,8 @@ func (pvtb *ProtocolVersionTableBuilder) Build() (*ProtocolVersionTable, error) 
 	lastVersion := versions[0].Version
 	for _, version := range versions[1:] {
 		if version.Version <= lastVersion {
-			return nil, errors.Errorf("protocol version %d effective at %s is not greater than previous version, %d",
-				version.Version, version.EffectiveAt.String(), lastVersion)
+			return nil, errors.Errorf("protocol version %d effective at %d is not greater than previous version, %d",
+				version.Version, version.EffectiveAt, lastVersion)
 		}
 		lastVersion = version.Version
 	}
@@ -108,8 +108,8 @@ type protocolVersionsByEffectiveAt []protocolVersion
 func (a protocolVersionsByEffectiveAt) Len() int      { return len(a) }
 func (a protocolVersionsByEffectiveAt) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a protocolVersionsByEffectiveAt) Less(i, j int) bool {
-	if a[i].EffectiveAt.Equal(a[j].EffectiveAt) {
+	if a[i].EffectiveAt == a[j].EffectiveAt {
 		return a[i].Version < a[j].Version
 	}
-	return a[i].EffectiveAt.LessThan(a[j].EffectiveAt)
+	return a[i].EffectiveAt < a[j].EffectiveAt
 }

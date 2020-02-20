@@ -3,13 +3,15 @@ package chainsampler
 import (
 	"context"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 )
 
 // HeightThresholdListener listens for new heaviest chains and notifies when a height threshold is crossed.
 type HeightThresholdListener struct {
-	target    uint64
+	target    abi.ChainEpoch
 	targetHit bool
 
 	HitCh     chan block.TipSetKey
@@ -19,7 +21,7 @@ type HeightThresholdListener struct {
 }
 
 // NewHeightThresholdListener creates a new listener
-func NewHeightThresholdListener(target uint64, hitCh chan block.TipSetKey, errCh chan error, invalidCh, doneCh chan struct{}) *HeightThresholdListener {
+func NewHeightThresholdListener(target abi.ChainEpoch, hitCh chan block.TipSetKey, errCh chan error, invalidCh, doneCh chan struct{}) *HeightThresholdListener {
 	return &HeightThresholdListener{
 		target:    target,
 		targetHit: false,
@@ -31,7 +33,7 @@ func NewHeightThresholdListener(target uint64, hitCh chan block.TipSetKey, errCh
 }
 
 // NewTriggeredHeightThresholdListener creates a new listener
-func NewTriggeredHeightThresholdListener(target uint64, hitCh chan block.TipSetKey, errCh chan error, invalidCh, doneCh chan struct{}) *HeightThresholdListener {
+func NewTriggeredHeightThresholdListener(target abi.ChainEpoch, hitCh chan block.TipSetKey, errCh chan error, invalidCh, doneCh chan struct{}) *HeightThresholdListener {
 	l := NewHeightThresholdListener(target, hitCh, errCh, invalidCh, doneCh)
 	l.targetHit = true
 	return l

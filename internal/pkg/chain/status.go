@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	logging "github.com/ipfs/go-log"
 )
 
@@ -49,7 +50,7 @@ type Status struct {
 	// The heaviest TipSet that has been fully validated.
 	ValidatedHead block.TipSetKey
 	// The height of ValidatedHead.
-	ValidatedHeadHeight uint64
+	ValidatedHeadHeight abi.ChainEpoch
 
 	// They head of the chain currently being fetched/validated, or undef if none.
 	SyncingHead block.TipSetKey
@@ -106,7 +107,7 @@ func validateHead(u block.TipSetKey) StatusUpdates {
 	}
 }
 
-func validateHeight(u uint64) StatusUpdates {
+func validateHeight(u abi.ChainEpoch) StatusUpdates {
 	return func(s *Status) {
 		s.ValidatedHeadHeight = u
 	}

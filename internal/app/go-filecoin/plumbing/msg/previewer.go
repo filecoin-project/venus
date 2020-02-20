@@ -64,7 +64,7 @@ func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, me
 	// }
 
 	// vms := vm.NewStorageMap(p.bs)
-	// usedGas, err := p.processor.PreviewQueryMethod(ctx, st, vms, to, method, encodedParams, optFrom, types.NewBlockHeight(h))
+	// usedGas, err := p.processor.PreviewQueryMethod(ctx, st, vms, to, method, encodedParams, optFrom, abi.ChainEpoch(h))
 	// if err != nil {
 	// 	return types.GasUnits(0), errors.Wrap(err, "query method returned an error")
 	// }

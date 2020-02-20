@@ -5,9 +5,11 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -67,12 +69,12 @@ func (p *FakeProvider) SetHeadAndActor(t *testing.T, head block.TipSetKey, addr 
 type MockPublisher struct {
 	ReturnError error                // Error to be returned by Publish()
 	Message     *types.SignedMessage // Message received by Publish()
-	Height      uint64               // Height received by Publish()
+	Height      abi.ChainEpoch       // Height received by Publish()
 	Bcast       bool                 // was this broadcast?
 }
 
 // Publish records the message etc for subsequent inspection.
-func (p *MockPublisher) Publish(ctx context.Context, message *types.SignedMessage, height uint64, bcast bool) error {
+func (p *MockPublisher) Publish(ctx context.Context, message *types.SignedMessage, height abi.ChainEpoch, bcast bool) error {
 	p.Message = message
 	p.Height = height
 	p.Bcast = bcast

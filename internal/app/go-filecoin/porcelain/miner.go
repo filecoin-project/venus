@@ -165,8 +165,8 @@ type minerStatusPlumbing interface {
 // MinerProvingWindow contains a miners proving period start and end as well
 // as a set of their proving set.
 type MinerProvingWindow struct {
-	Start      types.BlockHeight
-	End        types.BlockHeight
+	Start      abi.ChainEpoch
+	End        abi.ChainEpoch
 	ProvingSet map[string]types.Commitments
 }
 

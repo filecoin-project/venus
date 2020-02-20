@@ -148,7 +148,7 @@ func (chn *ChainStateReadWriter) GetReceipts(ctx context.Context, id cid.Cid) ([
 }
 
 // SampleRandomness samples randomness from the chain at the given height.
-func (chn *ChainStateReadWriter) SampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
+func (chn *ChainStateReadWriter) SampleRandomness(ctx context.Context, sampleHeight abi.ChainEpoch) ([]byte, error) {
 	head := chn.readWriter.GetHead()
 	headTipSet, err := chn.readWriter.GetTipSet(head)
 	if err != nil {

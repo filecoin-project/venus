@@ -5,6 +5,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -227,7 +228,7 @@ func signMessage(signer types.Signer, message types.UnsignedMessage) (*types.Sig
 	return types.NewSignedMessage(message, signer)
 }
 
-func reqAdd(t *testing.T, p *message.Pool, height uint64, msgs ...*types.SignedMessage) {
+func reqAdd(t *testing.T, p *message.Pool, height abi.ChainEpoch, msgs ...*types.SignedMessage) {
 	ctx := context.Background()
 	for _, m := range msgs {
 		_, err := p.Add(ctx, m, height)

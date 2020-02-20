@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -141,7 +142,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 	filecoin := newEndpoint(t, 0)
 
 	// create a tipset, we will assert on it in the SetStreamHandler method
-	expHeight := uint64(444)
+	expHeight := abi.ChainEpoch(444)
 	expTs := mustMakeTipset(t, expHeight)
 
 	addr, err := address.NewSecp256k1Address([]byte("miner address"))
@@ -158,7 +159,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 		require.NoError(t, dec.Decode(&hb))
 
 		assert.Equal(t, expTs.String(), hb.Head)
-		assert.Equal(t, uint64(444), hb.Height)
+		assert.Equal(t, abi.ChainEpoch(444), hb.Height)
 		assert.Equal(t, "BobHoblaw", hb.Nickname)
 		assert.Equal(t, addr, hb.MinerAddress)
 		cancel()
@@ -187,7 +188,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 	assert.Error(t, runCtx.Err(), context.Canceled.Error())
 }
 
-func mustMakeTipset(t *testing.T, height uint64) block.TipSet {
+func mustMakeTipset(t *testing.T, height abi.ChainEpoch) block.TipSet {
 	ts, err := block.NewTipSet(&block.Block{
 		Miner:           vmaddr.NewForTestGetter()(),
 		Ticket:          block.Ticket{VRFProof: []byte{0}},

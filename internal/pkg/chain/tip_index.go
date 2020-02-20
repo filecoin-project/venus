@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 )
@@ -129,7 +130,7 @@ func (ti *TipIndex) Has(tsKey block.TipSetKey) bool {
 
 // GetByParentsAndHeight returns the all tipsets and states stored in the TipIndex
 // such that the parent ID of these tipsets equals the input.
-func (ti *TipIndex) GetByParentsAndHeight(pKey block.TipSetKey, h uint64) ([]*TipSetMetadata, error) {
+func (ti *TipIndex) GetByParentsAndHeight(pKey block.TipSetKey, h abi.ChainEpoch) ([]*TipSetMetadata, error) {
 	key := makeKey(pKey.String(), h)
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
@@ -147,7 +148,7 @@ func (ti *TipIndex) GetByParentsAndHeight(pKey block.TipSetKey, h uint64) ([]*Ti
 // HasByParentsAndHeight returns true iff there exist tipsets, and states,
 // tracked in the TipIndex such that the parent ID of these tipsets equals the
 // input.
-func (ti *TipIndex) HasByParentsAndHeight(pKey block.TipSetKey, h uint64) bool {
+func (ti *TipIndex) HasByParentsAndHeight(pKey block.TipSetKey, h abi.ChainEpoch) bool {
 	key := makeKey(pKey.String(), h)
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
@@ -156,6 +157,6 @@ func (ti *TipIndex) HasByParentsAndHeight(pKey block.TipSetKey, h uint64) bool {
 }
 
 // makeKey returns a unique string for every parent set key and height input
-func makeKey(pKey string, h uint64) string {
+func makeKey(pKey string, h abi.ChainEpoch) string {
 	return fmt.Sprintf("p-%s h-%d", pKey, h)
 }

@@ -265,7 +265,7 @@ respectively.
 	Type: porcelain.Ask{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ask *porcelain.Ask) error {
-			fmt.Fprintf(w, "%s %.3d %s %s\n", ask.Miner, ask.ID, ask.Price, ask.Expiry) // nolint: errcheck
+			fmt.Fprintf(w, "%s %.3d %s %d\n", ask.Miner, ask.ID, ask.Price, ask.Expiry) // nolint: errcheck
 			return nil
 		}),
 	},

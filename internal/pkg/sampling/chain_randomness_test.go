@@ -5,13 +5,14 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 func TestSamplingChainRandomness(t *testing.T) {
@@ -19,15 +20,15 @@ func TestSamplingChainRandomness(t *testing.T) {
 
 	t.Run("happy path", func(t *testing.T) {
 		_, ch := makeChain(t, 21)
-		r, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(20)), ch)
+		r, err := sampling.SampleChainRandomness(abi.ChainEpoch(uint64(20)), ch)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte(strconv.Itoa(20)), r)
 
-		r, err = sampling.SampleChainRandomness(types.NewBlockHeight(uint64(3)), ch)
+		r, err = sampling.SampleChainRandomness(abi.ChainEpoch(uint64(3)), ch)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte(strconv.Itoa(3)), r)
 
-		r, err = sampling.SampleChainRandomness(types.NewBlockHeight(uint64(0)), ch)
+		r, err = sampling.SampleChainRandomness(abi.ChainEpoch(uint64(0)), ch)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte(strconv.Itoa(0)), r)
 	})
@@ -36,7 +37,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 		builder, ch := makeChain(t, 21)
 
 		// Sample height after the head falls back to the head
-		r, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(25)), ch)
+		r, err := sampling.SampleChainRandomness(abi.ChainEpoch(uint64(25)), ch)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte(strconv.Itoa(20)), r)
 
@@ -49,12 +50,12 @@ func TestSamplingChainRandomness(t *testing.T) {
 		ch = append([]block.TipSet{headAfterNulls}, ch...)
 
 		// Sampling in the nulls falls back to the last non-null
-		r, err = sampling.SampleChainRandomness(types.NewBlockHeight(uint64(24)), ch)
+		r, err = sampling.SampleChainRandomness(abi.ChainEpoch(uint64(24)), ch)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte(strconv.Itoa(20)), r)
 
 		// When sampling immediately after the nulls, the look-back skips the nulls (not counting them).
-		r, err = sampling.SampleChainRandomness(types.NewBlockHeight(uint64(25)), ch)
+		r, err = sampling.SampleChainRandomness(abi.ChainEpoch(uint64(25)), ch)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte(strconv.Itoa(25)), r)
 	})
@@ -66,11 +67,11 @@ func TestSamplingChainRandomness(t *testing.T) {
 		ch = ch[:5]
 
 		// Sample is out of range
-		_, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(15)), ch)
+		_, err := sampling.SampleChainRandomness(abi.ChainEpoch(uint64(15)), ch)
 		assert.Error(t, err)
 
 		// Ok when the chain is just sufficiently long.
-		r, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(16)), ch)
+		r, err := sampling.SampleChainRandomness(abi.ChainEpoch(uint64(16)), ch)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte(strconv.Itoa(16)), r)
 	})
@@ -79,7 +80,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 		_, ch := makeChain(t, 6)
 
 		// Sample height can be zero.
-		r, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(0)), ch)
+		r, err := sampling.SampleChainRandomness(abi.ChainEpoch(uint64(0)), ch)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte(strconv.Itoa(0)), r)
 	})

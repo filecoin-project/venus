@@ -3,6 +3,7 @@ package chainsampler
 import (
 	"context"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/prometheus/common/log"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -66,7 +67,7 @@ func (m *HeightThresholdScheduler) Stop() {
 }
 
 // AddListener adds a new listener for the target height
-func (m *HeightThresholdScheduler) AddListener(target uint64) *HeightThresholdListener {
+func (m *HeightThresholdScheduler) AddListener(target abi.ChainEpoch) *HeightThresholdListener {
 	hc := make(chan block.TipSetKey)
 	ec := make(chan error)
 	ic := make(chan struct{})

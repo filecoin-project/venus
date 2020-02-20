@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/pkg/errors"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
@@ -23,7 +24,7 @@ func (w *DefaultWorker) Generate(
 	ctx context.Context,
 	baseTipSet block.TipSet,
 	ticket block.Ticket,
-	nullBlockCount uint64,
+	nullBlockCount abi.ChainEpoch,
 	ePoStInfo block.EPoStInfo,
 ) (*block.Block, error) {
 

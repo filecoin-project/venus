@@ -34,7 +34,7 @@ type FakeVMContext struct {
 	Sender                  func(address.Address, abi.MethodNum, specsruntime.CBORMarshaler, abi.TokenAmount) (specsruntime.SendReturn, exitcode.ExitCode)
 	Addresser               func() (address.Address, error)
 	Charger                 func(cost types.GasUnits) error
-	Sampler                 func(sampleHeight *types.BlockHeight) ([]byte, error)
+	Sampler                 func(sampleHeight abi.ChainEpoch) ([]byte, error)
 	ActorCreator            func(addr address.Address, code cid.Cid) error
 	allowSideEffects        bool
 	stateHandle             specsruntime.StateHandle
@@ -58,7 +58,7 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 		Charger: func(cost types.GasUnits) error {
 			return nil
 		},
-		Sampler: func(sampleHeight *types.BlockHeight) ([]byte, error) {
+		Sampler: func(sampleHeight abi.ChainEpoch) ([]byte, error) {
 			return randomness, nil
 		},
 		Sender: func(to address.Address, method abi.MethodNum, params specsruntime.CBORMarshaler, value abi.TokenAmount) (specsruntime.SendReturn, exitcode.ExitCode) {
@@ -92,7 +92,7 @@ func (tc *FakeVMContext) CurrentEpoch() abi.ChainEpoch {
 
 // Randomness provides random bytes used in verification challenges
 func (tc *FakeVMContext) Randomness(epoch abi.ChainEpoch) abi.Randomness {
-	rnd, _ := tc.Sampler(types.NewBlockHeight((uint64)(epoch)))
+	rnd, _ := tc.Sampler(abi.ChainEpoch((uint64)(epoch)))
 	return rnd
 }
 

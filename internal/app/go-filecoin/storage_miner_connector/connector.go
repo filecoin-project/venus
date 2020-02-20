@@ -29,7 +29,7 @@ import (
 )
 
 type randomnessSampler interface {
-	SampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
+	SampleRandomness(ctx context.Context, sampleHeight abi.ChainEpoch) ([]byte, error)
 	GetTipSetStateRoot(ctx context.Context, tipKey block.TipSetKey) (cid.Cid, error)
 	GetTipSet(key block.TipSetKey) (block.TipSet, error)
 	Head() block.TipSetKey
@@ -239,7 +239,7 @@ func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sec
 // WaitForPreCommitSector blocks until the pre-commit sector message is mined
 // into a block, returning the block's height and message's exit code (or an
 // error if one is encountered).
-func (m *StorageMinerNodeConnector) WaitForPreCommitSector(ctx context.Context, mcid cid.Cid) (uint64, uint8, error) {
+func (m *StorageMinerNodeConnector) WaitForPreCommitSector(ctx context.Context, mcid cid.Cid) (abi.ChainEpoch, uint8, error) {
 	return m.waitForMessageHeight(ctx, mcid)
 }
 
@@ -305,13 +305,13 @@ func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context, tok stora
 		return storagenode.SealTicket{}, err
 	}
 
-	r, err := m.chainState.SampleRandomness(ctx, types.NewBlockHeight(h-consensus.FinalityEpochs))
+	r, err := m.chainState.SampleRandomness(ctx, h-consensus.FinalityEpochs)
 	if err != nil {
 		return storagenode.SealTicket{}, xerrors.Errorf("getting randomness for SealTicket failed: %w", err)
 	}
 
 	return storagenode.SealTicket{
-		BlockHeight: h,
+		BlockHeight: uint64(h),
 		TicketBytes: r,
 	}, nil
 }
@@ -349,7 +349,7 @@ func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMs
 			return
 		}
 
-		listener := m.chainHeightScheduler.AddListener(h + interval)
+		listener := m.chainHeightScheduler.AddListener(h + abi.ChainEpoch(interval))
 
 		// translate tipset key to seal seed handler
 		for {
@@ -367,14 +367,14 @@ func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMs
 					break
 				}
 
-				randomness, err := m.chainState.SampleRandomness(ctx, types.NewBlockHeight(tsHeight))
+				randomness, err := m.chainState.SampleRandomness(ctx, tsHeight)
 				if err != nil {
 					ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFatalError)
 					break
 				}
 
 				sc <- storagenode.SealSeed{
-					BlockHeight: tsHeight,
+					BlockHeight: uint64(tsHeight),
 					TicketBytes: randomness,
 				}
 			case err := <-listener.ErrCh:
@@ -396,10 +396,10 @@ func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMs
 
 type heightAndExitCode struct {
 	exitCode uint8
-	height   uint64
+	height   abi.ChainEpoch
 }
 
-func (m *StorageMinerNodeConnector) waitForMessageHeight(ctx context.Context, mcid cid.Cid) (uint64, uint8, error) {
+func (m *StorageMinerNodeConnector) waitForMessageHeight(ctx context.Context, mcid cid.Cid) (abi.ChainEpoch, uint8, error) {
 	height := make(chan heightAndExitCode)
 	errChan := make(chan error)
 

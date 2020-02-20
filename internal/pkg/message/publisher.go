@@ -3,6 +3,7 @@ package message
 import (
 	"context"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -26,7 +27,7 @@ func NewDefaultPublisher(pubsub networkPublisher, pool *Pool) *DefaultPublisher 
 
 // Publish marshals and publishes a message to the core message pool, and if bcast is true,
 // broadcasts it to the network with the publisher's topic.
-func (p *DefaultPublisher) Publish(ctx context.Context, message *types.SignedMessage, height uint64, bcast bool) error {
+func (p *DefaultPublisher) Publish(ctx context.Context, message *types.SignedMessage, height abi.ChainEpoch, bcast bool) error {
 	encoded, err := message.Marshal()
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal message")

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
@@ -32,7 +33,7 @@ var helloMsgErrCt = metrics.NewInt64Counter("hello_message_error", "Number of er
 type HelloMessage struct {
 	_                    struct{}
 	HeaviestTipSetCids   block.TipSetKey
-	HeaviestTipSetHeight uint64
+	HeaviestTipSetHeight abi.ChainEpoch
 	HeaviestTipSetWeight fbig.Int
 	GenesisHash          cid.Cid
 }

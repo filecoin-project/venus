@@ -3,9 +3,11 @@ package message_test
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -330,7 +332,7 @@ func TestUpdateMessagePool(t *testing.T) {
 
 			head = next
 		}
-		require.Equal(t, uint64(11), head.At(0).Height)
+		require.Equal(t, abi.ChainEpoch(11), head.At(0).Height)
 
 		// next tipset times out first message only
 		next := requireChainWithMessages(t, chainProvider.Builder, head, msgsSet{msgs{}})[0]
@@ -344,7 +346,7 @@ func TestUpdateMessagePool(t *testing.T) {
 			msgsSet{msgs{}},
 			msgsSet{msgs{}},
 		)
-		require.Equal(t, uint64(16), newChain[0].At(0).Height)
+		require.Equal(t, abi.ChainEpoch(16), newChain[0].At(0).Height)
 		assert.NoError(t, ib.HandleNewHead(ctx, nil, newChain))
 		assertPoolEquals(t, p, m[5:]...)
 	})
@@ -406,7 +408,7 @@ func msgAsString(msg *types.SignedMessage) string {
 	// to "msgN" so we print that (it will correspond
 	// to a variable of the same name in the tests
 	// below).
-	return string(msg.Message.Method)
+	return strconv.FormatInt(int64(msg.Message.Method), 10)
 }
 
 func msgsAsString(msgs []*types.SignedMessage) string {

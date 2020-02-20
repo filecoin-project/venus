@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"sort"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
@@ -118,7 +119,7 @@ func (ts TipSet) MinTicket() (Ticket, error) {
 }
 
 // Height returns the height of a tipset.
-func (ts TipSet) Height() (uint64, error) {
+func (ts TipSet) Height() (abi.ChainEpoch, error) {
 	if len(ts.blocks) == 0 {
 		return 0, errUndefTipSet
 	}

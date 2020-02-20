@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -64,11 +63,10 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	h, err := ts.Height()
+	epoch, err := ts.Height()
 	if err != nil {
 		return nil, fmt.Errorf("processing empty tipset")
 	}
-	var epoch abi.ChainEpoch = (abi.ChainEpoch)(h)
 
 	rnd := vm.NewProdRandomnessSource()
 	vm := vm.NewVM(st, &vms)
