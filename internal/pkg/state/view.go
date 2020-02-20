@@ -141,6 +141,16 @@ func (v *View) MinerFaults(ctx context.Context, maddr addr.Address) ([]uint64, e
 	return minerState.FaultSet.All(miner.MaxFaultsCount)
 }
 
+// Looks up info for a miners precommitted sector.
+func (v *View) MinerGetPrecommittedSector(ctx context.Context, maddr addr.Address, sectorNum uint64) (*miner.SectorPreCommitOnChainInfo, bool, error) {
+	minerState, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return minerState.GetPrecommittedSector(StoreFromCbor(ctx, v.ipldStore), abi.SectorNumber(sectorNum))
+}
+
 // Returns the storage power actor's value for network total power.
 func (v *View) NetworkTotalPower(ctx context.Context) (abi.StoragePower, error) {
 	powerState, err := v.loadPowerActor(ctx)

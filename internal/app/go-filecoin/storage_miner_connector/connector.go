@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -32,6 +31,7 @@ import (
 
 type randomnessSampler interface {
 	SampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
+	GetTipSetStateRoot(ctx context.Context, tipKey block.TipSetKey) (cid.Cid, error)
 	GetTipSet(key block.TipSetKey) (block.TipSet, error)
 	Head() block.TipSetKey
 }
@@ -338,7 +338,6 @@ func (m *StorageMinerNodeConnector) GetChainHead(ctx context.Context) (storageno
 // computing and sampling a seed.
 func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMsg cid.Cid, interval uint64) (<-chan storagenode.SealSeed, <-chan storagenode.SeedInvalidated, <-chan storagenode.FinalityReached, <-chan storagenode.GetSealSeedError) {
 	sc := make(chan storagenode.SealSeed)
-	hc := make(chan block.TipSetKey)
 	ec := make(chan storagenode.GetSealSeedError)
 	ic := make(chan storagenode.SeedInvalidated)
 	dc := make(chan storagenode.FinalityReached)
@@ -365,19 +364,19 @@ func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMs
 				ts, err := m.chainState.GetTipSet(key)
 				if err != nil {
 					ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFatalError)
-					continue
+					break
 				}
 
 				tsHeight, err := ts.Height()
 				if err != nil {
 					ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFatalError)
-					continue
+					break
 				}
 
 				randomness, err := m.chainState.SampleRandomness(ctx, types.NewBlockHeight(tsHeight))
 				if err != nil {
 					ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFatalError)
-					continue
+					break
 				}
 
 				sc <- storagenode.SealSeed{
@@ -494,15 +493,12 @@ func (m *StorageMinerNodeConnector) GetSealedCID(ctx context.Context, tok storag
 		return cid.Undef, false, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
 	}
 
-	var minerState miner.State
-	err = m.chainState.GetActorStateAt(ctx, tsk, m.minerAddr, &minerState)
-
+	root, err := m.chainState.GetTipSetStateRoot(ctx, tsk)
 	if err != nil {
-		return cid.Undef, false, err
+		return cid.Undef, false, xerrors.Errorf("failed to get tip state: %w", err)
 	}
 
-	preCommitInfo, found, err := minerState.GetPrecommittedSector(state.StoreFromCbor(ctx, m.chainState.IpldStore), sectorNum)
-
+	preCommitInfo, found, err := m.stateViewer.StateView(root).MinerGetPrecommittedSector(ctx, m.minerAddr, uint64(sectorNum))
 	if !found || err != nil {
 		return cid.Undef, found, err
 	}
