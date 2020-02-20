@@ -4,6 +4,7 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 func init() {
@@ -51,7 +52,7 @@ func (x *EPoStCandidate) ToFFICandidate() ffi.Candidate {
 	copy(pt[:], x.PartialTicket)
 
 	return ffi.Candidate{
-		SectorID:             x.SectorID,
+		SectorNum:            abi.SectorNumber(x.SectorID),
 		PartialTicket:        pt,
 		Ticket:               [32]byte{}, // note: this field is ignored
 		SectorChallengeIndex: x.SectorChallengeIndex,
@@ -72,7 +73,7 @@ func ToFFICandidates(candidates ...EPoStCandidate) []ffi.Candidate {
 func FromFFICandidate(candidate ffi.Candidate) EPoStCandidate {
 	return EPoStCandidate{
 		PartialTicket:        candidate.PartialTicket[:],
-		SectorID:             candidate.SectorID,
+		SectorID:             uint64(candidate.SectorNum),
 		SectorChallengeIndex: candidate.SectorChallengeIndex,
 	}
 }

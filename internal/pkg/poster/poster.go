@@ -108,7 +108,7 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) er
 		return err
 	}
 
-	root, err := p.chain.GetTipStateStateRoot(ctx, newHead.Key())
+	root, err := p.chain.GetTipSetStateRoot(ctx, newHead.Key())
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,12 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, provingPe
 		return
 	}
 
-	candidates, proof, err := p.sectorbuilder.GenerateFallbackPoSt(sortedSectorInfo, challengeSeed, faults)
+	faultsPrime := make([]abi.SectorNumber, len(faults))
+	for idx := range faultsPrime {
+		faultsPrime[idx] = abi.SectorNumber(faults[idx])
+	}
+
+	candidates, proof, err := p.sectorbuilder.GenerateFallbackPoSt(sortedSectorInfo, challengeSeed, faultsPrime)
 	if err != nil {
 		log.Error("error generating fallback PoSt", err)
 		return
@@ -180,7 +185,7 @@ func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, tipKey 
 		poStCandidates[i] = abi.PoStCandidate{
 			RegisteredProof: abi.RegisteredProof_WinStackedDRG32GiBPoSt,
 			PartialTicket:   abi.PartialTicket(candidate.PartialTicket[:]),
-			SectorID:        abi.SectorID{Miner: abi.ActorID(minerID), Number: abi.SectorNumber(candidate.SectorID)},
+			SectorID:        abi.SectorID{Miner: abi.ActorID(minerID), Number: candidate.SectorNum},
 			ChallengeIndex:  int64(candidate.SectorChallengeIndex),
 		}
 	}
@@ -202,9 +207,9 @@ func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, tipKey 
 		p.minerAddr,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
-		types.NewGasUnits(300),
+		types.GasUnits(300),
 		true,
-		types.MethodID(builtin.MethodsMiner.SubmitWindowedPoSt),
+		builtin.MethodsMiner.SubmitWindowedPoSt,
 		windowedPost,
 	)
 	if err != nil {
