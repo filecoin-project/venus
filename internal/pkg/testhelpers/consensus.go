@@ -51,18 +51,6 @@ func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, sta
 	return b
 }
 
-// MakeRandomPoStProofForTest creates a random proof.
-func MakeRandomPoStProofForTest() types.PoStProof {
-	proofSize := types.OnePoStProofPartition.ProofLen()
-	p := MakeRandomBytes(proofSize)
-	p[0] = 42
-	poStProof := make([]byte, proofSize)
-	for idx, elem := range p {
-		poStProof[idx] = elem
-	}
-	return poStProof
-}
-
 // FakeBlockValidator passes everything as valid
 type FakeBlockValidator struct{}
 

@@ -136,8 +136,5 @@ func NextNonce(actor *Actor) (uint64, error) {
 // NameByCode returns the (string) name of the Go type of the actor with cid, code.
 // Dragons: remove once we get rid of the bootstrap actor
 func NameByCode(code cid.Cid) string {
-	if code.Equals(types.BootstrapMinerActorCodeCid) {
-		return "fil/1/miner"
-	}
 	return builtin.ActorNameByCode(code)
 }

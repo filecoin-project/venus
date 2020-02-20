@@ -18,7 +18,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
@@ -390,9 +389,6 @@ func (ctx *patternContext2) CallerAddr() address.Address {
 
 // Dragons: delete once we remove the bootstrap miner
 func isBuiltinActor(code cid.Cid) bool {
-	if code.Equals(types.BootstrapMinerActorCodeCid) {
-		return true
-	}
 	return builtin.IsBuiltinActor(code)
 }
 

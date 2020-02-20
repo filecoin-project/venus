@@ -1,10 +1,10 @@
 package block
 
 import (
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 func init() {
@@ -15,7 +15,7 @@ func init() {
 // EPoStInfo wraps all data needed to verify an election post proof
 type EPoStInfo struct {
 	_              struct{} `cbor:",toarray"`
-	PoStProof      types.PoStProof
+	PoStProof      []byte
 	PoStRandomness VRFPi
 	Winners        []EPoStCandidate
 }
@@ -38,7 +38,7 @@ func NewEPoStCandidate(sID uint64, pt []byte, sci uint64) EPoStCandidate {
 }
 
 // NewEPoStInfo constructs an epost info from data
-func NewEPoStInfo(proof types.PoStProof, rand VRFPi, winners ...EPoStCandidate) EPoStInfo {
+func NewEPoStInfo(proof []byte, rand VRFPi, winners ...EPoStCandidate) EPoStInfo {
 	return EPoStInfo{
 		Winners:        winners,
 		PoStProof:      proof,
