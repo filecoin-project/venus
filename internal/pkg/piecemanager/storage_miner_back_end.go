@@ -135,5 +135,5 @@ func (s *StorageMinerBackEnd) LocatePieceForDealWithinSector(ctx context.Context
 // miner, or an error if the miner does not manage a sector with the
 // provided identity.
 func(s *StorageMinerBackEnd) GetSectorInfo(sectorID uint64) (storage.SectorInfo, error) {
-	return s.miner.GetSectorInfo(sectorID)
+	return s.miner.GetSectorInfo(abi.SectorNumber(sectorID))
 }

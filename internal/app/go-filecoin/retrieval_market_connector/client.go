@@ -9,10 +9,11 @@ import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/init"
+	initActor "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	paychActor "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid/_rsrch/cidiface"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paych"
@@ -69,7 +70,7 @@ type RetrievalSigner interface {
 
 type MgrAPI interface {
 	AllocateLane(paychAddr address.Address) (int64, error)
-	GetPaymentChannelInfo(paychAddr address.Address)
+	GetPaymentChannelInfo(paychAddr address.Address) (paych.ChannelInfo, error)
 	CreatePaymentChannel(payer, payee address.Address) (paych.ChannelInfo, error)
 	UpdatePaymentChannel(paychAddr address.Address) error
 }
@@ -152,7 +153,7 @@ func (r *RetrievalClientConnector) GetOrCreatePaymentChannel(ctx context.Context
 	return chid, nil
 }
 
-func paychActorCtorExecParamsFor(client, miner address.Address) (init.ExecParams, error) {
+func paychActorCtorExecParamsFor(client, miner address.Address) (initActor.ExecParams, error) {
 	ctorParams := paychActor.ConstructorParams{
 		From: client,
 		To:   miner,
@@ -160,10 +161,10 @@ func paychActorCtorExecParamsFor(client, miner address.Address) (init.ExecParams
 	var marshaled bytes.Buffer
 	err := ctorParams.MarshalCBOR(&marshaled)
 	if err != nil {
-		return init.ExecParams{}, err
+		return initActor.ExecParams{}, err
 	}
 
-	p := init.ExecParams{
+	p := initActor.ExecParams{
 		CodeCID:           builtin.PaymentChannelActorCodeID,
 		ConstructorParams: marshaled.Bytes(),
 	}

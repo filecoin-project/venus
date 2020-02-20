@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -86,7 +85,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 				return err
 			}
 		} else {
-			t.State = new(paych.State)
+			t.State = new(State)
 			if err := t.State.UnmarshalCBOR(br); err != nil {
 				return err
 			}
@@ -180,7 +179,7 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) error {
 				return err
 			}
 		} else {
-			t.Voucher = new(paych.SignedVoucher)
+			t.Voucher = new(SignedVoucher)
 			if err := t.Voucher.UnmarshalCBOR(br); err != nil {
 				return err
 			}
