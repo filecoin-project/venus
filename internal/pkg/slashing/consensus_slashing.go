@@ -2,6 +2,8 @@ package slashing
 
 import (
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 )
 
@@ -9,7 +11,7 @@ import (
 // party produces multiple blocks at the same time.
 type ConsensusFaultDetector struct {
 	// minerIndex tracks witnessed blocks by miner address and epoch
-	minerIndex map[address.Address]map[uint64]*block.Block
+	minerIndex map[address.Address]map[abi.ChainEpoch]*block.Block
 	// sender sends messages on behalf of the slasher
 	faultCh chan ConsensusFault
 }
@@ -24,7 +26,7 @@ type ConsensusFault struct {
 // NewConsensusFaultDetector returns a fault detector given a fault channel
 func NewConsensusFaultDetector(faultCh chan ConsensusFault) *ConsensusFaultDetector {
 	return &ConsensusFaultDetector{
-		minerIndex: make(map[address.Address]map[uint64]*block.Block),
+		minerIndex: make(map[address.Address]map[abi.ChainEpoch]*block.Block),
 		faultCh:    faultCh,
 	}
 
@@ -43,7 +45,7 @@ func (detector *ConsensusFaultDetector) CheckBlock(b *block.Block, p block.TipSe
 	// Find per-miner index
 	blockByEpoch, tracked := detector.minerIndex[b.Miner]
 	if !tracked {
-		blockByEpoch = make(map[uint64]*block.Block)
+		blockByEpoch = make(map[abi.ChainEpoch]*block.Block)
 		detector.minerIndex[b.Miner] = blockByEpoch
 	}
 

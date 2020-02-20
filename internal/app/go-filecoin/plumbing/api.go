@@ -171,7 +171,7 @@ func (api *API) ChainLs(ctx context.Context) (*chain.TipsetIterator, error) {
 // ChainSampleRandomness produces a slice of random bytes sampled from a TipSet
 // in the blockchain at a given height, useful for things like PoSt challenge seed
 // generation.
-func (api *API) ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
+func (api *API) ChainSampleRandomness(ctx context.Context, sampleHeight abi.ChainEpoch) ([]byte, error) {
 	return api.chain.SampleRandomness(ctx, sampleHeight)
 }
 

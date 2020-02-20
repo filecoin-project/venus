@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -48,8 +49,8 @@ func TestReorgDiffFork(t *testing.T) {
 
 	dropped, added, err := chain.ReorgDiff(old, new, common)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(10), dropped)
-	assert.Equal(t, uint64(11), added)
+	assert.Equal(t, abi.ChainEpoch(10), dropped)
+	assert.Equal(t, abi.ChainEpoch(11), added)
 }
 
 func TestReorgDiffSubset(t *testing.T) {
@@ -60,8 +61,8 @@ func TestReorgDiffSubset(t *testing.T) {
 
 	dropped, added, err := chain.ReorgDiff(old, new, common)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(1), dropped)
-	assert.Equal(t, uint64(1), added)
+	assert.Equal(t, abi.ChainEpoch(1), dropped)
+	assert.Equal(t, abi.ChainEpoch(1), added)
 }
 
 // getForkOldNewCommon is a testing helper function that creates chain with the builder.

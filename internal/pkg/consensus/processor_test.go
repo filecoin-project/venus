@@ -269,7 +269,7 @@ package consensus_test
 // 	require.NoError(t, err)
 // 	msg := types.NewUnsignedMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), miner.GetPower, badParams)
 
-// 	rct, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
+// 	rct, err := th.ApplyTestMessage(st, vms, msg, abi.ChainEpoch(0))
 // 	require.NoError(t, err) // No error means definitely no fault error, which is what we're especially testing here.
 
 // 	assert.Empty(t, rct.Receipt.Return)
@@ -291,7 +291,7 @@ package consensus_test
 // 	badParams := []byte{1, 2, 3, 4, 5}
 // 	msg := types.NewUnsignedMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), miner.GetPower, badParams)
 
-// 	rct, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
+// 	rct, err := th.ApplyTestMessage(st, vms, msg, abi.ChainEpoch(0))
 // 	require.NoError(t, err) // No error means definitely no fault error, which is what we're especially testing here.
 
 // 	assert.Empty(t, rct.Receipt.Return)
@@ -313,7 +313,7 @@ package consensus_test
 // 		_, addr2 := th.RequireNewMinerActor(ctx, t, st, vms, addr1, 10, th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
 // 		msg := types.NewMeteredMessage(addr1, addr2, 5, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewGasPrice(1), types.GasUnits(0))
 
-// 		_, err := NewDefaultProcessor().ApplyMessage(ctx, st, vms, msg, addr2, types.NewBlockHeight(0), vm.NewLegacyGasTracker(), nil)
+// 		_, err := NewDefaultProcessor().ApplyMessage(ctx, st, vms, msg, addr2, abi.ChainEpoch(0), vm.NewLegacyGasTracker(), nil)
 // 		assert.Error(t, err)
 // 		assert.Equal(t, "nonce too high", err.(*errors.ApplyErrorTemporary).Cause().Error())
 // 	})
@@ -333,7 +333,7 @@ package consensus_test
 // 		_, addr2 := th.RequireNewMinerActor(ctx, t, st, vms, addr1, uint64(10), th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
 // 		msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewGasPrice(1), types.GasUnits(0))
 
-// 		_, err := NewDefaultProcessor().ApplyMessage(ctx, st, vms, msg, addr2, types.NewBlockHeight(0), vm.NewLegacyGasTracker(), nil)
+// 		_, err := NewDefaultProcessor().ApplyMessage(ctx, st, vms, msg, addr2, abi.ChainEpoch(0), vm.NewLegacyGasTracker(), nil)
 // 		assert.Error(t, err)
 // 		assert.Equal(t, "nonce too low", err.(*errors.ApplyErrorPermanent).Cause().Error())
 // 	})
@@ -343,7 +343,7 @@ package consensus_test
 // 		msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.GasUnits(50))
 
 // 		// the maximum gas charge (10*50 = 500) is greater than the sender balance minus the message value (1000-550 = 450)
-// 		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, vms, msg, addr2, types.NewBlockHeight(0), vm.NewLegacyGasTracker(), nil)
+// 		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, vms, msg, addr2, abi.ChainEpoch(0), vm.NewLegacyGasTracker(), nil)
 // 		require.Error(t, err)
 // 		assert.Equal(t, "balance insufficient to cover transfer+gas", err.(*errors.ApplyErrorPermanent).Cause().Error())
 // 	})
@@ -359,7 +359,7 @@ package consensus_test
 
 // 		msg := types.NewMeteredMessage(addr1, addr2, 0, types.ZeroAttoFIL, types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.GasUnits(50))
 
-// 		_, err = NewDefaultProcessor().ApplyMessage(context.Background(), st, vms, msg, addr2, types.NewBlockHeight(0), vm.NewLegacyGasTracker(), nil)
+// 		_, err = NewDefaultProcessor().ApplyMessage(context.Background(), st, vms, msg, addr2, abi.ChainEpoch(0), vm.NewLegacyGasTracker(), nil)
 // 		require.Error(t, err)
 // 		assert.Equal(t, "message from non-account actor", err.(*errors.ApplyErrorPermanent).Cause().Error())
 // 	})
@@ -378,7 +378,7 @@ package consensus_test
 // 		msg := types.NewMeteredMessage(addr1, addr2, 0, types.ZeroAttoFIL, types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.GasUnits(50))
 
 // 		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, vms, msg, addr2,
-// 			types.NewBlockHeight(0), vm.NewLegacyGasTracker(), nil)
+// 			abi.ChainEpoch(0), vm.NewLegacyGasTracker(), nil)
 // 		require.Error(t, err)
 // 		assert.Equal(t, "from (sender) account not found", err.(*errors.ApplyErrorTemporary).Cause().Error())
 // 	})
@@ -400,7 +400,7 @@ package consensus_test
 
 // 		msg := types.NewMeteredMessage(addr1, addr2, 0, someval, types.SendMethodID, []byte{}, types.NewGasPrice(1), types.GasUnits(0))
 
-// 		_, err := NewDefaultProcessor().ApplyMessage(ctx, st, vms, msg, addr2, types.NewBlockHeight(0), vm.NewLegacyGasTracker(), nil)
+// 		_, err := NewDefaultProcessor().ApplyMessage(ctx, st, vms, msg, addr2, abi.ChainEpoch(0), vm.NewLegacyGasTracker(), nil)
 // 		assert.Error(t, err)
 // 		assert.Contains(t, "negative value", err.(*errors.ApplyErrorPermanent).Cause().Error())
 // 	})
@@ -410,7 +410,7 @@ package consensus_test
 // 		msg := types.NewMeteredMessage(addr1, addr1, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.GasUnits(0))
 
 // 		// the maximum gas charge (10*50 = 500) is greater than the sender balance minus the message value (1000-550 = 450)
-// 		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, vms, msg, addr2, types.NewBlockHeight(0), vm.NewLegacyGasTracker(), nil)
+// 		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, vms, msg, addr2, abi.ChainEpoch(0), vm.NewLegacyGasTracker(), nil)
 // 		require.Error(t, err)
 // 		assert.Equal(t, "cannot send to self", err.(*errors.ApplyErrorPermanent).Cause().Error())
 // 	})
@@ -420,7 +420,7 @@ package consensus_test
 // 		msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.GasUnits(50))
 
 // 		// the maximum gas charge (10*50 = 500) is greater than the sender balance minus the message value (1000-550 = 450)
-// 		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, vms, msg, address.Undef, types.NewBlockHeight(0), vm.NewLegacyGasTracker(), nil)
+// 		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, vms, msg, address.Undef, abi.ChainEpoch(0), vm.NewLegacyGasTracker(), nil)
 // 		require.Error(t, err)
 // 		assert.Equal(t, "balance insufficient to cover transfer+gas", err.(*errors.ApplyErrorPermanent).Cause().Error())
 // 	})
@@ -464,7 +464,7 @@ package consensus_test
 // 	require.NoError(t, err)
 // 	msg1 := types.NewUnsignedMessage(addr0, addr1, 0, types.ZeroAttoFIL, actor.NestedBalanceID, params1)
 
-// 	_, err = th.ApplyTestMessageWithActors(actors, st, vms, msg1, types.NewBlockHeight(0))
+// 	_, err = th.ApplyTestMessageWithActors(actors, st, vms, msg1, abi.ChainEpoch(0))
 // 	require.NoError(t, err)
 
 // 	_, err = st.Flush(ctx)
@@ -517,7 +517,7 @@ package consensus_test
 // 	params, err := abi.ToEncodedValues(addr1, addr2)
 // 	require.NoError(t, err)
 // 	msg := types.NewUnsignedMessage(addr0, addr1, 0, types.ZeroAttoFIL, actor.AttemptMultiSpend1ID, params)
-// 	_, err = th.ApplyTestMessageWithActors(actors, st, vms, msg, types.NewBlockHeight(0))
+// 	_, err = th.ApplyTestMessageWithActors(actors, st, vms, msg, abi.ChainEpoch(0))
 // 	require.Error(t, err)
 // 	assert.Contains(t, err.Error(), "second callSendTokens")
 // 	assert.Contains(t, err.Error(), "not enough balance")
@@ -526,7 +526,7 @@ package consensus_test
 // 	params, err = abi.ToEncodedValues(addr1, addr2)
 // 	require.NoError(t, err)
 // 	msg = types.NewUnsignedMessage(addr0, addr1, 0, types.ZeroAttoFIL, actor.AttemptMultiSpend2ID, params)
-// 	_, err = th.ApplyTestMessageWithActors(actors, st, vms, msg, types.NewBlockHeight(0))
+// 	_, err = th.ApplyTestMessageWithActors(actors, st, vms, msg, abi.ChainEpoch(0))
 // 	require.Error(t, err)
 // 	assert.Contains(t, err.Error(), "failed sendTokens")
 // 	assert.Contains(t, err.Error(), "not enough balance")
@@ -548,7 +548,7 @@ package consensus_test
 
 // 	// send 500 from addr1 to addr2
 // 	msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(500), types.SendMethodID, []byte{}, types.NewGasPrice(1), types.GasUnits(0))
-// 	_, err := NewDefaultProcessor().ApplyMessage(ctx, st, vms, msg, addr4, types.NewBlockHeight(0), vm.NewLegacyGasTracker(), nil)
+// 	_, err := NewDefaultProcessor().ApplyMessage(ctx, st, vms, msg, addr4, abi.ChainEpoch(0), vm.NewLegacyGasTracker(), nil)
 // 	require.NoError(t, err)
 
 // 	initActor, _ := st.GetActor(ctx, builtin.InitActorAddr)
@@ -559,7 +559,7 @@ package consensus_test
 
 // 	// send 250 along from addr2 to addr3
 // 	msg = types.NewMeteredMessage(addr2, addr3, 0, types.NewAttoFILFromFIL(300), types.SendMethodID, []byte{}, types.NewGasPrice(1), types.GasUnits(0))
-// 	_, err = NewDefaultProcessor().ApplyMessage(ctx, st, vms, msg, addr4, types.NewBlockHeight(0), vm.NewLegacyGasTracker(), nil)
+// 	_, err = NewDefaultProcessor().ApplyMessage(ctx, st, vms, msg, addr4, abi.ChainEpoch(0), vm.NewLegacyGasTracker(), nil)
 // 	require.NoError(t, err)
 
 // 	initActor, _ = st.GetActor(ctx, builtin.InitActorAddr)
@@ -619,7 +619,7 @@ package consensus_test
 // 	require.NoError(t, err)
 
 // 	processor := NewConfiguredProcessor(NewDefaultMessageValidator(), NewDefaultBlockRewarder(), actors)
-// 	_, exitCode, err := processor.CallQueryMethod(ctx, st, vms, addr1, actor.NestedBalanceID, args1, addr0, types.NewBlockHeight(0))
+// 	_, exitCode, err := processor.CallQueryMethod(ctx, st, vms, addr1, actor.NestedBalanceID, args1, addr0, abi.ChainEpoch(0))
 // 	require.Equal(t, uint8(0), exitCode)
 // 	require.NoError(t, err)
 
@@ -652,7 +652,7 @@ package consensus_test
 // 		gasLimit := types.GasUnits(200)
 // 		msg := types.NewMeteredMessage(addr0, addr1, 0, types.ZeroAttoFIL, actor.HasReturnValueID, nil, gasPrice, gasLimit)
 
-// 		appResult, err := th.ApplyTestMessageWithGas(actors, st, vms, msg, types.NewBlockHeight(0), minerAddr)
+// 		appResult, err := th.ApplyTestMessageWithGas(actors, st, vms, msg, abi.ChainEpoch(0), minerAddr)
 // 		require.NoError(t, err)
 // 		require.NoError(t, appResult.ExecutionError)
 
@@ -676,7 +676,7 @@ package consensus_test
 // 		gasLimit := types.GasUnits(200)
 // 		msg := types.NewMeteredMessage(addr0, addr1, 0, types.ZeroAttoFIL, actor.ChargeGasAndRevertErrorID, nil, gasPrice, gasLimit)
 
-// 		appResult, err := th.ApplyTestMessageWithGas(actors, st, vms, msg, types.NewBlockHeight(0), minerAddr)
+// 		appResult, err := th.ApplyTestMessageWithGas(actors, st, vms, msg, abi.ChainEpoch(0), minerAddr)
 // 		require.NoError(t, err)
 // 		assert.EqualError(t, appResult.ExecutionError, "boom")
 
@@ -702,7 +702,7 @@ package consensus_test
 // 		gasLimit := types.GasUnits(50)
 // 		msg := types.NewMeteredMessage(addr0, addr1, 0, types.ZeroAttoFIL, actor.HasReturnValueID, nil, gasPrice, gasLimit)
 
-// 		appResult, err := th.ApplyTestMessageWithGas(actors, st, vms, msg, types.NewBlockHeight(0), minerAddr)
+// 		appResult, err := th.ApplyTestMessageWithGas(actors, st, vms, msg, abi.ChainEpoch(0), minerAddr)
 // 		require.NoError(t, err)
 // 		assert.EqualError(t, appResult.ExecutionError, "Insufficient gas: gas cost exceeds gas limit")
 
@@ -732,7 +732,7 @@ package consensus_test
 // 		gasLimit := types.GasUnits(600)
 // 		msg := types.NewMeteredMessage(addr0, addr1, 0, types.ZeroAttoFIL, actor.RunsAnotherMessageID, params, gasPrice, gasLimit)
 
-// 		appResult, err := th.ApplyTestMessageWithGas(actors, st, vms, msg, types.NewBlockHeight(0), minerAddr)
+// 		appResult, err := th.ApplyTestMessageWithGas(actors, st, vms, msg, abi.ChainEpoch(0), minerAddr)
 // 		require.NoError(t, err)
 // 		require.NoError(t, appResult.ExecutionError)
 // 		minerActor, err := st.GetActor(ctx, minerAddr)
@@ -763,7 +763,7 @@ package consensus_test
 // 		gasLimit := types.GasUnits(50)
 // 		msg := types.NewMeteredMessage(addr0, addr1, 0, types.ZeroAttoFIL, actor.RunsAnotherMessageID, params, gasPrice, gasLimit)
 
-// 		appResult, err := th.ApplyTestMessageWithGas(actors, st, vms, msg, types.NewBlockHeight(0), minerAddr)
+// 		appResult, err := th.ApplyTestMessageWithGas(actors, st, vms, msg, abi.ChainEpoch(0), minerAddr)
 // 		require.NoError(t, err)
 // 		assert.EqualError(t, appResult.ExecutionError, "Insufficient gas: gas cost exceeds gas limit")
 
@@ -797,7 +797,7 @@ package consensus_test
 // 	t.Run("A single message whose gas limit is greater than the block gas limit fails permanently", func(t *testing.T) {
 // 		msg := types.NewMeteredMessage(sender, receiver, 0, types.ZeroAttoFIL, actor.BlockLimitTestMethodID, []byte{}, types.ZeroAttoFIL, types.BlockGasLimit*2)
 
-// 		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.UnsignedMessage{msg}, sender, types.NewBlockHeight(0), nil)
+// 		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.UnsignedMessage{msg}, sender, abi.ChainEpoch(0), nil)
 // 		require.NoError(t, err)
 
 // 		assert.Error(t, result[0].Failure)
@@ -808,7 +808,7 @@ package consensus_test
 // 		msg1 := types.NewMeteredMessage(sender, receiver, 0, types.ZeroAttoFIL, actor.BlockLimitTestMethodID, []byte{}, types.ZeroAttoFIL, types.BlockGasLimit*5/8)
 // 		msg2 := types.NewMeteredMessage(sender, receiver, 1, types.ZeroAttoFIL, actor.BlockLimitTestMethodID, []byte{}, types.ZeroAttoFIL, types.BlockGasLimit*5/8)
 
-// 		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.UnsignedMessage{msg1, msg2}, sender, types.NewBlockHeight(0), nil)
+// 		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.UnsignedMessage{msg1, msg2}, sender, abi.ChainEpoch(0), nil)
 // 		require.NoError(t, err)
 
 // 		assert.Nil(t, result[0].Failure)
@@ -819,7 +819,7 @@ package consensus_test
 // 		msg1 := types.NewMeteredMessage(sender, receiver, 0, types.ZeroAttoFIL, actor.BlockLimitTestMethodID, []byte{}, types.ZeroAttoFIL, types.BlockGasLimit*3/8)
 // 		msg2 := types.NewMeteredMessage(sender, receiver, 1, types.ZeroAttoFIL, actor.BlockLimitTestMethodID, []byte{}, types.ZeroAttoFIL, types.BlockGasLimit*7/8)
 
-// 		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.UnsignedMessage{msg1, msg2}, sender, types.NewBlockHeight(0), nil)
+// 		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.UnsignedMessage{msg1, msg2}, sender, abi.ChainEpoch(0), nil)
 // 		require.NoError(t, err)
 
 // 		assert.Nil(t, result[0].Failure)
@@ -832,7 +832,7 @@ package consensus_test
 // 		msg2 := types.NewMeteredMessage(sender, receiver, 1, types.ZeroAttoFIL, actor.BlockLimitTestMethodID, []byte{}, types.ZeroAttoFIL, types.BlockGasLimit*7/8)
 // 		msg3 := types.NewMeteredMessage(sender, receiver, 2, types.ZeroAttoFIL, actor.BlockLimitTestMethodID, []byte{}, types.ZeroAttoFIL, types.BlockGasLimit*3/8)
 
-// 		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.UnsignedMessage{msg1, msg2, msg3}, sender, types.NewBlockHeight(0), nil)
+// 		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.UnsignedMessage{msg1, msg2, msg3}, sender, abi.ChainEpoch(0), nil)
 // 		require.NoError(t, err)
 
 // 		assert.Nil(t, result[0].Failure)

@@ -3,10 +3,9 @@ package chain
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 )
 
 // TipSetProvider provides tipsets for traversal.
@@ -111,10 +110,10 @@ func CollectTipsToCommonAncestor(ctx context.Context, store TipSetProvider, oldH
 
 	// Add 1 to the height argument so that the common ancestor is not
 	// included in the outputs.
-	oldTips, err = CollectTipSetsOfHeightAtLeast(ctx, oldIter, types.NewBlockHeight(commonHeight+uint64(1)))
+	oldTips, err = CollectTipSetsOfHeightAtLeast(ctx, oldIter, commonHeight+1)
 	if err != nil {
 		return
 	}
-	newTips, err = CollectTipSetsOfHeightAtLeast(ctx, newIter, types.NewBlockHeight(commonHeight+uint64(1)))
+	newTips, err = CollectTipSetsOfHeightAtLeast(ctx, newIter, commonHeight+1)
 	return
 }

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
@@ -38,7 +39,7 @@ type Pool struct {
 
 type timedmessage struct {
 	message *types.SignedMessage
-	addedAt uint64
+	addedAt abi.ChainEpoch
 }
 
 type addressNonce struct {
@@ -62,7 +63,7 @@ func NewPool(cfg *config.MessagePoolConfig, validator PoolValidator) *Pool {
 
 // Add adds a message to the pool, tagged with the block height at which it was received.
 // Does nothing if the message is already in the pool.
-func (pool *Pool) Add(ctx context.Context, msg *types.SignedMessage, height uint64) (cid.Cid, error) {
+func (pool *Pool) Add(ctx context.Context, msg *types.SignedMessage, height abi.ChainEpoch) (cid.Cid, error) {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
 
@@ -141,7 +142,7 @@ func (pool *Pool) LargestNonce(address address.Address) (largest uint64, found b
 }
 
 // PendingBefore returns the CIDs of messages added with height less than `minimumHeight`.
-func (pool *Pool) PendingBefore(minimumHeight uint64) []cid.Cid {
+func (pool *Pool) PendingBefore(minimumHeight abi.ChainEpoch) []cid.Cid {
 	pool.lk.RLock()
 	defer pool.lk.RUnlock()
 

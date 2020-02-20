@@ -98,7 +98,7 @@ var storeLsCmd = &cmds.Command{
 					output.WriteString("\t")
 					output.WriteString(block.StateRoot.String())
 					output.WriteString("\t")
-					output.WriteString(strconv.FormatUint(block.Height, 10))
+					output.WriteString(strconv.FormatInt(int64(block.Height), 10))
 					output.WriteString("\t")
 					output.WriteString(block.Messages.String())
 				} else {

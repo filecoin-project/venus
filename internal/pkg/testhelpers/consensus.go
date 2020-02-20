@@ -22,7 +22,7 @@ import (
 
 // RequireSignedTestBlockFromTipSet creates a block with a valid signature by
 // the passed in miner work and a Miner field set to the minerAddr.
-func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, stateRootCid cid.Cid, receiptRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer types.Signer) *block.Block {
+func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, stateRootCid cid.Cid, receiptRootCid cid.Cid, height abi.ChainEpoch, minerAddr address.Address, minerWorker address.Address, signer types.Signer) *block.Block {
 	electionProof := consensus.MakeFakePoStForTest()
 	ticket := consensus.MakeFakeTicketForTest()
 	emptyBLSSig := crypto.Signature{
@@ -37,7 +37,7 @@ func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, sta
 		Miner:           minerAddr,
 		Ticket:          ticket,
 		Parents:         baseTipSet.Key(),
-		ParentWeight:    types.Uint64ToBig(10000 * height),
+		ParentWeight:    types.Uint64ToBig(uint64(height * 10000)),
 		Height:          height,
 		StateRoot:       e.NewCid(stateRootCid),
 		MessageReceipts: e.NewCid(receiptRootCid),
@@ -128,22 +128,22 @@ func NewFakeProcessor() *consensus.DefaultProcessor {
 
 // ApplyTestMessage sends a message directly to the vm, bypassing message
 // validation
-func ApplyTestMessage(st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
+func ApplyTestMessage(st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch) (*consensus.ApplicationResult, error) {
 	return applyTestMessageWithAncestors(vm.DefaultActors, st, store, msg, bh, nil)
 }
 
 // ApplyTestMessageWithActors sends a message directly to the vm with a given set of builtin actors
-func ApplyTestMessageWithActors(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
+func ApplyTestMessageWithActors(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch) (*consensus.ApplicationResult, error) {
 	return applyTestMessageWithAncestors(actors, st, store, msg, bh, nil)
 }
 
 // ApplyTestMessageWithGas uses the FakeBlockRewarder but the default SignedMessageValidator
-func ApplyTestMessageWithGas(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh *types.BlockHeight, minerOwner address.Address) (*consensus.ApplicationResult, error) {
+func ApplyTestMessageWithGas(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch, minerOwner address.Address) (*consensus.ApplicationResult, error) {
 	applier := consensus.NewConfiguredProcessor(actors)
 	return newMessageApplier(msg, applier, st, store, bh, minerOwner, nil)
 }
 
-func newMessageApplier(msg *types.UnsignedMessage, processor *consensus.DefaultProcessor, st state.Tree, vms vm.Storage, bh *types.BlockHeight, minerOwner address.Address, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
+func newMessageApplier(msg *types.UnsignedMessage, processor *consensus.DefaultProcessor, st state.Tree, vms vm.Storage, bh abi.ChainEpoch, minerOwner address.Address, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
 	// Dragons: support for this feature no longer exists, delete or resurect
 
 	// amr, err := processor.ApplyMessagesAndPayRewards(context.Background(), st, storageMap, []*types.UnsignedMessage{msg}, minerOwner, bh, ancestors)
@@ -174,7 +174,7 @@ func CreateAndApplyTestMessageFrom(t *testing.T, st state.Tree, vms vm.Storage, 
 		panic(err)
 	}
 	msg := types.NewUnsignedMessage(from, to, 0, types.NewAttoFILFromFIL(val), method, pdata)
-	return applyTestMessageWithAncestors(vm.DefaultActors, st, vms, msg, types.NewBlockHeight(bh), ancestors)
+	return applyTestMessageWithAncestors(vm.DefaultActors, st, vms, msg, abi.ChainEpoch(bh), ancestors)
 }
 
 // CreateAndApplyTestMessage wraps the given parameters in a message and calls
@@ -183,7 +183,7 @@ func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.Storage, to a
 	return CreateAndApplyTestMessageFrom(t, st, vms, address.TestAddress, to, val, bh, method, ancestors, params...)
 }
 
-func applyTestMessageWithAncestors(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh *types.BlockHeight, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
+func applyTestMessageWithAncestors(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
 	msg.GasPrice = types.NewGasPrice(1)
 	msg.GasLimit = types.GasUnits(300)
 

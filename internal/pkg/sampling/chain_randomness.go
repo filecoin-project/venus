@@ -1,10 +1,10 @@
 package sampling
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 )
 
 // SampleNthTicket produces a ticket sampled from the nth tipset in the
@@ -34,9 +34,9 @@ func SampleNthTicket(n int, tipSetsDescending []block.TipSet) (block.Ticket, err
 // SampleChainRandomness produces a slice of bytes (a ticket) sampled from the highest tipset with
 // height less than or equal to `sampleHeight`.
 // The tipset slice must be sorted by descending block height.
-func SampleChainRandomness(sampleHeight *types.BlockHeight, tipSetsDescending []block.TipSet) ([]byte, error) {
-	if sampleHeight.LessThan(types.NewBlockHeight(0)) {
-		return nil, errors.Errorf("can't sample chain at negative height %s", sampleHeight)
+func SampleChainRandomness(sampleHeight abi.ChainEpoch, tipSetsDescending []block.TipSet) ([]byte, error) {
+	if sampleHeight < 0 {
+		return nil, errors.Errorf("can't sample chain at negative height %d", sampleHeight)
 	}
 	if len(tipSetsDescending) == 0 {
 		return nil, errors.New("can't sample empty chain segment")
@@ -50,7 +50,7 @@ func SampleChainRandomness(sampleHeight *types.BlockHeight, tipSetsDescending []
 			return nil, errors.Wrapf(err, "failed sampling chain segment")
 		}
 
-		if types.NewBlockHeight(height).LessEqual(sampleHeight) {
+		if height <= sampleHeight {
 			sampleIndex = i
 			break
 		}
@@ -64,7 +64,7 @@ func SampleChainRandomness(sampleHeight *types.BlockHeight, tipSetsDescending []
 			return nil, errors.Wrap(err, "failed to read chain segment height")
 		}
 
-		return nil, errors.Errorf("sample height %s out of range %d...", sampleHeight, lowestAvailableHeight)
+		return nil, errors.Errorf("sample height %d out of range %d...", sampleHeight, lowestAvailableHeight)
 	}
 
 	ticket, err := tipSetsDescending[sampleIndex].MinTicket()

@@ -243,7 +243,7 @@ func (c *Expected) validateMining(
 
 		// Verify PoStRandomness
 		nullBlkCount := blk.Height - prevHeight - 1
-		if !c.VerifyPoStRandomness(blk.EPoStInfo.PoStRandomness, electionTicket, workerAddr, nullBlkCount) {
+		if !c.VerifyPoStRandomness(blk.EPoStInfo.PoStRandomness, electionTicket, workerAddr, uint64(nullBlkCount)) {
 			return errors.New("PoStRandomness invalid")
 		}
 

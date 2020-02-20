@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -164,7 +165,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 
 		// add tipsets till finality
 		go func() {
-			for i := 0; i < consensus.FinalityEpochs; i++ {
+			for i := abi.ChainEpoch(0); i < consensus.FinalityEpochs; i++ {
 				nextTS = builder.BuildOn(nextTS, 1, nil)
 				valid, err := listener.Handle(context.TODO(), []block.TipSet{nextTS})
 				require.NoError(t, err)

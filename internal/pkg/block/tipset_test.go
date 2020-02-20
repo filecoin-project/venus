@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
@@ -38,7 +39,7 @@ func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWei
 		Ticket:          blk.Ticket{VRFProof: ticket},
 		Parents:         blk.NewTipSetKey(parentCid),
 		ParentWeight:    fbig.NewInt(int64(parentWeight)),
-		Height:          42 + uint64(height),
+		Height:          42 + abi.ChainEpoch(height),
 		Messages:        e.NewCid(cidGetter()),
 		StateRoot:       e.NewCid(cidGetter()),
 		MessageReceipts: e.NewCid(cidGetter()),

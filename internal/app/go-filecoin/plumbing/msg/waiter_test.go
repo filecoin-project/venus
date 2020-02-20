@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
@@ -166,7 +167,7 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, root block.TipSet, msgSets ...[][]*types.SignedMessage) []block.TipSet {
 	var tipSets []block.TipSet
 	parents := root
-	height := uint64(0)
+	height := abi.ChainEpoch(0)
 	stateRootCidGetter := types.NewCidForTestGetter()
 
 	// only add root to the chain if it is not the zero-valued-tipset

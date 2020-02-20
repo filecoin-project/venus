@@ -7,10 +7,12 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
@@ -51,7 +53,7 @@ func TestMineOnce10Null(t *testing.T) {
 	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight abi.ChainEpoch) ([]block.TipSet, error) {
 		return []block.TipSet{baseTs}, nil
 	}
 	messages := chain.NewMessageStore(bs)
@@ -118,7 +120,7 @@ func TestMineOneEpoch10Null(t *testing.T) {
 	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight abi.ChainEpoch) ([]block.TipSet, error) {
 		return []block.TipSet{baseTs}, nil
 	}
 	messages := chain.NewMessageStore(bs)
@@ -159,7 +161,7 @@ func TestMineOneEpoch10Null(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, blk)
 	assert.Equal(t, uint64(10+1), blk.Height)
-	assert.Equal(t, chainClock.EpochAtTime(time.Unix(int64(blk.Timestamp), 0)), types.NewBlockHeight(blk.Height))
+	assert.Equal(t, chainClock.EpochAtTime(time.Unix(int64(blk.Timestamp), 0)), blk.Height)
 }
 
 // Mining loop unit tests
@@ -209,7 +211,7 @@ func TestCorrectNullBlocksGivenEpoch(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	w := NewTestWorker(t, func(_ context.Context, _ block.TipSet, nullCount uint64, _ chan<- Output) bool {
-		assert.Equal(t, h+19, nullCount)
+		assert.Equal(t, uint64(h+19), nullCount)
 		wg.Done()
 		return true
 	})

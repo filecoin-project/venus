@@ -3,11 +3,14 @@ package syncer
 import (
 	"context"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
+
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -18,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 // Syncer updates its chain.Store according to the methods of its
@@ -84,8 +86,8 @@ type ChainReaderWriter interface {
 	HasTipSetAndState(ctx context.Context, tsKey block.TipSetKey) bool
 	PutTipSetMetadata(ctx context.Context, tsas *chain.TipSetMetadata) error
 	SetHead(ctx context.Context, ts block.TipSet) error
-	HasTipSetAndStatesWithParentsAndHeight(pTsKey block.TipSetKey, h uint64) bool
-	GetTipSetAndStatesByParentsAndHeight(pTsKey block.TipSetKey, h uint64) ([]*chain.TipSetMetadata, error)
+	HasTipSetAndStatesWithParentsAndHeight(pTsKey block.TipSetKey, h abi.ChainEpoch) bool
+	GetTipSetAndStatesByParentsAndHeight(pTsKey block.TipSetKey, h abi.ChainEpoch) ([]*chain.TipSetMetadata, error)
 }
 
 type messageStore interface {
@@ -259,7 +261,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 	if err != nil {
 		return err
 	}
-	ancestorHeight := types.NewBlockHeight(h).Sub(types.NewBlockHeight(uint64(consensus.AncestorRoundsNeeded)))
+	ancestorHeight := h - consensus.AncestorRoundsNeeded
 	ancestors, err := chain.GetRecentAncestors(ctx, parent, syncer.chainStore, ancestorHeight)
 	if err != nil {
 		return err

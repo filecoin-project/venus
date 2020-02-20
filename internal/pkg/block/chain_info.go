@@ -3,6 +3,7 @@ package block
 import (
 	"fmt"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
@@ -13,12 +14,12 @@ type ChainInfo struct {
 	// The peer that sent us the TipSetKey message.
 	Sender peer.ID
 	Head   TipSetKey
-	Height uint64
+	Height abi.ChainEpoch
 }
 
 // NewChainInfo creates a chain info from a peer id a head tipset key and a
 // chain height.
-func NewChainInfo(source peer.ID, sender peer.ID, head TipSetKey, height uint64) *ChainInfo {
+func NewChainInfo(source peer.ID, sender peer.ID, head TipSetKey, height abi.ChainEpoch) *ChainInfo {
 	return &ChainInfo{
 		Source: source,
 		Sender: sender,

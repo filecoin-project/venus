@@ -3,13 +3,14 @@ package series
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 
 // WaitForBlockHeight will inspect the chain head and wait till the height is equal to or
 // greater than the provide height `bh`
-func WaitForBlockHeight(ctx context.Context, client *fast.Filecoin, bh *types.BlockHeight) error {
+func WaitForBlockHeight(ctx context.Context, client *fast.Filecoin, bh abi.ChainEpoch) error {
 	for {
 
 		hh, err := GetHeadBlockHeight(ctx, client)
@@ -17,7 +18,7 @@ func WaitForBlockHeight(ctx context.Context, client *fast.Filecoin, bh *types.Bl
 			return err
 		}
 
-		if hh.GreaterEqual(bh) {
+		if hh >= bh {
 			break
 		}
 

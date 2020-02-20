@@ -119,7 +119,7 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) er
 		return nil
 	}
 
-	if uint64(provingPeriodStart) <= tipsetHeight {
+	if provingPeriodStart <= tipsetHeight {
 		// it's not time to PoSt
 		return nil
 	}
@@ -145,7 +145,7 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, provingPe
 		return
 	}
 
-	challengeSeed, err := p.getChallengeSeed(ctx, uint64(provingPeriodStart))
+	challengeSeed, err := p.getChallengeSeed(ctx, provingPeriodStart)
 	if err != nil {
 		log.Error("error getting challenge seed", err)
 		return
@@ -223,10 +223,10 @@ func (p *Poster) getProvingSet(ctx context.Context, stateView *appstate.View) (s
 	return consensus.NewPowerTableView(stateView).SortedSectorInfos(ctx, p.minerAddr)
 }
 
-func (p *Poster) getChallengeSeed(ctx context.Context, challengeHeight uint64) ([32]byte, error) {
+func (p *Poster) getChallengeSeed(ctx context.Context, challengeHeight abi.ChainEpoch) ([32]byte, error) {
 	var challengeSeed [32]byte
 
-	randomness, err := p.chain.SampleRandomness(ctx, types.NewBlockHeight(challengeHeight))
+	randomness, err := p.chain.SampleRandomness(ctx, challengeHeight)
 	if err != nil {
 		return challengeSeed, err
 	}

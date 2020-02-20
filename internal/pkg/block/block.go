@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
@@ -41,7 +42,7 @@ type Block struct {
 	ParentWeight fbig.Int `json:"parentWeight"`
 
 	// Height is the chain height of this block.
-	Height uint64 `json:"height"`
+	Height abi.ChainEpoch `json:"height"`
 
 	// StateRoot is a cid pointer to the state tree after application of the
 	// transactions state transitions.

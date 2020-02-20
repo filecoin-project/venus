@@ -55,7 +55,7 @@ type actorProvider interface {
 }
 
 type publisher interface {
-	Publish(ctx context.Context, message *types.SignedMessage, height uint64, bcast bool) error
+	Publish(ctx context.Context, message *types.SignedMessage, height abi.ChainEpoch, bcast bool) error
 }
 
 var msgSendErrCt = metrics.NewInt64Counter("message_sender_error", "Number of errors encountered while sending a message")
@@ -154,7 +154,7 @@ func sendSignedMsg(ctx context.Context, ob *Outbox, signed *types.SignedMessage,
 	}
 
 	// Add to the local message queue/pool at the last possible moment before broadcasting to network.
-	if err := ob.queue.Enqueue(ctx, signed, height); err != nil {
+	if err := ob.queue.Enqueue(ctx, signed, uint64(height)); err != nil {
 		return cid.Undef, nil, errors.Wrap(err, "failed to add message to outbound queue")
 	}
 
@@ -196,7 +196,7 @@ func nextNonce(act *actor.Actor, queue *Queue, address address.Address) (uint64,
 	return actorNonce, nil
 }
 
-func tipsetHeight(provider chainProvider, key block.TipSetKey) (uint64, error) {
+func tipsetHeight(provider chainProvider, key block.TipSetKey) (abi.ChainEpoch, error) {
 	head, err := provider.GetTipSet(key)
 	if err != nil {
 		return 0, err

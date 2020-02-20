@@ -3,12 +3,13 @@ package chain
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // ErrNoCommonAncestor is returned when two chains assumed to have a common ancestor do not.
@@ -21,7 +22,7 @@ var ErrNoCommonAncestor = errors.New("no common ancestor")
 // the length of the returned list may vary (more null blocks -> shorter length).
 // This is all more complex than necessary, we should just index tipsets by height:
 // https://github.com/filecoin-project/go-filecoin/issues/3025
-func GetRecentAncestors(ctx context.Context, base block.TipSet, provider TipSetProvider, minHeight *types.BlockHeight) (ts []block.TipSet, err error) {
+func GetRecentAncestors(ctx context.Context, base block.TipSet, provider TipSetProvider, minHeight abi.ChainEpoch) (ts []block.TipSet, err error) {
 	ctx, span := trace.StartSpan(ctx, "Chain.GetRecentAncestors")
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
@@ -31,10 +32,10 @@ func GetRecentAncestors(ctx context.Context, base block.TipSet, provider TipSetP
 
 // CollectTipSetsPastHeight collects all tipsets down to the first tipset with a height less than
 // or equal to the earliest possible proving period start
-func CollectTipSetsPastHeight(iterator *TipsetIterator, minHeight *types.BlockHeight) ([]block.TipSet, error) {
+func CollectTipSetsPastHeight(iterator *TipsetIterator, minHeight abi.ChainEpoch) ([]block.TipSet, error) {
 	var ret []block.TipSet
 	var err error
-	var h uint64
+	var h abi.ChainEpoch
 	for ; !iterator.Complete(); err = iterator.Next() {
 		if err != nil {
 			return nil, err
@@ -44,7 +45,7 @@ func CollectTipSetsPastHeight(iterator *TipsetIterator, minHeight *types.BlockHe
 			return nil, err
 		}
 		ret = append(ret, iterator.Value())
-		if types.NewBlockHeight(h).LessEqual(minHeight) {
+		if h <= minHeight {
 			err = iterator.Next()
 			if err != nil {
 				return nil, err
@@ -72,10 +73,10 @@ func CollectAtMostNTipSets(ctx context.Context, iterator *TipsetIterator, n uint
 
 // CollectTipSetsOfHeightAtLeast collects all tipsets with a height greater
 // than or equal to minHeight from the input tipset.
-func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator, minHeight *types.BlockHeight) ([]block.TipSet, error) {
+func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator, minHeight abi.ChainEpoch) ([]block.TipSet, error) {
 	var ret []block.TipSet
 	var err error
-	var h uint64
+	var h abi.ChainEpoch
 	for ; !iterator.Complete(); err = iterator.Next() {
 		if err != nil {
 			return nil, err
@@ -84,7 +85,7 @@ func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator
 		if err != nil {
 			return nil, err
 		}
-		if types.NewBlockHeight(h).LessThan(minHeight) {
+		if h < minHeight {
 			return ret, nil
 		}
 		ret = append(ret, iterator.Value())

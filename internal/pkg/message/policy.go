@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -99,7 +100,7 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 				return err
 			}
 			for _, restoredMsg := range secpMsgs {
-				err := target.Requeue(ctx, restoredMsg, chainHeight)
+				err := target.Requeue(ctx, restoredMsg, uint64(chainHeight))
 				if err != nil {
 					return err
 				}
@@ -108,8 +109,8 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 	}
 
 	// Expire messages that have been in the queue for too long; they will probably never be mined.
-	if chainHeight >= p.maxAgeRounds { // avoid uint subtraction overflow
-		expired := target.ExpireBefore(ctx, chainHeight-p.maxAgeRounds)
+	if uint64(chainHeight) >= p.maxAgeRounds { // avoid uint subtraction overflow
+		expired := target.ExpireBefore(ctx, uint64(chainHeight)-p.maxAgeRounds)
 		for _, msg := range expired {
 			log.Warnf("Outbound message %v expired un-mined after %d rounds", msg, p.maxAgeRounds)
 		}
@@ -118,7 +119,7 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 }
 
 // reorgHeight returns height of the new chain given only the tipset diff which may be empty
-func reorgHeight(oldTips, newTips []block.TipSet) (uint64, error) {
+func reorgHeight(oldTips, newTips []block.TipSet) (abi.ChainEpoch, error) {
 	if len(newTips) > 0 {
 		return newTips[0].Height()
 	} else if len(oldTips) > 0 { // A pure rewind is unlikely in practice.

@@ -65,7 +65,7 @@ Timestamp:  %s
 `,
 				block.Header.Miner,
 				wStr,
-				strconv.FormatUint(block.Header.Height, 10),
+				strconv.FormatInt(int64(block.Header.Height), 10),
 				block.Header.Messages.String(),
 				strconv.FormatUint(block.Header.Timestamp, 10),
 			)
@@ -117,7 +117,7 @@ Timestamp:  %s
 `,
 				block.Miner,
 				wStr,
-				strconv.FormatUint(block.Height, 10),
+				strconv.FormatInt(int64(block.Height), 10),
 				strconv.FormatUint(block.Timestamp, 10),
 			)
 			return err

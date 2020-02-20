@@ -10,11 +10,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/pkg/errors"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/pkg/errors"
 )
 
 // Scheduler is the mining interface consumers use.
@@ -94,7 +95,7 @@ func (s *timingScheduler) mineLoop(miningCtx context.Context, outCh chan Output,
 		if err != nil {
 			log.Errorf("error getting height from base", err)
 		}
-		nullBlkCount := uint64(currEpoch.AsBigInt().Int64()) - h - 1
+		nullBlkCount := uint64(currEpoch-h) - 1
 		doneWg.Add(1)
 		go func(ctx context.Context) {
 			s.worker.Mine(ctx, base, nullBlkCount, outCh)
@@ -167,8 +168,8 @@ func MineOneEpoch(ctx context.Context, w DefaultWorker, ts block.TipSet, nullCou
 	if err != nil {
 		return nil, err
 	}
-	epochStartTime := chainClock.StartTimeOfEpoch(types.NewBlockHeight(nullCount + h + 1))
-	nextEpochStartTime := chainClock.StartTimeOfEpoch(types.NewBlockHeight(nullCount + h + 2))
+	epochStartTime := chainClock.StartTimeOfEpoch(abi.ChainEpoch(nullCount) + h + 1)
+	nextEpochStartTime := chainClock.StartTimeOfEpoch(abi.ChainEpoch(nullCount) + h + 2)
 	epochTime := nextEpochStartTime.Sub(epochStartTime)
 	halfEpochTime := epochTime / time.Duration(2) // mine blocks midway through the epoch
 

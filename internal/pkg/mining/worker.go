@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
@@ -59,7 +60,7 @@ type GetWeight func(context.Context, block.TipSet) (fbig.Int, error)
 
 // GetAncestors is a function that returns the necessary ancestor chain to
 // process the input tipset.
-type GetAncestors func(context.Context, block.TipSet, *types.BlockHeight) ([]block.TipSet, error)
+type GetAncestors func(context.Context, block.TipSet, abi.ChainEpoch) ([]block.TipSet, error)
 
 // MessageSource provides message candidates for mining into blocks
 type MessageSource interface {
@@ -214,7 +215,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- Output{Err: err}
 		return
 	}
-	ancestors, err := w.getAncestors(ctx, base, types.NewBlockHeight(baseHeight+nullBlkCount+1))
+	ancestors, err := w.getAncestors(ctx, base, baseHeight+(abi.ChainEpoch(nullBlkCount+1)))
 	if err != nil {
 		log.Warnf("Worker.Mine couldn't get ancestorst %s", err)
 		outCh <- Output{Err: err}
@@ -333,7 +334,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 
 	postInfo := block.NewEPoStInfo(post, postRandomness, block.FromFFICandidates(winners...)...)
 
-	next, err := w.Generate(ctx, base, nextTicket, nullBlkCount, postInfo)
+	next, err := w.Generate(ctx, base, nextTicket, abi.ChainEpoch(nullBlkCount), postInfo)
 	if err == nil {
 		log.Debugf("Worker.Mine generates new winning block! %s", next.Cid().String())
 	}

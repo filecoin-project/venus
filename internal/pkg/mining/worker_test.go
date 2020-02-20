@@ -59,7 +59,7 @@ func TestLookbackElection(t *testing.T) {
 	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight abi.ChainEpoch) ([]block.TipSet, error) {
 		return ancestors, nil
 	}
 
@@ -158,7 +158,7 @@ func Test_Mine(t *testing.T) {
 	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight abi.ChainEpoch) ([]block.TipSet, error) {
 		return []block.TipSet{tipSet}, nil
 	}
 
@@ -342,7 +342,7 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 
 	// messages := []*types.UnsignedMessage{msg0, msg1, msg2, msg3}
 
-	// res, err := consensus.NewDefaultProcessor().ApplyMessagesAndPayRewards(ctx, st, vms, messages, addr1, types.NewBlockHeight(0), nil)
+	// res, err := consensus.NewDefaultProcessor().ApplyMessagesAndPayRewards(ctx, st, vms, messages, addr1, abi.ChainEpoch(0), nil)
 	// assert.NoError(t, err)
 	// require.NotNil(t, res)
 
@@ -377,7 +377,7 @@ func TestApplyBLSMessages(t *testing.T) {
 	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight abi.ChainEpoch) ([]block.TipSet, error) {
 		return []block.TipSet{tipSet}, nil
 	}
 
@@ -398,7 +398,7 @@ func TestApplyBLSMessages(t *testing.T) {
 			addr = secpAddress
 		}
 		smsg := requireSignedMessage(t, mockSigner, addr, addrs[3], uint64(i/2), types.NewAttoFILFromFIL(1))
-		_, err := pool.Add(ctx, smsg, uint64(0))
+		_, err := pool.Add(ctx, smsg, abi.ChainEpoch(0))
 		require.NoError(t, err)
 	}
 
@@ -495,7 +495,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight abi.ChainEpoch) ([]block.TipSet, error) {
 		return nil, nil
 	}
 
@@ -568,7 +568,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight abi.ChainEpoch) ([]block.TipSet, error) {
 		return nil, nil
 	}
 
@@ -673,7 +673,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight abi.ChainEpoch) ([]block.TipSet, error) {
 		return nil, nil
 	}
 	minerAddr := addrs[3]
@@ -703,7 +703,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
 	})
 
-	h := uint64(100)
+	h := abi.ChainEpoch(100)
 	w := fbig.NewInt(1000)
 	baseBlock := block.Block{
 		Height:       h,
@@ -740,7 +740,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight abi.ChainEpoch) ([]block.TipSet, error) {
 		return nil, nil
 	}
 
@@ -799,7 +799,7 @@ func TestGenerateError(t *testing.T) {
 	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight abi.ChainEpoch) ([]block.TipSet, error) {
 		return nil, nil
 	}
 

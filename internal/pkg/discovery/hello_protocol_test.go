@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -58,8 +59,8 @@ func TestHelloHandshake(t *testing.T) {
 	discovery.NewHelloProtocolHandler(a, genesisA.Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
 	discovery.NewHelloProtocolHandler(b, genesisA.Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
 
-	msc1.On("HelloCallback", b.ID(), heavy2.Key(), uint64(3)).Return()
-	msc2.On("HelloCallback", a.ID(), heavy1.Key(), uint64(2)).Return()
+	msc1.On("HelloCallback", b.ID(), heavy2.Key(), abi.ChainEpoch(3)).Return()
+	msc2.On("HelloCallback", a.ID(), heavy1.Key(), abi.ChainEpoch(2)).Return()
 
 	require.NoError(t, mn.LinkAll())
 	require.NoError(t, mn.ConnectAllButSelf())
@@ -153,8 +154,8 @@ func TestHelloMultiBlock(t *testing.T) {
 	discovery.NewHelloProtocolHandler(a, genesisTipset.At(0).Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
 	discovery.NewHelloProtocolHandler(b, genesisTipset.At(0).Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
 
-	msc1.On("HelloCallback", b.ID(), heavy2.Key(), uint64(3)).Return()
-	msc2.On("HelloCallback", a.ID(), heavy1.Key(), uint64(2)).Return()
+	msc1.On("HelloCallback", b.ID(), heavy2.Key(), abi.ChainEpoch(3)).Return()
+	msc2.On("HelloCallback", a.ID(), heavy1.Key(), abi.ChainEpoch(2)).Return()
 
 	assert.NoError(t, mn.LinkAll())
 	assert.NoError(t, mn.ConnectAllButSelf())

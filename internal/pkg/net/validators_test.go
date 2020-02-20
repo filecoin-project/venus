@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
@@ -104,7 +105,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 	time.Sleep(time.Millisecond * 100)
 
 	// create a valid block
-	validTime := chainClock.StartTimeOfEpoch(types.NewBlockHeight(uint64(1)))
+	validTime := chainClock.StartTimeOfEpoch(abi.ChainEpoch(1))
 	validBlk := &block.Block{
 		Height:    1,
 		Timestamp: uint64(validTime.Unix()),
