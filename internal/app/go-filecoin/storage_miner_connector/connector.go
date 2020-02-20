@@ -251,11 +251,6 @@ func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, s
 		return cid.Undef, err
 	}
 
-	dealIds := make([]types.Uint64, len(deals))
-	for i, deal := range deals {
-		dealIds[i] = types.Uint64(deal)
-	}
-
 	params := miner.ProveCommitSectorParams{
 		SectorNumber: sectorNum,
 		Proof:        abi.SealProof{ProofBytes: proof},
