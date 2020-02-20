@@ -7,44 +7,37 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
-	gfm_types "github.com/filecoin-project/go-fil-markets/shared/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/init"
+	paychActor "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paych"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
-// CreatePaymentChannelMethod is the method to call to create a new payment channel (actor)
-// TODO: make this the right method
-var CreatePaymentChannelMethod = storagemarket.CreateStorageMiner
-
-// RetrievalClientNodeConnector is the glue between go-filecoin and go-fil-markets'
+// RetrievalClientConnector is the glue between go-filecoin and go-fil-markets'
 // retrieval market interface
-type RetrievalClientNodeConnector struct {
+type RetrievalClientConnector struct {
 	bs blockstore.Blockstore
 	cs *chain.Store
 
 	// APIs/interfaces
-	signer RetrievalSigner
-	mw     MsgWaiter
-	outbox MsgSender
-	ps     piecestore.PieceStore
-	wal    WalletAPI
-	pchMgr PchMgrAPI
+	mw       MsgWaiter
+	outbox   MsgSender
+	paychMgr MgrAPI
+	ps       piecestore.PieceStore
+	signer   RetrievalSigner
+	wal      WalletAPI
 }
 
 type laneEntries []types.AttoFIL
-
-// ChannelInfo is a temporary struct for storing
-type ChannelInfo struct {
-	Payee    address.Address
-	Amount   types.AttoFIL
-	Redeemed types.AttoFIL
-}
 
 // MsgWaiter is an interface for waiting for a message to appear on chain
 type MsgWaiter interface {
@@ -74,15 +67,15 @@ type RetrievalSigner interface {
 	SignBytes(data []byte, addr address.Address) (types.Signature, error)
 }
 
-type PchMgrAPI interface {
-	AllocateLane(paychAddr address.Address) (uint64, error)
+type MgrAPI interface {
+	AllocateLane(paychAddr address.Address) (int64, error)
 	GetPaymentChannelInfo(paychAddr address.Address)
-	CreatePaymentChannel(payer, payee address.Address) (ChannelInfo, error)
+	CreatePaymentChannel(payer, payee address.Address) (paych.ChannelInfo, error)
 	UpdatePaymentChannel(paychAddr address.Address) error
 }
 
-// NewRetrievalClientNodeConnector creates a new RetrievalClientNodeConnector
-func NewRetrievalClientNodeConnector(
+// NewRetrievalClientConnector creates a new RetrievalClientConnector
+func NewRetrievalClientConnector(
 	bs blockstore.Blockstore,
 	cs *chain.Store,
 	mw MsgWaiter,
@@ -90,24 +83,26 @@ func NewRetrievalClientNodeConnector(
 	ps piecestore.PieceStore,
 	signer RetrievalSigner,
 	wal WalletAPI,
-) *RetrievalClientNodeConnector {
-	return &RetrievalClientNodeConnector{
-		bs:     bs,
-		cs:     cs,
-		mw:     mw,
-		outbox: ob,
-		ps:     ps,
-		signer: signer,
-		wal:    wal,
+	paychMgr MgrAPI,
+) *RetrievalClientConnector {
+	return &RetrievalClientConnector{
+		bs:       bs,
+		cs:       cs,
+		mw:       mw,
+		outbox:   ob,
+		paychMgr: paychMgr,
+		ps:       ps,
+		signer:   signer,
+		wal:      wal,
 	}
 }
 
 // GetOrCreatePaymentChannel gets or creates a payment channel and posts to chain
 // Assumes GetOrCreatePaymentChannel is called before AllocateLane
 // Blocks until message is mined?
-func (r *RetrievalClientNodeConnector) GetOrCreatePaymentChannel(ctx context.Context, clientAddress address.Address, minerAddress address.Address, clientFundsAvailable abi.TokenAmount) (address.Address, error) {
+func (r *RetrievalClientConnector) GetOrCreatePaymentChannel(ctx context.Context, clientAddress address.Address, minerAddress address.Address, clientFundsAvailable abi.TokenAmount) (address.Address, error) {
 
-	if clientWallet == address.Undef || minerWallet == address.Undef {
+	if clientAddress == address.Undef || minerAddress == address.Undef {
 		return address.Undef, errors.New("empty address")
 	}
 
@@ -119,7 +114,7 @@ func (r *RetrievalClientNodeConnector) GetOrCreatePaymentChannel(ctx context.Con
 
 	if chid == address.Undef {
 		// create the payment channel
-		bal, err := r.wal.GetBalance(ctx, clientWallet)
+		bal, err := r.wal.GetBalance(ctx, clientAddress)
 		if err != nil {
 			return address.Undef, err
 		}
@@ -129,26 +124,20 @@ func (r *RetrievalClientNodeConnector) GetOrCreatePaymentChannel(ctx context.Con
 			return address.Undef, errors.New("not enough funds in wallet")
 		}
 
-		height, err := r.getBlockHeight()
+		execParams, err := paychActorCtorExecParamsFor(clientAddress, minerAddress)
 		if err != nil {
 			return address.Undef, err
 		}
-		validAt := height + 1 // valid almost immediately since a retrieval could theoretically happen in 1 block
-
-		params := struct {
-			pa address.Address
-			bh uint64
-		}{minerWallet, validAt} // params: payment address, valid block height}
 		msgCid, _, err := r.outbox.Send(
 			ctx,
-			clientWallet,               // from
-			minerWallet,                // to
-			types.ZeroAttoFIL,          // value
-			types.NewAttoFILFromFIL(1), // gasPrice
-			types.NewGasUnits(300),     // gasLimit
-			true,                       // broadcast to network
-			CreatePaymentChannelMethod, // command
-			params,
+			clientAddress,
+			builtin.InitActorAddr,
+			types.ZeroAttoFIL,
+			types.NewAttoFILFromFIL(1),
+			types.NewGasUnits(300),
+			true,
+			types.MethodID(builtin.MethodsInit.Exec),
+			execParams,
 		)
 		if err != nil {
 			return address.Undef, err
@@ -163,10 +152,28 @@ func (r *RetrievalClientNodeConnector) GetOrCreatePaymentChannel(ctx context.Con
 	return chid, nil
 }
 
+func paychActorCtorExecParamsFor(client, miner address.Address) (init.ExecParams, error) {
+	ctorParams := paychActor.ConstructorParams{
+		From: client,
+		To:   miner,
+	}
+	var marshaled bytes.Buffer
+	err := ctorParams.MarshalCBOR(&marshaled)
+	if err != nil {
+		return init.ExecParams{}, err
+	}
+
+	p := init.ExecParams{
+		CodeCID:           builtin.PaymentChannelActorCodeID,
+		ConstructorParams: marshaled.Bytes(),
+	}
+	return p, nil
+}
+
 // AllocateLane creates a new lane for this paymentChannel with 0 FIL in the lane
 // Assumes AllocateLane is called after GetOrCreatePaymentChannel
-//func (r *RetrievalClientNodeConnector) AllocateLane(paymentChannel address.Address) (int64, error) {
-func (r *RetrievalClientNodeConnector) AllocateLane(paymentChannel address.Address) (lane uint64, err error) {
+//func (r *RetrievalClientConnector) AllocateLane(paymentChannel address.Address) (int64, error) {
+func (r *RetrievalClientConnector) AllocateLane(paymentChannel address.Address) (lane uint64, err error) {
 	//payer, err := r.getPayerForChannel(paymentChannel)
 	//if err != nil {
 	//	return 0, err
@@ -181,18 +188,17 @@ func (r *RetrievalClientNodeConnector) AllocateLane(paymentChannel address.Addre
 	return lane, nil
 }
 
-
 // CreatePaymentVoucher creates a payment voucher for the retrieval client.
 // If there is not enough value stored in the payment channel registry, an error is returned.
 // If a lane has not been allocated for this payment channel, an error is returned.
-func (r *RetrievalClientNodeConnector) CreatePaymentVoucher(ctx context.Context, channelAddr address.Address, amount tokenamount.TokenAmount, lane uint64) (*gfm_types.SignedVoucher, error) {
+func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, channelAddr address.Address, amount abi.TokenAmount, lane uint64) (*paychActor.SignedVoucher, error) {
 	v, err := r.createSignedVoucher(ctx, channelAddr, lane, amount)
 	if err != nil {
 		return nil, err
 	}
 	return v, nil
 }
-func (r *RetrievalClientNodeConnector) createSignedVoucher(ctx context.Context, payer address.Address, lane uint64, amount tokenamount.TokenAmount) (*gfm_types.SignedVoucher, error) {
+func (r *RetrievalClientConnector) createSignedVoucher(ctx context.Context, payer address.Address, lane uint64, amount abi.TokenAmount) (*paychActor.SignedVoucher, error) {
 	height, err := r.getBlockHeight()
 	if err != nil {
 		return nil, err
@@ -204,14 +210,14 @@ func (r *RetrievalClientNodeConnector) createSignedVoucher(ctx context.Context, 
 	//}
 	var nonce uint64
 
-	v := gfm_types.SignedVoucher{
-		TimeLock:       0,   // TODO
-		SecretPreimage: nil, // TODO
-		Extra:          nil, // TODO
-		Lane:           lane,
-		Nonce:          nonce,
-		Amount:         amount,
-		MinCloseHeight: height + 1,
+	v := paychActor.SignedVoucher{
+		TimeLock:        0,   // TODO
+		SecretPreimage:  nil, // TODO
+		Extra:           nil, // TODO
+		Lane:            lane,
+		Nonce:           nonce,
+		Amount:          amount,
+		MinSettleHeight: abi.ChainEpoch(height + 1),
 	}
 
 	var buf bytes.Buffer
@@ -223,8 +229,9 @@ func (r *RetrievalClientNodeConnector) createSignedVoucher(ctx context.Context, 
 	if err != nil {
 		return nil, err
 	}
-	signature := gfm_types.Signature{
-		Type: gfm_types.KTBLS,
+	// TODO: set type correctly. See storagemarket
+	signature := crypto.Signature{
+		Type: crypto.SigTypeBLS,
 		Data: sig,
 	}
 	v.Signature = &signature
@@ -233,11 +240,11 @@ func (r *RetrievalClientNodeConnector) createSignedVoucher(ctx context.Context, 
 
 // handleMessageReceived would be where any subscribers would be notified that the payment channel
 // has been created.
-func (r *RetrievalClientNodeConnector) handleMessageReceived(_ *block.Block, sm *types.SignedMessage, mr *types.MessageReceipt) error {
+func (r *RetrievalClientConnector) handleMessageReceived(_ *block.Block, sm *types.SignedMessage, mr *vm.MessageReceipt) error {
 	return nil
 }
 
-func (r *RetrievalClientNodeConnector) getBlockHeight() (uint64, error) {
+func (r *RetrievalClientConnector) getBlockHeight() (uint64, error) {
 	head := r.cs.GetHead()
 	ts, err := r.cs.GetTipSet(head)
 	if err != nil {
@@ -246,6 +253,6 @@ func (r *RetrievalClientNodeConnector) getBlockHeight() (uint64, error) {
 	return ts.Height()
 }
 
-func (r *RetrievalClientNodeConnector) getPayerForChannel(paymentChannel address.Address) (payer address.Address, err error) {
+func (r *RetrievalClientConnector) getPayerForChannel(paymentChannel address.Address) (payer address.Address, err error) {
 	return payer, nil
 }

@@ -35,7 +35,7 @@ func NewRetrievalProtocolSubmodule(
 
 	netwk := network.NewFromLibp2pHost(host)
 	pnode := retmkt.NewRetrievalProviderNodeConnector(netwk, ps, bs)
-	cnode := retmkt.NewRetrievalClientNodeConnector(bs,
+	cnode := retmkt.NewRetrievalClientConnector(bs,
 		c.ChainReader,
 		mw,
 		ob,

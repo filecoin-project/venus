@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/filecoin-project/go-fil-markets/shared/types"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -86,7 +86,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 				return err
 			}
 		} else {
-			t.State = new(State)
+			t.State = new(paych.State)
 			if err := t.State.UnmarshalCBOR(br); err != nil {
 				return err
 			}
@@ -132,7 +132,7 @@ func (t *VoucherInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Voucher (types.SignedVoucher) (struct)
+	// t.Voucher (paych.SignedVoucher) (struct)
 	if err := t.Voucher.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -166,7 +166,7 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Voucher (types.SignedVoucher) (struct)
+	// t.Voucher (paych.SignedVoucher) (struct)
 
 	{
 
@@ -180,7 +180,7 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) error {
 				return err
 			}
 		} else {
-			t.Voucher = new(types.SignedVoucher)
+			t.Voucher = new(paych.SignedVoucher)
 			if err := t.Voucher.UnmarshalCBOR(br); err != nil {
 				return err
 			}

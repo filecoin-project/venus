@@ -7,7 +7,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -18,7 +17,7 @@ import (
 var ErrChannelNotTracked = errors.New("channel not tracked")
 
 type Store struct {
-	lks []sync.Mutex // TODO: this can be split per paych
+	lks []sync.Mutex // TODO: this can be split per paych (from lotus)
 
 	ds datastore.Batching
 }
@@ -37,7 +36,7 @@ type ChannelInfo struct {
 }
 
 type VoucherInfo struct {
-	Voucher *types.SignedVoucher
+	Voucher *paych.SignedVoucher
 	Proof   []byte
 }
 
