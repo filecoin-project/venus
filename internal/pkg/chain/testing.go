@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -610,10 +611,5 @@ func makeCid(i interface{}) (cid.Cid, error) {
 	if err != nil {
 		return cid.Undef, err
 	}
-	return cid.Prefix{
-		Version:  1,
-		Codec:    cid.DagCBOR,
-		MhType:   types.DefaultHashFunction,
-		MhLength: -1,
-	}.Sum(bytes)
+	return constants.DefaultCidBuilder.Sum(bytes)
 }

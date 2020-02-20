@@ -17,9 +17,9 @@ import (
 	multihash "github.com/multiformats/go-multihash"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
@@ -182,7 +182,7 @@ func TestDealsShow(t *testing.T) {
 }
 
 func getMaxUserBytesPerStagedSector() uint64 {
-	return uint64(abi.PaddedPieceSize(types.OneKiBSectorSize).Unpadded())
+	return uint64(abi.PaddedPieceSize(constants.DevSectorSize).Unpadded())
 }
 
 func requireTestCID(t *testing.T, data []byte) cid.Cid {

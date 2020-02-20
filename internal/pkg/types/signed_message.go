@@ -9,9 +9,9 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
-	mh "github.com/multiformats/go-multihash"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
@@ -78,20 +78,14 @@ func (smsg *SignedMessage) Cid() (cid.Cid, error) {
 
 // ToNode converts the SignedMessage to an IPLD node.
 func (smsg *SignedMessage) ToNode() (ipld.Node, error) {
-	// Use 32 byte / 256 bit digest.
-	mhType := uint64(mh.BLAKE2B_MIN + 31)
-	mhLen := -1
-
 	data, err := encoding.Encode(smsg)
 	if err != nil {
 		return nil, err
 	}
-
-	hash, err := mh.Sum(data, mhType, mhLen)
+	c, err := constants.DefaultCidBuilder.Sum(data)
 	if err != nil {
 		return nil, err
 	}
-	c := cid.NewCidV1(cid.DagCBOR, hash)
 
 	blk, err := blocks.NewBlockWithCid(data, c)
 	if err != nil {

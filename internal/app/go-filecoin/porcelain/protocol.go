@@ -10,7 +10,7 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 )
 
 // SectorInfo provides information about a sector construction
@@ -55,7 +55,7 @@ func ProtocolParameters(ctx context.Context, plumbing protocolParamsPlumbing) (*
 		return nil, errors.Wrap(err, "could not retrieve network name")
 	}
 
-	sectorSizes := []abi.SectorSize{types.OneKiBSectorSize, types.TwoHundredFiftySixMiBSectorSize}
+	sectorSizes := []abi.SectorSize{constants.DevSectorSize, constants.TwoHundredFiftySixMiBSectorSize}
 
 	var supportedSectors []SectorInfo
 	for _, sectorSize := range sectorSizes {

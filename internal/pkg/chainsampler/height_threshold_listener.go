@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 )
 
 // HeightThresholdListener listens for new heaviest chains and notifies when a height threshold is crossed.
@@ -56,7 +56,7 @@ func (l *HeightThresholdListener) Handle(ctx context.Context, chain []block.TipS
 	}
 
 	// check if we've hit finality and should stop listening
-	if h >= l.target+consensus.FinalityEpochs {
+	if h >= l.target+miner.ChainFinalityish {
 		l.DoneCh <- struct{}{}
 		return false, nil
 	}

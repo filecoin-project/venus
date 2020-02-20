@@ -4,10 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	mh "github.com/multiformats/go-multihash"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
 
 // IpldStore is a go-filecoin implementation of the go-hamt-ipld CborStore
@@ -60,18 +61,15 @@ func (s *IpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
 
 // Put encodes the interface into cbor bytes and stores them as a block
 func (s *IpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
-	mhType := uint64(mh.BLAKE2B_MIN + 31)
-	mhLen := -1
 	data, err := encoding.Encode(v)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	hash, err := mh.Sum(data, mhType, mhLen)
+	c, err := constants.DefaultCidBuilder.Sum(data)
 	if err != nil {
 		return cid.Undef, err
 	}
-	c := cid.NewCidV1(cid.DagCBOR, hash)
 
 	blk, err := blocks.NewBlockWithCid(data, c)
 	if err != nil {

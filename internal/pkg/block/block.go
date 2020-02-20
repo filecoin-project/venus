@@ -11,12 +11,11 @@ import (
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	node "github.com/ipfs/go-ipld-format"
-	mh "github.com/multiformats/go-multihash"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // Block is a block in the blockchain.
@@ -87,12 +86,7 @@ func (b *Block) Cid() cid.Cid {
 			}
 			b.cachedBytes = bytes
 		}
-		c, err := cid.Prefix{
-			Version:  1,
-			Codec:    cid.DagCBOR,
-			MhType:   types.DefaultHashFunction,
-			MhLength: -1,
-		}.Sum(b.cachedBytes)
+		c, err := constants.DefaultCidBuilder.Sum(b.cachedBytes)
 		if err != nil {
 			panic(err)
 		}
@@ -105,20 +99,14 @@ func (b *Block) Cid() cid.Cid {
 
 // ToNode converts the Block to an IPLD node.
 func (b *Block) ToNode() node.Node {
-	// Use 32 byte / 256 bit digest. TODO pull this out into a constant?
-	mhType := uint64(mh.BLAKE2B_MIN + 31)
-	mhLen := -1
-
 	data, err := encoding.Encode(b)
 	if err != nil {
 		panic(err)
 	}
-
-	hash, err := mh.Sum(data, mhType, mhLen)
+	c, err := constants.DefaultCidBuilder.Sum(data)
 	if err != nil {
 		panic(err)
 	}
-	c := cid.NewCidV1(cid.DagCBOR, hash)
 
 	blk, err := blocks.NewBlockWithCid(data, c)
 	if err != nil {

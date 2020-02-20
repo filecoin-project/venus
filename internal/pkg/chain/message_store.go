@@ -4,17 +4,18 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/pkg/errors"
+	cbg "github.com/whyrusleeping/cbor-gen"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/multiformats/go-multihash"
-	"github.com/pkg/errors"
-	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 // MessageProvider is an interface exposing the load methods of the
@@ -259,8 +260,7 @@ func makeBlock(obj interface{}) (blocks.Block, error) {
 		return nil, err
 	}
 
-	pre := cid.NewPrefixV1(cid.DagCBOR, multihash.BLAKE2B_MIN+31)
-	c, err := pre.Sum(data)
+	c, err := constants.DefaultCidBuilder.Sum(data)
 	if err != nil {
 		return nil, err
 	}

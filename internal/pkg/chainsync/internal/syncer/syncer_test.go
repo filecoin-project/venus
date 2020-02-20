@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -20,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -213,7 +213,7 @@ func TestRejectFinalityFork(t *testing.T) {
 	builder, store, s := setup(ctx, t)
 	genesis := builder.RequireTipSet(store.GetHead())
 
-	head := builder.AppendManyOn(int(consensus.FinalityEpochs+2), genesis)
+	head := builder.AppendManyOn(int(miner.ChainFinalityish+2), genesis)
 	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", head.Key(), heightFromTip(t, head)), false))
 
 	// Differentiate fork for a new chain.  Fork has FinalityEpochs + 1
@@ -222,7 +222,7 @@ func TestRejectFinalityFork(t *testing.T) {
 	forkFinalityBase := builder.BuildOneOn(genesis, func(bb *chain.BlockBuilder) {
 		bb.SetTicket([]byte{0xbe})
 	})
-	forkFinalityHead := builder.AppendManyOn(int(consensus.FinalityEpochs), forkFinalityBase)
+	forkFinalityHead := builder.AppendManyOn(int(miner.ChainFinalityish), forkFinalityBase)
 	assert.Error(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", forkFinalityHead.Key(), heightFromTip(t, forkFinalityHead)), false))
 }
 

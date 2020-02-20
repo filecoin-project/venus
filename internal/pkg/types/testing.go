@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 )
 
@@ -161,10 +162,9 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 
 // CidFromString generates Cid from string input
 func CidFromString(t *testing.T, input string) cid.Cid {
-	prefix := cid.V1Builder{Codec: cid.DagCBOR, MhType: DefaultHashFunction}
-	cid, err := prefix.Sum([]byte(input))
+	c, err := constants.DefaultCidBuilder.Sum([]byte(input))
 	require.NoError(t, err)
-	return cid
+	return c
 }
 
 // NewCidForTestGetter returns a closure that returns a Cid unique to that invocation.
@@ -173,7 +173,7 @@ func CidFromString(t *testing.T, input string) cid.Cid {
 func NewCidForTestGetter() func() cid.Cid {
 	i := 31337
 	return func() cid.Cid {
-		obj, err := cbor.WrapObject([]int{i}, DefaultHashFunction, -1)
+		obj, err := cbor.WrapObject([]int{i}, constants.DefaultHashFunction, -1)
 		if err != nil {
 			panic(err)
 		}

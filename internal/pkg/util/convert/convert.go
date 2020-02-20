@@ -5,12 +5,12 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 )
 
 // ToCid gets the Cid for the argument passed in
 func ToCid(object interface{}) (cid.Cid, error) {
-	cbor, err := cbor.WrapObject(object, types.DefaultHashFunction, -1)
+	cbor, err := cbor.WrapObject(object, constants.DefaultHashFunction, -1)
 	if err != nil {
 		return cid.Cid{}, errors.Wrap(err, "failed to get cid of proposal")
 	}

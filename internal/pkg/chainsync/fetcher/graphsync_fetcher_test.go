@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/fetcher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -70,7 +71,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	mm := vm.NewMessageMaker(t, keys)
 	notDecodableBytes, err := encoding.Encode(notDecodable{Num: 5, Message: "applesauce"})
 	require.NoError(t, err)
-	notDecodableBlock, err := cbor.Decode(notDecodableBytes, types.DefaultHashFunction, -1)
+	notDecodableBlock, err := cbor.Decode(notDecodableBytes, constants.DefaultHashFunction, -1)
 	require.NoError(t, err)
 
 	alice := mm.Addresses()[0]
@@ -660,7 +661,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	builder := chain.NewBuilderWithDeps(t, address.Undef, &chain.FakeStateBuilder{}, chain.NewClockTimestamper(chainClock))
 	keys := types.MustGenerateKeyInfo(1, 42)
 	mm := vm.NewMessageMaker(t, keys)
-	notDecodableBlock, err := cbor.WrapObject(notDecodable{Num: 5, Message: "applebutter"}, types.DefaultHashFunction, -1)
+	notDecodableBlock, err := cbor.WrapObject(notDecodable{Num: 5, Message: "applebutter"}, constants.DefaultHashFunction, -1)
 	require.NoError(t, err)
 
 	alice := mm.Addresses()[0]

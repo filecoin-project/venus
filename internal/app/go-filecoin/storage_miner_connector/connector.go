@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsampler"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
@@ -304,7 +303,7 @@ func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context, tok stora
 		return storagenode.SealTicket{}, err
 	}
 
-	r, err := m.chainState.SampleRandomness(ctx, h-consensus.FinalityEpochs)
+	r, err := m.chainState.SampleRandomness(ctx, h-miner.ChainFinalityish)
 	if err != nil {
 		return storagenode.SealTicket{}, xerrors.Errorf("getting randomness for SealTicket failed: %w", err)
 	}
