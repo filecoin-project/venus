@@ -34,17 +34,12 @@ var vmlog = logging.Logger("vm.context")
 
 // VM holds the state and executes messages over the state.
 type VM struct {
-	rnd          RandomnessSource
+	context      context.Context
 	actorImpls   ActorImplLookup
 	store        *storage.VMStorage
 	state        *state.CachedTree
 	currentEpoch abi.ChainEpoch
-	context      context.Context
-}
-
-// RandomnessSource provides randomness to actors.
-type RandomnessSource interface {
-	Randomness(epoch abi.ChainEpoch) abi.Randomness
+	rnd          interpreter.RandomnessSource
 }
 
 // ActorImplLookup provides access to upgradeable actor code.
@@ -72,14 +67,15 @@ type actorStorage struct {
 }
 
 // NewVM creates a new runtime for executing messages.
-func NewVM(rnd RandomnessSource, actorImpls ActorImplLookup, store *storage.VMStorage, st state.Tree) VM {
+func NewVM(actorImpls ActorImplLookup, store *storage.VMStorage, st state.Tree) VM {
 	return VM{
-		rnd:          rnd,
-		actorImpls:   actorImpls,
-		store:        store,
-		state:        state.NewCachedTree(st),
-		currentEpoch: 0,
-		context:      context.Background(),
+		actorImpls: actorImpls,
+		store:      store,
+		state:      state.NewCachedTree(st),
+		context:    context.Background(),
+		// loaded during execution
+		// currentEpoch: ..,
+		// rnd: ..,
 	}
 }
 
@@ -161,7 +157,10 @@ func (vm *VM) normalizeFrom(from address.Address) (address.Address, bool) {
 var _ interpreter.VMInterpreter = (*VM)(nil)
 
 // ApplyTipSetMessages implements interpreter.VMInterpreter
-func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch abi.ChainEpoch) ([]message.Receipt, error) {
+func (vm *VM) ApplyTipSetMessages(rnd interpreter.RandomnessSource, blocks []interpreter.BlockMessagesInfo, epoch abi.ChainEpoch) ([]message.Receipt, error) {
+	// set randomness source
+	vm.rnd = rnd
+
 	receipts := []message.Receipt{}
 
 	// update current epoch

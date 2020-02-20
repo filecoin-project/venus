@@ -70,9 +70,10 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 	}
 	var epoch abi.ChainEpoch = (abi.ChainEpoch)(h)
 
+	rnd := vm.NewProdRandomnessSource()
 	vm := vm.NewVM(st, &vms)
 
-	return vm.ApplyTipSetMessages(msgs, epoch)
+	return vm.ApplyTipSetMessages(rnd, msgs, epoch)
 }
 
 // ResolveAddress looks up associated id address. If the given address is already and id address, it is returned unchanged.
