@@ -91,6 +91,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
 	github.com/prometheus/client_golang v1.2.1
+	github.com/prometheus/common v0.7.0
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.5.0 // indirect

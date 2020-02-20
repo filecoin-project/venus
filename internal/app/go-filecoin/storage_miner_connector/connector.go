@@ -13,10 +13,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -24,7 +22,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -32,7 +29,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
-var log = logging.Logger("connector") // nolint: deadcode
+type randomnessSampler interface {
+	SampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
+	GetTipSetStateRoot(ctx context.Context, tipKey block.TipSetKey) (cid.Cid, error)
+	GetTipSet(key block.TipSetKey) (block.TipSet, error)
+	Head() block.TipSetKey
+}
 
 // StorageMinerNodeConnector is a struct which satisfies the go-storage-miner
 // needs of "the node," e.g. interacting with the blockchain, persisting sector
@@ -40,12 +42,10 @@ var log = logging.Logger("connector") // nolint: deadcode
 type StorageMinerNodeConnector struct {
 	minerAddr address.Address
 
-	newListener     chan *chainsampler.HeightThresholdListener
-	heightListeners []*chainsampler.HeightThresholdListener
-	listenerDone    chan struct{}
+	chainHeightScheduler *chainsampler.HeightThresholdScheduler
 
 	chainStore *chain.Store
-	chainState *cst.ChainStateReadWriter
+	chainState randomnessSampler
 	outbox     *message.Outbox
 	waiter     *msg.Waiter
 	wallet     *wallet.Wallet
@@ -58,74 +58,32 @@ var _ storagenode.Interface = new(StorageMinerNodeConnector)
 // NewStorageMinerNodeConnector produces a StorageMinerNodeConnector, which adapts
 // types in this codebase to the interface representing "the node" which is
 // expected by the go-storage-miner project.
-func NewStorageMinerNodeConnector(minerAddress address.Address, chainStore *chain.Store, chainState *cst.ChainStateReadWriter, outbox *message.Outbox, waiter *msg.Waiter, wallet *wallet.Wallet, stateViewer *appstate.Viewer) *StorageMinerNodeConnector {
+func NewStorageMinerNodeConnector(minerAddress address.Address, chainStore *chain.Store, chainState randomnessSampler, outbox *message.Outbox, waiter *msg.Waiter, wallet *wallet.Wallet, stateViewer *appstate.Viewer) *StorageMinerNodeConnector {
 	return &StorageMinerNodeConnector{
-		minerAddr:    minerAddress,
-		listenerDone: make(chan struct{}),
-		chainStore:   chainStore,
-		chainState:   chainState,
-		outbox:       outbox,
-		waiter:       waiter,
-		wallet:       wallet,
-		stateViewer:  stateViewer,
+		minerAddr:            minerAddress,
+		chainHeightScheduler: chainsampler.NewHeightThresholdScheduler(chainStore),
+		chainStore:           chainStore,
+		chainState:           chainState,
+		outbox:               outbox,
+		waiter:               waiter,
+		wallet:               wallet,
+		stateViewer:          stateViewer,
 	}
 }
 
 // StartHeightListener starts the scheduler that manages height listeners.
 func (m *StorageMinerNodeConnector) StartHeightListener(ctx context.Context, htc <-chan interface{}) {
-	go func() {
-		var previousHead block.TipSet
-		for {
-			select {
-			case <-htc:
-				head, err := m.handleNewTipSet(ctx, previousHead)
-				if err != nil {
-					log.Warn("failed to handle new tipset")
-				} else {
-					previousHead = head
-				}
-			case heightListener := <-m.newListener:
-				m.heightListeners = append(m.heightListeners, heightListener)
-			case <-m.listenerDone:
-				return
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
+	m.chainHeightScheduler.StartHeightListener(ctx, htc)
 }
 
 // StopHeightListener stops the scheduler that manages height listeners.
 func (m *StorageMinerNodeConnector) StopHeightListener() {
-	m.listenerDone <- struct{}{}
+	m.chainHeightScheduler.Stop()
 }
 
 func (m *StorageMinerNodeConnector) handleNewTipSet(ctx context.Context, previousHead block.TipSet) (block.TipSet, error) {
-	newHeadKey := m.chainStore.GetHead()
-	newHead, err := m.chainStore.GetTipSet(newHeadKey)
-	if err != nil {
-		return block.TipSet{}, err
-	}
 
-	_, newTips, err := chain.CollectTipsToCommonAncestor(ctx, m.chainStore, previousHead, newHead)
-	if err != nil {
-		return block.TipSet{}, err
-	}
-
-	newListeners := make([]*chainsampler.HeightThresholdListener, len(m.heightListeners))
-	for _, listener := range m.heightListeners {
-		valid, err := listener.Handle(ctx, newTips, m.chainState.SampleRandomness)
-		if err != nil {
-			log.Error("Error checking storage miner chainStore listener", err)
-		}
-
-		if valid {
-			newListeners = append(newListeners, listener)
-		}
-	}
-	m.heightListeners = newListeners
-
-	return newHead, nil
+	return m.chainHeightScheduler.HandleNewTipSet(ctx, previousHead)
 }
 
 // SendSelfDeals creates self-deals and sends them to the network.
@@ -397,7 +355,46 @@ func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMs
 			return
 		}
 
-		m.newListener <- chainsampler.NewHeightThresholdListener(h+interval, sc, ic, dc, ec)
+		listener := m.chainHeightScheduler.AddListener(h + interval)
+
+		// translate tipset key to seal seed handler
+		for {
+			select {
+			case key := <-listener.HitCh:
+				ts, err := m.chainState.GetTipSet(key)
+				if err != nil {
+					ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFatalError)
+					break
+				}
+
+				tsHeight, err := ts.Height()
+				if err != nil {
+					ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFatalError)
+					break
+				}
+
+				randomness, err := m.chainState.SampleRandomness(ctx, types.NewBlockHeight(tsHeight))
+				if err != nil {
+					ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFatalError)
+					break
+				}
+
+				sc <- storagenode.SealSeed{
+					BlockHeight: tsHeight,
+					TicketBytes: randomness,
+				}
+			case err := <-listener.ErrCh:
+				ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFailedError)
+			case <-listener.InvalidCh:
+				ic <- storagenode.SeedInvalidated{}
+			case <-listener.DoneCh:
+				dc <- storagenode.FinalityReached{}
+				return
+			case <-ctx.Done():
+				m.chainHeightScheduler.CancelListener(listener)
+				return
+			}
+		}
 	}()
 
 	return sc, ic, dc, ec
@@ -496,15 +493,12 @@ func (m *StorageMinerNodeConnector) GetSealedCID(ctx context.Context, tok storag
 		return cid.Undef, false, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
 	}
 
-	var minerState miner.State
-	err = m.chainState.GetActorStateAt(ctx, tsk, m.minerAddr, &minerState)
-
+	root, err := m.chainState.GetTipSetStateRoot(ctx, tsk)
 	if err != nil {
-		return cid.Undef, false, err
+		return cid.Undef, false, xerrors.Errorf("failed to get tip state: %w", err)
 	}
 
-	preCommitInfo, found, err := minerState.GetPrecommittedSector(state.StoreFromCbor(ctx, m.chainState.IpldStore), sectorNum)
-
+	preCommitInfo, found, err := m.stateViewer.StateView(root).MinerGetPrecommittedSector(ctx, m.minerAddr, uint64(sectorNum))
 	if !found || err != nil {
 		return cid.Undef, found, err
 	}

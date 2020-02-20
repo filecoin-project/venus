@@ -11,21 +11,25 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	storageminerconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/storage_miner_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/poster"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 )
 
 // StorageMiningSubmodule enhances the `Node` with storage mining capabilities.
 type StorageMiningSubmodule struct {
+	started bool
+
 	// StorageMining is used by the miner to fill and seal sectors.
 	PieceManager piecemanager.PieceManager
 
 	// PoStGenerator generates election PoSts
 	PoStGenerator postgenerator.PoStGenerator
 
-	started   bool
-	startFunc func(ctx context.Context) error
-	stopFunc  func(ctx context.Context) error
+	minerNode        *storageminerconnector.StorageMinerNodeConnector
+	storageMiner     *storage.Miner
+	heaviestTipSetCh chan interface{}
+	poster           *poster.Poster
 }
 
 // NewStorageMiningSubmodule creates a new storage mining submodule.
@@ -40,40 +44,12 @@ func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching,
 	sbbe := postgenerator.NewSectorBuilderBackEnd(s)
 
 	modu := &StorageMiningSubmodule{
-		PieceManager:  smbe,
-		PoStGenerator: sbbe,
-	}
-
-	modu.startFunc = func(ctx context.Context) error {
-		if !modu.started {
-			minerNode.StartHeightListener(ctx, c.HeaviestTipSetCh)
-			err := storageMiner.Run(ctx)
-			if err != nil {
-				return err
-			}
-
-			modu.started = true
-
-			return nil
-		}
-
-		return nil
-	}
-
-	modu.stopFunc = func(ctx context.Context) error {
-		if modu.started {
-			minerNode.StopHeightListener()
-			err := storageMiner.Stop(ctx)
-			if err != nil {
-				return err
-			}
-
-			modu.started = false
-
-			return nil
-		}
-
-		return nil
+		PieceManager:     smbe,
+		PoStGenerator:    sbbe,
+		minerNode:        minerNode,
+		storageMiner:     storageMiner,
+		heaviestTipSetCh: c.HeaviestTipSetCh,
+		poster:           poster.NewPoster(minerAddr, m.Outbox, s, c.HeaviestTipSetCh, c.State, stateViewer),
 	}
 
 	return modu, nil
@@ -81,10 +57,38 @@ func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching,
 
 // Start starts the StorageMiningSubmodule
 func (s *StorageMiningSubmodule) Start(ctx context.Context) error {
-	return s.startFunc(ctx)
+	if s.started {
+		return nil
+	}
+
+	s.minerNode.StartHeightListener(ctx, s.heaviestTipSetCh)
+	err := s.storageMiner.Run(ctx)
+	if err != nil {
+		return err
+	}
+
+	s.poster.StartPoSting(ctx)
+
+	s.started = true
+
+	return nil
 }
 
 // Stop stops the StorageMiningSubmodule
 func (s *StorageMiningSubmodule) Stop(ctx context.Context) error {
-	return s.stopFunc(ctx)
+	if !s.started {
+		return nil
+	}
+
+	s.minerNode.StopHeightListener()
+	err := s.storageMiner.Stop(ctx)
+	if err != nil {
+		return err
+	}
+
+	s.poster.StopPoSting()
+
+	s.started = false
+
+	return nil
 }
