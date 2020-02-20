@@ -193,7 +193,7 @@ func (m *StorageMinerNodeConnector) WaitForSelfDeals(ctx context.Context, mcid c
 
 // SendPreCommitSector creates a pre-commit sector message and sends it to the
 // network.
-func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sectorNum abi.SectorNumber, commR []byte, ticket storagenode.SealTicket, pieces ...storagenode.Piece) (cid.Cid, error) {
+func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sectorNum abi.SectorNumber, commR []byte, ticket storagenode.SealTicket, pieces ...storagenode.PieceWithDealInfo) (cid.Cid, error) {
 	waddr, err := m.getMinerWorkerAddress(ctx, m.chainState.Head())
 	if err != nil {
 		return cid.Undef, err
@@ -201,7 +201,7 @@ func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sec
 
 	dealIds := make([]abi.DealID, len(pieces))
 	for i, piece := range pieces {
-		dealIds[i] = piece.DealID
+		dealIds[i] = piece.DealInfo.DealID
 	}
 
 	params := miner.SectorPreCommitInfo{
@@ -333,7 +333,7 @@ func (m *StorageMinerNodeConnector) GetChainHead(ctx context.Context) (storageno
 		return nil, 0, xerrors.Errorf("failed to marshal TipSetKey to CBOR byte slice for TipSetToken: %w", err)
 	}
 
-	return tok, abi.ChainEpoch(h), nil
+	return tok, h, nil
 }
 
 // GetSealSeed is used to acquire the seal seed for the provided pre-commit
@@ -511,7 +511,7 @@ func (m *StorageMinerNodeConnector) GetSealedCID(ctx context.Context, tok storag
 	return preCommitInfo.Info.SealedCID, true, nil
 }
 
-func (m *StorageMinerNodeConnector) CheckPieces(ctx context.Context, sectorNum abi.SectorNumber, pieces []storagenode.Piece) *storagenode.CheckPiecesError {
+func (m *StorageMinerNodeConnector) CheckPieces(ctx context.Context, sectorNum abi.SectorNumber, pieces []storagenode.PieceWithDealInfo) *storagenode.CheckPiecesError {
 	return nil
 }
 

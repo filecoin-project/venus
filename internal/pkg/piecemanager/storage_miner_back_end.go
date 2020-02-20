@@ -5,11 +5,9 @@ import (
 	"io"
 
 	"github.com/filecoin-project/go-sectorbuilder"
-
-	"github.com/filecoin-project/specs-actors/actors/abi"
-
+	storagenode "github.com/filecoin-project/go-storage-miner/apis/node"
 	storage "github.com/filecoin-project/go-storage-miner/sealing"
-
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/pkg/errors"
 )
 
@@ -21,11 +19,11 @@ type StorageMinerAPI interface {
 
 	// PledgeSector allocates a new sector, fills it with self-deal junk, and
 	// seals that sector.
-	PledgeSector() error
+	PledgeSector(ctx context.Context) error
 
 	// SealPiece writes the provided piece to a newly-created sector which it
 	// immediately seals.
-	SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, sectorNum abi.SectorNumber, dealID abi.DealID) error
+	SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, sectorNum abi.SectorNumber, pdi storagenode.DealInfo) error
 
 	// GetSectorInfo produces information about a sector managed by this storage
 	// miner, or an error if the miner does not manage a sector with the
@@ -61,13 +59,19 @@ func NewStorageMinerBackEnd(m StorageMinerAPI, b SectorBuilderAPI) *StorageMiner
 // SealPieceIntoNewSector provisions a new sector and writes the provided piece
 // to that sector. Any remaining space in the sector is filled with self-deals,
 // and the sector is committed to the network automatically and asynchronously.
-func (s *StorageMinerBackEnd) SealPieceIntoNewSector(ctx context.Context, dealID uint64, pieceSize uint64, pieceReader io.Reader) error {
+func (s *StorageMinerBackEnd) SealPieceIntoNewSector(ctx context.Context, dealID uint64, dealStart, dealEnd abi.ChainEpoch, pieceSize uint64, pieceReader io.Reader) error {
 	sectorID, err := s.miner.AllocateSectorID()
 	if err != nil {
 		return errors.Wrap(err, "failed to acquire sector id from storage miner")
 	}
 
-	err = s.miner.SealPiece(ctx, abi.UnpaddedPieceSize(pieceSize), pieceReader, sectorID, abi.DealID(dealID))
+	err = s.miner.SealPiece(ctx, abi.UnpaddedPieceSize(pieceSize), pieceReader, sectorID, storagenode.DealInfo{
+		DealID: abi.DealID(dealID),
+		DealSchedule: storagenode.DealSchedule{
+			StartEpoch: dealStart,
+			EndEpoch:   dealEnd,
+		},
+	})
 	if err != nil {
 		return errors.Wrap(err, "storage miner `SealPiece` produced an error")
 	}
@@ -76,8 +80,8 @@ func (s *StorageMinerBackEnd) SealPieceIntoNewSector(ctx context.Context, dealID
 }
 
 // PledgeSector delegates to the go-storage-miner PledgeSector method.
-func (s *StorageMinerBackEnd) PledgeSector() error {
-	return s.miner.PledgeSector()
+func (s *StorageMinerBackEnd) PledgeSector(ctx context.Context) error {
+	return s.miner.PledgeSector(ctx)
 }
 
 // UnsealSector uses the blockchain to acquire the ticket and commD associated
@@ -112,15 +116,15 @@ func (s *StorageMinerBackEnd) LocatePieceForDealWithinSector(ctx context.Context
 	for _, sector := range sectors {
 		offset := uint64(0)
 		for _, piece := range sector.Pieces {
-			if piece.DealID == abi.DealID(dealID) {
+			if piece.DealInfo.DealID == abi.DealID(dealID) {
 				if !isEncoded(sector.State) {
 					return 0, 0, 0, errors.Errorf("no encoded replica exists corresponding to deal id: %d", dealID)
 				}
 
-				return uint64(sector.SectorNum), offset, uint64(piece.Size.Unpadded()), nil
+				return uint64(sector.SectorNum), offset, uint64(piece.Piece.Size.Unpadded()), nil
 			}
 
-			offset += uint64(piece.Size.Unpadded())
+			offset += uint64(piece.Piece.Size.Unpadded())
 		}
 	}
 
