@@ -1,4 +1,4 @@
-package vmcontext
+package vm
 
 import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
