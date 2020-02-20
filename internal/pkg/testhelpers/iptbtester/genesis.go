@@ -41,7 +41,7 @@ func RequireGenerateGenesis(t *testing.T, funds int64, dir string, genesisTime t
 			{
 				Owner:               0,
 				NumCommittedSectors: 1,
-				SectorSize:          types.OneKiBSectorSize.Uint64(),
+				SectorSize:          types.OneKiBSectorSize,
 			},
 		},
 		Network: "go-filecoin-test",

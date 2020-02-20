@@ -213,7 +213,7 @@ func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Fil
 	// Store some data with the miner with the given ask, returns the cid for
 	// the imported data, and the deal which was created
 	var data bytes.Buffer
-	dataReader := io.LimitReader(rand.Reader, int64(sinfo.MaxPieceSize.Uint64()))
+	dataReader := io.LimitReader(rand.Reader, int64(sinfo.MaxPieceSize))
 	dataReader = io.TeeReader(dataReader, &data)
 	dcid, deal, err := series.ImportAndStore(ctx, client, ask, files.NewReaderFile(dataReader))
 	require.NoError(t, err)

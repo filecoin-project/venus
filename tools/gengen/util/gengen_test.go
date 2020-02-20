@@ -26,12 +26,12 @@ var testConfig = &GenesisCfg{
 		{
 			Owner:               0,
 			NumCommittedSectors: 50,
-			SectorSize:          types.OneKiBSectorSize.Uint64(),
+			SectorSize:          types.OneKiBSectorSize,
 		},
 		{
 			Owner:               1,
 			NumCommittedSectors: 10,
-			SectorSize:          types.OneKiBSectorSize.Uint64(),
+			SectorSize:          types.OneKiBSectorSize,
 		},
 	},
 	Network: "go-filecoin-test",

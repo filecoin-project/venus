@@ -34,7 +34,7 @@ func TestTotal(t *testing.T) {
 	actual, err := table.Total(ctx)
 	require.NoError(t, err)
 
-	expected := abi.NewStoragePower(int64(types.OneKiBSectorSize.Uint64() * numCommittedSectors))
+	expected := abi.NewStoragePower(int64(uint64(types.OneKiBSectorSize) * numCommittedSectors))
 	assert.True(t, expected.Equals(actual))
 }
 
@@ -51,7 +51,7 @@ func TestMiner(t *testing.T) {
 	actual, err := table.MinerClaim(ctx, addr)
 	require.NoError(t, err)
 
-	expected := types.NewBytesAmount(types.OneKiBSectorSize.Uint64() * numCommittedSectors)
+	expected := abi.NewStoragePower(int64(uint64(types.OneKiBSectorSize) * numCommittedSectors))
 	assert.Equal(t, expected, actual)
 }
 
@@ -67,7 +67,7 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 		Miners: []*gengen.CreateStorageMinerConfig{
 			{
 				NumCommittedSectors: numCommittedSectors,
-				SectorSize:          types.OneKiBSectorSize.Uint64(),
+				SectorSize:          types.OneKiBSectorSize,
 			},
 		},
 		Network: "ptvtest",

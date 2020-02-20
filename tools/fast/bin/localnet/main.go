@@ -294,7 +294,7 @@ func main() {
 		}
 
 		var data bytes.Buffer
-		dataReader := io.LimitReader(rand.Reader, int64(sinfo.MaxPieceSize.Uint64()))
+		dataReader := io.LimitReader(rand.Reader, int64(sinfo.MaxPieceSize))
 		dataReader = io.TeeReader(dataReader, &data)
 		_, deal, err := series.ImportAndStore(ctx, genesis, ask, files.NewReaderFile(dataReader))
 		if err != nil {

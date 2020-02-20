@@ -16,7 +16,7 @@ import (
 // commitment (merkle root) of the data in a provided reader.
 type GeneratePieceCommitmentRequest struct {
 	PieceReader io.Reader
-	PieceSize   *types.BytesAmount
+	PieceSize   abi.UnpaddedPieceSize
 }
 
 // GeneratePieceCommitmentResponse represents the commitment bytes
@@ -46,12 +46,12 @@ func GeneratePieceCommitment(req GeneratePieceCommitmentRequest) (res GeneratePi
 		return
 	}
 
-	if !types.NewBytesAmount(uint64(n)).Equal(req.PieceSize) {
-		retErr = fmt.Errorf("was unable to write all piece bytes to temp file (wrote %dB, pieceSize %dB)", n, req.PieceSize.Uint64())
+	if abi.UnpaddedPieceSize(n) != req.PieceSize {
+		retErr = fmt.Errorf("was unable to write all piece bytes to temp file (wrote %dB, pieceSize %dB)", n, req.PieceSize)
 		return
 	}
 
-	commP, err := sectorbuilder.GeneratePieceCommitment(file, abi.UnpaddedPieceSize(req.PieceSize.Uint64()))
+	commP, err := sectorbuilder.GeneratePieceCommitment(file, req.PieceSize)
 	if err != nil {
 		retErr = err
 		return

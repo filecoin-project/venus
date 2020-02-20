@@ -15,8 +15,8 @@ import (
 
 // SectorInfo provides information about a sector construction
 type SectorInfo struct {
-	Size         *types.BytesAmount
-	MaxPieceSize *types.BytesAmount
+	Size         abi.SectorSize
+	MaxPieceSize abi.UnpaddedPieceSize
 }
 
 // ProtocolParams contains parameters that modify the filecoin nodes protocol
@@ -55,11 +55,11 @@ func ProtocolParameters(ctx context.Context, plumbing protocolParamsPlumbing) (*
 		return nil, errors.Wrap(err, "could not retrieve network name")
 	}
 
-	sectorSizes := []*types.BytesAmount{types.OneKiBSectorSize, types.TwoHundredFiftySixMiBSectorSize}
+	sectorSizes := []abi.SectorSize{types.OneKiBSectorSize, types.TwoHundredFiftySixMiBSectorSize}
 
 	var supportedSectors []SectorInfo
 	for _, sectorSize := range sectorSizes {
-		maxUserBytes := types.NewBytesAmount(uint64(ffi.GetMaxUserBytesPerStagedSector(abi.SectorSize(sectorSize.Uint64()))))
+		maxUserBytes := ffi.GetMaxUserBytesPerStagedSector(sectorSize)
 		supportedSectors = append(supportedSectors, SectorInfo{sectorSize, maxUserBytes})
 	}
 

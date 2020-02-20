@@ -182,7 +182,7 @@ func TestDealsShow(t *testing.T) {
 }
 
 func getMaxUserBytesPerStagedSector() uint64 {
-	return uint64(abi.PaddedPieceSize(types.OneKiBSectorSize.Uint64()).Unpadded())
+	return uint64(abi.PaddedPieceSize(types.OneKiBSectorSize).Unpadded())
 }
 
 func requireTestCID(t *testing.T, data []byte) cid.Cid {

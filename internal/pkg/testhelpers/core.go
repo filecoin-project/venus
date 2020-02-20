@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -228,7 +229,7 @@ func RequireInitAccountActor(ctx context.Context, t *testing.T, st state.Tree, v
 }
 
 // GetTotalPower get total miner power from storage market
-func GetTotalPower(t *testing.T, st state.Tree, vms vm.Storage) *types.BytesAmount {
+func GetTotalPower(t *testing.T, st state.Tree, vms vm.Storage) abi.StoragePower {
 	// Dragons: re-write using direct state access
 	panic("re-write")
 	// res, err := CreateAndApplyTestMessage(t, st, vms, vmaddr.StorageMarketAddress, 0, 0, storagemarket.GetTotalStorage, nil)
