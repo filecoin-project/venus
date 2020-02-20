@@ -124,6 +124,8 @@ func (s *VMStorage) Flush() error {
 		return err
 	}
 
+	// Dragons: check if the blockstore has a flush and flush it too
+
 	if s.readCacheEnabled {
 		// move objects to read cache
 		for cid, nd := range s.writeBuffer {
