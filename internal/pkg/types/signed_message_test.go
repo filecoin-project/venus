@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -82,7 +83,7 @@ func makeMessage(t *testing.T, signer MockSigner, nonce uint64) *SignedMessage {
 		newAddr,
 		nonce,
 		NewAttoFILFromFIL(2),
-		MethodID(2352),
+		abi.MethodNum(2352),
 		[]byte("params"),
 		NewGasPrice(1000),
 		GasUnits(100))

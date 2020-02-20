@@ -149,8 +149,8 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 		return 0, xerrors.Errorf("deal publish message wasn't set to StorageMarket actor (to=%s)", unsigned.To)
 	}
 
-	if unsigned.Method != types.MethodID(builtin.MethodsMarket.PublishStorageDeals) {
-		return 0, xerrors.Errorf("deal publish message called incorrect method (method=%s)", unsigned.Method)
+	if unsigned.Method != builtin.MethodsMarket.PublishStorageDeals {
+		return 0, xerrors.Errorf("deal publish message called incorrect method (method=%d)", unsigned.Method)
 	}
 
 	var params market.PublishStorageDealsParams

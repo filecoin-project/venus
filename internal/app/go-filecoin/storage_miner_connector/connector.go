@@ -174,7 +174,7 @@ func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, pieces ..
 		types.NewGasPrice(1),
 		types.GasUnits(300),
 		true,
-		types.MethodID(builtin.MethodsMarket.PublishStorageDeals),
+		builtin.MethodsMarket.PublishStorageDeals,
 		&params,
 	)
 	if err != nil {
@@ -264,7 +264,7 @@ func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sec
 		types.NewGasPrice(1),
 		types.GasUnits(300),
 		true,
-		types.MethodID(builtin.MethodsMiner.PreCommitSector),
+		builtin.MethodsMiner.PreCommitSector,
 		&params,
 	)
 	if err != nil {
@@ -312,7 +312,7 @@ func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, s
 		types.NewGasPrice(1),
 		types.GasUnits(300),
 		true,
-		types.MethodID(builtin.MethodsMiner.ProveCommitSector),
+		builtin.MethodsMiner.ProveCommitSector,
 		&params,
 	)
 	if err != nil {
@@ -470,7 +470,7 @@ func (m *StorageMinerNodeConnector) SendReportFaults(ctx context.Context, sector
 		types.NewGasPrice(1),
 		types.GasUnits(300),
 		true,
-		types.MethodID(builtin.MethodsMiner.DeclareTemporaryFaults),
+		builtin.MethodsMiner.DeclareTemporaryFaults,
 		&params,
 	)
 	if err != nil {

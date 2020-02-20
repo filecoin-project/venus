@@ -97,7 +97,7 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 		types.NewGasPrice(1),
 		types.GasUnits(300),
 		true,
-		types.MethodID(builtin.MethodsMarket.PublishStorageDeals),
+		builtin.MethodsMarket.PublishStorageDeals,
 		params,
 	)
 	if err != nil {

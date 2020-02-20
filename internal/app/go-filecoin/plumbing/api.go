@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
@@ -104,7 +105,7 @@ func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Acto
 // ActorGetSignature returns the signature of the given actor's given method.
 // The function signature is typically used to enable a caller to decode the
 // output of an actor method call (message).
-func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ vm.ActorMethodSignature, err error) {
+func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address, method abi.MethodNum) (_ vm.ActorMethodSignature, err error) {
 	return api.chain.GetActorSignature(ctx, actorAddr, method)
 }
 
@@ -228,7 +229,7 @@ func (api *API) MessagePoolRemove(cid cid.Cid) {
 
 // MessagePreview previews the Gas cost of a message by running it locally on the client and
 // recording the amount of Gas used.
-func (api *API) MessagePreview(ctx context.Context, from, to address.Address, method types.MethodID, params ...interface{}) (types.GasUnits, error) {
+func (api *API) MessagePreview(ctx context.Context, from, to address.Address, method abi.MethodNum, params ...interface{}) (types.GasUnits, error) {
 	return api.msgPreviewer.Preview(ctx, from, to, method, params...)
 }
 
@@ -243,7 +244,7 @@ func (api *API) StateView(baseKey block.TipSetKey) (*appstate.View, error) {
 // message to go on chain. Note that no default from address is provided.  The error
 // channel returned receives either nil or an error and is immediately closed after
 // the message is published to the network to signal that the publish is complete.
-func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params interface{}) (cid.Cid, chan error, error) {
+func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
 	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, true, method, params)
 }
 

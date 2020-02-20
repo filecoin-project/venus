@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
@@ -55,7 +56,7 @@ func (mm *MessageMaker) NewUnsignedMessage(from address.Address, nonce uint64) *
 		to,
 		nonce,
 		types.ZeroAttoFIL,
-		types.MethodID(9000+seq),
+		abi.MethodNum(9000+seq),
 		[]byte("params"),
 		mm.DefaultGasPrice,
 		mm.DefaultGasUnits)
