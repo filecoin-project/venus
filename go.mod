@@ -41,7 +41,7 @@ require (
 	github.com/ipfs/go-ds-badger v0.2.1
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-graphsync v0.0.4
-	github.com/ipfs/go-hamt-ipld v0.0.15-0.20200131012125-dd88a59d3f2e
+	github.com/ipfs/go-hamt-ipld v0.0.15-0.20200219230615-d4e402c05ab0
 	github.com/ipfs/go-ipfs-blockstore v0.1.1
 	github.com/ipfs/go-ipfs-chunker v0.0.1
 	github.com/ipfs/go-ipfs-cmdkit v0.0.1
