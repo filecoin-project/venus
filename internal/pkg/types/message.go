@@ -17,31 +17,11 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
 	errPkg "github.com/pkg/errors"
-
 	typegen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-)
-
-// MethodID has been DEPRECATED
-// Dragons: delete
-type MethodID Uint64
-
-// ToMethodNum is a temporary compatibility method.
-func (id MethodID) ToMethodNum() abi.MethodNum {
-	return (abi.MethodNum)(id)
-}
-
-const (
-	// InvalidMethodID is the value of an invalid method id.
-	// Note: this is not in the spec
-	InvalidMethodID = MethodID(0xFFFFFFFFFFFFFFFF)
-	// SendMethodID is the method ID for sending money to an actor.
-	SendMethodID = MethodID(0)
-	// ConstructorMethodID is the method ID used to initialize an actor's state.
-	ConstructorMethodID = MethodID(1)
 )
 
 // GasUnits represents number of units of gas consumed
@@ -89,8 +69,8 @@ type UnsignedMessage struct {
 
 	Value AttoFIL `json:"value"`
 
-	Method MethodID `json:"method"`
-	Params []byte   `json:"params"`
+	Method abi.MethodNum `json:"method"`
+	Params []byte        `json:"params"`
 
 	GasPrice AttoFIL  `json:"gasPrice"`
 	GasLimit GasUnits `json:"gasLimit"`
@@ -98,7 +78,7 @@ type UnsignedMessage struct {
 }
 
 // NewUnsignedMessage creates a new message.
-func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, method MethodID, params []byte) *UnsignedMessage {
+func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte) *UnsignedMessage {
 	return &UnsignedMessage{
 		From:       from,
 		To:         to,
@@ -110,7 +90,7 @@ func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, m
 }
 
 // NewMeteredMessage adds gas price and gas limit to the message
-func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method MethodID, params []byte, price AttoFIL, limit GasUnits) *UnsignedMessage {
+func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte, price AttoFIL, limit GasUnits) *UnsignedMessage {
 	return &UnsignedMessage{
 		From:       from,
 		To:         to,
@@ -200,11 +180,6 @@ type TxMeta struct {
 // String returns a readable printing string of TxMeta
 func (m TxMeta) String() string {
 	return fmt.Sprintf("secp: %s, bls: %s", m.SecpRoot.String(), m.BLSRoot.String())
-}
-
-// String returns a readable string.
-func (id MethodID) String() string {
-	return fmt.Sprintf("%v", (uint64)(id))
 }
 
 // Cost returns the cost of the gas given the price.

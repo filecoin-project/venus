@@ -391,7 +391,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 		from:          msg.From,
 		to:            msg.To,
 		value:         msgValue,
-		method:        msg.Method.ToMethodNum(),
+		method:        msg.Method,
 		params:        msg.Params,
 		callSeqNumber: msg.CallSeqNum,
 	}

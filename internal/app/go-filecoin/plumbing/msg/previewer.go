@@ -4,11 +4,11 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -42,7 +42,7 @@ func NewPreviewer(chainReader previewerChainReader, cst cbor.IpldStore, bs bstor
 }
 
 // Preview sends a read-only message to an actor.
-func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, method types.MethodID, params ...interface{}) (types.GasUnits, error) {
+func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, method abi.MethodNum, params ...interface{}) (types.GasUnits, error) {
 	// Dragons: delete
 
 	// encodedParams, err := abi.ToEncodedValues(params...)

@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
@@ -149,7 +151,7 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 			newAddr,
 			0,
 			ZeroAttoFIL,
-			InvalidMethodID,
+			builtin.MethodSend,
 			[]byte("params"),
 			ZeroAttoFIL,
 			GasUnits(0))
@@ -209,7 +211,7 @@ func NewMessageForTestGetter() func() *UnsignedMessage {
 			to,
 			0,
 			ZeroAttoFIL,
-			MethodID(10000+i),
+			abi.MethodNum(10000+i),
 			nil)
 	}
 }

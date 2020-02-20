@@ -266,7 +266,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 				req.Context,
 				fromAddr,
 				minerAddr,
-				types.MethodID(builtin.MethodsMiner.ChangePeerID),
+				builtin.MethodsMiner.ChangePeerID,
 				newPid,
 			)
 			if err != nil {
@@ -289,7 +289,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			types.ZeroAttoFIL,
 			gasPrice,
 			gasLimit,
-			types.MethodID(builtin.MethodsMiner.ChangePeerID),
+			builtin.MethodsMiner.ChangePeerID,
 			&params,
 		)
 		if err != nil {

@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -24,7 +25,7 @@ func TestMessageMarshal(t *testing.T) {
 		addrGetter(),
 		42,
 		NewAttoFILFromFIL(17777),
-		SendMethodID,
+		builtin.MethodSend,
 		[]byte("foobar"),
 		NewAttoFILFromFIL(3),
 		GasUnits(4),
@@ -63,7 +64,7 @@ func TestMessageCid(t *testing.T) {
 		addrGetter(),
 		0,
 		NewAttoFILFromFIL(999),
-		SendMethodID,
+		builtin.MethodSend,
 		nil,
 	)
 
@@ -72,7 +73,7 @@ func TestMessageCid(t *testing.T) {
 		addrGetter(),
 		0,
 		NewAttoFILFromFIL(4004),
-		SendMethodID,
+		builtin.MethodSend,
 		nil,
 	)
 
@@ -94,7 +95,7 @@ func TestMessageString(t *testing.T) {
 		addrGetter(),
 		0,
 		NewAttoFILFromFIL(999),
-		SendMethodID,
+		builtin.MethodSend,
 		nil,
 	)
 

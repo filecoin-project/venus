@@ -25,7 +25,7 @@ var keys = types.MustGenerateKeyInfo(2, 42)
 var signer = types.NewMockSigner(keys)
 var addresses = make([]address.Address, len(keys))
 
-var methodID = types.MethodID(21231)
+var methodID = abi.MethodNum(21231)
 
 func init() {
 	for i, k := range keys {

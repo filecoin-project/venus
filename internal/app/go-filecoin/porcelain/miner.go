@@ -23,7 +23,7 @@ import (
 type mcAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedPath string, paramJSON string) error
-	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params interface{}) (cid.Cid, chan error, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error
 	WalletDefaultAddress() (address.Address, error)
 }
@@ -80,7 +80,7 @@ func MinerCreate(
 		collateral,
 		gasPrice,
 		gasLimit,
-		types.MethodID(builtin.MethodsPower.CreateMiner),
+		builtin.MethodsPower.CreateMiner,
 		&params,
 	)
 	if err != nil {
@@ -110,7 +110,7 @@ func MinerCreate(
 // mpcAPI is the subset of the plumbing.API that MinerPreviewCreate uses.
 type mpcAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
-	MessagePreview(ctx context.Context, from, to address.Address, method types.MethodID, params ...interface{}) (types.GasUnits, error)
+	MessagePreview(ctx context.Context, from, to address.Address, method abi.MethodNum, params ...interface{}) (types.GasUnits, error)
 	NetworkGetPeerID() peer.ID
 	WalletDefaultAddress() (address.Address, error)
 }
@@ -142,7 +142,7 @@ func MinerPreviewCreate(
 		ctx,
 		fromAddr,
 		vmaddr.StorageMarketAddress,
-		types.MethodID(builtin.MethodsPower.CreateMiner),
+		builtin.MethodsPower.CreateMiner,
 		sectorSize,
 		pid,
 	)
@@ -247,7 +247,7 @@ type mwapi interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ChainHeadKey() block.TipSetKey
 	MinerStateView(baseKey block.TipSetKey) (MinerStateView, error)
-	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params interface{}) (cid.Cid, chan error, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error)
 }
 
 // MinerSetWorkerAddress sets the worker address of the miner actor to the provided new address,
@@ -287,7 +287,7 @@ func MinerSetWorkerAddress(
 		types.ZeroAttoFIL,
 		gasPrice,
 		gasLimit,
-		types.MethodID(builtin.MethodsMiner.ChangeWorkerAddress),
+		builtin.MethodsMiner.ChangeWorkerAddress,
 		&workerAddr)
 	return c, err
 }
