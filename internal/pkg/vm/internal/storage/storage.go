@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"bytes"
 	"errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -12,7 +11,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	ipld "github.com/ipfs/go-ipld-format"
-	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 // VMStorage implements a content-addressable store for the VM.
@@ -153,21 +151,13 @@ func (s *VMStorage) Clear() {
 
 // Put adds a node to temporary storage by id.
 func (s *VMStorage) toNode(v interface{}) (ipld.Node, error) {
-	// Dragons: i lifted this to make it work for now, need to review if all of this code is needed
 	var nd format.Node
 	var err error
 	if blk, ok := v.(blocks.Block); ok {
 		// optimize putting blocks
 		nd, err = cbor.DecodeBlock(blk)
-	} else if raw, ok := v.([]byte); ok {
-		nd, err = cbor.Decode(raw, types.DefaultHashFunction, -1)
-	} else if cm, ok := v.(cbg.CBORMarshaler); ok {
-		buf := new(bytes.Buffer)
-		err = cm.MarshalCBOR(buf)
-		if err == nil {
-			nd, err = cbor.Decode(buf.Bytes(), types.DefaultHashFunction, -1)
-		}
 	} else {
+		var raw []byte
 		raw, err = encoding.Encode(v)
 		if err != nil {
 			return nil, err
