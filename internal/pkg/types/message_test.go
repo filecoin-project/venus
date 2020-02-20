@@ -27,7 +27,7 @@ func TestMessageMarshal(t *testing.T) {
 		SendMethodID,
 		[]byte("foobar"),
 		NewAttoFILFromFIL(3),
-		NewGasUnits(4),
+		GasUnits(4),
 	)
 
 	// This check requests that you add a non-zero value for new fields above,

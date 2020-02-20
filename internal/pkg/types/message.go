@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -19,10 +18,11 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	errPkg "github.com/pkg/errors"
 
+	typegen "github.com/whyrusleeping/cbor-gen"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	typegen "github.com/whyrusleeping/cbor-gen"
 )
 
 // MethodID has been DEPRECATED
@@ -45,13 +45,11 @@ const (
 )
 
 // GasUnits represents number of units of gas consumed
-type GasUnits = Uint64
-
-// ZeroGas is the zero value for Gas.
-const ZeroGas = GasUnits(0)
+// This type is signed by design; it is possible for operations to consume negative gas.
+type GasUnits int64
 
 // BlockGasLimit is the maximum amount of gas that can be used to execute messages in a single block
-var BlockGasLimit = NewGasUnits(10000000)
+var BlockGasLimit = GasUnits(10000000)
 
 // EmptyMessagesCID is the cid of an empty collection of messages.
 var EmptyMessagesCID cid.Cid
@@ -75,11 +73,6 @@ func init() {
 		panic("could not create CID for empty TxMeta")
 	}
 }
-
-var (
-	// ErrInvalidMessageLength is returned when the message length does not match the expected length.
-	ErrInvalidMessageLength = errors.New("invalid message length")
-)
 
 // UnsignedMessage is an exchange of information between two actors modeled
 // as a function call.
@@ -197,11 +190,6 @@ func NewGasPrice(price int64) AttoFIL {
 	return NewAttoFIL(big.NewInt(price))
 }
 
-// NewGasUnits constructs a new GasUnits from the given number.
-func NewGasUnits(cost uint64) GasUnits {
-	return Uint64(cost)
-}
-
 // TxMeta tracks the merkleroots of both secp and bls messages separately
 type TxMeta struct {
 	_        struct{} `cbor:",toarray"`
@@ -222,7 +210,7 @@ func (id MethodID) String() string {
 // Cost returns the cost of the gas given the price.
 func (x GasUnits) Cost(price abi.TokenAmount) abi.TokenAmount {
 	// turn the gas into a bigint
-	bigx := abi.NewTokenAmount((int64)(x))
+	bigx := abi.NewTokenAmount(int64(x))
 
 	// cost = gas * price
 	return specsbig.Mul(bigx, price)

@@ -77,7 +77,7 @@ func TestMessagePropagation(t *testing.T) {
 			address.LegacyNetworkAddress,
 			types.NewAttoFILFromFIL(1),
 			types.NewGasPrice(1),
-			types.NewGasUnits(0),
+			types.GasUnits(0),
 			fooMethod,
 			&adt.EmptyValue{},
 		)

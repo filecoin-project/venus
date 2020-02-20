@@ -92,7 +92,7 @@ func TestMinerCreate(t *testing.T) {
 			plumbing,
 			address.Address{},
 			types.NewGasPrice(0),
-			types.NewGasUnits(100),
+			types.GasUnits(100),
 			constants.DevSectorSize,
 			"",
 			collateral,
@@ -111,7 +111,7 @@ func TestMinerCreate(t *testing.T) {
 			plumbing,
 			address.Address{},
 			types.NewGasPrice(0),
-			types.NewGasUnits(100),
+			types.GasUnits(100),
 			constants.DevSectorSize,
 			"",
 			collateral,
@@ -210,7 +210,7 @@ func TestMinerSetWorkerAddress(t *testing.T) {
 	minerAddr := vmaddr.NewForTestGetter()()
 	workerAddr := vmaddr.NewForTestGetter()()
 	gprice := types.ZeroAttoFIL
-	glimit := types.NewGasUnits(0)
+	glimit := types.GasUnits(0)
 
 	t.Run("Calling set worker address sets address", func(t *testing.T) {
 		plumbing := &mSetWorkerPlumbing{
