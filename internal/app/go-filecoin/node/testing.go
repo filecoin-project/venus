@@ -210,7 +210,7 @@ var TestGenCfg = &gengen.GenesisCfg{
 			Owner:               0,
 			NumCommittedSectors: 100,
 			PeerID:              mustPeerID(PeerKeys[0]).Pretty(),
-			SectorSize:          types.OneKiBSectorSize.Uint64(),
+			SectorSize:          types.OneKiBSectorSize,
 		},
 	},
 	Network: "go-filecoin-test",

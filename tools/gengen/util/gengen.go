@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	bserv "github.com/ipfs/go-blockservice"
@@ -53,7 +54,7 @@ type CreateStorageMinerConfig struct {
 	NumCommittedSectors uint64
 
 	// SectorSize is the size of the sectors that this miner commits, in bytes.
-	SectorSize uint64
+	SectorSize abi.SectorSize
 }
 
 // GenesisCfg is the top level configuration struct used to create a genesis
@@ -104,7 +105,7 @@ type RenderedMinerInfo struct {
 	Address address.Address
 
 	// Power is the amount of storage power this miner was created with
-	Power *types.BytesAmount
+	Power abi.StoragePower
 }
 
 // GenGen takes the genesis configuration and creates a genesis block that
@@ -261,7 +262,7 @@ func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*crypto.KeyInfo, 
 		out, err := vm.ApplyGenesisMessage(addr, builtin.StoragePowerActorAddr, builtin.MethodsPower.CreateMiner, abi.NewTokenAmount(100000), &power.CreateMinerParams{
 			Worker:     addr,
 			Peer:       pid,
-			SectorSize: abi.SectorSize(m.SectorSize),
+			SectorSize: m.SectorSize,
 		})
 		if err != nil {
 			return nil, err
@@ -273,7 +274,7 @@ func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*crypto.KeyInfo, 
 		minfos = append(minfos, RenderedMinerInfo{
 			Address: ret.IDAddress,
 			Owner:   m.Owner,
-			Power:   types.NewBytesAmount(m.SectorSize * m.NumCommittedSectors),
+			Power:   big.Mul(big.NewInt(int64(m.SectorSize)), big.NewInt(int64(m.NumCommittedSectors))),
 		})
 
 		// Dragons: we need a new way of doing this
@@ -338,7 +339,7 @@ func ApplyProofsModeDefaults(cfg *GenesisCfg, useLiveProofsMode bool, force bool
 
 	for _, m := range cfg.Miners {
 		if m.SectorSize == 0 || force {
-			m.SectorSize = sectorSize.Uint64()
+			m.SectorSize = sectorSize
 		}
 	}
 }

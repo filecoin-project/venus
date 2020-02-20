@@ -8,8 +8,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/libp2p/go-libp2p-core/peer"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // ActionOption is used to pass optional arguments to actions.
@@ -127,9 +125,9 @@ func AOAllowDuplicates(allow bool) ActionOption {
 }
 
 // AOSectorSize provides the `--sectorsize` option to actions
-func AOSectorSize(ba *types.BytesAmount) ActionOption {
+func AOSectorSize(ba abi.SectorSize) ActionOption {
 	return func() []string {
-		return []string{"--sectorsize", ba.String()}
+		return []string{"--sectorsize", strconv.FormatUint(uint64(ba), 10)}
 	}
 }
 

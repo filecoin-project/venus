@@ -57,8 +57,8 @@ func TestProtocolParams(t *testing.T) {
 			AutoSealInterval: 120,
 			Network:          "protocolTest",
 			SupportedSectors: []porcelain.SectorInfo{
-				{types.OneKiBSectorSize, types.NewBytesAmount(uint64(abi.PaddedPieceSize(types.OneKiBSectorSize.Uint64()).Unpadded()))},
-				{types.TwoHundredFiftySixMiBSectorSize, types.NewBytesAmount(uint64(abi.PaddedPieceSize(types.TwoHundredFiftySixMiBSectorSize.Uint64()).Unpadded()))},
+				{types.OneKiBSectorSize, abi.PaddedPieceSize(types.OneKiBSectorSize).Unpadded()},
+				{types.TwoHundredFiftySixMiBSectorSize, abi.PaddedPieceSize(types.TwoHundredFiftySixMiBSectorSize).Unpadded()},
 			},
 			BlockTime: protocolTestParamBlockTime,
 		}

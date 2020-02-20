@@ -141,7 +141,7 @@ func TestMinerCreate(t *testing.T) {
 				args = append(args, "--peerid", pid.Pretty())
 			}
 
-			collateral := specsbig.Mul(specsbig.NewInt(int64(1000000*types.OneKiBSectorSize.Uint64())), abi.NewTokenAmount(10))
+			collateral := specsbig.Mul(specsbig.NewInt(int64(1000000*types.OneKiBSectorSize)), abi.NewTokenAmount(10))
 			args = append(args, collateral.String())
 
 			var wg sync.WaitGroup
@@ -362,12 +362,12 @@ var testConfig = &gengen.GenesisCfg{
 		{
 			Owner:               0,
 			NumCommittedSectors: 3,
-			SectorSize:          types.OneKiBSectorSize.Uint64(),
+			SectorSize:          types.OneKiBSectorSize,
 		},
 		{
 			Owner:               1,
 			NumCommittedSectors: 3,
-			SectorSize:          types.OneKiBSectorSize.Uint64(),
+			SectorSize:          types.OneKiBSectorSize,
 		},
 	},
 	Network: "go-filecoin-test",

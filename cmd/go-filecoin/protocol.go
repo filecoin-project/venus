@@ -35,7 +35,7 @@ var protocolCmd = &cmds.Command{
 			}
 
 			for _, sectorInfo := range pp.SupportedSectors {
-				_, err = fmt.Fprintf(w, "\t%s (%s writeable)\n", readableBytesAmount(float64(sectorInfo.Size.Uint64())), readableBytesAmount(float64(sectorInfo.MaxPieceSize.Uint64())))
+				_, err = fmt.Fprintf(w, "\t%s (%s writeable)\n", readableBytesAmount(float64(sectorInfo.Size)), readableBytesAmount(float64(sectorInfo.MaxPieceSize)))
 				if err != nil {
 					return err
 				}
