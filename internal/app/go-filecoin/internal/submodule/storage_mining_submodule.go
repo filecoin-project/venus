@@ -39,7 +39,10 @@ func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching,
 	minerNode := storageminerconnector.NewStorageMinerNodeConnector(minerAddr, c.ChainReader, c.State, m.Outbox, mw, w.Wallet, stateViewer)
 
 	// The amount of epochs we expect the storage miner to take to replicate and
-	// prove a sector.
+	// prove a sector. This value should be shared with the storage miner side
+	// of go-fil-markets.
+	//
+	// TODO: What is the correct value for proving delay given 32GiB sectors?
 	provingDelay := abi.ChainEpoch(2 * 60 * 24)
 
 	// The quantity of epochs during which the self-deal will be valid.
