@@ -4,13 +4,13 @@ import (
 	"encoding/binary"
 	"math/big"
 
+	"github.com/filecoin-project/go-address"
+	sector "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-address"
-	sector "github.com/filecoin-project/go-sectorbuilder"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -27,7 +27,11 @@ func (em ElectionMachine) GeneratePoStRandomness(ticket block.Ticket, candidateA
 	n := binary.PutUvarint(seedBuf, nullBlockCount)
 	buf := append(ticket.VRFProof, seedBuf[:n]...)
 
-	return signer.SignBytes(buf[:], candidateAddr)
+	signature, err := signer.SignBytes(buf[:], candidateAddr)
+	if err != nil {
+		return nil, err
+	}
+	return signature.Data, nil
 }
 
 // GenerateCandidates creates candidate partial tickets for consideration in
@@ -50,8 +54,7 @@ func (em ElectionMachine) VerifyPoStRandomness(rand block.VRFPi, ticket block.Ti
 	n := binary.PutUvarint(seedBuf, nullBlockCount)
 	buf := append(ticket.VRFProof, seedBuf[:n]...)
 
-	vrfPi := types.Signature(rand)
-	return types.IsValidSignature(buf[:], candidateAddr, vrfPi)
+	return crypto.IsValidBLSSignature(buf[:], candidateAddr, rand)
 }
 
 // CandidateWins returns true if the input candidate wins the election
@@ -100,13 +103,12 @@ func (tm TicketMachine) NextTicket(parent block.Ticket, signerAddr address.Addre
 	}
 
 	return block.Ticket{
-		VRFProof: block.VRFPi(vrfPi),
+		VRFProof: vrfPi.Data,
 	}, nil
 }
 
 // IsValidTicket verifies that the ticket's proof of randomness and delay are
 // valid with respect to its parent.
 func (tm TicketMachine) IsValidTicket(parent, ticket block.Ticket, signerAddr address.Address) bool {
-	vrfPi := types.Signature(ticket.VRFProof)
-	return types.IsValidSignature(parent.VRFProof[:], signerAddr, vrfPi)
+	return crypto.IsValidBLSSignature(parent.VRFProof[:], signerAddr, ticket.VRFProof)
 }

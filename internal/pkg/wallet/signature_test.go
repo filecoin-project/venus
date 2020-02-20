@@ -14,12 +14,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-datastore"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 /* Test types.IsValidSignature */
@@ -45,7 +45,7 @@ func TestSignatureOk(t *testing.T) {
 	sig, err := fs.SignBytes(data, addr)
 	require.NoError(t, err)
 
-	assert.True(t, types.IsValidSignature(data, addr, sig))
+	assert.True(t, crypto.IsValidSignature(data, addr, sig))
 }
 
 // Signature is nil.
@@ -55,7 +55,7 @@ func TestNilSignature(t *testing.T) {
 	_, addr := requireSignerAddr(t)
 
 	data := []byte("THESE BYTES NEED A SIGNATURE")
-	assert.False(t, types.IsValidSignature(data, addr, nil))
+	assert.False(t, crypto.IsValidSignature(data, addr, crypto.Signature{}))
 }
 
 // Signature is over different data.
@@ -70,7 +70,7 @@ func TestDataCorrupted(t *testing.T) {
 
 	corruptData := []byte("THESE BYTEZ ARE SIGNED")
 
-	assert.False(t, types.IsValidSignature(corruptData, addr, sig))
+	assert.False(t, crypto.IsValidSignature(corruptData, addr, sig))
 }
 
 // Signature is valid for data but was signed by a different address.
@@ -86,7 +86,7 @@ func TestInvalidAddress(t *testing.T) {
 	badAddr, err := fs.NewAddress(address.SECP256K1)
 	require.NoError(t, err)
 
-	assert.False(t, types.IsValidSignature(data, badAddr, sig))
+	assert.False(t, crypto.IsValidSignature(data, badAddr, sig))
 }
 
 // Signature is corrupted.
@@ -98,9 +98,9 @@ func TestSignatureCorrupted(t *testing.T) {
 	data := []byte("THESE BYTES ARE SIGNED")
 	sig, err := fs.SignBytes(data, addr)
 	require.NoError(t, err)
-	sig[0] = sig[0] ^ 0xFF // This operation ensures sig is modified
+	sig.Data[0] = sig.Data[0] ^ 0xFF // This operation ensures sig is modified
 
-	assert.False(t, types.IsValidSignature(data, addr, sig))
+	assert.False(t, crypto.IsValidSignature(data, addr, sig))
 }
 
 /* Test types.SignedMessage */
@@ -149,7 +149,7 @@ func TestSignedMessageBadSignature(t *testing.T) {
 	smsg, err := types.NewSignedMessage(*msg, fs)
 	require.NoError(t, err)
 
-	smsg.Signature[0] = smsg.Signature[0] ^ 0xFF
+	smsg.Signature.Data[0] = smsg.Signature.Data[0] ^ 0xFF
 	assert.False(t, smsg.VerifySignature())
 }
 

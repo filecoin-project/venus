@@ -48,15 +48,24 @@ type AddressLsResult struct {
 
 var addrsNewCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		addressType := req.Options["type"].(string)
-		addr, err := GetPorcelainAPI(env).WalletNewAddress(addressType)
+		protocolName := req.Options["type"].(string)
+		var protocol address.Protocol
+		switch protocolName {
+		case "secp256k1":
+			protocol = address.SECP256K1
+		case "bls":
+			protocol = address.BLS
+		default:
+			return fmt.Errorf("unrecognized address protocol %s", protocolName)
+		}
+		addr, err := GetPorcelainAPI(env).WalletNewAddress(protocol)
 		if err != nil {
 			return err
 		}
 		return re.Emit(&addressResult{addr})
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("type", "The type of address to create: bls or secp256k1 (default)").WithDefault(crypto.SECP256K1),
+		cmdkit.StringOption("type", "The type of address to create: bls or secp256k1 (default)").WithDefault("secp256k1"),
 	},
 	Type: &addressResult{},
 	Encoders: cmds.EncoderMap{
@@ -223,7 +232,7 @@ var walletExportCmd = &cmds.Command{
 					return err
 				}
 				privateKeyInBase64 := base64.StdEncoding.EncodeToString(k.PrivateKey)
-				_, err = fmt.Fprintf(w, "Address:\t%s\nPrivateKey:\t%s\nCurve:\t\t%s\n\n", a, privateKeyInBase64, k.CryptSystem)
+				_, err = fmt.Fprintf(w, "Address:\t%s\nPrivateKey:\t%s\nCurve:\t\t%d\n\n", a, privateKeyInBase64, k.SigType)
 				if err != nil {
 					return err
 				}

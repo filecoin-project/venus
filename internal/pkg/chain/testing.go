@@ -13,6 +13,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	syncds "github.com/ipfs/go-datastore/sync"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -21,13 +22,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 // Builder builds fake chains and acts as a provider and fetcher for the chain thus generated.
@@ -185,7 +186,10 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 	parentWeight, err := f.stateBuilder.Weigh(parent, f.StateForKey(grandparentKey))
 	require.NoError(f.t, err)
 
-	emptyBLSSig := (*bls.Aggregate([]bls.Signature{}))[:]
+	emptyBLSSig := crypto.Signature{
+		Type: crypto.SigTypeBLS,
+		Data: (*bls.Aggregate([]bls.Signature{}))[:],
+	}
 	for i := 0; i < width; i++ {
 		ticket := block.Ticket{}
 		ticket.VRFProof = block.VRFPi(make([]byte, binary.Size(f.seq)))

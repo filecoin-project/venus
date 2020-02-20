@@ -4,7 +4,6 @@ import (
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // Backend is the interface to represent different storage backends
@@ -16,8 +15,8 @@ type Backend interface {
 	// Contains returns true if this backend stores the passed in address.
 	HasAddress(addr address.Address) bool
 
-	// Sign cryptographically signs `data` using the private key `priv`.
-	SignBytes(data []byte, addr address.Address) (types.Signature, error)
+	// Sign cryptographically signs data with the private key associated with an address.
+	SignBytes(data []byte, addr address.Address) (crypto.Signature, error)
 
 	// GetKeyInfo will return the keyinfo associated with address `addr`
 	// iff backend contains the addr.

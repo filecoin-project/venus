@@ -30,7 +30,7 @@ func TestGenerateSecpKey(t *testing.T) {
 	digest, err := crypto.SignSecp(sk, msg)
 	assert.NoError(t, err)
 	assert.Equal(t, len(digest), 65)
-	pk := crypto.PublicKey(sk)
+	pk := crypto.PublicKeyForSecpSecretKey(sk)
 
 	// valid signature
 	assert.True(t, crypto.VerifySecp(pk, msg, digest))
@@ -61,7 +61,7 @@ func TestGenerateSecpKey(t *testing.T) {
 
 	recovered, err := crypto.EcRecover(msg, digest)
 	assert.NoError(t, err)
-	assert.Equal(t, recovered, crypto.PublicKey(sk))
+	assert.Equal(t, recovered, crypto.PublicKeyForSecpSecretKey(sk))
 }
 
 func TestBLSSigning(t *testing.T) {

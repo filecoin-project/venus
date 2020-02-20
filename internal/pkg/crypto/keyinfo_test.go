@@ -13,8 +13,8 @@ func TestKeyInfoMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
 	ki := crypto.KeyInfo{
-		PrivateKey:  []byte{1, 2, 3, 4},
-		CryptSystem: crypto.SECP256K1,
+		PrivateKey: []byte{1, 2, 3, 4},
+		SigType:    crypto.SigTypeSecp256k1,
 	}
 
 	marshaled, err := ki.Marshal()

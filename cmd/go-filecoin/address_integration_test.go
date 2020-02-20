@@ -14,8 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -33,7 +31,7 @@ func TestAddrsNewAndList(t *testing.T) {
 	addrs := make([]address.Address, 10)
 	var err error
 	for i := 0; i < 10; i++ {
-		addrs[i], err = n.PorcelainAPI.WalletNewAddress(crypto.SECP256K1)
+		addrs[i], err = n.PorcelainAPI.WalletNewAddress(address.SECP256K1)
 		require.NoError(t, err)
 	}
 
@@ -54,7 +52,7 @@ func TestWalletBalance(t *testing.T) {
 
 	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
-	addr, err := n.PorcelainAPI.WalletNewAddress(crypto.SECP256K1)
+	addr, err := n.PorcelainAPI.WalletNewAddress(address.SECP256K1)
 	require.NoError(t, err)
 
 	t.Log("[success] not found, zero")

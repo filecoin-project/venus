@@ -6,11 +6,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 
 	blk "github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
@@ -71,10 +73,16 @@ func TestTriangleEncoding(t *testing.T) {
 			ParentWeight:    fbig.NewInt(1000),
 			StateRoot:       e.NewCid(types.CidFromString(t, "somecid")),
 			Timestamp:       1,
-			BlockSig:        []byte{0x3},
-			BLSAggregateSig: []byte{0x3},
-			EPoStInfo:       postInfo,
-			ForkSignaling:   6,
+			BlockSig: crypto.Signature{
+				Type: crypto.SigTypeBLS,
+				Data: []byte{0x3},
+			},
+			BLSAggregateSig: crypto.Signature{
+				Type: crypto.SigTypeBLS,
+				Data: []byte{0x3},
+			},
+			EPoStInfo:     postInfo,
+			ForkSignaling: 6,
 		}
 		s := reflect.TypeOf(*b)
 		// This check is here to request that you add a non-zero value for new fields
@@ -225,7 +233,10 @@ func TestSignatureData(t *testing.T) {
 		StateRoot:       e.NewCid(types.CidFromString(t, "somecid")),
 		Timestamp:       1,
 		EPoStInfo:       postInfo,
-		BlockSig:        []byte{0x3},
+		BlockSig: crypto.Signature{
+			Type: crypto.SigTypeBLS,
+			Data: []byte{0x3},
+		},
 	}
 
 	diffCandidate1 := blk.NewEPoStCandidate(0, []byte{0x04}, 25)
@@ -244,7 +255,10 @@ func TestSignatureData(t *testing.T) {
 		StateRoot:       e.NewCid(types.CidFromString(t, "someothercid")),
 		Timestamp:       4,
 		EPoStInfo:       diffPoStInfo,
-		BlockSig:        []byte{0x4},
+		BlockSig: crypto.Signature{
+			Type: crypto.SigTypeBLS,
+			Data: []byte{0x4},
+		},
 	}
 
 	// Changing BlockSig does not affect output

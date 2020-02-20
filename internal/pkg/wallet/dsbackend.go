@@ -9,12 +9,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
-	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // DSBackendType is the reflect type of the DSBackend.
@@ -146,19 +144,12 @@ func (backend *DSBackend) putKeyInfo(ki *crypto.KeyInfo) error {
 }
 
 // SignBytes cryptographically signs `data` using the private key `priv`.
-func (backend *DSBackend) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
+func (backend *DSBackend) SignBytes(data []byte, addr address.Address) (crypto.Signature, error) {
 	ki, err := backend.GetKeyInfo(addr)
 	if err != nil {
-		return nil, err
+		return crypto.Signature{}, err
 	}
-
-	if ki.CryptSystem == crypto.BLS {
-		return crypto.SignBLS(ki.PrivateKey, data)
-	}
-
-	// sign the content
-	hash := blake2b.Sum256(data)
-	return crypto.SignSecp(ki.PrivateKey, hash[:])
+	return crypto.Sign(data, ki.PrivateKey, ki.SigType)
 }
 
 // GetKeyInfo will return the private & public keys associated with address `addr`

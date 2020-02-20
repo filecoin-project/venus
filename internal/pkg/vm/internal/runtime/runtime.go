@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
@@ -62,7 +62,7 @@ type ExtendedInvocationContext interface {
 	//
 	// This methods returns `True` when 'signature' is signed hash of 'msg'
 	// using the public key belonging to the `signer`.
-	VerifySignature(signer address.Address, signature types.Signature, msg []byte) bool
+	VerifySignature(signer address.Address, signature crypto.Signature, msg []byte) bool
 }
 
 // PatternContext is the context a pattern gets access to in order to determine if the caller matches.

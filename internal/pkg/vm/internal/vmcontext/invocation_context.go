@@ -8,20 +8,21 @@ import (
 	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	notinit "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-	"github.com/ipfs/go-cid"
 )
 
 type invocationContext struct {
@@ -152,7 +153,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 	stateHandle := newActorStateHandle((*stateHandleContext)(ctx), initActorEntry.Head.Cid)
 
 	// get a view into the actor state
-	var state notinit.State
+	var state init_.State
 	stateHandle.Readonly(&state)
 
 	// lookup the ActorID based on the address
@@ -370,8 +371,8 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 }
 
 /// VerifySignature implements runtime.ExtendedInvocationContext.
-func (ctx *invocationContext) VerifySignature(signer address.Address, signature types.Signature, msg []byte) bool {
-	return types.IsValidSignature(msg, signer, signature)
+func (ctx *invocationContext) VerifySignature(signer address.Address, signature crypto.Signature, msg []byte) bool {
+	return crypto.IsValidSignature(msg, signer, signature)
 }
 
 // patternContext implements the PatternContext
