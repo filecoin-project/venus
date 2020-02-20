@@ -59,7 +59,7 @@ func requireValidTicket(t *testing.T, parent block.Ticket, signer types.Signer, 
 func TestNextTicketFailsWithInvalidSigner(t *testing.T) {
 	parent := consensus.MakeFakeTicketForTest()
 	signer, _ := types.NewMockSignersAndKeyInfo(1)
-	badAddr := vmaddr.TestAddress
+	badAddr := vmaddr.RequireIDAddress(t, 100)
 	tm := consensus.TicketMachine{}
 	badTicket, err := tm.NextTicket(parent, badAddr, signer)
 	assert.Error(t, err)

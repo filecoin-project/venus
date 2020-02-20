@@ -37,7 +37,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -301,7 +300,7 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 	addr1, addr2, addr3, addr5 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2], mockSigner.Addresses[4]
 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward failures.
-		vmaddr.LegacyNetworkAddress: actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(1000000)),
+		builtin.RewardActorAddr: actor.NewActor(builtin.RewardActorCodeID, abi.NewTokenAmount(1000000)),
 	})
 	th.RequireInitAccountActor(ctx, t, st, vms, addr1, types.NewAttoFILFromFIL(100))
 	th.RequireInitAccountActor(ctx, t, st, vms, addr2, types.NewAttoFILFromFIL(100))

@@ -33,7 +33,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -201,7 +200,7 @@ func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, k
 	}
 
 	netact := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(1000000000000))
-	err := st.SetActor(context.Background(), vmaddr.LegacyNetworkAddress, netact)
+	err := st.SetActor(context.Background(), builtin.RewardActorAddr, netact)
 	if err != nil {
 		return err
 	}
@@ -219,7 +218,7 @@ func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, k
 			return err
 		}
 
-		_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, addr,
+		_, err = vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr,
 			builtin.MethodSend, abi.NewTokenAmount(int64(valint)), nil)
 		if err != nil {
 			return err
@@ -254,13 +253,13 @@ func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*crypto.KeyInfo, 
 		}
 
 		// give collateral to account actor
-		_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, addr, builtin.MethodSend, abi.NewTokenAmount(100000), nil)
+		_, err = vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr, builtin.MethodSend, abi.NewTokenAmount(100000), nil)
 		if err != nil {
 			return nil, err
 		}
 
 		// Note: the owner of the miner is implicit in the msg. The owner will be the `from` address.
-		out, err := vm.ApplyGenesisMessage(addr, vmaddr.StoragePowerAddress, builtin.MethodsPower.CreateMiner, abi.NewTokenAmount(100000), &power.CreateMinerParams{
+		out, err := vm.ApplyGenesisMessage(addr, builtin.StoragePowerActorAddr, builtin.MethodsPower.CreateMiner, abi.NewTokenAmount(100000), &power.CreateMinerParams{
 			Worker:     addr,
 			Peer:       pid,
 			SectorSize: abi.SectorSize(m.SectorSize),
