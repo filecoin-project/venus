@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
-
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
