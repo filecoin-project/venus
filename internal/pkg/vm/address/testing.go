@@ -2,9 +2,18 @@ package address
 
 import (
 	"fmt"
+	"testing"
 
 	"github.com/filecoin-project/go-address"
 )
+
+func RequireIDAddress(t *testing.T, i int) address.Address {
+	a, err := address.NewIDAddress(uint64(i))
+	if err != nil {
+		t.Fatalf("failed to make address: %v", err)
+	}
+	return a
+}
 
 // NewForTestGetter returns a closure that returns an address unique to that invocation.
 // The address is unique wrt the closure returned, not globally.

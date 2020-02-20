@@ -145,7 +145,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		require.NoError(t, err)
 
 		blsMessages := make([][]*types.UnsignedMessage, tipSet.Len())
-		msg := types.NewUnsignedMessage(blsAddr, vmaddr.TestAddress2, 0, types.NewAttoFILFromFIL(0), builtin.MethodSend, []byte{})
+		msg := types.NewUnsignedMessage(blsAddr, vmaddr.RequireIDAddress(t, 100), 0, types.NewAttoFILFromFIL(0), builtin.MethodSend, []byte{})
 		blsMessages[0] = append(blsMessages[0], msg)
 
 		_, _, err = exp.RunStateTransition(ctx, tipSet, blsMessages, emptyMessages, []block.TipSet{pTipSet}, nextBlocks[0].ParentWeight, nextBlocks[0].StateRoot.Cid, nextBlocks[0].MessageReceipts.Cid)
@@ -174,7 +174,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		require.NoError(t, err)
 
 		secpMessages := make([][]*types.SignedMessage, tipSet.Len())
-		msg := types.NewUnsignedMessage(blsAddr, vmaddr.TestAddress2, 0, types.NewAttoFILFromFIL(0), builtin.MethodSend, []byte{})
+		msg := types.NewUnsignedMessage(blsAddr, vmaddr.RequireIDAddress(t, 100), 0, types.NewAttoFILFromFIL(0), builtin.MethodSend, []byte{})
 		smsg := &types.SignedMessage{
 			Message: *msg,
 			Signature: crypto.Signature{

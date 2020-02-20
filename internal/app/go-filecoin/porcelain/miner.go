@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // mcAPI is the subset of the plumbing.API that MinerCreate uses.
@@ -76,7 +75,7 @@ func MinerCreate(
 	smsgCid, _, err := plumbing.MessageSend(
 		ctx,
 		minerOwnerAddr,
-		vmaddr.StorageMarketAddress,
+		builtin.StorageMarketActorAddr,
 		collateral,
 		gasPrice,
 		gasLimit,
@@ -141,7 +140,7 @@ func MinerPreviewCreate(
 	usedGas, err = plumbing.MessagePreview(
 		ctx,
 		fromAddr,
-		vmaddr.StorageMarketAddress,
+		builtin.StorageMarketActorAddr,
 		builtin.MethodsPower.CreateMiner,
 		sectorSize,
 		pid,

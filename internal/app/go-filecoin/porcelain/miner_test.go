@@ -121,7 +121,8 @@ func TestMinerCreate(t *testing.T) {
 }
 
 type mStatusPlumbing struct {
-	head block.TipSetKey
+	head                 block.TipSetKey
+	miner, owner, worker address.Address
 }
 
 func (p *mStatusPlumbing) ChainHeadKey() block.TipSetKey {
@@ -132,9 +133,9 @@ func (p *mStatusPlumbing) MinerStateView(baseKey block.TipSetKey) (MinerStateVie
 	return &state.FakeStateView{
 		NetworkPower: abi.NewStoragePower(4),
 		Miners: map[address.Address]*state.FakeMinerState{
-			vmaddr.TestAddress: {
-				Owner:        vmaddr.TestAddress2,
-				Worker:       vmaddr.TestAddress2,
+			p.miner: {
+				Owner:        p.owner,
+				Worker:       p.worker,
 				ClaimedPower: abi.NewStoragePower(2),
 			},
 		},
@@ -145,10 +146,13 @@ func TestMinerGetStatus(t *testing.T) {
 	tf.UnitTest(t)
 	key := block.NewTipSetKey(types.NewCidForTestGetter()())
 
-	status, err := MinerGetStatus(context.Background(), &mStatusPlumbing{}, vmaddr.TestAddress, key)
+	plumbing := mStatusPlumbing{
+		key, vmaddr.RequireIDAddress(t, 1), vmaddr.RequireIDAddress(t, 2), vmaddr.RequireIDAddress(t, 3),
+	}
+	status, err := MinerGetStatus(context.Background(), &plumbing, plumbing.miner, key)
 	assert.NoError(t, err)
-	assert.Equal(t, vmaddr.TestAddress2, status.OwnerAddress)
-	assert.Equal(t, vmaddr.TestAddress2, status.WorkerAddress)
+	assert.Equal(t, plumbing.owner, status.OwnerAddress)
+	assert.Equal(t, plumbing.worker, status.WorkerAddress)
 	assert.Equal(t, "4", status.NetworkPower.String())
 	assert.Equal(t, "2", status.Power.String())
 }
@@ -206,9 +210,9 @@ func (p *mSetWorkerPlumbing) ConfigGet(dottedKey string) (interface{}, error) {
 func TestMinerSetWorkerAddress(t *testing.T) {
 	tf.UnitTest(t)
 
-	minerOwner := vmaddr.TestAddress
-	minerAddr := vmaddr.NewForTestGetter()()
-	workerAddr := vmaddr.NewForTestGetter()()
+	minerOwner := vmaddr.RequireIDAddress(t, 100)
+	minerAddr := vmaddr.RequireIDAddress(t, 101)
+	workerAddr := vmaddr.RequireIDAddress(t, 102)
 	gprice := types.ZeroAttoFIL
 	glimit := types.GasUnits(0)
 

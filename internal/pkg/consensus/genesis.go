@@ -30,7 +30,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -43,10 +42,8 @@ var (
 
 func init() {
 	defaultAccounts = map[address.Address]abi.TokenAmount{
-		vmaddr.LegacyNetworkAddress: abi.NewTokenAmount(10000000000),
+		builtin.RewardActorAddr:     abi.NewTokenAmount(10000000000),
 		builtin.BurntFundsActorAddr: abi.NewTokenAmount(0),
-		vmaddr.TestAddress:          abi.NewTokenAmount(50000),
-		vmaddr.TestAddress2:         abi.NewTokenAmount(60000),
 	}
 }
 
@@ -197,7 +194,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			}
 			val := genCfg.accounts[addr]
 
-			_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, addr,
+			_, err = vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr,
 				builtin.MethodSend, val, nil)
 			if err != nil {
 				return nil, err
@@ -330,7 +327,7 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 				return err
 			}
 		} else {
-			_, err = vm.ApplyGenesisMessage(vmaddr.LegacyNetworkAddress, addr, builtin.MethodSend, val, nil)
+			_, err = vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr, builtin.MethodSend, val, nil)
 			if err != nil {
 				return err
 			}

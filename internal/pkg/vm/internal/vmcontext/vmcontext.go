@@ -6,17 +6,6 @@ import (
 	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -28,6 +17,17 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 var vmlog = logging.Logger("vm.context")
@@ -367,7 +367,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 	// 6. Deduct gas limit funds from sender first
 	// Note: this should always succeed, due to the sender balance check above
 	// Note: after this point, we nede to return this funds back before exiting
-	vm.transfer(msg.From, vmaddr.BurntFundsAddress, gasLimitCost)
+	vm.transfer(msg.From, builtin.BurntFundsActorAddr, gasLimitCost)
 
 	// 7. checkpoint state
 	// Even if the message fails, the following accumulated changes will be applied:
@@ -474,9 +474,9 @@ func (vm *VM) getMinerOwner(minerAddr address.Address) address.Address {
 
 func (vm *VM) settleGasBill(sender address.Address, gasTank *GasTracker, payee address.Address, gasPrice abi.TokenAmount) {
 	// release unused funds that were withheld
-	vm.transfer(vmaddr.BurntFundsAddress, sender, gasTank.RemainingGas().ToTokens(gasPrice))
+	vm.transfer(builtin.BurntFundsActorAddr, sender, gasTank.RemainingGas().ToTokens(gasPrice))
 	// pay miner for gas
-	vm.transfer(vmaddr.BurntFundsAddress, payee, gasTank.GasConsumed().ToTokens(gasPrice))
+	vm.transfer(builtin.BurntFundsActorAddr, payee, gasTank.GasConsumed().ToTokens(gasPrice))
 }
 
 // transfer debits money from one account and credits it to another.
@@ -627,8 +627,8 @@ func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount,
 	}
 	return internalMessage{
 		miner:  blockMiner,
-		from:   vmaddr.SystemAddress,
-		to:     vmaddr.RewardAddress,
+		from:   builtin.SystemActorAddr,
+		to:     builtin.RewardActorAddr,
 		value:  big.Zero(),
 		method: builtin.MethodsReward.AwardBlockReward,
 		params: encoded,
@@ -638,8 +638,8 @@ func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount,
 func makeCronTickMessage(blockMiner address.Address) internalMessage {
 	return internalMessage{
 		miner:  blockMiner,
-		from:   vmaddr.SystemAddress,
-		to:     vmaddr.CronAddress,
+		from:   builtin.SystemActorAddr,
+		to:     builtin.CronActorAddr,
 		value:  big.Zero(),
 		method: builtin.MethodsCron.EpochTick,
 		params: []byte{},
