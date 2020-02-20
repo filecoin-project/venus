@@ -5,8 +5,11 @@ import (
 	"testing"
 
 	address "github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // MessageMaker creates unique, signed messages for use in tests.
@@ -20,7 +23,7 @@ type MessageMaker struct {
 }
 
 // NewMessageMaker creates a new message maker with a set of signing keys.
-func NewMessageMaker(t *testing.T, keys []types.KeyInfo) *MessageMaker {
+func NewMessageMaker(t *testing.T, keys []crypto.KeyInfo) *MessageMaker {
 	addresses := make([]address.Address, len(keys))
 	signer := types.NewMockSigner(keys)
 
@@ -29,7 +32,7 @@ func NewMessageMaker(t *testing.T, keys []types.KeyInfo) *MessageMaker {
 		addresses[i] = addr
 	}
 
-	return &MessageMaker{types.ZeroAttoFIL, types.NewGasUnits(0), &signer, 0, t}
+	return &MessageMaker{types.ZeroAttoFIL, types.GasUnits(0), &signer, 0, t}
 }
 
 // Addresses returns the addresses for which this maker can sign messages.
@@ -53,7 +56,7 @@ func (mm *MessageMaker) NewUnsignedMessage(from address.Address, nonce uint64) *
 		to,
 		nonce,
 		types.ZeroAttoFIL,
-		types.MethodID(9000+seq),
+		abi.MethodNum(9000+seq),
 		[]byte("params"),
 		mm.DefaultGasPrice,
 		mm.DefaultGasUnits)

@@ -2,6 +2,8 @@ package wallet
 
 import (
 	"github.com/filecoin-project/go-address"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -19,7 +21,7 @@ type Backend interface {
 
 	// GetKeyInfo will return the keyinfo associated with address `addr`
 	// iff backend contains the addr.
-	GetKeyInfo(addr address.Address) (*types.KeyInfo, error)
+	GetKeyInfo(addr address.Address) (*crypto.KeyInfo, error)
 }
 
 // Importer is a specialization of a wallet backend that can import
@@ -28,5 +30,5 @@ type Backend interface {
 type Importer interface {
 	// ImportKey imports the key described by the given keyinfo
 	// into the backend
-	ImportKey(ki *types.KeyInfo) error
+	ImportKey(ki *crypto.KeyInfo) error
 }

@@ -68,7 +68,7 @@ func (a *API) MinerCreate(
 	accountAddr address.Address,
 	gasPrice types.AttoFIL,
 	gasLimit types.GasUnits,
-	sectorSize *types.BytesAmount,
+	sectorSize abi.SectorSize,
 	pid peer.ID,
 	collateral types.AttoFIL,
 ) (_ *address.Address, err error) {
@@ -79,7 +79,7 @@ func (a *API) MinerCreate(
 func (a *API) MinerPreviewCreate(
 	ctx context.Context,
 	fromAddr address.Address,
-	sectorSize *types.BytesAmount,
+	sectorSize abi.SectorSize,
 	pid peer.ID,
 ) (usedGas types.GasUnits, err error) {
 	return MinerPreviewCreate(ctx, a, fromAddr, sectorSize, pid)

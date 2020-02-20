@@ -6,6 +6,8 @@ import (
 	"io"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -210,8 +212,8 @@ func (chn *ChainStateReadWriter) LsActors(ctx context.Context) (<-chan state.Get
 // GetActorSignature returns the signature of the given actor's given method.
 // The function signature is typically used to enable a caller to decode the
 // output of an actor method call (message).
-func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (vm.ActorMethodSignature, error) {
-	if method == types.SendMethodID {
+func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAddr address.Address, method abi.MethodNum) (vm.ActorMethodSignature, error) {
+	if method == builtin.MethodSend {
 		return nil, ErrNoMethod
 	}
 
@@ -230,7 +232,7 @@ func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAdd
 
 	signature, err := executable.Signature(method)
 	if err != nil {
-		return nil, fmt.Errorf("missing export: %s", method)
+		return nil, fmt.Errorf("missing export: %d", method)
 	}
 
 	return signature, nil

@@ -112,9 +112,9 @@ func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address
 		vmaddr.StorageMarketAddress,
 		types.NewAttoFIL(amount.Int),
 		types.NewGasPrice(1),
-		types.NewGasUnits(300),
+		types.GasUnits(300),
 		true,
-		types.MethodID(builtin.MethodsMarket.AddBalance),
+		builtin.MethodsMarket.AddBalance,
 		&addr,
 	)
 	if err != nil {
@@ -170,7 +170,7 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 
 	pred := func(msg *types.SignedMessage, msgCid cid.Cid) bool {
 		m := msg.Message
-		if m.Method != types.MethodID(builtin.MethodsMiner.PreCommitSector) {
+		if m.Method != builtin.MethodsMiner.PreCommitSector {
 			return false
 		}
 

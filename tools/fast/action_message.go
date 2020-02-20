@@ -2,16 +2,18 @@ package fast
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	cid "github.com/ipfs/go-cid"
 
 	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // MessageSend runs the `message send` command against the filecoin process.
-func (f *Filecoin) MessageSend(ctx context.Context, target address.Address, method types.MethodID, options ...ActionOption) (cid.Cid, error) {
+func (f *Filecoin) MessageSend(ctx context.Context, target address.Address, method abi.MethodNum, options ...ActionOption) (cid.Cid, error) {
 	var out commands.MessageSendResult
 
 	args := []string{"go-filecoin", "message", "send"}
@@ -22,8 +24,8 @@ func (f *Filecoin) MessageSend(ctx context.Context, target address.Address, meth
 
 	args = append(args, target.String())
 
-	if method != types.SendMethodID {
-		args = append(args, method.String())
+	if method != builtin.MethodSend {
+		args = append(args, strconv.Itoa(int(method)))
 	}
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {

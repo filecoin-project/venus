@@ -8,11 +8,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/cron"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/reward"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemining"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
@@ -24,27 +19,27 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	notinit "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 )
 
-var vmLog = logging.Logger("vm.context")
+var vmlog = logging.Logger("vm.context")
 
 // VM holds the state and executes messages over the state.
 type VM struct {
-	rnd          RandomnessSource
+	context      context.Context
 	actorImpls   ActorImplLookup
 	store        *storage.VMStorage
 	state        *state.CachedTree
 	currentEpoch abi.ChainEpoch
-	context      context.Context
-}
-
-// RandomnessSource provides randomness to actors.
-type RandomnessSource interface {
-	Randomness(epoch abi.ChainEpoch) abi.Randomness
+	rnd          interpreter.RandomnessSource
 }
 
 // ActorImplLookup provides access to upgradeable actor code.
@@ -52,16 +47,17 @@ type ActorImplLookup interface {
 	GetActorImpl(code cid.Cid) (dispatch.Dispatcher, error)
 }
 
-// MinerPenaltyFIL is just a alias for FIL used to penalize the miner
-type MinerPenaltyFIL = abi.TokenAmount
+type minerPenaltyFIL = abi.TokenAmount
+
+type gasRewardFIL = abi.TokenAmount
 
 type internalMessage struct {
 	miner         address.Address
 	from          address.Address
 	to            address.Address
 	value         abi.TokenAmount
-	method        types.MethodID
-	params        []byte
+	method        abi.MethodNum
+	params        interface{}
 	callSeqNumber uint64
 }
 
@@ -71,35 +67,27 @@ type actorStorage struct {
 }
 
 // NewVM creates a new runtime for executing messages.
-func NewVM(rnd RandomnessSource, actorImpls ActorImplLookup, store *storage.VMStorage, st state.Tree) VM {
+func NewVM(actorImpls ActorImplLookup, store *storage.VMStorage, st state.Tree) VM {
 	return VM{
-		rnd:          rnd,
-		actorImpls:   actorImpls,
-		store:        store,
-		state:        state.NewCachedTree(st),
-		currentEpoch: 0,
-		context:      context.Background(),
+		actorImpls: actorImpls,
+		store:      store,
+		state:      state.NewCachedTree(st),
+		context:    context.Background(),
+		// loaded during execution
+		// currentEpoch: ..,
+		// rnd: ..,
 	}
 }
 
 // ApplyGenesisMessage forces the execution of a message in the vm actor.
 //
 // This method is intended to be used in the generation of the genesis block only.
-func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method types.MethodID, value abi.TokenAmount, params interface{}) (interface{}, error) {
-	// get the params
-	// try to use the bytes directly
-	encodedParams, ok := params.([]byte)
-	if !ok && params != nil {
-		// we got an object, encode it
-		var err error
-		encodedParams, err = encoding.Encode(params)
-		if err != nil {
-			return nil, err
-		}
-	}
-
+func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (interface{}, error) {
 	// normalize from addr
-	from = vm.normalizeFrom(from)
+	var ok bool
+	if from, ok = vm.normalizeFrom(from); !ok {
+		runtime.Abort(exitcode.SysErrActorNotFound)
+	}
 
 	// build internal message
 	imsg := internalMessage{
@@ -108,7 +96,7 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 		to:     to,
 		value:  value,
 		method: method,
-		params: encodedParams,
+		params: params,
 	}
 
 	ret, err := vm.applyImplicitMessage(imsg)
@@ -130,26 +118,38 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 	return ret, nil
 }
 
-func (vm *VM) normalizeFrom(from address.Address) address.Address {
+// ContextStore provides access to specs-actors adt library.
+//
+// This type of store is used to access some internal actor state.
+func (vm *VM) ContextStore() adt.Store {
+	return &contextStore{context: vm.context, store: vm.store}
+}
+
+func (vm *VM) normalizeFrom(from address.Address) (address.Address, bool) {
+	// short-circuit if the address is already an ID address
+	if from.Protocol() == address.ID {
+		return from, true
+	}
+
 	// resolve the target address via the InitActor, and attempt to load state.
-	initActorEntry, err := vm.state.GetActor(context.Background(), vmaddr.InitAddress)
+	initActorEntry, err := vm.state.GetActor(context.Background(), builtin.InitActorAddr)
 	if err != nil {
 		panic(fmt.Errorf("init actor not found. %s", err))
 	}
 
 	// build state handle
-	var stateHandle = NewReadonlyStateHandle(vm.Storage(), initActorEntry.Head.Cid)
+	var stateHandle = NewReadonlyStateHandle(vm.Store(), initActorEntry.Head.Cid)
 
 	// get a view into the actor state
-	initView := initactor.NewView(stateHandle, vm.Storage())
+	var state notinit.State
+	stateHandle.Readonly(&state)
 
-	// lookup the ActorID based on the address
-	targetIDAddr, ok := initView.GetIDAddressByAddress(from)
-	if !ok {
-		runtime.Abort(exitcode.SysErrActorNotFound)
+	idAddr, err := state.ResolveAddress(vm.ContextStore(), from)
+	if err != nil {
+		return address.Undef, false
 	}
 
-	return targetIDAddr
+	return idAddr, true
 }
 
 // implement VMInterpreter for VM
@@ -157,7 +157,10 @@ func (vm *VM) normalizeFrom(from address.Address) address.Address {
 var _ interpreter.VMInterpreter = (*VM)(nil)
 
 // ApplyTipSetMessages implements interpreter.VMInterpreter
-func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch abi.ChainEpoch) ([]message.Receipt, error) {
+func (vm *VM) ApplyTipSetMessages(rnd interpreter.RandomnessSource, blocks []interpreter.BlockMessagesInfo, epoch abi.ChainEpoch) ([]message.Receipt, error) {
+	// set randomness source
+	vm.rnd = rnd
+
 	receipts := []message.Receipt{}
 
 	// update current epoch
@@ -172,15 +175,11 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 		if blk.Miner.Protocol() != address.ID {
 			panic("precond failure: block miner address must be an IDAddress")
 		}
-		// Process block miner's Election PoSt.
-		epostMessage := makeEpostMessage(blk.Miner)
-		if _, err := vm.applyImplicitMessage(epostMessage); err != nil {
-			return nil, err
-		}
 
-		// initial miner penalty
+		// initial miner penalty and gas rewards
 		// Note: certain msg execution failures can cause the miner to pay for the gas
 		minerPenaltyTotal := big.Zero()
+		minerGasRewardTotal := big.Zero()
 
 		// Process BLS messages from the block
 		for _, m := range blk.BLSMessages {
@@ -191,10 +190,11 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 			}
 
 			// apply message
-			receipt, minerPenaltyCurr := vm.applyMessage(m, m.OnChainLen(), blk.Miner)
+			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(m, m.OnChainLen(), blk.Miner)
 
 			// accumulate result
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)
+			minerGasRewardTotal = big.Add(minerGasRewardTotal, minerGasRewardCurr)
 			receipts = append(receipts, receipt)
 
 			// flag msg as seen
@@ -214,18 +214,23 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 
 			// apply message
 			// Note: the on-chain size for SECP messages is different
-			receipt, minerPenaltyCurr := vm.applyMessage(&m, sm.OnChainLen(), blk.Miner)
+			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(&m, sm.OnChainLen(), blk.Miner)
 
 			// accumulate result
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)
+			minerGasRewardTotal = big.Add(minerGasRewardTotal, minerGasRewardCurr)
 			receipts = append(receipts, receipt)
 
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
 		}
 
+		// transfer gas reward from BurntFundsActor to RewardActor
+		vm.transfer(builtin.BurntFundsActorAddr, builtin.RewardActorAddr, minerGasRewardTotal)
+
 		// Pay block reward.
-		rewardMessage := makeBlockRewardMessage(blk.Miner, minerPenaltyTotal)
+		// Dragons: missing final protocol design on if/how to determine the nominal power
+		rewardMessage := makeBlockRewardMessage(blk.Miner, minerPenaltyTotal, minerGasRewardTotal, big.Zero())
 		if _, err := vm.applyImplicitMessage(rewardMessage); err != nil {
 			return nil, err
 		}
@@ -254,7 +259,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 
 // applyImplicitMessage applies messages automatically generated by the vm itself.
 //
-// This messages do not consume client gas are do not fail.
+// This messages do not consume client gas and must not fail.
 func (vm *VM) applyImplicitMessage(imsg internalMessage) (out interface{}, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -299,7 +304,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) (out interface{}, err e
 }
 
 // applyMessage applies the message to the current state.
-func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, miner address.Address) (message.Receipt, MinerPenaltyFIL) {
+func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, miner address.Address) (message.Receipt, minerPenaltyFIL, gasRewardFIL) {
 	// Dragons: temp until we remove legacy types
 	var msgGasLimit gas.Unit = gas.NewLegacyGas(msg.GasLimit)
 	var msgGasPrice abi.TokenAmount = abi.NewTokenAmount(int64(msg.GasLimit))
@@ -327,22 +332,25 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 	if !ok {
 		// Invalid message; insufficient gas limit to pay for the on-chain message size.
 		// Note: the miner needs to pay the full msg cost, not what might have been partially consumed
-		return message.Failure(exitcode.SysErrOutOfGas, gas.Zero), msgGasCost.ToTokens(msgGasPrice)
+		return message.Failure(exitcode.SysErrOutOfGas, gas.Zero), msgGasCost.ToTokens(msgGasPrice), big.Zero()
 	}
 
 	// 2. load actor from global state
-	msg.From = vm.normalizeFrom(msg.From)
+	if msg.From, ok = vm.normalizeFrom(msg.From); !ok {
+		runtime.Abort(exitcode.SysErrActorNotFound)
+	}
+
 	// Dragons: change this to actor, ok, error ok for found or not, err are non-recoverable IO errors and such
 	fromActor, err := vm.state.GetActor(context.Background(), msg.From)
 	if fromActor == nil || err != nil {
 		// Execution error; sender does not exist at time of message execution.
-		return message.Failure(exitcode.SysErrActorNotFound, gas.Zero), gasTank.GasConsumed().ToTokens(msgGasPrice)
+		return message.Failure(exitcode.SysErrActorNotFound, gas.Zero), gasTank.GasConsumed().ToTokens(msgGasPrice), big.Zero()
 	}
 
 	// 3. make sure this is the right message order for fromActor
 	if msg.CallSeqNum != fromActor.CallSeqNum {
 		// Execution error; invalid seq number.
-		return message.Failure(exitcode.SysErrInvalidCallSeqNum, gas.Zero), gasTank.GasConsumed().ToTokens(msgGasPrice)
+		return message.Failure(exitcode.SysErrInvalidCallSeqNum, gas.Zero), gasTank.GasConsumed().ToTokens(msgGasPrice), big.Zero()
 	}
 
 	// 4. Check sender balance (gas + value being sent)
@@ -350,7 +358,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 	totalCost := big.Add(msgValue, gasLimitCost)
 	if fromActor.Balance.LessThan(totalCost) {
 		// Execution error; sender does not have sufficient funds to pay for the gas limit.
-		return message.Failure(exitcode.SysErrInsufficientFunds, gas.Zero), gasTank.GasConsumed().ToTokens(msgGasPrice)
+		return message.Failure(exitcode.SysErrInsufficientFunds, gas.Zero), gasTank.GasConsumed().ToTokens(msgGasPrice), big.Zero()
 	}
 
 	// 5. Increment sender CallSeqNum
@@ -403,7 +411,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 				switch r.(type) {
 				case runtime.ExecutionPanic:
 					p := r.(runtime.ExecutionPanic)
-					vmLog.Warn("Abort during vm execution. %s", p)
+					vmlog.Warn("Abort during vm execution. %s", p)
 					out = message.Failure(p.Code(), gasTank.GasConsumed())
 					return
 				default:
@@ -441,11 +449,11 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 		vm.settleGasBill(msg.From, &gasTank, minerOwner, msgGasPrice)
 
 		// Note: we are charging the caller not the miner, there is ZERO miner penalty
-		return message.Failure(exitcode.SysErrOutOfGas, gasTank.GasConsumed()), big.Zero()
+		return message.Failure(exitcode.SysErrOutOfGas, gasTank.GasConsumed()), big.Zero(), gasTank.GasConsumed().ToTokens(msgGasPrice)
 	}
 
 	// 2. Success!
-	return receipt, big.Zero()
+	return receipt, big.Zero(), gasTank.GasConsumed().ToTokens(msgGasPrice)
 }
 
 func (vm *VM) getMinerOwner(minerAddr address.Address) address.Address {
@@ -455,12 +463,13 @@ func (vm *VM) getMinerOwner(minerAddr address.Address) address.Address {
 	}
 
 	// build state handle
-	var stateHandle = NewReadonlyStateHandle(vm.Storage(), minerActorEntry.Head.Cid)
+	var stateHandle = NewReadonlyStateHandle(vm.Store(), minerActorEntry.Head.Cid)
 
 	// get a view into the actor state
-	minerView := miner.NewView(stateHandle, vm.Storage())
+	var state miner.State
+	stateHandle.Readonly(&state)
 
-	return minerView.Owner()
+	return state.Info.Owner
 }
 
 func (vm *VM) settleGasBill(sender address.Address, gasTank *GasTracker, payee address.Address, gasPrice abi.TokenAmount) {
@@ -480,6 +489,11 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 	// Dragons: can we please please add some happy functions and a proper type
 	if amount.LessThan(abi.NewTokenAmount(0)) {
 		panic("unreachable: negative funds transfer not allowed")
+	}
+
+	if amount.Nil() || amount.IsZero() {
+		// nothing to transfer
+		return
 	}
 
 	ctx := context.Background()
@@ -532,8 +546,8 @@ func (vm *VM) Randomness(epoch abi.ChainEpoch) abi.Randomness {
 	return vm.rnd.Randomness(epoch)
 }
 
-// Storage implements runtime.Runtime.
-func (vm *VM) Storage() runtime.Storage {
+// Store implements runtime.Runtime.
+func (vm *VM) Store() specsruntime.Store {
 	return actorStorage{inner: vm.store}
 }
 
@@ -564,12 +578,12 @@ func (msg internalMessage) Receiver() address.Address {
 }
 
 //
-// implement runtime.Storage for actorStorage
+// implement runtime.Store for actorStorage
 //
 
-var _ runtime.Storage = (*actorStorage)(nil)
+var _ specsruntime.Store = (*actorStorage)(nil)
 
-func (s actorStorage) Put(obj interface{}) cid.Cid {
+func (s actorStorage) Put(obj specsruntime.CBORMarshaler) cid.Cid {
 	cid, err := s.inner.Put(obj)
 	if err != nil {
 		panic(fmt.Errorf("could not put object in store. %s", err))
@@ -577,15 +591,7 @@ func (s actorStorage) Put(obj interface{}) cid.Cid {
 	return cid
 }
 
-func (s actorStorage) CidOf(obj interface{}) cid.Cid {
-	cid, err := s.inner.CidOf(obj)
-	if err != nil {
-		panic(fmt.Errorf("could not calculate cid for obj. %s", err))
-	}
-	return cid
-}
-
-func (s actorStorage) Get(cid cid.Cid, obj interface{}) bool {
+func (s actorStorage) Get(cid cid.Cid, obj specsruntime.CBORUnmarshaler) bool {
 	err := s.inner.Get(cid, obj)
 	if err == storage.ErrNotFound {
 		return false
@@ -594,17 +600,6 @@ func (s actorStorage) Get(cid cid.Cid, obj interface{}) bool {
 		panic(fmt.Errorf("could not get obj from store. %s", err))
 	}
 	return true
-}
-
-func (s actorStorage) GetRaw(cid cid.Cid) ([]byte, bool) {
-	raw, err := s.inner.GetRaw(cid)
-	if err == storage.ErrNotFound {
-		return nil, false
-	}
-	if err != nil {
-		panic(fmt.Errorf("could not get obj from store. %s", err))
-	}
-	return raw, true
 }
 
 //
@@ -619,19 +614,13 @@ func msgCID(msg *types.UnsignedMessage) cid.Cid {
 	return cid
 }
 
-func makeEpostMessage(blockMiner address.Address) internalMessage {
-	return internalMessage{
-		miner:  blockMiner,
-		from:   vmaddr.SystemAddress,
-		to:     blockMiner,
-		value:  big.Zero(),
-		method: storagemining.ProcessVerifiedElectionPoStMethodID,
-		params: []byte{},
+func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount, gasReward abi.TokenAmount, nominalPower abi.StoragePower) internalMessage {
+	params := reward.AwardBlockRewardParams{
+		Miner:        blockMiner,
+		Penalty:      penalty,
+		GasReward:    gasReward,
+		NominalPower: nominalPower,
 	}
-}
-
-func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount) internalMessage {
-	params := []interface{}{blockMiner, penalty}
 	encoded, err := encoding.Encode(params)
 	if err != nil {
 		panic(fmt.Errorf("failed to encode built-in block reward. %s", err))
@@ -641,7 +630,7 @@ func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount)
 		from:   vmaddr.SystemAddress,
 		to:     vmaddr.RewardAddress,
 		value:  big.Zero(),
-		method: reward.AwardBlockRewardMethodID,
+		method: builtin.MethodsReward.AwardBlockReward,
 		params: encoded,
 	}
 }
@@ -652,7 +641,7 @@ func makeCronTickMessage(blockMiner address.Address) internalMessage {
 		from:   vmaddr.SystemAddress,
 		to:     vmaddr.CronAddress,
 		value:  big.Zero(),
-		method: cron.EpochTickMethodID,
+		method: builtin.MethodsCron.EpochTick,
 		params: []byte{},
 	}
 }

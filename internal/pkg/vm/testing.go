@@ -23,21 +23,20 @@ import (
 // FakeVMContext creates the scaffold for faking out the vm context for direct calls to actors
 type FakeVMContext struct {
 	MessageValue            *types.UnsignedMessage
-	StorageValue            runtime.Storage
+	StorageValue            specsruntime.Store
 	BalanceValue            abi.TokenAmount
 	BlockHeightValue        abi.ChainEpoch
 	VerifierValue           verification.Verifier
 	BlockMinerValue         address.Address
 	RandomnessValue         []byte
 	IsFromAccountActorValue bool
-	LegacySender            func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
-	Sender                  func(to address.Address, method types.MethodID, value abi.TokenAmount, params interface{}) interface{}
+	Sender                  func(address.Address, abi.MethodNum, specsruntime.CBORMarshaler, abi.TokenAmount) (specsruntime.SendReturn, exitcode.ExitCode)
 	Addresser               func() (address.Address, error)
 	Charger                 func(cost types.GasUnits) error
 	Sampler                 func(sampleHeight *types.BlockHeight) ([]byte, error)
 	ActorCreator            func(addr address.Address, code cid.Cid) error
 	allowSideEffects        bool
-	stateHandle             runtime.ActorStateHandle
+	stateHandle             specsruntime.StateHandle
 }
 
 // NewFakeVMContext fakes the state machine infrastructure so actor methods can be called directly
@@ -46,9 +45,10 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 	copy(randomness[:], []byte("only random in the figurative sense"))
 
 	addressGetter := vmaddr.NewForTestGetter()
+	store := &TestStorage{state: state}
 	aux := FakeVMContext{
 		MessageValue:            message,
-		StorageValue:            &testStorage{state: state},
+		StorageValue:            store,
 		BlockHeightValue:        0,
 		BalanceValue:            big.Zero(),
 		RandomnessValue:         randomness,
@@ -60,11 +60,8 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 		Sampler: func(sampleHeight *types.BlockHeight) ([]byte, error) {
 			return randomness, nil
 		},
-		LegacySender: func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
-			return [][]byte{}, 0, nil
-		},
-		Sender: func(to address.Address, method types.MethodID, value abi.TokenAmount, params interface{}) interface{} {
-			return nil
+		Sender: func(to address.Address, method abi.MethodNum, params specsruntime.CBORMarshaler, value abi.TokenAmount) (specsruntime.SendReturn, exitcode.ExitCode) {
+			return nil, exitcode.Ok
 		},
 		Addresser: func() (address.Address, error) {
 			return addressGetter(), nil
@@ -74,7 +71,7 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 		},
 		allowSideEffects: true,
 	}
-	aux.stateHandle = vmcontext.NewActorStateHandle(&aux, aux.StorageValue.CidOf(state))
+	aux.stateHandle = vmcontext.NewActorStateHandle(&aux, store.CidOf(state))
 	return &aux
 }
 
@@ -98,22 +95,13 @@ func (tc *FakeVMContext) Randomness(epoch abi.ChainEpoch) abi.Randomness {
 	return rnd
 }
 
-// LegacySend sends a message to another actor
-func (tc *FakeVMContext) LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
-	// check if side-effects are allowed
-	if !tc.allowSideEffects {
-		runtime.Abortf(exitcode.SysErrInternal, "Calling LegacySend() is not allowed during side-effet lock")
-	}
-	return tc.LegacySender(to, method, value, params)
-}
-
 // Send allows actors to invoke methods on other actors
-func (tc *FakeVMContext) Send(to address.Address, method types.MethodID, value abi.TokenAmount, params interface{}) interface{} {
+func (tc *FakeVMContext) Send(toAddr address.Address, methodNum abi.MethodNum, params specsruntime.CBORMarshaler, value abi.TokenAmount) (specsruntime.SendReturn, exitcode.ExitCode) {
 	// check if side-effects are allowed
 	if !tc.allowSideEffects {
 		runtime.Abortf(exitcode.SysErrInternal, "Calling Send() is not allowed during side-effet lock")
 	}
-	return tc.Sender(to, method, value, params)
+	return tc.Sender(toAddr, methodNum, params, value)
 }
 
 var _ specsruntime.Message = &FakeVMContext{}
@@ -164,7 +152,7 @@ func (tc *FakeVMContext) ValidateCaller(pattern runtime.CallerPattern) {
 }
 
 // State handles access to the actor state.
-func (tc *FakeVMContext) State() runtime.ActorStateHandle {
+func (tc *FakeVMContext) State() specsruntime.StateHandle {
 	return tc.stateHandle
 }
 
@@ -175,8 +163,8 @@ func (tc *FakeVMContext) Balance() abi.TokenAmount {
 	return tc.BalanceValue
 }
 
-// Storage provides and interface to actor state
-func (tc *FakeVMContext) Storage() runtime.Storage {
+// Store provides and interface to actor state
+func (tc *FakeVMContext) Store() specsruntime.Store {
 	return tc.StorageValue
 }
 
@@ -188,21 +176,11 @@ func (tc *FakeVMContext) Charge(cost types.GasUnits) error {
 var _ runtime.ExtendedInvocationContext = (*FakeVMContext)(nil)
 
 // CreateActor implemenets the ExtendedInvocationContext interface.
-func (tc *FakeVMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []byte) (address.Address, address.Address) {
-	addr, err := tc.Addresser()
-	if err != nil {
-		runtime.Abortf(exitcode.SysErrInternal, "Could not create address")
-	}
-	idAddr, err := address.NewIDAddress(uint64(actorID))
-	if err != nil {
-		runtime.Abortf(exitcode.SysErrInternal, "Could not create IDAddress for actor")
-	}
-	err = tc.ActorCreator(idAddr, code)
+func (tc *FakeVMContext) CreateActor(code cid.Cid, addr address.Address) {
+	err := tc.ActorCreator(addr, code)
 	if err != nil {
 		runtime.Abortf(exitcode.SysErrInternal, "Could not create actor")
 	}
-
-	return idAddr, addr
 }
 
 // VerifySignature implemenets the ExtendedInvocationContext interface.
@@ -217,30 +195,28 @@ func (tc *FakeVMContext) AllowSideEffects(allow bool) {
 	tc.allowSideEffects = allow
 }
 
-type testStorage struct {
+// TestStorage is a fake storage used for testing.
+type TestStorage struct {
 	state interface{}
 }
 
-// NewTestStorage returns a new "testStorage"
-func NewTestStorage(state interface{}) runtime.Storage {
-	return &testStorage{
+// NewTestStorage returns a new "TestStorage"
+func NewTestStorage(state interface{}) *TestStorage {
+	return &TestStorage{
 		state: state,
 	}
 }
 
-var _ runtime.Storage = (*testStorage)(nil)
+var _ specsruntime.Store = (*TestStorage)(nil)
 
-func (ts *testStorage) Put(v interface{}) cid.Cid {
+// Put implements runtime.Store.
+func (ts *TestStorage) Put(v specsruntime.CBORMarshaler) cid.Cid {
 	ts.state = v
 	if cm, ok := v.(cbg.CBORMarshaler); ok {
 		buf := new(bytes.Buffer)
 		err := cm.MarshalCBOR(buf)
 		if err == nil {
-			nd, err := cbor.Decode(buf.Bytes(), types.DefaultHashFunction, -1)
-			if err != nil {
-				panic("failed to decode")
-			}
-			return nd.Cid()
+			return cid.NewCidV1(cid.Raw, buf.Bytes())
 		}
 	}
 	raw, err := encoding.Encode(v)
@@ -250,7 +226,8 @@ func (ts *testStorage) Put(v interface{}) cid.Cid {
 	return cid.NewCidV1(cid.Raw, raw)
 }
 
-func (ts *testStorage) Get(cid cid.Cid, obj interface{}) bool {
+// Get implements runtime.Store.
+func (ts *TestStorage) Get(cid cid.Cid, obj specsruntime.CBORUnmarshaler) bool {
 	node, err := cbor.WrapObject(ts.state, types.DefaultHashFunction, -1)
 	if err != nil {
 		return false
@@ -264,16 +241,8 @@ func (ts *testStorage) Get(cid cid.Cid, obj interface{}) bool {
 	return true
 }
 
-func (ts *testStorage) GetRaw(cid cid.Cid) ([]byte, bool) {
-	node, err := cbor.WrapObject(ts.state, types.DefaultHashFunction, -1)
-	if err != nil {
-		return nil, false
-	}
-
-	return node.RawData(), true
-}
-
-func (ts *testStorage) CidOf(obj interface{}) cid.Cid {
+// CidOf returns the cid of the object.
+func (ts *TestStorage) CidOf(obj interface{}) cid.Cid {
 	if obj == nil {
 		return cid.Undef
 	}

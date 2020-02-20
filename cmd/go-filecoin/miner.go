@@ -15,6 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/constants"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -62,7 +63,7 @@ additional sectors.`,
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		var err error
 
-		sectorSize, err := optionalSectorSizeWithDefault(req.Options["sectorsize"], types.OneKiBSectorSize)
+		sectorSize, err := optionalSectorSizeWithDefault(req.Options["sectorsize"], constants.DevSectorSize)
 		if err != nil {
 			return err
 		}
@@ -126,7 +127,7 @@ additional sectors.`,
 
 		return re.Emit(&MinerCreateResult{
 			Address: *addr,
-			GasUsed: types.NewGasUnits(0),
+			GasUsed: types.GasUnits(0),
 			Preview: false,
 		})
 	},
@@ -265,7 +266,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 				req.Context,
 				fromAddr,
 				minerAddr,
-				types.MethodID(builtin.MethodsMiner.ChangePeerID),
+				builtin.MethodsMiner.ChangePeerID,
 				newPid,
 			)
 			if err != nil {
@@ -288,7 +289,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			types.ZeroAttoFIL,
 			gasPrice,
 			gasLimit,
-			types.MethodID(builtin.MethodsMiner.ChangePeerID),
+			builtin.MethodsMiner.ChangePeerID,
 			&params,
 		)
 		if err != nil {
@@ -297,7 +298,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 
 		return re.Emit(&MinerUpdatePeerIDResult{
 			Cid:     c,
-			GasUsed: types.NewGasUnits(0),
+			GasUsed: types.GasUnits(0),
 			Preview: false,
 		})
 	},

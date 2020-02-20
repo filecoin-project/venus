@@ -1,11 +1,11 @@
 package wallet
 
 import (
+	"crypto/rand"
 	"reflect"
 	"strings"
 	"sync"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
@@ -63,7 +63,7 @@ func NewDSBackend(ds repo.Datastore) (*DSBackend, error) {
 }
 
 // ImportKey loads the address in `ai` and KeyInfo `ki` into the backend
-func (backend *DSBackend) ImportKey(ki *types.KeyInfo) error {
+func (backend *DSBackend) ImportKey(ki *crypto.KeyInfo) error {
 	return backend.putKeyInfo(ki)
 }
 
@@ -103,18 +103,12 @@ func (backend *DSBackend) NewAddress(protocol address.Protocol) (address.Address
 }
 
 func (backend *DSBackend) newSecpAddress() (address.Address, error) {
-	prv, err := crypto.GenerateKey()
+	ki, err := crypto.NewSecpKeyFromSeed(rand.Reader)
 	if err != nil {
 		return address.Undef, err
 	}
 
-	// TODO: maybe the above call should just return a keyinfo?
-	ki := &types.KeyInfo{
-		PrivateKey:  prv,
-		CryptSystem: types.SECP256K1,
-	}
-
-	if err := backend.putKeyInfo(ki); err != nil {
+	if err := backend.putKeyInfo(&ki); err != nil {
 		return address.Undef, err
 	}
 
@@ -122,21 +116,14 @@ func (backend *DSBackend) newSecpAddress() (address.Address, error) {
 }
 
 func (backend *DSBackend) newBLSAddress() (address.Address, error) {
-	privateKey := bls.PrivateKeyGenerate()
-
-	ki := &types.KeyInfo{
-		PrivateKey:  privateKey[:],
-		CryptSystem: types.BLS,
-	}
-
-	if err := backend.putKeyInfo(ki); err != nil {
+	ki := crypto.NewBLSKeyRandom()
+	if err := backend.putKeyInfo(&ki); err != nil {
 		return address.Undef, err
 	}
-
 	return ki.Address()
 }
 
-func (backend *DSBackend) putKeyInfo(ki *types.KeyInfo) error {
+func (backend *DSBackend) putKeyInfo(ki *crypto.KeyInfo) error {
 	a, err := ki.Address()
 	if err != nil {
 		return err
@@ -165,7 +152,7 @@ func (backend *DSBackend) SignBytes(data []byte, addr address.Address) (types.Si
 		return nil, err
 	}
 
-	if ki.CryptSystem == types.BLS {
+	if ki.CryptSystem == crypto.BLS {
 		return crypto.SignBLS(ki.PrivateKey, data)
 	}
 
@@ -176,7 +163,7 @@ func (backend *DSBackend) SignBytes(data []byte, addr address.Address) (types.Si
 
 // GetKeyInfo will return the private & public keys associated with address `addr`
 // iff backend contains the addr.
-func (backend *DSBackend) GetKeyInfo(addr address.Address) (*types.KeyInfo, error) {
+func (backend *DSBackend) GetKeyInfo(addr address.Address) (*crypto.KeyInfo, error) {
 	if !backend.HasAddress(addr) {
 		return nil, errors.New("backend does not contain address")
 	}
@@ -187,7 +174,7 @@ func (backend *DSBackend) GetKeyInfo(addr address.Address) (*types.KeyInfo, erro
 		return nil, errors.Wrap(err, "failed to fetch private key from backend")
 	}
 
-	ki := &types.KeyInfo{}
+	ki := &crypto.KeyInfo{}
 	if err := ki.Unmarshal(kib); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal keyinfo from backend")
 	}

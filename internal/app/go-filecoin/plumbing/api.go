@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
@@ -24,6 +25,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
@@ -103,7 +105,7 @@ func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Acto
 // ActorGetSignature returns the signature of the given actor's given method.
 // The function signature is typically used to enable a caller to decode the
 // output of an actor method call (message).
-func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ vm.ActorMethodSignature, err error) {
+func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address, method abi.MethodNum) (_ vm.ActorMethodSignature, err error) {
 	return api.chain.GetActorSignature(ctx, actorAddr, method)
 }
 
@@ -227,7 +229,7 @@ func (api *API) MessagePoolRemove(cid cid.Cid) {
 
 // MessagePreview previews the Gas cost of a message by running it locally on the client and
 // recording the amount of Gas used.
-func (api *API) MessagePreview(ctx context.Context, from, to address.Address, method types.MethodID, params ...interface{}) (types.GasUnits, error) {
+func (api *API) MessagePreview(ctx context.Context, from, to address.Address, method abi.MethodNum, params ...interface{}) (types.GasUnits, error) {
 	return api.msgPreviewer.Preview(ctx, from, to, method, params...)
 }
 
@@ -242,7 +244,7 @@ func (api *API) StateView(baseKey block.TipSetKey) (*appstate.View, error) {
 // message to go on chain. Note that no default from address is provided.  The error
 // channel returned receives either nil or an error and is immediately closed after
 // the message is published to the network to signal that the publish is complete.
-func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params interface{}) (cid.Cid, chan error, error) {
+func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
 	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, true, method, params)
 }
 
@@ -335,9 +337,9 @@ func (api *API) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) 
 // WalletNewAddress generates a new wallet address
 func (api *API) WalletNewAddress(addressType string) (address.Address, error) {
 	switch strings.ToLower(addressType) { //this assumes that any additions to types/helpers.go will be lowercase
-	case types.BLS:
+	case crypto.BLS:
 		return wallet.NewAddress(api.wallet, address.BLS)
-	case types.SECP256K1:
+	case crypto.SECP256K1:
 		return wallet.NewAddress(api.wallet, address.SECP256K1)
 	default:
 		return address.Undef, fmt.Errorf("invalid address type: %s", addressType)
@@ -345,12 +347,12 @@ func (api *API) WalletNewAddress(addressType string) (address.Address, error) {
 }
 
 // WalletImport adds a given set of KeyInfos to the wallet
-func (api *API) WalletImport(kinfos ...*types.KeyInfo) ([]address.Address, error) {
+func (api *API) WalletImport(kinfos ...*crypto.KeyInfo) ([]address.Address, error) {
 	return api.wallet.Import(kinfos...)
 }
 
 // WalletExport returns the KeyInfos for the given wallet addresses
-func (api *API) WalletExport(addrs []address.Address) ([]*types.KeyInfo, error) {
+func (api *API) WalletExport(addrs []address.Address) ([]*crypto.KeyInfo, error) {
 	return api.wallet.Export(addrs)
 }
 

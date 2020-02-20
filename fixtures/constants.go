@@ -12,7 +12,7 @@ import (
 	cid "github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/build/project"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	gen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
@@ -38,7 +38,7 @@ var TestMiners []address.Address
 var TestGenGenConfig gen.GenesisCfg
 
 type detailsStruct struct {
-	Keys   []*types.KeyInfo
+	Keys   []*crypto.KeyInfo
 	Miners []struct {
 		Owner               int
 		Address             address.Address

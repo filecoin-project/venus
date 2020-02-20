@@ -9,13 +9,16 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
@@ -83,10 +86,10 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
-		methodID := types.SendMethodID
-		methodInput, ok := req.Options["method"].(uint)
+		methodID := builtin.MethodSend
+		methodInput, ok := req.Options["method"].(uint64)
 		if ok {
-			methodID = types.MethodID(methodInput)
+			methodID = abi.MethodNum(methodInput)
 		}
 
 		if preview {
@@ -122,7 +125,7 @@ var msgSendCmd = &cmds.Command{
 
 		return re.Emit(&MessageSendResult{
 			Cid:     c,
-			GasUsed: types.NewGasUnits(0),
+			GasUsed: types.GasUnits(0),
 			Preview: false,
 		})
 	},
@@ -170,7 +173,7 @@ var signedMsgSendCmd = &cmds.Command{
 
 		return re.Emit(&MessageSendResult{
 			Cid:     c,
-			GasUsed: types.NewGasUnits(0),
+			GasUsed: types.GasUnits(0),
 			Preview: false,
 		})
 	},

@@ -2,10 +2,13 @@ package types
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
@@ -13,39 +16,30 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 )
 
-// NewTestPoSt creates a trivial, right-sized byte slice for a Proof of Spacetime.
-func NewTestPoSt() []byte {
-	return make([]byte, OnePoStProofPartition.ProofLen())
-}
-
-// MockRecoverer implements the Recoverer interface
-type MockRecoverer struct{}
-
 // MockSigner implements the Signer interface
 type MockSigner struct {
-	AddrKeyInfo map[address.Address]KeyInfo
+	AddrKeyInfo map[address.Address]crypto.KeyInfo
 	Addresses   []address.Address
 	PubKeys     [][]byte
 }
 
 // NewMockSigner returns a new mock signer, capable of signing data with
 // keys (addresses derived from) in keyinfo
-func NewMockSigner(kis []KeyInfo) MockSigner {
+func NewMockSigner(kis []crypto.KeyInfo) MockSigner {
 	var ms MockSigner
-	ms.AddrKeyInfo = make(map[address.Address]KeyInfo)
+	ms.AddrKeyInfo = make(map[address.Address]crypto.KeyInfo)
 	for _, k := range kis {
 		// extract public key
 		pub := k.PublicKey()
 
 		var newAddr address.Address
 		var err error
-		if k.CryptSystem == SECP256K1 {
+		if k.CryptSystem == crypto.SECP256K1 {
 			newAddr, err = address.NewSecp256k1Address(pub)
-		} else if k.CryptSystem == BLS {
+		} else if k.CryptSystem == crypto.BLS {
 			newAddr, err = address.NewBLSAddress(pub)
 		}
 		if err != nil {
@@ -60,7 +54,7 @@ func NewMockSigner(kis []KeyInfo) MockSigner {
 
 // NewMockSignersAndKeyInfo is a convenience function to generate a mock
 // signers with some keys.
-func NewMockSignersAndKeyInfo(numSigners int) (MockSigner, []KeyInfo) {
+func NewMockSignersAndKeyInfo(numSigners int) (MockSigner, []crypto.KeyInfo) {
 	ki := MustGenerateKeyInfo(numSigners, 42)
 	signer := NewMockSigner(ki)
 	return signer, ki
@@ -68,27 +62,19 @@ func NewMockSignersAndKeyInfo(numSigners int) (MockSigner, []KeyInfo) {
 
 // MustGenerateMixedKeyInfo produces m bls keys and n secp keys.
 // BLS and Secp will be interleaved. The keys will be valid, but not deterministic.
-func MustGenerateMixedKeyInfo(m int, n int) []KeyInfo {
-	info := []KeyInfo{}
+func MustGenerateMixedKeyInfo(m int, n int) []crypto.KeyInfo {
+	info := []crypto.KeyInfo{}
 	for m > 0 && n > 0 {
 		if m > 0 {
-			pk := bls.PrivateKeyGenerate()
-			ki := KeyInfo{
-				PrivateKey:  pk[:],
-				CryptSystem: BLS,
-			}
+			ki := crypto.NewBLSKeyRandom()
 			info = append(info, ki)
 			m--
 		}
 
 		if n > 0 {
-			pk, err := crypto.GenerateKey()
+			ki, err := crypto.NewSecpKeyFromSeed(rand.Reader)
 			if err != nil {
 				panic(err)
-			}
-			ki := KeyInfo{
-				PrivateKey:  pk[:],
-				CryptSystem: SECP256K1,
 			}
 			info = append(info, ki)
 			n--
@@ -99,21 +85,16 @@ func MustGenerateMixedKeyInfo(m int, n int) []KeyInfo {
 
 // MustGenerateKeyInfo generates `n` distinct keyinfos using seed `seed`.
 // The result is deterministic (for stable tests), don't use this for real keys!
-func MustGenerateKeyInfo(n int, seed byte) []KeyInfo {
+func MustGenerateKeyInfo(n int, seed byte) []crypto.KeyInfo {
 	token := bytes.Repeat([]byte{seed}, 512)
-	var keyinfos []KeyInfo
+	var keyinfos []crypto.KeyInfo
 	for i := 0; i < n; i++ {
 		token[0] = byte(i)
-		prv, err := crypto.GenerateKeyFromSeed(bytes.NewReader(token))
+		ki, err := crypto.NewSecpKeyFromSeed(bytes.NewReader(token))
 		if err != nil {
 			panic(err)
 		}
-
-		ki := &KeyInfo{
-			PrivateKey:  prv,
-			CryptSystem: SECP256K1,
-		}
-		keyinfos = append(keyinfos, *ki)
+		keyinfos = append(keyinfos, ki)
 	}
 	return keyinfos
 }
@@ -125,7 +106,7 @@ func (ms MockSigner) SignBytes(data []byte, addr address.Address) (Signature, er
 		return nil, errors.New("Unknown address -- can't sign")
 	}
 
-	if ki.CryptSystem == SECP256K1 {
+	if ki.CryptSystem == crypto.SECP256K1 {
 		hash := blake2b.Sum256(data)
 		return crypto.SignSecp(ki.Key(), hash[:])
 	}
@@ -170,10 +151,10 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 			newAddr,
 			0,
 			ZeroAttoFIL,
-			InvalidMethodID,
+			builtin.MethodSend,
 			[]byte("params"),
 			ZeroAttoFIL,
-			NewGasUnits(0))
+			GasUnits(0))
 		smsg, err := NewSignedMessage(*msg, &ms)
 		if err != nil {
 			panic(err)
@@ -230,7 +211,7 @@ func NewMessageForTestGetter() func() *UnsignedMessage {
 			to,
 			0,
 			ZeroAttoFIL,
-			MethodID(10000+i),
+			abi.MethodNum(10000+i),
 			nil)
 	}
 }
@@ -260,7 +241,7 @@ func NewSignedMsgs(n uint, ms MockSigner) []*SignedMessage {
 		msg.From = ms.Addresses[0]
 		msg.CallSeqNum = uint64(i)
 		msg.GasPrice = ZeroAttoFIL // NewGasPrice(1)
-		msg.GasLimit = NewGasUnits(0)
+		msg.GasLimit = GasUnits(0)
 		smsgs[i], err = NewSignedMessage(*msg, ms)
 		if err != nil {
 			panic(err)

@@ -7,6 +7,7 @@ import (
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	cid "github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -15,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
@@ -23,7 +23,7 @@ import (
 type mcAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedPath string, paramJSON string) error
-	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params interface{}) (cid.Cid, chan error, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error
 	WalletDefaultAddress() (address.Address, error)
 }
@@ -48,7 +48,7 @@ func MinerCreate(
 	minerOwnerAddr address.Address,
 	gasPrice types.AttoFIL,
 	gasLimit types.GasUnits,
-	sectorSize *types.BytesAmount,
+	sectorSize abi.SectorSize,
 	pid peer.ID,
 	collateral types.AttoFIL,
 ) (_ *address.Address, err error) {
@@ -67,10 +67,9 @@ func MinerCreate(
 		return nil, fmt.Errorf("can only have one miner per node")
 	}
 
-	params := power.CreateStorageMinerParams{
-		OwnerAddr:  minerOwnerAddr,
-		WorkerAddr: minerOwnerAddr,
-		PeerID:     pid,
+	params := power.CreateMinerParams{
+		Worker:     minerOwnerAddr,
+		Peer:       pid,
 		SectorSize: sectorSize,
 	}
 
@@ -81,7 +80,7 @@ func MinerCreate(
 		collateral,
 		gasPrice,
 		gasLimit,
-		types.MethodID(builtin.MethodsPower.CreateMiner),
+		builtin.MethodsPower.CreateMiner,
 		&params,
 	)
 	if err != nil {
@@ -111,7 +110,7 @@ func MinerCreate(
 // mpcAPI is the subset of the plumbing.API that MinerPreviewCreate uses.
 type mpcAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
-	MessagePreview(ctx context.Context, from, to address.Address, method types.MethodID, params ...interface{}) (types.GasUnits, error)
+	MessagePreview(ctx context.Context, from, to address.Address, method abi.MethodNum, params ...interface{}) (types.GasUnits, error)
 	NetworkGetPeerID() peer.ID
 	WalletDefaultAddress() (address.Address, error)
 }
@@ -121,13 +120,13 @@ func MinerPreviewCreate(
 	ctx context.Context,
 	plumbing mpcAPI,
 	fromAddr address.Address,
-	sectorSize *types.BytesAmount,
+	sectorSize abi.SectorSize,
 	pid peer.ID,
 ) (usedGas types.GasUnits, err error) {
 	if fromAddr.Empty() {
 		fromAddr, err = plumbing.WalletDefaultAddress()
 		if err != nil {
-			return types.NewGasUnits(0), err
+			return types.GasUnits(0), err
 		}
 	}
 
@@ -136,19 +135,19 @@ func MinerPreviewCreate(
 	}
 
 	if _, err := plumbing.ConfigGet("mining.minerAddress"); err != nil {
-		return types.NewGasUnits(0), fmt.Errorf("can only have one miner per node")
+		return types.GasUnits(0), fmt.Errorf("can only have one miner per node")
 	}
 
 	usedGas, err = plumbing.MessagePreview(
 		ctx,
 		fromAddr,
 		vmaddr.StorageMarketAddress,
-		types.MethodID(builtin.MethodsPower.CreateMiner),
+		builtin.MethodsPower.CreateMiner,
 		sectorSize,
 		pid,
 	)
 	if err != nil {
-		return types.NewGasUnits(0), errors.Wrap(err, "Could not create miner. Please consult the documentation to setup your wallet and genesis block correctly")
+		return types.GasUnits(0), errors.Wrap(err, "Could not create miner. Please consult the documentation to setup your wallet and genesis block correctly")
 	}
 
 	return usedGas, nil
@@ -248,7 +247,7 @@ type mwapi interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ChainHeadKey() block.TipSetKey
 	MinerStateView(baseKey block.TipSetKey) (MinerStateView, error)
-	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params interface{}) (cid.Cid, chan error, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error)
 }
 
 // MinerSetWorkerAddress sets the worker address of the miner actor to the provided new address,
@@ -288,7 +287,7 @@ func MinerSetWorkerAddress(
 		types.ZeroAttoFIL,
 		gasPrice,
 		gasLimit,
-		types.MethodID(builtin.MethodsMiner.ChangeWorkerAddress),
+		builtin.MethodsMiner.ChangeWorkerAddress,
 		&workerAddr)
 	return c, err
 }

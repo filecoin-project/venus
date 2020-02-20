@@ -8,6 +8,7 @@ import (
 	files "github.com/ipfs/go-ipfs-files"
 
 	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -31,11 +32,11 @@ func (f *Filecoin) WalletImport(ctx context.Context, file files.File) ([]address
 }
 
 // WalletExport run the wallet export command against the filecoin process.
-func (f *Filecoin) WalletExport(ctx context.Context, addrs []address.Address) ([]*types.KeyInfo, error) {
+func (f *Filecoin) WalletExport(ctx context.Context, addrs []address.Address) ([]*crypto.KeyInfo, error) {
 	// the command returns an KeyInfoListResult
 	var klr commands.WalletSerializeResult
 	// we expect to interact with an array of KeyInfo(s)
-	var out []*types.KeyInfo
+	var out []*crypto.KeyInfo
 	var sAddrs []string
 	for _, a := range addrs {
 		sAddrs = append(sAddrs, a.String())

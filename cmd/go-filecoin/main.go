@@ -342,26 +342,26 @@ var previewOption = cmdkit.BoolOption("preview", "Preview the Gas cost of this c
 func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.GasUnits, bool, error) {
 	priceOption := req.Options["gas-price"]
 	if priceOption == nil {
-		return types.ZeroAttoFIL, types.NewGasUnits(0), false, errors.New("gas-price option is required")
+		return types.ZeroAttoFIL, types.GasUnits(0), false, errors.New("gas-price option is required")
 	}
 
 	price, ok := types.NewAttoFILFromFILString(priceOption.(string))
 	if !ok {
-		return types.ZeroAttoFIL, types.NewGasUnits(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
+		return types.ZeroAttoFIL, types.GasUnits(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
 	}
 
 	limitOption := req.Options["gas-limit"]
 	if limitOption == nil {
-		return types.ZeroAttoFIL, types.NewGasUnits(0), false, errors.New("gas-limit option is required")
+		return types.ZeroAttoFIL, types.GasUnits(0), false, errors.New("gas-limit option is required")
 	}
 
 	gasLimitInt, ok := limitOption.(uint64)
 	if !ok {
 		msg := fmt.Sprintf("invalid gas limit: %s", limitOption)
-		return types.ZeroAttoFIL, types.NewGasUnits(0), false, errors.New(msg)
+		return types.ZeroAttoFIL, types.GasUnits(0), false, errors.New(msg)
 	}
 
 	preview, _ := req.Options["preview"].(bool)
 
-	return price, types.NewGasUnits(gasLimitInt), preview, nil
+	return price, types.GasUnits(gasLimitInt), preview, nil
 }

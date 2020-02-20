@@ -11,6 +11,7 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	files "github.com/ipfs/go-ipfs-files"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -55,7 +56,7 @@ var addrsNewCmd = &cmds.Command{
 		return re.Emit(&addressResult{addr})
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("type", "The type of address to create: bls or secp256k1 (default)").WithDefault(types.SECP256K1),
+		cmdkit.StringOption("type", "The type of address to create: bls or secp256k1 (default)").WithDefault(crypto.SECP256K1),
 	},
 	Type: &addressResult{},
 	Encoders: cmds.EncoderMap{
@@ -135,7 +136,7 @@ var balanceCmd = &cmds.Command{
 
 // WalletSerializeResult is the type wallet export and import return and expect.
 type WalletSerializeResult struct {
-	KeyInfo []*types.KeyInfo
+	KeyInfo []*crypto.KeyInfo
 }
 
 var walletImportCmd = &cmds.Command{

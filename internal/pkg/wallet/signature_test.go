@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -110,7 +111,7 @@ func TestSignMessageOk(t *testing.T) {
 
 	fs, addr := requireSignerAddr(t)
 
-	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, types.InvalidMethodID, nil, types.NewGasPrice(0), types.NewGasUnits(0))
+	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), types.GasUnits(0))
 	smsg, err := types.NewSignedMessage(*msg, fs)
 	require.NoError(t, err)
 
@@ -125,7 +126,7 @@ func TestBadFrom(t *testing.T) {
 	addr2, err := fs.NewAddress(address.SECP256K1)
 	require.NoError(t, err)
 
-	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, types.InvalidMethodID, nil, types.NewGasPrice(0), types.NewGasUnits(0))
+	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), types.GasUnits(0))
 	// Can't use NewSignedMessage constructor as it always signs with msg.From.
 	bmsg, err := msg.Marshal()
 	require.NoError(t, err)
@@ -144,7 +145,7 @@ func TestSignedMessageBadSignature(t *testing.T) {
 	tf.UnitTest(t)
 
 	fs, addr := requireSignerAddr(t)
-	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, types.InvalidMethodID, nil, types.NewGasPrice(0), types.NewGasUnits(0))
+	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), types.GasUnits(0))
 	smsg, err := types.NewSignedMessage(*msg, fs)
 	require.NoError(t, err)
 
@@ -158,7 +159,7 @@ func TestSignedMessageCorrupted(t *testing.T) {
 
 	fs, addr := requireSignerAddr(t)
 
-	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, types.InvalidMethodID, nil, types.NewGasPrice(0), types.NewGasUnits(0))
+	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), types.GasUnits(0))
 	smsg, err := types.NewSignedMessage(*msg, fs)
 	require.NoError(t, err)
 

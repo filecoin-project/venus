@@ -5,14 +5,14 @@ import (
 
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	keystore "github.com/ipfs/go-ipfs-keystore"
-	"github.com/libp2p/go-libp2p-core/crypto"
+	acrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -20,9 +20,9 @@ const defaultPeerKeyBits = 2048
 
 // initCfg contains configuration for initializing a node's repo.
 type initCfg struct {
-	peerKey     crypto.PrivKey
-	defaultKey  *types.KeyInfo
-	initImports []*types.KeyInfo
+	peerKey     acrypto.PrivKey
+	defaultKey  *crypto.KeyInfo
+	initImports []*crypto.KeyInfo
 }
 
 // InitOpt is an option for initialization of a node's repo.
@@ -30,7 +30,7 @@ type InitOpt func(*initCfg)
 
 // PeerKeyOpt sets the private key for a node's 'self' libp2p identity.
 // If unspecified, initialization will create a new one.
-func PeerKeyOpt(k crypto.PrivKey) InitOpt {
+func PeerKeyOpt(k acrypto.PrivKey) InitOpt {
 	return func(opts *initCfg) {
 		opts.peerKey = k
 	}
@@ -38,14 +38,14 @@ func PeerKeyOpt(k crypto.PrivKey) InitOpt {
 
 // DefaultKeyOpt sets the private key for the wallet's default account.
 // If unspecified, initialization will create a new one.
-func DefaultKeyOpt(ki *types.KeyInfo) InitOpt {
+func DefaultKeyOpt(ki *crypto.KeyInfo) InitOpt {
 	return func(opts *initCfg) {
 		opts.defaultKey = ki
 	}
 }
 
 // ImportKeyOpt imports the provided key during initialization.
-func ImportKeyOpt(ki *types.KeyInfo) InitOpt {
+func ImportKeyOpt(ki *crypto.KeyInfo) InitOpt {
 	return func(opts *initCfg) {
 		opts.initImports = append(opts.initImports, ki)
 	}
@@ -98,10 +98,10 @@ func Init(ctx context.Context, r repo.Repo, gen consensus.GenesisInitFunc, opts 
 	return nil
 }
 
-func initPeerKey(store keystore.Keystore, key crypto.PrivKey) error {
+func initPeerKey(store keystore.Keystore, key acrypto.PrivKey) error {
 	var err error
 	if key == nil {
-		key, _, err = crypto.GenerateKeyPair(crypto.RSA, defaultPeerKeyBits)
+		key, _, err = acrypto.GenerateKeyPair(acrypto.RSA, defaultPeerKeyBits)
 		if err != nil {
 			return errors.Wrap(err, "failed to create peer key")
 		}
@@ -112,7 +112,7 @@ func initPeerKey(store keystore.Keystore, key crypto.PrivKey) error {
 	return nil
 }
 
-func initDefaultKey(w *wallet.Wallet, key *types.KeyInfo) (*types.KeyInfo, error) {
+func initDefaultKey(w *wallet.Wallet, key *crypto.KeyInfo) (*crypto.KeyInfo, error) {
 	var err error
 	if key == nil {
 		key, err = w.NewKeyInfo()
@@ -127,7 +127,7 @@ func initDefaultKey(w *wallet.Wallet, key *types.KeyInfo) (*types.KeyInfo, error
 	return key, nil
 }
 
-func importInitKeys(w *wallet.Wallet, importKeys []*types.KeyInfo) error {
+func importInitKeys(w *wallet.Wallet, importKeys []*crypto.KeyInfo) error {
 	for _, ki := range importKeys {
 		_, err := w.Import(ki)
 		if err != nil {

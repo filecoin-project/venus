@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -18,34 +17,19 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
 	errPkg "github.com/pkg/errors"
+	typegen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	typegen "github.com/whyrusleeping/cbor-gen"
-)
-
-// MethodID is an identifier of a method (in an actor).
-type MethodID Uint64
-
-const (
-	// InvalidMethodID is the value of an invalid method id.
-	// Note: this is not in the spec
-	InvalidMethodID = MethodID(0xFFFFFFFFFFFFFFFF)
-	// SendMethodID is the method ID for sending money to an actor.
-	SendMethodID = MethodID(0)
-	// ConstructorMethodID is the method ID used to initialize an actor's state.
-	ConstructorMethodID = MethodID(1)
 )
 
 // GasUnits represents number of units of gas consumed
-type GasUnits = Uint64
-
-// ZeroGas is the zero value for Gas.
-const ZeroGas = GasUnits(0)
+// This type is signed by design; it is possible for operations to consume negative gas.
+type GasUnits int64
 
 // BlockGasLimit is the maximum amount of gas that can be used to execute messages in a single block
-var BlockGasLimit = NewGasUnits(10000000)
+var BlockGasLimit = GasUnits(10000000)
 
 // EmptyMessagesCID is the cid of an empty collection of messages.
 var EmptyMessagesCID cid.Cid
@@ -70,11 +54,6 @@ func init() {
 	}
 }
 
-var (
-	// ErrInvalidMessageLength is returned when the message length does not match the expected length.
-	ErrInvalidMessageLength = errors.New("invalid message length")
-)
-
 // UnsignedMessage is an exchange of information between two actors modeled
 // as a function call.
 type UnsignedMessage struct {
@@ -90,8 +69,8 @@ type UnsignedMessage struct {
 
 	Value AttoFIL `json:"value"`
 
-	Method MethodID `json:"method"`
-	Params []byte   `json:"params"`
+	Method abi.MethodNum `json:"method"`
+	Params []byte        `json:"params"`
 
 	GasPrice AttoFIL  `json:"gasPrice"`
 	GasLimit GasUnits `json:"gasLimit"`
@@ -99,7 +78,7 @@ type UnsignedMessage struct {
 }
 
 // NewUnsignedMessage creates a new message.
-func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, method MethodID, params []byte) *UnsignedMessage {
+func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte) *UnsignedMessage {
 	return &UnsignedMessage{
 		From:       from,
 		To:         to,
@@ -111,7 +90,7 @@ func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, m
 }
 
 // NewMeteredMessage adds gas price and gas limit to the message
-func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method MethodID, params []byte, price AttoFIL, limit GasUnits) *UnsignedMessage {
+func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte, price AttoFIL, limit GasUnits) *UnsignedMessage {
 	return &UnsignedMessage{
 		From:       from,
 		To:         to,
@@ -191,11 +170,6 @@ func NewGasPrice(price int64) AttoFIL {
 	return NewAttoFIL(big.NewInt(price))
 }
 
-// NewGasUnits constructs a new GasUnits from the given number.
-func NewGasUnits(cost uint64) GasUnits {
-	return Uint64(cost)
-}
-
 // TxMeta tracks the merkleroots of both secp and bls messages separately
 type TxMeta struct {
 	_        struct{} `cbor:",toarray"`
@@ -208,15 +182,10 @@ func (m TxMeta) String() string {
 	return fmt.Sprintf("secp: %s, bls: %s", m.SecpRoot.String(), m.BLSRoot.String())
 }
 
-// String returns a readable string.
-func (id MethodID) String() string {
-	return fmt.Sprintf("%v", (uint64)(id))
-}
-
 // Cost returns the cost of the gas given the price.
 func (x GasUnits) Cost(price abi.TokenAmount) abi.TokenAmount {
 	// turn the gas into a bigint
-	bigx := abi.NewTokenAmount((int64)(x))
+	bigx := abi.NewTokenAmount(int64(x))
 
 	// cost = gas * price
 	return specsbig.Mul(bigx, price)

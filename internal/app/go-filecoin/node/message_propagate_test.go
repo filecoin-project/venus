@@ -68,7 +68,7 @@ func TestMessagePropagation(t *testing.T) {
 	require.Equal(t, 0, len(nodes[2].Messaging.Inbox.Pool().Pending()))
 	require.Equal(t, 0, len(nodes[0].Messaging.Inbox.Pool().Pending()))
 
-	fooMethod := types.MethodID(7232)
+	fooMethod := abi.MethodNum(7232)
 
 	t.Run("message propagates", func(t *testing.T) {
 		_, _, err := sender.PorcelainAPI.MessageSend(
@@ -77,7 +77,7 @@ func TestMessagePropagation(t *testing.T) {
 			address.LegacyNetworkAddress,
 			types.NewAttoFILFromFIL(1),
 			types.NewGasPrice(1),
-			types.NewGasUnits(0),
+			types.GasUnits(0),
 			fooMethod,
 			&adt.EmptyValue{},
 		)

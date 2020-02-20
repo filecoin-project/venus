@@ -85,7 +85,7 @@ To:        %s
 From:      %s
 CallSeqNum:     %s
 Value:     %s
-Method:    %s
+Method:    %d
 Params:    %s
 Gas price: %s
 Gas limit: %s

@@ -2,6 +2,7 @@ package vmcontext
 
 import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 )
@@ -23,15 +24,15 @@ type actorStateHandle struct {
 type validateFn = func() bool
 
 type actorStateHandleContext interface {
-	Storage() runtime.Storage
+	Store() specsruntime.Store
 	AllowSideEffects(bool)
 }
 
 type readonlyContextWrapper struct {
-	store runtime.Storage
+	store specsruntime.Store
 }
 
-func (w readonlyContextWrapper) Storage() runtime.Storage {
+func (w readonlyContextWrapper) Store() specsruntime.Store {
 	return w.store
 }
 
@@ -40,13 +41,13 @@ func (readonlyContextWrapper) AllowSideEffects(bool) {}
 // NewActorStateHandle returns a new `ActorStateHandle`
 //
 // Note: just visible for testing.
-func NewActorStateHandle(ctx actorStateHandleContext, head cid.Cid) runtime.ActorStateHandle {
+func NewActorStateHandle(ctx actorStateHandleContext, head cid.Cid) specsruntime.StateHandle {
 	aux := newActorStateHandle(ctx, head)
 	return &aux
 }
 
-// NewReadonlyStateHandle returns a new `ReadonlyActorStateHandle`
-func NewReadonlyStateHandle(store runtime.Storage, head cid.Cid) runtime.ActorStateHandle {
+// NewReadonlyStateHandle returns a new reaadonly `ActorStateHandle`
+func NewReadonlyStateHandle(store specsruntime.Store, head cid.Cid) specsruntime.StateHandle {
 	aux := newActorStateHandle(readonlyContextWrapper{store: store}, head)
 	return &aux
 }
@@ -59,31 +60,28 @@ func newActorStateHandle(ctx actorStateHandleContext, head cid.Cid) actorStateHa
 	}
 }
 
-var _ runtime.ActorStateHandle = (*actorStateHandle)(nil)
+var _ specsruntime.StateHandle = (*actorStateHandle)(nil)
 
-func (h *actorStateHandle) Create(obj interface{}) {
+func (h *actorStateHandle) Create(obj specsruntime.CBORMarshaler) {
 	if h.head != cid.Undef {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Actor state already initialized")
 	}
 
 	// store state
-	h.head = h.ctx.Storage().Put(obj)
+	h.head = h.ctx.Store().Put(obj)
 
 	// update internal ref to state
 	h.usedObj = obj
 }
 
 // Readonly is the implementation of the ActorStateHandle interface.
-func (h *actorStateHandle) Readonly(obj interface{}) {
+func (h *actorStateHandle) Readonly(obj specsruntime.CBORUnmarshaler) {
 	// track the variable used by the caller
 	if h.usedObj == nil {
 		h.usedObj = obj
 	} else if h.usedObj != obj {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Must use the same state variable on repeated calls")
 	}
-
-	// Dragons: needed while we can get actor state modified directly by actor code
-	// h.head = h.ctx.LegacyStorage().LegacyHead()
 
 	// load state from storage
 	// Note: we copy the head over to `readonlyHead` in case it gets modified afterwards via `Transaction()`.
@@ -93,13 +91,12 @@ func (h *actorStateHandle) Readonly(obj interface{}) {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Nil state can not be accessed via Readonly(), use Transaction() instead")
 	}
 
-	h.ctx.Storage().Get(readonlyHead, obj)
+	// load it to obj
+	h.ctx.Store().Get(readonlyHead, obj)
 }
 
-type transactionFn = func() (interface{}, error)
-
 // Transaction is the implementation of the ActorStateHandle interface.
-func (h *actorStateHandle) Transaction(obj interface{}, f transactionFn) (interface{}, error) {
+func (h *actorStateHandle) Transaction(obj specsruntime.CBORer, f func() interface{}) interface{} {
 	if obj == nil {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil to Transaction()")
 	}
@@ -111,49 +108,35 @@ func (h *actorStateHandle) Transaction(obj interface{}, f transactionFn) (interf
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Must use the same state variable on repeated calls")
 	}
 
-	// Dragons: needed while we can get actor state modified directly by actor code
-	// h.head = h.ctx.LegacyStorage().LegacyHead()
-
 	oldcid := h.head
 
 	// load state only if it already exists
 	if h.head != cid.Undef {
-		h.ctx.Storage().Get(oldcid, obj)
+		h.ctx.Store().Get(oldcid, obj)
 	}
 
 	// call user code allowing mutation but not side-effects
 	h.ctx.AllowSideEffects(false)
-	out, err := f()
+	out := f()
 	h.ctx.AllowSideEffects(true)
 
-	// forward user error
-	if err != nil {
-		if h.head != cid.Undef {
-			// re-load state from storage
-			// Note: this will throw away any changes done to the object and replace it with Readonly()
-			h.ctx.Storage().Get(oldcid, obj)
-		}
-
-		return out, err
-	}
-
 	// store the new state
-	newcid := h.ctx.Storage().Put(obj)
+	newcid := h.ctx.Store().Put(obj)
 
 	// update head
 	h.head = newcid
 
-	return out, nil
+	return out
 }
 
 // Validate validates that the state was mutated properly.
 //
 // This method is not part of the public API,
 // it is expected to be called by the runtime after each actor method.
-func (h *actorStateHandle) Validate() {
+func (h *actorStateHandle) Validate(cidFn func(interface{}) cid.Cid) {
 	if h.usedObj != nil {
 		// verify the obj has not changed
-		usedCid := h.ctx.Storage().CidOf(h.usedObj)
+		usedCid := cidFn(h.usedObj)
 		if usedCid != h.head {
 			runtime.Abortf(exitcode.SysErrorIllegalActor, "State mutated outside of Transaction() scope")
 		}
