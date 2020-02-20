@@ -2,7 +2,6 @@ package net
 
 import (
 	"context"
-	"fmt"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -40,7 +39,6 @@ func NewBlockTopicValidator(bv consensus.BlockSyntaxValidator, opts ...pubsub.Va
 				return false
 			}
 			if err := bv.ValidateSyntax(ctx, blk); err != nil {
-				fmt.Printf("Block fails syntax check: %s\n", err)
 				blockTopicLogger.Debugf("block: %s from peer: %s failed to validate: %s", blk.Cid().String(), p.String(), err.Error())
 				mInvalidBlk.Inc(ctx, 1)
 				return false

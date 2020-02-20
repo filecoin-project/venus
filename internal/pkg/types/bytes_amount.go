@@ -4,16 +4,13 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-leb128"
 	"github.com/pkg/errors"
-	"github.com/polydawn/refmt/obj/atlas"
 )
 
 // NOTE -- All *BytesAmount methods must call ensureBytesAmounts with refs to every user-supplied value before use.
 
 func init() {
-	encoding.RegisterIpldCborType(bytesAmountAtlasEntry)
 	ZeroBytes = NewBytesAmount(0)
 }
 
@@ -29,17 +26,6 @@ func ensureBytesAmounts(refs ...**BytesAmount) {
 		}
 	}
 }
-
-var bytesAmountAtlasEntry = atlas.BuildEntry(BytesAmount{}).Transform().
-	TransformMarshal(atlas.MakeMarshalTransformFunc(
-		func(i BytesAmount) ([]byte, error) {
-			return i.Bytes(), nil
-		})).
-	TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
-		func(x []byte) (BytesAmount, error) {
-			return *NewBytesAmountFromBytes(x), nil
-		})).
-	Complete()
 
 // UnmarshalJSON converts a byte array to a BytesAmount.
 func (z *BytesAmount) UnmarshalJSON(b []byte) error {

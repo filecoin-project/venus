@@ -81,10 +81,15 @@ func (t *tree) Flush(ctx context.Context) (cid.Cid, error) {
 // for which IsActorNotFoundError(err) is true.
 func (t *tree) GetActor(ctx context.Context, a address.Address) (*actor.Actor, error) {
 	var act actor.Actor
-	err := t.root.Find(ctx, string(a.Bytes()), &act)
+	actorBytes, err := t.root.FindRaw(ctx, string(a.Bytes()))
 	if err == hamt.ErrNotFound {
 		return nil, &actorNotFoundError{}
-	} else if err != nil {
+	}
+	if err != nil {
+		return nil, err
+	}
+	err = encoding.Decode(actorBytes, &act)
+	if err != nil {
 		return nil, err
 	}
 
@@ -104,7 +109,11 @@ func (t *tree) GetOrCreateActor(ctx context.Context, addr address.Address, creat
 // SetActor sets the memory slot at address 'a' to the given actor.
 // This operation can overwrite existing actors at that address.
 func (t *tree) SetActor(ctx context.Context, a address.Address, act *actor.Actor) error {
-	if err := t.root.Set(ctx, string(a.Bytes()), act); err != nil {
+	actBytes, err := encoding.Encode(act)
+	if err != nil {
+		return err
+	}
+	if err := t.root.SetRaw(ctx, string(a.Bytes()), actBytes); err != nil {
 		return errors.Wrap(err, "setting actor in state tree failed")
 	}
 	return nil

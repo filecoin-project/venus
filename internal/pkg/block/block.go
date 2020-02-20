@@ -106,10 +106,6 @@ func (b *Block) Cid() cid.Cid {
 // ToNode converts the Block to an IPLD node.
 func (b *Block) ToNode() node.Node {
 	// Use 32 byte / 256 bit digest. TODO pull this out into a constant?
-	// obj, err := cbor.WrapObject(b, types.DefaultHashFunction, -1)
-	// if err != nil {
-	// 	panic(err)
-	// }
 	mhType := uint64(mh.BLAKE2B_MIN + 31)
 	mhLen := -1
 

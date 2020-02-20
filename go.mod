@@ -16,6 +16,7 @@ require (
 	github.com/docker/go-units v0.3.3 // indirect
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200210194142-cb6019e08542
 	github.com/filecoin-project/go-address v0.0.1
+	github.com/filecoin-project/go-amt-ipld v1.0.0
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
 	github.com/filecoin-project/go-data-transfer v0.0.0-20191219005021-4accf56bd2ce
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
@@ -40,7 +41,7 @@ require (
 	github.com/ipfs/go-ds-badger v0.2.1
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-graphsync v0.0.4
-	github.com/ipfs/go-hamt-ipld v0.0.15-0.20200131012125-dd88a59d3f2e
+	github.com/ipfs/go-hamt-ipld v0.0.15-0.20200219230615-d4e402c05ab0
 	github.com/ipfs/go-ipfs-blockstore v0.1.1
 	github.com/ipfs/go-ipfs-chunker v0.0.1
 	github.com/ipfs/go-ipfs-cmdkit v0.0.1
@@ -102,12 +103,12 @@ require (
 	go.opencensus.io v0.22.2
 	go.uber.org/atomic v1.5.1 // indirect
 	go.uber.org/zap v1.13.0
-	golang.org/x/crypto v0.0.0-20200210222208-86ce3cb69678
+	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
 	golang.org/x/lint v0.0.0-20200130185559-910be7a94367 // indirect
 	golang.org/x/net v0.0.0-20191101175033-0deb6923b6d9 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/sys v0.0.0-20200212091648-12a6c2dcc1e4 // indirect
+	golang.org/x/sys v0.0.0-20200219091948-cb0a6d8edb6c // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	golang.org/x/tools v0.0.0-20200213153358-0abbfa5d31cd // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543

@@ -8,23 +8,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	specsabi "github.com/filecoin-project/specs-actors/actors/abi"
 	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/polydawn/refmt/obj/atlas"
 )
-
-func init() {
-	encoding.RegisterIpldCborType(attoFILAtlasEntry)
-}
-
-var attoFILAtlasEntry = atlas.BuildEntry(AttoFIL{}).Transform().
-	TransformMarshal(atlas.MakeMarshalTransformFunc(
-		func(a AttoFIL) ([]byte, error) {
-			return a.MarshalBinary()
-		})).
-	TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
-		func(x []byte) (AttoFIL, error) {
-			return NewAttoFILFromBytes(x)
-		})).
-	Complete()
 
 var attoPower = 18
 var tenToTheEighteen = specsbig.Exp(specsbig.NewInt(10), specsbig.NewInt(18))

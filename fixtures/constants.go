@@ -44,7 +44,7 @@ type detailsStruct struct {
 		Address             address.Address
 		NumCommittedSectors uint64
 	}
-	GenesisCid cid.Cid `refmt:",omitempty"`
+	GenesisCid cid.Cid
 }
 
 func init() {
@@ -77,7 +77,6 @@ func init() {
 	detailspath := filepath.Join(root, "fixtures/test/gen.json")
 	detailsFile, err := os.Open(detailspath)
 	if err != nil {
-		// fmt.Printf("Fixture data not found. Skipping fixture initialization: %s\n", err)
 		return
 	}
 	defer func() {

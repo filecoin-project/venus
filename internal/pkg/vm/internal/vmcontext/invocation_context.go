@@ -71,7 +71,6 @@ func (ctx *invocationContext) invoke() interface{} {
 	// 4. short-circuit _Send_ method
 	// 5. load target actor code
 	// 6. create target state handle
-
 	// assert from address is an ID address.
 	if ctx.msg.from.Protocol() != address.ID {
 		panic("bad code: sender address MUST be an ID address at invocation time")

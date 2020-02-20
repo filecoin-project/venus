@@ -2,23 +2,23 @@
   "Keys": [
     {
       "privateKey": "vCjtwcXis3MueE/B8jOit1E6QQfSKNjmAx5IkCqasvg=",
-      "sigType": 0
+      "sigType": 2
     },
     {
       "privateKey": "lEH/ylrWymR9gicGm0sAeSTASQIW7t9/610xPb7McAg=",
-      "sigType": 0
+      "sigType": 2
     },
     {
       "privateKey": "u/vVcaPk5tSLKbvYL/Fc+qY+X71fl7zYp/qFKk9J9Ek=",
-      "sigType": 0
+      "sigType": 2
     },
     {
       "privateKey": "wsyLuLRK5K5YbYcyIeZCYjVJKI946YYtf754TlkvOX8=",
-      "sigType": 0
+      "sigType": 2
     },
     {
       "privateKey": "PtZ75+7dHQ1rT0CPpzKuvCdrvz46ERb2Zrdnx/RIcBo=",
-      "sigType": 0
+      "sigType": 2
     }
   ],
   "Miners": [
