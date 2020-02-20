@@ -26,7 +26,7 @@ func NewCachedTree(st Tree) *CachedTree {
 	}
 }
 
-// Flush flushes the commited changes.
+// Flush flushes the committed changes.
 func (t *CachedTree) Flush(ctx context.Context) (cid.Cid, error) {
 	return t.st.Flush(ctx)
 }

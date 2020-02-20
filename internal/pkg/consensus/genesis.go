@@ -91,6 +91,7 @@ func MinerActor(store adt.Store, addr address.Address, owner address.Address, pi
 		if err != nil {
 			return err
 		}
+
 		gc.miners[addr] = &minerActorConfig{
 			state:   st,
 			balance: coll,

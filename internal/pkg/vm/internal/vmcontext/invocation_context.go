@@ -14,6 +14,7 @@ import (
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	adt_spec "github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
@@ -90,7 +91,7 @@ func (ctx *invocationContext) invoke() interface{} {
 
 	// 4. if we are just sending funds, there is nothing else to do.
 	if ctx.msg.method == builtin.MethodSend {
-		return nil
+		return &adt_spec.EmptyValue{}
 	}
 
 	// 5. load target actor code

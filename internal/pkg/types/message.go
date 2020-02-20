@@ -151,7 +151,11 @@ func (msg *UnsignedMessage) Cid() (cid.Cid, error) {
 
 // OnChainLen returns the amount of bytes used to represent the message on chain.
 func (msg *UnsignedMessage) OnChainLen() uint32 {
-	panic("byteme")
+	bits, err := encoding.Encode(msg)
+	if err != nil {
+		panic(err)
+	}
+	return uint32(len(bits))
 }
 
 func (msg *UnsignedMessage) String() string {

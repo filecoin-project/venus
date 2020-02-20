@@ -303,7 +303,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, miner address.Address, rnd crypto.RandomnessSource) (message.Receipt, minerPenaltyFIL, gasRewardFIL) {
 	// Dragons: temp until we remove legacy types
 	var msgGasLimit gas.Unit = gas.NewLegacyGas(msg.GasLimit)
-	var msgGasPrice abi.TokenAmount = abi.NewTokenAmount(int64(msg.GasLimit))
+	var msgGasPrice abi.TokenAmount = msg.GasPrice
 	var msgValue abi.TokenAmount = msg.Value
 
 	// This method does not actually execute the message itself,
@@ -333,7 +333,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 
 	// 2. load actor from global state
 	if msg.From, ok = vm.normalizeFrom(msg.From); !ok {
-		runtime.Abort(exitcode.SysErrActorNotFound)
+		return message.Failure(exitcode.SysErrActorNotFound, gas.Zero), gasTank.GasConsumed().ToTokens(msgGasPrice), big.Zero()
 	}
 
 	// Dragons: change this to actor, ok, error ok for found or not, err are non-recoverable IO errors and such
