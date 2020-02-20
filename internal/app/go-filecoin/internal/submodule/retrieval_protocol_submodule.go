@@ -34,7 +34,7 @@ func NewRetrievalProtocolSubmodule(
 	panic("TODO: go-fil-markets integration")
 
 	netwk := network.NewFromLibp2pHost(host)
-	pnode := retmkt.NewRetrievalProviderNodeConnector(netwk, ps, bs)
+	pnode := retmkt.NewRetrievalProviderConnector(netwk, ps, bs)
 	cnode := retmkt.NewRetrievalClientConnector(bs,
 		c.ChainReader,
 		mw,
@@ -42,6 +42,7 @@ func NewRetrievalProtocolSubmodule(
 		ps,
 		signer,
 		wal,
+		nil,
 	)
 	rsvlr := retmkt.NewRetrievalPeerResolverConnector()
 

@@ -14,7 +14,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paych"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -82,7 +82,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) AllocateLane(paychAddr address.Addre
 	return lane, nil
 }
 
-func (rmFake *RetrievalMarketClientFakeAPI) CreatePaymentChannel(payer, payee address.Address) (paych.ChannelInfo, error) {
+func (rmFake *RetrievalMarketClientFakeAPI) CreatePaymentChannel(payer, payee address.Address) (paymentchannel.ChannelInfo, error) {
 	panic("implement me")
 }
 
@@ -92,14 +92,14 @@ func (rmFake *RetrievalMarketClientFakeAPI) UpdatePaymentChannel(paychAddr addre
 
 // GetChannelInfo mocks getting payment channel info
 // TODO: this should use the store's ChannelInfo struct
-func (rmFake *RetrievalMarketClientFakeAPI) GetPaymentChannelInfo(paychAddr address.Address) (paych.ChannelInfo, error) {
+func (rmFake *RetrievalMarketClientFakeAPI) GetPaymentChannelInfo(paychAddr address.Address) (paymentchannel.ChannelInfo, error) {
 	for payer, entry := range rmFake.ActualPmtChans {
 		if entry.ChannelID == paychAddr {
 			//Payee:    entry.Payee,
 			//Amount:   types.NewAttoFIL(entry.FundsAvail.Int),
 			//Redeemed: types.NewAttoFIL(entry.Redeemed.Int),
 
-			pch := paych.ChannelInfo{
+			pch := paymentchannel.ChannelInfo{
 				Owner: payer,
 				State: &paychActor.State{
 					From:            payer,
@@ -114,7 +114,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) GetPaymentChannelInfo(paychAddr addr
 			return pch, nil
 		}
 	}
-	return paych.ChannelInfo{}, errors.New("no such ChannelID")
+	return paymentchannel.ChannelInfo{}, errors.New("no such ChannelID")
 }
 
 // Wait mocks waiting for a message with a given CID to appear on chain, then actually calls

@@ -16,7 +16,7 @@ import (
 	cid "github.com/ipfs/go-cid/_rsrch/cidiface"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paych"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -70,8 +70,8 @@ type RetrievalSigner interface {
 
 type MgrAPI interface {
 	AllocateLane(paychAddr address.Address) (int64, error)
-	GetPaymentChannelInfo(paychAddr address.Address) (paych.ChannelInfo, error)
-	CreatePaymentChannel(payer, payee address.Address) (paych.ChannelInfo, error)
+	GetPaymentChannelInfo(paychAddr address.Address) (paymentchannel.ChannelInfo, error)
+	CreatePaymentChannel(payer, payee address.Address) (paymentchannel.ChannelInfo, error)
 	UpdatePaymentChannel(paychAddr address.Address) error
 }
 

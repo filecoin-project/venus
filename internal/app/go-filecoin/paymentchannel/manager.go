@@ -1,4 +1,4 @@
-package paych
+package paymentchannel
 
 import (
 	"github.com/filecoin-project/go-address"
