@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
@@ -366,11 +365,6 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 	newActor.Balance = abi.NewTokenAmount(0)
 	// make this the right 'type' of actor
 	newActor.Code = e.NewCid(codeID)
-}
-
-/// VerifySignature implements runtime.ExtendedInvocationContext.
-func (ctx *invocationContext) VerifySignature(signer address.Address, signature crypto.Signature, msg []byte) bool {
-	return crypto.IsValidSignature(msg, signer, signature)
 }
 
 // patternContext implements the PatternContext

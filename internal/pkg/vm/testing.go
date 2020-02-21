@@ -13,7 +13,6 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -183,11 +182,6 @@ func (tc *FakeVMContext) CreateActor(code cid.Cid, addr address.Address) {
 	if err != nil {
 		runtime.Abortf(exitcode.SysErrInternal, "Could not create actor")
 	}
-}
-
-// VerifySignature implemenets the ExtendedInvocationContext interface.
-func (*FakeVMContext) VerifySignature(signer address.Address, signature crypto.Signature, msg []byte) bool {
-	return crypto.IsValidSignature(msg, signer, signature)
 }
 
 // AllowSideEffects determines wether or not the actor code is allowed to produce side-effects.
