@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-address"
 
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
-	tut "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/shared_testutils"
 )
 
 func TestNewRetrievalProviderNodeConnector(t *testing.T) {
@@ -32,7 +31,7 @@ func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
 
 func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 	rmnet := gfmtut.NewTestRetrievalMarketNetwork(gfmtut.TestNetworkParams{})
-	ps := tut.RequireMakeTestPieceStore(t)
+	ps := gfmtut.NewTestPieceStore()
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	pchan, err := address.NewIDAddress(rand.Uint64())
 	require.NoError(t, err)

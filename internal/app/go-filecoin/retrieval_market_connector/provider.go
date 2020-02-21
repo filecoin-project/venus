@@ -2,6 +2,7 @@ package retrievalmarketconnector
 
 import (
 	"context"
+	"errors"
 	"io"
 
 	"github.com/filecoin-project/go-address"
@@ -48,15 +49,13 @@ func (r *RetrievalProviderConnector) UnsealSector(ctx context.Context, sectorId 
 
 // SavePaymentVoucher stores the provided payment voucher with the payment channel actor
 func (r *RetrievalProviderConnector) SavePaymentVoucher(_ context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount) (abi.TokenAmount, error) {
-	var tokenamt abi.TokenAmount
-
 	key, err := r.voucherStoreKeyFor(voucher)
 	if err != nil {
-		return tokenamt, err
+		return abi.NewTokenAmount(0), err
 	}
 	_, ok := r.vs[key]
 	if ok {
-		return tokenamt, xerrors.New("voucher exists")
+		return abi.NewTokenAmount(0), xerrors.New("voucher exists")
 	}
 	r.vs[key] = voucherEntry{
 		voucher:     voucher,
@@ -72,6 +71,9 @@ func (r *RetrievalProviderConnector) voucherStoreKeyFor(voucher *paych.SignedVou
 	venc, err := voucher.SigningBytes()
 	if err != nil {
 		return "", err
+	}
+	if venc == nil {
+		return "", errors.New("invalid store key: voucher not signed")
 	}
 	return string(venc[:]), nil
 }

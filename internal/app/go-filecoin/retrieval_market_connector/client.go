@@ -15,6 +15,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cid "github.com/ipfs/go-cid/_rsrch/cidiface"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -30,8 +31,6 @@ type RetrievalClientConnector struct {
 	cs *chain.Store
 
 	// APIs/interfaces
-	mw       MsgWaiter
-	outbox   MsgSender
 	paychMgr MgrAPI
 	ps       piecestore.PieceStore
 	signer   RetrievalSigner
@@ -39,23 +38,6 @@ type RetrievalClientConnector struct {
 }
 
 type laneEntries []types.AttoFIL
-
-// MsgWaiter is an interface for waiting for a message to appear on chain
-type MsgWaiter interface {
-	Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error
-}
-
-// MsgSender is an interface for something that can post messages on chain
-type MsgSender interface {
-	// Send sends a message to the chain
-	Send(ctx context.Context,
-		from, to address.Address,
-		value types.AttoFIL,
-		gasPrice types.AttoFIL, gasLimit types.GasUnits,
-		bcast bool,
-		method types.MethodID,
-		params interface{}) (out cid.Cid, pubErrCh chan error, err error)
-}
 
 // WalletAPI is the subset of the Wallet interface needed by the retrieval client node
 type WalletAPI interface {
@@ -69,18 +51,17 @@ type RetrievalSigner interface {
 }
 
 type MgrAPI interface {
-	AllocateLane(paychAddr address.Address) (int64, error)
-	GetPaymentChannelInfo(paychAddr address.Address) (paymentchannel.ChannelInfo, error)
-	CreatePaymentChannel(payer, payee address.Address) (paymentchannel.ChannelInfo, error)
-	UpdatePaymentChannel(paychAddr address.Address) error
+	AllocateLane(paychAddr address.Address) (uint64, error)
+	GetPaymentChannelInfo(paychAddr address.Address) (*paymentchannel.ChannelInfo, error)
+	GetPaymentChannelByAccounts(payer, payee address.Address) (address.Address, *paymentchannel.ChannelInfo)
+	CreatePaymentChannel(payer, payee address.Address) (address.Address, error)
+	UpdatePaymentChannel(paychAddr address.Address, voucher *paychActor.SignedVoucher) error
 }
 
 // NewRetrievalClientConnector creates a new RetrievalClientConnector
 func NewRetrievalClientConnector(
 	bs blockstore.Blockstore,
 	cs *chain.Store,
-	mw MsgWaiter,
-	ob MsgSender,
 	ps piecestore.PieceStore,
 	signer RetrievalSigner,
 	wal WalletAPI,
@@ -89,8 +70,6 @@ func NewRetrievalClientConnector(
 	return &RetrievalClientConnector{
 		bs:       bs,
 		cs:       cs,
-		mw:       mw,
-		outbox:   ob,
 		paychMgr: paychMgr,
 		ps:       ps,
 		signer:   signer,
@@ -106,14 +85,8 @@ func (r *RetrievalClientConnector) GetOrCreatePaymentChannel(ctx context.Context
 	if clientAddress == address.Undef || minerAddress == address.Undef {
 		return address.Undef, errors.New("empty address")
 	}
-
-	var chid address.Address
-	//chid, err := address.Undef
-	//if err != nil {
-	//	return address.Undef, err
-	//}
-
-	if chid == address.Undef {
+	paychAddr, ci := r.paychMgr.GetPaymentChannelByAccounts(clientAddress, minerAddress)
+	if ci == nil {
 		// create the payment channel
 		bal, err := r.wal.GetBalance(ctx, clientAddress)
 		if err != nil {
@@ -124,33 +97,11 @@ func (r *RetrievalClientConnector) GetOrCreatePaymentChannel(ctx context.Context
 		if bal.LessThan(filAmt) {
 			return address.Undef, errors.New("not enough funds in wallet")
 		}
-
-		execParams, err := paychActorCtorExecParamsFor(clientAddress, minerAddress)
-		if err != nil {
-			return address.Undef, err
-		}
-		msgCid, _, err := r.outbox.Send(
-			ctx,
-			clientAddress,
-			builtin.InitActorAddr,
-			types.ZeroAttoFIL,
-			types.NewAttoFILFromFIL(1),
-			types.NewGasUnits(300),
-			true,
-			types.MethodID(builtin.MethodsInit.Exec),
-			execParams,
-		)
-		if err != nil {
-			return address.Undef, err
-		}
-		err = r.mw.Wait(ctx, msgCid, r.handleMessageReceived)
-		if err != nil {
-			return address.Undef, err
-		}
+		return r.paychMgr.CreatePaymentChannel(clientAddress, minerAddress)
 	}
 
 	// Not a real actor, just plays one on PaymentChannels.
-	return chid, nil
+	return paychAddr, nil
 }
 
 func paychActorCtorExecParamsFor(client, miner address.Address) (initActor.ExecParams, error) {
@@ -175,48 +126,32 @@ func paychActorCtorExecParamsFor(client, miner address.Address) (initActor.ExecP
 // Assumes AllocateLane is called after GetOrCreatePaymentChannel
 //func (r *RetrievalClientConnector) AllocateLane(paymentChannel address.Address) (int64, error) {
 func (r *RetrievalClientConnector) AllocateLane(paymentChannel address.Address) (lane uint64, err error) {
-	//payer, err := r.getPayerForChannel(paymentChannel)
-	//if err != nil {
-	//	return 0, err
-	//}
-	//
-	//if r.laneStore[payer] == nil {
-	//	r.laneStore[payer] = []types.AttoFIL{}
-	//}
-	//r.laneStore[payer] = append(r.laneStore[payer], types.NewAttoFILFromFIL(0))
-	//lane := uint64(len(r.laneStore[payer]) - 1)
-
-	return lane, nil
+	return r.paychMgr.AllocateLane(paymentChannel)
 }
 
 // CreatePaymentVoucher creates a payment voucher for the retrieval client.
 // If there is not enough value stored in the payment channel registry, an error is returned.
 // If a lane has not been allocated for this payment channel, an error is returned.
-func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, channelAddr address.Address, amount abi.TokenAmount, lane uint64) (*paychActor.SignedVoucher, error) {
-	v, err := r.createSignedVoucher(ctx, channelAddr, lane, amount)
-	if err != nil {
-		return nil, err
-	}
-	return v, nil
-}
-func (r *RetrievalClientConnector) createSignedVoucher(ctx context.Context, payer address.Address, lane uint64, amount abi.TokenAmount) (*paychActor.SignedVoucher, error) {
+func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, paychAddr address.Address, amount abi.TokenAmount, lane uint64) (*paychActor.SignedVoucher, error) {
 	height, err := r.getBlockHeight()
 	if err != nil {
 		return nil, err
 	}
 
-	//nonce, err := r.NextNonce(ctx, payer)
-	//if err != nil {
-	//	return nil, err
-	//}
-	var nonce uint64
-
+	chinfo, err := r.paychMgr.GetPaymentChannelInfo(paychAddr)
+	if err != nil {
+		return nil, err
+	}
+	if lane >= uint64(len(chinfo.State.LaneStates)) {
+		return nil, xerrors.New("lane not allocated")
+	}
+	ls := chinfo.State.LaneStates[lane]
 	v := paychActor.SignedVoucher{
 		TimeLock:        0,   // TODO
 		SecretPreimage:  nil, // TODO
 		Extra:           nil, // TODO
 		Lane:            lane,
-		Nonce:           nonce,
+		Nonce:           ls.Nonce+1, // TODO
 		Amount:          amount,
 		MinSettleHeight: abi.ChainEpoch(height + 1),
 	}
@@ -226,7 +161,7 @@ func (r *RetrievalClientConnector) createSignedVoucher(ctx context.Context, paye
 		return nil, err
 	}
 
-	sig, err := r.signer.SignBytes(buf.Bytes(), payer)
+	sig, err := r.signer.SignBytes(buf.Bytes(), chinfo.Owner)
 	if err != nil {
 		return nil, err
 	}
@@ -236,6 +171,9 @@ func (r *RetrievalClientConnector) createSignedVoucher(ctx context.Context, paye
 		Data: sig,
 	}
 	v.Signature = &signature
+
+	// TODO tell Mgr to send UpdateChannelState message with the new voucher and signature
+	// if successful:
 	return &v, nil
 }
 

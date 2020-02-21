@@ -23,26 +23,21 @@ type RetrievalProtocolSubmodule struct {
 func NewRetrievalProtocolSubmodule(
 	bs blockstore.Blockstore,
 	c *ChainSubmodule,
-	mw retmkt.MsgWaiter,
 	host host.Host,
 	providerAddr address.Address,
-	ob retmkt.MsgSender,
 	ps piecestore.PieceStore,
 	signer retmkt.RetrievalSigner,
 	wal retmkt.WalletAPI,
+	pchMgrAPI retmkt.MgrAPI,
 ) (*RetrievalProtocolSubmodule, error) {
-	panic("TODO: go-fil-markets integration")
-
 	netwk := network.NewFromLibp2pHost(host)
 	pnode := retmkt.NewRetrievalProviderConnector(netwk, ps, bs)
 	cnode := retmkt.NewRetrievalClientConnector(bs,
 		c.ChainReader,
-		mw,
-		ob,
 		ps,
 		signer,
 		wal,
-		nil,
+		pchMgrAPI,
 	)
 	rsvlr := retmkt.NewRetrievalPeerResolverConnector()
 

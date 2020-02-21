@@ -30,7 +30,7 @@ func NewStore(ds datastore.Batching) *Store {
 }
 
 type ChannelInfo struct {
-	Owner    address.Address // Wallet address for this channel, has ability to sign and send funds
+	Owner    address.Address // Payout (From) address for this channel, has ability to sign and send funds
 	State    *paych.State
 	Vouchers []*VoucherInfo // All vouchers submitted for this channel
 }
@@ -40,12 +40,13 @@ type VoucherInfo struct {
 	Proof   []byte
 }
 
-func dskeyForChannel(addr address.Address) datastore.Key {
-	return datastore.NewKey(addr.String())
+
+func dskeyForChannel(payChAddr address.Address) datastore.Key {
+	return datastore.NewKey(payChAddr.String())
 }
 
-func (ps *Store) putChannelInfo(ci *ChannelInfo) error {
-	k := dskeyForChannel(ci.State.To)
+func (ps *Store) putChannelInfo(payChAddr address.Address, ci *ChannelInfo) error {
+	k := dskeyForChannel(payChAddr)
 
 	b, err := cborrpc.Dump(ci)
 	if err != nil {
@@ -55,8 +56,10 @@ func (ps *Store) putChannelInfo(ci *ChannelInfo) error {
 	return ps.ds.Put(k, b)
 }
 
-func (ps *Store) getChannelInfo(payCh address.Address) (*ChannelInfo, error) {
-	k := dskeyForChannel(payCh)
+// getChannelInfo retrieves a ChannelInfo record from the store via the payment channel actor address.
+// returns error if the lookup fails.
+func (ps *Store) getChannelInfo(payChAddr address.Address) (*ChannelInfo, error) {
+	k := dskeyForChannel(payChAddr)
 
 	b, err := ps.ds.Get(k)
 	if err == datastore.ErrNotFound {
