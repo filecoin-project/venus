@@ -7,13 +7,13 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 )
 
 const protocolTestParamBlockTime = time.Second
@@ -57,8 +57,8 @@ func TestProtocolParams(t *testing.T) {
 			AutoSealInterval: 120,
 			Network:          "protocolTest",
 			SupportedSectors: []porcelain.SectorInfo{
-				{types.OneKiBSectorSize, abi.PaddedPieceSize(types.OneKiBSectorSize).Unpadded()},
-				{types.TwoHundredFiftySixMiBSectorSize, abi.PaddedPieceSize(types.TwoHundredFiftySixMiBSectorSize).Unpadded()},
+				{constants.DevSectorSize, abi.PaddedPieceSize(constants.DevSectorSize).Unpadded()},
+				{constants.TwoHundredFiftySixMiBSectorSize, abi.PaddedPieceSize(constants.TwoHundredFiftySixMiBSectorSize).Unpadded()},
 			},
 			BlockTime: protocolTestParamBlockTime,
 		}

@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
@@ -210,7 +211,7 @@ var TestGenCfg = &gengen.GenesisCfg{
 			Owner:               0,
 			NumCommittedSectors: 100,
 			PeerID:              mustPeerID(PeerKeys[0]).Pretty(),
-			SectorSize:          types.OneKiBSectorSize,
+			SectorSize:          constants.DevSectorSize,
 		},
 	},
 	Network: "go-filecoin-test",

@@ -3,22 +3,21 @@ package enccid_test
 import (
 	"testing"
 
-	. "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	cbor "github.com/fxamacker/cbor"
 	cid "github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	mh "github.com/multiformats/go-multihash"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	. "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
 func TestCborRoundTrip(t *testing.T) {
 	tf.UnitTest(t)
 
-	prefix := cid.V1Builder{Codec: cid.DagCBOR, MhType: mh.BLAKE2B_MIN + 31}
-	c, err := prefix.Sum([]byte("epigram"))
+	c, err := constants.DefaultCidBuilder.Sum([]byte("epigram"))
 	require.NoError(t, err)
 	w := NewCid(c)
 	cbytes, err := cbor.Marshal(w, cbor.EncOptions{})
@@ -53,8 +52,7 @@ func TestEmptyCid(t *testing.T) {
 func TestJSONRoundTrip(t *testing.T) {
 	tf.UnitTest(t)
 
-	prefix := cid.V1Builder{Codec: cid.DagCBOR, MhType: mh.BLAKE2B_MIN + 31}
-	c, err := prefix.Sum([]byte("epigram"))
+	c, err := constants.DefaultCidBuilder.Sum([]byte("epigram"))
 	require.NoError(t, err)
 	w := NewCid(c)
 

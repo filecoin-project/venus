@@ -10,6 +10,7 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -26,12 +27,12 @@ var testConfig = &GenesisCfg{
 		{
 			Owner:               0,
 			NumCommittedSectors: 50,
-			SectorSize:          types.OneKiBSectorSize,
+			SectorSize:          constants.DevSectorSize,
 		},
 		{
 			Owner:               1,
 			NumCommittedSectors: 10,
-			SectorSize:          types.OneKiBSectorSize,
+			SectorSize:          constants.DevSectorSize,
 		},
 	},
 	Network: "go-filecoin-test",

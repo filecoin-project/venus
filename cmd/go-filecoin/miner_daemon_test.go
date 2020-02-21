@@ -21,6 +21,7 @@ import (
 	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -141,7 +142,7 @@ func TestMinerCreate(t *testing.T) {
 				args = append(args, "--peerid", pid.Pretty())
 			}
 
-			collateral := specsbig.Mul(specsbig.NewInt(int64(1000000*types.OneKiBSectorSize)), abi.NewTokenAmount(10))
+			collateral := specsbig.Mul(specsbig.NewInt(int64(1000000*constants.DevSectorSize)), abi.NewTokenAmount(10))
 			args = append(args, collateral.String())
 
 			var wg sync.WaitGroup
@@ -362,12 +363,12 @@ var testConfig = &gengen.GenesisCfg{
 		{
 			Owner:               0,
 			NumCommittedSectors: 3,
-			SectorSize:          types.OneKiBSectorSize,
+			SectorSize:          constants.DevSectorSize,
 		},
 		{
 			Owner:               1,
 			NumCommittedSectors: 3,
-			SectorSize:          types.OneKiBSectorSize,
+			SectorSize:          constants.DevSectorSize,
 		},
 	},
 	Network: "go-filecoin-test",

@@ -10,13 +10,14 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestCachedStateGetCommit(t *testing.T) {
@@ -117,8 +118,7 @@ func TestCachedStateGetOrCreate(t *testing.T) {
 }
 
 func requireCid(t *testing.T, data string) cid.Cid {
-	prefix := cid.V1Builder{Codec: cid.Raw, MhType: types.DefaultHashFunction}
-	id, err := prefix.Sum([]byte(data))
+	c, err := constants.DefaultCidBuilder.Sum([]byte(data))
 	require.NoError(t, err)
-	return id
+	return c
 }

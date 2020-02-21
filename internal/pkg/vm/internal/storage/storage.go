@@ -3,14 +3,15 @@ package storage
 import (
 	"errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	ipld "github.com/ipfs/go-ipld-format"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
 
 // VMStorage implements a content-addressable store for the VM.
@@ -162,7 +163,7 @@ func (s *VMStorage) toNode(v interface{}) (ipld.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		nd, err = cbor.Decode(raw, types.DefaultHashFunction, -1)
+		nd, err = cbor.Decode(raw, constants.DefaultHashFunction, -1)
 	}
 	if err != nil {
 		return nil, err

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
@@ -41,7 +42,7 @@ func RequireGenerateGenesis(t *testing.T, funds int64, dir string, genesisTime t
 			{
 				Owner:               0,
 				NumCommittedSectors: 1,
-				SectorSize:          types.OneKiBSectorSize,
+				SectorSize:          constants.DevSectorSize,
 			},
 		},
 		Network: "go-filecoin-test",

@@ -29,6 +29,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -326,11 +327,11 @@ func (ggs *signer) SignBytes(data []byte, addr address.Address) (crypto.Signatur
 // appropriate defaults for the selected proofs mode.
 func ApplyProofsModeDefaults(cfg *GenesisCfg, useLiveProofsMode bool, force bool) {
 	mode := types.TestProofsMode
-	sectorSize := types.OneKiBSectorSize
+	sectorSize := constants.DevSectorSize
 
 	if useLiveProofsMode {
 		mode = types.LiveProofsMode
-		sectorSize = types.TwoHundredFiftySixMiBSectorSize
+		sectorSize = constants.TwoHundredFiftySixMiBSectorSize
 	}
 
 	if cfg.ProofsMode == types.UnsetProofsMode || force {
