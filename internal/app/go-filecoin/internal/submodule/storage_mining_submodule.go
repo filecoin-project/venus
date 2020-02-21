@@ -6,6 +6,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-storage-miner"
+	"github.com/filecoin-project/go-storage-miner/policies/selfdeal"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
@@ -35,7 +37,23 @@ type StorageMiningSubmodule struct {
 // NewStorageMiningSubmodule creates a new storage mining submodule.
 func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching, s sectorbuilder.Interface, c *ChainSubmodule, m *MessagingSubmodule, mw *msg.Waiter, w *WalletSubmodule, stateViewer *appstate.Viewer) (*StorageMiningSubmodule, error) {
 	minerNode := storageminerconnector.NewStorageMinerNodeConnector(minerAddr, c.ChainReader, c.State, m.Outbox, mw, w.Wallet, stateViewer)
-	storageMiner, err := storage.NewMiner(minerNode, ds, s, minerAddr)
+
+	// The amount of epochs we expect the storage miner to take to replicate and
+	// prove a sector. This value should be shared with the storage miner side
+	// of go-fil-markets. The protocol specifies a maximum sealing duration (1)
+	// which could be used to improve the accuracy of provingDelay.
+	//
+	// 1: https://github.com/filecoin-project/specs-actors/commit/fa20d55a3ff0c0134b130dc27850998ffd432580#diff-5a14038af5531003ed825ab608d0dd51R21
+	//
+	// TODO: What is the correct value for proving delay given 32GiB sectors?
+	provingDelay := abi.ChainEpoch(2 * 60 * 24)
+
+	// The quantity of epochs during which the self-deal will be valid.
+	selfDealDuration := abi.ChainEpoch(2 * 60 * 24)
+
+	sdp := selfdeal.NewBasicPolicy(minerNode, provingDelay, selfDealDuration)
+
+	storageMiner, err := storage.NewMiner(minerNode, ds, s, minerAddr, &sdp)
 	if err != nil {
 		return nil, err
 	}
