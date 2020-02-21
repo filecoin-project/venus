@@ -40,7 +40,10 @@ func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching,
 
 	// The amount of epochs we expect the storage miner to take to replicate and
 	// prove a sector. This value should be shared with the storage miner side
-	// of go-fil-markets.
+	// of go-fil-markets. The protocol specifies a maximum sealing duration (1)
+	// which could be used to improve the accuracy of provingDelay.
+	//
+	// 1: https://github.com/filecoin-project/specs-actors/commit/fa20d55a3ff0c0134b130dc27850998ffd432580#diff-5a14038af5531003ed825ab608d0dd51R21
 	//
 	// TODO: What is the correct value for proving delay given 32GiB sectors?
 	provingDelay := abi.ChainEpoch(2 * 60 * 24)
