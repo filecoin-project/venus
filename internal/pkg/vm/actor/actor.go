@@ -8,7 +8,6 @@ import (
 
 	fxamackercbor "github.com/fxamacker/cbor"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/pkg/errors"
 
@@ -16,8 +15,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // DefaultGasCost is default gas cost for the actor calls.
@@ -71,43 +68,18 @@ func (a *Actor) IncrementSeqNum() {
 	a.CallSeqNum = a.CallSeqNum + 1
 }
 
-// Cid returns the canonical CID for the actor.
-// TODO: can we avoid returning an error?
-func (a *Actor) Cid() (cid.Cid, error) {
-	bs, err := encoding.Encode(a)
-	if err != nil {
-		return cid.Undef, errors.Wrap(err, "failed to marshal to cbor")
-	}
-	obj, err := cbor.Decode(bs, types.DefaultHashFunction, -1)
-	if err != nil {
-		return cid.Undef, errors.Wrap(err, "failed to cast cbor bytes to ipld node")
-	}
-
-	return obj.Cid(), nil
-}
-
-// Unmarshal a actor from the given bytes.
-func (a *Actor) Unmarshal(b []byte) error {
-	return fxamackercbor.Unmarshal(b, a)
-}
-
-// Marshal the actor into bytes.
-func (a *Actor) Marshal() ([]byte, error) {
-	return fxamackercbor.Marshal(a, fxamackercbor.EncOptions{})
-}
-
 // UnmarshalCBOR must implement cbg.Unmarshaller to insert this into a hamt.
 func (a *Actor) UnmarshalCBOR(r io.Reader) error {
 	bs, err := ioutil.ReadAll(r)
 	if err != nil {
 		return err
 	}
-	return a.Unmarshal(bs)
+	return fxamackercbor.Unmarshal(bs, a)
 }
 
 // MarshalCBOR must implement cbg.Marshaller to insert this into a hamt.
 func (a *Actor) MarshalCBOR(w io.Writer) error {
-	bs, err := a.Marshal()
+	bs, err := fxamackercbor.Marshal(a, fxamackercbor.EncOptions{})
 	if err != nil {
 		return err
 	}
@@ -117,7 +89,7 @@ func (a *Actor) MarshalCBOR(w io.Writer) error {
 
 // Format implements fmt.Formatter.
 func (a *Actor) Format(f fmt.State, c rune) {
-	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", NameByCode(a.Code.Cid), a, a.Balance, a.CallSeqNum))) // nolint: errcheck
+	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", builtin.ActorNameByCode(a.Code.Cid), a, a.Balance, a.CallSeqNum))) // nolint: errcheck
 }
 
 // NextNonce returns the nonce value for an account actor, which is the nonce expected on the
@@ -131,10 +103,4 @@ func NextNonce(actor *Actor) (uint64, error) {
 		return 0, errors.New("next nonce only defined for account or empty actors")
 	}
 	return actor.CallSeqNum, nil
-}
-
-// NameByCode returns the (string) name of the Go type of the actor with cid, code.
-// Dragons: remove once we get rid of the bootstrap actor
-func NameByCode(code cid.Cid) string {
-	return builtin.ActorNameByCode(code)
 }
