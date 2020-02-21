@@ -72,7 +72,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorage(bstore), kis)
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
-		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), &views, th.BlockTimeTest, &consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{}, &proofs.ElectionPoster{})
+		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(&consensus.FakeSampler{}), &views, th.BlockTimeTest, &consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{}, &proofs.ElectionPoster{})
 
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot.Cid, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
 		tipSet := th.RequireNewTipSet(t, nextBlocks...)

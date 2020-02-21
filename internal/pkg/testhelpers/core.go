@@ -174,17 +174,6 @@ func VMStorage() vm.Storage {
 	return vm.NewStorage(blockstore.NewBlockstore(datastore.NewMapDatastore()))
 }
 
-// RequireGetActor adds an account actor to the state tree if none exists
-func RequireGetActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.Storage, addr address.Address) *actor.Actor {
-	idAddr, found, err := consensus.ResolveAddress(ctx, addr, state.NewCachedTree(st), vms)
-	require.NoError(t, err)
-	require.True(t, found, "test actor not found")
-
-	act, err := st.GetActor(ctx, idAddr)
-	require.NoError(t, err)
-	return act
-}
-
 // RequireInitAccountActor initializes an account actor
 func RequireInitAccountActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.Storage, addr address.Address, balance types.AttoFIL) (*actor.Actor, address.Address) {
 	// Dragons: how do you NOT have an init actor on the state? Delete this method

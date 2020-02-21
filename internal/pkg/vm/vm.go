@@ -17,9 +17,6 @@ import (
 // Interpreter is the VM.
 type Interpreter = interpreter.VMInterpreter
 
-// RandomnessSource is a source of randomness for methods executing in the vm.
-type RandomnessSource = interpreter.RandomnessSource
-
 // Storage is the raw storage for the VM.
 type Storage = storage.VMStorage
 

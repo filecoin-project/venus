@@ -2,12 +2,12 @@ package consensus
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -28,36 +28,35 @@ type ApplyMessageResult struct {
 	FailureIsPermanent bool  // Whether failure is permanent, has no chance of succeeding later.
 }
 
+type chainSampler interface {
+	Sample(ctx context.Context, head block.TipSetKey, epoch abi.ChainEpoch) (crypto.RandomSeed, error)
+}
+
 // DefaultProcessor handles all block processing.
 type DefaultProcessor struct {
-	actors vm.ActorCodeLoader
+	actors  vm.ActorCodeLoader
+	sampler chainSampler
 }
 
 var _ Processor = (*DefaultProcessor)(nil)
 
 // NewDefaultProcessor creates a default processor from the given state tree and vms.
-func NewDefaultProcessor() *DefaultProcessor {
+func NewDefaultProcessor(sampler chainSampler) *DefaultProcessor {
 	return &DefaultProcessor{
-		actors: vm.DefaultActors,
+		actors:  vm.DefaultActors,
+		sampler: sampler,
 	}
 }
 
 // NewConfiguredProcessor creates a default processor with custom validation and rewards.
-func NewConfiguredProcessor(actors vm.ActorCodeLoader) *DefaultProcessor {
+func NewConfiguredProcessor(actors vm.ActorCodeLoader, sampler chainSampler) *DefaultProcessor {
 	return &DefaultProcessor{
-		actors: actors,
+		actors:  actors,
+		sampler: sampler,
 	}
 }
 
-// ProcessTipSet computes the state transition specified by the messages in all
-// blocks in a TipSet.  It is similar to ProcessBlock with a few key differences.
-// Most importantly ProcessTipSet relies on the precondition that each input block
-// is valid with respect to the base state st, that is, ProcessBlock is free of
-// errors when applied to each block individually over the given state.
-// ProcessTipSet only returns errors in the case of faults.  Other errors
-// coming from calls to ApplyMessage can be traced to different blocks in the
-// TipSet containing conflicting messages and are returned in the result slice.
-// Blocks are applied in the sorted order of their tickets.
+// ProcessTipSet computes the state transition specified by the messages in all blocks in a TipSet.
 func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.Storage, ts block.TipSet, msgs []vm.BlockMessagesInfo) (results []vm.MessageReceipt, err error) {
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
@@ -65,17 +64,31 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 
 	epoch, err := ts.Height()
 	if err != nil {
-		return nil, fmt.Errorf("processing empty tipset")
+		return nil, err
 	}
 
-	rnd := vm.NewProdRandomnessSource()
-	vm := vm.NewVM(st, &vms)
+	parent, err := ts.Parents()
+	if err != nil {
+		return nil, err
+	}
 
-	return vm.ApplyTipSetMessages(rnd, msgs, epoch)
+	rnd := crypto.ChainRandomnessSource{Sampler: &headChainSampler{
+		ctx:     ctx,
+		sampler: p.sampler,
+		head:    parent,
+	}}
+	v := vm.NewVM(st, &vms)
+
+	return v.ApplyTipSetMessages(msgs, epoch, &rnd)
 }
 
-// ResolveAddress looks up associated id address. If the given address is already and id address, it is returned unchanged.
-func ResolveAddress(ctx context.Context, addr address.Address, st *state.CachedTree, vms vm.Storage) (address.Address, bool, error) {
-	// Dragons: remove completly, or just FW to the vm. we can expose a method on the VM that lets you do this.
-	return address.Undef, true, nil
+// A chain sampler with a specific head tipset key.
+type headChainSampler struct {
+	ctx     context.Context
+	sampler chainSampler
+	head    block.TipSetKey
+}
+
+func (s *headChainSampler) Sample(epoch abi.ChainEpoch) (crypto.RandomSeed, error) {
+	return s.sampler.Sample(s.ctx, s.head, epoch)
 }

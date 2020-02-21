@@ -617,8 +617,6 @@ func (node *Node) GetMiningWorker(ctx context.Context) (*mining.DefaultWorker, e
 // CreateMiningWorker creates a mining.Worker for the node using the configured
 // getStateTree, getWeight, and getAncestors functions for the node
 func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker, error) {
-	processor := consensus.NewDefaultProcessor()
-
 	minerAddr, err := node.MiningAddress()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get mining address")
@@ -647,7 +645,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 
 		MessageSource: node.Messaging.Inbox.Pool(),
 		MessageStore:  node.chain.MessageStore,
-		Processor:     processor,
+		Processor:     node.Chain().Processor,
 		Blockstore:    node.Blockstore.Blockstore,
 		Clock:         node.ChainClock,
 		Poster:        node.StorageMining.PoStGenerator,
