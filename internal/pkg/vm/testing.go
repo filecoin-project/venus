@@ -12,6 +12,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
@@ -229,7 +230,7 @@ func (ts *TestStorage) Put(v specsruntime.CBORMarshaler) cid.Cid {
 
 // Get implements runtime.Store.
 func (ts *TestStorage) Get(cid cid.Cid, obj specsruntime.CBORUnmarshaler) bool {
-	node, err := cbor.WrapObject(ts.state, types.DefaultHashFunction, -1)
+	node, err := cbor.WrapObject(ts.state, constants.DefaultHashFunction, -1)
 	if err != nil {
 		return false
 	}

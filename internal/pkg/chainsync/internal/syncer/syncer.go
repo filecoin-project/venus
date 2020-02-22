@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -199,7 +200,7 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 		if err != nil {
 			return true, err
 		}
-		if h+consensus.FinalityEpochs < headHeight {
+		if h+miner.ChainFinalityish < headHeight {
 			return true, ErrNewChainTooLong
 		}
 

@@ -30,6 +30,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -371,7 +372,7 @@ func requireSimpleValidBlock(t *testing.T, nonce uint64, miner address.Address) 
 	rawRoot, err := cid.Prefix{
 		Version:  1,
 		Codec:    cid.DagCBOR,
-		MhType:   types.DefaultHashFunction,
+		MhType:   constants.DefaultHashFunction,
 		MhLength: -1,
 	}.Sum(bytes)
 	require.NoError(t, err)

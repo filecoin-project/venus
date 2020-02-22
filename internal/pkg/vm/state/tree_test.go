@@ -10,12 +10,11 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	mh "github.com/multiformats/go-multihash"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -80,7 +79,7 @@ func TestStateErrors(t *testing.T) {
 	assert.Error(t, err)
 	assert.True(t, IsActorNotFoundError(err))
 
-	c, err := cid.V1Builder{Codec: cid.DagCBOR, MhType: mh.BLAKE2B_MIN + 31}.Sum([]byte("cats"))
+	c, err := constants.DefaultCidBuilder.Sum([]byte("cats"))
 	assert.NoError(t, err)
 
 	tr2, err := NewTreeLoader().LoadStateTree(ctx, cst, c)

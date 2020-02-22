@@ -6,13 +6,13 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 )
 
 func TestNewHeightThresholdListener(t *testing.T) {
@@ -165,14 +165,14 @@ func TestNewHeightThresholdListener(t *testing.T) {
 
 		// add tipsets till finality
 		go func() {
-			for i := abi.ChainEpoch(0); i < consensus.FinalityEpochs; i++ {
+			for i := abi.ChainEpoch(0); i < miner.ChainFinalityish; i++ {
 				nextTS = builder.BuildOn(nextTS, 1, nil)
 				valid, err := listener.Handle(context.TODO(), []block.TipSet{nextTS})
 				require.NoError(t, err)
 
 				h, err := nextTS.Height()
 				require.NoError(t, err)
-				if h >= 8+consensus.FinalityEpochs {
+				if h >= 8+miner.ChainFinalityish {
 					assert.False(t, valid)
 				} else {
 					assert.True(t, valid)

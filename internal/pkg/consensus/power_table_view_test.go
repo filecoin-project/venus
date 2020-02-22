@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -34,7 +35,7 @@ func TestTotal(t *testing.T) {
 	actual, err := table.Total(ctx)
 	require.NoError(t, err)
 
-	expected := abi.NewStoragePower(int64(uint64(types.OneKiBSectorSize) * numCommittedSectors))
+	expected := abi.NewStoragePower(int64(uint64(constants.DevSectorSize) * numCommittedSectors))
 	assert.True(t, expected.Equals(actual))
 }
 
@@ -51,7 +52,7 @@ func TestMiner(t *testing.T) {
 	actual, err := table.MinerClaim(ctx, addr)
 	require.NoError(t, err)
 
-	expected := abi.NewStoragePower(int64(uint64(types.OneKiBSectorSize) * numCommittedSectors))
+	expected := abi.NewStoragePower(int64(uint64(constants.DevSectorSize) * numCommittedSectors))
 	assert.Equal(t, expected, actual)
 }
 
@@ -67,7 +68,7 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 		Miners: []*gengen.CreateStorageMinerConfig{
 			{
 				NumCommittedSectors: numCommittedSectors,
-				SectorSize:          types.OneKiBSectorSize,
+				SectorSize:          constants.DevSectorSize,
 			},
 		},
 		Network: "ptvtest",

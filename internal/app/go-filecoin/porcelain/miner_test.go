@@ -13,10 +13,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/constants"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cfg"
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
