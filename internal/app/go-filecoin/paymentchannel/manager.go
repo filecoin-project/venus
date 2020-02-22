@@ -14,11 +14,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 var defaultMessageValue = types.NewAttoFILFromFIL(0)
 var defaultGasPrice = types.NewAttoFILFromFIL(1)
-var defaultGasLimit = types.NewGasUnits(300)
+var defaultGasLimit = gas.NewGas(300)
 
 // Manager manages payment channel actor and the data store operations.
 type Manager struct {
@@ -40,9 +41,9 @@ type MsgSender interface {
 		from, to address.Address,
 		value types.AttoFIL,
 		gasPrice types.AttoFIL,
-		gasLimit types.GasUnits,
+		gasLimit gas.Unit,
 		bcast bool,
-		method types.MethodID,
+		method abi.MethodNum,
 		params interface{}) (out cid.Cid, pubErrCh chan error, err error)
 }
 
@@ -77,7 +78,7 @@ func (pm *Manager) CreatePaymentChannel(clientAddress, minerAddress address.Addr
 		defaultGasPrice,
 		defaultGasLimit,
 		true,
-		types.MethodID(builtin.MethodsInit.Exec),
+		builtin.MethodsInit.Exec,
 		execParams,
 	)
 	if err != nil {
@@ -89,7 +90,6 @@ func (pm *Manager) CreatePaymentChannel(clientAddress, minerAddress address.Addr
 	}
 	return nil
 }
-
 
 // UpdatePaymentChannel sends a signed voucher to the payment actor and persists the result
 func (pm *Manager) SendNewSignedVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher) error {
@@ -111,7 +111,7 @@ func (pm *Manager) SendNewSignedVoucher(paychAddr address.Address, voucher *payc
 		defaultGasPrice,
 		defaultGasLimit,
 		true,
-		types.MethodID(builtin.MethodsInit.Exec),
+		builtin.MethodsInit.Exec,
 		execParams,
 	)
 	if err != nil {
@@ -131,13 +131,13 @@ func (pm *Manager) SaveVoucher(paychAddr address.Address, voucher *paychActor.Si
 	return nil
 }
 
-func (pm *Manager)handleUpdatePaymentChannelResult(b *block.Block, sm *types.SignedMessage, mr *vm.MessageReceipt) error {
+func (pm *Manager) handleUpdatePaymentChannelResult(b *block.Block, sm *types.SignedMessage, mr *vm.MessageReceipt) error {
 	// save results in store
 	panic("implement handleUpdatePaymentChannelResult")
 	return nil
 }
 
-func (pm *Manager)handleCreatePaymentChannelResult(b *block.Block, sm *types.SignedMessage, mr *vm.MessageReceipt) error {
+func (pm *Manager) handleCreatePaymentChannelResult(b *block.Block, sm *types.SignedMessage, mr *vm.MessageReceipt) error {
 	// save results in store
 	panic("implement handleCreatePaymentChannelResult")
 	return nil
@@ -145,7 +145,7 @@ func (pm *Manager)handleCreatePaymentChannelResult(b *block.Block, sm *types.Sig
 
 func updatePaymentChannelStateParamsFor(voucher *paychActor.SignedVoucher) (initActor.ExecParams, error) {
 	ucp := paychActor.UpdateChannelStateParams{
-		Sv:     paychActor.SignedVoucher{},
+		Sv: paychActor.SignedVoucher{},
 		// TODO secret, proof for UpdatePaymentChanneStateParams
 		//Secret: nil,
 		//Proof:  nil,
@@ -180,4 +180,3 @@ func paychActorCtorExecParamsFor(client, miner address.Address) (initActor.ExecP
 	}
 	return p, nil
 }
-

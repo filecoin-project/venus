@@ -9,8 +9,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	paychActor "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/ipfs/go-cid"
-	cid "github.com/ipfs/go-cid/_rsrch/cidiface"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
@@ -38,7 +36,7 @@ type WalletAPI interface {
 
 // RetrievalSigner is an interface with the ability to sign data
 type RetrievalSigner interface {
-	SignBytes(data []byte, addr address.Address) (types.Signature, error)
+	SignBytes(data []byte, addr address.Address) (*crypto.Signature, error)
 }
 
 // PaychMgrAPI is an API used for communicating with payment channel actor and store.
@@ -120,7 +118,7 @@ func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, pay
 		Lane:            lane,
 		Nonce:           ls.Nonce+1, // TODO
 		Amount:          amount,
-		MinSettleHeight: abi.ChainEpoch(height + 1),
+		MinSettleHeight: height+1,
 	}
 
 	var buf bytes.Buffer
@@ -136,7 +134,7 @@ func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, pay
 	// TODO: set type correctly. See storagemarket
 	signature := crypto.Signature{
 		Type: crypto.SigTypeBLS,
-		Data: sig,
+		Data: sig.Data,
 	}
 	v.Signature = &signature
 
@@ -147,7 +145,7 @@ func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, pay
 	return &v, nil
 }
 
-func (r *RetrievalClientConnector) getBlockHeight() (uint64, error) {
+func (r *RetrievalClientConnector) getBlockHeight() (abi.ChainEpoch, error) {
 	head := r.cs.GetHead()
 	ts, err := r.cs.GetTipSet(head)
 	if err != nil {

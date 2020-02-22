@@ -52,6 +52,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 
 	t.Run("saves payment voucher and returns voucher amount if new", func(t *testing.T) {
 		rmp := NewRetrievalMarketClientFakeAPI(t, abi.NewTokenAmount(0))
+		rmp.ActualPmtChans[pchan] = true
 		rmp.ExpectedVouchers[pchan] = &paymentchannel.VoucherInfo{Voucher: voucher, Proof: proof}
 		rpc := NewRetrievalProviderConnector(rmnet, ps, bs, rmp)
 

@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/xerrors"
 	"gotest.tools/assert"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
@@ -28,7 +27,7 @@ type RetrievalMarketClientFakeAPI struct {
 	AllocateLaneErr error
 
 	ExpectedPmtChans map[address.Address]*paymentchannel.ChannelInfo // mock payer's payment channel store by paychAddr
-	ActualPmtChans   map[address.Address]*paymentchannel.ChannelInfo // to check that the payment channels were created
+	ActualPmtChans   map[address.Address]bool                        // to check that the payment channels were created
 
 	PayChBalanceErr error
 
@@ -63,7 +62,7 @@ func NewRetrievalMarketClientFakeAPI(t *testing.T, bal abi.TokenAmount) *Retriev
 		WorkerAddr:       requireMakeTestFcAddr(t),
 		Nonce:            rand.Uint64(),
 		ExpectedPmtChans: make(map[address.Address]*paymentchannel.ChannelInfo),
-		ActualPmtChans:   make(map[address.Address]*paymentchannel.ChannelInfo),
+		ActualPmtChans:   make(map[address.Address]bool),
 		ExpectedVouchers: make(map[address.Address]*paymentchannel.VoucherInfo),
 		ActualVouchers:   make(map[address.Address]bool),
 	}
@@ -72,9 +71,9 @@ func NewRetrievalMarketClientFakeAPI(t *testing.T, bal abi.TokenAmount) *Retriev
 // -------------- API METHODS
 // AllocateLane mocks allocation of a new lane in a payment channel
 func (rmFake *RetrievalMarketClientFakeAPI) AllocateLane(paychAddr address.Address) (uint64, error) {
-	chinfo, ok := rmFake.ActualPmtChans[paychAddr]
+	chinfo, ok := rmFake.ExpectedPmtChans[paychAddr]
 	if !ok {
-		return 0, xerrors.Errorf("payment channel does not exist: %s", paychAddr)
+		rmFake.t.Fatalf("unregistered channel %s", paychAddr.String())
 	}
 	states := chinfo.State.LaneStates
 	numLanes := len(states)
@@ -84,7 +83,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) AllocateLane(paychAddr address.Addre
 		Nonce:    1,
 	}
 	chinfo.State.LaneStates = append(chinfo.State.LaneStates, &ln)
-	return ln.ID, nil
+	return ln.ID, rmFake.AllocateLaneErr
 }
 
 func (rmFake *RetrievalMarketClientFakeAPI) CreatePaymentChannel(clientAddress, minerAddress address.Address) error {
@@ -93,7 +92,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) CreatePaymentChannel(clientAddress, 
 	}
 	for paychAddr, chinfo := range rmFake.ExpectedPmtChans {
 		if chinfo.State.From == clientAddress && chinfo.State.To == minerAddress {
-			rmFake.ActualPmtChans[paychAddr] = rmFake.ExpectedPmtChans[paychAddr]
+			rmFake.ActualPmtChans[paychAddr] = true
 			return rmFake.CreatePaymentChannelErr
 		}
 	}
@@ -108,7 +107,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) SendNewSignedVoucher(paychAddr addre
 // GetPaymentChannelByAccounts returns the channel info for the payment channel associated with the account.
 // It does not necessarily expect to find the channel info; it returns nil if not found
 func (rmFake *RetrievalMarketClientFakeAPI) GetPaymentChannelByAccounts(payer, payee address.Address) (address.Address, *paymentchannel.ChannelInfo) {
-	for paychAddr, chinfo := range rmFake.ActualPmtChans {
+	for paychAddr, chinfo := range rmFake.ExpectedPmtChans {
 		if chinfo.State.From == payer && chinfo.State.To == payee {
 			return paychAddr, chinfo
 		}
@@ -139,8 +138,8 @@ func (rmFake *RetrievalMarketClientFakeAPI) NextNonce(_ context.Context, _ addre
 }
 
 // SignBytes mocks signing data
-func (rmFake *RetrievalMarketClientFakeAPI) SignBytes(_ []byte, _ address.Address) (types.Signature, error) {
-	return rmFake.Sig.Data, rmFake.SigErr
+func (rmFake *RetrievalMarketClientFakeAPI) SignBytes(_ []byte, _ address.Address) (*crypto.Signature, error) {
+	return rmFake.Sig, rmFake.SigErr
 }
 
 // Send mocks sending a message on chain
@@ -149,7 +148,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) Send(ctx context.Context,
 	value types.AttoFIL,
 	gasPrice types.AttoFIL, gasLimit types.GasUnits,
 	bcast bool,
-	method types.MethodID,
+	method abi.MethodNum,
 	params interface{}) (out cid.Cid, pubErrCh chan error, err error) {
 	rmFake.Nonce++
 
@@ -192,7 +191,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) StubSignature(sigError error) {
 
 	signature := &crypto.Signature{
 		Type: crypto.SigTypeBLS,
-		Data: sig,
+		Data: sig.Data,
 	}
 	rmFake.Sig = signature
 	rmFake.SigErr = sigError
