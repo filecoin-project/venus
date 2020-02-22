@@ -10,6 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 
 	retmkt "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 )
 
 // RetrievalProtocolSubmodule enhances the node with retrieval protocol
@@ -25,16 +26,15 @@ func NewRetrievalProtocolSubmodule(
 	c *ChainSubmodule,
 	host host.Host,
 	providerAddr address.Address,
-	ps piecestore.PieceStore,
+	pm piecemanager.PieceManager, // or go-fil-markets piecestore?
 	signer retmkt.RetrievalSigner,
 	wal retmkt.WalletAPI,
-	pchMgrAPI retmkt.MgrAPI,
+	pchMgrAPI retmkt.PaychMgrAPI,
 ) (*RetrievalProtocolSubmodule, error) {
 	netwk := network.NewFromLibp2pHost(host)
-	pnode := retmkt.NewRetrievalProviderConnector(netwk, ps, bs)
+	pnode := retmkt.NewRetrievalProviderConnector(netwk, pm, bs, pchMgrAPI)
 	cnode := retmkt.NewRetrievalClientConnector(bs,
 		c.ChainReader,
-		ps,
 		signer,
 		wal,
 		pchMgrAPI,

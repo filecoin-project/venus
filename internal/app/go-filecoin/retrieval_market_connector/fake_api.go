@@ -1,6 +1,7 @@
 package retrievalmarketconnector
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"math/rand"
@@ -38,11 +39,19 @@ type RetrievalMarketClientFakeAPI struct {
 	WorkerAddrErr           error
 	Nonce                   uint64
 	NonceErr                error
-	Sig                     *crypto.Signature
-	SigErr                  error
-	MsgSendCid              cid.Cid
-	MsgSendErr              error
-	WaitErr                 error
+
+	Sig    *crypto.Signature
+	SigErr error
+
+	MsgSendCid cid.Cid
+	MsgSendErr error
+
+	WaitErr error
+
+	SendNewVoucherErr error
+	SaveVoucherErr    error
+	ExpectedVouchers  map[address.Address]*paymentchannel.VoucherInfo
+	ActualVouchers    map[address.Address]bool
 }
 
 // NewRetrievalMarketClientFakeAPI creates an instance of a test API that satisfies all needed
@@ -55,6 +64,8 @@ func NewRetrievalMarketClientFakeAPI(t *testing.T, bal abi.TokenAmount) *Retriev
 		Nonce:            rand.Uint64(),
 		ExpectedPmtChans: make(map[address.Address]*paymentchannel.ChannelInfo),
 		ActualPmtChans:   make(map[address.Address]*paymentchannel.ChannelInfo),
+		ExpectedVouchers: make(map[address.Address]*paymentchannel.VoucherInfo),
+		ActualVouchers:   make(map[address.Address]bool),
 	}
 }
 
@@ -70,27 +81,27 @@ func (rmFake *RetrievalMarketClientFakeAPI) AllocateLane(paychAddr address.Addre
 	ln := paych.LaneState{
 		ID:       uint64(numLanes),
 		Redeemed: big.NewInt(0),
-		Nonce:    uint64(numLanes + 1),
+		Nonce:    1,
 	}
 	chinfo.State.LaneStates = append(chinfo.State.LaneStates, &ln)
 	return ln.ID, nil
 }
 
-func (rmFake *RetrievalMarketClientFakeAPI) CreatePaymentChannel(clientAddress, minerAddress address.Address) (address.Address, error) {
+func (rmFake *RetrievalMarketClientFakeAPI) CreatePaymentChannel(clientAddress, minerAddress address.Address) error {
 	if rmFake.CreatePaymentChannelErr != nil {
-		return address.Undef, rmFake.CreatePaymentChannelErr
+		return rmFake.CreatePaymentChannelErr
 	}
 	for paychAddr, chinfo := range rmFake.ExpectedPmtChans {
 		if chinfo.State.From == clientAddress && chinfo.State.To == minerAddress {
 			rmFake.ActualPmtChans[paychAddr] = rmFake.ExpectedPmtChans[paychAddr]
-			return address.Undef, rmFake.CreatePaymentChannelErr
+			return rmFake.CreatePaymentChannelErr
 		}
 	}
 	rmFake.t.Fatalf("unexpected failure in CreatePaymentChannel")
-	return address.Undef, nil
+	return nil
 }
 
-func (rmFake *RetrievalMarketClientFakeAPI) UpdatePaymentChannel(paychAddr address.Address) error {
+func (rmFake *RetrievalMarketClientFakeAPI) SendNewSignedVoucher(paychAddr address.Address, voucher *paych.SignedVoucher) error {
 	return nil
 }
 
@@ -148,10 +159,26 @@ func (rmFake *RetrievalMarketClientFakeAPI) Send(ctx context.Context,
 	return rmFake.MsgSendCid, nil, rmFake.MsgSendErr
 }
 
+func (rmFake *RetrievalMarketClientFakeAPI) SaveVoucher(paychAddr address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmt abi.TokenAmount) (abi.TokenAmount, error) {
+	expV, ok := rmFake.ExpectedVouchers[paychAddr]
+	if !ok {
+		rmFake.t.Fatalf("missing voucher for %s", paychAddr.String())
+	}
+	if !bytes.Equal(expV.Proof, proof) {
+		rmFake.t.Fatalf("expected proof %s got %s", string(expV.Proof[:]), string(proof[:]))
+	}
+	if !expectedAmt.Equals(voucher.Amount) {
+		rmFake.t.Fatalf("expected amt %s got %s", expectedAmt.String(), voucher.Amount.String())
+	}
+	rmFake.ActualVouchers[paychAddr] = true
+	return expectedAmt, rmFake.SaveVoucherErr
+}
+
 // ---------------  Testing methods
 
 func (rmFake *RetrievalMarketClientFakeAPI) Verify() {
-	assert.Equal(rmFake.t, rmFake.ExpectedPmtChans, rmFake.ActualPmtChans)
+	assert.Equal(rmFake.t, len(rmFake.ExpectedPmtChans), len(rmFake.ActualPmtChans))
+	assert.Equal(rmFake.t, len(rmFake.ActualVouchers), len(rmFake.ExpectedVouchers))
 }
 
 // StubMessageResponse sets up a message, message receipt and return value for a create payment
@@ -178,6 +205,6 @@ func requireMakeTestFcAddr(t *testing.T) address.Address {
 	return res
 }
 
-var _ MgrAPI = &RetrievalMarketClientFakeAPI{}
+var _ PaychMgrAPI = &RetrievalMarketClientFakeAPI{}
 var _ RetrievalSigner = &RetrievalMarketClientFakeAPI{}
 var _ WalletAPI = &RetrievalMarketClientFakeAPI{}

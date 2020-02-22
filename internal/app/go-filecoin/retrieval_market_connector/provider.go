@@ -2,7 +2,6 @@ package retrievalmarketconnector
 
 import (
 	"context"
-	"errors"
 	"io"
 
 	"github.com/filecoin-project/go-address"
@@ -12,68 +11,51 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	xerrors "github.com/pkg/errors"
 )
 
 // RetrievalProviderConnector is the glue between go-filecoin and retrieval market provider API
 type RetrievalProviderConnector struct {
-	vs  map[string]voucherEntry
-	ps  piecestore.PieceStore
-	bs  blockstore.Blockstore
-	net rmnet.RetrievalMarketNetwork
+	paychMgr PaychMgrAPI
+	ps       piecestore.PieceStore
+	bs       blockstore.Blockstore
+	net      rmnet.RetrievalMarketNetwork
 }
 
 var _ retrievalmarket.RetrievalProviderNode = &RetrievalProviderConnector{}
 
-// voucherEntry keeps track of how much has been paid
-type voucherEntry struct {
-	voucher     *paych.SignedVoucher
-	proof       []byte
-	expectedAmt abi.TokenAmount
-}
-
 // NewRetrievalProviderConnector creates a new RetrievalProviderConnector
-func NewRetrievalProviderConnector(network rmnet.RetrievalMarketNetwork, pieceStore piecestore.PieceStore, bs blockstore.Blockstore) *RetrievalProviderConnector {
+func NewRetrievalProviderConnector(network rmnet.RetrievalMarketNetwork, pieceStore piecestore.PieceStore, bs blockstore.Blockstore, paychMgr PaychMgrAPI) *RetrievalProviderConnector {
 	return &RetrievalProviderConnector{
-		vs:  make(map[string]voucherEntry),
-		ps:  pieceStore,
-		bs:  bs,
-		net: network,
+		ps:       pieceStore,
+		bs:       bs,
+		net:      network,
+		paychMgr: paychMgr,
 	}
 }
 
 // UnsealSector unseals the sector given by sectorId and offset with length `length`
 func (r *RetrievalProviderConnector) UnsealSector(ctx context.Context, sectorId uint64, offset uint64, length uint64) (io.ReadCloser, error) {
-	panic("implement me")
+	panic("implement UnsealSector")
+	return nil, nil
 }
 
 // SavePaymentVoucher stores the provided payment voucher with the payment channel actor
-func (r *RetrievalProviderConnector) SavePaymentVoucher(_ context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount) (abi.TokenAmount, error) {
-	key, err := r.voucherStoreKeyFor(voucher)
+func (r *RetrievalProviderConnector) SavePaymentVoucher(_ context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expected abi.TokenAmount) (abi.TokenAmount, error) {
+
+	_, err := r.paychMgr.GetPaymentChannelInfo(paymentChannel)
 	if err != nil {
 		return abi.NewTokenAmount(0), err
 	}
-	_, ok := r.vs[key]
-	if ok {
-		return abi.NewTokenAmount(0), xerrors.New("voucher exists")
-	}
-	r.vs[key] = voucherEntry{
-		voucher:     voucher,
-		proof:       proof,
-		expectedAmt: expectedAmount,
-	}
-	return voucher.Amount, nil
-}
+	// provider attempts to redeem voucher
+	// (totalSent * pricePerbyte) - fundsReceived
+	// on return the retrievalMarket asks the client for more fund if recorded available
+	// amount in channel is less than expectedAmt
+	// how much validation here?
 
-// voucherStoreKeyFor converts a signed voucher to a store key
-// TODO this is probably wrong
-func (r *RetrievalProviderConnector) voucherStoreKeyFor(voucher *paych.SignedVoucher) (string, error) {
-	venc, err := voucher.SigningBytes()
+	actual, err := r.paychMgr.SaveVoucher(paymentChannel, voucher, proof, expected)
 	if err != nil {
-		return "", err
+		return abi.NewTokenAmount(0), err
 	}
-	if venc == nil {
-		return "", errors.New("invalid store key: voucher not signed")
-	}
-	return string(venc[:]), nil
+
+	return actual, nil
 }

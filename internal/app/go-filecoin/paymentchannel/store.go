@@ -40,7 +40,6 @@ type VoucherInfo struct {
 	Proof   []byte
 }
 
-
 func dskeyForChannel(payChAddr address.Address) datastore.Key {
 	return datastore.NewKey(payChAddr.String())
 }
