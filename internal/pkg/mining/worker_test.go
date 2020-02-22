@@ -589,7 +589,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
-		Processor:     consensus.NewDefaultProcessor(),
+		Processor:     consensus.NewDefaultProcessor(&consensus.FakeSampler{}),
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
@@ -697,7 +697,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
-		Processor:     consensus.NewDefaultProcessor(),
+		Processor:     consensus.NewDefaultProcessor(&consensus.FakeSampler{}),
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
@@ -761,7 +761,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
-		Processor:     consensus.NewDefaultProcessor(),
+		Processor:     consensus.NewDefaultProcessor(&consensus.FakeSampler{}),
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
@@ -819,7 +819,7 @@ func TestGenerateError(t *testing.T) {
 		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
-		Processor:     consensus.NewDefaultProcessor(),
+		Processor:     consensus.NewDefaultProcessor(&consensus.FakeSampler{}),
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),

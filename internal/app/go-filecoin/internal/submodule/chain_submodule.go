@@ -23,6 +23,7 @@ type ChainSubmodule struct {
 	// https://github.com/filecoin-project/go-filecoin/issues/2309
 	HeaviestTipSetCh chan interface{}
 
+	Sampler    *chain.Sampler
 	ActorState *appstate.TipSetStateViewer
 	Processor  *consensus.DefaultProcessor
 
@@ -57,7 +58,8 @@ func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *Blockstor
 	chainStore := chain.NewStore(repo.ChainDatastore(), blockstore.CborStore, state.NewTreeLoader(), chainStatusReporter, config.GenesisCid())
 
 	// set up processor
-	processor := consensus.NewDefaultProcessor()
+	sampler := chain.NewSampler(chainStore)
+	processor := consensus.NewDefaultProcessor(sampler)
 
 	actorState := appstate.NewTipSetStateViewer(chainStore, blockstore.CborStore)
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)
@@ -67,6 +69,7 @@ func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *Blockstor
 		ChainReader:  chainStore,
 		MessageStore: messageStore,
 		// HeaviestTipSetCh nil
+		Sampler:        sampler,
 		ActorState:     actorState,
 		State:          chainState,
 		Processor:      processor,

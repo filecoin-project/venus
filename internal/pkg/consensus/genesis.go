@@ -166,7 +166,7 @@ func NewEmptyConfig() *Config {
 
 // GenesisVM is the view into the VM used during genesis block creation.
 type GenesisVM interface {
-	ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (interface{}, error)
+	ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}, rnd crypto.RandomnessSource) (interface{}, error)
 	ContextStore() adt.Store
 }
 
@@ -177,6 +177,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 		st := state.NewTree(cst)
 		store := vm.NewStorage(bs)
 		vm := vm.NewVM(st, &store).(GenesisVM)
+		rnd := crypto.GenesisRandomnessSource{}
 
 		genCfg := NewEmptyConfig()
 		for _, opt := range opts {
@@ -205,7 +206,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			val := genCfg.accounts[addr]
 
 			_, err = vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr,
-				builtin.MethodSend, val, nil)
+				builtin.MethodSend, val, nil, &rnd)
 			if err != nil {
 				return nil, err
 			}
@@ -346,6 +347,7 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 	}
 	sort.Strings(sortedAddresses)
 
+	rnd := crypto.GenesisRandomnessSource{}
 	for _, addrBytes := range sortedAddresses {
 		addr, err := address.NewFromBytes([]byte(addrBytes))
 		if err != nil {
@@ -359,7 +361,7 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 				return err
 			}
 		} else {
-			_, err = vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr, builtin.MethodSend, val, nil)
+			_, err = vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr, builtin.MethodSend, val, nil, &rnd)
 			if err != nil {
 				return err
 			}

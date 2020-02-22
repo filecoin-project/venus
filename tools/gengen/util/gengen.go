@@ -124,16 +124,17 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst cbor.IpldStore, bs blockst
 	st := state.NewTree(cst)
 	store := vm.NewStorage(bs)
 	vm := vm.NewVM(st, &store).(consensus.GenesisVM)
+	rnd := crypto.GenesisRandomnessSource{}
 
 	if err := consensus.SetupDefaultActors(ctx, vm, &store, st, cfg.ProofsMode, cfg.Network); err != nil {
 		return nil, err
 	}
 
-	if err := setupPrealloc(ctx, vm, st, keys, cfg.PreAlloc); err != nil {
+	if err := setupPrealloc(vm, st, &rnd, keys, cfg.PreAlloc); err != nil {
 		return nil, err
 	}
 
-	miners, err := setupMiners(vm, st, keys, cfg.Miners, pnrg)
+	miners, err := setupMiners(vm, &rnd, keys, cfg.Miners)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +195,7 @@ func genKeys(cfgkeys int, pnrg io.Reader) ([]*crypto.KeyInfo, error) {
 	return keys, nil
 }
 
-func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, keys []*crypto.KeyInfo, prealloc []string) error {
+func setupPrealloc(vm consensus.GenesisVM, st state.Tree, rnd crypto.RandomnessSource, keys []*crypto.KeyInfo, prealloc []string) error {
 
 	if len(keys) < len(prealloc) {
 		return fmt.Errorf("keys do not match prealloc")
@@ -220,7 +221,7 @@ func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, k
 		}
 
 		_, err = vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr,
-			builtin.MethodSend, abi.NewTokenAmount(int64(valint)), nil)
+			builtin.MethodSend, abi.NewTokenAmount(int64(valint)), nil, rnd)
 		if err != nil {
 			return err
 		}
@@ -228,7 +229,7 @@ func setupPrealloc(ctx context.Context, vm consensus.GenesisVM, st state.Tree, k
 	return nil
 }
 
-func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*crypto.KeyInfo, miners []*CreateStorageMinerConfig, pnrg io.Reader) ([]RenderedMinerInfo, error) {
+func setupMiners(vm consensus.GenesisVM, rnd crypto.RandomnessSource, keys []*crypto.KeyInfo, miners []*CreateStorageMinerConfig) ([]RenderedMinerInfo, error) {
 	var minfos []RenderedMinerInfo
 
 	for _, m := range miners {
@@ -254,7 +255,7 @@ func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*crypto.KeyInfo, 
 		}
 
 		// give collateral to account actor
-		_, err = vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr, builtin.MethodSend, abi.NewTokenAmount(100000), nil)
+		_, err = vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr, builtin.MethodSend, abi.NewTokenAmount(100000), nil, rnd)
 		if err != nil {
 			return nil, err
 		}
@@ -264,7 +265,7 @@ func setupMiners(vm consensus.GenesisVM, st state.Tree, keys []*crypto.KeyInfo, 
 			Worker:     addr,
 			Peer:       pid,
 			SectorSize: m.SectorSize,
-		})
+		}, rnd)
 		if err != nil {
 			return nil, err
 		}
@@ -317,7 +318,7 @@ type signer struct{}
 
 var _ types.Signer = (*signer)(nil)
 
-func (ggs *signer) SignBytes(data []byte, addr address.Address) (crypto.Signature, error) {
+func (ggs *signer) SignBytes(data []byte, _ address.Address) (crypto.Signature, error) {
 	return crypto.Signature{}, nil
 }
 

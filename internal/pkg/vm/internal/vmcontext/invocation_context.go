@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
@@ -28,6 +29,7 @@ type invocationContext struct {
 	msg               internalMessage
 	fromActor         *actor.Actor
 	gasTank           *GasTracker
+	randSource        crypto.RandomnessSource
 	isCallerValidated bool
 	allowSideEffects  bool
 	toActor           *actor.Actor
@@ -39,7 +41,7 @@ type internalActorStateHandle interface {
 	Validate(func(interface{}) cid.Cid)
 }
 
-func newInvocationContext(rt *VM, msg internalMessage, fromActor *actor.Actor, gasTank *GasTracker) invocationContext {
+func newInvocationContext(rt *VM, msg internalMessage, fromActor *actor.Actor, gasTank *GasTracker, randSource crypto.RandomnessSource) invocationContext {
 	// Note: the toActor and stateHandle are loaded during the `invoke()`
 	return invocationContext{
 		rt:  rt,
@@ -47,6 +49,7 @@ func newInvocationContext(rt *VM, msg internalMessage, fromActor *actor.Actor, g
 		// Dragons: based on latest changes, it seems we could delete this
 		fromActor:         fromActor,
 		gasTank:           gasTank,
+		randSource:        randSource,
 		isCallerValidated: false,
 		allowSideEffects:  true,
 	}
@@ -191,7 +194,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 		}
 
 		// Dragons: the system actor doesnt have an actor..
-		newCtx := newInvocationContext(ctx.rt, newMsg, nil, ctx.gasTank)
+		newCtx := newInvocationContext(ctx.rt, newMsg, nil, ctx.gasTank, ctx.randSource)
 		newCtx.invoke()
 	}
 
@@ -307,7 +310,7 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 	// 3. success!
 
 	// 1. build new context
-	newCtx := newInvocationContext(ctx.rt, newMsg, fromActor, ctx.gasTank)
+	newCtx := newInvocationContext(ctx.rt, newMsg, fromActor, ctx.gasTank, ctx.randSource)
 
 	// 2. invoke
 	out := newCtx.invoke()

@@ -356,3 +356,13 @@ func (mem *MockElectionMachine) VerifyPoStRandomness(rand block.VRFPi, ticket bl
 	mem.fn(ticket)
 	return mem.fem.VerifyPoStRandomness(rand, ticket, candidateAddr, nullBlockCount)
 }
+
+///// Sampler /////
+
+type FakeSampler struct {
+	Value crypto.RandomSeed
+}
+
+func (s *FakeSampler) Sample(_ context.Context, _ block.TipSetKey, _ abi.ChainEpoch) (crypto.RandomSeed, error) {
+	return s.Value, nil
+}

@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
@@ -34,7 +35,7 @@ type FakeVMContext struct {
 	Sender                  func(address.Address, abi.MethodNum, specsruntime.CBORMarshaler, abi.TokenAmount) (specsruntime.SendReturn, exitcode.ExitCode)
 	Addresser               func() (address.Address, error)
 	Charger                 func(cost types.GasUnits) error
-	Sampler                 func(sampleHeight abi.ChainEpoch) ([]byte, error)
+	RandSource              func(acrypto.DomainSeparationTag, abi.ChainEpoch, []byte) []byte
 	ActorCreator            func(addr address.Address, code cid.Cid) error
 	allowSideEffects        bool
 	stateHandle             specsruntime.StateHandle
@@ -43,7 +44,7 @@ type FakeVMContext struct {
 // NewFakeVMContext fakes the state machine infrastructure so actor methods can be called directly
 func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVMContext {
 	randomness := make([]byte, 32)
-	copy(randomness[:], []byte("only random in the figurative sense"))
+	copy(randomness[:], "only random in the figurative sense")
 
 	addressGetter := vmaddr.NewForTestGetter()
 	store := &TestStorage{state: state}
@@ -58,8 +59,8 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 		Charger: func(cost types.GasUnits) error {
 			return nil
 		},
-		Sampler: func(sampleHeight abi.ChainEpoch) ([]byte, error) {
-			return randomness, nil
+		RandSource: func(acrypto.DomainSeparationTag, abi.ChainEpoch, []byte) []byte {
+			return randomness
 		},
 		Sender: func(to address.Address, method abi.MethodNum, params specsruntime.CBORMarshaler, value abi.TokenAmount) (specsruntime.SendReturn, exitcode.ExitCode) {
 			return nil, exitcode.Ok
@@ -91,9 +92,8 @@ func (tc *FakeVMContext) CurrentEpoch() abi.ChainEpoch {
 }
 
 // Randomness provides random bytes used in verification challenges
-func (tc *FakeVMContext) Randomness(epoch abi.ChainEpoch) abi.Randomness {
-	rnd, _ := tc.Sampler(abi.ChainEpoch((uint64)(epoch)))
-	return rnd
+func (tc *FakeVMContext) Randomness(tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) abi.Randomness {
+	return tc.RandSource(tag, epoch, entropy)
 }
 
 // Send allows actors to invoke methods on other actors
