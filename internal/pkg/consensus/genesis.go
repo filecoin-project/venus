@@ -77,7 +77,17 @@ func ActorAccount(addr address.Address, amt abi.TokenAmount) GenOption {
 // MinerActor returns a config option that sets up an miner actor account.
 func MinerActor(store adt.Store, addr address.Address, owner address.Address, pid peer.ID, coll abi.TokenAmount, sectorSize abi.SectorSize) GenOption {
 	return func(gc *Config) error {
-		st, err := miner.ConstructState(store, owner, owner, pid, sectorSize)
+		emptyMap, err := adt.MakeEmptyMap(store)
+		if err != nil {
+			return err
+		}
+
+		emptyArray, err := adt.MakeEmptyArray(store)
+		if err != nil {
+			return err
+		}
+
+		st := miner.ConstructState(emptyArray.Root(), emptyMap.Root(), owner, owner, pid, sectorSize)
 		if err != nil {
 			return err
 		}
@@ -296,15 +306,37 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 	}
 
 	createActor(builtin.InitActorAddr, builtin.InitActorCodeID, big.Zero(), func() (interface{}, error) {
-		return init_.ConstructState(vm.ContextStore(), network)
+		emptyMap, err := adt.MakeEmptyMap(vm.ContextStore())
+		if err != nil {
+			return nil, err
+		}
+		return init_.ConstructState(emptyMap.Root(), network), nil
 	})
 
 	createActor(builtin.StoragePowerActorAddr, builtin.StoragePowerActorCodeID, big.Zero(), func() (interface{}, error) {
-		return power.ConstructState(vm.ContextStore())
+		emptyMap, err := adt.MakeEmptyMap(vm.ContextStore())
+		if err != nil {
+			return nil, err
+		}
+		return power.ConstructState(emptyMap.Root()), nil
 	})
 
 	createActor(builtin.StorageMarketActorAddr, builtin.StorageMarketActorCodeID, big.Zero(), func() (interface{}, error) {
-		return market.ConstructState(vm.ContextStore())
+		emptyArray, err := adt.MakeEmptyArray(vm.ContextStore())
+		if err != nil {
+			return nil, err
+		}
+
+		emptyMap, err := adt.MakeEmptyMap(vm.ContextStore())
+		if err != nil {
+			return nil, err
+		}
+
+		emptyMSet, err := market.MakeEmptySetMultimap(vm.ContextStore())
+		if err != nil {
+			return nil, err
+		}
+		return market.ConstructState(emptyArray.Root(), emptyMap.Root(), emptyMSet.Root()), nil
 	})
 
 	// sort addresses so genesis generation will be stable

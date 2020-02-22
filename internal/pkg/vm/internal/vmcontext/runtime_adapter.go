@@ -117,7 +117,7 @@ func (a *runtimeAdapter) DeleteActor() {
 
 // Syscalls implements Runtime.
 func (a *runtimeAdapter) Syscalls() specsruntime.Syscalls {
-	return &syscalls{}
+	return &syscalls{gasTank: a.ctx.gasTank}
 }
 
 // Context implements Runtime.
@@ -134,40 +134,4 @@ func (*nullTraceSpan) End() {}
 func (a *runtimeAdapter) StartSpan(name string) specsruntime.TraceSpan {
 	// Dragons: leeave empty for now, add TODO to add this into gfc
 	return &nullTraceSpan{}
-}
-
-// Dragons: have the VM take a SysCalls object on construction (it will need a wrapper to charge gas)
-type syscalls struct {
-}
-
-var _ specsruntime.Syscalls = (*syscalls)(nil)
-
-// VerifySignature implements Syscalls.
-func (sys syscalls) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) bool {
-	panic("TODO")
-}
-
-// HashBlake2b implements Syscalls.
-func (sys syscalls) HashBlake2b(data []byte) [8]byte { // nolint: golint
-	panic("TODO")
-}
-
-// ComputeUnsealedSectorCID implements Syscalls.
-func (sys syscalls) ComputeUnsealedSectorCID(sectorSize abi.SectorSize, pieces []abi.PieceInfo) (cid.Cid, error) {
-	panic("TODO")
-}
-
-// VerifySeal implements Syscalls.
-func (sys syscalls) VerifySeal(sectorSize abi.SectorSize, vi abi.SealVerifyInfo) bool {
-	panic("TODO")
-}
-
-// VerifyPoSt implements Syscalls.
-func (sys syscalls) VerifyPoSt(sectorSize abi.SectorSize, vi abi.PoStVerifyInfo) bool {
-	panic("TODO")
-}
-
-// VerifyConsensusFault implements Syscalls.
-func (sys syscalls) VerifyConsensusFault(h1, h2 []byte) bool {
-	panic("TODO")
 }

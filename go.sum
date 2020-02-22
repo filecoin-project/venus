@@ -170,6 +170,8 @@ github.com/filecoin-project/go-storage-miner v0.0.0-20200221201733-2d45f52aa002/
 github.com/filecoin-project/specs-actors v0.0.0-20200210130641-2d1fbd8672cf/go.mod h1:xtDZUB6pe4Pksa/bAJbJ693OilaC5Wbot9jMhLm3cZA=
 github.com/filecoin-project/specs-actors v0.0.0-20200219204052-73c232aae190 h1:tkjpVvUseIGBVEiovy01iOJ8nNi2o98VIT6xwJwBGj0=
 github.com/filecoin-project/specs-actors v0.0.0-20200219204052-73c232aae190/go.mod h1:xtDZUB6pe4Pksa/bAJbJ693OilaC5Wbot9jMhLm3cZA=
+github.com/filecoin-project/specs-actors v0.0.0-20200222001309-499cc463129a h1:t5RD/6zaCeCyiywXbIlAK9R8WWGbiJ6xsqOPK+KKUIs=
+github.com/filecoin-project/specs-actors v0.0.0-20200222001309-499cc463129a/go.mod h1:xtDZUB6pe4Pksa/bAJbJ693OilaC5Wbot9jMhLm3cZA=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/fxamacker/cbor v1.5.0 h1:idAiyeNSq/jeG9FPbCLVZLFJjsxP+g40a3UrXFapumw=

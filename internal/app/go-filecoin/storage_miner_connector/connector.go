@@ -191,7 +191,7 @@ func (m *StorageMinerNodeConnector) WaitForSelfDeals(ctx context.Context, mcid c
 
 // SendPreCommitSector creates a pre-commit sector message and sends it to the
 // network.
-func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sectorNum abi.SectorNumber, sealedCID cid.Cid, sealEpoch, expiration abi.ChainEpoch, pieces ...storagenode.PieceWithDealInfo) (cid.Cid, error) {
+func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sectorNum abi.SectorNumber, sealedCID cid.Cid, sealRandEpoch, expiration abi.ChainEpoch, pieces ...storagenode.PieceWithDealInfo) (cid.Cid, error) {
 	waddr, err := m.getMinerWorkerAddress(ctx, m.chainState.Head())
 	if err != nil {
 		return cid.Undef, err
@@ -203,11 +203,12 @@ func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sec
 	}
 
 	params := miner.SectorPreCommitInfo{
-		SectorNumber: sectorNum,
-		SealedCID:    sealedCID,
-		SealEpoch:    sealEpoch,
-		DealIDs:      dealIds,
-		Expiration:   expiration,
+		RegisteredProof: abi.RegisteredProof_StackedDRG32GiBSeal,
+		SectorNumber:    sectorNum,
+		SealedCID:       sealedCID,
+		SealRandEpoch:   sealRandEpoch,
+		DealIDs:         dealIds,
+		Expiration:      expiration,
 	}
 
 	mcid, cerr, err := m.outbox.Send(
