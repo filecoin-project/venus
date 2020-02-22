@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/filecoin-project/go-address"
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	storagenode "github.com/filecoin-project/go-storage-miner/apis/node"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -192,7 +191,7 @@ func (m *StorageMinerNodeConnector) WaitForSelfDeals(ctx context.Context, mcid c
 
 // SendPreCommitSector creates a pre-commit sector message and sends it to the
 // network.
-func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sectorNum abi.SectorNumber, commR []byte, ticket storagenode.SealTicket, pieces ...storagenode.PieceWithDealInfo) (cid.Cid, error) {
+func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sectorNum abi.SectorNumber, sealedCID cid.Cid, sealEpoch, expiration abi.ChainEpoch, pieces ...storagenode.PieceWithDealInfo) (cid.Cid, error) {
 	waddr, err := m.getMinerWorkerAddress(ctx, m.chainState.Head())
 	if err != nil {
 		return cid.Undef, err
@@ -205,10 +204,10 @@ func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sec
 
 	params := miner.SectorPreCommitInfo{
 		SectorNumber: sectorNum,
-		SealedCID:    commcid.ReplicaCommitmentV1ToCID(commR),
-		SealEpoch:    abi.ChainEpoch(ticket.BlockHeight),
+		SealedCID:    sealedCID,
+		SealEpoch:    sealEpoch,
 		DealIDs:      dealIds,
-		Expiration:   abi.ChainEpoch(0), // TODO populate when the miner module provides this value.
+		Expiration:   expiration,
 	}
 
 	mcid, cerr, err := m.outbox.Send(

@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-storage-miner"
+	"github.com/filecoin-project/go-storage-miner/policies/precommit"
 	"github.com/filecoin-project/go-storage-miner/policies/selfdeal"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-datastore"
@@ -53,7 +54,13 @@ func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching,
 
 	sdp := selfdeal.NewBasicPolicy(minerNode, provingDelay, selfDealDuration)
 
-	storageMiner, err := storage.NewMiner(minerNode, ds, s, minerAddr, &sdp)
+	// If a sector contains no pieces, this policy will set the sector
+	// pre-commit expiration to the current epoch + the provided value. If the
+	// sector does contain deals' pieces, the sector pre-commit expiration will
+	// be set to the farthest-into-the-future deal end-epoch.
+	pcp := precommit.NewBasicPolicy(minerNode, abi.ChainEpoch(2*60*24))
+
+	storageMiner, err := storage.NewMiner(minerNode, ds, s, minerAddr, &sdp, &pcp)
 	if err != nil {
 		return nil, err
 	}
