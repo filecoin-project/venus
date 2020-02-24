@@ -239,7 +239,6 @@ func (w *ValidationVMWrapper) PersistChanges() error {
 //
 
 type fakeRandSrc struct {
-
 }
 
 func (r fakeRandSrc) Randomness(tag crypto_spec.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {

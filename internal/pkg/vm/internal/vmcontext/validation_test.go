@@ -13,7 +13,6 @@ func TestChainValidationSuite(t *testing.T) {
 	vsuites.TestValueTransferAdvance(t, f)
 	vsuites.TestAccountActorCreation(t, f)
 
-
 	vsuites.TestInitActorSequentialIDAddressCreate(t, f)
 
 	// Skipping since multisig address resolution breaks tests
