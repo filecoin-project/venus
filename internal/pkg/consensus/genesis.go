@@ -306,38 +306,28 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 
 		return &a
 	}
+	emptyArray, err := adt.MakeEmptyArray(vm.ContextStore())
+	if err != nil {
+		return err
+	}
+	emptyMap, err := adt.MakeEmptyMap(vm.ContextStore())
+	if err != nil {
+		return err
+	}
+	emptyMSet, err := market.MakeEmptySetMultimap(vm.ContextStore())
+	if err != nil {
+		return err
+	}
 
 	createActor(builtin.InitActorAddr, builtin.InitActorCodeID, big.Zero(), func() (interface{}, error) {
-		emptyMap, err := adt.MakeEmptyMap(vm.ContextStore())
-		if err != nil {
-			return nil, err
-		}
 		return init_.ConstructState(emptyMap.Root(), network), nil
 	})
 
 	createActor(builtin.StoragePowerActorAddr, builtin.StoragePowerActorCodeID, big.Zero(), func() (interface{}, error) {
-		emptyMap, err := adt.MakeEmptyMap(vm.ContextStore())
-		if err != nil {
-			return nil, err
-		}
 		return power.ConstructState(emptyMap.Root()), nil
 	})
 
 	createActor(builtin.StorageMarketActorAddr, builtin.StorageMarketActorCodeID, big.Zero(), func() (interface{}, error) {
-		emptyArray, err := adt.MakeEmptyArray(vm.ContextStore())
-		if err != nil {
-			return nil, err
-		}
-
-		emptyMap, err := adt.MakeEmptyMap(vm.ContextStore())
-		if err != nil {
-			return nil, err
-		}
-
-		emptyMSet, err := market.MakeEmptySetMultimap(vm.ContextStore())
-		if err != nil {
-			return nil, err
-		}
 		return market.ConstructState(emptyArray.Root(), emptyMap.Root(), emptyMSet.Root()), nil
 	})
 
