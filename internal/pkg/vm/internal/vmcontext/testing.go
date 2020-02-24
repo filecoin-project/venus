@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/filecoin-project/go-crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -15,8 +15,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
-
-	crypto "github.com/filecoin-project/go-crypto"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
@@ -109,6 +107,7 @@ type ValidationVMWrapper struct {
 
 // Root implements ValidationVMWrapper.
 func (w *ValidationVMWrapper) Root() cid.Cid {
+	// TODO it's really unfortunate that we need to flush to get the root, and a side-effect free API would be better.
 	root, err := w.vm.state.Flush(w.vm.context)
 	if err != nil {
 		panic(err)
@@ -125,7 +124,7 @@ func (w *ValidationVMWrapper) Store() adt.Store {
 func (w *ValidationVMWrapper) Actor(addr address.Address) (vstate.Actor, error) {
 	idAddr, found := w.vm.normalizeFrom(addr)
 	if !found {
-		return nil, fmt.Errorf("you fucked up")
+		return nil, fmt.Errorf("failed to normalize address: %s", addr)
 	}
 
 	a, err := w.vm.state.GetActor(w.vm.context, idAddr)
@@ -266,7 +265,7 @@ func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state
 		Method:     msg.Method,
 		Params:     msg.Params,
 		GasPrice:   msg.GasPrice,
-		GasLimit:   types.GasUnits(msg.GasLimit.Uint64()),
+		GasLimit:   types.GasUnits(msg.GasLimit),
 	}
 
 	// invoke vm
@@ -334,28 +333,7 @@ func (k *KeyManager) Sign(addr address.Address, data []byte) (crypto_spec.Signat
 	if !ok {
 		return crypto_spec.Signature{}, fmt.Errorf("unknown address %v", addr)
 	}
-	switch ki.Type() {
-	case crypto_spec.SigTypeBLS:
-		var pk ffi.PrivateKey
-		copy(pk[:], ki.PrivateKey)
-		digest := ffi.PrivateKeySign(pk, data)
-		return crypto_spec.Signature{
-			Type: crypto_spec.SigTypeBLS,
-			Data: digest[:],
-		}, nil
-	case crypto_spec.SigTypeSecp256k1:
-		b2sum := blake2b.Sum256(data)
-		digest, err := crypto.Sign(ki.PrivateKey, b2sum[:])
-		if err != nil {
-			return crypto_spec.Signature{}, err
-		}
-		return crypto_spec.Signature{
-			Type: crypto_spec.SigTypeSecp256k1,
-			Data: digest,
-		}, nil
-	default:
-		return crypto_spec.Signature{}, fmt.Errorf("unknown key type: %v for address: %s", ki.Type(), addr)
-	}
+	return gfcrypto.Sign(data, ki.PrivateKey, ki.SigType)
 }
 
 func (k *KeyManager) newSecp256k1Key() *gfcrypto.KeyInfo {
