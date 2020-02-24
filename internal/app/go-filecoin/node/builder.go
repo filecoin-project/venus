@@ -4,14 +4,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/internal/submodule"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
@@ -213,28 +211,22 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	nd.ProofVerification = submodule.NewProofVerificationSubmodule()
 
-	panic("provide NewStorageProtocolSubmodule the arguments it demands")
-	nd.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(ctx, address.Undef, address.Undef, nil, nil, nil, nil, nil, nil, nil, nil, nil, "", nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.StorageProtocol")
-	}
-
-	panic("provide NewRetrievalProtocolSubmodule the arguments it demands")
-	paymentchannel.NewManager(ctx, nil, msg.NewWaiter(nd.chain.ChainReader, nd.chain.MessageStore, nd.Blockstore.Blockstore, nd.Blockstore.CborStore),
-		nd.Messaging.Outbox)
-
-	nd.RetrievalProtocol, err = submodule.NewRetrievalProtocolSubmodule(
-		nd.Blockstore.Blockstore,
-		nd.Chain(),
-		nd.Host(),
-		address.Undef,
-		nd.PieceManager(),
-		nil,
-		nil,
-		nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.RetrievalProtocol")
-	}
+	// TODO: provide NewRetrievalProtocolSubmodule needed dependencies
+	//paymentchannel.NewManager(ctx, nil, msg.NewWaiter(nd.chain.ChainReader, nd.chain.MessageStore, nd.Blockstore.Blockstore, nd.Blockstore.CborStore),
+	//	nd.Messaging.Outbox)
+	//
+	//nd.RetrievalProtocol, err = submodule.NewRetrievalProtocolSubmodule(
+	//	nd.Blockstore.Blockstore,
+	//	nd.Chain(),
+	//	nd.Host(),
+	//	address.Undef,
+	//	nd.PieceManager(),
+	//	nil,
+	//	nil,
+	//	nil)
+	//if err != nil {
+	//	return nil, errors.Wrap(err, "failed to build node.RetrievalProtocol")
+	//}
 
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Chain:        nd.chain.State,

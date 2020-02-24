@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"github.com/ipfs/go-ipfs-cmdkit"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
@@ -46,7 +46,5 @@ var clientRetrievePieceCmd = &cmds.Command{
 		//}
 		//
 		//return re.Emit(readCloser)
-
-		return nil
 	},
 }

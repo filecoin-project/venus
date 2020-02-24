@@ -1,9 +1,8 @@
-package retrievalmarketconnector
+package retrievalmarketconnector_test
 
 import (
-	"bytes"
 	"context"
-	"errors"
+	"fmt"
 	"math/rand"
 	"testing"
 
@@ -13,10 +12,12 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
+	xerrors "github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
+	retrievalmarketconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -71,10 +72,11 @@ func NewRetrievalMarketClientFakeAPI(t *testing.T, bal abi.TokenAmount) *Retriev
 // -------------- API METHODS
 // AllocateLane mocks allocation of a new lane in a payment channel
 func (rmFake *RetrievalMarketClientFakeAPI) AllocateLane(paychAddr address.Address) (uint64, error) {
-	chinfo, ok := rmFake.ExpectedPmtChans[paychAddr]
+	_, ok := rmFake.ActualPmtChans[paychAddr]
 	if !ok {
-		rmFake.t.Fatalf("unregistered channel %s", paychAddr.String())
+		return 0, xerrors.Errorf("payment channel does not exist: %s", paychAddr.String())
 	}
+	chinfo := rmFake.ExpectedPmtChans[paychAddr]
 	states := chinfo.State.LaneStates
 	numLanes := len(states)
 	ln := paych.LaneState{
@@ -109,7 +111,10 @@ func (rmFake *RetrievalMarketClientFakeAPI) SendNewSignedVoucher(paychAddr addre
 func (rmFake *RetrievalMarketClientFakeAPI) GetPaymentChannelByAccounts(payer, payee address.Address) (address.Address, *paymentchannel.ChannelInfo) {
 	for paychAddr, chinfo := range rmFake.ExpectedPmtChans {
 		if chinfo.State.From == payer && chinfo.State.To == payee {
-			return paychAddr, chinfo
+			_, ok := rmFake.ActualPmtChans[paychAddr]
+			if ok {
+				return paychAddr, chinfo
+			}
 		}
 	}
 	return address.Undef, nil
@@ -119,11 +124,11 @@ func (rmFake *RetrievalMarketClientFakeAPI) GetPaymentChannelByAccounts(payer, p
 // if not found, returns error
 func (rmFake *RetrievalMarketClientFakeAPI) GetPaymentChannelInfo(paychAddr address.Address) (*paymentchannel.ChannelInfo, error) {
 	// look only at those that have been "created" by moving from Expected to Actual
-	chinfo, ok := rmFake.ActualPmtChans[paychAddr]
+	_, ok := rmFake.ActualPmtChans[paychAddr]
 	if !ok {
-		return nil, errors.New("no such ChannelID")
+		return nil, fmt.Errorf("no such ChannelID %s", paychAddr.String())
 	}
-	return chinfo, nil
+	return rmFake.ExpectedPmtChans[paychAddr], nil
 }
 
 // GetBalance mocks getting an actor's balance in AttoFIL
@@ -159,18 +164,15 @@ func (rmFake *RetrievalMarketClientFakeAPI) Send(ctx context.Context,
 }
 
 func (rmFake *RetrievalMarketClientFakeAPI) SaveVoucher(paychAddr address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmt abi.TokenAmount) (abi.TokenAmount, error) {
-	expV, ok := rmFake.ExpectedVouchers[paychAddr]
+	_, ok := rmFake.ExpectedVouchers[paychAddr]
 	if !ok {
 		rmFake.t.Fatalf("missing voucher for %s", paychAddr.String())
 	}
-	if !bytes.Equal(expV.Proof, proof) {
-		rmFake.t.Fatalf("expected proof %s got %s", string(expV.Proof[:]), string(proof[:]))
-	}
-	if !expectedAmt.Equals(voucher.Amount) {
-		rmFake.t.Fatalf("expected amt %s got %s", expectedAmt.String(), voucher.Amount.String())
+	if rmFake.SaveVoucherErr != nil {
+		return abi.NewTokenAmount(0), rmFake.SaveVoucherErr
 	}
 	rmFake.ActualVouchers[paychAddr] = true
-	return expectedAmt, rmFake.SaveVoucherErr
+	return expectedAmt, nil
 }
 
 // ---------------  Testing methods
@@ -204,6 +206,6 @@ func requireMakeTestFcAddr(t *testing.T) address.Address {
 	return res
 }
 
-var _ PaychMgrAPI = &RetrievalMarketClientFakeAPI{}
-var _ RetrievalSigner = &RetrievalMarketClientFakeAPI{}
-var _ WalletAPI = &RetrievalMarketClientFakeAPI{}
+var _ retrievalmarketconnector.PaychMgrAPI = &RetrievalMarketClientFakeAPI{}
+var _ retrievalmarketconnector.RetrievalSigner = &RetrievalMarketClientFakeAPI{}
+var _ retrievalmarketconnector.WalletAPI = &RetrievalMarketClientFakeAPI{}

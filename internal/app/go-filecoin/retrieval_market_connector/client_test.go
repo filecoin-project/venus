@@ -162,7 +162,9 @@ func TestRetrievalClientNodeConnector_AllocateLane(t *testing.T) {
 
 		lane, err := rcnc.AllocateLane(paychAddr)
 		require.NoError(t, err)
-		chinfo := rmc.ActualPmtChans[paychAddr]
+		rmc.Verify()
+
+		chinfo := rmc.ExpectedPmtChans[paychAddr]
 		require.Len(t, chinfo.State.LaneStates, int(lane)+1)
 		actualLs := chinfo.State.LaneStates[lane]
 		expLs := paych.LaneState{
@@ -211,10 +213,9 @@ func TestRetrievalClientNodeConnector_CreatePaymentVoucher(t *testing.T) {
 		rmc.StubSignature(nil)
 
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc, rmc)
-		chid, err := address.NewIDAddress(rand.Uint64())
-		require.NoError(t, err)
-		voucher, err := rcnc.CreatePaymentVoucher(ctx, chid, big.NewInt(100), 1)
-		assert.EqualError(t, err, "no such ChannelID")
+		paychAddr := specst.NewIDAddr(t, 990)
+		voucher, err := rcnc.CreatePaymentVoucher(ctx, paychAddr, big.NewInt(100), 1)
+		assert.EqualError(t, err, "no such ChannelID t0990")
 		assert.Nil(t, voucher)
 	})
 
