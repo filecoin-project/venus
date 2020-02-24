@@ -238,6 +238,14 @@ func (w *ValidationVMWrapper) PersistChanges() error {
 // Applier
 //
 
+type fakeRandSrc struct {
+
+}
+
+func (r fakeRandSrc) Randomness(tag crypto_spec.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	panic("implement me")
+}
+
 type ValidationApplier struct{}
 
 func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state vstate.VMWrapper, msg *vtypes.Message) (vtypes.MessageReceipt, error) {
@@ -261,7 +269,7 @@ func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state
 	}
 
 	// invoke vm
-	ourreceipt, _, _ := st.vm.applyMessage(ourmsg, ourmsg.OnChainLen(), context.MinerOwner)
+	ourreceipt, _, _ := st.vm.applyMessage(ourmsg, ourmsg.OnChainLen(), context.MinerOwner, &fakeRandSrc{})
 
 	// commit and persist changes
 	// Note: this is not done on production for each msg
