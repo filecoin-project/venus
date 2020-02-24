@@ -60,6 +60,7 @@ func (f *Factories) NewKeyManager() vstate.KeyManager {
 
 func (f *Factories) NewValidationConfig() vstate.ValidationConfig {
 	return &ValidationConfig{
+		// TODO enable this when ready https://github.com/filecoin-project/go-filecoin/issues/3801
 		trackGas:         false,
 		checkExitCode:    true,
 		checkReturnValue: true,
