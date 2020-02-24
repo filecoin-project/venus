@@ -268,7 +268,7 @@ func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state
 	}
 
 	// invoke vm
-	ourreceipt, _, _ := st.vm.applyMessage(ourmsg, ourmsg.OnChainLen(), context.MinerOwner, &fakeRandSrc{})
+	ourreceipt, _, _ := st.vm.applyMessage(ourmsg, ourmsg.OnChainLen(), &fakeRandSrc{})
 
 	// commit and persist changes
 	// Note: this is not done on production for each msg
