@@ -8,16 +8,23 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-car"
+	"github.com/ipfs/go-datastore"
+	ds "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
+	badger "github.com/ipfs/go-ds-badger2"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/crypto"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
@@ -44,6 +51,18 @@ var initCmd = &cmds.Command{
 		cmdkit.BoolOption(DevnetStaging, "when set, populates config bootstrap addrs with the dns multiaddrs of the staging devnet and other staging devnet specific bootstrap parameters."),
 		cmdkit.BoolOption(DevnetNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters"),
 		cmdkit.BoolOption(DevnetUser, "when set, populates config bootstrap addrs with the dns multiaddrs of the user devnet and other user devnet specific bootstrap parameters"),
+		cmdkit.StringOption(OptionPresealedSectorDir, "when set to the path of a directory, imports pre-sealed sector data from that directory"),
+		cmdkit.StringOption(OptionPresealedSectorMetadata, "when set to the path of a file, reads pre-sealed sector metadata from file"),
+		/*
+			&cli.BoolFlag{
+				Name:  "nosync",
+				Usage: "don't check full-node sync status",
+			},
+			&cli.BoolFlag{
+				Name:  "symlink-imported-sectors",
+				Usage: "attempt to symlink to presealed sectors instead of copying them into place",
+			},
+		*/
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
@@ -90,6 +109,49 @@ var initCmd = &cmds.Command{
 		if err := rep.ReplaceConfig(cfg); err != nil {
 			return err
 		}
+
+		// TODO: check preseal flags here.
+		// TODO: if pre-sealed-sectors present copy pre-seal data into repo dir
+		presealedSectorDir, shouldImport := req.Options[OptionPresealedSectorDir].(string)
+		if shouldImport && presealedSectorDir != "" {
+			badgerOptions := badger.Options{
+				GcDiscardRatio: badger.DefaultOptions.GcDiscardRatio,
+				GcInterval:     badger.DefaultOptions.GcInterval,
+				GcSleep:        badger.DefaultOptions.GcSleep,
+				Options:        badger.DefaultOptions.Options,
+			}
+			badgerOptions.ReadOnly = true
+			oldMetaDs, err := badger.NewDatastore(filepath.Join(presealedSectorDir, "badger"), &badgerOptions)
+			if err != nil {
+				return err
+			}
+
+			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
+				SectorSize:    0, // TODO: might need to configure this or dig it out of state
+				WorkerThreads: 2,
+				Paths:         sectorbuilder.SimplePath(presealedSectorDir),
+			}, namespace.Wrap(oldMetaDs, datastore.NewKey("/sectorbuilder")))
+			if err != nil {
+				return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
+			}
+
+			metaDs := namespace.Wrap(rep.Datastore(), ds.NewKey("/metadata"))
+			defer metaDs.Close()
+
+			newsb, err := sectorbuilder.New(&sectorbuilder.Config{
+				SectorSize:    0, // TODO: might need to configure this or dig it out of state
+				WorkerThreads: 2,
+				Paths:         sectorbuilder.SimplePath(rep.Config().SectorBase.RootDir),
+			}, namespace.Wrap(metaDs, datastore.NewKey("/sectorbuilder")))
+			if err != nil {
+				return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
+			}
+
+			// TODO: configuration for symlink
+			if err := newsb.ImportFrom(oldsb, true); err != nil {
+				return err
+			}
+		}
 		return nil
 	},
 	Encoders: cmds.EncoderMap{
@@ -108,6 +170,8 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 			return err
 		}
 	}
+
+	// TODO: if pre-sealed-metadata present, read metadata and put deal information in datastore (which datastore?)
 
 	if autoSealIntervalSeconds, ok := options[AutoSealIntervalSeconds]; ok {
 		cfg.Mining.AutoSealIntervalSeconds = autoSealIntervalSeconds.(uint)

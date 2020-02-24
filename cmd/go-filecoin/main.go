@@ -31,6 +31,12 @@ const (
 	// OptionSectorDir is the name of the option for specifying the directory into which staged and sealed sectors will be written.
 	OptionSectorDir = "sectordir"
 
+	// OptionPresealedSectorDir is the name of the option for specifying the directory from which presealed sectors should be pulled when initializing.
+	OptionPresealedSectorDir = "presealed-sectordir"
+
+	// OptionPresealedMetadata is the name of the option for specifying the file from which presealed sector metadata should be read.
+	OptionPresealedSectorMetadata = "presealed-sector-metadata"
+
 	// APIPrefix is the prefix for the http version of the api.
 	APIPrefix = "/api"
 
