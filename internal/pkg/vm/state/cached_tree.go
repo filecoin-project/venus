@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
@@ -23,6 +24,11 @@ func NewCachedTree(st Tree) *CachedTree {
 		st:    st,
 		cache: make(map[address.Address]*actor.Actor),
 	}
+}
+
+// Flush flushes the committed changes.
+func (t *CachedTree) Flush(ctx context.Context) (cid.Cid, error) {
+	return t.st.Flush(ctx)
 }
 
 // GetActor retrieves an actor from the cache. If it's not found it will get it from the

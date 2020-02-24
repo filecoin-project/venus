@@ -13,9 +13,11 @@ require (
 	github.com/docker/docker v0.7.3-0.20190315170154-87d593639c77
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.3.3 // indirect
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200224185015-bcbaec957c25
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200210194142-cb6019e08542
 	github.com/filecoin-project/go-address v0.0.1
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
+	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.0.0-20191219005021-4accf56bd2ce
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
 	github.com/filecoin-project/go-fil-markets v0.0.0-20200212222958-2202549b86ee
@@ -23,7 +25,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.1
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200211164318-76f24b9797d4
 	github.com/filecoin-project/go-storage-miner v0.0.0-20200221201733-2d45f52aa002
-	github.com/filecoin-project/specs-actors v0.0.0-20200222001309-499cc463129a
+	github.com/filecoin-project/specs-actors v0.0.0-20200222004953-748457ae9914
 	github.com/fxamacker/cbor v1.5.0
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/golangci/golangci-lint v1.21.0
@@ -40,7 +42,7 @@ require (
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-graphsync v0.0.4
 	github.com/ipfs/go-hamt-ipld v0.0.15-0.20200219230615-d4e402c05ab0
-	github.com/ipfs/go-ipfs-blockstore v0.1.1
+	github.com/ipfs/go-ipfs-blockstore v0.1.3
 	github.com/ipfs/go-ipfs-chunker v0.0.1
 	github.com/ipfs/go-ipfs-cmdkit v0.0.1
 	github.com/ipfs/go-ipfs-cmds v0.0.1
