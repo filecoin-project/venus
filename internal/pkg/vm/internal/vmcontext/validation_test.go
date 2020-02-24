@@ -13,12 +13,13 @@ func TestChainValidationSuite(t *testing.T) {
 	vsuites.TestValueTransferAdvance(t, f)
 	vsuites.TestAccountActorCreation(t, f)
 
-	// Skipping as this tests uses the payment channel actor code ID and it DNE in go-filecoin
-	// vsuites.TestInitActorSequentialIDAddressCreate(t, f)
 
-	// Skipping since multisig actor DNE in go-filecoin
+	vsuites.TestInitActorSequentialIDAddressCreate(t, f)
+
+	// Skipping since multisig address resolution breaks tests
+	// https://github.com/filecoin-project/specs-actors/issues/184
 	// vsuites.TestMultiSigActor(t, f)
 
-	// Skipping since payment channel actor DNE in go-filecoin
+	// Skipping since payment channel because runtime sys calls are not implemented in runtime adapter
 	// vsuites.TestPaych(t, f)
 }
