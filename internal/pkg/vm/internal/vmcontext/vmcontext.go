@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	notinit "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
@@ -443,28 +442,6 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, rn
 	return receipt, big.Zero(), gasTank.GasConsumed().ToTokens(msgGasPrice)
 }
 
-func (vm *VM) getMinerOwner(minerAddr address.Address) address.Address {
-	minerActorEntry, err := vm.state.GetActor(context.Background(), minerAddr)
-	if err != nil {
-		panic(fmt.Errorf("unreachable. %s", err))
-	}
-
-	// build state handle
-	var stateHandle = NewReadonlyStateHandle(vm.Store(), minerActorEntry.Head.Cid)
-
-	// get a view into the actor state
-	var state miner.State
-	stateHandle.Readonly(&state)
-
-	return state.Info.Owner
-}
-
-func (vm *VM) settleGasBill(sender address.Address, gasTank *GasTracker, payee address.Address, gasPrice abi.TokenAmount) {
-	// release unused funds that were withheld
-	vm.transfer(builtin.BurntFundsActorAddr, sender, gasTank.RemainingGas().ToTokens(gasPrice))
-	// pay miner for gas
-	vm.transfer(builtin.BurntFundsActorAddr, payee, gasTank.GasConsumed().ToTokens(gasPrice))
-}
 
 // transfer debits money from one account and credits it to another.
 //
