@@ -22,3 +22,9 @@ func TestChainValidationSuite(t *testing.T) {
 	// Skipping since payment channel because runtime sys calls are not implemented in runtime adapter
 	// vsuites.TestPaych(t, f)
 }
+
+func TestMessageApplication(t *testing.T) {
+	f := NewFactories()
+
+	vsuites.TestMessageApplicationEdgecases(t, f)
+}
