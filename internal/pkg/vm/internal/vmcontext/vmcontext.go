@@ -442,7 +442,6 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, rn
 	return receipt, big.Zero(), gasTank.GasConsumed().ToTokens(msgGasPrice)
 }
 
-
 // transfer debits money from one account and credits it to another.
 //
 // WARNING: this method will panic if the the amount is negative, accounts dont exist, or have inssuficient funds.
