@@ -603,7 +603,7 @@ func msgCID(msg *types.UnsignedMessage) cid.Cid {
 }
 
 func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount, gasReward abi.TokenAmount, nominalPower abi.StoragePower) internalMessage {
-	params := reward.AwardBlockRewardParams{
+	params := &reward.AwardBlockRewardParams{
 		Miner:        blockMiner,
 		Penalty:      penalty,
 		GasReward:    gasReward,
@@ -623,11 +623,15 @@ func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount,
 }
 
 func makeCronTickMessage(blockMiner address.Address) internalMessage {
+	encoded, err := encoding.Encode(&adt.EmptyValue{})
+	if err != nil {
+		panic(fmt.Errorf("failed to encode empty cbor value: %s", err))
+	}
 	return internalMessage{
 		from:   builtin.SystemActorAddr,
 		to:     builtin.CronActorAddr,
 		value:  big.Zero(),
 		method: builtin.MethodsCron.EpochTick,
-		params: []byte{},
+		params: encoded,
 	}
 }

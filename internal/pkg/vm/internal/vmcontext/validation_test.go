@@ -28,3 +28,9 @@ func TestMessageApplication(t *testing.T) {
 
 	vsuites.TestMessageApplicationEdgecases(t, f)
 }
+
+func TestTipSetStuff(t *testing.T) {
+	f := NewFactories()
+
+	vsuites.TestBlockMessageInfoApplication(t, f)
+}
