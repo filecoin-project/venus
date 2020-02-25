@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	notinit "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
@@ -52,7 +51,6 @@ type minerPenaltyFIL = abi.TokenAmount
 type gasRewardFIL = abi.TokenAmount
 
 type internalMessage struct {
-	miner         address.Address
 	from          address.Address
 	to            address.Address
 	value         abi.TokenAmount
@@ -91,7 +89,6 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 
 	// build internal message
 	imsg := internalMessage{
-		miner:  address.Undef,
 		from:   from,
 		to:     to,
 		value:  value,
@@ -186,7 +183,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 			}
 
 			// apply message
-			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(m, m.OnChainLen(), blk.Miner, rnd)
+			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(m, m.OnChainLen(), rnd)
 
 			// accumulate result
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)
@@ -210,7 +207,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 
 			// apply message
 			// Note: the on-chain size for SECP messages is different
-			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(&m, sm.OnChainLen(), blk.Miner, rnd)
+			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(&m, sm.OnChainLen(), rnd)
 
 			// accumulate result
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)
@@ -300,7 +297,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 }
 
 // applyMessage applies the message to the current state.
-func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, miner address.Address, rnd crypto.RandomnessSource) (message.Receipt, minerPenaltyFIL, gasRewardFIL) {
+func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, rnd crypto.RandomnessSource) (message.Receipt, minerPenaltyFIL, gasRewardFIL) {
 	// Dragons: temp until we remove legacy types
 	var msgGasLimit gas.Unit = gas.NewLegacyGas(msg.GasLimit)
 	var msgGasPrice abi.TokenAmount = msg.GasPrice
@@ -383,7 +380,6 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 
 	// 1. build internal msg
 	imsg := internalMessage{
-		miner:         miner,
 		from:          msg.From,
 		to:            msg.To,
 		value:         msgValue,
@@ -438,41 +434,12 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, mi
 		// Insufficient gas remaining to cover the on-chain return value; proceed as in the case
 		// of method execution failure.
 
-		// get miner owner
-		minerOwner := vm.getMinerOwner(miner)
-
-		// have the sender pay the outstanding bill and get the rest of the money back
-		vm.settleGasBill(msg.From, &gasTank, minerOwner, msgGasPrice)
-
 		// Note: we are charging the caller not the miner, there is ZERO miner penalty
 		return message.Failure(exitcode.SysErrOutOfGas, gasTank.GasConsumed()), big.Zero(), gasTank.GasConsumed().ToTokens(msgGasPrice)
 	}
 
 	// 2. Success!
 	return receipt, big.Zero(), gasTank.GasConsumed().ToTokens(msgGasPrice)
-}
-
-func (vm *VM) getMinerOwner(minerAddr address.Address) address.Address {
-	minerActorEntry, err := vm.state.GetActor(context.Background(), minerAddr)
-	if err != nil {
-		panic(fmt.Errorf("unreachable. %s", err))
-	}
-
-	// build state handle
-	var stateHandle = NewReadonlyStateHandle(vm.Store(), minerActorEntry.Head.Cid)
-
-	// get a view into the actor state
-	var state miner.State
-	stateHandle.Readonly(&state)
-
-	return state.Info.Owner
-}
-
-func (vm *VM) settleGasBill(sender address.Address, gasTank *GasTracker, payee address.Address, gasPrice abi.TokenAmount) {
-	// release unused funds that were withheld
-	vm.transfer(builtin.BurntFundsActorAddr, sender, gasTank.RemainingGas().ToTokens(gasPrice))
-	// pay miner for gas
-	vm.transfer(builtin.BurntFundsActorAddr, payee, gasTank.GasConsumed().ToTokens(gasPrice))
 }
 
 // transfer debits money from one account and credits it to another.
@@ -548,11 +515,6 @@ func (vm *VM) Store() specsruntime.Store {
 
 var _ specsruntime.Message = (*internalMessage)(nil)
 
-// BlockMiner implements runtime.MessageInfo.
-func (msg internalMessage) BlockMiner() address.Address {
-	return msg.miner
-}
-
 // ValueReceived implements runtime.MessageInfo.
 func (msg internalMessage) ValueReceived() abi.TokenAmount {
 	return msg.value
@@ -617,7 +579,6 @@ func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount,
 		panic(fmt.Errorf("failed to encode built-in block reward. %s", err))
 	}
 	return internalMessage{
-		miner:  blockMiner,
 		from:   builtin.SystemActorAddr,
 		to:     builtin.RewardActorAddr,
 		value:  big.Zero(),
@@ -628,7 +589,6 @@ func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount,
 
 func makeCronTickMessage(blockMiner address.Address) internalMessage {
 	return internalMessage{
-		miner:  blockMiner,
 		from:   builtin.SystemActorAddr,
 		to:     builtin.CronActorAddr,
 		value:  big.Zero(),
