@@ -135,31 +135,31 @@ func (w *ValidationVMWrapper) Actor(addr address.Address) (vstate.Actor, error) 
 }
 
 // CreateActor implements ValidationVMWrapper.
-func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, balance abi.TokenAmount, newState runtime.CBORMarshaler) (vstate.Actor, error) {
+func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, balance abi.TokenAmount, newState runtime.CBORMarshaler) (vstate.Actor, address.Address, error) {
 	idAddr := addr
 	if addr.Protocol() != address.ID {
 		// go through init to register
 		initActorEntry, err := w.vm.state.GetActor(w.vm.context, builtin.InitActorAddr)
 		if err != nil {
-			return nil, err
+			return nil, address.Undef, err
 		}
 
 		// get a view into the actor state
 		var initState init_spec.State
 		if err := w.vm.store.Get(initActorEntry.Head.Cid, &initState); err != nil {
-			return nil, err
+			return nil, address.Undef, err
 		}
 
 		// add addr to inits map
 		idAddr, err = initState.MapAddressToNewID(w.vm.ContextStore(), addr)
 		if err != nil {
-			return nil, err
+			return nil, address.Undef, err
 		}
 
 		// persist the init actor state
 		initHead, err := w.vm.store.Put(&initState)
 		if err != nil {
-			return nil, err
+			return nil, address.Undef, err
 		}
 		initActorEntry.Head = enccid.NewCid(initHead)
 		// persist state below
@@ -170,16 +170,16 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 		return &actor.Actor{}, idAddr, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, address.Undef, err
 	}
 	if !a.Empty() {
-		return nil, fmt.Errorf("actor with address already exists")
+		return nil, address.Undef, fmt.Errorf("actor with address already exists")
 	}
 
 	// store newState
 	head, err := w.vm.store.Put(newState)
 	if err != nil {
-		return nil, err
+		return nil, address.Undef, err
 	}
 
 	// update fields
@@ -188,10 +188,10 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 	a.Balance = balance
 
 	if err := w.PersistChanges(); err != nil {
-		return nil, err
+		return nil, address.Undef, err
 	}
 
-	return &actorWrapper{a}, nil
+	return &actorWrapper{a}, idAddr, nil
 }
 
 // SetActorState implements ValidationVMWrapper.
