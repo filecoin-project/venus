@@ -6,12 +6,12 @@ import (
 
 	addr "github.com/filecoin-project/go-address"
 	commcid "github.com/filecoin-project/go-fil-commcid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // PowerStateView is the consensus package's interface to chain state.
@@ -54,10 +54,10 @@ func (v PowerTableView) WorkerAddr(ctx context.Context, mAddr addr.Address) (add
 // HasClaimedPower returns true if the provided address belongs to a miner with claimed power in the storage market
 func (v PowerTableView) HasClaimedPower(ctx context.Context, mAddr addr.Address) (bool, error) {
 	numBytes, err := v.MinerClaim(ctx, mAddr)
+	if err == types.ErrNotFound {
+		return false, nil
+	}
 	if err != nil {
-		if state.IsActorNotFoundError(err) {
-			return false, nil
-		}
 		return false, err
 	}
 	return numBytes.GreaterThan(big.Zero()), nil

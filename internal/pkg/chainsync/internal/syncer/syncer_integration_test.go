@@ -46,7 +46,7 @@ func TestLoadFork(t *testing.T) {
 	repo := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(repo.Datastore())
 	cborStore := cborutil.NewIpldStore(bs)
-	store := chain.NewStore(repo.ChainDatastore(), cborStore, state.NewTreeLoader(), chain.NewStatusReporter(), genesis.At(0).Cid())
+	store := chain.NewStore(repo.ChainDatastore(), cborStore, chain.NewStatusReporter(), genesis.At(0).Cid())
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: genStateRoot, TipSet: genesis, TipSetReceipts: types.EmptyReceiptsCID}))
 	require.NoError(t, store.SetHead(ctx, genesis))
 
@@ -81,7 +81,7 @@ func TestLoadFork(t *testing.T) {
 
 	// Load a new chain store on the underlying data. It will only compute state for the
 	// left (heavy) branch. It has a fetcher that can't provide blocks.
-	newStore := chain.NewStore(repo.ChainDatastore(), cborStore, state.NewTreeLoader(), chain.NewStatusReporter(), genesis.At(0).Cid())
+	newStore := chain.NewStore(repo.ChainDatastore(), cborStore, chain.NewStatusReporter(), genesis.At(0).Cid())
 	require.NoError(t, newStore.Load(ctx))
 	fakeFetcher := th.NewTestFetcher()
 	offlineSyncer, err := syncer.NewSyncer(eval, eval, sel, newStore, builder, fakeFetcher, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)), &noopFaultDetector{})
@@ -167,7 +167,7 @@ func TestSyncerWeighsPower(t *testing.T) {
 
 	// Verify that the syncer selects fork 2 (15 > 12)
 	dumpBlocksToCborStore(t, builder, cst, head1, head2)
-	store := chain.NewStore(repo.ChainDatastore(), cst, state.NewTreeLoader(), chain.NewStatusReporter(), gen.At(0).Cid())
+	store := chain.NewStore(repo.ChainDatastore(), cst, chain.NewStatusReporter(), gen.At(0).Cid())
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: gen.At(0).StateRoot.Cid, TipSet: gen, TipSetReceipts: gen.At(0).MessageReceipts.Cid}))
 	require.NoError(t, store.SetHead(ctx, gen))
 	eval := &integrationStateEvaluator{c512: isb.c512}
@@ -213,16 +213,16 @@ func newIntegrationStateBuilder(t *testing.T, cst cbor.IpldStore) *integrationSt
 func (isb *integrationStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, []vm.MessageReceipt, error) {
 	// setup genesis with a state we can fetch from cborstor
 	if prev.Equals(types.CidFromString(isb.t, "null")) {
-		treeGen := state.TreeFromString(isb.t, "1Power", isb.cst)
-		genRoot, err := treeGen.Flush(context.Background())
+		treeGen := state.NewFromString(isb.t, "1Power", isb.cst)
+		genRoot, err := treeGen.Commit(context.Background())
 		require.NoError(isb.t, err)
 		return genRoot, []vm.MessageReceipt{}, nil
 	}
 	// Setup fork with state we associate with more power.
 	// This fork is distiguished by a block with a single secp message.
 	if len(secpMessages[0]) > 0 {
-		treeFork := state.TreeFromString(isb.t, "512Power", isb.cst)
-		forkRoot, err := treeFork.Flush(context.Background())
+		treeFork := state.NewFromString(isb.t, "512Power", isb.cst)
+		forkRoot, err := treeFork.Commit(context.Background())
 		require.NoError(isb.t, err)
 		isb.c512 = forkRoot
 		return forkRoot, []vm.MessageReceipt{}, nil

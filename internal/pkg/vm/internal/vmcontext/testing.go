@@ -92,7 +92,7 @@ func NewState() *ValidationVMWrapper {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	cst := cborutil.NewIpldStore(bs)
 	vmstrg := storage.NewStorage(bs)
-	vm := NewVM(gfcBuiltin.DefaultActors, &vmstrg, state.NewTree(cst))
+	vm := NewVM(gfcBuiltin.DefaultActors, &vmstrg, state.NewState(cst))
 	return &ValidationVMWrapper{
 		vm: &vm,
 	}
@@ -104,8 +104,12 @@ type ValidationVMWrapper struct {
 
 // Root implements ValidationVMWrapper.
 func (w *ValidationVMWrapper) Root() cid.Cid {
-	// TODO it's really unfortunate that we need to flush to get the root, and a side-effect free API would be better.
-	root, err := w.vm.state.Flush(w.vm.context)
+	root, dirty := w.vm.state.Root()
+	if !dirty {
+		return root
+	}
+
+	root, err := w.vm.state.Commit(w.vm.context)
 	if err != nil {
 		panic(err)
 	}
@@ -124,9 +128,12 @@ func (w *ValidationVMWrapper) Actor(addr address.Address) (vstate.Actor, error) 
 		return nil, fmt.Errorf("failed to normalize address: %s", addr)
 	}
 
-	a, err := w.vm.state.GetActor(w.vm.context, idAddr)
+	a, found, err := w.vm.state.GetActor(w.vm.context, idAddr)
 	if err != nil {
 		return nil, err
+	}
+	if !found {
+		return nil, fmt.Errorf("actor not found")
 	}
 	return &actorWrapper{a}, nil
 }
@@ -136,9 +143,12 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 	idAddr := addr
 	if addr.Protocol() != address.ID {
 		// go through init to register
-		initActorEntry, err := w.vm.state.GetActor(w.vm.context, builtin.InitActorAddr)
+		initActorEntry, found, err := w.vm.state.GetActor(w.vm.context, builtin.InitActorAddr)
 		if err != nil {
 			return nil, address.Undef, err
+		}
+		if !found {
+			return nil, address.Undef, fmt.Errorf("actor not found")
 		}
 
 		// get a view into the actor state
@@ -159,19 +169,13 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 			return nil, address.Undef, err
 		}
 		initActorEntry.Head = enccid.NewCid(initHead)
+		if err := w.vm.state.SetActor(w.vm.context, builtin.InitActorAddr, initActorEntry); err != nil {
+			return nil, address.Undef, err
+		}
 		// persist state below
 	}
 
 	// create actor on state stree
-	a, _, err := w.vm.state.GetOrCreateActor(w.vm.context, idAddr, func() (*actor.Actor, address.Address, error) {
-		return &actor.Actor{}, idAddr, nil
-	})
-	if err != nil {
-		return nil, address.Undef, err
-	}
-	if !a.Empty() {
-		return nil, address.Undef, fmt.Errorf("actor with address already exists")
-	}
 
 	// store newState
 	head, err := w.vm.store.Put(newState)
@@ -179,10 +183,15 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 		return nil, address.Undef, err
 	}
 
-	// update fields
-	a.Code = enccid.NewCid(code)
-	a.Head = enccid.NewCid(head)
-	a.Balance = balance
+	// create and store actor object
+	a := &actor.Actor{
+		Code:    enccid.NewCid(code),
+		Head:    enccid.NewCid(head),
+		Balance: balance,
+	}
+	if err := w.vm.state.SetActor(w.vm.context, idAddr, a); err != nil {
+		return nil, address.Undef, err
+	}
 
 	if err := w.PersistChanges(); err != nil {
 		return nil, address.Undef, err
@@ -198,9 +207,12 @@ func (w *ValidationVMWrapper) SetActorState(addr address.Address, balance big.In
 		return nil, fmt.Errorf("actor not found")
 	}
 
-	a, err := w.vm.state.GetActor(w.vm.context, idAddr)
+	a, found, err := w.vm.state.GetActor(w.vm.context, idAddr)
 	if err != nil {
 		return nil, err
+	}
+	if !found {
+		return nil, fmt.Errorf("actor not found")
 	}
 	// store state
 	head, err := w.vm.store.Put(state)
@@ -211,6 +223,10 @@ func (w *ValidationVMWrapper) SetActorState(addr address.Address, balance big.In
 	a.Head = enccid.NewCid(head)
 	a.Balance = balance
 
+	if err := w.vm.state.SetActor(w.vm.context, idAddr, a); err != nil {
+		return nil, err
+	}
+
 	if err := w.PersistChanges(); err != nil {
 		return nil, err
 	}
@@ -219,13 +235,7 @@ func (w *ValidationVMWrapper) SetActorState(addr address.Address, balance big.In
 }
 
 func (w *ValidationVMWrapper) PersistChanges() error {
-	if err := w.vm.state.Commit(w.vm.context); err != nil {
-		return err
-	}
-	if _, err := w.vm.state.Flush(w.vm.context); err != nil {
-		return err
-	}
-	if err := w.vm.store.Flush(); err != nil {
+	if _, err := w.vm.commit(); err != nil {
 		return err
 	}
 	return nil

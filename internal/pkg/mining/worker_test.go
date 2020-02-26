@@ -634,7 +634,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	err = st.SetActor(ctx, actID, act)
 	require.NoError(t, err)
 
-	stateRoot, err := st.Flush(ctx)
+	stateRoot, err := st.Commit(ctx)
 	require.NoError(t, err)
 
 	baseBlock := block.Block{

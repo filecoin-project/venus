@@ -26,7 +26,6 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 func heightFromTip(t *testing.T, tip block.TipSet) abi.ChainEpoch {
@@ -555,7 +554,7 @@ func setupWithValidator(ctx context.Context, t *testing.T, fullVal syncer.FullBl
 	bs := bstore.NewBlockstore(ds)
 	cst := cborutil.NewIpldStore(bs)
 
-	store := chain.NewStore(ds, cst, state.NewTreeLoader(), chain.NewStatusReporter(), genesis.At(0).Cid())
+	store := chain.NewStore(ds, cst, chain.NewStatusReporter(), genesis.At(0).Cid())
 	// Initialize chainStore store genesis state and tipset as head.
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: genStateRoot, TipSet: genesis, TipSetReceipts: types.EmptyReceiptsCID}))
 	require.NoError(t, store.SetHead(ctx, genesis))

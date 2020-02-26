@@ -2,7 +2,6 @@ package vmcontext
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"fmt"
 	"runtime/debug"
@@ -112,7 +111,8 @@ func (ctx *invocationContext) invoke() interface{} {
 	// post-dispatch
 	// 1. check caller was validated
 	// 2. check state manipulation was valid
-	// 3. success!
+	// 3. update actor state
+	// 4. success!
 
 	// 1. check caller was validated
 	if !ctx.isCallerValidated {
@@ -128,9 +128,24 @@ func (ctx *invocationContext) invoke() interface{} {
 		return id
 	})
 
+	// 3. update actor state
+	// we need to load the actor back up in case something changed during execution
+	var found bool
+	ctx.toActor, found, err = ctx.rt.state.GetActor(ctx.rt.context, ctx.msg.to)
+	if err != nil {
+		panic(err)
+	}
+	if !found {
+		// Note: this is ok, it means the actor was deleted during the execution of the message
+		return out
+	}
+	// update the head and save it
 	ctx.toActor.Head = e.NewCid(stateHandle.head)
+	if err := ctx.rt.state.SetActor(ctx.rt.context, ctx.msg.to, ctx.toActor); err != nil {
+		panic(err)
+	}
 
-	// 3. success! build the receipt
+	// 4. success! build the receipt
 	return out
 }
 
@@ -141,9 +156,12 @@ func (ctx *invocationContext) invoke() interface{} {
 // Otherwise, this method will abort execution.
 func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Actor, address.Address) {
 	// resolve the target address via the InitActor, and attempt to load state.
-	initActorEntry, err := ctx.rt.state.GetActor(context.Background(), builtin.InitActorAddr)
+	initActorEntry, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.InitActorAddr)
 	if err != nil {
-		panic(fmt.Errorf("init actor not found. %s", err))
+		panic(err)
+	}
+	if !found {
+		runtime.Abort(exitcode.SysErrActorNotFound)
 	}
 
 	if target == builtin.InitActorAddr {
@@ -200,10 +218,16 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 	}
 
 	initActorEntry.Head = e.NewCid(stateHandle.head)
+	if err := ctx.rt.state.SetActor(ctx.rt.context, builtin.InitActorAddr, initActorEntry); err != nil {
+		panic(err)
+	}
 
 	// load actor
-	targetActor, err := ctx.rt.state.GetActor(context.Background(), targetIDAddr)
+	targetActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, targetIDAddr)
 	if err != nil {
+		panic(err)
+	}
+	if !found {
 		panic(fmt.Errorf("unreachable: actor is supposed to exist but it does not. %s", err))
 	}
 
@@ -354,21 +378,21 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 	// Check existing address. If nothing there, create empty actor.
 	//
 	// Note: we are storing the actors by ActorID *address*
-	newActor, _, err := ctx.rt.state.GetOrCreateActor(context.TODO(), addr, func() (*actor.Actor, address.Address, error) {
-		return &actor.Actor{}, addr, nil
-	})
-
+	_, found, err := ctx.rt.state.GetActor(ctx.rt.context, addr)
 	if err != nil {
 		panic(err)
 	}
-
-	if !newActor.Empty() {
+	if found {
 		runtime.Abortf(exitcode.ErrIllegalArgument, "Actor address already exists")
 	}
-
-	newActor.Balance = abi.NewTokenAmount(0)
-	// make this the right 'type' of actor
-	newActor.Code = e.NewCid(codeID)
+	newActor := &actor.Actor{
+		// make this the right 'type' of actor
+		Code:    e.NewCid(codeID),
+		Balance: abi.NewTokenAmount(0),
+	}
+	if err := ctx.rt.state.SetActor(ctx.rt.context, addr, newActor); err != nil {
+		panic(err)
+	}
 }
 
 // patternContext implements the PatternContext

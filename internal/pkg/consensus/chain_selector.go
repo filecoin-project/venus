@@ -132,6 +132,6 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b block.TipSet, aState
 	return cmp == 1, nil
 }
 
-func (c *ChainSelector) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, error) {
-	return state.NewTreeLoader().LoadStateTree(ctx, c.cstore, id)
+func (c *ChainSelector) loadStateTree(ctx context.Context, id cid.Cid) (*state.State, error) {
+	return state.LoadState(ctx, c.cstore, id)
 }

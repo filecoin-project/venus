@@ -26,16 +26,16 @@ import (
 
 // RequireMakeStateTree takes a map of addresses to actors and stores them on
 // the state tree, requiring that all its steps succeed.
-func RequireMakeStateTree(t *testing.T, cst cbor.IpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, state.Tree) {
+func RequireMakeStateTree(t *testing.T, cst cbor.IpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, *state.State) {
 	ctx := context.Background()
-	tree := state.NewTree(cst)
+	tree := state.NewState(cst)
 
 	for addr, act := range acts {
 		err := tree.SetActor(ctx, addr, act)
 		require.NoError(t, err)
 	}
 
-	c, err := tree.Flush(ctx)
+	c, err := tree.Commit(ctx)
 	require.NoError(t, err)
 
 	return c, tree
@@ -239,14 +239,14 @@ func RequireGetNonce(t *testing.T, st state.Tree, vms vm.Storage, a address.Addr
 }
 
 // RequireCreateStorages creates an empty state tree and storage map.
-func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.Storage) {
+func RequireCreateStorages(ctx context.Context, t *testing.T) (*state.State, vm.Storage) {
 	d := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(d)
 	cst := cborutil.NewIpldStore(bs)
 	blk, err := DefaultGenesis(cst, bs)
 	require.NoError(t, err)
 
-	st, err := state.NewTreeLoader().LoadStateTree(ctx, cst, blk.StateRoot.Cid)
+	st, err := state.LoadState(ctx, cst, blk.StateRoot.Cid)
 	require.NoError(t, err)
 
 	vms := vm.NewStorage(bs)

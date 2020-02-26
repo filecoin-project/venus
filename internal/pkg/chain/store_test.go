@@ -30,7 +30,7 @@ import (
 
 // newChainStore creates a new chain store for tests.
 func newChainStore(r repo.Repo, genCid cid.Cid) *chain.Store {
-	return chain.NewStore(r.Datastore(), cbor.NewMemCborStore(), state.NewTreeLoader(), chain.NewStatusReporter(), genCid)
+	return chain.NewStore(r.Datastore(), cbor.NewMemCborStore(), chain.NewStatusReporter(), genCid)
 }
 
 // requirePutTestChain puts the count tipsets preceding head in the source to
@@ -145,9 +145,9 @@ func TestGetTipSetState(t *testing.T) {
 	balance := abi.NewTokenAmount(1000000)
 	testActor := actor.NewActor(fakeCode, balance)
 	addr := vmaddr.NewForTestGetter()()
-	st1 := state.NewTree(cst)
+	st1 := state.NewState(cst)
 	require.NoError(t, st1.SetActor(ctx, addr, testActor))
-	root, err := st1.Flush(ctx)
+	root, err := st1.Commit(ctx)
 	require.NoError(t, err)
 
 	// link testing state to test block
@@ -158,7 +158,7 @@ func TestGetTipSetState(t *testing.T) {
 	})
 
 	// setup chain store
-	store := chain.NewStore(ds, cst, state.NewTreeLoader(), chain.NewStatusReporter(), gen.At(0).Cid())
+	store := chain.NewStore(ds, cst, chain.NewStatusReporter(), gen.At(0).Cid())
 
 	// add tipset and state to chain store
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
@@ -172,7 +172,7 @@ func TestGetTipSetState(t *testing.T) {
 	assert.NoError(t, err)
 	for actRes := range st2.GetAllActors(ctx) {
 		assert.NoError(t, actRes.Error)
-		assert.Equal(t, addr, actRes.Address)
+		assert.Equal(t, addr, actRes.Key)
 		assert.Equal(t, fakeCode, actRes.Actor.Code.Cid)
 		assert.Equal(t, testActor.Head, actRes.Actor.Head)
 		assert.Equal(t, uint64(0), actRes.Actor.CallSeqNum)
@@ -284,7 +284,7 @@ func TestHead(t *testing.T) {
 	genTS := builder.NewGenesis()
 	r := repo.NewInMemoryRepo()
 	sr := chain.NewStatusReporter()
-	cs := chain.NewStore(r.Datastore(), cbor.NewMemCborStore(), state.NewTreeLoader(), sr, genTS.At(0).Cid())
+	cs := chain.NewStore(r.Datastore(), cbor.NewMemCborStore(), sr, genTS.At(0).Cid())
 
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
@@ -387,7 +387,7 @@ func TestLoadAndReboot(t *testing.T) {
 	requirePutBlocksToCborStore(t, cst, link3.ToSlice()...)
 	requirePutBlocksToCborStore(t, cst, link4.ToSlice()...)
 
-	chainStore := chain.NewStore(ds, cst, state.NewTreeLoader(), chain.NewStatusReporter(), genTS.At(0).Cid())
+	chainStore := chain.NewStore(ds, cst, chain.NewStatusReporter(), genTS.At(0).Cid())
 	requirePutTestChain(ctx, t, chainStore, link4.Key(), builder, 5)
 	assertSetHead(t, chainStore, genTS) // set the genesis block
 
@@ -396,7 +396,7 @@ func TestLoadAndReboot(t *testing.T) {
 
 	// rebuild chain with same datastore and cborstore
 	sr := chain.NewStatusReporter()
-	rebootChain := chain.NewStore(ds, cst, state.NewTreeLoader(), sr, genTS.At(0).Cid())
+	rebootChain := chain.NewStore(ds, cst, sr, genTS.At(0).Cid())
 	err := rebootChain.Load(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, link4.Key(), sr.Status().ValidatedHead)

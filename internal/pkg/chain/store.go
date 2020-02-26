@@ -69,10 +69,6 @@ type Store struct {
 	// for reading filecoin block and state objects kept by the node.
 	stateAndBlockSource *ipldSource
 
-	// stateTreeeLoader is used for loading the state tree from a
-	// CborIPLDStore
-	stateTreeLoader state.TreeLoader
-
 	// ds is the datastore for the chain's private metadata which consists
 	// of the tipset key to state root cid mapping, and the heaviest tipset
 	// key.
@@ -101,10 +97,9 @@ type Store struct {
 }
 
 // NewStore constructs a new default store.
-func NewStore(ds repo.Datastore, cst cbor.IpldStore, stl state.TreeLoader, sr Reporter, genesisCid cid.Cid) *Store {
+func NewStore(ds repo.Datastore, cst cbor.IpldStore, sr Reporter, genesisCid cid.Cid) *Store {
 	return &Store{
 		stateAndBlockSource: newSource(cst),
-		stateTreeLoader:     stl,
 		ds:                  ds,
 		headEvents:          pubsub.New(128),
 		tipIndex:            NewTipIndex(),
@@ -258,7 +253,7 @@ func (store *Store) GetTipSetState(ctx context.Context, key block.TipSetKey) (st
 	if err != nil {
 		return nil, err
 	}
-	return store.stateTreeLoader.LoadStateTree(ctx, store.stateAndBlockSource.cborStore, stateCid)
+	return state.LoadState(ctx, store.stateAndBlockSource.cborStore, stateCid)
 }
 
 // GetGenesisState returns the state tree at genesis to retrieve initialization parameters.
@@ -270,7 +265,7 @@ func (store *Store) GetGenesisState(ctx context.Context) (state.Tree, error) {
 	}
 
 	// create state tree
-	return store.stateTreeLoader.LoadStateTree(ctx, store.stateAndBlockSource.cborStore, genesis.StateRoot.Cid)
+	return state.LoadState(ctx, store.stateAndBlockSource.cborStore, genesis.StateRoot.Cid)
 }
 
 // GetGenesisBlock returns the genesis block held by the chain store.

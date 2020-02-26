@@ -14,6 +14,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
 
+// TODO: limit memory footprint
+// TODO: implement ipld.Store
+
 // VMStorage implements a content-addressable store for the VM.
 type VMStorage struct {
 	blockstore       blockstore.Blockstore

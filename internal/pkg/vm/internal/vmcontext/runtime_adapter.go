@@ -62,9 +62,12 @@ func (a *runtimeAdapter) ResolveAddress(addr address.Address) (address.Address, 
 
 // GetActorCodeCID implements Runtime.
 func (a *runtimeAdapter) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) {
-	entry, err := a.ctx.rt.state.GetActor(context.Background(), addr)
-	if err != nil {
+	entry, found, err := a.ctx.rt.state.GetActor(context.Background(), addr)
+	if !found {
 		return cid.Undef, false
+	}
+	if err != nil {
+		panic(err)
 	}
 	return entry.Code.Cid, true
 }
