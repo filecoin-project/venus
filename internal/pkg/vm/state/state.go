@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Review: can we get rid of this?
 type Tree interface {
 	Root() (Root, bool)
 

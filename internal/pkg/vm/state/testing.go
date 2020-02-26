@@ -2,18 +2,29 @@ package state
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
-// NewFromString creates a new VM state based on the contents of the string.
-func NewFromString(t *testing.T, state string, store cbor.IpldStore) *State {
-	panic("resurrect")
+// NewFromString sets a state tree based on an int.  TODO: this indirection
+// can be avoided when we are able to change cborStore to an interface and then
+// making a test implementation of the cbor store that can map test cids to test
+// states.
+func NewFromString(t *testing.T, s string, store cbor.IpldStore) *State {
+	tree := NewState(store)
+	strAddr, err := address.NewSecp256k1Address([]byte(s))
+	fmt.Printf("strAddr: %s\n", strAddr)
+	require.NoError(t, err)
+	err = tree.SetActor(context.Background(), strAddr, &actor.Actor{})
+	require.NoError(t, err)
+	return tree
 }
 
 // MustCommit flushes the StateTree or panics if it can't.

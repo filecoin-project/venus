@@ -388,6 +388,10 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, rn
 	// - sender balance withheld
 	// - (if did not previously exist, the new auto-created target actor)
 
+	if err := vm.state.SetActor(vm.context, msg.From, fromActor); err != nil {
+		panic(err)
+	}
+
 	// 7.a. checkpoint store
 	// TODO: vm.store.Checkpoint() (issue: #3718)
 	// 7.b. checkpoint actor state
