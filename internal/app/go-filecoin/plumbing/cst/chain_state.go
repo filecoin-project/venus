@@ -36,6 +36,7 @@ var logStore = logging.Logger("plumbing/chain_store")
 
 type chainReadWriter interface {
 	GetHead() block.TipSetKey
+	GetGenesisBlock(ctx context.Context) (*block.Block, error)
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
 	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
 	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
@@ -151,7 +152,11 @@ func (chn *ChainStateReadWriter) GetReceipts(ctx context.Context, id cid.Cid) ([
 // SampleChainRandomness computes randomness seeded by a ticket from the chain `head` at `sampleHeight`.
 func (chn *ChainStateReadWriter) SampleChainRandomness(ctx context.Context, head block.TipSetKey, tag acrypto.DomainSeparationTag,
 	sampleHeight abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewSamplerAtHead(chn.readWriter, head)}
+	genBlk, err := chn.readWriter.GetGenesisBlock(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewSamplerAtHead(chn.readWriter, genBlk.Ticket, head)}
 	return rnd.Randomness(ctx, tag, sampleHeight, entropy)
 }
 

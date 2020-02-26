@@ -21,10 +21,11 @@ import (
 func TestSamplingChainRandomness(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
+	genesisTicket := block.Ticket{VRFProof: []byte{1, 2, 3, 4}}
 
 	makeSample := func(targetEpoch, sampleEpoch int) crypto.RandomSeed {
 		buf := bytes.Buffer{}
-		var vrfProof []byte
+		vrfProof := genesisTicket.VRFProof
 		if sampleEpoch >= 0 {
 			vrfProof = []byte(strconv.Itoa(sampleEpoch))
 		}
@@ -38,7 +39,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		builder, ch := makeChain(t, 21)
 		head := ch[0].Key()
-		sampler := chain.NewSampler(builder)
+		sampler := chain.NewSampler(builder, genesisTicket)
 
 		r, err := sampler.Sample(ctx, head, abi.ChainEpoch(20))
 		assert.NoError(t, err)
@@ -56,7 +57,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 	t.Run("skips missing tipsets", func(t *testing.T) {
 		builder, ch := makeChain(t, 21)
 		head := ch[0].Key()
-		sampler := chain.NewSampler(builder)
+		sampler := chain.NewSampler(builder, genesisTicket)
 
 		// Sample height after the head falls back to the head.
 		headParent := ch[1].Key()
@@ -86,7 +87,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 		builder, ch := makeChain(t, 6)
 		head := ch[0].Key()
 		gen := (ch[len(ch)-1]).Key()
-		sampler := chain.NewSampler(builder)
+		sampler := chain.NewSampler(builder, genesisTicket)
 
 		// Sample genesis from longer chain.
 		r, err := sampler.Sample(ctx, head, abi.ChainEpoch(0))

@@ -1,21 +1,18 @@
 package chain
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 )
 
 // Creates a new sampler for the chain identified by `head`.
-func NewSamplerAtHead(reader TipSetProvider, head block.TipSetKey) *SamplerAtHead {
+func NewSamplerAtHead(reader TipSetProvider, genesisTicket block.Ticket, head block.TipSetKey) *SamplerAtHead {
 	return &SamplerAtHead{
-		sampler: NewSampler(reader),
+		sampler: NewSampler(reader, genesisTicket),
 		head:    head,
 	}
 }
@@ -27,15 +24,17 @@ func NewSamplerAtHead(reader TipSetProvider, head block.TipSetKey) *SamplerAtHea
 // This implementation doesn't do any caching: it traverses the chain each time. A cache that could be directly
 // indexed by epoch could speed up repeated samples from the same chain.
 type Sampler struct {
-	reader TipSetProvider
+	reader        TipSetProvider
+	genesisTicket block.Ticket
 }
 
-func NewSampler(reader TipSetProvider) *Sampler {
-	return &Sampler{reader}
+func NewSampler(reader TipSetProvider, genesisTicket block.Ticket) *Sampler {
+	return &Sampler{reader, genesisTicket}
 }
 
 // Draws a randomness seed from the chain identified by `head` and the highest tipset with height <= `epoch`.
-// If `head` is empty (as when processing the genesis block), the seed is empty.
+// If `head` is empty (as when processing the pre-genesis state or the genesis block), the seed derived from
+// a fixed genesis ticket.
 func (s *Sampler) Sample(ctx context.Context, head block.TipSetKey, epoch abi.ChainEpoch) (crypto.RandomSeed, error) {
 	var ticket block.Ticket
 	if !head.Empty() {
@@ -56,20 +55,11 @@ func (s *Sampler) Sample(ctx context.Context, head block.TipSetKey, epoch abi.Ch
 			return nil, err
 		}
 	} else {
-		// Sampling for the genesis block.
-		ticket.VRFProof = []byte{}
+		// Sampling for the genesis state or genesis tipset.
+		ticket = s.genesisTicket
 	}
 
-	buf := bytes.Buffer{}
-	vrfDigest := blake2b.Sum256(ticket.VRFProof)
-	buf.Write(vrfDigest[:])
-	err := binary.Write(&buf, binary.BigEndian, epoch)
-	if err != nil {
-		return nil, err
-	}
-
-	bufHash := blake2b.Sum256(buf.Bytes())
-	return bufHash[:], err
+	return crypto.MakeRandomSeed(ticket.VRFProof, epoch)
 }
 
 // Finds the the highest tipset with height <= the requested epoch, by traversing backward from start.
