@@ -129,7 +129,17 @@ func (ctx *invocationContext) invoke() interface{} {
 	})
 
 	// 3. update actor state
-	// Dragons: this is wrong, we need to load it back up, change the head, and store it other we risk losing/fabricating money
+	// we need to load the actor back up in case something changed during execution
+	var found bool
+	ctx.toActor, found, err = ctx.rt.state.GetActor(ctx.rt.context, ctx.msg.to)
+	if err != nil {
+		panic(err)
+	}
+	if !found {
+		// Note: this is ok, it means the actor was deleted during the execution of the message
+		return out
+	}
+	// update the head and save it
 	ctx.toActor.Head = e.NewCid(stateHandle.head)
 	if err := ctx.rt.state.SetActor(ctx.rt.context, ctx.msg.to, ctx.toActor); err != nil {
 		panic(err)
