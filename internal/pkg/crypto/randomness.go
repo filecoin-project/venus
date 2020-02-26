@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"fmt"
 
@@ -11,15 +12,49 @@ import (
 	"github.com/pkg/errors"
 )
 
-// RandomnessSource provides randomness to actors.
-type RandomnessSource interface {
-	Randomness(tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
-}
-
 type RandomSeed []byte
 
+///// Chain sampling /////
+
 type ChainSampler interface {
-	Sample(epoch abi.ChainEpoch) (RandomSeed, error)
+	Sample(ctx context.Context, epoch abi.ChainEpoch) (RandomSeed, error)
+}
+
+// A sampler for use when computing genesis state (the state that the genesis block points to as parent state).
+// There is no chain to sample a seed from.
+type GenesisSampler struct {
+	TicketBytes []byte
+}
+
+func (g *GenesisSampler) Sample(_ context.Context, epoch abi.ChainEpoch) (RandomSeed, error) {
+	if epoch > 0 {
+		return nil, fmt.Errorf("invalid use of genesis sampler for epoch %d", epoch)
+	}
+	return MakeRandomSeed(g.TicketBytes, epoch)
+}
+
+// Computes a random seed from raw ticket bytes and the epoch from which the ticket was requested
+// (which may not match the epoch it actually came from).
+// A randomness seed is the black2b hash of the VRF digest of the minimum ticket of the tipset at or before
+// the requested epoch, concatenated with the big endian bytes of the epoch value.
+func MakeRandomSeed(rawTicket []byte, epoch abi.ChainEpoch) (RandomSeed, error) {
+	buf := bytes.Buffer{}
+	vrfDigest := blake2b.Sum256(rawTicket)
+	buf.Write(vrfDigest[:])
+	err := binary.Write(&buf, binary.BigEndian, epoch)
+	if err != nil {
+		return nil, err
+	}
+
+	bufHash := blake2b.Sum256(buf.Bytes())
+	return bufHash[:], nil
+}
+
+///// Randomness derivation /////
+
+// RandomnessSource provides randomness to actors.
+type RandomnessSource interface {
+	Randomness(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 }
 
 // A randomness source that seeds computations with a sample drawn from a chain epoch.
@@ -27,23 +62,11 @@ type ChainRandomnessSource struct {
 	Sampler ChainSampler
 }
 
-func (c *ChainRandomnessSource) Randomness(tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	seed, err := c.Sampler.Sample(epoch)
+func (c *ChainRandomnessSource) Randomness(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	seed, err := c.Sampler.Sample(ctx, epoch)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to sample chain for randomness")
 	}
-	return blendEntropy(tag, seed, entropy)
-}
-
-// A randomness source for use when computing genesis state (the state that the genesis block points to as parent state).
-// There is no chain to sample a seed from.
-type GenesisRandomnessSource struct{}
-
-func (g *GenesisRandomnessSource) Randomness(tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	if epoch > 0 {
-		return nil, fmt.Errorf("invalid use of genesis randomness source for epoch %d", epoch)
-	}
-	seed := []byte{}
 	return blendEntropy(tag, seed, entropy)
 }
 

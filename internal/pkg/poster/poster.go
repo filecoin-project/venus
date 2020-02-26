@@ -6,13 +6,15 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
-	abi "github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/prometheus/common/log"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -145,7 +147,7 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, provingPe
 		return
 	}
 
-	challengeSeed, err := p.getChallengeSeed(ctx, provingPeriodStart)
+	challengeSeed, err := p.getChallengeSeed(ctx, head, provingPeriodStart, p.minerAddr)
 	if err != nil {
 		log.Error("error getting challenge seed", err)
 		return
@@ -162,14 +164,14 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, provingPe
 		return
 	}
 
-	err = p.sendPoSt(ctx, stateView, head, candidates, proof)
+	err = p.sendPoSt(ctx, stateView, candidates, proof)
 	if err != nil {
 		log.Error("error sending fallback PoSt", err)
 		return
 	}
 }
 
-func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, tipKey block.TipSetKey, candidates []sectorbuilder.EPostCandidate, proof []byte) error {
+func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, candidates []sectorbuilder.EPostCandidate, proof []byte) error {
 	minerIDAddr, err := stateView.InitResolveAddress(ctx, p.minerAddr)
 	if err != nil {
 		return err
@@ -184,7 +186,7 @@ func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, tipKey 
 	for i, candidate := range candidates {
 		poStCandidates[i] = abi.PoStCandidate{
 			RegisteredProof: abi.RegisteredProof_WinStackedDRG32GiBPoSt,
-			PartialTicket:   abi.PartialTicket(candidate.PartialTicket[:]),
+			PartialTicket:   candidate.PartialTicket[:],
 			SectorID:        abi.SectorID{Miner: abi.ActorID(minerID), Number: candidate.SectorNum},
 			ChallengeIndex:  int64(candidate.SectorChallengeIndex),
 		}
@@ -223,16 +225,19 @@ func (p *Poster) getProvingSet(ctx context.Context, stateView *appstate.View) (s
 	return consensus.NewPowerTableView(stateView).SortedSectorInfos(ctx, p.minerAddr)
 }
 
-func (p *Poster) getChallengeSeed(ctx context.Context, challengeHeight abi.ChainEpoch) ([32]byte, error) {
+func (p *Poster) getChallengeSeed(ctx context.Context, head block.TipSetKey, height abi.ChainEpoch, minerAddr address.Address) ([32]byte, error) {
 	var challengeSeed [32]byte
 
-	randomness, err := p.chain.SampleRandomness(ctx, challengeHeight)
+	entropy, err := encoding.Encode(minerAddr)
+	if err != nil {
+		return challengeSeed, err
+	}
+	randomness, err := p.chain.SampleChainRandomness(ctx, head, acrypto.DomainSeparationTag_WindowedPoStChallengeSeed, height, entropy)
 	if err != nil {
 		return challengeSeed, err
 	}
 
 	copy(challengeSeed[:], randomness)
-
 	return challengeSeed, nil
 }
 

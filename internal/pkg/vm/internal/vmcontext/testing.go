@@ -1,37 +1,34 @@
 package vmcontext
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 
+	vtypes "github.com/filecoin-project/chain-validation/chain/types"
+	vstate "github.com/filecoin-project/chain-validation/state"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-crypto"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
-	gfcBuiltin "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-
-	init_spec "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	crypto_spec "github.com/filecoin-project/specs-actors/actors/crypto"
-
-	vtypes "github.com/filecoin-project/chain-validation/chain/types"
-	vstate "github.com/filecoin-project/chain-validation/state"
-
 	gfcrypto "github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	gfcBuiltin "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 var _ vstate.Factories = &Factories{}
@@ -145,7 +142,7 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 		}
 
 		// get a view into the actor state
-		var initState init_spec.State
+		var initState init_.State
 		if err := w.vm.store.Get(initActorEntry.Head.Cid, &initState); err != nil {
 			return nil, address.Undef, err
 		}
@@ -241,7 +238,7 @@ func (w *ValidationVMWrapper) PersistChanges() error {
 type fakeRandSrc struct {
 }
 
-func (r fakeRandSrc) Randomness(tag crypto_spec.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (r fakeRandSrc) Randomness(_ context.Context, _ acrypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) (abi.Randomness, error) {
 	panic("implement me")
 }
 
@@ -327,10 +324,10 @@ func (k *KeyManager) NewBLSAccountAddress() address.Address {
 	return addr
 }
 
-func (k *KeyManager) Sign(addr address.Address, data []byte) (crypto_spec.Signature, error) {
+func (k *KeyManager) Sign(addr address.Address, data []byte) (acrypto.Signature, error) {
 	ki, ok := k.keys[addr]
 	if !ok {
-		return crypto_spec.Signature{}, fmt.Errorf("unknown address %v", addr)
+		return acrypto.Signature{}, fmt.Errorf("unknown address %v", addr)
 	}
 	return gfcrypto.Sign(data, ki.PrivateKey, ki.SigType)
 }
@@ -343,7 +340,7 @@ func (k *KeyManager) newSecp256k1Key() *gfcrypto.KeyInfo {
 	}
 	k.secpSeed++
 	return &gfcrypto.KeyInfo{
-		SigType:    crypto_spec.SigTypeSecp256k1,
+		SigType:    acrypto.SigTypeSecp256k1,
 		PrivateKey: prv,
 	}
 }
@@ -354,7 +351,7 @@ func (k *KeyManager) newBLSKey() *gfcrypto.KeyInfo {
 	// s.blsSeed++
 	sk := ffi.PrivateKeyGenerate()
 	return &gfcrypto.KeyInfo{
-		SigType:    crypto_spec.SigTypeBLS,
+		SigType:    acrypto.SigTypeBLS,
 		PrivateKey: sk[:],
 	}
 }

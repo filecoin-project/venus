@@ -120,13 +120,12 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst cbor.IpldStore, bs blockst
 	if err != nil {
 		return nil, err
 	}
-
 	st := state.NewTree(cst)
 	store := vm.NewStorage(bs)
 	vm := vm.NewVM(st, &store).(consensus.GenesisVM)
-	rnd := crypto.GenesisRandomnessSource{}
+	rnd := crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{TicketBytes: consensus.GenesisTicket.VRFProof}}
 
-	if err := consensus.SetupDefaultActors(ctx, vm, &store, st, cfg.ProofsMode, cfg.Network); err != nil {
+	if err := consensus.SetupDefaultActors(ctx, vm, &store, st, &rnd, cfg.Network); err != nil {
 		return nil, err
 	}
 
@@ -169,7 +168,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst cbor.IpldStore, bs blockst
 			Type: crypto.SigTypeBLS,
 			Data: emptyBLSSignature[:],
 		},
-		Ticket:    block.Ticket{VRFProof: []byte{0xec}},
+		Ticket:    consensus.GenesisTicket,
 		Timestamp: cfg.Time,
 	}
 

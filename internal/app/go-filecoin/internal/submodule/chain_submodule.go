@@ -57,19 +57,15 @@ func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *Blockstor
 	chainStatusReporter := chain.NewStatusReporter()
 	chainStore := chain.NewStore(repo.ChainDatastore(), blockstore.CborStore, state.NewTreeLoader(), chainStatusReporter, config.GenesisCid())
 
-	// set up processor
-	sampler := chain.NewSampler(chainStore)
-	processor := consensus.NewDefaultProcessor(sampler)
-
 	actorState := appstate.NewTipSetStateViewer(chainStore, blockstore.CborStore)
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, builtin.DefaultActors)
+	processor := consensus.NewDefaultProcessor(chainState)
 
 	return ChainSubmodule{
 		ChainReader:  chainStore,
 		MessageStore: messageStore,
 		// HeaviestTipSetCh nil
-		Sampler:        sampler,
 		ActorState:     actorState,
 		State:          chainState,
 		Processor:      processor,

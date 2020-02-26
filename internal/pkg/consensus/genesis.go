@@ -36,6 +36,11 @@ import (
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
 type GenesisInitFunc func(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error)
 
+// GenesisTicket is the ticket to place in the genesis block header (which can't be derived from a prior ticket),
+// used in the evaluation of the messages in the genesis block,
+// and *also* the ticket value used when computing the genesis state (the parent state of the genesis block).
+var GenesisTicket = block.Ticket{VRFProof: []byte{0xec}}
+
 var (
 	defaultAccounts map[address.Address]abi.TokenAmount
 )
@@ -178,7 +183,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 		st := state.NewTree(cst)
 		store := vm.NewStorage(bs)
 		vm := vm.NewVM(st, &store).(GenesisVM)
-		rnd := crypto.GenesisRandomnessSource{}
+		rnd := crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{TicketBytes: GenesisTicket.VRFProof}}
 
 		genCfg := NewEmptyConfig()
 		for _, opt := range opts {
@@ -187,7 +192,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			}
 		}
 
-		if err := SetupDefaultActors(ctx, vm, &store, st, genCfg.proofsMode, genCfg.network); err != nil {
+		if err := SetupDefaultActors(ctx, vm, &store, st, &rnd, genCfg.network); err != nil {
 			return nil, err
 		}
 
@@ -206,8 +211,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			}
 			val := genCfg.accounts[addr]
 
-			_, err = vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr,
-				builtin.MethodSend, val, nil, &rnd)
+			_, err = vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr, builtin.MethodSend, val, nil, &rnd)
 			if err != nil {
 				return nil, err
 			}
@@ -266,7 +270,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 				Type: crypto.SigTypeBLS,
 				Data: emptyBLSSignature[:],
 			},
-			Ticket:    block.Ticket{VRFProof: []byte{0xec}},
+			Ticket:    GenesisTicket,
 			Timestamp: uint64(genCfg.genesisTimestamp.Unix()),
 		}
 
@@ -279,7 +283,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 }
 
 // SetupDefaultActors inits the builtin actors that are required to run filecoin.
-func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st state.Tree, storeType types.ProofsMode, network string) error {
+func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st state.Tree, rnd crypto.RandomnessSource, network string) error {
 	createActor := func(addr address.Address, codeCid cid.Cid, balance abi.TokenAmount, stateFn func() (interface{}, error)) *actor.Actor {
 
 		a := actor.Actor{
@@ -338,7 +342,6 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 	}
 	sort.Strings(sortedAddresses)
 
-	rnd := crypto.GenesisRandomnessSource{}
 	for _, addrBytes := range sortedAddresses {
 		addr, err := address.NewFromBytes([]byte(addrBytes))
 		if err != nil {
@@ -352,7 +355,7 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 				return err
 			}
 		} else {
-			_, err = vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr, builtin.MethodSend, val, nil, &rnd)
+			_, err = vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr, builtin.MethodSend, val, nil, rnd)
 			if err != nil {
 				return err
 			}
