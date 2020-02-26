@@ -375,6 +375,11 @@ func (node *Node) SetupMining(ctx context.Context) error {
 		}
 	}
 
+	if node.RetrievalProtocol == nil {
+		if err := node.setupRetrievalMining(ctx); err != nil {
+			return err
+		}
+	}
 	// ensure we have a mining worker
 	if node.BlockMining.MiningWorker == nil {
 		if node.BlockMining.MiningWorker, err = node.CreateMiningWorker(ctx); err != nil {
@@ -471,6 +476,27 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 	//	return err
 	//}
 
+	return nil
+}
+
+func (node *Node) setupRetrievalMining(ctx context.Context) error {
+	providerAddr, err := node.MiningAddress()
+	if err != nil {
+		return errors.Wrap(err, "failed to get mining address")
+	}
+	rp, err := submodule.NewRetrievalProtocolSubmodule(
+		node.Blockstore.Blockstore,
+		node.Repo.Datastore(),
+		node.chain.State,
+		node.Host(),
+		providerAddr,
+		node.Wallet.Wallet,
+		nil, // TODO: payment channel manager API, in follow-up
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to build node.RetrievalProtocol")
+	}
+	node.RetrievalProtocol = rp
 	return nil
 }
 

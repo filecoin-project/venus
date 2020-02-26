@@ -52,7 +52,7 @@ func NewView(store cbor.IpldStore, root cid.Cid) *View {
 	}
 }
 
-// Returns the network name from the init actor state.
+// InitNetworkName Returns the network name from the init actor state.
 func (v *View) InitNetworkName(ctx context.Context) (string, error) {
 	initState, err := v.loadInitActor(ctx)
 	if err != nil {
@@ -61,7 +61,7 @@ func (v *View) InitNetworkName(ctx context.Context) (string, error) {
 	return initState.NetworkName, nil
 }
 
-// Returns ID address if public key address is given.
+// InitResolveAddress Returns ID address if public key address is given.
 func (v *View) InitResolveAddress(ctx context.Context, a addr.Address) (addr.Address, error) {
 	if a.Protocol() == addr.ID {
 		return a, nil
@@ -78,6 +78,7 @@ func (v *View) InitResolveAddress(ctx context.Context, a addr.Address) (addr.Add
 	return state.ResolveAddress(StoreFromCbor(ctx, v.ipldStore), a)
 }
 
+// MinerControlAddresses returns the owner and worker addresses for a miner actor
 func (v *View) MinerControlAddresses(ctx context.Context, maddr addr.Address) (owner, worker addr.Address, err error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
@@ -86,6 +87,7 @@ func (v *View) MinerControlAddresses(ctx context.Context, maddr addr.Address) (o
 	return minerState.Info.Owner, minerState.Info.Worker, nil
 }
 
+// MinerPeerID returns the PeerID for a miner actor
 func (v *View) MinerPeerID(ctx context.Context, maddr addr.Address) (peer.ID, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
@@ -94,6 +96,7 @@ func (v *View) MinerPeerID(ctx context.Context, maddr addr.Address) (peer.ID, er
 	return minerState.Info.PeerId, nil
 }
 
+// MinerSectorSize returns the sector size for a miner actor
 func (v *View) MinerSectorSize(ctx context.Context, maddr addr.Address) (abi.SectorSize, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
@@ -102,7 +105,7 @@ func (v *View) MinerSectorSize(ctx context.Context, maddr addr.Address) (abi.Sec
 	return minerState.Info.SectorSize, nil
 }
 
-// Returns the start and end of the miner's current/next proving window.
+// MinerProvingPeriod Returns the start and end of the miner's current/next proving window.
 func (v *View) MinerProvingPeriod(ctx context.Context, maddr addr.Address) (start abi.ChainEpoch, end abi.ChainEpoch, failureCount int, err error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
@@ -115,7 +118,7 @@ func (v *View) MinerProvingPeriod(ctx context.Context, maddr addr.Address) (star
 	return
 }
 
-// Iterates over the sectors in a miner's proving set.
+// MinerProvingSetForEach Iterates over the sectors in a miner's proving set.
 func (v *View) MinerProvingSetForEach(ctx context.Context, maddr addr.Address,
 	f func(id abi.SectorNumber, sealedCID cid.Cid) error) error {
 	minerState, err := v.loadMinerActor(ctx, maddr)
@@ -131,7 +134,7 @@ func (v *View) MinerProvingSetForEach(ctx context.Context, maddr addr.Address,
 	})
 }
 
-// Returns all sector ids that are faults
+// MinerFaults Returns all sector ids that are faults
 func (v *View) MinerFaults(ctx context.Context, maddr addr.Address) ([]uint64, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
@@ -141,7 +144,7 @@ func (v *View) MinerFaults(ctx context.Context, maddr addr.Address) ([]uint64, e
 	return minerState.FaultSet.All(miner.MaxFaultsCount)
 }
 
-// Looks up info for a miners precommitted sector.
+// MinerGetPrecommittedSector Looks up info for a miners precommitted sector.
 func (v *View) MinerGetPrecommittedSector(ctx context.Context, maddr addr.Address, sectorNum uint64) (*miner.SectorPreCommitOnChainInfo, bool, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
@@ -151,7 +154,7 @@ func (v *View) MinerGetPrecommittedSector(ctx context.Context, maddr addr.Addres
 	return minerState.GetPrecommittedSector(StoreFromCbor(ctx, v.ipldStore), abi.SectorNumber(sectorNum))
 }
 
-// Returns the storage power actor's value for network total power.
+// NetworkTotalPower Returns the storage power actor's value for network total power.
 func (v *View) NetworkTotalPower(ctx context.Context) (abi.StoragePower, error) {
 	powerState, err := v.loadPowerActor(ctx)
 	if err != nil {
@@ -160,7 +163,7 @@ func (v *View) NetworkTotalPower(ctx context.Context) (abi.StoragePower, error) 
 	return powerState.TotalNetworkPower, nil
 }
 
-// Returns the power of a miner's committed sectors.
+// MinerClaimedPower Returns the power of a miner's committed sectors.
 func (v *View) MinerClaimedPower(ctx context.Context, miner addr.Address) (abi.StoragePower, error) {
 	powerState, err := v.loadPowerActor(ctx)
 	if err != nil {
@@ -185,6 +188,7 @@ func (v *View) loadPowerClaim(ctx context.Context, powerState *power.State, mine
 	return &claim, nil
 }
 
+// MinerPledgeCollateral returns the locked and balance amounts for a miner actor
 func (v *View) MinerPledgeCollateral(ctx context.Context, miner addr.Address) (locked abi.TokenAmount, balance abi.TokenAmount, err error) {
 	powerState, err := v.loadPowerActor(ctx)
 	if err != nil {
