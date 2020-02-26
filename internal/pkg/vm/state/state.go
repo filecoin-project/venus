@@ -94,7 +94,7 @@ func (st *State) GetActor(ctx context.Context, key actorKey) (*actor.Actor, bool
 	return &act, true, nil
 }
 
-// SetActor sets the the actor to the given value wheter it previously existed or not.
+// SetActor sets the the actor to the given value whether it previously existed or not.
 //
 // This method will not check if the actor previuously existed, it will blindly overwrite it.
 func (st *State) SetActor(ctx context.Context, key actorKey, a *actor.Actor) error {
