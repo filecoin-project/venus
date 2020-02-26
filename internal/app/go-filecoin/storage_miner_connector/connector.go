@@ -302,7 +302,11 @@ func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context, tok stora
 		return storagenode.SealTicket{}, err
 	}
 
-	r, err := m.chainState.SampleChainRandomness(ctx, tsk, crypto.DomainSeparationTag_SealRandomness, h-miner.ChainFinalityish, nil)
+	entropy, err := encoding.Encode(m.minerAddr)
+	if err != nil {
+		return storagenode.SealTicket{}, err
+	}
+	r, err := m.chainState.SampleChainRandomness(ctx, tsk, crypto.DomainSeparationTag_SealRandomness, h-miner.ChainFinalityish, entropy)
 	if err != nil {
 		return storagenode.SealTicket{}, xerrors.Errorf("getting randomness for SealTicket failed: %w", err)
 	}
@@ -334,7 +338,7 @@ func (m *StorageMinerNodeConnector) GetChainHead(ctx context.Context) (storageno
 	return tok, h, nil
 }
 
-// GetSealSeed is used to acquire the seal seed for the provided pre-commit
+// GetSealSeed is used to acquire the interactive seal seed for the provided pre-commit
 // message, and provides channels to accommodate chainStore re-orgs. The caller is
 // responsible for choosing an interval-value, which is a quantity of blocks to
 // wait (after the block in which the pre-commit message is mined) before
@@ -376,7 +380,13 @@ func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMs
 					break
 				}
 
-				randomness, err := m.chainState.SampleChainRandomness(ctx, key, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, tsHeight, nil)
+				entropy, err := encoding.Encode(m.minerAddr)
+				if err != nil {
+					ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFatalError)
+					break
+				}
+				randomness, err := m.chainState.SampleChainRandomness(ctx, key,
+					crypto.DomainSeparationTag_InteractiveSealChallengeSeed, tsHeight, entropy)
 				if err != nil {
 					ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFatalError)
 					break

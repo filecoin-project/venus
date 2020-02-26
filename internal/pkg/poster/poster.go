@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -146,7 +147,7 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, provingPe
 		return
 	}
 
-	challengeSeed, err := p.getChallengeSeed(ctx, head, provingPeriodStart)
+	challengeSeed, err := p.getChallengeSeed(ctx, head, provingPeriodStart, p.minerAddr)
 	if err != nil {
 		log.Error("error getting challenge seed", err)
 		return
@@ -224,16 +225,19 @@ func (p *Poster) getProvingSet(ctx context.Context, stateView *appstate.View) (s
 	return consensus.NewPowerTableView(stateView).SortedSectorInfos(ctx, p.minerAddr)
 }
 
-func (p *Poster) getChallengeSeed(ctx context.Context, head block.TipSetKey, challengeHeight abi.ChainEpoch) ([32]byte, error) {
+func (p *Poster) getChallengeSeed(ctx context.Context, head block.TipSetKey, height abi.ChainEpoch, minerAddr address.Address) ([32]byte, error) {
 	var challengeSeed [32]byte
 
-	randomness, err := p.chain.SampleChainRandomness(ctx, head, acrypto.DomainSeparationTag_WindowedPoStChallengeSeed, challengeHeight, nil)
+	entropy, err := encoding.Encode(minerAddr)
+	if err != nil {
+		return challengeSeed, err
+	}
+	randomness, err := p.chain.SampleChainRandomness(ctx, head, acrypto.DomainSeparationTag_WindowedPoStChallengeSeed, height, entropy)
 	if err != nil {
 		return challengeSeed, err
 	}
 
 	copy(challengeSeed[:], randomness)
-
 	return challengeSeed, nil
 }
 
