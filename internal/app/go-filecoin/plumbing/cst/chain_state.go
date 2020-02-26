@@ -187,7 +187,7 @@ func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey block.Ti
 		return nil, err
 	}
 	if !found {
-		return nil, errors.Wrapf(err, "no actor at address %s", addr)
+		return nil, types.ErrNotFound
 	}
 	return actr, nil
 }

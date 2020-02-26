@@ -14,8 +14,8 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
@@ -180,7 +180,7 @@ func (v *View) loadPowerClaim(ctx context.Context, powerState *power.State, mine
 		return nil, err
 	}
 	if !found {
-		return nil, errors.Errorf("no registered miner %v", miner)
+		return nil, types.ErrNotFound
 	}
 	return &claim, nil
 }
@@ -238,7 +238,7 @@ func (v *View) loadActor(ctx context.Context, address addr.Address) (*actor.Acto
 	var actr actor.Actor
 	found, err := tree.Get(adt.AddrKey(address), &actr)
 	if !found {
-		return nil, errors.Errorf("no actor at %v", address)
+		return nil, types.ErrNotFound
 	}
 	return &actr, err
 }
