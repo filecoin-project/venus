@@ -111,7 +111,12 @@ func (smsg *SignedMessage) VerifySignature() error {
 
 // OnChainLen returns the amount of bytes used to represent the message on chain.
 func (smsg *SignedMessage) OnChainLen() uint32 {
-	panic("byteme")
+	bits, err := encoding.Encode(smsg.Message)
+	if err != nil {
+		panic(err)
+	}
+	buts, err := encoding.Encode(smsg.Signature)
+	return uint32(len(bits) + len(buts))
 }
 
 func (smsg *SignedMessage) String() string {
