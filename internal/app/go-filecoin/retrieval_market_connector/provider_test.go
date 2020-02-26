@@ -18,9 +18,11 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
 func TestNewRetrievalProviderNodeConnector(t *testing.T) {
+	tf.UnitTest(t)
 	rmnet := gfmtut.NewTestRetrievalMarketNetwork(gfmtut.TestNetworkParams{})
 	ps := gfmtut.NewTestPieceStore()
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
@@ -30,10 +32,12 @@ func TestNewRetrievalProviderNodeConnector(t *testing.T) {
 }
 
 func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
+	tf.UnitTest(t)
 
 }
 
 func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
+	tf.UnitTest(t)
 	rmnet := gfmtut.NewTestRetrievalMarketNetwork(gfmtut.TestNetworkParams{})
 	ps := gfmtut.NewTestPieceStore()
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
