@@ -351,7 +351,6 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, rn
 		return message.Failure(exitcode.SysErrActorNotFound, gas.Zero), gasTank.GasConsumed().ToTokens(msgGasPrice), big.Zero()
 	}
 
-	// Dragons: change this to actor, ok, error ok for found or not, err are non-recoverable IO errors and such
 	fromActor, found, err := vm.state.GetActor(context.Background(), msg.From)
 	if err != nil {
 		panic(err)
@@ -387,7 +386,6 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, rn
 	// Even if the message fails, the following accumulated changes will be applied:
 	// - CallSeqNumber increment
 	// - sender balance withheld
-	// - (if did not previously exist, the new auto-created target actor)
 
 	if err := vm.state.SetActor(vm.context, msg.From, fromActor); err != nil {
 		panic(err)
