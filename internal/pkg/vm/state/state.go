@@ -48,13 +48,13 @@ type State struct {
 
 // NewState creates a new VM state.
 func NewState(store cbor.IpldStore) *State {
-	// Review: we should probably start the tree as dirty given that the current root does not match the state it will persist
-	return newState(store, cid.Undef, hamt.NewNode(store, hamt.UseTreeBitWidth(TreeBitWidth)))
+	st := newState(store, cid.Undef, hamt.NewNode(store, hamt.UseTreeBitWidth(TreeBitWidth)))
+	st.dirty = true
+	return st
 }
 
 // LoadState creates a new VMStorage.
 func LoadState(ctx context.Context, store cbor.IpldStore, root Root) (*State, error) {
-	// Review: do we want to special case root=cid.Undef to be a new state?
 	rootNode, err := hamt.LoadNode(ctx, store, root, hamt.UseTreeBitWidth(TreeBitWidth))
 
 	if err != nil {
@@ -128,7 +128,6 @@ func (st *State) Commit(ctx context.Context) (Root, error) {
 		return cid.Undef, err
 	}
 
-	// Review: is this put needed because it has not been flushed or because flush does not return the root cid?
 	root, err := st.store.Put(ctx, st.rootNode)
 	if err != nil {
 		return cid.Undef, err

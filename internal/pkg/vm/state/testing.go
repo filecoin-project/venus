@@ -13,10 +13,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
-// NewFromString sets a state tree based on an int.  TODO: this indirection
-// can be avoided when we are able to change cborStore to an interface and then
-// making a test implementation of the cbor store that can map test cids to test
-// states.
+// NewFromString sets a state tree based on an int.
+//
+// TODO: we could avoid this if write a test cborStore that can map test cids to test states.
 func NewFromString(t *testing.T, s string, store cbor.IpldStore) *State {
 	tree := NewState(store)
 	strAddr, err := address.NewSecp256k1Address([]byte(s))

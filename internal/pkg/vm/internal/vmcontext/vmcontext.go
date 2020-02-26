@@ -472,7 +472,6 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, rn
 // Note: this is not idiomatic, it follows the Spec expectations for this method.
 func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amount abi.TokenAmount) {
 	// allow only for positive amounts
-	// Dragons: can we please please add some happy functions and a proper type
 	if amount.LessThan(abi.NewTokenAmount(0)) {
 		panic("unreachable: negative funds transfer not allowed")
 	}
