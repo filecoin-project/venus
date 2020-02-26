@@ -65,6 +65,7 @@ type actorStorage struct {
 }
 
 // NewVM creates a new runtime for executing messages.
+// Dragons: change to take a root and the store, build the tree internally
 func NewVM(actorImpls ActorImplLookup, store *storage.VMStorage, st state.Tree) VM {
 	return VM{
 		actorImpls: actorImpls,
