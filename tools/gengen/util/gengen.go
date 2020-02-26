@@ -143,7 +143,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst cbor.IpldStore, bs blockst
 	if err != nil {
 		return nil, err
 	}
-	stateRoot, err := st.Flush(ctx)
+	stateRoot, err := st.Commit(ctx)
 	if err != nil {
 		return nil, err
 	}

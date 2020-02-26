@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // ChainSubmodule enhances the `Node` with chain capabilities.
@@ -55,7 +54,7 @@ type chainConfig interface {
 func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *BlockstoreSubmodule) (ChainSubmodule, error) {
 	// initialize chain store
 	chainStatusReporter := chain.NewStatusReporter()
-	chainStore := chain.NewStore(repo.ChainDatastore(), blockstore.CborStore, state.NewTreeLoader(), chainStatusReporter, config.GenesisCid())
+	chainStore := chain.NewStore(repo.ChainDatastore(), blockstore.CborStore, chainStatusReporter, config.GenesisCid())
 
 	actorState := appstate.NewTipSetStateViewer(chainStore, blockstore.CborStore)
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)

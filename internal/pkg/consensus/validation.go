@@ -126,7 +126,7 @@ func canCoverGasLimit(msg *types.UnsignedMessage, actor *actor.Actor) bool {
 
 // IngestionValidatorAPI allows the validator to access latest state
 type ingestionValidatorAPI interface {
-	GetActor(context.Context, address.Address) (*actor.Actor, bool, error)
+	GetActor(context.Context, address.Address) (*actor.Actor, error)
 }
 
 // IngestionValidator can access latest state and runs additional checks to mitigate DoS attacks
@@ -155,11 +155,8 @@ func (v *IngestionValidator) Validate(ctx context.Context, smsg *types.SignedMes
 
 	// retrieve from actor
 	msg := smsg.Message
-	fromActor, found, err := v.api.GetActor(ctx, msg.From)
-	if err != nil {
-		return err
-	}
-	if !found {
+	fromActor, err := v.api.GetActor(ctx, msg.From)
+	if fromActor == nil || err != nil {
 		// Dragons: we have this "empty" actor line in too many places
 		fromActor = &actor.Actor{Balance: abi.NewTokenAmount(0)}
 	}

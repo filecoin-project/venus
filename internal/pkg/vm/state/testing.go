@@ -2,12 +2,19 @@ package state
 
 import (
 	"context"
+	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
+
+// NewFromString creates a new VM state based on the contents of the string.
+func NewFromString(t *testing.T, state string, store cbor.IpldStore) *State {
+	panic("resurrect")
+}
 
 // MustCommit flushes the StateTree or panics if it can't.
 func MustCommit(st State) cid.Cid {

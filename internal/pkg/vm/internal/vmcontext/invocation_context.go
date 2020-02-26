@@ -2,7 +2,6 @@ package vmcontext
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"fmt"
 	"runtime/debug"
@@ -112,7 +111,8 @@ func (ctx *invocationContext) invoke() interface{} {
 	// post-dispatch
 	// 1. check caller was validated
 	// 2. check state manipulation was valid
-	// 3. success!
+	// 3. update actor state
+	// 4. success!
 
 	// 1. check caller was validated
 	if !ctx.isCallerValidated {
@@ -128,9 +128,14 @@ func (ctx *invocationContext) invoke() interface{} {
 		return id
 	})
 
+	// 3. update actor state
+	// Dragons: this is wrong, we need to load it back up, change the head, and store it other we risk losing/fabricating money
 	ctx.toActor.Head = e.NewCid(stateHandle.head)
+	if err := ctx.rt.state.SetActor(ctx.rt.context, ctx.msg.to, ctx.toActor); err != nil {
+		panic(err)
+	}
 
-	// 3. success! build the receipt
+	// 4. success! build the receipt
 	return out
 }
 
@@ -141,7 +146,7 @@ func (ctx *invocationContext) invoke() interface{} {
 // Otherwise, this method will abort execution.
 func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Actor, address.Address) {
 	// resolve the target address via the InitActor, and attempt to load state.
-	initActorEntry, found, err := ctx.rt.state.GetActor(context.Background(), builtin.InitActorAddr)
+	initActorEntry, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.InitActorAddr)
 	if err != nil {
 		panic(err)
 	}
@@ -203,9 +208,12 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 	}
 
 	initActorEntry.Head = e.NewCid(stateHandle.head)
+	if err := ctx.rt.state.SetActor(ctx.rt.context, builtin.InitActorAddr, initActorEntry); err != nil {
+		panic(err)
+	}
 
 	// load actor
-	targetActor, found, err := ctx.rt.state.GetActor(context.Background(), targetIDAddr)
+	targetActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, targetIDAddr)
 	if err != nil {
 		panic(err)
 	}

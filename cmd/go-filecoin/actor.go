@@ -43,7 +43,7 @@ var actorLsCmd = &cmds.Command{
 				return result.Error
 			}
 
-			output := makeActorView(result.Actor, result.Address)
+			output := makeActorView(result.Actor, result.Key)
 			if err := re.Emit(output); err != nil {
 				return err
 			}

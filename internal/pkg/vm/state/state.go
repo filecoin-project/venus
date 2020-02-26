@@ -21,6 +21,8 @@ type Tree interface {
 	DeleteActor(ctx context.Context, key actorKey) error
 
 	Commit(ctx context.Context) (Root, error)
+
+	GetAllActors(ctx context.Context) <-chan GetAllActorsResult
 }
 
 // TreeBitWidth is the bit width of the HAMT used to store a state tree
@@ -43,7 +45,7 @@ type State struct {
 	rootNode *hamt.Node
 }
 
-// NewState creates a new VMStorage.
+// NewState creates a new VM state.
 func NewState(store cbor.IpldStore) *State {
 	// Review: we should probably start the tree as dirty given that the current root does not match the state it will persist
 	return newState(store, cid.Undef, hamt.NewNode(store, hamt.UseTreeBitWidth(TreeBitWidth)))
@@ -102,6 +104,7 @@ func (st *State) SetActor(ctx context.Context, key actorKey, a *actor.Actor) err
 	if err := st.rootNode.SetRaw(ctx, string(key.Bytes()), actBytes); err != nil {
 		return errors.Wrap(err, "setting actor in state tree failed")
 	}
+	st.dirty = true
 	return nil
 }
 
@@ -110,6 +113,7 @@ func (st *State) SetActor(ctx context.Context, key actorKey, a *actor.Actor) err
 // This method will NOT return an error if the actor was not found.
 func (st *State) DeleteActor(ctx context.Context, key actorKey) error {
 	err := st.rootNode.Delete(ctx, string(key.Bytes()))
+	st.dirty = true
 	if err == hamt.ErrNotFound {
 		return nil
 	}
@@ -123,10 +127,12 @@ func (st *State) Commit(ctx context.Context) (Root, error) {
 		return cid.Undef, err
 	}
 
-	root, err := st.store.Put(ctx, st.root)
+	// Review: is this put needed because it has not been flushed or because flush does not return the root cid?
+	root, err := st.store.Put(ctx, st.rootNode)
 	if err != nil {
 		return cid.Undef, err
 	}
+
 	st.root = root
 	st.dirty = false
 	return st.root, nil
@@ -185,7 +191,7 @@ func (st *State) getActorsFromPointers(ctx context.Context, out chan<- GetAllAct
 			}
 		}
 		if p.Link.Defined() {
-			n, err := hamt.LoadNode(context.Background(), st.store, p.Link, hamt.UseTreeBitWidth(TreeBitWidth))
+			n, err := hamt.LoadNode(ctx, st.store, p.Link, hamt.UseTreeBitWidth(TreeBitWidth))
 			// Even if we hit an error and can't follow this link, we should
 			// keep traversing its siblings.
 			if err != nil {

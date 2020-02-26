@@ -182,8 +182,11 @@ func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey block.Ti
 		return nil, err
 	}
 
-	actr, err := st.GetActor(ctx, idAddr)
+	actr, found, err := st.GetActor(ctx, idAddr)
 	if err != nil {
+		return nil, err
+	}
+	if !found {
 		return nil, errors.Wrapf(err, "no actor at address %s", addr)
 	}
 	return actr, nil
@@ -211,9 +214,12 @@ func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, tipKey bl
 		return address.Undef, errors.Wrap(err, "failed to load latest state")
 	}
 
-	init, err := st.GetActor(ctx, builtin.InitActorAddr)
+	init, found, err := st.GetActor(ctx, builtin.InitActorAddr)
 	if err != nil {
 		return address.Undef, err
+	}
+	if !found {
+		return address.Undef, errors.Wrapf(err, "no actor at address %s", addr)
 	}
 
 	blk, err := chn.bstore.Get(init.Head.Cid)
