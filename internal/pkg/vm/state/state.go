@@ -13,8 +13,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Tree is DEPRECATED
-type Tree interface{}
+type Tree interface {
+	Root() (Root, bool)
+
+	SetActor(ctx context.Context, key actorKey, a *actor.Actor) error
+	GetActor(ctx context.Context, key actorKey) (*actor.Actor, bool, error)
+	DeleteActor(ctx context.Context, key actorKey) error
+
+	Commit(ctx context.Context) (Root, error)
+}
 
 // TreeBitWidth is the bit width of the HAMT used to store a state tree
 const TreeBitWidth = 5

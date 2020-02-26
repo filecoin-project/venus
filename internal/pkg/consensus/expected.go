@@ -169,7 +169,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsM
 		return cid.Undef, []vm.MessageReceipt{}, err
 	}
 
-	root, err = newState.Flush(ctx)
+	root, err = newState.Commit(ctx)
 	if err != nil {
 		return cid.Undef, []vm.MessageReceipt{}, err
 	}

@@ -37,7 +37,7 @@ type VM struct {
 	context      context.Context
 	actorImpls   ActorImplLookup
 	store        *storage.VMStorage
-	state        *state.State
+	state        state.Tree
 	currentEpoch abi.ChainEpoch
 }
 
@@ -65,7 +65,7 @@ type actorStorage struct {
 }
 
 // NewVM creates a new runtime for executing messages.
-func NewVM(actorImpls ActorImplLookup, store *storage.VMStorage, st *state.State) VM {
+func NewVM(actorImpls ActorImplLookup, store *storage.VMStorage, st state.Tree) VM {
 	return VM{
 		actorImpls: actorImpls,
 		store:      store,

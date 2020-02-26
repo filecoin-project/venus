@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
@@ -127,7 +126,7 @@ func canCoverGasLimit(msg *types.UnsignedMessage, actor *actor.Actor) bool {
 
 // IngestionValidatorAPI allows the validator to access latest state
 type ingestionValidatorAPI interface {
-	GetActor(context.Context, address.Address) (*actor.Actor, error)
+	GetActor(context.Context, address.Address) (*actor.Actor, bool, error)
 }
 
 // IngestionValidator can access latest state and runs additional checks to mitigate DoS attacks
@@ -156,14 +155,13 @@ func (v *IngestionValidator) Validate(ctx context.Context, smsg *types.SignedMes
 
 	// retrieve from actor
 	msg := smsg.Message
-	fromActor, err := v.api.GetActor(ctx, msg.From)
+	fromActor, found, err := v.api.GetActor(ctx, msg.From)
 	if err != nil {
-		if state.IsActorNotFoundError(err) {
-			// Dragons: we have this "empty" actor line in too many places
-			fromActor = &actor.Actor{Balance: abi.NewTokenAmount(0)}
-		} else {
-			return err
-		}
+		return err
+	}
+	if !found {
+		// Dragons: we have this "empty" actor line in too many places
+		fromActor = &actor.Actor{Balance: abi.NewTokenAmount(0)}
 	}
 
 	// check that message nonce is not too high
