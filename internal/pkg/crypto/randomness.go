@@ -35,6 +35,8 @@ func (g *GenesisSampler) Sample(_ context.Context, epoch abi.ChainEpoch) (Random
 
 // Computes a random seed from raw ticket bytes and the epoch from which the ticket was requested
 // (which may not match the epoch it actually came from).
+// A randomness seed is the black2b hash of the VRF digest of the minimum ticket of the tipset at or before
+// the requested epoch, concatenated with the big endian bytes of the epoch value.
 func MakeRandomSeed(rawTicket []byte, epoch abi.ChainEpoch) (RandomSeed, error) {
 	buf := bytes.Buffer{}
 	vrfDigest := blake2b.Sum256(rawTicket)
