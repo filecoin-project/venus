@@ -70,7 +70,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		pTipSet := th.RequireNewTipSet(t, genesisBlock)
 
-		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorage(bstore), kis)
+		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
 		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(&consensus.FakeSampler{}), &views, th.BlockTimeTest, &consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{}, &proofs.ElectionPoster{})
 
@@ -129,7 +129,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
 		require.NoError(t, err)
 
-		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorage(bstore), kis)
+		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &proofs.ElectionPoster{})
 
@@ -158,7 +158,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
 		require.NoError(t, err)
 
-		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorage(bstore), kis)
+		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &proofs.ElectionPoster{})
 
@@ -194,7 +194,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
 		require.NoError(t, err)
 
-		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorage(bstore), kis)
+		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FailingTicketValidator{}, &proofs.ElectionPoster{})
 
@@ -214,7 +214,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
 		require.NoError(t, err)
 
-		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorage(bstore), kis)
+		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &proofs.ElectionPoster{})
 
@@ -236,7 +236,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
 		require.NoError(t, err)
 
-		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewTree(cistore), vm.NewStorage(bstore), kis)
+		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &proofs.ElectionPoster{})
 
@@ -297,7 +297,7 @@ func minerToWorkerFromAddrs(ctx context.Context, t *testing.T, tree state.Tree, 
 }
 
 func setTree(ctx context.Context, t *testing.T, kis []crypto.KeyInfo, cstore cbor.IpldStore, bstore blockstore.Blockstore, inRoot cid.Cid) (cid.Cid, []address.Address, map[address.Address]address.Address) {
-	tree, err := state.NewTreeLoader().LoadStateTree(ctx, cstore, inRoot)
+	tree, err := state.LoadState(ctx, cstore, inRoot)
 	require.NoError(t, err)
 	miners := make([]address.Address, len(kis))
 	m2w := make(map[address.Address]address.Address, len(kis))
@@ -311,7 +311,7 @@ func setTree(ctx context.Context, t *testing.T, kis []crypto.KeyInfo, cstore cbo
 		miners[i] = minerAddr
 		m2w[minerAddr] = workerAddr
 	}
-	root, err := tree.Flush(ctx)
+	root, err := tree.Commit(ctx)
 	require.NoError(t, err)
 	return root, miners, m2w
 }

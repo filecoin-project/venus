@@ -141,9 +141,12 @@ func (ctx *invocationContext) invoke() interface{} {
 // Otherwise, this method will abort execution.
 func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Actor, address.Address) {
 	// resolve the target address via the InitActor, and attempt to load state.
-	initActorEntry, err := ctx.rt.state.GetActor(context.Background(), builtin.InitActorAddr)
+	initActorEntry, found, err := ctx.rt.state.GetActor(context.Background(), builtin.InitActorAddr)
 	if err != nil {
-		panic(fmt.Errorf("init actor not found. %s", err))
+		panic(err)
+	}
+	if !found {
+		runtime.Abort(exitcode.SysErrActorNotFound)
 	}
 
 	if target == builtin.InitActorAddr {
@@ -202,8 +205,11 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 	initActorEntry.Head = e.NewCid(stateHandle.head)
 
 	// load actor
-	targetActor, err := ctx.rt.state.GetActor(context.Background(), targetIDAddr)
+	targetActor, found, err := ctx.rt.state.GetActor(context.Background(), targetIDAddr)
 	if err != nil {
+		panic(err)
+	}
+	if !found {
 		panic(fmt.Errorf("unreachable: actor is supposed to exist but it does not. %s", err))
 	}
 
@@ -354,21 +360,21 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 	// Check existing address. If nothing there, create empty actor.
 	//
 	// Note: we are storing the actors by ActorID *address*
-	newActor, _, err := ctx.rt.state.GetOrCreateActor(context.TODO(), addr, func() (*actor.Actor, address.Address, error) {
-		return &actor.Actor{}, addr, nil
-	})
-
+	_, found, err := ctx.rt.state.GetActor(ctx.rt.context, addr)
 	if err != nil {
 		panic(err)
 	}
-
-	if !newActor.Empty() {
+	if found {
 		runtime.Abortf(exitcode.ErrIllegalArgument, "Actor address already exists")
 	}
-
-	newActor.Balance = abi.NewTokenAmount(0)
-	// make this the right 'type' of actor
-	newActor.Code = e.NewCid(codeID)
+	newActor := &actor.Actor{
+		// make this the right 'type' of actor
+		Code:    e.NewCid(codeID),
+		Balance: abi.NewTokenAmount(0),
+	}
+	if err := ctx.rt.state.SetActor(ctx.rt.context, addr, newActor); err != nil {
+		panic(err)
+	}
 }
 
 // patternContext implements the PatternContext

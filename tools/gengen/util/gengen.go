@@ -120,7 +120,8 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst cbor.IpldStore, bs blockst
 	if err != nil {
 		return nil, err
 	}
-	st := state.NewTree(cst)
+
+	st := state.NewState(cst)
 	store := vm.NewStorage(bs)
 	vm := vm.NewVM(st, &store).(consensus.GenesisVM)
 	rnd := crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{TicketBytes: consensus.GenesisTicket.VRFProof}}
@@ -194,7 +195,7 @@ func genKeys(cfgkeys int, pnrg io.Reader) ([]*crypto.KeyInfo, error) {
 	return keys, nil
 }
 
-func setupPrealloc(vm consensus.GenesisVM, st state.Tree, rnd crypto.RandomnessSource, keys []*crypto.KeyInfo, prealloc []string) error {
+func setupPrealloc(vm consensus.GenesisVM, st *state.State, rnd crypto.RandomnessSource, keys []*crypto.KeyInfo, prealloc []string) error {
 
 	if len(keys) < len(prealloc) {
 		return fmt.Errorf("keys do not match prealloc")

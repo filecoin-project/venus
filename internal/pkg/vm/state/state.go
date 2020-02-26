@@ -13,6 +13,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Tree is DEPRECATED
+type Tree interface{}
+
 // TreeBitWidth is the bit width of the HAMT used to store a state tree
 const TreeBitWidth = 5
 

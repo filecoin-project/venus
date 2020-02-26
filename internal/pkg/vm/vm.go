@@ -27,7 +27,7 @@ type BlockMessagesInfo = interpreter.BlockMessagesInfo
 type MessageReceipt = message.Receipt
 
 // NewVM creates a new VM interpreter.
-func NewVM(st state.Tree, store *storage.VMStorage) Interpreter {
+func NewVM(st *state.State, store *storage.VMStorage) Interpreter {
 	vm := vmcontext.NewVM(builtin.DefaultActors, store, st)
 	return &vm
 }

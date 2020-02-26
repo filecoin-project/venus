@@ -37,7 +37,7 @@ type VM struct {
 	context      context.Context
 	actorImpls   ActorImplLookup
 	store        *storage.VMStorage
-	state        *state.CachedTree
+	state        *state.State
 	currentEpoch abi.ChainEpoch
 }
 
@@ -65,11 +65,11 @@ type actorStorage struct {
 }
 
 // NewVM creates a new runtime for executing messages.
-func NewVM(actorImpls ActorImplLookup, store *storage.VMStorage, st state.Tree) VM {
+func NewVM(actorImpls ActorImplLookup, store *storage.VMStorage, st *state.State) VM {
 	return VM{
 		actorImpls: actorImpls,
 		store:      store,
-		state:      state.NewCachedTree(st),
+		state:      st,
 		context:    context.Background(),
 		// loaded during execution
 		// currentEpoch: ..,
@@ -101,17 +101,31 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 		return ret, err
 	}
 
-	// commit state
-	// flush all objects out
-	if err := vm.store.Flush(); err != nil {
+	// commit
+	if _, err := vm.commit(); err != nil {
 		return nil, err
 	}
-	// commit new actor state
-	if err := vm.state.Commit(context.Background()); err != nil {
-		return nil, err
-	}
-	// TODO: update state root (issue: #3718)
+
 	return ret, nil
+}
+
+func (vm *VM) commit() (state.Root, error) {
+	// Note: the following assumes the state commits into the store,
+	//       unless the store is flushed, the state is not persisted.
+
+	// commit the vm state
+	root, err := vm.state.Commit(vm.context)
+	if err != nil {
+		return cid.Undef, err
+	}
+	// flush all blocks out of the store
+	if err := vm.store.Flush(); err != nil {
+		return cid.Undef, err
+	}
+
+	// TODO: update state root (issue: #3718)
+
+	return root, nil
 }
 
 // ContextStore provides access to specs-actors adt library.
@@ -128,9 +142,12 @@ func (vm *VM) normalizeFrom(from address.Address) (address.Address, bool) {
 	}
 
 	// resolve the target address via the InitActor, and attempt to load state.
-	initActorEntry, err := vm.state.GetActor(context.Background(), builtin.InitActorAddr)
+	initActorEntry, found, err := vm.state.GetActor(vm.context, builtin.InitActorAddr)
 	if err != nil {
-		panic(fmt.Errorf("init actor not found. %s", err))
+		panic(err)
+	}
+	if !found {
+		runtime.Abort(exitcode.SysErrActorNotFound)
 	}
 
 	// build state handle
@@ -237,15 +254,9 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 	}
 
 	// commit state
-	// flush all objects out
-	if err := vm.store.Flush(); err != nil {
+	if _, err := vm.commit(); err != nil {
 		return nil, err
 	}
-	// commit new actor state
-	if err := vm.state.Commit(context.Background()); err != nil {
-		return nil, err
-	}
-	// TODO: update state root (issue: #3718)
 
 	return receipts, nil
 }
@@ -279,8 +290,11 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 	// 4. invoke message
 
 	// 1. load from actor
-	fromActor, err := vm.state.GetActor(context.Background(), imsg.from)
-	if fromActor == nil || err != nil {
+	fromActor, found, err := vm.state.GetActor(vm.context, imsg.from)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
 		return nil, fmt.Errorf("implicit message `from` field actor not found, addr: %s", imsg.from)
 	}
 
@@ -288,6 +302,9 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 
 	// 2. increment seq number
 	fromActor.IncrementSeqNum()
+	if err := vm.state.SetActor(vm.context, imsg.from, fromActor); err != nil {
+		return nil, err
+	}
 
 	// 3. build context
 	ctx := newInvocationContext(vm, imsg, fromActor, &gasTank, rnd)
@@ -334,8 +351,11 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, rn
 	}
 
 	// Dragons: change this to actor, ok, error ok for found or not, err are non-recoverable IO errors and such
-	fromActor, err := vm.state.GetActor(context.Background(), msg.From)
-	if fromActor == nil || err != nil {
+	fromActor, found, err := vm.state.GetActor(context.Background(), msg.From)
+	if err != nil {
+		panic(err)
+	}
+	if !found {
 		// Execution error; sender does not exist at time of message execution.
 		return message.Failure(exitcode.SysErrActorNotFound, gas.Zero), gasTank.GasConsumed().ToTokens(msgGasPrice), big.Zero()
 	}
@@ -462,8 +482,11 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 	ctx := context.Background()
 
 	// retrieve debit account
-	fromActor, err := vm.state.GetActor(ctx, debitFrom)
+	fromActor, found, err := vm.state.GetActor(ctx, debitFrom)
 	if err != nil {
+		panic(err)
+	}
+	if !found {
 		panic(fmt.Errorf("unreachable: debit account not found. %s", err))
 	}
 
@@ -473,14 +496,25 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 	}
 
 	// retrieve credit account
-	toActor, err := vm.state.GetActor(ctx, creditTo)
+	toActor, found, err := vm.state.GetActor(ctx, creditTo)
 	if err != nil {
+		panic(err)
+	}
+	if !found {
 		panic(fmt.Errorf("unreachable: credit account not found. %s", err))
 	}
 
 	// move funds
 	fromActor.Balance = big.Sub(fromActor.Balance, amount)
 	toActor.Balance = big.Add(toActor.Balance, amount)
+
+	// update actors
+	if err := vm.state.SetActor(ctx, debitFrom, fromActor); err != nil {
+		panic(err)
+	}
+	if err := vm.state.SetActor(ctx, creditTo, toActor); err != nil {
+		panic(err)
+	}
 
 	return
 }

@@ -331,8 +331,8 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 	return st, receipts, nil
 }
 
-func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, error) {
-	return state.NewTreeLoader().LoadStateTree(ctx, c.cstore, id)
+func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (*state.State, error) {
+	return state.LoadState(ctx, c.cstore, id)
 }
 
 // PowerStateViewer a state viewer to the power state view interface.
