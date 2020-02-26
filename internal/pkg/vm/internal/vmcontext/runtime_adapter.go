@@ -71,7 +71,7 @@ func (a *runtimeAdapter) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok 
 
 // GetRandomness implements Runtime.
 func (a *runtimeAdapter) GetRandomness(tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	randomness, err := a.ctx.randSource.Randomness(tag, epoch, entropy)
+	randomness, err := a.ctx.randSource.Randomness(a.Context(), tag, epoch, entropy)
 	if err != nil {
 		panic(err)
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	initactor "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -23,8 +24,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -147,19 +148,11 @@ func (chn *ChainStateReadWriter) GetReceipts(ctx context.Context, id cid.Cid) ([
 	return chn.messageProvider.LoadReceipts(ctx, id)
 }
 
-// SampleRandomness samples randomness from the chain at the given height.
-func (chn *ChainStateReadWriter) SampleRandomness(ctx context.Context, sampleHeight abi.ChainEpoch) ([]byte, error) {
-	head := chn.readWriter.GetHead()
-	headTipSet, err := chn.readWriter.GetTipSet(head)
-	if err != nil {
-		return nil, err
-	}
-	tipSetBuffer, err := chain.GetRecentAncestors(ctx, headTipSet, chn.readWriter, sampleHeight)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get recent ancestors")
-	}
-
-	return sampling.SampleChainRandomness(sampleHeight, tipSetBuffer)
+// SampleChainRandomness computes randomness seeded by a ticket from the chain `head` at `sampleHeight`.
+func (chn *ChainStateReadWriter) SampleChainRandomness(ctx context.Context, head block.TipSetKey, tag acrypto.DomainSeparationTag,
+	sampleHeight abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewSamplerAtHead(chn.readWriter, head)}
+	return rnd.Randomness(ctx, tag, sampleHeight, entropy)
 }
 
 // GetActor returns an actor from the latest state on the chain

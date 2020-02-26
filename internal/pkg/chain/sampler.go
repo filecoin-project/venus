@@ -12,7 +12,20 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 )
 
-// A sampler draws randomness seeds from the chain.
+// Creates a new sampler for the chain identified by `head`.
+func NewSamplerAtHead(reader TipSetProvider, head block.TipSetKey) *SamplerAtHead {
+	return &SamplerAtHead{
+		sampler: NewSampler(reader),
+		head:    head,
+	}
+}
+
+// A sampler draws randomness seeds from the chain. The seed is computed from the minimum ticket of the tipset
+// at or before the requested epoch, mixed with the epoch itself (and is thus unique per epoch, even when they are
+// empty).
+//
+// This implementation doesn't do any caching: it traverses the chain each time. A cache that could be directly
+// indexed by epoch could speed up repeated samples from the same chain.
 type Sampler struct {
 	reader TipSetProvider
 }
@@ -48,7 +61,8 @@ func (s *Sampler) Sample(ctx context.Context, head block.TipSetKey, epoch abi.Ch
 	}
 
 	buf := bytes.Buffer{}
-	buf.Write(ticket.VRFProof)
+	vrfDigest := blake2b.Sum256(ticket.VRFProof)
+	buf.Write(vrfDigest[:])
 	err := binary.Write(&buf, binary.BigEndian, epoch)
 	if err != nil {
 		return nil, err
@@ -77,4 +91,15 @@ func (s *Sampler) findTipsetAtEpoch(ctx context.Context, start block.TipSet, epo
 	}
 	// If the iterator completed, ts is the genesis tipset.
 	return
+}
+
+///// A chain sampler with a specific head tipset key. /////
+
+type SamplerAtHead struct {
+	sampler *Sampler
+	head    block.TipSetKey
+}
+
+func (s *SamplerAtHead) Sample(ctx context.Context, epoch abi.ChainEpoch) (crypto.RandomSeed, error) {
+	return s.sampler.Sample(ctx, s.head, epoch)
 }

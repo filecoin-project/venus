@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -25,8 +26,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
-type randomnessSampler interface {
-	SampleRandomness(ctx context.Context, sampleHeight abi.ChainEpoch) ([]byte, error)
+type chainReader interface {
+	SampleChainRandomness(ctx context.Context, head block.TipSetKey, tag crypto.DomainSeparationTag, sampleHeight abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	GetTipSetStateRoot(ctx context.Context, tipKey block.TipSetKey) (cid.Cid, error)
 	GetTipSet(key block.TipSetKey) (block.TipSet, error)
 	Head() block.TipSetKey
@@ -40,8 +41,7 @@ type StorageMinerNodeConnector struct {
 
 	chainHeightScheduler *chainsampler.HeightThresholdScheduler
 
-	chainStore *chain.Store
-	chainState randomnessSampler
+	chainState chainReader
 	outbox     *message.Outbox
 	waiter     *msg.Waiter
 	wallet     *wallet.Wallet
@@ -54,11 +54,10 @@ var _ storagenode.Interface = new(StorageMinerNodeConnector)
 // NewStorageMinerNodeConnector produces a StorageMinerNodeConnector, which adapts
 // types in this codebase to the interface representing "the node" which is
 // expected by the go-storage-miner project.
-func NewStorageMinerNodeConnector(minerAddress address.Address, chainStore *chain.Store, chainState randomnessSampler, outbox *message.Outbox, waiter *msg.Waiter, wallet *wallet.Wallet, stateViewer *appstate.Viewer) *StorageMinerNodeConnector {
+func NewStorageMinerNodeConnector(minerAddress address.Address, chainStore *chain.Store, chainState chainReader, outbox *message.Outbox, waiter *msg.Waiter, wallet *wallet.Wallet, stateViewer *appstate.Viewer) *StorageMinerNodeConnector {
 	return &StorageMinerNodeConnector{
 		minerAddr:            minerAddress,
 		chainHeightScheduler: chainsampler.NewHeightThresholdScheduler(chainStore),
-		chainStore:           chainStore,
 		chainState:           chainState,
 		outbox:               outbox,
 		waiter:               waiter,
@@ -293,7 +292,7 @@ func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context, tok stora
 		return storagenode.SealTicket{}, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
 	}
 
-	ts, err := m.chainStore.GetTipSet(tsk)
+	ts, err := m.chainState.GetTipSet(tsk)
 	if err != nil {
 		return storagenode.SealTicket{}, xerrors.Errorf("getting head ts for SealTicket failed: %w", err)
 	}
@@ -303,7 +302,7 @@ func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context, tok stora
 		return storagenode.SealTicket{}, err
 	}
 
-	r, err := m.chainState.SampleRandomness(ctx, h-miner.ChainFinalityish)
+	r, err := m.chainState.SampleChainRandomness(ctx, tsk, crypto.DomainSeparationTag_SealRandomness, h-miner.ChainFinalityish, nil)
 	if err != nil {
 		return storagenode.SealTicket{}, xerrors.Errorf("getting randomness for SealTicket failed: %w", err)
 	}
@@ -377,7 +376,7 @@ func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMs
 					break
 				}
 
-				randomness, err := m.chainState.SampleRandomness(ctx, tsHeight)
+				randomness, err := m.chainState.SampleChainRandomness(ctx, key, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, tsHeight, nil)
 				if err != nil {
 					ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFatalError)
 					break

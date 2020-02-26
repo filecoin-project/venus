@@ -5,9 +5,9 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
@@ -360,9 +360,9 @@ func (mem *MockElectionMachine) VerifyPoStRandomness(rand block.VRFPi, ticket bl
 ///// Sampler /////
 
 type FakeSampler struct {
-	Value crypto.RandomSeed
+	Value abi.Randomness
 }
 
-func (s *FakeSampler) Sample(_ context.Context, _ block.TipSetKey, _ abi.ChainEpoch) (crypto.RandomSeed, error) {
+func (s *FakeSampler) SampleChainRandomness(_ context.Context, _ block.TipSetKey, _ acrypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) (abi.Randomness, error) {
 	return s.Value, nil
 }

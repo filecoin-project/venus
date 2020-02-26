@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"fmt"
 
@@ -13,13 +14,13 @@ import (
 
 // RandomnessSource provides randomness to actors.
 type RandomnessSource interface {
-	Randomness(tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	Randomness(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 }
 
 type RandomSeed []byte
 
 type ChainSampler interface {
-	Sample(epoch abi.ChainEpoch) (RandomSeed, error)
+	Sample(ctx context.Context, epoch abi.ChainEpoch) (RandomSeed, error)
 }
 
 // A randomness source that seeds computations with a sample drawn from a chain epoch.
@@ -27,8 +28,8 @@ type ChainRandomnessSource struct {
 	Sampler ChainSampler
 }
 
-func (c *ChainRandomnessSource) Randomness(tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	seed, err := c.Sampler.Sample(epoch)
+func (c *ChainRandomnessSource) Randomness(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	seed, err := c.Sampler.Sample(ctx, epoch)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to sample chain for randomness")
 	}
@@ -39,7 +40,7 @@ func (c *ChainRandomnessSource) Randomness(tag crypto.DomainSeparationTag, epoch
 // There is no chain to sample a seed from.
 type GenesisRandomnessSource struct{}
 
-func (g *GenesisRandomnessSource) Randomness(tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (g *GenesisRandomnessSource) Randomness(_ context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	if epoch > 0 {
 		return nil, fmt.Errorf("invalid use of genesis randomness source for epoch %d", epoch)
 	}
