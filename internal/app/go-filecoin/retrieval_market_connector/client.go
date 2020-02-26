@@ -12,31 +12,33 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
 // RetrievalClientConnector is the glue between go-filecoin and go-fil-markets'
 // retrieval market interface
 type RetrievalClientConnector struct {
 	bs blockstore.Blockstore
-	cs *chain.Store
 
 	// APIs/interfaces
 	paychMgr PaychMgrAPI
 	signer   RetrievalSigner
-	wal      WalletAPI
+	cs ChainReaderAPI
 }
 
 // WalletAPI is the subset of the Wallet interface needed by the retrieval client node
-type WalletAPI interface {
+type ChainReaderAPI interface {
 	// GetBalance gets the balance in AttoFIL for a given address
-	GetBalance(ctx context.Context, address address.Address) (types.AttoFIL, error)
+	Head() block.TipSetKey
+	GetTipSet(key block.TipSetKey) (block.TipSet, error)
+	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*actor.Actor, error)
 }
 
 // RetrievalSigner is an interface with the ability to sign data
 type RetrievalSigner interface {
-	SignBytes(data []byte, addr address.Address) (*crypto.Signature, error)
+	SignBytes(data []byte, addr address.Address) (crypto.Signature, error)
 }
 
 // PaychMgrAPI is an API used for communicating with payment channel actor and store.
@@ -45,16 +47,15 @@ type PaychMgrAPI interface {
 	GetPaymentChannelInfo(paychAddr address.Address) (*paymentchannel.ChannelInfo, error)
 	GetPaymentChannelByAccounts(payer, payee address.Address) (address.Address, *paymentchannel.ChannelInfo)
 	CreatePaymentChannel(payer, payee address.Address) error
-	SendNewSignedVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher) error
+	CreateVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher) error
 	SaveVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte, expected abi.TokenAmount) (actual abi.TokenAmount, err error)
 }
 
 // NewRetrievalClientConnector creates a new RetrievalClientConnector
 func NewRetrievalClientConnector(
 	bs blockstore.Blockstore,
-	cs *chain.Store,
+	cs ChainReaderAPI,
 	signer RetrievalSigner,
-	wal WalletAPI,
 	paychMgr PaychMgrAPI,
 ) *RetrievalClientConnector {
 	return &RetrievalClientConnector{
@@ -62,12 +63,10 @@ func NewRetrievalClientConnector(
 		cs:       cs,
 		paychMgr: paychMgr,
 		signer:   signer,
-		wal:      wal,
 	}
 }
 
 // GetOrCreatePaymentChannel gets or creates a payment channel and posts to chain
-// Assumes GetOrCreatePaymentChannel is called before AllocateLane
 func (r *RetrievalClientConnector) GetOrCreatePaymentChannel(ctx context.Context, clientAddress address.Address, minerAddress address.Address, clientFundsAvailable abi.TokenAmount) (address.Address, error) {
 
 	if clientAddress == address.Undef || minerAddress == address.Undef {
@@ -76,7 +75,7 @@ func (r *RetrievalClientConnector) GetOrCreatePaymentChannel(ctx context.Context
 	paychAddr, ci := r.paychMgr.GetPaymentChannelByAccounts(clientAddress, minerAddress)
 	if ci == nil {
 		// create the payment channel
-		bal, err := r.wal.GetBalance(ctx, clientAddress)
+		bal, err := r.getBalance(ctx, clientAddress)
 		if err != nil {
 			return address.Undef, err
 		}
@@ -138,7 +137,7 @@ func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, pay
 	}
 	v.Signature = &signature
 
-	if err := r.paychMgr.SendNewSignedVoucher(paychAddr, &v); err != nil {
+	if err := r.paychMgr.CreateVoucher(paychAddr, &v); err != nil {
 		return nil, err
 	}
 	// if successful:
@@ -146,11 +145,33 @@ func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, pay
 }
 
 func (r *RetrievalClientConnector) getBlockHeight() (abi.ChainEpoch, error) {
-	head := r.cs.GetHead()
-	ts, err := r.cs.GetTipSet(head)
+	ts, err := r.getHeadTipSet()
 	if err != nil {
 		return 0, err
 	}
 	return ts.Height()
+}
+
+func (r *RetrievalClientConnector)getBalance(ctx context.Context, account address.Address) (types.AttoFIL, error){
+	ts, err := r.getHeadTipSet()
+	if err != nil {
+		return types.ZeroAttoFIL, err
+	}
+
+	actor, err := r.cs.GetActorAt(ctx, ts.Key(), account)
+	if err != nil {
+		return types.ZeroAttoFIL, err
+	}
+
+	return actor.Balance, nil
+}
+
+func (r *RetrievalClientConnector) getHeadTipSet() (block.TipSet, error) {
+	head := r.cs.Head()
+	ts, err := r.cs.GetTipSet(head)
+	if err != nil {
+		return block.TipSet{}, err
+	}
+	return ts, nil
 }
 

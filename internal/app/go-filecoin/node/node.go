@@ -22,6 +22,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/internal/submodule"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -375,6 +376,12 @@ func (node *Node) SetupMining(ctx context.Context) error {
 		}
 	}
 
+	if node.RetrievalProtocol == nil {
+		if err := node.setupRetrievalMining(ctx); err != nil {
+			return err
+		}
+	}
+
 	// ensure we have a mining worker
 	if node.BlockMining.MiningWorker == nil {
 		if node.BlockMining.MiningWorker, err = node.CreateMiningWorker(ctx); err != nil {
@@ -464,13 +471,31 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "error initializing storage protocol")
 	}
+	return nil
+}
 
-	// TODO: Retrieval Market Integration
-	//node.RetrievalProtocol, err = submodule.NewRetrievalProtocolSubmodule(minerAddr2, piecestore.NewPieceStore(node.Repo.Datastore()), node.Blockstore.Blockstore)
-	//if err != nil {
-	//	return err
-	//}
+func (node *Node) setupRetrievalMining(ctx context.Context) error {
+	payst := paymentchannel.NewStore(node.Repo.Datastore())
+	pchWaiter := msg.NewWaiter(node.chain.ChainReader, node.chain.MessageStore, node.Blockstore.Blockstore, node.Blockstore.CborStore)
+	pchMgrAPI := paymentchannel.NewManager(ctx, payst, pchWaiter, node.Messaging.Outbox)
 
+	providerAddr, err := node.MiningAddress()
+	if err != nil {
+		return errors.Wrap(err, "failed to get mining address")
+	}
+	rp, err := submodule.NewRetrievalProtocolSubmodule(
+		node.Blockstore.Blockstore,
+		node.Repo.Datastore(),
+		node.chain.State,
+		node.Host(),
+		providerAddr,
+		node.Wallet.Wallet,
+		pchMgrAPI,
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to build node.RetrievalProtocol")
+	}
+	node.RetrievalProtocol = rp
 	return nil
 }
 

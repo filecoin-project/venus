@@ -3,72 +3,60 @@ package retrievalmarketconnector_test
 import (
 	"context"
 	"errors"
-	"math/rand"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	specs "github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	specst "github.com/filecoin-project/specs-actors/support/testing"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	dss "github.com/ipfs/go-datastore/sync"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 func TestNewRetrievalClientNodeConnector(t *testing.T) {
 	ctx := context.Background()
 
-	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	cs := requireNewChainStoreWithBlock(ctx, t)
+	bs, cs, _, _, _ := testSetup(ctx, t, abi.NewTokenAmount(1))
+
 	rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
 
-	rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc, rmc)
+	rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc)
 	assert.NotNil(t, rcnc)
 }
 
 func TestRetrievalClientNodeConnector_GetOrCreatePaymentChannel(t *testing.T) {
 	ctx := context.Background()
 
-	bs, cs, clientAddr, minerAddr, channelAmount := testSetup(ctx, t)
 	paychAddr := specst.NewIDAddr(t, 101)
 
-	t.Run("Errors if clientWallet get balance fails", func(t *testing.T) {
-		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
-		rmc.BalanceErr = errors.New("boom")
-
-		rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc, rmc)
-		res, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
-		assert.EqualError(t, err, "boom")
-		assert.Equal(t, address.Undef, res)
-		rmc.BalanceErr = nil
-	})
-
 	t.Run("if the payment channel does not exist", func(t *testing.T) {
-		bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-		cs := requireNewChainStoreWithBlock(ctx, t)
-
 		t.Run("creates a new payment channel registry entry and posts createChannel message", func(t *testing.T) {
+			bs, cs, clientAddr, minerAddr, channelAmount := testSetup(ctx, t, abi.NewTokenAmount(1000))
 			rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
 			rmc.ExpectedPmtChans[paychAddr] = &paymentchannel.ChannelInfo{
 				Owner: clientAddr,
 				State: &paych.State{From: clientAddr, To: minerAddr, ToSend: abi.NewTokenAmount(0)},
 			}
 
-			rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc, rmc)
+			rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc)
 
 			res, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
 			require.NoError(t, err)
@@ -80,12 +68,13 @@ func TestRetrievalClientNodeConnector_GetOrCreatePaymentChannel(t *testing.T) {
 			rmc.Verify()
 		})
 		t.Run("Errors if there aren't enough funds in wallet", func(t *testing.T) {
+			bs, cs, clientAddr, minerAddr, _ := testSetup(ctx, t, abi.NewTokenAmount(1000))
 			rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
 			rmc.ExpectedPmtChans[paychAddr] = &paymentchannel.ChannelInfo{
 				Owner: clientAddr,
 				State: &paych.State{From: clientAddr, To: minerAddr, ToSend: abi.NewTokenAmount(0)},
 			}
-			rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc, rmc)
+			rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc)
 
 			res, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, big.NewInt(2000))
 			assert.EqualError(t, err, "not enough funds in wallet")
@@ -93,12 +82,13 @@ func TestRetrievalClientNodeConnector_GetOrCreatePaymentChannel(t *testing.T) {
 		})
 
 		t.Run("Errors if client or minerWallet addr is invalid", func(t *testing.T) {
+			bs, cs, clientAddr, minerAddr, channelAmount := testSetup(ctx, t, abi.NewTokenAmount(1000))
 			rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
 			rmc.ExpectedPmtChans[paychAddr] = &paymentchannel.ChannelInfo{
 				Owner: clientAddr,
 				State: &paych.State{From: clientAddr, To: minerAddr, ToSend: abi.NewTokenAmount(0)},
 			}
-			rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc, rmc)
+			rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc)
 			_, err := rcnc.GetOrCreatePaymentChannel(ctx, address.Undef, minerAddr, channelAmount)
 			assert.EqualError(t, err, "empty address")
 
@@ -110,12 +100,13 @@ func TestRetrievalClientNodeConnector_GetOrCreatePaymentChannel(t *testing.T) {
 
 	t.Run("if payment channel exists", func(t *testing.T) {
 		t.Run("Retrieves existing payment channel address", func(t *testing.T) {
+			bs, cs, clientAddr, minerAddr, channelAmount := testSetup(ctx, t, abi.NewTokenAmount(1000))
 			rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
 			rmc.ExpectedPmtChans[paychAddr] = &paymentchannel.ChannelInfo{
 				Owner: clientAddr,
 				State: &paych.State{From: clientAddr, To: minerAddr, ToSend: abi.NewTokenAmount(0)},
 			}
-			rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc, rmc)
+			rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc)
 			expectedChID, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
 			require.NoError(t, err)
 			assert.Equal(t, address.Undef, expectedChID)
@@ -130,13 +121,13 @@ func TestRetrievalClientNodeConnector_GetOrCreatePaymentChannel(t *testing.T) {
 
 func TestRetrievalClientNodeConnector_AllocateLane(t *testing.T) {
 	ctx := context.Background()
-	bs, cs, clientAddr, minerAddr, channelAmount := testSetup(ctx, t)
+	bs, cs, clientAddr, minerAddr, channelAmount := testSetup(ctx, t, abi.NewTokenAmount(100))
 
 	paychAddr := specst.NewIDAddr(t, 101)
 
 	t.Run("Errors if payment channel does not exist", func(t *testing.T) {
 		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
-		rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc, rmc)
+		rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc)
 
 		addr, err := address.NewIDAddress(12345)
 		require.NoError(t, err)
@@ -151,7 +142,7 @@ func TestRetrievalClientNodeConnector_AllocateLane(t *testing.T) {
 			State: &paych.State{From: clientAddr, To: minerAddr, ToSend: abi.NewTokenAmount(0)},
 		}
 
-		rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc, rmc)
+		rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc)
 		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
 		require.NoError(t, err)
 		require.Len(t, rmc.ActualPmtChans, 1)
@@ -178,7 +169,7 @@ func TestRetrievalClientNodeConnector_AllocateLane(t *testing.T) {
 
 func TestRetrievalClientNodeConnector_CreatePaymentVoucher(t *testing.T) {
 	ctx := context.Background()
-	bs, cs, clientAddr, minerAddr, channelAmount := testSetup(ctx, t)
+	bs, cs, clientAddr, minerAddr, channelAmount := testSetup(ctx, t, abi.NewTokenAmount(100))
 	paychAddr := specst.NewIDAddr(t, 101)
 
 	t.Run("Returns a voucher with a signature", func(t *testing.T) {
@@ -189,7 +180,7 @@ func TestRetrievalClientNodeConnector_CreatePaymentVoucher(t *testing.T) {
 		}
 		rmc.StubSignature(nil)
 
-		rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc, rmc)
+		rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc)
 		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
 		require.NoError(t, err)
 
@@ -212,7 +203,7 @@ func TestRetrievalClientNodeConnector_CreatePaymentVoucher(t *testing.T) {
 		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
 		rmc.StubSignature(nil)
 
-		rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc, rmc)
+		rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc)
 		paychAddr := specst.NewIDAddr(t, 990)
 		voucher, err := rcnc.CreatePaymentVoucher(ctx, paychAddr, big.NewInt(100), 1)
 		assert.EqualError(t, err, "no such ChannelID t0990")
@@ -228,7 +219,7 @@ func TestRetrievalClientNodeConnector_CreatePaymentVoucher(t *testing.T) {
 		}
 		rmc.StubSignature(errors.New("signature failure"))
 
-		rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc, rmc)
+		rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc)
 		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
 		require.NoError(t, err)
 		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, big.NewInt(0))
@@ -241,10 +232,12 @@ func TestRetrievalClientNodeConnector_CreatePaymentVoucher(t *testing.T) {
 		assert.Nil(t, voucher)
 	})
 	t.Run("Errors if can't get block height/head tipset", func(t *testing.T) {
-		_, _, _, localCs := requireNewEmptyChainStore(ctx, t)
+		_, _, _, localCs, _ := requireNewEmptyChainStore(ctx, t)
+		messageStore := chain.NewMessageStore(bs)
+		cs := cst.NewChainStateReadWriter(localCs, messageStore, bs, builtin.DefaultActors)
 
 		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
-		rcnc := NewRetrievalClientConnector(bs, localCs, rmc, rmc, rmc)
+		rcnc := NewRetrievalClientConnector(bs, cs, rmc, rmc)
 		res, err := rcnc.CreatePaymentVoucher(ctx, paychAddr, abi.NewTokenAmount(1), 0)
 		assert.EqualError(t, err, "Key not found in tipindex")
 		var expRes *paych.SignedVoucher
@@ -252,36 +245,36 @@ func TestRetrievalClientNodeConnector_CreatePaymentVoucher(t *testing.T) {
 	})
 }
 
-func testSetup(ctx context.Context, t *testing.T) (bstore.Blockstore, *chain.Store, address.Address, address.Address, abi.TokenAmount) {
-	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	cs := requireNewChainStoreWithBlock(ctx, t)
-
-	clientAddr, err := address.NewIDAddress(rand.Uint64())
-	require.NoError(t, err)
-	minerAddr, err := address.NewIDAddress(rand.Uint64())
-	require.NoError(t, err)
-
-	channelAmount := big.NewInt(500)
-	return bs, cs, clientAddr, minerAddr, channelAmount
-}
-
-func requireNewChainStoreWithBlock(ctx context.Context, t *testing.T) *chain.Store {
-	root, builder, genTS, cs := requireNewEmptyChainStore(ctx, t)
-
+func testSetup(ctx context.Context, t *testing.T, bal abi.TokenAmount) (bstore.Blockstore, ChainReaderAPI, address.Address, address.Address, abi.TokenAmount) {
+	_, builder, genTs, chainStore, st1 := requireNewEmptyChainStore(ctx, t)
 	rootBlk := builder.AppendBlockOnBlocks()
 	th.RequireNewTipSet(t, rootBlk)
-	require.NoError(t, cs.SetHead(ctx, genTS))
+	require.NoError(t, chainStore.SetHead(ctx, genTs))
+	root, err := st1.Flush(ctx)
+	require.NoError(t, err)
 
 	// add tipset and state to chainstore
-	require.NoError(t, cs.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
-		TipSet:          genTS,
+	require.NoError(t, chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
+		TipSet:          genTs,
 		TipSetStateRoot: root,
 		TipSetReceipts:  types.EmptyReceiptsCID,
 	}))
-	return cs
+
+	ds := repo.NewInMemoryRepo().ChainDatastore()
+	bs := bstore.NewBlockstore(ds)
+
+	fakeProvider := message.NewFakeProvider(t)
+	fakeProvider.Builder = builder
+	clientAddr := specst.NewIDAddr(t, 102)
+	clientActor := actor.NewActor(specs.AccountActorCodeID, bal)
+	fakeProvider.SetHeadAndActor(t, genTs.Key(), clientAddr, clientActor)
+
+	minerAddr := specst.NewIDAddr(t, 101)
+	channelAmount := big.NewInt(10)
+	return bs, fakeProvider, clientAddr, minerAddr, channelAmount
 }
 
-func requireNewEmptyChainStore(ctx context.Context, t *testing.T) (cid.Cid, *chain.Builder, block.TipSet, *chain.Store) {
+func requireNewEmptyChainStore(ctx context.Context, t *testing.T) (cid.Cid, *chain.Builder, block.TipSet, *chain.Store, state.Tree) {
 	cst := cbor.NewMemCborStore()
 
 	// Cribbed from chain/store_test
@@ -297,5 +290,5 @@ func requireNewEmptyChainStore(ctx context.Context, t *testing.T) (cid.Cid, *cha
 	// setup chain store
 	ds := r.Datastore()
 	cs := chain.NewStore(ds, cst, state.NewTreeLoader(), chain.NewStatusReporter(), genTS.At(0).Cid())
-	return root, builder, genTS, cs
+	return root, builder, genTS, cs, st1
 }

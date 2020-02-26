@@ -40,7 +40,7 @@ type RetrievalMarketClientFakeAPI struct {
 	Nonce                   uint64
 	NonceErr                error
 
-	Sig    *crypto.Signature
+	Sig    crypto.Signature
 	SigErr error
 
 	MsgSendCid cid.Cid
@@ -102,7 +102,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) CreatePaymentChannel(clientAddress, 
 	return nil
 }
 
-func (rmFake *RetrievalMarketClientFakeAPI) SendNewSignedVoucher(paychAddr address.Address, voucher *paych.SignedVoucher) error {
+func (rmFake *RetrievalMarketClientFakeAPI) CreateVoucher(paychAddr address.Address, voucher *paych.SignedVoucher) error {
 	return nil
 }
 
@@ -143,7 +143,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) NextNonce(_ context.Context, _ addre
 }
 
 // SignBytes mocks signing data
-func (rmFake *RetrievalMarketClientFakeAPI) SignBytes(_ []byte, _ address.Address) (*crypto.Signature, error) {
+func (rmFake *RetrievalMarketClientFakeAPI) SignBytes(_ []byte, _ address.Address) (crypto.Signature, error) {
 	return rmFake.Sig, rmFake.SigErr
 }
 
@@ -191,7 +191,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) StubSignature(sigError error) {
 	sig, err := mockSigner.SignBytes([]byte("pork chops and applesauce"), addr1)
 	require.NoError(rmFake.t, err)
 
-	signature := &crypto.Signature{
+	signature := crypto.Signature{
 		Type: crypto.SigTypeBLS,
 		Data: sig.Data,
 	}
@@ -208,4 +208,3 @@ func requireMakeTestFcAddr(t *testing.T) address.Address {
 
 var _ retrievalmarketconnector.PaychMgrAPI = &RetrievalMarketClientFakeAPI{}
 var _ retrievalmarketconnector.RetrievalSigner = &RetrievalMarketClientFakeAPI{}
-var _ retrievalmarketconnector.WalletAPI = &RetrievalMarketClientFakeAPI{}

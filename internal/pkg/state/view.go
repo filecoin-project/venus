@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	notinit "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
@@ -229,6 +230,13 @@ func (v *View) loadPowerActor(ctx context.Context) (*power.State, error) {
 		return nil, err
 	}
 	var state power.State
+	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
+	return &state, err
+}
+
+func (v *View) loadPaymentChannelActor(ctx context.Context, paychAddr addr.Address)(*paych.State, error) {
+	actr, err := v.loadActor(ctx, paychAddr)
+	var state paych.State
 	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
 	return &state, err
 }

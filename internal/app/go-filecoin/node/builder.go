@@ -211,23 +211,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	nd.ProofVerification = submodule.NewProofVerificationSubmodule()
 
-	// TODO: provide NewRetrievalProtocolSubmodule needed dependencies
-	//paymentchannel.NewManager(ctx, nil, msg.NewWaiter(nd.chain.ChainReader, nd.chain.MessageStore, nd.Blockstore.Blockstore, nd.Blockstore.CborStore),
-	//	nd.Messaging.Outbox)
-	//
-	//nd.RetrievalProtocol, err = submodule.NewRetrievalProtocolSubmodule(
-	//	nd.Blockstore.Blockstore,
-	//	nd.Chain(),
-	//	nd.Host(),
-	//	address.Undef,
-	//	nd.PieceManager(),
-	//	nil,
-	//	nil,
-	//	nil)
-	//if err != nil {
-	//	return nil, errors.Wrap(err, "failed to build node.RetrievalProtocol")
-	//}
-
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Chain:        nd.chain.State,
 		Sync:         cst.NewChainSyncProvider(nd.syncer.ChainSyncManager),

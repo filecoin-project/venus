@@ -3,45 +3,45 @@ package submodule
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
-	iface "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	impl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
+	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/host"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	retmkt "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
 )
 
 // RetrievalProtocolSubmodule enhances the node with retrieval protocol
 // capabilities.
 type RetrievalProtocolSubmodule struct {
-	RetrievalClient   iface.RetrievalClient
-	RetrievalProvider iface.RetrievalProvider
+	pc *retmkt.RetrievalProviderConnector
+	rc *retmkt.RetrievalClientConnector
 }
 
 // NewRetrievalProtocolSubmodule creates a new retrieval protocol submodule.
 func NewRetrievalProtocolSubmodule(
 	bs blockstore.Blockstore,
-	c *ChainSubmodule,
+	paychStore datastore.Batching,
+	cr *cst.ChainStateReadWriter,
 	host host.Host,
 	providerAddr address.Address,
-	ps piecestore.PieceStore, // or go-fil-markets piecestore?
 	signer retmkt.RetrievalSigner,
-	wal retmkt.WalletAPI,
 	pchMgrAPI retmkt.PaychMgrAPI,
 ) (*RetrievalProtocolSubmodule, error) {
+	ps := piecestore.NewPieceStore(paychStore)
+
 	netwk := network.NewFromLibp2pHost(host)
 	pnode := retmkt.NewRetrievalProviderConnector(netwk, ps, bs, pchMgrAPI)
-	cnode := retmkt.NewRetrievalClientConnector(bs,
-		c.ChainReader,
-		signer,
-		wal,
-		pchMgrAPI,
-	)
-	rsvlr := retmkt.NewRetrievalPeerResolverConnector()
+	cnode := retmkt.NewRetrievalClientConnector(bs, cr, signer, pchMgrAPI)
+	prc := retmkt.NewRetrievalPeerResolverConnector()
 
-	return &RetrievalProtocolSubmodule{
-		RetrievalClient:   impl.NewClient(netwk, bs, cnode, rsvlr),
-		RetrievalProvider: impl.NewProvider(providerAddr, pnode, netwk, ps, bs),
-	}, nil
+	marketClient := impl.NewClient(netwk, bs, cnode, prc)
+	cnode.SetRetrievalClient(marketClient)
+
+	marketProvider := impl.NewProvider(providerAddr, pnode, netwk, ps, bs)
+	pnode.SetMarketProvider(marketProvider)
+
+	return &RetrievalProtocolSubmodule{pnode, cnode}, nil
 }

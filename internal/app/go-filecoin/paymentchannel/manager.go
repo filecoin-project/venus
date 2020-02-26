@@ -14,12 +14,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 var defaultMessageValue = types.NewAttoFILFromFIL(0)
 var defaultGasPrice = types.NewAttoFILFromFIL(1)
-var defaultGasLimit = gas.NewGas(300)
+var defaultGasLimit = types.GasUnits(300)
 
 // Manager manages payment channel actor and the data store operations.
 type Manager struct {
@@ -41,7 +40,8 @@ type MsgSender interface {
 		from, to address.Address,
 		value types.AttoFIL,
 		gasPrice types.AttoFIL,
-		gasLimit gas.Unit,
+	//gasLimit gas.Unit,
+		gasLimit types.GasUnits,
 		bcast bool,
 		method abi.MethodNum,
 		params interface{}) (out cid.Cid, pubErrCh chan error, err error)
@@ -57,15 +57,18 @@ func (pm *Manager) AllocateLane(paychAddr address.Address) (uint64, error) {
 	return 0, nil
 }
 
+func (pm *Manager) GetPaymentChannelByAccounts(payer, payee address.Address) (address.Address, *ChannelInfo) {
+	panic("implement me")
+}
+
 // GetPaymentChannelInfo retrieves channel info from the store
-func (pm *Manager) GetPaymentChannelInfo(paychAddr address.Address) (ChannelInfo, error) {
-	return ChannelInfo{}, nil
+func (pm *Manager) GetPaymentChannelInfo(paychAddr address.Address) (*ChannelInfo, error) {
+	return nil, nil
 }
 
 // CreatePaymentChannel will send the message to the InitActor to create a paych.Actor.
 // If successful, a new payment channel entry will be persisted to the store via a message wait handler
 func (pm *Manager) CreatePaymentChannel(clientAddress, minerAddress address.Address) error {
-	// TODO: finish him
 	execParams, err := paychActorCtorExecParamsFor(clientAddress, minerAddress)
 	if err != nil {
 		return err
@@ -91,44 +94,20 @@ func (pm *Manager) CreatePaymentChannel(clientAddress, minerAddress address.Addr
 	return nil
 }
 
-// UpdatePaymentChannel sends a signed voucher to the payment actor and persists the result
-func (pm *Manager) SendNewSignedVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher) error {
-	execParams, err := updatePaymentChannelStateParamsFor(voucher)
-	if err != nil {
-		return err
-	}
+// CreateVoucher creates a signed voucher for the paymentActor returns the result
+func (pm *Manager) CreateVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher) error {
 
-	chinfo, err := pm.store.getChannelInfo(paychAddr)
-	if err != nil {
-		return err
-	}
-	// use channel info to create and send msg
-	msgCid, _, err := pm.sender.Send(
-		context.Background(),
-		chinfo.Owner,
-		builtin.InitActorAddr,
-		defaultMessageValue,
-		defaultGasPrice,
-		defaultGasLimit,
-		true,
-		builtin.MethodsInit.Exec,
-		execParams,
-	)
-	if err != nil {
-		return err
-	}
+	//chinfo, err := pm.store.getChannelInfo(paychAddr)
+	//if err != nil {
+	//	return err
+	//}
 	// save voucher, secret, proof, msgCid in store
-	err = pm.waiter.Wait(pm.ctx, msgCid, pm.handleUpdatePaymentChannelResult)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
-func (pm *Manager) SaveVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte, amt abi.TokenAmount) error {
-	// save results in store
+func (pm *Manager) SaveVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte, expected abi.TokenAmount) (actual abi.TokenAmount, err error) {
 	panic("implement SaveVoucher")
-	return nil
+	return abi.NewTokenAmount(0), nil
 }
 
 func (pm *Manager) handleUpdatePaymentChannelResult(b *block.Block, sm *types.SignedMessage, mr *vm.MessageReceipt) error {
@@ -140,6 +119,7 @@ func (pm *Manager) handleUpdatePaymentChannelResult(b *block.Block, sm *types.Si
 func (pm *Manager) handleCreatePaymentChannelResult(b *block.Block, sm *types.SignedMessage, mr *vm.MessageReceipt) error {
 	// save results in store
 	panic("implement handleCreatePaymentChannelResult")
+	// TODO: retrieval miner is notified payment channel is created vi graphsync
 	return nil
 }
 
