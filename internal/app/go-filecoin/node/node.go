@@ -470,12 +470,6 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return errors.Wrap(err, "error initializing storage protocol")
 	}
 
-	// TODO: Retrieval Market Integration
-	//node.RetrievalProtocol, err = submodule.NewRetrievalProtocolSubmodule(minerAddr2, piecestore.NewPieceStore(node.Repo.Datastore()), node.Blockstore.Blockstore)
-	//if err != nil {
-	//	return err
-	//}
-
 	return nil
 }
 

@@ -22,9 +22,9 @@ import (
 type RetrievalProviderConnector struct {
 	bstore   blockstore.Blockstore
 	net      rmnet.RetrievalMarketNetwork
-	unsealer UnsealerAPI
 	paychMgr PaychMgrAPI
 	provider retmkt.RetrievalProvider
+	unsealer UnsealerAPI
 }
 
 var _ retmkt.RetrievalProviderNode = &RetrievalProviderConnector{}
@@ -37,10 +37,10 @@ type UnsealerAPI interface {
 func NewRetrievalProviderConnector(net rmnet.RetrievalMarketNetwork, us UnsealerAPI,
 	bs blockstore.Blockstore, paychMgr PaychMgrAPI) *RetrievalProviderConnector {
 	return &RetrievalProviderConnector{
-		unsealer: us,
 		bstore:   bs,
 		net:      net,
 		paychMgr: paychMgr,
+		unsealer: us,
 	}
 }
 
@@ -59,7 +59,7 @@ func (r *RetrievalProviderConnector) UnsealSector(ctx context.Context, sectorID 
 	// and offset that much or copy into a buf that large
 	intSz := reflect.TypeOf(0).Size()*8 - 1
 	maxOffset := uint64(1 << intSz)
-	if offset >= maxOffset  {
+	if offset >= maxOffset {
 		return nil, xerrors.New("offset overflows int")
 	}
 	if length >= math.MaxInt64 {

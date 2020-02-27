@@ -43,19 +43,18 @@ func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
 	intSz := reflect.TypeOf(0).Size()*8 - 1
 	maxOffset := uint64(1 << intSz)
 
-
 	testCases := []struct {
-		name string
+		name           string
 		offset, length uint64
-		unsealErr error
-		expectedErr string
+		unsealErr      error
+		expectedErr    string
 	}{
-		{name: "happy path",offset: 10, length: 50, expectedErr: ""},
+		{name: "happy path", offset: 10, length: 50, expectedErr: ""},
 		{name: "returns error if Unseal errors", unsealErr: errors.New("boom"), expectedErr: "boom"},
 		{name: "returns EOF if offset more than file length", offset: 5979, expectedErr: "EOF"},
 		{name: "returns EOF if length more than file length", length: 5979, expectedErr: "EOF"},
-		{name: "returns error if length > int64", length: 1<<63, expectedErr: "length overflows int64"},
 		{name: "returns error if offset > int64", offset: maxOffset, expectedErr: "offset overflows int"},
+		{name: "returns error if length > int64", length: 1 << 63, expectedErr: "length overflows int64"},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -64,10 +63,10 @@ func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
 
 			if tc.expectedErr != "" {
 				rmp.UnsealErr = tc.unsealErr
-				_, err := rpc.UnsealSector(ctx, sectorID, tc.offset, uint64(tc.length))
+				_, err := rpc.UnsealSector(ctx, sectorID, tc.offset, tc.length)
 				assert.EqualError(t, err, tc.expectedErr)
 			} else {
-				res, err := rpc.UnsealSector(ctx, sectorID, tc.offset, uint64(tc.length))
+				res, err := rpc.UnsealSector(ctx, sectorID, tc.offset, tc.length)
 				require.NoError(t, err)
 				readBytes := make([]byte, tc.length+1)
 				readlen, err := res.Read(readBytes)
@@ -141,4 +140,3 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 		assert.EqualError(t, err, "boom")
 	})
 }
-

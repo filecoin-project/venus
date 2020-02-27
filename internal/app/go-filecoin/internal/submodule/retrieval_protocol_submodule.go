@@ -31,6 +31,7 @@ func NewRetrievalProtocolSubmodule(
 	pchMgrAPI retmkt.PaychMgrAPI,
 	pieceManager piecemanager.PieceManager,
 ) (*RetrievalProtocolSubmodule, error) {
+
 	retrievalDealPieceStore := piecestore.NewPieceStore(ds)
 
 	netwk := network.NewFromLibp2pHost(host)
