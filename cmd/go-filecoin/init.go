@@ -123,7 +123,7 @@ var initCmd = &cmds.Command{
 
 			path, err := rep.Path()
 			if err != nil {
-				return xerrors.Errorf("failed find filecoin path: %w", err)
+				return xerrors.Errorf("failed to find filecoin path: %w", err)
 			}
 
 			newsb, err := sectorbuilder.New(&sectorbuilder.Config{
