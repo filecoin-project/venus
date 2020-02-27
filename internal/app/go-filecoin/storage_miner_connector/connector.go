@@ -250,7 +250,7 @@ func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, s
 
 	params := miner.ProveCommitSectorParams{
 		SectorNumber: sectorNum,
-		Proof:        abi.SealProof{ProofBytes: proof},
+		Proof:        proof,
 	}
 
 	mcid, cerr, err := m.outbox.Send(

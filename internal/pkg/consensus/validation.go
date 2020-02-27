@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
@@ -149,8 +150,8 @@ func NewIngestionValidator(api ingestionValidatorAPI, cfg *config.MessagePoolCon
 // Errors probably mean the validation failed, but possibly indicate a failure to retrieve state
 func (v *IngestionValidator) Validate(ctx context.Context, smsg *types.SignedMessage) error {
 	// ensure message is properly signed
-	if !smsg.VerifySignature() {
-		return errInvalidSignature
+	if err := smsg.VerifySignature(); err != nil {
+		return errors.Wrap(err, errInvalidSignature.Error())
 	}
 
 	// retrieve from actor

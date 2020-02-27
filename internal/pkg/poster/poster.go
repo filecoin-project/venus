@@ -185,7 +185,7 @@ func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, candida
 	poStCandidates := make([]abi.PoStCandidate, len(candidates))
 	for i, candidate := range candidates {
 		poStCandidates[i] = abi.PoStCandidate{
-			RegisteredProof: abi.RegisteredProof_WinStackedDRG32GiBPoSt,
+			RegisteredProof: abi.RegisteredProof_StackedDRG32GiBPoSt,
 			PartialTicket:   candidate.PartialTicket[:],
 			SectorID:        abi.SectorID{Miner: abi.ActorID(minerID), Number: candidate.SectorNum},
 			ChallengeIndex:  int64(candidate.SectorChallengeIndex),
@@ -193,7 +193,6 @@ func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, candida
 	}
 
 	windowedPost := &abi.OnChainPoStVerifyInfo{
-		ProofType:  abi.RegisteredProof_StackedDRG32GiBPoSt,
 		Candidates: poStCandidates,
 		Proofs:     []abi.PoStProof{{ProofBytes: proof}},
 	}
