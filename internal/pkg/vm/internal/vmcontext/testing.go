@@ -301,16 +301,10 @@ func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state
 	return receipt, nil
 }
 
-func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.BlockMessagesInfo, epoch abi.ChainEpoch, rnd vstate.RandomnessSource) ([]vtypes.MessageReceipt, error) {
-	st := state.(*ValidationVMWrapper)
-
-	// XXX: unsure if this is redundant
-	st.vm.currentEpoch = epoch
-
-	// TODO extract to helper method
-	ourBlkMsgs := make([]interpreter.BlockMessagesInfo, len(blocks))
-	for i, bm := range blocks {
-		ourBlkMsgs[i].Miner = bm.Miner
+func toOurBlockMessageInfoType(theirs []vtypes.BlockMessagesInfo) []interpreter.BlockMessagesInfo {
+	ours := make([]interpreter.BlockMessagesInfo, len(theirs))
+	for i, bm := range theirs {
+		ours[i].Miner = bm.Miner
 		for _, blsMsg := range bm.BLSMessages {
 			ourbls := &types.UnsignedMessage{
 				To:         blsMsg.To,
@@ -322,7 +316,7 @@ func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks [
 				GasPrice:   blsMsg.GasPrice,
 				GasLimit:   types.GasUnits(blsMsg.GasLimit),
 			}
-			ourBlkMsgs[i].BLSMessages = append(ourBlkMsgs[i].BLSMessages, ourbls)
+			ours[i].BLSMessages = append(ours[i].BLSMessages, ourbls)
 		}
 		for _, secpMsg := range bm.SECPMessages {
 			oursecp := &types.SignedMessage{
@@ -338,10 +332,19 @@ func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks [
 				},
 				Signature: secpMsg.Signature,
 			}
-			ourBlkMsgs[i].SECPMessages = append(ourBlkMsgs[i].SECPMessages, oursecp)
+			ours[i].SECPMessages = append(ours[i].SECPMessages, oursecp)
 		}
 	}
+	return ours
+}
 
+func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.BlockMessagesInfo, epoch abi.ChainEpoch, rnd vstate.RandomnessSource) ([]vtypes.MessageReceipt, error) {
+	st := state.(*ValidationVMWrapper)
+
+	// XXX: unsure if this is redundant
+	st.vm.currentEpoch = epoch
+
+	ourBlkMsgs := toOurBlockMessageInfoType(blocks)
 	receipts, err := st.vm.ApplyTipSetMessages(ourBlkMsgs, epoch, rnd)
 	if err != nil {
 		return nil, err
