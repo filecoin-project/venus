@@ -428,10 +428,5 @@ func computeActorAddress(creator address.Address, nonce uint64) (address.Address
 		return address.Undef, err
 	}
 
-	out, err := address.NewActorAddress(buf.Bytes())
-	if err != nil {
-		return address.Undef, err
-	}
-	fmt.Printf("computeActorAddress | creator: %s, nonce %d, out: %s\n", creator, nonce, out)
-	return out, nil
+	return address.NewActorAddress(buf.Bytes())
 }
