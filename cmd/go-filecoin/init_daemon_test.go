@@ -3,10 +3,14 @@ package commands_test
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os/exec"
+	"path"
 	"strconv"
 	"testing"
+
+	"github.com/magiconair/properties/assert"
 
 	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/stretchr/testify/require"
@@ -56,6 +60,28 @@ func TestDownloadGenesis(t *testing.T) {
 	require.NoError(t, err)
 
 	td := th.NewDaemon(t, th.GenesisFile(fmt.Sprintf("http://127.0.0.1:%d/genesis.car", port))).Start()
+
+	td.ShutdownSuccess()
+}
+
+func TestImportPresealedSectors(t *testing.T) {
+	tf.IntegrationTest(t)
+
+	td := th.NewDaemon(t, th.InitArgs(
+		"--presealed-sectordir",
+		project.Root("fixtures/genesis-sectors"),
+		"--symlink-imported-sectors",
+	)).Start()
+
+	staging, err := ioutil.ReadDir(path.Join(td.RepoDir(), "staging"))
+	require.NoError(t, err)
+
+	assert.Equal(t, 2, len(staging))
+
+	sealed, err := ioutil.ReadDir(path.Join(td.RepoDir(), "sealed"))
+	require.NoError(t, err)
+
+	assert.Equal(t, 2, len(sealed))
 
 	td.ShutdownSuccess()
 }

@@ -31,6 +31,12 @@ const (
 	// OptionSectorDir is the name of the option for specifying the directory into which staged and sealed sectors will be written.
 	OptionSectorDir = "sectordir"
 
+	// OptionPresealedSectorDir is the name of the option for specifying the directory from which presealed sectors should be pulled when initializing.
+	OptionPresealedSectorDir = "presealed-sectordir"
+
+	// OptionSymlinkImportedSectors is the name of the option for specifying whether imported sectors should be copied or symlinked.
+	OptionSymlinkImportedSectors = "symlink-imported-sectors"
+
 	// APIPrefix is the prefix for the http version of the api.
 	APIPrefix = "/api"
 

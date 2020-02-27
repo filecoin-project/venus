@@ -12,7 +12,7 @@ import (
 	"time"
 
 	ds "github.com/ipfs/go-datastore"
-	badgerds "github.com/ipfs/go-ds-badger"
+	badgerds "github.com/ipfs/go-ds-badger2"
 	lockfile "github.com/ipfs/go-fs-lock"
 	keystore "github.com/ipfs/go-ipfs-keystore"
 	logging "github.com/ipfs/go-log"
