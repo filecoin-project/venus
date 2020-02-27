@@ -660,7 +660,7 @@ func GenesisFile(a string) func(*TestDaemon) {
 	}
 }
 
-// InitArgs allows setting addtional arguments to repo initialization
+// InitArgs allows setting additional arguments to repo initialization
 func InitArgs(a ...string) func(*TestDaemon) {
 	return func(td *TestDaemon) {
 		td.initArgs = a
