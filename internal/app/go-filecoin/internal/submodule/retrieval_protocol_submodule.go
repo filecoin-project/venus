@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	retmkt "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 )
 
 // RetrievalProtocolSubmodule enhances the node with retrieval protocol
@@ -28,14 +29,15 @@ func NewRetrievalProtocolSubmodule(
 	providerAddr address.Address,
 	signer retmkt.RetrievalSigner,
 	pchMgrAPI retmkt.PaychMgrAPI,
+	pieceManager piecemanager.PieceManager,
 ) (*RetrievalProtocolSubmodule, error) {
-	ps := piecestore.NewPieceStore(ds)
+	retrievalDealPieceStore := piecestore.NewPieceStore(ds)
 
 	netwk := network.NewFromLibp2pHost(host)
-	pnode := retmkt.NewRetrievalProviderConnector(netwk, ps, bs, pchMgrAPI)
+	pnode := retmkt.NewRetrievalProviderConnector(netwk, pieceManager, bs, pchMgrAPI)
 
 	// TODO: use latest go-fil-markets with persisted deal store
-	marketProvider := impl.NewProvider(providerAddr, pnode, netwk, ps, bs)
+	marketProvider := impl.NewProvider(providerAddr, pnode, netwk, retrievalDealPieceStore, bs)
 
 	pnode.SetProvider(marketProvider)
 

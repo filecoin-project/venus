@@ -492,6 +492,7 @@ func (node *Node) setupRetrievalMining(ctx context.Context) error {
 		providerAddr,
 		node.Wallet.Wallet,
 		nil, // TODO: payment channel manager API, in follow-up
+		node.PieceManager(),
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed to build node.RetrievalProtocol")
