@@ -34,8 +34,8 @@ const (
 	// OptionPresealedSectorDir is the name of the option for specifying the directory from which presealed sectors should be pulled when initializing.
 	OptionPresealedSectorDir = "presealed-sectordir"
 
-	// OptionPresealedMetadata is the name of the option for specifying the file from which presealed sector metadata should be read.
-	OptionPresealedSectorMetadata = "presealed-sector-metadata"
+	// OptionSymlinkImportedSectors is the name of the option for specifying whether imported sectors should be copied or symlinked.
+	OptionSymlinkImportedSectors = "symlink-imported-sectors"
 
 	// APIPrefix is the prefix for the http version of the api.
 	APIPrefix = "/api"

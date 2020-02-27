@@ -51,16 +51,7 @@ var initCmd = &cmds.Command{
 		cmdkit.BoolOption(DevnetNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters"),
 		cmdkit.BoolOption(DevnetUser, "when set, populates config bootstrap addrs with the dns multiaddrs of the user devnet and other user devnet specific bootstrap parameters"),
 		cmdkit.StringOption(OptionPresealedSectorDir, "when set to the path of a directory, imports pre-sealed sector data from that directory"),
-		/*
-			&cli.BoolFlag{
-				Name:  "nosync",
-				Usage: "don't check full-node sync status",
-			},
-			&cli.BoolFlag{
-				Name:  "symlink-imported-sectors",
-				Usage: "attempt to symlink to presealed sectors instead of copying them into place",
-			},
-		*/
+		cmdkit.BoolOption(OptionSymlinkImportedSectors, "when set, create symlinks to imported presealed sectors rather than copying them into the repo"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
@@ -123,8 +114,7 @@ var initCmd = &cmds.Command{
 			}
 
 			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
-				SectorSize:    0, // TODO: might need to configure this or dig it out of state
-				WorkerThreads: 2,
+				WorkerThreads: 1,
 				Paths:         sectorbuilder.SimplePath(presealedSectorDir),
 			}, namespace.Wrap(oldMetaDs, datastore.NewKey("/sectorbuilder")))
 			if err != nil {
@@ -137,16 +127,15 @@ var initCmd = &cmds.Command{
 			}
 
 			newsb, err := sectorbuilder.New(&sectorbuilder.Config{
-				SectorSize:    0, // TODO: might need to configure this or dig it out of state
-				WorkerThreads: 2,
+				WorkerThreads: 1,
 				Paths:         sectorbuilder.SimplePath(path),
 			}, namespace.Wrap(rep.Datastore(), datastore.NewKey("/sectorbuilder")))
 			if err != nil {
 				return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
 			}
 
-			// TODO: configuration for symlink
-			if err := newsb.ImportFrom(oldsb, true); err != nil {
+			symlink, _ := req.Options[OptionSymlinkImportedSectors].(bool)
+			if err := newsb.ImportFrom(oldsb, symlink); err != nil {
 				return err
 			}
 		}
