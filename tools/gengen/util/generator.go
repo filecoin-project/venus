@@ -313,14 +313,14 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		for i, comm := range m.CommittedSectors {
 			// Acquire deal weight value
 			// call deal verify market actor to do calculation
-			dealWeight, err := g.getDealWeight(dealIDs[i], comm.DealCfg.EndEpoch, mIDAddr)
+			dealWeight, err := g.getDealWeight(dealIDs[i], abi.ChainEpoch(comm.DealCfg.EndEpoch), mIDAddr)
 			if err != nil {
 				return nil, err
 			}
 
 			// Update Power
 			// directly set power actor state to new power accounting for deal weight duration and sector size
-			pledge, err := g.updatePower(ctx, dealWeight, m.SectorSize, comm.DealCfg.EndEpoch, mIDAddr)
+			pledge, err := g.updatePower(ctx, dealWeight, m.SectorSize, abi.ChainEpoch(comm.DealCfg.EndEpoch), mIDAddr)
 			if err != nil {
 				return nil, err
 			}
@@ -526,10 +526,10 @@ func (g *GenesisGenerator) setupPost(ctx context.Context, addr, mIDAddr address.
 	return nil
 }
 
-func (g *GenesisGenerator) getDealWeight(dealID abi.DealID, endEpoch uint64, minerIDAddr address.Address) (specsbig.Int, error) {
+func (g *GenesisGenerator) getDealWeight(dealID abi.DealID, endEpoch abi.ChainEpoch, minerIDAddr address.Address) (specsbig.Int, error) {
 	weightParams := &market.VerifyDealsOnSectorProveCommitParams{
 		DealIDs:      []abi.DealID{dealID},
-		SectorExpiry: abi.ChainEpoch(endEpoch),
+		SectorExpiry: endEpoch,
 	}
 
 	weightOut, err := g.vm.ApplyGenesisMessage(minerIDAddr, builtin.StorageMarketActorAddr, builtin.MethodsMarket.VerifyDealsOnSectorProveCommit, specsbig.Zero(), weightParams, &g.chainRand)
@@ -539,7 +539,7 @@ func (g *GenesisGenerator) getDealWeight(dealID abi.DealID, endEpoch uint64, min
 	return *weightOut.(*specsbig.Int), nil
 }
 
-func (g *GenesisGenerator) updatePower(ctx context.Context, dealWeight specsbig.Int, sectorSize abi.SectorSize, endEpoch uint64, minerIDAddr address.Address) (specsbig.Int, error) {
+func (g *GenesisGenerator) updatePower(ctx context.Context, dealWeight specsbig.Int, sectorSize abi.SectorSize, endEpoch abi.ChainEpoch, minerIDAddr address.Address) (specsbig.Int, error) {
 	powAct, found, err := g.stateTree.GetActor(ctx, builtin.StoragePowerActorAddr)
 	if err != nil {
 		return specsbig.Zero(), err
@@ -554,7 +554,7 @@ func (g *GenesisGenerator) updatePower(ctx context.Context, dealWeight specsbig.
 	}
 	weight := &power.SectorStorageWeightDesc{
 		SectorSize: sectorSize,
-		Duration:   abi.ChainEpoch(endEpoch),
+		Duration:   endEpoch,
 		DealWeight: dealWeight,
 	}
 	spower := power.ConsensusPowerForWeight(weight)
@@ -595,7 +595,7 @@ func (g *GenesisGenerator) putSectors(ctx context.Context, comm *CommitConfig, m
 
 	newSectorInfo := &miner.SectorOnChainInfo{
 		Info: miner.SectorPreCommitInfo{
-			SectorNumber:  abi.SectorNumber(comm.SectorID),
+			SectorNumber:  abi.SectorNumber(comm.SectorNum),
 			SealedCID:     comm.CommR,
 			SealRandEpoch: 0,
 			DealIDs:       []abi.DealID{dealID},
@@ -623,7 +623,7 @@ func (g *GenesisGenerator) putSectors(ctx context.Context, comm *CommitConfig, m
 
 	// register sector expiry on cron
 	sectorBf := abi.NewBitField()
-	sectorBf.Set(comm.SectorID)
+	sectorBf.Set(comm.SectorNum)
 
 	sectorExpiryEvent := &miner.CronEventPayload{
 		EventType: miner.CronEventSectorExpiry,

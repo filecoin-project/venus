@@ -33,7 +33,7 @@ type idResult struct {
 // filecoin node with the provided funds. The GenesisInfo can be used with MustImportGenesisMiner
 func RequireGenerateGenesis(t *testing.T, funds int64, dir string, genesisTime time.Time) *GenesisInfo {
 	// Setup, generate a genesis and key file
-	commCfgs, err := gengen.MakeNCommitCfgs(1)
+	commCfgs, err := gengen.MakeCommitCfgs(1)
 	require.NoError(t, err)
 	cfg := &gengen.GenesisCfg{
 		Seed:       0,

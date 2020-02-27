@@ -201,8 +201,10 @@ var PeerKeys = []crypto.PrivKey{
 }
 
 // MakeTestGenCfg returns a genesis configuration used for tests.
-func MakeTestGenCfg(t *testing.T) *gengen.GenesisCfg {
-	commCfgs, err := gengen.MakeNCommitCfgs(100)
+// This config has one miner with numSectors sectors and two accounts,
+// the first is the miner's owner/worker and the accounts both have 10000 FIL
+func MakeTestGenCfg(t *testing.T, numSectors int) *gengen.GenesisCfg {
+	commCfgs, err := gengen.MakeCommitCfgs(numSectors)
 	require.NoError(t, err)
 	return &gengen.GenesisCfg{
 		ProofsMode: types.TestProofsMode,

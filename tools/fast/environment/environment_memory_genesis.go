@@ -229,7 +229,7 @@ func (e *MemoryGenesis) startGenesisServer() error {
 
 // buildGenesis builds a genesis with the specified funds.
 func (e *MemoryGenesis) buildGenesis(funds *big.Int) error {
-	commCfgs, err := gengen.MakeNCommitCfgs(100)
+	commCfgs, err := gengen.MakeCommitCfgs(100)
 	if err != nil {
 		return err
 	}

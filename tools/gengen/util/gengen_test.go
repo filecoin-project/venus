@@ -20,9 +20,9 @@ import (
 )
 
 func testConfig(t *testing.T) *GenesisCfg {
-	fiftyCommCfgs, err := MakeNCommitCfgs(50)
+	fiftyCommCfgs, err := MakeCommitCfgs(50)
 	require.NoError(t, err)
-	tenCommCfgs, err := MakeNCommitCfgs(10)
+	tenCommCfgs, err := MakeCommitCfgs(10)
 	require.NoError(t, err)
 
 	return &GenesisCfg{

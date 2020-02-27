@@ -57,7 +57,7 @@ func retrievePieceBytes(ctx context.Context, retrievalAPI *retrieval.API, data c
 func configureMinerAndClient(t *testing.T) (minerNode *node.Node, clientNode *node.Node, minerAddr address.Address, minerOwnerAddr address.Address) { // nolint: deadcode
 	ctx := context.Background()
 
-	seed := node.MakeChainSeed(t, node.MakeTestGenCfg(t))
+	seed := node.MakeChainSeed(t, node.MakeTestGenCfg(t, 100))
 	builder1 := test.NewNodeBuilder(t)
 	builder1.WithInitOpt(node.PeerKeyOpt(node.PeerKeys[0]))
 	builder1.WithGenesisInit(seed.GenesisInitFunc)

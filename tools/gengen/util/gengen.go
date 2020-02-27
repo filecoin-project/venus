@@ -42,10 +42,10 @@ type CreateStorageMinerConfig struct {
 // CommitConfig carries all information needed to get a sector commitment in the
 // genesis state.
 type CommitConfig struct {
-	CommR    cid.Cid
-	CommD    cid.Cid
-	SectorID uint64
-	DealCfg  *DealConfig
+	CommR     cid.Cid
+	CommD     cid.Cid
+	SectorNum uint64
+	DealCfg   *DealConfig
 }
 
 // DealConfig carries the information needed to specify a self-deal committing
@@ -56,7 +56,7 @@ type DealConfig struct {
 	// Client and Provider are miner worker and miner address
 
 	// StartEpoch is 0
-	EndEpoch uint64
+	EndEpoch int64
 	// StoragePricePerEpoch is 0
 
 	// Collateral values are 0 for now (might need to change to some minimum)

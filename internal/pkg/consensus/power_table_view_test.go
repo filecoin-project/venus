@@ -60,7 +60,7 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	commCfgs, err := gengen.MakeNCommitCfgs(int(numCommittedSectors))
+	commCfgs, err := gengen.MakeCommitCfgs(int(numCommittedSectors))
 	require.NoError(t, err)
 
 	// set up genesis block containing some miners with non-zero power

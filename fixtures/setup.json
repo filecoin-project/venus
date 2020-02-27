@@ -13,7 +13,7 @@
     "committedSectors": [{
       "commR": {"/":"bafy2bzaceb4n26dwrtbzx7l6ifj32xmxkl5lc6lfzq4qlcoft3t2jzzs7anfi"},
       "commD": {"/":"bafy2bzacec3p63bwba2ph3stn27jbiyadowkpdmtg2m7aysfciuevzrjpyndo"},
-      "sectorID": 0,
+      "sectorNum": 0,
       "dealCfg": {
         "commP": {"/":"bafy2bzaceb4n26dwrtbzx7l6ifj32xmxkl5lc6lfzq4qlcoft3t2jzzs7anfi"},
         "pieceSize": 1,

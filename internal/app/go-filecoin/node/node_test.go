@@ -146,7 +146,7 @@ func TestNodeStartMining(t *testing.T) {
 
 	ctx := context.Background()
 
-	seed := node.MakeChainSeed(t, node.MakeTestGenCfg(t))
+	seed := node.MakeChainSeed(t, node.MakeTestGenCfg(t, 100))
 	builder := test.NewNodeBuilder(t)
 	builder.WithInitOpt(node.PeerKeyOpt(node.PeerKeys[0]))
 	builder.WithGenesisInit(seed.GenesisInitFunc)

@@ -353,7 +353,7 @@ func TestMinerStatus(t *testing.T) {
 
 func minerDaemonTestConfig(t *testing.T) *gengen.GenesisCfg {
 
-	commCfgs, err := gengen.MakeNCommitCfgs(3)
+	commCfgs, err := gengen.MakeCommitCfgs(3)
 	require.NoError(t, err)
 	return &gengen.GenesisCfg{
 		Seed:       0,
