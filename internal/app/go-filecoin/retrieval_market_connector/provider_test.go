@@ -1,11 +1,10 @@
 package retrievalmarketconnector_test
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"math/rand"
-	"os"
+	"reflect"
 	"testing"
 
 	gfmtut "github.com/filecoin-project/go-fil-markets/shared_testutil"
@@ -28,7 +27,6 @@ import (
 func TestNewRetrievalProviderNodeConnector(t *testing.T) {
 	tf.UnitTest(t)
 	rmnet := gfmtut.NewTestRetrievalMarketNetwork(gfmtut.TestNetworkParams{})
-	//ps := gfmtut.NewTestPieceStore()
 	pm := piecemanager.NewStorageMinerBackEnd(nil, nil)
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	rmp := NewRetrievalMarketClientFakeAPI(t, abi.NewTokenAmount(0))
@@ -38,13 +36,63 @@ func TestNewRetrievalProviderNodeConnector(t *testing.T) {
 
 func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
 	tf.UnitTest(t)
+	ctx := context.Background()
+	sectorID := rand.Uint64()
+	fixtureFile := "../../../../fixtures/constants.go"
 
+	intSz := reflect.TypeOf(0).Size()*8 - 1
+	maxOffset := uint64(1 << intSz)
+
+
+	testCases := []struct {
+		name string
+		offset, length uint64
+		unsealErr error
+		expectedErr string
+	}{
+		{name: "happy path",offset: 10, length: 50, expectedErr: ""},
+		{name: "returns error if Unseal errors", unsealErr: errors.New("boom"), expectedErr: "boom"},
+		{name: "returns EOF if offset more than file length", offset: 5979, expectedErr: "EOF"},
+		{name: "returns EOF if length more than file length", length: 5979, expectedErr: "EOF"},
+		{name: "returns error if length > int64", length: 1<<63, expectedErr: "length overflows int64"},
+		{name: "returns error if offset > int64", offset: maxOffset, expectedErr: "offset overflows int"},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rmp, rpc := unsealTestSetup(ctx, t)
+			rmp.ExpectedSectorIDs[sectorID] = fixtureFile
+
+			if tc.expectedErr != "" {
+				rmp.UnsealErr = tc.unsealErr
+				_, err := rpc.UnsealSector(ctx, sectorID, tc.offset, uint64(tc.length))
+				assert.EqualError(t, err, tc.expectedErr)
+			} else {
+				res, err := rpc.UnsealSector(ctx, sectorID, tc.offset, uint64(tc.length))
+				require.NoError(t, err)
+				readBytes := make([]byte, tc.length+1)
+				readlen, err := res.Read(readBytes)
+				require.NoError(t, err)
+				assert.Equal(t, tc.length, uint64(readlen))
+
+				// check that it read something & the offset worked
+				assert.Equal(t, "xtures", string(readBytes[0:6]))
+				rmp.Verify()
+			}
+		})
+	}
+}
+
+func unsealTestSetup(ctx context.Context, t *testing.T) (*RetrievalMarketClientFakeAPI, *RetrievalProviderConnector) {
+	rmnet := gfmtut.NewTestRetrievalMarketNetwork(gfmtut.TestNetworkParams{})
+	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
+	rmp := NewRetrievalMarketClientFakeAPI(t, abi.NewTokenAmount(0))
+	rpc := NewRetrievalProviderConnector(rmnet, rmp, bs, rmp)
+	return rmp, rpc
 }
 
 func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 	tf.UnitTest(t)
 	rmnet := gfmtut.NewTestRetrievalMarketNetwork(gfmtut.TestNetworkParams{})
-	//ps := gfmtut.NewTestPieceStore()
 	pm := piecemanager.NewStorageMinerBackEnd(nil, nil)
 
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
@@ -93,3 +141,4 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 		assert.EqualError(t, err, "boom")
 	})
 }
+

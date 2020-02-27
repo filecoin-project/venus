@@ -2,12 +2,12 @@ package retrievalmarketconnector
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"strings"
+	"math"
+	"reflect"
 
 	"github.com/filecoin-project/go-address"
 	retmkt "github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -15,29 +15,30 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	logging "github.com/ipfs/go-log"
 	xerrors "github.com/pkg/errors"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 )
 
 // RetrievalProviderConnector is the glue between go-filecoin and retrieval market provider API
 type RetrievalProviderConnector struct {
-	bs       blockstore.Blockstore
+	bstore   blockstore.Blockstore
 	net      rmnet.RetrievalMarketNetwork
-	pm       piecemanager.PieceManager
+	unsealer UnsealerAPI
 	paychMgr PaychMgrAPI
 	provider retmkt.RetrievalProvider
 }
 
 var _ retmkt.RetrievalProviderNode = &RetrievalProviderConnector{}
 
+type UnsealerAPI interface {
+	UnsealSector(ctx context.Context, sectorID uint64) (io.ReadCloser, error)
+}
+
 // NewRetrievalProviderConnector creates a new RetrievalProviderConnector
-func NewRetrievalProviderConnector(net rmnet.RetrievalMarketNetwork, pm piecemanager.PieceManager,
+func NewRetrievalProviderConnector(net rmnet.RetrievalMarketNetwork, us UnsealerAPI,
 	bs blockstore.Blockstore, paychMgr PaychMgrAPI) *RetrievalProviderConnector {
 	return &RetrievalProviderConnector{
-		pm:       pm,
-		bs:       bs,
+		unsealer: us,
+		bstore:   bs,
 		net:      net,
 		paychMgr: paychMgr,
 	}
@@ -49,9 +50,23 @@ func (r *RetrievalProviderConnector) SetProvider(provider retmkt.RetrievalProvid
 }
 
 // UnsealSector unseals the sector given by sectorId and offset with length `length`
+// It rejects offsets > int size and length > int64 size; the interface wants
+// uint64s. This would return a bufio overflow error anyway, but the check
+// is provided as a debugging convenience for the consumer of this function.
 func (r *RetrievalProviderConnector) UnsealSector(ctx context.Context, sectorID uint64,
 	offset uint64, length uint64) (io.ReadCloser, error) {
-	readCloser, err := r.pm.UnsealSector(ctx, sectorID)
+	// reject anything that's a real uint64 rather than trying to get cute
+	// and offset that much or copy into a buf that large
+	intSz := reflect.TypeOf(0).Size()*8 - 1
+	maxOffset := uint64(1 << intSz)
+	if offset >= maxOffset  {
+		return nil, xerrors.New("offset overflows int")
+	}
+	if length >= math.MaxInt64 {
+		return nil, xerrors.New("length overflows int64")
+	}
+
+	unsealedSector, err := r.unsealer.UnsealSector(ctx, sectorID)
 	if err != nil {
 		return nil, err
 	}
@@ -61,30 +76,25 @@ func (r *RetrievalProviderConnector) UnsealSector(ctx context.Context, sectorID 
 	if err != nil {
 		return nil, err
 	}
-	// TODO: reasonable limits on buf size, offset, and length
+
 	{
-		bufr := bufio.NewReader(readCloser)
-		disc, err := bufr.Discard(int(offset))
+		bufr := bufio.NewReader(unsealedSector)
+
+		_, err := bufr.Discard(int(offset))
 		if err != nil {
 			return nil, err
 		}
-		if uint64(disc) != offset {
-			return nil, xerrors.Errorf("failed to offset to %d: offset to %d", offset, disc)
-		}
-		written, err := io.CopyN(res, bufr, int64(length))
+		_, err = io.CopyN(res, bufr, int64(length))
 		if err != nil {
 			return nil, err
-		}
-		if uint64(written) != length {
-			return nil, xerrors.Errorf("failed to write %d bytes: wrote %d bytes", length, written)
 		}
 	}
-	if err = readCloser.Close(); err != nil {
+	if err = unsealedSector.Close(); err != nil {
 		log.Error("failed to close unsealed sector %d", sectorID)
 	}
 
-	if _, err = res.Seek(0,0); err != nil {
-		return nil, xerrors.Errorf("could not seek to start of result")
+	if _, err = res.Seek(0, 0); err != nil {
+		return nil, xerrors.Errorf("could not seek to beginning")
 	}
 
 	return res, nil

@@ -3,7 +3,9 @@ package retrievalmarketconnector_test
 import (
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
+	"os"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -16,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 
-	paymentchannel "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	retrievalmarketconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -27,8 +29,10 @@ type RetrievalMarketClientFakeAPI struct {
 	t               *testing.T
 	AllocateLaneErr error
 
-	ExpectedPmtChans map[address.Address]*paymentchannel.ChannelInfo // mock payer's payment channel store by paychAddr
-	ActualPmtChans   map[address.Address]bool                        // to check that the payment channels were created
+	// mock payer's payment channel store by paychAddr
+	ExpectedPmtChans map[address.Address]*paymentchannel.ChannelInfo
+	// to check that the payment channels were created.
+	ActualPmtChans   map[address.Address]bool
 
 	PayChBalanceErr error
 
@@ -46,12 +50,14 @@ type RetrievalMarketClientFakeAPI struct {
 	MsgSendCid cid.Cid
 	MsgSendErr error
 
-	WaitErr error
-
 	SendNewVoucherErr error
 	SaveVoucherErr    error
 	ExpectedVouchers  map[address.Address]*paymentchannel.VoucherInfo
 	ActualVouchers    map[address.Address]bool
+
+	ExpectedSectorIDs map[uint64]string
+	ActualSectorIDs   map[uint64]bool
+	UnsealErr         error
 }
 
 // NewRetrievalMarketClientFakeAPI creates an instance of a test API that satisfies all needed
@@ -66,6 +72,8 @@ func NewRetrievalMarketClientFakeAPI(t *testing.T, bal abi.TokenAmount) *Retriev
 		ActualPmtChans:   make(map[address.Address]bool),
 		ExpectedVouchers: make(map[address.Address]*paymentchannel.VoucherInfo),
 		ActualVouchers:   make(map[address.Address]bool),
+		ExpectedSectorIDs: make(map[uint64]string),
+		ActualSectorIDs: make(map[uint64]bool),
 	}
 }
 
@@ -106,7 +114,8 @@ func (rmFake *RetrievalMarketClientFakeAPI) CreateVoucher(paychAddr address.Addr
 	return nil
 }
 
-// GetPaymentChannelByAccounts returns the channel info for the payment channel associated with the account.
+// GetPaymentChannelByAccounts mocks returning the channel info for the payment channel
+// associated with the account.
 // It does not necessarily expect to find the channel info; it returns nil if not found
 func (rmFake *RetrievalMarketClientFakeAPI) GetPaymentChannelByAccounts(payer, payee address.Address) (address.Address, *paymentchannel.ChannelInfo) {
 	for paychAddr, chinfo := range rmFake.ExpectedPmtChans {
@@ -163,6 +172,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) Send(ctx context.Context,
 	return rmFake.MsgSendCid, nil, rmFake.MsgSendErr
 }
 
+// SaveVoucher mocks saving a voucher to the payment channel store.
 func (rmFake *RetrievalMarketClientFakeAPI) SaveVoucher(paychAddr address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmt abi.TokenAmount) (abi.TokenAmount, error) {
 	_, ok := rmFake.ExpectedVouchers[paychAddr]
 	if !ok {
@@ -175,11 +185,27 @@ func (rmFake *RetrievalMarketClientFakeAPI) SaveVoucher(paychAddr address.Addres
 	return expectedAmt, nil
 }
 
-// ---------------  Testing methods
+// UnsealSector mocks unsealing.  Assign a filename to ExpectedSectorIDs[sectorID] to
+// test
+func (rmFake *RetrievalMarketClientFakeAPI) UnsealSector(_ context.Context, sectorID uint64) (io.ReadCloser, error) {
+	if rmFake.UnsealErr != nil {
+		return nil, rmFake.UnsealErr
+	}
+	name, ok := rmFake.ExpectedSectorIDs[sectorID]
+	if !ok {
+		return nil, xerrors.New("RetrievalMarketClientFakeAPI: sectorID does not exist")
+	}
+	rc, err := os.OpenFile(name, os.O_RDONLY, 0500)
+	require.NoError(rmFake.t, err)
+	rmFake.ActualSectorIDs[sectorID] = true
+	return rc, nil
+}
 
+// ---------------  Testing methods
 func (rmFake *RetrievalMarketClientFakeAPI) Verify() {
 	assert.Equal(rmFake.t, len(rmFake.ExpectedPmtChans), len(rmFake.ActualPmtChans))
 	assert.Equal(rmFake.t, len(rmFake.ActualVouchers), len(rmFake.ExpectedVouchers))
+	assert.Equal(rmFake.t, len(rmFake.ActualSectorIDs), len(rmFake.ExpectedSectorIDs))
 }
 
 // StubMessageResponse sets up a message, message receipt and return value for a create payment
@@ -208,3 +234,4 @@ func requireMakeTestFcAddr(t *testing.T) address.Address {
 
 var _ retrievalmarketconnector.PaychMgrAPI = &RetrievalMarketClientFakeAPI{}
 var _ retrievalmarketconnector.RetrievalSigner = &RetrievalMarketClientFakeAPI{}
+var _ retrievalmarketconnector.UnsealerAPI = &RetrievalMarketClientFakeAPI{}
