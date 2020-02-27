@@ -295,7 +295,7 @@ func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state
 	receipt := vtypes.MessageReceipt{
 		ExitCode:    ourreceipt.ExitCode,
 		ReturnValue: ourreceipt.ReturnValue,
-		GasUsed:     big.Int(ourreceipt.GasUsed),
+		GasUsed:     ourreceipt.GasUsed.AsBigInt(),
 	}
 
 	return receipt, nil
