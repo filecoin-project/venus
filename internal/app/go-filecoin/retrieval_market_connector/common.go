@@ -6,12 +6,15 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	paychActor "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
+
+var log = logging.Logger("retrievalmarketconnector")
 
 // ChainReaderAPI is the subset of the Wallet interface needed by the retrieval client node
 type ChainReaderAPI interface {

@@ -1,23 +1,31 @@
 package retrievalmarketconnector
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"fmt"
 	"io"
+	"io/ioutil"
+	"strings"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
 	retmkt "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	logging "github.com/ipfs/go-log"
+	xerrors "github.com/pkg/errors"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 )
 
 // RetrievalProviderConnector is the glue between go-filecoin and retrieval market provider API
 type RetrievalProviderConnector struct {
 	bs       blockstore.Blockstore
-	ps       piecestore.PieceStore
 	net      rmnet.RetrievalMarketNetwork
+	pm       piecemanager.PieceManager
 	paychMgr PaychMgrAPI
 	provider retmkt.RetrievalProvider
 }
@@ -25,10 +33,10 @@ type RetrievalProviderConnector struct {
 var _ retmkt.RetrievalProviderNode = &RetrievalProviderConnector{}
 
 // NewRetrievalProviderConnector creates a new RetrievalProviderConnector
-func NewRetrievalProviderConnector(net rmnet.RetrievalMarketNetwork, ps piecestore.PieceStore,
+func NewRetrievalProviderConnector(net rmnet.RetrievalMarketNetwork, pm piecemanager.PieceManager,
 	bs blockstore.Blockstore, paychMgr PaychMgrAPI) *RetrievalProviderConnector {
 	return &RetrievalProviderConnector{
-		ps:       ps,
+		pm:       pm,
 		bs:       bs,
 		net:      net,
 		paychMgr: paychMgr,
@@ -43,7 +51,43 @@ func (r *RetrievalProviderConnector) SetProvider(provider retmkt.RetrievalProvid
 // UnsealSector unseals the sector given by sectorId and offset with length `length`
 func (r *RetrievalProviderConnector) UnsealSector(ctx context.Context, sectorID uint64,
 	offset uint64, length uint64) (io.ReadCloser, error) {
-	panic("implement UnsealSector")
+	readCloser, err := r.pm.UnsealSector(ctx, sectorID)
+	if err != nil {
+		return nil, err
+	}
+
+	fname := fmt.Sprintf("retrieval_market_%d_%d_%d", sectorID, offset, length)
+	res, err := ioutil.TempFile("", fname)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: reasonable limits on buf size, offset, and length
+	{
+		bufr := bufio.NewReader(readCloser)
+		disc, err := bufr.Discard(int(offset))
+		if err != nil {
+			return nil, err
+		}
+		if uint64(disc) != offset {
+			return nil, xerrors.Errorf("failed to offset to %d: offset to %d", offset, disc)
+		}
+		written, err := io.CopyN(res, bufr, int64(length))
+		if err != nil {
+			return nil, err
+		}
+		if uint64(written) != length {
+			return nil, xerrors.Errorf("failed to write %d bytes: wrote %d bytes", length, written)
+		}
+	}
+	if err = readCloser.Close(); err != nil {
+		log.Error("failed to close unsealed sector %d", sectorID)
+	}
+
+	if _, err = res.Seek(0,0); err != nil {
+		return nil, xerrors.Errorf("could not seek to start of result")
+	}
+
+	return res, nil
 }
 
 // SavePaymentVoucher stores the provided payment voucher with the payment channel actor
@@ -53,10 +97,6 @@ func (r *RetrievalProviderConnector) SavePaymentVoucher(_ context.Context, payme
 	if err != nil {
 		return abi.NewTokenAmount(0), err
 	}
-	// provider attempts to redeem voucher
-	// (totalSent * pricePerbyte) - fundsReceived
-	// on return the retrievalMarket asks the client for more fund if recorded available
-	// amount in channel is less than expectedAmt
 
 	actual, err := r.paychMgr.SaveVoucher(paymentChannel, voucher, proof, expected)
 	if err != nil {
