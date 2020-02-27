@@ -39,9 +39,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
-const CronEventWindowedPoStExpiration = 0
-const CronEventSectorExpiry = 3
-
 type cstore struct {
 	ctx context.Context
 	cbor.IpldStore
@@ -502,7 +499,7 @@ func (g *GenesisGenerator) setupPost(ctx context.Context, addr, mIDAddr address.
 	// register event on cron actor by sending from miner actor address
 	// Dragons need to include empty val to prevent cbor gen from panicing
 	provingPeriodEvent := &miner.CronEventPayload{
-		EventType: CronEventWindowedPoStExpiration,
+		EventType: miner.CronEventWindowedPoStExpiration,
 	}
 	provingPeriodEventPayload, err := encoding.Encode(provingPeriodEvent)
 	if err != nil {
@@ -629,7 +626,7 @@ func (g *GenesisGenerator) putSectors(ctx context.Context, comm *CommitConfig, m
 	sectorBf.Set(comm.SectorID)
 
 	sectorExpiryEvent := &miner.CronEventPayload{
-		EventType: CronEventSectorExpiry,
+		EventType: miner.CronEventSectorExpiry,
 		Sectors:   &sectorBf,
 	}
 	sectorExpiryEventPayload, err := encoding.Encode(sectorExpiryEvent)

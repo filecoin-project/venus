@@ -18,10 +18,12 @@ var _ specsruntime.Syscalls = (*syscalls)(nil)
 
 // VerifySignature implements Syscalls.
 func (sys syscalls) VerifySignature(signature specscrypto.Signature, signer address.Address, plaintext []byte) error {
-	// Dragons: this lets all id addresses off the hook -- we need to do the
-	// reverse lookup and check asap
+	// Dragons: this lets all id addresses off the hook -- we need to remove this
+	// once market actor code actually checks proposal signature.  Depending on how
+	// that works we may want to do id address to pubkey address lookup here or we
+	// might defer that to VM
 	if signer.Protocol() == address.ID {
-		return true
+		return nil
 	}
 	return crypto.ValidateSignature(plaintext, signer, signature)
 }

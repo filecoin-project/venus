@@ -116,7 +116,6 @@ func (ctx *invocationContext) invoke() interface{} {
 
 	// 1. check caller was validated
 	if !ctx.isCallerValidated {
-		fmt.Printf("caller wasn't validated\n")
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Caller MUST be validated during method execution")
 	}
 
@@ -315,7 +314,6 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {
-		fmt.Printf("side effect issue\n")
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Calling Send() is not allowed during side-effet lock")
 	}
 	// prepare
@@ -349,7 +347,6 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 	// 3. success!
 	marsh, ok := out.(specsruntime.CBORMarshaler)
 	if !ok {
-		fmt.Printf("non marshaller issue\n")
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Returned value is not a CBORMarshaler")
 	}
 	return returnWrapper{inner: marsh}, exitcode.Ok
