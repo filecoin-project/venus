@@ -400,8 +400,8 @@ func (g *GenesisGenerator) createMiner(ctx context.Context, m *CreateStorageMine
 		return address.Undef, address.Undef, err
 	}
 
-	// Note: the owner of the miner is implicit in the msg. The owner will be the `from` address.
 	out, err := g.vm.ApplyGenesisMessage(wAddr, builtin.StoragePowerActorAddr, builtin.MethodsPower.CreateMiner, abi.NewTokenAmount(100000), &power.CreateMinerParams{
+		Owner:      wAddr,
 		Worker:     wAddr,
 		Peer:       pid,
 		SectorSize: m.SectorSize,
@@ -486,7 +486,7 @@ func (g *GenesisGenerator) setupPost(ctx context.Context, addr, mIDAddr address.
 	}
 	if !found {
 		return fmt.Errorf("state tree could not find power actor")
-	}	
+	}
 	var minerActorState miner.State
 	err = g.store.Get(mAct.Head.Cid, &minerActorState)
 	if err != nil {
