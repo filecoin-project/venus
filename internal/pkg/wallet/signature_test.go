@@ -45,7 +45,7 @@ func TestSignatureOk(t *testing.T) {
 	sig, err := fs.SignBytes(data, addr)
 	require.NoError(t, err)
 
-	assert.True(t, crypto.ValidateSignature(data, addr, sig))
+	assert.NoError(t, crypto.ValidateSignature(data, addr, sig))
 }
 
 // Signature is nil.
@@ -55,7 +55,7 @@ func TestNilSignature(t *testing.T) {
 	_, addr := requireSignerAddr(t)
 
 	data := []byte("THESE BYTES NEED A SIGNATURE")
-	assert.False(t, crypto.ValidateSignature(data, addr, crypto.Signature{}))
+	assert.Error(t, crypto.ValidateSignature(data, addr, crypto.Signature{}))
 }
 
 // Signature is over different data.
@@ -70,7 +70,7 @@ func TestDataCorrupted(t *testing.T) {
 
 	corruptData := []byte("THESE BYTEZ ARE SIGNED")
 
-	assert.False(t, crypto.ValidateSignature(corruptData, addr, sig))
+	assert.Error(t, crypto.ValidateSignature(corruptData, addr, sig))
 }
 
 // Signature is valid for data but was signed by a different address.
@@ -86,7 +86,7 @@ func TestInvalidAddress(t *testing.T) {
 	badAddr, err := fs.NewAddress(address.SECP256K1)
 	require.NoError(t, err)
 
-	assert.False(t, crypto.ValidateSignature(data, badAddr, sig))
+	assert.Error(t, crypto.ValidateSignature(data, badAddr, sig))
 }
 
 // Signature is corrupted.
@@ -100,7 +100,7 @@ func TestSignatureCorrupted(t *testing.T) {
 	require.NoError(t, err)
 	sig.Data[0] = sig.Data[0] ^ 0xFF // This operation ensures sig is modified
 
-	assert.False(t, crypto.ValidateSignature(data, addr, sig))
+	assert.Error(t, crypto.ValidateSignature(data, addr, sig))
 }
 
 /* Test types.SignedMessage */

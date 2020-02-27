@@ -93,22 +93,22 @@ func TestWalletBLSKeys(t *testing.T) {
 	})
 
 	t.Run("valid signatures verify", func(t *testing.T) {
-		verified := crypto.ValidateSignature(data, addr, sig)
-		assert.True(t, verified)
+		err := crypto.ValidateSignature(data, addr, sig)
+		assert.NoError(t, err)
 	})
 
 	t.Run("invalid signatures do not verify", func(t *testing.T) {
 		notTheData := []byte("not the data")
-		verified := crypto.ValidateSignature(notTheData, addr, sig)
-		assert.False(t, verified)
+		err := crypto.ValidateSignature(notTheData, addr, sig)
+		assert.Error(t, err)
 
 		notTheSig := crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: make([]byte, bls.SignatureBytes),
 		}
 		copy(notTheSig.Data[:], "not the sig")
-		verified = crypto.ValidateSignature(data, addr, notTheSig)
-		assert.False(t, verified)
+		err = crypto.ValidateSignature(data, addr, notTheSig)
+		assert.Error(t, err)
 	})
 }
 
@@ -145,14 +145,14 @@ func TestSimpleSignAndVerify(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Log("verify signed content")
-	valid := crypto.ValidateSignature(dataA, addr, sig)
-	assert.True(t, valid)
+	err = crypto.ValidateSignature(dataA, addr, sig)
+	assert.NoError(t, err)
 
 	// data that is unsigned
 	dataB := []byte("I AM UNSIGNED DATA!")
 	t.Log("verify fails for unsigned content")
-	secondValid := crypto.ValidateSignature(dataB, addr, sig)
-	assert.False(t, secondValid)
+	err = crypto.ValidateSignature(dataB, addr, sig)
+	assert.Error(t, err)
 }
 
 func TestSignErrorCases(t *testing.T) {
