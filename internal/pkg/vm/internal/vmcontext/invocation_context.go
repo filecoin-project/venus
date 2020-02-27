@@ -310,7 +310,7 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 
 	// replace nil params with empty value
 	if params == nil {
-		params = &adt.EmptyValue{}
+		params = &adt_spec.EmptyValue{}
 	}
 
 	// check if side-effects are allowed

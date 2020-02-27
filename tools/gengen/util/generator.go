@@ -71,7 +71,7 @@ type GenesisGenerator struct {
 
 	keys      []*crypto.KeyInfo
 	pnrg      *mrand.Rand
-	chainRand crypto.GenesisRandomnessSource
+	chainRand crypto.ChainRandomnessSource
 	cfg       *GenesisCfg
 }
 
@@ -83,7 +83,7 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 	g.vm = vm.NewVM(g.stateTree, &g.store).(consensus.GenesisVM)
 	g.cst = cst
 
-	g.chainRand = crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{TicketBytes: consensus.GenesisTicket.VRFProof}
+	g.chainRand = crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{TicketBytes: consensus.GenesisTicket.VRFProof}}
 	return &g
 }
 
@@ -354,9 +354,12 @@ func (g *GenesisGenerator) initPowerTable(ctx context.Context) error {
 	for _, m := range g.cfg.Miners {
 		networkPower = specsbig.Add(networkPower, specsbig.NewInt(int64(m.SectorSize)*int64(len(m.CommittedSectors))))
 	}
-	powAct, err := g.stateTree.GetActor(ctx, builtin.StoragePowerActorAddr)
+	powAct, found, err := g.stateTree.GetActor(ctx, builtin.StoragePowerActorAddr)
 	if err != nil {
 		return err
+	}
+	if !found {
+		return fmt.Errorf("state tree could not find power actor")
 	}
 	var powerActorState power.State
 	err = g.store.Get(powAct.Head.Cid, &powerActorState)
@@ -480,10 +483,13 @@ func (g *GenesisGenerator) commitDeals(ctx context.Context, addr, mIDAddr addres
 }
 
 func (g *GenesisGenerator) setupPost(ctx context.Context, addr, mIDAddr address.Address) error {
-	mAct, err := g.stateTree.GetActor(ctx, mIDAddr)
+	mAct, found, err := g.stateTree.GetActor(ctx, mIDAddr)
 	if err != nil {
 		return err
 	}
+	if !found {
+		return fmt.Errorf("state tree could not find power actor")
+	}	
 	var minerActorState miner.State
 	err = g.store.Get(mAct.Head.Cid, &minerActorState)
 	if err != nil {
@@ -537,9 +543,12 @@ func (g *GenesisGenerator) getDealWeight(dealID abi.DealID, endEpoch uint64, min
 }
 
 func (g *GenesisGenerator) updatePower(ctx context.Context, dealWeight specsbig.Int, sectorSize abi.SectorSize, endEpoch uint64, minerIDAddr address.Address) (specsbig.Int, error) {
-	powAct, err := g.stateTree.GetActor(ctx, builtin.StoragePowerActorAddr)
+	powAct, found, err := g.stateTree.GetActor(ctx, builtin.StoragePowerActorAddr)
 	if err != nil {
 		return specsbig.Zero(), err
+	}
+	if !found {
+		return specsbig.Zero(), fmt.Errorf("state tree could not find power actor")
 	}
 	var powerActorState power.State
 	err = g.store.Get(powAct.Head.Cid, &powerActorState)
@@ -574,9 +583,12 @@ func (g *GenesisGenerator) updatePower(ctx context.Context, dealWeight specsbig.
 }
 
 func (g *GenesisGenerator) putSectors(ctx context.Context, comm *CommitConfig, mIDAddr address.Address, dealID abi.DealID, dealWeight, pledge specsbig.Int) error {
-	mAct, err := g.stateTree.GetActor(ctx, mIDAddr)
+	mAct, found, err := g.stateTree.GetActor(ctx, mIDAddr)
 	if err != nil {
 		return err
+	}
+	if !found {
+		return fmt.Errorf("state tree could not find power actor")
 	}
 	var minerActorState miner.State
 	err = g.store.Get(mAct.Head.Cid, &minerActorState)
