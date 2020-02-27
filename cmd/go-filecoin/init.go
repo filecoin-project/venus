@@ -158,8 +158,6 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 		}
 	}
 
-	// TODO: if pre-sealed-metadata present, read metadata and put deal information in datastore (which datastore?)
-
 	if autoSealIntervalSeconds, ok := options[AutoSealIntervalSeconds]; ok {
 		cfg.Mining.AutoSealIntervalSeconds = autoSealIntervalSeconds.(uint)
 	}
