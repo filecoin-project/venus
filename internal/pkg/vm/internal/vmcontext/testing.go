@@ -341,17 +341,9 @@ func toOurBlockMessageInfoType(theirs []vtypes.BlockMessagesInfo) []interpreter.
 func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.BlockMessagesInfo, epoch abi.ChainEpoch, rnd vstate.RandomnessSource) ([]vtypes.MessageReceipt, error) {
 	st := state.(*ValidationVMWrapper)
 
-	// XXX: unsure if this is redundant
-	st.vm.currentEpoch = epoch
-
 	ourBlkMsgs := toOurBlockMessageInfoType(blocks)
 	receipts, err := st.vm.ApplyTipSetMessages(ourBlkMsgs, epoch, rnd)
 	if err != nil {
-		return nil, err
-	}
-
-	// XXX: unsure if this is redundant.
-	if err := st.PersistChanges(); err != nil {
 		return nil, err
 	}
 
