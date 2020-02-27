@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -95,8 +96,8 @@ func (fem *FakeElectionMachine) GeneratePoSt(_ ffi.SortedPublicSectorInfo, _ []b
 }
 
 // VerifyPoStRandomness returns true
-func (fem *FakeElectionMachine) VerifyPoStRandomness(_ block.VRFPi, _ block.Ticket, _ address.Address, _ uint64) bool {
-	return true
+func (fem *FakeElectionMachine) VerifyPoStRandomness(_ block.VRFPi, _ block.Ticket, _ address.Address, _ uint64) error {
+	return nil
 }
 
 // CandidateWins returns true
@@ -117,17 +118,17 @@ func (ftm *FakeTicketMachine) NextTicket(parent block.Ticket, signerAddr address
 	return MakeFakeTicketForTest(), nil
 }
 
-// IsValidTicket always returns true
-func (ftm *FakeTicketMachine) IsValidTicket(parent, ticket block.Ticket, signerAddr address.Address) bool {
-	return true
+// ValidateTicket always returns true
+func (ftm *FakeTicketMachine) ValidateTicket(parent, ticket block.Ticket, signerAddr address.Address) error {
+	return nil
 }
 
 // FailingTicketValidator marks all tickets as invalid
 type FailingTicketValidator struct{}
 
-// IsValidTicket always returns false
-func (ftv *FailingTicketValidator) IsValidTicket(parent, ticket block.Ticket, signerAddr address.Address) bool {
-	return false
+// ValidateTicket always returns false
+func (ftv *FailingTicketValidator) ValidateTicket(parent, ticket block.Ticket, signerAddr address.Address) error {
+	return fmt.Errorf("invalid ticket")
 }
 
 // FailingElectionValidator marks all election candidates as invalid
@@ -146,8 +147,8 @@ func (fev *FailingElectionValidator) VerifyPoSt(_ verification.PoStVerifier, _ f
 }
 
 // VerifyPoStRandomness return true
-func (fev *FailingElectionValidator) VerifyPoStRandomness(_ block.VRFPi, _ block.Ticket, _ address.Address, _ uint64) bool {
-	return true
+func (fev *FailingElectionValidator) VerifyPoStRandomness(_ block.VRFPi, _ block.Ticket, _ address.Address, _ uint64) error {
+	return nil
 }
 
 // MakeFakeTicketForTest creates a fake ticket
@@ -306,10 +307,10 @@ func (mtm *MockTicketMachine) NextTicket(ticket block.Ticket, genAddr address.Ad
 	return MakeFakeTicketForTest(), nil
 }
 
-// IsValidTicket calls the registered callback and returns true
-func (mtm *MockTicketMachine) IsValidTicket(parent, ticket block.Ticket, signerAddr address.Address) bool {
+// ValidateTicket calls the registered callback and returns true
+func (mtm *MockTicketMachine) ValidateTicket(parent, ticket block.Ticket, signerAddr address.Address) error {
 	mtm.fn(ticket)
-	return true
+	return nil
 }
 
 // MockElectionMachine allows a test to set a function to be called upon
@@ -352,7 +353,7 @@ func (mem *MockElectionMachine) CandidateWins(challengeTicket []byte, sectorNum 
 }
 
 // VerifyPoStRandomness runs the callback on the ticket before calling the fake
-func (mem *MockElectionMachine) VerifyPoStRandomness(rand block.VRFPi, ticket block.Ticket, candidateAddr address.Address, nullBlockCount uint64) bool {
+func (mem *MockElectionMachine) VerifyPoStRandomness(rand block.VRFPi, ticket block.Ticket, candidateAddr address.Address, nullBlockCount uint64) error {
 	mem.fn(ticket)
 	return mem.fem.VerifyPoStRandomness(rand, ticket, candidateAddr, nullBlockCount)
 }

@@ -5,15 +5,12 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-	log "github.com/ipfs/go-log"
 	"github.com/minio/blake2b-simd"
 )
 
 //
 // Address-based signature validation
 //
-
-var lg = log.Logger("crypto")
 
 type Signature = crypto.Signature
 type SigType = crypto.SigType
@@ -40,38 +37,50 @@ func Sign(data []byte, secretKey []byte, sigtype SigType) (Signature, error) {
 	}, err
 }
 
-// IsValidSignature cryptographically verifies that 'sig' is the signed hash of 'data' with
+// ValidateSignature cryptographically verifies that 'sig' is the signed hash of 'data' with
 // the public key belonging to `addr`.
-func IsValidSignature(data []byte, addr address.Address, sig Signature) bool {
+func ValidateSignature(data []byte, addr address.Address, sig Signature) error {
 	switch addr.Protocol() {
 	case address.SECP256K1:
-		return sig.Type == SigTypeSecp256k1 && IsValidSecpSignature(data, addr, sig.Data)
+		if sig.Type != SigTypeSecp256k1 {
+			return fmt.Errorf("incorrect signature type (%v) for address expected SECP256K1 signature", sig.Type)
+		}
+		return ValidateSecpSignature(data, addr, sig.Data)
 	case address.BLS:
-		return sig.Type == SigTypeBLS && IsValidBLSSignature(data, addr, sig.Data)
+		if sig.Type != SigTypeBLS {
+			return fmt.Errorf("incorrect signature type (%v) for address expected BLS signature", sig.Type)
+		}
+		return ValidateBlsSignature(data, addr, sig.Data)
 	default:
-		return false
+		return fmt.Errorf("incorrect address protocol (%v) for signature validation", addr.Protocol())
 	}
 }
 
-func IsValidSecpSignature(data []byte, addr address.Address, signature []byte) bool {
+func ValidateSecpSignature(data []byte, addr address.Address, signature []byte) error {
+	if addr.Protocol() != address.SECP256K1 {
+		return fmt.Errorf("address protocol (%v) invalid for SECP256K1 signature verification", addr.Protocol())
+	}
 	hash := blake2b.Sum256(data)
 	maybePk, err := EcRecover(hash[:], signature)
 	if err != nil {
-		// Any error returned from Ecrecover means this signature is not valid.
-		lg.Infof("error in signature validation: %s", err)
-		return false
+		return err
 	}
 	maybeAddr, err := address.NewSecp256k1Address(maybePk)
 	if err != nil {
-		lg.Infof("error in recovered address: %s", err)
-		return false
+		return err
 	}
-	return maybeAddr == addr
+	if maybeAddr != addr {
+		return fmt.Errorf("invalid SECP signature")
+	}
+	return nil
 }
 
-func IsValidBLSSignature(data []byte, addr address.Address, signature []byte) bool {
+func ValidateBlsSignature(data []byte, addr address.Address, signature []byte) error {
 	if addr.Protocol() != address.BLS {
-		return false
+		return fmt.Errorf("address protocol (%v) invalid for BLS signature verification", addr.Protocol())
 	}
-	return VerifyBLS(addr.Payload(), data, signature)
+	if valid := VerifyBLS(addr.Payload(), data, signature); !valid {
+		return fmt.Errorf("invalid BLS signature")
+	}
+	return nil
 }

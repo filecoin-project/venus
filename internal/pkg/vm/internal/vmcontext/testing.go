@@ -53,6 +53,11 @@ func (f *Factories) NewKeyManager() vstate.KeyManager {
 	return newKeyManager()
 }
 
+func (f *Factories) NewRandomnessSource() vstate.RandomnessSource {
+	// TODO implement in a follow on
+	return nil
+}
+
 func (f *Factories) NewValidationConfig() vstate.ValidationConfig {
 	return &ValidationConfig{
 		// TODO enable this when ready https://github.com/filecoin-project/go-filecoin/issues/3801
@@ -253,6 +258,10 @@ func (r fakeRandSrc) Randomness(_ context.Context, _ acrypto.DomainSeparationTag
 }
 
 type ValidationApplier struct{}
+
+func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.BlockMessagesInfo, epoch abi.ChainEpoch, rnd vstate.RandomnessSource) ([]vtypes.MessageReceipt, error) {
+	panic("implement me")
+}
 
 func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state vstate.VMWrapper, msg *vtypes.Message) (vtypes.MessageReceipt, error) {
 	st := state.(*ValidationVMWrapper)

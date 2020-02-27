@@ -101,12 +101,12 @@ func (smsg *SignedMessage) ToNode() (ipld.Node, error) {
 }
 
 // VerifySignature returns true iff the signature is valid for the message content and from address.
-func (smsg *SignedMessage) VerifySignature() bool {
+func (smsg *SignedMessage) VerifySignature() error {
 	bmsg, err := smsg.Message.Marshal()
 	if err != nil {
-		return false
+		return err
 	}
-	return crypto.IsValidSignature(bmsg, smsg.Message.From, smsg.Signature)
+	return crypto.ValidateSignature(bmsg, smsg.Message.From, smsg.Signature)
 }
 
 // OnChainLen returns the amount of bytes used to represent the message on chain.

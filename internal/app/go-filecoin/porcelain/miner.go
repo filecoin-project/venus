@@ -68,6 +68,7 @@ func MinerCreate(
 
 	params := power.CreateMinerParams{
 		Worker:     minerOwnerAddr,
+		Owner:      minerOwnerAddr,
 		Peer:       pid,
 		SectorSize: sectorSize,
 	}

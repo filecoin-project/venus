@@ -260,9 +260,9 @@ func setupMiners(vm consensus.GenesisVM, rnd crypto.RandomnessSource, keys []*cr
 			return nil, err
 		}
 
-		// Note: the owner of the miner is implicit in the msg. The owner will be the `from` address.
 		out, err := vm.ApplyGenesisMessage(addr, builtin.StoragePowerActorAddr, builtin.MethodsPower.CreateMiner, abi.NewTokenAmount(100000), &power.CreateMinerParams{
 			Worker:     addr,
+			Owner:      addr,
 			Peer:       pid,
 			SectorSize: m.SectorSize,
 		}, rnd)

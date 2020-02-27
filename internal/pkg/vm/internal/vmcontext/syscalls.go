@@ -17,8 +17,8 @@ type syscalls struct {
 var _ specsruntime.Syscalls = (*syscalls)(nil)
 
 // VerifySignature implements Syscalls.
-func (sys syscalls) VerifySignature(signature specscrypto.Signature, signer address.Address, plaintext []byte) bool {
-	return crypto.IsValidSignature(plaintext, signer, signature)
+func (sys syscalls) VerifySignature(signature specscrypto.Signature, signer address.Address, plaintext []byte) error {
+	return crypto.ValidateSignature(plaintext, signer, signature)
 }
 
 // HashBlake2b implements Syscalls.
@@ -33,16 +33,16 @@ func (sys syscalls) ComputeUnsealedSectorCID(sectorSize abi.SectorSize, pieces [
 }
 
 // VerifySeal implements Syscalls.
-func (sys syscalls) VerifySeal(sectorSize abi.SectorSize, info abi.SealVerifyInfo) bool {
+func (sys syscalls) VerifySeal(info abi.SealVerifyInfo) error {
 	panic("TODO")
 }
 
 // VerifyPoSt implements Syscalls.
-func (sys syscalls) VerifyPoSt(sectorSize abi.SectorSize, info abi.PoStVerifyInfo) bool {
+func (sys syscalls) VerifyPoSt(info abi.PoStVerifyInfo) error {
 	panic("TODO")
 }
 
 // VerifyConsensusFault implements Syscalls.
-func (sys syscalls) VerifyConsensusFault(h1, h2 []byte) bool {
+func (sys syscalls) VerifyConsensusFault(h1, h2 []byte) error {
 	panic("TODO")
 }

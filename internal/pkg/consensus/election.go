@@ -49,12 +49,12 @@ func (em ElectionMachine) GeneratePoSt(allSectorInfos ffi.SortedPublicSectorInfo
 
 // VerifyPoStRandomness verifies that the PoSt randomness is the result of the
 // candidate signing the ticket.
-func (em ElectionMachine) VerifyPoStRandomness(rand block.VRFPi, ticket block.Ticket, candidateAddr address.Address, nullBlockCount uint64) bool {
+func (em ElectionMachine) VerifyPoStRandomness(rand block.VRFPi, ticket block.Ticket, candidateAddr address.Address, nullBlockCount uint64) error {
 	seedBuf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutUvarint(seedBuf, nullBlockCount)
 	buf := append(ticket.VRFProof, seedBuf[:n]...)
 
-	return crypto.IsValidBLSSignature(buf[:], candidateAddr, rand)
+	return crypto.ValidateBlsSignature(buf[:], candidateAddr, rand)
 }
 
 // CandidateWins returns true if the input candidate wins the election
@@ -107,8 +107,8 @@ func (tm TicketMachine) NextTicket(parent block.Ticket, signerAddr address.Addre
 	}, nil
 }
 
-// IsValidTicket verifies that the ticket's proof of randomness and delay are
+// ValidateTicket verifies that the ticket's proof of randomness and delay are
 // valid with respect to its parent.
-func (tm TicketMachine) IsValidTicket(parent, ticket block.Ticket, signerAddr address.Address) bool {
-	return crypto.IsValidBLSSignature(parent.VRFProof[:], signerAddr, ticket.VRFProof)
+func (tm TicketMachine) ValidateTicket(parent, ticket block.Ticket, signerAddr address.Address) error {
+	return crypto.ValidateBlsSignature(parent.VRFProof[:], signerAddr, ticket.VRFProof)
 }
