@@ -54,7 +54,8 @@ func (f *Factories) NewKeyManager() vstate.KeyManager {
 }
 
 func (f *Factories) NewRandomnessSource() vstate.RandomnessSource {
-	panic("NYI")
+	// TODO implement in a follow on
+	return nil
 }
 
 func (f *Factories) NewValidationConfig() vstate.ValidationConfig {

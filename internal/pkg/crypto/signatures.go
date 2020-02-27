@@ -5,15 +5,12 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-	log "github.com/ipfs/go-log"
 	"github.com/minio/blake2b-simd"
 )
 
 //
 // Address-based signature validation
 //
-
-var lg = log.Logger("crypto")
 
 type Signature = crypto.Signature
 type SigType = crypto.SigType
