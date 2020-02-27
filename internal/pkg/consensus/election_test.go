@@ -51,8 +51,8 @@ func requireValidTicket(t *testing.T, parent block.Ticket, signer types.Signer, 
 	ticket, err := tm.NextTicket(parent, signerAddr, signer)
 	require.NoError(t, err)
 
-	valid := tm.ValidateTicket(parent, ticket, signerAddr)
-	require.NoError(t, valid)
+	err = tm.ValidateTicket(parent, ticket, signerAddr)
+	require.NoError(t, err)
 	return ticket
 }
 

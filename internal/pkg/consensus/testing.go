@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -118,16 +119,16 @@ func (ftm *FakeTicketMachine) NextTicket(parent block.Ticket, signerAddr address
 }
 
 // ValidateTicket always returns true
-func (ftm *FakeTicketMachine) ValidateTicket(parent, ticket block.Ticket, signerAddr address.Address) bool {
-	return true
+func (ftm *FakeTicketMachine) ValidateTicket(parent, ticket block.Ticket, signerAddr address.Address) error {
+	return nil
 }
 
 // FailingTicketValidator marks all tickets as invalid
 type FailingTicketValidator struct{}
 
 // ValidateTicket always returns false
-func (ftv *FailingTicketValidator) ValidateTicket(parent, ticket block.Ticket, signerAddr address.Address) bool {
-	return false
+func (ftv *FailingTicketValidator) ValidateTicket(parent, ticket block.Ticket, signerAddr address.Address) error {
+	return fmt.Errorf("invalid ticket")
 }
 
 // FailingElectionValidator marks all election candidates as invalid
@@ -307,9 +308,9 @@ func (mtm *MockTicketMachine) NextTicket(ticket block.Ticket, genAddr address.Ad
 }
 
 // ValidateTicket calls the registered callback and returns true
-func (mtm *MockTicketMachine) ValidateTicket(parent, ticket block.Ticket, signerAddr address.Address) bool {
+func (mtm *MockTicketMachine) ValidateTicket(parent, ticket block.Ticket, signerAddr address.Address) error {
 	mtm.fn(ticket)
-	return true
+	return nil
 }
 
 // MockElectionMachine allows a test to set a function to be called upon
