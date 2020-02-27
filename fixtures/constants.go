@@ -24,6 +24,9 @@ import (
 // TODO: move to build script
 // https://github.com/filecoin-project/go-filecoin/issues/921
 // cat ./fixtures/setup.json | ./tools/gengen/gengen --json --keypath fixtures > fixtures/genesis.car 2> fixtures/gen.json
+//
+// The fake cids used for commX in setup.json are generated using this tool:
+// $GOPATH/src/github.com/filecoin-project/go-filecoin/tools/gengen/gencfg
 
 // TestAddresses is a list of pregenerated addresses.
 var TestAddresses []address.Address

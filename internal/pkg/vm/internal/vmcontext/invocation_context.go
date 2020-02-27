@@ -307,11 +307,15 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 		}
 	}()
 
+	// replace nil params with empty value
+	if params == nil {
+		params = &adt_spec.EmptyValue{}
+	}
+
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Calling Send() is not allowed during side-effet lock")
 	}
-
 	// prepare
 	// 1. alias fromActor
 	// 2. build internal message

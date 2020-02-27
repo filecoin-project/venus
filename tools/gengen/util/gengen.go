@@ -2,40 +2,22 @@ package gengen
 
 import (
 	"context"
-	"fmt"
 	"io"
-	mrand "math/rand"
-	"strconv"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-amt-ipld/v2"
+	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	bserv "github.com/ipfs/go-blockservice"
 	car "github.com/ipfs/go-car"
 	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	cbor "github.com/ipfs/go-ipld-cbor"
+	format "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
-	"github.com/libp2p/go-libp2p-core/peer"
-	mh "github.com/multiformats/go-multihash"
-	typegen "github.com/whyrusleeping/cbor-gen"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // CreateStorageMinerConfig holds configuration options used to create a storage
@@ -50,12 +32,34 @@ type CreateStorageMinerConfig struct {
 	// PeerID is the peer ID to set as the miners owner
 	PeerID string
 
-	// NumCommittedSectors is the number of sectors that this miner has
-	// committed to the network.
-	NumCommittedSectors uint64
+	// CommittedSectors is the list of sector commitments in this miner's proving set
+	CommittedSectors []*CommitConfig
 
 	// SectorSize is the size of the sectors that this miner commits, in bytes.
 	SectorSize abi.SectorSize
+}
+
+// CommitConfig carries all information needed to get a sector commitment in the
+// genesis state.
+type CommitConfig struct {
+	CommR     cid.Cid
+	CommD     cid.Cid
+	SectorNum uint64
+	DealCfg   *DealConfig
+}
+
+// DealConfig carries the information needed to specify a self-deal committing
+// power to the market while initializing genesis miners
+type DealConfig struct {
+	CommP     cid.Cid
+	PieceSize uint64
+	// Client and Provider are miner worker and miner address
+
+	// StartEpoch is 0
+	EndEpoch int64
+	// StoragePricePerEpoch is 0
+
+	// Collateral values are 0 for now (might need to change to some minimum)
 }
 
 // GenesisCfg is the top level configuration struct used to create a genesis
@@ -91,7 +95,7 @@ type RenderedGenInfo struct {
 	Keys []*crypto.KeyInfo
 
 	// Miners is the list of addresses of miners created
-	Miners []RenderedMinerInfo
+	Miners []*RenderedMinerInfo
 
 	// GenesisCid is the cid of the created genesis block
 	GenesisCid cid.Cid
@@ -114,187 +118,35 @@ type RenderedMinerInfo struct {
 // the final genesis block.
 //
 // WARNING: Do not use maps in this code, they will make this code non deterministic.
-func GenGen(ctx context.Context, cfg *GenesisCfg, cst cbor.IpldStore, bs blockstore.Blockstore) (*RenderedGenInfo, error) {
-	pnrg := mrand.New(mrand.NewSource(cfg.Seed))
-	keys, err := genKeys(cfg.Keys, pnrg)
+func GenGen(ctx context.Context, cfg *GenesisCfg, bs blockstore.Blockstore) (*RenderedGenInfo, error) {
+	generator := NewGenesisGenerator(bs)
+	err := generator.Init(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	st := state.NewState(cst)
-	store := vm.NewStorage(bs)
-	vm := vm.NewVM(st, &store).(consensus.GenesisVM)
-	rnd := crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{TicketBytes: consensus.GenesisTicket.VRFProof}}
-
-	if err := consensus.SetupDefaultActors(ctx, vm, &store, st, &rnd, cfg.Network); err != nil {
-		return nil, err
-	}
-
-	if err := setupPrealloc(vm, st, &rnd, keys, cfg.PreAlloc); err != nil {
-		return nil, err
-	}
-
-	miners, err := setupMiners(vm, &rnd, keys, cfg.Miners)
+	err = generator.setupDefaultActors(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	err = store.Flush()
+	err = generator.setupPrealloc()
 	if err != nil {
 		return nil, err
 	}
-	stateRoot, err := st.Commit(ctx)
+	minerInfos, err := generator.setupMiners(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	// define empty cid and ensure empty components exist in blockstore
-	emptyAMTCid, err := amt.FromArray(ctx, cborutil.NewIpldStore(bs), []typegen.CBORMarshaler{})
-	if err != nil {
-		return nil, err
-	}
-
-	emptyBLSSignature := bls.Aggregate([]bls.Signature{})
-	meta := types.TxMeta{SecpRoot: e.NewCid(emptyAMTCid), BLSRoot: e.NewCid(emptyAMTCid)}
-	metaCid, err := cst.Put(ctx, meta)
-	if err != nil {
-		return nil, err
-	}
-
-	geneblk := &block.Block{
-		StateRoot:       e.NewCid(stateRoot),
-		Messages:        e.NewCid(metaCid),
-		MessageReceipts: e.NewCid(emptyAMTCid),
-		BLSAggregateSig: crypto.Signature{
-			Type: crypto.SigTypeBLS,
-			Data: emptyBLSSignature[:],
-		},
-		Ticket:    consensus.GenesisTicket,
-		Timestamp: cfg.Time,
-	}
-
-	c, err := cst.Put(ctx, geneblk)
+	genCid, err := generator.genBlock(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	return &RenderedGenInfo{
-		Keys:       keys,
-		GenesisCid: c,
-		Miners:     miners,
+		Keys:       generator.keys,
+		GenesisCid: genCid,
+		Miners:     minerInfos,
 	}, nil
-}
-
-func genKeys(cfgkeys int, pnrg io.Reader) ([]*crypto.KeyInfo, error) {
-	keys := make([]*crypto.KeyInfo, cfgkeys)
-	for i := 0; i < cfgkeys; i++ {
-		ki := crypto.NewBLSKeyRandom() // TODO: use seed, https://github.com/filecoin-project/go-filecoin/issues/3781
-		keys[i] = &ki
-	}
-
-	return keys, nil
-}
-
-func setupPrealloc(vm consensus.GenesisVM, st *state.State, rnd crypto.RandomnessSource, keys []*crypto.KeyInfo, prealloc []string) error {
-
-	if len(keys) < len(prealloc) {
-		return fmt.Errorf("keys do not match prealloc")
-	}
-
-	netact := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(1000000000000))
-	err := st.SetActor(context.Background(), builtin.RewardActorAddr, netact)
-	if err != nil {
-		return err
-	}
-
-	for i, v := range prealloc {
-		ki := keys[i]
-
-		addr, err := ki.Address()
-		if err != nil {
-			return err
-		}
-
-		valint, err := strconv.ParseUint(v, 10, 64)
-		if err != nil {
-			return err
-		}
-
-		_, err = vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr,
-			builtin.MethodSend, abi.NewTokenAmount(int64(valint)), nil, rnd)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func setupMiners(vm consensus.GenesisVM, rnd crypto.RandomnessSource, keys []*crypto.KeyInfo, miners []*CreateStorageMinerConfig) ([]RenderedMinerInfo, error) {
-	var minfos []RenderedMinerInfo
-
-	for _, m := range miners {
-		addr, err := keys[m.Owner].Address()
-		if err != nil {
-			return nil, err
-		}
-
-		var pid peer.ID
-		if m.PeerID != "" {
-			p, err := peer.Decode(m.PeerID)
-			if err != nil {
-				return nil, err
-			}
-			pid = p
-		} else {
-			// this is just deterministically deriving from the owner
-			h, err := mh.Sum(addr.Bytes(), mh.SHA2_256, -1)
-			if err != nil {
-				return nil, err
-			}
-			pid = peer.ID(h)
-		}
-
-		// give collateral to account actor
-		_, err = vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr, builtin.MethodSend, abi.NewTokenAmount(100000), nil, rnd)
-		if err != nil {
-			return nil, err
-		}
-
-		out, err := vm.ApplyGenesisMessage(addr, builtin.StoragePowerActorAddr, builtin.MethodsPower.CreateMiner, abi.NewTokenAmount(100000), &power.CreateMinerParams{
-			Worker:     addr,
-			Owner:      addr,
-			Peer:       pid,
-			SectorSize: m.SectorSize,
-		}, rnd)
-		if err != nil {
-			return nil, err
-		}
-
-		// get miner ID address
-		ret := out.(*power.CreateMinerReturn)
-
-		minfos = append(minfos, RenderedMinerInfo{
-			Address: ret.IDAddress,
-			Owner:   m.Owner,
-			Power:   big.Mul(big.NewInt(int64(m.SectorSize)), big.NewInt(int64(m.NumCommittedSectors))),
-		})
-
-		// Dragons: we need a new way of doing this
-		// // add power directly to power table
-		// for i := uint64(0); i < m.NumCommittedSectors; i++ {
-		// 	powerReport := types.NewPowerReport(m.SectorSize*m.NumCommittedSectors, 0)
-
-		// 	_, err := vm.ApplyGenesisMessage(addr, vmaddr.StoragePowerAddress, power.ProcessPowerReport, abi.NewTokenAmount(0), power.ProcessPowerReportParams{
-		// 		Report:     powerReport,
-		// 		UpdateAddr: mIDAddr,
-		// 	})
-		// 	if err != nil {
-		// 		return nil, err
-		// 	}
-		// }
-	}
-
-	return minfos, nil
 }
 
 // GenGenesisCar generates a car for the given genesis configuration
@@ -303,14 +155,37 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (*RenderedGenInfo, error) {
 
 	bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
 	bstore = blockstore.NewIdStore(bstore)
-	cst := cborutil.NewIpldStore(bstore)
 	dserv := dag.NewDAGService(bserv.New(bstore, offline.Exchange(bstore)))
 
-	info, err := GenGen(ctx, cfg, cst, bstore)
+	info, err := GenGen(ctx, cfg, bstore)
 	if err != nil {
 		return nil, err
 	}
-	return info, car.WriteCar(ctx, dserv, []cid.Cid{info.GenesisCid}, out)
+	// Ignore cids that make it on chain but that should not be read through
+	// and therefore don't have corresponding blocks in store
+	ignore := cid.NewSet()
+	for _, m := range cfg.Miners {
+		for _, comm := range m.CommittedSectors {
+			ignore.Add(comm.CommR)
+			ignore.Add(comm.CommD)
+			ignore.Add(comm.DealCfg.CommP)
+		}
+	}
+
+	ignoreWalkFunc := func(nd format.Node) (out []*format.Link, err error) {
+		links := nd.Links()
+		var filteredLinks []*format.Link
+		for _, l := range links {
+			if ignore.Has(l.Cid) {
+				continue
+			}
+			filteredLinks = append(filteredLinks, l)
+		}
+
+		return filteredLinks, nil
+	}
+
+	return info, car.WriteCarWithWalker(ctx, dserv, []cid.Cid{info.GenesisCid}, out, ignoreWalkFunc)
 }
 
 // signer doesn't actually sign because it's not actually validated

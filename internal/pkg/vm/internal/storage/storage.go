@@ -121,7 +121,6 @@ func (s *VMStorage) Flush() error {
 	for _, nd := range s.writeBuffer {
 		blks = append(blks, nd)
 	}
-
 	// write objects to store
 	if err := s.blockstore.PutMany(blks); err != nil {
 		return err
@@ -135,10 +134,8 @@ func (s *VMStorage) Flush() error {
 			s.readCache[cid] = nd
 		}
 	}
-
 	// clear write buffer
 	s.ClearWriteBuffer()
-
 	return nil
 }
 
@@ -168,6 +165,7 @@ func (s *VMStorage) toNode(v interface{}) (ipld.Node, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		nd, err = cbor.Decode(raw, constants.DefaultHashFunction, -1)
 	}
 	if err != nil {

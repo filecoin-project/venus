@@ -105,7 +105,7 @@ func runHelpSuccess(t *testing.T, args ...string) string {
 		t.Fatal(err)
 	}
 
-	if _, err = gengen.GenGenesisCar(testConfig, fi); err != nil {
+	if _, err = gengen.GenGenesisCar(minerDaemonTestConfig(t), fi); err != nil {
 		t.Fatal(err)
 	}
 
@@ -320,7 +320,7 @@ func TestMinerStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err = gengen.GenGenesisCar(testConfig, fi); err != nil {
+	if _, err = gengen.GenGenesisCar(minerDaemonTestConfig(t), fi); err != nil {
 		t.Fatal(err)
 	}
 
@@ -351,28 +351,33 @@ func TestMinerStatus(t *testing.T) {
 	assert.Equal(t, "3072 / 6144", power)
 }
 
-var testConfig = &gengen.GenesisCfg{
-	Seed:       0,
-	ProofsMode: types.TestProofsMode,
-	Keys:       4,
-	PreAlloc: []string{
-		"10",
-		"50",
-	},
-	Miners: []*gengen.CreateStorageMinerConfig{
-		{
-			Owner:               0,
-			NumCommittedSectors: 3,
-			SectorSize:          constants.DevSectorSize,
+func minerDaemonTestConfig(t *testing.T) *gengen.GenesisCfg {
+
+	commCfgs, err := gengen.MakeCommitCfgs(3)
+	require.NoError(t, err)
+	return &gengen.GenesisCfg{
+		Seed:       0,
+		ProofsMode: types.TestProofsMode,
+		Keys:       4,
+		PreAlloc: []string{
+			"10",
+			"50",
 		},
-		{
-			Owner:               1,
-			NumCommittedSectors: 3,
-			SectorSize:          constants.DevSectorSize,
+		Miners: []*gengen.CreateStorageMinerConfig{
+			{
+				Owner:            0,
+				CommittedSectors: commCfgs,
+				SectorSize:       constants.DevSectorSize,
+			},
+			{
+				Owner:            1,
+				CommittedSectors: commCfgs,
+				SectorSize:       constants.DevSectorSize,
+			},
 		},
-	},
-	Network: "go-filecoin-test",
-	Time:    123456789,
+		Network: "go-filecoin-test",
+		Time:    123456789,
+	}
 }
 
 func TestMinerSetWorker(t *testing.T) {

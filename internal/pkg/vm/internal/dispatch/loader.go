@@ -6,7 +6,7 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-// CodeLoader allows yo to load an actor's code based on its id an epoch.
+// CodeLoader allows you to load an actor's code based on its id an epoch.
 type CodeLoader struct {
 	actors map[cid.Cid]Actor
 }

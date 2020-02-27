@@ -128,7 +128,7 @@ func (w *ValidationVMWrapper) Store() adt.Store {
 
 // Actor implements ValidationVMWrapper.
 func (w *ValidationVMWrapper) Actor(addr address.Address) (vstate.Actor, error) {
-	idAddr, found := w.vm.normalizeFrom(addr)
+	idAddr, found := w.vm.normalizeAddress(addr)
 	if !found {
 		return nil, fmt.Errorf("failed to normalize address: %s", addr)
 	}
@@ -207,7 +207,7 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 
 // SetActorState implements ValidationVMWrapper.
 func (w *ValidationVMWrapper) SetActorState(addr address.Address, balance big.Int, state runtime.CBORMarshaler) (vstate.Actor, error) {
-	idAddr, ok := w.vm.normalizeFrom(addr)
+	idAddr, ok := w.vm.normalizeAddress(addr)
 	if !ok {
 		return nil, fmt.Errorf("actor not found")
 	}

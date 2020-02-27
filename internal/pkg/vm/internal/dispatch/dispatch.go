@@ -68,7 +68,6 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, ctx interface{}, arg
 		if err != nil {
 			return nil, err
 		}
-
 		// push decoded arg to args list
 		args = append(args, reflect.ValueOf(obj))
 	} else {
