@@ -314,11 +314,9 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 }
 
 // applyMessage applies the message to the current state.
-func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, rnd crypto.RandomnessSource) (message.Receipt, minerPenaltyFIL, gasRewardFIL) {
+func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd crypto.RandomnessSource) (message.Receipt, minerPenaltyFIL, gasRewardFIL) {
 	// Dragons: temp until we remove legacy types
-	var msgGasLimit gas.Unit = gas.NewLegacyGas(msg.GasLimit)
-	var msgGasPrice abi.TokenAmount = msg.GasPrice
-	var msgValue abi.TokenAmount = msg.Value
+	var msgGasLimit gas.Unit = gas.Unit(msg.GasLimit)
 
 	// This method does not actually execute the message itself,
 	// but rather deals with the pre/post processing of a message.
@@ -342,12 +340,12 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, rn
 	if !ok {
 		// Invalid message; insufficient gas limit to pay for the on-chain message size.
 		// Note: the miner needs to pay the full msg cost, not what might have been partially consumed
-		return message.Failure(exitcode.SysErrOutOfGas, gas.Zero), msgGasCost.ToTokens(msgGasPrice), big.Zero()
+		return message.Failure(exitcode.SysErrOutOfGas, gas.Zero), msgGasCost.ToTokens(msg.GasPrice), big.Zero()
 	}
 
 	// 2. load actor from global state
 	if msg.From, ok = vm.normalizeAddress(msg.From); !ok {
-		return message.Failure(exitcode.SysErrActorNotFound, gas.Zero), gasTank.GasConsumed().ToTokens(msgGasPrice), big.Zero()
+		return message.Failure(exitcode.SysErrActorNotFound, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
 	}
 
 	fromActor, found, err := vm.state.GetActor(context.Background(), msg.From)
@@ -356,21 +354,21 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, rn
 	}
 	if !found {
 		// Execution error; sender does not exist at time of message execution.
-		return message.Failure(exitcode.SysErrActorNotFound, gas.Zero), gasTank.GasConsumed().ToTokens(msgGasPrice), big.Zero()
+		return message.Failure(exitcode.SysErrActorNotFound, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
 	}
 
 	// 3. make sure this is the right message order for fromActor
 	if msg.CallSeqNum != fromActor.CallSeqNum {
 		// Execution error; invalid seq number.
-		return message.Failure(exitcode.SysErrInvalidCallSeqNum, gas.Zero), gasTank.GasConsumed().ToTokens(msgGasPrice), big.Zero()
+		return message.Failure(exitcode.SysErrInvalidCallSeqNum, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
 	}
 
 	// 4. Check sender balance (gas + value being sent)
-	gasLimitCost := msgGasLimit.ToTokens(msgGasPrice)
-	totalCost := big.Add(msgValue, gasLimitCost)
+	gasLimitCost := msgGasLimit.ToTokens(msg.GasPrice)
+	totalCost := big.Add(msg.Value, gasLimitCost)
 	if fromActor.Balance.LessThan(totalCost) {
 		// Execution error; sender does not have sufficient funds to pay for the gas limit.
-		return message.Failure(exitcode.SysErrInsufficientFunds, gas.Zero), gasTank.GasConsumed().ToTokens(msgGasPrice), big.Zero()
+		return message.Failure(exitcode.SysErrInsufficientFunds, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
 	}
 
 	// 5. Increment sender CallSeqNum
@@ -404,7 +402,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, rn
 	imsg := internalMessage{
 		from:          msg.From,
 		to:            msg.To,
-		value:         msgValue,
+		value:         msg.Value,
 		method:        msg.Method,
 		params:        msg.Params,
 		callSeqNumber: msg.CallSeqNum,
@@ -457,11 +455,11 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize uint32, rn
 		// of method execution failure.
 
 		// Note: we are charging the caller not the miner, there is ZERO miner penalty
-		return message.Failure(exitcode.SysErrOutOfGas, gasTank.GasConsumed()), big.Zero(), gasTank.GasConsumed().ToTokens(msgGasPrice)
+		return message.Failure(exitcode.SysErrOutOfGas, gasTank.GasConsumed()), big.Zero(), gasTank.GasConsumed().ToTokens(msg.GasPrice)
 	}
 
 	// 2. Success!
-	return receipt, big.Zero(), gasTank.GasConsumed().ToTokens(msgGasPrice)
+	return receipt, big.Zero(), gasTank.GasConsumed().ToTokens(msg.GasPrice)
 }
 
 // transfer debits money from one account and credits it to another.

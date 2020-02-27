@@ -7,7 +7,7 @@ import (
 )
 
 // Unit is the unit of gas.
-type Unit big.Int
+type Unit int64
 
 // Zero is the zero value for Gas.
 var Zero = NewGas(0)
@@ -17,7 +17,7 @@ var SystemGasLimit = NewGas(1000000000000000000) // 10^18
 
 // NewGas creates a gas value object.
 func NewGas(value int64) Unit {
-	return Unit(big.NewInt(value))
+	return Unit(value)
 }
 
 // NewLegacyGas is legacy and will be deleted
@@ -28,7 +28,7 @@ func NewLegacyGas(v types.GasUnits) Unit {
 
 // AsBigInt returns the internal value as a `big.Int`
 func (gas Unit) AsBigInt() big.Int {
-	return (big.Int)(gas)
+	return big.NewInt(int64(gas))
 }
 
 // ToTokens returns the cost of the gas given the price.

@@ -79,7 +79,7 @@ func (ctx *invocationContext) invoke() interface{} {
 	}
 
 	// 1. charge gas for msg
-	ctx.gasTank.Charge(gascost.OnMethodInvocation(&ctx.msg))
+	ctx.gasTank.Charge(gascost.OnMethodInvocation(ctx.msg.value, ctx.msg.method))
 
 	// 2. load target actor
 	// Note: we replace the "to" address with the normalized version
