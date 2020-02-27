@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-datastore"
-	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -52,7 +51,6 @@ var initCmd = &cmds.Command{
 		cmdkit.BoolOption(DevnetNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters"),
 		cmdkit.BoolOption(DevnetUser, "when set, populates config bootstrap addrs with the dns multiaddrs of the user devnet and other user devnet specific bootstrap parameters"),
 		cmdkit.StringOption(OptionPresealedSectorDir, "when set to the path of a directory, imports pre-sealed sector data from that directory"),
-		cmdkit.StringOption(OptionPresealedSectorMetadata, "when set to the path of a file, reads pre-sealed sector metadata from file"),
 		/*
 			&cli.BoolFlag{
 				Name:  "nosync",
@@ -110,8 +108,6 @@ var initCmd = &cmds.Command{
 			return err
 		}
 
-		// TODO: check preseal flags here.
-		// TODO: if pre-sealed-sectors present copy pre-seal data into repo dir
 		presealedSectorDir, shouldImport := req.Options[OptionPresealedSectorDir].(string)
 		if shouldImport && presealedSectorDir != "" {
 			badgerOptions := badger.Options{
@@ -135,14 +131,16 @@ var initCmd = &cmds.Command{
 				return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
 			}
 
-			metaDs := namespace.Wrap(rep.Datastore(), ds.NewKey("/metadata"))
-			defer metaDs.Close()
+			path, err := rep.Path()
+			if err != nil {
+				return xerrors.Errorf("failed find filecoin path: %w", err)
+			}
 
 			newsb, err := sectorbuilder.New(&sectorbuilder.Config{
 				SectorSize:    0, // TODO: might need to configure this or dig it out of state
 				WorkerThreads: 2,
-				Paths:         sectorbuilder.SimplePath(rep.Config().SectorBase.RootDir),
-			}, namespace.Wrap(metaDs, datastore.NewKey("/sectorbuilder")))
+				Paths:         sectorbuilder.SimplePath(path),
+			}, namespace.Wrap(rep.Datastore(), datastore.NewKey("/sectorbuilder")))
 			if err != nil {
 				return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
 			}
