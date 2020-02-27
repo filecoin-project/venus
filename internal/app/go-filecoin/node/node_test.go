@@ -2,7 +2,6 @@ package node_test
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -19,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 func TestNodeConstruct(t *testing.T) {
@@ -234,14 +232,4 @@ func TestNodeConfig(t *testing.T) {
 	assert.Equal(t, &config.SwarmConfig{
 		Address: "/ip4/127.0.0.1/tcp/0",
 	}, cfg.Swarm)
-}
-
-func TestGenerateTestComms(t *testing.T) {
-	commDJSON, err := json.Marshal(types.CidFromString(t, "commD-test"))
-	require.NoError(t, err)
-	commRJSON, err := json.Marshal(types.CidFromString(t, "commR-test"))
-	require.NoError(t, err)
-	commPJSON, err := json.Marshal(types.CidFromString(t, "commR-test"))
-	require.NoError(t, err)
-	fmt.Printf("commD: %s, commR: %s, commP: %s\n", string(commDJSON), string(commRJSON), string(commPJSON))
 }
