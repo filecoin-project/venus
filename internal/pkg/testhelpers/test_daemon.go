@@ -63,6 +63,7 @@ type TestDaemon struct {
 	withMiner        address.Address
 	autoSealInterval string
 	isRelay          bool
+	initArgs         []string
 
 	firstRun bool
 	init     bool
@@ -659,6 +660,13 @@ func GenesisFile(a string) func(*TestDaemon) {
 	}
 }
 
+// InitArgs allows setting addtional arguments to repo initialization
+func InitArgs(a ...string) func(*TestDaemon) {
+	return func(td *TestDaemon) {
+		td.initArgs = a
+	}
+}
+
 // WithMiner allows setting the --with-miner flag on init.
 func WithMiner(m address.Address) func(*TestDaemon) {
 	return func(td *TestDaemon) {
@@ -719,6 +727,10 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 
 	if td.autoSealInterval != "" {
 		initopts = append(initopts, fmt.Sprintf("--auto-seal-interval-seconds=%s", td.autoSealInterval))
+	}
+
+	for _, arg := range td.initArgs {
+		initopts = append(initopts, arg)
 	}
 
 	if td.init {
