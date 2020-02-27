@@ -57,9 +57,15 @@ func (f *Factories) NewKeyManager() vstate.KeyManager {
 	return newKeyManager()
 }
 
+type fakeRandSrc struct {
+}
+
+func (r fakeRandSrc) Randomness(_ context.Context, _ acrypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) (abi.Randomness, error) {
+	panic("implement me")
+}
+
 func (f *Factories) NewRandomnessSource() vstate.RandomnessSource {
-	// TODO implement in a follow on
-	return nil
+	return &fakeRandSrc{}
 }
 
 func (f *Factories) NewValidationConfig() vstate.ValidationConfig {
@@ -254,18 +260,7 @@ func (w *ValidationVMWrapper) PersistChanges() error {
 // Applier
 //
 
-type fakeRandSrc struct {
-}
-
-func (r fakeRandSrc) Randomness(_ context.Context, _ acrypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) (abi.Randomness, error) {
-	panic("implement me")
-}
-
 type ValidationApplier struct{}
-
-func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.BlockMessagesInfo, epoch abi.ChainEpoch, rnd vstate.RandomnessSource) ([]vtypes.MessageReceipt, error) {
-	panic("implement me")
-}
 
 func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state vstate.VMWrapper, msg *vtypes.Message) (vtypes.MessageReceipt, error) {
 	st := state.(*ValidationVMWrapper)
@@ -306,7 +301,7 @@ func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state
 	return receipt, nil
 }
 
-func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.BlockMessagesInfo, epoch abi.ChainEpoch /*, rnd vstate.RandomnessSource*/) ([]vtypes.MessageReceipt, error) {
+func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.BlockMessagesInfo, epoch abi.ChainEpoch, rnd vstate.RandomnessSource) ([]vtypes.MessageReceipt, error) {
 	st := state.(*ValidationVMWrapper)
 
 	// XXX: unsure if this is redundant
@@ -347,7 +342,7 @@ func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks [
 		}
 	}
 
-	receipts, err := st.vm.ApplyTipSetMessages(ourBlkMsgs, epoch, &fakeRandSrc{})
+	receipts, err := st.vm.ApplyTipSetMessages(ourBlkMsgs, epoch, rnd)
 	if err != nil {
 		return nil, err
 	}

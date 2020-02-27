@@ -123,5 +123,3 @@ require (
 replace github.com/filecoin-project/filecoin-ffi => ./vendors/filecoin-ffi
 
 replace github.com/filecoin-project/chain-validation => ../chain-validation
-
-replace github.com/filecoin-project/specs-actors => ../specs-actors
