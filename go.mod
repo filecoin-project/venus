@@ -5,7 +5,6 @@ go 1.13
 require (
 	contrib.go.opencensus.io/exporter/jaeger v0.1.0
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
-	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/cskr/pubsub v1.0.2
@@ -38,7 +37,6 @@ require (
 	github.com/ipfs/go-car v0.0.3-0.20200221191037-3762780fa84e
 	github.com/ipfs/go-cid v0.0.5
 	github.com/ipfs/go-datastore v0.4.2
-	github.com/ipfs/go-ds-badger v0.2.1
 	github.com/ipfs/go-ds-badger2 v0.0.0-20200211201106-609c9d2a39c7
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-graphsync v0.0.4
