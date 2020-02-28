@@ -352,7 +352,7 @@ func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks [
 		theirReceipts[i] = vtypes.MessageReceipt{
 			ExitCode:    r.ExitCode,
 			ReturnValue: r.ReturnValue,
-			GasUsed:     big.Int(r.GasUsed),
+			GasUsed:     r.GasUsed.AsBigInt(),
 		}
 	}
 
