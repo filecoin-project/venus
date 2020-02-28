@@ -7,12 +7,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
-// TODO: assign all of these.
 // TODO: this needs to be upgradeable, it can change at a given epoch
-
-var (
-	gasAmountPlaceholder = gas.NewGas(1)
-)
 
 var (
 	///////////////////////////////////////////////////////////////////////////
