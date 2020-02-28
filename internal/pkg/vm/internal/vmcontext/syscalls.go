@@ -35,7 +35,7 @@ func (sys syscalls) HashBlake2b(data []byte) [32]byte {
 
 // ComputeUnsealedSectorCID implements Syscalls.
 // Review: why is this returning an error instead of aborting? is this failing recoverable by actors?
-func (sys syscalls) ComputeUnsealedSectorCID(sectorSize abi.SectorSize, pieces []abi.PieceInfo) (cid.Cid, error) {
+func (sys syscalls) ComputeUnsealedSectorCID(proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	panic("TODO")
 }
 
