@@ -51,8 +51,8 @@ func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
 	}{
 		{name: "happy path", offset: 10, length: 50, expectedErr: ""},
 		{name: "returns error if Unseal errors", unsealErr: errors.New("boom"), expectedErr: "boom"},
-		{name: "returns EOF if offset more than file length", offset: 5979, expectedErr: "EOF"},
-		{name: "returns EOF if length more than file length", length: 5979, expectedErr: "EOF"},
+		{name: "returns EOF if offset more than file length", offset: 9999, expectedErr: "EOF"},
+		{name: "returns EOF if length more than file length", length: 9999, expectedErr: "EOF"},
 		{name: "returns error if offset > int64", offset: maxOffset, expectedErr: "offset overflows int"},
 		{name: "returns error if length > int64", length: 1 << 63, expectedErr: "length overflows int64"},
 	}
