@@ -15,16 +15,16 @@ import (
 type Runtime interface {
 	// CurrentEpoch is the current chain epoch.
 	CurrentEpoch() abi.ChainEpoch
-	// Store is the raw store for IPLD objects.
-	//
-	// Note: this is required for custom data structures.
-	Store() specsruntime.Store
 }
 
 // InvocationContext is passed to the actors on each method call.
 type InvocationContext interface {
 	// Runtime exposes some methods on the runtime to the actor.
 	Runtime() Runtime
+	// Store is the raw store for IPLD objects.
+	//
+	// Note: this is required for custom data structures.
+	Store() specsruntime.Store
 	// Message contains information available to the actor about the executing message.
 	Message() specsruntime.Message
 	// ValidateCaller validates the caller against a patter.

@@ -59,11 +59,6 @@ type internalMessage struct {
 	callSeqNumber uint64
 }
 
-// actorStorage hides the storage methods from the actors and turns the errors into runtime panics.
-type actorStorage struct {
-	inner *storage.VMStorage
-}
-
 // NewVM creates a new runtime for executing messages.
 // Dragons: change to take a root and the store, build the tree internally
 func NewVM(actorImpls ActorImplLookup, store *storage.VMStorage, st state.Tree) VM {
@@ -151,12 +146,11 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 		runtime.Abort(exitcode.SysErrActorNotFound)
 	}
 
-	// build state handle
-	var stateHandle = NewReadonlyStateHandle(vm.Store(), initActorEntry.Head.Cid)
-
 	// get a view into the actor state
 	var state notinit.State
-	stateHandle.Readonly(&state)
+	if _, err := vm.store.Get(vm.context, initActorEntry.Head.Cid, &state); err != nil {
+		panic(err)
+	}
 
 	idAddr, err := state.ResolveAddress(vm.ContextStore(), addr)
 	if err != nil {
@@ -537,11 +531,6 @@ func (vm *VM) CurrentEpoch() abi.ChainEpoch {
 	return vm.currentEpoch
 }
 
-// Store implements runtime.Runtime.
-func (vm *VM) Store() specsruntime.Store {
-	return actorStorage{inner: vm.store}
-}
-
 //
 // implement runtime.MessageInfo for internalMessage
 //
@@ -561,31 +550,6 @@ func (msg internalMessage) Caller() address.Address {
 // Receiver implements runtime.MessageInfo.
 func (msg internalMessage) Receiver() address.Address {
 	return msg.to
-}
-
-//
-// implement runtime.Store for actorStorage
-//
-
-var _ specsruntime.Store = (*actorStorage)(nil)
-
-func (s actorStorage) Put(obj specsruntime.CBORMarshaler) cid.Cid {
-	cid, err := s.inner.Put(obj)
-	if err != nil {
-		panic(fmt.Errorf("could not put object in store. %s", err))
-	}
-	return cid
-}
-
-func (s actorStorage) Get(cid cid.Cid, obj specsruntime.CBORUnmarshaler) bool {
-	err := s.inner.Get(cid, obj)
-	if err == storage.ErrNotFound {
-		return false
-	}
-	if err != nil {
-		panic(fmt.Errorf("could not get obj from store. %s", err))
-	}
-	return true
 }
 
 //

@@ -62,7 +62,7 @@ func (ctx *stateHandleContext) AllowSideEffects(allow bool) {
 }
 
 func (ctx *stateHandleContext) Store() specsruntime.Store {
-	return ctx.rt.Store()
+	return ((*invocationContext)(ctx)).Store()
 }
 
 func (ctx *invocationContext) invoke() interface{} {
@@ -243,6 +243,15 @@ var _ runtime.InvocationContext = (*invocationContext)(nil)
 // Runtime implements runtime.InvocationContext.
 func (ctx *invocationContext) Runtime() runtime.Runtime {
 	return ctx.rt
+}
+
+// Store implements runtime.Runtime.
+func (ctx *invocationContext) Store() specsruntime.Store {
+	return actorStorage{
+		context: ctx.rt.context,
+		inner:   ctx.rt.store,
+		gasTank: ctx.gasTank,
+	}
 }
 
 // Message implements runtime.InvocationContext.

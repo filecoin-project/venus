@@ -168,7 +168,7 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 
 		// get a view into the actor state
 		var initState init_.State
-		if err := w.vm.store.Get(initActorEntry.Head.Cid, &initState); err != nil {
+		if _, err := w.vm.store.Get(w.vm.context, initActorEntry.Head.Cid, &initState); err != nil {
 			return nil, address.Undef, err
 		}
 
@@ -179,7 +179,7 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 		}
 
 		// persist the init actor state
-		initHead, err := w.vm.store.Put(&initState)
+		initHead, _, err := w.vm.store.Put(w.vm.context, &initState)
 		if err != nil {
 			return nil, address.Undef, err
 		}
@@ -193,7 +193,7 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 	// create actor on state stree
 
 	// store newState
-	head, err := w.vm.store.Put(newState)
+	head, _, err := w.vm.store.Put(w.vm.context, newState)
 	if err != nil {
 		return nil, address.Undef, err
 	}
@@ -230,7 +230,7 @@ func (w *ValidationVMWrapper) SetActorState(addr address.Address, balance big.In
 		return nil, fmt.Errorf("actor not found")
 	}
 	// store state
-	head, err := w.vm.store.Put(state)
+	head, _, err := w.vm.store.Put(w.vm.context, state)
 	if err != nil {
 		return nil, err
 	}

@@ -88,7 +88,7 @@ func (a *runtimeAdapter) State() specsruntime.StateHandle {
 
 // Store implements Runtime.
 func (a *runtimeAdapter) Store() specsruntime.Store {
-	return a.ctx.Runtime().Store()
+	return a.ctx.Store()
 }
 
 // Send implements Runtime.
