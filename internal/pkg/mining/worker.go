@@ -197,7 +197,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	// The parameter is interpreted as: lookback=1 means parent tipset. Subtract one here because the base from
 	// which the lookback is counted is already the parent, rather than "current" tipset.
 	// The sampling code will handle this underflowing past the genesis.
-	targetEpoch := baseEpoch - (miner.ElectionLookback - 1) + abi.ChainEpoch(nullBlkCount)
+	targetEpoch := baseEpoch - (miner.ElectionLookback - 1) + abi.ChainEpoch(nullBlkCount) + 1
 
 	workerSignerAddr, err := view.AccountSignerAddress(ctx, workerAddr)
 	if err != nil {

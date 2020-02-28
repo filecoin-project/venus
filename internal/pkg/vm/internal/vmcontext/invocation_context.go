@@ -321,6 +321,10 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 	if params == nil {
 		params = &adt_spec.EmptyValue{}
 	}
+	// replace non pointer with pointer
+	if _, ok := params.(adt_spec.EmptyValue); ok {
+		params = &adt_spec.EmptyValue{}
+	}
 
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {

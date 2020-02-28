@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 )
@@ -29,6 +30,7 @@ type Builder struct {
 	libp2pOpts  []libp2p.Option
 	offlineMode bool
 	verifier    sectorbuilder.Verifier
+	postGen     postgenerator.PoStGenerator
 	repo        repo.Repo
 	journal     journal.Journal
 	isRelay     bool
@@ -63,7 +65,7 @@ func BlockTime(blockTime time.Duration) BuilderOpt {
 	}
 }
 
-// Libp2pOptions returns a node config option that sets up the libp2p node
+// Libp2pOptions returns a builder option that sets up the libp2p node
 func Libp2pOptions(opts ...libp2p.Option) BuilderOpt {
 	return func(b *Builder) error {
 		// Quietly having your options overridden leads to hair loss
@@ -83,6 +85,14 @@ func VerifierConfigOption(verifier sectorbuilder.Verifier) BuilderOpt {
 	}
 }
 
+// PoStGeneratorOption returns a builder option that sets the post generator to
+// use during block generation
+func PoStGeneratorOption(generator postgenerator.PoStGenerator) BuilderOpt {
+	return func(b *Builder) error {
+		c.postGenerator = generator
+	}
+}
+
 // ChainClockConfigOption returns a function that sets the chainClock to use in the node.
 func ChainClockConfigOption(clk clock.ChainEpochClock) BuilderOpt {
 	return func(c *Builder) error {
@@ -95,6 +105,15 @@ func ChainClockConfigOption(clk clock.ChainEpochClock) BuilderOpt {
 func JournalConfigOption(jrl journal.Journal) BuilderOpt {
 	return func(c *Builder) error {
 		c.journal = jrl
+		return nil
+	}
+}
+
+// TestProofOption returns a function that sets the builder to construct a node
+// with fake proofs
+func TestProofOption() BuilderOpt {
+	return func(c *Builder) error {
+		c.testProofMode = true
 		return nil
 	}
 }
@@ -207,7 +226,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.StorageNetworking")
 	}
 
-	nd.BlockMining, err = submodule.NewBlockMiningSubmodule(ctx)
+	nd.BlockMining, err = submodule.NewBlockMiningSubmodule(ctx, b.postGen)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.BlockMining")
 	}
