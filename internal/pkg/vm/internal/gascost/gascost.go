@@ -26,25 +26,25 @@ var (
 	// Gas cost charged to the originator of a non-nil return value produced
 	// by an on-chain message is given by:
 	//   len(return value)*OnChainReturnValuePerByte
-	onChainReturnValuePerByte = gas.Zero
+	onChainReturnValuePerByte = gas.NewGas(8)
 
 	// Gas cost for any message send execution(including the top-level one
 	// initiated by an on-chain message).
 	// This accounts for the cost of loading sender and receiver actors and
 	// (for top-level messages) incrementing the sender's sequence number.
 	// Load and store of actor sub-state is charged separately.
-	sendBase = gas.Zero
+	sendBase = gas.NewGas(5)
 
 	// Gas cost charged, in addition to SendBase, if a message send
 	// is accompanied by any nonzero currency amount.
 	// Accounts for writing receiver's new balance (the sender's state is
 	// already accounted for).
-	sendTransferFunds = gas.NewGas(10)
+	sendTransferFunds = gas.NewGas(5)
 
 	// Gas cost charged, in addition to SendBase, if a message invokes
 	// a method on the receiver.
 	// Accounts for the cost of loading receiver code and method dispatch.
-	sendInvokeMethod = gas.NewGas(5)
+	sendInvokeMethod = gas.NewGas(10)
 
 	// Gas cost (Base + len*PerByte) for any Get operation to the IPLD store
 	// in the runtime VM context.
