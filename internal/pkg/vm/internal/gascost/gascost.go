@@ -1,116 +1,68 @@
 package gascost
 
 import (
+	"fmt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
-// TODO: this needs to be upgradeable, it can change at a given epoch
+// Pricelist provides prices for operations in the VM.
+//
+// Note: this interface should be APPEND ONLY since last chain checkpoint
+type Pricelist interface {
+	// OnChainMessage returns the gas used for storing a message of a given size in the chain.
+	OnChainMessage(msgSize int) gas.Unit
+	// OnChainReturnValue returns the gas used for storing the response of a message in the chain.
+	OnChainReturnValue(receipt *message.Receipt) gas.Unit
 
-var (
-	///////////////////////////////////////////////////////////////////////////
-	// System operations
-	///////////////////////////////////////////////////////////////////////////
+	// OnMethodInvocation returns the gas used when invoking a method.
+	OnMethodInvocation(value abi.TokenAmount, methodNum abi.MethodNum) gas.Unit
 
-	// Gas cost charged to the originator of an on-chain message (regardless of
-	// whether it succeeds or fails in application) is given by:
-	//   OnChainMessageBase + len(serialized message)*OnChainMessagePerByte
-	// Together, these account for the cost of message propagation and validation,
-	// up to but excluding any actual processing by the VM.
-	// This is the cost a block producer burns when including an invalid message.
-	onChainMessageBase    = gas.Zero
-	onChainMessagePerByte = gas.NewGas(2)
+	// OnIpldGet returns the gas used for storing an object
+	OnIpldGet(dataSize int) gas.Unit
+	// OnIpldPut returns the gas used for storing an object
+	OnIpldPut(dataSize int) gas.Unit
 
-	// Gas cost charged to the originator of a non-nil return value produced
-	// by an on-chain message is given by:
-	//   len(return value)*OnChainReturnValuePerByte
-	onChainReturnValuePerByte = gas.NewGas(8)
-
-	// Gas cost for any message send execution(including the top-level one
-	// initiated by an on-chain message).
-	// This accounts for the cost of loading sender and receiver actors and
-	// (for top-level messages) incrementing the sender's sequence number.
-	// Load and store of actor sub-state is charged separately.
-	sendBase = gas.NewGas(5)
-
-	// Gas cost charged, in addition to SendBase, if a message send
-	// is accompanied by any nonzero currency amount.
-	// Accounts for writing receiver's new balance (the sender's state is
-	// already accounted for).
-	sendTransferFunds = gas.NewGas(5)
-
-	// Gas cost charged, in addition to SendBase, if a message invokes
-	// a method on the receiver.
-	// Accounts for the cost of loading receiver code and method dispatch.
-	sendInvokeMethod = gas.NewGas(10)
-
-	// Gas cost (Base + len*PerByte) for any Get operation to the IPLD store
-	// in the runtime VM context.
-	ipldGetBase    = gas.NewGas(10)
-	ipldGetPerByte = gas.NewGas(1)
-
-	// Gas cost (Base + len*PerByte) for any Put operation to the IPLD store
-	// in the runtime VM context.
-	//
-	// Note: these costs should be significantly higher than the costs for Get
-	// operations, since they reflect not only serialization/deserialization
-	// but also persistent storage of chain data.
-	ipldPutBase    = gas.NewGas(20)
-	ipldPutPerByte = gas.NewGas(2)
-
-	// Gas cost for creating a new actor (via InitActor's Exec method).
-	//
-	// Note: this costs assume that the extra will be partially or totally refunded while
-	// the base is covering for the put.
-	createActorBase       = ipldPutBase + gas.NewGas(20)
-	createActorRefundable = gas.NewGas(500)
-
-	// Gas cost for deleting an actor.
-	//
-	// Note: this partially refunds the create cost to incentivise the deletion of the actors.
-	deleteActor = -createActorRefundable
-)
-
-// OnChainMessage returns the gas used for storing a message of a given size in the chain.
-func OnChainMessage(msgSize int) gas.Unit {
-	return onChainMessageBase + onChainMessagePerByte*gas.Unit(msgSize)
+	// OnCreateActor returns the gas used for creating an actor
+	OnCreateActor() gas.Unit
+	// OnDeleteActor returns the gas used for deleting an actor
+	OnDeleteActor() gas.Unit
 }
 
-// OnChainReturnValue returns the gas used for storing the response of a message in the chain.
-func OnChainReturnValue(receipt *message.Receipt) gas.Unit {
-	return gas.Unit(len(receipt.ReturnValue)) * onChainReturnValuePerByte
+var prices = map[abi.ChainEpoch]Pricelist{
+	abi.ChainEpoch(0): &pricelistV0{
+		onChainMessageBase:        gas.Zero,
+		onChainMessagePerByte:     gas.NewGas(2),
+		onChainReturnValuePerByte: gas.NewGas(8),
+		sendBase:                  gas.NewGas(5),
+		sendTransferFunds:         gas.NewGas(5),
+		sendInvokeMethod:          gas.NewGas(10),
+		ipldGetBase:               gas.NewGas(10),
+		ipldGetPerByte:            gas.NewGas(1),
+		ipldPutBase:               gas.NewGas(20),
+		ipldPutPerByte:            gas.NewGas(2),
+		createActorBase:           gas.NewGas(40), // IPLD put + 20
+		createActorExtra:          gas.NewGas(500),
+		deleteActor:               gas.NewGas(-500), // -createActorExtra
+	},
 }
 
-// OnMethodInvocation returns the gas used when invoking a method.
-func OnMethodInvocation(value abi.TokenAmount, methodNum abi.MethodNum) gas.Unit {
-	ret := sendBase
-	if value != abi.NewTokenAmount(0) {
-		ret += sendTransferFunds
+// PricelistByEpoch finds the latest prices for the given epoch
+func PricelistByEpoch(epoch abi.ChainEpoch) Pricelist {
+	// since we are storing the prices as map or epoch to price
+	// we need to get the price with the highest epoch that is lower or equal to the `epoch` arg
+	bestEpoch := abi.ChainEpoch(0)
+	bestPrice := prices[bestEpoch]
+	for e, pl := range prices {
+		// if `e` happened after `bestEpoch` and `e` is earlier or equal to the target `epoch`
+		if e > bestEpoch && e <= epoch {
+			bestEpoch = e
+			bestPrice = pl
+		}
 	}
-	if methodNum != builtin.MethodSend {
-		ret += sendInvokeMethod
+	if bestPrice == nil {
+		panic(fmt.Sprintf("bad setup: no gas prices available for epoch %d", epoch))
 	}
-	return ret
-}
-
-// OnIpldGet returns the gas used for storing an object
-func OnIpldGet(dataSize int) gas.Unit {
-	return ipldGetBase + gas.Unit(dataSize)*ipldGetPerByte
-}
-
-// OnIpldPut returns the gas used for storing an object
-func OnIpldPut(dataSize int) gas.Unit {
-	return ipldPutBase + gas.Unit(dataSize)*ipldPutPerByte
-}
-
-// OnCreateActor returns the gas used for creating an actor
-func OnCreateActor() gas.Unit {
-	return createActorBase + createActorRefundable
-}
-
-// OnDeleteActor returns the gas used for deleting an actor
-func OnDeleteActor() gas.Unit {
-	return deleteActor
+	return bestPrice
 }

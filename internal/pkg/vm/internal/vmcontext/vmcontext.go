@@ -39,6 +39,7 @@ type VM struct {
 	store        *storage.VMStorage
 	state        state.Tree
 	currentEpoch abi.ChainEpoch
+	pricelist    gascost.Pricelist
 }
 
 // ActorImplLookup provides access to upgradeable actor code.
@@ -77,6 +78,8 @@ func NewVM(actorImpls ActorImplLookup, store *storage.VMStorage, st state.Tree) 
 //
 // This method is intended to be used in the generation of the genesis block only.
 func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}, rnd crypto.RandomnessSource) (interface{}, error) {
+	vm.pricelist = gascost.PricelistByEpoch(vm.currentEpoch)
+
 	// normalize from addr
 	var ok bool
 	if from, ok = vm.normalizeAddress(from); !ok {
@@ -170,6 +173,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 
 	// update current epoch
 	vm.currentEpoch = epoch
+	vm.pricelist = gascost.PricelistByEpoch(epoch)
 
 	// create message tracker
 	// Note: the same message could have been included by more than one miner
@@ -329,7 +333,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 	// 7. checkpoint state
 
 	// 1. charge for bytes used in chain
-	msgGasCost := gascost.OnChainMessage(onChainMsgSize)
+	msgGasCost := vm.pricelist.OnChainMessage(onChainMsgSize)
 	ok := gasTank.TryCharge(msgGasCost)
 	if !ok {
 		// Invalid message; insufficient gas limit to pay for the on-chain message size.
@@ -443,7 +447,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 
 	// 1. charge for the space used by the return value
 	// Note: the GasUsed in the message receipt does not
-	ok = gasTank.TryCharge(gascost.OnChainReturnValue(&receipt))
+	ok = gasTank.TryCharge(vm.pricelist.OnChainReturnValue(&receipt))
 	if !ok {
 		// Insufficient gas remaining to cover the on-chain return value; proceed as in the case
 		// of method execution failure.

@@ -12,9 +12,10 @@ import (
 
 // actorStorage hides the storage methods from the actors and turns the errors into runtime panics.
 type actorStorage struct {
-	context context.Context
-	inner   *storage.VMStorage
-	gasTank *GasTracker
+	context   context.Context
+	inner     *storage.VMStorage
+	pricelist gascost.Pricelist
+	gasTank   *GasTracker
 }
 
 //
@@ -28,7 +29,7 @@ func (s actorStorage) Put(obj specsruntime.CBORMarshaler) cid.Cid {
 	if err != nil {
 		panic(fmt.Errorf("could not put object in store. %s", err))
 	}
-	s.gasTank.Charge(gascost.OnIpldPut(ln))
+	s.gasTank.Charge(s.pricelist.OnIpldPut(ln))
 	return cid
 }
 
@@ -40,6 +41,6 @@ func (s actorStorage) Get(cid cid.Cid, obj specsruntime.CBORUnmarshaler) bool {
 	if err != nil {
 		panic(fmt.Errorf("could not get obj from store. %s", err))
 	}
-	s.gasTank.Charge(gascost.OnIpldGet(ln))
+	s.gasTank.Charge(s.pricelist.OnIpldGet(ln))
 	return true
 }
