@@ -11,8 +11,7 @@ import (
 // TODO: this needs to be upgradeable, it can change at a given epoch
 
 var (
-	gasAmountPlaceholder                = gas.NewGas(1)
-	gasAmountPlaceholderUpdateStateTree = gasAmountPlaceholder
+	gasAmountPlaceholder = gas.NewGas(1)
 )
 
 var (
@@ -88,8 +87,6 @@ func OnChainMessage(msgSize int) gas.Unit {
 func OnChainReturnValue(receipt *message.Receipt) gas.Unit {
 	return gas.Unit(len(receipt.ReturnValue)) * onChainReturnValuePerByte
 }
-
-type methodInvocationArgs interface{}
 
 // OnMethodInvocation returns the gas used when invoking a method.
 func OnMethodInvocation(value abi.TokenAmount, methodNum abi.MethodNum) gas.Unit {

@@ -40,7 +40,7 @@ func (t *GasTracker) TryCharge(amount gas.Unit) bool {
 		return false
 	}
 
-	t.gasConsumed = gas.Unit(aux)
+	t.gasConsumed = aux
 	return true
 }
 
