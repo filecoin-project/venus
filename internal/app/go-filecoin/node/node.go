@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -659,9 +658,8 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 
 		GetStateTree:   node.chain.ChainReader.GetTipSetState,
 		GetWeight:      node.getWeight,
-		GetAncestors:   node.getAncestors,
-		Election:       consensus.ElectionMachine{},
-		TicketGen:      consensus.TicketMachine{},
+		Election:       consensus.NewElectionMachine(node.PorcelainAPI),
+		TicketGen:      consensus.NewTicketMachine(node.PorcelainAPI),
 		TipSetMetadata: node.chain.ChainReader,
 
 		MessageSource: node.Messaging.Inbox.Pool(),
@@ -688,12 +686,6 @@ func (node *Node) getWeight(ctx context.Context, ts block.TipSet) (fbig.Int, err
 		return fbig.Zero(), err
 	}
 	return node.syncer.ChainSelector.Weight(ctx, ts, root)
-}
-
-// getAncestors is the default GetAncestors function for the mining worker.
-func (node *Node) getAncestors(ctx context.Context, ts block.TipSet, newBlockHeight abi.ChainEpoch) ([]block.TipSet, error) {
-	ancestorHeight := newBlockHeight - consensus.AncestorRoundsNeeded
-	return chain.GetRecentAncestors(ctx, ts, node.chain.ChainReader, ancestorHeight)
 }
 
 // -- Accessors

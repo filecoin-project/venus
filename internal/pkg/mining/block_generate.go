@@ -33,7 +33,7 @@ func (w *DefaultWorker) Generate(
 		log.Infof("[TIMER] DefaultWorker.Generate baseTipset: %s - elapsed time: %s", baseTipSet.String(), time.Since(generateTimer).Round(time.Millisecond))
 	}()
 
-	powerTable, err := w.getPowerTable(ctx, baseTipSet.Key())
+	powerTable, err := w.getPowerTable(baseTipSet.Key())
 	if err != nil {
 		return nil, errors.Wrap(err, "get power table")
 	}

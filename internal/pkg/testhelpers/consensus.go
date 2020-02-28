@@ -123,7 +123,7 @@ func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *block.Block
 
 // NewFakeProcessor creates a processor with a test validator and test rewarder
 func NewFakeProcessor() *consensus.DefaultProcessor {
-	return consensus.NewConfiguredProcessor(vm.DefaultActors, &consensus.FakeSampler{})
+	return consensus.NewConfiguredProcessor(vm.DefaultActors, &consensus.FakeChainRandomness{})
 }
 
 // ApplyTestMessage sends a message directly to the vm, bypassing message
@@ -139,7 +139,7 @@ func ApplyTestMessageWithActors(actors vm.ActorCodeLoader, st state.Tree, store 
 
 // ApplyTestMessageWithGas uses the FakeBlockRewarder but the default SignedMessageValidator
 func ApplyTestMessageWithGas(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch, minerOwner address.Address) (*consensus.ApplicationResult, error) {
-	applier := consensus.NewConfiguredProcessor(actors, &consensus.FakeSampler{})
+	applier := consensus.NewConfiguredProcessor(actors, &consensus.FakeChainRandomness{})
 	return newMessageApplier(msg, applier, st, store, bh, minerOwner, nil)
 }
 
@@ -192,5 +192,5 @@ func applyTestMessageWithAncestors(actors vm.ActorCodeLoader, st state.Tree, sto
 }
 
 func newTestApplier(actors vm.ActorCodeLoader) *consensus.DefaultProcessor {
-	return consensus.NewConfiguredProcessor(actors, &consensus.FakeSampler{})
+	return consensus.NewConfiguredProcessor(actors, &consensus.FakeChainRandomness{})
 }

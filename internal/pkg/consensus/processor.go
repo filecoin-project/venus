@@ -28,20 +28,20 @@ type ApplyMessageResult struct {
 	FailureIsPermanent bool  // Whether failure is permanent, has no chance of succeeding later.
 }
 
-type chainRandomness interface {
+type ChainRandomness interface {
 	SampleChainRandomness(ctx context.Context, head block.TipSetKey, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 }
 
 // DefaultProcessor handles all block processing.
 type DefaultProcessor struct {
 	actors vm.ActorCodeLoader
-	rnd    chainRandomness
+	rnd    ChainRandomness
 }
 
 var _ Processor = (*DefaultProcessor)(nil)
 
 // NewDefaultProcessor creates a default processor from the given state tree and vms.
-func NewDefaultProcessor(rnd chainRandomness) *DefaultProcessor {
+func NewDefaultProcessor(rnd ChainRandomness) *DefaultProcessor {
 	return &DefaultProcessor{
 		actors: vm.DefaultActors,
 		rnd:    rnd,
@@ -49,7 +49,7 @@ func NewDefaultProcessor(rnd chainRandomness) *DefaultProcessor {
 }
 
 // NewConfiguredProcessor creates a default processor with custom validation and rewards.
-func NewConfiguredProcessor(actors vm.ActorCodeLoader, rnd chainRandomness) *DefaultProcessor {
+func NewConfiguredProcessor(actors vm.ActorCodeLoader, rnd ChainRandomness) *DefaultProcessor {
 	return &DefaultProcessor{
 		actors: actors,
 		rnd:    rnd,
@@ -83,7 +83,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 
 // A chain randomness source with a fixed head tipset key.
 type headRandomness struct {
-	chain chainRandomness
+	chain ChainRandomness
 	head  block.TipSetKey
 }
 

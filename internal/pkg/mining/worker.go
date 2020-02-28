@@ -15,6 +15,7 @@ import (
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
+	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -23,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -58,10 +58,6 @@ type GetStateTree func(context.Context, block.TipSetKey) (state.Tree, error)
 // expressed as two uint64s comprising a rational number.
 type GetWeight func(context.Context, block.TipSet) (fbig.Int, error)
 
-// GetAncestors is a function that returns the necessary ancestor chain to
-// process the input tipset.
-type GetAncestors func(context.Context, block.TipSet, abi.ChainEpoch) ([]block.TipSet, error)
-
 // MessageSource provides message candidates for mining into blocks
 type MessageSource interface {
 	// Pending returns a slice of un-mined messages.
@@ -76,20 +72,21 @@ type MessageApplier interface {
 }
 
 type workerPorcelainAPI interface {
+	consensus.ChainRandomness
 	BlockTime() time.Duration
 	PowerStateView(baseKey block.TipSetKey) (consensus.PowerStateView, error)
 }
 
 type electionUtil interface {
-	GeneratePoStRandomness(block.Ticket, address.Address, types.Signer, uint64) ([]byte, error)
+	GenerateEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (block.VRFPi, error)
 	GenerateCandidates([]byte, ffi.SortedPublicSectorInfo, postgenerator.PoStGenerator) ([]ffi.Candidate, error)
-	GeneratePoSt(ffi.SortedPublicSectorInfo, []byte, []ffi.Candidate, postgenerator.PoStGenerator) ([]byte, error)
+	GenerateEPoSt(ffi.SortedPublicSectorInfo, []byte, []ffi.Candidate, postgenerator.PoStGenerator) ([]byte, error)
 	CandidateWins([]byte, uint64, uint64, uint64, uint64) bool
 }
 
 // ticketGenerator creates tickets.
 type ticketGenerator interface {
-	NextTicket(block.Ticket, address.Address, types.Signer) (block.Ticket, error)
+	MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (block.Ticket, error)
 }
 
 type tipSetMetadata interface {
@@ -108,7 +105,6 @@ type DefaultWorker struct {
 	tsMetadata    tipSetMetadata
 	getStateTree  GetStateTree
 	getWeight     GetWeight
-	getAncestors  GetAncestors
 	election      electionUtil
 	ticketGen     ticketGenerator
 	messageSource MessageSource
@@ -131,7 +127,6 @@ type WorkerParameters struct {
 	TipSetMetadata tipSetMetadata
 	GetStateTree   GetStateTree
 	GetWeight      GetWeight
-	GetAncestors   GetAncestors
 	Election       electionUtil
 	TicketGen      ticketGenerator
 
@@ -150,7 +145,6 @@ func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
 		api:            parameters.API,
 		getStateTree:   parameters.GetStateTree,
 		getWeight:      parameters.GetWeight,
-		getAncestors:   parameters.GetAncestors,
 		messageSource:  parameters.MessageSource,
 		messageStore:   parameters.MessageStore,
 		processor:      parameters.Processor,
@@ -175,8 +169,14 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- Output{Err: errors.New("bad input tipset with no blocks sent to Mine()")}
 		return
 	}
+	baseEpoch, err := base.Height()
+	if err != nil {
+		log.Warnf("Worker.Mine couldn't read base height %s", err)
+		outCh <- Output{Err: err}
+		return
+	}
 
-	log.Debugf("Mining on tipset: %s, with %d null blocks.", base.String(), nullBlkCount)
+	log.Debugf("Mining on tipset %s, at epoch %d with %d null blocks.", base.String(), baseEpoch, nullBlkCount)
 	if ctx.Err() != nil {
 		log.Warnf("Worker.Mine returning with ctx error %s", ctx.Err().Error())
 		return
@@ -194,46 +194,28 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		return
 	}
 
-	// lookback consensus.ElectionLookback
-	prevTicket, err := base.MinTicket()
-	if err != nil {
-		log.Warnf("Worker.Mine couldn't read parent ticket %s", err)
-		outCh <- Output{Err: err}
-		return
-	}
+	// Look-back for the election ticket.
+	// The parameter is interpreted as: lookback=1 means parent tipset. Subtract one here because the base from
+	// which the lookback is counted is already the parent, rather than "current" tipset.
+	// The sampling code will handle this underflowing past the genesis.
+	targetEpoch := baseEpoch - (miner.ElectionLookback - 1) + abi.ChainEpoch(nullBlkCount)
 
-	nextTicket, err := w.ticketGen.NextTicket(prevTicket, workerAddr, w.workerSigner)
+	nextTicket, err := w.ticketGen.MakeTicket(ctx, base.Key(), targetEpoch, w.minerAddr, workerAddr, w.workerSigner)
 	if err != nil {
 		log.Warnf("Worker.Mine couldn't generate next ticket %s", err)
 		outCh <- Output{Err: err}
 		return
 	}
-	// lookback consensus.ElectionLookback for the election ticket
-	baseHeight, err := base.Height()
+
+	postVrfProof, err := w.election.GenerateEPoStVrfProof(ctx, base.Key(), targetEpoch, w.minerAddr, workerAddr, w.workerSigner)
 	if err != nil {
-		log.Warnf("Worker.Mine couldn't read base height %s", err)
+		log.Errorf("Worker.Mine failed to generate epost postVrfProof %s", err)
 		outCh <- Output{Err: err}
 		return
 	}
-	ancestors, err := w.getAncestors(ctx, base, baseHeight+(abi.ChainEpoch(nullBlkCount+1)))
-	if err != nil {
-		log.Warnf("Worker.Mine couldn't get ancestorst %s", err)
-		outCh <- Output{Err: err}
-		return
-	}
-	electionTicket, err := sampling.SampleNthTicket(int(miner.ElectionLookback-1), ancestors)
-	if err != nil {
-		log.Warnf("Worker.Mine couldn't read parent ticket %s", err)
-		outCh <- Output{Err: err}
-		return
-	}
-	postRandomness, err := w.election.GeneratePoStRandomness(electionTicket, workerAddr, w.workerSigner, nullBlkCount)
-	if err != nil {
-		log.Errorf("Worker.Mine failed to generate post randomness %s", err)
-		outCh <- Output{Err: err}
-		return
-	}
-	powerTable, err := w.getPowerTable(ctx, base.Key())
+	postVrfProofDigest := blake2b.Sum256(postVrfProof)
+
+	powerTable, err := w.getPowerTable(base.Key())
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't get snapshot for tipset: %s", err.Error())
 		outCh <- Output{Err: err}
@@ -251,7 +233,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	go func() {
 		defer close(done)
 		defer close(errCh)
-		candidates, err := w.election.GenerateCandidates(postRandomness, sortedSectorInfos, w.poster)
+		candidates, err := w.election.GenerateCandidates(postVrfProofDigest[:], sortedSectorInfos, w.poster)
 		if err != nil {
 			errCh <- err
 			return
@@ -313,7 +295,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	go func() {
 		defer close(postDone)
 		defer close(errCh)
-		post, err := w.election.GeneratePoSt(sortedSectorInfos, postRandomness, winners, w.poster)
+		post, err := w.election.GenerateEPoSt(sortedSectorInfos, postVrfProofDigest[:], winners, w.poster)
 		if err != nil {
 			errCh <- err
 			return
@@ -332,7 +314,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		post = postOut
 	}
 
-	postInfo := block.NewEPoStInfo(post, postRandomness, block.FromFFICandidates(winners...)...)
+	postInfo := block.NewEPoStInfo(post, postVrfProof, block.FromFFICandidates(winners...)...)
 
 	next, err := w.Generate(ctx, base, nextTicket, abi.ChainEpoch(nullBlkCount), postInfo)
 	if err == nil {
@@ -343,7 +325,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	return
 }
 
-func (w *DefaultWorker) getPowerTable(ctx context.Context, baseKey block.TipSetKey) (consensus.PowerTableView, error) {
+func (w *DefaultWorker) getPowerTable(baseKey block.TipSetKey) (consensus.PowerTableView, error) {
 	view, err := w.api.PowerStateView(baseKey)
 	if err != nil {
 		return consensus.PowerTableView{}, err

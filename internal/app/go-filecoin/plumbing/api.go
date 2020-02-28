@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
@@ -166,6 +167,11 @@ func (api *API) ChainTipSet(key block.TipSetKey) (block.TipSet, error) {
 // ChainLs returns an iterator of tipsets from head to genesis
 func (api *API) ChainLs(ctx context.Context) (*chain.TipsetIterator, error) {
 	return api.chain.Ls(ctx)
+}
+
+func (api *API) SampleChainRandomness(ctx context.Context, head block.TipSetKey, tag acrypto.DomainSeparationTag,
+	epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return api.chain.SampleChainRandomness(ctx, head, tag, epoch, entropy)
 }
 
 // SyncerStatus returns the current status of the active or last active chain sync operation.

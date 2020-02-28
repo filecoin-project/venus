@@ -43,11 +43,12 @@ type Block struct {
 	// Height is the chain height of this block.
 	Height abi.ChainEpoch `json:"height"`
 
-	// StateRoot is a cid pointer to the state tree after application of the
-	// transactions state transitions.
+	// StateRoot is the CID of the root of the state tree after application of the messages in the parent tipset
+	// to the parent tipset's state root.
 	StateRoot e.Cid `json:"stateRoot,omitempty"`
 
-	// MessageReceipts is a set of receipts matching to the sending of the `Messages`.
+	// MessageReceipts is a list of receipts corresponding to the application of the messages in the parent tipset
+	// to the parent tipset's state root (corresponding to this block's StateRoot).
 	MessageReceipts e.Cid `json:"messageReceipts,omitempty"`
 
 	// Messages is the set of messages included in this block

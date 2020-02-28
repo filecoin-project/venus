@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -53,13 +52,15 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		nextRoot, miners, m2w := setTree(ctx, t, kis, cistore, bstore, genesisBlock.StateRoot.Cid)
 
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
-		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &proofs.ElectionPoster{})
+		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest,
+			&consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &proofs.ElectionPoster{})
 
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, nextRoot, types.EmptyReceiptsCID, miners, m2w, mockSigner)
 		tipSet := th.RequireNewTipSet(t, nextBlocks...)
 
 		emptyBLSMessages, emptyMessages := emptyMessages(len(nextBlocks))
-		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, []block.TipSet{pTipSet}, nextBlocks[0].ParentWeight, nextBlocks[0].StateRoot.Cid, nextBlocks[0].MessageReceipts.Cid)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages,
+			nextBlocks[0].ParentWeight, nextBlocks[0].StateRoot.Cid, nextBlocks[0].MessageReceipts.Cid)
 		assert.NoError(t, err)
 	})
 
@@ -72,57 +73,20 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
-		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(&consensus.FakeSampler{}), &views, th.BlockTimeTest, &consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{}, &proofs.ElectionPoster{})
+		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(&consensus.FakeChainRandomness{}), &views, th.BlockTimeTest,
+			&consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{}, &proofs.ElectionPoster{})
 
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot.Cid, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
 		tipSet := th.RequireNewTipSet(t, nextBlocks...)
 
 		emptyBLSMessages, emptyMessages := emptyMessages(len(nextBlocks))
 
-		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, []block.TipSet{pTipSet}, nextBlocks[0].ParentWeight, genesisBlock.StateRoot.Cid, genesisBlock.MessageReceipts.Cid)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, genesisBlock.ParentWeight, genesisBlock.StateRoot.Cid, genesisBlock.MessageReceipts.Cid)
 		require.Error(t, err)
 		assert.True(t, strings.Contains(err.Error(), "lost election"))
 	})
 
-	t.Run("correct tickets processed in election and next ticket", func(t *testing.T) {
-		cistore, bstore := setupCborBlockstore()
-		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
-		require.NoError(t, err)
-
-		pTipSet := th.RequireNewTipSet(t, genesisBlock)
-
-		nextRoot, miners, m2w := setTree(ctx, t, kis, cistore, bstore, genesisBlock.StateRoot.Cid)
-		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
-		ancestors := make([]block.TipSet, 5)
-		for i := 0; i < int(miner.ElectionLookback); i++ {
-			ancestorBlk := requireMakeNBlocks(t, 1, pTipSet, nextRoot, types.EmptyReceiptsCID, miners, m2w, mockSigner)
-			ancestors[i] = th.RequireNewTipSet(t, ancestorBlk...)
-			pTipSet = ancestors[i]
-		}
-
-		isLookingBack := func(ticket block.Ticket) {
-			expTicket, err := ancestors[miner.ElectionLookback-1].MinTicket()
-			require.NoError(t, err)
-			assert.Equal(t, expTicket, ticket)
-		}
-		mockElection := consensus.NewMockElectionMachine(isLookingBack)
-
-		isOneBack := func(ticket block.Ticket) {
-			expTicket, err := ancestors[0].MinTicket()
-			require.NoError(t, err)
-			assert.Equal(t, expTicket, ticket)
-		}
-		mockTicketGen := consensus.NewMockTicketMachine(isOneBack)
-
-		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, mockElection, mockTicketGen, &proofs.ElectionPoster{})
-
-		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, nextRoot, types.EmptyReceiptsCID, miners, m2w, mockSigner)
-		tipSet := th.RequireNewTipSet(t, nextBlocks...)
-
-		emptyBLSMessages, emptyMessages := emptyMessages(len(nextBlocks))
-		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, ancestors, nextBlocks[0].ParentWeight, nextRoot, nextBlocks[0].MessageReceipts.Cid)
-		assert.NoError(t, err)
-	})
+	// TODO: test that the correct tickets are processed for election and ticket generation
 
 	t.Run("fails when bls signature is not valid across bls messages", func(t *testing.T) {
 		cistore, bstore := setupCborBlockstore()
@@ -148,7 +112,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		msg := types.NewUnsignedMessage(blsAddr, vmaddr.RequireIDAddress(t, 100), 0, types.NewAttoFILFromFIL(0), builtin.MethodSend, []byte{})
 		blsMessages[0] = append(blsMessages[0], msg)
 
-		_, _, err = exp.RunStateTransition(ctx, tipSet, blsMessages, emptyMessages, []block.TipSet{pTipSet}, nextBlocks[0].ParentWeight, nextBlocks[0].StateRoot.Cid, nextBlocks[0].MessageReceipts.Cid)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, blsMessages, emptyMessages, nextBlocks[0].ParentWeight, nextBlocks[0].StateRoot.Cid, nextBlocks[0].MessageReceipts.Cid)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "block BLS signature does not validate")
 	})
@@ -184,7 +148,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		}
 		secpMessages[0] = append(secpMessages[0], smsg)
 
-		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, secpMessages, []block.TipSet{pTipSet}, nextBlocks[0].ParentWeight, nextBlocks[0].StateRoot.Cid, nextBlocks[0].MessageReceipts.Cid)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, secpMessages, nextBlocks[0].ParentWeight, nextBlocks[0].StateRoot.Cid, nextBlocks[0].MessageReceipts.Cid)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "secp message signature invalid")
 	})
@@ -204,7 +168,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		emptyBLSMessages, emptyMessages := emptyMessages(len(nextBlocks))
 
-		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, []block.TipSet{pTipSet}, nextBlocks[0].ParentWeight, genesisBlock.StateRoot.Cid, genesisBlock.MessageReceipts.Cid)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, genesisBlock.ParentWeight, genesisBlock.StateRoot.Cid, genesisBlock.MessageReceipts.Cid)
 		require.NotNil(t, err)
 		assert.Contains(t, err.Error(), "invalid ticket")
 	})
@@ -227,7 +191,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		tipSet := th.RequireNewTipSet(t, nextBlocks...)
 		emptyBLSMessages, emptyMessages := emptyMessages(len(nextBlocks))
 
-		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, []block.TipSet{pTipSet}, nextBlocks[0].ParentWeight, nextBlocks[0].StateRoot.Cid, nextBlocks[0].MessageReceipts.Cid)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, nextBlocks[0].ParentWeight, nextBlocks[0].StateRoot.Cid, nextBlocks[0].MessageReceipts.Cid)
 		assert.EqualError(t, err, "block signature invalid")
 	})
 
@@ -248,7 +212,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		emptyBLSMessages, emptyMessages := emptyMessages(len(nextBlocks))
 
-		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, []block.TipSet{pTipSet}, invalidParentWeight, nextBlocks[0].StateRoot.Cid, nextBlocks[0].MessageReceipts.Cid)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, invalidParentWeight, nextBlocks[0].StateRoot.Cid, nextBlocks[0].MessageReceipts.Cid)
 		assert.Contains(t, err.Error(), "invalid parent weight")
 	})
 }

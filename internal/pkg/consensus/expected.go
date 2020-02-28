@@ -8,8 +8,6 @@ import (
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	cid "github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -22,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
@@ -46,8 +43,6 @@ func init() {
 var (
 	// ErrStateRootMismatch is returned when the computed state root doesn't match the expected result.
 	ErrStateRootMismatch = errors.New("blocks state root does not match computed result")
-	// ErrInvalidBase is returned when the chain doesn't connect back to a known good block.
-	ErrInvalidBase = errors.New("block does not connect to a known good chain")
 	// ErrUnorderedTipSets is returned when weight and minticket are the same between two tipsets.
 	ErrUnorderedTipSets = errors.New("trying to order two identical tipsets")
 	// ErrReceiptRootMismatch is returned when the block's receipt root doesn't match the receipt root computed for the parent tipset.
@@ -60,15 +55,6 @@ const challengeBits = 256
 // expectedLeadersPerEpoch is the mean number of leaders per epoch
 const expectedLeadersPerEpoch = 5
 
-// AncestorRoundsNeeded is the number of rounds of the ancestor chain needed
-// to process all state transitions.
-//
-// TODO: If the following PR is merged - and the network doesn't define a
-// largest sector size - this constant will need to be reconsidered.
-// https://github.com/filecoin-project/specs/pull/318
-// NOTE(anorth): This height is excessive, but safe, with the Rational PoSt construction.
-var AncestorRoundsNeeded = max(miner.ProvingPeriod+power.WindowedPostChallengeDuration, miner.ElectionLookback)
-
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
@@ -77,14 +63,14 @@ type Processor interface {
 
 // TicketValidator validates that an input ticket is valid.
 type TicketValidator interface {
-	ValidateTicket(parent block.Ticket, ticket block.Ticket, signerAddr address.Address) error
+	IsValidTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, ticket block.Ticket) error
 }
 
 // ElectionValidator validates that an election fairly produced a winner.
 type ElectionValidator interface {
 	VerifyPoSt(ep verification.PoStVerifier, allSectorInfos ffi.SortedPublicSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []block.EPoStCandidate, proverID address.Address) (bool, error)
 	CandidateWins(challengeTicket []byte, sectorNum, faultNum, networkPower, sectorSize uint64) bool
-	VerifyPoStRandomness(rand block.VRFPi, ticket block.Ticket, candidateAddr address.Address, nullBlockCount uint64) error
+	VerifyEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, vrfProof block.VRFPi) error
 }
 
 // StateViewer provides views into the chain state.
@@ -145,12 +131,13 @@ func (c *Expected) BlockTime() time.Duration {
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight fbig.Int, parentStateRoot cid.Cid, parentReceiptRoot cid.Cid) (root cid.Cid, receipts []vm.MessageReceipt, err error) {
+func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage,
+	parentWeight fbig.Int, parentStateRoot cid.Cid, parentReceiptRoot cid.Cid) (root cid.Cid, receipts []vm.MessageReceipt, err error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	if err := c.validateMining(ctx, ts, parentStateRoot, ancestors[0], ancestors, blsMessages, secpMessages, parentWeight, parentReceiptRoot); err != nil {
+	if err := c.validateMining(ctx, ts, parentStateRoot, blsMessages, secpMessages, parentWeight, parentReceiptRoot); err != nil {
 		return cid.Undef, []vm.MessageReceipt{}, err
 	}
 
@@ -160,7 +147,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsM
 	}
 	vms := vm.NewStorage(c.bstore)
 	var newState state.Tree
-	newState, receipts, err = c.runMessages(ctx, priorState, vms, ts, blsMessages, secpMessages, ancestors)
+	newState, receipts, err = c.runMessages(ctx, priorState, vms, ts, blsMessages, secpMessages)
 	if err != nil {
 		return cid.Undef, []vm.MessageReceipt{}, err
 	}
@@ -178,29 +165,13 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsM
 
 // validateMining checks validity of the ticket, proof, signature and miner
 // address of every block in the tipset.
-func (c *Expected) validateMining(
-	ctx context.Context,
+func (c *Expected) validateMining(ctx context.Context,
 	ts block.TipSet,
 	parentStateRoot cid.Cid,
-	parentTs block.TipSet,
-	ancestors []block.TipSet,
 	blsMsgs [][]*types.UnsignedMessage,
 	secpMsgs [][]*types.SignedMessage,
 	parentWeight fbig.Int,
 	parentReceiptRoot cid.Cid) error {
-
-	electionTicket, err := sampling.SampleNthTicket(int(miner.ElectionLookback-1), ancestors)
-	if err != nil {
-		return errors.Wrap(err, "failed to sample election ticket from ancestors")
-	}
-	prevTicket, err := parentTs.MinTicket()
-	if err != nil {
-		return errors.Wrap(err, "failed to read parent min ticket")
-	}
-	prevHeight, err := parentTs.Height()
-	if err != nil {
-		return errors.Wrap(err, "failed to read parent height")
-	}
 
 	powerTable := NewPowerTableView(c.state.StateView(parentStateRoot))
 
@@ -241,10 +212,9 @@ func (c *Expected) validateMining(
 			}
 		}
 
-		// Verify PoStRandomness
-		nullBlkCount := blk.Height - prevHeight - 1
-		if err := c.VerifyPoStRandomness(blk.EPoStInfo.PoStRandomness, electionTicket, workerAddr, uint64(nullBlkCount)); err != nil {
-			return errors.Wrap(err, "PoStRandomness invalid")
+		// Verify EPoSt VRF proof ("PoSt randomness")
+		if err := c.VerifyEPoStVrfProof(ctx, blk.Parents, blk.Height, blk.Miner, workerAddr, blk.EPoStInfo.PoStRandomness); err != nil {
+			return errors.Wrapf(err, "failed to verify EPoSt VRF proof (PoSt randomness) in block %s", blk.Cid())
 		}
 
 		// Verify no duplicate challenge indexes
@@ -284,7 +254,8 @@ func (c *Expected) validateMining(
 		if err != nil {
 			return errors.Wrapf(err, "failed to read sector infos from power table")
 		}
-		valid, err := c.VerifyPoSt(c.postVerifier, allSectorInfos, uint64(sectorSize), blk.EPoStInfo.PoStRandomness, blk.EPoStInfo.PoStProof, blk.EPoStInfo.Winners, blk.Miner)
+		valid, err := c.VerifyPoSt(c.postVerifier, allSectorInfos, uint64(sectorSize), blk.EPoStInfo.PoStRandomness,
+			blk.EPoStInfo.PoStProof, blk.EPoStInfo.Winners, blk.Miner)
 		if err != nil {
 			return errors.Wrapf(err, "error checking PoSt")
 		}
@@ -293,8 +264,8 @@ func (c *Expected) validateMining(
 		}
 
 		// Ticket was correctly generated by miner
-		if err := c.ValidateTicket(prevTicket, blk.Ticket, workerAddr); err != nil {
-			return errors.Wrapf(err, "invalid ticket: %s in block %s", blk.Ticket.String(), blk.Cid().String())
+		if err := c.IsValidTicket(ctx, blk.Parents, blk.Height, blk.Miner, workerAddr, blk.Ticket); err != nil {
+			return errors.Wrapf(err, "invalid ticket: %s in block %s", blk.Ticket.String(), blk.Cid())
 		}
 	}
 	return nil
@@ -306,7 +277,8 @@ func (c *Expected) validateMining(
 // for the entire tipset. The output state must be flushed after calling to
 // guarantee that the state transitions propagate.
 // Messages that fail to apply are dropped on the floor (and no receipt is emitted).
-func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storage, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet) (state.Tree, []vm.MessageReceipt, error) {
+func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storage, ts block.TipSet,
+	blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (state.Tree, []vm.MessageReceipt, error) {
 	msgs := []vm.BlockMessagesInfo{}
 
 	// build message information per block
@@ -366,11 +338,4 @@ func verifyBLSMessageAggregate(sig []byte, msgs []*types.UnsignedMessage) error 
 		return errors.New("block BLS signature does not validate against BLS messages")
 	}
 	return nil
-}
-
-func max(a, b abi.ChainEpoch) abi.ChainEpoch {
-	if a >= b {
-		return a
-	}
-	return b
 }

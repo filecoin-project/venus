@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
+	"github.com/minio/blake2b-simd"
 	"github.com/stretchr/testify/require"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -73,8 +74,8 @@ func (fem *FakeElectionMachine) DeprecatedIsElectionWinner(ctx context.Context, 
 	return true, nil
 }
 
-// GeneratePoStRandomness returns a fake post randomness byte array
-func (fem *FakeElectionMachine) GeneratePoStRandomness(_ block.Ticket, _ address.Address, _ types.Signer, _ uint64) ([]byte, error) {
+// GenerateEPoStVrfProof returns a fake post randomness byte array
+func (fem *FakeElectionMachine) GenerateEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (block.VRFPi, error) {
 	return MakeFakeVRFProofForTest(), nil
 }
 
@@ -90,13 +91,13 @@ func (fem *FakeElectionMachine) GenerateCandidates(_ []byte, _ ffi.SortedPublicS
 	}, nil
 }
 
-// GeneratePoSt returns a fake post proof
-func (fem *FakeElectionMachine) GeneratePoSt(_ ffi.SortedPublicSectorInfo, _ []byte, _ []ffi.Candidate, _ postgenerator.PoStGenerator) ([]byte, error) {
+// GenerateEPoSt returns a fake post proof
+func (fem *FakeElectionMachine) GenerateEPoSt(_ ffi.SortedPublicSectorInfo, _ []byte, _ []ffi.Candidate, _ postgenerator.PoStGenerator) ([]byte, error) {
 	return MakeFakePoStForTest(), nil
 }
 
-// VerifyPoStRandomness returns true
-func (fem *FakeElectionMachine) VerifyPoStRandomness(_ block.VRFPi, _ block.Ticket, _ address.Address, _ uint64) error {
+// VerifyEPoStVrfProof returns true
+func (fem *FakeElectionMachine) VerifyEPoStVrfProof(context.Context, block.TipSetKey, abi.ChainEpoch, address.Address, address.Address, block.VRFPi) error {
 	return nil
 }
 
@@ -113,21 +114,21 @@ func (fem *FakeElectionMachine) VerifyPoSt(_ verification.PoStVerifier, _ ffi.So
 // FakeTicketMachine generates fake tickets and verifies all tickets
 type FakeTicketMachine struct{}
 
-// NextTicket returns a fake ticket
-func (ftm *FakeTicketMachine) NextTicket(parent block.Ticket, signerAddr address.Address, signer types.Signer) (block.Ticket, error) {
+// MakeTicket returns a fake ticket
+func (ftm *FakeTicketMachine) MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (block.Ticket, error) {
 	return MakeFakeTicketForTest(), nil
 }
 
-// ValidateTicket always returns true
-func (ftm *FakeTicketMachine) ValidateTicket(parent, ticket block.Ticket, signerAddr address.Address) error {
+// IsValidTicket always returns true
+func (ftm *FakeTicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, ticket block.Ticket) error {
 	return nil
 }
 
 // FailingTicketValidator marks all tickets as invalid
 type FailingTicketValidator struct{}
 
-// ValidateTicket always returns false
-func (ftv *FailingTicketValidator) ValidateTicket(parent, ticket block.Ticket, signerAddr address.Address) error {
+// IsValidTicket always returns false
+func (ftv *FailingTicketValidator) IsValidTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, ticket block.Ticket) error {
 	return fmt.Errorf("invalid ticket")
 }
 
@@ -146,8 +147,8 @@ func (fev *FailingElectionValidator) VerifyPoSt(_ verification.PoStVerifier, _ f
 	return true, nil
 }
 
-// VerifyPoStRandomness return true
-func (fev *FailingElectionValidator) VerifyPoStRandomness(_ block.VRFPi, _ block.Ticket, _ address.Address, _ uint64) error {
+// VerifyEPoStVrfProof return true
+func (fev *FailingElectionValidator) VerifyEPoStVrfProof(context.Context, block.TipSetKey, abi.ChainEpoch, address.Address, address.Address, block.VRFPi) error {
 	return nil
 }
 
@@ -196,62 +197,57 @@ func NFakeSectorInfos(numSectors uint64) ffi.SortedPublicSectorInfo {
 	return ffi.NewSortedPublicSectorInfo(infos...)
 }
 
-// SeedFirstWinnerInNRounds returns a ticket that when mined upon for N rounds
+// SeedFirstWinnerInNRounds returns seeded fake chain randomness that when mined upon for N rounds
 // by a miner that has `minerPower` out of a system-wide `totalPower` and keyinfo
 // `ki` will produce a ticket that gives a winning election proof in exactly `n`
 // rounds.  No wins before n rounds are up.
 //
 // Note that this is a deterministic function of the inputs as we return the
-// first ticket that seeds a winner in `n` rounds given the inputs starting from
-// MakeFakeTicketForTest().
+// first such seed.
 //
 // Note that there are no guarantees that this function will terminate on new
 // inputs as miner power might be so low that winning a ticket is very
 // unlikely.  However runtime is deterministic so if it runs fast once on
 // given inputs is safe to use in tests.
-func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *crypto.KeyInfo, networkPower, numSectors, sectorSize uint64) block.Ticket {
-	tm := TicketMachine{}
+func SeedFirstWinnerInNRounds(t *testing.T, n int, miner address.Address, ki *crypto.KeyInfo, networkPower, numSectors, sectorSize uint64) *FakeChainRandomness {
 	signer := types.NewMockSigner([]crypto.KeyInfo{*ki})
-	wAddr, err := ki.Address()
+	worker, err := ki.Address()
 	require.NoError(t, err)
 
 	// give it some fake sector infos
 	sectorInfos := NFakeSectorInfos(numSectors)
-	curr := MakeFakeTicketForTest()
+	head := block.NewTipSetKey() // The fake chain randomness doesn't actually inspect any tipsets
+
+	rnd := &FakeChainRandomness{Seed: 1}
+	em := NewElectionMachine(rnd)
 
 	for {
-		if winsAtEpoch(t, uint64(n), curr, ki, networkPower, numSectors, sectorSize, sectorInfos) {
+		if winsAtEpoch(t, em, head, abi.ChainEpoch(n), miner, worker, signer, networkPower, numSectors, sectorSize, sectorInfos) {
 			losesAllPrevious := true
 			for m := 0; m < n; m++ {
-				if winsAtEpoch(t, uint64(m), curr, ki, networkPower, numSectors, sectorSize, sectorInfos) {
+				if winsAtEpoch(t, em, head, abi.ChainEpoch(m), miner, worker, signer, networkPower, numSectors, sectorSize, sectorInfos) {
 					losesAllPrevious = false
 					break
 				}
 			}
 			if losesAllPrevious {
-
-				return curr
+				return rnd
 			}
 		}
-
-		// make a new ticket off the previous to keep searching
-		curr, err = tm.NextTicket(curr, wAddr, signer)
-		require.NoError(t, err)
+		// Try a different seed.
+		rnd.Seed++
 	}
 }
 
-func winsAtEpoch(t *testing.T, epoch uint64, ticket block.Ticket, ki *crypto.KeyInfo, networkPower, numSectors, sectorSize uint64, sectorInfos ffi.SortedPublicSectorInfo) bool {
-	signer := types.NewMockSigner([]crypto.KeyInfo{*ki})
-	wAddr, err := ki.Address()
-	require.NoError(t, err)
-	em := ElectionMachine{}
+func winsAtEpoch(t *testing.T, em *ElectionMachine, head block.TipSetKey, epoch abi.ChainEpoch, miner, worker address.Address,
+	signer types.Signer, networkPower, numSectors, sectorSize uint64, sectorInfos ffi.SortedPublicSectorInfo) bool {
 
-	// use ticket to seed postRandomness
-	postRandomness, err := em.GeneratePoStRandomness(ticket, wAddr, signer, epoch)
+	epostVRFProof, err := em.GenerateEPoStVrfProof(context.Background(), head, epoch, miner, worker, signer)
 	require.NoError(t, err)
+	digest := blake2b.Sum256(epostVRFProof)
 
 	// does this postRandomness create a winner?
-	candidates, err := em.GenerateCandidates(postRandomness, sectorInfos, &proofs.ElectionPoster{})
+	candidates, err := em.GenerateCandidates(digest[:], sectorInfos, &proofs.ElectionPoster{})
 	require.NoError(t, err)
 
 	for _, candidate := range candidates {
@@ -265,105 +261,14 @@ func winsAtEpoch(t *testing.T, epoch uint64, ticket block.Ticket, ki *crypto.Key
 	return false
 }
 
-func losesAtEpoch(t *testing.T, epoch uint64, ticket block.Ticket, ki *crypto.KeyInfo, networkPower, numSectors, sectorSize uint64, sectorInfos ffi.SortedPublicSectorInfo) bool {
-	return !winsAtEpoch(t, epoch, ticket, ki, networkPower, numSectors, sectorSize, sectorInfos)
-}
-
-// SeedLoserInNRounds returns a ticket that loses with a null block count of N.
-func SeedLoserInNRounds(t *testing.T, n int, ki *crypto.KeyInfo, networkPower, numSectors, sectorSize uint64) block.Ticket {
-	signer := types.NewMockSigner([]crypto.KeyInfo{*ki})
-	wAddr, err := ki.Address()
-	require.NoError(t, err)
-	tm := TicketMachine{}
-
-	sectorInfos := NFakeSectorInfos(numSectors)
-	curr := MakeFakeTicketForTest()
-
-	for {
-		if losesAtEpoch(t, uint64(n), curr, ki, networkPower, numSectors, sectorSize, sectorInfos) {
-			return curr
-		}
-
-		// make a new ticket off the previous
-		curr, err = tm.NextTicket(curr, wAddr, signer)
-		require.NoError(t, err)
-	}
-}
-
-// MockTicketMachine allows a test to set a function to be called upon ticket
-// generation and validation
-type MockTicketMachine struct {
-	fn func(block.Ticket)
-}
-
-// NewMockTicketMachine creates a mock given a callback
-func NewMockTicketMachine(f func(block.Ticket)) *MockTicketMachine {
-	return &MockTicketMachine{fn: f}
-}
-
-// NextTicket calls the registered callback and returns a fake ticket
-func (mtm *MockTicketMachine) NextTicket(ticket block.Ticket, genAddr address.Address, signer types.Signer) (block.Ticket, error) {
-	mtm.fn(ticket)
-	return MakeFakeTicketForTest(), nil
-}
-
-// ValidateTicket calls the registered callback and returns true
-func (mtm *MockTicketMachine) ValidateTicket(parent, ticket block.Ticket, signerAddr address.Address) error {
-	mtm.fn(ticket)
-	return nil
-}
-
-// MockElectionMachine allows a test to set a function to be called upon
-// election running and validation
-type MockElectionMachine struct {
-	fn  func(block.Ticket)
-	fem *FakeElectionMachine
-}
-
-var _ ElectionValidator = new(MockElectionMachine)
-
-// NewMockElectionMachine creates a mock given a callback
-func NewMockElectionMachine(f func(block.Ticket)) *MockElectionMachine {
-	return &MockElectionMachine{fn: f}
-}
-
-// GeneratePoStRandomness defers to a fake election machine
-func (mem *MockElectionMachine) GeneratePoStRandomness(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullBlockCount uint64) ([]byte, error) {
-	return mem.fem.GeneratePoStRandomness(ticket, candidateAddr, signer, nullBlockCount)
-}
-
-// GenerateCandidates defers to a fake election machine
-func (mem *MockElectionMachine) GenerateCandidates(poStRand []byte, sectorInfos ffi.SortedPublicSectorInfo, ep postgenerator.PoStGenerator) ([]ffi.Candidate, error) {
-	return mem.fem.GenerateCandidates(poStRand, sectorInfos, ep)
-}
-
-// GeneratePoSt defers to a fake election machine
-func (mem *MockElectionMachine) GeneratePoSt(sectorInfo ffi.SortedPublicSectorInfo, challengeSeed []byte, winners []ffi.Candidate, ep postgenerator.PoStGenerator) ([]byte, error) {
-	return mem.fem.GeneratePoSt(sectorInfo, challengeSeed, winners, ep)
-}
-
-// VerifyPoSt defers to fake
-func (mem *MockElectionMachine) VerifyPoSt(ep verification.PoStVerifier, allSectorInfos ffi.SortedPublicSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []block.EPoStCandidate, proverID address.Address) (bool, error) {
-	return mem.fem.VerifyPoSt(ep, allSectorInfos, sectorSize, challengeSeed, proof, candidates, proverID)
-}
-
-// CandidateWins defers to fake
-func (mem *MockElectionMachine) CandidateWins(challengeTicket []byte, sectorNum uint64, faultNum uint64, networkPower uint64, sectorSize uint64) bool {
-	return mem.fem.CandidateWins(challengeTicket, sectorNum, faultNum, networkPower, sectorSize)
-}
-
-// VerifyPoStRandomness runs the callback on the ticket before calling the fake
-func (mem *MockElectionMachine) VerifyPoStRandomness(rand block.VRFPi, ticket block.Ticket, candidateAddr address.Address, nullBlockCount uint64) error {
-	mem.fn(ticket)
-	return mem.fem.VerifyPoStRandomness(rand, ticket, candidateAddr, nullBlockCount)
-}
-
 ///// Sampler /////
 
-type FakeSampler struct {
-	Value abi.Randomness
+// FakeChainRandomness generates deterministic values that are a function of a seed and the provided
+// tag, epoch, and entropy (but *not* the chain head key).
+type FakeChainRandomness struct {
+	Seed uint
 }
 
-func (s *FakeSampler) SampleChainRandomness(_ context.Context, _ block.TipSetKey, _ acrypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) (abi.Randomness, error) {
-	return s.Value, nil
+func (s *FakeChainRandomness) SampleChainRandomness(_ context.Context, _ block.TipSetKey, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return []byte(fmt.Sprintf("s=%d,e=%d,t=%d,p=%s", s.Seed, epoch, tag, string(entropy))), nil
 }
