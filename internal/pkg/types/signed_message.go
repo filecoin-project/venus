@@ -110,8 +110,13 @@ func (smsg *SignedMessage) VerifySignature() error {
 }
 
 // OnChainLen returns the amount of bytes used to represent the message on chain.
+// TODO we can save this redundant encoding if we plumbed the size through from when the message was originally decoded from the network.
 func (smsg *SignedMessage) OnChainLen() uint32 {
-	panic("byteme")
+	bits, err := encoding.Encode(smsg)
+	if err != nil {
+		panic(err)
+	}
+	return uint32(len(bits))
 }
 
 func (smsg *SignedMessage) String() string {

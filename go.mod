@@ -53,7 +53,7 @@ require (
 	github.com/ipfs/go-ipld-cbor v0.0.5-0.20200204214505-252690b78669
 	github.com/ipfs/go-ipld-format v0.0.2
 	github.com/ipfs/go-log v1.0.2
-	github.com/ipfs/go-merkledag v0.2.4
+	github.com/ipfs/go-merkledag v0.3.1
 	github.com/ipfs/go-path v0.0.1
 	github.com/ipfs/go-unixfs v0.2.2
 	github.com/ipfs/iptb v1.3.8-0.20190401234037-98ccf4228a73
@@ -91,7 +91,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/prometheus/client_golang v1.2.1
-	github.com/prometheus/common v0.7.0
+	github.com/prometheus/common v0.9.1
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.5.0 // indirect

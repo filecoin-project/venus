@@ -5,10 +5,14 @@ import (
 	"fmt"
 	"math/rand"
 
-	vtypes "github.com/filecoin-project/chain-validation/chain/types"
-	vstate "github.com/filecoin-project/chain-validation/state"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-crypto"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -16,17 +20,17 @@ import (
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
+	vtypes "github.com/filecoin-project/chain-validation/chain/types"
+	vstate "github.com/filecoin-project/chain-validation/state"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	gfcrypto "github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	gfcBuiltin "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
+	gfbuiltin "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -53,9 +57,15 @@ func (f *Factories) NewKeyManager() vstate.KeyManager {
 	return newKeyManager()
 }
 
+type fakeRandSrc struct {
+}
+
+func (r fakeRandSrc) Randomness(_ context.Context, _ acrypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) (abi.Randomness, error) {
+	panic("implement me")
+}
+
 func (f *Factories) NewRandomnessSource() vstate.RandomnessSource {
-	// TODO implement in a follow on
-	return nil
+	return &fakeRandSrc{}
 }
 
 func (f *Factories) NewValidationConfig() vstate.ValidationConfig {
@@ -97,7 +107,7 @@ func NewState() *ValidationVMWrapper {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	cst := cborutil.NewIpldStore(bs)
 	vmstrg := storage.NewStorage(bs)
-	vm := NewVM(gfcBuiltin.DefaultActors, &vmstrg, state.NewState(cst))
+	vm := NewVM(gfbuiltin.DefaultActors, &vmstrg, state.NewState(cst))
 	return &ValidationVMWrapper{
 		vm: &vm,
 	}
@@ -250,18 +260,7 @@ func (w *ValidationVMWrapper) PersistChanges() error {
 // Applier
 //
 
-type fakeRandSrc struct {
-}
-
-func (r fakeRandSrc) Randomness(_ context.Context, _ acrypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) (abi.Randomness, error) {
-	panic("implement me")
-}
-
 type ValidationApplier struct{}
-
-func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.BlockMessagesInfo, epoch abi.ChainEpoch, rnd vstate.RandomnessSource) ([]vtypes.MessageReceipt, error) {
-	panic("implement me")
-}
 
 func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state vstate.VMWrapper, msg *vtypes.Message) (vtypes.MessageReceipt, error) {
 	st := state.(*ValidationVMWrapper)
@@ -300,6 +299,64 @@ func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state
 	}
 
 	return receipt, nil
+}
+
+func toOurBlockMessageInfoType(theirs []vtypes.BlockMessagesInfo) []interpreter.BlockMessagesInfo {
+	ours := make([]interpreter.BlockMessagesInfo, len(theirs))
+	for i, bm := range theirs {
+		ours[i].Miner = bm.Miner
+		for _, blsMsg := range bm.BLSMessages {
+			ourbls := &types.UnsignedMessage{
+				To:         blsMsg.To,
+				From:       blsMsg.From,
+				CallSeqNum: uint64(blsMsg.CallSeqNum),
+				Value:      blsMsg.Value,
+				Method:     blsMsg.Method,
+				Params:     blsMsg.Params,
+				GasPrice:   blsMsg.GasPrice,
+				GasLimit:   types.GasUnits(blsMsg.GasLimit),
+			}
+			ours[i].BLSMessages = append(ours[i].BLSMessages, ourbls)
+		}
+		for _, secpMsg := range bm.SECPMessages {
+			oursecp := &types.SignedMessage{
+				Message: types.UnsignedMessage{
+					To:         secpMsg.Message.To,
+					From:       secpMsg.Message.From,
+					CallSeqNum: uint64(secpMsg.Message.CallSeqNum),
+					Value:      secpMsg.Message.Value,
+					Method:     secpMsg.Message.Method,
+					Params:     secpMsg.Message.Params,
+					GasPrice:   secpMsg.Message.GasPrice,
+					GasLimit:   types.GasUnits(secpMsg.Message.GasLimit),
+				},
+				Signature: secpMsg.Signature,
+			}
+			ours[i].SECPMessages = append(ours[i].SECPMessages, oursecp)
+		}
+	}
+	return ours
+}
+
+func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.BlockMessagesInfo, epoch abi.ChainEpoch, rnd vstate.RandomnessSource) ([]vtypes.MessageReceipt, error) {
+	st := state.(*ValidationVMWrapper)
+
+	ourBlkMsgs := toOurBlockMessageInfoType(blocks)
+	receipts, err := st.vm.ApplyTipSetMessages(ourBlkMsgs, epoch, rnd)
+	if err != nil {
+		return nil, err
+	}
+
+	theirReceipts := make([]vtypes.MessageReceipt, len(receipts))
+	for i, r := range receipts {
+		theirReceipts[i] = vtypes.MessageReceipt{
+			ExitCode:    r.ExitCode,
+			ReturnValue: r.ReturnValue,
+			GasUsed:     big.Int(r.GasUsed),
+		}
+	}
+
+	return theirReceipts, nil
 }
 
 //
