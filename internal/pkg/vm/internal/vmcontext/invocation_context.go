@@ -20,7 +20,6 @@ import (
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
@@ -79,7 +78,7 @@ func (ctx *invocationContext) invoke() interface{} {
 	}
 
 	// 1. charge gas for msg
-	ctx.gasTank.Charge(gascost.OnMethodInvocation(ctx.msg.value, ctx.msg.method))
+	ctx.gasTank.Charge(ctx.rt.pricelist.OnMethodInvocation(ctx.msg.value, ctx.msg.method))
 
 	// 2. load target actor
 	// Note: we replace the "to" address with the normalized version
@@ -249,9 +248,10 @@ func (ctx *invocationContext) Runtime() runtime.Runtime {
 // Store implements runtime.Runtime.
 func (ctx *invocationContext) Store() specsruntime.Store {
 	return actorStorage{
-		context: ctx.rt.context,
-		inner:   ctx.rt.store,
-		gasTank: ctx.gasTank,
+		context:   ctx.rt.context,
+		inner:     ctx.rt.store,
+		gasTank:   ctx.gasTank,
+		pricelist: ctx.rt.pricelist,
 	}
 }
 
@@ -389,7 +389,7 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 		runtime.Abortf(exitcode.ErrIllegalArgument, "Can only have one instance of singleton actors.")
 	}
 
-	ctx.gasTank.Charge(gascost.OnCreateActor())
+	ctx.gasTank.Charge(ctx.rt.pricelist.OnCreateActor())
 
 	// Check existing address. If nothing there, create empty actor.
 	//
@@ -413,7 +413,7 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 
 // DeleteActor implements runtime.ExtendedInvocationContext.
 func (ctx *invocationContext) DeleteActor() {
-	ctx.gasTank.Charge(gascost.OnDeleteActor())
+	ctx.gasTank.Charge(ctx.rt.pricelist.OnDeleteActor())
 	if err := ctx.rt.state.DeleteActor(ctx.rt.context, ctx.msg.to); err != nil {
 		panic(err)
 	}

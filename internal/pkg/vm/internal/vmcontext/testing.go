@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	gfbuiltin "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -268,6 +269,7 @@ func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state
 	// set epoch
 	// Note: this would have normally happened during `ApplyTipset()`
 	st.vm.currentEpoch = context.Epoch
+	st.vm.pricelist = gascost.PricelistByEpoch(context.Epoch)
 
 	// map message
 	// Dragons: fix after cleaning up our msg
