@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"fmt"
 
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	treestate "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // Viewer builds state views from state root CIDs.
@@ -238,13 +240,26 @@ func (v *View) loadPowerActor(ctx context.Context) (*power.State, error) {
 }
 
 func (v *View) loadActor(ctx context.Context, address addr.Address) (*actor.Actor, error) {
-	tree := v.asMap(ctx, v.root)
-	var actr actor.Actor
-	found, err := tree.Get(adt.AddrKey(address), &actr)
+	try, err := treestate.LoadState(ctx, v.ipldStore, v.root)
+	if err != nil {
+		return nil, err
+	}
+	for a := range try.GetAllActors(ctx) {
+		fmt.Printf("a %s storage: %v\n", a.Key, a.Actor.Head)
+	}
+	//	tree := v.asMap(ctx, v.root)
+	//	fmt.Printf("state root: %s\n", v.root)
+	//	tree.ForEach(&adt.EmptyValue{}, func(k string) error {
+	//		fmt.Printf("k: %s\n", k)
+	//		return nil
+	//	})
+	actr, found, err := try.GetActor(ctx, address)
+	//	var actr actor.Actor
+	//	found, err := try.Get(adt.AddrKey(address), &actr)
 	if !found {
 		return nil, types.ErrNotFound
 	}
-	return &actr, err
+	return actr, err
 }
 
 func (v *View) asArray(ctx context.Context, root cid.Cid) *adt.Array {
