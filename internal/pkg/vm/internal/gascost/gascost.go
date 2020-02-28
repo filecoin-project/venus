@@ -66,24 +66,17 @@ var (
 	ipldPutBase    = gas.NewGas(20)
 	ipldPutPerByte = gas.NewGas(2)
 
-	// Gas cost for updating an actor's substate (i.e., UpdateRelease).
-	// This is in addition to a per-byte fee for the state as for IPLD Get/Put.
-	UpdateActorSubstate = gasAmountPlaceholderUpdateStateTree
-
 	// Gas cost for creating a new actor (via InitActor's Exec method).
-	// Actor sub-state is charged separately.
-	ExecNewActor = gasAmountPlaceholder
+	//
+	// Note: this costs assume that the extra will be partially or totally refunded while
+	// the base is covering for the put.
+	createActorBase       = ipldPutBase + gas.NewGas(20)
+	createActorRefundable = gas.NewGas(500)
 
 	// Gas cost for deleting an actor.
-	DeleteActor = gasAmountPlaceholder
-
-	///////////////////////////////////////////////////////////////////////////
-	// Pure functions (VM ABI)
-	///////////////////////////////////////////////////////////////////////////
-
-	// Gas cost charged per public-key cryptography operation (e.g., signature
-	// verification).
-	PublicKeyCryptoOp = gasAmountPlaceholder
+	//
+	// Note: this partially refunds the create cost to incentivise the deletion of the actors.
+	deleteActor = -createActorRefundable
 )
 
 // OnChainMessage returns the gas used for storing a message of a given size in the chain.
@@ -118,4 +111,14 @@ func OnIpldGet(dataSize int) gas.Unit {
 // OnIpldPut returns the gas used for storing an object
 func OnIpldPut(dataSize int) gas.Unit {
 	return ipldPutBase + gas.Unit(dataSize)*ipldPutPerByte
+}
+
+// OnCreateActor returns the gas used for creating an actor
+func OnCreateActor() gas.Unit {
+	return createActorBase + createActorRefundable
+}
+
+// OnDeleteActor returns the gas used for deleting an actor
+func OnDeleteActor() gas.Unit {
+	return deleteActor
 }

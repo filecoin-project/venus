@@ -205,6 +205,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 			panic(err)
 		}
 
+		// Review: does this guy have to pay gas?
 		ctx.CreateActor(builtin.AccountActorCodeID, targetIDAddr)
 
 		// call constructor on account
@@ -378,7 +379,7 @@ func (ctx *invocationContext) Charge(cost gas.Unit) error {
 
 var _ runtime.ExtendedInvocationContext = (*invocationContext)(nil)
 
-/// CreateActor implements runtime.ExtendedInvocationContext.
+// CreateActor implements runtime.ExtendedInvocationContext.
 func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) {
 	if !isBuiltinActor(codeID) {
 		runtime.Abortf(exitcode.ErrIllegalArgument, "Can only create built-in actors.")
@@ -387,6 +388,8 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 	if builtin.IsSingletonActor(codeID) {
 		runtime.Abortf(exitcode.ErrIllegalArgument, "Can only have one instance of singleton actors.")
 	}
+
+	ctx.gasTank.Charge(gascost.OnCreateActor())
 
 	// Check existing address. If nothing there, create empty actor.
 	//
@@ -404,6 +407,14 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 		Balance: abi.NewTokenAmount(0),
 	}
 	if err := ctx.rt.state.SetActor(ctx.rt.context, addr, newActor); err != nil {
+		panic(err)
+	}
+}
+
+// DeleteActor implements runtime.ExtendedInvocationContext.
+func (ctx *invocationContext) DeleteActor() {
+	ctx.gasTank.Charge(gascost.OnDeleteActor())
+	if err := ctx.rt.state.DeleteActor(ctx.rt.context, ctx.msg.to); err != nil {
 		panic(err)
 	}
 }
