@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	notinit "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
@@ -78,6 +79,20 @@ func (v *View) InitResolveAddress(ctx context.Context, a addr.Address) (addr.Add
 		AddressMap: initState.AddressMap,
 	}
 	return state.ResolveAddress(StoreFromCbor(ctx, v.ipldStore), a)
+}
+
+// Returns public key address if id address is given
+func (v *View) AccountSignerAddress(ctx context.Context, a addr.Address) (addr.Address, error) {
+	if a.Protocol() != addr.ID {
+		return a, nil
+	}
+
+	accountActorState, err := v.loadAccountActor(ctx, a)
+	if err != nil {
+		return addr.Undef, err
+	}
+
+	return accountActorState.Address, nil
 }
 
 // MinerControlAddresses returns the owner and worker addresses for a miner actor
@@ -235,6 +250,16 @@ func (v *View) loadPowerActor(ctx context.Context) (*power.State, error) {
 		return nil, err
 	}
 	var state power.State
+	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
+	return &state, err
+}
+
+func (v *View) loadAccountActor(ctx context.Context, a addr.Address) (*account.State, error) {
+	actr, err := v.loadActor(ctx, a)
+	if err != nil {
+		return nil, err
+	}
+	var state account.State
 	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
 	return &state, err
 }

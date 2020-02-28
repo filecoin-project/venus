@@ -455,14 +455,6 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return err
 	}
 
-	getWorker := func(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error) {
-		status, err := node.PorcelainAPI.MinerGetStatus(ctx, minerAddr, baseKey)
-		if err != nil {
-			return address.Undef, err
-		}
-		return status.WorkerAddress, nil
-	}
-
 	cborStore := node.Blockstore.CborStore
 
 	waiter := msg.NewWaiter(node.chain.ChainReader, node.chain.MessageStore, node.Blockstore.Blockstore, cborStore)
@@ -488,7 +480,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		node.Blockstore.Blockstore,
 		node.network.GraphExchange,
 		repoPath,
-		getWorker,
+		state.NewViewer(cborStore),
 		sectorBuilder.SealProofType(),
 	)
 	if err != nil {

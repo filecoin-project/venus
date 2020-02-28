@@ -24,6 +24,7 @@ import (
 	storagemarketconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/storage_market_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -49,13 +50,13 @@ func NewStorageProtocolSubmodule(
 	bs blockstore.Blockstore,
 	gsync graphsync.GraphExchange,
 	repoPath string,
-	wg storagemarketconnector.WorkerGetter,
+	sv *appstate.Viewer,
 	sealProofType abi.RegisteredProof,
 
 ) (*StorageProtocolSubmodule, error) {
 
-	pnode := storagemarketconnector.NewStorageProviderNodeConnector(minerAddr, c.State, m.Outbox, mw, pm, wg, wlt)
-	cnode := storagemarketconnector.NewStorageClientNodeConnector(cborutil.NewIpldStore(bs), c.State, mw, wlt, m.Outbox, clientAddr, wg)
+	pnode := storagemarketconnector.NewStorageProviderNodeConnector(minerAddr, c.State, m.Outbox, mw, pm, sv, wlt)
+	cnode := storagemarketconnector.NewStorageClientNodeConnector(cborutil.NewIpldStore(bs), c.State, mw, wlt, m.Outbox, clientAddr, sv)
 
 	pieceStagingPath, err := paths.PieceStagingDir(repoPath)
 	if err != nil {
