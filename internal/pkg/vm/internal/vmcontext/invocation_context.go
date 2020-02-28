@@ -168,12 +168,11 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 		return initActorEntry, target
 	}
 
-	// build state handle
-	stateHandle := newActorStateHandle((*stateHandleContext)(ctx), initActorEntry.Head.Cid)
-
 	// get a view into the actor state
 	var state init_.State
-	stateHandle.Readonly(&state)
+	if _, err := ctx.rt.store.Get(ctx.rt.context, initActorEntry.Head.Cid, &state); err != nil {
+		panic(err)
+	}
 
 	// lookup the ActorID based on the address
 	targetIDAddr, err := state.ResolveAddress(ctx.rt.ContextStore(), target)
@@ -191,13 +190,20 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 			runtime.Abort(exitcode.SysErrActorNotFound)
 		}
 
-		stateHandle.Transaction(&state, func() interface{} {
-			targetIDAddr, err = state.MapAddressToNewID(ctx.rt.ContextStore(), target)
-			if err != nil {
-				panic(err)
-			}
-			return nil
-		})
+		targetIDAddr, err = state.MapAddressToNewID(ctx.rt.ContextStore(), target)
+		if err != nil {
+			panic(err)
+		}
+		// store new state
+		initHead, _, err := ctx.rt.store.Put(ctx.rt.context, &state)
+		if err != nil {
+			panic(err)
+		}
+		// update init actor
+		initActorEntry.Head = e.NewCid(initHead)
+		if err := ctx.rt.state.SetActor(ctx.rt.context, builtin.InitActorAddr, initActorEntry); err != nil {
+			panic(err)
+		}
 
 		ctx.CreateActor(builtin.AccountActorCodeID, targetIDAddr)
 
@@ -212,14 +218,8 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 			params: &target,
 		}
 
-		// Dragons: the system actor doesnt have an actor..
 		newCtx := newInvocationContext(ctx.rt, newMsg, nil, ctx.gasTank, ctx.randSource)
 		newCtx.invoke()
-	}
-
-	initActorEntry.Head = e.NewCid(stateHandle.head)
-	if err := ctx.rt.state.SetActor(ctx.rt.context, builtin.InitActorAddr, initActorEntry); err != nil {
-		panic(err)
 	}
 
 	// load actor
