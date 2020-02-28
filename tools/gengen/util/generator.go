@@ -115,7 +115,7 @@ func (g *GenesisGenerator) createActor(addr address.Address, codeCid cid.Cid, ba
 		if err != nil {
 			return nil, fmt.Errorf("failed to create state")
 		}
-		headCid, err := g.store.Put(state)
+		headCid, _, err := g.store.Put(context.Background(), state)
 		if err != nil {
 			return nil, fmt.Errorf("failed to store state")
 		}
@@ -359,12 +359,12 @@ func (g *GenesisGenerator) initPowerTable(ctx context.Context) error {
 		return fmt.Errorf("state tree could not find power actor")
 	}
 	var powerActorState power.State
-	err = g.store.Get(powAct.Head.Cid, &powerActorState)
+	_, err = g.store.Get(ctx, powAct.Head.Cid, &powerActorState)
 	if err != nil {
 		return err
 	}
 	powerActorState.TotalNetworkPower = networkPower
-	newPowCid, err := g.store.Put(&powerActorState)
+	newPowCid, _, err := g.store.Put(ctx, &powerActorState)
 	if err != nil {
 		return err
 	}
@@ -488,7 +488,7 @@ func (g *GenesisGenerator) setupPost(ctx context.Context, addr, mIDAddr address.
 		return fmt.Errorf("state tree could not find power actor")
 	}
 	var minerActorState miner.State
-	err = g.store.Get(mAct.Head.Cid, &minerActorState)
+	_, err = g.store.Get(ctx, mAct.Head.Cid, &minerActorState)
 	if err != nil {
 		return err
 	}
@@ -514,7 +514,7 @@ func (g *GenesisGenerator) setupPost(ctx context.Context, addr, mIDAddr address.
 		return err
 	}
 	// Write miner actor
-	newMinerCid, err := g.store.Put(&minerActorState)
+	newMinerCid, _, err := g.store.Put(ctx, &minerActorState)
 	if err != nil {
 		return err
 	}
@@ -548,7 +548,7 @@ func (g *GenesisGenerator) updatePower(ctx context.Context, dealWeight specsbig.
 		return specsbig.Zero(), fmt.Errorf("state tree could not find power actor")
 	}
 	var powerActorState power.State
-	err = g.store.Get(powAct.Head.Cid, &powerActorState)
+	_, err = g.store.Get(ctx, powAct.Head.Cid, &powerActorState)
 	if err != nil {
 		return specsbig.Zero(), err
 	}
@@ -566,7 +566,7 @@ func (g *GenesisGenerator) updatePower(ctx context.Context, dealWeight specsbig.
 	if err != nil {
 		return specsbig.Zero(), err
 	}
-	newPowCid, err := g.store.Put(&powerActorState)
+	newPowCid, _, err := g.store.Put(ctx, &powerActorState)
 	if err != nil {
 		return specsbig.Zero(), err
 	}
@@ -588,7 +588,7 @@ func (g *GenesisGenerator) putSectors(ctx context.Context, comm *CommitConfig, m
 		return fmt.Errorf("state tree could not find power actor")
 	}
 	var minerActorState miner.State
-	err = g.store.Get(mAct.Head.Cid, &minerActorState)
+	_, err = g.store.Get(ctx, mAct.Head.Cid, &minerActorState)
 	if err != nil {
 		return err
 	}
@@ -611,7 +611,7 @@ func (g *GenesisGenerator) putSectors(ctx context.Context, comm *CommitConfig, m
 	}
 	minerActorState.ProvingSet = minerActorState.Sectors
 	// Write miner actor
-	newMinerCid, err := g.store.Put(&minerActorState)
+	newMinerCid, _, err := g.store.Put(ctx, &minerActorState)
 	if err != nil {
 		return err
 	}

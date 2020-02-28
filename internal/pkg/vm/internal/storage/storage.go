@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 
 	blocks "github.com/ipfs/go-block-format"
@@ -44,17 +45,17 @@ func (s *VMStorage) SetReadCache(enabled bool) {
 }
 
 // Put stores object and returns it's content-addressable ID.
-func (s *VMStorage) Put(obj interface{}) (cid.Cid, error) {
+func (s *VMStorage) Put(ctx context.Context, obj interface{}) (cid.Cid, int, error) {
 	nd, err := s.toNode(obj)
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, 0, err
 	}
 
 	// append the object to the buffer
 	cid := nd.Cid()
 	s.writeBuffer[cid] = nd
 
-	return cid, nil
+	return cid, len(nd.RawData()), nil
 }
 
 // CidOf returns the Cid of the object without storing it.
@@ -67,16 +68,16 @@ func (s *VMStorage) CidOf(obj interface{}) (cid.Cid, error) {
 }
 
 // Get loads the object based on its content-addressable ID.
-func (s *VMStorage) Get(cid cid.Cid, obj interface{}) error {
-	raw, err := s.GetRaw(cid)
+func (s *VMStorage) Get(ctx context.Context, cid cid.Cid, obj interface{}) (int, error) {
+	raw, err := s.GetRaw(ctx, cid)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	return encoding.Decode(raw, obj)
+	return len(raw), encoding.Decode(raw, obj)
 }
 
 // GetRaw retrieves the raw bytes stored, returns true if it exists.
-func (s *VMStorage) GetRaw(cid cid.Cid) ([]byte, error) {
+func (s *VMStorage) GetRaw(ctx context.Context, cid cid.Cid) ([]byte, error) {
 	// attempt to read from write buffer first
 	n, ok := s.writeBuffer[cid]
 	if ok {

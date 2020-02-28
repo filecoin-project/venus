@@ -26,9 +26,11 @@ func (a *contextStore) Context() context.Context {
 // (implement cbor.IpldStore, part of adt.Store)
 
 func (a *contextStore) Get(ctx context.Context, id cid.Cid, obj interface{}) error {
-	return a.store.Get(id, obj)
+	_, err := a.store.Get(ctx, id, obj)
+	return err
 }
 
 func (a *contextStore) Put(ctx context.Context, obj interface{}) (cid.Cid, error) {
-	return a.store.Put(obj)
+	id, _, err := a.store.Put(ctx, obj)
+	return id, err
 }

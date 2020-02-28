@@ -88,7 +88,7 @@ func (a *runtimeAdapter) State() specsruntime.StateHandle {
 
 // Store implements Runtime.
 func (a *runtimeAdapter) Store() specsruntime.Store {
-	return a.ctx.Runtime().Store()
+	return a.ctx.Store()
 }
 
 // Send implements Runtime.
@@ -117,9 +117,7 @@ func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
 
 // DeleteActor implements Runtime.
 func (a *runtimeAdapter) DeleteActor() {
-	if err := a.ctx.rt.state.DeleteActor(a.Context(), a.ctx.msg.to); err != nil {
-		panic(err)
-	}
+	a.ctx.DeleteActor()
 }
 
 // Syscalls implements Runtime.

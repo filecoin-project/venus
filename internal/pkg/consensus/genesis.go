@@ -300,7 +300,7 @@ func SetupDefaultActors(ctx context.Context, vm GenesisVM, store *vm.Storage, st
 				debug.PrintStack()
 				panic("failed to create state")
 			}
-			headCid, err := store.Put(state)
+			headCid, _, err := store.Put(ctx, state)
 			if err != nil {
 				debug.PrintStack()
 				panic("failed to store state")

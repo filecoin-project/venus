@@ -3,7 +3,6 @@ package vmcontext
 import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 )
 
@@ -35,13 +34,13 @@ func (t *GasTracker) Charge(amount gas.Unit) {
 // Returns `True` if the there was enough gas to pay for `amount`.
 func (t *GasTracker) TryCharge(amount gas.Unit) bool {
 	// check for limit
-	aux := big.Add(t.gasConsumed.AsBigInt(), amount.AsBigInt())
-	if aux.GreaterThan(t.gasLimit.AsBigInt()) {
+	aux := t.gasConsumed + amount
+	if aux > t.gasLimit {
 		t.gasConsumed = t.gasLimit
 		return false
 	}
 
-	t.gasConsumed = gas.Unit(aux)
+	t.gasConsumed = aux
 	return true
 }
 
@@ -52,5 +51,5 @@ func (t *GasTracker) GasConsumed() gas.Unit {
 
 // RemainingGas returns the gas remaining.
 func (t *GasTracker) RemainingGas() gas.Unit {
-	return gas.Unit(big.Sub(t.gasLimit.AsBigInt(), t.gasConsumed.AsBigInt()))
+	return t.gasLimit - t.gasConsumed
 }

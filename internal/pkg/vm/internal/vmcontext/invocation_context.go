@@ -62,7 +62,7 @@ func (ctx *stateHandleContext) AllowSideEffects(allow bool) {
 }
 
 func (ctx *stateHandleContext) Store() specsruntime.Store {
-	return ctx.rt.Store()
+	return ((*invocationContext)(ctx)).Store()
 }
 
 func (ctx *invocationContext) invoke() interface{} {
@@ -79,7 +79,7 @@ func (ctx *invocationContext) invoke() interface{} {
 	}
 
 	// 1. charge gas for msg
-	ctx.gasTank.Charge(gascost.OnMethodInvocation(&ctx.msg))
+	ctx.gasTank.Charge(gascost.OnMethodInvocation(ctx.msg.value, ctx.msg.method))
 
 	// 2. load target actor
 	// Note: we replace the "to" address with the normalized version
@@ -168,12 +168,11 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 		return initActorEntry, target
 	}
 
-	// build state handle
-	stateHandle := newActorStateHandle((*stateHandleContext)(ctx), initActorEntry.Head.Cid)
-
 	// get a view into the actor state
 	var state init_.State
-	stateHandle.Readonly(&state)
+	if _, err := ctx.rt.store.Get(ctx.rt.context, initActorEntry.Head.Cid, &state); err != nil {
+		panic(err)
+	}
 
 	// lookup the ActorID based on the address
 	targetIDAddr, err := state.ResolveAddress(ctx.rt.ContextStore(), target)
@@ -191,14 +190,22 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 			runtime.Abort(exitcode.SysErrActorNotFound)
 		}
 
-		stateHandle.Transaction(&state, func() interface{} {
-			targetIDAddr, err = state.MapAddressToNewID(ctx.rt.ContextStore(), target)
-			if err != nil {
-				panic(err)
-			}
-			return nil
-		})
+		targetIDAddr, err = state.MapAddressToNewID(ctx.rt.ContextStore(), target)
+		if err != nil {
+			panic(err)
+		}
+		// store new state
+		initHead, _, err := ctx.rt.store.Put(ctx.rt.context, &state)
+		if err != nil {
+			panic(err)
+		}
+		// update init actor
+		initActorEntry.Head = e.NewCid(initHead)
+		if err := ctx.rt.state.SetActor(ctx.rt.context, builtin.InitActorAddr, initActorEntry); err != nil {
+			panic(err)
+		}
 
+		// Review: does this guy have to pay gas?
 		ctx.CreateActor(builtin.AccountActorCodeID, targetIDAddr)
 
 		// call constructor on account
@@ -212,14 +219,8 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 			params: &target,
 		}
 
-		// Dragons: the system actor doesnt have an actor..
 		newCtx := newInvocationContext(ctx.rt, newMsg, nil, ctx.gasTank, ctx.randSource)
 		newCtx.invoke()
-	}
-
-	initActorEntry.Head = e.NewCid(stateHandle.head)
-	if err := ctx.rt.state.SetActor(ctx.rt.context, builtin.InitActorAddr, initActorEntry); err != nil {
-		panic(err)
 	}
 
 	// load actor
@@ -243,6 +244,15 @@ var _ runtime.InvocationContext = (*invocationContext)(nil)
 // Runtime implements runtime.InvocationContext.
 func (ctx *invocationContext) Runtime() runtime.Runtime {
 	return ctx.rt
+}
+
+// Store implements runtime.Runtime.
+func (ctx *invocationContext) Store() specsruntime.Store {
+	return actorStorage{
+		context: ctx.rt.context,
+		inner:   ctx.rt.store,
+		gasTank: ctx.gasTank,
+	}
 }
 
 // Message implements runtime.InvocationContext.
@@ -369,7 +379,7 @@ func (ctx *invocationContext) Charge(cost gas.Unit) error {
 
 var _ runtime.ExtendedInvocationContext = (*invocationContext)(nil)
 
-/// CreateActor implements runtime.ExtendedInvocationContext.
+// CreateActor implements runtime.ExtendedInvocationContext.
 func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) {
 	if !isBuiltinActor(codeID) {
 		runtime.Abortf(exitcode.ErrIllegalArgument, "Can only create built-in actors.")
@@ -378,6 +388,8 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 	if builtin.IsSingletonActor(codeID) {
 		runtime.Abortf(exitcode.ErrIllegalArgument, "Can only have one instance of singleton actors.")
 	}
+
+	ctx.gasTank.Charge(gascost.OnCreateActor())
 
 	// Check existing address. If nothing there, create empty actor.
 	//
@@ -395,6 +407,14 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 		Balance: abi.NewTokenAmount(0),
 	}
 	if err := ctx.rt.state.SetActor(ctx.rt.context, addr, newActor); err != nil {
+		panic(err)
+	}
+}
+
+// DeleteActor implements runtime.ExtendedInvocationContext.
+func (ctx *invocationContext) DeleteActor() {
+	ctx.gasTank.Charge(gascost.OnDeleteActor())
+	if err := ctx.rt.state.DeleteActor(ctx.rt.context, ctx.msg.to); err != nil {
 		panic(err)
 	}
 }

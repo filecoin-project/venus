@@ -168,7 +168,7 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 
 		// get a view into the actor state
 		var initState init_.State
-		if err := w.vm.store.Get(initActorEntry.Head.Cid, &initState); err != nil {
+		if _, err := w.vm.store.Get(w.vm.context, initActorEntry.Head.Cid, &initState); err != nil {
 			return nil, address.Undef, err
 		}
 
@@ -179,7 +179,7 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 		}
 
 		// persist the init actor state
-		initHead, err := w.vm.store.Put(&initState)
+		initHead, _, err := w.vm.store.Put(w.vm.context, &initState)
 		if err != nil {
 			return nil, address.Undef, err
 		}
@@ -193,7 +193,7 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 	// create actor on state stree
 
 	// store newState
-	head, err := w.vm.store.Put(newState)
+	head, _, err := w.vm.store.Put(w.vm.context, newState)
 	if err != nil {
 		return nil, address.Undef, err
 	}
@@ -230,7 +230,7 @@ func (w *ValidationVMWrapper) SetActorState(addr address.Address, balance big.In
 		return nil, fmt.Errorf("actor not found")
 	}
 	// store state
-	head, err := w.vm.store.Put(state)
+	head, _, err := w.vm.store.Put(w.vm.context, state)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +295,7 @@ func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state
 	receipt := vtypes.MessageReceipt{
 		ExitCode:    ourreceipt.ExitCode,
 		ReturnValue: ourreceipt.ReturnValue,
-		GasUsed:     big.Int(ourreceipt.GasUsed),
+		GasUsed:     ourreceipt.GasUsed.AsBigInt(),
 	}
 
 	return receipt, nil
@@ -352,7 +352,7 @@ func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks [
 		theirReceipts[i] = vtypes.MessageReceipt{
 			ExitCode:    r.ExitCode,
 			ReturnValue: r.ReturnValue,
-			GasUsed:     big.Int(r.GasUsed),
+			GasUsed:     r.GasUsed.AsBigInt(),
 		}
 	}
 
