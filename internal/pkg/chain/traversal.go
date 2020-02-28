@@ -2,7 +2,9 @@ package chain
 
 import (
 	"context"
+	"errors"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -116,4 +118,69 @@ func CollectTipsToCommonAncestor(ctx context.Context, store TipSetProvider, oldH
 	}
 	newTips, err = CollectTipSetsOfHeightAtLeast(ctx, newIter, commonHeight+1)
 	return
+}
+
+// ErrNoCommonAncestor is returned when two chains assumed to have a common ancestor do not.
+var ErrNoCommonAncestor = errors.New("no common ancestor")
+
+// FindCommonAncestor returns the common ancestor of the two tipsets pointed to
+// by the input iterators.  If they share no common ancestor ErrNoCommonAncestor
+// will be returned.
+func FindCommonAncestor(leftIter, rightIter *TipsetIterator) (block.TipSet, error) {
+	for !rightIter.Complete() && !leftIter.Complete() {
+		left := leftIter.Value()
+		right := rightIter.Value()
+
+		leftHeight, err := left.Height()
+		if err != nil {
+			return block.UndefTipSet, err
+		}
+		rightHeight, err := right.Height()
+		if err != nil {
+			return block.UndefTipSet, err
+		}
+
+		// Found common ancestor.
+		if left.Equals(right) {
+			return left, nil
+		}
+
+		// Update the pointers.  Pointers move back one tipset if they
+		// point to a tipset at the same height or higher than the
+		// other pointer's tipset.
+		if rightHeight >= leftHeight {
+			if err := rightIter.Next(); err != nil {
+				return block.UndefTipSet, err
+			}
+		}
+
+		if leftHeight >= rightHeight {
+			if err := leftIter.Next(); err != nil {
+				return block.UndefTipSet, err
+			}
+		}
+	}
+	return block.UndefTipSet, ErrNoCommonAncestor
+}
+
+// CollectTipSetsOfHeightAtLeast collects all tipsets with a height greater
+// than or equal to minHeight from the input tipset.
+func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator, minHeight abi.ChainEpoch) ([]block.TipSet, error) {
+	var ret []block.TipSet
+	var err error
+	var h abi.ChainEpoch
+	for ; !iterator.Complete(); err = iterator.Next() {
+		if err != nil {
+			return nil, err
+		}
+		h, err = iterator.Value().Height()
+		if err != nil {
+			return nil, err
+		}
+		if h < minHeight {
+			return ret, nil
+		}
+		ret = append(ret, iterator.Value())
+	}
+	return ret, nil
 }
