@@ -45,14 +45,14 @@ func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
 
 	testCases := []struct {
 		name           string
-		offset, length uint64
+		offset, length, expectedLen uint64
 		unsealErr      error
 		expectedErr    string
 	}{
-		{name: "happy path", offset: 10, length: 50, expectedErr: ""},
+		{name: "happy path", offset: 10, length: 50, expectedLen: 50, expectedErr: ""},
+		{name: "happy even if length more than file length", offset: 10, length: 9999, expectedLen: 4086, expectedErr: ""},
 		{name: "returns error if Unseal errors", unsealErr: errors.New("boom"), expectedErr: "boom"},
 		{name: "returns EOF if offset more than file length", offset: 9999, expectedErr: "EOF"},
-		{name: "returns EOF if length more than file length", length: 9999, expectedErr: "EOF"},
 		{name: "returns error if offset > int64", offset: maxOffset, expectedErr: "offset overflows int"},
 		{name: "returns error if length > int64", length: 1 << 63, expectedErr: "length overflows int64"},
 	}
@@ -71,7 +71,7 @@ func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
 				readBytes := make([]byte, tc.length+1)
 				readlen, err := res.Read(readBytes)
 				require.NoError(t, err)
-				assert.Equal(t, tc.length, uint64(readlen))
+				assert.Equal(t, int(tc.expectedLen), readlen)
 
 				// check that it read something & the offset worked
 				assert.Equal(t, "xtures", string(readBytes[0:6]))
