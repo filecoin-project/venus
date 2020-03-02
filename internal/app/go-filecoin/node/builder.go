@@ -183,6 +183,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		b.chainClock = clock.NewChainClock(geneBlk.Timestamp, b.blockTime)
 	}
 	nd.ChainClock = b.chainClock
+	nd.ProofVerification = submodule.NewProofVerificationSubmodule()
 
 	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), b.repo, &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.ProofVerification.ProofVerifier)
 	if err != nil {
@@ -208,8 +209,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.BlockMining")
 	}
-
-	nd.ProofVerification = submodule.NewProofVerificationSubmodule()
 
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Chain:        nd.chain.State,

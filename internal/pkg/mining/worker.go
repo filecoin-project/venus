@@ -311,7 +311,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	case <-ctx.Done():
 		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base, "nullBlocks", nullBlkCount)
 	case err := <-errCh:
-		log.Warnf("Worker.Mine failed to generate post %s", err)
+		log.Warnf("Worker.Mine failed to generate post: %s", err)
 		outCh <- Output{Err: err}
 		return
 	case postOut := <-postDone:
