@@ -59,7 +59,7 @@ func (s *Sampler) Sample(ctx context.Context, head block.TipSetKey, epoch abi.Ch
 		ticket = s.genesisTicket
 	}
 
-	return crypto.MakeRandomSeed(ticket.VRFProof, epoch)
+	return crypto.MakeRandomSeed(ticket.VRFProof)
 }
 
 // Finds the the highest tipset with height <= the requested epoch, by traversing backward from start.

@@ -30,24 +30,16 @@ func (g *GenesisSampler) Sample(_ context.Context, epoch abi.ChainEpoch) (Random
 	if epoch > 0 {
 		return nil, fmt.Errorf("invalid use of genesis sampler for epoch %d", epoch)
 	}
-	return MakeRandomSeed(g.TicketBytes, epoch)
+	return MakeRandomSeed(g.TicketBytes)
 }
 
-// Computes a random seed from raw ticket bytes and the epoch from which the ticket was requested
-// (which may not match the epoch it actually came from).
-// A randomness seed is the black2b hash of the VRF digest of the minimum ticket of the tipset at or before
-// the requested epoch, concatenated with the big endian bytes of the epoch value.
-func MakeRandomSeed(rawTicket []byte, epoch abi.ChainEpoch) (RandomSeed, error) {
-	buf := bytes.Buffer{}
+// Computes a random seed from raw ticket bytes 
+// A randomness seed is the VRF digest of the minimum ticket of the tipset at or before
+// the requested epoch
+func MakeRandomSeed(rawTicket []byte) (RandomSeed, error) {
 	vrfDigest := blake2b.Sum256(rawTicket)
-	buf.Write(vrfDigest[:])
-	err := binary.Write(&buf, binary.BigEndian, epoch)
-	if err != nil {
-		return nil, err
-	}
 
-	bufHash := blake2b.Sum256(buf.Bytes())
-	return bufHash[:], nil
+	return vrfDigest[:], nil
 }
 
 ///// Randomness derivation /////
@@ -67,10 +59,10 @@ func (c *ChainRandomnessSource) Randomness(ctx context.Context, tag crypto.Domai
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to sample chain for randomness")
 	}
-	return blendEntropy(tag, seed, entropy)
+	return blendEntropy(tag, seed, epoch, entropy)
 }
 
-func blendEntropy(tag crypto.DomainSeparationTag, seed RandomSeed, entropy []byte) (abi.Randomness, error) {
+func blendEntropy(tag crypto.DomainSeparationTag, seed RandomSeed, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	buffer := bytes.Buffer{}
 	err := binary.Write(&buffer, binary.BigEndian, int64(tag))
 	if err != nil {
@@ -80,6 +72,12 @@ func blendEntropy(tag crypto.DomainSeparationTag, seed RandomSeed, entropy []byt
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to write seed for randomness")
 	}
+	
+	err := binary.Write(&buffer, binary.BigEndian, int64(epoch))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to write epoch for randomness")
+	}
+
 	_, err = buffer.Write(entropy)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to write entropy for randomness")
