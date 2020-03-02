@@ -44,10 +44,10 @@ func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
 	maxOffset := uint64(1 << intSz)
 
 	testCases := []struct {
-		name           string
+		name                        string
 		offset, length, expectedLen uint64
-		unsealErr      error
-		expectedErr    string
+		unsealErr                   error
+		expectedErr                 string
 	}{
 		{name: "happy path", offset: 10, length: 50, expectedLen: 50, expectedErr: ""},
 		{name: "happy even if length more than file length", offset: 10, length: 9999, expectedLen: 4086, expectedErr: ""},

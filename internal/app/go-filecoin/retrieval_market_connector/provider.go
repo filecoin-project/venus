@@ -15,6 +15,7 @@ import (
 	xerrors "github.com/pkg/errors"
 )
 
+// MaxInt is the max value of an Int
 const MaxInt = int(^uint(0) >> 1)
 
 // RetrievalProviderConnector is the glue between go-filecoin and retrieval market provider API
@@ -28,6 +29,7 @@ type RetrievalProviderConnector struct {
 
 var _ retmkt.RetrievalProviderNode = &RetrievalProviderConnector{}
 
+// UnsealerAPI is the API required for unsealing a sectorgi
 type UnsealerAPI interface {
 	UnsealSector(ctx context.Context, sectorID uint64) (io.ReadCloser, error)
 }
