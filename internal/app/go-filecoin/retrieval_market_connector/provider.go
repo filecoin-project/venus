@@ -3,11 +3,8 @@ package retrievalmarketconnector
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
-	"reflect"
 
 	"github.com/filecoin-project/go-address"
 	retmkt "github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -17,6 +14,8 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	xerrors "github.com/pkg/errors"
 )
+
+const MaxInt = int(^uint(0) >> 1)
 
 // RetrievalProviderConnector is the glue between go-filecoin and retrieval market provider API
 type RetrievalProviderConnector struct {
@@ -57,9 +56,7 @@ func (r *RetrievalProviderConnector) UnsealSector(ctx context.Context, sectorID 
 	offset uint64, length uint64) (io.ReadCloser, error) {
 	// reject anything that's a real uint64 rather than trying to get cute
 	// and offset that much or copy into a buf that large
-	intSz := reflect.TypeOf(0).Size()*8 - 1
-	maxOffset := uint64(1 << intSz)
-	if offset >= maxOffset {
+	if offset >= uint64(MaxInt) {
 		return nil, xerrors.New("offset overflows int")
 	}
 	if length >= math.MaxInt64 {
@@ -70,39 +67,38 @@ func (r *RetrievalProviderConnector) UnsealSector(ctx context.Context, sectorID 
 	if err != nil {
 		return nil, err
 	}
+	return newWrappedReadCloser(unsealedSector, offset, length)
+}
 
-	fname := fmt.Sprintf("retrieval_market_%d_%d_%d", sectorID, offset, length)
-	res, err := ioutil.TempFile("", fname)
+type limitedOffsetReadCloser struct {
+	originalRC    io.ReadCloser
+	limitedReader io.Reader
+}
+
+func newWrappedReadCloser(originalRc io.ReadCloser, offset, length uint64) (io.ReadCloser, error) {
+	bufr := bufio.NewReader(originalRc)
+	_, err := bufr.Discard(int(offset))
 	if err != nil {
 		return nil, err
 	}
+	limitedR := io.LimitedReader{R: bufr, N: int64(length)}
+	return &limitedOffsetReadCloser{
+		originalRC:    originalRc,
+		limitedReader: &limitedR,
+	}, nil
+}
 
-	{
-		bufr := bufio.NewReader(unsealedSector)
-
-		_, err := bufr.Discard(int(offset))
-		if err != nil {
-			return nil, err
-		}
-		_, err = io.CopyN(res, bufr, int64(length))
-		if err != nil {
-			return nil, err
-		}
-	}
-	if err = unsealedSector.Close(); err != nil {
-		log.Error("failed to close unsealed sector %d", sectorID)
-	}
-
-	if _, err = res.Seek(0, 0); err != nil {
-		return nil, xerrors.Errorf("could not seek to beginning")
-	}
-
-	return res, nil
+func (wrc limitedOffsetReadCloser) Read(p []byte) (int, error) {
+	return wrc.limitedReader.Read(p)
+}
+func (wrc limitedOffsetReadCloser) Close() error {
+	return wrc.originalRC.Close()
 }
 
 // SavePaymentVoucher stores the provided payment voucher with the payment channel actor
 func (r *RetrievalProviderConnector) SavePaymentVoucher(_ context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expected abi.TokenAmount) (abi.TokenAmount, error) {
 
+	// check to see if the channel exists first
 	_, err := r.paychMgr.GetPaymentChannelInfo(paymentChannel)
 	if err != nil {
 		return abi.NewTokenAmount(0), err
