@@ -23,23 +23,21 @@ type ChainSampler interface {
 // A sampler for use when computing genesis state (the state that the genesis block points to as parent state).
 // There is no chain to sample a seed from.
 type GenesisSampler struct {
-	TicketBytes []byte
+	VRFProof []byte
 }
 
 func (g *GenesisSampler) Sample(_ context.Context, epoch abi.ChainEpoch) (RandomSeed, error) {
 	if epoch > 0 {
 		return nil, fmt.Errorf("invalid use of genesis sampler for epoch %d", epoch)
 	}
-	return MakeRandomSeed(g.TicketBytes)
+	return MakeRandomSeed(g.VRFProof)
 }
 
-// Computes a random seed from raw ticket bytes 
-// A randomness seed is the VRF digest of the minimum ticket of the tipset at or before
-// the requested epoch
-func MakeRandomSeed(rawTicket []byte) (RandomSeed, error) {
-	vrfDigest := blake2b.Sum256(rawTicket)
-
-	return vrfDigest[:], nil
+// Computes a random seed from raw ticket bytes.
+// A randomness seed is the VRF digest of the minimum ticket of the tipset at or before the requested epoch
+func MakeRandomSeed(rawVRFProof []byte) (RandomSeed, error) {
+	digest := blake2b.Sum256(rawVRFProof)
+	return digest[:], nil
 }
 
 ///// Randomness derivation /////
@@ -72,12 +70,10 @@ func blendEntropy(tag crypto.DomainSeparationTag, seed RandomSeed, epoch abi.Cha
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to write seed for randomness")
 	}
-	
-	err := binary.Write(&buffer, binary.BigEndian, int64(epoch))
+	err = binary.Write(&buffer, binary.BigEndian, int64(epoch))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to write epoch for randomness")
 	}
-
 	_, err = buffer.Write(entropy)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to write entropy for randomness")
