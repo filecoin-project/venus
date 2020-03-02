@@ -32,7 +32,7 @@ func NewElectionMachine(chain ChainRandomness) *ElectionMachine {
 // GenerateEPoStVrfProof computes the Election PoSt challenge seed for a target epoch after a base tipset.
 func (em ElectionMachine) GenerateEPoStVrfProof(ctx context.Context, base block.TipSetKey,
 	epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (block.VRFPi, error) {
-	return computeVrf(ctx, em.chain, base, epoch, acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, miner, signer, worker)
+	return sampleChainAndComputeVrf(ctx, em.chain, base, epoch, acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, miner, signer, worker)
 }
 
 // GenerateCandidates creates candidate partial tickets for consideration in
@@ -110,7 +110,7 @@ func NewTicketMachine(chain ChainRandomness) *TicketMachine {
 // MakeTicket creates a new ticket from a chain and target epoch by running a verifiable
 // randomness function on the prior ticket.
 func (tm TicketMachine) MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (block.Ticket, error) {
-	vrfProof, err := computeVrf(ctx, tm.chain, base, epoch, acrypto.DomainSeparationTag_TicketProduction, miner, signer, worker)
+	vrfProof, err := sampleChainAndComputeVrf(ctx, tm.chain, base, epoch, acrypto.DomainSeparationTag_TicketProduction, miner, signer, worker)
 	return block.Ticket{
 		VRFProof: vrfProof,
 	}, err
@@ -131,7 +131,7 @@ func (tm TicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey,
 	return crypto.ValidateBlsSignature(randomness, worker, ticket.VRFProof)
 }
 
-func computeVrf(ctx context.Context, chain ChainRandomness, base block.TipSetKey, epoch abi.ChainEpoch, tag acrypto.DomainSeparationTag,
+func sampleChainAndComputeVrf(ctx context.Context, chain ChainRandomness, base block.TipSetKey, epoch abi.ChainEpoch, tag acrypto.DomainSeparationTag,
 	miner address.Address, signer types.Signer, worker address.Address) (block.VRFPi, error) {
 	entropy, err := encoding.Encode(miner)
 	if err != nil {

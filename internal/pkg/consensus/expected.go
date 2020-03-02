@@ -254,7 +254,8 @@ func (c *Expected) validateMining(ctx context.Context,
 		if err != nil {
 			return errors.Wrapf(err, "failed to read sector infos from power table")
 		}
-		valid, err := c.VerifyPoSt(c.postVerifier, allSectorInfos, uint64(sectorSize), blk.EPoStInfo.PoStRandomness,
+		vrfDigest := blk.EPoStInfo.PoStRandomness.Digest()
+		valid, err := c.VerifyPoSt(c.postVerifier, allSectorInfos, uint64(sectorSize), vrfDigest[:],
 			blk.EPoStInfo.PoStProof, blk.EPoStInfo.Winners, blk.Miner)
 		if err != nil {
 			return errors.Wrapf(err, "error checking PoSt")
