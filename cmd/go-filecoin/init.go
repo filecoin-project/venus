@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -45,6 +46,7 @@ var initCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
 		cmdkit.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
+		cmdkit.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
 		cmdkit.StringOption(WithMiner, "when set, creates a custom genesis block  a pre generated miner account, requires running the daemon using dev mode (--dev)"),
 		cmdkit.StringOption(OptionSectorDir, "path of directory into which staged and sealed sectors will be written"),
 		cmdkit.StringOption(DefaultAddress, "when set, sets the daemons's default address to the provided address"),
@@ -85,7 +87,8 @@ var initCmd = &cmds.Command{
 		}
 
 		peerKeyFile, _ := req.Options[PeerKeyFile].(string)
-		initopts, err := getNodeInitOpts(peerKeyFile)
+		walletKeyFile, _ := req.Options[WalletKeyFile].(string)
+		initopts, err := getNodeInitOpts(peerKeyFile, walletKeyFile)
 		if err != nil {
 			return err
 		}
@@ -252,7 +255,7 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consens
 
 }
 
-func getNodeInitOpts(peerKeyFile string) ([]node.InitOpt, error) {
+func getNodeInitOpts(peerKeyFile string, walletKeyFile string) ([]node.InitOpt, error) {
 	var initOpts []node.InitOpt
 	if peerKeyFile != "" {
 		data, err := ioutil.ReadFile(peerKeyFile)
@@ -264,6 +267,22 @@ func getNodeInitOpts(peerKeyFile string) ([]node.InitOpt, error) {
 			return nil, err
 		}
 		initOpts = append(initOpts, node.PeerKeyOpt(peerKey))
+	}
+
+	if walletKeyFile != "" {
+		f, err := os.Open(walletKeyFile)
+		if err != nil {
+			return nil, err
+		}
+
+		var wir *WalletSerializeResult
+		if err := json.NewDecoder(f).Decode(&wir); err != nil {
+			return nil, err
+		}
+
+		for _, k := range wir.KeyInfo {
+			initOpts = append(initOpts, node.ImportKeyOpt(k))
+		}
 	}
 
 	return initOpts, nil
