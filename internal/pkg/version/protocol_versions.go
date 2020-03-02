@@ -14,7 +14,7 @@ const DEVNET4 = "devnet4"
 const LOCALNET = "localnet"
 
 // TESTNET3 is the network name of the third testnet
-const TESTNET3 = "localnet-a5d70278-8a0a-4ee8-ab9d-e9245c837e11"
+const TESTNET3 = "localnet-270a8688-1b23-4508-b675-444cb1e6f05d"
 
 // TEST is the network name for internal tests
 const TEST = "gfctest"

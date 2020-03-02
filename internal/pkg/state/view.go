@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"fmt"
 
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -265,22 +264,11 @@ func (v *View) loadAccountActor(ctx context.Context, a addr.Address) (*account.S
 }
 
 func (v *View) loadActor(ctx context.Context, address addr.Address) (*actor.Actor, error) {
-	try, err := treestate.LoadState(ctx, v.ipldStore, v.root)
+	st, err := treestate.LoadState(ctx, v.ipldStore, v.root)
 	if err != nil {
 		return nil, err
 	}
-	for a := range try.GetAllActors(ctx) {
-		fmt.Printf("a %s storage: %v\n", a.Key, a.Actor.Head)
-	}
-	//	tree := v.asMap(ctx, v.root)
-	//	fmt.Printf("state root: %s\n", v.root)
-	//	tree.ForEach(&adt.EmptyValue{}, func(k string) error {
-	//		fmt.Printf("k: %s\n", k)
-	//		return nil
-	//	})
-	actr, found, err := try.GetActor(ctx, address)
-	//	var actr actor.Actor
-	//	found, err := try.Get(adt.AddrKey(address), &actr)
+	actr, found, err := st.GetActor(ctx, address)
 	if !found {
 		return nil, types.ErrNotFound
 	}
