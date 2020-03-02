@@ -132,7 +132,12 @@ var initCmd = &cmds.Command{
 				return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
 			}
 
-			path, err := rep.Path()
+			repoPath, err := rep.Path()
+			if err != nil {
+				return xerrors.Errorf("could not get repo path, %w", err)
+			}
+
+			path, err := paths.GetSectorPath("", repoPath)
 			if err != nil {
 				return xerrors.Errorf("failed to find filecoin path: %w", err)
 			}

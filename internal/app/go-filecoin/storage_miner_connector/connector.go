@@ -537,10 +537,16 @@ func (m *StorageMinerNodeConnector) getMinerWorkerAddress(ctx context.Context, t
 		return address.Undef, xerrors.Errorf("failed to get tip state: %w", err)
 	}
 
-	_, waddr, err := m.stateViewer.StateView(root).MinerControlAddresses(ctx, m.minerAddr)
+	view := m.stateViewer.StateView(root)
+	_, waddr, err := view.MinerControlAddresses(ctx, m.minerAddr)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to get miner control addresses: %w", err)
 	}
 
-	return waddr, nil
+	workerSigner, err := view.AccountSignerAddress(ctx, waddr)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to lookup signing address for worker addres: %s: %w", waddr.String(), err)
+	}
+
+	return workerSigner, nil
 }

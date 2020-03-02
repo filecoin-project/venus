@@ -198,14 +198,20 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	// The sampling code will handle this underflowing past the genesis.
 	targetEpoch := baseEpoch - (miner.ElectionLookback - 1) + abi.ChainEpoch(nullBlkCount)
 
-	nextTicket, err := w.ticketGen.MakeTicket(ctx, base.Key(), targetEpoch, w.minerAddr, workerAddr, w.workerSigner)
+	workerSignerAddr, err := view.AccountSignerAddress(ctx, workerAddr)
+	if err != nil {
+		outCh <- Output{Err: err}
+		return
+	}
+
+	nextTicket, err := w.ticketGen.MakeTicket(ctx, base.Key(), targetEpoch, w.minerAddr, workerSignerAddr, w.workerSigner)
 	if err != nil {
 		log.Warnf("Worker.Mine couldn't generate next ticket %s", err)
 		outCh <- Output{Err: err}
 		return
 	}
 
-	postVrfProof, err := w.election.GenerateEPoStVrfProof(ctx, base.Key(), targetEpoch, w.minerAddr, workerAddr, w.workerSigner)
+	postVrfProof, err := w.election.GenerateEPoStVrfProof(ctx, base.Key(), targetEpoch, w.minerAddr, workerSignerAddr, w.workerSigner)
 	if err != nil {
 		log.Errorf("Worker.Mine failed to generate epost postVrfProof %s", err)
 		outCh <- Output{Err: err}
@@ -243,7 +249,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	case <-ctx.Done():
 		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base, "nullBlocks", nullBlkCount)
 	case err := <-errCh:
-		log.Warnf("Worker.Mine failed to get ssi for %s", err)
+		log.Warnf("Worker.Mine failed to get ssi: %s", err)
 		outCh <- Output{Err: err}
 		return
 	case genResult := <-done:
