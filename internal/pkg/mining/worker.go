@@ -8,11 +8,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-address"
+	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
@@ -77,9 +77,9 @@ type workerPorcelainAPI interface {
 }
 
 type electionUtil interface {
-	GenerateEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (block.VRFPi, error)
-	GenerateCandidates([]byte, ffi.SortedPublicSectorInfo, postgenerator.PoStGenerator) ([]ffi.Candidate, error)
-	GenerateEPoSt(ffi.SortedPublicSectorInfo, []byte, []ffi.Candidate, postgenerator.PoStGenerator) ([]byte, error)
+	GenerateEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) ([]byte, error)
+	GenerateCandidates(abi.PoStRandomness, []abi.SectorInfo, postgenerator.PoStGenerator) ([]abi.PoStCandidate, error)
+	GenerateEPoSt([]abi.SectorInfo, abi.PoStRandomness, []abi.PoStCandidate, postgenerator.PoStGenerator) ([]byte, error)
 	CandidateWins([]byte, uint64, uint64, uint64, uint64) bool
 }
 
@@ -232,7 +232,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	go func() {
 		defer close(done)
 		defer close(errCh)
-		candidates, err := w.election.GenerateCandidates(postVrfProofDigest[:], sortedSectorInfos, w.poster)
+		candidates, err := w.election.GenerateCandidates(abi.PoStRandomness(postVrfProofDigest[:]), sortedSectorInfos, w.poster)
 		if err != nil {
 			errCh <- err
 			return
@@ -289,19 +289,19 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	// we have a winning block
 
 	// Generate PoSt
-	postDone := make(chan []byte)
+	postDone := make(chan []abi.PoStProof)
 	errCh = make(chan error)
 	go func() {
 		defer close(postDone)
 		defer close(errCh)
-		post, err := w.election.GenerateEPoSt(sortedSectorInfos, postVrfProofDigest[:], winners, w.poster)
+		postProofs, err := w.election.GenerateEPoSt(sortedSectorInfos, abi.PoStRandomness(postVrfProofDigest[:]), winners, w.poster)
 		if err != nil {
 			errCh <- err
 			return
 		}
 		postDone <- post
 	}()
-	var post []byte
+	var poStProofs []abi.PoStProof
 	select {
 	case <-ctx.Done():
 		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base, "nullBlocks", nullBlkCount)
@@ -310,10 +310,10 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- Output{Err: err}
 		return
 	case postOut := <-postDone:
-		post = postOut
+		poStProofs = postOut
 	}
 
-	postInfo := block.NewEPoStInfo(post, postVrfProof, block.FromFFICandidates(winners...)...)
+	postInfo := block.NewEPoStInfo(block.FromABIPostProofs(postProofs), abi.PoStRandomness(postVrfProof), block.FromFFICandidates(winners...)...)
 
 	next, err := w.Generate(ctx, base, nextTicket, abi.ChainEpoch(nullBlkCount), postInfo)
 	if err == nil {

@@ -113,3 +113,7 @@ func (r *RetrievalProviderConnector) SavePaymentVoucher(_ context.Context, payme
 
 	return actual, nil
 }
+
+func (r *RetrievalProviderConnector) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
+	panic("implement me")
+}

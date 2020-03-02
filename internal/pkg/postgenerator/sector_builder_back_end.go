@@ -1,7 +1,7 @@
 package postgenerator
 
 import (
-	"github.com/filecoin-project/go-sectorbuilder"
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
@@ -14,9 +14,9 @@ type SectorBuilderBackEnd struct {
 // SectorBuilderAPI defines a subset of the sectorbuilder.Interface used by
 // the SectorBuilderBackEnd.
 type SectorBuilderAPI interface {
-	GenerateEPostCandidates(sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed [sectorbuilder.CommLen]byte, faults []abi.SectorNumber) ([]sectorbuilder.EPostCandidate, error)
-	GenerateFallbackPoSt(sectorbuilder.SortedPublicSectorInfo, [sectorbuilder.CommLen]byte, []abi.SectorNumber) ([]sectorbuilder.EPostCandidate, []byte, error)
-	ComputeElectionPoSt(sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed []byte, winners []sectorbuilder.EPostCandidate) ([]byte, error)
+	GenerateEPostCandidates(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]ffi.PoStCandidateWithTicket, error)
+	GenerateFallbackPoSt(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]ffi.PoStCandidateWithTicket, []abi.PoStProof, error)
+	ComputeElectionPoSt(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate) ([]abi.PoStProof, error)
 }
 
 // NewSectorBuilderBackEnd produces a SectorBuilderBackEnd, which uses the
@@ -27,17 +27,17 @@ func NewSectorBuilderBackEnd(s SectorBuilderAPI) *SectorBuilderBackEnd {
 
 // GenerateEPostCandidates produces election PoSt candidates from the provided
 // proving set.
-func (s *SectorBuilderBackEnd) GenerateEPostCandidates(sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed [sectorbuilder.CommLen]byte, faults []abi.SectorNumber) ([]sectorbuilder.EPostCandidate, error) {
+func (s *SectorBuilderBackEnd) GenerateEPostCandidates(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]ffi.PoStCandidateWithTicket, error) {
 	return s.builder.GenerateEPostCandidates(sectorInfo, challengeSeed, faults)
 }
 
 // GenerateFallbackPoSt generates a fallback PoSt and returns the proof and
 // all candidates used when generating it.
-func (s *SectorBuilderBackEnd) GenerateFallbackPoSt(sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed [sectorbuilder.CommLen]byte, faults []abi.SectorNumber) ([]sectorbuilder.EPostCandidate, []byte, error) {
+func (s *SectorBuilderBackEnd) GenerateFallbackPoSt(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]ffi.PoStCandidateWithTicket, []abi.PoStProof, error) {
 	return s.builder.GenerateFallbackPoSt(sectorInfo, challengeSeed, faults)
 }
 
 // ComputeElectionPoSt produces a new (election) PoSt proof.
-func (s *SectorBuilderBackEnd) ComputeElectionPoSt(sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed []byte, winners []sectorbuilder.EPostCandidate) ([]byte, error) {
+func (s *SectorBuilderBackEnd) ComputeElectionPoSt(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate) ([]abi.PoStProof, error) {
 	return s.builder.ComputeElectionPoSt(sectorInfo, challengeSeed, winners)
 }
