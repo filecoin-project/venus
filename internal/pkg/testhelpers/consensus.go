@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
 )
 
 // RequireSignedTestBlockFromTipSet creates a block with a valid signature by
@@ -123,7 +124,7 @@ func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *block.Block
 
 // NewFakeProcessor creates a processor with a test validator and test rewarder
 func NewFakeProcessor() *consensus.DefaultProcessor {
-	return consensus.NewConfiguredProcessor(vm.DefaultActors, &consensus.FakeChainRandomness{})
+	return consensus.NewConfiguredProcessor(vm.DefaultActors, &vmsupport.FakeSyscalls{}, &consensus.FakeChainRandomness{})
 }
 
 // ApplyTestMessage sends a message directly to the vm, bypassing message
@@ -139,7 +140,7 @@ func ApplyTestMessageWithActors(actors vm.ActorCodeLoader, st state.Tree, store 
 
 // ApplyTestMessageWithGas uses the FakeBlockRewarder but the default SignedMessageValidator
 func ApplyTestMessageWithGas(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch, minerOwner address.Address) (*consensus.ApplicationResult, error) {
-	applier := consensus.NewConfiguredProcessor(actors, &consensus.FakeChainRandomness{})
+	applier := consensus.NewConfiguredProcessor(actors, &vmsupport.FakeSyscalls{}, &consensus.FakeChainRandomness{})
 	return newMessageApplier(msg, applier, st, store, bh, minerOwner, nil)
 }
 
@@ -192,5 +193,5 @@ func applyTestMessageWithAncestors(actors vm.ActorCodeLoader, st state.Tree, sto
 }
 
 func newTestApplier(actors vm.ActorCodeLoader) *consensus.DefaultProcessor {
-	return consensus.NewConfiguredProcessor(actors, &consensus.FakeChainRandomness{})
+	return consensus.NewConfiguredProcessor(actors, &vmsupport.FakeSyscalls{}, &consensus.FakeChainRandomness{})
 }
