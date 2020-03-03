@@ -1,9 +1,11 @@
 package consensus_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -18,8 +20,8 @@ import (
 
 func TestGenValidTicketChain(t *testing.T) {
 	tf.UnitTest(t)
-	// Start with an arbitrary ticket
-	base := consensus.MakeFakeTicketForTest()
+	ctx := context.Background()
+	head := block.NewTipSetKey() // Tipset key is unused by fake randomness
 
 	// Interleave 3 signers
 	kis := []crypto.KeyInfo{
@@ -28,6 +30,8 @@ func TestGenValidTicketChain(t *testing.T) {
 		crypto.NewBLSKeyRandom(),
 	}
 
+	miner, err := address.NewIDAddress(uint64(1))
+	require.NoError(t, err)
 	signer := types.NewMockSigner(kis)
 	addr1 := requireAddress(t, &kis[0])
 	addr2 := requireAddress(t, &kis[1])
@@ -39,29 +43,35 @@ func TestGenValidTicketChain(t *testing.T) {
 		Addrs: []address.Address{addr1, addr1, addr1, addr2, addr3, addr3, addr1, addr2},
 	}
 
+	rnd := consensus.FakeChainRandomness{Seed: 0}
+	tm := consensus.NewTicketMachine(&rnd)
+
 	// Grow the specified ticket chain without error
 	for i := 0; i < len(schedule.Addrs); i++ {
-		base = requireValidTicket(t, base, signer, schedule.Addrs[i])
+		requireValidTicket(ctx, t, tm, head, abi.ChainEpoch(i), miner, schedule.Addrs[i], signer)
 	}
 }
 
-func requireValidTicket(t *testing.T, parent block.Ticket, signer types.Signer, signerAddr address.Address) block.Ticket {
-	tm := consensus.TicketMachine{}
-
-	ticket, err := tm.NextTicket(parent, signerAddr, signer)
+func requireValidTicket(ctx context.Context, t *testing.T, tm *consensus.TicketMachine, head block.TipSetKey, epoch abi.ChainEpoch,
+	miner, worker address.Address, signer types.Signer) {
+	ticket, err := tm.MakeTicket(ctx, head, epoch, miner, worker, signer)
 	require.NoError(t, err)
 
-	err = tm.ValidateTicket(parent, ticket, signerAddr)
+	err = tm.IsValidTicket(ctx, head, epoch, miner, worker, ticket)
 	require.NoError(t, err)
-	return ticket
 }
 
 func TestNextTicketFailsWithInvalidSigner(t *testing.T) {
-	parent := consensus.MakeFakeTicketForTest()
+	ctx := context.Background()
+	head := block.NewTipSetKey() // Tipset key is unused by fake randomness
+	miner, err := address.NewIDAddress(uint64(1))
+	require.NoError(t, err)
+
 	signer, _ := types.NewMockSignersAndKeyInfo(1)
 	badAddr := vmaddr.RequireIDAddress(t, 100)
-	tm := consensus.TicketMachine{}
-	badTicket, err := tm.NextTicket(parent, badAddr, signer)
+	rnd := consensus.FakeChainRandomness{Seed: 0}
+	tm := consensus.NewTicketMachine(&rnd)
+	badTicket, err := tm.MakeTicket(ctx, head, abi.ChainEpoch(1), miner, badAddr, signer)
 	assert.Error(t, err)
 	assert.Nil(t, badTicket.VRFProof)
 }

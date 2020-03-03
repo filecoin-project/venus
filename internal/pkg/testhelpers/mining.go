@@ -1,11 +1,14 @@
 package testhelpers
 
 import (
+	"context"
 	"crypto/rand"
 	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
@@ -20,32 +23,38 @@ const BlockTimeTest = time.Second
 type FakeWorkerPorcelainAPI struct {
 	blockTime time.Duration
 	stateView *state.FakeStateView
+	rnd       consensus.ChainRandomness
 }
 
 // NewDefaultFakeWorkerPorcelainAPI returns a FakeWorkerPorcelainAPI.
-func NewDefaultFakeWorkerPorcelainAPI(signer address.Address) *FakeWorkerPorcelainAPI {
+func NewDefaultFakeWorkerPorcelainAPI(signer address.Address, rnd consensus.ChainRandomness) *FakeWorkerPorcelainAPI {
 	return &FakeWorkerPorcelainAPI{
 		blockTime: BlockTimeTest,
 		stateView: &state.FakeStateView{
 			NetworkPower: abi.NewStoragePower(1),
 			Miners:       map[address.Address]*state.FakeMinerState{},
 		},
+		rnd: rnd,
 	}
 }
 
 // NewFakeWorkerPorcelainAPI produces an api suitable to use as the worker's porcelain api.
-func NewFakeWorkerPorcelainAPI(signer address.Address, totalPower uint64, minerToWorker map[address.Address]address.Address) *FakeWorkerPorcelainAPI {
+func NewFakeWorkerPorcelainAPI(rnd consensus.ChainRandomness, totalPower uint64, minerToWorker map[address.Address]address.Address) *FakeWorkerPorcelainAPI {
 	f := &FakeWorkerPorcelainAPI{
 		blockTime: BlockTimeTest,
 		stateView: &state.FakeStateView{
 			NetworkPower: abi.NewStoragePower(int64(totalPower)),
 			Miners:       map[address.Address]*state.FakeMinerState{},
 		},
+		rnd: rnd,
 	}
 	for k, v := range minerToWorker {
 		f.stateView.Miners[k] = &state.FakeMinerState{
-			Owner:  v,
-			Worker: v,
+			Owner:             v,
+			Worker:            v,
+			ClaimedPower:      big.Zero(),
+			PledgeRequirement: big.Zero(),
+			PledgeBalance:     big.Zero(),
 		}
 	}
 	return f
@@ -59,6 +68,11 @@ func (t *FakeWorkerPorcelainAPI) BlockTime() time.Duration {
 // PowerStateView returns the state view.
 func (t *FakeWorkerPorcelainAPI) PowerStateView(_ block.TipSetKey) (consensus.PowerStateView, error) {
 	return t.stateView, nil
+}
+
+func (t *FakeWorkerPorcelainAPI) SampleChainRandomness(ctx context.Context, head block.TipSetKey, tag acrypto.DomainSeparationTag,
+	epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return t.rnd.SampleChainRandomness(ctx, head, tag, epoch, entropy)
 }
 
 // MakeCommitment creates a random commitment.

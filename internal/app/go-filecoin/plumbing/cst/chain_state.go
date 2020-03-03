@@ -151,13 +151,13 @@ func (chn *ChainStateReadWriter) GetReceipts(ctx context.Context, id cid.Cid) ([
 
 // SampleChainRandomness computes randomness seeded by a ticket from the chain `head` at `sampleHeight`.
 func (chn *ChainStateReadWriter) SampleChainRandomness(ctx context.Context, head block.TipSetKey, tag acrypto.DomainSeparationTag,
-	sampleHeight abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	genBlk, err := chn.readWriter.GetGenesisBlock(ctx)
 	if err != nil {
 		return nil, err
 	}
 	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewSamplerAtHead(chn.readWriter, genBlk.Ticket, head)}
-	return rnd.Randomness(ctx, tag, sampleHeight, entropy)
+	return rnd.Randomness(ctx, tag, epoch, entropy)
 }
 
 // GetActor returns an actor from the latest state on the chain

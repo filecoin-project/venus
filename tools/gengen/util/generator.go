@@ -80,7 +80,7 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 	g.vm = vm.NewVM(g.stateTree, &g.store).(consensus.GenesisVM)
 	g.cst = cst
 
-	g.chainRand = crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{TicketBytes: consensus.GenesisTicket.VRFProof}}
+	g.chainRand = crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: consensus.GenesisTicket.VRFProof}}
 	return &g
 }
 

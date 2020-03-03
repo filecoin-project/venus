@@ -183,7 +183,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 		st := state.NewState(cst)
 		store := vm.NewStorage(bs)
 		vm := vm.NewVM(st, &store).(GenesisVM)
-		rnd := crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{TicketBytes: GenesisTicket.VRFProof}}
+		rnd := crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: GenesisTicket.VRFProof}}
 
 		genCfg := NewEmptyConfig()
 		for _, opt := range opts {

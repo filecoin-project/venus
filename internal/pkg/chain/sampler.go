@@ -17,9 +17,7 @@ func NewSamplerAtHead(reader TipSetProvider, genesisTicket block.Ticket, head bl
 	}
 }
 
-// A sampler draws randomness seeds from the chain. The seed is computed from the minimum ticket of the tipset
-// at or before the requested epoch, mixed with the epoch itself (and is thus unique per epoch, even when they are
-// empty).
+// A sampler draws randomness seeds from the chain.
 //
 // This implementation doesn't do any caching: it traverses the chain each time. A cache that could be directly
 // indexed by epoch could speed up repeated samples from the same chain.
@@ -35,6 +33,9 @@ func NewSampler(reader TipSetProvider, genesisTicket block.Ticket) *Sampler {
 // Draws a randomness seed from the chain identified by `head` and the highest tipset with height <= `epoch`.
 // If `head` is empty (as when processing the pre-genesis state or the genesis block), the seed derived from
 // a fixed genesis ticket.
+// Note that this may produce the same value for different, neighbouring epochs when the epoch references a round
+// in which no blocks were produced (an empty tipset or "null block"). A caller desiring a unique see for each epoch
+// should blend in some distinguishing value (such as the epoch itself).
 func (s *Sampler) Sample(ctx context.Context, head block.TipSetKey, epoch abi.ChainEpoch) (crypto.RandomSeed, error) {
 	var ticket block.Ticket
 	if !head.Empty() {
@@ -59,7 +60,7 @@ func (s *Sampler) Sample(ctx context.Context, head block.TipSetKey, epoch abi.Ch
 		ticket = s.genesisTicket
 	}
 
-	return crypto.MakeRandomSeed(ticket.VRFProof, epoch)
+	return crypto.MakeRandomSeed(ticket.VRFProof)
 }
 
 // Finds the the highest tipset with height <= the requested epoch, by traversing backward from start.

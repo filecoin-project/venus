@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
@@ -40,11 +40,10 @@ func TestMineOnce10Null(t *testing.T) {
 	totalPower := uint64(10000)
 	numSectors := uint64(1)
 	sectorSize := uint64(100)
-	baseTicket := consensus.SeedFirstWinnerInNRounds(t, 10, ki, totalPower, numSectors, sectorSize)
+	rnd := consensus.SeedFirstWinnerInNRounds(t, 10, addr, ki, totalPower, numSectors, sectorSize)
 	baseBlock := &block.Block{
 		StateRoot: e.NewCid(types.CidFromString(t, "somecid")),
 		Height:    0,
-		Ticket:    baseTicket,
 	}
 	baseTs, err := block.NewTipSet(baseBlock)
 	require.NoError(t, err)
@@ -53,12 +52,10 @@ func TestMineOnce10Null(t *testing.T) {
 	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight abi.ChainEpoch) ([]block.TipSet, error) {
-		return []block.TipSet{baseTs}, nil
-	}
 	messages := chain.NewMessageStore(bs)
 
-	api := th.NewFakeWorkerPorcelainAPI(addr, 100, minerToWorker)
+	// Dragons: need to give the miners in the fake state actual power for these tests to work.
+	api := th.NewFakeWorkerPorcelainAPI(rnd, 100, minerToWorker)
 	genTime := time.Now()
 	fc := th.NewFakeClock(genTime)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime.Unix()), 15*time.Second, fc)
@@ -73,15 +70,15 @@ func TestMineOnce10Null(t *testing.T) {
 		TipSetMetadata: fakeTSMetadata{},
 		GetStateTree:   getStateTree,
 		GetWeight:      getWeightTest,
-		GetAncestors:   getAncestors,
-		Election:       &consensus.ElectionMachine{},
-		TicketGen:      &consensus.TicketMachine{},
+		Election:       consensus.NewElectionMachine(rnd),
+		TicketGen:      consensus.NewTicketMachine(rnd),
 
 		MessageSource: pool,
 		Processor:     th.NewFakeProcessor(),
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         chainClock,
+		Poster:        &proofs.ElectionPoster{},
 	})
 
 	result, err := MineOnce(context.Background(), *worker, baseTs, chainClock)
@@ -107,11 +104,10 @@ func TestMineOneEpoch10Null(t *testing.T) {
 	totalPower := uint64(10000)
 	numSectors := uint64(1)
 	sectorSize := uint64(100)
-	baseTicket := consensus.SeedFirstWinnerInNRounds(t, 10, ki, totalPower, numSectors, sectorSize)
+	rnd := consensus.SeedFirstWinnerInNRounds(t, 10, addr, ki, totalPower, numSectors, sectorSize)
 	baseBlock := &block.Block{
 		StateRoot: e.NewCid(types.CidFromString(t, "somecid")),
 		Height:    0,
-		Ticket:    baseTicket,
 	}
 	baseTs, err := block.NewTipSet(baseBlock)
 	require.NoError(t, err)
@@ -120,12 +116,9 @@ func TestMineOneEpoch10Null(t *testing.T) {
 	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight abi.ChainEpoch) ([]block.TipSet, error) {
-		return []block.TipSet{baseTs}, nil
-	}
 	messages := chain.NewMessageStore(bs)
 
-	api := th.NewFakeWorkerPorcelainAPI(addr, 100, minerToWorker)
+	api := th.NewFakeWorkerPorcelainAPI(rnd, 100, minerToWorker)
 	genTime := time.Now()
 	fc := th.NewFakeClock(genTime)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime.Unix()), 15*time.Second, fc)
@@ -140,15 +133,15 @@ func TestMineOneEpoch10Null(t *testing.T) {
 		TipSetMetadata: fakeTSMetadata{},
 		GetStateTree:   getStateTree,
 		GetWeight:      getWeightTest,
-		GetAncestors:   getAncestors,
-		Election:       &consensus.ElectionMachine{},
-		TicketGen:      &consensus.TicketMachine{},
+		Election:       consensus.NewElectionMachine(rnd),
+		TicketGen:      consensus.NewTicketMachine(rnd),
 
 		MessageSource: pool,
 		Processor:     th.NewFakeProcessor(),
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         chainClock,
+		Poster:        &proofs.ElectionPoster{},
 	})
 
 	for i := 0; i < 10; i++ {
