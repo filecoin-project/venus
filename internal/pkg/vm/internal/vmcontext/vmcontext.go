@@ -38,6 +38,7 @@ type VM struct {
 	actorImpls   ActorImplLookup
 	store        *storage.VMStorage
 	state        state.Tree
+	syscalls     SyscallsImpl
 	currentEpoch abi.ChainEpoch
 	pricelist    gascost.Pricelist
 }
@@ -62,15 +63,15 @@ type internalMessage struct {
 
 // NewVM creates a new runtime for executing messages.
 // Dragons: change to take a root and the store, build the tree internally
-func NewVM(actorImpls ActorImplLookup, store *storage.VMStorage, st state.Tree) VM {
+func NewVM(actorImpls ActorImplLookup, store *storage.VMStorage, st state.Tree, syscalls SyscallsImpl) VM {
 	return VM{
+		context:    context.Background(),
 		actorImpls: actorImpls,
 		store:      store,
 		state:      st,
-		context:    context.Background(),
+		syscalls:   syscalls,
 		// loaded during execution
 		// currentEpoch: ..,
-		// rnd: ..,
 	}
 }
 

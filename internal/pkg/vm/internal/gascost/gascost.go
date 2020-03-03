@@ -2,6 +2,8 @@ package gascost
 
 import (
 	"fmt"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -28,6 +30,13 @@ type Pricelist interface {
 	OnCreateActor() gas.Unit
 	// OnDeleteActor returns the gas used for deleting an actor
 	OnDeleteActor() gas.Unit
+
+	OnVerifySignature(sigType crypto.SigType, planTextSize int) gas.Unit
+	OnHashing(dataSize int) gas.Unit
+	OnComputeUnsealedSectorCid(proofType abi.RegisteredProof, pieces *[]abi.PieceInfo) gas.Unit
+	OnVerifySeal(info abi.SealVerifyInfo) gas.Unit
+	OnVerifyPost(info abi.PoStVerifyInfo) gas.Unit
+	OnVerifyConsensusFault() gas.Unit
 }
 
 var prices = map[abi.ChainEpoch]Pricelist{
@@ -45,6 +54,17 @@ var prices = map[abi.ChainEpoch]Pricelist{
 		createActorBase:           gas.NewGas(40), // IPLD put + 20
 		createActorExtra:          gas.NewGas(500),
 		deleteActor:               gas.NewGas(-500), // -createActorExtra
+		// Dragons: this cost is not persistable, create a LinearCost{a,b} struct that has a `.Cost(x) -> ax + b`
+		verifySignature: map[crypto.SigType]func(gas.Unit) gas.Unit{
+			crypto.SigTypeBLS:       func(x gas.Unit) gas.Unit { return gas.NewGas(3)*x + gas.NewGas(2) },
+			crypto.SigTypeSecp256k1: func(x gas.Unit) gas.Unit { return gas.NewGas(3)*x + gas.NewGas(2) },
+		},
+		hashingBase:                  gas.NewGas(5),
+		hashingPerByte:               gas.NewGas(2),
+		computeUnsealedSectorCidBase: gas.NewGas(100),
+		verifySealBase:               gas.NewGas(2000),
+		verifyPostBase:               gas.NewGas(700),
+		verifyConsensusFault:         gas.NewGas(10),
 	},
 }
 

@@ -120,9 +120,14 @@ func (a *runtimeAdapter) DeleteActor() {
 	a.ctx.DeleteActor()
 }
 
-// Syscalls implements Runtime.
+// SyscallsImpl implements Runtime.
 func (a *runtimeAdapter) Syscalls() specsruntime.Syscalls {
-	return &syscalls{gasTank: a.ctx.gasTank}
+	return &syscalls{
+		impl:      a.ctx.rt.syscalls,
+		gasTank:   a.ctx.gasTank,
+		pricelist: a.ctx.rt.pricelist,
+		epoch:     a.ctx.Runtime().CurrentEpoch(),
+	}
 }
 
 // Context implements Runtime.
