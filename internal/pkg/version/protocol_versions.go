@@ -13,9 +13,6 @@ const DEVNET4 = "devnet4"
 // LOCALNET is the network name of localnet
 const LOCALNET = "localnet"
 
-// TESTNET3 is the network name of the third testnet
-const TESTNET3 = "localnet-270a8688-1b23-4508-b675-444cb1e6f05d"
-
 // TEST is the network name for internal tests
 const TEST = "gfctest"
 
@@ -35,7 +32,6 @@ func ConfigureProtocolVersions(network string) (*ProtocolVersionTable, error) {
 		Add(DEVNET4, Protocol0, abi.ChainEpoch(0)).
 		Add(DEVNET4, Protocol1, abi.ChainEpoch(300)).
 		Add(LOCALNET, Protocol1, abi.ChainEpoch(0)).
-		Add(TESTNET3, Protocol1, abi.ChainEpoch(0)).
 		Add(TEST, Protocol1, abi.ChainEpoch(0)).
 		Build()
 }
