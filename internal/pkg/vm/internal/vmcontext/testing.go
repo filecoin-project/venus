@@ -5,14 +5,10 @@ import (
 	"fmt"
 	"math/rand"
 
+	vtypes "github.com/filecoin-project/chain-validation/chain/types"
+	vstate "github.com/filecoin-project/chain-validation/state"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-crypto"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-
-	ffi "github.com/filecoin-project/filecoin-ffi"
-
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -20,10 +16,11 @@ import (
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	vtypes "github.com/filecoin-project/chain-validation/chain/types"
-	vstate "github.com/filecoin-project/chain-validation/state"
-
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	gfcrypto "github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
@@ -34,6 +31,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
 )
 
 var _ vstate.Factories = &Factories{}
@@ -108,7 +106,7 @@ func NewState() *ValidationVMWrapper {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	cst := cborutil.NewIpldStore(bs)
 	vmstrg := storage.NewStorage(bs)
-	vm := NewVM(gfbuiltin.DefaultActors, &vmstrg, state.NewState(cst))
+	vm := NewVM(gfbuiltin.DefaultActors, &vmstrg, state.NewState(cst), &vmsupport.FakeSyscalls{})
 	return &ValidationVMWrapper{
 		vm: &vm,
 	}

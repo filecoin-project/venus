@@ -20,6 +20,8 @@ type Interpreter = interpreter.VMInterpreter
 // Storage is the raw storage for the VM.
 type Storage = storage.VMStorage
 
+type SyscallsImpl = vmcontext.SyscallsImpl
+
 // BlockMessagesInfo contains messages for one block in a tipset.
 type BlockMessagesInfo = interpreter.BlockMessagesInfo
 
@@ -27,8 +29,8 @@ type BlockMessagesInfo = interpreter.BlockMessagesInfo
 type MessageReceipt = message.Receipt
 
 // NewVM creates a new VM interpreter.
-func NewVM(st state.Tree, store *storage.VMStorage) Interpreter {
-	vm := vmcontext.NewVM(builtin.DefaultActors, store, st)
+func NewVM(st state.Tree, store *storage.VMStorage, syscalls SyscallsImpl) Interpreter {
+	vm := vmcontext.NewVM(builtin.DefaultActors, store, st, syscalls)
 	return &vm
 }
 
