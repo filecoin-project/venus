@@ -32,8 +32,6 @@ var TestSuiteSkipper TestSkipper
 func init() {
 	// initialize the test skipper with tests being skipped
 	TestSuiteSkipper = TestSkipper{testSkips: []suites.TestCase{
-		// Skipping since payment channel because runtime sys calls are not implemented in runtime adapter
-		message.TestPaych,
 		// Skipping since multisig address resolution breaks tests
 		// https://github.com/filecoin-project/specs-actors/issues/184
 		message.TestMultiSigActor,
