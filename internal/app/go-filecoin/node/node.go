@@ -390,7 +390,7 @@ func (node *Node) SetupMining(ctx context.Context) error {
 	return nil
 }
 
-func proofTypeFromSectorSize(ss abi.SectorSize) (abi.RegisteredProof, abi.RegisteredProof, error) {
+func registeredProofsFromSectorSize(ss abi.SectorSize) (registeredSealProof abi.RegisteredProof, registeredPoStProof abi.RegisteredProof, err error) {
 	switch ss {
 	case 1 << 35:
 		return abi.RegisteredProof_StackedDRG32GiBPoSt, abi.RegisteredProof_StackedDRG32GiBSeal, nil
@@ -431,7 +431,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return err
 	}
 
-	postProofType, sealProofType, err := proofTypeFromSectorSize(status.SectorSize)
+	postProofType, sealProofType, err := registeredProofsFromSectorSize(status.SectorSize)
 	if err != nil {
 		return err
 	}
