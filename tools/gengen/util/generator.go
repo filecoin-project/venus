@@ -37,6 +37,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
 )
 
 type cstore struct {
@@ -77,7 +78,7 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 	g := GenesisGenerator{}
 	g.stateTree = state.NewState(cst)
 	g.store = vm.NewStorage(bs)
-	g.vm = vm.NewVM(g.stateTree, &g.store).(consensus.GenesisVM)
+	g.vm = vm.NewVM(g.stateTree, &g.store, vmsupport.NewSyscalls()).(consensus.GenesisVM)
 	g.cst = cst
 
 	g.chainRand = crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: consensus.GenesisTicket.VRFProof}}

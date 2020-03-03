@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
 )
 
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
@@ -182,7 +183,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 		ctx := context.Background()
 		st := state.NewState(cst)
 		store := vm.NewStorage(bs)
-		vm := vm.NewVM(st, &store).(GenesisVM)
+		vm := vm.NewVM(st, &store, vmsupport.NewSyscalls()).(GenesisVM)
 		rnd := crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: GenesisTicket.VRFProof}}
 
 		genCfg := NewEmptyConfig()

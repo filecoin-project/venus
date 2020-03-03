@@ -34,25 +34,24 @@ type ChainRandomness interface {
 
 // DefaultProcessor handles all block processing.
 type DefaultProcessor struct {
-	actors vm.ActorCodeLoader
-	rnd    ChainRandomness
+	actors   vm.ActorCodeLoader
+	syscalls vm.SyscallsImpl
+	rnd      ChainRandomness
 }
 
 var _ Processor = (*DefaultProcessor)(nil)
 
 // NewDefaultProcessor creates a default processor from the given state tree and vms.
-func NewDefaultProcessor(rnd ChainRandomness) *DefaultProcessor {
-	return &DefaultProcessor{
-		actors: vm.DefaultActors,
-		rnd:    rnd,
-	}
+func NewDefaultProcessor(syscalls vm.SyscallsImpl, rnd ChainRandomness) *DefaultProcessor {
+	return NewConfiguredProcessor(vm.DefaultActors, syscalls, rnd)
 }
 
 // NewConfiguredProcessor creates a default processor with custom validation and rewards.
-func NewConfiguredProcessor(actors vm.ActorCodeLoader, rnd ChainRandomness) *DefaultProcessor {
+func NewConfiguredProcessor(actors vm.ActorCodeLoader, syscalls vm.SyscallsImpl, rnd ChainRandomness) *DefaultProcessor {
 	return &DefaultProcessor{
-		actors: actors,
-		rnd:    rnd,
+		actors:   actors,
+		syscalls: syscalls,
+		rnd:      rnd,
 	}
 }
 
@@ -76,7 +75,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 		chain: p.rnd,
 		head:  parent,
 	}
-	v := vm.NewVM(st, &vms)
+	v := vm.NewVM(st, &vms, p.syscalls)
 
 	return v.ApplyTipSetMessages(msgs, epoch, &rnd)
 }

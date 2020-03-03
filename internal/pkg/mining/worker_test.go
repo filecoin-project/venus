@@ -21,6 +21,7 @@ import (
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -529,6 +530,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		return st, nil
 	}
 	rnd := &consensus.FakeChainRandomness{Seed: 0}
+	syscalls := &vmsupport.FakeSyscalls{}
 	messages := chain.NewMessageStore(bs)
 
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
@@ -545,7 +547,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
-		Processor:     consensus.NewDefaultProcessor(rnd),
+		Processor:     consensus.NewDefaultProcessor(syscalls, rnd),
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
@@ -630,6 +632,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		return st, nil
 	}
 	rnd := &consensus.FakeChainRandomness{Seed: 0}
+	syscalls := &vmsupport.FakeSyscalls{}
 	minerAddr := addrs[3]
 	th.RequireInitAccountActor(ctx, t, st, vm.NewStorage(bs), addrs[4], types.ZeroAttoFIL)
 	minerOwnerAddr := addrs[4]
@@ -650,7 +653,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
-		Processor:     consensus.NewDefaultProcessor(rnd),
+		Processor:     consensus.NewDefaultProcessor(syscalls, rnd),
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
@@ -694,6 +697,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		return st, nil
 	}
 	rnd := &consensus.FakeChainRandomness{Seed: 0}
+	syscalls := &vmsupport.FakeSyscalls{}
 	messages := chain.NewMessageStore(bs)
 
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
@@ -710,7 +714,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
-		Processor:     consensus.NewDefaultProcessor(rnd),
+		Processor:     consensus.NewDefaultProcessor(syscalls, rnd),
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
@@ -749,6 +753,7 @@ func TestGenerateError(t *testing.T) {
 		return st, nil
 	}
 	rnd := &consensus.FakeChainRandomness{Seed: 0}
+	syscalls := &vmsupport.FakeSyscalls{}
 	messages := chain.NewMessageStore(bs)
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
 		API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr, rnd),
@@ -764,7 +769,7 @@ func TestGenerateError(t *testing.T) {
 		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
-		Processor:     consensus.NewDefaultProcessor(rnd),
+		Processor:     consensus.NewDefaultProcessor(syscalls, rnd),
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
