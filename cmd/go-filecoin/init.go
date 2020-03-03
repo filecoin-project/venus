@@ -116,7 +116,9 @@ var initCmd = &cmds.Command{
 			}
 
 			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
-				// TODO get info from user via flags
+				// TODO: These two RegisteredProof values (from which we can
+				// derive a sector size) need to be provided by whomever invokes
+				// the command.
 				SealProofType: abi.RegisteredProof_StackedDRG2KiBSeal,
 				PoStProofType: abi.RegisteredProof_StackedDRG2KiBPoSt,
 				WorkerThreads: 1,
