@@ -32,7 +32,7 @@ type Pricelist interface {
 
 	OnVerifySignature(sigType specscrypto.SigType, planTextSize int) gas.Unit
 	OnHashing(dataSize int) gas.Unit
-	OnComputeUnsealedSectorCid(sectorSize abi.SectorSize, pieces *[]abi.PieceInfo) gas.Unit
+	OnComputeUnsealedSectorCid(proofType abi.RegisteredProof, pieces *[]abi.PieceInfo) gas.Unit
 	OnVerifySeal(info abi.SealVerifyInfo) gas.Unit
 	OnVerifyPost(info abi.PoStVerifyInfo) gas.Unit
 	OnVerifyConsensusFault() gas.Unit
@@ -53,6 +53,14 @@ var prices = map[abi.ChainEpoch]Pricelist{
 		createActorBase:           gas.NewGas(40), // IPLD put + 20
 		createActorExtra:          gas.NewGas(500),
 		deleteActor:               gas.NewGas(-500), // -createActorExtra
+		verifySignatureBase:       gas.NewGas(2),
+		verifySignaturePerByte:    gas.NewGas(3),
+		hashingBase:               gas.NewGas(5),
+		hashingPerByte:            gas.NewGas(2),
+		computeUnsealedSectorBase: gas.NewGas(100),
+		verifySealBase:            gas.NewGas(2000),
+		verifyPostBase:            gas.NewGas(700),
+		verifyConsensusFault:      gas.NewGas(10),
 	},
 }
 

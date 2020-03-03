@@ -78,6 +78,7 @@ type pricelistV0 struct {
 	hashingBase    gas.Unit
 	hashingPerByte gas.Unit
 
+	// Review: all this likely need different cost per RegisteredProof
 	computeUnsealedSectorBase gas.Unit
 	verifySealBase            gas.Unit
 	verifyPostBase            gas.Unit
