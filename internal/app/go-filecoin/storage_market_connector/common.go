@@ -129,7 +129,6 @@ func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address
 
 // SignBytes uses the local wallet to sign the bytes with the given address
 func (c *connectorCommon) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
-	// TODO: pass in tipset key
 	root, err := c.chainStore.GetTipSetStateRoot(ctx, c.chainStore.Head())
 	if err != nil {
 		return nil, err
@@ -169,7 +168,8 @@ func (c *connectorCommon) GetBalance(ctx context.Context, addr address.Address) 
 }
 
 func (c *connectorCommon) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
-	// Fetch from chain
+	// Fetch from chain.
+	// TODO: this signature should take a tipset key or state root.
 	root, err := c.chainStore.GetTipSetStateRoot(ctx, c.chainStore.Head())
 	if err != nil {
 		return address.Undef, err
