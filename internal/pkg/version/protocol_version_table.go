@@ -49,8 +49,8 @@ type ProtocolVersionTableBuilder struct {
 
 // NewProtocolVersionTableBuilder creates a new ProtocolVersionTable that only tracks versions for the given network
 func NewProtocolVersionTableBuilder(network string) *ProtocolVersionTableBuilder {
-	// ignore anything following a dot (including the dot)
-	networkPrefix := strings.Split(network, ".")[0]
+	// ignore anything following a dash (including the dash)
+	networkPrefix := strings.Split(network, "-")[0]
 
 	return &ProtocolVersionTableBuilder{
 		network:  networkPrefix,

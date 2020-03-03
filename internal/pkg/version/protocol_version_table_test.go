@@ -52,18 +52,6 @@ func TestUpgradeTable(t *testing.T) {
 		}
 	})
 
-	t.Run("finds correct version when suffix is applied", func(t *testing.T) {
-		// add out of order and expect table to sort
-		put, err := NewProtocolVersionTableBuilder("testnetwork.foo").
-			Add(network, 5, types.NewBlockHeight(0)).
-			Build()
-		require.NoError(t, err)
-
-		version, err := put.VersionAt(types.NewBlockHeight(0))
-		require.NoError(t, err)
-		assert.Equal(t, uint64(5), version)
-	})
-
 	t.Run("constructing a table with no versions is an error", func(t *testing.T) {
 		_, err := NewProtocolVersionTableBuilder(network).Build()
 		require.Error(t, err)
@@ -97,6 +85,28 @@ func TestUpgradeTable(t *testing.T) {
 			expectedVersion := uint64(0)
 			if i >= 30 {
 				expectedVersion = 3
+			}
+			assert.Equal(t, expectedVersion, version)
+		}
+	})
+
+	t.Run("version table name can be a prefix of network name", func(t *testing.T) {
+		network := "localnet-270a8688-1b23-4508-b675-444cb1e6f05d"
+		versionName := "localnet"
+
+		put, err := NewProtocolVersionTableBuilder(network).
+			Add(versionName, 0, abi.ChainEpoch(0)).
+			Add(versionName, 1, abi.ChainEpoch(10)).
+			Build()
+		require.NoError(t, err)
+
+		for i := uint64(0); i < 20; i++ {
+			version, err := put.VersionAt(abi.ChainEpoch(i))
+			require.NoError(t, err)
+
+			expectedVersion := uint64(0)
+			if i >= 10 {
+				expectedVersion = 1
 			}
 			assert.Equal(t, expectedVersion, version)
 		}
