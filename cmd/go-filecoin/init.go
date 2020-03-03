@@ -114,12 +114,15 @@ var initCmd = &cmds.Command{
 				return err
 			}
 
+			// TODO: The caller needs to provide a value which tells this code
+			// which RegisteredProof was used to seal the sectors being
+			// imported.
+			registeredSealProof := abi.RegisteredProof_StackedDRG2KiBSeal
+			registeredPoStProof := abi.RegisteredProof_StackedDRG2KiBPoSt
+
 			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
-				// TODO: These two RegisteredProof values (from which we can
-				// derive a sector size) need to be provided by whomever invokes
-				// the command.
-				SealProofType: abi.RegisteredProof_StackedDRG2KiBSeal,
-				PoStProofType: abi.RegisteredProof_StackedDRG2KiBPoSt,
+				SealProofType: registeredSealProof,
+				PoStProofType: registeredPoStProof,
 				WorkerThreads: 1,
 				Paths:         sectorbuilder.SimplePath(presealedSectorDir),
 			}, namespace.Wrap(oldMetaDs, datastore.NewKey("/sectorbuilder")))
@@ -133,8 +136,8 @@ var initCmd = &cmds.Command{
 			}
 
 			newsb, err := sectorbuilder.New(&sectorbuilder.Config{
-				SealProofType: abi.RegisteredProof_StackedDRG2KiBSeal,
-				PoStProofType: abi.RegisteredProof_StackedDRG2KiBPoSt,
+				SealProofType: registeredSealProof,
+				PoStProofType: registeredPoStProof,
 				WorkerThreads: 1,
 				Paths:         sectorbuilder.SimplePath(path),
 			}, namespace.Wrap(rep.Datastore(), datastore.NewKey("/sectorbuilder")))
