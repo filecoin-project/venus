@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
@@ -76,7 +77,7 @@ type workerPorcelainAPI interface {
 }
 
 type electionUtil interface {
-	GenerateEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (block.VRFPi, error)
+	GenerateEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error)
 	GenerateCandidates(abi.PoStRandomness, []abi.SectorInfo, postgenerator.PoStGenerator) ([]abi.PoStCandidate, error)
 	GenerateEPoSt([]abi.SectorInfo, abi.PoStRandomness, []abi.PoStCandidate, postgenerator.PoStGenerator) ([]abi.PoStProof, error)
 	CandidateWins([]byte, uint64, uint64, uint64, uint64) bool
@@ -237,7 +238,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	go func() {
 		defer close(done)
 		defer close(errCh)
-		candidates, err := w.election.GenerateCandidates(abi.PoStRandomness(postVrfProofDigest[:]), sortedSectorInfos, w.poster)
+		candidates, err := w.election.GenerateCandidates(postVrfProofDigest[:], sortedSectorInfos, w.poster)
 		if err != nil {
 			errCh <- err
 			return
@@ -299,7 +300,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	go func() {
 		defer close(postDone)
 		defer close(errCh)
-		postProofs, err := w.election.GenerateEPoSt(sortedSectorInfos, abi.PoStRandomness(postVrfProofDigest[:]), winners, w.poster)
+		postProofs, err := w.election.GenerateEPoSt(sortedSectorInfos, postVrfProofDigest[:], winners, w.poster)
 		if err != nil {
 			errCh <- err
 			return

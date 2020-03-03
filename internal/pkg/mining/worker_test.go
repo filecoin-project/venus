@@ -20,6 +20,7 @@ import (
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
 
@@ -253,7 +254,7 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 }
 
 func makeExpectedEPoStVRFProof(ctx context.Context, t *testing.T, rnd *consensus.FakeChainRandomness, mockSigner *types.MockSigner,
-	head block.TipSet, lookback abi.ChainEpoch, minerAddr address.Address, minerOwnerAddr address.Address) block.VRFPi {
+	head block.TipSet, lookback abi.ChainEpoch, minerAddr address.Address, minerOwnerAddr address.Address) crypto.VRFPi {
 	height, err := head.Height()
 	require.NoError(t, err)
 	entropy, err := encoding.Encode(minerAddr)

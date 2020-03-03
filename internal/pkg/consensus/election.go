@@ -29,7 +29,7 @@ func NewElectionMachine(chain ChainRandomness) *ElectionMachine {
 
 // GenerateEPoStVrfProof computes the Election PoSt challenge seed for a target epoch after a base tipset.
 func (em ElectionMachine) GenerateEPoStVrfProof(ctx context.Context, base block.TipSetKey,
-	epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (block.VRFPi, error) {
+	epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error) {
 	return sampleChainAndComputeVrf(ctx, em.chain, base, epoch, acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, miner, signer, worker)
 }
 
@@ -56,8 +56,7 @@ func (em ElectionMachine) GenerateEPoSt(allSectorInfos []abi.SectorInfo, challen
 
 // VerifyEPoStVrfProof verifies that the PoSt randomness is the result of the
 // candidate signing the ticket.
-func (em ElectionMachine) VerifyEPoStVrfProof(ctx context.Context, base block.TipSetKey,
-	epoch abi.ChainEpoch, miner address.Address, worker address.Address, vrfProof block.VRFPi) error {
+func (em ElectionMachine) VerifyEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, vrfProof abi.PoStRandomness) error {
 	entropy, err := encoding.Encode(miner)
 	if err != nil {
 		return errors.Wrapf(err, "failed to encode entropy")
@@ -177,7 +176,7 @@ func (tm TicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey,
 }
 
 func sampleChainAndComputeVrf(ctx context.Context, chain ChainRandomness, base block.TipSetKey, epoch abi.ChainEpoch, tag acrypto.DomainSeparationTag,
-	miner address.Address, signer types.Signer, worker address.Address) (block.VRFPi, error) {
+	miner address.Address, signer types.Signer, worker address.Address) (crypto.VRFPi, error) {
 	entropy, err := encoding.Encode(miner)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to encode entropy")
