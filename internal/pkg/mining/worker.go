@@ -15,7 +15,6 @@ import (
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
-	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -213,7 +212,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- Output{Err: err}
 		return
 	}
-	postVrfProofDigest := blake2b.Sum256(postVrfProof)
+	postVrfProofDigest := postVrfProof.Digest()
 
 	powerTable, err := w.getPowerTable(base.Key())
 	if err != nil {

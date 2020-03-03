@@ -11,6 +11,7 @@ import (
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -19,6 +20,7 @@ import (
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,9 +50,8 @@ func TestLookbackElection(t *testing.T) {
 	mockSigner := &mockSignerVal
 
 	builder := chain.NewBuilder(t, address.Undef)
-	lookback := miner.ElectionLookback
 	head := builder.NewGenesis()
-	for i := 1; i < int(lookback); i++ {
+	for i := 1; i < int(miner.ElectionLookback); i++ {
 		head = builder.AppendOn(head, 1)
 	}
 
@@ -92,40 +93,13 @@ func TestLookbackElection(t *testing.T) {
 		go worker.Mine(ctx, head, 0, outCh)
 		r := <-outCh
 		assert.NoError(t, r.Err)
-		// TODO: make an assertion about the epost/ticket produced
+
+		expectedVrfProof := makeExpectedEPoStVRFProof(ctx, t, rnd, mockSigner, head, miner.PoStLookback, minerAddr, minerOwnerAddr)
+		assert.Equal(t, expectedVrfProof, r.NewBlock.EPoStInfo.PoStRandomness)
+
+		expectedTicket := makeExpectedTicket(ctx, t, rnd, mockSigner, head, miner.PoStLookback, minerAddr, minerOwnerAddr)
+		assert.Equal(t, expectedTicket, r.NewBlock.Ticket)
 	})
-
-	t.Run("Ticket gensees ticket 1 ancestor back", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-		outCh := make(chan mining.Output)
-		worker := mining.NewDefaultWorker(mining.WorkerParameters{
-			API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr, rnd),
-
-			MinerAddr:      minerAddr,
-			MinerOwnerAddr: minerOwnerAddr,
-			WorkerSigner:   mockSigner,
-
-			TipSetMetadata: fakeTSMetadata{},
-			GetStateTree:   getStateTree,
-			GetWeight:      getWeightTest,
-			Election:       consensus.NewElectionMachine(rnd),
-			TicketGen:      consensus.NewTicketMachine(rnd),
-
-			MessageSource: pool,
-			Processor:     th.NewFakeProcessor(),
-			Blockstore:    bs,
-			MessageStore:  messages,
-			Clock:         clock.NewSystemClock(),
-		})
-
-		go worker.Mine(ctx, head, 0, outCh)
-		r := <-outCh
-		assert.NoError(t, r.Err)
-		// TODO: make an assertion about the epost/ticket produced
-
-	})
-
 }
 
 func Test_Mine(t *testing.T) {
@@ -178,7 +152,12 @@ func Test_Mine(t *testing.T) {
 		go worker.Mine(ctx, tipSet, 0, outCh)
 		r := <-outCh
 		assert.NoError(t, r.Err)
-		// TODO: make an assertion about the ticket/epost
+
+		expectedVrfProof := makeExpectedEPoStVRFProof(ctx, t, rnd, mockSigner, tipSet, miner.PoStLookback, minerAddr, minerOwnerAddr)
+		assert.Equal(t, expectedVrfProof, r.NewBlock.EPoStInfo.PoStRandomness)
+
+		expectedTicket := makeExpectedTicket(ctx, t, rnd, mockSigner, tipSet, miner.PoStLookback, minerAddr, minerOwnerAddr)
+		assert.Equal(t, expectedTicket, r.NewBlock.Ticket)
 	})
 
 	t.Run("Block generation fails", func(t *testing.T) {
@@ -270,6 +249,32 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 	th.RequireInitAccountActor(ctx, t, st, vms, addr5, types.ZeroAttoFIL)
 	_, addr4 := th.RequireNewMinerActor(ctx, t, st, vms, addr5, 10, th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
 	return st, pool, []address.Address{addr1, addr2, addr3, addr4, addr5}, bs
+}
+
+func makeExpectedEPoStVRFProof(ctx context.Context, t *testing.T, rnd *consensus.FakeChainRandomness, mockSigner *types.MockSigner,
+	head block.TipSet, lookback abi.ChainEpoch, minerAddr address.Address, minerOwnerAddr address.Address) block.VRFPi {
+	height, err := head.Height()
+	require.NoError(t, err)
+	entropy, err := encoding.Encode(minerAddr)
+	require.NoError(t, err)
+	seed, err := rnd.SampleChainRandomness(ctx, head.Key(), acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, height-lookback, entropy)
+	require.NoError(t, err)
+	expectedVrfProof, err := mockSigner.SignBytes(seed, minerOwnerAddr)
+	require.NoError(t, err)
+	return expectedVrfProof.Data
+}
+
+func makeExpectedTicket(ctx context.Context, t *testing.T, rnd *consensus.FakeChainRandomness, mockSigner *types.MockSigner,
+	head block.TipSet, lookback abi.ChainEpoch, minerAddr address.Address, minerOwnerAddr address.Address) block.Ticket {
+	height, err := head.Height()
+	require.NoError(t, err)
+	entropy, err := encoding.Encode(minerAddr)
+	require.NoError(t, err)
+	seed, err := rnd.SampleChainRandomness(ctx, head.Key(), acrypto.DomainSeparationTag_TicketProduction, height-lookback, entropy)
+	require.NoError(t, err)
+	expectedVrfProof, err := mockSigner.SignBytes(seed, minerOwnerAddr)
+	require.NoError(t, err)
+	return block.Ticket{VRFProof: expectedVrfProof.Data}
 }
 
 // TODO this test belongs in core, it calls ApplyMessages #3311
