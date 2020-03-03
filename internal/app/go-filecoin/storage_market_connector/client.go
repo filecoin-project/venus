@@ -63,6 +63,7 @@ func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr, wall
 	}
 
 	if !balance.Available.LessThan(amount) {
+		// TODO: Transfer funds from `walletAddr` to `addr`
 		return nil
 	}
 
