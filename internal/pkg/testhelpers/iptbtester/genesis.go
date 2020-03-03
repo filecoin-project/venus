@@ -11,10 +11,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
 // GenesisInfo chains require information to start a single node with funds
@@ -49,7 +49,7 @@ func RequireGenerateGenesis(t *testing.T, funds int64, dir string, genesisTime t
 				SectorSize:       constants.DevSectorSize,
 			},
 		},
-		Network: "go-filecoin-test",
+		Network: "gfctest",
 		Time:    uint64(genesisTime.Unix()),
 	}
 

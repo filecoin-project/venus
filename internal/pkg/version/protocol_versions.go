@@ -14,7 +14,7 @@ const DEVNET4 = "devnet4"
 const LOCALNET = "localnet"
 
 // TEST is the network name for internal tests
-const TEST = "go-filecoin-test"
+const TEST = "gfctest"
 
 // Protocol0 is the first protocol version
 const Protocol0 = 0

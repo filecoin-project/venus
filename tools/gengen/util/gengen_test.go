@@ -41,7 +41,7 @@ func testConfig(t *testing.T) *GenesisCfg {
 				SectorSize:       constants.DevSectorSize,
 			},
 		},
-		Network: "go-filecoin-test",
+		Network: "gfctest",
 		Seed:    defaultSeed,
 		Time:    defaultTime,
 	}
