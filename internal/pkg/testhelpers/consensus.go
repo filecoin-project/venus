@@ -24,7 +24,7 @@ import (
 // RequireSignedTestBlockFromTipSet creates a block with a valid signature by
 // the passed in miner work and a Miner field set to the minerAddr.
 func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, stateRootCid cid.Cid, receiptRootCid cid.Cid, height abi.ChainEpoch, minerAddr address.Address, minerWorker address.Address, signer types.Signer) *block.Block {
-	electionProof := consensus.MakeFakePoStForTest()
+	electionProof := consensus.MakeFakePoStsForTest()
 	ticket := consensus.MakeFakeTicketForTest()
 	emptyBLSSig := crypto.Signature{
 		Type: crypto.SigTypeBLS,

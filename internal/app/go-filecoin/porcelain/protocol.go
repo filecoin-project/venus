@@ -8,7 +8,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 )
@@ -55,11 +54,11 @@ func ProtocolParameters(ctx context.Context, plumbing protocolParamsPlumbing) (*
 		return nil, errors.Wrap(err, "could not retrieve network name")
 	}
 
-	sectorSizes := []abi.SectorSize{constants.DevSectorSize, constants.TwoHundredFiftySixMiBSectorSize}
+	sectorSizes := []abi.SectorSize{constants.DevSectorSize, constants.FiveHundredTwelveMiBSectorSize}
 
 	var supportedSectors []SectorInfo
 	for _, sectorSize := range sectorSizes {
-		maxUserBytes := ffi.GetMaxUserBytesPerStagedSector(sectorSize)
+		maxUserBytes := abi.PaddedPieceSize(sectorSize).Unpadded()
 		supportedSectors = append(supportedSectors, SectorInfo{sectorSize, maxUserBytes})
 	}
 

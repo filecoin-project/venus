@@ -62,7 +62,7 @@ func TestTriangleEncoding(t *testing.T) {
 		// pass when non-zero values do not due to nil/null encoding.
 		candidate1 := blk.NewEPoStCandidate(5, []byte{0x05}, 52)
 		candidate2 := blk.NewEPoStCandidate(3, []byte{0x04}, 3000)
-		postInfo := blk.NewEPoStInfo([]byte{0x07}, []byte{0x02, 0x06}, candidate1, candidate2)
+		postInfo := blk.NewEPoStInfo([]blk.EPoStProof{blk.NewEPoStProof(abi.RegisteredProof_StackedDRG2KiBPoSt, []byte{0x07})}, []byte{0x02, 0x06}, candidate1, candidate2)
 		b := &blk.Block{
 			Miner:           newAddress(),
 			Ticket:          blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
@@ -219,7 +219,7 @@ func TestSignatureData(t *testing.T) {
 	newAddress := vmaddr.NewForTestGetter()
 	candidate1 := blk.NewEPoStCandidate(5, []byte{0x05}, 52)
 	candidate2 := blk.NewEPoStCandidate(3, []byte{0x04}, 3000)
-	postInfo := blk.NewEPoStInfo([]byte{0x07}, []byte{0x02, 0x06}, candidate1, candidate2)
+	postInfo := blk.NewEPoStInfo([]blk.EPoStProof{blk.NewEPoStProof(abi.RegisteredProof_StackedDRG2KiBPoSt, []byte{0x07})}, []byte{0x02, 0x06}, candidate1, candidate2)
 
 	b := &blk.Block{
 		Miner:           newAddress(),
@@ -241,7 +241,7 @@ func TestSignatureData(t *testing.T) {
 
 	diffCandidate1 := blk.NewEPoStCandidate(0, []byte{0x04}, 25)
 	diffCandidate2 := blk.NewEPoStCandidate(1, []byte{0x05}, 3001)
-	diffPoStInfo := blk.NewEPoStInfo([]byte{0x17}, []byte{0x12, 0x16}, diffCandidate1, diffCandidate2)
+	diffPoStInfo := blk.NewEPoStInfo([]blk.EPoStProof{blk.NewEPoStProof(abi.RegisteredProof_StackedDRG2KiBPoSt, []byte{0x17})}, []byte{0x12, 0x16}, diffCandidate1, diffCandidate2)
 
 	diff := &blk.Block{
 		Miner:           newAddress(),
@@ -400,10 +400,10 @@ func TestSignatureData(t *testing.T) {
 	func() {
 		before := b.SignatureData()
 
-		cpy := b.EPoStInfo.PoStProof
-		defer func() { b.EPoStInfo.PoStProof = cpy }()
+		cpy := b.EPoStInfo.PoStProofs
+		defer func() { b.EPoStInfo.PoStProofs = cpy }()
 
-		b.EPoStInfo.PoStProof = diff.EPoStInfo.PoStProof
+		b.EPoStInfo.PoStProofs = diff.EPoStInfo.PoStProofs
 		after := b.SignatureData()
 		assert.False(t, bytes.Equal(before, after))
 	}()

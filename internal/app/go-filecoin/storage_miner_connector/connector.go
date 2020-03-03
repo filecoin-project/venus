@@ -313,7 +313,7 @@ func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context, tok stora
 
 	return storagenode.SealTicket{
 		BlockHeight: uint64(h),
-		TicketBytes: r,
+		TicketBytes: abi.SealRandomness(r),
 	}, nil
 }
 
@@ -394,7 +394,7 @@ func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMs
 
 				sc <- storagenode.SealSeed{
 					BlockHeight: uint64(tsHeight),
-					TicketBytes: randomness,
+					TicketBytes: abi.InteractiveSealRandomness(randomness),
 				}
 			case err := <-listener.ErrCh:
 				ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFailedError)

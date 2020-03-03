@@ -31,7 +31,7 @@ func (ep *ElectionPoster) VerifyPoSt(_ abi.PoStVerifyInfo) (bool, error) {
 func (ep *ElectionPoster) ComputeElectionPoSt(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate) ([]abi.PoStProof, error) {
 	fakePoSt := make([]byte, 1)
 	fakePoSt[0] = 0xe
-	return []abi.PoStProof{abi.PoStProof{
+	return []abi.PoStProof{{
 		RegisteredProof: abi.RegisteredProof_StackedDRG2KiBPoSt,
 		ProofBytes:      fakePoSt,
 	}}, nil
@@ -48,7 +48,7 @@ func (ep *ElectionPoster) GenerateEPostCandidates(sectorInfos []abi.SectorInfo, 
 		hasher.Bytes(challengeSeed[:])
 		nextCandidate := abi.PoStCandidate{
 			// TODO: when we actually use this in test the object must be set up with actor id
-			SectorID:       abi.SectorID{abi.ActorID(1), si.SectorNumber},
+			SectorID:       abi.SectorID{Miner: abi.ActorID(1), Number: si.SectorNumber},
 			PartialTicket:  hasher.Hash(),
 			ChallengeIndex: int64(i), //fake value of sector idx
 		}

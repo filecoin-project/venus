@@ -58,7 +58,7 @@ func TestProtocolParams(t *testing.T) {
 			Network:          "protocolTest",
 			SupportedSectors: []porcelain.SectorInfo{
 				{constants.DevSectorSize, abi.PaddedPieceSize(constants.DevSectorSize).Unpadded()},
-				{constants.TwoHundredFiftySixMiBSectorSize, abi.PaddedPieceSize(constants.TwoHundredFiftySixMiBSectorSize).Unpadded()},
+				{constants.FiveHundredTwelveMiBSectorSize, abi.PaddedPieceSize(constants.FiveHundredTwelveMiBSectorSize).Unpadded()},
 			},
 			BlockTime: protocolTestParamBlockTime,
 		}

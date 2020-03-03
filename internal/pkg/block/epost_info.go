@@ -44,6 +44,14 @@ func NewEPoStInfo(proofs []EPoStProof, rand []byte, winners ...EPoStCandidate) E
 	}
 }
 
+// NewEPoStProof constructs an epost proof from registered proof and bytes
+func NewEPoStProof(rpp abi.RegisteredProof, bs []byte) EPoStProof {
+	return EPoStProof{
+		RegisteredProof: rpp,
+		ProofBytes:      bs,
+	}
+}
+
 // FromFFICandidate converts a Candidate to an EPoStCandidate
 func FromFFICandidate(candidate abi.PoStCandidate) EPoStCandidate {
 	return EPoStCandidate{

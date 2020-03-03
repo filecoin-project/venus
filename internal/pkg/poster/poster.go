@@ -158,43 +158,29 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, provingPe
 		faultsPrime[idx] = abi.SectorNumber(faults[idx])
 	}
 
-	candidates, proof, err := p.sectorbuilder.GenerateFallbackPoSt(sortedSectorInfo, challengeSeed, faultsPrime)
+	candidates, proofs, err := p.sectorbuilder.GenerateFallbackPoSt(sortedSectorInfo, abi.PoStRandomness(challengeSeed[:]), faultsPrime)
 	if err != nil {
 		log.Error("error generating fallback PoSt", err)
 		return
 	}
 
-	err = p.sendPoSt(ctx, stateView, candidates, proof)
+	poStCandidates := make([]abi.PoStCandidate, len(candidates))
+	for i := range candidates {
+		poStCandidates[i] = candidates[i].Candidate
+	}
+
+	err = p.sendPoSt(ctx, stateView, poStCandidates, proofs)
 	if err != nil {
 		log.Error("error sending fallback PoSt", err)
 		return
 	}
 }
 
-func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, candidates []sectorbuilder.EPostCandidate, proof []byte) error {
-	minerIDAddr, err := stateView.InitResolveAddress(ctx, p.minerAddr)
-	if err != nil {
-		return err
-	}
-
-	minerID, err := address.IDFromAddress(minerIDAddr)
-	if err != nil {
-		return err
-	}
-
-	poStCandidates := make([]abi.PoStCandidate, len(candidates))
-	for i, candidate := range candidates {
-		poStCandidates[i] = abi.PoStCandidate{
-			RegisteredProof: abi.RegisteredProof_StackedDRG32GiBPoSt,
-			PartialTicket:   candidate.PartialTicket[:],
-			SectorID:        abi.SectorID{Miner: abi.ActorID(minerID), Number: candidate.SectorNum},
-			ChallengeIndex:  int64(candidate.SectorChallengeIndex),
-		}
-	}
+func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, candidates []abi.PoStCandidate, proofs []abi.PoStProof) error {
 
 	windowedPost := &abi.OnChainPoStVerifyInfo{
-		Candidates: poStCandidates,
-		Proofs:     []abi.PoStProof{{ProofBytes: proof}},
+		Candidates: candidates,
+		Proofs:     proofs,
 	}
 
 	_, workerAddr, err := stateView.MinerControlAddresses(ctx, p.minerAddr)
@@ -220,7 +206,7 @@ func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, candida
 	return nil
 }
 
-func (p *Poster) getProvingSet(ctx context.Context, stateView *appstate.View) (sectorbuilder.SortedPublicSectorInfo, error) {
+func (p *Poster) getProvingSet(ctx context.Context, stateView *appstate.View) ([]abi.SectorInfo, error) {
 	return consensus.NewPowerTableView(stateView).SortedSectorInfos(ctx, p.minerAddr)
 }
 

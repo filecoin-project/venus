@@ -66,7 +66,7 @@ func (s *StorageProviderNodeConnector) AddFunds(ctx context.Context, addr addres
 }
 
 // EnsureFunds checks the balance for an account and adds funds to the given amount if the balance is insufficient
-func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) error {
+func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr, walletAddr address.Address, amount abi.TokenAmount) error {
 	balance, err := s.GetBalance(ctx, addr)
 	if err != nil {
 		return err

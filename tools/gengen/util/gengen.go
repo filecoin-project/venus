@@ -207,7 +207,7 @@ func ApplyProofsModeDefaults(cfg *GenesisCfg, useLiveProofsMode bool, force bool
 
 	if useLiveProofsMode {
 		mode = types.LiveProofsMode
-		sectorSize = constants.TwoHundredFiftySixMiBSectorSize
+		sectorSize = constants.FiveHundredTwelveMiBSectorSize
 	}
 
 	if cfg.ProofsMode == types.UnsetProofsMode || force {

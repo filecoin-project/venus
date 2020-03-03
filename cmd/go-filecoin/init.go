@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-sectorbuilder"
@@ -114,6 +116,9 @@ var initCmd = &cmds.Command{
 			}
 
 			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
+				// TODO get info from user via flags
+				SealProofType: abi.RegisteredProof_StackedDRG2KiBSeal,
+				PoStProofType: abi.RegisteredProof_StackedDRG2KiBPoSt,
 				WorkerThreads: 1,
 				Paths:         sectorbuilder.SimplePath(presealedSectorDir),
 			}, namespace.Wrap(oldMetaDs, datastore.NewKey("/sectorbuilder")))
@@ -127,6 +132,8 @@ var initCmd = &cmds.Command{
 			}
 
 			newsb, err := sectorbuilder.New(&sectorbuilder.Config{
+				SealProofType: abi.RegisteredProof_StackedDRG2KiBSeal,
+				PoStProofType: abi.RegisteredProof_StackedDRG2KiBPoSt,
 				WorkerThreads: 1,
 				Paths:         sectorbuilder.SimplePath(path),
 			}, namespace.Wrap(rep.Datastore(), datastore.NewKey("/sectorbuilder")))

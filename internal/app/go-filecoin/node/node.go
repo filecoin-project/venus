@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -389,6 +390,21 @@ func (node *Node) SetupMining(ctx context.Context) error {
 	return nil
 }
 
+func proofTypeFromSectorSize(ss abi.SectorSize) (abi.RegisteredProof, abi.RegisteredProof, error) {
+	switch ss {
+	case 1 << 35:
+		return abi.RegisteredProof_StackedDRG32GiBPoSt, abi.RegisteredProof_StackedDRG32GiBSeal, nil
+	case 2048:
+		return abi.RegisteredProof_StackedDRG2KiBPoSt, abi.RegisteredProof_StackedDRG2KiBSeal, nil
+	case 1 << 23:
+		return abi.RegisteredProof_StackedDRG8MiBPoSt, abi.RegisteredProof_StackedDRG8MiBSeal, nil
+	case 1 << 29:
+		return abi.RegisteredProof_StackedDRG512MiBPoSt, abi.RegisteredProof_StackedDRG512MiBSeal, nil
+	default:
+		return 0, 0, errors.Errorf("unsupported sector size %d", ss)
+	}
+}
+
 func (node *Node) setupStorageMining(ctx context.Context) error {
 	if node.StorageMining != nil {
 		return errors.New("storage mining submodule has already been initialized")
@@ -415,8 +431,15 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return err
 	}
 
+	postProofType, sealProofType, err := proofTypeFromSectorSize(status.SectorSize)
+	if err != nil {
+		return err
+	}
+
 	sectorBuilder, err := sectorbuilder.New(&sectorbuilder.Config{
-		SectorSize:    status.SectorSize,
+		// TODO load this from somewhere
+		PoStProofType: postProofType,
+		SealProofType: sealProofType,
 		Miner:         minerAddr,
 		WorkerThreads: 1,
 		Paths: []fs.PathConfig{
@@ -464,7 +487,9 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		node.Blockstore.Blockstore,
 		node.network.GraphExchange,
 		repoPath,
-		getWorker)
+		getWorker,
+		sectorBuilder.SealProofType(),
+	)
 	if err != nil {
 		return errors.Wrap(err, "error initializing storage protocol")
 	}

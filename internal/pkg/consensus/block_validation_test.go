@@ -103,7 +103,7 @@ func TestBlockValidSyntax(t *testing.T) {
 	validAd := vmaddr.NewForTestGetter()()
 	validTi := block.Ticket{VRFProof: []byte{1}}
 	validCandidate := block.NewEPoStCandidate(1, []byte{1}, 1)
-	validPoStInfo := block.NewEPoStInfo([]byte{1}, []byte{1}, validCandidate)
+	validPoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStsForTest(), []byte{1}, validCandidate)
 	// create a valid block
 	blk := &block.Block{
 		Timestamp: validTs,
