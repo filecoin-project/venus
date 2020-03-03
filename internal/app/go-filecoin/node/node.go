@@ -437,7 +437,6 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 	}
 
 	sectorBuilder, err := sectorbuilder.New(&sectorbuilder.Config{
-		// TODO load this from somewhere
 		PoStProofType: postProofType,
 		SealProofType: sealProofType,
 		Miner:         minerAddr,
