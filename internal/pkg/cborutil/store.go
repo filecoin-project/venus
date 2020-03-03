@@ -59,8 +59,17 @@ func (s *IpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
 	return encoding.Decode(blk.RawData(), out)
 }
 
+type cidProvider interface {
+	Cid() cid.Cid
+}
+
 // Put encodes the interface into cbor bytes and stores them as a block
 func (s *IpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
+	var expCid cid.Cid
+	if c, ok := v.(cidProvider); ok {
+		expCid = c.Cid()
+	}
+
 	data, err := encoding.Encode(v)
 	if err != nil {
 		return cid.Undef, err
@@ -78,6 +87,10 @@ func (s *IpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
 
 	if err := s.blocks.AddBlock(blk); err != nil {
 		return cid.Undef, err
+	}
+
+	if expCid != cid.Undef && c != expCid {
+		panic("your object is not being serialized the way it expects to")
 	}
 
 	return c, nil
