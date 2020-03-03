@@ -217,7 +217,7 @@ func MakeTestGenCfg(t *testing.T, numSectors int) *gengen.GenesisCfg {
 				SectorSize:       constants.DevSectorSize,
 			},
 		},
-		Network: "go-filecoin-test",
+		Network: "gfctest",
 		PreAlloc: []string{
 			"10000",
 			"10000",

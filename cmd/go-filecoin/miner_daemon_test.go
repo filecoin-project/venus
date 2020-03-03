@@ -375,7 +375,7 @@ func minerDaemonTestConfig(t *testing.T) *gengen.GenesisCfg {
 				SectorSize:       constants.DevSectorSize,
 			},
 		},
-		Network: "go-filecoin-test",
+		Network: "gfctest",
 		Time:    123456789,
 	}
 }

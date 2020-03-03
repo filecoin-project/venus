@@ -44,7 +44,7 @@ func TestBlockTopicValidator(t *testing.T) {
 
 	validator := tv.Validator()
 
-	network := "go-filecoin-test"
+	network := "gfctest"
 	assert.Equal(t, net.BlockTopic(network), tv.Topic(network))
 	assert.True(t, validator(ctx, pid1, blkToPubSub(goodBlk)))
 	assert.False(t, validator(ctx, pid1, blkToPubSub(badBlk)))
@@ -72,7 +72,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 	btv := net.NewBlockTopicValidator(bv)
 
 	// setup a floodsub instance on the host and register the topic validator
-	network := "go-filecoin-test"
+	network := "gfctest"
 	fsub1, err := pubsub.NewFloodSub(ctx, host1, pubsub.WithMessageSigning(false))
 	require.NoError(t, err)
 	err = fsub1.RegisterTopicValidator(btv.Topic(network), btv.Validator(), btv.Opts()...)

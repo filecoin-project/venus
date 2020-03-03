@@ -90,6 +90,28 @@ func TestUpgradeTable(t *testing.T) {
 		}
 	})
 
+	t.Run("version table name can be a prefix of network name", func(t *testing.T) {
+		network := "localnet-270a8688-1b23-4508-b675-444cb1e6f05d"
+		versionName := "localnet"
+
+		put, err := NewProtocolVersionTableBuilder(network).
+			Add(versionName, 0, abi.ChainEpoch(0)).
+			Add(versionName, 1, abi.ChainEpoch(10)).
+			Build()
+		require.NoError(t, err)
+
+		for i := uint64(0); i < 20; i++ {
+			version, err := put.VersionAt(abi.ChainEpoch(i))
+			require.NoError(t, err)
+
+			expectedVersion := uint64(0)
+			if i >= 10 {
+				expectedVersion = 1
+			}
+			assert.Equal(t, expectedVersion, version)
+		}
+	})
+
 	t.Run("does not permit the same version number twice", func(t *testing.T) {
 		_, err := NewProtocolVersionTableBuilder(network).
 			Add(network, 0, abi.ChainEpoch(0)).

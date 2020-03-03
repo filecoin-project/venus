@@ -244,7 +244,7 @@ func (e *MemoryGenesis) buildGenesis(funds *big.Int) error {
 				CommittedSectors: commCfgs,
 			},
 		},
-		Network:    "go-filecoin-test",
+		Network:    "gfctest",
 		ProofsMode: e.proofsMode,
 	}
 
