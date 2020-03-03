@@ -141,6 +141,8 @@ github.com/filecoin-project/chain-validation v0.0.6-0.20200302192117-419cc6874b2
 github.com/filecoin-project/chain-validation v0.0.6-0.20200302192117-419cc6874b22/go.mod h1:yU+n6LWc6EiLxzrTJNwe8ATSPqG4jfIPsYU6yui7KXY=
 github.com/filecoin-project/chain-validation v0.0.6-0.20200302194909-4042e0c50757 h1:5P6YqrxKSfcio/hu9h2EVAaiono8hIpX+mGWkNqlS8I=
 github.com/filecoin-project/chain-validation v0.0.6-0.20200302194909-4042e0c50757/go.mod h1:yU+n6LWc6EiLxzrTJNwe8ATSPqG4jfIPsYU6yui7KXY=
+github.com/filecoin-project/chain-validation v0.0.6-0.20200303002748-6818710fa7c6 h1:oDHe345u1TLw84HI7Xc2NuEf2Itsikod38KAsHddicE=
+github.com/filecoin-project/chain-validation v0.0.6-0.20200303002748-6818710fa7c6/go.mod h1:6FYR4Xi26mfXkNlrHOo7fZjITZ9GrqqF8OKG4IQ4zWk=
 github.com/filecoin-project/go-address v0.0.0-20200107215422-da8eea2842b5 h1:/MmWluswvDIbuPvBct4q6HeQgVm62O2DzWYTB38kt4A=
 github.com/filecoin-project/go-address v0.0.0-20200107215422-da8eea2842b5/go.mod h1:SAOwJoakQ8EPjwNIsiakIQKsoKdkcbx8U3IapgCg9R0=
 github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be h1:TooKBwR/g8jG0hZ3lqe9S5sy2vTUcLOZLlz3M5wGn2E=
@@ -185,6 +187,8 @@ github.com/filecoin-project/specs-actors v0.0.0-20200227214144-0dca2ac155f6 h1:F
 github.com/filecoin-project/specs-actors v0.0.0-20200227214144-0dca2ac155f6/go.mod h1:0HAWYrvajFHDgRaKbF0rl+IybVLZL5z4gQ8koCMPhoU=
 github.com/filecoin-project/specs-actors v0.0.0-20200226225703-1fa643f1847f h1:qeUmau+W9eoS487mxjwG8sTT1SOMjpzUDH5hs0OwHTw=
 github.com/filecoin-project/specs-actors v0.0.0-20200226225703-1fa643f1847f/go.mod h1:0HAWYrvajFHDgRaKbF0rl+IybVLZL5z4gQ8koCMPhoU=
+github.com/filecoin-project/specs-actors v0.0.0-20200302223606-0eaf97b10aaf h1:3IojVqJAD5IXMxvZ+WYx+LRbfSB/rOXpYBuHh6o3XkY=
+github.com/filecoin-project/specs-actors v0.0.0-20200302223606-0eaf97b10aaf/go.mod h1:0HAWYrvajFHDgRaKbF0rl+IybVLZL5z4gQ8koCMPhoU=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/fxamacker/cbor v1.5.0 h1:idAiyeNSq/jeG9FPbCLVZLFJjsxP+g40a3UrXFapumw=
