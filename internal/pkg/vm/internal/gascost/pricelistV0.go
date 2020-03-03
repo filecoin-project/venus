@@ -1,11 +1,13 @@
 package gascost
 
 import (
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	specscrypto "github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 )
 
 type pricelistV0 struct {
@@ -71,18 +73,15 @@ type pricelistV0 struct {
 	// Note: this partially refunds the create cost to incentivise the deletion of the actors.
 	deleteActor gas.Unit
 
-	// Review: we might want a different cost per signature type
-	verifySignatureBase    gas.Unit
-	verifySignaturePerByte gas.Unit
+	verifySignature map[crypto.SigType]func(gas.Unit) gas.Unit
 
 	hashingBase    gas.Unit
 	hashingPerByte gas.Unit
 
-	// Review: all this likely need different cost per RegisteredProof
-	computeUnsealedSectorBase gas.Unit
-	verifySealBase            gas.Unit
-	verifyPostBase            gas.Unit
-	verifyConsensusFault      gas.Unit
+	computeUnsealedSectorCidBase gas.Unit
+	verifySealBase               gas.Unit
+	verifyPostBase               gas.Unit
+	verifyConsensusFault         gas.Unit
 }
 
 var _ Pricelist = (*pricelistV0)(nil)
@@ -130,8 +129,12 @@ func (pl *pricelistV0) OnDeleteActor() gas.Unit {
 }
 
 // OnVerifySignature
-func (pl *pricelistV0) OnVerifySignature(sigType specscrypto.SigType, planTextSize int) gas.Unit {
-	return pl.verifySignatureBase + gas.Unit(planTextSize)*pl.verifySignaturePerByte
+func (pl *pricelistV0) OnVerifySignature(sigType crypto.SigType, planTextSize int) gas.Unit {
+	costFn, ok := pl.verifySignature[sigType]
+	if !ok {
+		runtime.Abortf(exitcode.SysErrInternal, "Cost function for signature type %d not supported", sigType)
+	}
+	return costFn(gas.Unit(planTextSize))
 }
 
 // OnHashing
@@ -141,19 +144,19 @@ func (pl *pricelistV0) OnHashing(dataSize int) gas.Unit {
 
 // OnComputeUnsealedSectorCid
 func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredProof, pieces *[]abi.PieceInfo) gas.Unit {
-	// Dragons: this needs more cost tunning, check with @lotus
-	return pl.computeUnsealedSectorBase
+	// TODO: this needs more cost tunning, check with @lotus
+	return pl.computeUnsealedSectorCidBase
 }
 
 // OnVerifySeal
 func (pl *pricelistV0) OnVerifySeal(info abi.SealVerifyInfo) gas.Unit {
-	// Dragons: this needs more cost tunning, check with @lotus
+	// TODO: this needs more cost tunning, check with @lotus
 	return pl.verifySealBase
 }
 
 // OnVerifyPost
 func (pl *pricelistV0) OnVerifyPost(info abi.PoStVerifyInfo) gas.Unit {
-	// Dragons: this needs more cost tunning, check with @lotus
+	// TODO: this needs more cost tunning, check with @lotus
 	return pl.verifyPostBase
 }
 
