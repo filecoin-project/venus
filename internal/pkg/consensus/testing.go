@@ -15,8 +15,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
@@ -108,7 +106,7 @@ func (fem *FakeElectionMachine) CandidateWins(_ []byte, _ uint64, _ uint64, _ ui
 }
 
 // VerifyPoSt return true
-func (fem *FakeElectionMachine) VerifyPoSt(_ verification.PoStVerifier, _ []abi.SectorInfo, _ abi.PoStRandomness, _ []block.EPoStProof, _ []block.EPoStCandidate, _ address.Address) (bool, error) {
+func (fem *FakeElectionMachine) VerifyPoSt(ctx context.Context, ep EPoStVerifier, allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, proofs []block.EPoStProof, candidates []block.EPoStCandidate, mIDAddr address.Address) (bool, error) {
 	return true, nil
 }
 
@@ -144,7 +142,7 @@ func (fev *FailingElectionValidator) CandidateWins(_ []byte, _, _, _, _ uint64) 
 }
 
 // VerifyPoSt returns true without error
-func (fev *FailingElectionValidator) VerifyPoSt(_ verification.PoStVerifier, _ []abi.SectorInfo, _ abi.PoStRandomness, _ []block.EPoStProof, _ []block.EPoStCandidate, _ address.Address) (bool, error) {
+func (fev *FailingElectionValidator) VerifyPoSt(ctx context.Context, ep EPoStVerifier, allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, proofs []block.EPoStProof, candidates []block.EPoStCandidate, mIDAddr address.Address) (bool, error) {
 	return true, nil
 }
 
@@ -246,7 +244,7 @@ func winsAtEpoch(t *testing.T, em *ElectionMachine, head block.TipSetKey, epoch 
 	digest := epostVRFProof.Digest()
 
 	// does this postRandomness create a winner?
-	candidates, err := em.GenerateCandidates(digest[:], sectorInfos, &proofs.ElectionPoster{})
+	candidates, err := em.GenerateCandidates(digest[:], sectorInfos, &FakePoSter{})
 	require.NoError(t, err)
 
 	for _, candidate := range candidates {

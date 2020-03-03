@@ -1,44 +1,41 @@
-package proofs
+package consensus
 
 import (
-	ffi "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
+	"context"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 )
 
-// SectorChallengeRatioDiv is the number of sectors per candidate partial
-// ticket
-const SectorChallengeRatioDiv = 25
-
-// ElectionPoster generates and verifies electoin PoSts
+// FakePoSter generates and verifies electoin PoSts
 // Dragons: once we have a proper eposter this type should either be
 // replaced or it should be a thin wrapper around the proper eposter
-type ElectionPoster struct{}
+type FakePoSter struct{}
 
-var _ verification.PoStVerifier = new(ElectionPoster)
-var _ postgenerator.PoStGenerator = new(ElectionPoster)
-
-// VerifyPoSt returns the validity of the input PoSt proof
-func (ep *ElectionPoster) VerifyPoSt(_ abi.PoStVerifyInfo) (bool, error) {
+func (ep *FakePoSter) VerifyElectionPost(context.Context, abi.PoStVerifyInfo) (bool, error) {
 	return true, nil
 }
 
+var _ EPoStVerifier = new(FakePoSter)
+var _ postgenerator.PoStGenerator = new(FakePoSter)
+
 // ComputeElectionPoSt returns an election post proving that the partial
 // tickets are linked to the sector commitments.
-func (ep *ElectionPoster) ComputeElectionPoSt(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate) ([]abi.PoStProof, error) {
+func (ep *FakePoSter) ComputeElectionPoSt(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate) ([]abi.PoStProof, error) {
 	fakePoSt := make([]byte, 1)
 	fakePoSt[0] = 0xe
 	return []abi.PoStProof{{
-		RegisteredProof: abi.RegisteredProof_StackedDRG2KiBPoSt,
+		RegisteredProof: constants.DevRegisteredPoStProof,
 		ProofBytes:      fakePoSt,
 	}}, nil
 }
 
 // GenerateEPostCandidates generates election post candidates
-func (ep *ElectionPoster) GenerateEPostCandidates(sectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]ffi.PoStCandidateWithTicket, error) {
+func (ep *FakePoSter) GenerateEPostCandidates(sectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]ffi.PoStCandidateWithTicket, error) {
 	// Current fake behavior: generate one partial ticket per sector,
 	// each partial ticket is the hash of the challengeSeed and sectorID
 	var candidatesWithTickets []ffi.PoStCandidateWithTicket

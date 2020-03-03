@@ -14,9 +14,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
+
+// Interface to PoSt verification.
+type EPoStVerifier interface {
+	// This is a sub-interface of go-sectorbuilder's Verifier interface.
+	VerifyElectionPost(ctx context.Context, post abi.PoStVerifyInfo) (bool, error)
+}
 
 // ElectionMachine generates and validates PoSt partial tickets and PoSt proofs.
 type ElectionMachine struct {
@@ -89,7 +94,7 @@ func (em ElectionMachine) CandidateWins(challengeTicket []byte, sectorNum, fault
 }
 
 // VerifyPoSt verifies a PoSt proof.
-func (em ElectionMachine) VerifyPoSt(ep verification.PoStVerifier, allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, proofs []block.EPoStProof, candidates []block.EPoStCandidate, mIDAddr address.Address) (bool, error) {
+func (em ElectionMachine) VerifyPoSt(ctx context.Context, ep EPoStVerifier, allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, proofs []block.EPoStProof, candidates []block.EPoStCandidate, mIDAddr address.Address) (bool, error) {
 	// filter down sector infos to only those referenced by candidates
 	challengeCount := sector.ElectionPostChallengeCount(uint64(len(allSectorInfos)), 0)
 	minerID, err := address.IDFromAddress(mIDAddr)
@@ -138,7 +143,7 @@ func (em ElectionMachine) VerifyPoSt(ep verification.PoStVerifier, allSectorInfo
 		ChallengeCount:  challengeCount,
 	}
 
-	return ep.VerifyPoSt(poStVerifyInfo)
+	return ep.VerifyElectionPost(ctx, poStVerifyInfo)
 }
 
 // TicketMachine uses a VRF and VDF to generate deterministic, unpredictable

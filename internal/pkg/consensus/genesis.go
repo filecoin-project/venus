@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -183,7 +184,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 		ctx := context.Background()
 		st := state.NewState(cst)
 		store := vm.NewStorage(bs)
-		vm := vm.NewVM(st, &store, vmsupport.NewSyscalls()).(GenesisVM)
+		vm := vm.NewVM(st, &store, vmsupport.NewSyscalls(&proofs.FakeVerifier{})).(GenesisVM)
 		rnd := crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: GenesisTicket.VRFProof}}
 
 		genCfg := NewEmptyConfig()

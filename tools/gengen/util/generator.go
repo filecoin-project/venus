@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	gfcstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -78,7 +79,7 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 	g := GenesisGenerator{}
 	g.stateTree = state.NewState(cst)
 	g.store = vm.NewStorage(bs)
-	g.vm = vm.NewVM(g.stateTree, &g.store, vmsupport.NewSyscalls()).(consensus.GenesisVM)
+	g.vm = vm.NewVM(g.stateTree, &g.store, vmsupport.NewSyscalls(&proofs.FakeVerifier{})).(consensus.GenesisVM)
 	g.cst = cst
 
 	g.chainRand = crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: consensus.GenesisTicket.VRFProof}}

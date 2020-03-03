@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
@@ -67,7 +66,7 @@ type TicketValidator interface {
 
 // ElectionValidator validates that an election fairly produced a winner.
 type ElectionValidator interface {
-	VerifyPoSt(ep verification.PoStVerifier, allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, proofs []block.EPoStProof, candidates []block.EPoStCandidate, mIDAddr address.Address) (bool, error)
+	VerifyPoSt(ctx context.Context, ep EPoStVerifier, allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, proofs []block.EPoStProof, candidates []block.EPoStCandidate, mIDAddr address.Address) (bool, error)
 	CandidateWins(challengeTicket []byte, sectorNum, faultNum, networkPower, sectorSize uint64) bool
 	VerifyEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, vrfProof abi.PoStRandomness) error
 }
@@ -102,14 +101,15 @@ type Expected struct {
 	blockTime time.Duration
 
 	// postVerifier verifies PoSt proofs and associated data
-	postVerifier verification.PoStVerifier
+	postVerifier EPoStVerifier
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processor, state StateViewer, bt time.Duration, ev ElectionValidator, tv TicketValidator, pv verification.PoStVerifier) *Expected {
+func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processor, state StateViewer, bt time.Duration,
+	ev ElectionValidator, tv TicketValidator, pv EPoStVerifier) *Expected {
 	return &Expected{
 		cstore:            cs,
 		blockTime:         bt,
@@ -258,7 +258,7 @@ func (c *Expected) validateMining(ctx context.Context,
 			return errors.Wrapf(err, "failed to read sector infos from power table")
 		}
 		vrfDigest := crypto.VRFPi(blk.EPoStInfo.VRFProof).Digest()
-		valid, err := c.VerifyPoSt(c.postVerifier, allSectorInfos, vrfDigest[:],
+		valid, err := c.VerifyPoSt(ctx, c.postVerifier, allSectorInfos, vrfDigest[:],
 			blk.EPoStInfo.PoStProofs, blk.EPoStInfo.Winners, blk.Miner)
 		if err != nil {
 			return errors.Wrapf(err, "error checking PoSt")

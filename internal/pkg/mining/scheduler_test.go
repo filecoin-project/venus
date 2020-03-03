@@ -11,10 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/mining"
@@ -78,7 +76,7 @@ func TestMineOnce10Null(t *testing.T) {
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         chainClock,
-		Poster:        &proofs.ElectionPoster{},
+		Poster:        &consensus.FakePoSter{},
 	})
 
 	result, err := MineOnce(context.Background(), *worker, baseTs, chainClock)
@@ -141,7 +139,7 @@ func TestMineOneEpoch10Null(t *testing.T) {
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         chainClock,
-		Poster:        &proofs.ElectionPoster{},
+		Poster:        &consensus.FakePoSter{},
 	})
 
 	for i := 0; i < 10; i++ {

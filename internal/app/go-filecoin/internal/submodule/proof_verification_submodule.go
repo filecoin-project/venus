@@ -1,17 +1,17 @@
 package submodule
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
+	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 // ProofVerificationSubmodule adds proof verification capabilities to the node.
 type ProofVerificationSubmodule struct {
-	ProofVerifier verification.Verifier
+	ProofVerifier sectorbuilder.Verifier
 }
 
 // NewProofVerificationSubmodule creates a new proof verification submodule.
-func NewProofVerificationSubmodule() ProofVerificationSubmodule {
+func NewProofVerificationSubmodule(verifier sectorbuilder.Verifier) ProofVerificationSubmodule {
 	return ProofVerificationSubmodule{
-		ProofVerifier: verification.NewFFIBackedProofVerifier(),
+		ProofVerifier: verifier,
 	}
 }
