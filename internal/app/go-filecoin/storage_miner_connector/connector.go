@@ -545,7 +545,7 @@ func (m *StorageMinerNodeConnector) getMinerWorkerAddress(ctx context.Context, t
 
 	workerSigner, err := view.AccountSignerAddress(ctx, waddr)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to lookup signing address for worker addres: %s: %w", waddr.String(), err)
+		return address.Undef, xerrors.Errorf("failed to lookup signing address for worker address: %s: %w", waddr.String(), err)
 	}
 
 	return workerSigner, nil

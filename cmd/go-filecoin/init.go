@@ -140,7 +140,8 @@ var initCmd = &cmds.Command{
 				return xerrors.Errorf("could not get repo path, %w", err)
 			}
 
-			path, err := paths.GetSectorPath("", repoPath)
+			sectorDirOverride, _ := req.Options[OptionSectorDir].(string)
+			path, err := paths.GetSectorPath(sectorDirOverride, repoPath)
 			if err != nil {
 				return xerrors.Errorf("failed to find filecoin path: %w", err)
 			}

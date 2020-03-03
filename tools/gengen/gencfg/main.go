@@ -15,7 +15,7 @@ func main() {
 	byteSliceJSON := os.Args[1]
 
 	var bytes []byte
-	err := json.Unmarshal([]byte(byteSliceJSON), bytes)
+	err := json.Unmarshal([]byte(byteSliceJSON), &bytes)
 	if err != nil {
 		panic(err)
 	}

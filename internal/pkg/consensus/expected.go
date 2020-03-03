@@ -196,7 +196,7 @@ func (c *Expected) validateMining(ctx context.Context,
 		}
 		workerSignerAddr, err := powerTable.SignerAddress(ctx, workerAddr)
 		if err != nil {
-			return errors.Wrapf(err, "failed to convert address to a signing address", workerAddr)
+			return errors.Wrapf(err, "failed to convert address, %s, to a signing address", workerAddr.String())
 		}
 		// Validate block signature
 		if err := crypto.ValidateSignature(blk.SignatureData(), workerSignerAddr, blk.BlockSig); err != nil {

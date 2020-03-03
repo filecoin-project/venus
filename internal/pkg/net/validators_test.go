@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
@@ -91,11 +92,13 @@ func TestBlockPubSubValidation(t *testing.T) {
 
 	// create an invalid block
 	invalidBlk := &block.Block{
-		Height:    1,
-		Timestamp: uint64(now.Add(time.Second * 60).Unix()), // invalid timestamp, 60 seconds in future
-		StateRoot: e.NewCid(types.NewCidForTestGetter()()),
-		Miner:     miner,
-		Ticket:    block.Ticket{VRFProof: []byte{0}},
+		Height:          1,
+		Timestamp:       uint64(now.Add(time.Second * 60).Unix()), // invalid timestamp, 60 seconds in future
+		StateRoot:       e.NewCid(types.NewCidForTestGetter()()),
+		Miner:           miner,
+		Ticket:          block.Ticket{VRFProof: []byte{0}},
+		BlockSig:        crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
+		BLSAggregateSig: crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 	}
 	// publish the invalid block
 	err = top1.Publish(ctx, invalidBlk.ToNode().RawData())
@@ -107,11 +110,13 @@ func TestBlockPubSubValidation(t *testing.T) {
 	// create a valid block
 	validTime := chainClock.StartTimeOfEpoch(abi.ChainEpoch(1))
 	validBlk := &block.Block{
-		Height:    1,
-		Timestamp: uint64(validTime.Unix()),
-		StateRoot: e.NewCid(types.NewCidForTestGetter()()),
-		Miner:     miner,
-		Ticket:    block.Ticket{VRFProof: []byte{0}},
+		Height:          1,
+		Timestamp:       uint64(validTime.Unix()),
+		StateRoot:       e.NewCid(types.NewCidForTestGetter()()),
+		Miner:           miner,
+		Ticket:          block.Ticket{VRFProof: []byte{0}},
+		BlockSig:        crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
+		BLSAggregateSig: crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 	}
 	// publish the invalid block
 	err = top1.Publish(ctx, validBlk.ToNode().RawData())

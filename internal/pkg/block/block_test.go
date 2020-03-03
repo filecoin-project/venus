@@ -55,7 +55,10 @@ func TestTriangleEncoding(t *testing.T) {
 		types.AssertHaveSameCid(t, exp, &cborJSONRoundTrip)
 	}
 	t.Run("encoding block with zero fields works", func(t *testing.T) {
-		testRoundTrip(t, &blk.Block{})
+		testRoundTrip(t, &blk.Block{
+			BlockSig:        crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
+			BLSAggregateSig: crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
+		})
 	})
 
 	t.Run("encoding block with nonzero fields works", func(t *testing.T) {
@@ -126,10 +129,12 @@ func TestDecodeBlock(t *testing.T) {
 			Messages:        e.NewCid(cM),
 			StateRoot:       e.NewCid(c2),
 			MessageReceipts: e.NewCid(cR),
+			BlockSig:        crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
+			BLSAggregateSig: crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 		}
 
 		after, err := blk.DecodeBlock(before.ToNode().RawData())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, after.Cid(), before.Cid())
 		assert.Equal(t, before, after)
 	})
