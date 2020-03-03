@@ -97,7 +97,7 @@ func TestLookbackElection(t *testing.T) {
 		assert.NoError(t, r.Err)
 
 		expectedVrfProof := makeExpectedEPoStVRFProof(ctx, t, rnd, mockSigner, head, miner.PoStLookback, minerAddr, minerOwnerAddr)
-		assert.Equal(t, expectedVrfProof, r.NewBlock.EPoStInfo.PoStRandomness)
+		assert.Equal(t, expectedVrfProof, r.NewBlock.EPoStInfo.VRFProof)
 
 		expectedTicket := makeExpectedTicket(ctx, t, rnd, mockSigner, head, miner.PoStLookback, minerAddr, minerOwnerAddr)
 		assert.Equal(t, expectedTicket, r.NewBlock.Ticket)
@@ -156,7 +156,7 @@ func Test_Mine(t *testing.T) {
 		assert.NoError(t, r.Err)
 
 		expectedVrfProof := makeExpectedEPoStVRFProof(ctx, t, rnd, mockSigner, tipSet, miner.PoStLookback, minerAddr, minerOwnerAddr)
-		assert.Equal(t, expectedVrfProof, r.NewBlock.EPoStInfo.PoStRandomness)
+		assert.Equal(t, expectedVrfProof, r.NewBlock.EPoStInfo.VRFProof)
 
 		expectedTicket := makeExpectedTicket(ctx, t, rnd, mockSigner, tipSet, miner.PoStLookback, minerAddr, minerOwnerAddr)
 		assert.Equal(t, expectedTicket, r.NewBlock.Ticket)

@@ -31,8 +31,8 @@ func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, sta
 		Data: (*bls.Aggregate([]bls.Signature{}))[:],
 	}
 	winner := block.NewEPoStCandidate(0, []byte{0xe}, 0)
-	postRandomness := []byte{0xff}
-	postInfo := block.NewEPoStInfo(electionProof, postRandomness, winner)
+	vrfProof := []byte{0xff}
+	postInfo := block.NewEPoStInfo(electionProof, vrfProof, winner)
 
 	b := &block.Block{
 		Miner:           minerAddr,

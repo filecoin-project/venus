@@ -6,10 +6,10 @@ import (
 
 // EPoStInfo wraps all data needed to verify an election post proof
 type EPoStInfo struct {
-	_              struct{} `cbor:",toarray"`
-	PoStProofs     []EPoStProof
-	PoStRandomness abi.PoStRandomness
-	Winners        []EPoStCandidate
+	_          struct{} `cbor:",toarray"`
+	PoStProofs []EPoStProof
+	VRFProof   abi.PoStRandomness
+	Winners    []EPoStCandidate
 }
 
 // EPoStCandidate wraps the input data needed to verify an election PoSt
@@ -38,9 +38,9 @@ func NewEPoStCandidate(sID uint64, pt []byte, sci int64) EPoStCandidate {
 // NewEPoStInfo constructs an epost info from data
 func NewEPoStInfo(proofs []EPoStProof, rand abi.PoStRandomness, winners ...EPoStCandidate) EPoStInfo {
 	return EPoStInfo{
-		Winners:        winners,
-		PoStProofs:     proofs,
-		PoStRandomness: rand,
+		PoStProofs: proofs,
+		VRFProof:   rand,
+		Winners:    winners,
 	}
 }
 

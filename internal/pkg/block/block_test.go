@@ -395,10 +395,10 @@ func TestSignatureData(t *testing.T) {
 	func() {
 		before := b.SignatureData()
 
-		cpy := b.EPoStInfo.PoStRandomness
-		defer func() { b.EPoStInfo.PoStRandomness = cpy }()
+		cpy := b.EPoStInfo.VRFProof
+		defer func() { b.EPoStInfo.VRFProof = cpy }()
 
-		b.EPoStInfo.PoStRandomness = diff.EPoStInfo.PoStRandomness
+		b.EPoStInfo.VRFProof = diff.EPoStInfo.VRFProof
 		after := b.SignatureData()
 		assert.False(t, bytes.Equal(before, after))
 	}()
