@@ -4,8 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/filecoin-project/go-fil-commcid"
-
+	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-sectorbuilder"
 	storagenode "github.com/filecoin-project/go-storage-miner/apis/node"
 	storage "github.com/filecoin-project/go-storage-miner/sealing"
