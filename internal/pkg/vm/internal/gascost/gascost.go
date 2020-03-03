@@ -5,6 +5,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	specscrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 )
 
 // Pricelist provides prices for operations in the VM.
@@ -28,6 +29,13 @@ type Pricelist interface {
 	OnCreateActor() gas.Unit
 	// OnDeleteActor returns the gas used for deleting an actor
 	OnDeleteActor() gas.Unit
+
+	OnVerifySignature(sigType specscrypto.SigType, planTextSize int) gas.Unit
+	OnHashing(dataSize int) gas.Unit
+	OnComputeUnsealedSectorCid(sectorSize abi.SectorSize, pieces *[]abi.PieceInfo) gas.Unit
+	OnVerifySeal(info abi.SealVerifyInfo) gas.Unit
+	OnVerifyPost(info abi.PoStVerifyInfo) gas.Unit
+	OnVerifyConsensusFault() gas.Unit
 }
 
 var prices = map[abi.ChainEpoch]Pricelist{

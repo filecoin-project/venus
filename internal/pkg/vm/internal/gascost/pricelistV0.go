@@ -5,6 +5,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	specscrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 )
 
 type pricelistV0 struct {
@@ -69,6 +70,18 @@ type pricelistV0 struct {
 	//
 	// Note: this partially refunds the create cost to incentivise the deletion of the actors.
 	deleteActor gas.Unit
+
+	// Review: we might want a different cost per signature type
+	verifySignatureBase    gas.Unit
+	verifySignaturePerByte gas.Unit
+
+	hashingBase    gas.Unit
+	hashingPerByte gas.Unit
+
+	computeUnsealedSectorBase gas.Unit
+	verifySealBase            gas.Unit
+	verifyPostBase            gas.Unit
+	verifyConsensusFault      gas.Unit
 }
 
 var _ Pricelist = (*pricelistV0)(nil)
@@ -113,4 +126,37 @@ func (pl *pricelistV0) OnCreateActor() gas.Unit {
 // OnDeleteActor returns the gas used for deleting an actor
 func (pl *pricelistV0) OnDeleteActor() gas.Unit {
 	return pl.deleteActor
+}
+
+// OnVerifySignature
+func (pl *pricelistV0) OnVerifySignature(sigType specscrypto.SigType, planTextSize int) gas.Unit {
+	return pl.verifySignatureBase + gas.Unit(planTextSize)*pl.verifySignaturePerByte
+}
+
+// OnHashing
+func (pl *pricelistV0) OnHashing(dataSize int) gas.Unit {
+	return pl.hashingBase + gas.Unit(dataSize)*pl.hashingPerByte
+}
+
+// OnComputeUnsealedSectorCid
+func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredProof, pieces *[]abi.PieceInfo) gas.Unit {
+	// Dragons: this needs more cost tunning, check with @lotus
+	return pl.computeUnsealedSectorBase
+}
+
+// OnVerifySeal
+func (pl *pricelistV0) OnVerifySeal(info abi.SealVerifyInfo) gas.Unit {
+	// Dragons: this needs more cost tunning, check with @lotus
+	return pl.verifySealBase
+}
+
+// OnVerifyPost
+func (pl *pricelistV0) OnVerifyPost(info abi.PoStVerifyInfo) gas.Unit {
+	// Dragons: this needs more cost tunning, check with @lotus
+	return pl.verifyPostBase
+}
+
+// OnVerifyConsensusFault
+func (pl *pricelistV0) OnVerifyConsensusFault() gas.Unit {
+	return pl.verifyConsensusFault
 }
