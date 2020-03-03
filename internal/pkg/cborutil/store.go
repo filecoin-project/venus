@@ -56,7 +56,18 @@ func (s *IpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
 	if err != nil {
 		return err
 	}
-	return encoding.Decode(blk.RawData(), out)
+	err = encoding.Decode(blk.RawData(), out)
+	if err != nil {
+		panic(err)
+	}
+	var expCid cid.Cid
+	if c, ok := out.(cidProvider); ok {
+		expCid = c.Cid()
+	}
+	if expCid != cid.Undef && expCid != c {
+		panic("the CID you asked for does not match the CID of the thing you got.")
+	}
+	return nil
 }
 
 type cidProvider interface {
