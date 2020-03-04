@@ -103,6 +103,10 @@ func (v *FakeStateView) MinerProvingSetForEach(_ context.Context, maddr address.
 	return nil
 }
 
+func (v *FakeStateView) AccountSignerAddress(ctx context.Context, a address.Address) (address.Address, error) {
+	return a, nil
+}
+
 // NetworkTotalPower reports a network's total power.
 func (v *FakeStateView) NetworkTotalPower(_ context.Context) (abi.StoragePower, error) {
 	return v.NetworkPower, nil

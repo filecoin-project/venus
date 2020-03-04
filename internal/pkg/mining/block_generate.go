@@ -126,7 +126,11 @@ func (w *DefaultWorker) Generate(
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read workerAddr during block generation")
 	}
-	next.BlockSig, err = w.workerSigner.SignBytes(next.SignatureData(), workerAddr)
+	workerSigningAddr, err := view.AccountSignerAddress(ctx, workerAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to convert worker address to signing address")
+	}
+	next.BlockSig, err = w.workerSigner.SignBytes(next.SignatureData(), workerSigningAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to sign block")
 	}

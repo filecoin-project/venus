@@ -18,6 +18,7 @@ type PowerStateView interface {
 	MinerProvingSetForEach(ctx context.Context, maddr addr.Address, f func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof) error) error
 	NetworkTotalPower(ctx context.Context) (abi.StoragePower, error)
 	MinerClaimedPower(ctx context.Context, miner addr.Address) (abi.StoragePower, error)
+	AccountSignerAddress(ctx context.Context, a addr.Address) (addr.Address, error)
 }
 
 // PowerTableView defines the set of functions used by the ChainManager to view
@@ -46,6 +47,11 @@ func (v PowerTableView) MinerClaim(ctx context.Context, mAddr addr.Address) (abi
 func (v PowerTableView) WorkerAddr(ctx context.Context, mAddr addr.Address) (addr.Address, error) {
 	_, worker, err := v.state.MinerControlAddresses(ctx, mAddr)
 	return worker, err
+}
+
+// SignerAddress returns the public key address associated with the given address.
+func (v PowerTableView) SignerAddress(ctx context.Context, a addr.Address) (addr.Address, error) {
+	return v.state.AccountSignerAddress(ctx, a)
 }
 
 // HasClaimedPower returns true if the provided address belongs to a miner with claimed power in the storage market

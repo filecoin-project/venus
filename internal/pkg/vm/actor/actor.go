@@ -37,6 +37,7 @@ const DefaultGasCost = 100
 //
 // Not safe for concurrent access.
 type Actor struct {
+	_ struct{} `cbor:",toarray"`
 	// Code is a CID of the VM code for this actor's implementation (or a constant for actors implemented in Go code).
 	// Code may be nil for an uninitialized actor (which exists because it has received a balance).
 	Code e.Cid

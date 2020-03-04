@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -45,9 +46,11 @@ var initCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
 		cmdkit.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
+		cmdkit.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
 		cmdkit.StringOption(WithMiner, "when set, creates a custom genesis block  a pre generated miner account, requires running the daemon using dev mode (--dev)"),
 		cmdkit.StringOption(OptionSectorDir, "path of directory into which staged and sealed sectors will be written"),
 		cmdkit.StringOption(DefaultAddress, "when set, sets the daemons's default address to the provided address"),
+		cmdkit.StringOption(MinerActorAddress, "when set, sets the daemons's miner actor address to the provided address"),
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
 		cmdkit.BoolOption(DevnetStaging, "when set, populates config bootstrap addrs with the dns multiaddrs of the staging devnet and other staging devnet specific bootstrap parameters."),
 		cmdkit.BoolOption(DevnetNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters"),
@@ -84,7 +87,8 @@ var initCmd = &cmds.Command{
 		}
 
 		peerKeyFile, _ := req.Options[PeerKeyFile].(string)
-		initopts, err := getNodeInitOpts(peerKeyFile)
+		walletKeyFile, _ := req.Options[WalletKeyFile].(string)
+		initopts, err := getNodeInitOpts(peerKeyFile, walletKeyFile)
 		if err != nil {
 			return err
 		}
@@ -131,7 +135,13 @@ var initCmd = &cmds.Command{
 				return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
 			}
 
-			path, err := rep.Path()
+			repoPath, err := rep.Path()
+			if err != nil {
+				return xerrors.Errorf("could not get repo path, %w", err)
+			}
+
+			sectorDirOverride, _ := req.Options[OptionSectorDir].(string)
+			path, err := paths.GetSectorPath(sectorDirOverride, repoPath)
 			if err != nil {
 				return xerrors.Errorf("failed to find filecoin path: %w", err)
 			}
@@ -174,8 +184,14 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 		cfg.Mining.AutoSealIntervalSeconds = autoSealIntervalSeconds.(uint)
 	}
 
-	if m, ok := options[DefaultAddress].(string); ok {
-		if cfg.Wallet.DefaultAddress, err = address.NewFromString(m); err != nil {
+	if da, ok := options[DefaultAddress].(string); ok {
+		if cfg.Wallet.DefaultAddress, err = address.NewFromString(da); err != nil {
+			return err
+		}
+	}
+
+	if ma, ok := options[MinerActorAddress].(string); ok {
+		if cfg.Mining.MinerAddress, err = address.NewFromString(ma); err != nil {
 			return err
 		}
 	}
@@ -240,7 +256,7 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consens
 
 }
 
-func getNodeInitOpts(peerKeyFile string) ([]node.InitOpt, error) {
+func getNodeInitOpts(peerKeyFile string, walletKeyFile string) ([]node.InitOpt, error) {
 	var initOpts []node.InitOpt
 	if peerKeyFile != "" {
 		data, err := ioutil.ReadFile(peerKeyFile)
@@ -252,6 +268,22 @@ func getNodeInitOpts(peerKeyFile string) ([]node.InitOpt, error) {
 			return nil, err
 		}
 		initOpts = append(initOpts, node.PeerKeyOpt(peerKey))
+	}
+
+	if walletKeyFile != "" {
+		f, err := os.Open(walletKeyFile)
+		if err != nil {
+			return nil, err
+		}
+
+		var wir *WalletSerializeResult
+		if err := json.NewDecoder(f).Decode(&wir); err != nil {
+			return nil, err
+		}
+
+		for _, k := range wir.KeyInfo {
+			initOpts = append(initOpts, node.ImportKeyOpt(k))
+		}
 	}
 
 	return initOpts, nil

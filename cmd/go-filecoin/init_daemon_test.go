@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/magiconair/properties/assert"
-
 	manet "github.com/multiformats/go-multiaddr-net"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/build/project"
@@ -73,12 +73,12 @@ func TestImportPresealedSectors(t *testing.T) {
 		"--symlink-imported-sectors",
 	)).Start()
 
-	staging, err := ioutil.ReadDir(path.Join(td.RepoDir(), "staging"))
+	staging, err := ioutil.ReadDir(path.Join(td.SectorDir(), "staging"))
 	require.NoError(t, err)
 
 	assert.Equal(t, 2, len(staging))
 
-	sealed, err := ioutil.ReadDir(path.Join(td.RepoDir(), "sealed"))
+	sealed, err := ioutil.ReadDir(path.Join(td.SectorDir(), "sealed"))
 	require.NoError(t, err)
 
 	assert.Equal(t, 2, len(sealed))

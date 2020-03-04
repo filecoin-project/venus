@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -43,11 +44,11 @@ func NewStorageProviderNodeConnector(ma address.Address,
 	ob *message.Outbox,
 	w *msg.Waiter,
 	pm piecemanager.PieceManager,
-	wg WorkerGetter,
+	sv *appstate.Viewer,
 	wlt *wallet.Wallet,
 ) *StorageProviderNodeConnector {
 	return &StorageProviderNodeConnector{
-		connectorCommon: connectorCommon{cs, w, wlt, ob, wg},
+		connectorCommon: connectorCommon{cs, w, wlt, ob, (*SMStateViewer)(sv)},
 		chainStore:      cs,
 		minerAddr:       ma,
 		outbox:          ob,

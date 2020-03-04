@@ -1,21 +1,25 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	commcid "github.com/filecoin-project/go-fil-commcid"
 )
 
 func main() {
 	if len(os.Args) != 2 {
 		panic("incorrect number of arguments")
 	}
-	fakeCidString := os.Args[1]
+	byteSliceJSON := os.Args[1]
 
-	cidStr, err := constants.DefaultCidBuilder.Sum([]byte(fakeCidString))
+	var bytes []byte
+	err := json.Unmarshal([]byte(byteSliceJSON), &bytes)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("%s\n", cidStr)
+
+	cid := commcid.DataCommitmentV1ToCID(bytes)
+	fmt.Printf("%s\n", cid)
 }

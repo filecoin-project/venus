@@ -268,6 +268,7 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 		},
 		Ticket:    consensus.GenesisTicket,
 		Timestamp: g.cfg.Time,
+		BlockSig:  crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
 	}
 
 	return g.cst.Put(ctx, geneblk)

@@ -212,6 +212,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 			//EPoStInfo:       ePoStInfo,
 			//ForkSignaling:   forkSig,
 			Timestamp: f.stamper.Stamp(height),
+			BlockSig:  crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
 		}
 
 		if build != nil {

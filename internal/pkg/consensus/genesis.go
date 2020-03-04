@@ -276,6 +276,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			},
 			Ticket:    GenesisTicket,
 			Timestamp: uint64(genCfg.genesisTimestamp.Unix()),
+			BlockSig:  crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
 		}
 
 		if _, err := cst.Put(ctx, genesis); err != nil {
