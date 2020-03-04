@@ -1,6 +1,8 @@
 package vmsupport
 
 import (
+	"context"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
@@ -21,18 +23,18 @@ func (f FakeSyscalls) HashBlake2b(data []byte) [32]byte {
 	return blake2b.Sum256(data)
 }
 
-func (f FakeSyscalls) ComputeUnsealedSectorCID(proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+func (f FakeSyscalls) ComputeUnsealedSectorCID(ctx context.Context, proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	panic("implement me")
 }
 
-func (f FakeSyscalls) VerifySeal(epoch abi.ChainEpoch, info abi.SealVerifyInfo) error {
+func (f FakeSyscalls) VerifySeal(ctx context.Context, info abi.SealVerifyInfo) error {
 	panic("implement me")
 }
 
-func (f FakeSyscalls) VerifyPoSt(epoch abi.ChainEpoch, info abi.PoStVerifyInfo) error {
+func (f FakeSyscalls) VerifyPoSt(ctx context.Context, info abi.PoStVerifyInfo) error {
 	panic("implement me")
 }
 
-func (f FakeSyscalls) VerifyConsensusFault(epoch abi.ChainEpoch, h1, h2 []byte) error {
+func (f FakeSyscalls) VerifyConsensusFault(ctx context.Context, h1, h2 []byte) error {
 	panic("implement me")
 }

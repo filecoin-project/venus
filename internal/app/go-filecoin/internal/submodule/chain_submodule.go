@@ -52,7 +52,7 @@ type chainConfig interface {
 }
 
 // NewChainSubmodule creates a new chain submodule.
-func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *BlockstoreSubmodule) (ChainSubmodule, error) {
+func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *BlockstoreSubmodule, verifier *ProofVerificationSubmodule) (ChainSubmodule, error) {
 	// initialize chain store
 	chainStatusReporter := chain.NewStatusReporter()
 	chainStore := chain.NewStore(repo.ChainDatastore(), blockstore.CborStore, chainStatusReporter, config.GenesisCid())
@@ -60,7 +60,7 @@ func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *Blockstor
 	actorState := appstate.NewTipSetStateViewer(chainStore, blockstore.CborStore)
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, builtin.DefaultActors)
-	syscalls := vmsupport.NewSyscalls()
+	syscalls := vmsupport.NewSyscalls(verifier.ProofVerifier)
 	processor := consensus.NewDefaultProcessor(syscalls, chainState)
 
 	return ChainSubmodule{

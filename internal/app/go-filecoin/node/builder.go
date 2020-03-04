@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p"
@@ -18,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 )
@@ -28,7 +28,7 @@ type Builder struct {
 	blockTime   time.Duration
 	libp2pOpts  []libp2p.Option
 	offlineMode bool
-	verifier    verification.Verifier
+	verifier    sectorbuilder.Verifier
 	repo        repo.Repo
 	journal     journal.Journal
 	isRelay     bool
@@ -76,7 +76,7 @@ func Libp2pOptions(opts ...libp2p.Option) BuilderOpt {
 }
 
 // VerifierConfigOption returns a function that sets the verifier to use in the node consensus
-func VerifierConfigOption(verifier verification.Verifier) BuilderOpt {
+func VerifierConfigOption(verifier sectorbuilder.Verifier) BuilderOpt {
 	return func(c *Builder) error {
 		c.verifier = verifier
 		return nil
@@ -105,6 +105,7 @@ func New(ctx context.Context, opts ...BuilderOpt) (*Node, error) {
 	n := &Builder{
 		offlineMode: false,
 		blockTime:   clock.DefaultEpochDuration,
+		verifier:    sectorbuilder.ProofVerifier,
 	}
 
 	// apply builder options
@@ -169,7 +170,9 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Blockservice")
 	}
 
-	nd.chain, err = submodule.NewChainSubmodule((*builder)(b), b.repo, &nd.Blockstore)
+	nd.ProofVerification = submodule.NewProofVerificationSubmodule(b.verifier)
+
+	nd.chain, err = submodule.NewChainSubmodule((*builder)(b), b.repo, &nd.Blockstore, &nd.ProofVerification)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}
@@ -183,9 +186,8 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		b.chainClock = clock.NewChainClock(geneBlk.Timestamp, b.blockTime)
 	}
 	nd.ChainClock = b.chainClock
-	nd.ProofVerification = submodule.NewProofVerificationSubmodule()
 
-	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), b.repo, &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.ProofVerification.ProofVerifier)
+	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.ProofVerification.ProofVerifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}

@@ -1,6 +1,8 @@
 package vmcontext
 
 import (
+	"context"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
@@ -15,14 +17,15 @@ import (
 type SyscallsImpl interface {
 	VerifySignature(epoch abi.ChainEpoch, signature crypto.Signature, signer address.Address, plaintext []byte) error
 	HashBlake2b(data []byte) [32]byte
-	ComputeUnsealedSectorCID(proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error)
-	VerifySeal(epoch abi.ChainEpoch, info abi.SealVerifyInfo) error
-	VerifyPoSt(epoch abi.ChainEpoch, info abi.PoStVerifyInfo) error
-	VerifyConsensusFault(epoch abi.ChainEpoch, h1, h2 []byte) error
+	ComputeUnsealedSectorCID(ctx context.Context, proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error)
+	VerifySeal(ctx context.Context, info abi.SealVerifyInfo) error
+	VerifyPoSt(ctx context.Context, info abi.PoStVerifyInfo) error
+	VerifyConsensusFault(ctx context.Context, h1, h2 []byte) error
 }
 
 type syscalls struct {
 	impl      SyscallsImpl
+	ctx       context.Context
 	gasTank   *GasTracker
 	pricelist gascost.Pricelist
 	epoch     abi.ChainEpoch
@@ -42,20 +45,20 @@ func (sys syscalls) HashBlake2b(data []byte) [32]byte {
 
 func (sys syscalls) ComputeUnsealedSectorCID(proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	sys.gasTank.Charge(sys.pricelist.OnComputeUnsealedSectorCid(proof, &pieces))
-	return sys.impl.ComputeUnsealedSectorCID(proof, pieces)
+	return sys.impl.ComputeUnsealedSectorCID(sys.ctx, proof, pieces)
 }
 
 func (sys syscalls) VerifySeal(info abi.SealVerifyInfo) error {
 	sys.gasTank.Charge(sys.pricelist.OnVerifySeal(info))
-	return sys.impl.VerifySeal(sys.epoch, info)
+	return sys.impl.VerifySeal(sys.ctx, info)
 }
 
 func (sys syscalls) VerifyPoSt(info abi.PoStVerifyInfo) error {
 	sys.gasTank.Charge(sys.pricelist.OnVerifyPost(info))
-	return sys.impl.VerifyPoSt(sys.epoch, info)
+	return sys.impl.VerifyPoSt(sys.ctx, info)
 }
 
 func (sys syscalls) VerifyConsensusFault(h1, h2 []byte) error {
 	sys.gasTank.Charge(sys.pricelist.OnVerifyConsensusFault())
-	return sys.impl.VerifyConsensusFault(sys.epoch, h1, h2)
+	return sys.impl.VerifyConsensusFault(sys.ctx, h1, h2)
 }

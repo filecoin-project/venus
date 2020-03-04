@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
@@ -164,10 +164,7 @@ func ConnectNodes(t *testing.T, a, b *Node) {
 // FakeProofVerifierBuilderOpts returns default configuration for testing
 func FakeProofVerifierBuilderOpts() []BuilderOpt {
 	return []BuilderOpt{
-		VerifierConfigOption(&verification.FakeVerifier{
-			VerifyPoStValid: true,
-			VerifySealValid: true,
-		}),
+		VerifierConfigOption(&proofs.FakeVerifier{}),
 	}
 }
 
