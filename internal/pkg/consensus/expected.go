@@ -216,7 +216,7 @@ func (c *Expected) validateMining(ctx context.Context,
 		}
 
 		// Verify EPoSt VRF proof ("PoSt randomness")
-		if err := c.VerifyEPoStVrfProof(ctx, blk.Parents, blk.Height, blk.Miner, workerSignerAddr, blk.EPoStInfo.PoStRandomness); err != nil {
+		if err := c.VerifyEPoStVrfProof(ctx, blk.Parents, blk.Height, blk.Miner, workerSignerAddr, blk.EPoStInfo.VRFProof); err != nil {
 			return errors.Wrapf(err, "failed to verify EPoSt VRF proof (PoSt randomness) in block %s", blk.Cid())
 		}
 
@@ -257,7 +257,7 @@ func (c *Expected) validateMining(ctx context.Context,
 		if err != nil {
 			return errors.Wrapf(err, "failed to read sector infos from power table")
 		}
-		vrfDigest := crypto.VRFPi(blk.EPoStInfo.PoStRandomness).Digest()
+		vrfDigest := crypto.VRFPi(blk.EPoStInfo.VRFProof).Digest()
 		valid, err := c.VerifyPoSt(c.postVerifier, allSectorInfos, vrfDigest[:],
 			blk.EPoStInfo.PoStProofs, blk.EPoStInfo.Winners, blk.Miner)
 		if err != nil {
