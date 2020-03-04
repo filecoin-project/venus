@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"runtime"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
@@ -392,13 +394,13 @@ func (node *Node) SetupMining(ctx context.Context) error {
 
 func registeredProofsFromSectorSize(ss abi.SectorSize) (registeredSealProof abi.RegisteredProof, registeredPoStProof abi.RegisteredProof, err error) {
 	switch ss {
-	case 1 << 35:
+	case constants.DevSectorSize:
+		return constants.DevRegisteredPoStProof, constants.DevRegisteredSealProof, nil
+	case constants.ThirtyTwoGiBSectorSize:
 		return abi.RegisteredProof_StackedDRG32GiBPoSt, abi.RegisteredProof_StackedDRG32GiBSeal, nil
-	case 2048:
-		return abi.RegisteredProof_StackedDRG2KiBPoSt, abi.RegisteredProof_StackedDRG2KiBSeal, nil
-	case 1 << 23:
+	case constants.EightMiBSectorSize:
 		return abi.RegisteredProof_StackedDRG8MiBPoSt, abi.RegisteredProof_StackedDRG8MiBSeal, nil
-	case 1 << 29:
+	case constants.FiveHundredTwelveMiBSectorSize:
 		return abi.RegisteredProof_StackedDRG512MiBPoSt, abi.RegisteredProof_StackedDRG512MiBSeal, nil
 	default:
 		return 0, 0, errors.Errorf("unsupported sector size %d", ss)
