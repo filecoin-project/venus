@@ -11,9 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 )
 
-// FakePoSter generates and verifies electoin PoSts
-// Dragons: once we have a proper eposter this type should either be
-// replaced or it should be a thin wrapper around the proper eposter
+// FakePoSter generates and verifies election PoSts
 type FakePoSter struct{}
 
 func (ep *FakePoSter) VerifyElectionPost(context.Context, abi.PoStVerifyInfo) (bool, error) {

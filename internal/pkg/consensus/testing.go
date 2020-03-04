@@ -106,7 +106,7 @@ func (fem *FakeElectionMachine) CandidateWins(_ []byte, _ uint64, _ uint64, _ ui
 }
 
 // VerifyPoSt return true
-func (fem *FakeElectionMachine) VerifyPoSt(ctx context.Context, ep EPoStVerifier, allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, proofs []block.EPoStProof, candidates []block.EPoStCandidate, mIDAddr address.Address) (bool, error) {
+func (fem *FakeElectionMachine) VerifyPoSt(_ context.Context, _ EPoStVerifier, _ []abi.SectorInfo, _ abi.PoStRandomness, _ []block.EPoStProof, _ []block.EPoStCandidate, _ address.Address) (bool, error) {
 	return true, nil
 }
 
