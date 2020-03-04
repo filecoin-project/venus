@@ -7,7 +7,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/minio/blake2b-simd"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -26,7 +25,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 		if sampleEpoch >= 0 {
 			vrfProof = []byte(strconv.Itoa(sampleEpoch))
 		}
-		vrfDigest := blake2b.Sum256(vrfProof)
+		vrfDigest := vrfProof.Digest()
 		return vrfDigest[:]
 	}
 

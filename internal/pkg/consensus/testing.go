@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
-	"github.com/minio/blake2b-simd"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
@@ -22,8 +22,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-
-	"github.com/stretchr/testify/require"
 )
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
@@ -65,17 +63,17 @@ type FakeElectionMachine struct{}
 var _ ElectionValidator = new(FakeElectionMachine)
 
 // DeprecatedRunElection returns a fake election proof.
-func (fem *FakeElectionMachine) DeprecatedRunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullCount uint64) (block.VRFPi, error) {
+func (fem *FakeElectionMachine) DeprecatedRunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullCount uint64) (crypto.VRFPi, error) {
 	return MakeFakeVRFProofForTest(), nil
 }
 
 // DeprecatedIsElectionWinner always returns true
-func (fem *FakeElectionMachine) DeprecatedIsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, nullCount uint64, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+func (fem *FakeElectionMachine) DeprecatedIsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, nullCount uint64, electionProof crypto.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
 	return true, nil
 }
 
 // GenerateEPoStVrfProof returns a fake post randomness byte array
-func (fem *FakeElectionMachine) GenerateEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (block.VRFPi, error) {
+func (fem *FakeElectionMachine) GenerateEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error) {
 	return MakeFakeVRFProofForTest(), nil
 }
 
@@ -100,7 +98,7 @@ func (fem *FakeElectionMachine) GenerateEPoSt(_ []abi.SectorInfo, _ abi.PoStRand
 }
 
 // VerifyEPoStVrfProof returns true
-func (fem *FakeElectionMachine) VerifyEPoStVrfProof(context.Context, block.TipSetKey, abi.ChainEpoch, address.Address, address.Address, block.VRFPi) error {
+func (fem *FakeElectionMachine) VerifyEPoStVrfProof(context.Context, block.TipSetKey, abi.ChainEpoch, address.Address, address.Address, abi.PoStRandomness) error {
 	return nil
 }
 
@@ -151,7 +149,7 @@ func (fev *FailingElectionValidator) VerifyPoSt(_ verification.PoStVerifier, _ [
 }
 
 // VerifyEPoStVrfProof return true
-func (fev *FailingElectionValidator) VerifyEPoStVrfProof(context.Context, block.TipSetKey, abi.ChainEpoch, address.Address, address.Address, block.VRFPi) error {
+func (fev *FailingElectionValidator) VerifyEPoStVrfProof(context.Context, block.TipSetKey, abi.ChainEpoch, address.Address, address.Address, abi.PoStRandomness) error {
 	return nil
 }
 
@@ -160,7 +158,7 @@ func MakeFakeTicketForTest() block.Ticket {
 	val := make([]byte, 65)
 	val[0] = 200
 	return block.Ticket{
-		VRFProof: block.VRFPi(val[:]),
+		VRFProof: crypto.VRFPi(val[:]),
 	}
 }
 
@@ -245,7 +243,7 @@ func winsAtEpoch(t *testing.T, em *ElectionMachine, head block.TipSetKey, epoch 
 
 	epostVRFProof, err := em.GenerateEPoStVrfProof(context.Background(), head, epoch, miner, worker, signer)
 	require.NoError(t, err)
-	digest := blake2b.Sum256(epostVRFProof)
+	digest := epostVRFProof.Digest()
 
 	// does this postRandomness create a winner?
 	candidates, err := em.GenerateCandidates(digest[:], sectorInfos, &proofs.ElectionPoster{})

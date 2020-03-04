@@ -194,7 +194,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 	}
 	for i := 0; i < width; i++ {
 		ticket := block.Ticket{}
-		ticket.VRFProof = block.VRFPi(make([]byte, binary.Size(f.seq)))
+		ticket.VRFProof = make([]byte, binary.Size(f.seq))
 		binary.BigEndian.PutUint64(ticket.VRFProof, f.seq)
 		f.seq++
 
@@ -301,7 +301,7 @@ type BlockBuilder struct {
 
 // SetTicket sets the block's ticket.
 func (bb *BlockBuilder) SetTicket(raw []byte) {
-	bb.block.Ticket = block.Ticket{VRFProof: block.VRFPi(raw)}
+	bb.block.Ticket = block.Ticket{VRFProof: crypto.VRFPi(raw)}
 }
 
 // SetTimestamp sets the block's timestamp.

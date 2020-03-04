@@ -368,7 +368,7 @@ func simpleBlock() *block.Block {
 func requireSimpleValidBlock(t *testing.T, nonce uint64, miner address.Address) *block.Block {
 	b := simpleBlock()
 	ticket := block.Ticket{}
-	ticket.VRFProof = block.VRFPi(make([]byte, binary.Size(nonce)))
+	ticket.VRFProof = make([]byte, binary.Size(nonce))
 	binary.BigEndian.PutUint64(ticket.VRFProof, nonce)
 	b.Ticket = ticket
 	bytes, err := cbor.DumpObject("null")

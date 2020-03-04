@@ -23,7 +23,7 @@ type ChainSampler interface {
 // A sampler for use when computing genesis state (the state that the genesis block points to as parent state).
 // There is no chain to sample a seed from.
 type GenesisSampler struct {
-	VRFProof []byte
+	VRFProof VRFPi
 }
 
 func (g *GenesisSampler) Sample(_ context.Context, epoch abi.ChainEpoch) (RandomSeed, error) {
@@ -35,8 +35,8 @@ func (g *GenesisSampler) Sample(_ context.Context, epoch abi.ChainEpoch) (Random
 
 // Computes a random seed from raw ticket bytes.
 // A randomness seed is the VRF digest of the minimum ticket of the tipset at or before the requested epoch
-func MakeRandomSeed(rawVRFProof []byte) (RandomSeed, error) {
-	digest := blake2b.Sum256(rawVRFProof)
+func MakeRandomSeed(rawVRFProof VRFPi) (RandomSeed, error) {
+	digest := rawVRFProof.Digest()
 	return digest[:], nil
 }
 

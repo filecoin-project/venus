@@ -69,7 +69,7 @@ type TicketValidator interface {
 type ElectionValidator interface {
 	VerifyPoSt(ep verification.PoStVerifier, allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, proofs []block.EPoStProof, candidates []block.EPoStCandidate, mIDAddr address.Address) (bool, error)
 	CandidateWins(challengeTicket []byte, sectorNum, faultNum, networkPower, sectorSize uint64) bool
-	VerifyEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, vrfProof block.VRFPi) error
+	VerifyEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, vrfProof abi.PoStRandomness) error
 }
 
 // StateViewer provides views into the chain state.
@@ -216,7 +216,7 @@ func (c *Expected) validateMining(ctx context.Context,
 		}
 
 		// Verify EPoSt VRF proof ("PoSt randomness")
-		if err := c.VerifyEPoStVrfProof(ctx, blk.Parents, blk.Height, blk.Miner, workerSignerAddr, block.VRFPi(blk.EPoStInfo.PoStRandomness)); err != nil {
+		if err := c.VerifyEPoStVrfProof(ctx, blk.Parents, blk.Height, blk.Miner, workerSignerAddr, blk.EPoStInfo.PoStRandomness); err != nil {
 			return errors.Wrapf(err, "failed to verify EPoSt VRF proof (PoSt randomness) in block %s", blk.Cid())
 		}
 
@@ -257,8 +257,8 @@ func (c *Expected) validateMining(ctx context.Context,
 		if err != nil {
 			return errors.Wrapf(err, "failed to read sector infos from power table")
 		}
-		vrfDigest := block.VRFPi(blk.EPoStInfo.PoStRandomness).Digest()
-		valid, err := c.VerifyPoSt(c.postVerifier, allSectorInfos, abi.PoStRandomness(vrfDigest[:]),
+		vrfDigest := crypto.VRFPi(blk.EPoStInfo.PoStRandomness).Digest()
+		valid, err := c.VerifyPoSt(c.postVerifier, allSectorInfos, vrfDigest[:],
 			blk.EPoStInfo.PoStProofs, blk.EPoStInfo.Winners, blk.Miner)
 		if err != nil {
 			return errors.Wrapf(err, "error checking PoSt")

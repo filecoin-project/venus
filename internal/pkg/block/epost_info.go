@@ -36,11 +36,11 @@ func NewEPoStCandidate(sID uint64, pt []byte, sci int64) EPoStCandidate {
 }
 
 // NewEPoStInfo constructs an epost info from data
-func NewEPoStInfo(proofs []EPoStProof, rand []byte, winners ...EPoStCandidate) EPoStInfo {
+func NewEPoStInfo(proofs []EPoStProof, rand abi.PoStRandomness, winners ...EPoStCandidate) EPoStInfo {
 	return EPoStInfo{
 		Winners:        winners,
 		PoStProofs:     proofs,
-		PoStRandomness: abi.PoStRandomness(rand),
+		PoStRandomness: rand,
 	}
 }
 
