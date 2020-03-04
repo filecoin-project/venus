@@ -75,8 +75,8 @@ const (
 	// DefaultAddress when set, sets the daemons's default address to the provided address
 	DefaultAddress = "default-address"
 
-	// MinerAddress when set, sets the daemons's miner address to the provided address
-	MinerAddress = "miner-address"
+	// MinerActorAddress when set, sets the daemons's miner address to the provided address
+	MinerActorAddress = "miner-actor-address"
 
 	// GenesisFile is the path of file containing archive of genesis block DAG data
 	GenesisFile = "genesisfile"

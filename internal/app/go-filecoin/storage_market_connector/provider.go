@@ -48,7 +48,7 @@ func NewStorageProviderNodeConnector(ma address.Address,
 	wlt *wallet.Wallet,
 ) *StorageProviderNodeConnector {
 	return &StorageProviderNodeConnector{
-		connectorCommon: connectorCommon{cs, w, wlt, ob, sv},
+		connectorCommon: connectorCommon{cs, w, wlt, ob, (*SMStateViewer)(sv)},
 		chainStore:      cs,
 		minerAddr:       ma,
 		outbox:          ob,

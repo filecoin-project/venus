@@ -50,7 +50,7 @@ var initCmd = &cmds.Command{
 		cmdkit.StringOption(WithMiner, "when set, creates a custom genesis block  a pre generated miner account, requires running the daemon using dev mode (--dev)"),
 		cmdkit.StringOption(OptionSectorDir, "path of directory into which staged and sealed sectors will be written"),
 		cmdkit.StringOption(DefaultAddress, "when set, sets the daemons's default address to the provided address"),
-		cmdkit.StringOption(MinerAddress, "when set, sets the daemons's miner address to the provided address"),
+		cmdkit.StringOption(MinerActorAddress, "when set, sets the daemons's miner actor address to the provided address"),
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
 		cmdkit.BoolOption(DevnetStaging, "when set, populates config bootstrap addrs with the dns multiaddrs of the staging devnet and other staging devnet specific bootstrap parameters."),
 		cmdkit.BoolOption(DevnetNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters"),
@@ -190,7 +190,7 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 		}
 	}
 
-	if ma, ok := options[MinerAddress].(string); ok {
+	if ma, ok := options[MinerActorAddress].(string); ok {
 		if cfg.Mining.MinerAddress, err = address.NewFromString(ma); err != nil {
 			return err
 		}

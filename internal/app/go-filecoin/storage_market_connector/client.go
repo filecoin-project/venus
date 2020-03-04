@@ -46,7 +46,7 @@ func NewStorageClientNodeConnector(
 
 ) *StorageClientNodeConnector {
 	return &StorageClientNodeConnector{
-		connectorCommon: connectorCommon{cs, w, wlt, ob, sv},
+		connectorCommon: connectorCommon{cs, w, wlt, ob, (*SMStateViewer)(sv)},
 		cborStore:       cbor,
 		clientAddr:      ca,
 	}

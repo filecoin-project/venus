@@ -18,7 +18,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	treestate "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // Viewer builds state views from state root CIDs.
@@ -82,7 +81,7 @@ func (v *View) InitResolveAddress(ctx context.Context, a addr.Address) (addr.Add
 
 // Returns public key address if id address is given
 func (v *View) AccountSignerAddress(ctx context.Context, a addr.Address) (addr.Address, error) {
-	if a.Protocol() != addr.ID {
+	if a.Protocol() == addr.SECP256K1 || a.Protocol() == addr.BLS {
 		return a, nil
 	}
 
@@ -264,15 +263,14 @@ func (v *View) loadAccountActor(ctx context.Context, a addr.Address) (*account.S
 }
 
 func (v *View) loadActor(ctx context.Context, address addr.Address) (*actor.Actor, error) {
-	st, err := treestate.LoadState(ctx, v.ipldStore, v.root)
-	if err != nil {
-		return nil, err
-	}
-	actr, found, err := st.GetActor(ctx, address)
+	tree := v.asMap(ctx, v.root)
+	var actr actor.Actor
+	found, err := tree.Get(adt.AddrKey(address), &actr)
 	if !found {
 		return nil, types.ErrNotFound
 	}
-	return actr, err
+
+	return &actr, err
 }
 
 func (v *View) asArray(ctx context.Context, root cid.Cid) *adt.Array {

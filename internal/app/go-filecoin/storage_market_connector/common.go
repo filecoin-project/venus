@@ -36,6 +36,21 @@ type chainReader interface {
 	cbor.IpldStore
 }
 
+type storageMarketView interface {
+	AccountSignerAddress(ctx context.Context, a address.Address) (address.Address, error)
+	MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error)
+}
+
+type storageMarketViewer interface {
+	smStateView(root cid.Cid) storageMarketView
+}
+
+type SMStateViewer appstate.Viewer
+
+func (sv *SMStateViewer) smStateView(root cid.Cid) storageMarketView {
+	return ((*appstate.Viewer)(sv)).StateView(root)
+}
+
 // Implements storagemarket.StateKey
 type stateKey struct {
 	ts     block.TipSetKey
@@ -54,7 +69,7 @@ type connectorCommon struct {
 	waiter      *msg.Waiter
 	wallet      *wallet.Wallet
 	outbox      *message.Outbox
-	stateViewer *appstate.Viewer
+	stateViewer storageMarketViewer
 }
 
 // MostRecentStateId returns the state key from the current head of the chain.
@@ -134,7 +149,7 @@ func (c *connectorCommon) SignBytes(ctx context.Context, signer address.Address,
 		return nil, err
 	}
 
-	view := c.stateViewer.StateView(root)
+	view := c.stateViewer.smStateView(root)
 	signer, err = view.AccountSignerAddress(ctx, signer)
 	if err != nil {
 		return nil, err
@@ -175,7 +190,7 @@ func (c *connectorCommon) GetMinerWorker(ctx context.Context, miner address.Addr
 		return address.Undef, err
 	}
 
-	view := c.stateViewer.StateView(root)
+	view := c.stateViewer.smStateView(root)
 	_, fcworker, err := view.MinerControlAddresses(ctx, miner)
 	if err != nil {
 		return address.Undef, err
