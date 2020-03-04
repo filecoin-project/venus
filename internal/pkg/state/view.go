@@ -120,7 +120,7 @@ func (v *View) MinerProvingPeriod(ctx context.Context, maddr addr.Address) (star
 
 // MinerProvingSetForEach Iterates over the sectors in a miner's proving set.
 func (v *View) MinerProvingSetForEach(ctx context.Context, maddr addr.Address,
-	f func(id abi.SectorNumber, sealedCID cid.Cid) error) error {
+	f func(abi.SectorNumber, cid.Cid, abi.RegisteredProof) error) error {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
 		return err
@@ -130,7 +130,7 @@ func (v *View) MinerProvingSetForEach(ctx context.Context, maddr addr.Address,
 	var sector miner.SectorOnChainInfo
 	return v.asArray(ctx, minerState.ProvingSet).ForEach(&sector, func(i int64) error {
 		// Add more fields here as required by new callers.
-		return f(sector.Info.SectorNumber, sector.Info.SealedCID)
+		return f(sector.Info.SectorNumber, sector.Info.SealedCID, sector.Info.RegisteredProof)
 	})
 }
 

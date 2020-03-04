@@ -1,12 +1,13 @@
 package postgenerator
 
 import (
-	"github.com/filecoin-project/go-sectorbuilder"
+	ffi "github.com/filecoin-project/filecoin-ffi"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 // PoStGenerator defines a method set used to generate PoSts
 type PoStGenerator interface {
-	GenerateEPostCandidates(sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed [sectorbuilder.CommLen]byte, faults []abi.SectorNumber) ([]sectorbuilder.EPostCandidate, error)
-	ComputeElectionPoSt(sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed []byte, winners []sectorbuilder.EPostCandidate) ([]byte, error)
+	GenerateEPostCandidates(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]ffi.PoStCandidateWithTicket, error)
+	ComputeElectionPoSt(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate) ([]abi.PoStProof, error)
 }

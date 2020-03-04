@@ -38,8 +38,10 @@ func NewRetrievalProtocolSubmodule(
 	pnode := retmkt.NewRetrievalProviderConnector(netwk, pieceManager, bs, pchMgrAPI)
 
 	// TODO: use latest go-fil-markets with persisted deal store
-	marketProvider := impl.NewProvider(providerAddr, pnode, netwk, retrievalDealPieceStore, bs)
-
+	marketProvider, err := impl.NewProvider(providerAddr, pnode, netwk, retrievalDealPieceStore, bs, ds)
+	if err != nil {
+		return nil, err
+	}
 	pnode.SetProvider(marketProvider)
 
 	return &RetrievalProtocolSubmodule{pnode}, nil

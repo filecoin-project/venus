@@ -5,20 +5,17 @@ import (
 	"fmt"
 
 	addr "github.com/filecoin-project/go-address"
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
-
-	ffi "github.com/filecoin-project/filecoin-ffi"
 )
 
 // PowerStateView is the consensus package's interface to chain state.
 type PowerStateView interface {
 	MinerSectorSize(ctx context.Context, maddr addr.Address) (abi.SectorSize, error)
 	MinerControlAddresses(ctx context.Context, maddr addr.Address) (owner, worker addr.Address, err error)
-	MinerProvingSetForEach(ctx context.Context, maddr addr.Address, f func(id abi.SectorNumber, sealedCID cid.Cid) error) error
+	MinerProvingSetForEach(ctx context.Context, maddr addr.Address, f func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof) error) error
 	NetworkTotalPower(ctx context.Context) (abi.StoragePower, error)
 	MinerClaimedPower(ctx context.Context, miner addr.Address) (abi.StoragePower, error)
 }
@@ -64,24 +61,17 @@ func (v PowerTableView) HasClaimedPower(ctx context.Context, mAddr addr.Address)
 }
 
 // SortedSectorInfos returns the sector information for the given miner
-func (v PowerTableView) SortedSectorInfos(ctx context.Context, mAddr addr.Address) (ffi.SortedPublicSectorInfo, error) {
-	var infos []ffi.PublicSectorInfo
-	err := v.state.MinerProvingSetForEach(ctx, mAddr, func(id abi.SectorNumber, sealedCID cid.Cid) error {
-		commR, err := commcid.CIDToReplicaCommitmentV1(sealedCID)
-		if err != nil {
-			return err
-		}
-		commRChecked, err := asCommitment(commR)
-		if err != nil {
-			return err
-		}
-		infos = append(infos, ffi.PublicSectorInfo{
-			SectorNum: abi.SectorNumber(uint64(id)),
-			CommR:     commRChecked,
+func (v PowerTableView) SortedSectorInfos(ctx context.Context, mAddr addr.Address) ([]abi.SectorInfo, error) {
+	var infos []abi.SectorInfo
+	err := v.state.MinerProvingSetForEach(ctx, mAddr, func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof) error {
+		infos = append(infos, abi.SectorInfo{
+			SectorNumber:    id,
+			SealedCID:       sealedCID,
+			RegisteredProof: rpp,
 		})
 		return nil
 	})
-	return ffi.NewSortedPublicSectorInfo(infos...), err
+	return infos, err
 }
 
 // SectorSize returns the sector size for this miner
@@ -104,13 +94,4 @@ func (v PowerTableView) NumSectors(ctx context.Context, mAddr addr.Address) (uin
 		return 0, fmt.Errorf("total power byte count %d is not a multiple of sector size %d ", minerBytes.Uint64(), sectorSize)
 	}
 	return minerBytes.Uint64() / uint64(sectorSize), nil
-}
-
-func asCommitment(c []byte) ([ffi.CommitmentBytesLen]byte, error) {
-	var comm [ffi.CommitmentBytesLen]byte
-	if len(c) != ffi.CommitmentBytesLen {
-		return comm, fmt.Errorf("invalid commitment length %d, expected %d", len(c), ffi.CommitmentBytesLen)
-	}
-	copy(comm[:], c[:ffi.CommitmentBytesLen])
-	return comm, nil
 }

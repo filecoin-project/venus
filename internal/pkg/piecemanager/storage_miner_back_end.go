@@ -4,10 +4,12 @@ import (
 	"context"
 	"io"
 
+	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-sectorbuilder"
 	storagenode "github.com/filecoin-project/go-storage-miner/apis/node"
 	storage "github.com/filecoin-project/go-storage-miner/sealing"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	cid "github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 )
 
@@ -39,7 +41,7 @@ type StorageMinerAPI interface {
 // StorageMinerBackEnd.
 type SectorBuilderAPI interface {
 	SectorSize() abi.SectorSize
-	ReadPieceFromSealedSector(ctx context.Context, sectorNumber abi.SectorNumber, pieceIndex sectorbuilder.UnpaddedByteIndex, pieceSize abi.UnpaddedPieceSize, ticketBytes []byte, commD []byte) (io.ReadCloser, error)
+	ReadPieceFromSealedSector(context.Context, abi.SectorNumber, sectorbuilder.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (io.ReadCloser, error)
 }
 
 // StorageMinerBackEnd is...
@@ -96,7 +98,7 @@ func (s *StorageMinerBackEnd) UnsealSector(ctx context.Context, sectorID uint64)
 	}
 
 	// moving back to SDR means that we will no longer support partial unsealing
-	return s.builder.ReadPieceFromSealedSector(ctx, abi.SectorNumber(sectorID), 0, abi.PaddedPieceSize(s.builder.SectorSize()).Unpadded(), info.Ticket.TicketBytes, info.CommD)
+	return s.builder.ReadPieceFromSealedSector(ctx, abi.SectorNumber(sectorID), 0, abi.PaddedPieceSize(s.builder.SectorSize()).Unpadded(), info.Ticket.TicketBytes, commcid.ReplicaCommitmentV1ToCID(info.CommR))
 }
 
 // LocatePieceForDealWithinSector uses the chain to locate an on-chain deal's

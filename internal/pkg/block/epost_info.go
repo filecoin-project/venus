@@ -1,82 +1,83 @@
 package block
 
 import (
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 // EPoStInfo wraps all data needed to verify an election post proof
 type EPoStInfo struct {
 	_              struct{} `cbor:",toarray"`
-	PoStProof      []byte
-	PoStRandomness VRFPi
+	PoStProofs     []EPoStProof
+	PoStRandomness abi.PoStRandomness
 	Winners        []EPoStCandidate
 }
 
 // EPoStCandidate wraps the input data needed to verify an election PoSt
 type EPoStCandidate struct {
 	_                    struct{} `cbor:",toarray"`
-	PartialTicket        []byte
-	SectorID             uint64
-	SectorChallengeIndex uint64
+	PartialTicket        abi.PartialTicket
+	SectorID             abi.SectorNumber
+	SectorChallengeIndex int64
+}
+
+type EPoStProof struct {
+	_               struct{} `cbor:",toarray"`
+	RegisteredProof abi.RegisteredProof
+	ProofBytes      []byte
 }
 
 // NewEPoStCandidate constructs an epost candidate from data
-func NewEPoStCandidate(sID uint64, pt []byte, sci uint64) EPoStCandidate {
+func NewEPoStCandidate(sID uint64, pt []byte, sci int64) EPoStCandidate {
 	return EPoStCandidate{
-		SectorID:             sID,
+		SectorID:             abi.SectorNumber(sID),
 		PartialTicket:        pt,
 		SectorChallengeIndex: sci,
 	}
 }
 
 // NewEPoStInfo constructs an epost info from data
-func NewEPoStInfo(proof []byte, rand VRFPi, winners ...EPoStCandidate) EPoStInfo {
+func NewEPoStInfo(proofs []EPoStProof, rand []byte, winners ...EPoStCandidate) EPoStInfo {
 	return EPoStInfo{
 		Winners:        winners,
-		PoStProof:      proof,
-		PoStRandomness: rand,
+		PoStProofs:     proofs,
+		PoStRandomness: abi.PoStRandomness(rand),
 	}
 }
 
-// ToFFICandidate converts a block.EPoStCandidate to a ffi candidate
-func (x *EPoStCandidate) ToFFICandidate() ffi.Candidate {
-	var pt [32]byte
-	copy(pt[:], x.PartialTicket)
-
-	return ffi.Candidate{
-		SectorNum:            abi.SectorNumber(x.SectorID),
-		PartialTicket:        pt,
-		Ticket:               [32]byte{}, // note: this field is ignored
-		SectorChallengeIndex: x.SectorChallengeIndex,
+// NewEPoStProof constructs an epost proof from registered proof and bytes
+func NewEPoStProof(rpp abi.RegisteredProof, bs []byte) EPoStProof {
+	return EPoStProof{
+		RegisteredProof: rpp,
+		ProofBytes:      bs,
 	}
-}
-
-// ToFFICandidates converts several block.EPoStCandidate to several ffi candidate
-func ToFFICandidates(candidates ...EPoStCandidate) []ffi.Candidate {
-	out := make([]ffi.Candidate, len(candidates))
-	for idx, c := range candidates {
-		out[idx] = c.ToFFICandidate()
-	}
-
-	return out
 }
 
 // FromFFICandidate converts a Candidate to an EPoStCandidate
-func FromFFICandidate(candidate ffi.Candidate) EPoStCandidate {
+func FromFFICandidate(candidate abi.PoStCandidate) EPoStCandidate {
 	return EPoStCandidate{
 		PartialTicket:        candidate.PartialTicket[:],
-		SectorID:             uint64(candidate.SectorNum),
-		SectorChallengeIndex: candidate.SectorChallengeIndex,
+		SectorID:             candidate.SectorID.Number,
+		SectorChallengeIndex: candidate.ChallengeIndex,
 	}
 }
 
 // FromFFICandidates converts a variable number of Candidate to a slice of
 // EPoStCandidate
-func FromFFICandidates(candidates ...ffi.Candidate) []EPoStCandidate {
+func FromFFICandidates(candidates ...abi.PoStCandidate) []EPoStCandidate {
 	out := make([]EPoStCandidate, len(candidates))
 	for idx, c := range candidates {
 		out[idx] = FromFFICandidate(c)
+	}
+
+	return out
+}
+
+// FromABIPoStProofs converts the abi post proof type to a local type for
+// serialization purposes
+func FromABIPoStProofs(postProofs ...abi.PoStProof) []EPoStProof {
+	out := make([]EPoStProof, len(postProofs))
+	for i, p := range postProofs {
+		out[i] = EPoStProof{RegisteredProof: p.RegisteredProof, ProofBytes: p.ProofBytes}
 	}
 
 	return out

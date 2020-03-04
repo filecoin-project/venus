@@ -7,9 +7,12 @@ import (
 	"reflect"
 	"runtime"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -389,6 +392,21 @@ func (node *Node) SetupMining(ctx context.Context) error {
 	return nil
 }
 
+func registeredProofsFromSectorSize(ss abi.SectorSize) (registeredSealProof abi.RegisteredProof, registeredPoStProof abi.RegisteredProof, err error) {
+	switch ss {
+	case constants.DevSectorSize:
+		return constants.DevRegisteredPoStProof, constants.DevRegisteredSealProof, nil
+	case constants.ThirtyTwoGiBSectorSize:
+		return abi.RegisteredProof_StackedDRG32GiBPoSt, abi.RegisteredProof_StackedDRG32GiBSeal, nil
+	case constants.EightMiBSectorSize:
+		return abi.RegisteredProof_StackedDRG8MiBPoSt, abi.RegisteredProof_StackedDRG8MiBSeal, nil
+	case constants.FiveHundredTwelveMiBSectorSize:
+		return abi.RegisteredProof_StackedDRG512MiBPoSt, abi.RegisteredProof_StackedDRG512MiBSeal, nil
+	default:
+		return 0, 0, errors.Errorf("unsupported sector size %d", ss)
+	}
+}
+
 func (node *Node) setupStorageMining(ctx context.Context) error {
 	if node.StorageMining != nil {
 		return errors.New("storage mining submodule has already been initialized")
@@ -415,8 +433,14 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return err
 	}
 
+	postProofType, sealProofType, err := registeredProofsFromSectorSize(status.SectorSize)
+	if err != nil {
+		return err
+	}
+
 	sectorBuilder, err := sectorbuilder.New(&sectorbuilder.Config{
-		SectorSize:    status.SectorSize,
+		PoStProofType: postProofType,
+		SealProofType: sealProofType,
 		Miner:         minerAddr,
 		WorkerThreads: 1,
 		Paths: []fs.PathConfig{
@@ -464,7 +488,9 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		node.Blockstore.Blockstore,
 		node.network.GraphExchange,
 		repoPath,
-		getWorker)
+		getWorker,
+		sectorBuilder.SealProofType(),
+	)
 	if err != nil {
 		return errors.Wrap(err, "error initializing storage protocol")
 	}

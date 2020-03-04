@@ -10,30 +10,13 @@ import (
 type FFIBackedProofVerifier struct{}
 
 // VerifySeal returns a value indicating the validity of the provided proof
-func (f FFIBackedProofVerifier) VerifySeal(
-	sectorSize uint64,
-	commR [ffi.CommitmentBytesLen]byte,
-	commD [ffi.CommitmentBytesLen]byte,
-	proverID [32]byte,
-	ticket [32]byte,
-	seed [32]byte,
-	sectorID uint64,
-	proof []byte,
-) (bool, error) {
-	return ffi.VerifySeal(abi.SectorSize(sectorSize), commR, commD, proverID, ticket, seed, abi.SectorNumber(sectorID), proof)
+func (f FFIBackedProofVerifier) VerifySeal(info abi.SealVerifyInfo) (bool, error) {
+	return ffi.VerifySeal(info)
 }
 
 // VerifyPoSt returns a value indicating the validity of the provided proof
-func (f FFIBackedProofVerifier) VerifyPoSt(
-	sectorSize uint64,
-	sectorInfo ffi.SortedPublicSectorInfo,
-	randomness [32]byte,
-	challengeCount uint64,
-	proof []byte,
-	winners []ffi.Candidate,
-	proverID [32]byte,
-) (bool, error) {
-	return ffi.VerifyPoSt(abi.SectorSize(sectorSize), sectorInfo, randomness, challengeCount, proof, winners, proverID)
+func (f FFIBackedProofVerifier) VerifyPoSt(info abi.PoStVerifyInfo) (bool, error) {
+	return ffi.VerifyPoSt(info)
 }
 
 // NewFFIBackedProofVerifier produces an FFIBackedProofVerifier which delegates

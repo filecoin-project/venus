@@ -3,6 +3,8 @@ package state
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -86,14 +88,14 @@ func (v *FakeStateView) MinerProvingPeriod(ctx context.Context, maddr address.Ad
 }
 
 // MinerProvingSetForEach iterates sectors in a miner's proving set.
-func (v *FakeStateView) MinerProvingSetForEach(_ context.Context, maddr address.Address, f func(id abi.SectorNumber, sealedCID cid.Cid) error) error {
+func (v *FakeStateView) MinerProvingSetForEach(_ context.Context, maddr address.Address, f func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof) error) error {
 	m, ok := v.Miners[maddr]
 	if !ok {
 		return errors.Errorf("no miner %s", maddr)
 	}
 
 	for _, si := range m.ProvingSet {
-		err := f(si.ID, si.SealedCID)
+		err := f(si.ID, si.SealedCID, constants.DevRegisteredSealProof)
 		if err != nil {
 			return err
 		}

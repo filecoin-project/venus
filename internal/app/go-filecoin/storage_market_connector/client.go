@@ -56,13 +56,14 @@ func (s *StorageClientNodeConnector) AddFunds(ctx context.Context, addr address.
 }
 
 // EnsureFunds checks the current balance for an address and adds funds if the balance is below the given amount
-func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) error {
+func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr, walletAddr address.Address, amount abi.TokenAmount) error {
 	balance, err := s.GetBalance(ctx, addr)
 	if err != nil {
 		return err
 	}
 
 	if !balance.Available.LessThan(amount) {
+		// TODO: Transfer funds to the market actor on behalf of `addr`
 		return nil
 	}
 

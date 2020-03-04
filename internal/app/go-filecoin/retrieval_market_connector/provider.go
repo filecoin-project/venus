@@ -99,7 +99,6 @@ func (wrc limitedOffsetReadCloser) Close() error {
 
 // SavePaymentVoucher stores the provided payment voucher with the payment channel actor
 func (r *RetrievalProviderConnector) SavePaymentVoucher(_ context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expected abi.TokenAmount) (abi.TokenAmount, error) {
-
 	// check to see if the channel exists first
 	_, err := r.paychMgr.GetPaymentChannelInfo(paymentChannel)
 	if err != nil {
@@ -112,4 +111,12 @@ func (r *RetrievalProviderConnector) SavePaymentVoucher(_ context.Context, payme
 	}
 
 	return actual, nil
+}
+
+// GetMinerWorker produces the worker address for the provided storage miner
+// address at the chain head.
+func (r *RetrievalProviderConnector) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
+	// TODO: This should be passed a tipset key. See the getMinerWorkerAddress
+	// method on StorageMinerNodeConnector for an example.
+	panic("implement me")
 }

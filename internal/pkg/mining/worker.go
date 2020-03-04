@@ -8,16 +8,15 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-address"
+	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
@@ -78,8 +77,8 @@ type workerPorcelainAPI interface {
 
 type electionUtil interface {
 	GenerateEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (block.VRFPi, error)
-	GenerateCandidates([]byte, ffi.SortedPublicSectorInfo, postgenerator.PoStGenerator) ([]ffi.Candidate, error)
-	GenerateEPoSt(ffi.SortedPublicSectorInfo, []byte, []ffi.Candidate, postgenerator.PoStGenerator) ([]byte, error)
+	GenerateCandidates(abi.PoStRandomness, []abi.SectorInfo, postgenerator.PoStGenerator) ([]abi.PoStCandidate, error)
+	GenerateEPoSt([]abi.SectorInfo, abi.PoStRandomness, []abi.PoStCandidate, postgenerator.PoStGenerator) ([]abi.PoStProof, error)
 	CandidateWins([]byte, uint64, uint64, uint64, uint64) bool
 }
 
@@ -227,19 +226,19 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		return
 	}
 	// Generate election post candidates
-	done := make(chan []ffi.Candidate)
+	done := make(chan []abi.PoStCandidate)
 	errCh := make(chan error)
 	go func() {
 		defer close(done)
 		defer close(errCh)
-		candidates, err := w.election.GenerateCandidates(postVrfProofDigest[:], sortedSectorInfos, w.poster)
+		candidates, err := w.election.GenerateCandidates(abi.PoStRandomness(postVrfProofDigest[:]), sortedSectorInfos, w.poster)
 		if err != nil {
 			errCh <- err
 			return
 		}
 		done <- candidates
 	}()
-	var candidates []ffi.Candidate
+	var candidates []abi.PoStCandidate
 	select {
 	case <-ctx.Done():
 		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base, "nullBlocks", nullBlkCount)
@@ -271,7 +270,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		return
 	}
 	hasher := hasher.NewHasher()
-	var winners []ffi.Candidate
+	var winners []abi.PoStCandidate
 	for _, candidate := range candidates {
 		hasher.Bytes(candidate.PartialTicket[:])
 		challengeTicket := hasher.Hash()
@@ -289,19 +288,19 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	// we have a winning block
 
 	// Generate PoSt
-	postDone := make(chan []byte)
+	postDone := make(chan []abi.PoStProof)
 	errCh = make(chan error)
 	go func() {
 		defer close(postDone)
 		defer close(errCh)
-		post, err := w.election.GenerateEPoSt(sortedSectorInfos, postVrfProofDigest[:], winners, w.poster)
+		postProofs, err := w.election.GenerateEPoSt(sortedSectorInfos, abi.PoStRandomness(postVrfProofDigest[:]), winners, w.poster)
 		if err != nil {
 			errCh <- err
 			return
 		}
-		postDone <- post
+		postDone <- postProofs
 	}()
-	var post []byte
+	var poStProofs []abi.PoStProof
 	select {
 	case <-ctx.Done():
 		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base, "nullBlocks", nullBlkCount)
@@ -310,10 +309,10 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- Output{Err: err}
 		return
 	case postOut := <-postDone:
-		post = postOut
+		poStProofs = postOut
 	}
 
-	postInfo := block.NewEPoStInfo(post, postVrfProof, block.FromFFICandidates(winners...)...)
+	postInfo := block.NewEPoStInfo(block.FromABIPoStProofs(poStProofs...), abi.PoStRandomness(postVrfProof), block.FromFFICandidates(winners...)...)
 
 	next, err := w.Generate(ctx, base, nextTicket, abi.ChainEpoch(nullBlkCount), postInfo)
 	if err == nil {

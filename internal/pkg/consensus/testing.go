@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"testing"
 
@@ -11,10 +10,9 @@ import (
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/minio/blake2b-simd"
-	"github.com/stretchr/testify/require"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
@@ -24,6 +22,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+
+	"github.com/stretchr/testify/require"
 )
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
@@ -80,20 +80,23 @@ func (fem *FakeElectionMachine) GenerateEPoStVrfProof(ctx context.Context, base 
 }
 
 // GenerateCandidates returns one fake election post candidate
-func (fem *FakeElectionMachine) GenerateCandidates(_ []byte, _ ffi.SortedPublicSectorInfo, _ postgenerator.PoStGenerator) ([]ffi.Candidate, error) {
-	return []ffi.Candidate{
+func (fem *FakeElectionMachine) GenerateCandidates(poStRand abi.PoStRandomness, sectorInfos []abi.SectorInfo, ep postgenerator.PoStGenerator) ([]abi.PoStCandidate, error) {
+	return []abi.PoStCandidate{
 		{
-			SectorNum:            0,
-			PartialTicket:        [32]byte{0xf},
-			Ticket:               [32]byte{0xe},
-			SectorChallengeIndex: 0,
+
+			SectorID:       abi.SectorID{Miner: abi.ActorID(1), Number: 0},
+			PartialTicket:  []byte{0xf},
+			ChallengeIndex: 0,
 		},
 	}, nil
 }
 
 // GenerateEPoSt returns a fake post proof
-func (fem *FakeElectionMachine) GenerateEPoSt(_ ffi.SortedPublicSectorInfo, _ []byte, _ []ffi.Candidate, _ postgenerator.PoStGenerator) ([]byte, error) {
-	return MakeFakePoStForTest(), nil
+func (fem *FakeElectionMachine) GenerateEPoSt(_ []abi.SectorInfo, _ abi.PoStRandomness, _ []abi.PoStCandidate, _ postgenerator.PoStGenerator) ([]abi.PoStProof, error) {
+	return []abi.PoStProof{{
+		RegisteredProof: constants.DevRegisteredPoStProof,
+		ProofBytes:      []byte{0xe},
+	}}, nil
 }
 
 // VerifyEPoStVrfProof returns true
@@ -107,7 +110,7 @@ func (fem *FakeElectionMachine) CandidateWins(_ []byte, _ uint64, _ uint64, _ ui
 }
 
 // VerifyPoSt return true
-func (fem *FakeElectionMachine) VerifyPoSt(_ verification.PoStVerifier, _ ffi.SortedPublicSectorInfo, _ uint64, _ []byte, _ []byte, _ []block.EPoStCandidate, _ address.Address) (bool, error) {
+func (fem *FakeElectionMachine) VerifyPoSt(_ verification.PoStVerifier, _ []abi.SectorInfo, _ abi.PoStRandomness, _ []block.EPoStProof, _ []block.EPoStCandidate, _ address.Address) (bool, error) {
 	return true, nil
 }
 
@@ -143,7 +146,7 @@ func (fev *FailingElectionValidator) CandidateWins(_ []byte, _, _, _, _ uint64) 
 }
 
 // VerifyPoSt returns true without error
-func (fev *FailingElectionValidator) VerifyPoSt(_ verification.PoStVerifier, _ ffi.SortedPublicSectorInfo, _ uint64, _ []byte, _ []byte, _ []block.EPoStCandidate, _ address.Address) (bool, error) {
+func (fev *FailingElectionValidator) VerifyPoSt(_ verification.PoStVerifier, _ []abi.SectorInfo, _ abi.PoStRandomness, _ []block.EPoStProof, _ []block.EPoStCandidate, _ address.Address) (bool, error) {
 	return true, nil
 }
 
@@ -169,10 +172,11 @@ func MakeFakeVRFProofForTest() []byte {
 }
 
 // MakeFakePoStForTest creates a fake post
-func MakeFakePoStForTest() []byte {
-	proof := make([]byte, 1)
-	proof[0] = 0xe
-	return proof
+func MakeFakePoStsForTest() []block.EPoStProof {
+	return []block.EPoStProof{{
+		RegisteredProof: constants.DevRegisteredPoStProof,
+		ProofBytes:      []byte{0xe},
+	}}
 }
 
 // MakeFakeWinnersForTest creats an empty winners array
@@ -181,20 +185,17 @@ func MakeFakeWinnersForTest() []block.EPoStCandidate {
 }
 
 // NFakeSectorInfos returns numSectors fake sector infos
-func NFakeSectorInfos(numSectors uint64) ffi.SortedPublicSectorInfo {
-	var infos []ffi.PublicSectorInfo
+func RequireFakeSectorInfos(t *testing.T, numSectors uint64) []abi.SectorInfo {
+	var infos []abi.SectorInfo
 	for i := uint64(0); i < numSectors; i++ {
-		buf := make([]byte, binary.MaxVarintLen64)
-		binary.PutUvarint(buf, i)
-		var fakeCommRi [ffi.CommitmentBytesLen]byte
-		copy(fakeCommRi[:], buf)
-		infos = append(infos, ffi.PublicSectorInfo{
-			SectorNum: abi.SectorNumber(i),
-			CommR:     fakeCommRi,
+		infos = append(infos, abi.SectorInfo{
+			RegisteredProof: constants.DevRegisteredSealProof,
+			SectorNumber:    abi.SectorNumber(i),
+			SealedCID:       types.CidFromString(t, fmt.Sprintf("fake-sector-%d", i)),
 		})
 	}
 
-	return ffi.NewSortedPublicSectorInfo(infos...)
+	return infos
 }
 
 // SeedFirstWinnerInNRounds returns seeded fake chain randomness that when mined upon for N rounds
@@ -215,7 +216,7 @@ func SeedFirstWinnerInNRounds(t *testing.T, n int, miner address.Address, ki *cr
 	require.NoError(t, err)
 
 	// give it some fake sector infos
-	sectorInfos := NFakeSectorInfos(numSectors)
+	sectorInfos := RequireFakeSectorInfos(t, numSectors)
 	head := block.NewTipSetKey() // The fake chain randomness doesn't actually inspect any tipsets
 
 	rnd := &FakeChainRandomness{Seed: 1}
@@ -240,7 +241,7 @@ func SeedFirstWinnerInNRounds(t *testing.T, n int, miner address.Address, ki *cr
 }
 
 func winsAtEpoch(t *testing.T, em *ElectionMachine, head block.TipSetKey, epoch abi.ChainEpoch, miner, worker address.Address,
-	signer types.Signer, networkPower, numSectors, sectorSize uint64, sectorInfos ffi.SortedPublicSectorInfo) bool {
+	signer types.Signer, networkPower, numSectors, sectorSize uint64, sectorInfos []abi.SectorInfo) bool {
 
 	epostVRFProof, err := em.GenerateEPoStVrfProof(context.Background(), head, epoch, miner, worker, signer)
 	require.NoError(t, err)

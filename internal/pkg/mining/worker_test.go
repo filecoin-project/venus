@@ -494,7 +494,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	baseTipset := builder.AppendOn(parentTipset, 2)
 	assert.Equal(t, 2, baseTipset.Len())
 
-	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
+	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStsForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
 
 	blk, err := worker.Generate(ctx, baseTipset, block.Ticket{VRFProof: []byte{2}}, 0, fakePoStInfo)
 	assert.NoError(t, err)
@@ -600,7 +600,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		Height:    100,
 		StateRoot: e.NewCid(stateRoot),
 	}
-	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
+	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStsForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
 
 	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, 0, fakePoStInfo)
 	assert.NoError(t, err)
@@ -668,7 +668,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	}
 	baseTipSet := th.RequireNewTipSet(t, &baseBlock)
 	ticket := mining.NthTicket(7)
-	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
+	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStsForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
 	blk, err := worker.Generate(ctx, baseTipSet, ticket, 0, fakePoStInfo)
 	assert.NoError(t, err)
 
@@ -726,7 +726,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		Height:    100,
 		StateRoot: e.NewCid(newCid()),
 	}
-	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
+	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStsForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
 	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, 0, fakePoStInfo)
 	assert.NoError(t, err)
 
@@ -788,7 +788,7 @@ func TestGenerateError(t *testing.T) {
 		Height:    100,
 		StateRoot: e.NewCid(newCid()),
 	}
-	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
+	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStsForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
 	baseTipSet := th.RequireNewTipSet(t, &baseBlock)
 	blk, err := worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, 0, fakePoStInfo)
 	assert.Error(t, err, "boom")

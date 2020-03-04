@@ -10,9 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -25,13 +24,16 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 var logInit = logging.Logger("commands/init")
@@ -113,7 +115,15 @@ var initCmd = &cmds.Command{
 				return err
 			}
 
+			// TODO: The caller needs to provide a value which tells this code
+			// which RegisteredProof was used to seal the sectors being
+			// imported.
+			registeredSealProof := constants.DevRegisteredSealProof
+			registeredPoStProof := constants.DevRegisteredSealProof
+
 			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
+				SealProofType: registeredSealProof,
+				PoStProofType: registeredPoStProof,
 				WorkerThreads: 1,
 				Paths:         sectorbuilder.SimplePath(presealedSectorDir),
 			}, namespace.Wrap(oldMetaDs, datastore.NewKey("/sectorbuilder")))
@@ -127,6 +137,8 @@ var initCmd = &cmds.Command{
 			}
 
 			newsb, err := sectorbuilder.New(&sectorbuilder.Config{
+				SealProofType: registeredSealProof,
+				PoStProofType: registeredPoStProof,
 				WorkerThreads: 1,
 				Paths:         sectorbuilder.SimplePath(path),
 			}, namespace.Wrap(rep.Datastore(), datastore.NewKey("/sectorbuilder")))

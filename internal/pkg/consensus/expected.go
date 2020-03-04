@@ -15,7 +15,6 @@ import (
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
@@ -68,7 +67,7 @@ type TicketValidator interface {
 
 // ElectionValidator validates that an election fairly produced a winner.
 type ElectionValidator interface {
-	VerifyPoSt(ep verification.PoStVerifier, allSectorInfos ffi.SortedPublicSectorInfo, sectorSize uint64, challengeSeed []byte, proof []byte, candidates []block.EPoStCandidate, proverID address.Address) (bool, error)
+	VerifyPoSt(ep verification.PoStVerifier, allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, proofs []block.EPoStProof, candidates []block.EPoStCandidate, mIDAddr address.Address) (bool, error)
 	CandidateWins(challengeTicket []byte, sectorNum, faultNum, networkPower, sectorSize uint64) bool
 	VerifyEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, vrfProof block.VRFPi) error
 }
@@ -213,12 +212,12 @@ func (c *Expected) validateMining(ctx context.Context,
 		}
 
 		// Verify EPoSt VRF proof ("PoSt randomness")
-		if err := c.VerifyEPoStVrfProof(ctx, blk.Parents, blk.Height, blk.Miner, workerAddr, blk.EPoStInfo.PoStRandomness); err != nil {
+		if err := c.VerifyEPoStVrfProof(ctx, blk.Parents, blk.Height, blk.Miner, workerAddr, block.VRFPi(blk.EPoStInfo.PoStRandomness)); err != nil {
 			return errors.Wrapf(err, "failed to verify EPoSt VRF proof (PoSt randomness) in block %s", blk.Cid())
 		}
 
 		// Verify no duplicate challenge indexes
-		challengeIndexes := make(map[uint64]struct{})
+		challengeIndexes := make(map[int64]struct{})
 		for _, winner := range blk.EPoStInfo.Winners {
 			index := winner.SectorChallengeIndex
 			if _, dup := challengeIndexes[index]; dup {
@@ -254,9 +253,9 @@ func (c *Expected) validateMining(ctx context.Context,
 		if err != nil {
 			return errors.Wrapf(err, "failed to read sector infos from power table")
 		}
-		vrfDigest := blk.EPoStInfo.PoStRandomness.Digest()
-		valid, err := c.VerifyPoSt(c.postVerifier, allSectorInfos, uint64(sectorSize), vrfDigest[:],
-			blk.EPoStInfo.PoStProof, blk.EPoStInfo.Winners, blk.Miner)
+		vrfDigest := block.VRFPi(blk.EPoStInfo.PoStRandomness).Digest()
+		valid, err := c.VerifyPoSt(c.postVerifier, allSectorInfos, abi.PoStRandomness(vrfDigest[:]),
+			blk.EPoStInfo.PoStProofs, blk.EPoStInfo.Winners, blk.Miner)
 		if err != nil {
 			return errors.Wrapf(err, "error checking PoSt")
 		}
