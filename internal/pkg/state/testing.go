@@ -3,6 +3,8 @@ package state
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -93,7 +95,7 @@ func (v *FakeStateView) MinerProvingSetForEach(_ context.Context, maddr address.
 	}
 
 	for _, si := range m.ProvingSet {
-		err := f(si.ID, si.SealedCID, abi.RegisteredProof_StackedDRG2KiBPoSt)
+		err := f(si.ID, si.SealedCID, constants.DevRegisteredSealProof)
 		if err != nil {
 			return err
 		}

@@ -10,9 +10,9 @@ import (
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/minio/blake2b-simd"
-	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
@@ -22,6 +22,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+
+	"github.com/stretchr/testify/require"
 )
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
@@ -92,7 +94,7 @@ func (fem *FakeElectionMachine) GenerateCandidates(poStRand abi.PoStRandomness, 
 // GenerateEPoSt returns a fake post proof
 func (fem *FakeElectionMachine) GenerateEPoSt(_ []abi.SectorInfo, _ abi.PoStRandomness, _ []abi.PoStCandidate, _ postgenerator.PoStGenerator) ([]abi.PoStProof, error) {
 	return []abi.PoStProof{{
-		RegisteredProof: abi.RegisteredProof_StackedDRG2KiBPoSt,
+		RegisteredProof: constants.DevRegisteredPoStProof,
 		ProofBytes:      []byte{0xe},
 	}}, nil
 }
@@ -172,7 +174,7 @@ func MakeFakeVRFProofForTest() []byte {
 // MakeFakePoStForTest creates a fake post
 func MakeFakePoStsForTest() []block.EPoStProof {
 	return []block.EPoStProof{{
-		RegisteredProof: abi.RegisteredProof_StackedDRG2KiBPoSt,
+		RegisteredProof: constants.DevRegisteredPoStProof,
 		ProofBytes:      []byte{0xe},
 	}}
 }
@@ -187,7 +189,7 @@ func RequireFakeSectorInfos(t *testing.T, numSectors uint64) []abi.SectorInfo {
 	var infos []abi.SectorInfo
 	for i := uint64(0); i < numSectors; i++ {
 		infos = append(infos, abi.SectorInfo{
-			RegisteredProof: abi.RegisteredProof_StackedDRG2KiBPoSt,
+			RegisteredProof: constants.DevRegisteredSealProof,
 			SectorNumber:    abi.SectorNumber(i),
 			SealedCID:       types.CidFromString(t, fmt.Sprintf("fake-sector-%d", i)),
 		})

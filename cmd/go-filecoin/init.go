@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -32,7 +34,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 var logInit = logging.Logger("commands/init")
@@ -117,8 +118,8 @@ var initCmd = &cmds.Command{
 			// TODO: The caller needs to provide a value which tells this code
 			// which RegisteredProof was used to seal the sectors being
 			// imported.
-			registeredSealProof := abi.RegisteredProof_StackedDRG2KiBSeal
-			registeredPoStProof := abi.RegisteredProof_StackedDRG2KiBPoSt
+			registeredSealProof := constants.DevRegisteredSealProof
+			registeredPoStProof := constants.DevRegisteredSealProof
 
 			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
 				SealProofType: registeredSealProof,
