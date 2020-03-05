@@ -89,7 +89,8 @@ func VerifierConfigOption(verifier sectorbuilder.Verifier) BuilderOpt {
 // use during block generation
 func PoStGeneratorOption(generator postgenerator.PoStGenerator) BuilderOpt {
 	return func(b *Builder) error {
-		c.postGenerator = generator
+		b.postGen = generator
+		return nil
 	}
 }
 
@@ -105,15 +106,6 @@ func ChainClockConfigOption(clk clock.ChainEpochClock) BuilderOpt {
 func JournalConfigOption(jrl journal.Journal) BuilderOpt {
 	return func(c *Builder) error {
 		c.journal = jrl
-		return nil
-	}
-}
-
-// TestProofOption returns a function that sets the builder to construct a node
-// with fake proofs
-func TestProofOption() BuilderOpt {
-	return func(c *Builder) error {
-		c.testProofMode = true
 		return nil
 	}
 }

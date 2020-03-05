@@ -136,9 +136,9 @@ func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
 	_, err := g.createActor(builtin.SystemActorAddr, builtin.SystemActorCodeID, specsbig.Zero(), func() (interface{}, error) {
 		return &adt.EmptyValue{}, nil
 	})
-
-	fmt.Printf("[GenGen] system actor code cid: %s\n", builtin.SystemActorCodeID)
-	fmt.Printf("[GenGen] account actor code cid: %s\n", builtin.AccountActorCodeID)
+	if err != nil {
+		return err
+	}
 
 	_, err = g.createActor(builtin.CronActorAddr, builtin.CronActorCodeID, specsbig.Zero(), func() (interface{}, error) {
 		return &cron.State{Entries: []cron.Entry{{
@@ -146,6 +146,9 @@ func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
 			MethodNum: builtin.MethodsPower.OnEpochTickEnd,
 		}}}, nil
 	})
+	if err != nil {
+		return err
+	}
 
 	_, err = g.createActor(builtin.InitActorAddr, builtin.InitActorCodeID, specsbig.Zero(), func() (interface{}, error) {
 		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore())
@@ -168,11 +171,10 @@ func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	rewardActor.Balance = abi.NewTokenAmount(10000000000)
+	rewardActor.Balance = abi.NewTokenAmount(100_000_000_000_000_000)
 	if err := g.stateTree.SetActor(ctx, builtin.RewardActorAddr, rewardActor); err != nil {
 		return err
 	}
-	fmt.Printf("[GenGen] reward actor code cid: %s\n", rewardActor.Code)
 
 	_, err = g.createActor(builtin.StoragePowerActorAddr, builtin.StoragePowerActorCodeID, specsbig.Zero(), func() (interface{}, error) {
 		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore())

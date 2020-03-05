@@ -317,6 +317,7 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 		}
 	}()
 
+	// DRAGONS: remove these once specs actors project enforces Send params
 	// replace nil params with empty value
 	if params == nil {
 		params = &adt_spec.EmptyValue{}

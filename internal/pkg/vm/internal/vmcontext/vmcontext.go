@@ -241,9 +241,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 		// Pay block reward.
 		// Dragons: missing final protocol design on if/how to determine the nominal power
 		rewardMessage := makeBlockRewardMessage(blk.Miner, minerPenaltyTotal, minerGasRewardTotal, big.Zero())
-		fmt.Printf("doing reward message\n")
 		if _, err := vm.applyImplicitMessage(rewardMessage, rnd); err != nil {
-			fmt.Printf("reward message error\n")
 			return nil, err
 		}
 	}
@@ -280,7 +278,6 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 			}
 		}
 	}()
-	fmt.Printf("imsg method id: %d, from: %s, to: %s, val: %s\n", imsg.method, imsg.from, imsg.to, imsg.value)
 
 	// implicit messages gas is tracked separatly and not paid by the miner
 	gasTank := NewGasTracker(gas.SystemGasLimit)
@@ -298,7 +295,6 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 		return nil, err
 	}
 	if !found {
-		fmt.Printf("full imsg:%v\n", imsg)
 		return nil, fmt.Errorf("implicit message `from` field actor not found, addr: %s", imsg.from)
 	}
 

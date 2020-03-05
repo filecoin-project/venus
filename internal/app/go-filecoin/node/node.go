@@ -37,7 +37,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	mining_protocol "github.com/filecoin-project/go-filecoin/internal/pkg/protocol/mining"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
@@ -668,11 +667,6 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 		return nil, err
 	}
 
-	poStGenerator := node.StorageMining.PoStGenerator
-	if node.FakeElectionProofMode {
-		poStGenerator = &proofs.TestElectionPoster{}
-	}
-
 	return mining.NewDefaultWorker(mining.WorkerParameters{
 		API: node.PorcelainAPI,
 
@@ -691,7 +685,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 		Processor:     node.Chain().Processor,
 		Blockstore:    node.Blockstore.Blockstore,
 		Clock:         node.ChainClock,
-		Poster:        poStGenerator,
+		Poster:        node.StorageMining.PoStGenerator,
 	}), nil
 }
 

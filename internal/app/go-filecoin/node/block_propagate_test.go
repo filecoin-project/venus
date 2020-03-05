@@ -13,6 +13,8 @@ import (
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
@@ -116,7 +118,8 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 	builder := test.NewNodeBuilder(t)
 	builder.WithGenesisInit(seed.GenesisInitFunc)
 	builder.WithBuilderOpt(ChainClockConfigOption(c))
-	builder.WithBuilderOpt(TestProofOption())
+	builder.WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{}))
+	builder.WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{}))
 	builder.WithInitOpt(PeerKeyOpt(PeerKeys[0]))
 	minerNode := builder.Build(ctx)
 	seed.GiveKey(t, minerNode, 0)
@@ -131,7 +134,8 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 	builder2 := test.NewNodeBuilder(t)
 	builder2.WithGenesisInit(seed.GenesisInitFunc)
 	builder2.WithBuilderOpt(ChainClockConfigOption(c))
-	builder2.WithBuilderOpt(TestProofOption())
+	builder2.WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{}))
+	builder2.WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{}))
 
 	for i := 0; i < nodeLimit; i++ {
 		nodes = append(nodes, builder2.Build(ctx))
