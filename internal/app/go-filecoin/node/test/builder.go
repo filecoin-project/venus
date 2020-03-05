@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
 // NodeBuilder creates and configures Filecoin nodes for in-process testing.
@@ -35,7 +36,7 @@ type NodeBuilder struct {
 // NewNodeBuilder creates a new node builder.
 func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 	return &NodeBuilder{
-		gif:      consensus.MakeGenesisFunc(consensus.NetworkName("gfctest")),
+		gif:      gengen.MakeGenesisFunc(gengen.NetworkName("gfctest")),
 		initOpts: []node.InitOpt{},
 		configMutations: []node.ConfigOpt{
 			// Default configurations that make sense for integration tests.

@@ -205,7 +205,7 @@ func MakeTestGenCfg(t *testing.T, numSectors int) *gengen.GenesisCfg {
 	require.NoError(t, err)
 	return &gengen.GenesisCfg{
 		ProofsMode: types.TestProofsMode,
-		Keys:       2,
+		KeysToGen:  2,
 		Miners: []*gengen.CreateStorageMinerConfig{
 			{
 				Owner:            0,
@@ -215,7 +215,7 @@ func MakeTestGenCfg(t *testing.T, numSectors int) *gengen.GenesisCfg {
 			},
 		},
 		Network: "gfctest",
-		PreAlloc: []string{
+		PreAllocGenKeys: []string{
 			"10000",
 			"10000",
 		},

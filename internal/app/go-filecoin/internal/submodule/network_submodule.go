@@ -87,6 +87,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	var peerHost host.Host
 	var router routing.Routing
 	validator := blankValidator{}
+	var pubsubMessageSigning bool
 	if !config.OfflineMode() {
 		makeDHT := func(h host.Host) (routing.Routing, error) {
 			r, err := dht.New(
@@ -108,9 +109,12 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 		if err != nil {
 			return NetworkSubmodule{}, err
 		}
+		// require message signing in online mode when we have priv key
+		pubsubMessageSigning = true
 	} else {
 		router = offroute.NewOfflineRouter(repo.Datastore(), validator)
 		peerHost = rhost.Wrap(noopLibP2PHost{}, router)
+		pubsubMessageSigning = false
 	}
 
 	// Set up libp2p network
@@ -118,9 +122,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	// to enable publishing on first connection.  The default of one
 	// second is not acceptable for tests.
 	libp2pps.GossipSubHeartbeatInterval = 100 * time.Millisecond
-	// TODO: PubSub requires strict message signing, disabled for now
-	// reference issue: #3124
-	gsub, err := libp2pps.NewGossipSub(ctx, peerHost, libp2pps.WithMessageSigning(false), libp2pps.WithDiscovery(&discovery.NoopDiscovery{}))
+	gsub, err := libp2pps.NewGossipSub(ctx, peerHost, libp2pps.WithMessageSigning(pubsubMessageSigning), libp2pps.WithDiscovery(&discovery.NoopDiscovery{}))
 	if err != nil {
 		return NetworkSubmodule{}, errors.Wrap(err, "failed to set up network")
 	}

@@ -89,7 +89,7 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 
 func (g *GenesisGenerator) Init(cfg *GenesisCfg) error {
 	g.pnrg = mrand.New(mrand.NewSource(cfg.Seed))
-	keys, err := genKeys(cfg.Keys, g.pnrg)
+	keys, err := genKeys(cfg.KeysToGen, g.pnrg)
 	if err != nil {
 		return err
 	}
@@ -243,11 +243,11 @@ func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
 }
 
 func (g *GenesisGenerator) setupPrealloc() error {
-	if len(g.keys) < len(g.cfg.PreAlloc) {
+	if len(g.keys) < len(g.cfg.PreAllocGenKeys) {
 		return fmt.Errorf("keys do not match prealloc")
 	}
 
-	for i, v := range g.cfg.PreAlloc {
+	for i, v := range g.cfg.PreAllocGenKeys {
 		ki := g.keys[i]
 
 		addr, err := ki.Address()

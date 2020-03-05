@@ -1,7 +1,7 @@
 {
   "seed": 4,
-  "keys": 5,
-  "preAlloc": [
+  "keysToGen": 5,
+  "preAllocGenKeys": [
     "10000000000",
     "10000000000",
     "10000000000",

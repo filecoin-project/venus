@@ -234,8 +234,8 @@ func (e *MemoryGenesis) buildGenesis(funds *big.Int) error {
 		return err
 	}
 	cfg := &gengen.GenesisCfg{
-		Keys: 1,
-		PreAlloc: []string{
+		KeysToGen: 1,
+		PreAllocGenKeys: []string{
 			funds.String(),
 		},
 		Miners: []*gengen.CreateStorageMinerConfig{

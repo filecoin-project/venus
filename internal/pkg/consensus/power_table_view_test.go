@@ -66,7 +66,6 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 	// set up genesis block containing some miners with non-zero power
 	genCfg := &gengen.GenesisCfg{
 		ProofsMode: types.TestProofsMode,
-		Keys:       1,
 		Miners: []*gengen.CreateStorageMinerConfig{
 			{
 				CommittedSectors: commCfgs,
@@ -75,6 +74,7 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 		},
 		Network: "ptvtest",
 	}
+	require.NoError(t, gengen.GenKeys(1)(genCfg))
 
 	info, err := gengen.GenGen(ctx, genCfg, bs)
 	require.NoError(t, err)
