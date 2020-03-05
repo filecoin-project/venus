@@ -76,7 +76,7 @@ func TestMineOnce10Null(t *testing.T) {
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         chainClock,
-		Poster:        &consensus.FakePoSter{},
+		Poster:        &consensus.TestElectionPoster{},
 	})
 
 	result, err := MineOnce(context.Background(), *worker, baseTs, chainClock)
@@ -139,7 +139,7 @@ func TestMineOneEpoch10Null(t *testing.T) {
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         chainClock,
-		Poster:        &consensus.FakePoSter{},
+		Poster:        &consensus.TestElectionPoster{},
 	})
 
 	for i := 0; i < 10; i++ {

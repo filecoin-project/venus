@@ -2,7 +2,6 @@ package node_test
 
 import (
 	"context"
-	"sync"
 	"testing"
 	"time"
 
@@ -13,9 +12,9 @@ import (
 
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
@@ -32,35 +31,7 @@ func connect(t *testing.T, nd1, nd2 *Node) {
 	}
 }
 
-func requireMineOnce(ctx context.Context, t *testing.T, minerNode *Node) *block.Block {
-	headTipSet, err := minerNode.PorcelainAPI.ChainHead()
-	require.NoError(t, err)
-	baseTS := headTipSet
-	require.NotNil(t, baseTS)
-
-	worker, err := minerNode.CreateMiningWorker(ctx)
-	require.NoError(t, err)
-
-	// Miner should win first election as it has all the power so only
-	// mine once with 0 null blocks
-	out := make(chan mining.Output)
-	var wonElection bool
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		wonElection = worker.Mine(ctx, headTipSet, 0, out)
-		wg.Done()
-	}()
-	next := <-out
-	wg.Wait() // wait for wonElection to be set
-	assert.True(t, wonElection)
-	require.NoError(t, next.Err)
-
-	return next.NewBlock
-}
-
 func TestBlockPropsManyNodes(t *testing.T) {
-	t.Skip("Skip pending miner actor integration #3731")
 	tf.UnitTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -78,13 +49,12 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	connect(t, nodes[1], nodes[2])
 	connect(t, nodes[2], nodes[3])
 
-	nextBlk := requireMineOnce(ctx, t, minerNode)
-	// Wait for network connection notifications to propagate
-	time.Sleep(time.Millisecond * 300)
 	// Advance node's time so that it is epoch 1
 	fakeClock.Advance(blockTime)
-
-	assert.NoError(t, minerNode.AddNewBlock(ctx, nextBlk))
+	nextBlk, err := minerNode.BlockMining.BlockMiningAPI.MiningOnce(ctx)
+	require.NoError(t, err)
+	// Wait for network connection notifications to propagate
+	time.Sleep(time.Millisecond * 100)
 
 	equal := false
 	for i := 0; i < 30; i++ {
@@ -103,7 +73,6 @@ func TestBlockPropsManyNodes(t *testing.T) {
 }
 
 func TestChainSync(t *testing.T) {
-	t.Skip("Skip pending miner actor integration #3731")
 	tf.UnitTest(t)
 
 	ctx := context.Background()
@@ -114,16 +83,16 @@ func TestChainSync(t *testing.T) {
 
 	connect(t, nodes[0], nodes[1])
 
-	firstBlock := requireMineOnce(ctx, t, nodes[0])
-	secondBlock := requireMineOnce(ctx, t, nodes[0])
-	thirdBlock := requireMineOnce(ctx, t, nodes[0])
-
 	// Advance node's time so that it is epoch 1
 	fakeClock.Advance(blockTime)
-
-	assert.NoError(t, nodes[0].AddNewBlock(ctx, firstBlock))
-	assert.NoError(t, nodes[0].AddNewBlock(ctx, secondBlock))
-	assert.NoError(t, nodes[0].AddNewBlock(ctx, thirdBlock))
+	_, err := nodes[0].BlockMining.BlockMiningAPI.MiningOnce(ctx)
+	require.NoError(t, err)
+	fakeClock.Advance(blockTime)
+	_, err = nodes[0].BlockMining.BlockMiningAPI.MiningOnce(ctx)
+	require.NoError(t, err)
+	fakeClock.Advance(blockTime)
+	thirdBlock, err := nodes[0].BlockMining.BlockMiningAPI.MiningOnce(ctx)
+	require.NoError(t, err)
 
 	equal := false
 	for i := 0; i < 30; i++ {
@@ -141,7 +110,7 @@ func TestChainSync(t *testing.T) {
 
 // makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
 func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*Node, th.FakeClock, time.Duration) {
-	seed := MakeChainSeed(t, MakeTestGenCfg(t, 100))
+	seed := MakeChainSeed(t, MakeTestGenCfg(t, 3))
 	ctx := context.Background()
 	fc := th.NewFakeClock(time.Unix(1234567890, 0))
 	blockTime := 100 * time.Millisecond
@@ -149,6 +118,8 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 	builder := test.NewNodeBuilder(t)
 	builder.WithGenesisInit(seed.GenesisInitFunc)
 	builder.WithBuilderOpt(ChainClockConfigOption(c))
+	builder.WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{}))
+	builder.WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{}))
 	builder.WithInitOpt(PeerKeyOpt(PeerKeys[0]))
 	minerNode := builder.Build(ctx)
 	seed.GiveKey(t, minerNode, 0)
@@ -163,6 +134,9 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 	builder2 := test.NewNodeBuilder(t)
 	builder2.WithGenesisInit(seed.GenesisInitFunc)
 	builder2.WithBuilderOpt(ChainClockConfigOption(c))
+	builder2.WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{}))
+	builder2.WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{}))
+
 	for i := 0; i < nodeLimit; i++ {
 		nodes = append(nodes, builder2.Build(ctx))
 	}

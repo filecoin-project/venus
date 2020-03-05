@@ -36,7 +36,8 @@ type StorageMiningSubmodule struct {
 }
 
 // NewStorageMiningSubmodule creates a new storage mining submodule.
-func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching, s sectorbuilder.Interface, c *ChainSubmodule, m *MessagingSubmodule, mw *msg.Waiter, w *WalletSubmodule, stateViewer *appstate.Viewer) (*StorageMiningSubmodule, error) {
+func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching, s sectorbuilder.Interface, c *ChainSubmodule,
+	m *MessagingSubmodule, mw *msg.Waiter, w *WalletSubmodule, stateViewer *appstate.Viewer, postGen postgenerator.PoStGenerator) (*StorageMiningSubmodule, error) {
 	minerNode := storageminerconnector.NewStorageMinerNodeConnector(minerAddr, c.ChainReader, c.State, m.Outbox, mw, w.Wallet, stateViewer)
 
 	// The amount of epochs we expect the storage miner to take to replicate and
@@ -66,11 +67,13 @@ func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching,
 	}
 
 	smbe := piecemanager.NewStorageMinerBackEnd(storageMiner, s)
-	sbbe := postgenerator.NewSectorBuilderBackEnd(s)
+	if postGen == nil {
+		postGen = postgenerator.NewSectorBuilderBackEnd(s)
+	}
 
 	modu := &StorageMiningSubmodule{
 		PieceManager:     smbe,
-		PoStGenerator:    sbbe,
+		PoStGenerator:    postGen,
 		minerNode:        minerNode,
 		storageMiner:     storageMiner,
 		heaviestTipSetCh: c.HeaviestTipSetCh,

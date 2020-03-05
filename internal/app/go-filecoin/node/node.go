@@ -461,7 +461,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 
 	// TODO: rework these modules so they can be at least partially constructed during the building phase #3738
 	node.StorageMining, err = submodule.NewStorageMiningSubmodule(minerAddr, node.Repo.Datastore(),
-		sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet, state.NewViewer(cborStore))
+		sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet, state.NewViewer(cborStore), node.BlockMining.PoStGenerator)
 	if err != nil {
 		return err
 	}

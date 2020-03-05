@@ -11,19 +11,20 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 )
 
-// FakePoSter generates and verifies election PoSts
-type FakePoSter struct{}
+// TestElectionPoster generates and verifies electoin PoSts
+type TestElectionPoster struct{}
 
-func (ep *FakePoSter) VerifyElectionPost(context.Context, abi.PoStVerifyInfo) (bool, error) {
+var _ EPoStVerifier = new(TestElectionPoster)
+var _ postgenerator.PoStGenerator = new(TestElectionPoster)
+
+// VerifyElectionPost returns the validity of the input PoSt proof
+func (ep *TestElectionPoster) VerifyElectionPost(_ context.Context, _ abi.PoStVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-var _ EPoStVerifier = new(FakePoSter)
-var _ postgenerator.PoStGenerator = new(FakePoSter)
-
 // ComputeElectionPoSt returns an election post proving that the partial
 // tickets are linked to the sector commitments.
-func (ep *FakePoSter) ComputeElectionPoSt(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate) ([]abi.PoStProof, error) {
+func (ep *TestElectionPoster) ComputeElectionPoSt(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate) ([]abi.PoStProof, error) {
 	fakePoSt := make([]byte, 1)
 	fakePoSt[0] = 0xe
 	return []abi.PoStProof{{
@@ -33,7 +34,7 @@ func (ep *FakePoSter) ComputeElectionPoSt(sectorInfo []abi.SectorInfo, challenge
 }
 
 // GenerateEPostCandidates generates election post candidates
-func (ep *FakePoSter) GenerateEPostCandidates(sectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]ffi.PoStCandidateWithTicket, error) {
+func (ep *TestElectionPoster) GenerateEPostCandidates(sectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]ffi.PoStCandidateWithTicket, error) {
 	// Current fake behavior: generate one partial ticket per sector,
 	// each partial ticket is the hash of the challengeSeed and sectorID
 	var candidatesWithTickets []ffi.PoStCandidateWithTicket

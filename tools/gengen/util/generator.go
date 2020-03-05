@@ -13,10 +13,12 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cid "github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -56,7 +58,6 @@ var (
 
 func init() {
 	defaultAccounts = map[address.Address]abi.TokenAmount{
-		builtin.RewardActorAddr:     abi.NewTokenAmount(10000000000),
 		builtin.BurntFundsActorAddr: abi.NewTokenAmount(0),
 	}
 }
@@ -131,7 +132,25 @@ func (g *GenesisGenerator) createActor(addr address.Address, codeCid cid.Cid, ba
 }
 
 func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
-	_, err := g.createActor(builtin.InitActorAddr, builtin.InitActorCodeID, specsbig.Zero(), func() (interface{}, error) {
+
+	_, err := g.createActor(builtin.SystemActorAddr, builtin.SystemActorCodeID, specsbig.Zero(), func() (interface{}, error) {
+		return &adt.EmptyValue{}, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = g.createActor(builtin.CronActorAddr, builtin.CronActorCodeID, specsbig.Zero(), func() (interface{}, error) {
+		return &cron.State{Entries: []cron.Entry{{
+			Receiver:  builtin.StoragePowerActorAddr,
+			MethodNum: builtin.MethodsPower.OnEpochTickEnd,
+		}}}, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = g.createActor(builtin.InitActorAddr, builtin.InitActorCodeID, specsbig.Zero(), func() (interface{}, error) {
 		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore())
 		if err != nil {
 			return nil, err
@@ -139,6 +158,21 @@ func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
 		return init_.ConstructState(emptyMap.Root(), g.cfg.Network), nil
 	})
 	if err != nil {
+		return err
+	}
+
+	rewardActor, err := g.createActor(builtin.RewardActorAddr, builtin.RewardActorCodeID, specsbig.Zero(), func() (interface{}, error) {
+		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore())
+		if err != nil {
+			return nil, err
+		}
+		return reward.ConstructState(emptyMap.Root()), nil
+	})
+	if err != nil {
+		return err
+	}
+	rewardActor.Balance = abi.NewTokenAmount(100_000_000_000_000_000)
+	if err := g.stateTree.SetActor(ctx, builtin.RewardActorAddr, rewardActor); err != nil {
 		return err
 	}
 
@@ -180,7 +214,7 @@ func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
 		sortedAddresses = append(sortedAddresses, string(addr.Bytes()))
 	}
 	sort.Strings(sortedAddresses)
-
+	// BurntFunds
 	for _, addrBytes := range sortedAddresses {
 		addr, err := address.NewFromBytes([]byte(addrBytes))
 		if err != nil {
@@ -211,12 +245,6 @@ func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
 func (g *GenesisGenerator) setupPrealloc() error {
 	if len(g.keys) < len(g.cfg.PreAlloc) {
 		return fmt.Errorf("keys do not match prealloc")
-	}
-
-	netact := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(1000000000000))
-	err := g.stateTree.SetActor(context.Background(), builtin.RewardActorAddr, netact)
-	if err != nil {
-		return err
 	}
 
 	for i, v := range g.cfg.PreAlloc {
@@ -598,11 +626,12 @@ func (g *GenesisGenerator) putSectors(ctx context.Context, comm *CommitConfig, m
 
 	newSectorInfo := &miner.SectorOnChainInfo{
 		Info: miner.SectorPreCommitInfo{
-			SectorNumber:  abi.SectorNumber(comm.SectorNum),
-			SealedCID:     comm.CommR,
-			SealRandEpoch: 0,
-			DealIDs:       []abi.DealID{dealID},
-			Expiration:    abi.ChainEpoch(comm.DealCfg.EndEpoch),
+			RegisteredProof: abi.RegisteredProof_StackedDRG2KiBSeal, // default to 2kib, TODO set based on sector size
+			SectorNumber:    abi.SectorNumber(comm.SectorNum),
+			SealedCID:       comm.CommR,
+			SealRandEpoch:   0,
+			DealIDs:         []abi.DealID{dealID},
+			Expiration:      abi.ChainEpoch(comm.DealCfg.EndEpoch),
 		},
 		ActivationEpoch:   0,
 		DealWeight:        dealWeight,

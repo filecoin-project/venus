@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/go-address"
+	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
@@ -244,7 +244,7 @@ func winsAtEpoch(t *testing.T, em *ElectionMachine, head block.TipSetKey, epoch 
 	digest := epostVRFProof.Digest()
 
 	// does this postRandomness create a winner?
-	candidates, err := em.GenerateCandidates(digest[:], sectorInfos, &FakePoSter{})
+	candidates, err := em.GenerateCandidates(digest[:], sectorInfos, &TestElectionPoster{})
 	require.NoError(t, err)
 
 	for _, candidate := range candidates {
