@@ -15,8 +15,8 @@ import (
 type FakeSyscalls struct {
 }
 
-func (f FakeSyscalls) VerifySignature(epoch abi.ChainEpoch, signature gfcrypto.Signature, signer address.Address, plaintext []byte) error {
-	// This doesn't resolve account ID addresses to their signing addresses (but should).
+func (f FakeSyscalls) VerifySignature(signature gfcrypto.Signature, signer address.Address, plaintext []byte) error {
+	// The signer is assumed to be already resolved to a pubkey address.
 	return gfcrypto.ValidateSignature(plaintext, signer, signature)
 }
 
