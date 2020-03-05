@@ -358,8 +358,10 @@ func minerDaemonTestConfig(t *testing.T) *gengen.GenesisCfg {
 	return &gengen.GenesisCfg{
 		Seed:       0,
 		ProofsMode: types.TestProofsMode,
-		Keys:       4,
-		PreAlloc: []string{
+		KeysToGen:  4,
+		PreAllocGenKeys: []string{
+			"0",
+			"0",
 			"10",
 			"50",
 		},

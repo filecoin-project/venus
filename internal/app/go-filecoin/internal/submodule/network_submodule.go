@@ -109,8 +109,8 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 		if err != nil {
 			return NetworkSubmodule{}, err
 		}
-		// require message signing in online mode when we have priv key		
-		pubsubMessageSigning = true 
+		// require message signing in online mode when we have priv key
+		pubsubMessageSigning = true
 	} else {
 		router = offroute.NewOfflineRouter(repo.Datastore(), validator)
 		peerHost = rhost.Wrap(noopLibP2PHost{}, router)

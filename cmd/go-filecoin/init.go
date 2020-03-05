@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 	"github.com/filecoin-project/go-sectorbuilder"
 )
 
@@ -234,7 +235,7 @@ func initTextEncoder(_ *cmds.Request, w io.Writer, val interface{}) error {
 
 func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consensus.GenesisInitFunc, error) {
 	if sourceName == "" {
-		return consensus.MakeGenesisFunc(consensus.ProofsMode(types.LiveProofsMode)), nil
+		return gengen.MakeGenesisFunc(gengen.ProofsMode(types.LiveProofsMode)), nil
 	}
 
 	source, err := openGenesisSource(sourceName)

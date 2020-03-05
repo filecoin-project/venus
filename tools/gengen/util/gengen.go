@@ -2,6 +2,7 @@ package gengen
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	address "github.com/filecoin-project/go-address"
@@ -12,9 +13,12 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -68,13 +72,12 @@ type GenesisCfg struct {
 	// Seed is used to sample randomness for generating keys
 	Seed int64
 
-	// Keys is an array of names of keys. A random key will be generated
-	// for each name here.
-	Keys int
+	// KeysToGen is the number of random keys to generate and return
+	KeysToGen int
 
-	// PreAlloc is a mapping from key names to string values of whole filecoin
+	// PreAllocGenKeys is a mapping from generated key index to string values of whole filecoin
 	// that will be preallocated to each account
-	PreAlloc []string
+	PreAllocGenKeys []string
 
 	// Miners is a list of miners that should be set up at the start of the network
 	Miners []*CreateStorageMinerConfig
@@ -111,6 +114,89 @@ type RenderedMinerInfo struct {
 
 	// Power is the amount of storage power this miner was created with
 	Power abi.StoragePower
+}
+
+// GenOption is a configuration option.
+type GenOption func(*GenesisCfg) error
+
+// GenTime returns a config option setting the genesis time stamp
+func GenTime(t uint64) GenOption {
+	return func(gc *GenesisCfg) error {
+		gc.Time = t
+		return nil
+	}
+}
+
+// GenKeys returns a config option that sets the number of keys to generate
+func GenKeys(n int) GenOption {
+	return func(gc *GenesisCfg) error {
+		gc.KeysToGen = n
+		gc.PreAllocGenKeys = make([]string, n)
+		// By default keys get nothing
+		for i := range gc.PreAllocGenKeys {
+			gc.PreAllocGenKeys[i] = "0"
+		}
+		return nil
+	}
+}
+
+// GenKeyPrealloc returns a config option that sets up an actor account.
+func GenKeyPrealloc(idx int, amt string) GenOption {
+	return func(gc *GenesisCfg) error {
+		if len(gc.PreAllocGenKeys)-1 < idx {
+			return fmt.Errorf("bad actor account idx %d for only %d pre alloc gen keys", idx, len(gc.PreAllocGenKeys))
+		}
+		gc.PreAllocGenKeys[idx] = amt
+		return nil
+	}
+}
+
+// NetworkName returns a config option that sets the network name.
+func NetworkName(name string) GenOption {
+	return func(gc *GenesisCfg) error {
+		gc.Network = name
+		return nil
+	}
+}
+
+// ProofsMode sets the mode of operation for the proofs library.
+func ProofsMode(proofsMode types.ProofsMode) GenOption {
+	return func(gc *GenesisCfg) error {
+		gc.ProofsMode = proofsMode
+		return nil
+	}
+}
+
+var defaultGenTimeOpt = GenTime(123456789)
+
+// MakeGenesisFunc returns a genesis function configured by a set of options.
+func MakeGenesisFunc(opts ...GenOption) consensus.GenesisInitFunc {
+	// Dragons: GenesisInitFunc should take in only a blockstore to remove the hidden
+	// assumption that cst and bs are backed by the same storage.
+	return func(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+		ctx := context.Background()
+		genCfg := &GenesisCfg{}
+		err := defaultGenTimeOpt(genCfg)
+		if err != nil {
+			return nil, err
+		}
+		for _, opt := range opts {
+			if err := opt(genCfg); err != nil {
+				return nil, err
+			}
+		}
+		ri, err := GenGen(ctx, genCfg, bs)
+		if err != nil {
+			return nil, err
+		}
+
+		var b block.Block
+		err = cst.Get(ctx, ri.GenesisCid, &b)
+		if err != nil {
+			return nil, err
+		}
+		return &b, nil
+	}
 }
 
 // GenGen takes the genesis configuration and creates a genesis block that

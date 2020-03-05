@@ -38,8 +38,8 @@ func RequireGenerateGenesis(t *testing.T, funds int64, dir string, genesisTime t
 	cfg := &gengen.GenesisCfg{
 		Seed:       0,
 		ProofsMode: types.TestProofsMode,
-		Keys:       1,
-		PreAlloc: []string{
+		KeysToGen:  1,
+		PreAllocGenKeys: []string{
 			strconv.FormatInt(funds, 10),
 		},
 		Miners: []*gengen.CreateStorageMinerConfig{

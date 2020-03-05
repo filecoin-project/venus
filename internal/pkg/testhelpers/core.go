@@ -16,12 +16,12 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
 // RequireMakeStateTree takes a map of addresses to actors and stores them on
@@ -256,5 +256,5 @@ func RequireCreateStorages(ctx context.Context, t *testing.T) (*state.State, vm.
 
 // DefaultGenesis creates a test network genesis block with default accounts and actors installed.
 func DefaultGenesis(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
-	return consensus.MakeGenesisFunc(consensus.Network(version.TEST))(cst, bs)
+	return gengen.MakeGenesisFunc(gengen.NetworkName(version.TEST))(cst, bs)
 }
