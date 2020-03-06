@@ -17,32 +17,24 @@ type Receipt struct {
 	GasUsed     gas.Unit          `json:"gasUsed"`
 }
 
-// Ok returns an empty succesfull result.
-func Ok() Receipt {
-	return Receipt{
-		ExitCode:    0,
-		ReturnValue: nil,
-		GasUsed:     gas.Zero,
-	}
-}
-
 // Value returns a successful code with the value encoded.
 //
 // Callers do NOT need to encode the value before calling this method.
-func Value(obj interface{}) Receipt {
+func Value(obj interface{}, gasUsed gas.Unit) Receipt {
+	code := exitcode.Ok
 	var aux []byte
 	if obj != nil {
 		var err error
 		aux, err = encoding.Encode(obj)
 		if err != nil {
-			return Receipt{ExitCode: exitcode.SysErrSerialization}
+			code = exitcode.SysErrSerialization
 		}
 	}
 
 	return Receipt{
-		ExitCode:    0,
+		ExitCode:    code,
 		ReturnValue: aux,
-		GasUsed:     gas.Zero,
+		GasUsed:     gasUsed,
 	}
 }
 
@@ -53,12 +45,6 @@ func Failure(exitCode exitcode.ExitCode, gasAmount gas.Unit) Receipt {
 		ReturnValue: nil,
 		GasUsed:     gasAmount,
 	}
-}
-
-// WithGas sets the gas used.
-func (r Receipt) WithGas(amount gas.Unit) Receipt {
-	r.GasUsed = amount
-	return r
 }
 
 func (r *Receipt) String() string {

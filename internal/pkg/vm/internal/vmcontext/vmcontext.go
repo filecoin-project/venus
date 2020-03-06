@@ -436,7 +436,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 		ret := ctx.invoke()
 
 		// set return value
-		out = message.Value(ret).WithGas(gasTank.GasConsumed())
+		out = message.Value(ret, gasTank.GasConsumed())
 
 		return
 	}
