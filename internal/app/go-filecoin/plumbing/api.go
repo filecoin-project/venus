@@ -51,7 +51,6 @@ type API struct {
 	expected     consensus.Protocol
 	msgPool      *message.Pool
 	msgPreviewer *msg.Previewer
-	actorState   *appstate.TipSetStateViewer
 	msgWaiter    *msg.Waiter
 	network      *net.Network
 	outbox       *message.Outbox
@@ -62,7 +61,6 @@ type API struct {
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
 	Chain        *cst.ChainStateReadWriter
-	ActState     *appstate.TipSetStateViewer
 	Sync         *cst.ChainSyncProvider
 	Config       *cfg.Config
 	DAG          *dag.DAG
@@ -81,7 +79,6 @@ func New(deps *APIDeps) *API {
 	return &API{
 		logger:       logging.Logger("porcelain"),
 		chain:        deps.Chain,
-		actorState:   deps.ActState,
 		syncer:       deps.Sync,
 		config:       deps.Config,
 		dag:          deps.DAG,
@@ -232,7 +229,7 @@ func (api *API) MessagePreview(ctx context.Context, from, to address.Address, me
 
 // StateView loads the state view for a tipset, i.e. the state *after* the application of the tipset's messages.
 func (api *API) StateView(baseKey block.TipSetKey) (*appstate.View, error) {
-	return api.actorState.StateView(baseKey)
+	return api.chain.StateView(baseKey)
 }
 
 // MessageSend sends a message. It uses the default from address if none is given and signs the

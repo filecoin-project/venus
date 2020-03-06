@@ -5,20 +5,22 @@ import (
 	"fmt"
 
 	addr "github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // PowerStateView is the consensus package's interface to chain state.
 type PowerStateView interface {
+	state.AccountStateView
 	MinerSectorSize(ctx context.Context, maddr addr.Address) (abi.SectorSize, error)
 	MinerControlAddresses(ctx context.Context, maddr addr.Address) (owner, worker addr.Address, err error)
 	MinerProvingSetForEach(ctx context.Context, maddr addr.Address, f func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof) error) error
 	NetworkTotalPower(ctx context.Context) (abi.StoragePower, error)
 	MinerClaimedPower(ctx context.Context, miner addr.Address) (abi.StoragePower, error)
-	AccountSignerAddress(ctx context.Context, a addr.Address) (addr.Address, error)
 }
 
 // PowerTableView defines the set of functions used by the ChainManager to view

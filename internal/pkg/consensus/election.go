@@ -61,7 +61,7 @@ func (em ElectionMachine) GenerateEPoSt(allSectorInfos []abi.SectorInfo, challen
 
 // VerifyEPoStVrfProof verifies that the PoSt randomness is the result of the
 // candidate signing the ticket.
-func (em ElectionMachine) VerifyEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, vrfProof abi.PoStRandomness) error {
+func (em ElectionMachine) VerifyEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof abi.PoStRandomness) error {
 	entropy, err := encoding.Encode(miner)
 	if err != nil {
 		return errors.Wrapf(err, "failed to encode entropy")
@@ -71,7 +71,7 @@ func (em ElectionMachine) VerifyEPoStVrfProof(ctx context.Context, base block.Ti
 		return errors.Wrap(err, "failed to generate epost randomness")
 	}
 
-	return crypto.ValidateBlsSignature(randomness, worker, vrfProof)
+	return crypto.ValidateBlsSignature(randomness, workerSigner, vrfProof)
 }
 
 // CandidateWins returns true if the input candidate wins the election
@@ -167,7 +167,7 @@ func (tm TicketMachine) MakeTicket(ctx context.Context, base block.TipSetKey, ep
 
 // IsValidTicket verifies that the ticket's proof of randomness is valid with respect to its parent.
 func (tm TicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey,
-	epoch abi.ChainEpoch, miner address.Address, worker address.Address, ticket block.Ticket) error {
+	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket block.Ticket) error {
 	entropy, err := encoding.Encode(miner)
 	if err != nil {
 		return errors.Wrapf(err, "failed to encode entropy")
@@ -177,7 +177,7 @@ func (tm TicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey,
 		return errors.Wrap(err, "failed to generate epost randomness")
 	}
 
-	return crypto.ValidateBlsSignature(randomness, worker, ticket.VRFProof)
+	return crypto.ValidateBlsSignature(randomness, workerSigner, ticket.VRFProof)
 }
 
 func sampleChainAndComputeVrf(ctx context.Context, chain ChainRandomness, base block.TipSetKey, epoch abi.ChainEpoch, tag acrypto.DomainSeparationTag,

@@ -1,7 +1,6 @@
 package types
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -30,6 +29,8 @@ type SignedMessage struct {
 
 // NewSignedMessage accepts a message `msg` and a signer `s`. NewSignedMessage returns a `SignedMessage` containing
 // a signature derived from the serialized `msg` and `msg.From`
+// NOTE: this method can only sign message with From being a public-key type address, not an ID address.
+// We should deprecate this and move to more explicit signing via an address resolver.
 func NewSignedMessage(msg UnsignedMessage, s Signer) (*SignedMessage, error) {
 	msgData, err := msg.Marshal()
 	if err != nil {
@@ -45,15 +46,6 @@ func NewSignedMessage(msg UnsignedMessage, s Signer) (*SignedMessage, error) {
 		Message:   msg,
 		Signature: sig,
 	}, nil
-}
-
-// UnwrapSigned returns the unsigned messages from a slice of signed messages.
-func UnwrapSigned(smsgs []*SignedMessage) []*UnsignedMessage {
-	unsigned := make([]*UnsignedMessage, len(smsgs))
-	for i, sm := range smsgs {
-		unsigned[i] = &sm.Message
-	}
-	return unsigned
 }
 
 // Unmarshal a SignedMessage from the given bytes.
@@ -100,15 +92,6 @@ func (smsg *SignedMessage) ToNode() (ipld.Node, error) {
 
 }
 
-// VerifySignature returns true iff the signature is valid for the message content and from address.
-func (smsg *SignedMessage) VerifySignature() error {
-	bmsg, err := smsg.Message.Marshal()
-	if err != nil {
-		return err
-	}
-	return crypto.ValidateSignature(bmsg, smsg.Message.From, smsg.Signature)
-}
-
 // OnChainLen returns the amount of bytes used to represent the message on chain.
 // TODO we can save this redundant encoding if we plumbed the size through from when the message was originally decoded from the network.
 func (smsg *SignedMessage) OnChainLen() int {
@@ -135,6 +118,5 @@ func (smsg *SignedMessage) String() string {
 // Equals tests whether two signed messages are equal.
 func (smsg *SignedMessage) Equals(other *SignedMessage) bool {
 	return smsg.Message.Equals(&other.Message) &&
-		smsg.Signature.Type == other.Signature.Type &&
-		bytes.Equal(smsg.Signature.Data, other.Signature.Data)
+		smsg.Signature.Equals(&other.Signature)
 }

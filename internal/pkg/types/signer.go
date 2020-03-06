@@ -5,7 +5,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 )
 
-// Signer is an interface for SignBytes
+// Signer signs data with a private key obtained internally from a provided address.
 type Signer interface {
 	SignBytes(data []byte, addr address.Address) (crypto.Signature, error)
 }
