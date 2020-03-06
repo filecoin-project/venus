@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	notinit "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
@@ -16,6 +17,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -144,10 +146,10 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 	// resolve the target address via the InitActor, and attempt to load state.
 	initActorEntry, found, err := vm.state.GetActor(vm.context, builtin.InitActorAddr)
 	if err != nil {
-		panic(err)
+		panic(errors.Wrapf(err, "failed to load init actor"))
 	}
 	if !found {
-		runtime.Abort(exitcode.SysErrActorNotFound)
+		panic(errors.Wrapf(err, "no init actor"))
 	}
 
 	// get a view into the actor state
@@ -162,6 +164,26 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 	}
 
 	return idAddr, true
+}
+
+func (vm *VM) resolveSignerAddress(accountAddr address.Address) (address.Address, error) {
+	// Short-circuit when given a pubkey address.
+	if accountAddr.Protocol() == address.SECP256K1 || accountAddr.Protocol() == address.BLS {
+		return accountAddr, nil
+	}
+	actor, found, err := vm.state.GetActor(vm.context, accountAddr)
+	if err != nil {
+		return address.Undef, errors.Wrapf(err, "signer resolution failed to find actor %s", accountAddr)
+	}
+	if !found {
+		return address.Undef, fmt.Errorf("signer resolution found no such actor %s", accountAddr)
+	}
+	var state account.State
+	if _, err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
+		// This error is internal, shouldn't propagate as on-chain failure
+		panic(fmt.Errorf("signer resolution failed to lost state for %s ", accountAddr))
+	}
+	return state.Address, nil
 }
 
 // implement VMInterpreter for VM

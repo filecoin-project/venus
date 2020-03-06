@@ -24,13 +24,10 @@ func NewSyscalls(verifier sectorbuilder.Verifier) *Syscalls {
 	}
 }
 
-func (s Syscalls) VerifySignature(epoch abi.ChainEpoch, signature crypto.Signature, signer address.Address, plaintext []byte) error {
-	// Dragons: this lets all id addresses off the hook -- we need to remove this
-	// once market actor code actually checks proposal signature.  Depending on how
-	// that works we may want to do id address to pubkey address lookup here or we
-	// might defer that to VM
-	if signer.Protocol() == address.ID {
-		return nil
+func (s Syscalls) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) error {
+	if signer.Protocol() != address.SECP256K1 && signer.Protocol() != address.BLS {
+		// This is a programmer error: callers must resolve the address in state first.
+		return fmt.Errorf("unresolved signer address")
 	}
 	return crypto.ValidateSignature(plaintext, signer, signature)
 }

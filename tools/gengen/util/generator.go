@@ -484,7 +484,7 @@ func (g *GenesisGenerator) commitDeals(ctx context.Context, addr, mIDAddr addres
 			ProviderCollateral:   specsbig.Zero(), // collateral should actually be good
 			ClientCollateral:     specsbig.Zero(),
 		}
-		proposalBytes, err := encoding.Encode(proposal)
+		proposalBytes, err := encoding.Encode(&proposal)
 		if err != nil {
 			return nil, err
 		}
