@@ -11,6 +11,8 @@ import (
 
 // MethodSignature wraps a specific method and allows you to encode/decodes input/output bytes into concrete types.
 type MethodSignature interface {
+	// ArgNil returns a nil interface for the typed argument expected by the actor method.
+	ArgNil() reflect.Value
 	// ArgInterface returns the typed argument expected by the actor method.
 	ArgInterface(argBytes []byte) (interface{}, error)
 	// ReturnInterface returns the methods typed return.
@@ -23,7 +25,12 @@ type methodSignature struct {
 
 var _ MethodSignature = (*methodSignature)(nil)
 
-// ArgInterface implement MethodSignature.
+func (ms *methodSignature) ArgNil() reflect.Value {
+	t := ms.method.Type().In(1)
+	v := reflect.New(t)
+	return v.Elem()
+}
+
 func (ms *methodSignature) ArgInterface(argBytes []byte) (interface{}, error) {
 	// decode arg1 (this is the payload for the actor method)
 	t := ms.method.Type().In(1)
@@ -50,7 +57,6 @@ func (ms *methodSignature) ArgInterface(argBytes []byte) (interface{}, error) {
 	return v.Elem().Interface(), nil
 }
 
-// ReturnInterface implement MethodSignature.
 func (ms *methodSignature) ReturnInterface(returnBytes []byte) (interface{}, error) {
 	// decode arg1 (this is the payload for the actor method)
 	t := ms.method.Type().Out(0)

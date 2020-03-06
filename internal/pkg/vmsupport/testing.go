@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 	"github.com/minio/blake2b-simd"
 
@@ -35,6 +36,6 @@ func (f FakeSyscalls) VerifyPoSt(ctx context.Context, info abi.PoStVerifyInfo) e
 	panic("implement me")
 }
 
-func (f FakeSyscalls) VerifyConsensusFault(ctx context.Context, h1, h2 []byte) error {
+func (f FakeSyscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte) (*runtime.ConsensusFault, error) {
 	panic("implement me")
 }

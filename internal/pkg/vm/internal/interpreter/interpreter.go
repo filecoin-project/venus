@@ -22,4 +22,5 @@ type BlockMessagesInfo struct {
 	BLSMessages  []*types.UnsignedMessage
 	SECPMessages []*types.SignedMessage
 	Miner        address.Address
+	TicketCount  int64
 }

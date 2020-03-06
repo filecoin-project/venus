@@ -299,6 +299,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 			BLSMessages:  blsMessages[i],
 			SECPMessages: secpMessages[i],
 			Miner:        blk.Miner,
+			TicketCount:  int64(len(blk.EPoStInfo.Winners)),
 		}
 
 		msgs = append(msgs, msgInfo)
