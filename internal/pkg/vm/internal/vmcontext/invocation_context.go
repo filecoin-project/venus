@@ -13,7 +13,6 @@ import (
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-	adt_spec "github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
@@ -89,7 +88,7 @@ func (ctx *invocationContext) invoke() interface{} {
 
 	// 4. if we are just sending funds, there is nothing else to do.
 	if ctx.msg.method == builtin.MethodSend {
-		return &adt_spec.EmptyValue{}
+		return nil
 	}
 
 	// 5. load target actor code
@@ -282,14 +281,15 @@ type returnWrapper struct {
 
 func (r returnWrapper) Into(o specsruntime.CBORUnmarshaler) error {
 	// TODO: if inner is also a specsruntime.CBORUnmarshaler, overwrite o with inner.
-	a := []byte{}
-	b := bytes.NewBuffer(a)
-
-	err := r.inner.MarshalCBOR(b)
+	b := bytes.Buffer{}
+	if r.inner == nil {
+		return fmt.Errorf("failed to unmarshal nil return")
+	}
+	err := r.inner.MarshalCBOR(&b)
 	if err != nil {
 		return err
 	}
-	err = o.UnmarshalCBOR(b)
+	err = o.UnmarshalCBOR(&b)
 	return err
 }
 
@@ -316,16 +316,6 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 			}
 		}
 	}()
-
-	// DRAGONS: remove these once specs actors project enforces Send params
-	// replace nil params with empty value
-	if params == nil {
-		params = &adt_spec.EmptyValue{}
-	}
-	// replace non pointer with pointer
-	if _, ok := params.(adt_spec.EmptyValue); ok {
-		params = &adt_spec.EmptyValue{}
-	}
 
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {
@@ -360,9 +350,13 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 	out := newCtx.invoke()
 
 	// 3. success!
-	marsh, ok := out.(specsruntime.CBORMarshaler)
-	if !ok {
-		runtime.Abortf(exitcode.SysErrorIllegalActor, "Returned value is not a CBORMarshaler")
+	var marsh specsruntime.CBORMarshaler
+	if out != nil {
+		var ok bool
+		marsh, ok = out.(specsruntime.CBORMarshaler)
+		if !ok {
+			runtime.Abortf(exitcode.SysErrorIllegalActor, "Returned value is not a CBORMarshaler")
+		}
 	}
 	return returnWrapper{inner: marsh}, exitcode.Ok
 }

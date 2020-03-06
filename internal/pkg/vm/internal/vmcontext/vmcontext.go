@@ -240,7 +240,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 
 		// Pay block reward.
 		// Dragons: missing final protocol design on if/how to determine the nominal power
-		rewardMessage := makeBlockRewardMessage(blk.Miner, minerPenaltyTotal, minerGasRewardTotal, big.Zero())
+		rewardMessage := makeBlockRewardMessage(blk.Miner, minerPenaltyTotal, minerGasRewardTotal, blk.TicketCount)
 		if _, err := vm.applyImplicitMessage(rewardMessage, rnd); err != nil {
 			return nil, err
 		}
@@ -569,12 +569,12 @@ func msgCID(msg *types.UnsignedMessage) cid.Cid {
 	return cid
 }
 
-func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount, gasReward abi.TokenAmount, nominalPower abi.StoragePower) internalMessage {
+func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount, gasReward abi.TokenAmount, ticketCount int64) internalMessage {
 	params := &reward.AwardBlockRewardParams{
-		Miner:        blockMiner,
-		Penalty:      penalty,
-		GasReward:    gasReward,
-		NominalPower: nominalPower,
+		Miner:       blockMiner,
+		Penalty:     penalty,
+		GasReward:   gasReward,
+		TicketCount: ticketCount,
 	}
 	encoded, err := encoding.Encode(params)
 	if err != nil {

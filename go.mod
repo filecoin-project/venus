@@ -12,7 +12,7 @@ require (
 	github.com/docker/docker v0.7.3-0.20190315170154-87d593639c77
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.3.3 // indirect
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200227010210-ab4704e894ef
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200306001128-cd53635dc779
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200304181354-4446ff8a1bb9
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
@@ -24,7 +24,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200306003553-541b1e74104d
 	github.com/filecoin-project/go-storage-miner v0.0.0-20200306175903-c9c02ebe51a2
-	github.com/filecoin-project/specs-actors v0.0.0-20200226233436-635911a01775
+	github.com/filecoin-project/specs-actors v0.0.0-20200306000749-99e98e61e2a0
 	github.com/fxamacker/cbor v1.5.0
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/golangci/golangci-lint v1.21.0

@@ -50,28 +50,26 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, ctx interface{}, arg
 
 	// build args to pass to the method
 	args := []reflect.Value{
-		// the ctx will be automaticall coerced
+		// the ctx will be automatically coerced
 		reflect.ValueOf(ctx),
 	}
 
 	// Dragons: simplify this to arginterface
-	if raw, ok := arg1.([]byte); ok {
+	if arg1 == nil {
+		args = append(args, m.ArgNil())
+	} else if raw, ok := arg1.([]byte); ok {
 		obj, err := m.ArgInterface(raw)
 		if err != nil {
 			return nil, err
 		}
-
-		// push decoded arg to args list
 		args = append(args, reflect.ValueOf(obj))
 	} else if raw, ok := arg1.(runtime.CBORBytes); ok {
 		obj, err := m.ArgInterface(raw)
 		if err != nil {
 			return nil, err
 		}
-		// push decoded arg to args list
 		args = append(args, reflect.ValueOf(obj))
 	} else {
-		// the argument was not in raw bytes, let it be coerced
 		args = append(args, reflect.ValueOf(arg1))
 	}
 

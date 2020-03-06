@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 	"github.com/minio/blake2b-simd"
 
@@ -62,6 +63,6 @@ func (s Syscalls) VerifyPoSt(ctx context.Context, info abi.PoStVerifyInfo) error
 	return nil
 }
 
-func (s Syscalls) VerifyConsensusFault(ctx context.Context, h1, h2 []byte) error {
+func (s Syscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte) (*runtime.ConsensusFault, error) {
 	panic("implement me")
 }

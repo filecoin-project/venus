@@ -305,6 +305,7 @@ func toOurBlockMessageInfoType(theirs []vtypes.BlockMessagesInfo) []interpreter.
 	ours := make([]interpreter.BlockMessagesInfo, len(theirs))
 	for i, bm := range theirs {
 		ours[i].Miner = bm.Miner
+		ours[i].TicketCount = bm.TicketCount
 		for _, blsMsg := range bm.BLSMessages {
 			ourbls := &types.UnsignedMessage{
 				To:         blsMsg.To,
