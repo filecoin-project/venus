@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
-	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -42,11 +41,9 @@ func NewStorageClientNodeConnector(
 	wlt *wallet.Wallet,
 	ob *message.Outbox,
 	ca address.Address,
-	sv *appstate.Viewer,
-
 ) *StorageClientNodeConnector {
 	return &StorageClientNodeConnector{
-		connectorCommon: connectorCommon{cs, w, wlt, ob, (*SMStateViewer)(sv)},
+		connectorCommon: connectorCommon{cs, w, wlt, ob},
 		cborStore:       cbor,
 		clientAddr:      ca,
 	}

@@ -19,10 +19,10 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
@@ -33,22 +33,13 @@ type chainReader interface {
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
 	GetTipSetStateRoot(ctx context.Context, tipKey block.TipSetKey) (cid.Cid, error)
 	GetActorStateAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address, out interface{}) error
+	StateView(key block.TipSetKey) (*state.View, error)
 	cbor.IpldStore
 }
 
 type storageMarketView interface {
 	AccountSignerAddress(ctx context.Context, a address.Address) (address.Address, error)
 	MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error)
-}
-
-type storageMarketViewer interface {
-	smStateView(root cid.Cid) storageMarketView
-}
-
-type SMStateViewer appstate.Viewer
-
-func (sv *SMStateViewer) smStateView(root cid.Cid) storageMarketView {
-	return ((*appstate.Viewer)(sv)).StateView(root)
 }
 
 // Implements storagemarket.StateKey
@@ -69,7 +60,6 @@ type connectorCommon struct {
 	waiter      *msg.Waiter
 	wallet      *wallet.Wallet
 	outbox      *message.Outbox
-	stateViewer storageMarketViewer
 }
 
 // MostRecentStateId returns the state key from the current head of the chain.
@@ -144,12 +134,10 @@ func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address
 
 // SignBytes uses the local wallet to sign the bytes with the given address
 func (c *connectorCommon) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
-	root, err := c.chainStore.GetTipSetStateRoot(ctx, c.chainStore.Head())
+	view, err := c.chainStore.StateView(c.chainStore.Head())
 	if err != nil {
 		return nil, err
 	}
-
-	view := c.stateViewer.smStateView(root)
 	signer, err = view.AccountSignerAddress(ctx, signer)
 	if err != nil {
 		return nil, err
@@ -184,13 +172,11 @@ func (c *connectorCommon) GetBalance(ctx context.Context, addr address.Address) 
 
 func (c *connectorCommon) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
 	// Fetch from chain.
-	// TODO: this signature should take a tipset key or state root.
-	root, err := c.chainStore.GetTipSetStateRoot(ctx, c.chainStore.Head())
+	// TODO: this signature should take a tipset key or state root instead of implicitly using head here
+	view, err := c.chainStore.StateView(c.chainStore.Head())
 	if err != nil {
 		return address.Undef, err
 	}
-
-	view := c.stateViewer.smStateView(root)
 	_, fcworker, err := view.MinerControlAddresses(ctx, miner)
 	if err != nil {
 		return address.Undef, err
@@ -310,5 +296,14 @@ func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) (
 }
 
 func (c *connectorCommon) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) bool {
-	panic("implement me")
+	// This method signature must match that required by the storage market connector, which should be changed
+	// to include a context and return error.
+	head := c.chainStore.Head()
+	state, err := c.chainStore.StateView(head)
+	if err != nil {
+		return false
+	}
+	validator := consensus.NewSignatureValidator(state)
+	err = validator.ValidateSignature(context.TODO(), plaintext, signer, signature)
+	return err == nil
 }

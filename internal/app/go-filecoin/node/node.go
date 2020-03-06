@@ -480,7 +480,6 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		node.Blockstore.Blockstore,
 		node.network.GraphExchange,
 		repoPath,
-		state.NewViewer(cborStore),
 		sectorBuilder.SealProofType(),
 	)
 	if err != nil {
