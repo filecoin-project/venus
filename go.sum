@@ -156,16 +156,12 @@ github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6/go.m
 github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663 h1:eYxi6vI5CyeXD15X1bB3bledDXbqKxqf0wQzTLgwYwA=
 github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663/go.mod h1:fZzmf4tftbwf9S37XRifoJlz7nCjRdIrMGLR07dKLCc=
 github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200226210935-4739f8749f56/go.mod h1:tzTc9BxxSbjlIzhFwm5h9oBkXKkRuLxeiWspntwnKyw=
-github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200305180647-701a23874a93 h1:JLDP55K+g7imNpRjYTdfRqZfsoSF9FCbfm5OxK+bjQ8=
-github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200305180647-701a23874a93/go.mod h1:PmE02y2T4vS8ukr1dxxLjgpHbaJQk2y3SMQvsPsJW28=
 github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200306003553-541b1e74104d h1:FRUaOxLQvPcyOrI1J/ZiGThohyoMimf5mpyH/ZF7b7o=
 github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200306003553-541b1e74104d/go.mod h1:xAd/X905Ncgj8kkHsP2pmQUf6MQT2qJTDcOEfkwCjYc=
 github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9 h1:k9qVR9ItcziSB2rxtlkN/MDWNlbsI6yzec+zjUatLW0=
 github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9/go.mod h1:FGwQgZAt2Gh5mjlwJUlVB62JeYdo+if0xWxSEfBD9ig=
 github.com/filecoin-project/go-statestore v0.1.0 h1:t56reH59843TwXHkMcwyuayStBIiWBRilQjQ+5IiwdQ=
 github.com/filecoin-project/go-statestore v0.1.0/go.mod h1:LFc9hD+fRxPqiHiaqUEZOinUJB4WARkRfNl10O7kTnI=
-github.com/filecoin-project/go-storage-miner v0.0.0-20200305201459-253af6175902 h1:e+pavH3egEyqSY9C45peD3agdsiHEdjqzIGtn/u5BTM=
-github.com/filecoin-project/go-storage-miner v0.0.0-20200305201459-253af6175902/go.mod h1:RPrXJkXGnOvDzRdPYjgRM9l7kkZUQ/24TAgtCV1T0jQ=
 github.com/filecoin-project/go-storage-miner v0.0.0-20200306175903-c9c02ebe51a2 h1:748ho8LDeUr3RpKV3Ue9yX0BcAmSZEvmvri+TxHb5lQ=
 github.com/filecoin-project/go-storage-miner v0.0.0-20200306175903-c9c02ebe51a2/go.mod h1:pMIktOms5NveddTOoKMHgcTFL1xBPnV6sqHhIN6btUo=
 github.com/filecoin-project/specs-actors v0.0.0-20200210130641-2d1fbd8672cf/go.mod h1:xtDZUB6pe4Pksa/bAJbJ693OilaC5Wbot9jMhLm3cZA=
