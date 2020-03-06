@@ -22,8 +22,8 @@ require (
 	github.com/filecoin-project/go-fil-markets v0.0.0-20200301210355-399fb545b7ae
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
-	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200305180647-701a23874a93
-	github.com/filecoin-project/go-storage-miner v0.0.0-20200305201459-253af6175902
+	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200306003553-541b1e74104d
+	github.com/filecoin-project/go-storage-miner v0.0.0-20200306175903-c9c02ebe51a2
 	github.com/filecoin-project/specs-actors v0.0.0-20200226233436-635911a01775
 	github.com/fxamacker/cbor v1.5.0
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
