@@ -48,6 +48,11 @@ func (em ElectionMachine) GenerateCandidates(poStRand abi.PoStRandomness, sector
 	}
 	candidates := make([]abi.PoStCandidate, len(candidatesWithTicket))
 	for i, candidateWithTicket := range candidatesWithTicket {
+		rp, err := sectorInfos[i].RegisteredPoStProof()
+		if err != nil {
+			return nil, err
+		}
+		candidateWithTicket.Candidate.RegisteredProof = rp
 		candidates[i] = candidateWithTicket.Candidate
 	}
 	return candidates, nil
