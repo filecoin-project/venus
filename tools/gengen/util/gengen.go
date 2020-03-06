@@ -279,7 +279,7 @@ type signer struct{}
 
 var _ types.Signer = (*signer)(nil)
 
-func (ggs *signer) SignBytes(data []byte, _ address.Address) (crypto.Signature, error) {
+func (ggs *signer) SignBytes(data []byte, addr address.Address) (crypto.Signature, error) {
 	return crypto.Signature{}, nil
 }
 

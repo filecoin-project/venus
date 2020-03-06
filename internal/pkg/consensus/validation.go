@@ -6,14 +6,15 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 var errNegativeValueCt *metrics.Int64Counter
@@ -127,7 +128,9 @@ func canCoverGasLimit(msg *types.UnsignedMessage, actor *actor.Actor) bool {
 
 // IngestionValidatorAPI allows the validator to access latest state
 type ingestionValidatorAPI interface {
-	GetActor(context.Context, address.Address) (*actor.Actor, error)
+	Head() block.TipSetKey
+	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*actor.Actor, error)
+	AccountStateView(baseKey block.TipSetKey) (AccountStateView, error)
 }
 
 // IngestionValidator can access latest state and runs additional checks to mitigate DoS attacks
@@ -149,14 +152,22 @@ func NewIngestionValidator(api ingestionValidatorAPI, cfg *config.MessagePoolCon
 // Validate validates the signed message.
 // Errors probably mean the validation failed, but possibly indicate a failure to retrieve state
 func (v *IngestionValidator) Validate(ctx context.Context, smsg *types.SignedMessage) error {
+	head := v.api.Head()
+	state, err := v.api.AccountStateView(head)
+	if err != nil {
+		return errors.Wrapf(err, "failed to load state at %v", head)
+	}
+
+	sigValidator := NewSignatureValidator(state)
+
 	// ensure message is properly signed
-	if err := smsg.VerifySignature(); err != nil {
+	if err := sigValidator.ValidateMessageSignature(ctx, smsg); err != nil {
 		return errors.Wrap(err, errInvalidSignature.Error())
 	}
 
 	// retrieve from actor
 	msg := smsg.Message
-	fromActor, err := v.api.GetActor(ctx, msg.From)
+	fromActor, err := v.api.GetActorAt(ctx, head, msg.From)
 	if fromActor == nil || err != nil {
 		// Dragons: we have this "empty" actor line in too many places
 		fromActor = &actor.Actor{Balance: abi.NewTokenAmount(0)}

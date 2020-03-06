@@ -24,12 +24,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	vmstate "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 var logStore = logging.Logger("plumbing/chain_store")
@@ -38,7 +40,7 @@ type chainReadWriter interface {
 	GetHead() block.TipSetKey
 	GetGenesisBlock(ctx context.Context) (*block.Block, error)
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
-	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
+	GetTipSetState(context.Context, block.TipSetKey) (vmstate.Tree, error)
 	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
 	SetHead(context.Context, block.TipSet) error
 	ReadOnlyStateStore() cborutil.ReadOnlyIpldStore
@@ -237,7 +239,7 @@ func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, tipKey bl
 }
 
 // LsActors returns a channel with actors from the latest state on the chain
-func (chn *ChainStateReadWriter) LsActors(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
+func (chn *ChainStateReadWriter) LsActors(ctx context.Context) (<-chan vmstate.GetAllActorsResult, error) {
 	st, err := chn.readWriter.GetTipSetState(ctx, chn.readWriter.GetHead())
 	if err != nil {
 		return nil, err
@@ -319,4 +321,16 @@ func (chn *ChainStateReadWriter) ChainStateTree(ctx context.Context, c cid.Cid) 
 	blkserv := blockservice.New(chn.bstore, offl)
 	dserv := merkdag.NewDAGService(blkserv)
 	return dag.NewDAG(dserv).RecursiveGet(ctx, c)
+}
+
+func (chn *ChainStateReadWriter) StateView(key block.TipSetKey) (*state.View, error) {
+	root, err := chn.readWriter.GetTipSetStateRoot(key)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get state root for %s", key.String())
+	}
+	return state.NewView(chn, root), nil
+}
+
+func (chn *ChainStateReadWriter) AccountStateView(key block.TipSetKey) (consensus.AccountStateView, error) {
+	return chn.StateView(key)
 }

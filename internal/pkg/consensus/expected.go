@@ -173,7 +173,9 @@ func (c *Expected) validateMining(ctx context.Context,
 	parentWeight fbig.Int,
 	parentReceiptRoot cid.Cid) error {
 
-	powerTable := NewPowerTableView(c.state.StateView(parentStateRoot))
+	stateView := c.state.StateView(parentStateRoot)
+	sigValidator := NewSignatureValidator(stateView)
+	powerTable := NewPowerTableView(stateView)
 
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
@@ -204,15 +206,15 @@ func (c *Expected) validateMining(ctx context.Context,
 			return errors.Wrap(err, "block signature invalid")
 		}
 
-		// Verify that the BLS signature is correct
-		if err := verifyBLSMessageAggregate(blk.BLSAggregateSig.Data, blsMsgs[i]); err != nil {
+		// Verify that the BLS signature aggregate is correct
+		if err := sigValidator.ValidateBLSMessageAggregate(ctx, blsMsgs[i], blk.BLSAggregateSig); err != nil {
 			return errors.Wrapf(err, "bls message verification failed for block %s", blk.Cid())
 		}
 
 		// Verify that all secp message signatures are correct
 		for i, msg := range secpMsgs[i] {
-			if err := msg.VerifySignature(); err != nil {
-				return errors.Wrapf(err, "secp message signature invalid for message, %d, in block %s", i, blk.Cid())
+			if err := sigValidator.ValidateMessageSignature(ctx, msg); err != nil {
+				return errors.Wrapf(err, "invalid signature for secp message %d in block %s", i, blk.Cid())
 			}
 		}
 
@@ -328,22 +330,4 @@ func AsPowerStateViewer(v *appstate.Viewer) PowerStateViewer {
 // StateView returns a power state view for a state root.
 func (p *PowerStateViewer) StateView(root cid.Cid) PowerStateView {
 	return p.Viewer.StateView(root)
-}
-
-// verifyBLSMessageAggregate errors if the bls signature is not a valid aggregate of message signatures
-func verifyBLSMessageAggregate(sig []byte, msgs []*types.UnsignedMessage) error {
-	pubKeys := [][]byte{}
-	marshalledMsgs := [][]byte{}
-	for _, msg := range msgs {
-		pubKeys = append(pubKeys, msg.From.Payload())
-		msgBytes, err := msg.Marshal()
-		if err != nil {
-			return err
-		}
-		marshalledMsgs = append(marshalledMsgs, msgBytes)
-	}
-	if !crypto.VerifyBLSAggregate(pubKeys, marshalledMsgs, sig) {
-		return errors.New("block BLS signature does not validate against BLS messages")
-	}
-	return nil
 }

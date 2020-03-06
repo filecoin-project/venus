@@ -152,7 +152,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) NextNonce(_ context.Context, _ addre
 }
 
 // SignBytes mocks signing data
-func (rmFake *RetrievalMarketClientFakeAPI) SignBytes(_ []byte, _ address.Address) (crypto.Signature, error) {
+func (rmFake *RetrievalMarketClientFakeAPI) SignBytes(data []byte, addr address.Address) (crypto.Signature, error) {
 	return rmFake.Sig, rmFake.SigErr
 }
 

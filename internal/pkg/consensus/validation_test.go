@@ -10,9 +10,11 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -216,12 +218,19 @@ func NewMockIngestionValidatorAPI() *FakeIngestionValidatorAPI {
 	return &FakeIngestionValidatorAPI{Actor: &actor.Actor{}}
 }
 
-// GetActorCode
-func (api *FakeIngestionValidatorAPI) GetActor(ctx context.Context, a address.Address) (*actor.Actor, error) {
+func (api *FakeIngestionValidatorAPI) Head() block.TipSetKey {
+	return block.NewTipSetKey()
+}
+
+func (api *FakeIngestionValidatorAPI) GetActorAt(ctx context.Context, key block.TipSetKey, a address.Address) (*actor.Actor, error) {
 	if a == api.ActorAddr {
 		return api.Actor, nil
 	}
 	return &actor.Actor{
 		Balance: abi.NewTokenAmount(0),
 	}, nil
+}
+
+func (api *FakeIngestionValidatorAPI) AccountStateView(baseKey block.TipSetKey) (consensus.AccountStateView, error) {
+	return &state.FakeStateView{}, nil
 }

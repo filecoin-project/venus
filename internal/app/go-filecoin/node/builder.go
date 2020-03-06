@@ -231,7 +231,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		Expected:     nd.syncer.Consensus,
 		MsgPool:      nd.Messaging.MsgPool,
 		MsgPreviewer: msg.NewPreviewer(nd.chain.ChainReader, nd.Blockstore.CborStore, nd.Blockstore.Blockstore, nd.chain.Processor),
-		ActState:     nd.chain.ActorState,
 		MsgWaiter:    msg.NewWaiter(nd.chain.ChainReader, nd.chain.MessageStore, nd.Blockstore.Blockstore, nd.Blockstore.CborStore),
 		Network:      nd.network.Network,
 		Outbox:       nd.Messaging.Outbox,

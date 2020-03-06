@@ -12,14 +12,12 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 /* Test types.ValidateSignature */
@@ -101,68 +99,4 @@ func TestSignatureCorrupted(t *testing.T) {
 	sig.Data[0] = sig.Data[0] ^ 0xFF // This operation ensures sig is modified
 
 	assert.Error(t, crypto.ValidateSignature(data, addr, sig))
-}
-
-/* Test types.SignedMessage */
-
-// Valid SignedMessage verifies correctly.
-func TestSignMessageOk(t *testing.T) {
-	tf.UnitTest(t)
-
-	fs, addr := requireSignerAddr(t)
-
-	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), types.GasUnits(0))
-	smsg, err := types.NewSignedMessage(*msg, fs)
-	require.NoError(t, err)
-
-	assert.NoError(t, smsg.VerifySignature())
-}
-
-// Signature is valid but signer does not match From Address.
-func TestBadFrom(t *testing.T) {
-	tf.UnitTest(t)
-
-	fs, addr := requireSignerAddr(t)
-	addr2, err := fs.NewAddress(address.SECP256K1)
-	require.NoError(t, err)
-
-	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), types.GasUnits(0))
-	// Can't use NewSignedMessage constructor as it always signs with msg.From.
-	bmsg, err := msg.Marshal()
-	require.NoError(t, err)
-	sig, err := fs.SignBytes(bmsg, addr2) // sign with addr != msg.From
-	require.NoError(t, err)
-	smsg := &types.SignedMessage{
-		Message:   *msg,
-		Signature: sig,
-	}
-
-	assert.Error(t, smsg.VerifySignature())
-}
-
-// Signature corrupted.
-func TestSignedMessageBadSignature(t *testing.T) {
-	tf.UnitTest(t)
-
-	fs, addr := requireSignerAddr(t)
-	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), types.GasUnits(0))
-	smsg, err := types.NewSignedMessage(*msg, fs)
-	require.NoError(t, err)
-
-	smsg.Signature.Data[0] = smsg.Signature.Data[0] ^ 0xFF
-	assert.Error(t, smsg.VerifySignature())
-}
-
-// Message corrupted.
-func TestSignedMessageCorrupted(t *testing.T) {
-	tf.UnitTest(t)
-
-	fs, addr := requireSignerAddr(t)
-
-	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), types.GasUnits(0))
-	smsg, err := types.NewSignedMessage(*msg, fs)
-	require.NoError(t, err)
-
-	smsg.Message.CallSeqNum = uint64(42)
-	assert.Error(t, smsg.VerifySignature())
 }
