@@ -1,4 +1,4 @@
-package consensus
+package state
 
 import (
 	"context"
@@ -35,19 +35,19 @@ func TestSignMessageOk(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 
-	idAddress := vmaddr.RequireIDAddress(t, 1)
 	ms, kis := types.NewMockSignersAndKeyInfo(1)
 	keyAddr, err := kis[0].Address()
 	require.NoError(t, err)
 
-	{
+	t.Run("no resolution", func(t *testing.T) {
 		v := NewSignatureValidator(&fakeStateView{}) // No resolution needed.
 		msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), 0)
 		smsg, err := types.NewSignedMessage(*msg, ms)
 		require.NoError(t, err)
 		assert.NoError(t, v.ValidateMessageSignature(ctx, smsg))
-	}
-	{
+	})
+	t.Run("resolution required", func(t *testing.T) {
+		idAddress := vmaddr.RequireIDAddress(t, 1)
 		// Use ID address in message but sign with corresponding key address.
 		state := &fakeStateView{keys: map[address.Address]address.Address{
 			idAddress: keyAddr,
@@ -64,7 +64,7 @@ func TestSignMessageOk(t *testing.T) {
 		}
 
 		assert.NoError(t, v.ValidateMessageSignature(ctx, smsg))
-	}
+	})
 }
 
 // Signature is valid but signer does not match From Address.
@@ -78,21 +78,41 @@ func TestBadFrom(t *testing.T) {
 	otherAddr, err := kis[1].Address()
 	require.NoError(t, err)
 
-	state := fakeStateView{}
-	v := NewSignatureValidator(&state)
+	t.Run("no resolution", func(t *testing.T) {
+		v := NewSignatureValidator(&fakeStateView{})
 
-	// Can't use NewSignedMessage constructor as it always signs with msg.From.
-	msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), types.GasUnits(0))
-	bmsg, err := msg.Marshal()
-	require.NoError(t, err)
-	sig, err := signer.SignBytes(bmsg, otherAddr) // sign with addr != msg.From
-	require.NoError(t, err)
-	smsg := &types.SignedMessage{
-		Message:   *msg,
-		Signature: sig,
-	}
+		// Can't use NewSignedMessage constructor as it always signs with msg.From.
+		msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), types.GasUnits(0))
+		bmsg, err := msg.Marshal()
+		require.NoError(t, err)
+		sig, err := signer.SignBytes(bmsg, otherAddr) // sign with addr != msg.From
+		require.NoError(t, err)
+		smsg := &types.SignedMessage{
+			Message:   *msg,
+			Signature: sig,
+		}
+		assert.Error(t, v.ValidateMessageSignature(ctx, smsg))
+	})
+	t.Run("resolution required", func(t *testing.T) {
+		idAddress := vmaddr.RequireIDAddress(t, 1)
+		// Use ID address in message but sign with corresponding key address.
+		state := &fakeStateView{keys: map[address.Address]address.Address{
+			idAddress: keyAddr,
+		}}
+		v := NewSignatureValidator(state)
 
-	assert.Error(t, v.ValidateMessageSignature(ctx, smsg))
+		// Can't use NewSignedMessage constructor as it always signs with msg.From.
+		msg := types.NewMeteredMessage(idAddress, idAddress, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), types.GasUnits(0))
+		bmsg, err := msg.Marshal()
+		require.NoError(t, err)
+		sig, err := signer.SignBytes(bmsg, otherAddr) // sign with addr != msg.From (resolved)
+		require.NoError(t, err)
+		smsg := &types.SignedMessage{
+			Message:   *msg,
+			Signature: sig,
+		}
+		assert.Error(t, v.ValidateMessageSignature(ctx, smsg))
+	})
 }
 
 // Signature corrupted.

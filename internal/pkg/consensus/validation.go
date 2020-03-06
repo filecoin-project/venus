@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
@@ -130,7 +131,7 @@ func canCoverGasLimit(msg *types.UnsignedMessage, actor *actor.Actor) bool {
 type ingestionValidatorAPI interface {
 	Head() block.TipSetKey
 	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*actor.Actor, error)
-	AccountStateView(baseKey block.TipSetKey) (AccountStateView, error)
+	AccountStateView(baseKey block.TipSetKey) (state.AccountStateView, error)
 }
 
 // IngestionValidator can access latest state and runs additional checks to mitigate DoS attacks
@@ -153,12 +154,12 @@ func NewIngestionValidator(api ingestionValidatorAPI, cfg *config.MessagePoolCon
 // Errors probably mean the validation failed, but possibly indicate a failure to retrieve state
 func (v *IngestionValidator) Validate(ctx context.Context, smsg *types.SignedMessage) error {
 	head := v.api.Head()
-	state, err := v.api.AccountStateView(head)
+	view, err := v.api.AccountStateView(head)
 	if err != nil {
 		return errors.Wrapf(err, "failed to load state at %v", head)
 	}
 
-	sigValidator := NewSignatureValidator(state)
+	sigValidator := state.NewSignatureValidator(view)
 
 	// ensure message is properly signed
 	if err := sigValidator.ValidateMessageSignature(ctx, smsg); err != nil {

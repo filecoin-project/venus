@@ -174,7 +174,7 @@ func (c *Expected) validateMining(ctx context.Context,
 	parentReceiptRoot cid.Cid) error {
 
 	stateView := c.state.StateView(parentStateRoot)
-	sigValidator := NewSignatureValidator(stateView)
+	sigValidator := appstate.NewSignatureValidator(stateView)
 	powerTable := NewPowerTableView(stateView)
 
 	for i := 0; i < ts.Len(); i++ {

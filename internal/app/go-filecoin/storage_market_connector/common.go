@@ -19,7 +19,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
@@ -37,11 +36,6 @@ type chainReader interface {
 	cbor.IpldStore
 }
 
-type storageMarketView interface {
-	AccountSignerAddress(ctx context.Context, a address.Address) (address.Address, error)
-	MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error)
-}
-
 // Implements storagemarket.StateKey
 type stateKey struct {
 	ts     block.TipSetKey
@@ -56,10 +50,10 @@ func (k *stateKey) Height() abi.ChainEpoch {
 type WorkerGetter func(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error)
 
 type connectorCommon struct {
-	chainStore  chainReader
-	waiter      *msg.Waiter
-	wallet      *wallet.Wallet
-	outbox      *message.Outbox
+	chainStore chainReader
+	waiter     *msg.Waiter
+	wallet     *wallet.Wallet
+	outbox     *message.Outbox
 }
 
 // MostRecentStateId returns the state key from the current head of the chain.
@@ -299,11 +293,11 @@ func (c *connectorCommon) VerifySignature(signature crypto.Signature, signer add
 	// This method signature must match that required by the storage market connector, which should be changed
 	// to include a context and return error.
 	head := c.chainStore.Head()
-	state, err := c.chainStore.StateView(head)
+	view, err := c.chainStore.StateView(head)
 	if err != nil {
 		return false
 	}
-	validator := consensus.NewSignatureValidator(state)
+	validator := state.NewSignatureValidator(view)
 	err = validator.ValidateSignature(context.TODO(), plaintext, signer, signature)
 	return err == nil
 }

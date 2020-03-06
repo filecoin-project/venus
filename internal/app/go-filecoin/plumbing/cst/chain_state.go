@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
@@ -331,6 +330,6 @@ func (chn *ChainStateReadWriter) StateView(key block.TipSetKey) (*state.View, er
 	return state.NewView(chn, root), nil
 }
 
-func (chn *ChainStateReadWriter) AccountStateView(key block.TipSetKey) (consensus.AccountStateView, error) {
+func (chn *ChainStateReadWriter) AccountStateView(key block.TipSetKey) (state.AccountStateView, error) {
 	return chn.StateView(key)
 }
