@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
@@ -60,7 +61,8 @@ func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *Blockstor
 	actorState := appstate.NewTipSetStateViewer(chainStore, blockstore.CborStore)
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, builtin.DefaultActors)
-	syscalls := vmsupport.NewSyscalls(verifier.ProofVerifier)
+	faultChecker := slashing.NewFaultChecker(chainState)
+	syscalls := vmsupport.NewSyscalls(faultChecker, verifier.ProofVerifier)
 	processor := consensus.NewDefaultProcessor(syscalls, chainState)
 
 	return ChainSubmodule{

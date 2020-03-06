@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 
 	"github.com/filecoin-project/go-address"
@@ -31,7 +32,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"

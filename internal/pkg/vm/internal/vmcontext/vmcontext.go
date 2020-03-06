@@ -18,6 +18,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -40,6 +41,7 @@ type VM struct {
 	store        *storage.VMStorage
 	state        state.Tree
 	syscalls     SyscallsImpl
+	currentHead  block.TipSetKey
 	currentEpoch abi.ChainEpoch
 	pricelist    gascost.Pricelist
 }
@@ -202,10 +204,11 @@ func (vm *VM) resolveSignerAddress(accountAddr address.Address) (address.Address
 var _ interpreter.VMInterpreter = (*VM)(nil)
 
 // ApplyTipSetMessages implements interpreter.VMInterpreter
-func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch abi.ChainEpoch, rnd crypto.RandomnessSource) ([]message.Receipt, error) {
+func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head block.TipSetKey, epoch abi.ChainEpoch, rnd crypto.RandomnessSource) ([]message.Receipt, error) {
 	receipts := []message.Receipt{}
 
-	// update current epoch
+	// update current tipset
+	vm.currentHead = head
 	vm.currentEpoch = epoch
 	vm.pricelist = gascost.PricelistByEpoch(epoch)
 

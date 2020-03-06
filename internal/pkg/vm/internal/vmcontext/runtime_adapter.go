@@ -127,6 +127,7 @@ func (a *runtimeAdapter) Syscalls() specsruntime.Syscalls {
 		ctx:         a.ctx.rt.context,
 		gasTank:     a.ctx.gasTank,
 		pricelist:   a.ctx.rt.pricelist,
+		head:        a.ctx.rt.currentHead,
 		sigResolver: a.ctx.rt,
 	}
 }

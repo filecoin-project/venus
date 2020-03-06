@@ -3,11 +3,12 @@ package message
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 

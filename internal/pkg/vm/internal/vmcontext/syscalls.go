@@ -9,6 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 )
@@ -21,7 +22,7 @@ type SyscallsImpl interface {
 	ComputeUnsealedSectorCID(ctx context.Context, proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error)
 	VerifySeal(ctx context.Context, info abi.SealVerifyInfo) error
 	VerifyPoSt(ctx context.Context, info abi.PoStVerifyInfo) error
-	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte) (*specsruntime.ConsensusFault, error)
+	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, earliest abi.ChainEpoch) (*specsruntime.ConsensusFault, error)
 }
 
 type accountSignerResolver interface {
@@ -33,6 +34,7 @@ type syscalls struct {
 	ctx         context.Context
 	gasTank     *GasTracker
 	pricelist   gascost.Pricelist
+	head        block.TipSetKey
 	sigResolver accountSignerResolver
 }
 
@@ -69,5 +71,6 @@ func (sys syscalls) VerifyPoSt(info abi.PoStVerifyInfo) error {
 
 func (sys syscalls) VerifyConsensusFault(h1, h2, extra []byte) (*specsruntime.ConsensusFault, error) {
 	sys.gasTank.Charge(sys.pricelist.OnVerifyConsensusFault())
-	return sys.impl.VerifyConsensusFault(sys.ctx, h1, h2, extra)
+	earliest := abi.ChainEpoch(0) // TODO: connect when https://github.com/filecoin-project/specs-actors/pull/235 is integrated
+	return sys.impl.VerifyConsensusFault(sys.ctx, h1, h2, extra, sys.head, earliest)
 }
