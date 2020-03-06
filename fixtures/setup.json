@@ -1,7 +1,9 @@
 {
   "seed": 4,
   "keysToGen": 5,
+  "importKeys": [{"privateKey":"vDKJo+DLNsHyjZ4gEMyseuiBU+IWGkIuMniIaC6ceSY=","sigType":2}],
   "preAllocGenKeys": [
+    "10000000000",
     "10000000000",
     "10000000000",
     "10000000000",
@@ -9,15 +11,24 @@
     "10000000000"
   ],
   "miners": [{
-    "owner": 0,
+    "owner": 5,
     "committedSectors": [{
-      "commR": {"/":"bafy2bzaceb4n26dwrtbzx7l6ifj32xmxkl5lc6lfzq4qlcoft3t2jzzs7anfi"},
-      "commD": {"/":"bafy2bzacec3p63bwba2ph3stn27jbiyadowkpdmtg2m7aysfciuevzrjpyndo"},
-      "sectorNum": 0,
+      "commR": {"/":"bafk4ehza6wtm5kda4jzpoxjiqqjqnad3zdk5afcywzxxcdjwldk3ambv7acq"},
+      "commD": {"/":"bafk4chzamngqhzquzlhdbojtrhh2zlqwhpaqnjldkefo4vglkjwbdptocica"},
+      "sectorNum": 1,
       "dealCfg": {
-        "commP": {"/":"bafy2bzaceb4n26dwrtbzx7l6ifj32xmxkl5lc6lfzq4qlcoft3t2jzzs7anfi"},
-        "pieceSize": 1,
-        "endEpoch": 15
+        "commP": {"/":"bafk4chzamngqhzquzlhdbojtrhh2zlqwhpaqnjldkefo4vglkjwbdptocica"},
+        "pieceSize": 2048,
+        "endEpoch": 9001
+      }
+    },{
+      "commR": {"/":"bafk4ehzalu6zxt6psvk45ftnyyo6xhw5422lzdrglc3lhdcayeberifkf4pa"},
+      "commD": {"/":"bafk4chzacgpy24fahhtswdjdnjllke23ocjylg2cilfrc5qr5qznss4skulq"},
+      "sectorNum": 2,
+      "dealCfg": {
+        "commP": {"/":"bafk4chzacgpy24fahhtswdjdnjllke23ocjylg2cilfrc5qr5qznss4skulq"},
+        "pieceSize": 2048,
+        "endEpoch": 9001
       }
     }]
 

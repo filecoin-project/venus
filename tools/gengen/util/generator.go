@@ -93,6 +93,7 @@ func (g *GenesisGenerator) Init(cfg *GenesisCfg) error {
 	if err != nil {
 		return err
 	}
+	keys = append(keys, cfg.ImportKeys...)
 	g.keys = keys
 	g.cfg = cfg
 

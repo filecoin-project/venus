@@ -75,6 +75,9 @@ type GenesisCfg struct {
 	// KeysToGen is the number of random keys to generate and return
 	KeysToGen int
 
+	// Import keys are pre-generated keys to be imported. These keys will be appended to the generated keys.
+	ImportKeys []*crypto.KeyInfo
+
 	// PreAllocGenKeys is a mapping from generated key index to string values of whole filecoin
 	// that will be preallocated to each account
 	PreAllocGenKeys []string
