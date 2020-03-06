@@ -38,8 +38,8 @@ func (s Syscalls) HashBlake2b(data []byte) [32]byte {
 	return blake2b.Sum256(data)
 }
 
-func (s Syscalls) ComputeUnsealedSectorCID(ctx context.Context, proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
-	panic("implement me")
+func (s Syscalls) ComputeUnsealedSectorCID(_ context.Context, proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+	return sectorbuilder.GenerateUnsealedCID(proof, pieces)
 }
 
 func (s Syscalls) VerifySeal(ctx context.Context, info abi.SealVerifyInfo) error {
