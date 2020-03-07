@@ -74,6 +74,6 @@ func (s *Syscalls) VerifyPoSt(ctx context.Context, info abi.PoStVerifyInfo) erro
 	return nil
 }
 
-func (s Syscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error) {
+func (s *Syscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error) {
 	return s.faultChecker.VerifyConsensusFault(ctx, h1, h2, extra, head, earliest)
 }
