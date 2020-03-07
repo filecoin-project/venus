@@ -63,7 +63,40 @@ func (ctx *stateHandleContext) Store() specsruntime.Store {
 	return ((*invocationContext)(ctx)).Store()
 }
 
-func (ctx *invocationContext) invoke() interface{} {
+// runtime aborts are trapped by invoke, it will always return an exit code.
+func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.ExitCode) {
+	defer func() {
+		if r := recover(); r != nil {
+			// rollback any pending changes
+			if err := ctx.rt.rollback(); err != nil {
+				panic(err)
+			}
+			switch r.(type) {
+			case runtime.ExecutionPanic:
+				p := r.(runtime.ExecutionPanic)
+				vmlog.Warnw("Abort during actor execution.",
+					"errorMessage", p,
+					"exitCode", p.Code(),
+					"sender", ctx.msg.from,
+					"receiver", ctx.msg.to,
+					"methodNum", ctx.msg.method,
+					"value", ctx.msg.value)
+				ret = returnWrapper{}
+				errcode = p.Code()
+				return
+			default:
+				// do not trap unknown panics
+				debug.PrintStack()
+				panic(r)
+			}
+		} else {
+			// checkpoint vm
+			if _, err := ctx.rt.checkpoint(); err != nil {
+				panic(err)
+			}
+		}
+	}()
+
 	// pre-dispatch
 	// 1. charge gas for message invocation
 	// 2. load target actor
@@ -88,7 +121,7 @@ func (ctx *invocationContext) invoke() interface{} {
 
 	// 4. if we are just sending funds, there is nothing else to do.
 	if ctx.msg.method == builtin.MethodSend {
-		return nil
+		return returnWrapper{}, exitcode.Ok
 	}
 
 	// 5. load target actor code
@@ -102,9 +135,21 @@ func (ctx *invocationContext) invoke() interface{} {
 	adapter := runtimeAdapter{ctx: ctx}
 	out, err := actorImpl.Dispatch(ctx.msg.method, &adapter, ctx.msg.params)
 	if err != nil {
-		// Dragons: this could be a deserialization error too
+		// Dragons: this could be a params deserialization error too
 		runtime.Abort(exitcode.SysErrInvalidMethod)
 	}
+
+	// assert output implements expected interface
+	var marsh specsruntime.CBORMarshaler
+	if out != nil {
+		var ok bool
+		marsh, ok = out.(specsruntime.CBORMarshaler)
+		if !ok {
+			runtime.Abortf(exitcode.SysErrorIllegalActor, "Returned value is not a CBORMarshaler")
+		}
+	}
+
+	ret = returnWrapper{inner: marsh}
 
 	// post-dispatch
 	// 1. check caller was validated
@@ -135,7 +180,7 @@ func (ctx *invocationContext) invoke() interface{} {
 	}
 	if !found {
 		// Note: this is ok, it means the actor was deleted during the execution of the message
-		return out
+		return ret, exitcode.Ok
 	}
 	// update the head and save it
 	ctx.toActor.Head = e.NewCid(stateHandle.head)
@@ -143,8 +188,8 @@ func (ctx *invocationContext) invoke() interface{} {
 		panic(err)
 	}
 
-	// 4. success! build the receipt
-	return out
+	// 4. success!
+	return ret, exitcode.Ok
 }
 
 // resolveTarget loads and actor and returns its ActorID address.
@@ -279,6 +324,18 @@ type returnWrapper struct {
 	inner specsruntime.CBORMarshaler
 }
 
+func (r returnWrapper) ToCbor() ([]byte, error) {
+	if r.inner == nil {
+		return []byte{}, nil
+	}
+	b := bytes.Buffer{}
+	err := r.inner.MarshalCBOR(&b)
+	if err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
+}
+
 func (r returnWrapper) Into(o specsruntime.CBORUnmarshaler) error {
 	// TODO: if inner is also a specsruntime.CBORUnmarshaler, overwrite o with inner.
 	b := bytes.Buffer{}
@@ -295,28 +352,6 @@ func (r returnWrapper) Into(o specsruntime.CBORUnmarshaler) error {
 
 // Send implements runtime.InvocationContext.
 func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodNum, params specsruntime.CBORMarshaler, value abi.TokenAmount) (ret specsruntime.SendReturn, errcode exitcode.ExitCode) {
-	defer func() {
-		if r := recover(); r != nil {
-			switch r.(type) {
-			case runtime.ExecutionPanic:
-				p := r.(runtime.ExecutionPanic)
-				vmlog.Warnw("Abort during method execution.",
-					"errorMessage", p,
-					"exitCode", p.Code(),
-					"receiver", toAddr,
-					"methodNum", methodNum,
-					"value", value)
-				ret = nil
-				errcode = p.Code()
-				return
-			default:
-				// do not trap unknown panics
-				debug.PrintStack()
-				panic(r)
-			}
-		}
-	}()
-
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Calling Send() is not allowed during side-effet lock")
@@ -341,24 +376,12 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 	// invoke
 	// 1. build new context
 	// 2. invoke message
-	// 3. success!
 
 	// 1. build new context
 	newCtx := newInvocationContext(ctx.rt, newMsg, fromActor, ctx.gasTank, ctx.randSource)
 
 	// 2. invoke
-	out := newCtx.invoke()
-
-	// 3. success!
-	var marsh specsruntime.CBORMarshaler
-	if out != nil {
-		var ok bool
-		marsh, ok = out.(specsruntime.CBORMarshaler)
-		if !ok {
-			runtime.Abortf(exitcode.SysErrorIllegalActor, "Returned value is not a CBORMarshaler")
-		}
-	}
-	return returnWrapper{inner: marsh}, exitcode.Ok
+	return newCtx.invoke()
 }
 
 /// Balance implements runtime.InvocationContext.

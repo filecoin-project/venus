@@ -21,6 +21,7 @@ type Tree interface {
 	GetActor(ctx context.Context, key actorKey) (*actor.Actor, bool, error)
 	DeleteActor(ctx context.Context, key actorKey) error
 
+	Rollback(ctx context.Context) error
 	Commit(ctx context.Context) (Root, error)
 
 	GetAllActors(ctx context.Context) <-chan GetAllActorsResult
@@ -136,6 +137,21 @@ func (st *State) Commit(ctx context.Context) (Root, error) {
 	st.root = root
 	st.dirty = false
 	return st.root, nil
+}
+
+// Rollback discards all uncommited changes.
+func (st *State) Rollback(ctx context.Context) error {
+	// load the original root node again
+	rootNode, err := hamt.LoadNode(ctx, st.store, st.root, hamt.UseTreeBitWidth(TreeBitWidth))
+
+	if err != nil {
+		return errors.Wrapf(err, "failed to load node for %s", st.root)
+	}
+
+	// reset the root node
+	st.rootNode = rootNode
+	st.dirty = false
+	return nil
 }
 
 // Root returns the root of the tree and whether that root is dirty.
