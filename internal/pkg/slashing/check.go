@@ -109,11 +109,11 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 
 	// Expensive validation: signatures and chain history.
 
-	err := verifyBlockSignature(s, b1, ctx)
+	err := verifyBlockSignature(ctx, s, b1)
 	if err != nil {
 		return nil, err
 	}
-	err = verifyBlockSignature(s, b2, ctx)
+	err = verifyBlockSignature(ctx, s, b2)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 }
 
 // Checks whether a block header is correctly signed in the context of the parent state to which it refers.
-func verifyBlockSignature(s *ConsensusFaultChecker, blk block.Block, ctx context.Context) error {
+func verifyBlockSignature(ctx context.Context, s *ConsensusFaultChecker, blk block.Block) error {
 	// Load view of the block's parent state in order to validate against the miner's worker for the epoch at which
 	// the block was produced.
 	// Dragons! What if we don't have or haven't evaluated the state for the parent?
