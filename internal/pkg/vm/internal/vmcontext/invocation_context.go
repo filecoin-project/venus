@@ -222,8 +222,6 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 	// Dragons: move this logic to resolve address
 	notFound := (targetIDAddr == target && target.Protocol() != address.ID)
 	if err != nil || notFound {
-		// Dragons: we should be ble to just call exec on init..
-
 		// actor does not exist, create an account actor
 		// - precond: address must be a pub-key
 		// - sent init actor a msg to create the new account
@@ -248,7 +246,6 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 			panic(err)
 		}
 
-		// Review: does this guy have to pay gas?
 		ctx.CreateActor(builtin.AccountActorCodeID, targetIDAddr)
 
 		// call constructor on account
@@ -263,7 +260,11 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 		}
 
 		newCtx := newInvocationContext(ctx.rt, newMsg, nil, ctx.gasTank, ctx.randSource)
-		newCtx.invoke()
+		_, code := newCtx.invoke()
+		if code != exitcode.Ok {
+			// we failed to construct an account actor..
+			runtime.Abort(code)
+		}
 	}
 
 	// load actor
