@@ -38,7 +38,7 @@ func RequireGenesisFromSetup(t *testing.T, dir string, setupPath string) *Genesi
 	if err != nil {
 		t.Errorf("failed to open config file %s: %s", setupPath, err)
 	}
-	defer configFile.Close()
+	defer configFile.Close() // nolint: errcheck
 
 	var cfg gengen.GenesisCfg
 	if err := json.NewDecoder(configFile).Decode(&cfg); err != nil {
