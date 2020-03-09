@@ -13,10 +13,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/iptbtester"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
 func TestBootstrapMineOnce(t *testing.T) {
-	//tf.FunctionalTest(t)
+	tf.FunctionalTest(t)
 
 	ctx := context.Background()
 	root := project.Root()
