@@ -2,7 +2,7 @@
   "seed": 4,
   "keysToGen": 5,
   "importKeys": [{"privateKey":"/8UoXvzGIU2H/TgTAmswx96m2dVCXkRqnIIlDhJrGCo=","sigType":2}],
-  "preAllocGenKeys": [
+  "preallocatedFunds": [
     "10000000000",
     "10000000000",
     "10000000000",

@@ -58,7 +58,7 @@ func RequireGenerateGenesis(t *testing.T, funds int64, dir string, genesisTime t
 		Seed:       0,
 		ProofsMode: types.TestProofsMode,
 		KeysToGen:  1,
-		PreAllocGenKeys: []string{
+		PreallocatedFunds: []string{
 			strconv.FormatInt(funds, 10),
 		},
 		Miners: []*gengen.CreateStorageMinerConfig{

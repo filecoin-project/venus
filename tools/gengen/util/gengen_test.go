@@ -26,9 +26,9 @@ func testConfig(t *testing.T) *GenesisCfg {
 	require.NoError(t, err)
 
 	return &GenesisCfg{
-		ProofsMode:      types.TestProofsMode,
-		KeysToGen:       4,
-		PreAllocGenKeys: []string{"10", "50"},
+		ProofsMode:        types.TestProofsMode,
+		KeysToGen:         4,
+		PreallocatedFunds: []string{"10", "50"},
 		Miners: []*CreateStorageMinerConfig{
 			{
 				Owner:            0,

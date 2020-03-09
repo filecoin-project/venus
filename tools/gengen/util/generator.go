@@ -244,11 +244,11 @@ func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
 }
 
 func (g *GenesisGenerator) setupPrealloc() error {
-	if len(g.keys) < len(g.cfg.PreAllocGenKeys) {
+	if len(g.keys) < len(g.cfg.PreallocatedFunds) {
 		return fmt.Errorf("keys do not match prealloc")
 	}
 
-	for i, v := range g.cfg.PreAllocGenKeys {
+	for i, v := range g.cfg.PreallocatedFunds {
 		ki := g.keys[i]
 
 		addr, err := ki.Address()
