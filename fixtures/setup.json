@@ -12,6 +12,7 @@
   ],
   "miners": [{
     "owner": 5,
+    "sectorSize": 2048,
     "committedSectors": [{
       "commR": {"/":"bafk4ehzaqugph7z7yajugw6wz6nn7x3akr3e32wecwexllfgqndnjt3nsaya"},
       "commD": {"/":"bafk4chzavlx2s3zsomp6beohyevpbql477qyr7qnvgkvfwbbcqzfijo62arq"},
