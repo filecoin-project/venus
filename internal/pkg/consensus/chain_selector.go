@@ -17,12 +17,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
-// Parameters used by the weighting funcion
-const (
-	// newECV is the constant V defined in the EC spec.
-	newECV uint64 = 2
-)
-
 var (
 	wRatioNum  = fbig.NewInt(1)
 	wRatioDen  = fbig.NewInt(2)
@@ -75,7 +69,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID ci
 	}
 
 	wPowerFactor := fbig.Mul(wPrecision, log2b(totalBytes))
-	wBlocksFactorNum := fbig.Mul(log2b(totalBytes), fbig.NewInt(int64(ts.Len())))
+	wBlocksFactorNum := fbig.Mul(wRatioNum, fbig.Mul(log2b(totalBytes), fbig.NewInt(int64(ts.Len()))))
 	wBlocksFactorDen := fbig.Mul(fbig.NewInt(int64(expectedLeadersPerEpoch)), wRatioDen)
 	wBlocksFactor := fbig.Div(fbig.Mul(wBlocksFactorNum, wPrecision), wBlocksFactorDen)
 	deltaWeight := fbig.Add(wPowerFactor, wBlocksFactor)
