@@ -450,7 +450,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 
 	// post-send
 	// 1. charge gas for putting the return value on the chain
-	// 2. settle gas money around (unsed_gas -> sender, used_gas -> reward)
+	// 2. settle gas money around (unused_gas -> sender, used_gas -> reward)
 	// 3. success!
 
 	// 1. charge for the space used by the return value
@@ -463,7 +463,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 		receipt.ReturnValue = []byte{}
 	}
 
-	// 2. settle gas money around (unsed_gas -> sender, used_gas -> reward)
+	// 2. settle gas money around (unused_gas -> sender, used_gas -> reward)
 	receipt.GasUsed = gasTank.GasConsumed()
 	refundGas := msgGasLimit - receipt.GasUsed
 	vm.transfer(builtin.BurntFundsActorAddr, msg.From, refundGas.ToTokens(msg.GasPrice))
