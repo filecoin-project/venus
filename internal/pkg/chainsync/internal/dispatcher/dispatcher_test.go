@@ -60,7 +60,7 @@ func TestDispatchStartHappy(t *testing.T) {
 
 	// set up a blocking channel and register to unblock after 5 synced
 	allDone := moresync.NewLatch(5)
-	testDispatch.RegisterCallback(func(t dispatcher.Target) { allDone.Done() })
+	testDispatch.RegisterCallback(func(t dispatcher.Target, _ error) { allDone.Done() })
 
 	// receive requests before Start() to test deterministic order
 	go func() {
@@ -88,7 +88,7 @@ func TestDispatcherDropsWhenFull(t *testing.T) {
 	testDispatch := dispatcher.NewDispatcherWithSizes(s, nt, testWorkSize, testBufferSize)
 
 	finished := moresync.NewLatch(1)
-	testDispatch.RegisterCallback(func(target dispatcher.Target) {
+	testDispatch.RegisterCallback(func(target dispatcher.Target, _ error) {
 		// Fail if the work that should be dropped gets processed
 		assert.False(t, target.Height == 100)
 		assert.False(t, target.Height == 101)
