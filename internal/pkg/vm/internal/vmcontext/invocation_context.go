@@ -261,7 +261,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 
 		newCtx := newInvocationContext(ctx.rt, newMsg, nil, ctx.gasTank, ctx.randSource)
 		_, code := newCtx.invoke()
-		if code != exitcode.Ok {
+		if code.IsError() {
 			// we failed to construct an account actor..
 			runtime.Abort(code)
 		}
@@ -330,8 +330,7 @@ func (r returnWrapper) ToCbor() ([]byte, error) {
 		return []byte{}, nil
 	}
 	b := bytes.Buffer{}
-	err := r.inner.MarshalCBOR(&b)
-	if err != nil {
+	if err := r.inner.MarshalCBOR(&b); err != nil {
 		return nil, err
 	}
 	return b.Bytes(), nil

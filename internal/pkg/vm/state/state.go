@@ -143,7 +143,6 @@ func (st *State) Commit(ctx context.Context) (Root, error) {
 func (st *State) Rollback(ctx context.Context) error {
 	// load the original root node again
 	rootNode, err := hamt.LoadNode(ctx, st.store, st.root, hamt.UseTreeBitWidth(TreeBitWidth))
-
 	if err != nil {
 		return errors.Wrapf(err, "failed to load node for %s", st.root)
 	}

@@ -330,7 +330,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 
 	// 4. invoke message
 	ret, code := ctx.invoke()
-	if code != exitcode.Ok {
+	if code.IsError() {
 		return nil, fmt.Errorf("Invalid exit code during implicit message execution (code: %d)", code)
 	}
 	return ret.inner, nil
@@ -439,7 +439,6 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 	// build receipt
 	receipt := message.Receipt{
 		ExitCode: code,
-		GasUsed:  gasTank.GasConsumed(),
 	}
 	// encode value
 	receipt.ReturnValue, err = ret.ToCbor()
@@ -451,7 +450,8 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 
 	// post-send
 	// 1. charge gas for putting the return value on the chain
-	// 2. success!
+	// 2. settle gas money around (unsed_gas -> sender, used_gas -> reward)
+	// 3. success!
 
 	// 1. charge for the space used by the return value
 	// Note: the GasUsed in the message receipt does not
@@ -464,7 +464,13 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 		return message.Failure(exitcode.SysErrOutOfGas, gasTank.GasConsumed()), big.Zero(), gasTank.GasConsumed().ToTokens(msg.GasPrice)
 	}
 
-	// 2. Success!
+	// 2. settle gas money around (unsed_gas -> sender, used_gas -> reward)
+	receipt.GasUsed = gasTank.GasConsumed()
+	refundGas := msgGasLimit - receipt.GasUsed
+	vm.transfer(builtin.BurntFundsActorAddr, msg.From, refundGas.ToTokens(msg.GasPrice))
+	vm.transfer(builtin.BurntFundsActorAddr, builtin.RewardActorAddr, receipt.GasUsed.ToTokens(msg.GasPrice))
+
+	// 3. Success!
 	return receipt, big.Zero(), gasTank.GasConsumed().ToTokens(msg.GasPrice)
 }
 
