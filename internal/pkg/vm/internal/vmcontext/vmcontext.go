@@ -459,9 +459,8 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 	if !ok {
 		// Insufficient gas remaining to cover the on-chain return value; proceed as in the case
 		// of method execution failure.
-
-		// Note: we are charging the caller not the miner, there is ZERO miner penalty
-		return message.Failure(exitcode.SysErrOutOfGas, gasTank.GasConsumed()), big.Zero(), gasTank.GasConsumed().ToTokens(msg.GasPrice)
+		receipt.ExitCode = exitcode.SysErrOutOfGas
+		receipt.ReturnValue = []byte{}
 	}
 
 	// 2. settle gas money around (unsed_gas -> sender, used_gas -> reward)
