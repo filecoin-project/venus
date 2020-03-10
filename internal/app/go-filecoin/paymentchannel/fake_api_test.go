@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	spect "github.com/filecoin-project/specs-actors/support/testing"
 	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -96,11 +95,11 @@ func (f *FakePaymentChannelAPI) Send(_ context.Context,
 // testing methods
 
 // StubCreatePaychActorMessage sets up a message response, with desired exit code and block height
-func (f *FakePaymentChannelAPI) StubCreatePaychActorMessage(t *testing.T, clientAccountAddr, minerAccountAddr, paychUniqueAddr address.Address, method abi.MethodNum, code exitcode.ExitCode, height uint64) {
+func (f *FakePaymentChannelAPI) StubCreatePaychActorMessage(t *testing.T, clientAccountAddr, minerAccountAddr, paychUniqueAddr address.Address, code exitcode.ExitCode, height uint64) {
 
 	newcid := shared_testutil.GenerateCids(1)[0]
 
-	msg := types.NewUnsignedMessage(clientAccountAddr, builtin.InitActorAddr, 1, types.ZeroAttoFIL, method, []byte{})
+	msg := types.NewUnsignedMessage(clientAccountAddr, builtin.InitActorAddr, 1, types.ZeroAttoFIL, builtin.MethodsInit.Exec, []byte{})
 	msg.GasPrice = defaultGasPrice
 	msg.GasLimit = defaultGasLimit
 
@@ -124,11 +123,6 @@ func (f *FakePaymentChannelAPI) StubCreatePaychActorMessage(t *testing.T, client
 		Rcpt:          &vm.MessageReceipt{ExitCode: code, ReturnValue: f.requireEncode(&retVal)},
 		DecodedParams: params,
 	}
-}
-
-// Verify compares expected and actual results
-func (f *FakePaymentChannelAPI) Verify() {
-	assert.True(f.t, f.ExpectedMsgCid.Equals(f.ActualWaitCid))
 }
 
 func (f *FakePaymentChannelAPI) requireEncode(params interface{}) []byte {

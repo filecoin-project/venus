@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	spect "github.com/filecoin-project/specs-actors/support/testing"
@@ -48,9 +47,8 @@ func TestManager_CreatePaymentChannel(t *testing.T) {
 	viewer := makeStateViewer(t, root, nil)
 
 	t.Run("happy path", func(t *testing.T) {
-		testAPI := NewFakePaymentChannelAPI(ctx, t)
-		viewer := makeStateViewer(t, root, nil)
 		ds := dss.MutexWrap(datastore.NewMapDatastore())
+		testAPI := NewFakePaymentChannelAPI(ctx, t)
 		m := NewManager(context.Background(), ds, testAPI, testAPI, viewer, &cst.ChainStateReadWriter{})
 		clientAddr, minerAddr, paychUniqueAddr, _ := requireSetupPaymentChannel(t, testAPI, m)
 		exists, err := m.ChannelExists(paychUniqueAddr)
@@ -88,7 +86,7 @@ func TestManager_CreatePaymentChannel(t *testing.T) {
 			blockHeight := uint64(1234)
 			m := NewManager(context.Background(), ds, testAPI, testAPI, viewer, &cst.ChainStateReadWriter{})
 
-			testAPI.StubCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, builtin.MethodsInit.Exec, exitcode.Ok, blockHeight)
+			testAPI.StubCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, exitcode.Ok, blockHeight)
 
 			_, err := m.CreatePaymentChannel(clientAddr, minerAddr)
 			assert.EqualError(t, err, tc.expErr)
@@ -106,11 +104,11 @@ func TestManager_CreatePaymentChannel(t *testing.T) {
 }
 
 func TestManager_AllocateLane(t *testing.T) {
-	ds := dss.MutexWrap(datastore.NewMapDatastore())
 	ctx := context.Background()
+	root := shared_testutil.GenerateCids(1)[0]
+	ds := dss.MutexWrap(datastore.NewMapDatastore())
 	testAPI := NewFakePaymentChannelAPI(ctx, t)
 
-	root := shared_testutil.GenerateCids(1)[0]
 	viewer := makeStateViewer(t, root, nil)
 	m := NewManager(context.Background(), ds, testAPI, testAPI, viewer, &cst.ChainStateReadWriter{})
 	clientAddr, minerAddr, paychUniqueAddr, _ := requireSetupPaymentChannel(t, testAPI, m)
@@ -145,11 +143,10 @@ func TestManager_AllocateLane(t *testing.T) {
 // AddVoucherToChannel is called by a retrieval client
 func TestManager_AddVoucherToChannel(t *testing.T) {
 	ctx := context.Background()
-	testAPI := NewFakePaymentChannelAPI(ctx, t)
-
-	root := shared_testutil.GenerateCids(1)[0]
 	amt := big.NewInt(300)
 	sig := crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte("doesntmatter")}
+	root := shared_testutil.GenerateCids(1)[0]
+
 	v := paych.SignedVoucher{
 		Nonce:          2,
 		TimeLockMax:    abi.ChainEpoch(12345),
@@ -162,12 +159,14 @@ func TestManager_AddVoucherToChannel(t *testing.T) {
 	newV := v
 	newV.Amount = abi.NewTokenAmount(500)
 
+	testAPI := NewFakePaymentChannelAPI(ctx, t)
+
 	t.Run("happy path", func(t *testing.T) {
 		ds := dss.MutexWrap(datastore.NewMapDatastore())
 		viewer := makeStateViewer(t, root, nil)
 		manager := NewManager(context.Background(), ds, testAPI, testAPI, viewer, &cst.ChainStateReadWriter{})
 		clientAddr, minerAddr, paychUniqueAddr, _ := requireSetupPaymentChannel(t, testAPI, manager)
-		testAPI.StubCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, builtin.MethodsInit.Exec, exitcode.Ok, 42)
+		testAPI.StubCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, exitcode.Ok, 42)
 
 		assert.NoError(t, manager.AddVoucherToChannel(paychUniqueAddr, &v))
 	})
@@ -279,12 +278,12 @@ func requireSetupPaymentChannel(t *testing.T, testAPI *FakePaymentChannelAPI, m 
 	paychUniqueAddr := spect.NewActorAddr(t, "abcd123")
 	blockHeight := uint64(1234)
 
-	testAPI.StubCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, builtin.MethodsInit.Exec, exitcode.Ok, blockHeight)
+	testAPI.StubCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, exitcode.Ok, blockHeight)
 
 	addr, err := m.CreatePaymentChannel(clientAddr, minerAddr)
 	require.NoError(t, err)
 	require.Equal(t, addr, paychUniqueAddr)
-	testAPI.Verify()
+	assert.True(t, testAPI.ExpectedMsgCid.Equals(testAPI.ActualWaitCid))
 	return clientAddr, minerAddr, paychUniqueAddr, blockHeight
 }
 
