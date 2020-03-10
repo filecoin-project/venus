@@ -82,7 +82,8 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, ctx interface{}, arg
 	}
 
 	// method returns unit
-	if len(out) == 0 {
+	// Note: we need to check for `IsNill()` here because Go doesnt work if you do `== nil` on the interface
+	if len(out) == 0 || out[0].IsNil() {
 		return nil, nil
 	}
 
