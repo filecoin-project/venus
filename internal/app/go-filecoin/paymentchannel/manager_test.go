@@ -52,7 +52,7 @@ func TestManager_CreatePaymentChannel(t *testing.T) {
 		viewer := makeStateViewer(t, root, nil)
 		ds := dss.MutexWrap(datastore.NewMapDatastore())
 		m := NewManager(context.Background(), ds, testAPI, testAPI, viewer, &cst.ChainStateReadWriter{})
-		clientAddr, minerAddr, paychIDAddr, paychUniqueAddr, _ := requireSetupPaymentChannel(t, testAPI, m)
+		clientAddr, minerAddr, paychUniqueAddr, _ := requireSetupPaymentChannel(t, testAPI, m)
 		exists, err := m.ChannelExists(paychUniqueAddr)
 		require.NoError(t, err)
 		assert.True(t, exists)
@@ -64,7 +64,6 @@ func TestManager_CreatePaymentChannel(t *testing.T) {
 			LastLane:   0,
 			From:       clientAddr,
 			To:         minerAddr,
-			IDAddr:     paychIDAddr,
 			UniqueAddr: paychUniqueAddr,
 		}
 		assert.Equal(t, expectedChinfo, *chinfo)
@@ -85,12 +84,11 @@ func TestManager_CreatePaymentChannel(t *testing.T) {
 			testAPI.MsgWaitErr = tc.waitErr
 			clientAddr := spect.NewIDAddr(t, rand.Uint64())
 			minerAddr := spect.NewIDAddr(t, rand.Uint64())
-			paychIDAddr := spect.NewIDAddr(t, rand.Uint64())
 			paychUniqueAddr := spect.NewActorAddr(t, "paych")
 			blockHeight := uint64(1234)
 			m := NewManager(context.Background(), ds, testAPI, testAPI, viewer, &cst.ChainStateReadWriter{})
 
-			testAPI.StubCreatePaychActorMessage(clientAddr, minerAddr, paychIDAddr, paychUniqueAddr, builtin.MethodsInit.Exec, exitcode.Ok, blockHeight)
+			testAPI.StubCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, builtin.MethodsInit.Exec, exitcode.Ok, blockHeight)
 
 			_, err := m.CreatePaymentChannel(clientAddr, minerAddr)
 			assert.EqualError(t, err, tc.expErr)
@@ -101,7 +99,7 @@ func TestManager_CreatePaymentChannel(t *testing.T) {
 		ds := dss.MutexWrap(datastore.NewMapDatastore())
 		testAPI := NewFakePaymentChannelAPI(ctx, t)
 		m := NewManager(context.Background(), ds, testAPI, testAPI, viewer, &cst.ChainStateReadWriter{})
-		clientAddr, minerAddr, _, _, _ := requireSetupPaymentChannel(t, testAPI, m)
+		clientAddr, minerAddr, _, _ := requireSetupPaymentChannel(t, testAPI, m)
 		_, err := m.CreatePaymentChannel(clientAddr, minerAddr)
 		assert.EqualError(t, err, "payment channel exists for client t0901, miner t0902")
 	})
@@ -115,7 +113,7 @@ func TestManager_AllocateLane(t *testing.T) {
 	root := shared_testutil.GenerateCids(1)[0]
 	viewer := makeStateViewer(t, root, nil)
 	m := NewManager(context.Background(), ds, testAPI, testAPI, viewer, &cst.ChainStateReadWriter{})
-	clientAddr, minerAddr, paychIDAddr, paychUniqueAddr, _ := requireSetupPaymentChannel(t, testAPI, m)
+	clientAddr, minerAddr, paychUniqueAddr, _ := requireSetupPaymentChannel(t, testAPI, m)
 
 	t.Run("saves a new lane", func(t *testing.T) {
 		lane, err := m.AllocateLane(paychUniqueAddr)
@@ -129,7 +127,6 @@ func TestManager_AllocateLane(t *testing.T) {
 			LastLane:   1,
 			From:       clientAddr,
 			To:         minerAddr,
-			IDAddr:     paychIDAddr,
 			UniqueAddr: paychUniqueAddr,
 		}
 
@@ -169,8 +166,8 @@ func TestManager_AddVoucherToChannel(t *testing.T) {
 		ds := dss.MutexWrap(datastore.NewMapDatastore())
 		viewer := makeStateViewer(t, root, nil)
 		manager := NewManager(context.Background(), ds, testAPI, testAPI, viewer, &cst.ChainStateReadWriter{})
-		clientAddr, minerAddr, paychIDAddr, paychUniqueAddr, _ := requireSetupPaymentChannel(t, testAPI, manager)
-		testAPI.StubCreatePaychActorMessage(clientAddr, minerAddr, paychIDAddr, paychUniqueAddr, builtin.MethodsInit.Exec, exitcode.Ok, 42)
+		clientAddr, minerAddr, paychUniqueAddr, _ := requireSetupPaymentChannel(t, testAPI, manager)
+		testAPI.StubCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, builtin.MethodsInit.Exec, exitcode.Ok, 42)
 
 		assert.NoError(t, manager.AddVoucherToChannel(paychUniqueAddr, &v))
 	})
@@ -243,18 +240,9 @@ func TestManager_AddVoucher(t *testing.T) {
 
 	t.Run("returns error if marshaling fails", func(t *testing.T) {
 		viewer, manager := saveVoucherSetup(ctx, t, root, cr)
-		viewer.Views[root].AddActorWithState(paychUniqueAddr, clientAddr, minerAddr, address.Undef)
+		viewer.Views[root].AddActorWithState(paychUniqueAddr, clientAddr, address.Undef, address.Undef)
 		resAmt, err := manager.AddVoucher(paychUniqueAddr, &v, []byte("porkchops"))
 		assert.EqualError(t, err, "cannot marshal undefined address")
-		assert.Equal(t, abi.NewTokenAmount(0), resAmt)
-	})
-
-	t.Run("returns error if ResolveAddressAt fails", func(t *testing.T) {
-		viewer, manager := saveVoucherSetup(ctx, t, root, cr)
-		viewer.Views[root].ResolveAddressAtErr = errors.New("boom")
-		viewer.Views[root].AddActorWithState(paychUniqueAddr, clientAddr, minerAddr, paychIDAddr)
-		resAmt, err := manager.AddVoucher(paychUniqueAddr, &v, []byte("porkchops"))
-		assert.EqualError(t, err, "boom")
 		assert.Equal(t, abi.NewTokenAmount(0), resAmt)
 	})
 
@@ -285,20 +273,19 @@ func saveVoucherSetup(ctx context.Context, t *testing.T, root cid.Cid, cr *FakeC
 	return viewer, NewManager(context.Background(), ds, testAPI, testAPI, viewer, cr)
 }
 
-func requireSetupPaymentChannel(t *testing.T, testAPI *FakePaymentChannelAPI, m *Manager) (address.Address, address.Address, address.Address, address.Address, uint64) {
+func requireSetupPaymentChannel(t *testing.T, testAPI *FakePaymentChannelAPI, m *Manager) (address.Address, address.Address, address.Address, uint64) {
 	clientAddr := spect.NewIDAddr(t, 901)
 	minerAddr := spect.NewIDAddr(t, 902)
-	paychIDAddr := spect.NewIDAddr(t, 999)
 	paychUniqueAddr := spect.NewActorAddr(t, "abcd123")
 	blockHeight := uint64(1234)
 
-	testAPI.StubCreatePaychActorMessage(clientAddr, minerAddr, paychIDAddr, paychUniqueAddr, builtin.MethodsInit.Exec, exitcode.Ok, blockHeight)
+	testAPI.StubCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, builtin.MethodsInit.Exec, exitcode.Ok, blockHeight)
 
 	addr, err := m.CreatePaymentChannel(clientAddr, minerAddr)
 	require.NoError(t, err)
 	require.Equal(t, addr, paychUniqueAddr)
 	testAPI.Verify()
-	return clientAddr, minerAddr, paychIDAddr, paychUniqueAddr, blockHeight
+	return clientAddr, minerAddr, paychUniqueAddr, blockHeight
 }
 
 func makeStateViewer(t *testing.T, stateRoot cid.Cid, viewErr error) *FakeStateViewer {

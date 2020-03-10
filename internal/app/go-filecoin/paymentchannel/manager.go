@@ -65,7 +65,6 @@ type MgrStateViewer interface {
 // PaychActorStateView is the subset of a StateView that the Manager uses
 type PaychActorStateView interface {
 	PaychActorParties(ctx context.Context, paychAddr address.Address) (from, to address.Address, err error)
-	ResolveAddressAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (address.Address, error)
 }
 
 // ChainReader is the subset of the ChainReadWriter API that the Manager uses
@@ -131,7 +130,7 @@ func (pm *Manager) CreatePaymentChannel(clientAddress, minerAddress address.Addr
 	if err != nil {
 		return address.Undef, err
 	}
-	if !chinfo.Equal(ChannelInfoUndef) {
+	if !chinfo.Blank() {
 		return address.Undef, xerrors.Errorf("payment channel exists for client %s, miner %s", clientAddress, minerAddress)
 	}
 
@@ -172,7 +171,7 @@ func (pm *Manager) CreatePaymentChannel(clientAddress, minerAddress address.Addr
 			return err
 		}
 
-		chinfo := ChannelInfo{UniqueAddr: res.RobustAddress, IDAddr: res.IDAddress, From: ctorParams.From, To: ctorParams.To}
+		chinfo := ChannelInfo{UniqueAddr: res.RobustAddress, From: ctorParams.From, To: ctorParams.To}
 		newPaychAddr = res.RobustAddress
 		return pm.paymentChannels.Begin(res.RobustAddress, &chinfo)
 	}
@@ -260,14 +259,9 @@ func (pm *Manager) createPaymentChannelWithVoucher(paychAddr address.Address, vo
 		return zeroAmt, err
 	}
 
-	idAddr, err := sv.ResolveAddressAt(pm.ctx, pm.cr.Head(), paychAddr)
-	if err != nil {
-		return zeroAmt, err
-	}
 	chinfo := ChannelInfo{
 		From:       from,
 		To:         to,
-		IDAddr:     idAddr,
 		UniqueAddr: paychAddr,
 		Vouchers:   []*VoucherInfo{{Voucher: voucher, Proof: proof}},
 	}

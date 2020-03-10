@@ -63,13 +63,6 @@ func (f *FakeStateView) PaychActorParties(_ context.Context, paychAddr address.A
 	}
 	return st.From, st.To, f.PaychActorPartiesErr
 }
-func (f *FakeStateView) ResolveAddressAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (address.Address, error) {
-	st, ok := f.actors[addr]
-	if !ok {
-		f.t.Fatalf("actor does not exist %s", addr.String())
-	}
-	return st.IDAddr, f.ResolveAddressAtErr
-}
 
 func (f *FakeStateView) AddActorWithState(actorAddr, from, to, id address.Address) {
 	f.actors[actorAddr] = &FakeActorState{to, from, id}

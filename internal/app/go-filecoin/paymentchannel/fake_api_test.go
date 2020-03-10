@@ -2,6 +2,7 @@ package paymentchannel
 
 import (
 	"context"
+	"math/rand"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -10,6 +11,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	initActor "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	spect "github.com/filecoin-project/specs-actors/support/testing"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -94,7 +96,7 @@ func (f *FakePaymentChannelAPI) Send(_ context.Context,
 // testing methods
 
 // StubCreatePaychActorMessage sets up a message response, with desired exit code and block height
-func (f *FakePaymentChannelAPI) StubCreatePaychActorMessage(clientAccountAddr, minerAccountAddr, paychIDAddr, paychUniqueAddr address.Address, method abi.MethodNum, code exitcode.ExitCode, height uint64) {
+func (f *FakePaymentChannelAPI) StubCreatePaychActorMessage(t *testing.T, clientAccountAddr, minerAccountAddr, paychUniqueAddr address.Address, method abi.MethodNum, code exitcode.ExitCode, height uint64) {
 
 	newcid := shared_testutil.GenerateCids(1)[0]
 
@@ -109,7 +111,10 @@ func (f *FakePaymentChannelAPI) StubCreatePaychActorMessage(clientAccountAddr, m
 	msg.Params = f.requireEncode(&params)
 	f.ExpectedMsgCid = newcid
 
-	retVal := initActor.ExecReturn{IDAddress: paychIDAddr, RobustAddress: paychUniqueAddr}
+	retVal := initActor.ExecReturn{
+		IDAddress:     spect.NewIDAddr(t, rand.Uint64()), // IDAddress is currently unused
+		RobustAddress: paychUniqueAddr,
+	}
 
 	emptySig := crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{'0'}}
 	f.ExpectedMsg = MsgReceipts{
