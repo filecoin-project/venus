@@ -70,6 +70,7 @@ func VerifyBLSAggregate(pubKeys, msgs [][]byte, signature []byte) bool {
 	for _, pubKey := range pubKeys {
 		var blsPubKey bls.PublicKey
 		copy(blsPubKey[:], pubKey)
+		keys = append(keys, blsPubKey)
 	}
 
 	var blsSig bls.Signature
