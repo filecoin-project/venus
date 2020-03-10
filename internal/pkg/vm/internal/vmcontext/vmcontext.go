@@ -233,9 +233,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, epoch 
 			}
 
 			// apply message
-			fmt.Printf("Applying message: %s, from: %s, to: %s, value: %v\n", mcid, m.From, m.To, m.Value)
 			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(m, m.OnChainLen(), rnd)
-			fmt.Printf("receipt %s\n", receipt.String())
 
 			// accumulate result
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)
@@ -342,7 +340,6 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd crypto.RandomnessSource) (message.Receipt, minerPenaltyFIL, gasRewardFIL) {
 	// Dragons: temp until we remove legacy types
 	var msgGasLimit gas.Unit = gas.Unit(msg.GasLimit)
-
 	// This method does not actually execute the message itself,
 	// but rather deals with the pre/post processing of a message.
 	// (see: `invocationContext.invoke()` for the dispatch and execution)
@@ -361,12 +358,10 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 
 	// 1. charge for bytes used in chain
 	msgGasCost := vm.pricelist.OnChainMessage(onChainMsgSize)
-	fmt.Printf("msgGasCost: %v\n", msgGasCost)
 	ok := gasTank.TryCharge(msgGasCost)
 	if !ok {
 		// Invalid message; insufficient gas limit to pay for the on-chain message size.
 		// Note: the miner needs to pay the full msg cost, not what might have been partially consumed
-		fmt.Printf("gas limit too low error: msg gas price: %v\n", msg.GasPrice)
 		return message.Failure(exitcode.SysErrOutOfGas, gas.Zero), msgGasCost.ToTokens(msg.GasPrice), big.Zero()
 	}
 
@@ -393,7 +388,6 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 	// 4. Check sender balance (gas + value being sent)
 	gasLimitCost := msgGasLimit.ToTokens(msg.GasPrice)
 	totalCost := big.Add(msg.Value, gasLimitCost)
-	fmt.Printf("totalCost: %v\n", totalCost)
 	if fromActor.Balance.LessThan(totalCost) {
 		// Execution error; sender does not have sufficient funds to pay for the gas limit.
 		return message.Failure(exitcode.SysErrInsufficientFunds, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()

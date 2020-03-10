@@ -2,7 +2,6 @@ package node_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -177,8 +176,8 @@ func TestChainSyncWithMessages(t *testing.T) {
 		senderAddress,
 		receiverAddress,
 		sendVal,
-		types.NewGasPrice(1),
-		types.GasUnits(0),
+		types.NewGasPrice(2),
+		types.GasUnits(1000),
 		builtin.MethodSend,
 		&adt.EmptyValue{},
 	)
@@ -188,7 +187,6 @@ func TestChainSyncWithMessages(t *testing.T) {
 	require.Equal(t, 1, len(smsgs))
 	uCid, err := smsgs[0].Message.Cid() // Message waiter needs unsigned cid for bls
 	require.NoError(t, err)
-	fmt.Printf("The message CID: %s\n", uCid)
 
 	/* mine block with message */
 	fakeClock.Advance(blockTime)
@@ -203,9 +201,7 @@ func TestChainSyncWithMessages(t *testing.T) {
 
 	senderEnd, err := nodeSend.PorcelainAPI.WalletBalance(ctx, senderAddress)
 	require.NoError(t, err)
-	fmt.Printf("senderEnd: %v for addr: %s\n", senderEnd, senderAddress)
 	receiverEnd, err := nodeReceive.PorcelainAPI.WalletBalance(ctx, receiverAddress)
-	fmt.Printf("receiverEnd: %v for addr %s\n", receiverEnd, receiverAddress)
 	require.NoError(t, err)
 
 	assert.Equal(t, senderStart, specsbig.Add(senderEnd, sendVal))

@@ -2,7 +2,6 @@ package syncer
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -181,7 +180,6 @@ func (syncer *Syncer) InitStaged() error {
 
 // SetStagedHead sets the syncer's internal staged tipset to the chain's head.
 func (syncer *Syncer) SetStagedHead(ctx context.Context) error {
-	fmt.Printf("setting staged head from syncer\n")
 	return syncer.chainStore.SetHead(ctx, syncer.staged)
 }
 
