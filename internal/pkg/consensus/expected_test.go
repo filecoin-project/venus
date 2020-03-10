@@ -28,6 +28,7 @@ import (
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
+	"github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
 // TestExpected_RunStateTransition_validateMining is concerned only with validateMining behavior.
@@ -43,7 +44,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 	t.Run("passes the validateMining section when given valid mining blocks", func(t *testing.T) {
 		cistore, bstore := setupCborBlockstore()
-		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
+		genesisBlock, err := gengen.DefaultGenesis(cistore, bstore)
 		require.NoError(t, err)
 
 		//Set miner actor
@@ -66,7 +67,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 	t.Run("returns nil + mining error when election proof validation fails", func(t *testing.T) {
 		cistore, bstore := setupCborBlockstore()
-		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
+		genesisBlock, err := gengen.DefaultGenesis(cistore, bstore)
 		require.NoError(t, err)
 
 		pTipSet := th.RequireNewTipSet(t, genesisBlock)
@@ -90,7 +91,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 	t.Run("fails when bls signature is not valid across bls messages", func(t *testing.T) {
 		cistore, bstore := setupCborBlockstore()
-		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
+		genesisBlock, err := gengen.DefaultGenesis(cistore, bstore)
 		require.NoError(t, err)
 
 		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
@@ -119,7 +120,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 	t.Run("fails when secp message has invalid signature", func(t *testing.T) {
 		cistore, bstore := setupCborBlockstore()
-		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
+		genesisBlock, err := gengen.DefaultGenesis(cistore, bstore)
 		require.NoError(t, err)
 
 		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
@@ -155,7 +156,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 	t.Run("returns nil + mining error when ticket validation fails", func(t *testing.T) {
 		cistore, bstore := setupCborBlockstore()
-		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
+		genesisBlock, err := gengen.DefaultGenesis(cistore, bstore)
 		require.NoError(t, err)
 
 		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
@@ -175,7 +176,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 	t.Run("returns nil + mining error when signature is invalid", func(t *testing.T) {
 		cistore, bstore := setupCborBlockstore()
-		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
+		genesisBlock, err := gengen.DefaultGenesis(cistore, bstore)
 		require.NoError(t, err)
 
 		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
@@ -197,7 +198,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 	t.Run("returns nil + error when parent weight invalid", func(t *testing.T) {
 		cistore, bstore := setupCborBlockstore()
-		genesisBlock, err := th.DefaultGenesis(cistore, bstore)
+		genesisBlock, err := gengen.DefaultGenesis(cistore, bstore)
 		require.NoError(t, err)
 
 		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
