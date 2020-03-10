@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"math/big"
 	"strings"
 
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -15,14 +14,13 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
-// Parameters used by the weighting funcion
-const (
-	// newECV is the constant V defined in the EC spec.
-	newECV uint64 = 2
+var (
+	wRatioNum  = fbig.NewInt(1)
+	wRatioDen  = fbig.NewInt(2)
+	wPrecision = fbig.NewInt(256)
 )
 
 // ChainSelector weighs and compares chains according to the deprecated v0
@@ -42,32 +40,25 @@ func NewChainSelector(cs cbor.IpldStore, state StateViewer, gCid cid.Cid) *Chain
 	}
 }
 
+func log2b(x fbig.Int) fbig.Int {
+	bits := x.BitLen()
+	return fbig.NewInt(int64(bits - 1))
+}
+
 // Weight returns the EC weight of this TipSet in uint64 encoded fixed point
 // representation.
 //
-// w(i) = w(i-1) + V * num_blks + X
-// X = log_2(total_storage(pSt))
+//
 func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID cid.Cid) (fbig.Int, error) {
 	if ts.Len() > 0 && ts.At(0).Cid().Equals(c.genesisCid) {
 		return fbig.Zero(), nil
 	}
 	// Retrieve parent weight.
-	parentW, err := ts.ParentWeight()
-	if err != nil {
-		return fbig.Zero(), err
-	}
-	w, err := types.FixedToBig(parentW)
+	parentWeight, err := ts.ParentWeight()
 	if err != nil {
 		return fbig.Zero(), err
 	}
 
-	// Each block adds ECV to the weight's inner term
-	innerTerm := new(big.Float)
-	floatECV := new(big.Float).SetInt64(int64(newECV))
-	floatNumBlocks := new(big.Float).SetInt64(int64(ts.Len()))
-	innerTerm.Mul(floatECV, floatNumBlocks)
-
-	// Add bitnum(total storage power) to the weight's inner term
 	if !pStateID.Defined() {
 		return fbig.Zero(), errors.New("undefined state passed to chain selector new weight")
 	}
@@ -76,12 +67,15 @@ func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID ci
 	if err != nil {
 		return fbig.Zero(), err
 	}
-	roughLogTotalBytes := new(big.Float).SetInt64(int64(totalBytes.BitLen()))
-	innerTerm.Add(innerTerm, roughLogTotalBytes)
+	powerMeasure := log2b(totalBytes)
 
-	w.Add(w, innerTerm)
+	wPowerFactor := fbig.Mul(wPrecision, powerMeasure)
+	wBlocksFactorNum := fbig.Mul(wRatioNum, fbig.Mul(powerMeasure, fbig.NewInt(int64(ts.Len()))))
+	wBlocksFactorDen := fbig.Mul(wRatioDen, fbig.NewInt(int64(expectedLeadersPerEpoch)))
+	wBlocksFactor := fbig.Div(fbig.Mul(wBlocksFactorNum, wPrecision), wBlocksFactorDen)
+	deltaWeight := fbig.Add(wPowerFactor, wBlocksFactor)
 
-	return types.BigToFixed(w)
+	return fbig.Add(parentWeight, deltaWeight), nil
 }
 
 // IsHeavier returns true if tipset a is heavier than tipset b, and false
