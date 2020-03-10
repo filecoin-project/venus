@@ -371,7 +371,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 		return message.Failure(exitcode.SysErrActorNotFound, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
 	}
 
-	fromActor, found, err := vm.state.GetActor(context.Background(), msg.From)
+	fromActor, found, err := vm.state.GetActor(vm.context, msg.From)
 	if err != nil {
 		panic(err)
 	}
@@ -397,14 +397,24 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 	// 5. Increment sender CallSeqNum
 	fromActor.IncrementSeqNum()
 
+	// update actor
+	if err := vm.state.SetActor(vm.context, msg.From, fromActor); err != nil {
+		panic(err)
+	}
+
 	// 6. Deduct gas limit funds from sender first
 	// Note: this should always succeed, due to the sender balance check above
 	// Note: after this point, we nede to return this funds back before exiting
 	vm.transfer(msg.From, builtin.BurntFundsActorAddr, gasLimitCost)
 
-	// update actor
-	if err := vm.state.SetActor(vm.context, msg.From, fromActor); err != nil {
+	// reload from actor
+	// Note: balance might have changed
+	fromActor, found, err = vm.state.GetActor(vm.context, msg.From)
+	if err != nil {
 		panic(err)
+	}
+	if !found {
+		panic("unreachable: actor cannot possibly not exist")
 	}
 
 	// 7. checkpoint state
@@ -450,7 +460,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 
 	// post-send
 	// 1. charge gas for putting the return value on the chain
-	// 2. settle gas money around (unused_gas -> sender, used_gas -> reward)
+	// 2. settle gas money around (unused_gas -> sender)
 	// 3. success!
 
 	// 1. charge for the space used by the return value
@@ -463,11 +473,10 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 		receipt.ReturnValue = []byte{}
 	}
 
-	// 2. settle gas money around (unused_gas -> sender, used_gas -> reward)
+	// 2. settle gas money around (unused_gas -> sender)
 	receipt.GasUsed = gasTank.GasConsumed()
 	refundGas := msgGasLimit - receipt.GasUsed
 	vm.transfer(builtin.BurntFundsActorAddr, msg.From, refundGas.ToTokens(msg.GasPrice))
-	vm.transfer(builtin.BurntFundsActorAddr, builtin.RewardActorAddr, receipt.GasUsed.ToTokens(msg.GasPrice))
 
 	// 3. Success!
 	return receipt, big.Zero(), gasTank.GasConsumed().ToTokens(msg.GasPrice)
