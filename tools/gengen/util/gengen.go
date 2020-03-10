@@ -75,9 +75,12 @@ type GenesisCfg struct {
 	// KeysToGen is the number of random keys to generate and return
 	KeysToGen int
 
-	// PreAllocGenKeys is a mapping from generated key index to string values of whole filecoin
+	// Import keys are pre-generated keys to be imported. These keys will be appended to the generated keys.
+	ImportKeys []*crypto.KeyInfo
+
+	// PreallocatedFunds is a mapping from generated key index to string values of whole filecoin
 	// that will be preallocated to each account
-	PreAllocGenKeys []string
+	PreallocatedFunds []string
 
 	// Miners is a list of miners that should be set up at the start of the network
 	Miners []*CreateStorageMinerConfig
@@ -131,10 +134,10 @@ func GenTime(t uint64) GenOption {
 func GenKeys(n int) GenOption {
 	return func(gc *GenesisCfg) error {
 		gc.KeysToGen = n
-		gc.PreAllocGenKeys = make([]string, n)
+		gc.PreallocatedFunds = make([]string, n)
 		// By default keys get nothing
-		for i := range gc.PreAllocGenKeys {
-			gc.PreAllocGenKeys[i] = "0"
+		for i := range gc.PreallocatedFunds {
+			gc.PreallocatedFunds[i] = "0"
 		}
 		return nil
 	}
@@ -143,10 +146,10 @@ func GenKeys(n int) GenOption {
 // GenKeyPrealloc returns a config option that sets up an actor account.
 func GenKeyPrealloc(idx int, amt string) GenOption {
 	return func(gc *GenesisCfg) error {
-		if len(gc.PreAllocGenKeys)-1 < idx {
-			return fmt.Errorf("bad actor account idx %d for only %d pre alloc gen keys", idx, len(gc.PreAllocGenKeys))
+		if len(gc.PreallocatedFunds)-1 < idx {
+			return fmt.Errorf("bad actor account idx %d for only %d pre alloc gen keys", idx, len(gc.PreallocatedFunds))
 		}
-		gc.PreAllocGenKeys[idx] = amt
+		gc.PreallocatedFunds[idx] = amt
 		return nil
 	}
 }

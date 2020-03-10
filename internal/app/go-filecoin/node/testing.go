@@ -215,7 +215,7 @@ func MakeTestGenCfg(t *testing.T, numSectors int) *gengen.GenesisCfg {
 			},
 		},
 		Network: "gfctest",
-		PreAllocGenKeys: []string{
+		PreallocatedFunds: []string{
 			"10000",
 			"10000",
 		},
