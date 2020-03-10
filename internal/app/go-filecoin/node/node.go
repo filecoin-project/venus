@@ -341,8 +341,8 @@ func (node *Node) addMinedBlockSynchronous(ctx context.Context, b *block.Block) 
 	if err != nil {
 		return err
 	}
-	wait()
-	return nil
+	err = wait()
+	return err
 }
 
 // MiningAddress returns the address of the mining actor mining on behalf of

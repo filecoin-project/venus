@@ -56,6 +56,7 @@ func (v *SignatureValidator) ValidateBLSMessageAggregate(ctx context.Context, ms
 		}
 		encodedMsgs = append(encodedMsgs, msgBytes)
 	}
+
 	if !crypto.VerifyBLSAggregate(pubKeys, encodedMsgs, sig.Data) {
 		return errors.New("BLS signature invalid")
 	}

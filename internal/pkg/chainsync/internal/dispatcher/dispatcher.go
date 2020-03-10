@@ -51,14 +51,14 @@ func NewDispatcherWithSizes(syncer dispatchSyncer, trans Transitioner, workQueue
 		transitioner:  trans,
 		incoming:      make(chan Target, inQueueSize),
 		control:       make(chan interface{}, 1),
-		registeredCb:  func(t Target) {},
+		registeredCb:  func(t Target, err error) {},
 	}
 }
 
 // cbMessage registers a user callback to be fired following every successful
 // sync.
 type cbMessage struct {
-	cb func(Target)
+	cb func(Target, error)
 }
 
 // Dispatcher receives, sorts and dispatches targets to the catchupSyncer to control
@@ -90,7 +90,7 @@ type Dispatcher struct {
 
 	// registeredCb is a callback registered over the control channel.  It
 	// is called after every successful sync.
-	registeredCb func(Target)
+	registeredCb func(Target, error)
 	// control is a queue of control messages not yet processed.
 	control chan interface{}
 
@@ -99,13 +99,19 @@ type Dispatcher struct {
 }
 
 // SendHello handles chain information from bootstrap peers.
-func (d *Dispatcher) SendHello(ci *block.ChainInfo) error { return d.enqueue(ci) }
+func (d *Dispatcher) SendHello(ci *block.ChainInfo) error {
+	return d.enqueue(ci)
+}
 
 // SendOwnBlock handles chain info from a node's own mining system
-func (d *Dispatcher) SendOwnBlock(ci *block.ChainInfo) error { return d.enqueue(ci) }
+func (d *Dispatcher) SendOwnBlock(ci *block.ChainInfo) error {
+	return d.enqueue(ci)
+}
 
 // SendGossipBlock handles chain info from new blocks sent on pubsub
-func (d *Dispatcher) SendGossipBlock(ci *block.ChainInfo) error { return d.enqueue(ci) }
+func (d *Dispatcher) SendGossipBlock(ci *block.ChainInfo) error {
+	return d.enqueue(ci)
+}
 
 func (d *Dispatcher) enqueue(ci *block.ChainInfo) error {
 	d.incoming <- Target{ChainInfo: *ci}
@@ -163,12 +169,12 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			syncTarget, popped := d.workQueue.Pop()
 			if popped {
 				// Do work
-				err := d.syncer.HandleNewTipSet(syncingCtx, &syncTarget.ChainInfo, d.catchup)
+				syncErr := d.syncer.HandleNewTipSet(syncingCtx, &syncTarget.ChainInfo, d.catchup)
 				if err != nil {
 					log.Info("sync request could not complete: %s", err)
 				}
 				d.syncTargetCount++
-				d.registeredCb(syncTarget)
+				d.registeredCb(syncTarget, syncErr)
 				follow, err := d.transitioner.MaybeTransitionToFollow(syncingCtx, d.catchup, d.workQueue.Len())
 				if err != nil {
 					log.Errorf("state update error setting head %s", err)
@@ -202,21 +208,24 @@ func (d *Dispatcher) drainIncoming() []Target {
 
 // RegisterCallback registers a callback on the dispatcher that
 // will fire after every successful target sync.
-func (d *Dispatcher) RegisterCallback(cb func(Target)) {
+func (d *Dispatcher) RegisterCallback(cb func(Target, error)) {
 	d.control <- cbMessage{cb: cb}
 }
 
 // WaiterForTarget returns a function that will block until the dispatcher
-// processes the given target
-func (d *Dispatcher) WaiterForTarget(waitKey block.TipSetKey) func() {
+// processes the given target and returns the error produced by that targer
+func (d *Dispatcher) WaiterForTarget(waitKey block.TipSetKey) func() error {
 	processed := moresync.NewLatch(1)
-	d.RegisterCallback(func(t Target) {
+	var syncErr error
+	d.RegisterCallback(func(t Target, err error) {
 		if t.ChainInfo.Head.Equals(waitKey) {
+			syncErr = err
 			processed.Done()
 		}
 	})
-	return func() {
+	return func() error {
 		processed.Wait()
+		return syncErr
 	}
 }
 func (d *Dispatcher) processCtrl(ctrlMsg interface{}) {

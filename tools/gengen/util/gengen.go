@@ -170,6 +170,13 @@ func ProofsMode(proofsMode types.ProofsMode) GenOption {
 	}
 }
 
+func MinerConfigs(minerCfgs []*CreateStorageMinerConfig) GenOption {
+	return func(gc *GenesisCfg) error {
+		gc.Miners = minerCfgs
+		return nil
+	}
+}
+
 var defaultGenTimeOpt = GenTime(123456789)
 
 // MakeGenesisFunc returns a genesis function configured by a set of options.

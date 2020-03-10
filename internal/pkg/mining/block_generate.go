@@ -147,7 +147,6 @@ func aggregateBLS(blsMessages []*types.SignedMessage) ([]*types.UnsignedMessage,
 		if msg.Signature.Type != crypto.SigTypeBLS {
 			return []*types.UnsignedMessage{}, crypto.Signature{}, errors.New("non-BLS message signature")
 		}
-
 		// store message signature as bls signature
 		blsSig := bls.Signature{}
 		copy(blsSig[:], msg.Signature.Data)
@@ -157,10 +156,12 @@ func aggregateBLS(blsMessages []*types.SignedMessage) ([]*types.UnsignedMessage,
 	if blsAggregateSig == nil {
 		return []*types.UnsignedMessage{}, crypto.Signature{}, errors.New("could not aggregate signatures")
 	}
+
 	return unwrappedMsgs, crypto.Signature{
 		Type: crypto.SigTypeBLS,
 		Data: blsAggregateSig[:],
 	}, nil
+
 }
 
 // When a block is validated, BLS messages are processed first, so for simplicity all BLS
