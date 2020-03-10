@@ -395,6 +395,10 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 
 	// 5. Increment sender CallSeqNum
 	fromActor.IncrementSeqNum()
+	// update actor
+	if err := vm.state.SetActor(vm.context, msg.From, fromActor); err != nil {
+		panic(err)
+	}
 
 	// update actor
 	if err := vm.state.SetActor(vm.context, msg.From, fromActor); err != nil {

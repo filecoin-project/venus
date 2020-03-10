@@ -141,22 +141,12 @@ func (w *DefaultWorker) Generate(
 func aggregateBLS(blsMessages []*types.SignedMessage) ([]*types.UnsignedMessage, crypto.Signature, error) {
 	var sigs []bls.Signature
 	var unwrappedMsgs []*types.UnsignedMessage
-	encodedMsgs := [][]byte{}
-	pubKeys := [][]byte{}
 	for _, msg := range blsMessages {
-
-		bs, err := msg.Message.Marshal()
-		if err != nil {
-			return []*types.UnsignedMessage{}, crypto.Signature{}, err
-		}
-		encodedMsgs = append(encodedMsgs, bs)
 		// unwrap messages
 		unwrappedMsgs = append(unwrappedMsgs, &msg.Message)
 		if msg.Signature.Type != crypto.SigTypeBLS {
 			return []*types.UnsignedMessage{}, crypto.Signature{}, errors.New("non-BLS message signature")
 		}
-		pubKeys = append(pubKeys, msg.Message.From.Payload())
-
 		// store message signature as bls signature
 		blsSig := bls.Signature{}
 		copy(blsSig[:], msg.Signature.Data)

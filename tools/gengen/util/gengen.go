@@ -171,7 +171,7 @@ func ProofsMode(proofsMode types.ProofsMode) GenOption {
 }
 
 func MinerConfigs(minerCfgs []*CreateStorageMinerConfig) GenOption {
-	return func (gc *GenesisCfg) error {
+	return func(gc *GenesisCfg) error {
 		gc.Miners = minerCfgs
 		return nil
 	}

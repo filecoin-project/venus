@@ -22,6 +22,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
@@ -128,7 +129,7 @@ func TestChainSyncWithMessages(t *testing.T) {
 	require.NoError(t, gengen.NetworkName(version.TEST)(genCfg))
 	cs := MakeChainSeed(t, genCfg)
 	fakeClock := th.NewFakeClock(time.Unix(1234567890, 0))
-	blockTime := 100 * time.Millisecond
+	blockTime := 30 * time.Second
 	c := clock.NewChainClockFromClock(1234567890, 100*time.Millisecond, fakeClock)
 
 	// first node is the message sender.
@@ -168,6 +169,8 @@ func TestChainSyncWithMessages(t *testing.T) {
 	require.NoError(t, err)
 	receiverStart, err := nodeReceive.PorcelainAPI.WalletBalance(ctx, receiverAddress)
 	require.NoError(t, err)
+	gasPrice := types.NewGasPrice(1)
+	expGasCost := gas.NewGas(242).ToTokens(gasPrice) // DRAGONS -- this is brittle need a better way to predict this.
 
 	/* send message from SendNode */
 	sendVal := specsbig.NewInt(100)
@@ -176,7 +179,7 @@ func TestChainSyncWithMessages(t *testing.T) {
 		senderAddress,
 		receiverAddress,
 		sendVal,
-		types.NewGasPrice(2),
+		gasPrice,
 		types.GasUnits(1000),
 		builtin.MethodSend,
 		&adt.EmptyValue{},
@@ -204,7 +207,7 @@ func TestChainSyncWithMessages(t *testing.T) {
 	receiverEnd, err := nodeReceive.PorcelainAPI.WalletBalance(ctx, receiverAddress)
 	require.NoError(t, err)
 
-	assert.Equal(t, senderStart, specsbig.Add(senderEnd, sendVal))
+	assert.Equal(t, senderStart, specsbig.Add(specsbig.Add(senderEnd, sendVal), expGasCost))
 	assert.Equal(t, receiverEnd, specsbig.Add(receiverStart, sendVal))
 }
 
