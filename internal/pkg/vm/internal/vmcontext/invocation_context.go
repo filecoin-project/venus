@@ -327,7 +327,7 @@ type returnWrapper struct {
 
 func (r returnWrapper) ToCbor() ([]byte, error) {
 	if r.inner == nil {
-		return []byte{}, nil
+		return nil, nil
 	}
 	b := bytes.Buffer{}
 	if err := r.inner.MarshalCBOR(&b); err != nil {
