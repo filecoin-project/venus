@@ -3,7 +3,12 @@ package gengen
 import (
 	"fmt"
 
+	"github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-ipld-cbor"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 )
 
 // MakeCommitCfgs creates n gengen commit configs, casting strings to cids.
@@ -37,4 +42,9 @@ func MakeCommitCfgs(n int) ([]*CommitConfig, error) {
 		}
 	}
 	return cfgs, nil
+}
+
+// DefaultGenesis creates a test network genesis block with default accounts and actors installed.
+func DefaultGenesis(cst cbornode.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+	return MakeGenesisFunc(NetworkName(version.TEST))(cst, bs)
 }

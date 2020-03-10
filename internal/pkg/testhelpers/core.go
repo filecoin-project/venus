@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -14,14 +13,10 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
 // RequireMakeStateTree takes a map of addresses to actors and stores them on
@@ -215,46 +210,4 @@ func RequireInitAccountActor(ctx context.Context, t *testing.T, st state.Tree, v
 	// return act, idAddr
 
 	return nil, address.Undef
-}
-
-// GetTotalPower get total miner power from storage market
-func GetTotalPower(t *testing.T, st state.Tree, vms vm.Storage) abi.StoragePower {
-	// Dragons: re-write using direct state access
-	panic("re-write")
-	// res, err := CreateAndApplyTestMessage(t, st, vms, vmaddr.StorageMarketAddress, 0, 0, storagemarket.GetTotalStorage, nil)
-	// require.NoError(t, err)
-	// require.NoError(t, res.ExecutionError)
-	// require.Equal(t, uint8(0), res.Receipt.ExitCode)
-	// return types.NewBytesAmountFromBytes(ßres.Receipt.ReturnValue)
-}
-
-// RequireGetNonce returns the next nonce of the actor at address a within
-// state tree st, failing on error.
-func RequireGetNonce(t *testing.T, st state.Tree, vms vm.Storage, a address.Address) uint64 {
-	ctx := context.Background()
-	actr, _ := RequireLookupActor(ctx, t, st, vms, a)
-	nonce, err := actor.NextNonce(actr)
-	require.NoError(t, err)
-	return nonce
-}
-
-// RequireCreateStorages creates an empty state tree and storage map.
-func RequireCreateStorages(ctx context.Context, t *testing.T) (*state.State, vm.Storage) {
-	d := datastore.NewMapDatastore()
-	bs := blockstore.NewBlockstore(d)
-	cst := cborutil.NewIpldStore(bs)
-	blk, err := DefaultGenesis(cst, bs)
-	require.NoError(t, err)
-
-	st, err := state.LoadState(ctx, cst, blk.StateRoot.Cid)
-	require.NoError(t, err)
-
-	vms := vm.NewStorage(bs)
-
-	return st, vms
-}
-
-// DefaultGenesis creates a test network genesis block with default accounts and actors installed.
-func DefaultGenesis(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
-	return gengen.MakeGenesisFunc(gengen.NetworkName(version.TEST))(cst, bs)
 }

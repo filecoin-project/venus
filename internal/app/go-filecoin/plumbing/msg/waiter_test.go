@@ -9,6 +9,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	"github.com/filecoin-project/go-filecoin/tools/gengen/util"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -17,7 +19,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -49,7 +50,7 @@ type smsgs []*types.SignedMessage
 type smsgsSet [][]*types.SignedMessage
 
 func setupTest(t *testing.T) (cbor.IpldStore, *chain.Store, *chain.MessageStore, *Waiter) {
-	d := requiredCommonDeps(t, th.DefaultGenesis)
+	d := requiredCommonDeps(t, gengen.DefaultGenesis)
 	return d.cst, d.chainStore, d.messages, NewWaiter(d.chainStore, d.messages, d.blockstore, d.cst)
 }
 
