@@ -19,10 +19,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
-var defaultMessageValue = types.NewAttoFILFromFIL(0) // default value for messages sent from this manager
-var defaultGasPrice = types.NewAttoFILFromFIL(1)     // default gas price for messages sent from this manager
+var defaultGasPrice = types.NewAttoFILFromFIL(actor.DefaultGasCost)     // default gas price for messages sent from this manager
 var defaultGasLimit = types.GasUnits(300)            // default gas limit for messages sent from this manager
 var zeroAmt = abi.NewTokenAmount(0)
 
@@ -142,7 +142,7 @@ func (pm *Manager) CreatePaymentChannel(clientAddress, minerAddress address.Addr
 		pm.ctx,
 		clientAddress,
 		builtin.InitActorAddr,
-		defaultMessageValue,
+		types.ZeroAttoFIL,
 		defaultGasPrice,
 		defaultGasLimit,
 		true,
