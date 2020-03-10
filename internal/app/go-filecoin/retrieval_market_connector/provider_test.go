@@ -113,8 +113,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 		// simulate creating payment channel
 		rmp.ActualPmtChans[pchan] = true
 		rmp.ExpectedPmtChans[pchan] = &paymentchannel.ChannelInfo{
-			Owner: clientAddr,
-			State: &paych.State{From: clientAddr, To: minerAddr, ToSend: abi.NewTokenAmount(0)},
+			From: clientAddr, To: minerAddr,
 		}
 		rmp.ExpectedVouchers[pchan] = &paymentchannel.VoucherInfo{Voucher: voucher, Proof: proof}
 		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, rmp)
@@ -130,8 +129,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 		rmp.SaveVoucherErr = errors.New("boom")
 		rmp.ActualPmtChans[pchan] = true
 		rmp.ExpectedPmtChans[pchan] = &paymentchannel.ChannelInfo{
-			Owner: clientAddr,
-			State: &paych.State{From: clientAddr, To: minerAddr, ToSend: abi.NewTokenAmount(0)},
+			From: clientAddr, To: minerAddr,
 		}
 		rmp.ExpectedVouchers[pchan] = &paymentchannel.VoucherInfo{Voucher: voucher, Proof: proof}
 

@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
@@ -60,6 +59,10 @@ type RetrievalMarketClientFakeAPI struct {
 	UnsealErr         error
 }
 
+func (rmFake *RetrievalMarketClientFakeAPI) ChannelExists(_ address.Address) (bool, error) {
+	return true, nil
+}
+
 // NewRetrievalMarketClientFakeAPI creates an instance of a test API that satisfies all needed
 // interface methods for a RetrievalMarketClient.
 func NewRetrievalMarketClientFakeAPI(t *testing.T, bal abi.TokenAmount) *RetrievalMarketClientFakeAPI {
@@ -85,15 +88,8 @@ func (rmFake *RetrievalMarketClientFakeAPI) AllocateLane(paychAddr address.Addre
 		return 0, xerrors.Errorf("payment channel does not exist: %s", paychAddr.String())
 	}
 	chinfo := rmFake.ExpectedPmtChans[paychAddr]
-	states := chinfo.State.LaneStates
-	numLanes := len(states)
-	ln := paych.LaneState{
-		ID:       uint64(numLanes),
-		Redeemed: big.NewInt(0),
-		Nonce:    1,
-	}
-	chinfo.State.LaneStates = append(chinfo.State.LaneStates, &ln)
-	return ln.ID, rmFake.AllocateLaneErr
+	chinfo.LastLane++
+	return chinfo.LastLane, rmFake.AllocateLaneErr
 }
 
 func (rmFake *RetrievalMarketClientFakeAPI) CreatePaymentChannel(clientAddress, minerAddress address.Address) error {
@@ -101,7 +97,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) CreatePaymentChannel(clientAddress, 
 		return rmFake.CreatePaymentChannelErr
 	}
 	for paychAddr, chinfo := range rmFake.ExpectedPmtChans {
-		if chinfo.State.From == clientAddress && chinfo.State.To == minerAddress {
+		if chinfo.From == clientAddress && chinfo.To == minerAddress {
 			rmFake.ActualPmtChans[paychAddr] = true
 			return rmFake.CreatePaymentChannelErr
 		}
@@ -110,7 +106,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) CreatePaymentChannel(clientAddress, 
 	return nil
 }
 
-func (rmFake *RetrievalMarketClientFakeAPI) CreateVoucher(paychAddr address.Address, voucher *paych.SignedVoucher) error {
+func (rmFake *RetrievalMarketClientFakeAPI) CreateVoucher(_ address.Address, _ *paych.SignedVoucher) error {
 	return nil
 }
 
@@ -119,7 +115,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) CreateVoucher(paychAddr address.Addr
 // It does not necessarily expect to find the channel info; it returns nil if not found
 func (rmFake *RetrievalMarketClientFakeAPI) GetPaymentChannelByAccounts(payer, payee address.Address) (address.Address, *paymentchannel.ChannelInfo) {
 	for paychAddr, chinfo := range rmFake.ExpectedPmtChans {
-		if chinfo.State.From == payer && chinfo.State.To == payee {
+		if chinfo.From == payer && chinfo.To == payee {
 			_, ok := rmFake.ActualPmtChans[paychAddr]
 			if ok {
 				return paychAddr, chinfo
@@ -156,24 +152,8 @@ func (rmFake *RetrievalMarketClientFakeAPI) SignBytes(data []byte, addr address.
 	return rmFake.Sig, rmFake.SigErr
 }
 
-// Send mocks sending a message on chain
-func (rmFake *RetrievalMarketClientFakeAPI) Send(ctx context.Context,
-	from, to address.Address,
-	value types.AttoFIL,
-	gasPrice types.AttoFIL, gasLimit types.GasUnits,
-	bcast bool,
-	method abi.MethodNum,
-	params interface{}) (out cid.Cid, pubErrCh chan error, err error) {
-	rmFake.Nonce++
-
-	if err != nil {
-		return cid.Undef, nil, err
-	}
-	return rmFake.MsgSendCid, nil, rmFake.MsgSendErr
-}
-
-// SaveVoucher mocks saving a voucher to the payment channel store.
-func (rmFake *RetrievalMarketClientFakeAPI) SaveVoucher(paychAddr address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmt abi.TokenAmount) (abi.TokenAmount, error) {
+// AddVoucher mocks saving a voucher to the payment channel store.
+func (rmFake *RetrievalMarketClientFakeAPI) SaveVoucher(paychAddr address.Address, _ *paych.SignedVoucher, _ []byte, expectedAmt abi.TokenAmount) (abi.TokenAmount, error) {
 	_, ok := rmFake.ExpectedVouchers[paychAddr]
 	if !ok {
 		rmFake.t.Fatalf("missing voucher for %s", paychAddr.String())
