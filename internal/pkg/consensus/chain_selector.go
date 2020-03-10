@@ -67,10 +67,11 @@ func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID ci
 	if err != nil {
 		return fbig.Zero(), err
 	}
+	powerMeasure := log2b(totalBytes)
 
-	wPowerFactor := fbig.Mul(wPrecision, log2b(totalBytes))
-	wBlocksFactorNum := fbig.Mul(wRatioNum, fbig.Mul(log2b(totalBytes), fbig.NewInt(int64(ts.Len()))))
-	wBlocksFactorDen := fbig.Mul(fbig.NewInt(int64(expectedLeadersPerEpoch)), wRatioDen)
+	wPowerFactor := fbig.Mul(wPrecision, powerMeasure)
+	wBlocksFactorNum := fbig.Mul(wRatioNum, fbig.Mul(powerMeasure, fbig.NewInt(int64(ts.Len()))))
+	wBlocksFactorDen := fbig.Mul(wRatioDen, fbig.NewInt(int64(expectedLeadersPerEpoch)))
 	wBlocksFactor := fbig.Div(fbig.Mul(wBlocksFactorNum, wPrecision), wBlocksFactorDen)
 	deltaWeight := fbig.Add(wPowerFactor, wBlocksFactor)
 
