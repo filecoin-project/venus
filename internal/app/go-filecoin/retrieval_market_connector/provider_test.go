@@ -137,6 +137,4 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 		_, err := rpc.SavePaymentVoucher(ctx, pchan, voucher, proof, voucher.Amount)
 		assert.EqualError(t, err, "boom")
 	})
-
-	t.Run("errors if voucher already stored", func(t *testing.T) {})
 }
