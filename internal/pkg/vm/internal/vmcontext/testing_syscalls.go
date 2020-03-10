@@ -1,4 +1,4 @@
-package vmsupport
+package vmcontext
 
 import (
 	"context"
@@ -10,15 +10,15 @@ import (
 	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	gfcrypto "github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 )
 
 type FakeSyscalls struct {
 }
 
-func (f FakeSyscalls) VerifySignature(signature gfcrypto.Signature, signer address.Address, plaintext []byte) error {
+func (f FakeSyscalls) VerifySignature(ctx context.Context, view SyscallsStateView, signature crypto.Signature, signer address.Address, plaintext []byte) error {
 	// The signer is assumed to be already resolved to a pubkey address.
-	return gfcrypto.ValidateSignature(plaintext, signer, signature)
+	return crypto.ValidateSignature(plaintext, signer, signature)
 }
 
 func (f FakeSyscalls) HashBlake2b(data []byte) [32]byte {
@@ -37,6 +37,6 @@ func (f FakeSyscalls) VerifyPoSt(ctx context.Context, info abi.PoStVerifyInfo) e
 	panic("implement me")
 }
 
-func (f FakeSyscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error) {
+func (f FakeSyscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view SyscallsStateView, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error) {
 	panic("implement me")
 }

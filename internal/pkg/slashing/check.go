@@ -24,7 +24,6 @@ type FaultStateView interface {
 // Chain state required for checking consensus fault reports.
 type chainReader interface {
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
-	FaultStateView(key block.TipSetKey) (FaultStateView, error)
 }
 
 // Checks the validity of reported consensus faults.
@@ -38,7 +37,7 @@ func NewFaultChecker(chain chainReader) *ConsensusFaultChecker {
 
 // Checks the validity of a consensus fault reported by serialized block headers h1, h2, and optional
 // common-ancestor witness h3.
-func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error) {
+func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view FaultStateView, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error) {
 	if bytes.Equal(h1, h2) {
 		return nil, fmt.Errorf("no consensus fault: blocks identical")
 	}
@@ -109,11 +108,11 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 
 	// Expensive validation: signatures and chain history.
 
-	err := verifyBlockSignature(ctx, s, b1)
+	err := verifyBlockSignature(ctx, view, b1)
 	if err != nil {
 		return nil, err
 	}
-	err = verifyBlockSignature(ctx, s, b2)
+	err = verifyBlockSignature(ctx, view, b2)
 	if err != nil {
 		return nil, err
 	}
@@ -126,14 +125,7 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 }
 
 // Checks whether a block header is correctly signed in the context of the parent state to which it refers.
-func verifyBlockSignature(ctx context.Context, s *ConsensusFaultChecker, blk block.Block) error {
-	// Load view of the block's parent state in order to validate against the miner's worker for the epoch at which
-	// the block was produced.
-	// Dragons! What if we don't have or haven't evaluated the state for the parent?
-	view, err := s.chain.FaultStateView(blk.Parents)
-	if err != nil {
-		panic(errors.Wrapf(err, "failed to build state view")) // This idiosyncratic failure shouldn't go on chain
-	}
+func verifyBlockSignature(ctx context.Context, view FaultStateView, blk block.Block) error {
 	_, worker, err := view.MinerControlAddresses(ctx, blk.Miner)
 	if err != nil {
 		panic(errors.Wrapf(err, "failed to inspect miner addresses"))

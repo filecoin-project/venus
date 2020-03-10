@@ -13,10 +13,13 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 type faultChecker interface {
-	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error)
+	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view slashing.FaultStateView, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error)
 }
 
 // Syscalls contains the concrete implementation of VM system calls, including connection to
@@ -38,12 +41,8 @@ func NewSyscalls(faultChecker faultChecker, verifier sectorbuilder.Verifier) *Sy
 	}
 }
 
-func (s *Syscalls) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) error {
-	if signer.Protocol() != address.SECP256K1 && signer.Protocol() != address.BLS {
-		// This is a programmer error: callers must resolve the address in state first.
-		return fmt.Errorf("unresolved signer address")
-	}
-	return crypto.ValidateSignature(plaintext, signer, signature)
+func (s *Syscalls) VerifySignature(ctx context.Context, view vm.SyscallsStateView, signature crypto.Signature, signer address.Address, plaintext []byte) error {
+	return state.NewSignatureValidator(view).ValidateSignature(ctx, plaintext, signer, signature)
 }
 
 func (s *Syscalls) HashBlake2b(data []byte) [32]byte {
@@ -54,7 +53,7 @@ func (s *Syscalls) ComputeUnsealedSectorCID(_ context.Context, proof abi.Registe
 	return sectorbuilder.GenerateUnsealedCID(proof, pieces)
 }
 
-func (s *Syscalls) VerifySeal(ctx context.Context, info abi.SealVerifyInfo) error {
+func (s *Syscalls) VerifySeal(_ context.Context, info abi.SealVerifyInfo) error {
 	ok, err := s.verifier.VerifySeal(info)
 	if err != nil {
 		return err
@@ -74,6 +73,6 @@ func (s *Syscalls) VerifyPoSt(ctx context.Context, info abi.PoStVerifyInfo) erro
 	return nil
 }
 
-func (s *Syscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error) {
-	return s.faultChecker.VerifyConsensusFault(ctx, h1, h2, extra, head, earliest)
+func (s *Syscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view vm.SyscallsStateView, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error) {
+	return s.faultChecker.VerifyConsensusFault(ctx, h1, h2, extra, head, view, earliest)
 }

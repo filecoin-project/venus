@@ -32,7 +32,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
 )
 
 var _ vstate.Factories = &Factories{}
@@ -107,7 +106,7 @@ func NewState() *ValidationVMWrapper {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	cst := cborutil.NewIpldStore(bs)
 	vmstrg := storage.NewStorage(bs)
-	vm := NewVM(gfbuiltin.DefaultActors, &vmstrg, state.NewState(cst), &vmsupport.FakeSyscalls{})
+	vm := NewVM(gfbuiltin.DefaultActors, &vmstrg, state.NewState(cst), &FakeSyscalls{})
 	return &ValidationVMWrapper{
 		vm: &vm,
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	notinit "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
@@ -179,24 +180,11 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 	return idAddr, true
 }
 
-func (vm *VM) resolveSignerAddress(accountAddr address.Address) (address.Address, error) {
-	// Short-circuit when given a pubkey address.
-	if accountAddr.Protocol() == address.SECP256K1 || accountAddr.Protocol() == address.BLS {
-		return accountAddr, nil
-	}
-	actor, found, err := vm.state.GetActor(vm.context, accountAddr)
-	if err != nil {
-		return address.Undef, errors.Wrapf(err, "signer resolution failed to find actor %s", accountAddr)
-	}
-	if !found {
-		return address.Undef, fmt.Errorf("signer resolution found no such actor %s", accountAddr)
-	}
-	var state account.State
-	if _, err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
-		// This error is internal, shouldn't propagate as on-chain failure
-		panic(fmt.Errorf("signer resolution failed to lost state for %s ", accountAddr))
-	}
-	return state.Address, nil
+func (vm *VM) stateView() SyscallsStateView {
+	// The state tree's root is not committed until the end of a tipset, so we can't use the external state view
+	// type for this implementation.
+	// Maybe we could re-work it to use a root HAMT node rather than root CID.
+	return &syscallsStateView{vm}
 }
 
 // implement VMInterpreter for VM
@@ -582,6 +570,50 @@ func (msg internalMessage) Caller() address.Address {
 // Receiver implements runtime.MessageInfo.
 func (msg internalMessage) Receiver() address.Address {
 	return msg.to
+}
+
+//
+// implement syscalls state view
+//
+
+type syscallsStateView struct {
+	*VM
+}
+
+func (vm *syscallsStateView) AccountSignerAddress(ctx context.Context, accountAddr address.Address) (address.Address, error) {
+	// Short-circuit when given a pubkey address.
+	if accountAddr.Protocol() == address.SECP256K1 || accountAddr.Protocol() == address.BLS {
+		return accountAddr, nil
+	}
+	actor, found, err := vm.state.GetActor(vm.context, accountAddr)
+	if err != nil {
+		return address.Undef, errors.Wrapf(err, "signer resolution failed to find actor %s", accountAddr)
+	}
+	if !found {
+		return address.Undef, fmt.Errorf("signer resolution found no such actor %s", accountAddr)
+	}
+	var state account.State
+	if _, err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
+		// This error is internal, shouldn't propagate as on-chain failure
+		panic(fmt.Errorf("signer resolution failed to lost state for %s ", accountAddr))
+	}
+	return state.Address, nil
+}
+
+func (vm *syscallsStateView) MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error) {
+	actor, found, err := vm.state.GetActor(vm.context, maddr)
+	if err != nil {
+		return address.Undef, address.Undef, errors.Wrapf(err, "miner resolution failed to find actor %s", maddr)
+	}
+	if !found {
+		return address.Undef, address.Undef, fmt.Errorf("miner resolution found no such actor %s", maddr)
+	}
+	var state miner.State
+	if _, err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
+		// This error is internal, shouldn't propagate as on-chain failure
+		panic(fmt.Errorf("signer resolution failed to lost state for %s ", maddr))
+	}
+	return state.Info.Owner, state.Info.Worker, nil
 }
 
 //
