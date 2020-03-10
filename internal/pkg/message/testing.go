@@ -40,6 +40,11 @@ func (p *FakeProvider) GetHead() block.TipSetKey {
 	return p.head
 }
 
+// Head fulfills the ChainReaderAPI interface
+func (p *FakeProvider) Head() block.TipSetKey {
+	return p.GetHead()
+}
+
 // GetActorAt returns the actor corresponding to (key, addr) if they match those last set.
 func (p *FakeProvider) GetActorAt(ctx context.Context, key block.TipSetKey, addr address.Address) (*actor.Actor, error) {
 	if !key.Equals(p.head) {

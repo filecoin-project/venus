@@ -29,6 +29,7 @@ type RetrievalSigner interface {
 // PaychMgrAPI is an API used for communicating with payment channel actor and store.
 type PaychMgrAPI interface {
 	AllocateLane(paychAddr address.Address) (uint64, error)
+	ChannelExists(paychAddr address.Address) (bool, error)
 	GetPaymentChannelInfo(paychAddr address.Address) (*paymentchannel.ChannelInfo, error)
 	GetPaymentChannelByAccounts(payer, payee address.Address) (address.Address, *paymentchannel.ChannelInfo)
 	CreatePaymentChannel(payer, payee address.Address) error
