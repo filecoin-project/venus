@@ -71,13 +71,15 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 		return nil, err
 	}
 
+	// Note: since the parent tipset key is now passed explicitly to ApplyTipSetMessages we can refactor to skip
+	// currying it in to the randomness call here.
 	rnd := headRandomness{
 		chain: p.rnd,
 		head:  parent,
 	}
 	v := vm.NewVM(st, &vms, p.syscalls)
 
-	return v.ApplyTipSetMessages(msgs, epoch, &rnd)
+	return v.ApplyTipSetMessages(msgs, parent, epoch, &rnd)
 }
 
 // A chain randomness source with a fixed head tipset key.

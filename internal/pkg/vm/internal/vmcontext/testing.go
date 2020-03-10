@@ -21,6 +21,7 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	gfcrypto "github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
@@ -31,7 +32,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
 )
 
 var _ vstate.Factories = &Factories{}
@@ -106,7 +106,7 @@ func NewState() *ValidationVMWrapper {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	cst := cborutil.NewIpldStore(bs)
 	vmstrg := storage.NewStorage(bs)
-	vm := NewVM(gfbuiltin.DefaultActors, &vmstrg, state.NewState(cst), &vmsupport.FakeSyscalls{})
+	vm := NewVM(gfbuiltin.DefaultActors, &vmstrg, state.NewState(cst), &FakeSyscalls{})
 	return &ValidationVMWrapper{
 		vm: &vm,
 	}
@@ -343,7 +343,9 @@ func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks [
 	st := state.(*ValidationVMWrapper)
 
 	ourBlkMsgs := toOurBlockMessageInfoType(blocks)
-	receipts, err := st.vm.ApplyTipSetMessages(ourBlkMsgs, epoch, rnd)
+	// TODO: pass through parameter when chain validation type signature is updated to propagate it
+	head := block.NewTipSetKey()
+	receipts, err := st.vm.ApplyTipSetMessages(ourBlkMsgs, head, epoch, rnd)
 	if err != nil {
 		return nil, err
 	}

@@ -10,7 +10,10 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
 )
+
+type FakeSyscalls = vmcontext.FakeSyscalls
 
 // TestStorage is a fake storage used for testing.
 type TestStorage struct {

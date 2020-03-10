@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -331,5 +332,9 @@ func (chn *ChainStateReadWriter) StateView(key block.TipSetKey) (*state.View, er
 }
 
 func (chn *ChainStateReadWriter) AccountStateView(key block.TipSetKey) (state.AccountStateView, error) {
+	return chn.StateView(key)
+}
+
+func (chn *ChainStateReadWriter) FaultStateView(key block.TipSetKey) (slashing.FaultStateView, error) {
 	return chn.StateView(key)
 }

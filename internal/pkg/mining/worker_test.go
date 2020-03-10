@@ -17,22 +17,19 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	dag "github.com/ipfs/go-merkledag"
-
-	bls "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	bls "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
@@ -531,7 +528,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		return st, nil
 	}
 	rnd := &consensus.FakeChainRandomness{Seed: 0}
-	syscalls := &vmsupport.FakeSyscalls{}
+	syscalls := &vm.FakeSyscalls{}
 	messages := chain.NewMessageStore(bs)
 
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
@@ -633,7 +630,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		return st, nil
 	}
 	rnd := &consensus.FakeChainRandomness{Seed: 0}
-	syscalls := &vmsupport.FakeSyscalls{}
+	syscalls := &vm.FakeSyscalls{}
 	minerAddr := addrs[3]
 	th.RequireInitAccountActor(ctx, t, st, vm.NewStorage(bs), addrs[4], types.ZeroAttoFIL)
 	minerOwnerAddr := addrs[4]
@@ -698,7 +695,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		return st, nil
 	}
 	rnd := &consensus.FakeChainRandomness{Seed: 0}
-	syscalls := &vmsupport.FakeSyscalls{}
+	syscalls := &vm.FakeSyscalls{}
 	messages := chain.NewMessageStore(bs)
 
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
@@ -754,7 +751,7 @@ func TestGenerateError(t *testing.T) {
 		return st, nil
 	}
 	rnd := &consensus.FakeChainRandomness{Seed: 0}
-	syscalls := &vmsupport.FakeSyscalls{}
+	syscalls := &vm.FakeSyscalls{}
 	messages := chain.NewMessageStore(bs)
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
 		API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr, rnd),

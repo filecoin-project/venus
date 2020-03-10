@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
 	"github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
@@ -74,7 +73,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
-		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(&vmsupport.FakeSyscalls{}, &consensus.FakeChainRandomness{}), &views, th.BlockTimeTest,
+		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(&vm.FakeSyscalls{}, &consensus.FakeChainRandomness{}), &views, th.BlockTimeTest,
 			&consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{})
 
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot.Cid, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)

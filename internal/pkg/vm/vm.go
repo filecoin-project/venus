@@ -21,6 +21,7 @@ type Interpreter = interpreter.VMInterpreter
 type Storage = storage.VMStorage
 
 type SyscallsImpl = vmcontext.SyscallsImpl
+type SyscallsStateView = vmcontext.SyscallsStateView
 
 // BlockMessagesInfo contains messages for one block in a tipset.
 type BlockMessagesInfo = interpreter.BlockMessagesInfo
