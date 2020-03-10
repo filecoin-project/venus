@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	notinit "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	paychActor "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
@@ -189,6 +190,19 @@ func (v *View) MinerClaimedPower(ctx context.Context, miner addr.Address) (abi.S
 		return big.Zero(), err
 	}
 	return claim.Power, nil
+}
+
+func (v *View) PaychActorParties(ctx context.Context, paychAddr addr.Address) (from, to addr.Address, err error) {
+	a, err := v.loadActor(ctx, paychAddr)
+	if err != nil {
+		return addr.Undef, addr.Undef, err
+	}
+	var state paychActor.State
+	err = v.ipldStore.Get(ctx, a.Head.Cid, &state)
+	if err != nil {
+		return addr.Undef, addr.Undef, err
+	}
+	return state.From, state.To, nil
 }
 
 func (v *View) loadPowerClaim(ctx context.Context, powerState *power.State, miner addr.Address) (*power.Claim, error) {
