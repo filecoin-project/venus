@@ -20,7 +20,7 @@ The genesis setup.json file will need to be updated to match the data in the pre
 
 To initialize a bootstrap miner using presealed sectors:
 ```bash
-./go-filecoin init --genesisfile=genesis.car --wallet-keyfile=[miner key]--miner-actor-address=t0106 --presealed-sectordir=[preseal directory]
+./go-filecoin init --genesisfile=genesis.car --wallet-keyfile=[miner key] --miner-actor-address=t0106 --presealed-sectordir=[preseal directory]
 ```
 Where `miner key` is the key file imported for the miner. This will be the keyfile whose name is the `minerOwner` specified in setup.json 
 (e.g. if setup.json has `keysToGen` set to 5, then the miner owner key file will be `fixtures/test/5.key).`
