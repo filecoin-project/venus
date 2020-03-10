@@ -3,7 +3,6 @@ package dispatcher
 import (
 	"container/heap"
 	"context"
-	"fmt"
 
 	logging "github.com/ipfs/go-log"
 
@@ -101,19 +100,16 @@ type Dispatcher struct {
 
 // SendHello handles chain information from bootstrap peers.
 func (d *Dispatcher) SendHello(ci *block.ChainInfo) error {
-	fmt.Printf("send h block\n")
 	return d.enqueue(ci)
 }
 
 // SendOwnBlock handles chain info from a node's own mining system
 func (d *Dispatcher) SendOwnBlock(ci *block.ChainInfo) error {
-	fmt.Printf("send own block\n")
 	return d.enqueue(ci)
 }
 
 // SendGossipBlock handles chain info from new blocks sent on pubsub
 func (d *Dispatcher) SendGossipBlock(ci *block.ChainInfo) error {
-	fmt.Printf("send g block\n")
 	return d.enqueue(ci)
 }
 
@@ -175,7 +171,6 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 				// Do work
 				syncErr := d.syncer.HandleNewTipSet(syncingCtx, &syncTarget.ChainInfo, d.catchup)
 				if err != nil {
-					fmt.Printf("handle tipset error :%s\n", err)
 					log.Info("sync request could not complete: %s", err)
 				}
 				d.syncTargetCount++

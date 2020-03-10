@@ -187,6 +187,8 @@ func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey block.Ti
 	if err != nil {
 		return nil, err
 	}
+	stateRoot, _ := st.Root()
+	fmt.Printf("Actor at ts %s and root %s: %v\n", tipKey, stateRoot, actr)
 	if !found {
 		return nil, types.ErrNotFound
 	}

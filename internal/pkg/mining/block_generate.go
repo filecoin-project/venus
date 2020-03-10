@@ -6,7 +6,6 @@ package mining
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -151,8 +150,6 @@ func aggregateBLS(blsMessages []*types.SignedMessage) ([]*types.UnsignedMessage,
 			return []*types.UnsignedMessage{}, crypto.Signature{}, err
 		}
 		encodedMsgs = append(encodedMsgs, bs)
-		fmt.Printf("[Generate] bls msg bytes: %x\n", bs)
-		fmt.Printf("[Generate] bls pubkey bytes: %x\n", msg.Message.From.Payload())
 		// unwrap messages
 		unwrappedMsgs = append(unwrappedMsgs, &msg.Message)
 		if msg.Signature.Type != crypto.SigTypeBLS {
@@ -169,12 +166,6 @@ func aggregateBLS(blsMessages []*types.SignedMessage) ([]*types.UnsignedMessage,
 	if blsAggregateSig == nil {
 		return []*types.UnsignedMessage{}, crypto.Signature{}, errors.New("could not aggregate signatures")
 	}
-	fmt.Printf("[Generate] bls sig bytes: %x\n", blsAggregateSig)
-	valid := crypto.VerifyBLSAggregate(pubKeys, encodedMsgs, blsAggregateSig[:])
-	fmt.Printf("[Generate] aggregate valid: %t\n", valid)
-
-	singleValid := crypto.VerifyBLS(pubKeys[0], encodedMsgs[0], blsAggregateSig[:])
-	fmt.Printf("[Generate] single valid: %t\n", singleValid)
 
 	return unwrappedMsgs, crypto.Signature{
 		Type: crypto.SigTypeBLS,

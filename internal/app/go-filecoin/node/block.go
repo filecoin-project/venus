@@ -39,7 +39,6 @@ func (node *Node) AddNewBlock(ctx context.Context, b *block.Block) (err error) {
 func (node *Node) processBlock(ctx context.Context, msg pubsub.Message) (err error) {
 	sender := msg.GetSender()
 	source := msg.GetSource()
-
 	// ignore messages from self
 	if sender == node.Host().ID() || source == node.Host().ID() {
 		return nil

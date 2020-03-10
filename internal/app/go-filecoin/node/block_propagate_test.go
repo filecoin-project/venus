@@ -128,9 +128,13 @@ func TestChainSyncWithMessages(t *testing.T) {
 	require.NoError(t, gengen.GenKeyPrealloc(2, "100")(genCfg))
 	require.NoError(t, gengen.NetworkName(version.TEST)(genCfg))
 	cs := MakeChainSeed(t, genCfg)
+	fakeClock := th.NewFakeClock(time.Unix(1234567890, 0))
+	blockTime := 100 * time.Millisecond
+	c := clock.NewChainClockFromClock(1234567890, 100*time.Millisecond, fakeClock)
 
 	// first node is the message sender.
 	builder1 := test.NewNodeBuilder(t).
+		WithBuilderOpt(ChainClockConfigOption(c)).
 		WithGenesisInit(cs.GenesisInitFunc).
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{}))
 	nodeSend := builder1.Build(ctx)
@@ -138,15 +142,13 @@ func TestChainSyncWithMessages(t *testing.T) {
 
 	// second node is receiver
 	builder2 := test.NewNodeBuilder(t).
+		WithBuilderOpt(ChainClockConfigOption(c)).
 		WithGenesisInit(cs.GenesisInitFunc).
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{}))
 	nodeReceive := builder2.Build(ctx)
 	receiverAddress := cs.GiveKey(t, nodeReceive, 2)
 
 	// third node is miner
-	fakeClock := th.NewFakeClock(time.Unix(1234567890, 0))
-	blockTime := 100 * time.Millisecond
-	c := clock.NewChainClockFromClock(1234567890, 100*time.Millisecond, fakeClock)
 	builder3 := test.NewNodeBuilder(t).
 		WithBuilderOpt(ChainClockConfigOption(c)).
 		WithGenesisInit(cs.GenesisInitFunc).
@@ -170,8 +172,7 @@ func TestChainSyncWithMessages(t *testing.T) {
 
 	/* send message from SendNode */
 	sendVal := specsbig.NewInt(100)
-	fmt.Printf("sending message\n")
-	mCid, _, err := nodeSend.PorcelainAPI.MessageSend(
+	_, _, err = nodeSend.PorcelainAPI.MessageSend(
 		ctx,
 		senderAddress,
 		receiverAddress,
@@ -181,41 +182,30 @@ func TestChainSyncWithMessages(t *testing.T) {
 		builtin.MethodSend,
 		&adt.EmptyValue{},
 	)
-	fmt.Printf("message sent\n")
 	require.NoError(t, err)
-	fmt.Printf("waiting for message to enter pool\n")
-	_, err = nodeMine.PorcelainAPI.MessagePoolWait(ctx, 1)
-	fmt.Printf("message arrived in pool\n")
+	smsgs, err := nodeMine.PorcelainAPI.MessagePoolWait(ctx, 1)
 	require.NoError(t, err)
+	require.Equal(t, 1, len(smsgs))
+	uCid, err := smsgs[0].Message.Cid() // Message waiter needs unsigned cid for bls
+	require.NoError(t, err)
+	fmt.Printf("The message CID: %s\n", uCid)
 
 	/* mine block with message */
-	prevHead, err := nodeMine.PorcelainAPI.ChainHead()
-	require.NoError(t, err)
-	fmt.Printf("head before mining cid: %s\n", prevHead)
 	fakeClock.Advance(blockTime)
-	fmt.Printf("mining once\n")
-	h, err := nodeMine.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-	fmt.Printf("mining once completed\n")
+	_, err = nodeMine.BlockMining.BlockMiningAPI.MiningOnce(ctx)
 	require.NoError(t, err)
 
 	/* verify new state */
-	fmt.Printf("h cid: %s\n", h.Cid())
-	sendHead, err := nodeSend.PorcelainAPI.ChainHead()
+	_, err = nodeReceive.PorcelainAPI.MessageWaitDone(ctx, uCid)
 	require.NoError(t, err)
-	fmt.Printf("head at send cid: %s\n", sendHead)
-	rxHead, err := nodeReceive.PorcelainAPI.ChainHead()
-	require.NoError(t, err)
-	fmt.Printf("head at receive cid: %s\n", rxHead)
-	fmt.Printf("waiting for msg to show up on receive\n")
-	_, err = nodeReceive.PorcelainAPI.MessageWaitDone(ctx, mCid)
-	require.NoError(t, err)
-	fmt.Printf("waiting for msg to show up on send\n")
-	_, err = nodeSend.PorcelainAPI.MessageWaitDone(ctx, mCid)
+	_, err = nodeSend.PorcelainAPI.MessageWaitDone(ctx, uCid)
 	require.NoError(t, err)
 
 	senderEnd, err := nodeSend.PorcelainAPI.WalletBalance(ctx, senderAddress)
 	require.NoError(t, err)
+	fmt.Printf("senderEnd: %v for addr: %s\n", senderEnd, senderAddress)
 	receiverEnd, err := nodeReceive.PorcelainAPI.WalletBalance(ctx, receiverAddress)
+	fmt.Printf("receiverEnd: %v for addr %s\n", receiverEnd, receiverAddress)
 	require.NoError(t, err)
 
 	assert.Equal(t, senderStart, specsbig.Add(senderEnd, sendVal))
