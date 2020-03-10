@@ -22,8 +22,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
-var defaultGasPrice = types.NewAttoFILFromFIL(actor.DefaultGasCost)     // default gas price for messages sent from this manager
-var defaultGasLimit = types.GasUnits(300)            // default gas limit for messages sent from this manager
+var defaultGasPrice = types.NewAttoFILFromFIL(actor.DefaultGasCost)
+var defaultGasLimit = types.GasUnits(300)
 var zeroAmt = abi.NewTokenAmount(0)
 
 // Manager manages payment channel actor and the data paymentChannels operations.
