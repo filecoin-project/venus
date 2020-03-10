@@ -41,6 +41,12 @@ func NewSignedMessage(msg UnsignedMessage, s Signer) (*SignedMessage, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("[Sign] msgData: %x\n", msgData)
+	fmt.Printf("[Sign] sig data: %x\n", sig.Data)
+	fmt.Printf("[Sign] pubkey data: %x\n", msg.From.Payload())
+
+	valid := crypto.VerifyBLS(msg.From.Payload(), msgData, sig.Data)
+	fmt.Printf("[Sign] valid: %t\n", valid)
 
 	return &SignedMessage{
 		Message:   msg,

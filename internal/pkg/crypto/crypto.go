@@ -75,7 +75,6 @@ func VerifyBLSAggregate(pubKeys, msgs [][]byte, signature []byte) bool {
 
 	var blsSig bls.Signature
 	copy(blsSig[:], signature)
-
 	return bls.Verify(&blsSig, digests, keys)
 }
 
