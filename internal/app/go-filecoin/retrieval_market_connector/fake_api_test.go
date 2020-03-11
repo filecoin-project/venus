@@ -88,8 +88,8 @@ func (rmFake *RetrievalMarketClientFakeAPI) AllocateLane(paychAddr address.Addre
 		return 0, xerrors.Errorf("payment channel does not exist: %s", paychAddr.String())
 	}
 	chinfo := rmFake.ExpectedPmtChans[paychAddr]
-	chinfo.LastLane++
-	return chinfo.LastLane, rmFake.AllocateLaneErr
+	chinfo.NextLane++
+	return chinfo.NextLane, rmFake.AllocateLaneErr
 }
 
 func (rmFake *RetrievalMarketClientFakeAPI) CreatePaymentChannel(clientAddress, minerAddress address.Address) error {
