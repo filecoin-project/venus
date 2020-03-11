@@ -61,7 +61,6 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 			}
 		}
 		sorted[i] = blk
-		cids[i] = blk.Cid()
 	}
 
 	// Sort blocks by ticket
@@ -73,6 +72,9 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 		}
 		return cmp < 0
 	})
+	for i, blk := range sorted {
+		cids[i] = blk.Cid()
+	}
 	// Duplicate blocks (CIDs) are rejected here, pass that error through.
 	key, err := NewTipSetKeyFromUnique(cids...)
 	if err != nil {

@@ -90,8 +90,9 @@ func TestTipSet(t *testing.T) {
 
 	t.Run("key", func(t *testing.T) {
 		assert.Equal(t, blk.NewTipSetKey(b1.Cid()), RequireNewTipSet(t, b1).Key())
+		// sorted ticket order is b1, b2, b3
 		assert.Equal(t, blk.NewTipSetKey(b1.Cid(), b2.Cid(), b3.Cid()),
-			RequireNewTipSet(t, b1, b2, b3).Key())
+			RequireNewTipSet(t, b2, b3, b1).Key())
 	})
 
 	t.Run("height", func(t *testing.T) {
