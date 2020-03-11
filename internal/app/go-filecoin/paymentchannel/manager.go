@@ -111,12 +111,12 @@ func (pm *Manager) GetPaymentChannelByAccounts(payer, payee address.Address) (*C
 
 // GetPaymentChannelInfo retrieves channel info from the paymentChannels
 func (pm *Manager) GetPaymentChannelInfo(paychAddr address.Address) (*ChannelInfo, error) {
-	ss := pm.paymentChannels.Get(paychAddr)
-	if ss == nil {
+	storedState := pm.paymentChannels.Get(paychAddr)
+	if storedState == nil {
 		return nil, xerrors.New("no stored state")
 	}
 	var chinfo ChannelInfo
-	if err := ss.Get(&chinfo); err != nil {
+	if err := storedState.Get(&chinfo); err != nil {
 		return nil, err
 	}
 	return &chinfo, nil

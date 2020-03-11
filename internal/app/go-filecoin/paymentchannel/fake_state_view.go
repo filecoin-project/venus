@@ -1,4 +1,4 @@
-package paymentchannel_test
+package paymentchannel
 
 import (
 	"context"
@@ -7,28 +7,31 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 )
 
+// FakeChainReader is a mock chain reader
 type FakeChainReader struct {
 	tsk      block.TipSetKey
 	GetTSErr error
 }
 
+// GetTipSetStateRoot mocks GetTipSetStateRoot
 func (f FakeChainReader) GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error) {
 	return f.tsk.ToSlice()[0], f.GetTSErr
 }
 
+// Head mocks getting the head TipSetKey.
 func (f FakeChainReader) Head() block.TipSetKey {
 	return f.tsk
 }
 
+// NewFakeChainReader initializes a new FakeChainReader with `tsk`
 func NewFakeChainReader(tsk block.TipSetKey) *FakeChainReader {
 	return &FakeChainReader{tsk: tsk}
 }
 
-var _ paymentchannel.ChainReader = &FakeChainReader{}
+var _ ChainReader = &FakeChainReader{}
 
 // FakeStateViewer mocks a state viewer for payment channel actor testing
 type FakeStateViewer struct {
@@ -36,7 +39,7 @@ type FakeStateViewer struct {
 }
 
 // StateView mocks fetching a real state view
-func (f *FakeStateViewer) StateView(root cid.Cid) paymentchannel.PaychActorStateView {
+func (f *FakeStateViewer) StateView(root cid.Cid) PaychActorStateView {
 	return f.Views[root]
 }
 
@@ -70,7 +73,7 @@ func (f *FakeStateView) AddActorWithState(actorAddr, from, to, id address.Addres
 	f.actors[actorAddr] = &FakeActorState{to, from, id}
 }
 
-var _ paymentchannel.PaychActorStateView = &FakeStateView{}
+var _ PaychActorStateView = &FakeStateView{}
 
 // FakeActorState is a mock actor state containing test info
 type FakeActorState struct {
