@@ -2,7 +2,6 @@ package block_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -52,42 +51,24 @@ func TestTipSetKey(t *testing.T) {
 		assert.Equal(t, zeroBytes, emptyBytes)
 	})
 
-	t.Run("order invariant", func(t *testing.T) {
+	t.Run("order set by caller", func(t *testing.T) {
 		s1 := blk.NewTipSetKey(c1, c2, c3)
 		s2 := blk.NewTipSetKey(c3, c2, c1)
+		s3 := blk.NewTipSetKey(c3, c2, c1)
 
-		assert.True(t, s1.Equals(s2))
+		assert.False(t, s1.Equals(s2))
+		assert.True(t, s2.Equals(s3))
 
 		// Sorted order is not a defined property, but an important implementation detail to
 		// verify unless the implementation is changed.
 		assert.Equal(t, []cid.Cid{c1, c2, c3}, s1.ToSlice())
-		assert.Equal(t, []cid.Cid{c1, c2, c3}, s2.ToSlice())
-	})
-
-	t.Run("drops duplicates", func(t *testing.T) {
-		cases := [][]cid.Cid{
-			{c1},
-			{c1, c1, c1},
-			{c1, c2, c3},
-			{c1, c1, c2, c3},
-			{c1, c2, c2, c3},
-			{c1, c2, c3, c3},
-			{c1, c1, c2, c2, c3, c3},
-		}
-
-		for _, cs := range cases {
-			cidSet := asSet(cs)
-			key := blk.NewTipSetKey(cs...)
-			assert.Equal(t, len(cidSet), key.Len())
-			assert.Equal(t, cidSet, asSet(key.ToSlice()))
-			assert.Equal(t, key, blk.NewTipSetKey(asSlice(cidSet)...))
-		}
+		assert.Equal(t, []cid.Cid{c3, c2, c1}, s2.ToSlice())
 	})
 
 	t.Run("fails if unexpected duplicates", func(t *testing.T) {
 		_, e := blk.NewTipSetKeyFromUnique(c1, c2, c3)
 		assert.NoError(t, e)
-		_, e = blk.NewTipSetKeyFromUnique(c1, c2, c1, c3)
+		_, e = blk.NewTipSetKeyFromUnique(c1, c1, c2, c3)
 		assert.Error(t, e)
 	})
 
@@ -114,11 +95,11 @@ func TestTipSetKey(t *testing.T) {
 	t.Run("iteration", func(t *testing.T) {
 		s := blk.NewTipSetKey(c3, c2, c1)
 		it := s.Iter()
-		assert.True(t, c1.Equals(it.Value()))
+		assert.True(t, c3.Equals(it.Value()))
 		assert.True(t, it.Next())
 		assert.True(t, c2.Equals(it.Value()))
 		assert.True(t, it.Next())
-		assert.True(t, c3.Equals(it.Value()))
+		assert.True(t, c1.Equals(it.Value()))
 		assert.False(t, it.Next())
 		assert.Equal(t, it.Value(), cid.Undef)
 		assert.True(t, it.Complete())
@@ -132,7 +113,6 @@ func TestTipSetKeyCborRoundtrip(t *testing.T) {
 	exp := blk.NewTipSetKey(makeCid(), makeCid(), makeCid())
 	buf, err := encoding.Encode(exp)
 	assert.NoError(t, err)
-	fmt.Printf("tipset key bytes: %x\n", buf)
 
 	var act blk.TipSetKey
 	err = encoding.Decode(buf, &act)
@@ -157,14 +137,6 @@ func TestTipSetKeyJSONRoundtrip(t *testing.T) {
 
 	assert.Equal(t, 3, act.Len())
 	assert.True(t, act.Equals(exp))
-}
-
-func asSet(cids []cid.Cid) map[cid.Cid]struct{} {
-	set := make(map[cid.Cid]struct{})
-	for _, c := range cids {
-		set[c] = struct{}{}
-	}
-	return set
 }
 
 func asSlice(cids map[cid.Cid]struct{}) []cid.Cid {

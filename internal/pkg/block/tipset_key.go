@@ -12,8 +12,11 @@ import (
 )
 
 // TipSetKey is an immutable set of CIDs forming a unique key for a TipSet.
-// Equal keys will have equivalent iteration order, but note that the CIDs are *not* maintained in
+// Equal keys will have equivalent iteration order. CIDs are maintained in
 // the same order as the canonical iteration order of blocks in a tipset (which is by ticket).
+// This convention is maintained by the caller.  The order of input cids to the constructor
+// must be the same as this canonical order.  It is the caller's responsibility to not
+// construct a key with duplicate ids
 // TipSetKey is a lightweight value type; passing by pointer is usually unnecessary.
 type TipSetKey struct {
 	// The slice is wrapped in a struct to enforce immutability.
@@ -33,13 +36,13 @@ func NewTipSetKey(ids ...cid.Cid) TipSetKey {
 	for i := 0; i < len(ids); i++ {
 		cids[i] = e.NewCid(ids[i])
 	}
-	return TipSetKey{uniq(cids)}
+	return TipSetKey{cids}
 }
 
 // NewTipSetKeyFromUnique initialises a set with CIDs that are expected to be unique.
 func NewTipSetKeyFromUnique(ids ...cid.Cid) (TipSetKey, error) {
 	s := NewTipSetKey(ids...)
-	if s.Len() != len(ids) {
+	if s.Len() != len(AsSet(ids)) {
 		return TipSetKey{}, errors.Errorf("Duplicate CID in %s", ids)
 	}
 	return s, nil
@@ -91,9 +94,13 @@ func (s TipSetKey) Equals(other TipSetKey) bool {
 }
 
 // ContainsAll checks if another set is a subset of this one.
+// We can assume that the relative order of members of one key is
+// maintained in the other since we assume that all ids are sorted
+// by corresponding block ticket value.
 func (s *TipSetKey) ContainsAll(other TipSetKey) bool {
-	// Since the slices are sorted we can perform one pass over this set, advancing
-	// the other index whenever the values match.
+	// Since we assume the ids must have the same relative sorting we can
+	// perform one pass over this set, advancing the other index whenever the
+	// values match.
 	otherIdx := 0
 	for i := 0; i < s.Len() && otherIdx < other.Len(); i++ {
 		if s.cids[i].Cid.Equals(other.cids[otherIdx].Cid) {
@@ -196,30 +203,6 @@ func (si TipSetKeyIterator) Value() cid.Cid {
 	}
 }
 
-// Destructively sorts and uniqifies a slice of CIDs.
-func uniq(cids []e.Cid) []e.Cid {
-	sort.Slice(cids, func(i, j int) bool {
-		return cidLess(cids[i].Cid, cids[j].Cid)
-	})
-
-	if len(cids) >= 2 {
-		// Uniq-ify the sorted array.
-		// You can imagine doing this by using a second slice and appending elements to it if
-		// they don't match the last-copied element. This is just the same, but using the
-		// source slice as the destination too.
-		this, next := 0, 1
-		for next < len(cids) {
-			if !(cids[next].Cid).Equals(cids[this].Cid) {
-				this++
-				cids[this] = cids[next]
-			}
-			next++
-		}
-		return cids[:this+1]
-	}
-	return cids
-}
-
 func cidLess(c1, c2 cid.Cid) bool {
 	return c1.KeyString() < c2.KeyString()
 }
@@ -231,4 +214,12 @@ func unwrap(eCids []e.Cid) []cid.Cid {
 		out[i] = eCids[i].Cid
 	}
 	return out
+}
+
+func AsSet(cids []cid.Cid) map[cid.Cid]struct{} {
+	set := make(map[cid.Cid]struct{})
+	for _, c := range cids {
+		set[c] = struct{}{}
+	}
+	return set
 }

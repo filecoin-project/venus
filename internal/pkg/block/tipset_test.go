@@ -88,12 +88,6 @@ func TestTipSet(t *testing.T) {
 		assert.Equal(t, 3, t3.Len())
 	})
 
-	t.Run("key", func(t *testing.T) {
-		assert.Equal(t, blk.NewTipSetKey(b1.Cid()), RequireNewTipSet(t, b1).Key())
-		assert.Equal(t, blk.NewTipSetKey(b1.Cid(), b2.Cid(), b3.Cid()),
-			RequireNewTipSet(t, b1, b2, b3).Key())
-	})
-
 	t.Run("height", func(t *testing.T) {
 		tsHeight, _ := RequireNewTipSet(t, b1).Height()
 		assert.Equal(t, b1.Height, tsHeight)
