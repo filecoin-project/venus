@@ -138,13 +138,3 @@ func TestTipSetKeyJSONRoundtrip(t *testing.T) {
 	assert.Equal(t, 3, act.Len())
 	assert.True(t, act.Equals(exp))
 }
-
-func asSlice(cids map[cid.Cid]struct{}) []cid.Cid {
-	slc := make([]cid.Cid, len(cids))
-	var i int
-	for c := range cids {
-		slc[i] = c
-		i++
-	}
-	return slc
-}
