@@ -66,14 +66,11 @@ func TestChainImportExportWideTip(t *testing.T) {
 	ctx, gene, cb, carW, carR, bstore := setupDeps(t)
 	// extend the head by one, two wide
 	headTS := cb.AppendOn(gene, 2)
-
 	// export the car file to a carW
 	mustExportToBuffer(ctx, t, headTS, cb, &mockStateReader{}, carW)
-
 	// import the car file from carR
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
 	assert.Equal(t, headTS.Key(), importedKey)
-
 	// walk the blockstore and assert it had all blocks imported
 	validateBlockstoreImport(ctx, t, headTS.Key(), gene.Key(), bstore)
 }
@@ -259,7 +256,7 @@ func validateBlockstoreImport(ctx context.Context, t *testing.T, start, stop blo
 	// walk the blockstore and assert it had all blocks imported
 	cur := start
 	for {
-		var parents []cid.Cid
+		var parents block.TipSetKey
 		for _, c := range cur.ToSlice() {
 			bsBlk, err := bstore.Get(c)
 			assert.NoError(t, err)
@@ -289,14 +286,19 @@ func validateBlockstoreImport(ctx context.Context, t *testing.T, start, stop blo
 			var rect vm.MessageReceipt
 			requireAMTDecoding(ctx, t, bstore, rectAMT, &rect)
 
-			for _, p := range blk.Parents.ToSlice() {
-				parents = append(parents, p)
+			if parents.Len() == 0 {
+				parents = blk.Parents
+			} else {
+				assert.True(t, blk.Parents.Equals(parents), "malformed tipsets in imported chain")
 			}
 		}
 		if cur.Equals(stop) {
 			break
 		}
-		cur = block.NewTipSetKey(parents...)
+		if cur.Equals(parents) {
+			t.Fatal("validate blockstore import is looping")
+		}
+		cur = parents
 	}
 }
 
