@@ -15,15 +15,14 @@ import (
 // iterate over key/value pairs in statestore at present
 type ChannelInfo struct {
 	UniqueAddr, From, To address.Address
-	LastLane             uint64
+	NextLane             uint64
 	Vouchers             []*VoucherInfo // All vouchers submitted for this channel
 }
 
-// Blank returns whether it is a blank ChannelInfo, rather than
-// a comparison to a declared 'undef' value for efficiency
-func (ci *ChannelInfo) Blank() bool {
+// IsZero returns whether it is a zeroed/blank ChannelInfo
+func (ci *ChannelInfo) IsZero() bool {
 	return ci.UniqueAddr.Empty() && ci.To.Empty() && ci.From.Empty() &&
-		ci.LastLane == 0 && len(ci.Vouchers) == 0
+		ci.NextLane == 0 && len(ci.Vouchers) == 0
 }
 
 // VoucherInfo is a record of a voucher submitted for a payment channel

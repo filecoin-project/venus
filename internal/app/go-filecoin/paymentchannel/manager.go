@@ -84,15 +84,15 @@ func (pm *Manager) AllocateLane(paychAddr address.Address) (laneID uint64, err e
 	err = pm.paymentChannels.
 		Get(paychAddr).
 		Mutate(func(chinfo *ChannelInfo) error {
-			laneID = chinfo.LastLane
-			chinfo.LastLane++
+			laneID = chinfo.NextLane
+			chinfo.NextLane++
 			return nil
 		})
 	return laneID, err
 }
 
 // GetPaymentChannelByAccounts looks up a payment channel via payer/payee
-// returns ChannelInfoUndef if not found.
+// returns an empty ChannelInfo if not found.
 func (pm *Manager) GetPaymentChannelByAccounts(payer, payee address.Address) (*ChannelInfo, error) {
 	var chinfos []ChannelInfo
 	var found ChannelInfo
@@ -130,7 +130,7 @@ func (pm *Manager) CreatePaymentChannel(clientAddress, minerAddress address.Addr
 	if err != nil {
 		return address.Undef, err
 	}
-	if !chinfo.Blank() {
+	if !chinfo.IsZero() {
 		return address.Undef, xerrors.Errorf("payment channel exists for client %s, miner %s", clientAddress, minerAddress)
 	}
 
@@ -186,17 +186,17 @@ func (pm *Manager) CreatePaymentChannel(clientAddress, minerAddress address.Addr
 
 // AddVoucherToChannel saves a new signed voucher entry to the payment store
 // Assumes paychAddr channel has already been created.
-//  Called by the retrieval market client.
 func (pm *Manager) AddVoucherToChannel(paychAddr address.Address, voucher *paychActor.SignedVoucher) error {
 	_, err := pm.saveNewVoucher(paychAddr, voucher, nil)
 	return err
 }
 
 // AddVoucher saves voucher to the store
-// if payment channel record does not exist in store, it will be created.
-// called by the retrieval market provider, when it has received a new voucher from the client
+// If payment channel record does not exist in store, it will be created.
+// Returns tokenamount in the voucher
 func (pm *Manager) AddVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte) (abi.TokenAmount, error) {
-	has, err := pm.paymentChannels.Has(paychAddr)
+
+	has, err := pm.ChannelExists(paychAddr)
 	if err != nil {
 		return zeroAmt, err
 	}
@@ -229,7 +229,7 @@ func PaychActorCtorExecParamsFor(client, miner address.Address) (initActor.ExecP
 	return p, nil
 }
 
-// hasVoucher returns true if the voucher is already stored in the channelinfo
+// hasVoucher returns true if `voucher` is already in `info`
 func (pm *Manager) hasVoucher(info *ChannelInfo, voucher *paychActor.SignedVoucher) bool {
 	for _, v := range info.Vouchers {
 		if reflect.DeepEqual(*v.Voucher, *voucher) {
@@ -240,13 +240,11 @@ func (pm *Manager) hasVoucher(info *ChannelInfo, voucher *paychActor.SignedVouch
 }
 
 func (pm *Manager) getStateView() (PaychActorStateView, error) {
-	head := pm.cr.Head()
-	root, err := pm.cr.GetTipSetStateRoot(pm.ctx, head)
+	root, err := pm.cr.GetTipSetStateRoot(pm.ctx, pm.cr.Head())
 	if err != nil {
 		return nil, err
 	}
-	sv := pm.stateViewer.StateView(root)
-	return sv, nil
+	return pm.stateViewer.StateView(root), nil
 }
 
 func (pm *Manager) createPaymentChannelWithVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte) (abi.TokenAmount, error) {
@@ -276,14 +274,13 @@ func (pm *Manager) createPaymentChannelWithVoucher(paychAddr address.Address, vo
 func (pm *Manager) saveNewVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte) (abi.TokenAmount, error) {
 	var chinfo ChannelInfo
 	st := pm.paymentChannels.Get(paychAddr)
-	err := st.Get(&chinfo)
-	if err != nil {
+	if err := st.Get(&chinfo); err != nil {
 		return zeroAmt, err
 	}
 	if pm.hasVoucher(&chinfo, voucher) {
 		return zeroAmt, xerrors.Errorf("voucher already saved: %s", string(voucher.Signature.Data))
 	}
-	if err = pm.paymentChannels.Get(paychAddr).Mutate(func(info *ChannelInfo) error {
+	if err := pm.paymentChannels.Get(paychAddr).Mutate(func(info *ChannelInfo) error {
 		info.Vouchers = append(info.Vouchers, &VoucherInfo{
 			Voucher: voucher,
 			Proof:   proof,

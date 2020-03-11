@@ -59,7 +59,7 @@ func TestManager_CreatePaymentChannel(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, chinfo)
 		expectedChinfo := ChannelInfo{
-			LastLane:   0,
+			NextLane:   0,
 			From:       clientAddr,
 			To:         minerAddr,
 			UniqueAddr: paychUniqueAddr,
@@ -122,7 +122,7 @@ func TestManager_AllocateLane(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, chinfo)
 		expectedChinfo := ChannelInfo{
-			LastLane:   1,
+			NextLane:   1,
 			From:       clientAddr,
 			To:         minerAddr,
 			UniqueAddr: paychUniqueAddr,

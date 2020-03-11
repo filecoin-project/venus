@@ -47,6 +47,7 @@ type FakeStateView struct {
 	PaychActorPartiesErr, ResolveAddressAtErr error
 }
 
+// NewFakeStateView initializes a new FakeStateView
 func NewFakeStateView(t *testing.T, viewErr error) *FakeStateView {
 	return &FakeStateView{
 		t:                    t,
@@ -64,6 +65,7 @@ func (f *FakeStateView) PaychActorParties(_ context.Context, paychAddr address.A
 	return st.From, st.To, f.PaychActorPartiesErr
 }
 
+// AddActorWithState sets up a mock state for actorAddr
 func (f *FakeStateView) AddActorWithState(actorAddr, from, to, id address.Address) {
 	f.actors[actorAddr] = &FakeActorState{to, from, id}
 }
