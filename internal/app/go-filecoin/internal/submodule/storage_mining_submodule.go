@@ -3,6 +3,8 @@ package submodule
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-storage-miner"
@@ -77,7 +79,7 @@ func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching,
 		minerNode:        minerNode,
 		storageMiner:     storageMiner,
 		heaviestTipSetCh: c.HeaviestTipSetCh,
-		poster:           poster.NewPoster(minerAddr, m.Outbox, s, c.HeaviestTipSetCh, c.State, stateViewer),
+		poster:           poster.NewPoster(minerAddr, m.Outbox, s, c.State, stateViewer),
 	}
 
 	return modu, nil
@@ -94,8 +96,6 @@ func (s *StorageMiningSubmodule) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
-	s.poster.StartPoSting(ctx)
 
 	s.started = true
 
@@ -119,4 +119,12 @@ func (s *StorageMiningSubmodule) Stop(ctx context.Context) error {
 	s.started = false
 
 	return nil
+}
+
+// HandleNewHead submits a new chain head for possible fallback PoSt.
+func (s *StorageMiningSubmodule) HandleNewHead(ctx context.Context, newHead block.TipSet) error {
+	if !s.started {
+		return nil
+	}
+	return s.poster.HandleNewHead(ctx, newHead)
 }

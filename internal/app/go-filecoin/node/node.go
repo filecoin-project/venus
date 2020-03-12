@@ -275,6 +275,12 @@ func (node *Node) handleNewChainHeads(ctx context.Context, prevHead block.TipSet
 				continue
 			}
 
+			if node.StorageMining != nil {
+				if err := node.StorageMining.HandleNewHead(ctx, newHead); err != nil {
+					log.Error(err)
+				}
+			}
+
 			if err := handler.HandleNewHead(ctx, newHead); err != nil {
 				log.Error(err)
 			}
