@@ -26,12 +26,11 @@ type Poster struct {
 	postCancel     context.CancelFunc
 	scheduleCancel context.CancelFunc
 
-	minerAddr        address.Address
-	outbox           *message.Outbox
-	sectorbuilder    sectorbuilder.Interface
-	heaviestTipsetCh chan interface{}
-	chain            *cst.ChainStateReadWriter
-	stateViewer      *appstate.Viewer
+	minerAddr     address.Address
+	outbox        *message.Outbox
+	sectorbuilder sectorbuilder.Interface
+	chain         *cst.ChainStateReadWriter
+	stateViewer   *appstate.Viewer
 }
 
 // NewPoster creates a Poster struct
@@ -39,48 +38,21 @@ func NewPoster(
 	minerAddr address.Address,
 	outbox *message.Outbox,
 	sb sectorbuilder.Interface,
-	htc chan interface{},
 	chain *cst.ChainStateReadWriter,
 	stateViewer *appstate.Viewer) *Poster {
 
 	return &Poster{
-		minerAddr:        minerAddr,
-		outbox:           outbox,
-		sectorbuilder:    sb,
-		heaviestTipsetCh: htc,
-		chain:            chain,
-		stateViewer:      stateViewer,
+		minerAddr:     minerAddr,
+		outbox:        outbox,
+		sectorbuilder: sb,
+		chain:         chain,
+		stateViewer:   stateViewer,
 	}
 }
 
-// StartPoSting starts the posting scheduler
-func (p *Poster) StartPoSting(ctx context.Context) {
-	p.StopPoSting()
-	ctx, p.scheduleCancel = context.WithCancel(ctx)
-
-	go func() {
-		for {
-			select {
-			case ts, ok := <-p.heaviestTipsetCh:
-				if !ok {
-					return
-				}
-
-				newHead, ok := ts.(block.TipSet)
-				if !ok {
-					log.Warn("non-tipset published on heaviest tipset channel")
-					continue
-				}
-
-				err := p.startPoStIfNeeded(ctx, newHead)
-				if err != nil {
-					log.Error("error attempting fallback post", err)
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
+// HandleNewHead submits a new chain head for possible fallback PoSt.
+func (p *Poster) HandleNewHead(ctx context.Context, newHead block.TipSet) error {
+	return p.startPoStIfNeeded(ctx, newHead)
 }
 
 // StopPoSting stops the posting scheduler if running and any outstanding PoSts.
