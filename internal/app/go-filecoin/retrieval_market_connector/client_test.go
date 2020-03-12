@@ -147,10 +147,10 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 	ctx := context.Background()
 	bs, cs, clientAddr, minerAddr, channelAmount := testSetup(ctx, t, abi.NewTokenAmount(100))
 	paychAddr := specst.NewIDAddr(t, 101)
-	pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr)
 	expectedAmt := big.NewInt(100)
 
 	t.Run("Returns a voucher with a signature", func(t *testing.T) {
+		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr)
 		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
 		rmc.StubSignature(nil)
 
@@ -175,6 +175,7 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 	})
 
 	t.Run("Each lane or voucher increases NextNonce", func(t *testing.T) {
+		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr)
 		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
 		rmc.StubSignature(nil)
 
@@ -199,6 +200,7 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 	})
 
 	t.Run("Errors if payment channel does not exist", func(t *testing.T) {
+		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr)
 		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
 		rmc.StubSignature(nil)
 
@@ -210,6 +212,7 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 	})
 
 	t.Run("Errors if can't sign bytes", func(t *testing.T) {
+		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr)
 		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
 		rmc.SigErr = errors.New("signature failure")
 		rmc.StubSignature(errors.New("signature failure"))
@@ -227,6 +230,7 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 		assert.Nil(t, voucher)
 	})
 	t.Run("Errors if can't get block height/head tipset", func(t *testing.T) {
+		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr)
 		_, _, _, localCs, _ := requireNewEmptyChainStore(ctx, t)
 		messageStore := chain.NewMessageStore(bs)
 		cs := cst.NewChainStateReadWriter(localCs, messageStore, bs, builtin.DefaultActors)
