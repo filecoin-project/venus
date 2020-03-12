@@ -2,7 +2,6 @@ package paymentchannel
 
 import (
 	"context"
-	"reflect"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-statestore"
@@ -65,6 +64,7 @@ type MgrStateViewer interface {
 // PaychActorStateView is the subset of a StateView that the Manager uses
 type PaychActorStateView interface {
 	PaychActorParties(ctx context.Context, paychAddr address.Address) (from, to address.Address, err error)
+	MinerControlAddresses(ctx context.Context, addr address.Address) (owner, worker address.Address, err error)
 }
 
 // ChainReader is the subset of the ChainReadWriter API that the Manager uses
@@ -109,7 +109,8 @@ func (pm *Manager) GetPaymentChannelByAccounts(payer, payee address.Address) (*C
 	return &found, nil
 }
 
-// GetPaymentChannelInfo retrieves channel info from the paymentChannels
+// GetPaymentChannelInfo retrieves channel info from the paymentChannels.
+// Assumes channel exists.
 func (pm *Manager) GetPaymentChannelInfo(paychAddr address.Address) (*ChannelInfo, error) {
 	storedState := pm.paymentChannels.Get(paychAddr)
 	if storedState == nil {
@@ -229,16 +230,6 @@ func PaychActorCtorExecParamsFor(client, miner address.Address) (initActor.ExecP
 	return p, nil
 }
 
-// hasVoucher returns true if `voucher` is already in `info`
-func (pm *Manager) hasVoucher(info *ChannelInfo, voucher *paychActor.SignedVoucher) bool {
-	for _, v := range info.Vouchers {
-		if reflect.DeepEqual(*v.Voucher, *voucher) {
-			return true
-		}
-	}
-	return false
-}
-
 func (pm *Manager) getStateView() (PaychActorStateView, error) {
 	root, err := pm.cr.GetTipSetStateRoot(pm.ctx, pm.cr.Head())
 	if err != nil {
@@ -277,7 +268,7 @@ func (pm *Manager) saveNewVoucher(paychAddr address.Address, voucher *paychActor
 	if err := st.Get(&chinfo); err != nil {
 		return zeroAmt, err
 	}
-	if pm.hasVoucher(&chinfo, voucher) {
+	if chinfo.HasVoucher(voucher) {
 		return zeroAmt, xerrors.Errorf("voucher already saved: %s", string(voucher.Signature.Data))
 	}
 	if err := pm.paymentChannels.Get(paychAddr).Mutate(func(info *ChannelInfo) error {
@@ -290,4 +281,17 @@ func (pm *Manager) saveNewVoucher(paychAddr address.Address, voucher *paychActor
 		return zeroAmt, err
 	}
 	return voucher.Amount, nil
+}
+
+func (pm *Manager) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
+	sv, err := pm.getStateView()
+	if err != nil {
+		return address.Undef, err
+	}
+	_, workerAddr, err := sv.MinerControlAddresses(ctx, miner)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return workerAddr, nil
 }

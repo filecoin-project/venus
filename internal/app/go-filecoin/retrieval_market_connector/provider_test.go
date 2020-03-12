@@ -7,21 +7,25 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	gfmtut "github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	spec_test "github.com/filecoin-project/specs-actors/support/testing"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	specst "github.com/filecoin-project/specs-actors/support/testing"
 	"github.com/ipfs/go-datastore"
 	dss "github.com/ipfs/go-datastore/sync"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
+	pch "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 func TestNewRetrievalProviderNodeConnector(t *testing.T) {
@@ -29,8 +33,12 @@ func TestNewRetrievalProviderNodeConnector(t *testing.T) {
 	rmnet := gfmtut.NewTestRetrievalMarketNetwork(gfmtut.TestNetworkParams{})
 	pm := piecemanager.NewStorageMinerBackEnd(nil, nil)
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	rmp := NewRetrievalMarketClientFakeAPI(t, abi.NewTokenAmount(0))
-	rpc := NewRetrievalProviderConnector(rmnet, pm, bs, rmp)
+
+	pchMgr := makePaychMgr(context.Background(), t,
+		specst.NewIDAddr(t, 99),
+		specst.NewIDAddr(t, 100),
+		specst.NewActorAddr(t, "foobar"))
+	rpc := NewRetrievalProviderConnector(rmnet, pm, bs, pchMgr)
 	assert.NotZero(t, rpc)
 }
 
@@ -85,20 +93,28 @@ func unsealTestSetup(ctx context.Context, t *testing.T) (*RetrievalMarketClientF
 	rmnet := gfmtut.NewTestRetrievalMarketNetwork(gfmtut.TestNetworkParams{})
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	rmp := NewRetrievalMarketClientFakeAPI(t, abi.NewTokenAmount(0))
-	rpc := NewRetrievalProviderConnector(rmnet, rmp, bs, rmp)
+	pchMgr := makePaychMgr(ctx, t,
+		specst.NewIDAddr(t, 99),
+		specst.NewIDAddr(t, 100),
+		specst.NewActorAddr(t, "foobar"))
+	rpc := NewRetrievalProviderConnector(rmnet, rmp, bs, pchMgr)
 	return rmp, rpc
 }
 
 func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
-	tf.UnitTest(t)
+	ctx := context.Background()
+
 	rmnet := gfmtut.NewTestRetrievalMarketNetwork(gfmtut.TestNetworkParams{})
 	pm := piecemanager.NewStorageMinerBackEnd(nil, nil)
 
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	pchan := spec_test.NewIDAddr(t, 100)
-	clientAddr := spec_test.NewIDAddr(t, 101)
-	minerAddr := spec_test.NewIDAddr(t, 102)
-	ctx := context.Background()
+	pchan := specst.NewIDAddr(t, 100)
+	clientAddr := specst.NewIDAddr(t, 101)
+	minerAddr := specst.NewIDAddr(t, 102)
+	root := gfmtut.GenerateCids(1)[0]
+
+	viewer, pchMgr := makeViewerAndManager(ctx, t, clientAddr, minerAddr, pchan, root)
+	viewer.Views[root].AddActorWithState(pchan, clientAddr, minerAddr, address.Undef)
 
 	voucher := &paych.SignedVoucher{
 		Lane:            rand.Uint64(),
@@ -111,30 +127,42 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 	t.Run("saves payment voucher and returns voucher amount if new", func(t *testing.T) {
 		rmp := NewRetrievalMarketClientFakeAPI(t, abi.NewTokenAmount(0))
 		// simulate creating payment channel
-		rmp.ActualPmtChans[pchan] = true
-		rmp.ExpectedPmtChans[pchan] = &paymentchannel.ChannelInfo{
-			From: clientAddr, To: minerAddr,
-		}
-		rmp.ExpectedVouchers[pchan] = &paymentchannel.VoucherInfo{Voucher: voucher, Proof: proof}
-		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, rmp)
+		rmp.ExpectedVouchers[pchan] = &pch.VoucherInfo{Voucher: voucher, Proof: proof}
+
+		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, pchMgr)
 
 		tokenamt, err := rpc.SavePaymentVoucher(ctx, pchan, voucher, proof, voucher.Amount)
 		assert.NoError(t, err)
 		assert.True(t, voucher.Amount.Equals(tokenamt))
+
+		chinfo, err := pchMgr.GetPaymentChannelInfo(pchan)
+		require.NoError(t, err)
+		assert.True(t, chinfo.HasVoucher(voucher))
 		rmp.Verify()
 	})
 
 	t.Run("errors if manager fails to save voucher", func(t *testing.T) {
-		rmp := NewRetrievalMarketClientFakeAPI(t, abi.NewTokenAmount(0))
-		rmp.SaveVoucherErr = errors.New("boom")
-		rmp.ActualPmtChans[pchan] = true
-		rmp.ExpectedPmtChans[pchan] = &paymentchannel.ChannelInfo{
-			From: clientAddr, To: minerAddr,
-		}
-		rmp.ExpectedVouchers[pchan] = &paymentchannel.VoucherInfo{Voucher: voucher, Proof: proof}
+		viewer.Views[root].PaychActorPartiesErr = errors.New("boom")
 
-		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, rmp)
+		rmp := NewRetrievalMarketClientFakeAPI(t, abi.NewTokenAmount(0))
+		rmp.ExpectedVouchers[pchan] = &pch.VoucherInfo{Voucher: voucher, Proof: proof}
+		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, pchMgr)
 		_, err := rpc.SavePaymentVoucher(ctx, pchan, voucher, proof, voucher.Amount)
 		assert.EqualError(t, err, "boom")
+		chinfo, err := pchMgr.GetPaymentChannelInfo(pchan)
+		require.NoError(t, err)
+		assert.False(t, chinfo.HasVoucher(voucher))
 	})
+}
+
+func makeViewerAndManager(ctx context.Context, t *testing.T, client, miner, paych address.Address, root state.Root) (*pch.FakeStateViewer, *pch.Manager) {
+	ds := dss.MutexWrap(datastore.NewMapDatastore())
+	testAPI := pch.NewFakePaymentChannelAPI(ctx, t)
+	viewer := makeStateViewer(t, root, nil)
+	cr := pch.NewFakeChainReader(block.NewTipSetKey(root))
+	pchMgr := pch.NewManager(context.Background(), ds, testAPI, testAPI, viewer, cr)
+	blockHeight := uint64(1234)
+
+	testAPI.StubCreatePaychActorMessage(t, client, miner, paych, exitcode.Ok, blockHeight)
+	return viewer, pchMgr
 }

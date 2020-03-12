@@ -1,8 +1,7 @@
-package retrievalmarketconnector_test
+package retrievalmarketconnector
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"math/rand"
 	"os"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
@@ -18,7 +16,6 @@ import (
 	"gotest.tools/assert"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
-	retrievalmarketconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -27,11 +24,6 @@ import (
 type RetrievalMarketClientFakeAPI struct {
 	t               *testing.T
 	AllocateLaneErr error
-
-	// mock payer's payment channel store by paychAddr
-	ExpectedPmtChans map[address.Address]*paymentchannel.ChannelInfo
-	// to check that the payment channels were created.
-	ActualPmtChans map[address.Address]bool
 
 	PayChBalanceErr error
 
@@ -50,7 +42,6 @@ type RetrievalMarketClientFakeAPI struct {
 	MsgSendErr error
 
 	SendNewVoucherErr error
-	SaveVoucherErr    error
 	ExpectedVouchers  map[address.Address]*paymentchannel.VoucherInfo
 	ActualVouchers    map[address.Address]bool
 
@@ -71,8 +62,6 @@ func NewRetrievalMarketClientFakeAPI(t *testing.T, bal abi.TokenAmount) *Retriev
 		Balance:           bal,
 		WorkerAddr:        requireMakeTestFcAddr(t),
 		Nonce:             rand.Uint64(),
-		ExpectedPmtChans:  make(map[address.Address]*paymentchannel.ChannelInfo),
-		ActualPmtChans:    make(map[address.Address]bool),
 		ExpectedVouchers:  make(map[address.Address]*paymentchannel.VoucherInfo),
 		ActualVouchers:    make(map[address.Address]bool),
 		ExpectedSectorIDs: make(map[uint64]string),
@@ -81,61 +70,6 @@ func NewRetrievalMarketClientFakeAPI(t *testing.T, bal abi.TokenAmount) *Retriev
 }
 
 // -------------- API METHODS
-// AllocateLane mocks allocation of a new lane in a payment channel
-func (rmFake *RetrievalMarketClientFakeAPI) AllocateLane(paychAddr address.Address) (uint64, error) {
-	_, ok := rmFake.ActualPmtChans[paychAddr]
-	if !ok {
-		return 0, xerrors.Errorf("payment channel does not exist: %s", paychAddr.String())
-	}
-	chinfo := rmFake.ExpectedPmtChans[paychAddr]
-	chinfo.NextLane++
-	return chinfo.NextLane, rmFake.AllocateLaneErr
-}
-
-func (rmFake *RetrievalMarketClientFakeAPI) CreatePaymentChannel(clientAddress, minerAddress address.Address) error {
-	if rmFake.CreatePaymentChannelErr != nil {
-		return rmFake.CreatePaymentChannelErr
-	}
-	for paychAddr, chinfo := range rmFake.ExpectedPmtChans {
-		if chinfo.From == clientAddress && chinfo.To == minerAddress {
-			rmFake.ActualPmtChans[paychAddr] = true
-			return rmFake.CreatePaymentChannelErr
-		}
-	}
-	rmFake.t.Fatalf("unexpected failure in CreatePaymentChannel")
-	return nil
-}
-
-func (rmFake *RetrievalMarketClientFakeAPI) CreateVoucher(_ address.Address, _ *paych.SignedVoucher) error {
-	return nil
-}
-
-// GetPaymentChannelByAccounts mocks returning the channel info for the payment channel
-// associated with the account.
-// It does not necessarily expect to find the channel info; it returns nil if not found
-func (rmFake *RetrievalMarketClientFakeAPI) GetPaymentChannelByAccounts(payer, payee address.Address) (address.Address, *paymentchannel.ChannelInfo) {
-	for paychAddr, chinfo := range rmFake.ExpectedPmtChans {
-		if chinfo.From == payer && chinfo.To == payee {
-			_, ok := rmFake.ActualPmtChans[paychAddr]
-			if ok {
-				return paychAddr, chinfo
-			}
-		}
-	}
-	return address.Undef, nil
-}
-
-// GetChannelInfo mocks getting payment channel info for a payment channel assumed to exist.
-// if not found, returns error
-func (rmFake *RetrievalMarketClientFakeAPI) GetPaymentChannelInfo(paychAddr address.Address) (*paymentchannel.ChannelInfo, error) {
-	// look only at those that have been "created" by moving from Expected to Actual
-	_, ok := rmFake.ActualPmtChans[paychAddr]
-	if !ok {
-		return nil, fmt.Errorf("no such ChannelID %s", paychAddr.String())
-	}
-	return rmFake.ExpectedPmtChans[paychAddr], nil
-}
-
 // GetBalance mocks getting an actor's balance in AttoFIL
 func (rmFake *RetrievalMarketClientFakeAPI) GetBalance(_ context.Context, _ address.Address) (types.AttoFIL, error) {
 	return types.NewAttoFIL(rmFake.Balance.Int), rmFake.BalanceErr
@@ -150,19 +84,6 @@ func (rmFake *RetrievalMarketClientFakeAPI) NextNonce(_ context.Context, _ addre
 // SignBytes mocks signing data
 func (rmFake *RetrievalMarketClientFakeAPI) SignBytes(data []byte, addr address.Address) (crypto.Signature, error) {
 	return rmFake.Sig, rmFake.SigErr
-}
-
-// AddVoucher mocks saving a voucher to the payment channel store.
-func (rmFake *RetrievalMarketClientFakeAPI) SaveVoucher(paychAddr address.Address, _ *paych.SignedVoucher, _ []byte, expectedAmt abi.TokenAmount) (abi.TokenAmount, error) {
-	_, ok := rmFake.ExpectedVouchers[paychAddr]
-	if !ok {
-		rmFake.t.Fatalf("missing voucher for %s", paychAddr.String())
-	}
-	if rmFake.SaveVoucherErr != nil {
-		return abi.NewTokenAmount(0), rmFake.SaveVoucherErr
-	}
-	rmFake.ActualVouchers[paychAddr] = true
-	return expectedAmt, nil
 }
 
 // UnsealSector mocks unsealing.  Assign a filename to ExpectedSectorIDs[sectorID] to
@@ -183,7 +104,6 @@ func (rmFake *RetrievalMarketClientFakeAPI) UnsealSector(_ context.Context, sect
 
 // ---------------  Testing methods
 func (rmFake *RetrievalMarketClientFakeAPI) Verify() {
-	assert.Equal(rmFake.t, len(rmFake.ExpectedPmtChans), len(rmFake.ActualPmtChans))
 	assert.Equal(rmFake.t, len(rmFake.ActualVouchers), len(rmFake.ExpectedVouchers))
 	assert.Equal(rmFake.t, len(rmFake.ActualSectorIDs), len(rmFake.ExpectedSectorIDs))
 }
@@ -212,6 +132,5 @@ func requireMakeTestFcAddr(t *testing.T) address.Address {
 	return res
 }
 
-var _ retrievalmarketconnector.PaychMgrAPI = &RetrievalMarketClientFakeAPI{}
-var _ retrievalmarketconnector.RetrievalSigner = &RetrievalMarketClientFakeAPI{}
-var _ retrievalmarketconnector.UnsealerAPI = &RetrievalMarketClientFakeAPI{}
+var _ RetrievalSigner = &RetrievalMarketClientFakeAPI{}
+var _ UnsealerAPI = &RetrievalMarketClientFakeAPI{}

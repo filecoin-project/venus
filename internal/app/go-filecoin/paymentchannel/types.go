@@ -1,6 +1,8 @@
 package paymentchannel
 
 import (
+	"reflect"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 )
@@ -23,6 +25,16 @@ type ChannelInfo struct {
 func (ci *ChannelInfo) IsZero() bool {
 	return ci.UniqueAddr.Empty() && ci.To.Empty() && ci.From.Empty() &&
 		ci.NextLane == 0 && len(ci.Vouchers) == 0
+}
+
+// hasVoucher returns true if `voucher` is already in `info`
+func (ci *ChannelInfo)HasVoucher(voucher *paych.SignedVoucher) bool {
+	for _, v := range ci.Vouchers {
+		if reflect.DeepEqual(*v.Voucher, *voucher) {
+			return true
+		}
+	}
+	return false
 }
 
 // VoucherInfo is a record of a voucher submitted for a payment channel

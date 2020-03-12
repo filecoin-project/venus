@@ -173,7 +173,7 @@ func TestManager_AddVoucherToChannel(t *testing.T) {
 
 	t.Run("errors if channel doesn't exist", func(t *testing.T) {
 		cr := NewFakeChainReader(block.NewTipSetKey(root))
-		_, manager := saveVoucherSetup(ctx, t, root, cr)
+		_, manager := setupViewerManager(ctx, t, root, cr)
 		assert.EqualError(t, manager.AddVoucherToChannel(spect.NewActorAddr(t, "not-there"), &v), "No state for /t2bfuuk4wniuwo2tfso3bfar55hf4d6zq4fbcagui: datastore: key not found")
 	})
 }
@@ -204,7 +204,7 @@ func TestManager_AddVoucher(t *testing.T) {
 
 	t.Run("happy path", func(t *testing.T) {
 		expVouchers := []*paych.SignedVoucher{&v, &newV}
-		viewer, manager := saveVoucherSetup(ctx, t, root, cr)
+		viewer, manager := setupViewerManager(ctx, t, root, cr)
 		viewer.Views[root].AddActorWithState(paychUniqueAddr, clientAddr, minerAddr, paychIDAddr)
 		for _, voucher := range expVouchers {
 			resAmt, err := manager.AddVoucher(paychUniqueAddr, voucher, proof)
@@ -226,7 +226,7 @@ func TestManager_AddVoucher(t *testing.T) {
 	})
 
 	t.Run("returns error if we try to save the same voucher", func(t *testing.T) {
-		viewer, manager := saveVoucherSetup(ctx, t, root, cr)
+		viewer, manager := setupViewerManager(ctx, t, root, cr)
 		viewer.Views[root].AddActorWithState(paychUniqueAddr, clientAddr, minerAddr, paychIDAddr)
 		resAmt, err := manager.AddVoucher(paychUniqueAddr, &v, []byte("porkchops"))
 		require.NoError(t, err)
@@ -238,7 +238,7 @@ func TestManager_AddVoucher(t *testing.T) {
 	})
 
 	t.Run("returns error if marshaling fails", func(t *testing.T) {
-		viewer, manager := saveVoucherSetup(ctx, t, root, cr)
+		viewer, manager := setupViewerManager(ctx, t, root, cr)
 		viewer.Views[root].AddActorWithState(paychUniqueAddr, clientAddr, address.Undef, address.Undef)
 		resAmt, err := manager.AddVoucher(paychUniqueAddr, &v, []byte("porkchops"))
 		assert.EqualError(t, err, "cannot marshal undefined address")
@@ -246,7 +246,7 @@ func TestManager_AddVoucher(t *testing.T) {
 	})
 
 	t.Run("returns error if cannot get actor state/parties", func(t *testing.T) {
-		viewer, manager := saveVoucherSetup(ctx, t, root, cr)
+		viewer, manager := setupViewerManager(ctx, t, root, cr)
 		viewer.Views[root].AddActorWithState(paychUniqueAddr, clientAddr, minerAddr, paychIDAddr)
 		viewer.Views[root].PaychActorPartiesErr = errors.New("boom")
 		resAmt, err := manager.AddVoucher(paychUniqueAddr, &v, []byte("porkchops"))
@@ -257,7 +257,7 @@ func TestManager_AddVoucher(t *testing.T) {
 	t.Run("returns err if cannot get head/tipset", func(t *testing.T) {
 		cr2 := NewFakeChainReader(block.NewTipSetKey(root))
 		cr2.GetTSErr = errors.New("kaboom")
-		viewer, manager := saveVoucherSetup(ctx, t, root, cr2)
+		viewer, manager := setupViewerManager(ctx, t, root, cr2)
 		viewer.Views[root].AddActorWithState(paychUniqueAddr, clientAddr, minerAddr, paychIDAddr)
 		resAmt, err := manager.AddVoucher(paychUniqueAddr, &v, []byte("porkchops"))
 		assert.EqualError(t, err, "kaboom")
@@ -265,7 +265,37 @@ func TestManager_AddVoucher(t *testing.T) {
 	})
 }
 
-func saveVoucherSetup(ctx context.Context, t *testing.T, root cid.Cid, cr *FakeChainReader) (*FakeStateViewer, *Manager) {
+func TestManager_GetMinerWorker(t *testing.T) {
+	ctx := context.Background()
+	minerAddr := spect.NewIDAddr(t, 100)
+	minerWorkerAddr := spect.NewIDAddr(t, 101)
+	root := shared_testutil.GenerateCids(1)[0]
+	cr := NewFakeChainReader(block.NewTipSetKey(root))
+	viewer, manager := setupViewerManager(ctx, t, root, cr)
+
+	t.Run("happy path", func(t *testing.T) {
+		viewer.Views[root].AddMinerWithState(minerAddr, minerWorkerAddr)
+		res, err := manager.GetMinerWorker(ctx, minerAddr)
+		assert.NoError(t, err)
+		assert.Equal(t, minerWorkerAddr, res)
+	})
+
+	t.Run("returns error if getting control addr fails", func(t *testing.T) {
+		viewer.Views[root].AddMinerWithState(minerAddr, minerWorkerAddr)
+		viewer.Views[root].MinerControlErr = errors.New("boom")
+		_, err := manager.GetMinerWorker(ctx, minerAddr)
+		assert.EqualError(t, err, "boom")
+	})
+
+	t.Run("returns error if getting state view fails", func(t *testing.T) {
+		viewer.Views[root].AddMinerWithState(minerAddr, minerWorkerAddr)
+		cr.GetTSErr = errors.New("boom")
+		_, err := manager.GetMinerWorker(ctx, minerAddr)
+		assert.EqualError(t, err, "boom")
+	})
+}
+
+func setupViewerManager(ctx context.Context, t *testing.T, root cid.Cid, cr *FakeChainReader) (*FakeStateViewer, *Manager) {
 	testAPI := NewFakePaymentChannelAPI(ctx, t)
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
 	viewer := makeStateViewer(t, root, nil)

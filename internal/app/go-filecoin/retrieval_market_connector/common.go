@@ -30,9 +30,10 @@ type RetrievalSigner interface {
 type PaychMgrAPI interface {
 	AllocateLane(paychAddr address.Address) (uint64, error)
 	ChannelExists(paychAddr address.Address) (bool, error)
+	GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error)
 	GetPaymentChannelInfo(paychAddr address.Address) (*paymentchannel.ChannelInfo, error)
-	GetPaymentChannelByAccounts(payer, payee address.Address) (address.Address, *paymentchannel.ChannelInfo)
-	CreatePaymentChannel(payer, payee address.Address) error
-	CreateVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher) error
-	SaveVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte, expected abi.TokenAmount) (actual abi.TokenAmount, err error)
+	GetPaymentChannelByAccounts(payer, payee address.Address) (*paymentchannel.ChannelInfo, error)
+	CreatePaymentChannel(payer, payee address.Address) (address.Address, error)
+	AddVoucherToChannel(paychAddr address.Address, voucher *paychActor.SignedVoucher) error
+	AddVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte) (abi.TokenAmount, error)
 }
