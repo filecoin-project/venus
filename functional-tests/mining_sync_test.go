@@ -43,7 +43,12 @@ func TestBootstrapMineOnce(t *testing.T) {
 	// Check the miner's initial power corresponds to 2 2kb sectors
 	var status porcelain.MinerStatus
 	node0.MustRunCmdJSON(ctx, &status, "go-filecoin", "miner", "status", minerAddress.String())
-	assert.Equal(t, uint64(2*3072), status.Power.Uint64())
+
+	kib := uint64(1024)
+	// expected miner power is 2 2kib sectors
+	expectedMinerPower := uint64((2 * kib) * 2)
+	actualMinerPower := status.Power.Uint64()
+	assert.Equal(t, expectedMinerPower, status.Power.Uint64(), "expected miner power: %d actual miner power: %d", expectedMinerPower, actualMinerPower)
 
 	// Assert that the chain head is genesis block
 	var blocks []block.Block
