@@ -17,7 +17,7 @@ import (
 // iterate over key/value pairs in statestore at present
 type ChannelInfo struct {
 	UniqueAddr, From, To address.Address
-	NextLane             uint64
+	NextLane, NextNonce  uint64
 	Vouchers             []*VoucherInfo // All vouchers submitted for this channel
 }
 
@@ -28,7 +28,7 @@ func (ci *ChannelInfo) IsZero() bool {
 }
 
 // hasVoucher returns true if `voucher` is already in `info`
-func (ci *ChannelInfo)HasVoucher(voucher *paych.SignedVoucher) bool {
+func (ci *ChannelInfo) HasVoucher(voucher *paych.SignedVoucher) bool {
 	for _, v := range ci.Vouchers {
 		if reflect.DeepEqual(*v.Voucher, *voucher) {
 			return true

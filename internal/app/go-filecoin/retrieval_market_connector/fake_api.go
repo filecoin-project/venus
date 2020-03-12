@@ -104,7 +104,6 @@ func (rmFake *RetrievalMarketClientFakeAPI) UnsealSector(_ context.Context, sect
 
 // ---------------  Testing methods
 func (rmFake *RetrievalMarketClientFakeAPI) Verify() {
-	assert.Equal(rmFake.t, len(rmFake.ActualVouchers), len(rmFake.ExpectedVouchers))
 	assert.Equal(rmFake.t, len(rmFake.ActualSectorIDs), len(rmFake.ExpectedSectorIDs))
 }
 

@@ -83,9 +83,10 @@ func NewManager(ctx context.Context, ds datastore.Batching, waiter MsgWaiter, se
 func (pm *Manager) AllocateLane(paychAddr address.Address) (laneID uint64, err error) {
 	err = pm.paymentChannels.
 		Get(paychAddr).
-		Mutate(func(chinfo *ChannelInfo) error {
-			laneID = chinfo.NextLane
-			chinfo.NextLane++
+		Mutate(func(info *ChannelInfo) error {
+			laneID = info.NextLane
+			info.NextLane++
+			info.NextNonce++
 			return nil
 		})
 	return laneID, err
@@ -269,15 +270,18 @@ func (pm *Manager) saveNewVoucher(paychAddr address.Address, voucher *paychActor
 		return zeroAmt, err
 	}
 	if chinfo.HasVoucher(voucher) {
-		return zeroAmt, xerrors.Errorf("voucher already saved: %s", string(voucher.Signature.Data))
+		return zeroAmt, xerrors.Errorf("voucher already saved")
 	}
-	if err := pm.paymentChannels.Get(paychAddr).Mutate(func(info *ChannelInfo) error {
-		info.Vouchers = append(info.Vouchers, &VoucherInfo{
-			Voucher: voucher,
-			Proof:   proof,
-		})
-		return nil
-	}); err != nil {
+	if err := pm.paymentChannels.
+		Get(paychAddr).
+		Mutate(func(info *ChannelInfo) error {
+			info.NextNonce++
+			info.Vouchers = append(info.Vouchers, &VoucherInfo{
+				Voucher: voucher,
+				Proof:   proof,
+			})
+			return nil
+		}); err != nil {
 		return zeroAmt, err
 	}
 	return voucher.Amount, nil

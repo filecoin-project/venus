@@ -97,7 +97,7 @@ func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, pay
 		SecretPreimage:  nil, // optional
 		Extra:           nil, // optional
 		Lane:            lane,
-		Nonce:           lane, // TODO what is nonce from?
+		Nonce:           chinfo.NextNonce,
 		Amount:          amount,
 		MinSettleHeight: height + 1,
 		Merges:          nil,
@@ -118,7 +118,6 @@ func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, pay
 	if err := r.paychMgr.AddVoucherToChannel(paychAddr, &v); err != nil {
 		return nil, err
 	}
-	// if successful:
 	return &v, nil
 }
 

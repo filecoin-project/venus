@@ -35,7 +35,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
-func TestNewRetrievalClientNodeConnector(t *testing.T) {
+func TestNewRetrievalClientConnector(t *testing.T) {
 	ctx := context.Background()
 
 	bs, cs, _, _, _ := testSetup(ctx, t, abi.NewTokenAmount(1))
@@ -50,7 +50,7 @@ func TestNewRetrievalClientNodeConnector(t *testing.T) {
 	assert.NotNil(t, rcnc)
 }
 
-func TestRetrievalClientNodeConnector_GetOrCreatePaymentChannel(t *testing.T) {
+func TestRetrievalClientConnector_GetOrCreatePaymentChannel(t *testing.T) {
 	ctx := context.Background()
 
 	paychUniqueAddr := specst.NewActorAddr(t, "paych")
@@ -110,7 +110,7 @@ func TestRetrievalClientNodeConnector_GetOrCreatePaymentChannel(t *testing.T) {
 	})
 }
 
-func TestRetrievalClientNodeConnector_AllocateLane(t *testing.T) {
+func TestRetrievalClientConnector_AllocateLane(t *testing.T) {
 	ctx := context.Background()
 	bs, cs, clientAddr, minerAddr, channelAmount := testSetup(ctx, t, abi.NewTokenAmount(100))
 
@@ -143,11 +143,12 @@ func TestRetrievalClientNodeConnector_AllocateLane(t *testing.T) {
 	})
 }
 
-func TestRetrievalClientNodeConnector_CreatePaymentVoucher(t *testing.T) {
+func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 	ctx := context.Background()
 	bs, cs, clientAddr, minerAddr, channelAmount := testSetup(ctx, t, abi.NewTokenAmount(100))
 	paychAddr := specst.NewIDAddr(t, 101)
 	pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr)
+	expectedAmt := big.NewInt(100)
 
 	t.Run("Returns a voucher with a signature", func(t *testing.T) {
 		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
@@ -160,8 +161,6 @@ func TestRetrievalClientNodeConnector_CreatePaymentVoucher(t *testing.T) {
 		lane, err := rcnc.AllocateLane(chid)
 		require.NoError(t, err)
 
-		expectedAmt := big.NewInt(100)
-
 		voucher, err := rcnc.CreatePaymentVoucher(ctx, chid, expectedAmt, lane)
 		require.NoError(t, err)
 		assert.Equal(t, expectedAmt, voucher.Amount)
@@ -170,7 +169,33 @@ func TestRetrievalClientNodeConnector_CreatePaymentVoucher(t *testing.T) {
 		assert.NotNil(t, voucher.Signature)
 		chinfo, err := pchMgr.GetPaymentChannelInfo(paychAddr)
 		require.NoError(t, err)
+		// nil SecretPreimage gets stored as zero value.
+		voucher.SecretPreimage = []byte{}
 		assert.True(t, chinfo.HasVoucher(voucher))
+	})
+
+	t.Run("Each lane or voucher increases NextNonce", func(t *testing.T) {
+		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
+		rmc.StubSignature(nil)
+
+		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
+		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
+		require.NoError(t, err)
+
+		expectedNonce := uint64(9) // 4 lanes * 3 vouchers each + 1
+		for i := 0; i < 3; i++ {
+			lane, err := rcnc.AllocateLane(chid)
+			require.NoError(t, err)
+			for j := 0; j < 2; j++ {
+				amt := int64(i + j + 1)
+				newAmt := big.NewInt(amt)
+				_, err := rcnc.CreatePaymentVoucher(ctx, chid, newAmt, lane)
+				require.NoError(t, err)
+			}
+		}
+		chinfo, err := pchMgr.GetPaymentChannelInfo(paychAddr)
+		require.NoError(t, err)
+		assert.Equal(t, expectedNonce, chinfo.NextNonce)
 	})
 
 	t.Run("Errors if payment channel does not exist", func(t *testing.T) {

@@ -113,18 +113,18 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 	minerAddr := specst.NewIDAddr(t, 102)
 	root := gfmtut.GenerateCids(1)[0]
 
-	viewer, pchMgr := makeViewerAndManager(ctx, t, clientAddr, minerAddr, pchan, root)
-	viewer.Views[root].AddActorWithState(pchan, clientAddr, minerAddr, address.Undef)
-
 	voucher := &paych.SignedVoucher{
 		Lane:            rand.Uint64(),
 		Nonce:           rand.Uint64(),
 		Amount:          big.NewInt(rand.Int63()),
 		MinSettleHeight: abi.ChainEpoch(99),
+		SecretPreimage:  []byte{},
 	}
 	proof := []byte("proof")
 
 	t.Run("saves payment voucher and returns voucher amount if new", func(t *testing.T) {
+		viewer, pchMgr := makeViewerAndManager(ctx, t, clientAddr, minerAddr, pchan, root)
+		viewer.Views[root].AddActorWithState(pchan, clientAddr, minerAddr, address.Undef)
 		rmp := NewRetrievalMarketClientFakeAPI(t, abi.NewTokenAmount(0))
 		// simulate creating payment channel
 		rmp.ExpectedVouchers[pchan] = &pch.VoucherInfo{Voucher: voucher, Proof: proof}
@@ -141,7 +141,9 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 		rmp.Verify()
 	})
 
-	t.Run("errors if manager fails to save voucher", func(t *testing.T) {
+	t.Run("errors if manager fails to save voucher, does not store new channel info", func(t *testing.T) {
+		viewer, pchMgr := makeViewerAndManager(ctx, t, clientAddr, minerAddr, pchan, root)
+		viewer.Views[root].AddActorWithState(pchan, clientAddr, minerAddr, address.Undef)
 		viewer.Views[root].PaychActorPartiesErr = errors.New("boom")
 
 		rmp := NewRetrievalMarketClientFakeAPI(t, abi.NewTokenAmount(0))
@@ -149,9 +151,9 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, pchMgr)
 		_, err := rpc.SavePaymentVoucher(ctx, pchan, voucher, proof, voucher.Amount)
 		assert.EqualError(t, err, "boom")
-		chinfo, err := pchMgr.GetPaymentChannelInfo(pchan)
-		require.NoError(t, err)
-		assert.False(t, chinfo.HasVoucher(voucher))
+
+		_, err = pchMgr.GetPaymentChannelInfo(pchan)
+		require.EqualError(t, err, "No state for /t0100: datastore: key not found")
 	})
 }
 

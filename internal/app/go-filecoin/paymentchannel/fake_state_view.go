@@ -82,7 +82,7 @@ func (f *FakeStateView) AddActorWithState(actorAddr, from, to, id address.Addres
 }
 
 func (f *FakeStateView) AddMinerWithState(minerActor, minerWorker address.Address) {
-	f.actors[minerActor] = &FakeActorState{ MinerWorker: minerWorker }
+	f.actors[minerActor] = &FakeActorState{MinerWorker: minerWorker}
 }
 
 var _ PaychActorStateView = &FakeStateView{}
