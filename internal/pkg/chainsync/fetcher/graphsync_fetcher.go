@@ -408,9 +408,6 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 				return err
 			}
 
-			if err := gsf.validator.ValidateMessagesSyntax(ctx, messages); err != nil {
-				return errors.Wrapf(err, "invalid messages for for message collection (cid %s)", rawBlock.Cid())
-			}
 			return nil
 		})
 	if err != nil {
@@ -436,11 +433,9 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 				return err
 			}
 
-			if err := gsf.validator.ValidateUnsignedMessagesSyntax(ctx, messages); err != nil {
-				return errors.Wrapf(err, "invalid messages for for message collection (cid %s)", rawBlock.Cid())
-			}
 			return nil
 		})
+	// TODO #3312 we should validate these messages in the same way we validate blocks
 	if err != nil {
 		return block.UndefTipSet, nil, err
 	}

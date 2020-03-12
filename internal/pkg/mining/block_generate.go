@@ -63,8 +63,7 @@ func (w *DefaultWorker) Generate(
 	pending := w.messageSource.Pending()
 	mq := NewMessageQueue(pending)
 	candidateMsgs := orderMessageCandidates(mq.Drain())
-
-	// Dragons: ask something to select and order messages to include
+	candidateMsgs = w.filterPenalizableMessages(ctx, candidateMsgs)
 
 	var blsAccepted []*types.SignedMessage
 	var secpAccepted []*types.SignedMessage
@@ -178,4 +177,18 @@ func orderMessageCandidates(messages []*types.SignedMessage) []*types.SignedMess
 		}
 	}
 	return append(blsMessages, secpMessages...)
+}
+
+func (w *DefaultWorker) filterPenalizableMessages(ctx context.Context, messages []*types.SignedMessage) []*types.SignedMessage {
+	var goodMessages []*types.SignedMessage
+	for _, msg := range messages {
+		err := w.penaltyChecker.PenaltyCheck(ctx, &msg.Message)
+		if err != nil {
+			mCid, _ := msg.Cid()
+			log.Debugf("Msg: %s not included in block because penalized with err %s", mCid, err)
+			continue
+		}
+		goodMessages = append(goodMessages, msg)
+	}
+	return goodMessages
 }
