@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,4 +51,11 @@ func MakeEchoMine(t *testing.T) func(context.Context, block.TipSet, uint64, chan
 // the input uint8 value.
 func NthTicket(i uint8) block.Ticket {
 	return block.Ticket{VRFProof: []byte{i}}
+}
+
+// NoPenaltyChecker always returns no error
+type NoPenaltyChecker struct{}
+
+func (npc *NoPenaltyChecker) PenaltyCheck(_ context.Context, _ *types.UnsignedMessage) error {
+	return nil
 }

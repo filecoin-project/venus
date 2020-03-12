@@ -687,7 +687,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 
 		MessageSource: node.Messaging.Inbox.Pool(),
 		MessageStore:  node.chain.MessageStore,
-		Processor:     node.Chain().Processor,
+		PenaltyChecker: consensus.NewMessagePenaltyChecker(node.Chain().State),
 		Blockstore:    node.Blockstore.Blockstore,
 		Clock:         node.ChainClock,
 		Poster:        node.StorageMining.PoStGenerator,

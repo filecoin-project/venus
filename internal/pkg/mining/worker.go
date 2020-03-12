@@ -93,6 +93,10 @@ type tipSetMetadata interface {
 	GetTipSetReceiptsRoot(key block.TipSetKey) (cid.Cid, error)
 }
 
+type messagePenaltyChecker interface {
+	PenaltyCheck(ctx context.Context, msg *types.UnsignedMessage) error
+}
+
 // DefaultWorker runs a mining job.
 type DefaultWorker struct {
 	api workerPorcelainAPI
@@ -101,17 +105,17 @@ type DefaultWorker struct {
 	minerOwnerAddr address.Address
 	workerSigner   types.Signer
 
-	tsMetadata    tipSetMetadata
-	getStateTree  GetStateTree
-	getWeight     GetWeight
-	election      electionUtil
-	ticketGen     ticketGenerator
-	messageSource MessageSource
-	processor     MessageApplier
-	messageStore  chain.MessageWriter // nolint: structcheck
-	blockstore    blockstore.Blockstore
-	clock         clock.Clock
-	poster        postgenerator.PoStGenerator
+	tsMetadata     tipSetMetadata
+	getStateTree   GetStateTree
+	getWeight      GetWeight
+	election       electionUtil
+	ticketGen      ticketGenerator
+	messageSource  MessageSource
+	penaltyChecker messagePenaltyChecker
+	messageStore   chain.MessageWriter // nolint: structcheck
+	blockstore     blockstore.Blockstore
+	clock          clock.Clock
+	poster         postgenerator.PoStGenerator
 }
 
 // WorkerParameters use for NewDefaultWorker parameters
@@ -125,13 +129,13 @@ type WorkerParameters struct {
 	// consensus things
 	TipSetMetadata tipSetMetadata
 	GetStateTree   GetStateTree
+	PenaltyChecker messagePenaltyChecker
 	GetWeight      GetWeight
 	Election       electionUtil
 	TicketGen      ticketGenerator
 
 	// core filecoin things
 	MessageSource MessageSource
-	Processor     MessageApplier
 	MessageStore  chain.MessageWriter
 	Blockstore    blockstore.Blockstore
 	Clock         clock.Clock
@@ -146,7 +150,7 @@ func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
 		getWeight:      parameters.GetWeight,
 		messageSource:  parameters.MessageSource,
 		messageStore:   parameters.MessageStore,
-		processor:      parameters.Processor,
+		penaltyChecker: parameters.PenaltyChecker,
 		blockstore:     parameters.Blockstore,
 		minerAddr:      parameters.MinerAddr,
 		minerOwnerAddr: parameters.MinerOwnerAddr,
