@@ -123,6 +123,7 @@ func TestManager_AllocateLane(t *testing.T) {
 		require.NotNil(t, chinfo)
 		expectedChinfo := ChannelInfo{
 			NextLane:   1,
+			NextNonce:  1,
 			From:       clientAddr,
 			To:         minerAddr,
 			UniqueAddr: paychUniqueAddr,
@@ -233,7 +234,7 @@ func TestManager_AddVoucher(t *testing.T) {
 		assert.Equal(t, amt, resAmt)
 
 		resAmt, err = manager.AddVoucher(paychUniqueAddr, &v, []byte("porkchops"))
-		assert.EqualError(t, err, "voucher already saved: doesntmatter")
+		assert.EqualError(t, err, "voucher already saved")
 		assert.Equal(t, abi.NewTokenAmount(0), resAmt)
 	})
 
