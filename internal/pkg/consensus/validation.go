@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -36,7 +35,8 @@ var (
 	errInsufficientGas    = fmt.Errorf("balance insufficient to cover transfer+gas")
 	errInvalidSignature   = fmt.Errorf("invalid signature by sender over message data")
 	// TODO we'll eventually handle sending to self.
-	errSelfSend = fmt.Errorf("cannot send to self")
+	errSelfSend    = fmt.Errorf("cannot send to self")
+	errEmptySender = fmt.Errorf("message sends from empty actor")
 )
 
 func init() {
@@ -47,52 +47,39 @@ func init() {
 	errNonceTooHighCt = metrics.NewInt64Counter("consensus/msg_nonce_high_err", "Number of messages with nonce too high")
 }
 
-// DefaultMessageValidator validates incoming signed messages.
-type DefaultMessageValidator struct {
-	allowHighNonce bool
+// MessageSelectionChecker checks for miner penalties on signed messages
+type MessagePenaltyChecker struct {
+	api penaltyCheckerAPI
 }
 
-// NewDefaultMessageValidator creates a new default validator.
-// A default validator checks for both permanent semantic problems (e.g. invalid signature)
-// as well as temporary conditions which may change (e.g. actor can't cover gas limit).
-func NewDefaultMessageValidator() *DefaultMessageValidator {
-	return &DefaultMessageValidator{}
+// penaltyCheckerAPI allows the validator to access latest state
+type penaltyCheckerAPI interface {
+	Head() block.TipSetKey
+	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*actor.Actor, error)
 }
 
-// NewOutboundMessageValidator creates a new default validator for outbound messages. This
-// validator matches the default behaviour but allows nonces higher than the actor's current nonce
-// (allowing multiple messages to enter the mpool at once).
-func NewOutboundMessageValidator() *DefaultMessageValidator {
-	return &DefaultMessageValidator{allowHighNonce: true}
-}
-
-// Validate checks that a message is semantically valid for processing, returning any
-// invalidity as an error.
-func (v *DefaultMessageValidator) Validate(ctx context.Context, msg *types.UnsignedMessage, fromActor *actor.Actor) error {
-	if msg.From == msg.To {
-		return errSelfSend
+func NewMessagePenaltyChecker(api penaltyCheckerAPI) *MessagePenaltyChecker {
+	return &MessagePenaltyChecker{
+		api: api,
 	}
+}
 
-	if msg.GasPrice.LessThanEqual(types.ZeroAttoFIL) {
-		return errGasPriceZero
+// PenaltyCheck checks that a message is semantically valid for processing without
+// causing miner penality.  It treats any miner penalty condtion as an error.
+func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.UnsignedMessage) error {
+	fromActor, err := v.api.GetActorAt(ctx, v.api.Head(), msg.From)
+	if err != nil {
+		return err
+	}
+	// Sender should not be an empty actor
+	if fromActor == nil || fromActor.Empty() {
+		return errEmptySender
 	}
 
 	// Sender must be an account actor, or an empty actor which will be upgraded to an account actor
 	// when the message is processed.
-	if !(fromActor.Empty() || builtin.AccountActorCodeID.Equals(fromActor.Code.Cid)) {
+	if !(builtin.AccountActorCodeID.Equals(fromActor.Code.Cid)) {
 		return errNonAccountActor
-	}
-
-	if msg.Value.LessThan(specsbig.Zero()) {
-		log.Debugf("Cannot transfer negative value: %s from actor: %s", msg.Value, msg.From)
-		errNegativeValueCt.Inc(ctx, 1)
-		return errNegativeValue
-	}
-
-	if msg.GasLimit > types.BlockGasLimit {
-		log.Debugf("Message: %s gas limit from actor: %s above block limit: %s", msg, msg.From, types.BlockGasLimit)
-		errGasAboveBlockLimitCt.Inc(ctx, 1)
-		return errGasAboveBlockLimit
 	}
 
 	// Avoid processing messages for actors that cannot pay.
@@ -108,7 +95,7 @@ func (v *DefaultMessageValidator) Validate(ctx context.Context, msg *types.Unsig
 		return errNonceTooLow
 	}
 
-	if !v.allowHighNonce && msg.CallSeqNum > fromActor.CallSeqNum {
+	if msg.CallSeqNum > fromActor.CallSeqNum {
 		log.Debugf("Message: %s nonce greater than actor nonce: %s from actor: %s", msg, fromActor.CallSeqNum, msg.From)
 		errNonceTooHighCt.Inc(ctx, 1)
 		return errNonceTooHigh
@@ -127,32 +114,59 @@ func canCoverGasLimit(msg *types.UnsignedMessage, actor *actor.Actor) bool {
 	return actor.Balance.GreaterThanEqual(expense)
 }
 
-// IngestionValidatorAPI allows the validator to access latest state
-type ingestionValidatorAPI interface {
+// MessageSyntaxValidator checks basic conditions independent of current state
+type MessageSyntaxValidator struct{}
+
+func NewMessageSyntaxValidator() *MessageSyntaxValidator {
+	return &MessageSyntaxValidator{}
+}
+
+func (v *MessageSyntaxValidator) Validate(ctx context.Context, smsg *types.SignedMessage) error {
+	// check non-state dependent invariants
+	msg := smsg.Message
+	if msg.GasLimit > types.BlockGasLimit {
+		log.Debugf("Message: %s gas limit from actor: %s above block limit: %s", msg, msg.From, types.BlockGasLimit)
+		errGasAboveBlockLimitCt.Inc(ctx, 1)
+		return errGasAboveBlockLimit
+	}
+
+	if msg.Value.LessThan(specsbig.Zero()) {
+		log.Debugf("Cannot transfer negative value: %s from actor: %s", msg.Value, msg.From)
+		errNegativeValueCt.Inc(ctx, 1)
+		return errNegativeValue
+	}
+
+	if msg.From == msg.To {
+		return errSelfSend
+	}
+
+	if msg.GasPrice.LessThanEqual(types.ZeroAttoFIL) {
+		return errGasPriceZero
+	}
+
+	return nil
+}
+
+// MessageSignatureValidator validates message signatures
+type MessageSignatureValidator struct {
+	api signatureValidatorAPI
+}
+
+// signatureValidatorAPI allows the validator to access state needed for signature checking
+type signatureValidatorAPI interface {
 	Head() block.TipSetKey
-	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*actor.Actor, error)
 	AccountStateView(baseKey block.TipSetKey) (state.AccountStateView, error)
 }
 
-// IngestionValidator can access latest state and runs additional checks to mitigate DoS attacks
-type IngestionValidator struct {
-	api       ingestionValidatorAPI
-	cfg       *config.MessagePoolConfig
-	validator *DefaultMessageValidator
-}
-
-// NewIngestionValidator creates a new validator with an api
-func NewIngestionValidator(api ingestionValidatorAPI, cfg *config.MessagePoolConfig) *IngestionValidator {
-	return &IngestionValidator{
-		api:       api,
-		cfg:       cfg,
-		validator: &DefaultMessageValidator{allowHighNonce: true},
+func NewMessageSignatureValidator(api signatureValidatorAPI) *MessageSignatureValidator {
+	return &MessageSignatureValidator{
+		api: api,
 	}
 }
 
-// Validate validates the signed message.
-// Errors probably mean the validation failed, but possibly indicate a failure to retrieve state
-func (v *IngestionValidator) Validate(ctx context.Context, smsg *types.SignedMessage) error {
+// Validate validates the signed message signature. Errors probably mean the
+//  validation failed, but possibly indicate a failure to retrieve state.
+func (v *MessageSignatureValidator) Validate(ctx context.Context, smsg *types.SignedMessage) error {
 	head := v.api.Head()
 	view, err := v.api.AccountStateView(head)
 	if err != nil {
@@ -165,19 +179,5 @@ func (v *IngestionValidator) Validate(ctx context.Context, smsg *types.SignedMes
 	if err := sigValidator.ValidateMessageSignature(ctx, smsg); err != nil {
 		return errors.Wrap(err, errInvalidSignature.Error())
 	}
-
-	// retrieve from actor
-	msg := smsg.Message
-	fromActor, err := v.api.GetActorAt(ctx, head, msg.From)
-	if fromActor == nil || err != nil {
-		// Dragons: we have this "empty" actor line in too many places
-		fromActor = &actor.Actor{Balance: abi.NewTokenAmount(0)}
-	}
-
-	// check that message nonce is not too high
-	if msg.CallSeqNum > fromActor.CallSeqNum && msg.CallSeqNum-fromActor.CallSeqNum > v.cfg.MaxNonceGap {
-		return fmt.Errorf("message nonce (%d) is too much greater than actor nonce (%d)", msg.CallSeqNum, fromActor.CallSeqNum)
-	}
-
-	return v.validator.Validate(ctx, &msg, fromActor)
+	return nil
 }

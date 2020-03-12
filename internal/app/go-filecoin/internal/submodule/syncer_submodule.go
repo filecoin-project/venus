@@ -52,7 +52,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 	// TODO when #2961 is resolved do the needful here.
 	blkValid := consensus.NewDefaultBlockValidator(config.ChainClock())
 
-	// register block validation on floodsub
+	// register block validation on pubsub
 	btv := net.NewBlockTopicValidator(blkValid)
 	if err := network.pubsub.RegisterTopicValidator(btv.Topic(network.NetworkName), btv.Validator(), btv.Opts()...); err != nil {
 		return SyncerSubmodule{}, errors.Wrap(err, "failed to register block validator")

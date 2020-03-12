@@ -6,8 +6,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 // BlockValidator defines an interface used to validate a blocks syntax and
@@ -21,7 +19,6 @@ type BlockValidator interface {
 // syntax of constituent messages
 type SyntaxValidator interface {
 	BlockSyntaxValidator
-	MessageSyntaxValidator
 }
 
 // BlockSemanticValidator defines an interface used to validate a blocks
@@ -34,15 +31,6 @@ type BlockSemanticValidator interface {
 // syntax.
 type BlockSyntaxValidator interface {
 	ValidateSyntax(ctx context.Context, blk *block.Block) error
-}
-
-// MessageSyntaxValidator defines an interface used to validate collections
-// of messages and receipts syntax
-type MessageSyntaxValidator interface {
-	ValidateMessagesSyntax(ctx context.Context, messages []*types.SignedMessage) error
-	ValidateUnsignedMessagesSyntax(ctx context.Context, messages []*types.UnsignedMessage) error
-	// TODO: Remove receipt validation when they're no longer fetched, #3489
-	ValidateReceiptsSyntax(ctx context.Context, receipts []vm.MessageReceipt) error
 }
 
 // DefaultBlockValidator implements the BlockValidator interface.
@@ -126,26 +114,5 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 		return fmt.Errorf("block %s has nil ticket", blk.Cid().String())
 	}
 
-	return nil
-}
-
-// ValidateMessagesSyntax validates a set of messages are correctly formed.
-// TODO: Create a real implementation
-// See: https://github.com/filecoin-project/go-filecoin/issues/3312
-func (dv *DefaultBlockValidator) ValidateMessagesSyntax(ctx context.Context, messages []*types.SignedMessage) error {
-	return nil
-}
-
-// ValidateUnsignedMessagesSyntax validates a set of messages are correctly formed.
-// TODO: Create a real implementation
-// See: https://github.com/filecoin-project/go-filecoin/issues/3312
-func (dv *DefaultBlockValidator) ValidateUnsignedMessagesSyntax(ctx context.Context, messages []*types.UnsignedMessage) error {
-	return nil
-}
-
-// ValidateReceiptsSyntax validates a set of receipts are correctly formed.
-// TODO: Create a real implementation
-// See: https://github.com/filecoin-project/go-filecoin/issues/3312
-func (dv *DefaultBlockValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []vm.MessageReceipt) error {
 	return nil
 }

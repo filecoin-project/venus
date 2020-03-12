@@ -72,7 +72,7 @@ type MessageTopicValidator struct {
 
 // NewMessageTopicValidator returns a MessageTopicValidator using `mv` for
 // message validation
-func NewMessageTopicValidator(mv *consensus.IngestionValidator, opts ...pubsub.ValidatorOpt) *MessageTopicValidator {
+func NewMessageTopicValidator(syntaxVal *consensus.MessageSyntaxValidator, sigVal *consensus.MessageSignatureValidator, opts ...pubsub.ValidatorOpt) *MessageTopicValidator {
 	return &MessageTopicValidator{
 		opts: opts,
 		validator: func(ctx context.Context, p peer.ID, msg *pubsub.Message) bool {
@@ -82,9 +82,15 @@ func NewMessageTopicValidator(mv *consensus.IngestionValidator, opts ...pubsub.V
 				mDecodeMsgFail.Inc(ctx, 1)
 				return false
 			}
-			if err := mv.Validate(ctx, unmarshaled); err != nil {
+			if err := syntaxVal.Validate(ctx, unmarshaled); err != nil {
 				mCid, _ := unmarshaled.Cid()
-				messageTopicLogger.Debugf("message %s from peer: %s failed to validate: %s", mCid.String(), p.String(), err.Error())
+				messageTopicLogger.Debugf("message %s from peer: %s failed to syntax validate: %s", mCid.String(), p.String(), err.Error())
+				mInvalidMsg.Inc(ctx, 1)
+				return false
+			}
+			if err := sigVal.Validate(ctx, unmarshaled); err != nil {
+				mCid, _ := unmarshaled.Cid()
+				messageTopicLogger.Debugf("message %s from peer: %s failed to signature validate: %s", mCid.String(), p.String(), err.Error())
 				mInvalidMsg.Inc(ctx, 1)
 				return false
 			}
