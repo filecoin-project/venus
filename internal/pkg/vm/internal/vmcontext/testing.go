@@ -6,6 +6,7 @@ import (
 	"math/rand"
 
 	vtypes "github.com/filecoin-project/chain-validation/chain/types"
+	vdriver "github.com/filecoin-project/chain-validation/drivers"
 	vstate "github.com/filecoin-project/chain-validation/state"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-crypto"
@@ -60,7 +61,7 @@ type fakeRandSrc struct {
 }
 
 func (r fakeRandSrc) Randomness(_ context.Context, _ acrypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) (abi.Randomness, error) {
-	panic("implement me")
+	return abi.Randomness("sausages"), nil
 }
 
 func (f *Factories) NewRandomnessSource() vstate.RandomnessSource {
@@ -72,7 +73,7 @@ func (f *Factories) NewValidationConfig() vstate.ValidationConfig {
 		// TODO enable this when ready https://github.com/filecoin-project/go-filecoin/issues/3801
 		trackGas:         false,
 		checkExitCode:    true,
-		checkReturnValue: true,
+		checkReturnValue: false,
 	}
 }
 
@@ -102,11 +103,39 @@ func (v ValidationConfig) ValidateReturnValue() bool {
 // VMWrapper
 //
 
+type specialSyscallWrapper struct {
+	internal *vdriver.ChainValidationSyscalls
+}
+
+func (s specialSyscallWrapper) VerifySignature(ctx context.Context, view SyscallsStateView, signature gfcrypto.Signature, signer address.Address, plaintext []byte) error {
+	return s.internal.VerifySignature(signature, signer, plaintext)
+}
+
+func (s specialSyscallWrapper) HashBlake2b(data []byte) [32]byte {
+	return s.internal.HashBlake2b(data)
+}
+
+func (s specialSyscallWrapper) ComputeUnsealedSectorCID(ctx context.Context, proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+	return s.internal.ComputeUnsealedSectorCID(proof, pieces)
+}
+
+func (s specialSyscallWrapper) VerifySeal(ctx context.Context, info abi.SealVerifyInfo) error {
+	return s.internal.VerifySeal(info)
+}
+
+func (s specialSyscallWrapper) VerifyPoSt(ctx context.Context, info abi.PoStVerifyInfo) error {
+	return s.internal.VerifyPoSt(info)
+}
+
+func (s specialSyscallWrapper) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view SyscallsStateView, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error) {
+	return s.internal.VerifyConsensusFault(h1, h2, extra, earliest)
+}
+
 func NewState() *ValidationVMWrapper {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	cst := cborutil.NewIpldStore(bs)
 	vmstrg := storage.NewStorage(bs)
-	vm := NewVM(gfbuiltin.DefaultActors, &vmstrg, state.NewState(cst), &FakeSyscalls{})
+	vm := NewVM(gfbuiltin.DefaultActors, &vmstrg, state.NewState(cst), specialSyscallWrapper{vdriver.NewChainValidationSyscalls()})
 	return &ValidationVMWrapper{
 		vm: &vm,
 	}
