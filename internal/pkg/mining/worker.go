@@ -252,7 +252,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	var candidates []abi.PoStCandidate
 	select {
 	case <-ctx.Done():
-		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base, "nullBlocks", nullBlkCount)
+		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base.Key(), "nullBlocks", nullBlkCount)
 	case err := <-errCh:
 		log.Warnf("Worker.Mine failed to get ssi: %s", err)
 		outCh <- Output{Err: err}

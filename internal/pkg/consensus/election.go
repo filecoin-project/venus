@@ -96,6 +96,7 @@ func (em ElectionMachine) CandidateWins(challengeTicket []byte, sectorNum, fault
 // VerifyPoSt verifies a PoSt proof.
 func (em ElectionMachine) VerifyPoSt(ctx context.Context, ep EPoStVerifier, allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, proofs []block.EPoStProof, candidates []block.EPoStCandidate, mIDAddr address.Address) (bool, error) {
 	// filter down sector infos to only those referenced by candidates
+	// TODO: pass an actual faults count to this challenge count. https://github.com/filecoin-project/go-filecoin/issues/3875
 	challengeCount := sector.ElectionPostChallengeCount(uint64(len(allSectorInfos)), 0)
 	minerID, err := address.IDFromAddress(mIDAddr)
 	if err != nil {

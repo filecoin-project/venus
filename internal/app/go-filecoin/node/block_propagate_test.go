@@ -9,7 +9,6 @@ import (
 	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -26,18 +25,6 @@ import (
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
-func connect(t *testing.T, nd1, nd2 *Node) {
-	t.Helper()
-	pinfo := peer.AddrInfo{
-		ID:    nd2.Host().ID(),
-		Addrs: nd2.Host().Addrs(),
-	}
-
-	if err := nd1.Host().Connect(context.Background(), pinfo); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestBlockPropsManyNodes(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -52,9 +39,9 @@ func TestBlockPropsManyNodes(t *testing.T) {
 
 	minerNode := nodes[0]
 
-	connect(t, minerNode, nodes[1])
-	connect(t, nodes[1], nodes[2])
-	connect(t, nodes[2], nodes[3])
+	ConnectNodes(t, minerNode, nodes[1])
+	ConnectNodes(t, nodes[1], nodes[2])
+	ConnectNodes(t, nodes[2], nodes[3])
 
 	// Advance node's time so that it is epoch 1
 	fakeClock.Advance(blockTime)
@@ -88,7 +75,7 @@ func TestChainSync(t *testing.T) {
 	StartNodes(t, nodes)
 	defer StopNodes(nodes)
 
-	connect(t, nodes[0], nodes[1])
+	ConnectNodes(t, nodes[0], nodes[1])
 
 	// Advance node's time so that it is epoch 1
 	fakeClock.Advance(blockTime)
@@ -130,7 +117,7 @@ func TestChainSyncWithMessages(t *testing.T) {
 	cs := MakeChainSeed(t, genCfg)
 	fakeClock := th.NewFakeClock(time.Unix(1234567890, 0))
 	blockTime := 30 * time.Second
-	c := clock.NewChainClockFromClock(1234567890, 100*time.Millisecond, fakeClock)
+	c := clock.NewChainClockFromClock(1234567890, blockTime, fakeClock)
 
 	// first node is the message sender.
 	builder1 := test.NewNodeBuilder(t).

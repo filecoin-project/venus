@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
@@ -46,13 +45,6 @@ type FakeMessageValidator struct{}
 // Validate always returns nil
 func (tsmv *FakeMessageValidator) Validate(ctx context.Context, msg *types.UnsignedMessage, fromActor *actor.Actor) error {
 	return nil
-}
-
-// NewFakeProcessor creates a processor with a test validator and test rewarder
-func NewFakeProcessor(actors vm.ActorCodeLoader) *DefaultProcessor {
-	return &DefaultProcessor{
-		actors: actors,
-	}
 }
 
 // FakeElectionMachine generates fake election proofs and verifies all proofs

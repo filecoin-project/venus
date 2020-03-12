@@ -13,11 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 )
 
-var (
-	// ErrUnknownAddress is returned when the given address is not stored in this wallet.
-	ErrUnknownAddress = errors.New("unknown address")
-)
-
 // Wallet manages the locally stored addresses.
 type Wallet struct {
 	lk sync.Mutex
@@ -62,7 +57,7 @@ func (w *Wallet) Find(addr address.Address) (Backend, error) {
 		}
 	}
 
-	return nil, ErrUnknownAddress
+	return nil, fmt.Errorf("wallet has no address %s", addr)
 }
 
 // Addresses retrieves all stored addresses.
