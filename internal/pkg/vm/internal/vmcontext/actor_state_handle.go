@@ -14,10 +14,8 @@ type actorStateHandle struct {
 	//
 	// Any validation failure will result in the execution getting aborted.
 	validations []validateFn
-	// used_obj holds the pointer to the obj that has been used with this handle.
-	//
-	// any subsequent calls needs to be using the same variable.
-	usedObj interface{}
+	// used_objs holds the pointers to objs that have been used with this handle and their expected state cid.
+	usedObjs map[interface{}]cid.Cid
 }
 
 // validateFn returns True if it's valid.
@@ -57,6 +55,7 @@ func newActorStateHandle(ctx actorStateHandleContext, head cid.Cid) actorStateHa
 		ctx:         ctx,
 		head:        head,
 		validations: []validateFn{},
+		usedObjs:    map[interface{}]cid.Cid{},
 	}
 }
 
@@ -71,18 +70,11 @@ func (h *actorStateHandle) Create(obj specsruntime.CBORMarshaler) {
 	h.head = h.ctx.Store().Put(obj)
 
 	// update internal ref to state
-	h.usedObj = obj
+	h.usedObjs[obj] = h.head
 }
 
 // Readonly is the implementation of the ActorStateHandle interface.
 func (h *actorStateHandle) Readonly(obj specsruntime.CBORUnmarshaler) {
-	// track the variable used by the caller
-	if h.usedObj == nil {
-		h.usedObj = obj
-	} else if h.usedObj != obj {
-		runtime.Abortf(exitcode.SysErrorIllegalActor, "Must use the same state variable on repeated calls")
-	}
-
 	// load state from storage
 	// Note: we copy the head over to `readonlyHead` in case it gets modified afterwards via `Transaction()`.
 	readonlyHead := h.head
@@ -90,6 +82,9 @@ func (h *actorStateHandle) Readonly(obj specsruntime.CBORUnmarshaler) {
 	if readonlyHead == cid.Undef {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Nil state can not be accessed via Readonly(), use Transaction() instead")
 	}
+
+	// track the variable used by the caller
+	h.usedObjs[obj] = h.head
 
 	// load it to obj
 	h.ctx.Store().Get(readonlyHead, obj)
@@ -99,13 +94,6 @@ func (h *actorStateHandle) Readonly(obj specsruntime.CBORUnmarshaler) {
 func (h *actorStateHandle) Transaction(obj specsruntime.CBORer, f func() interface{}) interface{} {
 	if obj == nil {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil to Transaction()")
-	}
-
-	// track the variable used by the caller
-	if h.usedObj == nil {
-		h.usedObj = obj
-	} else if h.usedObj != obj {
-		runtime.Abortf(exitcode.SysErrorIllegalActor, "Must use the same state variable on repeated calls")
 	}
 
 	oldcid := h.head
@@ -126,6 +114,9 @@ func (h *actorStateHandle) Transaction(obj specsruntime.CBORer, f func() interfa
 	// update head
 	h.head = newcid
 
+	// track the variable used by the caller
+	h.usedObjs[obj] = h.head
+
 	return out
 }
 
@@ -134,10 +125,10 @@ func (h *actorStateHandle) Transaction(obj specsruntime.CBORer, f func() interfa
 // This method is not part of the public API,
 // it is expected to be called by the runtime after each actor method.
 func (h *actorStateHandle) Validate(cidFn func(interface{}) cid.Cid) {
-	if h.usedObj != nil {
+	for obj, head := range h.usedObjs {
 		// verify the obj has not changed
-		usedCid := cidFn(h.usedObj)
-		if usedCid != h.head {
+		usedCid := cidFn(obj)
+		if usedCid != head {
 			runtime.Abortf(exitcode.SysErrorIllegalActor, "State mutated outside of Transaction() scope")
 		}
 	}
