@@ -82,11 +82,11 @@ func TestLookbackElection(t *testing.T) {
 			Election:       consensus.NewElectionMachine(rnd),
 			TicketGen:      consensus.NewTicketMachine(rnd),
 
-			MessageSource:  pool,
-			PenaltyChecker: &mining.NoPenaltyChecker{},
-			Blockstore:     bs,
-			MessageStore:   messages,
-			Clock:          clock.NewSystemClock(),
+			MessageSource:    pool,
+			MessageQualifier: &mining.NoMessageQualifier{},
+			Blockstore:       bs,
+			MessageStore:     messages,
+			Clock:            clock.NewSystemClock(),
 		})
 
 		go worker.Mine(ctx, head, 0, outCh)
@@ -141,11 +141,11 @@ func Test_Mine(t *testing.T) {
 			Election:       consensus.NewElectionMachine(rnd),
 			TicketGen:      consensus.NewTicketMachine(rnd),
 
-			MessageSource:  pool,
-			PenaltyChecker: &mining.NoPenaltyChecker{},
-			Blockstore:     bs,
-			MessageStore:   messages,
-			Clock:          clock.NewSystemClock(),
+			MessageSource:    pool,
+			MessageQualifier: &mining.NoMessageQualifier{},
+			Blockstore:       bs,
+			MessageStore:     messages,
+			Clock:            clock.NewSystemClock(),
 		})
 
 		go worker.Mine(ctx, tipSet, 0, outCh)
@@ -175,11 +175,11 @@ func Test_Mine(t *testing.T) {
 			Election:       consensus.NewElectionMachine(rnd),
 			TicketGen:      consensus.NewTicketMachine(rnd),
 
-			MessageSource:  pool,
-			PenaltyChecker: &mining.NoPenaltyChecker{},
-			Blockstore:     bs,
-			MessageStore:   messages,
-			Clock:          clock.NewSystemClock(),
+			MessageSource:    pool,
+			MessageQualifier: &mining.NoMessageQualifier{},
+			Blockstore:       bs,
+			MessageStore:     messages,
+			Clock:            clock.NewSystemClock(),
 		})
 		outCh := make(chan mining.Output)
 
@@ -205,11 +205,11 @@ func Test_Mine(t *testing.T) {
 			Election:       consensus.NewElectionMachine(rnd),
 			TicketGen:      consensus.NewTicketMachine(rnd),
 
-			MessageSource:  pool,
-			PenaltyChecker: &mining.NoPenaltyChecker{},
-			Blockstore:     bs,
-			MessageStore:   messages,
-			Clock:          clock.NewSystemClock(),
+			MessageSource:    pool,
+			MessageQualifier: &mining.NoMessageQualifier{},
+			Blockstore:       bs,
+			MessageStore:     messages,
+			Clock:            clock.NewSystemClock(),
 		})
 		input := block.TipSet{}
 		outCh := make(chan mining.Output)
@@ -380,11 +380,11 @@ func TestApplyBLSMessages(t *testing.T) {
 		Election:       &consensus.FakeElectionMachine{},
 		TicketGen:      &consensus.FakeTicketMachine{},
 
-		MessageSource:  pool,
-		PenaltyChecker: &mining.NoPenaltyChecker{},
-		Blockstore:     bs,
-		MessageStore:   msgStore,
-		Clock:          clock.NewSystemClock(),
+		MessageSource:    pool,
+		MessageQualifier: &mining.NoMessageQualifier{},
+		Blockstore:       bs,
+		MessageStore:     msgStore,
+		Clock:            clock.NewSystemClock(),
 	})
 
 	outCh := make(chan mining.Output)
@@ -478,11 +478,11 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		Election:       &consensus.FakeElectionMachine{},
 		TicketGen:      &consensus.FakeTicketMachine{},
 
-		MessageSource:  pool,
-		PenaltyChecker: &mining.NoPenaltyChecker{},
-		Blockstore:     bs,
-		MessageStore:   messages,
-		Clock:          th.NewFakeClock(time.Unix(1234567890, 0)),
+		MessageSource:    pool,
+		MessageQualifier: &mining.NoMessageQualifier{},
+		Blockstore:       bs,
+		MessageStore:     messages,
+		Clock:            th.NewFakeClock(time.Unix(1234567890, 0)),
 	})
 
 	builder := chain.NewBuilder(t, address.Undef)
@@ -543,11 +543,11 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		Election:       &consensus.FakeElectionMachine{},
 		TicketGen:      &consensus.FakeTicketMachine{},
 
-		MessageSource:  pool,
-		PenaltyChecker: &mining.NoPenaltyChecker{},
-		Blockstore:     bs,
-		MessageStore:   messages,
-		Clock:          th.NewFakeClock(time.Unix(1234567890, 0)),
+		MessageSource:    pool,
+		MessageQualifier: &mining.NoMessageQualifier{},
+		Blockstore:       bs,
+		MessageStore:     messages,
+		Clock:            th.NewFakeClock(time.Unix(1234567890, 0)),
 	})
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
@@ -648,11 +648,11 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		Election:       &consensus.FakeElectionMachine{},
 		TicketGen:      &consensus.FakeTicketMachine{},
 
-		MessageSource:  pool,
-		PenaltyChecker: &mining.NoPenaltyChecker{},
-		Blockstore:     bs,
-		MessageStore:   messages,
-		Clock:          th.NewFakeClock(time.Unix(1234567890, 0)),
+		MessageSource:    pool,
+		MessageQualifier: &mining.NoMessageQualifier{},
+		Blockstore:       bs,
+		MessageStore:     messages,
+		Clock:            th.NewFakeClock(time.Unix(1234567890, 0)),
 	})
 
 	h := abi.ChainEpoch(100)
@@ -708,11 +708,11 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		Election:       &consensus.FakeElectionMachine{},
 		TicketGen:      &consensus.FakeTicketMachine{},
 
-		MessageSource:  pool,
-		PenaltyChecker: &mining.NoPenaltyChecker{},
-		Blockstore:     bs,
-		MessageStore:   messages,
-		Clock:          th.NewFakeClock(time.Unix(1234567890, 0)),
+		MessageSource:    pool,
+		MessageQualifier: &mining.NoMessageQualifier{},
+		Blockstore:       bs,
+		MessageStore:     messages,
+		Clock:            th.NewFakeClock(time.Unix(1234567890, 0)),
 	})
 
 	assert.Len(t, pool.Pending(), 0)
@@ -762,11 +762,11 @@ func TestGenerateError(t *testing.T) {
 		Election:       &consensus.FakeElectionMachine{},
 		TicketGen:      &consensus.FakeTicketMachine{},
 
-		MessageSource:  pool,
-		PenaltyChecker: &mining.NoPenaltyChecker{},
-		Blockstore:     bs,
-		MessageStore:   messages,
-		Clock:          th.NewFakeClock(time.Unix(1234567890, 0)),
+		MessageSource:    pool,
+		MessageQualifier: &mining.NoMessageQualifier{},
+		Blockstore:       bs,
+		MessageStore:     messages,
+		Clock:            th.NewFakeClock(time.Unix(1234567890, 0)),
 	})
 
 	// This is actually okay and should result in a receipt

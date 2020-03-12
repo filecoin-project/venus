@@ -93,7 +93,7 @@ type tipSetMetadata interface {
 	GetTipSetReceiptsRoot(key block.TipSetKey) (cid.Cid, error)
 }
 
-type messagePenaltyChecker interface {
+type messageMessageQualifier interface {
 	PenaltyCheck(ctx context.Context, msg *types.UnsignedMessage) error
 }
 
@@ -111,7 +111,7 @@ type DefaultWorker struct {
 	election       electionUtil
 	ticketGen      ticketGenerator
 	messageSource  MessageSource
-	penaltyChecker messagePenaltyChecker
+	penaltyChecker messageMessageQualifier
 	messageStore   chain.MessageWriter // nolint: structcheck
 	blockstore     blockstore.Blockstore
 	clock          clock.Clock
@@ -127,12 +127,12 @@ type WorkerParameters struct {
 	WorkerSigner   types.Signer
 
 	// consensus things
-	TipSetMetadata tipSetMetadata
-	GetStateTree   GetStateTree
-	PenaltyChecker messagePenaltyChecker
-	GetWeight      GetWeight
-	Election       electionUtil
-	TicketGen      ticketGenerator
+	TipSetMetadata   tipSetMetadata
+	GetStateTree     GetStateTree
+	MessageQualifier messageMessageQualifier
+	GetWeight        GetWeight
+	Election         electionUtil
+	TicketGen        ticketGenerator
 
 	// core filecoin things
 	MessageSource MessageSource
@@ -150,7 +150,7 @@ func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
 		getWeight:      parameters.GetWeight,
 		messageSource:  parameters.MessageSource,
 		messageStore:   parameters.MessageStore,
-		penaltyChecker: parameters.PenaltyChecker,
+		penaltyChecker: parameters.MessageQualifier,
 		blockstore:     parameters.Blockstore,
 		minerAddr:      parameters.MinerAddr,
 		minerOwnerAddr: parameters.MinerOwnerAddr,

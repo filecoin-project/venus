@@ -685,12 +685,12 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 		TicketGen:      consensus.NewTicketMachine(node.PorcelainAPI),
 		TipSetMetadata: node.chain.ChainReader,
 
-		MessageSource:  node.Messaging.Inbox.Pool(),
-		MessageStore:   node.chain.MessageStore,
-		PenaltyChecker: consensus.NewMessagePenaltyChecker(node.Chain().State),
-		Blockstore:     node.Blockstore.Blockstore,
-		Clock:          node.ChainClock,
-		Poster:         node.StorageMining.PoStGenerator,
+		MessageSource:    node.Messaging.Inbox.Pool(),
+		MessageStore:     node.chain.MessageStore,
+		MessageQualifier: consensus.NewMessagePenaltyChecker(node.Chain().State),
+		Blockstore:       node.Blockstore.Blockstore,
+		Clock:            node.ChainClock,
+		Poster:           node.StorageMining.PoStGenerator,
 	}), nil
 }
 

@@ -123,10 +123,10 @@ func TestMessageSyntaxValidator(t *testing.T) {
 		assert.NoError(t, validator.Validate(ctx, msg))
 	})
 
-	t.Run("self send fails", func(t *testing.T) {
+	t.Run("self send passes", func(t *testing.T) {
 		msg, err := types.NewSignedMessage(*newMessage(t, alice, alice, 100, 5, 1, 0), signer)
 		require.NoError(t, err)
-		assert.Errorf(t, validator.Validate(ctx, msg), "self")
+		assert.NoError(t, validator.Validate(ctx, msg), "self")
 	})
 
 	t.Run("negative value fails", func(t *testing.T) {

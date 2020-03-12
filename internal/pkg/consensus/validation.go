@@ -34,9 +34,7 @@ var (
 	errNegativeValue      = fmt.Errorf("negative value")
 	errInsufficientGas    = fmt.Errorf("balance insufficient to cover transfer+gas")
 	errInvalidSignature   = fmt.Errorf("invalid signature by sender over message data")
-	// TODO we'll eventually handle sending to self.
-	errSelfSend    = fmt.Errorf("cannot send to self")
-	errEmptySender = fmt.Errorf("message sends from empty actor")
+	errEmptySender        = fmt.Errorf("message sends from empty actor")
 )
 
 func init() {
@@ -76,8 +74,7 @@ func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.Uns
 		return errEmptySender
 	}
 
-	// Sender must be an account actor, or an empty actor which will be upgraded to an account actor
-	// when the message is processed.
+	// Sender must be an account actor.
 	if !(builtin.AccountActorCodeID.Equals(fromActor.Code.Cid)) {
 		return errNonAccountActor
 	}
@@ -134,10 +131,6 @@ func (v *MessageSyntaxValidator) Validate(ctx context.Context, smsg *types.Signe
 		log.Debugf("Cannot transfer negative value: %s from actor: %s", msg.Value, msg.From)
 		errNegativeValueCt.Inc(ctx, 1)
 		return errNegativeValue
-	}
-
-	if msg.From == msg.To {
-		return errSelfSend
 	}
 
 	if msg.GasPrice.LessThanEqual(types.ZeroAttoFIL) {

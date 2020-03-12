@@ -53,9 +53,9 @@ func NthTicket(i uint8) block.Ticket {
 	return block.Ticket{VRFProof: []byte{i}}
 }
 
-// NoPenaltyChecker always returns no error
-type NoPenaltyChecker struct{}
+// NoMessageQualifier always returns no error
+type NoMessageQualifier struct{}
 
-func (npc *NoPenaltyChecker) PenaltyCheck(_ context.Context, _ *types.UnsignedMessage) error {
+func (npc *NoMessageQualifier) PenaltyCheck(_ context.Context, _ *types.UnsignedMessage) error {
 	return nil
 }

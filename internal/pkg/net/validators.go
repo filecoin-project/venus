@@ -70,8 +70,8 @@ type MessageTopicValidator struct {
 	opts      []pubsub.ValidatorOpt
 }
 
-// NewMessageTopicValidator returns a MessageTopicValidator using `mv` for
-// message validation
+// NewMessageTopicValidator returns a MessageTopicValidator using the input
+// signature and syntax validators.
 func NewMessageTopicValidator(syntaxVal *consensus.MessageSyntaxValidator, sigVal *consensus.MessageSignatureValidator, opts ...pubsub.ValidatorOpt) *MessageTopicValidator {
 	return &MessageTopicValidator{
 		opts: opts,

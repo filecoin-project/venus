@@ -71,12 +71,12 @@ func TestMineOnce10Null(t *testing.T) {
 		Election:       consensus.NewElectionMachine(rnd),
 		TicketGen:      consensus.NewTicketMachine(rnd),
 
-		MessageSource:  pool,
-		PenaltyChecker: &NoPenaltyChecker{},
-		Blockstore:     bs,
-		MessageStore:   messages,
-		Clock:          chainClock,
-		Poster:         &consensus.TestElectionPoster{},
+		MessageSource:    pool,
+		MessageQualifier: &NoMessageQualifier{},
+		Blockstore:       bs,
+		MessageStore:     messages,
+		Clock:            chainClock,
+		Poster:           &consensus.TestElectionPoster{},
 	})
 
 	result, err := MineOnce(context.Background(), *worker, baseTs, chainClock)
@@ -134,12 +134,12 @@ func TestMineOneEpoch10Null(t *testing.T) {
 		Election:       consensus.NewElectionMachine(rnd),
 		TicketGen:      consensus.NewTicketMachine(rnd),
 
-		MessageSource:  pool,
-		PenaltyChecker: &NoPenaltyChecker{},
-		Blockstore:     bs,
-		MessageStore:   messages,
-		Clock:          chainClock,
-		Poster:         &consensus.TestElectionPoster{},
+		MessageSource:    pool,
+		MessageQualifier: &NoMessageQualifier{},
+		Blockstore:       bs,
+		MessageStore:     messages,
+		Clock:            chainClock,
+		Poster:           &consensus.TestElectionPoster{},
 	})
 
 	for i := 0; i < 10; i++ {
