@@ -70,6 +70,7 @@ func TestImportPresealedSectors(t *testing.T) {
 	td := th.NewDaemon(t, th.InitArgs(
 		"--presealed-sectordir",
 		project.Root("fixtures/genesis-sectors"),
+		"--presealed-sector-size", "2048",
 		"--symlink-imported-sectors",
 	)).Start()
 

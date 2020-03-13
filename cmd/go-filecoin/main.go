@@ -34,6 +34,9 @@ const (
 	// OptionPresealedSectorDir is the name of the option for specifying the directory from which presealed sectors should be pulled when initializing.
 	OptionPresealedSectorDir = "presealed-sectordir"
 
+	// OptionPresealedSectorSize is the name of the option for specifying the size of presealed sectors
+	OptionPresealedSectorSize = "presealed-sector-size"
+
 	// OptionSymlinkImportedSectors is the name of the option for specifying whether imported sectors should be copied or symlinked.
 	OptionSymlinkImportedSectors = "symlink-imported-sectors"
 

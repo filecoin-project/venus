@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-car"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -49,6 +51,7 @@ var initCmd = &cmds.Command{
 		cmdkit.BoolOption(DevnetNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters"),
 		cmdkit.BoolOption(DevnetUser, "when set, populates config bootstrap addrs with the dns multiaddrs of the user devnet and other user devnet specific bootstrap parameters"),
 		cmdkit.StringOption(OptionPresealedSectorDir, "when set to the path of a directory, imports pre-sealed sector data from that directory"),
+		cmdkit.Uint64Option(OptionPresealedSectorSize, "the sector size in bytes of sectors to be presealed (default 2kb)."),
 		cmdkit.BoolOption(OptionSymlinkImportedSectors, "when set, create symlinks to imported presealed sectors rather than copying them into the repo"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -101,7 +104,16 @@ var initCmd = &cmds.Command{
 		presealedSectorDir, shouldImport := req.Options[OptionPresealedSectorDir].(string)
 		if shouldImport && presealedSectorDir != "" {
 			symlink, _ := req.Options[OptionSymlinkImportedSectors].(bool)
-			if err := node.ImportPresealedSectors(rep, presealedSectorDir, symlink); err != nil {
+
+			var sectorSize abi.SectorSize
+			sectorSizeOption, _ := req.Options[OptionPresealedSectorSize]
+			if sectorSizeOption != nil {
+				sectorSize = abi.SectorSize(sectorSizeOption.(uint64))
+			} else {
+				sectorSize = abi.SectorSize(2048)
+			}
+
+			if err := node.ImportPresealedSectors(rep, presealedSectorDir, sectorSize, symlink); err != nil {
 				return err
 			}
 		}

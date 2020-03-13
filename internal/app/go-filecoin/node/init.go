@@ -4,6 +4,8 @@ import (
 	"context"
 	"path/filepath"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -18,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
@@ -145,7 +146,7 @@ func importInitKeys(w *wallet.Wallet, importKeys []*crypto.KeyInfo) error {
 	return nil
 }
 
-func ImportPresealedSectors(rep repo.Repo, srcPath string, symlink bool) error {
+func ImportPresealedSectors(rep repo.Repo, srcPath string, sectorSize abi.SectorSize, symlink bool) error {
 	badgerOptions := badger.Options{
 		GcDiscardRatio: badger.DefaultOptions.GcDiscardRatio,
 		GcInterval:     badger.DefaultOptions.GcInterval,
@@ -158,11 +159,10 @@ func ImportPresealedSectors(rep repo.Repo, srcPath string, symlink bool) error {
 		return err
 	}
 
-	// TODO: The caller needs to provide a value which tells this code
-	// which RegisteredProof was used to seal the sectors being
-	// imported.
-	registeredSealProof := constants.DevRegisteredSealProof
-	registeredPoStProof := constants.DevRegisteredSealProof
+	registeredSealProof, registeredPoStProof, err := registeredProofsFromSectorSize(sectorSize)
+	if err != nil {
+		return err
+	}
 
 	oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
 		SealProofType: registeredSealProof,
