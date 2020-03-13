@@ -41,7 +41,7 @@ func TestSingleMiner(t *testing.T) {
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
 
 	nd := makeNode(ctx, t, seed, chainClock)
-	minerAddr, _, err := initNodeGenesisMiner(t, nd, seed, genCfg.Miners[0].Owner, presealPath)
+	minerAddr, _, err := initNodeGenesisMiner(t, nd, seed, genCfg.Miners[0].Owner, presealPath, genCfg.Miners[0].SectorSize)
 	require.NoError(t, err)
 
 	err = nd.Start(ctx)
@@ -97,7 +97,7 @@ func TestSyncFromSingleMiner(t *testing.T) {
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
 
 	ndMiner := makeNode(ctx, t, seed, chainClock)
-	_, _, err := initNodeGenesisMiner(t, ndMiner, seed, genCfg.Miners[0].Owner, presealPath)
+	_, _, err := initNodeGenesisMiner(t, ndMiner, seed, genCfg.Miners[0].Owner, presealPath, genCfg.Miners[0].SectorSize)
 	require.NoError(t, err)
 
 	ndValidator := makeNode(ctx, t, seed, chainClock)
@@ -152,11 +152,11 @@ func makeNode(ctx context.Context, t *testing.T, seed *node.ChainSeed, chainCloc
 		Build(ctx)
 }
 
-func initNodeGenesisMiner(t *testing.T, nd *node.Node, seed *node.ChainSeed, minerIdx int, presealPath string) (address.Address, address.Address, error) {
+func initNodeGenesisMiner(t *testing.T, nd *node.Node, seed *node.ChainSeed, minerIdx int, presealPath string, sectorSize abi.SectorSize) (address.Address, address.Address, error) {
 	seed.GiveKey(t, nd, minerIdx)
 	miner, owner := seed.GiveMiner(t, nd, 0)
 
-	err := node.ImportPresealedSectors(nd.Repo, presealPath, true)
+	err := node.ImportPresealedSectors(nd.Repo, presealPath, sectorSize, true)
 	require.NoError(t, err)
 	return miner, owner, err
 }
