@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
@@ -173,11 +174,19 @@ func ImportPresealedSectors(rep repo.Repo, srcPath string, symlink bool) error {
 		return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
 	}
 
+	repoPath, err := rep.Path()
+	if err != nil {
+		return errors.Wrapf(err, "sector import destination repo")
+	}
+	dstPath, err := paths.GetSectorPath(rep.Config().SectorBase.RootDir, repoPath)
+	if err != nil {
+		return errors.Wrapf(err, "sector import sector path")
+	}
 	newsb, err := sectorbuilder.New(&sectorbuilder.Config{
 		SealProofType: registeredSealProof,
 		PoStProofType: registeredPoStProof,
 		WorkerThreads: 1,
-		Paths:         sectorbuilder.SimplePath(rep.Config().SectorBase.RootDir),
+		Paths:         sectorbuilder.SimplePath(dstPath),
 	}, namespace.Wrap(rep.Datastore(), datastore.NewKey("/sectorbuilder")))
 	if err != nil {
 		return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
