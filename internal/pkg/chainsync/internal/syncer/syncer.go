@@ -500,9 +500,6 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 	}
 
 	syncer.reporter.UpdateStatus(status.SyncFetchComplete(true))
-	if err != nil {
-		return err
-	}
 
 	parent, grandParent, err := syncer.ancestorsFromStore(tipsets[0])
 	if err != nil {

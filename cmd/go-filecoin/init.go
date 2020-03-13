@@ -9,23 +9,16 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-car"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	badger "github.com/ipfs/go-ds-badger2"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/crypto"
-	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
@@ -35,7 +28,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
-	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 var logInit = logging.Logger("commands/init")
@@ -108,57 +100,8 @@ var initCmd = &cmds.Command{
 
 		presealedSectorDir, shouldImport := req.Options[OptionPresealedSectorDir].(string)
 		if shouldImport && presealedSectorDir != "" {
-			badgerOptions := badger.Options{
-				GcDiscardRatio: badger.DefaultOptions.GcDiscardRatio,
-				GcInterval:     badger.DefaultOptions.GcInterval,
-				GcSleep:        badger.DefaultOptions.GcSleep,
-				Options:        badger.DefaultOptions.Options,
-			}
-			badgerOptions.ReadOnly = true
-			oldMetaDs, err := badger.NewDatastore(filepath.Join(presealedSectorDir, "badger"), &badgerOptions)
-			if err != nil {
-				return err
-			}
-
-			// TODO: The caller needs to provide a value which tells this code
-			// which RegisteredProof was used to seal the sectors being
-			// imported.
-			registeredSealProof := constants.DevRegisteredSealProof
-			registeredPoStProof := constants.DevRegisteredSealProof
-
-			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
-				SealProofType: registeredSealProof,
-				PoStProofType: registeredPoStProof,
-				WorkerThreads: 1,
-				Paths:         sectorbuilder.SimplePath(presealedSectorDir),
-			}, namespace.Wrap(oldMetaDs, datastore.NewKey("/sectorbuilder")))
-			if err != nil {
-				return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
-			}
-
-			repoPath, err := rep.Path()
-			if err != nil {
-				return xerrors.Errorf("could not get repo path, %w", err)
-			}
-
-			sectorDirOverride, _ := req.Options[OptionSectorDir].(string)
-			path, err := paths.GetSectorPath(sectorDirOverride, repoPath)
-			if err != nil {
-				return xerrors.Errorf("failed to find filecoin path: %w", err)
-			}
-
-			newsb, err := sectorbuilder.New(&sectorbuilder.Config{
-				SealProofType: registeredSealProof,
-				PoStProofType: registeredPoStProof,
-				WorkerThreads: 1,
-				Paths:         sectorbuilder.SimplePath(path),
-			}, namespace.Wrap(rep.Datastore(), datastore.NewKey("/sectorbuilder")))
-			if err != nil {
-				return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
-			}
-
 			symlink, _ := req.Options[OptionSymlinkImportedSectors].(bool)
-			if err := newsb.ImportFrom(oldsb, symlink); err != nil {
+			if err := node.ImportPresealedSectors(rep, presealedSectorDir, symlink); err != nil {
 				return err
 			}
 		}

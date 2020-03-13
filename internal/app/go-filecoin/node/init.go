@@ -2,15 +2,22 @@ package node
 
 import (
 	"context"
+	"path/filepath"
 
+	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
+	badger "github.com/ipfs/go-ds-badger2"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	keystore "github.com/ipfs/go-ipfs-keystore"
 	acrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
@@ -133,6 +140,51 @@ func importInitKeys(w *wallet.Wallet, importKeys []*crypto.KeyInfo) error {
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func ImportPresealedSectors(rep repo.Repo, srcPath string, symlink bool) error {
+	badgerOptions := badger.Options{
+		GcDiscardRatio: badger.DefaultOptions.GcDiscardRatio,
+		GcInterval:     badger.DefaultOptions.GcInterval,
+		GcSleep:        badger.DefaultOptions.GcSleep,
+		Options:        badger.DefaultOptions.Options,
+	}
+	badgerOptions.ReadOnly = true
+	oldMetaDs, err := badger.NewDatastore(filepath.Join(srcPath, "badger"), &badgerOptions)
+	if err != nil {
+		return err
+	}
+
+	// TODO: The caller needs to provide a value which tells this code
+	// which RegisteredProof was used to seal the sectors being
+	// imported.
+	registeredSealProof := constants.DevRegisteredSealProof
+	registeredPoStProof := constants.DevRegisteredSealProof
+
+	oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
+		SealProofType: registeredSealProof,
+		PoStProofType: registeredPoStProof,
+		WorkerThreads: 1,
+		Paths:         sectorbuilder.SimplePath(srcPath),
+	}, namespace.Wrap(oldMetaDs, datastore.NewKey("/sectorbuilder")))
+	if err != nil {
+		return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
+	}
+
+	newsb, err := sectorbuilder.New(&sectorbuilder.Config{
+		SealProofType: registeredSealProof,
+		PoStProofType: registeredPoStProof,
+		WorkerThreads: 1,
+		Paths:         sectorbuilder.SimplePath(rep.Config().SectorBase.RootDir),
+	}, namespace.Wrap(rep.Datastore(), datastore.NewKey("/sectorbuilder")))
+	if err != nil {
+		return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
+	}
+
+	if err := newsb.ImportFrom(oldsb, symlink); err != nil {
+		return err
 	}
 	return nil
 }

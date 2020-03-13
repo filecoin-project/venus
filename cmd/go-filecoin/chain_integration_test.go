@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -28,7 +27,6 @@ func TestChainHead(t *testing.T) {
 	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
-	node.FixtureChainSeed(t)
 	jsonResult := cmdClient.RunSuccess(ctx, "chain", "head", "--enc", "json").ReadStdoutTrimNewlines()
 	var cidsFromJSON []cid.Cid
 	err := json.Unmarshal([]byte(jsonResult), &cidsFromJSON)

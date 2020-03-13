@@ -193,7 +193,6 @@ func TestSignErrorCases(t *testing.T) {
 	t.Log("find backend fails for unknown address")
 	_, err = w1.Find(addr2)
 	assert.Error(t, err)
-	assert.Contains(t, wallet.ErrUnknownAddress.Error(), err.Error())
 
 	// data to sign
 	dataA := []byte("Set tab width to '1' and make everyone happy")
