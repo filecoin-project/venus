@@ -39,6 +39,7 @@ jobs:
             echo 'export GO111MODULE=on' >> $BASH_ENV
             echo 'export FIL_PROOFS_PARAMETER_CACHE="${HOME}/filecoin-proof-parameters/"' >> $BASH_ENV
             echo 'export FILECOIN_USE_PRECOMPILED_RUST_PROOFS=yes' >> $BASH_ENV
+            echo 'source $BASH_ENV' >> $HOME/.profile
       - add_ssh_keys:
           fingerprints:
               - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
@@ -802,6 +803,7 @@ commands:
             echo 'export FIL_PROOFS_PARAMETER_CACHE="${HOME}/filecoin-proof-parameters/"' >> $BASH_ENV
             echo 'export FILECOIN_USE_PRECOMPILED_RUST_PROOFS=yes' >> $BASH_ENV
             echo 'export GO111MODULE=on' >> $BASH_ENV
+            echo 'source $BASH_ENV' >> $HOME/.profile
   mkdir_test_results:
     steps:
       - run:
