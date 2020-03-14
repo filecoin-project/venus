@@ -242,6 +242,9 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 		var expRes *paych.SignedVoucher
 		assert.Equal(t, expRes, res)
 	})
+
+	t.Run("errors if lane is invalid", func(t *testing.T) {})
+	t.Run("errors if not enough balance in payment channel", func(t *testing.T) {})
 }
 
 func testSetup(ctx context.Context, t *testing.T, bal abi.TokenAmount) (bstore.Blockstore, ChainReaderAPI, address.Address, address.Address, abi.TokenAmount) {
@@ -274,10 +277,10 @@ func testSetup(ctx context.Context, t *testing.T, bal abi.TokenAmount) (bstore.B
 }
 
 func requireNewEmptyChainStore(ctx context.Context, t *testing.T) (cid.Cid, *chain.Builder, block.TipSet, *chain.Store, state.Tree) {
-	cst := cbor.NewMemCborStore()
+	store := cbor.NewMemCborStore()
 
 	// Cribbed from chain/store_test
-	st1 := state.NewState(cst)
+	st1 := state.NewState(store)
 	root, err := st1.Commit(ctx)
 	require.NoError(t, err)
 
@@ -288,7 +291,7 @@ func requireNewEmptyChainStore(ctx context.Context, t *testing.T) (cid.Cid, *cha
 
 	// setup chain store
 	ds := r.Datastore()
-	cs := chain.NewStore(ds, cst, chain.NewStatusReporter(), genTS.At(0).Cid())
+	cs := chain.NewStore(ds, store, chain.NewStatusReporter(), genTS.At(0).Cid())
 	return root, builder, genTS, cs, st1
 }
 
@@ -299,8 +302,9 @@ func makePaychMgr(ctx context.Context, t *testing.T, client, miner, paych addres
 	viewer := makeStateViewer(t, root, nil)
 	pchMgr := pch.NewManager(context.Background(), ds, testAPI, testAPI, viewer, &cst.ChainStateReadWriter{})
 	blockHeight := uint64(1234)
+	balance := types.NewAttoFILFromFIL(1000)
 
-	testAPI.StubCreatePaychActorMessage(t, client, miner, paych, exitcode.Ok, blockHeight)
+	testAPI.StubCreatePaychActorMessage(t, client, miner, paych, balance, exitcode.Ok, blockHeight)
 
 	return pchMgr
 }

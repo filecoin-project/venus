@@ -67,14 +67,13 @@ func (r *RetrievalClientConnector) GetOrCreatePaymentChannel(ctx context.Context
 		if bal.LessThan(filAmt) {
 			return address.Undef, errors.New("not enough funds in wallet")
 		}
-		return r.paychMgr.CreatePaymentChannel(clientAddress, minerAddress)
+		return r.paychMgr.CreatePaymentChannel(clientAddress, minerAddress, clientFundsAvailable)
 	}
 	return chinfo.UniqueAddr, nil
 }
 
 // AllocateLane creates a new lane for this paymentChannel with 0 FIL in the lane
 // Assumes AllocateLane is called after GetOrCreatePaymentChannel
-//func (r *RetrievalClientConnector) AllocateLane(paymentChannel address.Address) (int64, error) {
 func (r *RetrievalClientConnector) AllocateLane(paymentChannel address.Address) (lane uint64, err error) {
 	return r.paychMgr.AllocateLane(paymentChannel)
 }
@@ -82,11 +81,13 @@ func (r *RetrievalClientConnector) AllocateLane(paymentChannel address.Address) 
 // CreatePaymentVoucher creates a payment voucher for the retrieval client.
 // If there is not enough value stored in the payment channel registry, an error is returned.
 // If a lane has not been allocated for this payment channel, an error is returned.
-func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, paychAddr address.Address, amount abi.TokenAmount, lane uint64) (*paychActor.SignedVoucher, error) {
+func (r *RetrievalClientConnector) CreatePaymentVoucher(_ context.Context, paychAddr address.Address, amount abi.TokenAmount, lane uint64) (*paychActor.SignedVoucher, error) {
 	height, err := r.getBlockHeight()
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: Get balance
 
 	chinfo, err := r.paychMgr.GetPaymentChannelInfo(paychAddr)
 	if err != nil {

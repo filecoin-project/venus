@@ -4,6 +4,7 @@ import (
 	"reflect"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 )
 
@@ -35,6 +36,16 @@ func (ci *ChannelInfo) HasVoucher(voucher *paych.SignedVoucher) bool {
 		}
 	}
 	return false
+}
+
+func (ci *ChannelInfo) LargestVoucherAmount() abi.TokenAmount {
+	res := abi.NewTokenAmount(0)
+	for _, v := range ci.Vouchers {
+		if v.Voucher.Amount.GreaterThan(res) {
+			res = v.Voucher.Amount
+		}
+	}
+	return res
 }
 
 // VoucherInfo is a record of a voucher submitted for a payment channel

@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	paychActor "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
@@ -33,7 +34,7 @@ type PaychMgrAPI interface {
 	GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error)
 	GetPaymentChannelInfo(paychAddr address.Address) (*paymentchannel.ChannelInfo, error)
 	GetPaymentChannelByAccounts(payer, payee address.Address) (*paymentchannel.ChannelInfo, error)
-	CreatePaymentChannel(payer, payee address.Address) (address.Address, error)
+	CreatePaymentChannel(payer, payee address.Address, amt abi.TokenAmount) (address.Address, error)
 	AddVoucherToChannel(paychAddr address.Address, voucher *paychActor.SignedVoucher) error
-	AddVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte) (abi.TokenAmount, error)
+	AddVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte, expected big.Int) (abi.TokenAmount, error)
 }

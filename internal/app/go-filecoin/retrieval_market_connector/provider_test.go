@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -164,7 +165,8 @@ func makeViewerAndManager(ctx context.Context, t *testing.T, client, miner, payc
 	cr := pch.NewFakeChainReader(block.NewTipSetKey(root))
 	pchMgr := pch.NewManager(context.Background(), ds, testAPI, testAPI, viewer, cr)
 	blockHeight := uint64(1234)
+	balance := types.NewAttoFILFromFIL(1000)
 
-	testAPI.StubCreatePaychActorMessage(t, client, miner, paych, exitcode.Ok, blockHeight)
+	testAPI.StubCreatePaychActorMessage(t, client, miner, paych, balance, exitcode.Ok, blockHeight)
 	return viewer, pchMgr
 }
