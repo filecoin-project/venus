@@ -67,11 +67,11 @@ type UnsignedMessage struct {
 
 	Value AttoFIL `json:"value"`
 
-	Method abi.MethodNum `json:"method"`
-	Params []byte        `json:"params"`
-
 	GasPrice AttoFIL  `json:"gasPrice"`
 	GasLimit gas.Unit `json:"gasLimit"`
+
+	Method abi.MethodNum `json:"method"`
+	Params []byte        `json:"params"`
 	// Pay attention to Equals() if updating this struct.
 }
 
