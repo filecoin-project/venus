@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/ipfs/go-ipfs-files"
+	files "github.com/ipfs/go-ipfs-files"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/stretchr/testify/require"
@@ -219,7 +219,7 @@ func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Fil
 	require.NoError(t, err)
 
 	// Wait for the deal to be complete
-	proposalResponse, err := series.WaitForDealState(ctx, client, deal, storagemarket.StorageDealCommitted)
+	proposalResponse, err := series.WaitForDealState(ctx, client, deal, storagemarket.StorageDealActive)
 	require.NoError(t, err)
 
 	_, err = client.MessageWait(ctx, *proposalResponse.PublishMessage)

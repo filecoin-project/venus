@@ -306,7 +306,7 @@ func main() {
 	}
 
 	for _, deal := range deals {
-		_, err = series.WaitForDealState(ctx, genesis, deal, storagemarket.StorageDealCommitted)
+		_, err = series.WaitForDealState(ctx, genesis, deal, storagemarket.StorageDealActive)
 		if err != nil {
 			exitcode = handleError(err, "failed series.WaitForDealState;")
 			return

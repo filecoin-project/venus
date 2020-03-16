@@ -3,6 +3,8 @@ package storagemarketconnector
 import (
 	"context"
 
+	"github.com/filecoin-project/go-fil-markets/shared"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -57,19 +59,25 @@ type connectorCommon struct {
 }
 
 // MostRecentStateId returns the state key from the current head of the chain.
-func (c *connectorCommon) MostRecentStateId(_ context.Context) (storagemarket.StateKey, error) { // nolint: golint
-	key := c.chainStore.Head()
-	ts, err := c.chainStore.GetTipSet(key)
+func (c *connectorCommon) GetChainHead(_ context.Context) (shared.TipSetToken, abi.ChainEpoch, error) { // nolint: golint
+	tsk := c.chainStore.Head()
+
+	ts, err := c.chainStore.GetTipSet(tsk)
 	if err != nil {
-		return nil, err
+		return nil, 0, xerrors.Errorf("failed to get tip: %w", err)
 	}
 
-	height, err := ts.Height()
+	h, err := ts.Height()
 	if err != nil {
-		return nil, err
+		return nil, 0, xerrors.Errorf("failed to get tipset height: %w")
 	}
 
-	return &stateKey{key, height}, nil
+	tok, err := encoding.Encode(tsk)
+	if err != nil {
+		return nil, 0, xerrors.Errorf("failed to marshal TipSetKey to CBOR byte slice for TipSetToken: %w", err)
+	}
+
+	return tok, h, nil
 }
 
 func (c *connectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan error) (*vm.MessageReceipt, error) {
@@ -179,7 +187,7 @@ func (c *connectorCommon) GetMinerWorker(ctx context.Context, miner address.Addr
 	return fcworker, nil
 }
 
-func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID uint64, cb storagemarket.DealSectorCommittedCallback) error {
+func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
 	// TODO: is this provider address the miner address or the miner worker address?
 
 	pred := func(msg *types.SignedMessage, msgCid cid.Cid) bool {
@@ -199,7 +207,7 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 		}
 
 		for _, id := range params.DealIDs {
-			if uint64(id) == dealID {
+			if id == dealID {
 				return true
 			}
 		}

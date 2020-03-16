@@ -6,6 +6,8 @@ import (
 	"io"
 	"math"
 
+	"github.com/filecoin-project/go-fil-markets/shared"
+
 	"github.com/filecoin-project/go-address"
 	retmkt "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
@@ -118,5 +120,9 @@ func (r *RetrievalProviderConnector) SavePaymentVoucher(_ context.Context, payme
 func (r *RetrievalProviderConnector) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
 	// TODO: This should be passed a tipset key. See the getMinerWorkerAddress
 	// method on StorageMinerNodeConnector for an example.
-	panic("implement me")
+	panic("@laser: implement me")
+}
+
+func (r *RetrievalProviderConnector) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
+	panic("@laser: implement me")
 }
