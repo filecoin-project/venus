@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connector_common"
+
 	"github.com/filecoin-project/go-address"
 	storagenode "github.com/filecoin-project/go-storage-miner/apis/node"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -318,24 +320,7 @@ func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context, tok stora
 }
 
 func (m *StorageMinerNodeConnector) GetChainHead(ctx context.Context) (storagenode.TipSetToken, abi.ChainEpoch, error) {
-	tsk := m.chainState.Head()
-
-	ts, err := m.chainState.GetTipSet(tsk)
-	if err != nil {
-		return nil, 0, xerrors.Errorf("failed to get tip: %w", err)
-	}
-
-	h, err := ts.Height()
-	if err != nil {
-		return nil, 0, xerrors.Errorf("failed to get tipset height: %w")
-	}
-
-	tok, err := encoding.Encode(tsk)
-	if err != nil {
-		return nil, 0, xerrors.Errorf("failed to marshal TipSetKey to CBOR byte slice for TipSetToken: %w", err)
-	}
-
-	return tok, h, nil
+	return connector_common.GetChainHead(m.chainState)
 }
 
 // GetSealSeed is used to acquire the interactive seal seed for the provided pre-commit

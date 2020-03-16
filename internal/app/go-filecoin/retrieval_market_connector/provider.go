@@ -6,6 +6,8 @@ import (
 	"io"
 	"math"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connector_common"
+
 	"github.com/filecoin-project/go-fil-markets/shared"
 
 	"github.com/filecoin-project/go-address"
@@ -22,11 +24,12 @@ const MaxInt = int(^uint(0) >> 1)
 
 // RetrievalProviderConnector is the glue between go-filecoin and retrieval market provider API
 type RetrievalProviderConnector struct {
-	bstore   blockstore.Blockstore
-	net      rmnet.RetrievalMarketNetwork
-	paychMgr PaychMgrAPI
-	provider retmkt.RetrievalProvider
-	unsealer UnsealerAPI
+	chainReader ChainReaderAPI
+	bstore      blockstore.Blockstore
+	net         rmnet.RetrievalMarketNetwork
+	paychMgr    PaychMgrAPI
+	provider    retmkt.RetrievalProvider
+	unsealer    UnsealerAPI
 }
 
 var _ retmkt.RetrievalProviderNode = &RetrievalProviderConnector{}
@@ -38,12 +41,13 @@ type UnsealerAPI interface {
 
 // NewRetrievalProviderConnector creates a new RetrievalProviderConnector
 func NewRetrievalProviderConnector(net rmnet.RetrievalMarketNetwork, us UnsealerAPI,
-	bs blockstore.Blockstore, paychMgr PaychMgrAPI) *RetrievalProviderConnector {
+	bs blockstore.Blockstore, paychMgr PaychMgrAPI, chainReader ChainReaderAPI) *RetrievalProviderConnector {
 	return &RetrievalProviderConnector{
-		bstore:   bs,
-		net:      net,
-		paychMgr: paychMgr,
-		unsealer: us,
+		bstore:      bs,
+		net:         net,
+		paychMgr:    paychMgr,
+		unsealer:    us,
+		chainReader: chainReader,
 	}
 }
 
@@ -124,5 +128,5 @@ func (r *RetrievalProviderConnector) GetMinerWorker(ctx context.Context, miner a
 }
 
 func (r *RetrievalProviderConnector) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
-	panic("@laser: implement me")
+	return connector_common.GetChainHead(r.chainReader)
 }

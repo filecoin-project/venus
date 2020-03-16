@@ -30,7 +30,7 @@ func TestNewRetrievalProviderNodeConnector(t *testing.T) {
 	pm := piecemanager.NewStorageMinerBackEnd(nil, nil)
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	rmp := NewRetrievalMarketClientFakeAPI(t, abi.NewTokenAmount(0))
-	rpc := NewRetrievalProviderConnector(rmnet, pm, bs, rmp)
+	rpc := NewRetrievalProviderConnector(rmnet, pm, bs, rmp, nil)
 	assert.NotZero(t, rpc)
 }
 
@@ -85,7 +85,7 @@ func unsealTestSetup(ctx context.Context, t *testing.T) (*RetrievalMarketClientF
 	rmnet := gfmtut.NewTestRetrievalMarketNetwork(gfmtut.TestNetworkParams{})
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	rmp := NewRetrievalMarketClientFakeAPI(t, abi.NewTokenAmount(0))
-	rpc := NewRetrievalProviderConnector(rmnet, rmp, bs, rmp)
+	rpc := NewRetrievalProviderConnector(rmnet, rmp, bs, rmp, nil)
 	return rmp, rpc
 }
 
@@ -116,7 +116,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 			From: clientAddr, To: minerAddr,
 		}
 		rmp.ExpectedVouchers[pchan] = &paymentchannel.VoucherInfo{Voucher: voucher, Proof: proof}
-		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, rmp)
+		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, rmp, nil)
 
 		tokenamt, err := rpc.SavePaymentVoucher(ctx, pchan, voucher, proof, voucher.Amount)
 		assert.NoError(t, err)
@@ -133,7 +133,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 		}
 		rmp.ExpectedVouchers[pchan] = &paymentchannel.VoucherInfo{Voucher: voucher, Proof: proof}
 
-		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, rmp)
+		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, rmp, nil)
 		_, err := rpc.SavePaymentVoucher(ctx, pchan, voucher, proof, voucher.Amount)
 		assert.EqualError(t, err, "boom")
 	})
