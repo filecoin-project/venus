@@ -2,7 +2,6 @@ package submodule
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/ipfs/go-bitswap"
@@ -83,7 +82,6 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	if err != nil {
 		return NetworkSubmodule{}, err
 	}
-	networkName = "interop"
 
 	// set up host
 	var peerHost host.Host
@@ -146,7 +144,6 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 
 	// build network
 	network := net.New(peerHost, net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService))
-	fmt.Printf("network name: <%s>\n", networkName)
 	// build the network submdule
 	return NetworkSubmodule{
 		NetworkName:   networkName,

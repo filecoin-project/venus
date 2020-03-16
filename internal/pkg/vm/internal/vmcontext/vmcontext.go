@@ -330,7 +330,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 // applyMessage applies the message to the current state.
 func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd crypto.RandomnessSource) (message.Receipt, minerPenaltyFIL, gasRewardFIL) {
 	// Dragons: temp until we remove legacy types
-	var msgGasLimit gas.Unit = gas.Unit(msg.GasLimit)
+	var msgGasLimit gas.Unit = msg.GasLimit
 	// This method does not actually execute the message itself,
 	// but rather deals with the pre/post processing of a message.
 	// (see: `invocationContext.invoke()` for the dispatch and execution)
