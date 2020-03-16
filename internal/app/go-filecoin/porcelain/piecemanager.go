@@ -15,7 +15,7 @@ type pmPlumbing interface {
 }
 
 // SealPieceIntoNewSector writes the provided piece-bytes into a new sector.
-func SealPieceIntoNewSector(ctx context.Context, p pmPlumbing, dealID uint64, dealStart, dealEnd abi.ChainEpoch, pieceSize uint64, pieceReader io.Reader) error {
+func SealPieceIntoNewSector(ctx context.Context, p pmPlumbing, dealID abi.DealID, dealStart, dealEnd abi.ChainEpoch, pieceSize uint64, pieceReader io.Reader) error {
 	if p.PieceManager() == nil {
 		return errors.New("must be mining to add piece")
 	}

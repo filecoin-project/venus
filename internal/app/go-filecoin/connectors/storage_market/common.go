@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -17,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -36,16 +38,6 @@ type chainReader interface {
 	cbor.IpldStore
 }
 
-// Implements storagemarket.StateKey
-type stateKey struct {
-	ts     block.TipSetKey
-	height abi.ChainEpoch
-}
-
-func (k *stateKey) Height() abi.ChainEpoch {
-	return k.height
-}
-
 // WorkerGetter is a function that can retrieve the miner worker for the given address from actor state
 type WorkerGetter func(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error)
 
@@ -57,19 +49,8 @@ type connectorCommon struct {
 }
 
 // MostRecentStateId returns the state key from the current head of the chain.
-func (c *connectorCommon) MostRecentStateId(_ context.Context) (storagemarket.StateKey, error) { // nolint: golint
-	key := c.chainStore.Head()
-	ts, err := c.chainStore.GetTipSet(key)
-	if err != nil {
-		return nil, err
-	}
-
-	height, err := ts.Height()
-	if err != nil {
-		return nil, err
-	}
-
-	return &stateKey{key, height}, nil
+func (c *connectorCommon) GetChainHead(_ context.Context) (shared.TipSetToken, abi.ChainEpoch, error) { // nolint: golint
+	return connectors.GetChainHead(c.chainStore)
 }
 
 func (c *connectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan error) (*vm.MessageReceipt, error) {
@@ -179,7 +160,7 @@ func (c *connectorCommon) GetMinerWorker(ctx context.Context, miner address.Addr
 	return fcworker, nil
 }
 
-func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID uint64, cb storagemarket.DealSectorCommittedCallback) error {
+func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
 	// TODO: is this provider address the miner address or the miner worker address?
 
 	pred := func(msg *types.SignedMessage, msgCid cid.Cid) bool {
@@ -199,7 +180,7 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 		}
 
 		for _, id := range params.DealIDs {
-			if uint64(id) == dealID {
+			if id == dealID {
 				return true
 			}
 		}

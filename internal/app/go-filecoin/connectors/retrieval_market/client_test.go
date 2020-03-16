@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 
+	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/retrieval_market"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -23,7 +25,6 @@ import (
 
 	pch "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
-	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"

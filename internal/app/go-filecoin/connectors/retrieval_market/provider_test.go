@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"testing"
 
+	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/retrieval_market"
+
 	"github.com/filecoin-project/go-address"
 	gfmtut "github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -21,7 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	pch "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
-	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/retrieval_market_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -40,7 +41,7 @@ func TestNewRetrievalProviderNodeConnector(t *testing.T) {
 		specst.NewIDAddr(t, 100),
 		specst.NewActorAddr(t, "foobar"),
 		abi.NewTokenAmount(10))
-	rpc := NewRetrievalProviderConnector(rmnet, pm, bs, pchMgr)
+	rpc := NewRetrievalProviderConnector(rmnet, pm, bs, pchMgr, nil)
 	assert.NotZero(t, rpc)
 }
 
@@ -48,7 +49,7 @@ func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	sectorID := rand.Uint64()
-	fixtureFile := "../../../../fixtures/constants.go"
+	fixtureFile := "../../../../../fixtures/constants.go"
 
 	intSz := reflect.TypeOf(0).Size()*8 - 1
 	maxOffset := uint64(1 << intSz)
@@ -100,7 +101,7 @@ func unsealTestSetup(ctx context.Context, t *testing.T) (*RetrievalMarketClientF
 		specst.NewIDAddr(t, 100),
 		specst.NewActorAddr(t, "foobar"),
 		abi.NewTokenAmount(10))
-	rpc := NewRetrievalProviderConnector(rmnet, rmp, bs, pchMgr)
+	rpc := NewRetrievalProviderConnector(rmnet, rmp, bs, pchMgr, nil)
 	return rmp, rpc
 }
 
@@ -132,7 +133,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 		// simulate creating payment channel
 		rmp.ExpectedVouchers[pchan] = &pch.VoucherInfo{Voucher: voucher, Proof: proof}
 
-		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, pchMgr)
+		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, pchMgr, nil)
 
 		tokenamt, err := rpc.SavePaymentVoucher(ctx, pchan, voucher, proof, voucher.Amount)
 		assert.NoError(t, err)
@@ -151,7 +152,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 
 		rmp := NewRetrievalMarketClientFakeAPI(t)
 		rmp.ExpectedVouchers[pchan] = &pch.VoucherInfo{Voucher: voucher, Proof: proof}
-		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, pchMgr)
+		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, pchMgr, nil)
 		_, err := rpc.SavePaymentVoucher(ctx, pchan, voucher, proof, voucher.Amount)
 		assert.EqualError(t, err, "boom")
 
