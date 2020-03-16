@@ -1,4 +1,4 @@
-package connector_common
+package connectors
 
 import (
 	"github.com/filecoin-project/specs-actors/actors/abi"

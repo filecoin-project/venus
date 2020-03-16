@@ -3,7 +3,7 @@ package storagemarketconnector
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connector_common"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors"
 
 	"github.com/filecoin-project/go-fil-markets/shared"
 
@@ -62,7 +62,7 @@ type connectorCommon struct {
 
 // MostRecentStateId returns the state key from the current head of the chain.
 func (c *connectorCommon) GetChainHead(_ context.Context) (shared.TipSetToken, abi.ChainEpoch, error) { // nolint: golint
-	return connector_common.GetChainHead(c.chainStore)
+	return connectors.GetChainHead(c.chainStore)
 }
 
 func (c *connectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan error) (*vm.MessageReceipt, error) {

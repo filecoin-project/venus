@@ -6,7 +6,7 @@ import (
 	"io"
 	"math"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connector_common"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors"
 
 	"github.com/filecoin-project/go-fil-markets/shared"
 
@@ -128,5 +128,5 @@ func (r *RetrievalProviderConnector) GetMinerWorker(ctx context.Context, miner a
 }
 
 func (r *RetrievalProviderConnector) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
-	return connector_common.GetChainHead(r.chainReader)
+	return connectors.GetChainHead(r.chainReader)
 }

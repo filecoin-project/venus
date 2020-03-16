@@ -3,7 +3,7 @@ package storagemarketconnector
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connector_common"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors"
 
 	"github.com/filecoin-project/go-fil-markets/shared"
 
@@ -220,7 +220,7 @@ func (s *StorageClientNodeConnector) ValidateAskSignature(signed *storagemarket.
 }
 
 func (s *StorageClientNodeConnector) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
-	return connector_common.GetChainHead(s.chainStore)
+	return connectors.GetChainHead(s.chainStore)
 }
 
 func (s *StorageClientNodeConnector) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
