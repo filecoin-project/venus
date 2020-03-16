@@ -17,6 +17,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -91,7 +92,7 @@ func TestBLSSignatureValidationConfiguration(t *testing.T) {
 	from, err := address.NewBLSAddress(pubKey[:])
 	require.NoError(t, err)
 
-	msg := types.NewMeteredMessage(from, addresses[1], 0, types.ZeroAttoFIL, methodID, []byte("params"), types.NewGasPrice(1), types.GasUnits(300))
+	msg := types.NewMeteredMessage(from, addresses[1], 0, types.ZeroAttoFIL, methodID, []byte("params"), types.NewGasPrice(1), gas.NewGas(300))
 	unsigned := &types.SignedMessage{Message: *msg}
 	actor := newActor(t, 1000, 0)
 
@@ -136,7 +137,7 @@ func TestMessageSyntaxValidator(t *testing.T) {
 	})
 
 	t.Run("block gas limit fails", func(t *testing.T) {
-		msg, err := types.NewSignedMessage(*newMessage(t, alice, bob, 100, 5, 1, uint64(types.BlockGasLimit)+1), signer)
+		msg, err := types.NewSignedMessage(*newMessage(t, alice, bob, 100, 5, 1, int64(types.BlockGasLimit)+1), signer)
 		require.NoError(t, err)
 		assert.Errorf(t, validator.Validate(ctx, msg), "block limit")
 	})
@@ -150,7 +151,7 @@ func newActor(t *testing.T, balanceAF int, nonce uint64) *actor.Actor {
 }
 
 func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF int,
-	gasPrice int64, gasLimit uint64) *types.UnsignedMessage {
+	gasPrice int64, gasLimit int64) *types.UnsignedMessage {
 	val, ok := types.NewAttoFILFromString(fmt.Sprintf("%d", valueAF), 10)
 	require.True(t, ok, "invalid attofil")
 	return types.NewMeteredMessage(
@@ -161,7 +162,7 @@ func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF in
 		methodID,
 		[]byte("params"),
 		types.NewGasPrice(gasPrice),
-		types.GasUnits(gasLimit),
+		gas.NewGas(gasLimit),
 	)
 }
 

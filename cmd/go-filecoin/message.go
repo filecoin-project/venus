@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 var msgCmd = &cmds.Command{
@@ -41,7 +42,7 @@ var msgCmd = &cmds.Command{
 // MessageSendResult is the return type for message send command
 type MessageSendResult struct {
 	Cid     cid.Cid
-	GasUsed types.GasUnits
+	GasUsed gas.Unit
 	Preview bool
 }
 
@@ -125,7 +126,7 @@ var msgSendCmd = &cmds.Command{
 
 		return re.Emit(&MessageSendResult{
 			Cid:     c,
-			GasUsed: types.GasUnits(0),
+			GasUsed: gas.NewGas(0),
 			Preview: false,
 		})
 	},
@@ -173,7 +174,7 @@ var signedMsgSendCmd = &cmds.Command{
 
 		return re.Emit(&MessageSendResult{
 			Cid:     c,
-			GasUsed: types.GasUnits(0),
+			GasUsed: gas.NewGas(0),
 			Preview: false,
 		})
 	},

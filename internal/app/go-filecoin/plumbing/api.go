@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -223,7 +224,7 @@ func (api *API) MessagePoolRemove(cid cid.Cid) {
 
 // MessagePreview previews the Gas cost of a message by running it locally on the client and
 // recording the amount of Gas used.
-func (api *API) MessagePreview(ctx context.Context, from, to address.Address, method abi.MethodNum, params ...interface{}) (types.GasUnits, error) {
+func (api *API) MessagePreview(ctx context.Context, from, to address.Address, method abi.MethodNum, params ...interface{}) (gas.Unit, error) {
 	return api.msgPreviewer.Preview(ctx, from, to, method, params...)
 }
 
@@ -238,7 +239,7 @@ func (api *API) StateView(baseKey block.TipSetKey) (*appstate.View, error) {
 // message to go on chain. Note that no default from address is provided.  The error
 // channel returned receives either nil or an error and is immediately closed after
 // the message is published to the network to signal that the publish is complete.
-func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
+func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
 	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, true, method, params)
 }
 

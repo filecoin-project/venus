@@ -156,7 +156,7 @@ func TestChainSyncWithMessages(t *testing.T) {
 	receiverStart, err := nodeReceive.PorcelainAPI.WalletBalance(ctx, receiverAddress)
 	require.NoError(t, err)
 	gasPrice := types.NewGasPrice(1)
-	expGasCost := gas.NewGas(242).ToTokens(gasPrice) // DRAGONS -- this is brittle need a better way to predict this.
+	expGasCost := gas.NewGas(244).ToTokens(gasPrice) // DRAGONS -- this is brittle need a better way to predict this.
 
 	/* send message from SendNode */
 	sendVal := specsbig.NewInt(100)
@@ -166,7 +166,7 @@ func TestChainSyncWithMessages(t *testing.T) {
 		receiverAddress,
 		sendVal,
 		gasPrice,
-		types.GasUnits(1000),
+		gas.NewGas(1000),
 		builtin.MethodSend,
 		&adt.EmptyValue{},
 	)

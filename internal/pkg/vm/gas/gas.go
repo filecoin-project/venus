@@ -1,7 +1,8 @@
 package gas
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"errors"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 )
@@ -20,12 +21,6 @@ func NewGas(value int64) Unit {
 	return Unit(value)
 }
 
-// NewLegacyGas is legacy and will be deleted
-// Dragons: delete once we finish changing to the new types
-func NewLegacyGas(v types.GasUnits) Unit {
-	return NewGas((int64)(v))
-}
-
 // AsBigInt returns the internal value as a `big.Int`
 func (gas Unit) AsBigInt() big.Int {
 	return big.NewInt(int64(gas))
@@ -35,4 +30,24 @@ func (gas Unit) AsBigInt() big.Int {
 func (gas Unit) ToTokens(price abi.TokenAmount) abi.TokenAmount {
 	// cost = gas * price
 	return big.Mul(gas.AsBigInt(), price)
+}
+
+// MarshalBinary ensures that gas.Unit is serialized as a byte array
+func (gas *Unit) MarshalBinary() ([]byte, error) {
+	bi := big.NewInt(int64(*gas))
+	return bi.MarshalBinary()
+}
+
+func (gas *Unit) UnmarshalBinary(bs []byte) error {
+	bi := big.Zero()
+	err := bi.UnmarshalBinary(bs)
+	if err != nil {
+		return err
+	}
+
+	if !bi.IsInt64() {
+		return errors.New("serialized units too big for int64")
+	}
+	*gas = Unit(bi.Int64())
+	return nil
 }

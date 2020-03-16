@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 const (
@@ -354,29 +355,29 @@ var priceOption = cmdkit.StringOption("gas-price", "Price (FIL e.g. 0.00013) to 
 var limitOption = cmdkit.Uint64Option("gas-limit", "Maximum GasUnits this message is allowed to consume")
 var previewOption = cmdkit.BoolOption("preview", "Preview the Gas cost of this command without actually executing it")
 
-func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.GasUnits, bool, error) {
+func parseGasOptions(req *cmds.Request) (types.AttoFIL, gas.Unit, bool, error) {
 	priceOption := req.Options["gas-price"]
 	if priceOption == nil {
-		return types.ZeroAttoFIL, types.GasUnits(0), false, errors.New("gas-price option is required")
+		return types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("gas-price option is required")
 	}
 
 	price, ok := types.NewAttoFILFromFILString(priceOption.(string))
 	if !ok {
-		return types.ZeroAttoFIL, types.GasUnits(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
+		return types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
 	}
 
 	limitOption := req.Options["gas-limit"]
 	if limitOption == nil {
-		return types.ZeroAttoFIL, types.GasUnits(0), false, errors.New("gas-limit option is required")
+		return types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("gas-limit option is required")
 	}
 
-	gasLimitInt, ok := limitOption.(uint64)
+	gasLimitInt, ok := limitOption.(int64)
 	if !ok {
 		msg := fmt.Sprintf("invalid gas limit: %s", limitOption)
-		return types.ZeroAttoFIL, types.GasUnits(0), false, errors.New(msg)
+		return types.ZeroAttoFIL, gas.NewGas(0), false, errors.New(msg)
 	}
 
 	preview, _ := req.Options["preview"].(bool)
 
-	return price, types.GasUnits(gasLimitInt), preview, nil
+	return price, gas.NewGas(gasLimitInt), preview, nil
 }

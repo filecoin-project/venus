@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -96,7 +97,7 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 		builtin.StorageMarketActorAddr,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
-		types.GasUnits(300),
+		gas.NewGas(300),
 		true,
 		builtin.MethodsMarket.PublishStorageDeals,
 		params,

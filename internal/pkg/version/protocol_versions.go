@@ -8,7 +8,7 @@ import (
 const USER = "alpha2"
 
 // DEVNET4 is the network name of devnet
-const DEVNET4 = "devnet4"
+const DEVNET4 = "interop"
 
 // LOCALNET is the network name of localnet
 const LOCALNET = "localnet"

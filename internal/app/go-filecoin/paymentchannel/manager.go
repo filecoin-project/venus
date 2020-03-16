@@ -21,10 +21,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 var defaultGasPrice = types.NewAttoFILFromFIL(actor.DefaultGasCost)
-var defaultGasLimit = types.GasUnits(300)
+var defaultGasLimit = gas.NewGas(300)
 var zeroAmt = abi.NewTokenAmount(0)
 
 // Manager manages payment channel actor and the data paymentChannels operations.
@@ -52,7 +53,7 @@ type MsgSender interface {
 		from, to address.Address,
 		value types.AttoFIL,
 		gasPrice types.AttoFIL,
-		gasLimit types.GasUnits,
+		gasLimit gas.Unit,
 		bcast bool,
 		method abi.MethodNum,
 		params interface{}) (out cid.Cid, pubErrCh chan error, err error)

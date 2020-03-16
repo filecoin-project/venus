@@ -17,6 +17,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 // MockSigner implements the Signer interface
@@ -149,7 +150,8 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 			builtin.MethodSend,
 			[]byte("params"),
 			ZeroAttoFIL,
-			GasUnits(0))
+			gas.Zero,
+		)
 		smsg, err := NewSignedMessage(*msg, &ms)
 		if err != nil {
 			panic(err)
@@ -235,7 +237,7 @@ func NewSignedMsgs(n uint, ms MockSigner) []*SignedMessage {
 		msg.From = ms.Addresses[0]
 		msg.CallSeqNum = uint64(i)
 		msg.GasPrice = ZeroAttoFIL // NewGasPrice(1)
-		msg.GasLimit = GasUnits(0)
+		msg.GasLimit = gas.NewGas(0)
 		smsgs[i], err = NewSignedMessage(*msg, ms)
 		if err != nil {
 			panic(err)

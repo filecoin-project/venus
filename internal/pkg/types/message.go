@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -24,14 +23,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
-// GasUnits represents number of units of gas consumed
-// This type is signed by design; it is possible for operations to consume negative gas.
-type GasUnits int64
-
 // BlockGasLimit is the maximum amount of gas that can be used to execute messages in a single block
-var BlockGasLimit = GasUnits(10000000)
+var BlockGasLimit = gas.NewGas(10000000)
 
 // EmptyMessagesCID is the cid of an empty collection of messages.
 var EmptyMessagesCID cid.Cid
@@ -75,7 +71,7 @@ type UnsignedMessage struct {
 	Params []byte        `json:"params"`
 
 	GasPrice AttoFIL  `json:"gasPrice"`
-	GasLimit GasUnits `json:"gasLimit"`
+	GasLimit gas.Unit `json:"gasLimit"`
 	// Pay attention to Equals() if updating this struct.
 }
 
@@ -92,7 +88,7 @@ func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, m
 }
 
 // NewMeteredMessage adds gas price and gas limit to the message
-func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte, price AttoFIL, limit GasUnits) *UnsignedMessage {
+func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte, price AttoFIL, limit gas.Unit) *UnsignedMessage {
 	return &UnsignedMessage{
 		From:       from,
 		To:         to,
@@ -198,13 +194,4 @@ type TxMeta struct {
 // String returns a readable printing string of TxMeta
 func (m TxMeta) String() string {
 	return fmt.Sprintf("secp: %s, bls: %s", m.SecpRoot.String(), m.BLSRoot.String())
-}
-
-// Cost returns the cost of the gas given the price.
-func (x GasUnits) Cost(price abi.TokenAmount) abi.TokenAmount {
-	// turn the gas into a bigint
-	bigx := abi.NewTokenAmount(int64(x))
-
-	// cost = gas * price
-	return specsbig.Mul(bigx, price)
 }

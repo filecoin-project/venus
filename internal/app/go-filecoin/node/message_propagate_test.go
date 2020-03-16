@@ -15,13 +15,13 @@ import (
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
-	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
-	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
-
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 // TestMessagePropagation is a high level check that messages are propagated between message
@@ -78,7 +78,7 @@ func TestMessagePropagation(t *testing.T) {
 			builtin.InitActorAddr,
 			specsbig.NewInt(100),
 			types.NewGasPrice(1),
-			types.GasUnits(0),
+			gas.NewGas(0),
 			fooMethod,
 			&adt.EmptyValue{},
 		)

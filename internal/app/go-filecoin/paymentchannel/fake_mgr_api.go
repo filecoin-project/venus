@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 // FakePaymentChannelAPI mocks some needed APIs for a payment channel manager
@@ -73,7 +74,7 @@ func (f *FakePaymentChannelAPI) Send(_ context.Context,
 	from, to address.Address,
 	value types.AttoFIL,
 	gasPrice types.AttoFIL,
-	gasLimit types.GasUnits,
+	gasLimit gas.Unit,
 	bcast bool,
 	method abi.MethodNum,
 	params interface{}) (out cid.Cid, pubErrCh chan error, err error) {

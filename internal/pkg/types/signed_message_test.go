@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 var mockSigner = NewMockSigner(MustGenerateKeyInfo(1, 42))
@@ -86,7 +87,7 @@ func makeMessage(t *testing.T, signer MockSigner, nonce uint64) *SignedMessage {
 		abi.MethodNum(2352),
 		[]byte("params"),
 		NewGasPrice(1000),
-		GasUnits(100))
+		gas.NewGas(100))
 	smsg, err := NewSignedMessage(*msg, &signer)
 	require.NoError(t, err)
 

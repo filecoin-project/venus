@@ -29,6 +29,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	gfbuiltin "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
@@ -308,7 +309,7 @@ func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state
 		Method:     msg.Method,
 		Params:     msg.Params,
 		GasPrice:   msg.GasPrice,
-		GasLimit:   types.GasUnits(msg.GasLimit),
+		GasLimit:   gas.Unit(msg.GasLimit),
 	}
 
 	// invoke vm
@@ -344,7 +345,7 @@ func toOurBlockMessageInfoType(theirs []vtypes.BlockMessagesInfo) []interpreter.
 				Method:     blsMsg.Method,
 				Params:     blsMsg.Params,
 				GasPrice:   blsMsg.GasPrice,
-				GasLimit:   types.GasUnits(blsMsg.GasLimit),
+				GasLimit:   gas.Unit(blsMsg.GasLimit),
 			}
 			ours[i].BLSMessages = append(ours[i].BLSMessages, ourbls)
 		}
@@ -358,7 +359,7 @@ func toOurBlockMessageInfoType(theirs []vtypes.BlockMessagesInfo) []interpreter.
 					Method:     secpMsg.Message.Method,
 					Params:     secpMsg.Message.Params,
 					GasPrice:   secpMsg.Message.GasPrice,
-					GasLimit:   types.GasUnits(secpMsg.Message.GasLimit),
+					GasLimit:   gas.Unit(secpMsg.Message.GasLimit),
 				},
 				Signature: secpMsg.Signature,
 			}
