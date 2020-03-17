@@ -13,6 +13,7 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	xerrors "github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -152,7 +153,7 @@ func (r *RetrievalClientConnector) getBalance(ctx context.Context, account addre
 }
 
 func (r *RetrievalClientConnector) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
-	panic("wombat")
+	return connectors.GetChainHead(r.cs)
 }
 
 func (r *RetrievalClientConnector) getTipSet(tok shared.TipSetToken) (block.TipSet, error) {
