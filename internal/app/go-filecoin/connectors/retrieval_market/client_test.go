@@ -8,6 +8,7 @@ import (
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/retrieval_market"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -67,7 +68,7 @@ func TestRetrievalClientConnector_GetOrCreatePaymentChannel(t *testing.T) {
 
 			rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
 
-			res, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt)
+			res, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt, shared.TipSetToken{})
 			require.NoError(t, err)
 			assert.Equal(t, paychAddr, res)
 			assertChannel(t, paychAddr, pchMgr, true)
@@ -79,7 +80,7 @@ func TestRetrievalClientConnector_GetOrCreatePaymentChannel(t *testing.T) {
 			pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr, channelAmt)
 			rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
 
-			res, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, big.NewInt(2000))
+			res, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, big.NewInt(2000), shared.TipSetToken{})
 			assert.EqualError(t, err, "not enough funds in wallet")
 			assert.Equal(t, address.Undef, res)
 			assertChannel(t, paychAddr, pchMgr, false)
@@ -90,10 +91,10 @@ func TestRetrievalClientConnector_GetOrCreatePaymentChannel(t *testing.T) {
 			pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr, channelAmt)
 			rmc := NewRetrievalMarketClientFakeAPI(t)
 			rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-			_, err := rcnc.GetOrCreatePaymentChannel(ctx, address.Undef, minerAddr, channelAmt)
+			_, err := rcnc.GetOrCreatePaymentChannel(ctx, address.Undef, minerAddr, channelAmt, shared.TipSetToken{})
 			assert.EqualError(t, err, "empty address")
 
-			_, err = rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, address.Undef, channelAmt)
+			_, err = rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, address.Undef, channelAmt, shared.TipSetToken{})
 			assert.EqualError(t, err, "empty address")
 			assertChannel(t, paychAddr, pchMgr, false)
 		})
@@ -104,11 +105,11 @@ func TestRetrievalClientConnector_GetOrCreatePaymentChannel(t *testing.T) {
 		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr, channelAmt)
 		rmc := NewRetrievalMarketClientFakeAPI(t)
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-		expectedChID, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt)
+		expectedChID, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt, shared.TipSetToken{})
 		require.NoError(t, err)
 		assert.Equal(t, paychAddr, expectedChID)
 
-		actualChID, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt)
+		actualChID, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt, shared.TipSetToken{})
 		require.NoError(t, err)
 		assert.Equal(t, expectedChID, actualChID)
 	})
@@ -136,7 +137,7 @@ func TestRetrievalClientConnector_AllocateLane(t *testing.T) {
 		rmc := NewRetrievalMarketClientFakeAPI(t)
 
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt)
+		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt, shared.TipSetToken{})
 		require.NoError(t, err)
 
 		lane, err := rcnc.AllocateLane(paychAddr)
@@ -165,13 +166,13 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 		rmc.StubSignature(nil)
 
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt)
+		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt, shared.TipSetToken{})
 		require.NoError(t, err)
 
 		lane, err := rcnc.AllocateLane(chid)
 		require.NoError(t, err)
 
-		voucher, err := rcnc.CreatePaymentVoucher(ctx, chid, expVoucherAmt, lane)
+		voucher, err := rcnc.CreatePaymentVoucher(ctx, chid, expVoucherAmt, lane, shared.TipSetToken{})
 		require.NoError(t, err)
 		assert.Equal(t, expVoucherAmt, voucher.Amount)
 		assert.Equal(t, lane, voucher.Lane)
@@ -190,7 +191,7 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 		rmc.StubSignature(nil)
 
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt)
+		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt, shared.TipSetToken{})
 		require.NoError(t, err)
 
 		expectedNonce := uint64(9) // 4 lanes * 3 vouchers each + 1
@@ -200,7 +201,7 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 			for j := 0; j < 2; j++ {
 				amt := int64(i + j + 1)
 				newAmt := big.NewInt(amt)
-				_, err := rcnc.CreatePaymentVoucher(ctx, chid, newAmt, lane)
+				_, err := rcnc.CreatePaymentVoucher(ctx, chid, newAmt, lane, shared.TipSetToken{})
 				require.NoError(t, err)
 			}
 		}
@@ -217,7 +218,7 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 
 		rmc := NewRetrievalMarketClientFakeAPI(t)
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-		res, err := rcnc.CreatePaymentVoucher(ctx, paychAddr, abi.NewTokenAmount(1), 0)
+		res, err := rcnc.CreatePaymentVoucher(ctx, paychAddr, abi.NewTokenAmount(1), 0, shared.TipSetToken{})
 		assert.EqualError(t, err, "Key not found in tipindex")
 		var expRes *paych.SignedVoucher
 		assert.Equal(t, expRes, res)
@@ -231,7 +232,7 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 		rmc.StubSignature(nil)
 
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-		voucher, err := rcnc.CreatePaymentVoucher(ctx, badAddr, big.NewInt(100), 1)
+		voucher, err := rcnc.CreatePaymentVoucher(ctx, badAddr, big.NewInt(100), 1, shared.TipSetToken{})
 		assert.EqualError(t, err, "No such address t0990")
 		assert.Nil(t, voucher)
 	})
@@ -248,14 +249,14 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 		rmc.StubSignature(nil)
 
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, notEnough)
+		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, notEnough, shared.TipSetToken{})
 		require.NoError(t, err)
 
 		lane, err := rcnc.AllocateLane(chid)
 		require.NoError(t, err)
 
 		tooMuch := abi.NewTokenAmount(100)
-		voucher, err := rcnc.CreatePaymentVoucher(ctx, chid, tooMuch, lane)
+		voucher, err := rcnc.CreatePaymentVoucher(ctx, chid, tooMuch, lane, shared.TipSetToken{})
 		assert.EqualError(t, err, "insufficient funds for voucher amount")
 		assert.Nil(t, voucher)
 	})
@@ -266,11 +267,11 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 		rmc.StubSignature(nil)
 
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt)
+		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt, shared.TipSetToken{})
 		require.NoError(t, err)
 
 		// check when no lanes allocated
-		voucher, err := rcnc.CreatePaymentVoucher(ctx, chid, expVoucherAmt, 0)
+		voucher, err := rcnc.CreatePaymentVoucher(ctx, chid, expVoucherAmt, 0, shared.TipSetToken{})
 		require.Nil(t, voucher)
 		assert.EqualError(t, err, "lane does not exist 0")
 		require.Nil(t, voucher)
@@ -279,7 +280,7 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 		require.NoError(t, err)
 
 		// check when there is a lane allocated
-		voucher, err = rcnc.CreatePaymentVoucher(ctx, chid, expVoucherAmt, lane+1)
+		voucher, err = rcnc.CreatePaymentVoucher(ctx, chid, expVoucherAmt, lane+1, shared.TipSetToken{})
 		require.Nil(t, voucher)
 		assert.EqualError(t, err, "lane does not exist 1")
 	})
@@ -291,14 +292,14 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 		rmc.StubSignature(errors.New("signature failure"))
 
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt)
+		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt, shared.TipSetToken{})
 		require.NoError(t, err)
-		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, big.NewInt(0))
+		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, big.NewInt(0), shared.TipSetToken{})
 		require.NoError(t, err)
 		lane, err := rcnc.AllocateLane(chid)
 		require.NoError(t, err)
 
-		voucher, err := rcnc.CreatePaymentVoucher(ctx, chid, big.NewInt(1), lane)
+		voucher, err := rcnc.CreatePaymentVoucher(ctx, chid, big.NewInt(1), lane, shared.TipSetToken{})
 		assert.EqualError(t, err, "signature failure")
 		assert.Nil(t, voucher)
 	})
