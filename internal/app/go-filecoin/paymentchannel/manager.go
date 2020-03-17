@@ -315,5 +315,21 @@ func (pm *Manager) saveNewVoucher(paychAddr address.Address, voucher *paychActor
 
 // GetMinerWorker mocks getting a miner worker address from the miner address
 func (pm *Manager) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
-	panic("wombat")
+	var tsk block.TipSetKey
+	if err := encoding.Decode(tok, &tsk); err != nil {
+		return address.Undef, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
+	}
+
+	root, err := pm.cr.GetTipSetStateRoot(ctx, tsk)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to get tip state: %w", err)
+	}
+
+	view := pm.stateViewer.StateView(root)
+	_, fcworker, err := view.MinerControlAddresses(ctx, miner)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return fcworker, nil
 }
