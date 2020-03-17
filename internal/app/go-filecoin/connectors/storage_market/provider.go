@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -44,9 +45,10 @@ func NewStorageProviderNodeConnector(ma address.Address,
 	w *msg.Waiter,
 	pm piecemanager.PieceManager,
 	wlt *wallet.Wallet,
+	sv *appstate.Viewer,
 ) *StorageProviderNodeConnector {
 	return &StorageProviderNodeConnector{
-		connectorCommon: connectorCommon{cs, w, wlt, ob},
+		connectorCommon: connectorCommon{cs, sv, w, wlt, ob},
 		chainStore:      cs,
 		minerAddr:       ma,
 		outbox:          ob,
@@ -56,7 +58,7 @@ func NewStorageProviderNodeConnector(ma address.Address,
 
 // AddFunds sends a message to add storage market collateral for the given address
 func (s *StorageProviderNodeConnector) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) error {
-	workerAddr, err := s.GetMinerWorker(ctx, s.minerAddr)
+	workerAddr, err := s.GetMinerWorkerAddress(ctx, s.minerAddr, nil)
 	if err != nil {
 		return err
 	}
@@ -83,7 +85,7 @@ func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr, wa
 func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (abi.DealID, cid.Cid, error) {
 	params := market.PublishStorageDealsParams{Deals: []market.ClientDealProposal{deal.ClientDealProposal}}
 
-	workerAddr, err := s.GetMinerWorker(ctx, s.minerAddr)
+	workerAddr, err := s.GetMinerWorkerAddress(ctx, s.minerAddr, nil)
 	if err != nil {
 		return 0, cid.Undef, err
 	}

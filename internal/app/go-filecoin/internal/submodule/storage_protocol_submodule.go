@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
+
 	"github.com/ipfs/go-graphsync"
 
 	"github.com/filecoin-project/go-address"
@@ -50,11 +52,10 @@ func NewStorageProtocolSubmodule(
 	gsync graphsync.GraphExchange,
 	repoPath string,
 	sealProofType abi.RegisteredProof,
-
+	stateViewer *appstate.Viewer,
 ) (*StorageProtocolSubmodule, error) {
-
-	pnode := storagemarketconnector.NewStorageProviderNodeConnector(minerAddr, c.State, m.Outbox, mw, pm, wlt)
-	cnode := storagemarketconnector.NewStorageClientNodeConnector(cborutil.NewIpldStore(bs), c.State, mw, wlt, m.Outbox, clientAddr)
+	pnode := storagemarketconnector.NewStorageProviderNodeConnector(minerAddr, c.State, m.Outbox, mw, pm, wlt, stateViewer)
+	cnode := storagemarketconnector.NewStorageClientNodeConnector(cborutil.NewIpldStore(bs), c.State, mw, wlt, m.Outbox, clientAddr, stateViewer)
 
 	pieceStagingPath, err := paths.PieceStagingDir(repoPath)
 	if err != nil {

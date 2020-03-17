@@ -115,12 +115,10 @@ func (r *RetrievalProviderConnector) SavePaymentVoucher(_ context.Context, payme
 	return actual, nil
 }
 
-// GetMinerWorker produces the worker address for the provided storage miner
-// address at the chain head.
-func (r *RetrievalProviderConnector) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
-	// TODO: This should be passed a tipset key. See the getMinerWorkerAddress
-	// method on StorageMinerNodeConnector for an example.
-	return r.paychMgr.GetMinerWorker(ctx, miner)
+// GetMinerWorkerAddress produces the worker address for the provided storage
+// miner address from the tipset for the provided token.
+func (r *RetrievalProviderConnector) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
+	return r.paychMgr.GetMinerWorkerAddress(ctx, miner, tok)
 }
 
 func (r *RetrievalProviderConnector) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {

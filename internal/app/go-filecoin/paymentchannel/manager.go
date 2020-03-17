@@ -3,6 +3,8 @@ package paymentchannel
 import (
 	"context"
 
+	"github.com/filecoin-project/go-fil-markets/shared"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -309,15 +311,6 @@ func (pm *Manager) saveNewVoucher(paychAddr address.Address, voucher *paychActor
 }
 
 // GetMinerWorker mocks getting a miner worker address from the miner address
-func (pm *Manager) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
-	sv, err := pm.getStateView()
-	if err != nil {
-		return address.Undef, err
-	}
-	_, workerAddr, err := sv.MinerControlAddresses(ctx, miner)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	return workerAddr, nil
+func (pm *Manager) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
+	panic("wombat")
 }

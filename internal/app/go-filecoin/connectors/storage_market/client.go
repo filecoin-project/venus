@@ -3,6 +3,8 @@ package storagemarketconnector
 import (
 	"context"
 
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -43,9 +45,10 @@ func NewStorageClientNodeConnector(
 	wlt *wallet.Wallet,
 	ob *message.Outbox,
 	ca address.Address,
+	sv *appstate.Viewer,
 ) *StorageClientNodeConnector {
 	return &StorageClientNodeConnector{
-		connectorCommon: connectorCommon{cs, w, wlt, ob},
+		connectorCommon: connectorCommon{cs, sv, w, wlt, ob},
 		cborStore:       cbor,
 		clientAddr:      ca,
 	}
@@ -137,7 +140,7 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 
 	unsigned := chnMsg.Message.Message
 
-	minerWorker, err := s.GetMinerWorker(ctx, deal.Proposal.Provider)
+	minerWorker, err := s.GetMinerWorkerAddress(ctx, deal.Proposal.Provider, nil)
 	if err != nil {
 		return 0, err
 	}

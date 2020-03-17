@@ -3,6 +3,8 @@ package retrievalmarketconnector
 import (
 	"context"
 
+	"github.com/filecoin-project/go-fil-markets/shared"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -31,7 +33,7 @@ type RetrievalSigner interface {
 type PaychMgrAPI interface {
 	AllocateLane(paychAddr address.Address) (uint64, error)
 	ChannelExists(paychAddr address.Address) (bool, error)
-	GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error)
+	GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error)
 	GetPaymentChannelInfo(paychAddr address.Address) (*paymentchannel.ChannelInfo, error)
 	GetPaymentChannelByAccounts(payer, payee address.Address) (*paymentchannel.ChannelInfo, error)
 	CreatePaymentChannel(payer, payee address.Address, amt abi.TokenAmount) (address.Address, error)

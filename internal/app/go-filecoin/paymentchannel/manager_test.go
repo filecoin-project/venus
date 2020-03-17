@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/filecoin-project/go-fil-markets/shared"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -312,7 +314,7 @@ func TestManager_GetMinerWorker(t *testing.T) {
 
 	t.Run("happy path", func(t *testing.T) {
 		viewer.Views[root].AddMinerWithState(minerAddr, minerWorkerAddr)
-		res, err := manager.GetMinerWorker(ctx, minerAddr)
+		res, err := manager.GetMinerWorkerAddress(ctx, minerAddr, shared.TipSetToken{})
 		assert.NoError(t, err)
 		assert.Equal(t, minerWorkerAddr, res)
 	})
@@ -320,14 +322,14 @@ func TestManager_GetMinerWorker(t *testing.T) {
 	t.Run("returns error if getting control addr fails", func(t *testing.T) {
 		viewer.Views[root].AddMinerWithState(minerAddr, minerWorkerAddr)
 		viewer.Views[root].MinerControlErr = errors.New("boom")
-		_, err := manager.GetMinerWorker(ctx, minerAddr)
+		_, err := manager.GetMinerWorkerAddress(ctx, minerAddr, shared.TipSetToken{})
 		assert.EqualError(t, err, "boom")
 	})
 
 	t.Run("returns error if getting state view fails", func(t *testing.T) {
 		viewer.Views[root].AddMinerWithState(minerAddr, minerWorkerAddr)
 		cr.GetTSErr = errors.New("boom")
-		_, err := manager.GetMinerWorker(ctx, minerAddr)
+		_, err := manager.GetMinerWorkerAddress(ctx, minerAddr, shared.TipSetToken{})
 		assert.EqualError(t, err, "boom")
 	})
 }
