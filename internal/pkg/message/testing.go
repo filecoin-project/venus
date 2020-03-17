@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 
@@ -23,16 +24,18 @@ type FakeProvider struct {
 	*chain.Builder
 	t *testing.T
 
-	head  block.TipSetKey // Provided by GetHead and expected by others
-	addr  address.Address // Expected by GetActorAt
-	actor *actor.Actor    // Provided by GetActorAt(head, tipKey, addr)
+	head   block.TipSetKey // Provided by GetHead and expected by others
+	actors map[address.Address]*actor.Actor
 }
 
 // NewFakeProvider creates a new builder and wraps with a provider.
 // The builder may be accessed by `provider.Builder`.
 func NewFakeProvider(t *testing.T) *FakeProvider {
 	builder := chain.NewBuilder(t, address.Address{})
-	return &FakeProvider{Builder: builder, t: t}
+	return &FakeProvider{
+		Builder: builder,
+		t:       t,
+		actors:  make(map[address.Address]*actor.Actor)}
 }
 
 // GetHead returns the head tipset key.
@@ -50,10 +53,11 @@ func (p *FakeProvider) GetActorAt(ctx context.Context, key block.TipSetKey, addr
 	if !key.Equals(p.head) {
 		return nil, errors.Errorf("No such tipset %s, expected %s", key, p.head)
 	}
-	if addr != p.addr {
-		return nil, errors.Errorf("No such address %s, expected %s", addr, p.addr)
+	a, ok := p.actors[addr]
+	if !ok {
+		return nil, xerrors.Errorf("No such address %s", addr.String())
 	}
-	return p.actor, nil
+	return a, nil
 }
 
 // SetHead sets the head tipset
@@ -63,11 +67,15 @@ func (p *FakeProvider) SetHead(head block.TipSetKey) {
 	p.head = head
 }
 
+// SetActor sets an actor to be mocked on chain
+func (p *FakeProvider) SetActor(addr address.Address, act *actor.Actor) {
+	p.actors[addr] = act
+}
+
 // SetHeadAndActor sets the head tipset, along with the from address and actor to be provided.
 func (p *FakeProvider) SetHeadAndActor(t *testing.T, head block.TipSetKey, addr address.Address, actor *actor.Actor) {
 	p.SetHead(head)
-	p.addr = addr
-	p.actor = actor
+	p.SetActor(addr, actor)
 }
 
 // MockPublisher is a publisher which just stores the last message published.

@@ -22,9 +22,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
+// FakePaymentChannelAPI mocks some needed APIs for a payment channel manager
 type FakePaymentChannelAPI struct {
 	t   *testing.T
 	ctx context.Context
+
+	Balance types.AttoFIL
 
 	ActualWaitCid  cid.Cid
 	ExpectedMsgCid cid.Cid
@@ -35,6 +38,7 @@ type FakePaymentChannelAPI struct {
 	MsgWaitErr error
 }
 
+// MsgReceipts stores test message receipts
 type MsgReceipts struct {
 	Block         *block.Block
 	Msg           *types.SignedMessage
@@ -45,6 +49,7 @@ type MsgReceipts struct {
 
 var msgRcptsUndef = MsgReceipts{}
 
+// NewFakePaymentChannelAPI creates a new mock payment channel API
 func NewFakePaymentChannelAPI(ctx context.Context, t *testing.T) *FakePaymentChannelAPI {
 	return &FakePaymentChannelAPI{
 		t:   t,
@@ -95,11 +100,17 @@ func (f *FakePaymentChannelAPI) Send(_ context.Context,
 // testing methods
 
 // StubCreatePaychActorMessage sets up a message response, with desired exit code and block height
-func (f *FakePaymentChannelAPI) StubCreatePaychActorMessage(t *testing.T, clientAccountAddr, minerAccountAddr, paychUniqueAddr address.Address, code exitcode.ExitCode, height uint64) {
+func (f *FakePaymentChannelAPI) StubCreatePaychActorMessage(
+	t *testing.T,
+	clientAccountAddr, minerAccountAddr, paychUniqueAddr address.Address,
+	amt abi.TokenAmount,
+	code exitcode.ExitCode,
+	height uint64) {
 
 	newcid := shared_testutil.GenerateCids(1)[0]
 
-	msg := types.NewUnsignedMessage(clientAccountAddr, builtin.InitActorAddr, 1, types.ZeroAttoFIL, builtin.MethodsInit.Exec, []byte{})
+	msg := types.NewUnsignedMessage(clientAccountAddr, builtin.InitActorAddr, 1,
+		types.NewAttoFIL(amt.Int), builtin.MethodsInit.Exec, []byte{})
 	msg.GasPrice = defaultGasPrice
 	msg.GasLimit = defaultGasLimit
 

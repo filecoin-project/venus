@@ -1,7 +1,10 @@
 package paymentchannel
 
 import (
+	"reflect"
+
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 )
 
@@ -15,7 +18,7 @@ import (
 // iterate over key/value pairs in statestore at present
 type ChannelInfo struct {
 	UniqueAddr, From, To address.Address
-	NextLane             uint64
+	NextLane, NextNonce  uint64
 	Vouchers             []*VoucherInfo // All vouchers submitted for this channel
 }
 
@@ -23,6 +26,27 @@ type ChannelInfo struct {
 func (ci *ChannelInfo) IsZero() bool {
 	return ci.UniqueAddr.Empty() && ci.To.Empty() && ci.From.Empty() &&
 		ci.NextLane == 0 && len(ci.Vouchers) == 0
+}
+
+// HasVoucher returns true if `voucher` is already in `info`
+func (ci *ChannelInfo) HasVoucher(voucher *paych.SignedVoucher) bool {
+	for _, v := range ci.Vouchers {
+		if reflect.DeepEqual(*v.Voucher, *voucher) {
+			return true
+		}
+	}
+	return false
+}
+
+// LargestVoucherAmount returns the largest stored voucher amount
+func (ci *ChannelInfo) LargestVoucherAmount() abi.TokenAmount {
+	res := abi.NewTokenAmount(0)
+	for _, v := range ci.Vouchers {
+		if v.Voucher.Amount.GreaterThan(res) {
+			res = v.Voucher.Amount
+		}
+	}
+	return res
 }
 
 // VoucherInfo is a record of a voucher submitted for a payment channel
