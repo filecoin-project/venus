@@ -6,16 +6,155 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/mining"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
+
+// TestMineOnce10Null calls mine once off of a base tipset with a ticket that
+// will win after 10 rounds and verifies that the output has 1 ticket and a
+// +10 height.
+func TestMineOnce10Null(t *testing.T) {
+	tf.IntegrationTest(t)
+	t.Skip("Dragons: fake proofs")
+
+	mockSigner, kis := types.NewMockSignersAndKeyInfo(5)
+	ki := &(kis[0])
+	addr, err := ki.Address()
+	require.NoError(t, err)
+	minerToWorker := make(map[address.Address]address.Address)
+	minerToWorker[addr] = addr
+	totalPower := uint64(10000)
+	numSectors := uint64(1)
+	sectorSize := uint64(100)
+	rnd := consensus.SeedFirstWinnerInNRounds(t, 10, addr, ki, totalPower, numSectors, sectorSize)
+	baseBlock := &block.Block{
+		StateRoot: e.NewCid(types.CidFromString(t, "somecid")),
+		Height:    0,
+	}
+	baseTs, err := block.NewTipSet(baseBlock)
+	require.NoError(t, err)
+
+	st, pool, _, bs := sharedSetup(t, mockSigner)
+	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
+		return st, nil
+	}
+	messages := chain.NewMessageStore(bs)
+
+	// Dragons: need to give the miners in the fake state actual power for these tests to work.
+	api := th.NewFakeWorkerPorcelainAPI(rnd, 100, minerToWorker)
+	genTime := time.Now()
+	fc := clock.NewFake(genTime)
+	chainClock := clock.NewChainClockFromClock(uint64(genTime.Unix()), 15*time.Second, fc)
+
+	worker := NewDefaultWorker(WorkerParameters{
+		API: api,
+
+		MinerAddr:      addr,
+		MinerOwnerAddr: addr,
+		WorkerSigner:   mockSigner,
+
+		TipSetMetadata: fakeTSMetadata{},
+		GetStateTree:   getStateTree,
+		GetWeight:      getWeightTest,
+		Election:       consensus.NewElectionMachine(rnd),
+		TicketGen:      consensus.NewTicketMachine(rnd),
+
+		MessageSource:    pool,
+		MessageQualifier: &NoMessageQualifier{},
+		Blockstore:       bs,
+		MessageStore:     messages,
+		Clock:            chainClock,
+		Poster:           &consensus.TestElectionPoster{},
+	})
+
+	result, err := MineOnce(context.Background(), *worker, baseTs)
+	assert.NoError(t, err)
+	assert.NoError(t, result.Err)
+	block := result.NewBlock
+	assert.Equal(t, uint64(10+1), block.Height)
+	assert.NotEqual(t, baseBlock.Ticket, block.Ticket)
+}
+
+// This test makes use of the MineOneEpoch call to
+// exercise the mining code without races or long blocking
+func TestMineOneEpoch10Null(t *testing.T) {
+	tf.IntegrationTest(t)
+	t.Skip("Dragons: fake proofs")
+
+	mockSigner, kis := types.NewMockSignersAndKeyInfo(5)
+	ki := &(kis[0])
+	addr, err := ki.Address()
+	require.NoError(t, err)
+	minerToWorker := make(map[address.Address]address.Address)
+	minerToWorker[addr] = addr
+	totalPower := uint64(10000)
+	numSectors := uint64(1)
+	sectorSize := uint64(100)
+	rnd := consensus.SeedFirstWinnerInNRounds(t, 10, addr, ki, totalPower, numSectors, sectorSize)
+	baseBlock := &block.Block{
+		StateRoot: e.NewCid(types.CidFromString(t, "somecid")),
+		Height:    0,
+	}
+	baseTs, err := block.NewTipSet(baseBlock)
+	require.NoError(t, err)
+
+	st, pool, _, bs := sharedSetup(t, mockSigner)
+	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
+		return st, nil
+	}
+	messages := chain.NewMessageStore(bs)
+
+	api := th.NewFakeWorkerPorcelainAPI(rnd, 100, minerToWorker)
+	genTime := time.Now()
+	fc := clock.NewFake(genTime)
+	chainClock := clock.NewChainClockFromClock(uint64(genTime.Unix()), 15*time.Second, fc)
+
+	worker := NewDefaultWorker(WorkerParameters{
+		API: api,
+
+		MinerAddr:      addr,
+		MinerOwnerAddr: addr,
+		WorkerSigner:   mockSigner,
+
+		TipSetMetadata: fakeTSMetadata{},
+		GetStateTree:   getStateTree,
+		GetWeight:      getWeightTest,
+		Election:       consensus.NewElectionMachine(rnd),
+		TicketGen:      consensus.NewTicketMachine(rnd),
+
+		MessageSource:    pool,
+		MessageQualifier: &NoMessageQualifier{},
+		Blockstore:       bs,
+		MessageStore:     messages,
+		Clock:            chainClock,
+		Poster:           &consensus.TestElectionPoster{},
+	})
+
+	for i := 0; i < 10; i++ {
+		// with null count < 10 we see no errors and get no wins
+		blk, err := MineOneEpoch(context.Background(), *worker, baseTs, uint64(i))
+		assert.NoError(t, err)
+		assert.Nil(t, blk)
+	}
+	blk, err := MineOneEpoch(context.Background(), *worker, baseTs, 10)
+	assert.NoError(t, err)
+	require.NotNil(t, blk)
+	assert.Equal(t, uint64(10+1), blk.Height)
+	assert.Equal(t, chainClock.EpochAtTime(time.Unix(int64(blk.Timestamp), 0)), blk.Height)
+}
 
 // Mining loop unit tests
 
