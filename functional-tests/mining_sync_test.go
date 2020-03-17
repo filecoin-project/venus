@@ -46,7 +46,7 @@ func TestBootstrapMineOnce(t *testing.T) {
 
 	kib := uint64(1024)
 	// expected miner power is 2 2kib sectors
-	expectedMinerPower := uint64((2 * kib) * 2)
+	expectedMinerPower := (2 * kib) * 2
 	actualMinerPower := status.Power.Uint64()
 	assert.Equal(t, expectedMinerPower, status.Power.Uint64(), "expected miner power: %d actual miner power: %d", expectedMinerPower, actualMinerPower)
 
