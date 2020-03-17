@@ -61,14 +61,14 @@ func NewStorageMinerBackEnd(m StorageMinerAPI, b SectorBuilderAPI) *StorageMiner
 // SealPieceIntoNewSector provisions a new sector and writes the provided piece
 // to that sector. Any remaining space in the sector is filled with self-deals,
 // and the sector is committed to the network automatically and asynchronously.
-func (s *StorageMinerBackEnd) SealPieceIntoNewSector(ctx context.Context, dealID uint64, dealStart, dealEnd abi.ChainEpoch, pieceSize uint64, pieceReader io.Reader) error {
+func (s *StorageMinerBackEnd) SealPieceIntoNewSector(ctx context.Context, dealID abi.DealID, dealStart, dealEnd abi.ChainEpoch, pieceSize uint64, pieceReader io.Reader) error {
 	sectorID, err := s.miner.AllocateSectorID()
 	if err != nil {
 		return errors.Wrap(err, "failed to acquire sector id from storage miner")
 	}
 
 	err = s.miner.SealPiece(ctx, abi.UnpaddedPieceSize(pieceSize), pieceReader, sectorID, storagenode.DealInfo{
-		DealID: abi.DealID(dealID),
+		DealID: dealID,
 		DealSchedule: storagenode.DealSchedule{
 			StartEpoch: dealStart,
 			EndEpoch:   dealEnd,

@@ -9,10 +9,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	retmkt "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
+	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	xerrors "github.com/pkg/errors"
+
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors"
 )
 
 // MaxInt is the max value of an Int
@@ -20,11 +23,12 @@ const MaxInt = int(^uint(0) >> 1)
 
 // RetrievalProviderConnector is the glue between go-filecoin and retrieval market provider API
 type RetrievalProviderConnector struct {
-	bstore   blockstore.Blockstore
-	net      rmnet.RetrievalMarketNetwork
-	paychMgr PaychMgrAPI
-	provider retmkt.RetrievalProvider
-	unsealer UnsealerAPI
+	chainReader ChainReaderAPI
+	bstore      blockstore.Blockstore
+	net         rmnet.RetrievalMarketNetwork
+	paychMgr    PaychMgrAPI
+	provider    retmkt.RetrievalProvider
+	unsealer    UnsealerAPI
 }
 
 var _ retmkt.RetrievalProviderNode = &RetrievalProviderConnector{}
@@ -36,12 +40,13 @@ type UnsealerAPI interface {
 
 // NewRetrievalProviderConnector creates a new RetrievalProviderConnector
 func NewRetrievalProviderConnector(net rmnet.RetrievalMarketNetwork, us UnsealerAPI,
-	bs blockstore.Blockstore, paychMgr PaychMgrAPI) *RetrievalProviderConnector {
+	bs blockstore.Blockstore, paychMgr PaychMgrAPI, chainReader ChainReaderAPI) *RetrievalProviderConnector {
 	return &RetrievalProviderConnector{
-		bstore:   bs,
-		net:      net,
-		paychMgr: paychMgr,
-		unsealer: us,
+		bstore:      bs,
+		net:         net,
+		paychMgr:    paychMgr,
+		unsealer:    us,
+		chainReader: chainReader,
 	}
 }
 
@@ -113,5 +118,11 @@ func (r *RetrievalProviderConnector) SavePaymentVoucher(_ context.Context, payme
 // GetMinerWorker produces the worker address for the provided storage miner
 // address at the chain head.
 func (r *RetrievalProviderConnector) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
+	// TODO: This should be passed a tipset key. See the getMinerWorkerAddress
+	// method on StorageMinerNodeConnector for an example.
 	return r.paychMgr.GetMinerWorker(ctx, miner)
+}
+
+func (r *RetrievalProviderConnector) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
+	return connectors.GetChainHead(r.chainReader)
 }

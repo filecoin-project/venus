@@ -80,7 +80,7 @@ func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr, wa
 }
 
 // PublishDeals publishes storage deals on chain
-func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (storagemarket.DealID, cid.Cid, error) {
+func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (abi.DealID, cid.Cid, error) {
 	params := market.PublishStorageDealsParams{Deals: []market.ClientDealProposal{deal.ClientDealProposal}}
 
 	workerAddr, err := s.GetMinerWorker(ctx, s.minerAddr)
@@ -118,7 +118,7 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 		return 0, cid.Undef, xerrors.New("Successful call to publish storage deals did not return deal ids")
 	}
 
-	return storagemarket.DealID(ret.IDs[0]), mcid, err
+	return ret.IDs[0], mcid, err
 }
 
 // ListProviderDeals lists all deals for the given provider
@@ -135,7 +135,7 @@ func (s *StorageProviderNodeConnector) OnDealComplete(ctx context.Context, deal 
 }
 
 // LocatePieceForDealWithinSector finds the sector, offset and length of a piece associated with the given deal id
-func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx context.Context, dealID uint64) (sectorNumber uint64, offset uint64, length uint64, err error) {
+func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID) (sectorNumber uint64, offset uint64, length uint64, err error) {
 	var smState market.State
 	err = s.chainStore.GetActorStateAt(ctx, s.chainStore.Head(), builtin.StorageMarketActorAddr, &smState)
 	if err != nil {
@@ -161,7 +161,7 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 		sectorNumber = uint64(k)
 
 		for _, deal := range sectorInfo.Info.DealIDs {
-			if uint64(deal) == dealID {
+			if deal == dealID {
 				offset = uint64(0)
 				for _, did := range sectorInfo.Info.DealIDs {
 					var proposal market.DealProposal
@@ -173,7 +173,7 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 						return errors.Errorf("Could not find miner deal %d in storage market state", did)
 					}
 
-					if uint64(did) == dealID {
+					if did == dealID {
 						sectorNumber = uint64(k)
 						length = uint64(proposal.PieceSize)
 						return nil // Found!

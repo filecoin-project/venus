@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -16,6 +17,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
@@ -120,7 +122,7 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context) (
 
 // ValidatePublishedDeal validates a deal has been published correctly
 // Adapted from https://github.com/filecoin-project/lotus/blob/3b34eba6124d16162b712e971f0db2ee108e0f67/markets/storageadapter/client.go#L156
-func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (dealID uint64, err error) {
+func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (dealID abi.DealID, err error) {
 	// Fetch receipt to return dealId
 	chnMsg, found, err := s.waiter.Find(ctx, func(msg *types.SignedMessage, c cid.Cid) bool {
 		return c.Equals(*deal.PublishMessage)
@@ -169,8 +171,7 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 			if err != nil {
 				return 0, err
 			}
-			dealID := ret.IDs[0]
-			return uint64(dealID), nil
+			return ret.IDs[0], nil
 		}
 	}
 
@@ -214,4 +215,12 @@ func (s *StorageClientNodeConnector) ValidateAskSignature(signed *storagemarket.
 	}
 
 	return xerrors.Errorf("invalid ask signature")
+}
+
+func (s *StorageClientNodeConnector) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
+	return connectors.GetChainHead(s.chainStore)
+}
+
+func (s *StorageClientNodeConnector) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
+	panic("implement me") // @laser to do this
 }

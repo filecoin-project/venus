@@ -13,8 +13,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-datastore"
 
+	storageminerconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/storage_miner"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
-	storageminerconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/storage_miner_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/poster"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"

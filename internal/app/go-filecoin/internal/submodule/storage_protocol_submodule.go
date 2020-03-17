@@ -19,9 +19,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
 
+	storagemarketconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/storage_market"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
-	storagemarketconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/storage_market_connector"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
@@ -79,8 +79,13 @@ func NewStorageProtocolSubmodule(
 		return nil, errors.Wrap(err, "error creating graphsync provider")
 	}
 
+	client, err := impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, dt, nil, nil, cnode)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating storage client")
+	}
+
 	return &StorageProtocolSubmodule{
-		StorageClient:   impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, dt, nil, nil, cnode),
+		StorageClient:   client,
 		StorageProvider: provider,
 	}, nil
 }

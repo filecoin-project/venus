@@ -117,7 +117,7 @@ func (a *API) ClientListAsks(ctx context.Context) <-chan Ask {
 }
 
 // SealPieceIntoNewSector writes the provided piece into a new sector
-func (a *API) SealPieceIntoNewSector(ctx context.Context, dealID uint64, dealStart, dealEnd abi.ChainEpoch, pieceSize uint64, pieceReader io.Reader) error {
+func (a *API) SealPieceIntoNewSector(ctx context.Context, dealID abi.DealID, dealStart, dealEnd abi.ChainEpoch, pieceSize uint64, pieceReader io.Reader) error {
 	return SealPieceIntoNewSector(ctx, a, dealID, dealStart, dealEnd, pieceSize, pieceReader)
 }
 
