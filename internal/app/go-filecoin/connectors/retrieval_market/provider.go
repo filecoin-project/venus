@@ -105,8 +105,7 @@ func (wrc limitedOffsetReadCloser) Close() error {
 // SavePaymentVoucher stores the provided payment voucher with the payment channel actor
 // Returns actual amount available to be redeemed by voucher?
 func (r *RetrievalProviderConnector) SavePaymentVoucher(_ context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expected abi.TokenAmount) (actual abi.TokenAmount, err error) {
-
-	actual, err = r.paychMgr.AddVoucher(paymentChannel, voucher, proof, expected)
+	actual, err = r.paychMgr.AddVoucher(paymentChannel, voucher, proof, expected, shared.TipSetToken{})
 
 	if err != nil {
 		return abi.NewTokenAmount(0), err

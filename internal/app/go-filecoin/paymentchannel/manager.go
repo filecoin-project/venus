@@ -73,7 +73,6 @@ type PaychActorStateView interface {
 // ChainReader is the subset of the ChainReadWriter API that the Manager uses
 type ChainReader interface {
 	GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error)
-	Head() block.TipSetKey
 }
 
 // NewManager creates and returns a new paymentchannel.Manager
@@ -200,14 +199,13 @@ func (pm *Manager) AddVoucherToChannel(paychAddr address.Address, voucher *paych
 // If payment channel record does not exist in store, it will be created.
 // Each new voucher amount must be > the last largest voucher by at least `expected`
 // Called by retrieval provider connector
-func (pm *Manager) AddVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte, expected big.Int) (abi.TokenAmount, error) {
-
+func (pm *Manager) AddVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte, expected big.Int, tok shared.TipSetToken) (abi.TokenAmount, error) {
 	has, err := pm.ChannelExists(paychAddr)
 	if err != nil {
 		return zeroAmt, err
 	}
 	if !has {
-		return pm.createPaymentChannelWithVoucher(paychAddr, voucher, proof)
+		return pm.createPaymentChannelWithVoucher(paychAddr, voucher, proof, tok)
 	}
 
 	chinfo, err := pm.GetPaymentChannelInfo(paychAddr)
@@ -250,16 +248,21 @@ func PaychActorCtorExecParamsFor(client, miner address.Address) (initActor.ExecP
 	return p, nil
 }
 
-func (pm *Manager) getStateView() (PaychActorStateView, error) {
-	root, err := pm.cr.GetTipSetStateRoot(pm.ctx, pm.cr.Head())
+func (pm *Manager) getStateView(tok shared.TipSetToken) (PaychActorStateView, error) {
+	var tsk block.TipSetKey
+	if err := encoding.Decode(tok, &tsk); err != nil {
+		return nil, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
+	}
+
+	root, err := pm.cr.GetTipSetStateRoot(pm.ctx, tsk)
 	if err != nil {
 		return nil, err
 	}
 	return pm.stateViewer.StateView(root), nil
 }
 
-func (pm *Manager) createPaymentChannelWithVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte) (abi.TokenAmount, error) {
-	sv, err := pm.getStateView()
+func (pm *Manager) createPaymentChannelWithVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte, tok shared.TipSetToken) (abi.TokenAmount, error) {
+	sv, err := pm.getStateView(tok)
 	if err != nil {
 		return zeroAmt, err
 	}
