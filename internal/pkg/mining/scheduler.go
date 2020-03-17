@@ -8,14 +8,11 @@ package mining
 import (
 	"context"
 	"sync"
-	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 )
 
 // Scheduler is the mining interface consumers use.
@@ -141,12 +138,12 @@ func NewScheduler(w Worker, f func() (block.TipSet, error), c clock.ChainEpochCl
 }
 
 // MineOnce mines on a given base until it finds a winner.
-func MineOnce(ctx context.Context, w DefaultWorker, ts block.TipSet, c clock.ChainEpochClock) (Output, error) {
+func MineOnce(ctx context.Context, w DefaultWorker, ts block.TipSet) (Output, error) {
 	var winner *block.Block
 	var nullCount uint64
 	for winner == nil {
 		var err error
-		winner, err = MineOneEpoch(ctx, w, ts, nullCount, c)
+		winner, err = MineOneEpoch(ctx, w, ts, nullCount)
 		if err != nil {
 			return Output{}, err
 		}
@@ -156,24 +153,12 @@ func MineOnce(ctx context.Context, w DefaultWorker, ts block.TipSet, c clock.Cha
 	return Output{NewBlock: winner}, nil
 }
 
-// MineOneEpoch attempts to mine a block in an epoch and returns the mined block
+// MineOneEpoch attempts to mine a block in an epoch and returns the mined block,
 // or nil if no block could be mined
-func MineOneEpoch(ctx context.Context, w DefaultWorker, ts block.TipSet, nullCount uint64, chainClock clock.ChainEpochClock) (*block.Block, error) {
+func MineOneEpoch(ctx context.Context, w DefaultWorker, ts block.TipSet, nullCount uint64) (*block.Block, error) {
 	workCtx, workCancel := context.WithCancel(ctx)
 	defer workCancel()
 	outCh := make(chan Output, 1)
-
-	// Control the time so that this block is always mined at a time that matches the epoch
-	h, err := ts.Height()
-	if err != nil {
-		return nil, err
-	}
-	epochStartTime := chainClock.StartTimeOfEpoch(abi.ChainEpoch(nullCount) + h + 1)
-	nextEpochStartTime := chainClock.StartTimeOfEpoch(abi.ChainEpoch(nullCount) + h + 2)
-	epochTime := nextEpochStartTime.Sub(epochStartTime)
-	halfEpochTime := epochTime / time.Duration(2) // mine blocks midway through the epoch
-
-	w.clock = th.NewFakeClock(epochStartTime.Add(halfEpochTime))
 
 	won := w.Mine(workCtx, ts, nullCount, outCh)
 	if !won {

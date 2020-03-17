@@ -11,11 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-
 	"github.com/filecoin-project/go-address"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
-
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
@@ -32,9 +29,10 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
@@ -106,7 +104,7 @@ type hungRequest struct {
 // mockableGraphsync conforms to the graphsync exchange interface needed by
 // the graphsync fetcher but will only send stubbed responses
 type mockableGraphsync struct {
-	clock               th.FakeClock
+	clock               clock.Fake
 	hungRequests        []*hungRequest
 	incomingHungRequest chan *hungRequest
 	requestsToProcess   chan struct{}
@@ -126,7 +124,7 @@ func (mgs *mockableGraphsync) stubString() string {
 	return stubStr
 }
 
-func newMockableGraphsync(ctx context.Context, store bstore.Blockstore, clock th.FakeClock, t *testing.T) *mockableGraphsync {
+func newMockableGraphsync(ctx context.Context, store bstore.Blockstore, clock clock.Fake, t *testing.T) *mockableGraphsync {
 	mgs := &mockableGraphsync{
 		ctx:                 ctx,
 		incomingHungRequest: make(chan *hungRequest),

@@ -12,6 +12,7 @@ const DefaultEpochDuration = 15 * time.Second
 
 // ChainEpochClock is an interface for a clock that represents epochs of the protocol.
 type ChainEpochClock interface {
+	EpochDuration() time.Duration
 	EpochAtTime(t time.Time) abi.ChainEpoch
 	EpochRangeAtTimestamp(t uint64) (abi.ChainEpoch, abi.ChainEpoch)
 	StartTimeOfEpoch(e abi.ChainEpoch) time.Time
@@ -21,11 +22,10 @@ type ChainEpochClock interface {
 
 // chainClock is a clock that represents epochs of the protocol.
 type chainClock struct {
-	// GenesisTime is the time of the first block. EpochClock counts
-	// up from there.
-	GenesisTime time.Time
-	// EpochDuration is the fixed time length of the epoch window
-	EpochDuration time.Duration
+	// The time of the first block. EpochClock counts up from there.
+	genesisTime time.Time
+	// The fixed time length of the epoch window
+	epochDuration time.Duration
 
 	Clock
 }
@@ -40,18 +40,22 @@ func NewChainClock(genesisTime uint64, blockTime time.Duration) ChainEpochClock 
 func NewChainClockFromClock(genesisSeconds uint64, blockTime time.Duration, c Clock) ChainEpochClock {
 	gt := time.Unix(int64(genesisSeconds), 0)
 	return &chainClock{
-		GenesisTime:   gt,
-		EpochDuration: blockTime,
+		genesisTime:   gt,
+		epochDuration: blockTime,
 		Clock:         c,
 	}
 }
 
+func (cc *chainClock) EpochDuration() time.Duration {
+	return cc.epochDuration
+}
+
 // EpochAtTime returns the ChainEpoch corresponding to t.
-// It first subtracts GenesisTime, then divides by EpochDuration
+// It first subtracts genesisTime, then divides by epochDuration
 // and returns the resulting number of epochs.
 func (cc *chainClock) EpochAtTime(t time.Time) abi.ChainEpoch {
-	difference := t.Sub(cc.GenesisTime)
-	epochs := difference / cc.EpochDuration
+	difference := t.Sub(cc.genesisTime)
+	epochs := difference / cc.epochDuration
 	return abi.ChainEpoch(epochs)
 }
 
@@ -69,7 +73,7 @@ func (cc *chainClock) EpochRangeAtTimestamp(seconds uint64) (abi.ChainEpoch, abi
 
 // StartTimeOfEpoch returns the start time of the given epoch.
 func (cc *chainClock) StartTimeOfEpoch(e abi.ChainEpoch) time.Time {
-	addedTime := cc.GenesisTime.Add(cc.EpochDuration * time.Duration(e))
+	addedTime := cc.genesisTime.Add(cc.epochDuration * time.Duration(e))
 	return addedTime
 }
 
