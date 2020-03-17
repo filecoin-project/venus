@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	paychActor "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -79,15 +80,19 @@ func (r *RetrievalClientConnector) AllocateLane(paymentChannel address.Address) 
 }
 
 // CreatePaymentVoucher creates a payment voucher for the retrieval client.
-// If there is not enough value stored in the payment channel registry, an error is returned.
-// If a lane has not been allocated for this payment channel, an error is returned.
-func (r *RetrievalClientConnector) CreatePaymentVoucher(_ context.Context, paychAddr address.Address, amount abi.TokenAmount, lane uint64) (*paychActor.SignedVoucher, error) {
+func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, paychAddr address.Address, amount abi.TokenAmount, lane uint64) (*paychActor.SignedVoucher, error) {
 	height, err := r.getBlockHeight()
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: Get balance
+	bal, err := r.getBalance(ctx, paychAddr)
+	if err != nil {
+		return nil, err
+	}
+	if amount.GreaterThan(bal) {
+		return nil, xerrors.New("insufficient funds for voucher amount")
+	}
 
 	chinfo, err := r.paychMgr.GetPaymentChannelInfo(paychAddr)
 	if err != nil {

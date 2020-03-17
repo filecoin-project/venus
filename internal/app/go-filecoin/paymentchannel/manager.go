@@ -308,6 +308,7 @@ func (pm *Manager) saveNewVoucher(paychAddr address.Address, voucher *paychActor
 	return nil
 }
 
+// GetMinerWorker mocks getting a miner worker address from the miner address
 func (pm *Manager) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
 	sv, err := pm.getStateView()
 	if err != nil {

@@ -28,7 +28,7 @@ func (ci *ChannelInfo) IsZero() bool {
 		ci.NextLane == 0 && len(ci.Vouchers) == 0
 }
 
-// hasVoucher returns true if `voucher` is already in `info`
+// HasVoucher returns true if `voucher` is already in `info`
 func (ci *ChannelInfo) HasVoucher(voucher *paych.SignedVoucher) bool {
 	for _, v := range ci.Vouchers {
 		if reflect.DeepEqual(*v.Voucher, *voucher) {
@@ -38,6 +38,7 @@ func (ci *ChannelInfo) HasVoucher(voucher *paych.SignedVoucher) bool {
 	return false
 }
 
+// LargestVoucherAmount returns the largest stored voucher amount
 func (ci *ChannelInfo) LargestVoucherAmount() abi.TokenAmount {
 	res := abi.NewTokenAmount(0)
 	for _, v := range ci.Vouchers {

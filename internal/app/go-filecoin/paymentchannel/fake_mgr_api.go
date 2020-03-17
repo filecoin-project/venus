@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
+// FakePaymentChannelAPI mocks some needed APIs for a payment channel manager
 type FakePaymentChannelAPI struct {
 	t   *testing.T
 	ctx context.Context
@@ -37,6 +38,7 @@ type FakePaymentChannelAPI struct {
 	MsgWaitErr error
 }
 
+// MsgReceipts stores test message receipts
 type MsgReceipts struct {
 	Block         *block.Block
 	Msg           *types.SignedMessage
@@ -47,6 +49,7 @@ type MsgReceipts struct {
 
 var msgRcptsUndef = MsgReceipts{}
 
+// NewFakePaymentChannelAPI creates a new mock payment channel API
 func NewFakePaymentChannelAPI(ctx context.Context, t *testing.T) *FakePaymentChannelAPI {
 	return &FakePaymentChannelAPI{
 		t:   t,

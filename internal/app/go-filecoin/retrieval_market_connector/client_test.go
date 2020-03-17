@@ -38,13 +38,14 @@ import (
 func TestNewRetrievalClientConnector(t *testing.T) {
 	ctx := context.Background()
 
-	bs, cs, _, _, _ := testSetup(ctx, t, abi.NewTokenAmount(1))
+	bs, cs, _, _ := testSetup(ctx, t, abi.NewTokenAmount(1))
 
-	rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
+	rmc := NewRetrievalMarketClientFakeAPI(t)
 	pchMgr := makePaychMgr(ctx, t,
 		specst.NewIDAddr(t, 99),
 		specst.NewIDAddr(t, 100),
-		specst.NewActorAddr(t, "foobar"))
+		specst.NewActorAddr(t, "foobar"),
+		abi.NewTokenAmount(999))
 
 	rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
 	assert.NotNil(t, rcnc)
@@ -53,58 +54,60 @@ func TestNewRetrievalClientConnector(t *testing.T) {
 func TestRetrievalClientConnector_GetOrCreatePaymentChannel(t *testing.T) {
 	ctx := context.Background()
 
-	paychUniqueAddr := specst.NewActorAddr(t, "paych")
+	paychAddr := specst.NewActorAddr(t, "paych")
+	balance := abi.NewTokenAmount(1000)
+	channelAmt := abi.NewTokenAmount(101)
 
 	t.Run("if the payment channel does not exist", func(t *testing.T) {
 		t.Run("creates a new payment channel registry entry and posts createChannel message", func(t *testing.T) {
-			bs, cs, clientAddr, minerAddr, channelAmount := testSetup(ctx, t, abi.NewTokenAmount(1000))
-			pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychUniqueAddr)
-			rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
+			bs, cs, clientAddr, minerAddr := testSetup(ctx, t, balance)
+			pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr, channelAmt)
+			rmc := NewRetrievalMarketClientFakeAPI(t)
 
 			rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
 
-			res, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
+			res, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt)
 			require.NoError(t, err)
-			assert.Equal(t, paychUniqueAddr, res)
-			assertChannel(t, paychUniqueAddr, pchMgr, true)
+			assert.Equal(t, paychAddr, res)
+			assertChannel(t, paychAddr, pchMgr, true)
 			rmc.Verify()
 		})
 		t.Run("Errors if there aren't enough funds in wallet", func(t *testing.T) {
-			bs, cs, clientAddr, minerAddr, _ := testSetup(ctx, t, abi.NewTokenAmount(1000))
-			rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
-			pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychUniqueAddr)
+			bs, cs, clientAddr, minerAddr := testSetup(ctx, t, balance)
+			rmc := NewRetrievalMarketClientFakeAPI(t)
+			pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr, channelAmt)
 			rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
 
 			res, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, big.NewInt(2000))
 			assert.EqualError(t, err, "not enough funds in wallet")
 			assert.Equal(t, address.Undef, res)
-			assertChannel(t, paychUniqueAddr, pchMgr, false)
+			assertChannel(t, paychAddr, pchMgr, false)
 		})
 
 		t.Run("Errors if client or minerWallet addr is invalid", func(t *testing.T) {
-			bs, cs, clientAddr, minerAddr, channelAmount := testSetup(ctx, t, abi.NewTokenAmount(1000))
-			pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychUniqueAddr)
-			rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
+			bs, cs, clientAddr, minerAddr := testSetup(ctx, t, balance)
+			pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr, channelAmt)
+			rmc := NewRetrievalMarketClientFakeAPI(t)
 			rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-			_, err := rcnc.GetOrCreatePaymentChannel(ctx, address.Undef, minerAddr, channelAmount)
+			_, err := rcnc.GetOrCreatePaymentChannel(ctx, address.Undef, minerAddr, channelAmt)
 			assert.EqualError(t, err, "empty address")
 
-			_, err = rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, address.Undef, channelAmount)
+			_, err = rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, address.Undef, channelAmt)
 			assert.EqualError(t, err, "empty address")
-			assertChannel(t, paychUniqueAddr, pchMgr, false)
+			assertChannel(t, paychAddr, pchMgr, false)
 		})
 	})
 
 	t.Run("if payment channel exists, returns payment channel addr", func(t *testing.T) {
-		bs, cs, clientAddr, minerAddr, channelAmount := testSetup(ctx, t, abi.NewTokenAmount(1000))
-		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychUniqueAddr)
-		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
+		bs, cs, clientAddr, minerAddr := testSetup(ctx, t, balance)
+		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr, channelAmt)
+		rmc := NewRetrievalMarketClientFakeAPI(t)
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-		expectedChID, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
+		expectedChID, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt)
 		require.NoError(t, err)
-		assert.Equal(t, paychUniqueAddr, expectedChID)
+		assert.Equal(t, paychAddr, expectedChID)
 
-		actualChID, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
+		actualChID, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt)
 		require.NoError(t, err)
 		assert.Equal(t, expectedChID, actualChID)
 	})
@@ -112,13 +115,14 @@ func TestRetrievalClientConnector_GetOrCreatePaymentChannel(t *testing.T) {
 
 func TestRetrievalClientConnector_AllocateLane(t *testing.T) {
 	ctx := context.Background()
-	bs, cs, clientAddr, minerAddr, channelAmount := testSetup(ctx, t, abi.NewTokenAmount(100))
+	bs, cs, clientAddr, minerAddr := testSetup(ctx, t, abi.NewTokenAmount(100))
 
 	paychAddr := specst.NewIDAddr(t, 101)
-	pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr)
+	channelAmt := abi.NewTokenAmount(10)
+	pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr, channelAmt)
 
 	t.Run("Errors if payment channel does not exist", func(t *testing.T) {
-		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
+		rmc := NewRetrievalMarketClientFakeAPI(t)
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
 
 		addr, err := address.NewIDAddress(12345)
@@ -128,10 +132,10 @@ func TestRetrievalClientConnector_AllocateLane(t *testing.T) {
 		assert.Zero(t, res)
 	})
 	t.Run("Increments and returns lastLane val", func(t *testing.T) {
-		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
+		rmc := NewRetrievalMarketClientFakeAPI(t)
 
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
+		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt)
 		require.NoError(t, err)
 
 		lane, err := rcnc.AllocateLane(paychAddr)
@@ -145,25 +149,30 @@ func TestRetrievalClientConnector_AllocateLane(t *testing.T) {
 
 func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 	ctx := context.Background()
-	bs, cs, clientAddr, minerAddr, channelAmount := testSetup(ctx, t, abi.NewTokenAmount(100))
+	balance := abi.NewTokenAmount(1000)
+	bs, cs, clientAddr, minerAddr := testSetup(ctx, t, balance)
 	paychAddr := specst.NewIDAddr(t, 101)
-	expectedAmt := big.NewInt(100)
+	expVoucherAmt := big.NewInt(10)
+	channelAmt := abi.NewTokenAmount(101)
+
+	pchActor := actor.NewActor(shared_testutil.GenerateCids(1)[0], channelAmt)
+	cs.SetActor(paychAddr, pchActor)
 
 	t.Run("Returns a voucher with a signature", func(t *testing.T) {
-		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr)
-		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
+		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr, channelAmt)
+		rmc := NewRetrievalMarketClientFakeAPI(t)
 		rmc.StubSignature(nil)
 
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
+		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt)
 		require.NoError(t, err)
 
 		lane, err := rcnc.AllocateLane(chid)
 		require.NoError(t, err)
 
-		voucher, err := rcnc.CreatePaymentVoucher(ctx, chid, expectedAmt, lane)
+		voucher, err := rcnc.CreatePaymentVoucher(ctx, chid, expVoucherAmt, lane)
 		require.NoError(t, err)
-		assert.Equal(t, expectedAmt, voucher.Amount)
+		assert.Equal(t, expVoucherAmt, voucher.Amount)
 		assert.Equal(t, lane, voucher.Lane)
 		assert.Equal(t, uint64(1), voucher.Nonce)
 		assert.NotNil(t, voucher.Signature)
@@ -175,12 +184,12 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 	})
 
 	t.Run("Each lane or voucher increases NextNonce", func(t *testing.T) {
-		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr)
-		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
+		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr, channelAmt)
+		rmc := NewRetrievalMarketClientFakeAPI(t)
 		rmc.StubSignature(nil)
 
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
+		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt)
 		require.NoError(t, err)
 
 		expectedNonce := uint64(9) // 4 lanes * 3 vouchers each + 1
@@ -199,26 +208,89 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 		assert.Equal(t, expectedNonce, chinfo.NextNonce)
 	})
 
+	t.Run("Errors if can't get block height/head tipset", func(t *testing.T) {
+		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr, channelAmt)
+		_, _, _, localCs, _ := requireNewEmptyChainStore(ctx, t)
+		messageStore := chain.NewMessageStore(bs)
+		cs := cst.NewChainStateReadWriter(localCs, messageStore, bs, builtin.DefaultActors)
+
+		rmc := NewRetrievalMarketClientFakeAPI(t)
+		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
+		res, err := rcnc.CreatePaymentVoucher(ctx, paychAddr, abi.NewTokenAmount(1), 0)
+		assert.EqualError(t, err, "Key not found in tipindex")
+		var expRes *paych.SignedVoucher
+		assert.Equal(t, expRes, res)
+	})
+
 	t.Run("Errors if payment channel does not exist", func(t *testing.T) {
-		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr)
-		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
+		badAddr := specst.NewIDAddr(t, 990)
+		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, badAddr, channelAmt)
+
+		rmc := NewRetrievalMarketClientFakeAPI(t)
 		rmc.StubSignature(nil)
 
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-		paychAddr := specst.NewIDAddr(t, 990)
-		voucher, err := rcnc.CreatePaymentVoucher(ctx, paychAddr, big.NewInt(100), 1)
-		assert.EqualError(t, err, "No state for /t0990: datastore: key not found")
+		voucher, err := rcnc.CreatePaymentVoucher(ctx, badAddr, big.NewInt(100), 1)
+		assert.EqualError(t, err, "No such address t0990")
 		assert.Nil(t, voucher)
 	})
 
+	t.Run("errors if not enough balance in payment channel", func(t *testing.T) {
+		notEnough := abi.NewTokenAmount(1)
+		poorPaych := specst.NewActorAddr(t, "poorpaych")
+		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, poorPaych, notEnough)
+
+		poorActor := actor.NewActor(shared_testutil.GenerateCids(1)[0], notEnough)
+		cs.SetActor(poorPaych, poorActor)
+
+		rmc := NewRetrievalMarketClientFakeAPI(t)
+		rmc.StubSignature(nil)
+
+		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
+		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, notEnough)
+		require.NoError(t, err)
+
+		lane, err := rcnc.AllocateLane(chid)
+		require.NoError(t, err)
+
+		tooMuch := abi.NewTokenAmount(100)
+		voucher, err := rcnc.CreatePaymentVoucher(ctx, chid, tooMuch, lane)
+		assert.EqualError(t, err, "insufficient funds for voucher amount")
+		assert.Nil(t, voucher)
+	})
+
+	t.Run("errors if lane is invalid", func(t *testing.T) {
+		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr, channelAmt)
+		rmc := NewRetrievalMarketClientFakeAPI(t)
+		rmc.StubSignature(nil)
+
+		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
+		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt)
+		require.NoError(t, err)
+
+		// check when no lanes allocated
+		voucher, err := rcnc.CreatePaymentVoucher(ctx, chid, expVoucherAmt, 0)
+		require.Nil(t, voucher)
+		assert.EqualError(t, err, "lane does not exist 0")
+		require.Nil(t, voucher)
+
+		lane, err := rcnc.AllocateLane(chid)
+		require.NoError(t, err)
+
+		// check when there is a lane allocated
+		voucher, err = rcnc.CreatePaymentVoucher(ctx, chid, expVoucherAmt, lane+1)
+		require.Nil(t, voucher)
+		assert.EqualError(t, err, "lane does not exist 1")
+	})
+
 	t.Run("Errors if can't sign bytes", func(t *testing.T) {
-		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr)
-		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
+		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr, channelAmt)
+		rmc := NewRetrievalMarketClientFakeAPI(t)
 		rmc.SigErr = errors.New("signature failure")
 		rmc.StubSignature(errors.New("signature failure"))
 
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmount)
+		_, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, channelAmt)
 		require.NoError(t, err)
 		chid, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, minerAddr, big.NewInt(0))
 		require.NoError(t, err)
@@ -229,25 +301,9 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 		assert.EqualError(t, err, "signature failure")
 		assert.Nil(t, voucher)
 	})
-	t.Run("Errors if can't get block height/head tipset", func(t *testing.T) {
-		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, paychAddr)
-		_, _, _, localCs, _ := requireNewEmptyChainStore(ctx, t)
-		messageStore := chain.NewMessageStore(bs)
-		cs := cst.NewChainStateReadWriter(localCs, messageStore, bs, builtin.DefaultActors)
-
-		rmc := NewRetrievalMarketClientFakeAPI(t, big.NewInt(1000))
-		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-		res, err := rcnc.CreatePaymentVoucher(ctx, paychAddr, abi.NewTokenAmount(1), 0)
-		assert.EqualError(t, err, "Key not found in tipindex")
-		var expRes *paych.SignedVoucher
-		assert.Equal(t, expRes, res)
-	})
-
-	t.Run("errors if lane is invalid", func(t *testing.T) {})
-	t.Run("errors if not enough balance in payment channel", func(t *testing.T) {})
 }
 
-func testSetup(ctx context.Context, t *testing.T, bal abi.TokenAmount) (bstore.Blockstore, ChainReaderAPI, address.Address, address.Address, abi.TokenAmount) {
+func testSetup(ctx context.Context, t *testing.T, bal abi.TokenAmount) (bstore.Blockstore, *message.FakeProvider, address.Address, address.Address) {
 	_, builder, genTs, chainStore, st1 := requireNewEmptyChainStore(ctx, t)
 	rootBlk := builder.AppendBlockOnBlocks()
 	th.RequireNewTipSet(t, rootBlk)
@@ -269,11 +325,11 @@ func testSetup(ctx context.Context, t *testing.T, bal abi.TokenAmount) (bstore.B
 	fakeProvider.Builder = builder
 	clientAddr := specst.NewIDAddr(t, 102)
 	clientActor := actor.NewActor(specs.AccountActorCodeID, bal)
-	fakeProvider.SetHeadAndActor(t, genTs.Key(), clientAddr, clientActor)
+	fakeProvider.SetHead(genTs.Key())
+	fakeProvider.SetActor(clientAddr, clientActor)
 
 	minerAddr := specst.NewIDAddr(t, 101)
-	channelAmount := big.NewInt(10)
-	return bs, fakeProvider, clientAddr, minerAddr, channelAmount
+	return bs, fakeProvider, clientAddr, minerAddr
 }
 
 func requireNewEmptyChainStore(ctx context.Context, t *testing.T) (cid.Cid, *chain.Builder, block.TipSet, *chain.Store, state.Tree) {
@@ -295,17 +351,16 @@ func requireNewEmptyChainStore(ctx context.Context, t *testing.T) (cid.Cid, *cha
 	return root, builder, genTS, cs, st1
 }
 
-func makePaychMgr(ctx context.Context, t *testing.T, client, miner, paych address.Address) *pch.Manager {
+func makePaychMgr(ctx context.Context, t *testing.T, client, miner, paych address.Address, channelAmt abi.TokenAmount) *pch.Manager {
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
 	testAPI := pch.NewFakePaymentChannelAPI(ctx, t)
 	root := shared_testutil.GenerateCids(1)[0]
 	viewer := makeStateViewer(t, root, nil)
 	pchMgr := pch.NewManager(context.Background(), ds, testAPI, testAPI, viewer, &cst.ChainStateReadWriter{})
 	blockHeight := uint64(1234)
-	balance := types.NewAttoFILFromFIL(1000)
 
-	testAPI.StubCreatePaychActorMessage(t, client, miner, paych, balance, exitcode.Ok, blockHeight)
-
+	testAPI.StubCreatePaychActorMessage(t, client, miner, paych, channelAmt, exitcode.Ok, blockHeight)
+	viewer.Views[root].AddActorWithState(paych, client, miner, address.Undef)
 	return pchMgr
 }
 

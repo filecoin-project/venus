@@ -50,6 +50,7 @@ type FakeStateView struct {
 	PaychActorPartiesErr, ResolveAddressAtErr, MinerControlErr error
 }
 
+// MinerControlAddresses mocks returning miner worker and miner actor address
 func (f *FakeStateView) MinerControlAddresses(_ context.Context, addr address.Address) (owner, worker address.Address, err error) {
 	actorState, ok := f.actors[addr]
 	if !ok {
@@ -81,6 +82,7 @@ func (f *FakeStateView) AddActorWithState(actorAddr, from, to, id address.Addres
 	f.actors[actorAddr] = &FakeActorState{to, from, id, address.Undef}
 }
 
+// AddMinerWithState sets up a mock state for a miner actor with a worker address
 func (f *FakeStateView) AddMinerWithState(minerActor, minerWorker address.Address) {
 	f.actors[minerActor] = &FakeActorState{MinerWorker: minerWorker}
 }

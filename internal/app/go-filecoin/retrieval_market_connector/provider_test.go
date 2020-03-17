@@ -38,7 +38,8 @@ func TestNewRetrievalProviderNodeConnector(t *testing.T) {
 	pchMgr := makePaychMgr(context.Background(), t,
 		specst.NewIDAddr(t, 99),
 		specst.NewIDAddr(t, 100),
-		specst.NewActorAddr(t, "foobar"))
+		specst.NewActorAddr(t, "foobar"),
+		abi.NewTokenAmount(10))
 	rpc := NewRetrievalProviderConnector(rmnet, pm, bs, pchMgr)
 	assert.NotZero(t, rpc)
 }
@@ -93,11 +94,12 @@ func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
 func unsealTestSetup(ctx context.Context, t *testing.T) (*RetrievalMarketClientFakeAPI, *RetrievalProviderConnector) {
 	rmnet := gfmtut.NewTestRetrievalMarketNetwork(gfmtut.TestNetworkParams{})
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	rmp := NewRetrievalMarketClientFakeAPI(t, abi.NewTokenAmount(0))
+	rmp := NewRetrievalMarketClientFakeAPI(t)
 	pchMgr := makePaychMgr(ctx, t,
 		specst.NewIDAddr(t, 99),
 		specst.NewIDAddr(t, 100),
-		specst.NewActorAddr(t, "foobar"))
+		specst.NewActorAddr(t, "foobar"),
+		abi.NewTokenAmount(10))
 	rpc := NewRetrievalProviderConnector(rmnet, rmp, bs, pchMgr)
 	return rmp, rpc
 }
@@ -126,7 +128,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 	t.Run("saves payment voucher and returns voucher amount if new", func(t *testing.T) {
 		viewer, pchMgr := makeViewerAndManager(ctx, t, clientAddr, minerAddr, pchan, root)
 		viewer.Views[root].AddActorWithState(pchan, clientAddr, minerAddr, address.Undef)
-		rmp := NewRetrievalMarketClientFakeAPI(t, abi.NewTokenAmount(0))
+		rmp := NewRetrievalMarketClientFakeAPI(t)
 		// simulate creating payment channel
 		rmp.ExpectedVouchers[pchan] = &pch.VoucherInfo{Voucher: voucher, Proof: proof}
 
@@ -147,7 +149,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 		viewer.Views[root].AddActorWithState(pchan, clientAddr, minerAddr, address.Undef)
 		viewer.Views[root].PaychActorPartiesErr = errors.New("boom")
 
-		rmp := NewRetrievalMarketClientFakeAPI(t, abi.NewTokenAmount(0))
+		rmp := NewRetrievalMarketClientFakeAPI(t)
 		rmp.ExpectedVouchers[pchan] = &pch.VoucherInfo{Voucher: voucher, Proof: proof}
 		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, pchMgr)
 		_, err := rpc.SavePaymentVoucher(ctx, pchan, voucher, proof, voucher.Amount)

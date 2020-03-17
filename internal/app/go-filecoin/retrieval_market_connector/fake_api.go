@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
@@ -27,8 +26,6 @@ type RetrievalMarketClientFakeAPI struct {
 
 	PayChBalanceErr error
 
-	Balance                 abi.TokenAmount
-	BalanceErr              error
 	CreatePaymentChannelErr error
 	WorkerAddr              address.Address
 	WorkerAddrErr           error
@@ -56,10 +53,9 @@ func (rmFake *RetrievalMarketClientFakeAPI) ChannelExists(_ address.Address) (bo
 
 // NewRetrievalMarketClientFakeAPI creates an instance of a test API that satisfies all needed
 // interface methods for a RetrievalMarketClient.
-func NewRetrievalMarketClientFakeAPI(t *testing.T, bal abi.TokenAmount) *RetrievalMarketClientFakeAPI {
+func NewRetrievalMarketClientFakeAPI(t *testing.T) *RetrievalMarketClientFakeAPI {
 	return &RetrievalMarketClientFakeAPI{
 		t:                 t,
-		Balance:           bal,
 		WorkerAddr:        requireMakeTestFcAddr(t),
 		Nonce:             rand.Uint64(),
 		ExpectedVouchers:  make(map[address.Address]*paymentchannel.VoucherInfo),
@@ -70,11 +66,6 @@ func NewRetrievalMarketClientFakeAPI(t *testing.T, bal abi.TokenAmount) *Retriev
 }
 
 // -------------- API METHODS
-// GetBalance mocks getting an actor's balance in AttoFIL
-func (rmFake *RetrievalMarketClientFakeAPI) GetBalance(_ context.Context, _ address.Address) (types.AttoFIL, error) {
-	return types.NewAttoFIL(rmFake.Balance.Int), rmFake.BalanceErr
-}
-
 // NextNonce mocks getting an actor's next nonce
 func (rmFake *RetrievalMarketClientFakeAPI) NextNonce(_ context.Context, _ address.Address) (uint64, error) {
 	rmFake.Nonce++
