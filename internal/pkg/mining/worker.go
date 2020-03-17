@@ -315,7 +315,6 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		log.Debugf("Worker.Mine generates new winning block! %s", next.Header.Cid().String())
 	}
 	outCh <- next
-	won = true
 	return
 }
 

@@ -9,7 +9,9 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/pkg/errors"
+	"gopkg.in/src-d/go-log.v1"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
@@ -21,6 +23,16 @@ type Scheduler interface {
 	IsStarted() bool
 	Pause()
 	Continue()
+}
+
+// NewScheduler returns a new timingScheduler to schedule mining work on the
+// input worker.
+func NewScheduler(w Worker, f func() (block.TipSet, error), c clock.ChainEpochClock) Scheduler {
+	return &timingScheduler{
+		worker:       w,
+		pollHeadFunc: f,
+		chainClock:   c,
+	}
 }
 
 type timingScheduler struct {
@@ -60,45 +72,74 @@ func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync
 }
 
 func (s *timingScheduler) mineLoop(miningCtx context.Context, outCh chan Output, doneWg *sync.WaitGroup) {
-	// mineLoop is the main event loop for the timing scheduler.  It waits for
-	// a new epoch to start, polls the heaviest head, includes the correct number
+	// The main event loop for the timing scheduler.
+	// Waits for a new epoch to start, polls the heaviest head, includes the correct number
 	// of null blocks and starts a mining job async.
 	//
 	// If the previous epoch's mining job is not finished it is canceled via the context
 	//
 	// The scheduler will skip mining jobs if the skipping flag is set
-	workContext, workCancel := context.WithCancel(miningCtx) // nolint:staticcheck
+	prevBase, err := s.pollHeadFunc()
+	if err != nil {
+		log.Errorf("error polling head from mining scheduler %s", err)
+		// FIXME return error
+	}
+	nullCount := uint64(0)
+
+	workContext, workCancel := context.WithCancel(miningCtx)
 	for {
-		currEpoch := s.chainClock.WaitNextEpoch(miningCtx)
-		select { // check for interrupt during waiting
-		case <-miningCtx.Done():
-			s.isStarted = false
-			return // nolint:govet
-		default:
+		// Check for a new base tipset, and reset null count if one is found.
+		base, err := s.pollHeadFunc()
+		if err != nil {
+			log.Errorf("error polling head from mining scheduler %s", err)
+			// FIXME return error
 		}
-		workCancel() // cancel any late work from last epoch
+		if !base.Key().Equals(prevBase.Key()) {
+			nullCount = 0
+		}
+
+		baseHeight, err := base.Height()
+		if err != nil {
+			log.Errorf("error getting height from base", err)
+		}
+
+		targetEpoch := baseHeight + abi.ChainEpoch(nullCount) + 1
+		if s.chainClock.Now().After(s.chainClock.StartTimeOfEpoch(targetEpoch)) {
+			// There's no tipset at the target epoch, but it's overdue.
+			// There appears to be a gap at the end of the chain.
+			// Rather than leave the gap, attempt to mine blocks to fill it.
+			doneWg.Add(1)
+			s.worker.Mine(workContext, base, nullCount, outCh)
+			doneWg.Done()
+
+			// The use of a channel output prevents this code from knowing whether the block it may have just produced
+			// is visible as the chain head
+			nullCount++ // FIXME how do I know if a winner was included in the chain yet.
+
+		} else {
+			s.chainClock.WaitForEpoch(miningCtx, targetEpoch)
+			select { // check for interrupt during waiting
+			case <-miningCtx.Done():
+				s.isStarted = false
+				return // nolint:govet
+			default:
+			}
+			workCancel() // cancel any late work from last epoch
+		}
 
 		// check if we are skipping and don't mine if so
 		if s.isSkipping() {
+			nullCount++
 			continue
 		}
 
 		workContext, workCancel = context.WithCancel(miningCtx) // nolint: govet
-		base, err := s.pollHeadFunc()
-		if err != nil {
-			log.Errorf("error polling head from mining scheduler %s", err)
-		}
-		h, err := base.Height()
-		if err != nil {
-			log.Errorf("error getting height from base", err)
-		}
-		nullBlkCount := uint64(currEpoch-h) - 1
 		doneWg.Add(1)
 		go func(ctx context.Context) {
 			// Mine is not intended to be re-entrant, but using a go-routine here makes it impossible to enforce
 			// single-threaded access.
 			// Some context in https://github.com/filecoin-project/go-filecoin/issues/4065
-			s.worker.Mine(ctx, base, nullBlkCount, outCh)
+			s.worker.Mine(ctx, base, nullCount, outCh)
 			doneWg.Done()
 		}(workContext)
 	}
@@ -128,16 +169,6 @@ func (s *timingScheduler) Continue() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.skipping = false
-}
-
-// NewScheduler returns a new timingScheduler to schedule mining work on the
-// input worker.
-func NewScheduler(w Worker, f func() (block.TipSet, error), c clock.ChainEpochClock) Scheduler {
-	return &timingScheduler{
-		worker:       w,
-		pollHeadFunc: f,
-		chainClock:   c,
-	}
 }
 
 // MineOnce mines on a given base until it finds a winner.

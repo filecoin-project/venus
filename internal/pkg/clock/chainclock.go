@@ -16,6 +16,7 @@ type ChainEpochClock interface {
 	EpochAtTime(t time.Time) abi.ChainEpoch
 	EpochRangeAtTimestamp(t uint64) (abi.ChainEpoch, abi.ChainEpoch)
 	StartTimeOfEpoch(e abi.ChainEpoch) time.Time
+	WaitForEpoch(ctx context.Context, e abi.ChainEpoch)
 	WaitNextEpoch(ctx context.Context) abi.ChainEpoch
 	Clock
 }
@@ -77,18 +78,24 @@ func (cc *chainClock) StartTimeOfEpoch(e abi.ChainEpoch) time.Time {
 	return addedTime
 }
 
-// WaitNextEpoch returns after the next epoch occurs or ctx is done.
+// WaitNextEpoch returns after the next epoch occurs, or ctx is done.
 func (cc *chainClock) WaitNextEpoch(ctx context.Context) abi.ChainEpoch {
 	currEpoch := cc.EpochAtTime(cc.Now())
 	nextEpoch := currEpoch + 1
-	nextEpochStart := cc.StartTimeOfEpoch(nextEpoch)
-	nowB4 := cc.Now()
-	waitDur := nextEpochStart.Sub(nowB4)
-	newEpochCh := cc.After(waitDur)
-	select {
-	case <-newEpochCh:
-	case <-ctx.Done():
-	}
-
+	cc.WaitForEpoch(ctx, nextEpoch)
 	return nextEpoch
+}
+
+// WaitNextEpoch returns when an epoch is due to start, or ctx is done.
+func (cc *chainClock) WaitForEpoch(ctx context.Context, e abi.ChainEpoch) {
+	epochStart := cc.StartTimeOfEpoch(e)
+	nowB4 := cc.Now()
+	waitDur := epochStart.Sub(nowB4)
+	if waitDur > 0 {
+		newEpochCh := cc.After(waitDur)
+		select {
+		case <-newEpochCh:
+		case <-ctx.Done():
+		}
+	}
 }

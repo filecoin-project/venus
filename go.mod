@@ -117,6 +117,7 @@ require (
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	google.golang.org/api v0.13.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
+	gopkg.in/src-d/go-log.v1 v1.0.1
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	gotest.tools v2.2.0+incompatible
 	howett.net/plist v0.0.0-20200419221736-3b63eb3a43b5 // indirect
