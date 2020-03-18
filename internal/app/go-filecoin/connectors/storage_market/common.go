@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
@@ -42,10 +43,11 @@ type chainReader interface {
 type WorkerGetter func(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error)
 
 type connectorCommon struct {
-	chainStore chainReader
-	waiter     *msg.Waiter
-	wallet     *wallet.Wallet
-	outbox     *message.Outbox
+	chainStore  chainReader
+	stateViewer *appstate.Viewer
+	waiter      *msg.Waiter
+	wallet      *wallet.Wallet
+	outbox      *message.Outbox
 }
 
 // MostRecentStateId returns the state key from the current head of the chain.
@@ -145,13 +147,18 @@ func (c *connectorCommon) GetBalance(ctx context.Context, addr address.Address) 
 	}, nil
 }
 
-func (c *connectorCommon) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
-	// Fetch from chain.
-	// TODO: this signature should take a tipset key or state root instead of implicitly using head here
-	view, err := c.chainStore.StateView(c.chainStore.Head())
-	if err != nil {
-		return address.Undef, err
+func (c *connectorCommon) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
+	var tsk block.TipSetKey
+	if err := encoding.Decode(tok, &tsk); err != nil {
+		return address.Undef, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
 	}
+
+	root, err := c.chainStore.GetTipSetStateRoot(ctx, tsk)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to get tip state: %w", err)
+	}
+
+	view := c.stateViewer.StateView(root)
 	_, fcworker, err := view.MinerControlAddresses(ctx, miner)
 	if err != nil {
 		return address.Undef, err

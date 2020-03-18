@@ -191,8 +191,8 @@ func NewGasPrice(price int64) AttoFIL {
 // TxMeta tracks the merkleroots of both secp and bls messages separately
 type TxMeta struct {
 	_        struct{} `cbor:",toarray"`
-	SecpRoot e.Cid    `json:"secpRoot"`
 	BLSRoot  e.Cid    `json:"blsRoot"`
+	SecpRoot e.Cid    `json:"secpRoot"`
 }
 
 // String returns a readable printing string of TxMeta

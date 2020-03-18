@@ -33,19 +33,6 @@ func (w *DefaultWorker) Generate(
 		log.Infof("[TIMER] DefaultWorker.Generate baseTipset: %s - elapsed time: %s", baseTipSet.String(), time.Since(generateTimer).Round(time.Millisecond))
 	}()
 
-	powerTable, err := w.getPowerTable(baseTipSet.Key())
-	if err != nil {
-		return nil, errors.Wrap(err, "get power table")
-	}
-
-	hasPower, err := powerTable.HasClaimedPower(ctx, w.minerAddr)
-	if err != nil {
-		return nil, err
-	}
-	if !hasPower {
-		return nil, errors.Errorf("bad miner address, miner must store files before mining: %s", w.minerAddr)
-	}
-
 	weight, err := w.getWeight(ctx, baseTipSet)
 	if err != nil {
 		return nil, errors.Wrap(err, "get weight")
@@ -76,7 +63,6 @@ func (w *DefaultWorker) Generate(
 		} else {
 			secpAccepted = append(secpAccepted, msg)
 		}
-
 	}
 
 	// Create an aggregage signature for messages
@@ -102,7 +88,11 @@ func (w *DefaultWorker) Generate(
 		return nil, errors.Wrapf(err, "error retrieving receipt root for tipset %s", baseTipSet.Key().String())
 	}
 
-	now := w.clock.Now()
+	// Set the block timestamp to be half-way through the target epoch, regardless of the current time.
+	// The real time might actually be much later than this if catching up from a pause in chain progress.
+	epochStartTime := w.clock.StartTimeOfEpoch(blockHeight)
+	midEpoch := epochStartTime.Add(w.clock.EpochDuration() / 2)
+
 	next := &block.Block{
 		Miner:           w.minerAddr,
 		Height:          blockHeight,
@@ -113,7 +103,7 @@ func (w *DefaultWorker) Generate(
 		EPoStInfo:       ePoStInfo,
 		StateRoot:       e.NewCid(baseStateRoot),
 		Ticket:          ticket,
-		Timestamp:       uint64(now.Unix()),
+		Timestamp:       uint64(midEpoch.Unix()),
 		BLSAggregateSig: blsAggregateSig,
 	}
 

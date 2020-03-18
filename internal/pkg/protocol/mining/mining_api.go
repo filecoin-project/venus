@@ -65,7 +65,8 @@ func (a *API) MiningIsActive() bool {
 	return a.isMiningFunc()
 }
 
-// MiningOnce mines a single block in the given context, and returns the new block.
+// MiningOnce mines and returns a single block based on the current chain head.
+// It tries each epoch in turn until it finds a winner.
 func (a *API) MiningOnce(ctx context.Context) (*block.Block, error) {
 	if a.isMiningFunc() {
 		return nil, errors.New("Node is already mining")
@@ -81,7 +82,7 @@ func (a *API) MiningOnce(ctx context.Context) (*block.Block, error) {
 		return nil, err
 	}
 
-	res, err := mining.MineOnce(ctx, *miningWorker, ts, a.chainClock)
+	res, err := mining.MineOnce(ctx, *miningWorker, ts)
 	if err != nil {
 		return nil, err
 	}

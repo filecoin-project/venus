@@ -7,8 +7,6 @@ import (
 	"reflect"
 	"testing"
 
-	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/retrieval_market"
-
 	"github.com/filecoin-project/go-address"
 	gfmtut "github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -22,8 +20,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/retrieval_market"
 	pch "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -116,6 +116,9 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 	clientAddr := specst.NewIDAddr(t, 101)
 	minerAddr := specst.NewIDAddr(t, 102)
 	root := gfmtut.GenerateCids(1)[0]
+	tsk := block.NewTipSetKey(root)
+	tok, err := encoding.Encode(tsk)
+	require.NoError(t, err)
 
 	voucher := &paych.SignedVoucher{
 		Lane:            rand.Uint64(),
@@ -135,7 +138,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 
 		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, pchMgr, nil)
 
-		tokenamt, err := rpc.SavePaymentVoucher(ctx, pchan, voucher, proof, voucher.Amount)
+		tokenamt, err := rpc.SavePaymentVoucher(ctx, pchan, voucher, proof, voucher.Amount, tok)
 		assert.NoError(t, err)
 		assert.True(t, voucher.Amount.Equals(tokenamt))
 
@@ -153,7 +156,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 		rmp := NewRetrievalMarketClientFakeAPI(t)
 		rmp.ExpectedVouchers[pchan] = &pch.VoucherInfo{Voucher: voucher, Proof: proof}
 		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, pchMgr, nil)
-		_, err := rpc.SavePaymentVoucher(ctx, pchan, voucher, proof, voucher.Amount)
+		_, err := rpc.SavePaymentVoucher(ctx, pchan, voucher, proof, voucher.Amount, tok)
 		assert.EqualError(t, err, "boom")
 
 		_, err = pchMgr.GetPaymentChannelInfo(pchan)

@@ -7,8 +7,6 @@ import (
 	"reflect"
 	"runtime"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
@@ -32,6 +30,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
@@ -466,8 +465,10 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 	waiter := msg.NewWaiter(node.chain.ChainReader, node.chain.MessageStore, node.Blockstore.Blockstore, cborStore)
 
 	// TODO: rework these modules so they can be at least partially constructed during the building phase #3738
+	stateViewer := state.NewViewer(cborStore)
+
 	node.StorageMining, err = submodule.NewStorageMiningSubmodule(minerAddr, node.Repo.Datastore(),
-		sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet, state.NewViewer(cborStore), node.BlockMining.PoStGenerator)
+		sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet, stateViewer, node.BlockMining.PoStGenerator)
 	if err != nil {
 		return err
 	}
@@ -487,6 +488,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		node.network.GraphExchange,
 		repoPath,
 		sectorBuilder.SealProofType(),
+		stateViewer,
 	)
 	if err != nil {
 		return errors.Wrap(err, "error initializing storage protocol")
@@ -700,15 +702,17 @@ func (node *Node) getWeight(ctx context.Context, ts block.TipSet) (fbig.Int, err
 	if err != nil {
 		return fbig.Zero(), err
 	}
-	// TODO handle genesis cid more gracefully
-	if parent.Len() == 0 {
-		return node.syncer.ChainSelector.Weight(ctx, ts, cid.Undef)
+	var baseStRoot cid.Cid
+	if parent.Empty() {
+		// use genesis state as parent state of genesis block
+		baseStRoot, err = node.chain.ChainReader.GetTipSetStateRoot(ts.Key())
+	} else {
+		baseStRoot, err = node.chain.ChainReader.GetTipSetStateRoot(parent)
 	}
-	root, err := node.chain.ChainReader.GetTipSetStateRoot(parent)
 	if err != nil {
 		return fbig.Zero(), err
 	}
-	return node.syncer.ChainSelector.Weight(ctx, ts, root)
+	return node.syncer.ChainSelector.Weight(ctx, ts, baseStRoot)
 }
 
 // -- Accessors

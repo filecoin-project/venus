@@ -1,4 +1,4 @@
-package testhelpers_test
+package clock_test
 
 import (
 	"testing"
@@ -6,15 +6,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
 var startTime = time.Unix(123456789, 0)
 
-func TestFakeClockAfter(t *testing.T) {
+func TestFakeAfter(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeClock(startTime)
+	fc := clock.NewFake(startTime)
 
 	zero := fc.After(0)
 	select {
@@ -81,26 +81,26 @@ func TestFakeClockAfter(t *testing.T) {
 	}
 }
 
-func TestNewFakeClockAt(t *testing.T) {
+func TestNewFakeAt(t *testing.T) {
 	tf.UnitTest(t)
 	t1 := time.Date(1999, time.February, 3, 4, 5, 6, 7, time.UTC)
-	fc := th.NewFakeClock(t1)
+	fc := clock.NewFake(t1)
 	now := fc.Now()
-	assert.Equalf(t, now, t1, "fakeClock.Now() returned unexpected non-initialised value: want=%#v, got %#v", t1, now)
+	assert.Equalf(t, now, t1, "Fake.Now() returned unexpected non-initialised value: want=%#v, got %#v", t1, now)
 }
 
-func TestFakeClockSince(t *testing.T) {
+func TestFakeSince(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeClock(startTime)
+	fc := clock.NewFake(startTime)
 	now := fc.Now()
 	elapsedTime := time.Second
 	fc.Advance(elapsedTime)
-	assert.Truef(t, fc.Since(now) == elapsedTime, "fakeClock.Since() returned unexpected duration, got: %d, want: %d", fc.Since(now), elapsedTime)
+	assert.Truef(t, fc.Since(now) == elapsedTime, "Fake.Since() returned unexpected duration, got: %d, want: %d", fc.Since(now), elapsedTime)
 }
 
-func TestFakeClockTimers(t *testing.T) {
+func TestFakeTimers(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeClock(startTime)
+	fc := clock.NewFake(startTime)
 
 	zero := fc.NewTimer(0)
 
@@ -200,7 +200,7 @@ func inSync(t *testing.T, func1 syncFunc, func2 syncFunc) {
 
 func TestBlockingOnTimers(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeClock(startTime)
+	fc := clock.NewFake(startTime)
 
 	inSync(t, func(didAdvance func(), shouldAdvance func(string), _ func(string)) {
 		fc.BlockUntil(0)
@@ -253,7 +253,7 @@ func TestBlockingOnTimers(t *testing.T) {
 func TestAdvancePastAfter(t *testing.T) {
 	tf.UnitTest(t)
 
-	fc := th.NewFakeClock(startTime)
+	fc := clock.NewFake(startTime)
 
 	start := fc.Now()
 	one := fc.After(1)
@@ -270,7 +270,7 @@ func TestAdvancePastAfter(t *testing.T) {
 
 func TestFakeTickerStop(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeClock(startTime)
+	fc := clock.NewFake(startTime)
 
 	ft := fc.NewTicker(1)
 	ft.Stop()
@@ -284,7 +284,7 @@ func TestFakeTickerStop(t *testing.T) {
 
 func TestFakeTickerTick(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeClock(startTime)
+	fc := clock.NewFake(startTime)
 	now := fc.Now()
 
 	// The tick at now.Add(2) should not get through since we advance time by

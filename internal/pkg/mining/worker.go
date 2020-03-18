@@ -114,7 +114,7 @@ type DefaultWorker struct {
 	penaltyChecker messageMessageQualifier
 	messageStore   chain.MessageWriter // nolint: structcheck
 	blockstore     blockstore.Blockstore
-	clock          clock.Clock
+	clock          clock.ChainEpochClock
 	poster         postgenerator.PoStGenerator
 }
 
@@ -138,7 +138,7 @@ type WorkerParameters struct {
 	MessageSource MessageSource
 	MessageStore  chain.MessageWriter
 	Blockstore    blockstore.Blockstore
-	Clock         clock.Clock
+	Clock         clock.ChainEpochClock
 	Poster        postgenerator.PoStGenerator
 }
 
@@ -201,7 +201,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	// The parameter is interpreted as: lookback=1 means parent tipset. Subtract one here because the base from
 	// which the lookback is counted is already the parent, rather than "current" tipset.
 	// The sampling code will handle this underflowing past the genesis.
-	targetEpoch := baseEpoch - (miner.ElectionLookback - 1) + abi.ChainEpoch(nullBlkCount)
+	lookbackEpoch := baseEpoch - (miner.ElectionLookback - 1) + abi.ChainEpoch(nullBlkCount)
 
 	workerSignerAddr, err := view.AccountSignerAddress(ctx, workerAddr)
 	if err != nil {
@@ -209,14 +209,14 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		return
 	}
 
-	nextTicket, err := w.ticketGen.MakeTicket(ctx, base.Key(), targetEpoch, w.minerAddr, workerSignerAddr, w.workerSigner)
+	nextTicket, err := w.ticketGen.MakeTicket(ctx, base.Key(), lookbackEpoch, w.minerAddr, workerSignerAddr, w.workerSigner)
 	if err != nil {
 		log.Warnf("Worker.Mine couldn't generate next ticket %s", err)
 		outCh <- Output{Err: err}
 		return
 	}
 
-	postVrfProof, err := w.election.GenerateEPoStVrfProof(ctx, base.Key(), targetEpoch, w.minerAddr, workerSignerAddr, w.workerSigner)
+	postVrfProof, err := w.election.GenerateEPoStVrfProof(ctx, base.Key(), lookbackEpoch, w.minerAddr, workerSignerAddr, w.workerSigner)
 	if err != nil {
 		log.Errorf("Worker.Mine failed to generate epost postVrfProof %s", err)
 		outCh <- Output{Err: err}

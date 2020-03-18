@@ -86,7 +86,7 @@ func TestLookbackElection(t *testing.T) {
 			MessageQualifier: &mining.NoMessageQualifier{},
 			Blockstore:       bs,
 			MessageStore:     messages,
-			Clock:            clock.NewSystemClock(),
+			Clock:            clock.NewChainClock(100000000, 30*time.Second),
 		})
 
 		go worker.Mine(ctx, head, 0, outCh)
@@ -145,7 +145,7 @@ func Test_Mine(t *testing.T) {
 			MessageQualifier: &mining.NoMessageQualifier{},
 			Blockstore:       bs,
 			MessageStore:     messages,
-			Clock:            clock.NewSystemClock(),
+			Clock:            clock.NewChainClock(100000000, 30*time.Second),
 		})
 
 		go worker.Mine(ctx, tipSet, 0, outCh)
@@ -179,7 +179,7 @@ func Test_Mine(t *testing.T) {
 			MessageQualifier: &mining.NoMessageQualifier{},
 			Blockstore:       bs,
 			MessageStore:     messages,
-			Clock:            clock.NewSystemClock(),
+			Clock:            clock.NewChainClock(100000000, 30*time.Second),
 		})
 		outCh := make(chan mining.Output)
 
@@ -209,7 +209,7 @@ func Test_Mine(t *testing.T) {
 			MessageQualifier: &mining.NoMessageQualifier{},
 			Blockstore:       bs,
 			MessageStore:     messages,
-			Clock:            clock.NewSystemClock(),
+			Clock:            clock.NewChainClock(100000000, 30*time.Second),
 		})
 		input := block.TipSet{}
 		outCh := make(chan mining.Output)
@@ -384,7 +384,7 @@ func TestApplyBLSMessages(t *testing.T) {
 		MessageQualifier: &mining.NoMessageQualifier{},
 		Blockstore:       bs,
 		MessageStore:     msgStore,
-		Clock:            clock.NewSystemClock(),
+		Clock:            clock.NewChainClock(100000000, 30*time.Second),
 	})
 
 	outCh := make(chan mining.Output)
@@ -482,7 +482,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		MessageQualifier: &mining.NoMessageQualifier{},
 		Blockstore:       bs,
 		MessageStore:     messages,
-		Clock:            th.NewFakeClock(time.Unix(1234567890, 0)),
+		Clock:            clock.NewChainClock(100000000, 30*time.Second),
 	})
 
 	builder := chain.NewBuilder(t, address.Undef)
@@ -547,7 +547,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		MessageQualifier: &mining.NoMessageQualifier{},
 		Blockstore:       bs,
 		MessageStore:     messages,
-		Clock:            th.NewFakeClock(time.Unix(1234567890, 0)),
+		Clock:            clock.NewChainClock(100000000, 30*time.Second),
 	})
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
@@ -652,7 +652,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		MessageQualifier: &mining.NoMessageQualifier{},
 		Blockstore:       bs,
 		MessageStore:     messages,
-		Clock:            th.NewFakeClock(time.Unix(1234567890, 0)),
+		Clock:            clock.NewChainClock(100000000, 30*time.Second),
 	})
 
 	h := abi.ChainEpoch(100)
@@ -712,7 +712,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		MessageQualifier: &mining.NoMessageQualifier{},
 		Blockstore:       bs,
 		MessageStore:     messages,
-		Clock:            th.NewFakeClock(time.Unix(1234567890, 0)),
+		Clock:            clock.NewChainClock(100000000, 30*time.Second),
 	})
 
 	assert.Len(t, pool.Pending(), 0)
@@ -766,7 +766,7 @@ func TestGenerateError(t *testing.T) {
 		MessageQualifier: &mining.NoMessageQualifier{},
 		Blockstore:       bs,
 		MessageStore:     messages,
-		Clock:            th.NewFakeClock(time.Unix(1234567890, 0)),
+		Clock:            clock.NewChainClock(100000000, 30*time.Second),
 	})
 
 	// This is actually okay and should result in a receipt

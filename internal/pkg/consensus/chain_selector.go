@@ -45,20 +45,13 @@ func log2b(x fbig.Int) fbig.Int {
 	return fbig.NewInt(int64(bits - 1))
 }
 
-// Weight returns the EC weight of this TipSet in uint64 encoded fixed point
-// representation.
-//
-//
+// Weight returns the EC weight of this TipSet as a filecoin big int.
 func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID cid.Cid) (fbig.Int, error) {
-	if ts.Len() > 0 && ts.At(0).Cid().Equals(c.genesisCid) {
-		return fbig.Zero(), nil
-	}
 	// Retrieve parent weight.
 	parentWeight, err := ts.ParentWeight()
 	if err != nil {
 		return fbig.Zero(), err
 	}
-
 	if !pStateID.Defined() {
 		return fbig.Zero(), errors.New("undefined state passed to chain selector new weight")
 	}

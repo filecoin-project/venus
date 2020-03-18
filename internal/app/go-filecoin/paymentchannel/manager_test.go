@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -214,6 +215,10 @@ func TestManager_AddVoucher(t *testing.T) {
 		SecretPreimage: []uint8{},
 	}
 
+	tsk := block.NewTipSetKey(root)
+	tok, err := encoding.Encode(tsk)
+	require.NoError(t, err)
+
 	t.Run("Adding a valid voucher creates a payment channel info and saves the voucher", func(t *testing.T) {
 		testAPI := NewFakePaymentChannelAPI(ctx, t)
 		ds := dss.MutexWrap(datastore.NewMapDatastore())
@@ -227,7 +232,7 @@ func TestManager_AddVoucher(t *testing.T) {
 		for i := 0; i < numVouchers; i++ {
 			newV := v
 			newV.Amount = abi.NewTokenAmount(increment * int64(i+1))
-			resAmt, err := manager.AddVoucher(paychAddr, &newV, proof, abi.NewTokenAmount(increment))
+			resAmt, err := manager.AddVoucher(paychAddr, &newV, proof, abi.NewTokenAmount(increment), tok)
 			require.NoError(t, err)
 			assert.True(t, resAmt.Equals(abi.NewTokenAmount(increment)))
 		}
@@ -244,11 +249,11 @@ func TestManager_AddVoucher(t *testing.T) {
 	t.Run("returns error if we try to save the same voucher", func(t *testing.T) {
 		viewer, manager := setupViewerManager(ctx, t, root, cr)
 		viewer.Views[root].AddActorWithState(paychAddr, clientAddr, minerAddr, paychIDAddr)
-		resAmt, err := manager.AddVoucher(paychAddr, &v, []byte("porkchops"), abi.NewTokenAmount(1))
+		resAmt, err := manager.AddVoucher(paychAddr, &v, []byte("porkchops"), abi.NewTokenAmount(1), tok)
 		require.NoError(t, err)
 		assert.Equal(t, amt, resAmt)
 
-		resAmt, err = manager.AddVoucher(paychAddr, &v, []byte("porkchops"), abi.NewTokenAmount(1))
+		resAmt, err = manager.AddVoucher(paychAddr, &v, []byte("porkchops"), abi.NewTokenAmount(1), tok)
 		assert.EqualError(t, err, "voucher already saved")
 		assert.Equal(t, abi.NewTokenAmount(0), resAmt)
 	})
@@ -256,7 +261,7 @@ func TestManager_AddVoucher(t *testing.T) {
 	t.Run("returns error if marshaling fails", func(t *testing.T) {
 		viewer, manager := setupViewerManager(ctx, t, root, cr)
 		viewer.Views[root].AddActorWithState(paychAddr, clientAddr, address.Undef, address.Undef)
-		resAmt, err := manager.AddVoucher(paychAddr, &v, []byte("applesauce"), abi.NewTokenAmount(1))
+		resAmt, err := manager.AddVoucher(paychAddr, &v, []byte("applesauce"), abi.NewTokenAmount(1), tok)
 		assert.EqualError(t, err, "cannot marshal undefined address")
 		assert.Equal(t, abi.NewTokenAmount(0), resAmt)
 	})
@@ -265,7 +270,7 @@ func TestManager_AddVoucher(t *testing.T) {
 		viewer, manager := setupViewerManager(ctx, t, root, cr)
 		viewer.Views[root].AddActorWithState(paychAddr, clientAddr, minerAddr, paychIDAddr)
 		viewer.Views[root].PaychActorPartiesErr = errors.New("boom")
-		resAmt, err := manager.AddVoucher(paychAddr, &v, []byte("porkchops"), abi.NewTokenAmount(1))
+		resAmt, err := manager.AddVoucher(paychAddr, &v, []byte("porkchops"), abi.NewTokenAmount(1), tok)
 		assert.EqualError(t, err, "boom")
 		assert.Equal(t, abi.NewTokenAmount(0), resAmt)
 	})
@@ -275,7 +280,7 @@ func TestManager_AddVoucher(t *testing.T) {
 		cr2.GetTSErr = errors.New("kaboom")
 		viewer, manager := setupViewerManager(ctx, t, root, cr2)
 		viewer.Views[root].AddActorWithState(paychAddr, clientAddr, minerAddr, paychIDAddr)
-		resAmt, err := manager.AddVoucher(paychAddr, &v, []byte("applesauce"), abi.NewTokenAmount(1))
+		resAmt, err := manager.AddVoucher(paychAddr, &v, []byte("applesauce"), abi.NewTokenAmount(1), tok)
 		assert.EqualError(t, err, "kaboom")
 		assert.Equal(t, abi.NewTokenAmount(0), resAmt)
 	})
@@ -284,7 +289,7 @@ func TestManager_AddVoucher(t *testing.T) {
 		viewer, manager := setupViewerManager(ctx, t, root, cr)
 
 		viewer.Views[root].AddActorWithState(paychAddr, clientAddr, minerAddr, paychIDAddr)
-		resAmt, err := manager.AddVoucher(paychAddr, &v, []byte("porkchops"), abi.NewTokenAmount(1))
+		resAmt, err := manager.AddVoucher(paychAddr, &v, []byte("porkchops"), abi.NewTokenAmount(1), tok)
 		require.NoError(t, err)
 		_, err = manager.AllocateLane(paychAddr)
 		require.NoError(t, err)
@@ -294,7 +299,7 @@ func TestManager_AddVoucher(t *testing.T) {
 		for _, amt := range amounts {
 			newV := v
 			newV.Amount = types.NewAttoFILFromFIL(amt)
-			resAmt, err = manager.AddVoucher(paychAddr, &newV, []byte("porkchops"), abi.NewTokenAmount(1))
+			resAmt, err = manager.AddVoucher(paychAddr, &newV, []byte("porkchops"), abi.NewTokenAmount(1), tok)
 			assert.EqualError(t, err, "voucher amount insufficient")
 			assert.Equal(t, abi.NewTokenAmount(0), resAmt)
 		}
@@ -310,9 +315,13 @@ func TestManager_GetMinerWorker(t *testing.T) {
 	cr := NewFakeChainReader(block.NewTipSetKey(root))
 	viewer, manager := setupViewerManager(ctx, t, root, cr)
 
+	tsk := block.NewTipSetKey(root)
+	tok, err := encoding.Encode(tsk)
+	require.NoError(t, err)
+
 	t.Run("happy path", func(t *testing.T) {
 		viewer.Views[root].AddMinerWithState(minerAddr, minerWorkerAddr)
-		res, err := manager.GetMinerWorker(ctx, minerAddr)
+		res, err := manager.GetMinerWorkerAddress(ctx, minerAddr, tok)
 		assert.NoError(t, err)
 		assert.Equal(t, minerWorkerAddr, res)
 	})
@@ -320,15 +329,15 @@ func TestManager_GetMinerWorker(t *testing.T) {
 	t.Run("returns error if getting control addr fails", func(t *testing.T) {
 		viewer.Views[root].AddMinerWithState(minerAddr, minerWorkerAddr)
 		viewer.Views[root].MinerControlErr = errors.New("boom")
-		_, err := manager.GetMinerWorker(ctx, minerAddr)
+		_, err := manager.GetMinerWorkerAddress(ctx, minerAddr, tok)
 		assert.EqualError(t, err, "boom")
 	})
 
 	t.Run("returns error if getting state view fails", func(t *testing.T) {
 		viewer.Views[root].AddMinerWithState(minerAddr, minerWorkerAddr)
 		cr.GetTSErr = errors.New("boom")
-		_, err := manager.GetMinerWorker(ctx, minerAddr)
-		assert.EqualError(t, err, "boom")
+		_, err := manager.GetMinerWorkerAddress(ctx, minerAddr, tok)
+		assert.Contains(t, err.Error(), "boom")
 	})
 }
 

@@ -1,27 +1,30 @@
-package testhelpers
+package clock
 
 import (
 	"sync"
 	"time"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 )
 
-// FakeClock provides an interface for a clock which can be
-// manually advanced through time
+// Creates a new fake clock and chain clock wrapping it.
+func NewFakeChain(genesis uint64, epochDuration time.Duration, now int64) (Fake, ChainEpochClock) {
+	fake := NewFake(time.Unix(now, 0))
+	return fake, NewChainClockFromClock(genesis, epochDuration, fake)
+}
+
+// Fake provides an interface for a clock which can be manually advanced.
 // Adapted from: https://github.com/jonboulle/clockwork
-type FakeClock interface {
-	clock.Clock
-	// Advance advances the FakeClock to a new point in time, ensuring any existing
+type Fake interface {
+	Clock
+	// Advance advances the Fake to a new point in time, ensuring any existing
 	// sleepers are notified appropriately before returning
 	Advance(d time.Duration)
-	// BlockUntil will block until the FakeClock has the given number of
+	// BlockUntil will block until the Fake has the given number of
 	// sleepers (callers of Sleep or After)
 	BlockUntil(n int)
 }
 
-// NewFakeClock returns a FakeClock initialised at the given time.Time.
-func NewFakeClock(n time.Time) FakeClock {
+// Returns a Fake initialised at the given time.Time.
+func NewFake(n time.Time) Fake {
 	return &fakeClock{
 		time: n,
 	}
@@ -153,7 +156,7 @@ func (fc *fakeClock) Since(t time.Time) time.Duration {
 	return fc.Now().Sub(t)
 }
 
-func (fc *fakeClock) NewTicker(d time.Duration) clock.Ticker {
+func (fc *fakeClock) NewTicker(d time.Duration) Ticker {
 	ft := &fakeTicker{
 		c:      make(chan time.Time, 1),
 		stop:   make(chan bool, 1),
@@ -166,7 +169,7 @@ func (fc *fakeClock) NewTicker(d time.Duration) clock.Ticker {
 
 // NewTimer creates a new Timer that will send the current time on its channel
 // after the given duration elapses on the fake clock.
-func (fc *fakeClock) NewTimer(d time.Duration) clock.Timer {
+func (fc *fakeClock) NewTimer(d time.Duration) Timer {
 	done := make(chan time.Time, 1)
 	sendTime := func(c interface{}, now time.Time) {
 		select {
@@ -189,7 +192,7 @@ func (fc *fakeClock) NewTimer(d time.Duration) clock.Timer {
 // AfterFunc waits for the duration to elapse on the fake clock and then calls f
 // in its own goroutine.
 // It returns a Timer that can be used to cancel the call using its Stop method.
-func (fc *fakeClock) AfterFunc(d time.Duration, f func()) clock.Timer {
+func (fc *fakeClock) AfterFunc(d time.Duration, f func()) Timer {
 	goFunc := func(fn interface{}, _ time.Time) {
 		go fn.(func())()
 	}
@@ -247,7 +250,7 @@ func (fc *fakeClock) BlockUntil(n int) {
 type fakeTicker struct {
 	c      chan time.Time
 	stop   chan bool
-	clock  FakeClock
+	clock  Fake
 	period time.Duration
 }
 
