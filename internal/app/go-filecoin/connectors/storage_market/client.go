@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -43,9 +44,10 @@ func NewStorageClientNodeConnector(
 	wlt *wallet.Wallet,
 	ob *message.Outbox,
 	ca address.Address,
+	sv *appstate.Viewer,
 ) *StorageClientNodeConnector {
 	return &StorageClientNodeConnector{
-		connectorCommon: connectorCommon{cs, w, wlt, ob},
+		connectorCommon: connectorCommon{cs, sv, w, wlt, ob},
 		cborStore:       cbor,
 		clientAddr:      ca,
 	}
@@ -137,7 +139,7 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 
 	unsigned := chnMsg.Message.Message
 
-	minerWorker, err := s.GetMinerWorker(ctx, deal.Proposal.Provider)
+	minerWorker, err := s.GetMinerWorkerAddress(ctx, deal.Proposal.Provider, nil)
 	if err != nil {
 		return 0, err
 	}
