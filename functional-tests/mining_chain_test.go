@@ -86,12 +86,9 @@ func TestSyncFromSingleMiner(t *testing.T) {
 	presealPath := filepath.Join(wd, "..", "fixtures/genesis-sectors")
 	genTime := int64(1000000000)
 	blockTime := 30 * time.Second
-	// The clock is set some way ahead of the genesis block.
-	fakeClock := clock.NewFake(time.Unix(genTime, 0).Add(4 * time.Hour))
+	fakeClock := clock.NewFake(time.Unix(genTime, 0))
 
 	// Load genesis config fixture.
-	// The fixture is needed in order to use the presealed genesis sectors fixture.
-	// Future code could decouple the whole setup.json from the presealed information.
 	genCfg := loadGenesisConfig(t, genCfgPath)
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
@@ -117,13 +114,14 @@ func TestSyncFromSingleMiner(t *testing.T) {
 
 	// Mine some blocks.
 	for i := 1; i <= 3; i++ {
+		fakeClock.Advance(blockTime)
 		blk, err := ndMiner.BlockMining.BlockMiningAPI.MiningOnce(ctx)
 		require.NoError(t, err)
 		assert.Equal(t, abi.ChainEpoch(i), blk.Height)
 		head = block.NewTipSetKey(blk.Cid())
 	}
 
-	// Inspect chain state.
+	// Inspect validator node chain state.
 	require.NoError(t, th.WaitForIt(50, 20*time.Millisecond, func() (bool, error) {
 		return ndValidator.Chain().ChainReader.GetHead().Equals(head), nil
 	}), "validator failed to sync new head")

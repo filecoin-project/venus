@@ -23,7 +23,7 @@ type Fake interface {
 	BlockUntil(n int)
 }
 
-// NewFakeClock returns a Fake initialised at the given time.Time.
+// Returns a Fake initialised at the given time.Time.
 func NewFake(n time.Time) Fake {
 	return &fakeClock{
 		time: n,
