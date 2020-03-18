@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
@@ -54,7 +55,7 @@ func TestLoadFork(t *testing.T) {
 	// *not* as the store, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{}
 	sel := &chain.FakeChainSelector{}
-	s, err := syncer.NewSyncer(eval, eval, sel, store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)), &noopFaultDetector{})
+	s, err := syncer.NewSyncer(eval, eval, sel, store, builder, builder, status.NewReporter(), clock.NewFake(time.Unix(1234567890, 0)), &noopFaultDetector{})
 	require.NoError(t, err)
 	require.NoError(t, s.InitStaged())
 
@@ -84,7 +85,7 @@ func TestLoadFork(t *testing.T) {
 	newStore := chain.NewStore(repo.ChainDatastore(), cborStore, chain.NewStatusReporter(), genesis.At(0).Cid())
 	require.NoError(t, newStore.Load(ctx))
 	fakeFetcher := th.NewTestFetcher()
-	offlineSyncer, err := syncer.NewSyncer(eval, eval, sel, newStore, builder, fakeFetcher, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)), &noopFaultDetector{})
+	offlineSyncer, err := syncer.NewSyncer(eval, eval, sel, newStore, builder, fakeFetcher, status.NewReporter(), clock.NewFake(time.Unix(1234567890, 0)), &noopFaultDetector{})
 	require.NoError(t, err)
 	require.NoError(t, offlineSyncer.InitStaged())
 
@@ -171,7 +172,7 @@ func TestSyncerWeighsPower(t *testing.T) {
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: gen.At(0).StateRoot.Cid, TipSet: gen, TipSetReceipts: gen.At(0).MessageReceipts.Cid}))
 	require.NoError(t, store.SetHead(ctx, gen))
 	eval := &integrationStateEvaluator{c512: isb.c512}
-	syncer, err := syncer.NewSyncer(eval, eval, consensus.NewChainSelector(cst, &viewer, gen.At(0).Cid()), store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)), &noopFaultDetector{})
+	syncer, err := syncer.NewSyncer(eval, eval, consensus.NewChainSelector(cst, &viewer, gen.At(0).Cid()), store, builder, builder, status.NewReporter(), clock.NewFake(time.Unix(1234567890, 0)), &noopFaultDetector{})
 	require.NoError(t, err)
 	require.NoError(t, syncer.InitStaged())
 

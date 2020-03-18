@@ -55,7 +55,7 @@ func TestMineOnce10Null(t *testing.T) {
 	// Dragons: need to give the miners in the fake state actual power for these tests to work.
 	api := th.NewFakeWorkerPorcelainAPI(rnd, 100, minerToWorker)
 	genTime := time.Now()
-	fc := th.NewFakeClock(genTime)
+	fc := clock.NewFake(genTime)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime.Unix()), 15*time.Second, fc)
 
 	worker := NewDefaultWorker(WorkerParameters{
@@ -79,7 +79,7 @@ func TestMineOnce10Null(t *testing.T) {
 		Poster:           &consensus.TestElectionPoster{},
 	})
 
-	result, err := MineOnce(context.Background(), *worker, baseTs, chainClock)
+	result, err := MineOnce(context.Background(), *worker, baseTs)
 	assert.NoError(t, err)
 	assert.NoError(t, result.Err)
 	block := result.NewBlock
@@ -118,7 +118,7 @@ func TestMineOneEpoch10Null(t *testing.T) {
 
 	api := th.NewFakeWorkerPorcelainAPI(rnd, 100, minerToWorker)
 	genTime := time.Now()
-	fc := th.NewFakeClock(genTime)
+	fc := clock.NewFake(genTime)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime.Unix()), 15*time.Second, fc)
 
 	worker := NewDefaultWorker(WorkerParameters{
@@ -144,11 +144,11 @@ func TestMineOneEpoch10Null(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		// with null count < 10 we see no errors and get no wins
-		blk, err := MineOneEpoch(context.Background(), *worker, baseTs, uint64(i), chainClock)
+		blk, err := MineOneEpoch(context.Background(), *worker, baseTs, uint64(i))
 		assert.NoError(t, err)
 		assert.Nil(t, blk)
 	}
-	blk, err := MineOneEpoch(context.Background(), *worker, baseTs, 10, chainClock)
+	blk, err := MineOneEpoch(context.Background(), *worker, baseTs, 10)
 	assert.NoError(t, err)
 	require.NotNil(t, blk)
 	assert.Equal(t, uint64(10+1), blk.Height)
@@ -370,11 +370,11 @@ func testHead(t *testing.T) block.TipSet {
 	return ts
 }
 
-func testClock(t *testing.T) (th.FakeClock, clock.ChainEpochClock, time.Duration) {
+func testClock(t *testing.T) (clock.Fake, clock.ChainEpochClock, time.Duration) {
 	// return a fake clock for running tests a ChainEpochClock for
 	// using in the scheduler, and the testing blocktime
 	gt := time.Unix(1234567890, 1234567890%1000000000)
-	fc := th.NewFakeClock(gt)
+	fc := clock.NewFake(gt)
 	DefaultEpochDurationTest := 1 * time.Second
 	chainClock := clock.NewChainClockFromClock(uint64(gt.Unix()), DefaultEpochDurationTest, fc)
 

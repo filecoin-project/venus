@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -26,7 +25,7 @@ func TestBlockValidSemantic(t *testing.T) {
 	blockTime := clock.DefaultEpochDuration
 	ts := time.Unix(1234567890, 0)
 	genTime := ts
-	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, th.NewFakeClock(ts))
+	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, clock.NewFake(ts))
 	ctx := context.Background()
 
 	validator := consensus.NewDefaultBlockValidator(mclock)
@@ -53,7 +52,7 @@ func TestMismatchedTime(t *testing.T) {
 
 	blockTime := clock.DefaultEpochDuration
 	genTime := time.Unix(1234567890, 1234567890%int64(time.Second))
-	fc := th.NewFakeClock(genTime)
+	fc := clock.NewFake(genTime)
 	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, fc)
 	validator := consensus.NewDefaultBlockValidator(mclock)
 
@@ -75,7 +74,7 @@ func TestFutureEpoch(t *testing.T) {
 
 	blockTime := clock.DefaultEpochDuration
 	genTime := time.Unix(1234567890, 1234567890%int64(time.Second))
-	fc := th.NewFakeClock(genTime)
+	fc := clock.NewFake(genTime)
 	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, fc)
 	validator := consensus.NewDefaultBlockValidator(mclock)
 
@@ -91,7 +90,7 @@ func TestBlockValidSyntax(t *testing.T) {
 
 	blockTime := clock.DefaultEpochDuration
 	ts := time.Unix(1234567890, 0)
-	mclock := th.NewFakeClock(ts)
+	mclock := clock.NewFake(ts)
 	chainClock := clock.NewChainClockFromClock(uint64(ts.Unix()), blockTime, mclock)
 	ctx := context.Background()
 	mclock.Advance(blockTime)

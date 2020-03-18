@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
@@ -115,7 +114,7 @@ func TestChainSyncWithMessages(t *testing.T) {
 	require.NoError(t, gengen.GenKeyPrealloc(2, "100")(genCfg))
 	require.NoError(t, gengen.NetworkName(version.TEST)(genCfg))
 	cs := MakeChainSeed(t, genCfg)
-	fakeClock := th.NewFakeClock(time.Unix(1234567890, 0))
+	fakeClock := clock.NewFake(time.Unix(1234567890, 0))
 	blockTime := 30 * time.Second
 	c := clock.NewChainClockFromClock(1234567890, blockTime, fakeClock)
 
@@ -199,10 +198,10 @@ func TestChainSyncWithMessages(t *testing.T) {
 }
 
 // makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
-func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*Node, th.FakeClock, time.Duration) {
+func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*Node, clock.Fake, time.Duration) {
 	seed := MakeChainSeed(t, MakeTestGenCfg(t, 3))
 	ctx := context.Background()
-	fc := th.NewFakeClock(time.Unix(1234567890, 0))
+	fc := clock.NewFake(time.Unix(1234567890, 0))
 	blockTime := 100 * time.Millisecond
 	c := clock.NewChainClockFromClock(1234567890, 100*time.Millisecond, fc)
 	builder := test.NewNodeBuilder(t)

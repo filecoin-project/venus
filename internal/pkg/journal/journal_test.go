@@ -6,14 +6,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
 func TestSimpleInMemoryJournal(t *testing.T) {
 	tf.UnitTest(t)
 
-	mj := NewInMemoryJournal(t, th.NewFakeClock(time.Unix(1234567890, 0)))
+	mj := NewInMemoryJournal(t, clock.NewFake(time.Unix(1234567890, 0)))
 	topicJ := mj.Topic("testing")
 	topicJ.Write("event1", "foo", "bar")
 
