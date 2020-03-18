@@ -50,9 +50,6 @@ func log2b(x fbig.Int) fbig.Int {
 //
 //
 func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID cid.Cid) (fbig.Int, error) {
-	if ts.Len() > 0 && ts.At(0).Cid().Equals(c.genesisCid) {
-		return fbig.Zero(), nil
-	}
 	// Retrieve parent weight.
 	parentWeight, err := ts.ParentWeight()
 	if err != nil {

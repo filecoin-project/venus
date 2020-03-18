@@ -317,14 +317,18 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 // TODO #3537 this should be stored the first time it is computed and retrieved
 // from disk just like aggregate state roots.
 func (syncer *Syncer) calculateParentWeight(ctx context.Context, parent, grandParent block.TipSet) (fbig.Int, error) {
+	var baseStRoot cid.Cid
+	var err error
 	if grandParent.Equals(block.UndefTipSet) {
-		return syncer.chainSelector.Weight(ctx, parent, cid.Undef)
+		// use genesis state as parent of genesis block
+		baseStRoot, err = syncer.chainStore.GetTipSetStateRoot(parent.Key())
+	} else {
+		baseStRoot, err = syncer.chainStore.GetTipSetStateRoot(grandParent.Key())
 	}
-	gpStRoot, err := syncer.chainStore.GetTipSetStateRoot(grandParent.Key())
 	if err != nil {
 		return fbig.Zero(), err
 	}
-	return syncer.chainSelector.Weight(ctx, parent, gpStRoot)
+	return syncer.chainSelector.Weight(ctx, parent, baseStRoot)
 }
 
 // ancestorsFromStore returns the parent and grandparent tipsets of `ts`
