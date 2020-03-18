@@ -147,8 +147,8 @@ func (b *Block) Equals(other *Block) bool {
 	return b.Cid().Equals(other.Cid())
 }
 
-// SignatureData returns the block's bytes without the blocksig for signature
-// creating and verification
+// SignatureData returns the cid bytes of the block's bytes without the
+// blocksig for signature creation and verification
 func (b *Block) SignatureData() []byte {
 	tmp := &Block{
 		Miner:           b.Miner,
