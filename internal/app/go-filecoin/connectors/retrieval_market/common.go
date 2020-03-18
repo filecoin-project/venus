@@ -3,9 +3,8 @@ package retrievalmarketconnector
 import (
 	"context"
 
-	"github.com/filecoin-project/go-fil-markets/shared"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	paychActor "github.com/filecoin-project/specs-actors/actors/builtin/paych"

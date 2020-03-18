@@ -4,10 +4,6 @@ import (
 	"context"
 	"os"
 
-	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
-
-	"github.com/ipfs/go-graphsync"
-
 	"github.com/filecoin-project/go-address"
 	graphsyncimpl "github.com/filecoin-project/go-data-transfer/impl/graphsync"
 	"github.com/filecoin-project/go-fil-markets/filestore"
@@ -17,6 +13,7 @@ import (
 	smnetwork "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-graphsync"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
@@ -26,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
