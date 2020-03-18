@@ -702,15 +702,17 @@ func (node *Node) getWeight(ctx context.Context, ts block.TipSet) (fbig.Int, err
 	if err != nil {
 		return fbig.Zero(), err
 	}
-	// TODO handle genesis cid more gracefully
-	if parent.Len() == 0 {
-		return node.syncer.ChainSelector.Weight(ctx, ts, cid.Undef)
+	var baseStRoot cid.Cid
+	if parent.Empty() {
+		// use genesis state as parent state of genesis block
+		baseStRoot, err = node.chain.ChainReader.GetTipSetStateRoot(ts.Key())
+	} else {
+		baseStRoot, err = node.chain.ChainReader.GetTipSetStateRoot(parent)
 	}
-	root, err := node.chain.ChainReader.GetTipSetStateRoot(parent)
 	if err != nil {
 		return fbig.Zero(), err
 	}
-	return node.syncer.ChainSelector.Weight(ctx, ts, root)
+	return node.syncer.ChainSelector.Weight(ctx, ts, baseStRoot)
 }
 
 // -- Accessors

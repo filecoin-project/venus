@@ -577,15 +577,17 @@ func (syncer *Syncer) stageIfHeaviest(ctx context.Context, candidate block.TipSe
 	if err != nil {
 		return err
 	}
-	var stagedParentStateID cid.Cid
-	if !stagedParentKey.Empty() { // head is not genesis
-		stagedParentStateID, err = syncer.chainStore.GetTipSetStateRoot(stagedParentKey)
+	var stagedBaseStateID cid.Cid
+	if stagedParentKey.Empty() { // if staged is genesis base state is genesis state
+		stagedBaseStateID = syncer.staged.At(0).StateRoot.Cid
+	} else {
+		stagedBaseStateID, err = syncer.chainStore.GetTipSetStateRoot(stagedParentKey)
 		if err != nil {
 			return err
 		}
 	}
 
-	heavier, err := syncer.chainSelector.IsHeavier(ctx, candidate, syncer.staged, candidateParentStateID, stagedParentStateID)
+	heavier, err := syncer.chainSelector.IsHeavier(ctx, candidate, syncer.staged, candidateParentStateID, stagedBaseStateID)
 	if err != nil {
 		return err
 	}
