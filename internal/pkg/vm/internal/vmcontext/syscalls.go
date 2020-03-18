@@ -66,8 +66,7 @@ func (sys syscalls) VerifyPoSt(info abi.PoStVerifyInfo) error {
 	return sys.impl.VerifyPoSt(sys.ctx, info)
 }
 
-func (sys syscalls) VerifyConsensusFault(h1, h2, extra []byte) (*specsruntime.ConsensusFault, error) {
+func (sys syscalls) VerifyConsensusFault(h1, h2, extra []byte, earliest abi.ChainEpoch) (*specsruntime.ConsensusFault, error) {
 	sys.gasTank.Charge(sys.pricelist.OnVerifyConsensusFault())
-	earliest := abi.ChainEpoch(0) // TODO: connect when https://github.com/filecoin-project/specs-actors/pull/235 is integrated
 	return sys.impl.VerifyConsensusFault(sys.ctx, h1, h2, extra, sys.head, sys.state, earliest)
 }

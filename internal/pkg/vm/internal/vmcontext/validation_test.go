@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/chain-validation/suites"
 	"github.com/filecoin-project/chain-validation/suites/message"
+	"github.com/filecoin-project/chain-validation/suites/tipset"
 )
 
 // TestSkipper contains a list of test cases skipped by the implementation.
@@ -41,6 +42,7 @@ func init() {
 		message.TestMultiSigActor,
 		// Skipping since payment channel because runtime sys calls are not implemented in runtime adapter
 		message.TestPaych,
+		tipset.TestInternalMessageApplicationFailure,
 	}}
 }
 
@@ -61,7 +63,7 @@ func TestChainValidationTipSetSuite(t *testing.T) {
 	f := NewFactories()
 	for _, testCase := range suites.TipSetTestCases() {
 		// All skipped due to VM state incorrectly throws illegal actor state error.
-		if true || TestSuiteSkipper.Skip(testCase) {
+		if TestSuiteSkipper.Skip(testCase) {
 			continue
 		}
 		t.Run(caseName(testCase), func(t *testing.T) {

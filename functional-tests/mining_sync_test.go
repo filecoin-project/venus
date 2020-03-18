@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/build/project"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/iptbtester"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
@@ -43,7 +44,11 @@ func TestBootstrapMineOnce(t *testing.T) {
 	// Check the miner's initial power corresponds to 2 2kb sectors
 	var status porcelain.MinerStatus
 	node0.MustRunCmdJSON(ctx, &status, "go-filecoin", "miner", "status", minerAddress.String())
-	assert.Equal(t, uint64(2*3072), status.Power.Uint64())
+
+	// expected miner power is 2 2kib sectors
+	expectedMinerPower := constants.DevSectorSize * 2
+	actualMinerPower := status.Power.Uint64()
+	assert.Equal(t, uint64(expectedMinerPower), status.Power.Uint64(), "expected miner power: %d actual miner power: %d", expectedMinerPower, actualMinerPower)
 
 	// Assert that the chain head is genesis block
 	var blocks []block.Block
