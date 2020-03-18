@@ -131,7 +131,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 
 	t.Run("saves payment voucher and returns voucher amount if new", func(t *testing.T) {
 		viewer, pchMgr := makeViewerAndManager(ctx, t, clientAddr, minerAddr, pchan, root)
-		viewer.Views[root].AddActorWithState(pchan, clientAddr, minerAddr, address.Undef)
+		viewer.AddActorWithState(pchan, clientAddr, minerAddr, address.Undef)
 		rmp := NewRetrievalMarketClientFakeAPI(t)
 		// simulate creating payment channel
 		rmp.ExpectedVouchers[pchan] = &pch.VoucherInfo{Voucher: voucher, Proof: proof}
@@ -150,8 +150,8 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 
 	t.Run("errors if manager fails to save voucher, does not store new channel info", func(t *testing.T) {
 		viewer, pchMgr := makeViewerAndManager(ctx, t, clientAddr, minerAddr, pchan, root)
-		viewer.Views[root].AddActorWithState(pchan, clientAddr, minerAddr, address.Undef)
-		viewer.Views[root].PaychActorPartiesErr = errors.New("boom")
+		viewer.AddActorWithState(pchan, clientAddr, minerAddr, address.Undef)
+		viewer.PaychActorPartiesErr = errors.New("boom")
 
 		rmp := NewRetrievalMarketClientFakeAPI(t)
 		rmp.ExpectedVouchers[pchan] = &pch.VoucherInfo{Voucher: voucher, Proof: proof}
@@ -167,9 +167,8 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 func makeViewerAndManager(ctx context.Context, t *testing.T, client, miner, paych address.Address, root state.Root) (*pch.FakeStateViewer, *pch.Manager) {
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
 	testAPI := pch.NewFakePaymentChannelAPI(ctx, t)
-	viewer := makeStateViewer(t, root, nil)
-	cr := pch.NewFakeChainReader(block.NewTipSetKey(root))
-	pchMgr := pch.NewManager(context.Background(), ds, testAPI, testAPI, viewer, cr)
+	viewer := pch.NewFakeStateViewer(t)
+	pchMgr := pch.NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 	blockHeight := uint64(1234)
 	balance := types.NewAttoFILFromFIL(1000)
 

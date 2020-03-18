@@ -376,19 +376,13 @@ func requireNewEmptyChainStore(ctx context.Context, t *testing.T) (cid.Cid, *cha
 func makePaychMgr(ctx context.Context, t *testing.T, client, miner, paych address.Address, channelAmt abi.TokenAmount) *pch.Manager {
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
 	testAPI := pch.NewFakePaymentChannelAPI(ctx, t)
-	root := shared_testutil.GenerateCids(1)[0]
-	viewer := makeStateViewer(t, root, nil)
-	pchMgr := pch.NewManager(context.Background(), ds, testAPI, testAPI, viewer, &cst.ChainStateReadWriter{})
+a	viewer := pch.NewFakeStateViewer(t)
+	pchMgr := pch.NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 	blockHeight := uint64(1234)
 
 	testAPI.StubCreatePaychActorMessage(t, client, miner, paych, channelAmt, exitcode.Ok, blockHeight)
-	viewer.Views[root].AddActorWithState(paych, client, miner, address.Undef)
+	viewer.AddActorWithState(paych, client, miner, address.Undef)
 	return pchMgr
-}
-
-func makeStateViewer(t *testing.T, stateRoot cid.Cid, viewErr error) *pch.FakeStateViewer {
-	return &pch.FakeStateViewer{
-		Views: map[cid.Cid]*pch.FakeStateView{stateRoot: pch.NewFakeStateView(t, viewErr)}}
 }
 
 func assertChannel(t *testing.T, paych address.Address, pchMgr *pch.Manager, exists bool) {

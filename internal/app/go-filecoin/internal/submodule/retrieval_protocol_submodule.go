@@ -3,8 +3,10 @@ package submodule
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	impl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
+	"github.com/filecoin-project/go-fil-markets/storedcounter"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -18,6 +20,7 @@ import (
 // capabilities.
 type RetrievalProtocolSubmodule struct {
 	pc *retmkt.RetrievalProviderConnector
+	cc *retmkt.RetrievalClientConnector
 }
 
 // NewRetrievalProtocolSubmodule creates a new retrieval protocol submodule.
@@ -44,5 +47,12 @@ func NewRetrievalProtocolSubmodule(
 	}
 	pnode.SetProvider(marketProvider)
 
-	return &RetrievalProtocolSubmodule{pnode}, nil
+	cnode := retmkt.NewRetrievalClientConnector(bs, cr, signer, pchMgrAPI)
+	dsKey := datastore.NewKey("retrievalmarket/client/counter")
+	counter := storedcounter.New(ds, dsKey)
+	resolver := discovery.Multi(discovery.NewLocal(ds))
+	marketClient, err := impl.NewClient(netwk, bs, cnode, resolver, ds, counter)
+	cnode.SetRetrievalClient(marketClient)
+
+	return &RetrievalProtocolSubmodule{pnode, cnode}, nil
 }

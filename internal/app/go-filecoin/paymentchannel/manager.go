@@ -34,8 +34,7 @@ type Manager struct {
 	paymentChannels *statestore.StateStore
 	sender          MsgSender
 	waiter          MsgWaiter
-	stateViewer     MgrStateViewer
-	cr              ChainReader
+	stateViewer     ActorStateViewer
 }
 
 // PaymentChannelStorePrefix is the prefix used in the datastore
@@ -48,7 +47,7 @@ type MsgWaiter interface {
 
 // MsgSender is an interface for something that can post messages on chain
 type MsgSender interface {
-	// Send sends a message to the chain
+	// Send posts a message to the chain
 	Send(ctx context.Context,
 		from, to address.Address,
 		value types.AttoFIL,
@@ -59,26 +58,16 @@ type MsgSender interface {
 		params interface{}) (out cid.Cid, pubErrCh chan error, err error)
 }
 
-// MgrStateViewer is the subset of a StateViewer API that the Manager uses
-type MgrStateViewer interface {
-	StateView(root cid.Cid) PaychActorStateView
-}
-
-// PaychActorStateView is the subset of a StateView that the Manager uses
-type PaychActorStateView interface {
-	PaychActorParties(ctx context.Context, paychAddr address.Address) (from, to address.Address, err error)
-	MinerControlAddresses(ctx context.Context, addr address.Address) (owner, worker address.Address, err error)
-}
-
-// ChainReader is the subset of the ChainReadWriter API that the Manager uses
-type ChainReader interface {
-	GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error)
+// ActorStateViewer is an interface to StateViewer that the Manager uses
+type ActorStateViewer interface {
+	PaychActorParties(ctx context.Context, paychAddr address.Address, tok shared.TipSetToken) (from, to address.Address, err error)
+	MinerControlAddresses(ctx context.Context, addr address.Address, tok shared.TipSetToken) (owner, worker address.Address, err error)
 }
 
 // NewManager creates and returns a new paymentchannel.Manager
-func NewManager(ctx context.Context, ds datastore.Batching, waiter MsgWaiter, sender MsgSender, viewer MgrStateViewer, cr ChainReader) *Manager {
+func NewManager(ctx context.Context, ds datastore.Batching, waiter MsgWaiter, sender MsgSender, viewer ActorStateViewer) *Manager {
 	store := statestore.New(namespace.Wrap(ds, datastore.NewKey(PaymentChannelStorePrefix)))
-	return &Manager{ctx, store, sender, waiter, viewer, cr}
+	return &Manager{ctx, store, sender, waiter, viewer}
 }
 
 // AllocateLane adds a new lane to a payment channel entry
@@ -248,29 +237,11 @@ func PaychActorCtorExecParamsFor(client, miner address.Address) (initActor.ExecP
 	return p, nil
 }
 
-func (pm *Manager) getStateView(tok shared.TipSetToken) (PaychActorStateView, error) {
-	var tsk block.TipSetKey
-	if err := encoding.Decode(tok, &tsk); err != nil {
-		return nil, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
-	}
-
-	root, err := pm.cr.GetTipSetStateRoot(pm.ctx, tsk)
-	if err != nil {
-		return nil, err
-	}
-	return pm.stateViewer.StateView(root), nil
-}
-
 func (pm *Manager) createPaymentChannelWithVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte, tok shared.TipSetToken) (abi.TokenAmount, error) {
-	sv, err := pm.getStateView(tok)
+	from, to, err := pm.stateViewer.PaychActorParties(pm.ctx, paychAddr, tok)
 	if err != nil {
 		return zeroAmt, err
 	}
-	from, to, err := sv.PaychActorParties(pm.ctx, paychAddr)
-	if err != nil {
-		return zeroAmt, err
-	}
-
 	chinfo := ChannelInfo{
 		From:       from,
 		To:         to,
@@ -315,21 +286,15 @@ func (pm *Manager) saveNewVoucher(paychAddr address.Address, voucher *paychActor
 
 // GetMinerWorker mocks getting a miner worker address from the miner address
 func (pm *Manager) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
-	var tsk block.TipSetKey
-	if err := encoding.Decode(tok, &tsk); err != nil {
-		return address.Undef, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
-	}
+	_, fcworker, err := pm.stateViewer.MinerControlAddresses(ctx, miner, tok)
+	return fcworker, err
+}
 
-	root, err := pm.cr.GetTipSetStateRoot(ctx, tsk)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to get tip state: %w", err)
-	}
-
-	view := pm.stateViewer.StateView(root)
-	_, fcworker, err := view.MinerControlAddresses(ctx, miner)
+func (pm *Manager) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
+	_, workerAddr, err := pm.stateViewer.MinerControlAddresses(ctx, miner, nil)
 	if err != nil {
 		return address.Undef, err
 	}
 
-	return fcworker, nil
+	return workerAddr, nil
 }
