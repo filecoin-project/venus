@@ -191,7 +191,7 @@ func (c *Expected) validateMining(ctx context.Context,
 		}
 
 		if !parentWeight.Equals(blk.ParentWeight) {
-			return errors.Errorf("block %s has invalid parent weight %d", blk.Cid().String(), parentWeight)
+			return errors.Errorf("block %s has invalid parent weight %d expected %d", blk.Cid().String(), blk.ParentWeight, parentWeight)
 		}
 		workerAddr, err := powerTable.WorkerAddr(ctx, blk.Miner)
 		if err != nil {
