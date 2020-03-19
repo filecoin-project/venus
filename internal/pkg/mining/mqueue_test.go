@@ -9,6 +9,7 @@ import (
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 func TestMessageQueueOrder(t *testing.T) {
@@ -28,7 +29,7 @@ func TestMessageQueueOrder(t *testing.T) {
 			To:         to,
 			CallSeqNum: nonce,
 			GasPrice:   types.NewGasPrice(price),
-			GasLimit:   types.GasUnits(units),
+			GasLimit:   gas.NewGas(int64(units)),
 		}
 		s, err := types.NewSignedMessage(msg, &mockSigner)
 		require.NoError(t, err)

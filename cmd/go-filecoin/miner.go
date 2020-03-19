@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 var minerCmd = &cmds.Command{
@@ -36,7 +37,7 @@ var minerCmd = &cmds.Command{
 // MinerCreateResult is the type returned when creating a miner.
 type MinerCreateResult struct {
 	Address address.Address
-	GasUsed types.GasUnits
+	GasUsed gas.Unit
 	Preview bool
 }
 
@@ -127,7 +128,7 @@ additional sectors.`,
 
 		return re.Emit(&MinerCreateResult{
 			Address: *addr,
-			GasUsed: types.GasUnits(0),
+			GasUsed: gas.NewGas(0),
 			Preview: false,
 		})
 	},
@@ -221,7 +222,7 @@ This command waits for the ask to be mined.`,
 // MinerUpdatePeerIDResult is the return type for miner update-peerid command
 type MinerUpdatePeerIDResult struct {
 	Cid     cid.Cid
-	GasUsed types.GasUnits
+	GasUsed gas.Unit
 	Preview bool
 }
 
@@ -298,7 +299,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 
 		return re.Emit(&MinerUpdatePeerIDResult{
 			Cid:     c,
-			GasUsed: types.GasUnits(0),
+			GasUsed: gas.NewGas(0),
 			Preview: false,
 		})
 	},

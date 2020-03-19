@@ -10,6 +10,7 @@ import (
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 func TestMessageMarshal(t *testing.T) {
@@ -28,7 +29,7 @@ func TestMessageMarshal(t *testing.T) {
 		builtin.MethodSend,
 		[]byte("foobar"),
 		NewAttoFILFromFIL(3),
-		GasUnits(4),
+		gas.NewGas(4),
 	)
 
 	// This check requests that you add a non-zero value for new fields above,

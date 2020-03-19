@@ -10,12 +10,13 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 // MessageMaker creates unique, signed messages for use in tests.
 type MessageMaker struct {
 	DefaultGasPrice types.AttoFIL
-	DefaultGasUnits types.GasUnits
+	DefaultGasUnits gas.Unit
 
 	signer *types.MockSigner
 	seq    uint
@@ -32,7 +33,7 @@ func NewMessageMaker(t *testing.T, keys []crypto.KeyInfo) *MessageMaker {
 		addresses[i] = addr
 	}
 
-	return &MessageMaker{types.ZeroAttoFIL, types.GasUnits(0), &signer, 0, t}
+	return &MessageMaker{types.ZeroAttoFIL, gas.Unit(0), &signer, 0, t}
 }
 
 // Addresses returns the addresses for which this maker can sign messages.

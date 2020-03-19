@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 // Outbox validates and marshals messages for sending and maintains the outbound message queue.
@@ -83,7 +84,7 @@ func (ob *Outbox) Queue() *Queue {
 // Send marshals and sends a message, retaining it in the outbound message queue.
 // If bcast is true, the publisher broadcasts the message to the network at the current block height.
 func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value types.AttoFIL,
-	gasPrice types.AttoFIL, gasLimit types.GasUnits, bcast bool, method abi.MethodNum, params interface{}) (out cid.Cid, pubErrCh chan error, err error) {
+	gasPrice types.AttoFIL, gasLimit gas.Unit, bcast bool, method abi.MethodNum, params interface{}) (out cid.Cid, pubErrCh chan error, err error) {
 	defer func() {
 		if err != nil {
 			msgSendErrCt.Inc(ctx, 1)

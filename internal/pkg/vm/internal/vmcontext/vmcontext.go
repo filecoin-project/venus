@@ -329,14 +329,12 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 
 // applyMessage applies the message to the current state.
 func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd crypto.RandomnessSource) (message.Receipt, minerPenaltyFIL, gasRewardFIL) {
-	// Dragons: temp until we remove legacy types
-	var msgGasLimit gas.Unit = gas.Unit(msg.GasLimit)
 	// This method does not actually execute the message itself,
 	// but rather deals with the pre/post processing of a message.
 	// (see: `invocationContext.invoke()` for the dispatch and execution)
 
 	// initiate gas tracking
-	gasTank := NewGasTracker(msgGasLimit)
+	gasTank := NewGasTracker(msg.GasLimit)
 
 	// pre-send
 	// 1. charge for message existence
@@ -377,7 +375,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 	}
 
 	// 4. Check sender balance (gas + value being sent)
-	gasLimitCost := msgGasLimit.ToTokens(msg.GasPrice)
+	gasLimitCost := msg.GasLimit.ToTokens(msg.GasPrice)
 	totalCost := big.Add(msg.Value, gasLimitCost)
 	if fromActor.Balance.LessThan(totalCost) {
 		// Execution error; sender does not have sufficient funds to pay for the gas limit.
@@ -469,7 +467,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 
 	// 2. settle gas money around (unused_gas -> sender)
 	receipt.GasUsed = gasTank.GasConsumed()
-	refundGas := msgGasLimit - receipt.GasUsed
+	refundGas := msg.GasLimit - receipt.GasUsed
 	vm.transfer(builtin.BurntFundsActorAddr, msg.From, refundGas.ToTokens(msg.GasPrice))
 
 	// 3. Success!

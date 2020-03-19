@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 // API is the porcelain implementation, a set of convenience calls written on the
@@ -67,7 +68,7 @@ func (a *API) MinerCreate(
 	ctx context.Context,
 	accountAddr address.Address,
 	gasPrice types.AttoFIL,
-	gasLimit types.GasUnits,
+	gasLimit gas.Unit,
 	sectorSize abi.SectorSize,
 	pid peer.ID,
 	collateral types.AttoFIL,
@@ -81,7 +82,7 @@ func (a *API) MinerPreviewCreate(
 	fromAddr address.Address,
 	sectorSize abi.SectorSize,
 	pid peer.ID,
-) (usedGas types.GasUnits, err error) {
+) (usedGas gas.Unit, err error) {
 	return MinerPreviewCreate(ctx, a, fromAddr, sectorSize, pid)
 }
 
@@ -91,7 +92,7 @@ func (a *API) MinerGetStatus(ctx context.Context, minerAddr address.Address, bas
 }
 
 // MinerSetPrice configures the price of storage. See implementation for details.
-func (a *API) MinerSetPrice(ctx context.Context, from address.Address, miner address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, price types.AttoFIL, expiry *big.Int) (MinerSetPriceResponse, error) {
+func (a *API) MinerSetPrice(ctx context.Context, from address.Address, miner address.Address, gasPrice types.AttoFIL, gasLimit gas.Unit, price types.AttoFIL, expiry *big.Int) (MinerSetPriceResponse, error) {
 	panic("implement me in terms of the storage market module")
 }
 
@@ -132,7 +133,7 @@ func (a *API) PingMinerWithTimeout(
 }
 
 // MinerSetWorkerAddress sets the miner worker address to the provided address
-func (a *API) MinerSetWorkerAddress(ctx context.Context, toAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits) (cid.Cid, error) {
+func (a *API) MinerSetWorkerAddress(ctx context.Context, toAddr address.Address, gasPrice types.AttoFIL, gasLimit gas.Unit) (cid.Cid, error) {
 	return MinerSetWorkerAddress(ctx, a, toAddr, gasPrice, gasLimit)
 }
 

@@ -25,6 +25,7 @@ import (
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -127,7 +128,7 @@ func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, startEpoc
 		builtin.StorageMarketActorAddr,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
-		types.GasUnits(300),
+		gas.NewGas(300),
 		true,
 		builtin.MethodsMarket.PublishStorageDeals,
 		&params,
@@ -218,7 +219,7 @@ func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sec
 		m.minerAddr,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
-		types.GasUnits(300),
+		gas.NewGas(300),
 		true,
 		builtin.MethodsMiner.PreCommitSector,
 		&params,
@@ -261,7 +262,7 @@ func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, s
 		m.minerAddr,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
-		types.GasUnits(300),
+		gas.NewGas(300),
 		true,
 		builtin.MethodsMiner.ProveCommitSector,
 		&params,
@@ -463,7 +464,7 @@ func (m *StorageMinerNodeConnector) SendReportFaults(ctx context.Context, sector
 		m.minerAddr,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
-		types.GasUnits(300),
+		gas.NewGas(300),
 		true,
 		builtin.MethodsMiner.DeclareTemporaryFaults,
 		&params,

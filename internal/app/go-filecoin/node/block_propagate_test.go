@@ -166,7 +166,7 @@ func TestChainSyncWithMessages(t *testing.T) {
 		receiverAddress,
 		sendVal,
 		gasPrice,
-		types.GasUnits(1000),
+		gas.NewGas(1000),
 		builtin.MethodSend,
 		&adt.EmptyValue{},
 	)

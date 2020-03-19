@@ -27,6 +27,7 @@ import (
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -95,7 +96,7 @@ func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address
 		builtin.StorageMarketActorAddr,
 		types.NewAttoFIL(amount.Int),
 		types.NewGasPrice(1),
-		types.GasUnits(300),
+		gas.NewGas(300),
 		true,
 		builtin.MethodsMarket.AddBalance,
 		&addr,

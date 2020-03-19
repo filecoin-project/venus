@@ -21,6 +21,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 // TestNewHeadHandlerIntegration tests inbox and outbox policy consistency.
@@ -37,7 +38,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 	// accepted.
 	maxAge := uint(10)
 	gasPrice := types.NewGasPrice(1)
-	gasUnits := types.GasUnits(1000)
+	gasUnits := gas.NewGas(1000)
 
 	makeHandler := func(provider *message.FakeProvider, root block.TipSet) *message.HeadHandler {
 		mpool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())

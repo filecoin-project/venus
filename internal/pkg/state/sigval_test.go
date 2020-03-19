@@ -13,6 +13,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 type fakeStateView struct {
@@ -82,7 +83,7 @@ func TestBadFrom(t *testing.T) {
 		v := NewSignatureValidator(&fakeStateView{})
 
 		// Can't use NewSignedMessage constructor as it always signs with msg.From.
-		msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), types.GasUnits(0))
+		msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), gas.NewGas(0))
 		bmsg, err := msg.Marshal()
 		require.NoError(t, err)
 		sig, err := signer.SignBytes(bmsg, otherAddr) // sign with addr != msg.From
@@ -102,7 +103,7 @@ func TestBadFrom(t *testing.T) {
 		v := NewSignatureValidator(state)
 
 		// Can't use NewSignedMessage constructor as it always signs with msg.From.
-		msg := types.NewMeteredMessage(idAddress, idAddress, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), types.GasUnits(0))
+		msg := types.NewMeteredMessage(idAddress, idAddress, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), gas.NewGas(0))
 		bmsg, err := msg.Marshal()
 		require.NoError(t, err)
 		sig, err := signer.SignBytes(bmsg, otherAddr) // sign with addr != msg.From (resolved)

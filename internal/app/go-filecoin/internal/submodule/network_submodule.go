@@ -144,7 +144,6 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 
 	// build network
 	network := net.New(peerHost, net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService))
-
 	// build the network submdule
 	return NetworkSubmodule{
 		NetworkName:   networkName,

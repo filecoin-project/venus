@@ -17,6 +17,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 )
@@ -31,17 +32,17 @@ var helloMsgErrCt = metrics.NewInt64Counter("hello_message_error", "Number of er
 
 // HelloMessage is the data structure of a single message in the hello protocol.
 type HelloMessage struct {
-	_                    struct{}
+	_                    struct{} `cbor:",toarray"`
 	HeaviestTipSetCids   block.TipSetKey
 	HeaviestTipSetHeight abi.ChainEpoch
 	HeaviestTipSetWeight fbig.Int
-	GenesisHash          cid.Cid
+	GenesisHash          e.Cid
 }
 
 // LatencyMessage is written in response to a hello message for measuring peer
 // latency.
 type LatencyMessage struct {
-	_        struct{}
+	_        struct{} `cbor:",toarray"`
 	TArrival int64
 	TSent    int64
 }
@@ -164,7 +165,7 @@ func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 	}
 
 	return &HelloMessage{
-		GenesisHash:          h.genesis,
+		GenesisHash:          e.NewCid(h.genesis),
 		HeaviestTipSetCids:   heaviest.Key(),
 		HeaviestTipSetHeight: height,
 		HeaviestTipSetWeight: weight,
