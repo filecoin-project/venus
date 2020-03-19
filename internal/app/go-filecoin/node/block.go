@@ -3,16 +3,18 @@ package node
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 )
 
 // AddNewBlock receives a newly mined block and stores, validates and propagates it to the network.
-func (node *Node) AddNewBlock(ctx context.Context, b *block.Block) (err error) {
+func (node *Node) AddNewBlock(ctx context.Context, o mining.Output) (err error) {
+	b := o.Header
 	ctx, span := trace.StartSpan(ctx, "Node.AddNewBlock")
 	span.AddAttributes(trace.StringAttribute("block", b.Cid().String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)

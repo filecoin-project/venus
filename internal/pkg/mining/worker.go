@@ -30,17 +30,25 @@ import (
 
 var log = logging.Logger("mining")
 
-// Output is the result of a single mining run. It has either a new
-// block or an error, mimicing the golang (retVal, error) pattern.
-// If a mining run's context is canceled there is no output.
+// Output is the result of a single mining attempt. It may have a new block header (with included messages),
+// an error, or zero-value fields indicating that the miner did not win the necessary election.
 type Output struct {
-	NewBlock *block.Block
-	Err      error
+	Header       *block.Block
+	BLSMessages  []*types.SignedMessage
+	SECPMessages []*types.SignedMessage
+	Err          error
 }
 
-// NewOutput instantiates a new Output.
-func NewOutput(b *block.Block, e error) Output {
-	return Output{NewBlock: b, Err: e}
+func NewOutput(b *block.Block, BLSMessages, SECPMessages []*types.SignedMessage) Output {
+	return Output{Header: b, BLSMessages: BLSMessages, SECPMessages: SECPMessages, Err: nil}
+}
+
+func NewOutputEmpty() Output {
+	return Output{}
+}
+
+func NewOutputErr(e error) Output {
+	return Output{Err: e}
 }
 
 // Worker is the interface called by the Scheduler to run the mining work being
@@ -169,13 +177,13 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	log.Info("Worker.Mine")
 	if !base.Defined() {
 		log.Warn("Worker.Mine returning because it can't mine on an empty tipset")
-		outCh <- Output{Err: errors.New("bad input tipset with no blocks sent to Mine()")}
+		outCh <- NewOutputErr(errors.New("bad input tipset with no blocks sent to Mine()"))
 		return
 	}
 	baseEpoch, err := base.Height()
 	if err != nil {
 		log.Warnf("Worker.Mine couldn't read base height %s", err)
-		outCh <- Output{Err: err}
+		outCh <- NewOutputErr(err)
 		return
 	}
 
@@ -188,12 +196,12 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	// Read uncached worker address
 	view, err := w.api.PowerStateView(base.Key())
 	if err != nil {
-		outCh <- Output{Err: err}
+		outCh <- NewOutputErr(err)
 		return
 	}
 	_, workerAddr, err := view.MinerControlAddresses(ctx, w.minerAddr)
 	if err != nil {
-		outCh <- Output{Err: err}
+		outCh <- NewOutputErr(err)
 		return
 	}
 
@@ -205,21 +213,21 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 
 	workerSignerAddr, err := view.AccountSignerAddress(ctx, workerAddr)
 	if err != nil {
-		outCh <- Output{Err: err}
+		outCh <- NewOutputErr(err)
 		return
 	}
 
 	nextTicket, err := w.ticketGen.MakeTicket(ctx, base.Key(), lookbackEpoch, w.minerAddr, workerSignerAddr, w.workerSigner)
 	if err != nil {
 		log.Warnf("Worker.Mine couldn't generate next ticket %s", err)
-		outCh <- Output{Err: err}
+		outCh <- NewOutputErr(err)
 		return
 	}
 
 	postVrfProof, err := w.election.GenerateEPoStVrfProof(ctx, base.Key(), lookbackEpoch, w.minerAddr, workerSignerAddr, w.workerSigner)
 	if err != nil {
 		log.Errorf("Worker.Mine failed to generate epost postVrfProof %s", err)
-		outCh <- Output{Err: err}
+		outCh <- NewOutputErr(err)
 		return
 	}
 	postVrfProofDigest := postVrfProof.Digest()
@@ -227,13 +235,13 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	powerTable, err := w.getPowerTable(base.Key())
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't get snapshot for tipset: %s", err.Error())
-		outCh <- Output{Err: err}
+		outCh <- NewOutputErr(err)
 		return
 	}
 	sortedSectorInfos, err := powerTable.SortedSectorInfos(ctx, w.minerAddr)
 	if err != nil {
 		log.Warnf("Worker.Mine failed to get ssi for %s", w.minerAddr)
-		outCh <- Output{Err: err}
+		outCh <- NewOutputErr(err)
 		return
 	}
 	// Generate election post candidates
@@ -255,7 +263,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base.Key(), "nullBlocks", nullBlkCount)
 	case err := <-errCh:
 		log.Warnf("Worker.Mine failed to get ssi: %s", err)
-		outCh <- Output{Err: err}
+		outCh <- NewOutputErr(err)
 		return
 	case genResult := <-done:
 		candidates = genResult
@@ -265,19 +273,19 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	sectorNum, err := powerTable.NumSectors(ctx, w.minerAddr)
 	if err != nil {
 		log.Errorf("failed to get number of sectors for miner: %s", err)
-		outCh <- Output{Err: err}
+		outCh <- NewOutputErr(err)
 		return
 	}
 	networkPower, err := powerTable.Total(ctx)
 	if err != nil {
 		log.Errorf("failed to get total power: %s", err)
-		outCh <- Output{Err: err}
+		outCh <- NewOutputErr(err)
 		return
 	}
 	sectorSize, err := powerTable.SectorSize(ctx, w.minerAddr)
 	if err != nil {
 		log.Errorf("failed to get sector size for miner: %s", err)
-		outCh <- Output{Err: err}
+		outCh <- NewOutputErr(err)
 		return
 	}
 	hasher := hasher.NewHasher()
@@ -317,7 +325,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base, "nullBlocks", nullBlkCount)
 	case err := <-errCh:
 		log.Warnf("Worker.Mine failed to generate post: %s", err)
-		outCh <- Output{Err: err}
+		outCh <- NewOutputErr(err)
 		return
 	case postOut := <-postDone:
 		poStProofs = postOut
@@ -325,11 +333,11 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 
 	postInfo := block.NewEPoStInfo(block.FromABIPoStProofs(poStProofs...), abi.PoStRandomness(postVrfProof), block.FromFFICandidates(winners...)...)
 
-	next, err := w.Generate(ctx, base, nextTicket, abi.ChainEpoch(nullBlkCount), postInfo)
-	if err == nil {
-		log.Debugf("Worker.Mine generates new winning block! %s", next.Cid().String())
+	next := w.Generate(ctx, base, nextTicket, abi.ChainEpoch(nullBlkCount), postInfo)
+	if next.Err == nil {
+		log.Debugf("Worker.Mine generates new winning block! %s", next.Header.Cid().String())
 	}
-	outCh <- NewOutput(next, err)
+	outCh <- next
 	won = true
 	return
 }

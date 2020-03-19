@@ -20,13 +20,14 @@ import (
 )
 
 // Generate returns a new block created from the messages in the pool.
+// The resulting output is not empty: it has either a block or an error.
 func (w *DefaultWorker) Generate(
 	ctx context.Context,
 	baseTipSet block.TipSet,
 	ticket block.Ticket,
 	nullBlockCount abi.ChainEpoch,
 	ePoStInfo block.EPoStInfo,
-) (*block.Block, error) {
+) Output {
 
 	generateTimer := time.Now()
 	defer func() {
@@ -35,12 +36,12 @@ func (w *DefaultWorker) Generate(
 
 	weight, err := w.getWeight(ctx, baseTipSet)
 	if err != nil {
-		return nil, errors.Wrap(err, "get weight")
+		return NewOutputErr(errors.Wrap(err, "get weight"))
 	}
 
 	baseHeight, err := baseTipSet.Height()
 	if err != nil {
-		return nil, errors.Wrap(err, "get base tip set height")
+		return NewOutputErr(errors.Wrap(err, "get base tip set height"))
 	}
 
 	blockHeight := baseHeight + nullBlockCount + 1
@@ -68,24 +69,24 @@ func (w *DefaultWorker) Generate(
 	// Create an aggregage signature for messages
 	unwrappedBLSMessages, blsAggregateSig, err := aggregateBLS(blsAccepted)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not aggregate bls messages")
+		return NewOutputErr(errors.Wrap(err, "could not aggregate bls messages"))
 	}
 
 	// Persist messages to ipld storage
 	txMetaCid, err := w.messageStore.StoreMessages(ctx, secpAccepted, unwrappedBLSMessages)
 	if err != nil {
-		return nil, errors.Wrap(err, "error persisting messages")
+		return NewOutputErr(errors.Wrap(err, "error persisting messages"))
 	}
 
 	// get tipset state root and receipt root
 	baseStateRoot, err := w.tsMetadata.GetTipSetStateRoot(baseTipSet.Key())
 	if err != nil {
-		return nil, errors.Wrapf(err, "error retrieving state root for tipset %s", baseTipSet.Key().String())
+		return NewOutputErr(errors.Wrapf(err, "error retrieving state root for tipset %s", baseTipSet.Key().String()))
 	}
 
 	baseReceiptRoot, err := w.tsMetadata.GetTipSetReceiptsRoot(baseTipSet.Key())
 	if err != nil {
-		return nil, errors.Wrapf(err, "error retrieving receipt root for tipset %s", baseTipSet.Key().String())
+		return NewOutputErr(errors.Wrapf(err, "error retrieving receipt root for tipset %s", baseTipSet.Key().String()))
 	}
 
 	// Set the block timestamp to be half-way through the target epoch, regardless of the current time.
@@ -109,23 +110,23 @@ func (w *DefaultWorker) Generate(
 
 	view, err := w.api.PowerStateView(baseTipSet.Key())
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read state view")
+		return NewOutputErr(errors.Wrapf(err, "failed to read state view"))
 	}
 	_, workerAddr, err := view.MinerControlAddresses(ctx, w.minerAddr)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read workerAddr during block generation")
+		return NewOutputErr(errors.Wrap(err, "failed to read workerAddr during block generation"))
 	}
 	workerSigningAddr, err := view.AccountSignerAddress(ctx, workerAddr)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to convert worker address to signing address")
+		return NewOutputErr(errors.Wrap(err, "failed to convert worker address to signing address"))
 	}
 	blockSig, err := w.workerSigner.SignBytes(next.SignatureData(), workerSigningAddr)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to sign block")
+		return NewOutputErr(errors.Wrap(err, "failed to sign block"))
 	}
 	next.BlockSig = &blockSig
 
-	return next, nil
+	return NewOutput(next, blsAccepted, secpAccepted)
 }
 
 func aggregateBLS(blsMessages []*types.SignedMessage) ([]*types.UnsignedMessage, crypto.Signature, error) {

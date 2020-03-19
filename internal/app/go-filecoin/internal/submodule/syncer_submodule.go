@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/fetcher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/net/blocksub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
@@ -53,13 +53,13 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 	blkValid := consensus.NewDefaultBlockValidator(config.ChainClock())
 
 	// register block validation on pubsub
-	btv := net.NewBlockTopicValidator(blkValid)
+	btv := blocksub.NewBlockTopicValidator(blkValid)
 	if err := network.pubsub.RegisterTopicValidator(btv.Topic(network.NetworkName), btv.Validator(), btv.Opts()...); err != nil {
 		return SyncerSubmodule{}, errors.Wrap(err, "failed to register block validator")
 	}
 
 	// setup topic.
-	topic, err := network.pubsub.Join(net.BlockTopic(network.NetworkName))
+	topic, err := network.pubsub.Join(blocksub.Topic(network.NetworkName))
 	if err != nil {
 		return SyncerSubmodule{}, err
 	}
