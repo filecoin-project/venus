@@ -634,9 +634,11 @@ func (g *GenesisGenerator) putSectors(ctx context.Context, comm *CommitConfig, m
 			DealIDs:         []abi.DealID{dealID},
 			Expiration:      abi.ChainEpoch(comm.DealCfg.EndEpoch),
 		},
-		ActivationEpoch:   0,
-		DealWeight:        dealWeight,
-		PledgeRequirement: pledge,
+		ActivationEpoch:       0,
+		DealWeight:            dealWeight,
+		PledgeRequirement:     pledge,
+		DeclaredFaultEpoch:    -1,
+		DeclaredFaultDuration: -1,
 	}
 	err = minerActorState.PutSector(&cstore{ctx, g.cst}, newSectorInfo)
 	if err != nil {
