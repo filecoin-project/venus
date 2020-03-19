@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -112,6 +113,10 @@ func TestBlockValidSyntax(t *testing.T) {
 		Height:    1,
 
 		EPoStInfo: validPoStInfo,
+		BlockSig: &crypto.Signature{
+			Type: crypto.SigTypeBLS,
+			Data: []byte{0x3},
+		},
 	}
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 

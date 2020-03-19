@@ -130,7 +130,7 @@ func verifyBlockSignature(ctx context.Context, view FaultStateView, blk block.Bl
 	if err != nil {
 		panic(errors.Wrapf(err, "failed to inspect miner addresses"))
 	}
-	err = state.NewSignatureValidator(view).ValidateSignature(ctx, blk.SignatureData(), worker, blk.BlockSig)
+	err = state.NewSignatureValidator(view).ValidateSignature(ctx, blk.SignatureData(), worker, *blk.BlockSig)
 	if err != nil {
 		return errors.Wrapf(err, "no consensus fault: block %s signature invalid", blk.Cid())
 	}
