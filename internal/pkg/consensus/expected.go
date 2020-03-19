@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"time"
 
@@ -203,8 +202,9 @@ func (c *Expected) validateMining(ctx context.Context,
 			return errors.Wrapf(err, "failed to convert address, %s, to a signing address", workerAddr.String())
 		}
 		// Validate block signature
-		sigData := blk.SignatureData()
-		fmt.Printf("sigData: %x\n", sigData)
+		if blk.BlockSig == nil {
+			return errors.Errorf("invalid nil block signature")
+		}
 		if err := crypto.ValidateSignature(blk.SignatureData(), workerSignerAddr, *blk.BlockSig); err != nil {
 			return errors.Wrap(err, "block signature invalid")
 		}
