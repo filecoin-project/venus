@@ -358,7 +358,7 @@ var previewOption = cmdkit.BoolOption("preview", "Preview the Gas cost of this c
 func parseGasOptions(req *cmds.Request) (types.AttoFIL, gas.Unit, bool, error) {
 	priceOption := req.Options["gas-price"]
 	if priceOption == nil {
-		return types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("gas-price option is required")
+		return types.ZeroAttoFIL, gas.Zero, false, errors.New("gas-price option is required")
 	}
 
 	price, ok := types.NewAttoFILFromFILString(priceOption.(string))

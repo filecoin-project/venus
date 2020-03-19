@@ -137,7 +137,7 @@ func TestMessageSyntaxValidator(t *testing.T) {
 	})
 
 	t.Run("block gas limit fails", func(t *testing.T) {
-		msg, err := types.NewSignedMessage(*newMessage(t, alice, bob, 100, 5, 1, int64(types.BlockGasLimit)+1), signer)
+		msg, err := types.NewSignedMessage(*newMessage(t, alice, bob, 100, 5, 1, types.BlockGasLimit+1), signer)
 		require.NoError(t, err)
 		assert.Errorf(t, validator.Validate(ctx, msg), "block limit")
 	})
@@ -151,7 +151,7 @@ func newActor(t *testing.T, balanceAF int, nonce uint64) *actor.Actor {
 }
 
 func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF int,
-	gasPrice int64, gasLimit int64) *types.UnsignedMessage {
+	gasPrice int64, gasLimit gas.Unit) *types.UnsignedMessage {
 	val, ok := types.NewAttoFILFromString(fmt.Sprintf("%d", valueAF), 10)
 	require.True(t, ok, "invalid attofil")
 	return types.NewMeteredMessage(
@@ -162,7 +162,7 @@ func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF in
 		methodID,
 		[]byte("params"),
 		types.NewGasPrice(gasPrice),
-		gas.NewGas(gasLimit),
+		gasLimit,
 	)
 }
 
