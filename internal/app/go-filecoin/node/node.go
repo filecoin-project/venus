@@ -146,7 +146,7 @@ func (node *Node) Start(ctx context.Context) error {
 	if !node.OfflineMode {
 
 		// Subscribe to block pubsub topic to learn about new chain heads.
-		node.syncer.BlockSub, err = node.pubsubscribe(syncCtx, node.syncer.BlockTopic, node.processBlock)
+		node.syncer.BlockSub, err = node.pubsubscribe(syncCtx, node.syncer.BlockTopic, node.handleBlockSub)
 		if err != nil {
 			log.Error(err)
 		}
