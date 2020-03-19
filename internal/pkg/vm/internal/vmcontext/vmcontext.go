@@ -57,12 +57,11 @@ type minerPenaltyFIL = abi.TokenAmount
 type gasRewardFIL = abi.TokenAmount
 
 type internalMessage struct {
-	from          address.Address
-	to            address.Address
-	value         abi.TokenAmount
-	method        abi.MethodNum
-	params        interface{}
-	callSeqNumber uint64
+	from   address.Address
+	to     address.Address
+	value  abi.TokenAmount
+	method abi.MethodNum
+	params interface{}
 }
 
 // NewVM creates a new runtime for executing messages.
@@ -308,7 +307,28 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 		return nil, fmt.Errorf("implicit message `from` field actor not found, addr: %s", imsg.from)
 	}
 
-	imsg.callSeqNumber = fromActor.CallSeqNum
+	// Compute the originator address. Unlike real messages, implicit ones can be originated by
+	// singleton non-account actors. Singleton addresses are reorg-proof so ok to use here.
+	var originator address.Address
+	if fromActor.Code.Equals(builtin.AccountActorCodeID) {
+		// Load sender account state to obtain stable pubkey address.
+		var senderState account.State
+		_, err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
+		if err != nil {
+			panic(err)
+		}
+		originator = senderState.Address
+	} else if builtin.IsBuiltinActor(fromActor.Code.Cid) {
+		originator = imsg.from // Cannot resolve non-account actor to pubkey addresses.
+	} else {
+		runtime.Abortf(exitcode.SysErrInternal, "implicit message from non-account or -singleton actor code %s", fromActor.Code.Cid)
+	}
+
+	topLevel := topLevelContext{
+		originatorStableAddress: originator,
+		originatorCallSeq:       fromActor.CallSeqNum, // Implied CallSeqNum is that of the actor before incrementing.
+		newActorAddressCount:    0,
+	}
 
 	// 2. increment seq number
 	fromActor.IncrementSeqNum()
@@ -317,7 +337,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 	}
 
 	// 3. build context
-	ctx := newInvocationContext(vm, imsg, fromActor, &gasTank, rnd)
+	ctx := newInvocationContext(vm, &topLevel, imsg, fromActor, &gasTank, rnd)
 
 	// 4. invoke message
 	ret, code := ctx.invoke()
@@ -368,6 +388,11 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 		return message.Failure(exitcode.SysErrActorNotFound, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
 	}
 
+	if !fromActor.Code.Equals(builtin.AccountActorCodeID) {
+		// Execution error; sender is not an account.
+		return message.Failure(exitcode.SysErrForbidden, gas.Zero), gasTank.gasConsumed.ToTokens(msg.GasPrice), big.Zero()
+	}
+
 	// 3. make sure this is the right message order for fromActor
 	if msg.CallSeqNum != fromActor.CallSeqNum {
 		// Execution error; invalid seq number.
@@ -389,11 +414,6 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 		panic(err)
 	}
 
-	// update actor
-	if err := vm.state.SetActor(vm.context, msg.From, fromActor); err != nil {
-		panic(err)
-	}
-
 	// 6. Deduct gas limit funds from sender first
 	// Note: this should always succeed, due to the sender balance check above
 	// Note: after this point, we nede to return this funds back before exiting
@@ -409,6 +429,13 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 		panic("unreachable: actor cannot possibly not exist")
 	}
 
+	// Load sender account state to obtain stable pubkey address.
+	var senderState account.State
+	_, err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
+	if err != nil {
+		panic(err)
+	}
+
 	// 7. checkpoint state
 	// Even if the message fails, the following accumulated changes will be applied:
 	// - CallSeqNumber increment
@@ -422,18 +449,23 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 	// 2. build invocation context
 	// 3. process the msg
 
+	topLevel := topLevelContext{
+		originatorStableAddress: senderState.Address,
+		originatorCallSeq:       msg.CallSeqNum,
+		newActorAddressCount:    0,
+	}
+
 	// 1. build internal msg
 	imsg := internalMessage{
-		from:          msg.From,
-		to:            msg.To,
-		value:         msg.Value,
-		method:        msg.Method,
-		params:        msg.Params,
-		callSeqNumber: msg.CallSeqNum,
+		from:   msg.From,
+		to:     msg.To,
+		value:  msg.Value,
+		method: msg.Method,
+		params: msg.Params,
 	}
 
 	// 2. build invocation context
-	ctx := newInvocationContext(vm, imsg, fromActor, &gasTank, rnd)
+	ctx := newInvocationContext(vm, &topLevel, imsg, fromActor, &gasTank, rnd)
 
 	// 3. invoke
 	ret, code := ctx.invoke()
