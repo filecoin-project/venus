@@ -49,12 +49,17 @@ type InvocationContext interface {
 // and ensure the context implementation exposes them.
 type ExtendedInvocationContext interface {
 	InvocationContext
+	// Creates a reorg-stable address for a new actor.
+
+	NewActorAddress() address.Address
 	// Create an actor in the state tree.
 	//
-	// This will determine a reorg "stable" address for the actor and call its `Constructor()` method.
+	// This will allocate an ID address for the actor and call its `Constructor()` method.
 	//
 	// WARNING: May only be called by InitActor.
 	CreateActor(codeID cid.Cid, addr address.Address)
+
+	DeleteActor()
 }
 
 // PatternContext is the context a pattern gets access to in order to determine if the caller matches.

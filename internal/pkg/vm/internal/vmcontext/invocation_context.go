@@ -17,20 +17,30 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
+// Context for a top-level invocation sequence.
+type topLevelContext struct {
+	originatorStableAddress address.Address // Stable (public key) address of the top-level message sender.
+	originatorCallSeq       uint64          // Call sequence number of the top-level message.
+	newActorAddressCount    uint64          // Count of calls to NewActorAddress (mutable).
+}
+
+// Context for an individual message invocation, including inter-actor sends.
 type invocationContext struct {
 	rt                *VM
-	msg               internalMessage
-	fromActor         *actor.Actor
+	topLevel          *topLevelContext
+	msg               internalMessage // The message being processed
+	fromActor         *actor.Actor    // The immediate calling actor
 	gasTank           *GasTracker
 	randSource        crypto.RandomnessSource
 	isCallerValidated bool
 	allowSideEffects  bool
-	toActor           *actor.Actor
+	toActor           *actor.Actor // The receiving actor
 	stateHandle       internalActorStateHandle
 }
 
@@ -39,17 +49,19 @@ type internalActorStateHandle interface {
 	Validate(func(interface{}) cid.Cid)
 }
 
-func newInvocationContext(rt *VM, msg internalMessage, fromActor *actor.Actor, gasTank *GasTracker, randSource crypto.RandomnessSource) invocationContext {
+func newInvocationContext(rt *VM, topLevel *topLevelContext, msg internalMessage, fromActor *actor.Actor, gasTank *GasTracker, randSource crypto.RandomnessSource) invocationContext {
 	// Note: the toActor and stateHandle are loaded during the `invoke()`
 	return invocationContext{
-		rt:  rt,
-		msg: msg,
-		// Dragons: based on latest changes, it seems we could delete this
+		rt:                rt,
+		topLevel:          topLevel,
+		msg:               msg,
 		fromActor:         fromActor,
 		gasTank:           gasTank,
 		randSource:        randSource,
 		isCallerValidated: false,
 		allowSideEffects:  true,
+		toActor:           nil,
+		stateHandle:       nil,
 	}
 }
 
@@ -259,7 +271,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 			params: &target,
 		}
 
-		newCtx := newInvocationContext(ctx.rt, newMsg, nil, ctx.gasTank, ctx.randSource)
+		newCtx := newInvocationContext(ctx.rt, ctx.topLevel, newMsg, nil, ctx.gasTank, ctx.randSource)
 		_, code := newCtx.invoke()
 		if code.IsError() {
 			// we failed to construct an account actor..
@@ -378,7 +390,7 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 	// 2. invoke message
 
 	// 1. build new context
-	newCtx := newInvocationContext(ctx.rt, newMsg, fromActor, ctx.gasTank, ctx.randSource)
+	newCtx := newInvocationContext(ctx.rt, ctx.topLevel, newMsg, fromActor, ctx.gasTank, ctx.randSource)
 
 	// 2. invoke
 	return newCtx.invoke()
@@ -401,9 +413,38 @@ func (ctx *invocationContext) Charge(cost gas.Unit) error {
 
 var _ runtime.ExtendedInvocationContext = (*invocationContext)(nil)
 
+func (ctx *invocationContext) NewActorAddress() address.Address {
+	var buf bytes.Buffer
+
+	b1, err := encoding.Encode(ctx.topLevel.originatorStableAddress)
+	if err != nil {
+		panic(err)
+	}
+	_, err = buf.Write(b1)
+	if err != nil {
+		panic(err)
+	}
+
+	err = binary.Write(&buf, binary.BigEndian, ctx.topLevel.originatorCallSeq)
+	if err != nil {
+		panic(err)
+	}
+
+	err = binary.Write(&buf, binary.BigEndian, ctx.topLevel.newActorAddressCount)
+	if err != nil {
+		panic(err)
+	}
+
+	actorAddress, err := address.NewActorAddress(buf.Bytes())
+	if err != nil {
+		panic(err)
+	}
+	return actorAddress
+}
+
 // CreateActor implements runtime.ExtendedInvocationContext.
 func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) {
-	if !isBuiltinActor(codeID) {
+	if !builtin.IsBuiltinActor(codeID) {
 		runtime.Abortf(exitcode.ErrIllegalArgument, "Can only create built-in actors.")
 	}
 
@@ -452,23 +493,4 @@ func (ctx *patternContext2) CallerCode() cid.Cid {
 
 func (ctx *patternContext2) CallerAddr() address.Address {
 	return ctx.msg.from
-}
-
-// Dragons: delete once we remove the bootstrap miner
-func isBuiltinActor(code cid.Cid) bool {
-	return builtin.IsBuiltinActor(code)
-}
-
-func computeActorAddress(creator address.Address, nonce uint64) (address.Address, error) {
-	buf := new(bytes.Buffer)
-
-	if _, err := buf.Write(creator.Bytes()); err != nil {
-		return address.Undef, err
-	}
-
-	if err := binary.Write(buf, binary.BigEndian, nonce); err != nil {
-		return address.Undef, err
-	}
-
-	return address.NewActorAddress(buf.Bytes())
 }
