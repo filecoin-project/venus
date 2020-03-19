@@ -68,7 +68,8 @@ func TestBootstrapMineOnce(t *testing.T) {
 }
 
 func TestBootstrapWindowedPoSt(t *testing.T) {
-	//tf.FunctionalTest(t)
+	tf.FunctionalTest(t)
+	t.Skip("WIP")
 
 	ctx := context.Background()
 	root := project.Root()

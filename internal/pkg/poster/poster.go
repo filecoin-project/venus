@@ -82,7 +82,6 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) er
 		return nil
 	}
 
-	log.Infof("PoSter new head %+v", newHead.At(0))
 	tipsetHeight, err := newHead.Height()
 	if err != nil {
 		return err
@@ -98,8 +97,6 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) er
 	if err != nil {
 		return nil
 	}
-
-	log.Infof("PoSter test for start start, %d <=? height, %d", provingPeriodStart, tipsetHeight)
 
 	if provingPeriodStart > tipsetHeight {
 		// it's not time to PoSt
@@ -143,7 +140,6 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, provingPe
 		log.Error("error generating fallback PoSt: ", err)
 		return
 	}
-	log.Infof("PoSter sectorbuilder generated %d candiates", len(candidates))
 
 	poStCandidates := make([]abi.PoStCandidate, len(candidates))
 	for i := range candidates {
@@ -191,7 +187,6 @@ func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, candida
 
 	// wait until we see the post on chain at least once
 	err = p.waiter.Wait(ctx, mcid, func(_ *block.Block, _ *types.SignedMessage, recp *vm.MessageReceipt) error {
-		log.Infof("PoSter message received. Code: %d, Error: %s", recp.ExitCode, recp.ExitCode.Error())
 		return nil
 	})
 	if err != nil {
