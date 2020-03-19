@@ -4,8 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -110,4 +112,48 @@ func TestGetAllActors(t *testing.T) {
 		assert.Equal(t, actor.CallSeqNum, result.Actor.CallSeqNum)
 		assert.Equal(t, actor.Balance, result.Actor.Balance)
 	}
+}
+
+func TestStateTreeConsistency(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx := context.Background()
+	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
+	cst := cborutil.NewIpldStore(bs)
+	tree := NewState(cst)
+
+	var addrs []address.Address
+	for i := 100; i < 150; i++ {
+		a, err := address.NewIDAddress(uint64(i))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addrs = append(addrs, a)
+	}
+
+	randomCid, err := cid.Decode("bafy2bzacecu7n7wbtogznrtuuvf73dsz7wasgyneqasksdblxupnyovmtwxxu")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i, a := range addrs {
+		if err := tree.SetActor(ctx, a, &actor.Actor{
+			Code:       e.NewCid(randomCid),
+			Head:       e.NewCid(randomCid),
+			Balance:    abi.NewTokenAmount(int64(10000 + i)),
+			CallSeqNum: uint64(1000 - i),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	root, err := tree.Commit(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if root.String() != "bafy2bzacec6igwshty4qqexix6iffzdawp5e4ke7mamfn35g3ga6rc3dyhgnc" {
+		t.Fatalf("State Tree Mismatch. Expected: bafy2bzacec6igwshty4qqexix6iffzdawp5e4ke7mamfn35g3ga6rc3dyhgnc Actual: %s", root.String())
+	}
+
 }
