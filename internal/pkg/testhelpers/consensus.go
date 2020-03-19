@@ -47,7 +47,7 @@ func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, sta
 	}
 	sig, err := signer.SignBytes(b.SignatureData(), minerWorker)
 	require.NoError(t, err)
-	b.BlockSig = sig
+	b.BlockSig = &sig
 
 	return b
 }

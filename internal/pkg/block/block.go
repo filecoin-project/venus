@@ -61,7 +61,7 @@ type Block struct {
 	Timestamp uint64 `json:"timestamp"`
 
 	// The signature of the miner's worker key over the block
-	BlockSig crypto.Signature `json:"blocksig"`
+	BlockSig *crypto.Signature `json:"blocksig"`
 
 	// ForkSignaling is extra data used by miners to communicate
 	ForkSignaling uint64
@@ -147,8 +147,8 @@ func (b *Block) Equals(other *Block) bool {
 	return b.Cid().Equals(other.Cid())
 }
 
-// SignatureData returns the block's bytes without the blocksig for signature
-// creating and verification
+// SignatureData returns the block's bytes with a null signature field for
+// signature creation and verification
 func (b *Block) SignatureData() []byte {
 	tmp := &Block{
 		Miner:           b.Miner,

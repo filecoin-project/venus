@@ -119,10 +119,11 @@ func (w *DefaultWorker) Generate(
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert worker address to signing address")
 	}
-	next.BlockSig, err = w.workerSigner.SignBytes(next.SignatureData(), workerSigningAddr)
+	blockSig, err := w.workerSigner.SignBytes(next.SignatureData(), workerSigningAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to sign block")
 	}
+	next.BlockSig = &blockSig
 
 	return next, nil
 }

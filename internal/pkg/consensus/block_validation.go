@@ -105,13 +105,16 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 		return err
 	}
 	if !blk.StateRoot.Defined() {
-		return fmt.Errorf("block %s has nil StateRoot", blk.Cid().String())
+		return fmt.Errorf("block %s has nil StateRoot", blk.Cid())
 	}
 	if blk.Miner.Empty() {
-		return fmt.Errorf("block %s has nil miner address", blk.Cid().String())
+		return fmt.Errorf("block %s has nil miner address", blk.Cid())
 	}
 	if len(blk.Ticket.VRFProof) == 0 {
-		return fmt.Errorf("block %s has nil ticket", blk.Cid().String())
+		return fmt.Errorf("block %s has nil ticket", blk.Cid())
+	}
+	if blk.BlockSig == nil {
+		return fmt.Errorf("block %s has nil signature", blk.Cid())
 	}
 
 	return nil

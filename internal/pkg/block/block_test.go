@@ -56,7 +56,7 @@ func TestTriangleEncoding(t *testing.T) {
 	}
 	t.Run("encoding block with zero fields works", func(t *testing.T) {
 		testRoundTrip(t, &blk.Block{
-			BlockSig:        crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
+			BlockSig:        &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
 			BLSAggregateSig: crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 		})
 	})
@@ -77,7 +77,7 @@ func TestTriangleEncoding(t *testing.T) {
 			ParentWeight:    fbig.NewInt(1000),
 			StateRoot:       e.NewCid(types.CidFromString(t, "somecid")),
 			Timestamp:       1,
-			BlockSig: crypto.Signature{
+			BlockSig: &crypto.Signature{
 				Type: crypto.SigTypeBLS,
 				Data: []byte{0x3},
 			},
@@ -129,7 +129,7 @@ func TestDecodeBlock(t *testing.T) {
 			Messages:        e.NewCid(cM),
 			StateRoot:       e.NewCid(c2),
 			MessageReceipts: e.NewCid(cR),
-			BlockSig:        crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
+			BlockSig:        &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
 			BLSAggregateSig: crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 		}
 
@@ -239,7 +239,7 @@ func TestSignatureData(t *testing.T) {
 		StateRoot:       e.NewCid(types.CidFromString(t, "somecid")),
 		Timestamp:       1,
 		EPoStInfo:       postInfo,
-		BlockSig: crypto.Signature{
+		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x3},
 		},
@@ -261,7 +261,7 @@ func TestSignatureData(t *testing.T) {
 		StateRoot:       e.NewCid(types.CidFromString(t, "someothercid")),
 		Timestamp:       4,
 		EPoStInfo:       diffPoStInfo,
-		BlockSig: crypto.Signature{
+		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x4},
 		},

@@ -97,7 +97,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 		StateRoot:       e.NewCid(types.NewCidForTestGetter()()),
 		Miner:           miner,
 		Ticket:          block.Ticket{VRFProof: []byte{0}},
-		BlockSig:        crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
+		BlockSig:        &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
 		BLSAggregateSig: crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 	}
 	// publish the invalid block
@@ -115,7 +115,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 		StateRoot:       e.NewCid(types.NewCidForTestGetter()()),
 		Miner:           miner,
 		Ticket:          block.Ticket{VRFProof: []byte{0}},
-		BlockSig:        crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
+		BlockSig:        &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
 		BLSAggregateSig: crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 	}
 	// publish the invalid block
