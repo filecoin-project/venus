@@ -337,7 +337,7 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		}
 
 		// Setup windowed post including cron registration
-		err = g.setupPost(ctx, wAddr, mIDAddr)
+		err = g.setupPost(ctx, wAddr, mIDAddr, m.ProvingPeriodStart)
 		if err != nil {
 			return nil, err
 		}
@@ -511,7 +511,7 @@ func (g *GenesisGenerator) commitDeals(ctx context.Context, addr, mIDAddr addres
 	return ret.IDs, nil
 }
 
-func (g *GenesisGenerator) setupPost(ctx context.Context, addr, mIDAddr address.Address) error {
+func (g *GenesisGenerator) setupPost(ctx context.Context, addr, mIDAddr address.Address, provingPeriodStart *abi.ChainEpoch) error {
 	mAct, found, err := g.stateTree.GetActor(ctx, mIDAddr)
 	if err != nil {
 		return err
@@ -526,7 +526,11 @@ func (g *GenesisGenerator) setupPost(ctx context.Context, addr, mIDAddr address.
 	}
 
 	// set provingperiod start state field
-	minerActorState.PoStState.ProvingPeriodStart = miner.ProvingPeriod
+	ppStart := abi.ChainEpoch(miner.ProvingPeriod)
+	if provingPeriodStart != nil {
+		ppStart = *provingPeriodStart
+	}
+	minerActorState.PoStState.ProvingPeriodStart = ppStart
 
 	// register event on cron actor by sending from miner actor address
 	// Dragons need to include empty val to prevent cbor gen from panicing

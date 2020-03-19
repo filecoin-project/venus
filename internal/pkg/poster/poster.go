@@ -12,12 +12,14 @@ import (
 	"github.com/prometheus/common/log"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
@@ -32,6 +34,7 @@ type Poster struct {
 	sectorbuilder sectorbuilder.Interface
 	chain         *cst.ChainStateReadWriter
 	stateViewer   *appstate.Viewer
+	waiter        *msg.Waiter
 }
 
 // NewPoster creates a Poster struct
@@ -40,7 +43,8 @@ func NewPoster(
 	outbox *message.Outbox,
 	sb sectorbuilder.Interface,
 	chain *cst.ChainStateReadWriter,
-	stateViewer *appstate.Viewer) *Poster {
+	stateViewer *appstate.Viewer,
+	waiter *msg.Waiter) *Poster {
 
 	return &Poster{
 		minerAddr:     minerAddr,
@@ -48,6 +52,7 @@ func NewPoster(
 		sectorbuilder: sb,
 		chain:         chain,
 		stateViewer:   stateViewer,
+		waiter:        waiter,
 	}
 }
 
@@ -94,7 +99,7 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) er
 		return nil
 	}
 
-	if provingPeriodStart <= tipsetHeight {
+	if provingPeriodStart > tipsetHeight {
 		// it's not time to PoSt
 		return nil
 	}
@@ -110,19 +115,19 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, provingPe
 
 	sortedSectorInfo, err := p.getProvingSet(ctx, stateView)
 	if err != nil {
-		log.Error("error getting proving set", err)
+		log.Error("error getting proving set: ", err)
 		return
 	}
 
 	faults, err := stateView.MinerFaults(ctx, p.minerAddr)
 	if err != nil {
-		log.Error("error getting faults", err)
+		log.Error("error getting faults: ", err)
 		return
 	}
 
 	challengeSeed, err := p.getChallengeSeed(ctx, head, provingPeriodStart, p.minerAddr)
 	if err != nil {
-		log.Error("error getting challenge seed", err)
+		log.Error("error getting challenge seed: ", err)
 		return
 	}
 
@@ -133,7 +138,7 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, provingPe
 
 	candidates, proofs, err := p.sectorbuilder.GenerateFallbackPoSt(sortedSectorInfo, abi.PoStRandomness(challengeSeed[:]), faultsPrime)
 	if err != nil {
-		log.Error("error generating fallback PoSt", err)
+		log.Error("error generating fallback PoSt: ", err)
 		return
 	}
 
@@ -144,7 +149,7 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, provingPe
 
 	err = p.sendPoSt(ctx, stateView, poStCandidates, proofs)
 	if err != nil {
-		log.Error("error sending fallback PoSt", err)
+		log.Error("error sending fallback PoSt: ", err)
 		return
 	}
 }
@@ -161,17 +166,30 @@ func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, candida
 		return err
 	}
 
-	_, _, err = p.outbox.Send(
+	signerAddr, err := stateView.AccountSignerAddress(ctx, workerAddr)
+	if err != nil {
+		return err
+	}
+
+	mcid, _, err := p.outbox.Send(
 		ctx,
-		workerAddr,
+		signerAddr,
 		p.minerAddr,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
-		gas.NewGas(300),
+		gas.NewGas(5000),
 		true,
 		builtin.MethodsMiner.SubmitWindowedPoSt,
 		windowedPost,
 	)
+	if err != nil {
+		return err
+	}
+
+	// wait until we see the post on chain at least once
+	err = p.waiter.Wait(ctx, mcid, func(_ *block.Block, _ *types.SignedMessage, recp *vm.MessageReceipt) error {
+		return nil
+	})
 	if err != nil {
 		return err
 	}

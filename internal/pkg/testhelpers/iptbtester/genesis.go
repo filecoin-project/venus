@@ -31,21 +31,11 @@ type idResult struct {
 	ID string
 }
 
-// RequireBootstrapGenesis constructs the required information and files to build a single
+// RequireGenesisFromSetup constructs the required information and files to build a single
 // filecoin node from a genesis configuration file. The GenesisInfo can be used with MustImportGenesisMiner
 func RequireGenesisFromSetup(t *testing.T, dir string, setupPath string) *GenesisInfo {
-	configFile, err := os.Open(setupPath)
-	if err != nil {
-		t.Errorf("failed to open config file %s: %s", setupPath, err)
-	}
-	defer configFile.Close() // nolint: errcheck
-
-	var cfg gengen.GenesisCfg
-	if err := json.NewDecoder(configFile).Decode(&cfg); err != nil {
-		t.Errorf("failed to parse config: %s", err)
-	}
-
-	return requireGenesis(t, dir, &cfg)
+	cfg := ReadSetup(t, setupPath)
+	return RequireGenesis(t, dir, cfg)
 }
 
 // RequireGenerateGenesis constructs the required information and files to build a single
@@ -72,10 +62,26 @@ func RequireGenerateGenesis(t *testing.T, funds int64, dir string, genesisTime t
 		Time:    uint64(genesisTime.Unix()),
 	}
 
-	return requireGenesis(t, dir, cfg)
+	return RequireGenesis(t, dir, cfg)
 }
 
-func requireGenesis(t *testing.T, dir string, cfg *gengen.GenesisCfg) *GenesisInfo {
+// ReadSetup reads genesis config from a setup file
+func ReadSetup(t *testing.T, setupPath string) *gengen.GenesisCfg {
+	configFile, err := os.Open(setupPath)
+	if err != nil {
+		t.Errorf("failed to open config file %s: %s", setupPath, err)
+	}
+	defer configFile.Close() // nolint: errcheck
+
+	var cfg gengen.GenesisCfg
+	if err := json.NewDecoder(configFile).Decode(&cfg); err != nil {
+		t.Errorf("failed to parse config: %s", err)
+	}
+	return &cfg
+}
+
+// RequireGenesis generates a genesis block and metadata from config
+func RequireGenesis(t *testing.T, dir string, cfg *gengen.GenesisCfg) *GenesisInfo {
 	genfile, err := ioutil.TempFile(dir, "genesis.*.car")
 	if err != nil {
 		t.Fatal(err)
