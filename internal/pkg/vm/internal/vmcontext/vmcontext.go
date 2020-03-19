@@ -224,7 +224,9 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 			}
 
 			// apply message
+			vmlog.Info("PoSter applying message")
 			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(m, m.OnChainLen(), rnd)
+			vmlog.Infof("PoSter apply message, %s %d: %s", m.From.String(), m.Method, receipt.ExitCode.Error())
 
 			// accumulate result
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)
@@ -248,7 +250,9 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 
 			// apply message
 			// Note: the on-chain size for SECP messages is different
+			vmlog.Info("PoSter applying message")
 			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(&m, sm.OnChainLen(), rnd)
+			vmlog.Infof("PoSter apply message, %s %d: %s", m.From.String(), m.Method, receipt.ExitCode.Error())
 
 			// accumulate result
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)

@@ -41,6 +41,10 @@ type CreateStorageMinerConfig struct {
 
 	// SectorSize is the size of the sectors that this miner commits, in bytes.
 	SectorSize abi.SectorSize
+
+	// ProvingPeriodStart is next chain epoch at which a miner will need to submit a windowed post
+	// If unset, it will be set to the proving period.
+	ProvingPeriodStart *abi.ChainEpoch
 }
 
 // CommitConfig carries all information needed to get a sector commitment in the

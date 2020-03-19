@@ -133,6 +133,18 @@ func (c *Expected) BlockTime() time.Duration {
 // in the tipset results in an error.
 func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage,
 	parentWeight fbig.Int, parentStateRoot cid.Cid, parentReceiptRoot cid.Cid) (root cid.Cid, receipts []vm.MessageReceipt, err error) {
+	for _, b := range blsMessages {
+		for _, m := range b {
+			h, _ := ts.Height()
+			log.Infof("PoSter message %s, %d at %d", m.To.String(), m.Method, h)
+		}
+	}
+	for _, b := range secpMessages {
+		for _, m := range b {
+			h, _ := ts.Height()
+			log.Infof("PoSter message %s, %d at %d", m.Message.To.String(), m.Message.Method, h)
+		}
+	}
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -312,6 +324,10 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 	receipts, err := c.processor.ProcessTipSet(ctx, st, vms, ts, msgs)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error validating tipset")
+	}
+	log.Infof("PoSter got %d receipts", len(receipts))
+	if len(receipts) > 0 {
+		log.Infof("PoSter receipt 0 error: %s", receipts[0].ExitCode.Error())
 	}
 
 	return st, receipts, nil

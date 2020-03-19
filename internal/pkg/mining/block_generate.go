@@ -51,6 +51,7 @@ func (w *DefaultWorker) Generate(
 	mq := NewMessageQueue(pending)
 	candidateMsgs := orderMessageCandidates(mq.Drain())
 	candidateMsgs = w.filterPenalizableMessages(ctx, candidateMsgs)
+	log.Infof("PoSter: found %d messages to include in block", len(candidateMsgs))
 
 	var blsAccepted []*types.SignedMessage
 	var secpAccepted []*types.SignedMessage

@@ -74,7 +74,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 			switch r.(type) {
 			case runtime.ExecutionPanic:
 				p := r.(runtime.ExecutionPanic)
-				vmlog.Warnw("Abort during actor execution.",
+				vmlog.Infow("Abort during actor execution.",
 					"errorMessage", p,
 					"exitCode", p.Code(),
 					"sender", ctx.msg.from,

@@ -195,6 +195,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 			return nil, err
 		}
 		b.chainClock = clock.NewChainClock(geneBlk.Timestamp, b.blockTime)
+		log.Infof("PoSter building chain clock with timestamp %d and blocktime %d", geneBlk.Timestamp, b.blockTime)
 	}
 	nd.ChainClock = b.chainClock
 
