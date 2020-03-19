@@ -20,6 +20,7 @@ import (
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 // Poster listens for changes to the chain head and generates and submits a PoSt if one is required.
@@ -176,7 +177,7 @@ func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, candida
 		p.minerAddr,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
-		types.NewGas(5000),
+		gas.NewGas(5000),
 		true,
 		builtin.MethodsMiner.SubmitWindowedPoSt,
 		windowedPost,
