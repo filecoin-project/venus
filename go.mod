@@ -12,7 +12,7 @@ require (
 	github.com/docker/docker v0.7.3-0.20190315170154-87d593639c77
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.3.3 // indirect
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200316233530-cadbb6dd6fbc
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200320032143-61b8abee564f
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200304181354-4446ff8a1bb9
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e

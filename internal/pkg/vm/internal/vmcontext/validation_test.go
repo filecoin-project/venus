@@ -34,7 +34,10 @@ var TestSuiteSkipper TestSkipper
 func init() {
 	// initialize the test skipper with tests being skipped
 	TestSuiteSkipper = TestSkipper{testSkips: []suites.TestCase{
-		// NewActorIDAddress implementation is wrong
+		// Gas files are missing and/or expected balances incorrect due to gas divergence.
+		message.TestAccountActorCreation,
+		message.TestValueTransferSimple,
+		message.TestValueTransferAdvance,
 		message.TestInitActorSequentialIDAddressCreate,
 		message.TestMessageApplicationEdgecases,
 		// Skipping since multisig address resolution breaks tests
@@ -50,7 +53,7 @@ func TestChainValidationMessageSuite(t *testing.T) {
 	f := NewFactories()
 	for _, testCase := range suites.MessageTestCases() {
 		// All skipped due to gas accounting causing divergent balance calculations.
-		if true || TestSuiteSkipper.Skip(testCase) {
+		if TestSuiteSkipper.Skip(testCase) {
 			continue
 		}
 		t.Run(caseName(testCase), func(t *testing.T) {
