@@ -34,30 +34,33 @@ func (v *SignatureValidator) ValidateSignature(ctx context.Context, data []byte,
 }
 
 func (v *SignatureValidator) ValidateMessageSignature(ctx context.Context, msg *types.SignedMessage) error {
-	data, err := msg.Message.Marshal()
+	mCid, err := msg.Message.Cid()
 	if err != nil {
-		return errors.Wrapf(err, "failed to encode message to check signature")
+		return errors.Wrapf(err, "failed to take cid of message to check signature")
 	}
+	data := mCid.Bytes()
+
 	return v.ValidateSignature(ctx, data, msg.Message.From, msg.Signature)
 }
 
 func (v *SignatureValidator) ValidateBLSMessageAggregate(ctx context.Context, msgs []*types.UnsignedMessage, sig crypto.Signature) error {
 	pubKeys := [][]byte{}
-	encodedMsgs := [][]byte{}
+	encodedMsgCids := [][]byte{}
 	for _, msg := range msgs {
 		signerAddress, err := v.state.AccountSignerAddress(ctx, msg.From)
 		if err != nil {
 			return errors.Wrapf(err, "failed to load signer address for %v", msg.From)
 		}
 		pubKeys = append(pubKeys, signerAddress.Payload())
-		msgBytes, err := msg.Marshal()
+		mCid, err := msg.Cid()
 		if err != nil {
 			return err
 		}
-		encodedMsgs = append(encodedMsgs, msgBytes)
+		msgBytes := mCid.Bytes()
+		encodedMsgCids = append(encodedMsgCids, msgBytes)
 	}
 
-	if !crypto.VerifyBLSAggregate(pubKeys, encodedMsgs, sig.Data) {
+	if !crypto.VerifyBLSAggregate(pubKeys, encodedMsgCids, sig.Data) {
 		return errors.New("BLS signature invalid")
 	}
 	return nil
