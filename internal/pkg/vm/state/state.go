@@ -113,6 +113,8 @@ func (st *State) SetActor(ctx context.Context, key actorKey, a *actor.Actor) err
 // DeleteActor remove the actor from the storage.
 //
 // This method will NOT return an error if the actor was not found.
+// This behaviour is based on a principle that some store implementations might not be able to determine
+// whether something exists before deleting it.
 func (st *State) DeleteActor(ctx context.Context, key actorKey) error {
 	err := st.rootNode.Delete(ctx, string(key.Bytes()))
 	st.dirty = true
