@@ -57,8 +57,7 @@ func TestSignMessageOk(t *testing.T) {
 		msg := types.NewMeteredMessage(idAddress, idAddress, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), 0)
 		msgCid, err := msg.Cid()
 		require.NoError(t, err)
-		msgData := msgCid.Bytes()
-		sig, err := ms.SignBytes(msgData, keyAddr)
+		sig, err := ms.SignBytes(msgCid.Bytes(), keyAddr)
 		require.NoError(t, err)
 		smsg := &types.SignedMessage{
 			Message:   *msg,

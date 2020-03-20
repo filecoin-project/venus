@@ -38,9 +38,8 @@ func (v *SignatureValidator) ValidateMessageSignature(ctx context.Context, msg *
 	if err != nil {
 		return errors.Wrapf(err, "failed to take cid of message to check signature")
 	}
-	data := mCid.Bytes()
 
-	return v.ValidateSignature(ctx, data, msg.Message.From, msg.Signature)
+	return v.ValidateSignature(ctx, mCid.Bytes(), msg.Message.From, msg.Signature)
 }
 
 func (v *SignatureValidator) ValidateBLSMessageAggregate(ctx context.Context, msgs []*types.UnsignedMessage, sig crypto.Signature) error {
@@ -56,8 +55,7 @@ func (v *SignatureValidator) ValidateBLSMessageAggregate(ctx context.Context, ms
 		if err != nil {
 			return err
 		}
-		msgBytes := mCid.Bytes()
-		encodedMsgCids = append(encodedMsgCids, msgBytes)
+		encodedMsgCids = append(encodedMsgCids, mCid.Bytes())
 	}
 
 	if !crypto.VerifyBLSAggregate(pubKeys, encodedMsgCids, sig.Data) {

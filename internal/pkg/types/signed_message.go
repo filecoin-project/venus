@@ -37,8 +37,7 @@ func NewSignedMessage(msg UnsignedMessage, s Signer) (*SignedMessage, error) {
 		return nil, err
 	}
 
-	msgData := msgCid.Bytes()
-	sig, err := s.SignBytes(msgData, msg.From)
+	sig, err := s.SignBytes(msgCid.Bytes(), msg.From)
 	if err != nil {
 		return nil, err
 	}
