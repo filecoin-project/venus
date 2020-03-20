@@ -34,12 +34,12 @@ var TestSuiteSkipper TestSkipper
 func init() {
 	// initialize the test skipper with tests being skipped
 	TestSuiteSkipper = TestSkipper{testSkips: []suites.TestCase{
-		// Gas files are missing and/or expected balances incorrect due to gas divergence.
-		message.TestAccountActorCreation,
-		message.TestValueTransferSimple,
+		// Fails since self transfer ending balance does not reflect gas used.
 		message.TestValueTransferAdvance,
+		// Gas files are missing and/or expected balances incorrect due to gas divergence.
 		message.TestInitActorSequentialIDAddressCreate,
 		message.TestMessageApplicationEdgecases,
+
 		// Skipping since multisig address resolution breaks tests
 		// https://github.com/filecoin-project/specs-actors/issues/184
 		message.TestMultiSigActor,
