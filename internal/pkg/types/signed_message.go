@@ -32,12 +32,12 @@ type SignedMessage struct {
 // NOTE: this method can only sign message with From being a public-key type address, not an ID address.
 // We should deprecate this and move to more explicit signing via an address resolver.
 func NewSignedMessage(msg UnsignedMessage, s Signer) (*SignedMessage, error) {
-	msgData, err := msg.Marshal()
+	msgCid, err := msg.Cid()
 	if err != nil {
 		return nil, err
 	}
 
-	sig, err := s.SignBytes(msgData, msg.From)
+	sig, err := s.SignBytes(msgCid.Bytes(), msg.From)
 	if err != nil {
 		return nil, err
 	}
