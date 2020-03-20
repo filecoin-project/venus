@@ -21,7 +21,6 @@ import (
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	gfcrypto "github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
@@ -458,7 +457,8 @@ func (k *KeyManager) newBLSKey() *gfcrypto.KeyInfo {
 	// FIXME: bls needs deterministic key generation
 	//sk := ffi.PrivateKeyGenerate(s.blsSeed)
 	// s.blsSeed++
-	sk := ffi.PrivateKeyGenerate()
+	sk := [32]byte{}
+	sk[0] = uint8(k.blsSeed + 1) // hack to keep gas values and state roots determinist
 	return &gfcrypto.KeyInfo{
 		SigType:    acrypto.SigTypeBLS,
 		PrivateKey: sk[:],
