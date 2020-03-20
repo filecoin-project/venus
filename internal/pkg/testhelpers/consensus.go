@@ -45,7 +45,7 @@ func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, sta
 		BLSAggregateSig: emptyBLSSig,
 		EPoStInfo:       postInfo,
 	}
-	sig, err := signer.SignBytes(b.SignatureData(), minerWorker)
+	sig, err := signer.SignBytes(context.TODO(), b.SignatureData(), minerWorker)
 	require.NoError(t, err)
 	b.BlockSig = &sig
 

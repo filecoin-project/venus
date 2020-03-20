@@ -481,7 +481,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		&node.Messaging,
 		waiter,
 		node.StorageMining.PieceManager,
-		node.Wallet.Wallet,
+		node.Wallet.Signer,
 		node.Host(),
 		node.Repo.Datastore(),
 		node.Blockstore.Blockstore,
@@ -508,7 +508,7 @@ func (node *Node) setupRetrievalMining(ctx context.Context) error {
 		node.chain.State,
 		node.Host(),
 		providerAddr,
-		node.Wallet.Wallet,
+		node.Wallet.Signer,
 		nil, // TODO: payment channel manager API, in follow-up
 		node.PieceManager(),
 	)
@@ -679,7 +679,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 
 		MinerAddr:      minerAddr,
 		MinerOwnerAddr: minerStatus.OwnerAddress,
-		WorkerSigner:   node.Wallet.Wallet,
+		WorkerSigner:   node.Wallet.Signer,
 
 		GetStateTree:   node.chain.ChainReader.GetTipSetState,
 		GetWeight:      node.getWeight,

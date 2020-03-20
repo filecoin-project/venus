@@ -43,7 +43,7 @@ func TestSignMessageOk(t *testing.T) {
 	t.Run("no resolution", func(t *testing.T) {
 		v := NewSignatureValidator(&fakeStateView{}) // No resolution needed.
 		msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), 0)
-		smsg, err := types.NewSignedMessage(*msg, ms)
+		smsg, err := types.NewSignedMessage(ctx, *msg, ms)
 		require.NoError(t, err)
 		assert.NoError(t, v.ValidateMessageSignature(ctx, smsg))
 	})
@@ -57,7 +57,7 @@ func TestSignMessageOk(t *testing.T) {
 		msg := types.NewMeteredMessage(idAddress, idAddress, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), 0)
 		msgCid, err := msg.Cid()
 		require.NoError(t, err)
-		sig, err := ms.SignBytes(msgCid.Bytes(), keyAddr)
+		sig, err := ms.SignBytes(ctx, msgCid.Bytes(), keyAddr)
 		require.NoError(t, err)
 		smsg := &types.SignedMessage{
 			Message:   *msg,
@@ -86,7 +86,7 @@ func TestBadFrom(t *testing.T) {
 		msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), gas.NewGas(0))
 		bmsg, err := msg.Marshal()
 		require.NoError(t, err)
-		sig, err := signer.SignBytes(bmsg, otherAddr) // sign with addr != msg.From
+		sig, err := signer.SignBytes(ctx, bmsg, otherAddr) // sign with addr != msg.From
 		require.NoError(t, err)
 		smsg := &types.SignedMessage{
 			Message:   *msg,
@@ -106,7 +106,7 @@ func TestBadFrom(t *testing.T) {
 		msg := types.NewMeteredMessage(idAddress, idAddress, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), gas.NewGas(0))
 		bmsg, err := msg.Marshal()
 		require.NoError(t, err)
-		sig, err := signer.SignBytes(bmsg, otherAddr) // sign with addr != msg.From (resolved)
+		sig, err := signer.SignBytes(ctx, bmsg, otherAddr) // sign with addr != msg.From (resolved)
 		require.NoError(t, err)
 		smsg := &types.SignedMessage{
 			Message:   *msg,
@@ -127,7 +127,7 @@ func TestSignedMessageBadSignature(t *testing.T) {
 
 	v := NewSignatureValidator(&fakeStateView{}) // no resolution needed
 	msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), 0)
-	smsg, err := types.NewSignedMessage(*msg, signer)
+	smsg, err := types.NewSignedMessage(ctx, *msg, signer)
 	require.NoError(t, err)
 
 	assert.NoError(t, v.ValidateMessageSignature(ctx, smsg))
@@ -147,7 +147,7 @@ func TestSignedMessageCorrupted(t *testing.T) {
 
 	v := NewSignatureValidator(&fakeStateView{}) // no resolution needed
 	msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), 0)
-	smsg, err := types.NewSignedMessage(*msg, signer)
+	smsg, err := types.NewSignedMessage(ctx, *msg, signer)
 	require.NoError(t, err)
 
 	assert.NoError(t, v.ValidateMessageSignature(ctx, smsg))

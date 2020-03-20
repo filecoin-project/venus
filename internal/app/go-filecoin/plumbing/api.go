@@ -309,24 +309,9 @@ func (api *API) NetworkPeers(ctx context.Context, verbose, latency, streams bool
 	return api.network.Peers(ctx, verbose, latency, streams)
 }
 
-// SignBytes uses private key information associated with the given address to sign the given bytes.
-func (api *API) SignBytes(data []byte, addr address.Address) (crypto.Signature, error) {
-	return api.wallet.SignBytes(data, addr)
-}
-
 // WalletAddresses gets addresses from the wallet
 func (api *API) WalletAddresses() []address.Address {
 	return api.wallet.Addresses()
-}
-
-// WalletFind finds addresses on the wallet
-func (api *API) WalletFind(address address.Address) (wallet.Backend, error) {
-	return api.wallet.Find(address)
-}
-
-// WalletGetPubKeyForAddress returns the public key for a given address
-func (api *API) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) {
-	return api.wallet.GetPubKeyForAddress(addr)
 }
 
 // WalletNewAddress generates a new wallet address

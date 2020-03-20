@@ -24,7 +24,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // StorageProtocolSubmodule enhances the node with storage protocol
@@ -43,7 +43,7 @@ func NewStorageProtocolSubmodule(
 	m *MessagingSubmodule,
 	mw *msg.Waiter,
 	pm piecemanager.PieceManager,
-	wlt *wallet.Wallet,
+	s types.Signer,
 	h host.Host,
 	ds datastore.Batching,
 	bs blockstore.Blockstore,
@@ -52,8 +52,8 @@ func NewStorageProtocolSubmodule(
 	sealProofType abi.RegisteredProof,
 	stateViewer *appstate.Viewer,
 ) (*StorageProtocolSubmodule, error) {
-	pnode := storagemarketconnector.NewStorageProviderNodeConnector(minerAddr, c.State, m.Outbox, mw, pm, wlt, stateViewer)
-	cnode := storagemarketconnector.NewStorageClientNodeConnector(cborutil.NewIpldStore(bs), c.State, mw, wlt, m.Outbox, clientAddr, stateViewer)
+	pnode := storagemarketconnector.NewStorageProviderNodeConnector(minerAddr, c.State, m.Outbox, mw, pm, s, stateViewer)
+	cnode := storagemarketconnector.NewStorageClientNodeConnector(cborutil.NewIpldStore(bs), c.State, mw, s, m.Outbox, clientAddr, stateViewer)
 
 	pieceStagingPath, err := paths.PieceStagingDir(repoPath)
 	if err != nil {

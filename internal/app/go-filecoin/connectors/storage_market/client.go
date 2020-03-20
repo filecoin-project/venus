@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
 // StorageClientNodeConnector adapts the node to provide the correct interface to the storage client.
@@ -41,13 +40,13 @@ func NewStorageClientNodeConnector(
 	cbor cbor.IpldStore,
 	cs chainReader,
 	w *msg.Waiter,
-	wlt *wallet.Wallet,
+	s types.Signer,
 	ob *message.Outbox,
 	ca address.Address,
 	sv *appstate.Viewer,
 ) *StorageClientNodeConnector {
 	return &StorageClientNodeConnector{
-		connectorCommon: connectorCommon{cs, sv, w, wlt, ob},
+		connectorCommon: connectorCommon{cs, sv, w, s, ob},
 		cborStore:       cbor,
 		clientAddr:      ca,
 	}

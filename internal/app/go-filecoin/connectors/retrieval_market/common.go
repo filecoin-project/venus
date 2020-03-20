@@ -25,7 +25,7 @@ type ChainReaderAPI interface {
 
 // RetrievalSigner is an interface with the ability to sign data
 type RetrievalSigner interface {
-	SignBytes(data []byte, addr address.Address) (crypto.Signature, error)
+	SignBytes(ctx context.Context, data []byte, addr address.Address) (crypto.Signature, error)
 }
 
 // PaychMgrAPI is an API used for communicating with payment channel actor and store.

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -31,13 +32,13 @@ type SignedMessage struct {
 // a signature derived from the serialized `msg` and `msg.From`
 // NOTE: this method can only sign message with From being a public-key type address, not an ID address.
 // We should deprecate this and move to more explicit signing via an address resolver.
-func NewSignedMessage(msg UnsignedMessage, s Signer) (*SignedMessage, error) {
+func NewSignedMessage(ctx context.Context, msg UnsignedMessage, s Signer) (*SignedMessage, error) {
 	msgCid, err := msg.Cid()
 	if err != nil {
 		return nil, err
 	}
 
-	sig, err := s.SignBytes(msgCid.Bytes(), msg.From)
+	sig, err := s.SignBytes(ctx, msgCid.Bytes(), msg.From)
 	if err != nil {
 		return nil, err
 	}

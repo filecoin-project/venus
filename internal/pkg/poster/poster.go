@@ -166,14 +166,9 @@ func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, candida
 		return err
 	}
 
-	signerAddr, err := stateView.AccountSignerAddress(ctx, workerAddr)
-	if err != nil {
-		return err
-	}
-
 	mcid, _, err := p.outbox.Send(
 		ctx,
-		signerAddr,
+		workerAddr,
 		p.minerAddr,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),

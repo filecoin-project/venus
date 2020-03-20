@@ -203,7 +203,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}
 
-	nd.Wallet, err = submodule.NewWalletSubmodule(ctx, b.repo)
+	nd.Wallet, err = submodule.NewWalletSubmodule(ctx, b.repo, &nd.chain)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Wallet")
 	}

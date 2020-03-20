@@ -259,7 +259,7 @@ func makeExpectedEPoStVRFProof(ctx context.Context, t *testing.T, rnd *consensus
 	require.NoError(t, err)
 	seed, err := rnd.SampleChainRandomness(ctx, head.Key(), acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, height-lookback, entropy)
 	require.NoError(t, err)
-	expectedVrfProof, err := mockSigner.SignBytes(seed, minerOwnerAddr)
+	expectedVrfProof, err := mockSigner.SignBytes(ctx, seed, minerOwnerAddr)
 	require.NoError(t, err)
 	return expectedVrfProof.Data
 }
@@ -272,7 +272,7 @@ func makeExpectedTicket(ctx context.Context, t *testing.T, rnd *consensus.FakeCh
 	require.NoError(t, err)
 	seed, err := rnd.SampleChainRandomness(ctx, head.Key(), acrypto.DomainSeparationTag_TicketProduction, height-lookback, entropy)
 	require.NoError(t, err)
-	expectedVrfProof, err := mockSigner.SignBytes(seed, minerOwnerAddr)
+	expectedVrfProof, err := mockSigner.SignBytes(ctx, seed, minerOwnerAddr)
 	require.NoError(t, err)
 	return block.Ticket{VRFProof: expectedVrfProof.Data}
 }
@@ -444,7 +444,7 @@ func TestApplyBLSMessages(t *testing.T) {
 
 func requireSignedMessage(t *testing.T, signer types.Signer, from, to address.Address, nonce uint64, value types.AttoFIL) *types.SignedMessage {
 	msg := types.NewMeteredMessage(from, to, nonce, value, builtin.MethodSend, []byte{}, types.NewAttoFILFromFIL(1), 300)
-	smsg, err := types.NewSignedMessage(*msg, signer)
+	smsg, err := types.NewSignedMessage(context.TODO(), *msg, signer)
 	require.NoError(t, err)
 	return smsg
 }
@@ -553,21 +553,21 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMeteredMessage(addrs[2], addrs[0], 0, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(1), gas.NewGas(0))
-	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner)
+	smsg1, err := types.NewSignedMessage(ctx, *msg1, &mockSigner)
 	require.NoError(t, err)
 
 	// This is actually okay and should result in a receipt
 	msg2 := types.NewMeteredMessage(addrs[0], addrs[1], 0, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(1), gas.NewGas(0))
-	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner)
+	smsg2, err := types.NewSignedMessage(ctx, *msg2, &mockSigner)
 	require.NoError(t, err)
 
 	// add the following and then increment the actor nonce at addrs[1], nonceTooLow, a permanent error.
 	msg3 := types.NewMeteredMessage(addrs[1], addrs[0], 0, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(1), gas.NewGas(0))
-	smsg3, err := types.NewSignedMessage(*msg3, &mockSigner)
+	smsg3, err := types.NewSignedMessage(ctx, *msg3, &mockSigner)
 	require.NoError(t, err)
 
 	msg4 := types.NewMeteredMessage(addrs[1], addrs[2], 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(1), gas.NewGas(0))
-	smsg4, err := types.NewSignedMessage(*msg4, &mockSigner)
+	smsg4, err := types.NewSignedMessage(ctx, *msg4, &mockSigner)
 	require.NoError(t, err)
 
 	_, err = pool.Add(ctx, smsg1, 0)
@@ -772,7 +772,7 @@ func TestGenerateError(t *testing.T) {
 
 	// This is actually okay and should result in a receipt
 	msg := types.NewMeteredMessage(addrs[0], addrs[1], 0, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewGasPrice(0), gas.Unit(0))
-	smsg, err := types.NewSignedMessage(*msg, &mockSigner)
+	smsg, err := types.NewSignedMessage(ctx, *msg, &mockSigner)
 	require.NoError(t, err)
 	_, err = pool.Add(ctx, smsg, 0)
 	require.NoError(t, err)

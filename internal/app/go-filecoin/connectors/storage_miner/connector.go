@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
 type chainReader interface {
@@ -47,7 +46,7 @@ type StorageMinerNodeConnector struct {
 	chainState chainReader
 	outbox     *message.Outbox
 	waiter     *msg.Waiter
-	wallet     *wallet.Wallet
+	signer     types.Signer
 
 	stateViewer *appstate.Viewer
 }
@@ -57,14 +56,14 @@ var _ storagenode.Interface = new(StorageMinerNodeConnector)
 // NewStorageMinerNodeConnector produces a StorageMinerNodeConnector, which adapts
 // types in this codebase to the interface representing "the node" which is
 // expected by the go-storage-miner project.
-func NewStorageMinerNodeConnector(minerAddress address.Address, chainStore *chain.Store, chainState chainReader, outbox *message.Outbox, waiter *msg.Waiter, wallet *wallet.Wallet, stateViewer *appstate.Viewer) *StorageMinerNodeConnector {
+func NewStorageMinerNodeConnector(minerAddress address.Address, chainStore *chain.Store, chainState chainReader, outbox *message.Outbox, waiter *msg.Waiter, wallet types.Signer, stateViewer *appstate.Viewer) *StorageMinerNodeConnector {
 	return &StorageMinerNodeConnector{
 		minerAddr:            minerAddress,
 		chainHeightScheduler: chainsampler.NewHeightThresholdScheduler(chainStore),
 		chainState:           chainState,
 		outbox:               outbox,
 		waiter:               waiter,
-		wallet:               wallet,
+		signer:               wallet,
 		stateViewer:          stateViewer,
 	}
 }
@@ -112,7 +111,7 @@ func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, startEpoc
 			return cid.Undef, err
 		}
 
-		sig, err := m.wallet.SignBytes(buf, waddr)
+		sig, err := m.signer.SignBytes(ctx, buf, waddr)
 		if err != nil {
 			return cid.Undef, err
 		}
@@ -514,7 +513,7 @@ func (m *StorageMinerNodeConnector) CheckSealing(ctx context.Context, commD []by
 }
 
 func (m *StorageMinerNodeConnector) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
-	return m.wallet.HasAddress(addr), nil
+	return m.signer.HasAddress(ctx, addr)
 }
 
 func (m *StorageMinerNodeConnector) getMinerWorkerAddress(ctx context.Context, tsk block.TipSetKey) (address.Address, error) {
@@ -528,11 +527,5 @@ func (m *StorageMinerNodeConnector) getMinerWorkerAddress(ctx context.Context, t
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to get miner control addresses: %w", err)
 	}
-
-	workerSigner, err := view.AccountSignerAddress(ctx, waddr)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to lookup signing address for worker address: %s: %w", waddr.String(), err)
-	}
-
-	return workerSigner, nil
+	return waddr, nil
 }

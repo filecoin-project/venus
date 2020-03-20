@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
 type chainReader interface {
@@ -47,7 +46,7 @@ type connectorCommon struct {
 	chainStore  chainReader
 	stateViewer *appstate.Viewer
 	waiter      *msg.Waiter
-	wallet      *wallet.Wallet
+	signer      types.Signer
 	outbox      *message.Outbox
 }
 
@@ -112,16 +111,7 @@ func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address
 
 // SignBytes uses the local wallet to sign the bytes with the given address
 func (c *connectorCommon) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
-	view, err := c.chainStore.StateView(c.chainStore.Head())
-	if err != nil {
-		return nil, err
-	}
-	signer, err = view.AccountSignerAddress(ctx, signer)
-	if err != nil {
-		return nil, err
-	}
-
-	sig, err := c.wallet.SignBytes(b, signer)
+	sig, err := c.signer.SignBytes(ctx, b, signer)
 	return &sig, err
 }
 
