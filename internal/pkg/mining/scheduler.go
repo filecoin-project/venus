@@ -138,38 +138,31 @@ func NewScheduler(w Worker, f func() (block.TipSet, error), c clock.ChainEpochCl
 }
 
 // MineOnce mines on a given base until it finds a winner.
-func MineOnce(ctx context.Context, w DefaultWorker, ts block.TipSet) (Output, error) {
-	var winner *block.Block
+func MineOnce(ctx context.Context, w DefaultWorker, ts block.TipSet) Output {
 	var nullCount uint64
-	for winner == nil {
-		var err error
-		winner, err = MineOneEpoch(ctx, w, ts, nullCount)
-		if err != nil {
-			return Output{}, err
+	for {
+		out := MineOneEpoch(ctx, w, ts, nullCount)
+		if out.Err != nil || out.Header != nil {
+			return out
 		}
 		nullCount++
 	}
-
-	return Output{NewBlock: winner}, nil
 }
 
 // MineOneEpoch attempts to mine a block in an epoch and returns the mined block,
 // or nil if no block could be mined
-func MineOneEpoch(ctx context.Context, w DefaultWorker, ts block.TipSet, nullCount uint64) (*block.Block, error) {
+func MineOneEpoch(ctx context.Context, w DefaultWorker, ts block.TipSet, nullCount uint64) Output {
 	workCtx, workCancel := context.WithCancel(ctx)
 	defer workCancel()
 	outCh := make(chan Output, 1)
 
 	won := w.Mine(workCtx, ts, nullCount, outCh)
 	if !won {
-		return nil, nil
+		return NewOutputEmpty()
 	}
 	out, ok := <-outCh
 	if !ok {
-		return nil, errors.New("Mining completed without returning block")
+		return NewOutputErr(errors.New("Mining completed without returning block"))
 	}
-	if out.Err != nil {
-		return nil, out.Err
-	}
-	return out.NewBlock, nil
+	return out
 }

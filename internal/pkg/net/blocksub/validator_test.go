@@ -1,4 +1,4 @@
-package net_test
+package blocksub_test
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/net/blocksub"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -32,7 +32,7 @@ func TestBlockTopicValidator(t *testing.T) {
 
 	ctx := context.Background()
 	mbv := th.NewStubBlockValidator()
-	tv := net.NewBlockTopicValidator(mbv, nil)
+	tv := blocksub.NewBlockTopicValidator(mbv, nil)
 	builder := chain.NewBuilder(t, address.Undef)
 	pid1 := th.RequireIntPeerID(t, 1)
 
@@ -46,7 +46,7 @@ func TestBlockTopicValidator(t *testing.T) {
 	validator := tv.Validator()
 
 	network := "gfctest"
-	assert.Equal(t, net.BlockTopic(network), tv.Topic(network))
+	assert.Equal(t, blocksub.Topic(network), tv.Topic(network))
 	assert.True(t, validator(ctx, pid1, blkToPubSub(goodBlk)))
 	assert.False(t, validator(ctx, pid1, blkToPubSub(badBlk)))
 	assert.False(t, validator(ctx, pid1, nonBlkPubSubMsg()))
@@ -70,7 +70,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 	// setup a block validator and a topic validator
 	chainClock := clock.NewChainClockFromClock(uint64(now.Unix()), blocktime, mclock)
 	bv := consensus.NewDefaultBlockValidator(chainClock)
-	btv := net.NewBlockTopicValidator(bv)
+	btv := blocksub.NewBlockTopicValidator(bv)
 
 	// setup a floodsub instance on the host and register the topic validator
 	network := "gfctest"

@@ -3,13 +3,14 @@ package submodule
 import (
 	"context"
 
+	"github.com/pkg/errors"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/net/msgsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
-	"github.com/pkg/errors"
 )
 
 // MessagingSubmodule enhances the `Node` with internal messaging capabilities.
@@ -45,11 +46,11 @@ func NewMessagingSubmodule(ctx context.Context, config messagingConfig, repo mes
 
 	// setup messaging topic.
 	// register block validation on pubsub
-	mtv := net.NewMessageTopicValidator(msgSyntaxValidator, msgSignatureValidator)
+	mtv := msgsub.NewMessageTopicValidator(msgSyntaxValidator, msgSignatureValidator)
 	if err := network.pubsub.RegisterTopicValidator(mtv.Topic(network.NetworkName), mtv.Validator(), mtv.Opts()...); err != nil {
 		return MessagingSubmodule{}, errors.Wrap(err, "failed to register message validator")
 	}
-	topic, err := network.pubsub.Join(net.MessageTopic(network.NetworkName))
+	topic, err := network.pubsub.Join(msgsub.Topic(network.NetworkName))
 	if err != nil {
 		return MessagingSubmodule{}, err
 	}

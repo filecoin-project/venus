@@ -79,10 +79,9 @@ func TestMineOnce10Null(t *testing.T) {
 		Poster:           &consensus.TestElectionPoster{},
 	})
 
-	result, err := MineOnce(context.Background(), *worker, baseTs)
-	assert.NoError(t, err)
-	assert.NoError(t, result.Err)
-	block := result.NewBlock
+	out := MineOnce(context.Background(), *worker, baseTs)
+	assert.NoError(t, out.Err)
+	block := out.Header
 	assert.Equal(t, uint64(10+1), block.Height)
 	assert.NotEqual(t, baseBlock.Ticket, block.Ticket)
 }
@@ -144,15 +143,15 @@ func TestMineOneEpoch10Null(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		// with null count < 10 we see no errors and get no wins
-		blk, err := MineOneEpoch(context.Background(), *worker, baseTs, uint64(i))
-		assert.NoError(t, err)
-		assert.Nil(t, blk)
+		out := MineOneEpoch(context.Background(), *worker, baseTs, uint64(i))
+		assert.NoError(t, out.Err)
+		assert.Nil(t, out.Header)
 	}
-	blk, err := MineOneEpoch(context.Background(), *worker, baseTs, 10)
-	assert.NoError(t, err)
-	require.NotNil(t, blk)
-	assert.Equal(t, uint64(10+1), blk.Height)
-	assert.Equal(t, chainClock.EpochAtTime(time.Unix(int64(blk.Timestamp), 0)), blk.Height)
+	out := MineOneEpoch(context.Background(), *worker, baseTs, 10)
+	assert.NoError(t, out.Err)
+	require.NotNil(t, out.Header)
+	assert.Equal(t, uint64(10+1), out.Header.Height)
+	assert.Equal(t, chainClock.EpochAtTime(time.Unix(int64(out.Header.Timestamp), 0)), out.Header.Height)
 }
 
 // Mining loop unit tests
