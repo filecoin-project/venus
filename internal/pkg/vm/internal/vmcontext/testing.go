@@ -73,7 +73,7 @@ func (f *Factories) NewValidationConfig() vstate.ValidationConfig {
 		// TODO enable this when ready https://github.com/filecoin-project/go-filecoin/issues/3801
 		trackGas:         false,
 		checkExitCode:    true,
-		checkReturnValue: false,
+		checkReturnValue: true,
 	}
 }
 
