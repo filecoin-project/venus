@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
+	pubsubpb "github.com/libp2p/go-libp2p-pubsub/pb"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/blocksub"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -47,8 +48,8 @@ func TestBlockTopicValidator(t *testing.T) {
 
 	network := "gfctest"
 	assert.Equal(t, blocksub.Topic(network), tv.Topic(network))
-	assert.True(t, validator(ctx, pid1, blkToPubSub(goodBlk)))
-	assert.False(t, validator(ctx, pid1, blkToPubSub(badBlk)))
+	assert.True(t, validator(ctx, pid1, blkToPubSub(t, goodBlk)))
+	assert.False(t, validator(ctx, pid1, blkToPubSub(t, badBlk)))
 	assert.False(t, validator(ctx, pid1, nonBlkPubSubMsg()))
 }
 
@@ -101,7 +102,14 @@ func TestBlockPubSubValidation(t *testing.T) {
 		BLSAggregateSig: crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 	}
 	// publish the invalid block
-	err = top1.Publish(ctx, invalidBlk.ToNode().RawData())
+	payload := blocksub.Payload{
+		Header:      *invalidBlk,
+		BLSMsgCids:  nil,
+		SECPMsgCids: nil,
+	}
+	payloadBytes, err := encoding.Encode(payload)
+	require.NoError(t, err)
+	err = top1.Publish(ctx, payloadBytes)
 	assert.NoError(t, err)
 
 	// see FIXME below (#3285)
@@ -119,7 +127,14 @@ func TestBlockPubSubValidation(t *testing.T) {
 		BLSAggregateSig: crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 	}
 	// publish the invalid block
-	err = top1.Publish(ctx, validBlk.ToNode().RawData())
+	payload = blocksub.Payload{
+		Header:      *validBlk,
+		BLSMsgCids:  nil,
+		SECPMsgCids: nil,
+	}
+	payloadBytes, err = encoding.Encode(payload)
+	require.NoError(t, err)
+	err = top1.Publish(ctx, payloadBytes)
 	assert.NoError(t, err)
 
 	// FIXME: #3285
@@ -138,26 +153,33 @@ func TestBlockPubSubValidation(t *testing.T) {
 	assert.NoError(t, err, "Receieved an invalid block over pubsub, seee issue #3285 for help debugging")
 
 	// decode the block from pubsub
-	maybeBlk, err := block.DecodeBlock(received.GetData())
+	var receivedPayload blocksub.Payload
+	err = encoding.Decode(received.GetData(), &receivedPayload)
 	require.NoError(t, err)
 
 	// assert this block is the valid one
-	assert.Equal(t, validBlk.Cid().String(), maybeBlk.Cid().String())
+	assert.Equal(t, validBlk.Cid().String(), receivedPayload.Header.Cid().String())
 }
 
 // convert a types.Block to a pubsub message
-func blkToPubSub(blk *block.Block) *pubsub.Message {
-	pbm := &pubsub_pb.Message{
-		Data: blk.ToNode().RawData(),
+func blkToPubSub(t *testing.T, blk *block.Block) *pubsub.Message {
+	payload := blocksub.Payload{
+		Header:      *blk,
+		BLSMsgCids:  nil,
+		SECPMsgCids: nil,
 	}
+	data, err := encoding.Encode(&payload)
+	require.NoError(t, err)
 	return &pubsub.Message{
-		Message: pbm,
+		Message: &pubsubpb.Message{
+			Data: data,
+		},
 	}
 }
 
 // returns a pubsub message that will not decode to a types.Block
 func nonBlkPubSubMsg() *pubsub.Message {
-	pbm := &pubsub_pb.Message{
+	pbm := &pubsubpb.Message{
 		Data: []byte("meow"),
 	}
 	return &pubsub.Message{
