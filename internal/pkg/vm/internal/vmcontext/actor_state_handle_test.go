@@ -1,16 +1,18 @@
 package vmcontext_test
 
 import (
+	"fmt"
 	"io"
 	"testing"
+
+	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -48,12 +50,13 @@ func setup() testSetup {
 	initialstate := testActorStateHandleState{FieldA: "fakestate"}
 
 	store := vm.NewTestStorage(&initialstate)
+	initialhead := store.CidOf(&initialstate)
 	ctx := fakeActorStateHandleContext{
+		head:             initialhead,
 		store:            store,
 		allowSideEffects: true,
 	}
-	initialhead := store.CidOf(&initialstate)
-	h := vmcontext.NewActorStateHandle(&ctx, initialhead)
+	h := vmcontext.NewActorStateHandle(&ctx)
 
 	cleanup := func() {
 		// the vmcontext is supposed to call validate after each actor method
@@ -63,8 +66,6 @@ func setup() testSetup {
 
 	return testSetup{
 		initialstate: initialstate,
-		ctx:          ctx,
-		initialhead:  initialhead,
 		h:            h,
 		cleanup:      cleanup,
 	}
@@ -222,7 +223,7 @@ func TestActorStateHandleNilState(t *testing.T) {
 			allowSideEffects: true,
 		}
 
-		h := vmcontext.NewActorStateHandle(&ctx, cid.Undef)
+		h := vmcontext.NewActorStateHandle(&ctx)
 
 		cleanup := func() {
 			// the vmcontext is supposed to call validate after each actor method
@@ -292,21 +293,37 @@ type extendedStateHandle interface {
 
 type fakeActorStateHandleContext struct {
 	store            runtime.Store
+	head             cid.Cid
 	allowSideEffects bool
-}
-
-func (ctx *fakeActorStateHandleContext) Store() runtime.Store {
-	return ctx.store
 }
 
 func (ctx *fakeActorStateHandleContext) AllowSideEffects(allow bool) {
 	ctx.allowSideEffects = allow
 }
 
+func (ctx *fakeActorStateHandleContext) Create(obj runtime.CBORMarshaler) cid.Cid {
+	ctx.head = ctx.store.Put(obj)
+	return ctx.head
+}
+
+func (ctx *fakeActorStateHandleContext) Load(obj runtime.CBORUnmarshaler) cid.Cid {
+	found := ctx.store.Get(ctx.head, obj)
+	if !found {
+		panic("inconsistent state")
+	}
+	return ctx.head
+}
+
+func (ctx *fakeActorStateHandleContext) Replace(expected cid.Cid, obj runtime.CBORMarshaler) cid.Cid {
+	if !ctx.head.Equals(expected) {
+		panic(fmt.Errorf("unexpected prior state %s expected %s", ctx.head, expected))
+	}
+	ctx.head = ctx.store.Put(obj)
+	return ctx.head
+}
+
 type testSetup struct {
 	initialstate testActorStateHandleState
-	ctx          fakeActorStateHandleContext
-	initialhead  cid.Cid
 	h            runtime.StateHandle
 	cleanup      func()
 }
