@@ -25,7 +25,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mh "github.com/multiformats/go-multihash"
-	typegen "github.com/whyrusleeping/cbor-gen"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -276,12 +275,11 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 	// define empty cid and ensure empty components exist in blockstore
-	emptyAMTCid, err := amt.FromArray(ctx, g.cst, []typegen.CBORMarshaler{})
+	emptyAMTCid, err := amt.FromArray(ctx, g.cst, nil)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	emptyBLSSignature := bls.Aggregate([]bls.Signature{})
 	meta := types.TxMeta{SecpRoot: e.NewCid(emptyAMTCid), BLSRoot: e.NewCid(emptyAMTCid)}
 	metaCid, err := g.cst.Put(ctx, meta)
 	if err != nil {
@@ -289,16 +287,26 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 	}
 
 	geneblk := &block.Block{
+		Miner:  builtin.SystemActorAddr,
+		Ticket: consensus.GenesisTicket,
+		EPoStInfo: block.EPoStInfo{
+			PoStProofs: []block.EPoStProof{},
+			VRFProof:   abi.PoStRandomness(make([]byte, 32)),
+			Winners:    []block.EPoStCandidate{},
+		},
+		Parents:         block.NewTipSetKey(),
+		ParentWeight:    specsbig.Zero(),
+		Height:          0,
 		StateRoot:       e.NewCid(stateRoot),
-		Messages:        e.NewCid(metaCid),
 		MessageReceipts: e.NewCid(emptyAMTCid),
+		Messages:        e.NewCid(metaCid),
 		BLSAggregateSig: crypto.Signature{
 			Type: crypto.SigTypeBLS,
-			Data: emptyBLSSignature[:],
+			Data: bls.Aggregate(nil)[:],
 		},
-		Ticket:    consensus.GenesisTicket,
-		Timestamp: g.cfg.Time,
-		BlockSig:  &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
+		Timestamp:     g.cfg.Time,
+		BlockSig:      &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
+		ForkSignaling: 0,
 	}
 
 	return g.cst.Put(ctx, geneblk)
