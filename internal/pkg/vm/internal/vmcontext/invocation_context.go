@@ -476,8 +476,25 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 
 // DeleteActor implements runtime.ExtendedInvocationContext.
 func (ctx *invocationContext) DeleteActor() {
+	receiver := ctx.msg.to
+	beneficiary := builtin.BurntFundsActorAddr
+	receiverActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, receiver)
+	if err != nil {
+		panic(err)
+	}
+	if !found {
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "delete non-existent actor %s", receiverActor)
+	}
 	ctx.gasTank.Charge(ctx.rt.pricelist.OnDeleteActor())
-	if err := ctx.rt.state.DeleteActor(ctx.rt.context, ctx.msg.to); err != nil {
+
+	// Transfer any remaining balance to the beneficiary.
+	// This looks like it could cause a problem with gas refund going to a non-existent actor, but the gas payer
+	// is always an account actor, which cannot be the receiver of this message.
+	if receiverActor.Balance.GreaterThan(big.Zero()) {
+		ctx.rt.transfer(receiver, beneficiary, receiverActor.Balance)
+	}
+
+	if err := ctx.rt.state.DeleteActor(ctx.rt.context, receiver); err != nil {
 		panic(err)
 	}
 }
