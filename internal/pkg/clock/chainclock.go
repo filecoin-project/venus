@@ -8,7 +8,7 @@ import (
 )
 
 // DefaultEpochDuration is the default duration of epochs
-const DefaultEpochDuration = 15 * time.Second
+const DefaultEpochDuration = 25 * time.Second
 
 // ChainEpochClock is an interface for a clock that represents epochs of the protocol.
 type ChainEpochClock interface {
