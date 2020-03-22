@@ -293,8 +293,12 @@ type signer struct{}
 
 var _ types.Signer = (*signer)(nil)
 
-func (ggs *signer) SignBytes(data []byte, addr address.Address) (crypto.Signature, error) {
+func (ggs *signer) SignBytes(_ context.Context, data []byte, addr address.Address) (crypto.Signature, error) {
 	return crypto.Signature{}, nil
+}
+
+func (ggs *signer) HasAddress(_ context.Context, addr address.Address) (bool, error) {
+	return true, nil
 }
 
 // ApplyProofsModeDefaults mutates the given genesis configuration, setting the

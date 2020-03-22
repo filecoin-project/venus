@@ -225,7 +225,7 @@ func mustResignMessage(signer types.Signer, message *types.SignedMessage, f func
 }
 
 func signMessage(signer types.Signer, message types.UnsignedMessage) (*types.SignedMessage, error) {
-	return types.NewSignedMessage(message, signer)
+	return types.NewSignedMessage(context.TODO(), message, signer)
 }
 
 func reqAdd(t *testing.T, p *message.Pool, height abi.ChainEpoch, msgs ...*types.SignedMessage) {

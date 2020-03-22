@@ -73,7 +73,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) NextNonce(_ context.Context, _ addre
 }
 
 // SignBytes mocks signing data
-func (rmFake *RetrievalMarketClientFakeAPI) SignBytes(_ []byte, _ address.Address) (crypto.Signature, error) {
+func (rmFake *RetrievalMarketClientFakeAPI) SignBytes(_ context.Context, _ []byte, _ address.Address) (crypto.Signature, error) {
 	return rmFake.Sig, rmFake.SigErr
 }
 
@@ -104,7 +104,7 @@ func (rmFake *RetrievalMarketClientFakeAPI) StubSignature(sigError error) {
 	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 	addr1 := mockSigner.Addresses[0]
 
-	sig, err := mockSigner.SignBytes([]byte("pork chops and applesauce"), addr1)
+	sig, err := mockSigner.SignBytes(context.TODO(), []byte("pork chops and applesauce"), addr1)
 	require.NoError(rmFake.t, err)
 
 	signature := crypto.Signature{

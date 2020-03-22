@@ -58,8 +58,7 @@ func NewMessagingSubmodule(ctx context.Context, config messagingConfig, repo mes
 	msgQueue := message.NewQueue()
 	outboxPolicy := message.NewMessageQueuePolicy(chain.MessageStore, message.OutboxMaxAgeRounds)
 	msgPublisher := message.NewDefaultPublisher(pubsub.NewTopic(topic), msgPool)
-	signer := wallet.Wallet
-	outbox := message.NewOutbox(signer, msgSyntaxValidator, msgQueue, msgPublisher, outboxPolicy, chain.ChainReader, chain.State, config.Journal().Topic("outbox"))
+	outbox := message.NewOutbox(wallet.Signer, msgSyntaxValidator, msgQueue, msgPublisher, outboxPolicy, chain.ChainReader, chain.State, config.Journal().Topic("outbox"))
 
 	return MessagingSubmodule{
 		Inbox:        inbox,

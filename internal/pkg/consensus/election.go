@@ -191,7 +191,7 @@ func sampleChainAndComputeVrf(ctx context.Context, chain ChainRandomness, base b
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate epost randomness")
 	}
-	vrfProof, err := signer.SignBytes(randomness, worker)
+	vrfProof, err := signer.SignBytes(ctx, randomness, worker)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to sign election post randomness")
 	}
