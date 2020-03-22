@@ -42,10 +42,11 @@ var _ vstate.KeyManager = (*KeyManager)(nil)
 
 type Factories struct {
 	vstate.Applier
+	config *ValidationConfig
 }
 
-func NewFactories() *Factories {
-	factory := &Factories{&ValidationApplier{}}
+func NewFactories(config *ValidationConfig) *Factories {
+	factory := &Factories{&ValidationApplier{}, config}
 	return factory
 }
 
@@ -69,12 +70,7 @@ func (f *Factories) NewRandomnessSource() vstate.RandomnessSource {
 }
 
 func (f *Factories) NewValidationConfig() vstate.ValidationConfig {
-	return &ValidationConfig{
-		// TODO enable this when ready https://github.com/filecoin-project/go-filecoin/issues/3801
-		trackGas:         false,
-		checkExitCode:    true,
-		checkReturnValue: true,
-	}
+	return f.config
 }
 
 //
@@ -107,7 +103,7 @@ type specialSyscallWrapper struct {
 	internal *vdriver.ChainValidationSyscalls
 }
 
-func (s specialSyscallWrapper) VerifySignature(ctx context.Context, view SyscallsStateView, signature gfcrypto.Signature, signer address.Address, plaintext []byte) error {
+func (s specialSyscallWrapper) VerifySignature(_ context.Context, _ SyscallsStateView, signature gfcrypto.Signature, signer address.Address, plaintext []byte) error {
 	return s.internal.VerifySignature(signature, signer, plaintext)
 }
 
@@ -115,19 +111,19 @@ func (s specialSyscallWrapper) HashBlake2b(data []byte) [32]byte {
 	return s.internal.HashBlake2b(data)
 }
 
-func (s specialSyscallWrapper) ComputeUnsealedSectorCID(ctx context.Context, proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+func (s specialSyscallWrapper) ComputeUnsealedSectorCID(_ context.Context, proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	return s.internal.ComputeUnsealedSectorCID(proof, pieces)
 }
 
-func (s specialSyscallWrapper) VerifySeal(ctx context.Context, info abi.SealVerifyInfo) error {
+func (s specialSyscallWrapper) VerifySeal(_ context.Context, info abi.SealVerifyInfo) error {
 	return s.internal.VerifySeal(info)
 }
 
-func (s specialSyscallWrapper) VerifyPoSt(ctx context.Context, info abi.PoStVerifyInfo) error {
+func (s specialSyscallWrapper) VerifyPoSt(_ context.Context, info abi.PoStVerifyInfo) error {
 	return s.internal.VerifyPoSt(info)
 }
 
-func (s specialSyscallWrapper) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view SyscallsStateView, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error) {
+func (s specialSyscallWrapper) VerifyConsensusFault(_ context.Context, h1, h2, extra []byte, _ block.TipSetKey, _ SyscallsStateView, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error) {
 	return s.internal.VerifyConsensusFault(h1, h2, extra, earliest)
 }
 
