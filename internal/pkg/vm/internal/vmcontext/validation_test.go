@@ -56,8 +56,7 @@ func TestChainValidationMessageSuite(t *testing.T) {
 
 func TestChainValidationTipSetSuite(t *testing.T) {
 	f := NewFactories(&ValidationConfig{
-		// TODO: enable gas when tests read gas expectations from fixture. https://github.com/filecoin-project/go-filecoin/issues/3801
-		trackGas:         false,
+		trackGas:         true,
 		checkExitCode:    true,
 		checkReturnValue: true,
 	})
