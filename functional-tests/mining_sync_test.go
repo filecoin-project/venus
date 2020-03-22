@@ -8,6 +8,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -56,7 +58,10 @@ func TestBootstrapMineOnce(t *testing.T) {
 	var blocks []block.Block
 	node0.MustRunCmdJSON(ctx, &blocks, "go-filecoin", "chain", "ls")
 	require.Equal(t, 1, len(blocks))
-	assert.Equal(t, address.Undef, blocks[0].Miner)
+	assert.Equal(t, abi.ChainEpoch(0), blocks[0].Height)
+	assert.Equal(t, big.Zero(), blocks[0].ParentWeight)
+	assert.True(t, blocks[0].Parents.Equals(block.NewTipSetKey()))
+	assert.Equal(t, builtin.SystemActorAddr, blocks[0].Miner)
 
 	// Mine once
 	node0.MustRunCmd(ctx, "go-filecoin", "mining", "once")

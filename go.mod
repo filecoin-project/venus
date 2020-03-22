@@ -12,19 +12,19 @@ require (
 	github.com/docker/docker v0.7.3-0.20190315170154-87d593639c77
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.3.3 // indirect
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200316233530-cadbb6dd6fbc
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200321221401-2be15be01942
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200304181354-4446ff8a1bb9
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.0.0-20191219005021-4accf56bd2ce
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
-	github.com/filecoin-project/go-fil-markets v0.0.0-20200318012938-6403a5bda668
+	github.com/filecoin-project/go-fil-markets v0.0.0-20200320155651-9b85359e6e5d
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
-	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200311224656-7d83652bdbed
+	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200319233206-2a7435bc45d9
 	github.com/filecoin-project/go-statestore v0.1.0
-	github.com/filecoin-project/go-storage-miner v0.0.0-20200306175903-c9c02ebe51a2
+	github.com/filecoin-project/go-storage-miner v0.0.0-20200320161144-fd9286326083
 	github.com/filecoin-project/specs-actors v0.0.0-20200312030511-3f5510bf6130
 	github.com/fxamacker/cbor v1.5.0
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect

@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/chain-validation/suites"
-	"github.com/filecoin-project/chain-validation/suites/message"
 	"github.com/filecoin-project/chain-validation/suites/tipset"
 )
 
@@ -34,23 +33,19 @@ var TestSuiteSkipper TestSkipper
 func init() {
 	// initialize the test skipper with tests being skipped
 	TestSuiteSkipper = TestSkipper{testSkips: []suites.TestCase{
-		// NewActorIDAddress implementation is wrong
-		message.TestInitActorSequentialIDAddressCreate,
-		message.TestMessageApplicationEdgecases,
-		// Skipping since multisig address resolution breaks tests
-		// https://github.com/filecoin-project/specs-actors/issues/184
-		message.TestMultiSigActor,
-		// Skipping since payment channel because runtime sys calls are not implemented in runtime adapter
-		message.TestPaych,
+		// Skipping for unknown reason.
 		tipset.TestInternalMessageApplicationFailure,
 	}}
 }
 
 func TestChainValidationMessageSuite(t *testing.T) {
-	f := NewFactories()
+	f := NewFactories(&ValidationConfig{
+		trackGas:         true,
+		checkExitCode:    true,
+		checkReturnValue: true,
+	})
 	for _, testCase := range suites.MessageTestCases() {
-		// All skipped due to gas accounting causing divergent balance calculations.
-		if true || TestSuiteSkipper.Skip(testCase) {
+		if TestSuiteSkipper.Skip(testCase) {
 			continue
 		}
 		t.Run(caseName(testCase), func(t *testing.T) {
@@ -60,9 +55,13 @@ func TestChainValidationMessageSuite(t *testing.T) {
 }
 
 func TestChainValidationTipSetSuite(t *testing.T) {
-	f := NewFactories()
+	f := NewFactories(&ValidationConfig{
+		// TODO: enable gas when tests read gas expectations from fixture. https://github.com/filecoin-project/go-filecoin/issues/3801
+		trackGas:         false,
+		checkExitCode:    true,
+		checkReturnValue: true,
+	})
 	for _, testCase := range suites.TipSetTestCases() {
-		// All skipped due to VM state incorrectly throws illegal actor state error.
 		if TestSuiteSkipper.Skip(testCase) {
 			continue
 		}

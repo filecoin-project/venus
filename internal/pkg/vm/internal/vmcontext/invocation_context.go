@@ -67,12 +67,67 @@ func newInvocationContext(rt *VM, topLevel *topLevelContext, msg internalMessage
 
 type stateHandleContext invocationContext
 
-func (ctx *stateHandleContext) AllowSideEffects(allow bool) {
-	ctx.allowSideEffects = allow
+func (shc *stateHandleContext) AllowSideEffects(allow bool) {
+	shc.allowSideEffects = allow
 }
 
-func (ctx *stateHandleContext) Store() specsruntime.Store {
-	return ((*invocationContext)(ctx)).Store()
+func (shc *stateHandleContext) Create(obj specsruntime.CBORMarshaler) cid.Cid {
+	actr := shc.loadActor()
+	if actr.Head.Cid.Defined() {
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to construct actor state: already initialized")
+	}
+	c := shc.store().Put(obj)
+	actr.Head = e.NewCid(c)
+	shc.storeActor(actr)
+	return c
+}
+
+func (shc *stateHandleContext) Load(obj specsruntime.CBORUnmarshaler) cid.Cid {
+	// The actor must be loaded from store every time since the state may have changed via a different state handle
+	// (e.g. in a recursive call).
+	actr := shc.loadActor()
+	c := actr.Head.Cid
+	if !c.Defined() {
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to load undefined state, must construct first")
+	}
+	found := shc.store().Get(c, obj)
+	if !found {
+		panic(fmt.Errorf("failed to load state for actor %s, CID %s", shc.msg.to, c))
+	}
+	return c
+}
+
+func (shc *stateHandleContext) Replace(expected cid.Cid, obj specsruntime.CBORMarshaler) cid.Cid {
+	actr := shc.loadActor()
+	if !actr.Head.Cid.Equals(expected) {
+		panic(fmt.Errorf("unexpected prior state %s for actor %s, expected %s", actr.Head, shc.msg.to, expected))
+	}
+	c := shc.store().Put(obj)
+	actr.Head = e.NewCid(c)
+	shc.storeActor(actr)
+	return c
+}
+
+func (shc *stateHandleContext) store() specsruntime.Store {
+	return ((*invocationContext)(shc)).Store()
+}
+
+func (shc *stateHandleContext) loadActor() *actor.Actor {
+	actr, found, err := shc.rt.state.GetActor(shc.rt.context, shc.msg.to)
+	if err != nil {
+		panic(err)
+	}
+	if !found {
+		panic(fmt.Errorf("failed to find actor %s for state", shc.msg.to))
+	}
+	return actr
+}
+
+func (shc *stateHandleContext) storeActor(actr *actor.Actor) {
+	err := shc.rt.state.SetActor(shc.rt.context, shc.msg.to, actr)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // runtime aborts are trapped by invoke, it will always return an exit code.
@@ -140,7 +195,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 	actorImpl := ctx.rt.getActorImpl(ctx.toActor.Code.Cid)
 
 	// 6. create target state handle
-	stateHandle := newActorStateHandle((*stateHandleContext)(ctx), ctx.toActor.Head.Cid)
+	stateHandle := newActorStateHandle((*stateHandleContext)(ctx))
 	ctx.stateHandle = &stateHandle
 
 	// dispatch
@@ -166,7 +221,6 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 	// post-dispatch
 	// 1. check caller was validated
 	// 2. check state manipulation was valid
-	// 3. update actor state
 	// 4. success!
 
 	// 1. check caller was validated
@@ -183,24 +237,11 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 		return id
 	})
 
-	// 3. update actor state
-	// we need to load the actor back up in case something changed during execution
-	var found bool
-	ctx.toActor, found, err = ctx.rt.state.GetActor(ctx.rt.context, ctx.msg.to)
-	if err != nil {
-		panic(err)
-	}
-	if !found {
-		// Note: this is ok, it means the actor was deleted during the execution of the message
-		return ret, exitcode.Ok
-	}
-	// update the head and save it
-	ctx.toActor.Head = e.NewCid(stateHandle.head)
-	if err := ctx.rt.state.SetActor(ctx.rt.context, ctx.msg.to, ctx.toActor); err != nil {
-		panic(err)
-	}
+	// Reset to pre-invocation state
+	ctx.toActor = nil
+	ctx.stateHandle = nil
 
-	// 4. success!
+	// 3. success!
 	return ret, exitcode.Ok
 }
 
@@ -323,7 +364,7 @@ func (ctx *invocationContext) ValidateCaller(pattern runtime.CallerPattern) {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Method must validate caller identity exactly once")
 	}
 	if !pattern.IsMatch((*patternContext2)(ctx)) {
-		runtime.Abortf(exitcode.SysErrorIllegalActor, "Method invoked by incorrect caller")
+		runtime.Abortf(exitcode.SysErrForbidden, "Method invoked by incorrect caller")
 	}
 	ctx.isCallerValidated = true
 }
@@ -445,11 +486,11 @@ func (ctx *invocationContext) NewActorAddress() address.Address {
 // CreateActor implements runtime.ExtendedInvocationContext.
 func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) {
 	if !builtin.IsBuiltinActor(codeID) {
-		runtime.Abortf(exitcode.ErrIllegalArgument, "Can only create built-in actors.")
+		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
 	}
 
 	if builtin.IsSingletonActor(codeID) {
-		runtime.Abortf(exitcode.ErrIllegalArgument, "Can only have one instance of singleton actors.")
+		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Can only have one instance of singleton actors.")
 	}
 
 	ctx.gasTank.Charge(ctx.rt.pricelist.OnCreateActor())
@@ -462,7 +503,7 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 		panic(err)
 	}
 	if found {
-		runtime.Abortf(exitcode.ErrIllegalArgument, "Actor address already exists")
+		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Actor address already exists")
 	}
 	newActor := &actor.Actor{
 		// make this the right 'type' of actor
@@ -476,8 +517,25 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 
 // DeleteActor implements runtime.ExtendedInvocationContext.
 func (ctx *invocationContext) DeleteActor() {
+	receiver := ctx.msg.to
+	beneficiary := builtin.BurntFundsActorAddr
+	receiverActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, receiver)
+	if err != nil {
+		panic(err)
+	}
+	if !found {
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "delete non-existent actor %s", receiverActor)
+	}
 	ctx.gasTank.Charge(ctx.rt.pricelist.OnDeleteActor())
-	if err := ctx.rt.state.DeleteActor(ctx.rt.context, ctx.msg.to); err != nil {
+
+	// Transfer any remaining balance to the beneficiary.
+	// This looks like it could cause a problem with gas refund going to a non-existent actor, but the gas payer
+	// is always an account actor, which cannot be the receiver of this message.
+	if receiverActor.Balance.GreaterThan(big.Zero()) {
+		ctx.rt.transfer(receiver, beneficiary, receiverActor.Balance)
+	}
+
+	if err := ctx.rt.state.DeleteActor(ctx.rt.context, receiver); err != nil {
 		panic(err)
 	}
 }
