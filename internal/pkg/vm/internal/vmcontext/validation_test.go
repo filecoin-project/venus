@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/chain-validation/suites"
-	"github.com/filecoin-project/chain-validation/suites/message"
 	"github.com/filecoin-project/chain-validation/suites/tipset"
 )
 
@@ -34,8 +33,6 @@ var TestSuiteSkipper TestSkipper
 func init() {
 	// initialize the test skipper with tests being skipped
 	TestSuiteSkipper = TestSkipper{testSkips: []suites.TestCase{
-		// Incorrect behavior on self-send.
-		message.TestValueTransferAdvance,
 		// Skipping for unknown reason.
 		tipset.TestInternalMessageApplicationFailure,
 	}}

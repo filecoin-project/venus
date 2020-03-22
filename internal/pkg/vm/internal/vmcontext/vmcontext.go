@@ -538,6 +538,12 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 		panic("unreachable: insufficient balance on debit account")
 	}
 
+	// debit funds
+	fromActor.Balance = big.Sub(fromActor.Balance, amount)
+	if err := vm.state.SetActor(ctx, debitFrom, fromActor); err != nil {
+		panic(err)
+	}
+
 	// retrieve credit account
 	toActor, found, err := vm.state.GetActor(ctx, creditTo)
 	if err != nil {
@@ -547,19 +553,11 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 		panic(fmt.Errorf("unreachable: credit account not found. %s", err))
 	}
 
-	// move funds
-	fromActor.Balance = big.Sub(fromActor.Balance, amount)
+	// credit funds
 	toActor.Balance = big.Add(toActor.Balance, amount)
-
-	// update actors
-	if err := vm.state.SetActor(ctx, debitFrom, fromActor); err != nil {
-		panic(err)
-	}
 	if err := vm.state.SetActor(ctx, creditTo, toActor); err != nil {
 		panic(err)
 	}
-
-	return
 }
 
 func (vm *VM) getActorImpl(code cid.Cid) dispatch.Dispatcher {
