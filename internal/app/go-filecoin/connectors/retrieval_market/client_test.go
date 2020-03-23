@@ -376,7 +376,7 @@ func requireNewEmptyChainStore(ctx context.Context, t *testing.T) (cid.Cid, *cha
 func makePaychMgr(ctx context.Context, t *testing.T, client, miner, paych address.Address, channelAmt abi.TokenAmount) *pch.Manager {
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
 	testAPI := pch.NewFakePaymentChannelAPI(ctx, t)
-a	viewer := pch.NewFakeStateViewer(t)
+	viewer := pch.NewFakeStateViewer(t)
 	pchMgr := pch.NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 	blockHeight := uint64(1234)
 
