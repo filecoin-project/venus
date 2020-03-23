@@ -118,7 +118,7 @@ func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, pay
 		return nil, err
 	}
 
-	sig, err := r.signer.SignBytes(buf.Bytes(), chinfo.From)
+	sig, err := r.signer.SignBytes(ctx, buf.Bytes(), chinfo.From)
 	if err != nil {
 		return nil, err
 	}

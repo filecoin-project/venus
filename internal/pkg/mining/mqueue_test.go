@@ -1,6 +1,7 @@
 package mining
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -31,7 +32,7 @@ func TestMessageQueueOrder(t *testing.T) {
 			GasPrice:   types.NewGasPrice(price),
 			GasLimit:   gas.NewGas(int64(units)),
 		}
-		s, err := types.NewSignedMessage(msg, &mockSigner)
+		s, err := types.NewSignedMessage(context.TODO(), msg, &mockSigner)
 		require.NoError(t, err)
 		return s
 	}

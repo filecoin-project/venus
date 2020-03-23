@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -66,7 +67,7 @@ func (mm *MessageMaker) NewUnsignedMessage(from address.Address, nonce uint64) *
 // NewSignedMessage creates a new signed message.
 func (mm *MessageMaker) NewSignedMessage(from address.Address, nonce uint64) *types.SignedMessage {
 	msg := mm.NewUnsignedMessage(from, nonce)
-	signed, err := types.NewSignedMessage(*msg, mm.signer)
+	signed, err := types.NewSignedMessage(context.TODO(), *msg, mm.signer)
 	require.NoError(mm.t, err)
 	return signed
 }

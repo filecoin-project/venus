@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"fmt"
 	"testing"
@@ -101,12 +102,17 @@ func MustGenerateKeyInfo(n int, seed byte) []crypto.KeyInfo {
 }
 
 // SignBytes cryptographically signs `data` using the Address `addr`.
-func (ms MockSigner) SignBytes(data []byte, addr address.Address) (crypto.Signature, error) {
+func (ms MockSigner) SignBytes(_ context.Context, data []byte, addr address.Address) (crypto.Signature, error) {
 	ki, ok := ms.AddrKeyInfo[addr]
 	if !ok {
 		return crypto.Signature{}, errors.New("unknown address")
 	}
 	return crypto.Sign(data, ki.Key(), ki.SigType)
+}
+
+// HasAddress returns whether the signer can sign with this address
+func (ms MockSigner) HasAddress(_ context.Context, addr address.Address) (bool, error) {
+	return true, nil
 }
 
 // GetAddressForPubKey looks up a KeyInfo address associated with a given PublicKeyForSecpSecretKey for a MockSigner
@@ -152,7 +158,7 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 			ZeroAttoFIL,
 			gas.Zero,
 		)
-		smsg, err := NewSignedMessage(*msg, &ms)
+		smsg, err := NewSignedMessage(context.TODO(), *msg, &ms)
 		if err != nil {
 			panic(err)
 		}
@@ -238,7 +244,7 @@ func NewSignedMsgs(n uint, ms MockSigner) []*SignedMessage {
 		msg.CallSeqNum = uint64(i)
 		msg.GasPrice = ZeroAttoFIL // NewGasPrice(1)
 		msg.GasLimit = gas.NewGas(0)
-		smsgs[i], err = NewSignedMessage(*msg, ms)
+		smsgs[i], err = NewSignedMessage(context.TODO(), *msg, ms)
 		if err != nil {
 			panic(err)
 		}
@@ -251,7 +257,7 @@ func NewSignedMsgs(n uint, ms MockSigner) []*SignedMessage {
 func SignMsgs(ms MockSigner, msgs []*UnsignedMessage) ([]*SignedMessage, error) {
 	var smsgs []*SignedMessage
 	for _, m := range msgs {
-		s, err := NewSignedMessage(*m, &ms)
+		s, err := NewSignedMessage(context.TODO(), *m, &ms)
 		if err != nil {
 			return nil, err
 		}

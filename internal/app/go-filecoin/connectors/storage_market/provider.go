@@ -24,7 +24,6 @@ import (
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
 // StorageProviderNodeConnector adapts the node to provide an interface for the storage provider
@@ -45,11 +44,11 @@ func NewStorageProviderNodeConnector(ma address.Address,
 	ob *message.Outbox,
 	w *msg.Waiter,
 	pm piecemanager.PieceManager,
-	wlt *wallet.Wallet,
+	s types.Signer,
 	sv *appstate.Viewer,
 ) *StorageProviderNodeConnector {
 	return &StorageProviderNodeConnector{
-		connectorCommon: connectorCommon{cs, sv, w, wlt, ob},
+		connectorCommon: connectorCommon{cs, sv, w, s, ob},
 		chainStore:      cs,
 		minerAddr:       ma,
 		outbox:          ob,

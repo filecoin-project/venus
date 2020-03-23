@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -88,7 +89,7 @@ func makeMessage(t *testing.T, signer MockSigner, nonce uint64) *SignedMessage {
 		[]byte("params"),
 		NewGasPrice(1000),
 		gas.NewGas(100))
-	smsg, err := NewSignedMessage(*msg, &signer)
+	smsg, err := NewSignedMessage(context.TODO(), *msg, &signer)
 	require.NoError(t, err)
 
 	// This check requests that you add a non-zero value for new fields above,
