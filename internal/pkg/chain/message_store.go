@@ -131,21 +131,16 @@ func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types
 // LoadReceipts loads the signed messages in the collection with cid c from ipld
 // storage and returns the slice implied by the collection
 func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]vm.MessageReceipt, error) {
-	receiptCids, err := ms.loadAMTCids(ctx, c)
+	rawReceipts, err := ms.loadAMTRaw(ctx, c)
 	if err != nil {
 		return nil, err
 	}
 
 	// load receipts from cids
-	receipts := make([]vm.MessageReceipt, len(receiptCids))
-	for i, c := range receiptCids {
-		receiptBlock, err := ms.bs.Get(c)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get receipt %s", c)
-		}
-
+	receipts := make([]vm.MessageReceipt, len(rawReceipts))
+	for i, raw := range rawReceipts {
 		receipt := vm.MessageReceipt{}
-		if err := encoding.Decode(receiptBlock.RawData(), &receipt); err != nil {
+		if err := encoding.Decode(raw, &receipt); err != nil {
 			return nil, errors.Wrapf(err, "could not decode receipt %s", c)
 		}
 		receipts[i] = receipt
@@ -158,12 +153,12 @@ func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]vm.Messa
 // this collection to ipld storage.  The cid of the collection is returned.
 func (ms *MessageStore) StoreReceipts(ctx context.Context, receipts []vm.MessageReceipt) (cid.Cid, error) {
 	// store secp messages
-	cids, err := ms.storeMessageReceipts(receipts)
+	rawReceipts, err := ms.storeMessageReceipts(receipts)
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "could not store secp messages")
 	}
 
-	return ms.storeAMTCids(ctx, cids)
+	return ms.storeAMTRaw(ctx, rawReceipts)
 }
 
 func (ms *MessageStore) loadAMTCids(ctx context.Context, c cid.Cid) ([]cid.Cid, error) {
@@ -186,6 +181,25 @@ func (ms *MessageStore) loadAMTCids(ctx context.Context, c cid.Cid) ([]cid.Cid, 
 	return cids, nil
 }
 
+func (ms *MessageStore) loadAMTRaw(ctx context.Context, c cid.Cid) ([][]byte, error) {
+	as := cborutil.NewIpldStore(ms.bs)
+	a, err := amt.LoadAMT(ctx, as, c)
+	if err != nil {
+		return nil, err
+	}
+
+	raws := make([][]byte, a.Count)
+	for i := uint64(0); i < a.Count; i++ {
+		var raw cbg.Deferred
+		if err := a.Get(ctx, i, &raw); err != nil {
+			return nil, errors.Wrapf(err, "could not retrieve %d bytes from AMT", i)
+		}
+
+		raws[i] = raw.Raw
+	}
+	return raws, nil
+}
+
 // LoadTxMeta loads the secproot, blsroot data from the message store
 func (ms *MessageStore) LoadTxMeta(ctx context.Context, c cid.Cid) (types.TxMeta, error) {
 	metaBlock, err := ms.bs.Get(c)
@@ -204,7 +218,7 @@ func (ms *MessageStore) storeUnsignedMessages(messages []*types.UnsignedMessage)
 	cids := make([]cid.Cid, len(messages))
 	var err error
 	for i, msg := range messages {
-		cids[i], err = ms.storeBlock(msg)
+		cids[i], _, err = ms.storeBlock(msg)
 		if err != nil {
 			return nil, err
 		}
@@ -216,7 +230,7 @@ func (ms *MessageStore) storeSignedMessages(messages []*types.SignedMessage) ([]
 	cids := make([]cid.Cid, len(messages))
 	var err error
 	for i, msg := range messages {
-		cids[i], err = ms.storeBlock(msg)
+		cids[i], _, err = ms.storeBlock(msg)
 		if err != nil {
 			return nil, err
 		}
@@ -226,32 +240,33 @@ func (ms *MessageStore) storeSignedMessages(messages []*types.SignedMessage) ([]
 
 // StoreTxMeta writes the secproot, blsroot block to the message store
 func (ms *MessageStore) StoreTxMeta(ctx context.Context, meta types.TxMeta) (cid.Cid, error) {
-	return ms.storeBlock(meta)
+	c, _, err := ms.storeBlock(meta)
+	return c, err
 }
 
-func (ms *MessageStore) storeMessageReceipts(receipts []vm.MessageReceipt) ([]cid.Cid, error) {
-	cids := make([]cid.Cid, len(receipts))
-	var err error
-	for i, msg := range receipts {
-		cids[i], err = ms.storeBlock(msg)
+func (ms *MessageStore) storeMessageReceipts(receipts []vm.MessageReceipt) ([][]byte, error) {
+	rawReceipts := make([][]byte, len(receipts))
+	for i, rcpt := range receipts {
+		_, rcptBlock, err := ms.storeBlock(rcpt)
 		if err != nil {
 			return nil, err
 		}
+		rawReceipts[i] = rcptBlock.RawData()
 	}
-	return cids, nil
+	return rawReceipts, nil
 }
 
-func (ms *MessageStore) storeBlock(data interface{}) (cid.Cid, error) {
+func (ms *MessageStore) storeBlock(data interface{}) (cid.Cid, blocks.Block, error) {
 	sblk, err := makeBlock(data)
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, nil, err
 	}
 
 	if err := ms.bs.Put(sblk); err != nil {
-		return cid.Undef, err
+		return cid.Undef, nil, err
 	}
 
-	return sblk.Cid(), nil
+	return sblk.Cid(), sblk, nil
 }
 
 func makeBlock(obj interface{}) (blocks.Block, error) {
@@ -266,6 +281,16 @@ func makeBlock(obj interface{}) (blocks.Block, error) {
 	}
 
 	return blocks.NewBlockWithCid(data, c)
+}
+
+func (ms *MessageStore) storeAMTRaw(ctx context.Context, bs [][]byte) (cid.Cid, error) {
+	as := cborutil.NewIpldStore(ms.bs)
+
+	rawMarshallers := make([]cbg.CBORMarshaler, len(bs))
+	for i, raw := range bs {
+		rawMarshallers[i] = &cbg.Deferred{Raw: raw}
+	}
+	return amt.FromArray(ctx, as, rawMarshallers)
 }
 
 func (ms *MessageStore) storeAMTCids(ctx context.Context, cids []cid.Cid) (cid.Cid, error) {
