@@ -454,7 +454,8 @@ func (k *KeyManager) newBLSKey() *gfcrypto.KeyInfo {
 	//sk := ffi.PrivateKeyGenerate(s.blsSeed)
 	// s.blsSeed++
 	sk := [32]byte{}
-	sk[0] = uint8(k.blsSeed + 1) // hack to keep gas values and state roots determinist
+	sk[0] = uint8(k.blsSeed) // hack to keep gas values and state roots determinist
+	k.blsSeed++
 	return &gfcrypto.KeyInfo{
 		SigType:    acrypto.SigTypeBLS,
 		PrivateKey: sk[:],
