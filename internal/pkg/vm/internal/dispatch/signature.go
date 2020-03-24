@@ -42,6 +42,12 @@ func (ms *methodSignature) ArgInterface(argBytes []byte) (interface{}, error) {
 		buf := bytes.NewBuffer(argBytes)
 		auxv := reflect.New(t.Elem())
 		obj = auxv.Interface()
+
+		// do not try to unmarshal empty arrays
+		if len(argBytes) == 0 {
+			return obj, nil
+		}
+
 		unmarsh := obj.(runtime.CBORUnmarshaler)
 		if err := unmarsh.UnmarshalCBOR(buf); err != nil {
 			return nil, err
