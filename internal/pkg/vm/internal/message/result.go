@@ -44,7 +44,7 @@ func Value(obj interface{}, gasUsed gas.Unit) Receipt {
 func Failure(exitCode exitcode.ExitCode, gasAmount gas.Unit) Receipt {
 	return Receipt{
 		ExitCode:    exitCode,
-		ReturnValue: nil,
+		ReturnValue: []byte{},
 		GasUsed:     gasAmount,
 	}
 }

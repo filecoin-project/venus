@@ -475,8 +475,8 @@ func (a *actorWrapper) Code() cid.Cid {
 func (a *actorWrapper) Head() cid.Cid {
 	return a.Actor.Head.Cid
 }
-func (a *actorWrapper) CallSeqNum() int64 {
-	return int64(a.Actor.CallSeqNum)
+func (a *actorWrapper) CallSeqNum() uint64 {
+	return a.Actor.CallSeqNum
 }
 func (a *actorWrapper) Balance() abi.TokenAmount {
 	return a.Actor.Balance
