@@ -286,7 +286,7 @@ func (w *ValidationVMWrapper) PersistChanges() error {
 
 type ValidationApplier struct{}
 
-func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state vstate.VMWrapper, msg *vtypes.Message) (vtypes.MessageReceipt, error) {
+func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state vstate.VMWrapper, msg *vtypes.Message) (vtypes.MessageReceipt, abi.TokenAmount, abi.TokenAmount, error) {
 	st := state.(*ValidationVMWrapper)
 
 	// set epoch
@@ -308,22 +308,22 @@ func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state
 	}
 
 	// invoke vm
-	ourreceipt, _, _ := st.vm.applyMessage(ourmsg, ourmsg.OnChainLen(), &fakeRandSrc{})
+	ourreceipt, penalty, reward := st.vm.applyMessage(ourmsg, ourmsg.OnChainLen(), &fakeRandSrc{})
 
 	// commit and persist changes
 	// Note: this is not done on production for each msg
 	if err := st.PersistChanges(); err != nil {
-		return vtypes.MessageReceipt{}, err
+		return vtypes.MessageReceipt{}, big.Zero(), big.Zero(), err
 	}
 
 	// map receipt
 	receipt := vtypes.MessageReceipt{
 		ExitCode:    ourreceipt.ExitCode,
 		ReturnValue: ourreceipt.ReturnValue,
-		GasUsed:     ourreceipt.GasUsed.AsBigInt(),
+		GasUsed:     vtypes.GasUnits(ourreceipt.GasUsed),
 	}
 
-	return receipt, nil
+	return receipt, penalty, reward, nil
 }
 
 func toOurBlockMessageInfoType(theirs []vtypes.BlockMessagesInfo) []interpreter.BlockMessagesInfo {
@@ -380,7 +380,7 @@ func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks [
 		theirReceipts[i] = vtypes.MessageReceipt{
 			ExitCode:    r.ExitCode,
 			ReturnValue: r.ReturnValue,
-			GasUsed:     r.GasUsed.AsBigInt(),
+			GasUsed:     vtypes.GasUnits(r.GasUsed),
 		}
 	}
 
