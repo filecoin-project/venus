@@ -7,9 +7,15 @@ import (
 	"strings"
 	"testing"
 
+	logging "github.com/ipfs/go-log"
+
 	"github.com/filecoin-project/chain-validation/suites"
 	"github.com/filecoin-project/chain-validation/suites/message"
 )
+
+func init() {
+	logging.SetAllLoggers(logging.LevelDebug)
+}
 
 // TestSkipper contains a list of test cases skipped by the implementation.
 type TestSkipper struct {
