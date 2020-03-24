@@ -273,6 +273,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 	targetIDAddr, err := state.ResolveAddress(ctx.rt.ContextStore(), target)
 	// Dragons: move this logic to resolve address
 	notFound := (targetIDAddr == target && target.Protocol() != address.ID)
+	created := false
 	if err != nil || notFound {
 		// actor does not exist, create an account actor
 		// - precond: address must be a pub-key
@@ -317,6 +318,8 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 			// we failed to construct an account actor..
 			runtime.Abort(code)
 		}
+
+		created = true
 	}
 
 	// load actor
@@ -324,8 +327,11 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 	if err != nil {
 		panic(err)
 	}
+	if !found && created {
+		panic(fmt.Errorf("unreachable: actor is supposed to exist but it does not. addr: %s, idAddr: %s", target, targetIDAddr))
+	}
 	if !found {
-		panic(fmt.Errorf("unreachable: actor is supposed to exist but it does not. %s", err))
+		runtime.Abort(exitcode.SysErrActorNotFound)
 	}
 
 	return targetActor, targetIDAddr
@@ -491,6 +497,8 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 	if builtin.IsSingletonActor(codeID) {
 		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Can only have one instance of singleton actors.")
 	}
+
+	vmlog.Infof("creating actor, friendly-name: %s, code: %s, addr: %s\n", builtin.ActorNameByCode(codeID), codeID, addr)
 
 	ctx.gasTank.Charge(ctx.rt.pricelist.OnCreateActor())
 
