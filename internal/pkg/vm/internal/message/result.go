@@ -12,6 +12,8 @@ import (
 
 // Receipt is what is returned by executing a message on the vm.
 type Receipt struct {
+	// control field for encoding struct as an array
+	_           struct{}          `cbor:",toarray"`
 	ExitCode    exitcode.ExitCode `json:"exitCode"`
 	ReturnValue []byte            `json:"return"`
 	GasUsed     gas.Unit          `json:"gasUsed"`
@@ -42,7 +44,7 @@ func Value(obj interface{}, gasUsed gas.Unit) Receipt {
 func Failure(exitCode exitcode.ExitCode, gasAmount gas.Unit) Receipt {
 	return Receipt{
 		ExitCode:    exitCode,
-		ReturnValue: nil,
+		ReturnValue: []byte{},
 		GasUsed:     gasAmount,
 	}
 }

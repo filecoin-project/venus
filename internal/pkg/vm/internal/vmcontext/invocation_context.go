@@ -193,7 +193,6 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 
 	// 5. load target actor code
 	actorImpl := ctx.rt.getActorImpl(ctx.toActor.Code.Cid)
-
 	// 6. create target state handle
 	stateHandle := newActorStateHandle((*stateHandleContext)(ctx))
 	ctx.stateHandle = &stateHandle
@@ -380,11 +379,11 @@ type returnWrapper struct {
 
 func (r returnWrapper) ToCbor() ([]byte, error) {
 	if r.inner == nil {
-		return nil, nil
+		return []byte{}, nil
 	}
 	b := bytes.Buffer{}
 	if err := r.inner.MarshalCBOR(&b); err != nil {
-		return nil, err
+		return []byte{}, err
 	}
 	return b.Bytes(), nil
 }
