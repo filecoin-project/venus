@@ -300,7 +300,7 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 		StateRoot:       e.NewCid(stateRoot),
 		MessageReceipts: e.NewCid(emptyAMTCid),
 		Messages:        e.NewCid(metaCid),
-		BLSAggregateSig: crypto.Signature{
+		BLSAggregateSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: bls.Aggregate(nil)[:],
 		},

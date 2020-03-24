@@ -42,7 +42,13 @@ func (v *SignatureValidator) ValidateMessageSignature(ctx context.Context, msg *
 	return v.ValidateSignature(ctx, mCid.Bytes(), msg.Message.From, msg.Signature)
 }
 
-func (v *SignatureValidator) ValidateBLSMessageAggregate(ctx context.Context, msgs []*types.UnsignedMessage, sig crypto.Signature) error {
+func (v *SignatureValidator) ValidateBLSMessageAggregate(ctx context.Context, msgs []*types.UnsignedMessage, sig *crypto.Signature) error {
+	if sig == nil {
+		if len(msgs) > 0 {
+			return errors.New("Invalid empty BLS sig over messages")
+		}
+		return nil
+	}
 	pubKeys := [][]byte{}
 	encodedMsgCids := [][]byte{}
 	for _, msg := range msgs {

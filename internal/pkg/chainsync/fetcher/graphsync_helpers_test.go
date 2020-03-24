@@ -359,7 +359,7 @@ func simpleBlock() *block.Block {
 		Messages:        e.NewCid(types.EmptyTxMetaCID),
 		MessageReceipts: e.NewCid(types.EmptyReceiptsCID),
 		BlockSig:        &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
-		BLSAggregateSig: crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
+		BLSAggregateSig: &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 	}
 }
 

@@ -105,7 +105,7 @@ func (w *DefaultWorker) Generate(
 		StateRoot:       e.NewCid(baseStateRoot),
 		Ticket:          ticket,
 		Timestamp:       uint64(midEpoch.Unix()),
-		BLSAggregateSig: blsAggregateSig,
+		BLSAggregateSig: &blsAggregateSig,
 	}
 
 	view, err := w.api.PowerStateView(baseTipSet.Key())
