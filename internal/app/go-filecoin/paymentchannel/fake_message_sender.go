@@ -14,17 +14,22 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
-// FakeMessageSender is a message sender that parses message parameters and invokes the
-// export directly on the actor.
-// It uses the specs_actors mock runtime.
-type FakeMessageSender struct {
-	t         *testing.T
-	ctx       context.Context
-	rt        *mock.Runtime
+// FakeActorInterface fulfils the ActorStateViewer and MsgSender interfaces for a Manager
+// via the specs_actors mock runtime. It executes actor exports directly.
+type FakeActorInterface struct {
+	t   *testing.T
+	ctx context.Context
+	*mock.Runtime
+	*chain.Builder
+	head      block.TipSetKey                  // Provided by GetHead and expected by others
+	actors    map[address.Address]*actor.Actor // for actors not under test
 	receivers map[address.Address]receiver
 }
 
@@ -33,29 +38,26 @@ type receiver interface {
 	execAndVerify(t *testing.T, rt *mock.Runtime, codeID cid.Cid, params []byte)
 }
 
-func NewFakeMessageSender(t *testing.T, ctx context.Context, builder *mock.RuntimeBuilder) *FakeMessageSender {
-	return &FakeMessageSender{
+func NewFakeActorInterface(t *testing.T, ctx context.Context, rtbuilder *mock.RuntimeBuilder, chainBuilder *chain.Builder) *FakeActorInterface {
+	return &FakeActorInterface{
 		ctx:       ctx,
-		rt:        builder.Build(t),
+		Builder:   chainBuilder,
+		Runtime:   rtbuilder.Build(t),
 		receivers: make(map[address.Address]receiver),
 		t:         t,
 	}
 }
 
-func (fms *FakeMessageSender) Runtime() *mock.Runtime {
-	return fms.rt
-}
-
-func (fms *FakeMessageSender) GetState(typ reflect.Type) interface{} {
+func (fms *FakeActorInterface) GetState(typ reflect.Type) interface{} {
 	st := reflect.New(typ.Elem()).Interface()
 	unm, ok := st.(runtime.CBORUnmarshaler)
 	require.True(fms.t, ok)
-	fms.rt.GetState(unm)
+	fms.Runtime.GetState(unm)
 	return st
 }
 
 // Send posts a message to the chain
-func (fms *FakeMessageSender) Send(ctx context.Context,
+func (fms *FakeActorInterface) Send(ctx context.Context,
 	from, to address.Address,
 	value types.AttoFIL,
 	gasPrice types.AttoFIL,
@@ -69,33 +71,44 @@ func (fms *FakeMessageSender) Send(ctx context.Context,
 
 // ConstructActor calls the constructor for an actor that will be the recipient of the Send
 // messages
-func (fms *FakeMessageSender) ConstructActor(actorType cid.Cid, newActor, caller address.Address, balance abi.TokenAmount) {
+func (fms *FakeActorInterface) ConstructActor(actorType cid.Cid, newActor, caller address.Address, balance abi.TokenAmount) {
 	switch actorType {
 	case builtin.InitActorCodeID:
 		fms.constructInitActor(newActor)
 	case builtin.PaymentChannelActorCodeID:
 		fms.constructPaymentChannelActor(newActor, caller, balance)
 	}
-	fms.rt.Verify()
+	fms.Runtime.Verify()
 }
 
-func (fms *FakeMessageSender) ExecAndVerify(caller, receiver address.Address, code cid.Cid, params []byte) {
+func (fms *FakeActorInterface) SetHead(head block.TipSetKey) {
+	_, e := fms.GetTipSet(head)
+	require.NoError(fms.t, e)
+	fms.head = head
+}
+
+// SetActor sets an actor to be mocked on chain
+func (fms *FakeActorInterface) SetActor(addr address.Address, act *actor.Actor) {
+	fms.actors[addr] = act
+}
+
+func (fms *FakeActorInterface) ExecAndVerify(caller, receiver address.Address, code cid.Cid, params []byte) {
 	a, ok := fms.receivers[receiver]
 	if !ok {
 		fms.t.Fatalf("actor does not exist %s", receiver.String())
 	}
-	fms.rt.SetCaller(caller, builtin.AccountActorCodeID)
+	fms.Runtime.SetCaller(caller, builtin.AccountActorCodeID)
 
-	a.execAndVerify(fms.t, fms.rt, code, params)
+	a.execAndVerify(fms.t, fms.Runtime, code, params)
 }
 
 // this constructs an initActor harness with the fms mock runtime, so that initActor exports
 // can be tested in go-filecoin.
-func (fms *FakeMessageSender) constructInitActor(addr address.Address) {
-	fms.rt.SetCaller(builtin.SystemActorAddr, builtin.SystemActorCodeID)
-	fms.rt.ExpectValidateCallerAddr(builtin.SystemActorAddr)
+func (fms *FakeActorInterface) constructInitActor(addr address.Address) {
+	fms.Runtime.SetCaller(builtin.SystemActorAddr, builtin.SystemActorCodeID)
+	fms.Runtime.ExpectValidateCallerAddr(builtin.SystemActorAddr)
 	h := initActorHarness{}
-	ret := fms.rt.Call(h.Constructor, &init_.ConstructorParams{NetworkName: "mock"})
+	ret := fms.Runtime.Call(h.Constructor, &init_.ConstructorParams{NetworkName: "mock"})
 	require.Nil(fms.t, ret)
 	fms.receivers[addr] = &h
 }
@@ -103,7 +116,7 @@ func (fms *FakeMessageSender) constructInitActor(addr address.Address) {
 // this constructs a payment channel actor harness with the fms mock runtime, so that paychActor exports
 // can be tested in go-filecoin.
 //  If you want to test creation of an actor by InitActor use ExecAndVerify
-func (fms *FakeMessageSender) constructPaymentChannelActor(newActor, caller address.Address, balance abi.TokenAmount) {
+func (fms *FakeActorInterface) constructPaymentChannelActor(newActor, caller address.Address, balance abi.TokenAmount) {
 
 }
 
