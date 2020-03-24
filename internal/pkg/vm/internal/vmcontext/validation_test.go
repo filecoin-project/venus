@@ -55,7 +55,7 @@ func TestChainValidationMessageSuite(t *testing.T) {
 
 func TestChainValidationTipSetSuite(t *testing.T) {
 	f := NewFactories(&ValidationConfig{
-		trackGas:         false,
+		trackGas:         true,
 		checkExitCode:    true,
 		checkReturnValue: true,
 	})
