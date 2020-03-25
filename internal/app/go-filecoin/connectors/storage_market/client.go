@@ -3,6 +3,8 @@ package storagemarketconnector
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -58,8 +60,8 @@ func (s *StorageClientNodeConnector) AddFunds(ctx context.Context, addr address.
 }
 
 // EnsureFunds checks the current balance for an address and adds funds if the balance is below the given amount
-func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr, walletAddr address.Address, amount abi.TokenAmount) error {
-	balance, err := s.GetBalance(ctx, addr)
+func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr, walletAddr address.Address, amount abi.TokenAmount, tok shared.TipSetToken) error {
+	balance, err := s.GetBalance(ctx, addr, tok)
 	if err != nil {
 		return err
 	}
@@ -73,15 +75,19 @@ func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr, wall
 }
 
 // ListClientDeals returns all deals published on chain for the given account
-func (s *StorageClientNodeConnector) ListClientDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
-	return s.listDeals(ctx, addr)
+func (s *StorageClientNodeConnector) ListClientDeals(ctx context.Context, addr address.Address, tok shared.TipSetToken) ([]storagemarket.StorageDeal, error) {
+	return s.listDeals(ctx, addr, tok)
 }
 
 // ListStorageProviders finds all miners that will provide storage
-func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context) ([]*storagemarket.StorageProviderInfo, error) {
-	head := s.chainStore.Head()
+func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context, tok shared.TipSetToken) ([]*storagemarket.StorageProviderInfo, error) {
+	var tsk block.TipSetKey
+	if err := encoding.Decode(tok, &tsk); err != nil {
+		return nil, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
+	}
+
 	var spState spapow.State
-	err := s.chainStore.GetActorStateAt(ctx, head, builtin.StoragePowerActorAddr, &spState)
+	err := s.chainStore.GetActorStateAt(ctx, tsk, builtin.StoragePowerActorAddr, &spState)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +105,7 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context) (
 		}
 
 		var mState spaminer.State
-		err = s.chainStore.GetActorStateAt(ctx, head, minerAddr, &mState)
+		err = s.chainStore.GetActorStateAt(ctx, tsk, minerAddr, &mState)
 		if err != nil {
 			return err
 		}
@@ -203,19 +209,15 @@ func (s *StorageClientNodeConnector) GetDefaultWalletAddress(ctx context.Context
 }
 
 // ValidateAskSignature ensures the given ask has been signed correctly
-func (s *StorageClientNodeConnector) ValidateAskSignature(signed *storagemarket.SignedStorageAsk) error {
+func (s *StorageClientNodeConnector) ValidateAskSignature(ctx context.Context, signed *storagemarket.SignedStorageAsk, tok shared.TipSetToken) (bool, error) {
 	ask := signed.Ask
 
 	buf, err := encoding.Encode(ask)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	if s.VerifySignature(*signed.Signature, ask.Miner, buf) {
-		return nil
-	}
-
-	return xerrors.Errorf("invalid ask signature")
+	return s.VerifySignature(ctx, *signed.Signature, ask.Miner, buf, tok)
 }
 
 func (s *StorageClientNodeConnector) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {

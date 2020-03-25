@@ -4,6 +4,9 @@ import (
 	"context"
 	"io"
 
+	"github.com/filecoin-project/go-fil-markets/shared"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -67,8 +70,8 @@ func (s *StorageProviderNodeConnector) AddFunds(ctx context.Context, addr addres
 }
 
 // EnsureFunds checks the balance for an account and adds funds to the given amount if the balance is insufficient
-func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr, walletAddr address.Address, amount abi.TokenAmount) error {
-	balance, err := s.GetBalance(ctx, addr)
+func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr, walletAddr address.Address, amount abi.TokenAmount, tok shared.TipSetToken) error {
+	balance, err := s.GetBalance(ctx, addr, tok)
 	if err != nil {
 		return err
 	}
@@ -124,8 +127,8 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 }
 
 // ListProviderDeals lists all deals for the given provider
-func (s *StorageProviderNodeConnector) ListProviderDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
-	return s.listDeals(ctx, addr)
+func (s *StorageProviderNodeConnector) ListProviderDeals(ctx context.Context, addr address.Address, tok shared.TipSetToken) ([]storagemarket.StorageDeal, error) {
+	return s.listDeals(ctx, addr, tok)
 }
 
 // OnDealComplete adds the piece to the storage provider
@@ -137,9 +140,14 @@ func (s *StorageProviderNodeConnector) OnDealComplete(ctx context.Context, deal 
 }
 
 // LocatePieceForDealWithinSector finds the sector, offset and length of a piece associated with the given deal id
-func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID) (sectorNumber uint64, offset uint64, length uint64, err error) {
+func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, tok shared.TipSetToken) (sectorNumber uint64, offset uint64, length uint64, err error) {
+	var tsk block.TipSetKey
+	if err := encoding.Decode(tok, &tsk); err != nil {
+		return 0, 0, 0, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
+	}
+
 	var smState market.State
-	err = s.chainStore.GetActorStateAt(ctx, s.chainStore.Head(), builtin.StorageMarketActorAddr, &smState)
+	err = s.chainStore.GetActorStateAt(ctx, tsk, builtin.StorageMarketActorAddr, &smState)
 	if err != nil {
 		return 0, 0, 0, err
 	}
@@ -148,7 +156,7 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 	proposals := adt.AsArray(stateStore, smState.Proposals)
 
 	var minerState spaminer.State
-	err = s.chainStore.GetActorStateAt(ctx, s.chainStore.Head(), s.minerAddr, &minerState)
+	err = s.chainStore.GetActorStateAt(ctx, tsk, s.minerAddr, &minerState)
 	if err != nil {
 		return 0, 0, 0, err
 	}

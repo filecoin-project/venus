@@ -139,12 +139,12 @@ func (r *RetrievalClientConnector) getBlockHeight(tok shared.TipSetToken) (abi.C
 }
 
 func (r *RetrievalClientConnector) getBalance(ctx context.Context, account address.Address, tok shared.TipSetToken) (types.AttoFIL, error) {
-	ts, err := r.getTipSet(tok)
-	if err != nil {
+	var tsk block.TipSetKey
+	if err := tsk.UnmarshalCBOR(tok); err != nil {
 		return types.ZeroAttoFIL, err
 	}
 
-	actor, err := r.cs.GetActorAt(ctx, ts.Key(), account)
+	actor, err := r.cs.GetActorAt(ctx, tsk, account)
 	if err != nil {
 		return types.ZeroAttoFIL, err
 	}
@@ -162,10 +162,5 @@ func (r *RetrievalClientConnector) getTipSet(tok shared.TipSetToken) (block.TipS
 		return block.TipSet{}, err
 	}
 
-	ts, err := r.cs.GetTipSet(tsk)
-	if err != nil {
-		return block.TipSet{}, err
-	}
-
-	return ts, nil
+	return r.cs.GetTipSet(tsk)
 }
