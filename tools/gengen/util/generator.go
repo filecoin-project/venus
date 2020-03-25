@@ -335,9 +335,12 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		}
 
 		// Add configured deals to the market actor with miner as provider and worker as client
-		dealIDs, err := g.commitDeals(ctx, wAddr, mIDAddr, m)
-		if err != nil {
-			return nil, err
+		dealIDs := []abi.DealID{}
+		if len(m.CommittedSectors) > 0 {
+			dealIDs, err = g.commitDeals(ctx, wAddr, mIDAddr, m)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		// Setup windowed post including cron registration

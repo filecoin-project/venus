@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	notinit "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	paychActor "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
@@ -170,6 +171,18 @@ func (v *View) MinerGetPrecommittedSector(ctx context.Context, maddr addr.Addres
 	return minerState.GetPrecommittedSector(StoreFromCbor(ctx, v.ipldStore), abi.SectorNumber(sectorNum))
 }
 
+// MarketEscrowBalance looks up a token amount in the escrow table for the given address
+func (v *View) MarketEscrowBalance(ctx context.Context, addr addr.Address) (found bool, amount abi.TokenAmount, err error) {
+	marketState, err := v.loadMarketActor(ctx)
+	if err != nil {
+		return false, abi.NewTokenAmount(0), err
+	}
+
+	var value abi.TokenAmount
+	found, err = v.asMap(ctx, marketState.EscrowTable).Get(adt.AddrKey(addr), &value)
+	return
+}
+
 // NetworkTotalPower Returns the storage power actor's value for network total power.
 func (v *View) NetworkTotalPower(ctx context.Context) (abi.StoragePower, error) {
 	powerState, err := v.loadPowerActor(ctx)
@@ -262,6 +275,16 @@ func (v *View) loadPowerActor(ctx context.Context) (*power.State, error) {
 		return nil, err
 	}
 	var state power.State
+	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
+	return &state, err
+}
+
+func (v *View) loadMarketActor(ctx context.Context) (*market.State, error) {
+	actr, err := v.loadActor(ctx, builtin.StorageMarketActorAddr)
+	if err != nil {
+		return nil, err
+	}
+	var state market.State
 	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
 	return &state, err
 }

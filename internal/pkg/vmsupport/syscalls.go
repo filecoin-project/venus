@@ -2,6 +2,7 @@ package vmsupport
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
@@ -54,7 +55,11 @@ func (s *Syscalls) ComputeUnsealedSectorCID(_ context.Context, proof abi.Registe
 }
 
 func (s *Syscalls) VerifySeal(_ context.Context, info abi.SealVerifyInfo) error {
+	fmt.Printf("VERIFCATION:\nproof type:%d\ncommR:%s\ncommD:%s\nprover:%s\nticket:%s\nseed:%s\nsecnum:%d\nproof:%s\nprooflen:%d\n\n",
+		info.OnChain.RegisteredProof, info.OnChain.SealedCID, info.UnsealedCID, info.Miner, hex.EncodeToString(info.Randomness),
+		hex.EncodeToString(info.InteractiveRandomness), info.SectorID.Number, hex.EncodeToString(info.OnChain.Proof), len(info.OnChain.Proof))
 	ok, err := s.verifier.VerifySeal(info)
+	fmt.Printf("VERFIED: %t, err: %s\n", ok, err)
 	if err != nil {
 		return err
 	} else if !ok {

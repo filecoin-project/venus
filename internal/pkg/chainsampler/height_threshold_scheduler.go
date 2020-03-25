@@ -91,12 +91,17 @@ func (m *HeightThresholdScheduler) HandleNewTipSet(ctx context.Context, previous
 		return block.TipSet{}, err
 	}
 
-	_, newTips, err := chain.CollectTipsToCommonAncestor(ctx, m.chainStore, previousHead, newHead)
-	if err != nil {
-		return block.TipSet{}, err
+	var newTips []block.TipSet
+	if previousHead.Defined() {
+		_, newTips, err = chain.CollectTipsToCommonAncestor(ctx, m.chainStore, previousHead, newHead)
+		if err != nil {
+			return block.TipSet{}, err
+		}
+	} else {
+		newTips = []block.TipSet{newHead}
 	}
 
-	newListeners := make([]*HeightThresholdListener, len(m.heightListeners))
+	newListeners := []*HeightThresholdListener{}
 	for _, listener := range m.heightListeners {
 		valid, err := listener.Handle(ctx, newTips)
 		if err != nil {

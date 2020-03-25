@@ -78,7 +78,7 @@ func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching,
 		PoStGenerator:    postGen,
 		minerNode:        minerNode,
 		storageMiner:     storageMiner,
-		heaviestTipSetCh: c.HeaviestTipSetCh,
+		heaviestTipSetCh: make(chan interface{}),
 		poster:           poster.NewPoster(minerAddr, m.Outbox, s, c.State, stateViewer, mw),
 	}
 
@@ -126,5 +126,8 @@ func (s *StorageMiningSubmodule) HandleNewHead(ctx context.Context, newHead bloc
 	if !s.started {
 		return nil
 	}
+
+	s.heaviestTipSetCh <- newHead
+
 	return s.poster.HandleNewHead(ctx, newHead)
 }

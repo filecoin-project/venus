@@ -447,11 +447,11 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		PoStProofType: postProofType,
 		SealProofType: sealProofType,
 		Miner:         minerAddr,
-		WorkerThreads: 1,
+		WorkerThreads: 2,
 		Paths: []fs.PathConfig{
 			{
 				Path:   sectorDir,
-				Cache:  false,
+				Cache:  true,
 				Weight: 1,
 			},
 		},
