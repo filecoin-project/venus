@@ -206,7 +206,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 			Height:          height,
 			Messages:        e.NewCid(types.EmptyTxMetaCID),
 			MessageReceipts: e.NewCid(types.EmptyReceiptsCID),
-			BLSAggregateSig: emptyBLSSig,
+			BLSAggregateSig: &emptyBLSSig,
 			// Omitted fields below
 			//StateRoot:       stateRoot,
 			//EPoStInfo:       ePoStInfo,

@@ -99,7 +99,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 		Miner:           miner,
 		Ticket:          block.Ticket{VRFProof: []byte{0}},
 		BlockSig:        &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
-		BLSAggregateSig: crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
+		BLSAggregateSig: &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 	}
 	// publish the invalid block
 	payload := blocksub.Payload{
@@ -124,7 +124,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 		Miner:           miner,
 		Ticket:          block.Ticket{VRFProof: []byte{0}},
 		BlockSig:        &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
-		BLSAggregateSig: crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
+		BLSAggregateSig: &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 	}
 	// publish the invalid block
 	payload = blocksub.Payload{

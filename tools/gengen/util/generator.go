@@ -26,7 +26,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	mh "github.com/multiformats/go-multihash"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
@@ -300,13 +299,8 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 		StateRoot:       e.NewCid(stateRoot),
 		MessageReceipts: e.NewCid(emptyAMTCid),
 		Messages:        e.NewCid(metaCid),
-		BLSAggregateSig: crypto.Signature{
-			Type: crypto.SigTypeBLS,
-			Data: bls.Aggregate(nil)[:],
-		},
-		Timestamp:     g.cfg.Time,
-		BlockSig:      &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
-		ForkSignaling: 0,
+		Timestamp:       g.cfg.Time,
+		ForkSignaling:   0,
 	}
 
 	return g.cst.Put(ctx, geneblk)

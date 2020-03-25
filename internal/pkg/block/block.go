@@ -55,7 +55,7 @@ type Block struct {
 	Messages e.Cid `json:"messages,omitempty"`
 
 	// The aggregate signature of all BLS signed messages in the block
-	BLSAggregateSig crypto.Signature `json:"blsAggregateSig"`
+	BLSAggregateSig *crypto.Signature `json:"blsAggregateSig"`
 
 	// The timestamp, in seconds since the Unix epoch, at which this block was created.
 	Timestamp uint64 `json:"timestamp"`
