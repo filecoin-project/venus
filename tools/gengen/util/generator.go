@@ -299,8 +299,8 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 		StateRoot:       e.NewCid(stateRoot),
 		MessageReceipts: e.NewCid(emptyAMTCid),
 		Messages:        e.NewCid(metaCid),
-		Timestamp:     g.cfg.Time,
-		ForkSignaling: 0,
+		Timestamp:       g.cfg.Time,
+		ForkSignaling:   0,
 	}
 
 	return g.cst.Put(ctx, geneblk)
