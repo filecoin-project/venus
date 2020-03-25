@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	"github.com/filecoin-project/specs-actors/actors/builtin/system"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cid "github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -133,7 +134,7 @@ func (g *GenesisGenerator) createActor(addr address.Address, codeCid cid.Cid, ba
 func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
 
 	_, err := g.createActor(builtin.SystemActorAddr, builtin.SystemActorCodeID, specsbig.Zero(), func() (interface{}, error) {
-		return &adt.EmptyValue{}, nil
+		return &system.State{}, nil
 	})
 	if err != nil {
 		return err

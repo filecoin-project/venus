@@ -87,7 +87,7 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 	// normalize from addr
 	var ok bool
 	if from, ok = vm.normalizeAddress(from); !ok {
-		runtime.Abort(exitcode.SysErrActorNotFound)
+		runtime.Abort(exitcode.SysErrSenderInvalid)
 	}
 
 	// build internal message
@@ -270,8 +270,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 	}
 
 	// cron tick
-	firstMiner := blocks[0].Miner
-	cronMessage := makeCronTickMessage(firstMiner)
+	cronMessage := makeCronTickMessage()
 	if _, err := vm.applyImplicitMessage(cronMessage, rnd); err != nil {
 		return nil, err
 	}
@@ -376,7 +375,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 
 	// 2. load actor from global state
 	if msg.From, ok = vm.normalizeAddress(msg.From); !ok {
-		return message.Failure(exitcode.SysErrActorNotFound, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
+		return message.Failure(exitcode.SysErrSenderInvalid, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
 	}
 
 	fromActor, found, err := vm.state.GetActor(vm.context, msg.From)
@@ -385,18 +384,18 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 	}
 	if !found {
 		// Execution error; sender does not exist at time of message execution.
-		return message.Failure(exitcode.SysErrActorNotFound, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
+		return message.Failure(exitcode.SysErrSenderInvalid, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
 	}
 
 	if !fromActor.Code.Equals(builtin.AccountActorCodeID) {
 		// Execution error; sender is not an account.
-		return message.Failure(exitcode.SysErrForbidden, gas.Zero), gasTank.gasConsumed.ToTokens(msg.GasPrice), big.Zero()
+		return message.Failure(exitcode.SysErrSenderInvalid, gas.Zero), gasTank.gasConsumed.ToTokens(msg.GasPrice), big.Zero()
 	}
 
 	// 3. make sure this is the right message order for fromActor
 	if msg.CallSeqNum != fromActor.CallSeqNum {
 		// Execution error; invalid seq number.
-		return message.Failure(exitcode.SysErrInvalidCallSeqNum, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
+		return message.Failure(exitcode.SysErrSenderStateInvalid, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
 	}
 
 	// 4. Check sender balance (gas + value being sent)
@@ -404,7 +403,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 	totalCost := big.Add(msg.Value, gasLimitCost)
 	if fromActor.Balance.LessThan(totalCost) {
 		// Execution error; sender does not have sufficient funds to pay for the gas limit.
-		return message.Failure(exitcode.SysErrInsufficientFunds, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
+		return message.Failure(exitcode.SysErrSenderStateInvalid, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
 	}
 
 	// 5. Increment sender CallSeqNum
@@ -563,7 +562,7 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 func (vm *VM) getActorImpl(code cid.Cid) dispatch.Dispatcher {
 	actorImpl, err := vm.actorImpls.GetActorImpl(code)
 	if err != nil {
-		runtime.Abort(exitcode.SysErrActorCodeNotFound)
+		runtime.Abort(exitcode.SysErrInvalidReceiver)
 	}
 	return actorImpl
 }
@@ -676,16 +675,12 @@ func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount,
 	}
 }
 
-func makeCronTickMessage(blockMiner address.Address) internalMessage {
-	encoded, err := encoding.Encode(&adt.EmptyValue{})
-	if err != nil {
-		panic(fmt.Errorf("failed to encode empty cbor value: %s", err))
-	}
+func makeCronTickMessage() internalMessage {
 	return internalMessage{
 		from:   builtin.SystemActorAddr,
 		to:     builtin.CronActorAddr,
 		value:  big.Zero(),
 		method: builtin.MethodsCron.EpochTick,
-		params: encoded,
+		params: []byte{},
 	}
 }

@@ -42,7 +42,7 @@ func TestOutbox(t *testing.T) {
 		ob := message.NewOutbox(w, message.FakeValidator{RejectMessages: true}, queue, publisher,
 			message.NullPolicy{}, provider, provider, newOutboxTestJournal(t))
 
-		cid, _, err := ob.Send(context.Background(), sender, sender, types.NewAttoFILFromFIL(2), types.NewGasPrice(0), gas.NewGas(0), bcast, builtin.MethodSend, &adt.EmptyValue{})
+		cid, _, err := ob.Send(context.Background(), sender, sender, types.NewAttoFILFromFIL(2), types.NewGasPrice(0), gas.NewGas(0), bcast, builtin.MethodSend, adt.Empty)
 		assert.Errorf(t, err, "for testing")
 		assert.False(t, cid.Defined())
 	})
@@ -73,7 +73,7 @@ func TestOutbox(t *testing.T) {
 		}{{true, actr.CallSeqNum, 1000}, {false, actr.CallSeqNum + 1, 1000}}
 
 		for _, test := range testCases {
-			_, pubDone, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), gas.NewGas(0), test.bcast, builtin.MethodSend, &adt.EmptyValue{})
+			_, pubDone, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), gas.NewGas(0), test.bcast, builtin.MethodSend, adt.Empty)
 			require.NoError(t, err)
 			assert.Equal(t, uint64(test.height), queue.List(sender)[0].Stamp)
 			require.NotNil(t, pubDone)
@@ -157,7 +157,7 @@ func TestOutbox(t *testing.T) {
 
 		ob := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, message.NullPolicy{}, provider, provider, newOutboxTestJournal(t))
 
-		_, _, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), gas.NewGas(0), true, builtin.MethodSend, &adt.EmptyValue{})
+		_, _, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), gas.NewGas(0), true, builtin.MethodSend, adt.Empty)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "account or empty")
 	})

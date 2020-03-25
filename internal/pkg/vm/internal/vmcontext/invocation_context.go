@@ -256,7 +256,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 		panic(err)
 	}
 	if !found {
-		runtime.Abort(exitcode.SysErrActorNotFound)
+		runtime.Abort(exitcode.SysErrSenderInvalid)
 	}
 
 	if target == builtin.InitActorAddr {
@@ -281,7 +281,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 
 		if target.Protocol() != address.SECP256K1 && target.Protocol() != address.BLS {
 			// Don't implicitly create an account actor for an address without an associated key.
-			runtime.Abort(exitcode.SysErrActorNotFound)
+			runtime.Abort(exitcode.SysErrInvalidReceiver)
 		}
 
 		targetIDAddr, err = state.MapAddressToNewID(ctx.rt.ContextStore(), target)
@@ -331,7 +331,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 		panic(fmt.Errorf("unreachable: actor is supposed to exist but it does not. addr: %s, idAddr: %s", target, targetIDAddr))
 	}
 	if !found {
-		runtime.Abort(exitcode.SysErrActorNotFound)
+		runtime.Abort(exitcode.SysErrInvalidReceiver)
 	}
 
 	return targetActor, targetIDAddr

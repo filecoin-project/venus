@@ -80,7 +80,7 @@ func TestMessagePropagation(t *testing.T) {
 			types.NewGasPrice(1),
 			gas.NewGas(0),
 			fooMethod,
-			&adt.EmptyValue{},
+			adt.Empty,
 		)
 		require.NoError(t, err)
 
