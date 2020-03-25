@@ -23,7 +23,7 @@ const MaxInt = int(^uint(0) >> 1)
 
 // RetrievalProviderConnector is the glue between go-filecoin and retrieval market provider API
 type RetrievalProviderConnector struct {
-	chainReader ChainReaderAPI
+	chainReader connectors.ChainReader
 	bstore      blockstore.Blockstore
 	net         rmnet.RetrievalMarketNetwork
 	paychMgr    PaychMgrAPI
@@ -40,7 +40,7 @@ type UnsealerAPI interface {
 
 // NewRetrievalProviderConnector creates a new RetrievalProviderConnector
 func NewRetrievalProviderConnector(net rmnet.RetrievalMarketNetwork, us UnsealerAPI,
-	bs blockstore.Blockstore, paychMgr PaychMgrAPI, chainReader ChainReaderAPI) *RetrievalProviderConnector {
+	bs blockstore.Blockstore, paychMgr PaychMgrAPI, chainReader connectors.ChainReader) *RetrievalProviderConnector {
 	return &RetrievalProviderConnector{
 		bstore:      bs,
 		net:         net,

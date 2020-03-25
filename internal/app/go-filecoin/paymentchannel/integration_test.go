@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	specmock "github.com/filecoin-project/specs-actors/support/mock"
 	spect "github.com/filecoin-project/specs-actors/support/testing"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	dss "github.com/ipfs/go-datastore/sync"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -24,6 +25,7 @@ import (
 	pch "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
@@ -38,7 +40,7 @@ func TestConstructInitActor(t *testing.T) {
 	ctx := context.Background()
 	receiver := spect.NewIDAddr(t, 1000)
 	builder := specmock.NewBuilder(context.Background(), receiver).WithCaller(builtin.SystemActorAddr, builtin.SystemActorCodeID)
-	fms := NewFakeMessageSender(t, ctx, builder)
+	fms := pch.NewFakeMessageSender(t, ctx, builder)
 	assert.NotNil(t, fms)
 	initAddr := builtin.InitActorAddr
 	fms.ConstructActor(builtin.InitActorCodeID, initAddr, address.Undef, abi.NewTokenAmount(0))
@@ -74,7 +76,7 @@ func TestCreatePaymentChannel(t *testing.T) {
 		WithCaller(builtin.SystemActorAddr, builtin.SystemActorCodeID).
 		WithBalance(bal, abi.NewTokenAmount(0))
 
-	fms := NewFakeMessageSender(t, ctx, builder)
+	fms := pch.NewFakeMessageSender(t, ctx, builder)
 	assert.NotNil(t, fms)
 	rt := fms.Runtime()
 	rt.SetReceived(bal)
@@ -112,13 +114,14 @@ func TestCreatePaymentChannel(t *testing.T) {
 
 	rmc := retrievalmarketconnector.NewRetrievalMarketClientFakeAPI(t)
 
-	rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
+	rcnc := retrievalmarketconnector.NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
 
 	tok, err := encoding.Encode(genTs.Key())
 	require.NoError(t, err)
 
 	res, err := rcnc.GetOrCreatePaymentChannel(ctx, clientAddr, miner, channelAmt, tok)
 	require.NoError(t, err)
+	assert.Equal(t, paych, res)
 }
 
 func testSetup(ctx context.Context, t *testing.T, bal abi.TokenAmount) (bstore.Blockstore, *message.FakeProvider, address.Address, address.Address, block.TipSet) {
@@ -142,7 +145,7 @@ func testSetup(ctx context.Context, t *testing.T, bal abi.TokenAmount) (bstore.B
 	fakeProvider := message.NewFakeProvider(t)
 	fakeProvider.Builder = builder
 	clientAddr := spect.NewIDAddr(t, 102)
-	clientActor := actor.NewActor(specs.AccountActorCodeID, bal)
+	clientActor := actor.NewActor(builtin.AccountActorCodeID, bal)
 	fakeProvider.SetHead(genTs.Key())
 	fakeProvider.SetActor(clientAddr, clientActor)
 
