@@ -31,7 +31,6 @@ require (
 	github.com/golangci/golangci-lint v1.21.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-querystring v1.0.0 // indirect
-	github.com/gorilla/mux v1.7.0 // indirect
 	github.com/ipfs/go-bitswap v0.1.8
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.3-0.20190908200855-f22eea50656c
@@ -55,7 +54,7 @@ require (
 	github.com/ipfs/go-ipld-format v0.0.2
 	github.com/ipfs/go-log v1.0.2
 	github.com/ipfs/go-merkledag v0.3.1
-	github.com/ipfs/go-path v0.0.1
+	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.2
 	github.com/ipfs/iptb v1.3.8-0.20190401234037-98ccf4228a73
 	github.com/ipld/go-ipld-prime v0.0.2-0.20191108012745-28a82f04c785
@@ -69,9 +68,9 @@ require (
 	github.com/libp2p/go-libp2p-core v0.3.0
 	github.com/libp2p/go-libp2p-kad-dht v0.1.1
 	github.com/libp2p/go-libp2p-peerstore v0.1.4
-	github.com/libp2p/go-libp2p-pubsub v0.2.5
+	github.com/libp2p/go-libp2p-pubsub v0.2.6
 	github.com/libp2p/go-libp2p-swarm v0.2.2
-	github.com/libp2p/go-stream-muxer v0.0.1
+	github.com/libp2p/go-stream-muxer v0.1.0
 	github.com/libp2p/go-yamux v1.2.4 // indirect
 	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-isatty v0.0.10 // indirect
@@ -101,7 +100,6 @@ require (
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
 	go.opencensus.io v0.22.2
-	go.uber.org/atomic v1.5.1 // indirect
 	go.uber.org/zap v1.13.0
 	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975 // indirect
 	golang.org/x/lint v0.0.0-20200130185559-910be7a94367 // indirect

@@ -75,7 +75,7 @@ func TestMiningSealSector(t *testing.T) {
 	err = newMiner.PieceManager().PledgeSector(ctx)
 	require.NoError(t, err)
 
-	for {
+	for i := 0; i < 100; i++ {
 		ts, err := newMiner.PorcelainAPI.ChainHead()
 		require.NoError(t, err)
 
@@ -84,7 +84,11 @@ func TestMiningSealSector(t *testing.T) {
 
 		status, err := newMiner.PorcelainAPI.MinerGetStatus(ctx, maddr, ts.Key())
 		fmt.Printf("%+v\n", status)
+		if status.SectorCount > 0 {
+			return
+		}
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(2 * time.Second)
 	}
+	t.Fatal("Did not add sectors in the alloted time")
 }

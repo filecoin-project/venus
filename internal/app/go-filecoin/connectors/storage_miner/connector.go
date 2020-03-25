@@ -7,8 +7,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors"
 
 	"github.com/filecoin-project/go-address"
@@ -213,7 +211,7 @@ func (m *StorageMinerNodeConnector) WaitForSelfDeals(ctx context.Context, mcid c
 
 // SendPreCommitSector creates a pre-commit sector message and sends it to the
 // network.
-func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sectorNum abi.SectorNumber, sealedCID cid.Cid, sealRandEpoch, expiration abi.ChainEpoch, pieces ...storagenode.PieceWithDealInfo) (cid.Cid, error) {
+func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, proofType abi.RegisteredProof, sectorNum abi.SectorNumber, sealedCID cid.Cid, sealRandEpoch, expiration abi.ChainEpoch, pieces ...storagenode.PieceWithDealInfo) (cid.Cid, error) {
 	head := m.chainState.Head()
 	waddr, err := m.getMinerWorkerAddress(ctx, head)
 	if err != nil {
@@ -225,16 +223,8 @@ func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, sec
 		dealIds[i] = piece.DealInfo.DealID
 	}
 
-	sealProof, err := m.getSealRegisteredProof(ctx, head)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	fmt.Printf("PRECOMMIT:\nproof type:%d\ncommR:%s\nrand epoch:%d\nprover:%s\nsecnum:%d\n\n",
-		sealProof, sealedCID, sealRandEpoch, m.minerAddr, sectorNum)
-
 	params := miner.SectorPreCommitInfo{
-		RegisteredProof: sealProof,
+		RegisteredProof: proofType,
 		SectorNumber:    sectorNum,
 		SealedCID:       sealedCID,
 		SealRandEpoch:   sealRandEpoch,
@@ -274,7 +264,7 @@ func (m *StorageMinerNodeConnector) WaitForPreCommitSector(ctx context.Context, 
 
 // SendProveCommitSector creates a commit sector message and sends it to the
 // network.
-func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, sectorNum abi.SectorNumber, proof []byte, deals ...abi.DealID) (cid.Cid, error) {
+func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, proofType abi.RegisteredProof, sectorNum abi.SectorNumber, proof []byte, deals ...abi.DealID) (cid.Cid, error) {
 	head := m.chainState.Head()
 	waddr, err := m.getMinerWorkerAddress(ctx, head)
 	if err != nil {
@@ -286,16 +276,13 @@ func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, s
 		Proof:        proof,
 	}
 
-	fmt.Printf("PROOF:\nproof:%s\nprooflen:%d\n\n",
-		hex.EncodeToString(proof), len(proof))
-
 	mcid, cerr, err := m.outbox.Send(
 		ctx,
 		waddr,
 		m.minerAddr,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
-		gas.NewGas(5000),
+		gas.NewGas(10000),
 		true,
 		builtin.MethodsMiner.ProveCommitSector,
 		&params,
@@ -589,30 +576,4 @@ func (m *StorageMinerNodeConnector) getMinerWorkerAddress(ctx context.Context, t
 		return address.Undef, xerrors.Errorf("failed to get miner control addresses: %w", err)
 	}
 	return waddr, nil
-}
-
-func (m *StorageMinerNodeConnector) getSealRegisteredProof(ctx context.Context, tsk block.TipSetKey) (abi.RegisteredProof, error) {
-	view, err := m.chainView(ctx, tsk)
-	if err != nil {
-		return 0, err
-	}
-
-	sectorSize, err := view.MinerSectorSize(ctx, m.minerAddr)
-	if err != nil {
-		return 0, xerrors.Errorf("failed to get miner sector size")
-	}
-
-	switch sectorSize {
-	case constants.DevSectorSize:
-		return constants.DevRegisteredSealProof, nil
-	case constants.ThirtyTwoGiBSectorSize:
-		return abi.RegisteredProof_StackedDRG32GiBSeal, nil
-	case constants.EightMiBSectorSize:
-		return abi.RegisteredProof_StackedDRG8MiBSeal, nil
-	case constants.FiveHundredTwelveMiBSectorSize:
-		return abi.RegisteredProof_StackedDRG512MiBSeal, nil
-	default:
-	}
-
-	return 0, xerrors.Errorf("unsupported sector size %d", sectorSize)
 }
