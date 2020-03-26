@@ -299,7 +299,7 @@ func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state
 	ourmsg := &types.UnsignedMessage{
 		To:         msg.To,
 		From:       msg.From,
-		CallSeqNum: uint64(msg.CallSeqNum),
+		CallSeqNum: msg.CallSeqNum,
 		Value:      msg.Value,
 		Method:     msg.Method,
 		Params:     msg.Params,
@@ -340,7 +340,7 @@ func toOurBlockMessageInfoType(theirs []vtypes.BlockMessagesInfo) []interpreter.
 			ourbls := &types.UnsignedMessage{
 				To:         blsMsg.To,
 				From:       blsMsg.From,
-				CallSeqNum: uint64(blsMsg.CallSeqNum),
+				CallSeqNum: blsMsg.CallSeqNum,
 				Value:      blsMsg.Value,
 				Method:     blsMsg.Method,
 				Params:     blsMsg.Params,
@@ -354,7 +354,7 @@ func toOurBlockMessageInfoType(theirs []vtypes.BlockMessagesInfo) []interpreter.
 				Message: types.UnsignedMessage{
 					To:         secpMsg.Message.To,
 					From:       secpMsg.Message.From,
-					CallSeqNum: uint64(secpMsg.Message.CallSeqNum),
+					CallSeqNum: secpMsg.Message.CallSeqNum,
 					Value:      secpMsg.Message.Value,
 					Method:     secpMsg.Message.Method,
 					Params:     secpMsg.Message.Params,
