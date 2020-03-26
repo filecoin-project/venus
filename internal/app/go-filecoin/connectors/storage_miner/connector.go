@@ -88,6 +88,9 @@ func (m *StorageMinerNodeConnector) handleNewTipSet(ctx context.Context, previou
 // SendSelfDeals creates self-deals and sends them to the network.
 func (m *StorageMinerNodeConnector) SendSelfDeals(ctx context.Context, startEpoch, endEpoch abi.ChainEpoch, pieces ...abi.PieceInfo) (cid.Cid, error) {
 	view, err := m.chainView(ctx, m.chainState.Head())
+	if err != nil {
+		return cid.Undef, err
+	}
 
 	_, waddr, err := view.MinerControlAddresses(ctx, m.minerAddr)
 	if err != nil {
@@ -362,7 +365,7 @@ func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMs
 			return
 		}
 
-		seedEpoch := abi.ChainEpoch(h + abi.ChainEpoch(interval))
+		seedEpoch := h + abi.ChainEpoch(interval)
 		listener := m.chainHeightScheduler.AddListener(seedEpoch)
 
 		// translate tipset key to seal seed handler

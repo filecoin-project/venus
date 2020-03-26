@@ -72,6 +72,8 @@ func TestMiningSealSector(t *testing.T) {
 		require.NoError(t, err)
 
 		status, err := newMiner.PorcelainAPI.MinerGetStatus(ctx, maddr, ts.Key())
+		require.NoError(t, err)
+
 		if status.SectorCount > 0 {
 			return
 		}

@@ -16,13 +16,13 @@ var miningCmd = &cmds.Command{
 		Tagline: "Manage all mining operations for a node",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"address":     miningAddrCmd,
-		"once":        miningOnceCmd,
-		"start":       miningStartCmd,
-		"status":      miningStatusCmd,
-		"stop":        miningStopCmd,
-		"setup":       miningSetupCmd,
-		"seal-sector": miningSealSectorCmd,
+		"address":       miningAddrCmd,
+		"once":          miningOnceCmd,
+		"start":         miningStartCmd,
+		"status":        miningStatusCmd,
+		"stop":          miningStopCmd,
+		"setup":         miningSetupCmd,
+		"pledge-sector": miningPledgeSectorCmd,
 	},
 }
 
@@ -149,16 +149,16 @@ var stringEncoderMap = cmds.EncoderMap{
 	}),
 }
 
-var miningSealSectorCmd = &cmds.Command{
+var miningPledgeSectorCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Seal an empty sector immediately",
+		Tagline: "Pledge an empty sector immediately",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		err := GetStorageAPI(env).PledgeSector(req.Context)
 		if err != nil {
 			return err
 		}
-		return re.Emit("Sector sealed")
+		return re.Emit("Sector pledged")
 	},
 	Type:     "",
 	Encoders: stringEncoderMap,
