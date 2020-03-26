@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	notinit "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	paychActor "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
@@ -121,6 +122,21 @@ func (v *View) MinerSectorSize(ctx context.Context, maddr addr.Address) (abi.Sec
 	return minerState.Info.SectorSize, nil
 }
 
+// MinerSectorCount counts all the on-chain sectors
+func (v *View) MinerSectorCount(ctx context.Context, maddr addr.Address) (int, error) {
+	minerState, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return 0, err
+	}
+	count := 0
+	var sector miner.SectorOnChainInfo
+	err = v.asArray(ctx, minerState.Sectors).ForEach(&sector, func(i int64) error {
+		count++
+		return nil
+	})
+	return count, err
+}
+
 // MinerProvingPeriod Returns the start and end of the miner's current/next proving window.
 func (v *View) MinerProvingPeriod(ctx context.Context, maddr addr.Address) (start abi.ChainEpoch, end abi.ChainEpoch, failureCount int, err error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
@@ -168,6 +184,18 @@ func (v *View) MinerGetPrecommittedSector(ctx context.Context, maddr addr.Addres
 	}
 
 	return minerState.GetPrecommittedSector(StoreFromCbor(ctx, v.ipldStore), abi.SectorNumber(sectorNum))
+}
+
+// MarketEscrowBalance looks up a token amount in the escrow table for the given address
+func (v *View) MarketEscrowBalance(ctx context.Context, addr addr.Address) (found bool, amount abi.TokenAmount, err error) {
+	marketState, err := v.loadMarketActor(ctx)
+	if err != nil {
+		return false, abi.NewTokenAmount(0), err
+	}
+
+	var value abi.TokenAmount
+	found, err = v.asMap(ctx, marketState.EscrowTable).Get(adt.AddrKey(addr), &value)
+	return
 }
 
 // NetworkTotalPower Returns the storage power actor's value for network total power.
@@ -262,6 +290,16 @@ func (v *View) loadPowerActor(ctx context.Context) (*power.State, error) {
 		return nil, err
 	}
 	var state power.State
+	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
+	return &state, err
+}
+
+func (v *View) loadMarketActor(ctx context.Context) (*market.State, error) {
+	actr, err := v.loadActor(ctx, builtin.StorageMarketActorAddr)
+	if err != nil {
+		return nil, err
+	}
+	var state market.State
 	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
 	return &state, err
 }

@@ -17,7 +17,7 @@ type Env struct {
 	ctx            context.Context
 	porcelainAPI   *porcelain.API
 	retrievalAPI   retrieval.API
-	storageAPI     storage.API
+	storageAPI     *storage.API
 	inspectorAPI   *Inspector
 }
 
@@ -53,7 +53,7 @@ func GetRetrievalAPI(env cmds.Environment) retrieval.API {
 }
 
 // GetStorageAPI returns the storage protocol api from the given environment.
-func GetStorageAPI(env cmds.Environment) storage.API {
+func GetStorageAPI(env cmds.Environment) *storage.API {
 	ce := env.(*Env)
 	return ce.storageAPI
 }

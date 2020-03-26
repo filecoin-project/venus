@@ -24,14 +24,13 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200319233206-2a7435bc45d9
 	github.com/filecoin-project/go-statestore v0.1.0
-	github.com/filecoin-project/go-storage-miner v0.0.0-20200320161144-fd9286326083
+	github.com/filecoin-project/go-storage-miner v0.0.0-20200325225107-781a37a4b1b4
 	github.com/filecoin-project/specs-actors v0.0.0-20200324235424-aef9b20a9fb1
 	github.com/fxamacker/cbor v1.5.0
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/golangci/golangci-lint v1.21.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-querystring v1.0.0 // indirect
-	github.com/gorilla/mux v1.7.0 // indirect
 	github.com/ipfs/go-bitswap v0.1.8
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.3-0.20190908200855-f22eea50656c
@@ -101,7 +100,6 @@ require (
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
 	go.opencensus.io v0.22.2
-	go.uber.org/atomic v1.5.1 // indirect
 	go.uber.org/zap v1.13.0
 	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975 // indirect
 	golang.org/x/lint v0.0.0-20200130185559-910be7a94367 // indirect

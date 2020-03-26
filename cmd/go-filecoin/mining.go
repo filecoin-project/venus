@@ -16,13 +16,13 @@ var miningCmd = &cmds.Command{
 		Tagline: "Manage all mining operations for a node",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"address":   miningAddrCmd,
-		"once":      miningOnceCmd,
-		"start":     miningStartCmd,
-		"status":    miningStatusCmd,
-		"stop":      miningStopCmd,
-		"setup":     miningSetupCmd,
-		"add-piece": miningAddPieceCmd,
+		"address":       miningAddrCmd,
+		"once":          miningOnceCmd,
+		"start":         miningStartCmd,
+		"status":        miningStatusCmd,
+		"stop":          miningStopCmd,
+		"setup":         miningSetupCmd,
+		"pledge-sector": miningPledgeSectorCmd,
 	},
 }
 
@@ -149,30 +149,17 @@ var stringEncoderMap = cmds.EncoderMap{
 	}),
 }
 
-// MiningAddPieceResult is a wrapper around the uint64 sectorID
-type MiningAddPieceResult struct {
-	SectorID uint64
-}
-
-var miningAddPieceCmd = &cmds.Command{
+var miningPledgeSectorCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Add data directly to a staged sector",
-		ShortDescription: `
-Adds a piece (a local file) to a staged sector.  This is used
-to add data outside of a deal.
-`,
-	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.FileArg("file", true, false, "Path of file to add").EnableStdin(),
+		Tagline: "Pledge an empty sector immediately",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		panic("TODO: rework this command to create a self-deal")
+		err := GetStorageAPI(env).PledgeSector(req.Context)
+		if err != nil {
+			return err
+		}
+		return re.Emit("Sector pledged")
 	},
-	Type: MiningAddPieceResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, result MiningAddPieceResult) error {
-			fmt.Fprintf(w, "piece staged in sector %d\n", result.SectorID) // nolint: errcheck
-			return nil
-		}),
-	},
+	Type:     "",
+	Encoders: stringEncoderMap,
 }

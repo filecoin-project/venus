@@ -8,7 +8,6 @@ import (
 
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
-	files "github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -89,8 +88,8 @@ func TestMiningAddPieceAndSealNow(t *testing.T) {
 	}()
 
 	// add a piece
-	_, err = minerNode.AddPiece(ctx, files.NewBytesFile([]byte("HODL")))
-	require.NoError(t, err)
+	//_, err = minerNode.AddPiece(ctx, files.NewBytesFile([]byte("HODL")))
+	//require.NoError(t, err)
 
 	// start sealing
 	err = minerNode.SealNow(ctx)

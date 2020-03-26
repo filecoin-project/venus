@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 )
 
@@ -163,7 +164,10 @@ func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig,
 		inspectorAPI:   NewInspectorAPI(nd.Repo),
 		porcelainAPI:   nd.PorcelainAPI,
 		//retrievalAPI:   nd.RetrievalProtocol.RetrievalClient,
-		//storageAPI:     nd.StorageProtocol.StorageClient,
+	}
+
+	if nd.StorageProtocol != nil {
+		servenv.storageAPI = storage.NewAPI(nd.StorageProtocol.StorageClient, nd.PieceManager())
 	}
 
 	cfg := cmdhttp.NewServerConfig()

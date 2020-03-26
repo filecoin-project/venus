@@ -32,6 +32,7 @@ type MinerStateView interface {
 	MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error)
 	MinerPeerID(ctx context.Context, maddr address.Address) (peer.ID, error)
 	MinerSectorSize(ctx context.Context, maddr address.Address) (abi.SectorSize, error)
+	MinerSectorCount(ctx context.Context, maddr address.Address) (int, error)
 	MinerProvingPeriod(ctx context.Context, maddr address.Address) (start abi.ChainEpoch, end abi.ChainEpoch, failureCount int, err error)
 	NetworkTotalPower(ctx context.Context) (abi.StoragePower, error)
 	MinerClaimedPower(ctx context.Context, miner address.Address) (abi.StoragePower, error)
@@ -179,6 +180,7 @@ type MinerStatus struct {
 	WorkerAddress address.Address
 	PeerID        peer.ID
 	SectorSize    abi.SectorSize
+	SectorCount   int
 
 	Power             abi.StoragePower
 	PledgeRequirement abi.TokenAmount
@@ -208,6 +210,10 @@ func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr
 	if err != nil {
 		return MinerStatus{}, err
 	}
+	sectorCount, err := view.MinerSectorCount(ctx, minerAddr)
+	if err != nil {
+		return MinerStatus{}, err
+	}
 	periodStart, periodEnd, failureCount, err := view.MinerProvingPeriod(ctx, minerAddr)
 	if err != nil {
 		return MinerStatus{}, err
@@ -231,6 +237,7 @@ func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr
 		WorkerAddress: worker,
 		PeerID:        peerID,
 		SectorSize:    sectorSize,
+		SectorCount:   sectorCount,
 
 		Power:             claimedPower,
 		PledgeRequirement: requirement,
