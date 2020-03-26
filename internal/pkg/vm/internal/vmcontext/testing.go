@@ -296,16 +296,7 @@ func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state
 
 	// map message
 	// Dragons: fix after cleaning up our msg
-	ourmsg := &types.UnsignedMessage{
-		To:         msg.To,
-		From:       msg.From,
-		CallSeqNum: msg.CallSeqNum,
-		Value:      msg.Value,
-		Method:     msg.Method,
-		Params:     msg.Params,
-		GasPrice:   msg.GasPrice,
-		GasLimit:   gas.Unit(msg.GasLimit),
-	}
+	ourmsg := toOurMessage(msg)
 
 	// invoke vm
 	ourreceipt, penalty, reward := st.vm.applyMessage(ourmsg, ourmsg.OnChainLen(), &fakeRandSrc{})
@@ -327,7 +318,51 @@ func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state
 }
 
 func (a *ValidationApplier) ApplySignedMessage(context *vtypes.ExecutionContext, state vstate.VMWrapper, msg *vtypes.SignedMessage) (vtypes.MessageReceipt, abi.TokenAmount, abi.TokenAmount, error) {
-	panic("NYI")
+	st := state.(*ValidationVMWrapper)
+
+	// set epoch
+	// Note: this would have normally happened during `ApplyTipset()`
+	st.vm.currentEpoch = context.Epoch
+	st.vm.pricelist = gascost.PricelistByEpoch(context.Epoch)
+
+	// map message
+	// Dragons: fix after cleaning up our msg
+	ourmsg := &types.SignedMessage{
+		Message:   *toOurMessage(&msg.Message),
+		Signature: msg.Signature,
+	}
+
+	// invoke vm
+	ourreceipt, penalty, reward := st.vm.applyMessage(&ourmsg.Message, ourmsg.OnChainLen(), &fakeRandSrc{})
+
+	// commit and persist changes
+	// Note: this is not done on production for each msg
+	if err := st.PersistChanges(); err != nil {
+		return vtypes.MessageReceipt{}, big.Zero(), big.Zero(), err
+	}
+
+	// map receipt
+	receipt := vtypes.MessageReceipt{
+		ExitCode:    ourreceipt.ExitCode,
+		ReturnValue: ourreceipt.ReturnValue,
+		GasUsed:     vtypes.GasUnits(ourreceipt.GasUsed),
+	}
+
+	return receipt, penalty, reward, nil
+
+}
+
+func toOurMessage(theirs *vtypes.Message) *types.UnsignedMessage {
+	return &types.UnsignedMessage{
+		To:         theirs.To,
+		From:       theirs.From,
+		CallSeqNum: theirs.CallSeqNum,
+		Value:      theirs.Value,
+		Method:     theirs.Method,
+		Params:     theirs.Params,
+		GasPrice:   theirs.GasPrice,
+		GasLimit:   gas.Unit(theirs.GasLimit),
+	}
 
 }
 
