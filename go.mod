@@ -24,7 +24,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200319233206-2a7435bc45d9
 	github.com/filecoin-project/go-statestore v0.1.0
-	github.com/filecoin-project/go-storage-miner v0.0.0-20200320161144-fd9286326083
+	github.com/filecoin-project/go-storage-miner v0.0.0-20200325225107-781a37a4b1b4
 	github.com/filecoin-project/specs-actors v0.0.0-20200324235424-aef9b20a9fb1
 	github.com/fxamacker/cbor v1.5.0
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
@@ -54,7 +54,7 @@ require (
 	github.com/ipfs/go-ipld-format v0.0.2
 	github.com/ipfs/go-log v1.0.2
 	github.com/ipfs/go-merkledag v0.3.1
-	github.com/ipfs/go-path v0.0.7
+	github.com/ipfs/go-path v0.0.1
 	github.com/ipfs/go-unixfs v0.2.2
 	github.com/ipfs/iptb v1.3.8-0.20190401234037-98ccf4228a73
 	github.com/ipld/go-ipld-prime v0.0.2-0.20191108012745-28a82f04c785
@@ -68,9 +68,9 @@ require (
 	github.com/libp2p/go-libp2p-core v0.3.0
 	github.com/libp2p/go-libp2p-kad-dht v0.1.1
 	github.com/libp2p/go-libp2p-peerstore v0.1.4
-	github.com/libp2p/go-libp2p-pubsub v0.2.6
+	github.com/libp2p/go-libp2p-pubsub v0.2.5
 	github.com/libp2p/go-libp2p-swarm v0.2.2
-	github.com/libp2p/go-stream-muxer v0.1.0
+	github.com/libp2p/go-stream-muxer v0.0.1
 	github.com/libp2p/go-yamux v1.2.4 // indirect
 	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-isatty v0.0.10 // indirect
@@ -119,5 +119,3 @@ require (
 )
 
 replace github.com/filecoin-project/filecoin-ffi => ./vendors/filecoin-ffi
-
-replace github.com/filecoin-project/go-storage-miner => ../go-storage-miner

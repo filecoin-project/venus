@@ -164,7 +164,10 @@ func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig,
 		inspectorAPI:   NewInspectorAPI(nd.Repo),
 		porcelainAPI:   nd.PorcelainAPI,
 		//retrievalAPI:   nd.RetrievalProtocol.RetrievalClient,
-		storageAPI: storage.NewAPI(nd.StorageProtocol.StorageClient, nd.PieceManager()),
+	}
+
+	if nd.StorageProtocol != nil {
+		servenv.storageAPI = storage.NewAPI(nd.StorageProtocol.StorageClient, nd.PieceManager())
 	}
 
 	cfg := cmdhttp.NewServerConfig()

@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	files "github.com/ipfs/go-ipfs-files"
-
 	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 )
@@ -83,15 +81,6 @@ func (f *Filecoin) MiningStatus(ctx context.Context) (commands.MiningStatusResul
 		return commands.MiningStatusResult{}, err
 	}
 
-	return out, nil
-}
-
-// AddPiece runs the mining add-piece command
-func (f *Filecoin) AddPiece(ctx context.Context, data files.File) (commands.MiningAddPieceResult, error) {
-	var out commands.MiningAddPieceResult
-	if err := f.RunCmdJSONWithStdin(ctx, data, &out, "go-filecoin", "mining", "add-piece"); err != nil {
-		return out, err
-	}
 	return out, nil
 }
 

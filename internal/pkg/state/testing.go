@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
@@ -37,6 +38,7 @@ type FakeMinerState struct {
 	ProvingPeriodStart abi.ChainEpoch
 	ProvingPeriodEnd   abi.ChainEpoch
 	PoStFailures       int
+	Sectors            []miner.SectorOnChainInfo
 	ProvingSet         []FakeSectorInfo
 	ClaimedPower       abi.StoragePower
 	PledgeRequirement  abi.TokenAmount
@@ -60,6 +62,22 @@ func (v *FakeStateView) MinerSectorSize(_ context.Context, maddr address.Address
 		return 0, errors.Errorf("no miner %s", maddr)
 	}
 	return m.SectorSize, nil
+}
+
+// MinerSectorsSetForEach iterates sectors in a miner's proving set.
+func (v *FakeStateView) MinerSectorsForEach(_ context.Context, maddr address.Address, f func(id miner.SectorOnChainInfo) error) error {
+	m, ok := v.Miners[maddr]
+	if !ok {
+		return errors.Errorf("no miner %s", maddr)
+	}
+
+	for _, si := range m.Sectors {
+		err := f(si)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // MinerControlAddresses reports a miner's control addresses.

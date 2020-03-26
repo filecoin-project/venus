@@ -3,9 +3,7 @@ package storageminerconnector
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"errors"
-	"fmt"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors"
 
@@ -329,7 +327,6 @@ func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context, tok stora
 	if err != nil {
 		return storagenode.SealTicket{}, xerrors.Errorf("getting randomness for SealTicket failed: %w", err)
 	}
-	fmt.Printf("TICKET:\nepoch:%d\nrandomness:%s\n\n", h, hex.EncodeToString(abi.SealRandomness(r)))
 
 	return storagenode.SealTicket{
 		BlockHeight: uint64(h),
@@ -378,8 +375,6 @@ func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMs
 					ec <- storagenode.NewGetSealSeedError(err, storagenode.GetSealSeedFatalError)
 					break
 				}
-
-				fmt.Printf("SEED:\nepoch:%d\nrandomness:%s\n\n", seedEpoch, hex.EncodeToString(abi.SealRandomness(randomness)))
 
 				sc <- storagenode.SealSeed{
 					BlockHeight: uint64(seedEpoch),

@@ -2,22 +2,21 @@ package functional
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
-
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
 func TestMiningSealSector(t *testing.T) {
-	// tf.FunctionalTest(t)
+	tf.FunctionalTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -55,19 +54,8 @@ func TestMiningSealSector(t *testing.T) {
 
 	node.ConnectNodes(t, newMiner, bootstrapMiner)
 
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				fakeClock.Advance(blockTime)
-				_, err := bootstrapMiner.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-				require.NoError(t, err)
-			}
-			time.Sleep(time.Second)
-		}
-	}()
+	// Have bootstrap miner mine continuously so newMiner's pledgeSector can put multiple messages on chain.
+	go simulateBlockMining(ctx, t, fakeClock, blockTime, bootstrapMiner)
 
 	err = newMiner.StorageMining.Start(ctx)
 	require.NoError(t, err)
@@ -75,6 +63,7 @@ func TestMiningSealSector(t *testing.T) {
 	err = newMiner.PieceManager().PledgeSector(ctx)
 	require.NoError(t, err)
 
+	// wait while checking to see if the new miner has added any sectors (indicating sealing was successful)
 	for i := 0; i < 100; i++ {
 		ts, err := newMiner.PorcelainAPI.ChainHead()
 		require.NoError(t, err)
@@ -83,12 +72,25 @@ func TestMiningSealSector(t *testing.T) {
 		require.NoError(t, err)
 
 		status, err := newMiner.PorcelainAPI.MinerGetStatus(ctx, maddr, ts.Key())
-		fmt.Printf("%+v\n", status)
 		if status.SectorCount > 0 {
 			return
 		}
 
 		time.Sleep(2 * time.Second)
 	}
-	t.Fatal("Did not add sectors in the alloted time")
+	t.Fatal("Did not add sectors in the allotted time")
+}
+
+func simulateBlockMining(ctx context.Context, t *testing.T, fakeClock clock.Fake, blockTime time.Duration, node *node.Node) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			fakeClock.Advance(blockTime)
+			_, err := node.BlockMining.BlockMiningAPI.MiningOnce(ctx)
+			require.NoError(t, err)
+		}
+		time.Sleep(time.Second)
+	}
 }
