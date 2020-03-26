@@ -93,6 +93,5 @@ func simulateBlockMining(ctx context.Context, t *testing.T, fakeClock clock.Fake
 			_, err := node.BlockMining.BlockMiningAPI.MiningOnce(ctx)
 			require.NoError(t, err)
 		}
-		time.Sleep(time.Second)
 	}
 }
