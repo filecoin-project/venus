@@ -2,6 +2,7 @@ package functional
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -14,8 +15,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/build/project"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/iptbtester"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -74,53 +77,63 @@ func TestBootstrapMineOnce(t *testing.T) {
 
 func TestBootstrapWindowedPoSt(t *testing.T) {
 	tf.FunctionalTest(t)
-	t.Skip("WIP")
 
-	ctx := context.Background()
-	root := project.Root()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	tns, err := iptbtester.NewTestNodes(t, 1, nil)
+	wd, _ := os.Getwd()
+	genCfgPath := filepath.Join(wd, "..", "fixtures/setup.json")
+	presealPath := filepath.Join(wd, "..", "fixtures/genesis-sectors")
+	genTime := int64(1000000000)
+	blockTime := 1 * time.Second
+	fakeClock := clock.NewFake(time.Unix(genTime, 0))
+
+	// Load genesis config fixture.
+	genCfg := loadGenesisConfig(t, genCfgPath)
+	// set proving period start to something soon
+	start := abi.ChainEpoch(1)
+	genCfg.Miners[0].ProvingPeriodStart = &start
+
+	seed := node.MakeChainSeed(t, genCfg)
+	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
+
+	miner := makeNode(ctx, t, seed, chainClock)
+	_, _, err := initNodeGenesisMiner(t, miner, seed, genCfg.Miners[0].Owner, presealPath, genCfg.Miners[0].SectorSize)
 	require.NoError(t, err)
 
-	node0 := tns[0]
+	err = miner.Start(ctx)
+	require.NoError(t, err)
 
-	// Setup first node, note: Testbed.Name() is the directory
-	genConfigPath := filepath.Join(root, "fixtures/setup.json")
-	genesisConfig := iptbtester.ReadSetup(t, genConfigPath)
+	err = miner.StorageMining.Start(ctx)
+	require.NoError(t, err)
 
-	// set proving period start to something soon
-	start := abi.ChainEpoch(97408490)
-	genesisConfig.Miners[0].ProvingPeriodStart = &start
+	maddr, err := miner.BlockMining.BlockMiningAPI.MinerAddress()
+	require.NoError(t, err)
 
-	genesis := iptbtester.RequireGenesis(t, node0.Testbed.Name(), genesisConfig)
-	genesis.SectorsDir = filepath.Join(node0.Dir(), "sectors")
-	genesis.PresealedSectorDir = filepath.Join(root, "./fixtures/genesis-sectors")
+	status, err := miner.PorcelainAPI.MinerGetStatus(ctx, maddr, requireChainHead(t, miner))
+	require.NoError(t, err)
 
-	node0.MustInitWithGenesis(ctx, genesis)
-	node0.MustStart(ctx)
-	defer node0.MustStop(ctx)
+	require.Equal(t, abi.ChainEpoch(1), status.ProvingPeriodStart)
 
-	var minerAddress address.Address
-	node0.MustRunCmdJSON(ctx, &minerAddress, "go-filecoin", "config", "mining.minerAddress")
+	// mine once to enter proving period
+	fakeClock.Advance(blockTime)
+	_, err = miner.BlockMining.BlockMiningAPI.MiningOnce(ctx)
+	require.NoError(t, err)
 
-	// expect proving period start to be 1 and no failures
-	var status porcelain.MinerStatus
-	node0.MustRunCmdJSON(ctx, &status, "go-filecoin", "miner", "status", minerAddress.String())
-	require.Equal(t, abi.ChainEpoch(97408490), status.ProvingPeriodStart)
-	require.Equal(t, 0, status.PoStFailureCount)
+	// Post should have been triggered, simulate mining while waiting for update to proving period start
+	for i := 0; i < 25; i++ {
+		fakeClock.Advance(blockTime)
+		_, err := miner.BlockMining.BlockMiningAPI.MiningOnce(ctx)
+		require.NoError(t, err)
 
-	// start mining
-	node0.MustRunCmd(ctx, "go-filecoin", "mining", "start")
+		status, err := miner.PorcelainAPI.MinerGetStatus(ctx, maddr, requireChainHead(t, miner))
+		require.NoError(t, err)
 
-	// Wait for either a changes the proving period start showing a successful PoSt or we see a failure on chain
-	for i := 0; i < 30; i++ {
-		node0.MustRunCmdJSON(ctx, &status, "go-filecoin", "miner", "status", minerAddress.String())
-		require.Equal(t, 0, status.PoStFailureCount, "No PoSt received in proving period window")
-		if status.ProvingPeriodStart > 97408490 {
-			t.Log("Successfully advanced proving period start without incrementing failure count")
+		if status.ProvingPeriodStart > 1 {
 			return
 		}
-		time.Sleep(5 * time.Second)
+
+		time.Sleep(2 * time.Second)
 	}
-	t.Error("Time out waiting for PoSt to update")
+	t.Fatal("Timouut wating for windowed PoSt")
 }
