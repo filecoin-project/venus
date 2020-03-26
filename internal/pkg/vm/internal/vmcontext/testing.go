@@ -81,6 +81,7 @@ type ValidationConfig struct {
 	trackGas         bool
 	checkExitCode    bool
 	checkReturnValue bool
+	checkStateRoot   bool
 }
 
 func (v ValidationConfig) ValidateGas() bool {
@@ -93,6 +94,10 @@ func (v ValidationConfig) ValidateExitCode() bool {
 
 func (v ValidationConfig) ValidateReturnValue() bool {
 	return v.checkReturnValue
+}
+
+func (v ValidationConfig) ValidateStateRoot() bool {
+	return v.checkStateRoot
 }
 
 //
@@ -319,6 +324,11 @@ func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state
 	}
 
 	return receipt, penalty, reward, nil
+}
+
+func (a *ValidationApplier) ApplySignedMessage(context *vtypes.ExecutionContext, state vstate.VMWrapper, msg *vtypes.SignedMessage) (vtypes.MessageReceipt, abi.TokenAmount, abi.TokenAmount, error) {
+	panic("NYI")
+
 }
 
 func toOurBlockMessageInfoType(theirs []vtypes.BlockMessagesInfo) []interpreter.BlockMessagesInfo {
