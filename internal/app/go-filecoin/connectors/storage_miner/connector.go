@@ -326,6 +326,7 @@ func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context, tok stora
 		return storagenode.SealTicket{}, err
 	}
 
+	// Dragons: eventually we will need to hash the miner address and pass it in as entropy #260
 	r, err := m.chainState.SampleChainRandomness(ctx, tsk, crypto.DomainSeparationTag_SealRandomness, h, nil)
 	if err != nil {
 		return storagenode.SealTicket{}, xerrors.Errorf("getting randomness for SealTicket failed: %w", err)
@@ -372,6 +373,7 @@ func (m *StorageMinerNodeConnector) GetSealSeed(ctx context.Context, preCommitMs
 		for {
 			select {
 			case key := <-listener.HitCh:
+				// Dragons: eventually we will need to hash the miner address and pass it in as entropy #260
 				randomness, err := m.chainState.SampleChainRandomness(ctx, key,
 					crypto.DomainSeparationTag_InteractiveSealChallengeSeed, seedEpoch, nil)
 				if err != nil {
