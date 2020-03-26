@@ -133,6 +133,7 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 			return
 		}
 
+		// If we mine too many blocks before the post is sent we could miss our window. Add some friction here.
 		time.Sleep(2 * time.Second)
 	}
 	t.Fatal("Timouut wating for windowed PoSt")
