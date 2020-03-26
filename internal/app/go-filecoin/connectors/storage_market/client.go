@@ -3,8 +3,6 @@ package storagemarketconnector
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -21,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
