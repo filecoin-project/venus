@@ -293,7 +293,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 	// the execution of the implicit messages is simpler than full external/actor-actor messages
 	// execution:
 	// 1. load from actor
-	// 2. increment seqnumber
+	// 2. increment seqnumber (only for accounts)
 	// 3. build new context
 	// 4. invoke message
 
@@ -305,11 +305,12 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 	if !found {
 		return nil, fmt.Errorf("implicit message `from` field actor not found, addr: %s", imsg.from)
 	}
+	originatorIsAccount := fromActor.Code.Equals(builtin.AccountActorCodeID)
 
 	// Compute the originator address. Unlike real messages, implicit ones can be originated by
 	// singleton non-account actors. Singleton addresses are reorg-proof so ok to use here.
 	var originator address.Address
-	if fromActor.Code.Equals(builtin.AccountActorCodeID) {
+	if originatorIsAccount {
 		// Load sender account state to obtain stable pubkey address.
 		var senderState account.State
 		_, err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
@@ -323,19 +324,23 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 		runtime.Abortf(exitcode.SysErrInternal, "implicit message from non-account or -singleton actor code %s", fromActor.Code.Cid)
 	}
 
+	// 2. increment seq number (only for account actors).
+	// The account actor distinction only makes a difference for genesis state construction via messages, where
+	// some messages are sent from non-account actors (e.g. fund transfers from the reward actor).
+	if originatorIsAccount {
+		fromActor.IncrementSeqNum()
+		if err := vm.state.SetActor(vm.context, imsg.from, fromActor); err != nil {
+			return nil, err
+		}
+	}
+
+	// 3. build context
 	topLevel := topLevelContext{
 		originatorStableAddress: originator,
 		originatorCallSeq:       fromActor.CallSeqNum, // Implied CallSeqNum is that of the actor before incrementing.
 		newActorAddressCount:    0,
 	}
 
-	// 2. increment seq number
-	fromActor.IncrementSeqNum()
-	if err := vm.state.SetActor(vm.context, imsg.from, fromActor); err != nil {
-		return nil, err
-	}
-
-	// 3. build context
 	ctx := newInvocationContext(vm, &topLevel, imsg, fromActor, &gasTank, rnd)
 
 	// 4. invoke message
