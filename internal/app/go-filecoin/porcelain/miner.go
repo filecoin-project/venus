@@ -7,7 +7,6 @@ import (
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	cid "github.com/ipfs/go-cid"
@@ -33,7 +32,7 @@ type MinerStateView interface {
 	MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error)
 	MinerPeerID(ctx context.Context, maddr address.Address) (peer.ID, error)
 	MinerSectorSize(ctx context.Context, maddr address.Address) (abi.SectorSize, error)
-	MinerSectorsForEach(ctx context.Context, maddr address.Address, f func(miner.SectorOnChainInfo) error) error
+	MinerSectorCount(ctx context.Context, maddr address.Address) (int, error)
 	MinerProvingPeriod(ctx context.Context, maddr address.Address) (start abi.ChainEpoch, end abi.ChainEpoch, failureCount int, err error)
 	NetworkTotalPower(ctx context.Context) (abi.StoragePower, error)
 	MinerClaimedPower(ctx context.Context, miner address.Address) (abi.StoragePower, error)
@@ -211,11 +210,7 @@ func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr
 	if err != nil {
 		return MinerStatus{}, err
 	}
-	sectorCount := 0
-	err = view.MinerSectorsForEach(ctx, minerAddr, func(_ miner.SectorOnChainInfo) error {
-		sectorCount++
-		return nil
-	})
+	sectorCount, err := view.MinerSectorCount(ctx, minerAddr)
 	if err != nil {
 		return MinerStatus{}, err
 	}

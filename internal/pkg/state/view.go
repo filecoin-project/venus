@@ -122,16 +122,19 @@ func (v *View) MinerSectorSize(ctx context.Context, maddr addr.Address) (abi.Sec
 	return minerState.Info.SectorSize, nil
 }
 
-// MinerSectors returns all the miner's onchain sectors
-func (v *View) MinerSectorsForEach(ctx context.Context, maddr addr.Address, f func(miner.SectorOnChainInfo) error) error {
+// MinerSectorCount counts all the on-chain sectors
+func (v *View) MinerSectorCount(ctx context.Context, maddr addr.Address) (int, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
-		return err
+		return 0, err
 	}
+	count := 0
 	var sector miner.SectorOnChainInfo
-	return v.asArray(ctx, minerState.Sectors).ForEach(&sector, func(i int64) error {
-		return f(sector)
+	err = v.asArray(ctx, minerState.Sectors).ForEach(&sector, func(i int64) error {
+		count++
+		return nil
 	})
+	return count, err
 }
 
 // MinerProvingPeriod Returns the start and end of the miner's current/next proving window.

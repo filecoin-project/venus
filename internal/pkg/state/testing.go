@@ -64,20 +64,14 @@ func (v *FakeStateView) MinerSectorSize(_ context.Context, maddr address.Address
 	return m.SectorSize, nil
 }
 
-// MinerSectorsSetForEach iterates sectors in a miner's proving set.
-func (v *FakeStateView) MinerSectorsForEach(_ context.Context, maddr address.Address, f func(id miner.SectorOnChainInfo) error) error {
+// MinerSectorCount reports the number of sectors a miner has pledged
+func (v *FakeStateView) MinerSectorCount(ctx context.Context, maddr address.Address) (int, error) {
 	m, ok := v.Miners[maddr]
 	if !ok {
-		return errors.Errorf("no miner %s", maddr)
+		return 0, errors.Errorf("no miner %s", maddr)
 	}
 
-	for _, si := range m.Sectors {
-		err := f(si)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return len(m.Sectors), nil
 }
 
 // MinerControlAddresses reports a miner's control addresses.
