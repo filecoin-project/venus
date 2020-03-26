@@ -15,7 +15,7 @@ import (
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
-func TestMiningSealSector(t *testing.T) {
+func TestMiningPledgeSector(t *testing.T) {
 	tf.FunctionalTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
