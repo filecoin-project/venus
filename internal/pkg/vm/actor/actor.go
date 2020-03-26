@@ -51,11 +51,12 @@ type Actor struct {
 }
 
 // NewActor constructs a new actor.
-func NewActor(code cid.Cid, balance abi.TokenAmount) *Actor {
+func NewActor(code cid.Cid, balance abi.TokenAmount, head cid.Cid) *Actor {
 	return &Actor{
 		Code:       e.NewCid(code),
 		CallSeqNum: 0,
 		Balance:    balance,
+		Head:       e.NewCid(head),
 	}
 }
 

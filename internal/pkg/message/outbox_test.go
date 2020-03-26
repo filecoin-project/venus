@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -58,7 +59,7 @@ func TestOutbox(t *testing.T) {
 		head := provider.BuildOneOn(block.UndefTipSet, func(b *chain.BlockBuilder) {
 			b.IncHeight(1000)
 		})
-		actr := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0))
+		actr := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
 		actr.CallSeqNum = 42
 		provider.SetHeadAndActor(t, head.Key(), sender, actr)
 
@@ -102,7 +103,7 @@ func TestOutbox(t *testing.T) {
 		head := provider.BuildOneOn(block.UndefTipSet, func(b *chain.BlockBuilder) {
 			b.IncHeight(1000)
 		})
-		actr := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0))
+		actr := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
 		actr.CallSeqNum = 42
 		provider.SetHeadAndActor(t, head.Key(), sender, actr)
 
@@ -152,7 +153,7 @@ func TestOutbox(t *testing.T) {
 		provider := message.NewFakeProvider(t)
 
 		head := provider.NewGenesis()
-		actr := actor.NewActor(builtin.StorageMarketActorCodeID, abi.NewTokenAmount(0))
+		actr := actor.NewActor(builtin.StorageMarketActorCodeID, abi.NewTokenAmount(0), cid.Undef)
 		provider.SetHeadAndActor(t, head.Key(), sender, actr)
 
 		ob := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, message.NullPolicy{}, provider, provider, newOutboxTestJournal(t))

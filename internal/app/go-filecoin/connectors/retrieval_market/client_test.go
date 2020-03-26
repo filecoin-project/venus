@@ -173,7 +173,7 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 	expVoucherAmt := big.NewInt(10)
 	channelAmt := abi.NewTokenAmount(101)
 
-	pchActor := actor.NewActor(shared_testutil.GenerateCids(1)[0], channelAmt)
+	pchActor := actor.NewActor(shared_testutil.GenerateCids(1)[0], channelAmt, cid.Undef)
 	cs.SetActor(paychAddr, pchActor)
 
 	tok, err := encoding.Encode(genTs.Key())
@@ -261,7 +261,7 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 		poorPaych := specst.NewActorAddr(t, "poorpaych")
 		pchMgr := makePaychMgr(ctx, t, clientAddr, minerAddr, poorPaych, notEnough)
 
-		poorActor := actor.NewActor(shared_testutil.GenerateCids(1)[0], notEnough)
+		poorActor := actor.NewActor(shared_testutil.GenerateCids(1)[0], notEnough, cid.Undef)
 		cs.SetActor(poorPaych, poorActor)
 
 		rmc := NewRetrievalMarketClientFakeAPI(t)
@@ -345,7 +345,7 @@ func testSetup(ctx context.Context, t *testing.T, bal abi.TokenAmount) (bstore.B
 	fakeProvider := message.NewFakeProvider(t)
 	fakeProvider.Builder = builder
 	clientAddr := specst.NewIDAddr(t, 102)
-	clientActor := actor.NewActor(specs.AccountActorCodeID, bal)
+	clientActor := actor.NewActor(specs.AccountActorCodeID, bal, cid.Undef)
 	fakeProvider.SetHead(genTs.Key())
 	fakeProvider.SetActor(clientAddr, clientActor)
 

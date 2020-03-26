@@ -30,9 +30,9 @@ func TestStatePutGet(t *testing.T) {
 	cst := cborutil.NewIpldStore(bs)
 	tree := NewState(cst)
 
-	act1 := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0))
+	act1 := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
 	act1.IncrementSeqNum()
-	act2 := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0))
+	act2 := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
 	act2.IncrementSeqNum()
 	act2.IncrementSeqNum()
 

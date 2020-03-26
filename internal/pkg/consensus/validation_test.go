@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/ipfs/go-cid"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -145,7 +146,7 @@ func TestMessageSyntaxValidator(t *testing.T) {
 }
 
 func newActor(t *testing.T, balanceAF int, nonce uint64) *actor.Actor {
-	actor := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(int64(balanceAF)))
+	actor := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(int64(balanceAF)), cid.Undef)
 	actor.CallSeqNum = nonce
 	return actor
 }
