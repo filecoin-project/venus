@@ -242,7 +242,7 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 	addr1, addr2, addr3, addr5 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2], mockSigner.Addresses[4]
 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward failures.
-		builtin.RewardActorAddr: actor.NewActor(builtin.RewardActorCodeID, abi.NewTokenAmount(1000000)),
+		builtin.RewardActorAddr: actor.NewActor(builtin.RewardActorCodeID, abi.NewTokenAmount(1000000), cid.Undef),
 	})
 	th.RequireInitAccountActor(ctx, t, st, vms, addr1, types.NewAttoFILFromFIL(100))
 	th.RequireInitAccountActor(ctx, t, st, vms, addr2, types.NewAttoFILFromFIL(100))

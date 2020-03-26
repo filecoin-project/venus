@@ -143,7 +143,7 @@ func TestGetTipSetState(t *testing.T) {
 	// setup testing state
 	fakeCode := types.CidFromString(t, "somecid")
 	balance := abi.NewTokenAmount(1000000)
-	testActor := actor.NewActor(fakeCode, balance)
+	testActor := actor.NewActor(fakeCode, balance, cid.Undef)
 	addr := vmaddr.NewForTestGetter()()
 	st1 := state.NewState(cst)
 	require.NoError(t, st1.SetActor(ctx, addr, testActor))

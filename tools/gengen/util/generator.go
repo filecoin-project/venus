@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -108,21 +109,20 @@ func (g *GenesisGenerator) flush(ctx context.Context) (cid.Cid, error) {
 }
 
 func (g *GenesisGenerator) createActor(addr address.Address, codeCid cid.Cid, balance abi.TokenAmount, stateFn func() (interface{}, error)) (*actor.Actor, error) {
+	state, err := stateFn()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create state")
+	}
+	headCid, _, err := g.store.Put(context.Background(), state)
+	if err != nil {
+		return nil, fmt.Errorf("failed to store state")
+	}
+
 	a := actor.Actor{
 		Code:       e.NewCid(codeCid),
 		CallSeqNum: 0,
 		Balance:    balance,
-	}
-	if stateFn != nil {
-		state, err := stateFn()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create state")
-		}
-		headCid, _, err := g.store.Put(context.Background(), state)
-		if err != nil {
-			return nil, fmt.Errorf("failed to store state")
-		}
-		a.Head = e.NewCid(headCid)
+		Head:       e.NewCid(headCid),
 	}
 	if err := g.stateTree.SetActor(context.Background(), addr, &a); err != nil {
 		return nil, fmt.Errorf("failed to create actor during genesis block creation")
@@ -220,22 +220,23 @@ func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		val := defaultAccounts[addr]
+		balance := defaultAccounts[addr]
 		if addr.Protocol() == address.ID {
-			a := actor.NewActor(builtin.AccountActorCodeID, val)
-
+			var state account.State
+			state.Address = addr
+			stateCid, _, err := g.store.Put(ctx, &state)
+			if err != nil {
+				return err
+			}
+			a := actor.NewActor(builtin.AccountActorCodeID, balance, stateCid)
 			if err := g.stateTree.SetActor(ctx, addr, a); err != nil {
 				return err
 			}
 		} else {
-			_, err = g.vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr, builtin.MethodSend, val, nil, &g.chainRand)
+			_, err = g.vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr, builtin.MethodSend, balance, nil, &g.chainRand)
 			if err != nil {
 				return err
 			}
-		}
-
-		if err != nil {
-			return err
 		}
 	}
 
