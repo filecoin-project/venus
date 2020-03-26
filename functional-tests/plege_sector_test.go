@@ -82,16 +82,3 @@ func TestMiningPledgeSector(t *testing.T) {
 	}
 	t.Fatal("Did not add sectors in the allotted time")
 }
-
-func simulateBlockMining(ctx context.Context, t *testing.T, fakeClock clock.Fake, blockTime time.Duration, node *node.Node) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			fakeClock.Advance(blockTime)
-			_, err := node.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-			require.NoError(t, err)
-		}
-	}
-}

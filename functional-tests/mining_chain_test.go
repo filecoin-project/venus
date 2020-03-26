@@ -2,25 +2,20 @@ package functional
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
 func TestSingleMiner(t *testing.T) {
@@ -125,35 +120,4 @@ func TestSyncFromSingleMiner(t *testing.T) {
 	require.NoError(t, th.WaitForIt(50, 20*time.Millisecond, func() (bool, error) {
 		return ndValidator.Chain().ChainReader.GetHead().Equals(head), nil
 	}), "validator failed to sync new head")
-}
-
-func loadGenesisConfig(t *testing.T, path string) *gengen.GenesisCfg {
-	configFile, err := os.Open(path)
-	if err != nil {
-		t.Errorf("failed to open config file %s: %s", path, err)
-	}
-	defer func() { _ = configFile.Close() }()
-
-	var cfg gengen.GenesisCfg
-	if err := json.NewDecoder(configFile).Decode(&cfg); err != nil {
-		t.Errorf("failed to parse config: %s", err)
-	}
-	return &cfg
-}
-
-func makeNode(ctx context.Context, t *testing.T, seed *node.ChainSeed, chainClock clock.ChainEpochClock) *node.Node {
-	return test.NewNodeBuilder(t).
-		WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
-		WithGenesisInit(seed.GenesisInitFunc).
-		WithBuilderOpt(node.VerifierConfigOption(sectorbuilder.ProofVerifier)).
-		Build(ctx)
-}
-
-func initNodeGenesisMiner(t *testing.T, nd *node.Node, seed *node.ChainSeed, minerIdx int, presealPath string, sectorSize abi.SectorSize) (address.Address, address.Address, error) {
-	seed.GiveKey(t, nd, minerIdx)
-	miner, owner := seed.GiveMiner(t, nd, 0)
-
-	err := node.ImportPresealedSectors(nd.Repo, presealPath, sectorSize, true)
-	require.NoError(t, err)
-	return miner, owner, err
 }
