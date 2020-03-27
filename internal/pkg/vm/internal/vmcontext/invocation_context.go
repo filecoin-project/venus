@@ -132,10 +132,18 @@ func (shc *stateHandleContext) storeActor(actr *actor.Actor) {
 
 // runtime aborts are trapped by invoke, it will always return an exit code.
 func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.ExitCode) {
+	// Checkpoint state, for restoration on rollback
+	// Note that changes prior to invocation (sequence number bump and gas prepayment) persist even if invocation fails.
+	priorRoot, err := ctx.rt.checkpoint()
+	if err != nil {
+		panic(err)
+	}
+
+	// Install handler for abort, which rolls back all state changes from this and any nested invocations.
+	// This is the only path by which a non-OK exit code may be returned.
 	defer func() {
 		if r := recover(); r != nil {
-			// rollback any pending changes
-			if err := ctx.rt.rollback(); err != nil {
+			if err := ctx.rt.rollback(priorRoot); err != nil {
 				panic(err)
 			}
 			switch r.(type) {
@@ -155,11 +163,6 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 				// do not trap unknown panics
 				debug.PrintStack()
 				panic(r)
-			}
-		} else {
-			// checkpoint vm
-			if _, err := ctx.rt.checkpoint(); err != nil {
-				panic(err)
 			}
 		}
 	}()
@@ -412,7 +415,7 @@ func (r returnWrapper) Into(o specsruntime.CBORUnmarshaler) error {
 func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodNum, params specsruntime.CBORMarshaler, value abi.TokenAmount) (ret specsruntime.SendReturn, errcode exitcode.ExitCode) {
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {
-		runtime.Abortf(exitcode.SysErrorIllegalActor, "Calling Send() is not allowed during side-effet lock")
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "Calling Send() is not allowed during side-effect lock")
 	}
 	// prepare
 	// 1. alias fromActor

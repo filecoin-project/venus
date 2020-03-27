@@ -112,8 +112,8 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 	return ret, nil
 }
 
-func (vm *VM) rollback() error {
-	return vm.state.Rollback(vm.context)
+func (vm *VM) rollback(root state.Root) error {
+	return vm.state.Rollback(vm.context, root)
 }
 
 func (vm *VM) checkpoint() (state.Root, error) {
@@ -137,8 +137,6 @@ func (vm *VM) commit() (state.Root, error) {
 	if err := vm.store.Flush(); err != nil {
 		return cid.Undef, err
 	}
-
-	// TODO: update state root (issue: #3718)
 
 	return root, nil
 }
@@ -444,7 +442,8 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 	// Even if the message fails, the following accumulated changes will be applied:
 	// - CallSeqNumber increment
 	// - sender balance withheld
-	if _, err := vm.checkpoint(); err != nil {
+	priorRoot, err := vm.checkpoint()
+	if err != nil {
 		panic(err)
 	}
 
@@ -499,6 +498,16 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 		// of method execution failure.
 		receipt.ExitCode = exitcode.SysErrOutOfGas
 		receipt.ReturnValue = []byte{}
+	}
+
+	// Roll back all state if the receipt's exit code is not ok.
+	// This is required in addition to rollback within the invocation context since top level messages can fail for
+	// more reasons than internal ones. Invocation context still needs its own rollback so actors can recover and
+	// proceed from a nested call failure.
+	if receipt.ExitCode != exitcode.Ok {
+		if err := vm.rollback(priorRoot); err != nil {
+			panic(err)
+		}
 	}
 
 	// 2. settle gas money around (unused_gas -> sender)
