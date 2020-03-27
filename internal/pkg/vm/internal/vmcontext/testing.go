@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -81,6 +82,7 @@ type ValidationConfig struct {
 	trackGas         bool
 	checkExitCode    bool
 	checkReturnValue bool
+	checkStateRoot   bool
 }
 
 func (v ValidationConfig) ValidateGas() bool {
@@ -93,6 +95,10 @@ func (v ValidationConfig) ValidateExitCode() bool {
 
 func (v ValidationConfig) ValidateReturnValue() bool {
 	return v.checkReturnValue
+}
+
+func (v ValidationConfig) ValidateStateRoot() bool {
+	return v.checkStateRoot
 }
 
 //
@@ -284,41 +290,72 @@ type ValidationApplier struct{}
 func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state vstate.VMWrapper, msg *vtypes.Message) (vtypes.MessageReceipt, abi.TokenAmount, abi.TokenAmount, error) {
 	st := state.(*ValidationVMWrapper)
 
+	// Prepare message and VM.
+	ourMsg := a.preApplyMessage(st, context, msg)
+
+	// Invoke.
+	ourreceipt, penalty, reward := st.vm.applyMessage(ourMsg, ourMsg.OnChainLen(), &fakeRandSrc{})
+
+	// Persist changes.
+	receipt, err := a.postApplyMessage(st, ourreceipt)
+	return receipt, penalty, reward, err
+}
+
+func (a *ValidationApplier) ApplySignedMessage(context *vtypes.ExecutionContext, state vstate.VMWrapper, msg *vtypes.SignedMessage) (vtypes.MessageReceipt, abi.TokenAmount, abi.TokenAmount, error) {
+	st := state.(*ValidationVMWrapper)
+
+	// Prepare message and VM.
+	ourMsg := a.preApplyMessage(st, context, &msg.Message)
+	ourSigned := &types.SignedMessage{
+		Message:   *ourMsg,
+		Signature: msg.Signature,
+	}
+
+	// Invoke.
+	ourreceipt, penalty, reward := st.vm.applyMessage(ourMsg, ourSigned.OnChainLen(), &fakeRandSrc{})
+
+	// Persist changes.
+	receipt, err := a.postApplyMessage(st, ourreceipt)
+	return receipt, penalty, reward, err
+}
+
+func (a *ValidationApplier) preApplyMessage(st *ValidationVMWrapper, context *vtypes.ExecutionContext, msg *vtypes.Message) *types.UnsignedMessage {
 	// set epoch
 	// Note: this would have normally happened during `ApplyTipset()`
 	st.vm.currentEpoch = context.Epoch
 	st.vm.pricelist = gascost.PricelistByEpoch(context.Epoch)
 
 	// map message
-	// Dragons: fix after cleaning up our msg
-	ourmsg := &types.UnsignedMessage{
-		To:         msg.To,
-		From:       msg.From,
-		CallSeqNum: uint64(msg.CallSeqNum),
-		Value:      msg.Value,
-		Method:     msg.Method,
-		Params:     msg.Params,
-		GasPrice:   msg.GasPrice,
-		GasLimit:   gas.Unit(msg.GasLimit),
-	}
+	return toOurMessage(msg)
+}
 
-	// invoke vm
-	ourreceipt, penalty, reward := st.vm.applyMessage(ourmsg, ourmsg.OnChainLen(), &fakeRandSrc{})
-
+func (a *ValidationApplier) postApplyMessage(st *ValidationVMWrapper, ourreceipt message.Receipt) (vtypes.MessageReceipt, error) {
 	// commit and persist changes
 	// Note: this is not done on production for each msg
 	if err := st.PersistChanges(); err != nil {
-		return vtypes.MessageReceipt{}, big.Zero(), big.Zero(), err
+		return vtypes.MessageReceipt{}, err
 	}
 
 	// map receipt
-	receipt := vtypes.MessageReceipt{
+	return vtypes.MessageReceipt{
 		ExitCode:    ourreceipt.ExitCode,
 		ReturnValue: ourreceipt.ReturnValue,
 		GasUsed:     vtypes.GasUnits(ourreceipt.GasUsed),
+	}, nil
+}
+
+func toOurMessage(theirs *vtypes.Message) *types.UnsignedMessage {
+	return &types.UnsignedMessage{
+		To:         theirs.To,
+		From:       theirs.From,
+		CallSeqNum: theirs.CallSeqNum,
+		Value:      theirs.Value,
+		Method:     theirs.Method,
+		Params:     theirs.Params,
+		GasPrice:   theirs.GasPrice,
+		GasLimit:   gas.Unit(theirs.GasLimit),
 	}
 
-	return receipt, penalty, reward, nil
 }
 
 func toOurBlockMessageInfoType(theirs []vtypes.BlockMessagesInfo) []interpreter.BlockMessagesInfo {
@@ -330,7 +367,7 @@ func toOurBlockMessageInfoType(theirs []vtypes.BlockMessagesInfo) []interpreter.
 			ourbls := &types.UnsignedMessage{
 				To:         blsMsg.To,
 				From:       blsMsg.From,
-				CallSeqNum: uint64(blsMsg.CallSeqNum),
+				CallSeqNum: blsMsg.CallSeqNum,
 				Value:      blsMsg.Value,
 				Method:     blsMsg.Method,
 				Params:     blsMsg.Params,
@@ -344,7 +381,7 @@ func toOurBlockMessageInfoType(theirs []vtypes.BlockMessagesInfo) []interpreter.
 				Message: types.UnsignedMessage{
 					To:         secpMsg.Message.To,
 					From:       secpMsg.Message.From,
-					CallSeqNum: uint64(secpMsg.Message.CallSeqNum),
+					CallSeqNum: secpMsg.Message.CallSeqNum,
 					Value:      secpMsg.Message.Value,
 					Method:     secpMsg.Message.Method,
 					Params:     secpMsg.Message.Params,

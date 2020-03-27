@@ -41,6 +41,7 @@ func TestChainValidationMessageSuite(t *testing.T) {
 		trackGas:         true,
 		checkExitCode:    true,
 		checkReturnValue: true,
+		checkStateRoot:   true,
 	})
 	for _, testCase := range suites.MessageTestCases() {
 		if TestSuiteSkipper.Skip(testCase) {
@@ -57,6 +58,7 @@ func TestChainValidationTipSetSuite(t *testing.T) {
 		trackGas:         true,
 		checkExitCode:    true,
 		checkReturnValue: true,
+		checkStateRoot:   true,
 	})
 	for _, testCase := range suites.TipSetTestCases() {
 		if TestSuiteSkipper.Skip(testCase) {
