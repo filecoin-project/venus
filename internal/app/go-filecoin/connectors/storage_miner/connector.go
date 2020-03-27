@@ -310,7 +310,7 @@ func (m *StorageMinerNodeConnector) WaitForProveCommitSector(ctx context.Context
 // GetSealTicket produces the seal ticket used when pre-committing a sector.
 func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context, tok storagenode.TipSetToken) (storagenode.SealTicket, error) {
 	var tsk block.TipSetKey
-	if err := tsk.UnmarshalCBOR(tok); err != nil {
+	if err := encoding.Decode(tok, &tsk); err != nil {
 		return storagenode.SealTicket{}, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
 	}
 
@@ -489,7 +489,7 @@ func (m *StorageMinerNodeConnector) WaitForReportFaults(ctx context.Context, msg
 
 func (m *StorageMinerNodeConnector) GetSealedCID(ctx context.Context, tok storagenode.TipSetToken, sectorNum abi.SectorNumber) (sealedCID cid.Cid, wasFound bool, err error) {
 	var tsk block.TipSetKey
-	if err := tsk.UnmarshalCBOR(tok); err != nil {
+	if err := encoding.Decode(tok, &tsk); err != nil {
 		return cid.Undef, false, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
 	}
 
