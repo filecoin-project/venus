@@ -144,13 +144,8 @@ type ValidationVMWrapper struct {
 // Root implements ValidationVMWrapper.
 func (w *ValidationVMWrapper) Root() cid.Cid {
 	root, dirty := w.vm.state.Root()
-	if !dirty {
-		return root
-	}
-
-	root, err := w.vm.state.Commit(w.vm.context)
-	if err != nil {
-		panic(err)
+	if dirty {
+		panic("vm state is dirty")
 	}
 	return root
 }

@@ -29,7 +29,7 @@ func (s actorStorage) Put(obj specsruntime.CBORMarshaler) cid.Cid {
 	if err != nil {
 		panic(fmt.Errorf("could not put object in store. %s", err))
 	}
-	s.gasTank.Charge(s.pricelist.OnIpldPut(ln))
+	s.gasTank.Charge(s.pricelist.OnIpldPut(ln), "storage put %s %d bytes into %v", cid, ln, obj)
 	return cid
 }
 
@@ -41,6 +41,6 @@ func (s actorStorage) Get(cid cid.Cid, obj specsruntime.CBORUnmarshaler) bool {
 	if err != nil {
 		panic(fmt.Errorf("could not get obj from store. %s", err))
 	}
-	s.gasTank.Charge(s.pricelist.OnIpldGet(ln))
+	s.gasTank.Charge(s.pricelist.OnIpldGet(ln), "storage get %s %d bytes into %v", cid, ln, obj)
 	return true
 }

@@ -42,31 +42,31 @@ type syscalls struct {
 var _ specsruntime.Syscalls = (*syscalls)(nil)
 
 func (sys syscalls) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) error {
-	sys.gasTank.Charge(sys.pricelist.OnVerifySignature(signature.Type, len(plaintext)))
+	sys.gasTank.Charge(sys.pricelist.OnVerifySignature(signature.Type, len(plaintext)), "VerifySignature")
 	return sys.impl.VerifySignature(sys.ctx, sys.state, signature, signer, plaintext)
 }
 
 func (sys syscalls) HashBlake2b(data []byte) [32]byte {
-	sys.gasTank.Charge(sys.pricelist.OnHashing(len(data)))
+	sys.gasTank.Charge(sys.pricelist.OnHashing(len(data)), "HashBlake2b")
 	return sys.impl.HashBlake2b(data)
 }
 
 func (sys syscalls) ComputeUnsealedSectorCID(proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
-	sys.gasTank.Charge(sys.pricelist.OnComputeUnsealedSectorCid(proof, &pieces))
+	sys.gasTank.Charge(sys.pricelist.OnComputeUnsealedSectorCid(proof, &pieces), "ComputeUnsealedSectorCID")
 	return sys.impl.ComputeUnsealedSectorCID(sys.ctx, proof, pieces)
 }
 
 func (sys syscalls) VerifySeal(info abi.SealVerifyInfo) error {
-	sys.gasTank.Charge(sys.pricelist.OnVerifySeal(info))
+	sys.gasTank.Charge(sys.pricelist.OnVerifySeal(info), "VerifySeal")
 	return sys.impl.VerifySeal(sys.ctx, info)
 }
 
 func (sys syscalls) VerifyPoSt(info abi.PoStVerifyInfo) error {
-	sys.gasTank.Charge(sys.pricelist.OnVerifyPost(info))
+	sys.gasTank.Charge(sys.pricelist.OnVerifyPost(info), "VerifyPoSt")
 	return sys.impl.VerifyPoSt(sys.ctx, info)
 }
 
 func (sys syscalls) VerifyConsensusFault(h1, h2, extra []byte, earliest abi.ChainEpoch) (*specsruntime.ConsensusFault, error) {
-	sys.gasTank.Charge(sys.pricelist.OnVerifyConsensusFault())
+	sys.gasTank.Charge(sys.pricelist.OnVerifyConsensusFault(), "VerifyConsensusFault")
 	return sys.impl.VerifyConsensusFault(sys.ctx, h1, h2, extra, sys.head, sys.state, earliest)
 }

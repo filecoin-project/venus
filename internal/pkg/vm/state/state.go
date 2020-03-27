@@ -5,12 +5,13 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
 // Review: can we get rid of this?
@@ -21,7 +22,7 @@ type Tree interface {
 	GetActor(ctx context.Context, key actorKey) (*actor.Actor, bool, error)
 	DeleteActor(ctx context.Context, key actorKey) error
 
-	Rollback(ctx context.Context) error
+	Rollback(ctx context.Context, root Root) error
 	Commit(ctx context.Context) (Root, error)
 
 	GetAllActors(ctx context.Context) <-chan GetAllActorsResult
@@ -43,8 +44,8 @@ type actorKey = address.Address
 type State struct {
 	store    cbor.IpldStore
 	dirty    bool
-	root     Root
-	rootNode *hamt.Node
+	root     Root       // The last committed root.
+	rootNode *hamt.Node // The current (not necessarily committed) root node.
 }
 
 // NewState creates a new VM state.
@@ -138,15 +139,15 @@ func (st *State) Commit(ctx context.Context) (Root, error) {
 
 	st.root = root
 	st.dirty = false
-	return st.root, nil
+	return root, nil
 }
 
-// Rollback discards all uncommitted changes.
-func (st *State) Rollback(ctx context.Context) error {
+// Rollback resets the root to a provided value.
+func (st *State) Rollback(ctx context.Context, root Root) error {
 	// load the original root node again
-	rootNode, err := hamt.LoadNode(ctx, st.store, st.root, hamt.UseTreeBitWidth(TreeBitWidth))
+	rootNode, err := hamt.LoadNode(ctx, st.store, root, hamt.UseTreeBitWidth(TreeBitWidth))
 	if err != nil {
-		return errors.Wrapf(err, "failed to load node for %s", st.root)
+		return errors.Wrapf(err, "failed to load node for %s", root)
 	}
 
 	// reset the root node
@@ -155,7 +156,7 @@ func (st *State) Rollback(ctx context.Context) error {
 	return nil
 }
 
-// Root returns the root of the tree and whether that root is dirty.
+// Root returns the last committed root of the tree and whether any writes have since occurred.
 func (st *State) Root() (Root, bool) {
 	return st.root, st.dirty
 }

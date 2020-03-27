@@ -19,7 +19,6 @@ import (
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
@@ -132,22 +131,32 @@ func (shc *stateHandleContext) storeActor(actr *actor.Actor) {
 
 // runtime aborts are trapped by invoke, it will always return an exit code.
 func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.ExitCode) {
+	// Checkpoint state, for restoration on rollback
+	// Note that changes prior to invocation (sequence number bump and gas prepayment) persist even if invocation fails.
+	priorRoot, err := ctx.rt.checkpoint()
+	if err != nil {
+		panic(err)
+	}
+
+	// Install handler for abort, which rolls back all state changes from this and any nested invocations.
+	// This is the only path by which a non-OK exit code may be returned.
 	defer func() {
 		if r := recover(); r != nil {
-			// rollback any pending changes
-			if err := ctx.rt.rollback(); err != nil {
+			if err := ctx.rt.rollback(priorRoot); err != nil {
 				panic(err)
 			}
 			switch r.(type) {
 			case runtime.ExecutionPanic:
 				p := r.(runtime.ExecutionPanic)
+
 				vmlog.Warnw("Abort during actor execution.",
 					"errorMessage", p,
 					"exitCode", p.Code(),
 					"sender", ctx.msg.from,
 					"receiver", ctx.msg.to,
 					"methodNum", ctx.msg.method,
-					"value", ctx.msg.value)
+					"value", ctx.msg.value,
+					"gasLimit", ctx.gasTank.gasLimit)
 				ret = returnWrapper{}
 				errcode = p.Code()
 				return
@@ -155,11 +164,6 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 				// do not trap unknown panics
 				debug.PrintStack()
 				panic(r)
-			}
-		} else {
-			// checkpoint vm
-			if _, err := ctx.rt.checkpoint(); err != nil {
-				panic(err)
 			}
 		}
 	}()
@@ -177,7 +181,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 	}
 
 	// 1. charge gas for msg
-	ctx.gasTank.Charge(ctx.rt.pricelist.OnMethodInvocation(ctx.msg.value, ctx.msg.method))
+	ctx.gasTank.Charge(ctx.rt.pricelist.OnMethodInvocation(ctx.msg.value, ctx.msg.method), "method invocation")
 
 	// 2. load target actor
 	// Note: we replace the "to" address with the normalized version
@@ -412,7 +416,7 @@ func (r returnWrapper) Into(o specsruntime.CBORUnmarshaler) error {
 func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodNum, params specsruntime.CBORMarshaler, value abi.TokenAmount) (ret specsruntime.SendReturn, errcode exitcode.ExitCode) {
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {
-		runtime.Abortf(exitcode.SysErrorIllegalActor, "Calling Send() is not allowed during side-effet lock")
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "Calling Send() is not allowed during side-effect lock")
 	}
 	// prepare
 	// 1. alias fromActor
@@ -445,12 +449,6 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 /// Balance implements runtime.InvocationContext.
 func (ctx *invocationContext) Balance() abi.TokenAmount {
 	return ctx.toActor.Balance
-}
-
-// Charge implements runtime.InvocationContext.
-func (ctx *invocationContext) Charge(cost gas.Unit) error {
-	ctx.gasTank.Charge(cost)
-	return nil
 }
 
 //
@@ -500,7 +498,7 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 
 	vmlog.Infof("creating actor, friendly-name: %s, code: %s, addr: %s\n", builtin.ActorNameByCode(codeID), codeID, addr)
 
-	ctx.gasTank.Charge(ctx.rt.pricelist.OnCreateActor())
+	ctx.gasTank.Charge(ctx.rt.pricelist.OnCreateActor(), "CreateActor code %s, address %s", codeID, addr)
 
 	// Check existing address. If nothing there, create empty actor.
 	//
@@ -533,7 +531,7 @@ func (ctx *invocationContext) DeleteActor() {
 	if !found {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "delete non-existent actor %s", receiverActor)
 	}
-	ctx.gasTank.Charge(ctx.rt.pricelist.OnDeleteActor())
+	ctx.gasTank.Charge(ctx.rt.pricelist.OnDeleteActor(), "DeleteActor %s", receiver)
 
 	// Transfer any remaining balance to the beneficiary.
 	// This looks like it could cause a problem with gas refund going to a non-existent actor, but the gas payer
