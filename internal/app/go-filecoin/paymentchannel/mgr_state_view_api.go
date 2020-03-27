@@ -18,16 +18,16 @@ import (
 // the paymentchannel.Manager
 
 type ManagerStateViewer struct {
-	reader ChainReader
+	reader chainReader
 	viewer *state.Viewer
 }
 
 // ChainReader is the subset of the ChainReadWriter API that the Manager uses
-type ChainReader interface {
+type chainReader interface {
 	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
 }
 
-func NewManagerStateViewer(cr ChainReader, cs *cborutil.IpldStore) *ManagerStateViewer {
+func NewManagerStateViewer(cr chainReader, cs *cborutil.IpldStore) *ManagerStateViewer {
 	stateViewer := state.NewViewer(cs)
 	return &ManagerStateViewer{cr, stateViewer}
 }

@@ -84,11 +84,11 @@ func TestManager_CreatePaymentChannel(t *testing.T) {
 			testAPI.MsgWaitErr = tc.waitErr
 			clientAddr := spect.NewIDAddr(t, rand.Uint64())
 			minerAddr := spect.NewIDAddr(t, rand.Uint64())
-			paychUniqueAddr := spect.NewActorAddr(t, "paych")
+			paych := spect.NewActorAddr(t, "paych")
 			blockHeight := uint64(1234)
 			m := NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 
-			testAPI.StubCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, balance, exitcode.Ok, blockHeight)
+			testAPI.ExpectedMsgCid, testAPI.ExpectedResult = GenCreatePaychActorMessage(t, clientAddr, minerAddr, paych, balance, exitcode.Ok, blockHeight)
 
 			_, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
 			assert.EqualError(t, err, tc.expErr)
@@ -174,7 +174,8 @@ func TestManager_AddVoucherToChannel(t *testing.T) {
 		lane, err := manager.AllocateLane(paychUniqueAddr)
 		require.NoError(t, err)
 		v.Lane = lane
-		testAPI.StubCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, balance, exitcode.Ok, 42)
+		testAPI.ExpectedMsgCid, testAPI.ExpectedResult = GenCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, balance, exitcode.Ok, 42)
+
 		assert.NoError(t, manager.AddVoucherToChannel(paychUniqueAddr, &v))
 	})
 
@@ -338,7 +339,7 @@ func requireSetupPaymentChannel(t *testing.T, testAPI *FakePaymentChannelAPI, m 
 	paychUniqueAddr := spect.NewActorAddr(t, "abcd123")
 	blockHeight := uint64(1234)
 
-	testAPI.StubCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, balance, exitcode.Ok, blockHeight)
+	testAPI.ExpectedMsgCid, testAPI.ExpectedResult = GenCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, balance, exitcode.Ok, blockHeight)
 
 	addr, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
 	require.NoError(t, err)

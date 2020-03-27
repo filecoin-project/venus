@@ -380,7 +380,8 @@ func makePaychMgr(ctx context.Context, t *testing.T, client, miner, paych addres
 	pchMgr := pch.NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 	blockHeight := uint64(1234)
 
-	testAPI.StubCreatePaychActorMessage(t, client, miner, paych, channelAmt, exitcode.Ok, blockHeight)
+	testAPI.ExpectedMsgCid, testAPI.ExpectedResult = pch.GenCreatePaychActorMessage(t, client, miner, paych, channelAmt, exitcode.Ok, blockHeight)
+
 	viewer.AddActorWithState(paych, client, miner, address.Undef)
 	return pchMgr
 }

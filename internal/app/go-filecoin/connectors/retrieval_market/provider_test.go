@@ -172,6 +172,6 @@ func makeViewerAndManager(ctx context.Context, t *testing.T, client, miner, payc
 	blockHeight := uint64(1234)
 	balance := types.NewAttoFILFromFIL(1000)
 
-	testAPI.StubCreatePaychActorMessage(t, client, miner, paych, balance, exitcode.Ok, blockHeight)
+	testAPI.ExpectedMsgCid, testAPI.ExpectedResult = pch.GenCreatePaychActorMessage(t, client, miner, paych, balance, exitcode.Ok, blockHeight)
 	return viewer, pchMgr
 }
