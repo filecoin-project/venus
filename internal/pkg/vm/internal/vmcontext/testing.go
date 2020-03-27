@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -289,67 +290,58 @@ type ValidationApplier struct{}
 func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state vstate.VMWrapper, msg *vtypes.Message) (vtypes.MessageReceipt, abi.TokenAmount, abi.TokenAmount, error) {
 	st := state.(*ValidationVMWrapper)
 
-	// set epoch
-	// Note: this would have normally happened during `ApplyTipset()`
-	st.vm.currentEpoch = context.Epoch
-	st.vm.pricelist = gascost.PricelistByEpoch(context.Epoch)
+	// Prepare message and VM.
+	ourMsg := a.preApplyMessage(st, context, msg)
 
-	// map message
-	// Dragons: fix after cleaning up our msg
-	ourmsg := toOurMessage(msg)
+	// Invoke.
+	ourreceipt, penalty, reward := st.vm.applyMessage(ourMsg, ourMsg.OnChainLen(), &fakeRandSrc{})
 
-	// invoke vm
-	ourreceipt, penalty, reward := st.vm.applyMessage(ourmsg, ourmsg.OnChainLen(), &fakeRandSrc{})
-
-	// commit and persist changes
-	// Note: this is not done on production for each msg
-	if err := st.PersistChanges(); err != nil {
-		return vtypes.MessageReceipt{}, big.Zero(), big.Zero(), err
-	}
-
-	// map receipt
-	receipt := vtypes.MessageReceipt{
-		ExitCode:    ourreceipt.ExitCode,
-		ReturnValue: ourreceipt.ReturnValue,
-		GasUsed:     vtypes.GasUnits(ourreceipt.GasUsed),
-	}
-
-	return receipt, penalty, reward, nil
+	// Persist changes.
+	receipt, err := a.postApplyMessage(st, ourreceipt)
+	return receipt, penalty, reward, err
 }
 
 func (a *ValidationApplier) ApplySignedMessage(context *vtypes.ExecutionContext, state vstate.VMWrapper, msg *vtypes.SignedMessage) (vtypes.MessageReceipt, abi.TokenAmount, abi.TokenAmount, error) {
 	st := state.(*ValidationVMWrapper)
 
+	// Prepare message and VM.
+	ourMsg := a.preApplyMessage(st, context, &msg.Message)
+	ourSigned := &types.SignedMessage{
+		Message:   *ourMsg,
+		Signature: msg.Signature,
+	}
+
+	// Invoke.
+	ourreceipt, penalty, reward := st.vm.applyMessage(ourMsg, ourSigned.OnChainLen(), &fakeRandSrc{})
+
+	// Persist changes.
+	receipt, err := a.postApplyMessage(st, ourreceipt)
+	return receipt, penalty, reward, err
+}
+
+func (a *ValidationApplier) preApplyMessage(st *ValidationVMWrapper, context *vtypes.ExecutionContext, msg *vtypes.Message) *types.UnsignedMessage {
 	// set epoch
 	// Note: this would have normally happened during `ApplyTipset()`
 	st.vm.currentEpoch = context.Epoch
 	st.vm.pricelist = gascost.PricelistByEpoch(context.Epoch)
 
 	// map message
-	// Dragons: fix after cleaning up our msg
-	ourmsg := &types.SignedMessage{
-		Message:   *toOurMessage(&msg.Message),
-		Signature: msg.Signature,
-	}
+	return toOurMessage(msg)
+}
 
-	// invoke vm
-	ourreceipt, penalty, reward := st.vm.applyMessage(&ourmsg.Message, ourmsg.OnChainLen(), &fakeRandSrc{})
-
+func (a *ValidationApplier) postApplyMessage(st *ValidationVMWrapper, ourreceipt message.Receipt) (vtypes.MessageReceipt, error) {
 	// commit and persist changes
 	// Note: this is not done on production for each msg
 	if err := st.PersistChanges(); err != nil {
-		return vtypes.MessageReceipt{}, big.Zero(), big.Zero(), err
+		return vtypes.MessageReceipt{}, err
 	}
 
 	// map receipt
-	receipt := vtypes.MessageReceipt{
+	return vtypes.MessageReceipt{
 		ExitCode:    ourreceipt.ExitCode,
 		ReturnValue: ourreceipt.ReturnValue,
 		GasUsed:     vtypes.GasUnits(ourreceipt.GasUsed),
-	}
-
-	return receipt, penalty, reward, nil
-
+	}, nil
 }
 
 func toOurMessage(theirs *vtypes.Message) *types.UnsignedMessage {
