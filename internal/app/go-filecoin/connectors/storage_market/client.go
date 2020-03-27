@@ -75,7 +75,12 @@ func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr, wall
 
 // ListClientDeals returns all deals published on chain for the given account
 func (s *StorageClientNodeConnector) ListClientDeals(ctx context.Context, addr address.Address, tok shared.TipSetToken) ([]storagemarket.StorageDeal, error) {
-	return s.listDeals(ctx, addr, tok)
+	var tsk block.TipSetKey
+	if err := encoding.Decode(tok, &tsk); err != nil {
+		return nil, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
+	}
+
+	return s.listDeals(ctx, addr, tsk)
 }
 
 // ListStorageProviders finds all miners that will provide storage

@@ -223,12 +223,7 @@ func (c *connectorCommon) getBalance(ctx context.Context, root cid.Cid, addr add
 	return balance, nil
 }
 
-func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address, tok shared.TipSetToken) ([]storagemarket.StorageDeal, error) {
-	var tsk block.TipSetKey
-	if err := encoding.Decode(tok, &tsk); err != nil {
-		return nil, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
-	}
-
+func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address, tsk block.TipSetKey) ([]storagemarket.StorageDeal, error) {
 	var smState spasm.State
 	err := c.chainStore.GetActorStateAt(ctx, tsk, builtin.StorageMarketActorAddr, &smState)
 	if err != nil {
