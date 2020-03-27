@@ -19,7 +19,6 @@ import (
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
@@ -149,13 +148,15 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 			switch r.(type) {
 			case runtime.ExecutionPanic:
 				p := r.(runtime.ExecutionPanic)
+
 				vmlog.Warnw("Abort during actor execution.",
 					"errorMessage", p,
 					"exitCode", p.Code(),
 					"sender", ctx.msg.from,
 					"receiver", ctx.msg.to,
 					"methodNum", ctx.msg.method,
-					"value", ctx.msg.value)
+					"value", ctx.msg.value,
+					"gasLimit", ctx.gasTank.gasLimit)
 				ret = returnWrapper{}
 				errcode = p.Code()
 				return
@@ -180,7 +181,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 	}
 
 	// 1. charge gas for msg
-	ctx.gasTank.Charge(ctx.rt.pricelist.OnMethodInvocation(ctx.msg.value, ctx.msg.method))
+	ctx.gasTank.Charge(ctx.rt.pricelist.OnMethodInvocation(ctx.msg.value, ctx.msg.method), "method invocation")
 
 	// 2. load target actor
 	// Note: we replace the "to" address with the normalized version
@@ -450,12 +451,6 @@ func (ctx *invocationContext) Balance() abi.TokenAmount {
 	return ctx.toActor.Balance
 }
 
-// Charge implements runtime.InvocationContext.
-func (ctx *invocationContext) Charge(cost gas.Unit) error {
-	ctx.gasTank.Charge(cost)
-	return nil
-}
-
 //
 // implement runtime.InvocationContext for invocationContext
 //
@@ -503,7 +498,7 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 
 	vmlog.Infof("creating actor, friendly-name: %s, code: %s, addr: %s\n", builtin.ActorNameByCode(codeID), codeID, addr)
 
-	ctx.gasTank.Charge(ctx.rt.pricelist.OnCreateActor())
+	ctx.gasTank.Charge(ctx.rt.pricelist.OnCreateActor(), "CreateActor code %s, address %s", codeID, addr)
 
 	// Check existing address. If nothing there, create empty actor.
 	//
@@ -536,7 +531,7 @@ func (ctx *invocationContext) DeleteActor() {
 	if !found {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "delete non-existent actor %s", receiverActor)
 	}
-	ctx.gasTank.Charge(ctx.rt.pricelist.OnDeleteActor())
+	ctx.gasTank.Charge(ctx.rt.pricelist.OnDeleteActor(), "DeleteActor %s", receiver)
 
 	// Transfer any remaining balance to the beneficiary.
 	// This looks like it could cause a problem with gas refund going to a non-existent actor, but the gas payer

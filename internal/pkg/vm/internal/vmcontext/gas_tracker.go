@@ -1,9 +1,12 @@
 package vmcontext
 
 import (
+	"fmt"
+
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 )
 
 // GasTracker maintains the state of gas usage throughout the execution of a message.
@@ -23,9 +26,10 @@ func NewGasTracker(limit gas.Unit) GasTracker {
 // Charge will add the gas charge to the current method gas context.
 //
 // WARNING: this method will panic if there is no sufficient gas left.
-func (t *GasTracker) Charge(amount gas.Unit) {
+func (t *GasTracker) Charge(amount gas.Unit, msg string, args ...interface{}) {
 	if ok := t.TryCharge(amount); !ok {
-		runtime.Abort(exitcode.SysErrOutOfGas)
+		fmsg := fmt.Sprintf(msg, args...)
+		runtime.Abortf(exitcode.SysErrOutOfGas, "gas limit %d exceeded with charge of %d: %s", t.gasLimit, amount, fmsg)
 	}
 }
 
