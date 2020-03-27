@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
@@ -139,12 +141,12 @@ func (r *RetrievalClientConnector) getBlockHeight(tok shared.TipSetToken) (abi.C
 }
 
 func (r *RetrievalClientConnector) getBalance(ctx context.Context, account address.Address, tok shared.TipSetToken) (types.AttoFIL, error) {
-	ts, err := r.getTipSet(tok)
-	if err != nil {
-		return types.ZeroAttoFIL, err
+	var tsk block.TipSetKey
+	if err := encoding.Decode(tok, &tsk); err != nil {
+		return types.ZeroAttoFIL, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
 	}
 
-	actor, err := r.cs.GetActorAt(ctx, ts.Key(), account)
+	actor, err := r.cs.GetActorAt(ctx, tsk, account)
 	if err != nil {
 		return types.ZeroAttoFIL, err
 	}
@@ -158,14 +160,9 @@ func (r *RetrievalClientConnector) GetChainHead(ctx context.Context) (shared.Tip
 
 func (r *RetrievalClientConnector) getTipSet(tok shared.TipSetToken) (block.TipSet, error) {
 	var tsk block.TipSetKey
-	if err := tsk.UnmarshalCBOR(tok); err != nil {
-		return block.TipSet{}, err
+	if err := encoding.Decode(tok, &tsk); err != nil {
+		return block.TipSet{}, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
 	}
 
-	ts, err := r.cs.GetTipSet(tsk)
-	if err != nil {
-		return block.TipSet{}, err
-	}
-
-	return ts, nil
+	return r.cs.GetTipSet(tsk)
 }

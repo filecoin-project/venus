@@ -115,9 +115,14 @@ func (c *connectorCommon) SignBytes(ctx context.Context, signer address.Address,
 	return &sig, err
 }
 
-func (c *connectorCommon) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {
+func (c *connectorCommon) GetBalance(ctx context.Context, addr address.Address, tok shared.TipSetToken) (storagemarket.Balance, error) {
+	var tsk block.TipSetKey
+	if err := encoding.Decode(tok, &tsk); err != nil {
+		return storagemarket.Balance{}, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
+	}
+
 	var smState spasm.State
-	err := c.chainStore.GetActorStateAt(ctx, c.chainStore.Head(), builtin.StorageMarketActorAddr, &smState)
+	err := c.chainStore.GetActorStateAt(ctx, tsk, builtin.StorageMarketActorAddr, &smState)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}
@@ -218,9 +223,9 @@ func (c *connectorCommon) getBalance(ctx context.Context, root cid.Cid, addr add
 	return balance, nil
 }
 
-func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
+func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address, tsk block.TipSetKey) ([]storagemarket.StorageDeal, error) {
 	var smState spasm.State
-	err := c.chainStore.GetActorStateAt(ctx, c.chainStore.Head(), builtin.StorageMarketActorAddr, &smState)
+	err := c.chainStore.GetActorStateAt(ctx, tsk, builtin.StorageMarketActorAddr, &smState)
 	if err != nil {
 		return nil, err
 	}
@@ -268,15 +273,18 @@ func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address) (
 	return deals, nil
 }
 
-func (c *connectorCommon) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) bool {
-	// This method signature must match that required by the storage market connector, which should be changed
-	// to include a context and return error.
-	head := c.chainStore.Head()
-	view, err := c.chainStore.StateView(head)
-	if err != nil {
-		return false
+func (c *connectorCommon) VerifySignature(ctx context.Context, signature crypto.Signature, signer address.Address, plaintext []byte, tok shared.TipSetToken) (bool, error) {
+	var tsk block.TipSetKey
+	if err := encoding.Decode(tok, &tsk); err != nil {
+		return false, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
 	}
+
+	view, err := c.chainStore.StateView(tsk)
+	if err != nil {
+		return false, nil
+	}
+
 	validator := state.NewSignatureValidator(view)
-	err = validator.ValidateSignature(context.TODO(), plaintext, signer, signature)
-	return err == nil
+
+	return nil == validator.ValidateSignature(ctx, plaintext, signer, signature), nil
 }

@@ -213,8 +213,7 @@ func (m *StorageMinerNodeConnector) WaitForSelfDeals(ctx context.Context, mcid c
 // SendPreCommitSector creates a pre-commit sector message and sends it to the
 // network.
 func (m *StorageMinerNodeConnector) SendPreCommitSector(ctx context.Context, proofType abi.RegisteredProof, sectorNum abi.SectorNumber, sealedCID cid.Cid, sealRandEpoch, expiration abi.ChainEpoch, pieces ...storagenode.PieceWithDealInfo) (cid.Cid, error) {
-	head := m.chainState.Head()
-	waddr, err := m.getMinerWorkerAddress(ctx, head)
+	waddr, err := m.getMinerWorkerAddress(ctx, m.chainState.Head())
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -266,8 +265,7 @@ func (m *StorageMinerNodeConnector) WaitForPreCommitSector(ctx context.Context, 
 // SendProveCommitSector creates a commit sector message and sends it to the
 // network.
 func (m *StorageMinerNodeConnector) SendProveCommitSector(ctx context.Context, proofType abi.RegisteredProof, sectorNum abi.SectorNumber, proof []byte, deals ...abi.DealID) (cid.Cid, error) {
-	head := m.chainState.Head()
-	waddr, err := m.getMinerWorkerAddress(ctx, head)
+	waddr, err := m.getMinerWorkerAddress(ctx, m.chainState.Head())
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -312,7 +310,7 @@ func (m *StorageMinerNodeConnector) WaitForProveCommitSector(ctx context.Context
 // GetSealTicket produces the seal ticket used when pre-committing a sector.
 func (m *StorageMinerNodeConnector) GetSealTicket(ctx context.Context, tok storagenode.TipSetToken) (storagenode.SealTicket, error) {
 	var tsk block.TipSetKey
-	if err := tsk.UnmarshalCBOR(tok); err != nil {
+	if err := encoding.Decode(tok, &tsk); err != nil {
 		return storagenode.SealTicket{}, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
 	}
 
@@ -491,7 +489,7 @@ func (m *StorageMinerNodeConnector) WaitForReportFaults(ctx context.Context, msg
 
 func (m *StorageMinerNodeConnector) GetSealedCID(ctx context.Context, tok storagenode.TipSetToken, sectorNum abi.SectorNumber) (sealedCID cid.Cid, wasFound bool, err error) {
 	var tsk block.TipSetKey
-	if err := tsk.UnmarshalCBOR(tok); err != nil {
+	if err := encoding.Decode(tok, &tsk); err != nil {
 		return cid.Undef, false, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
 	}
 

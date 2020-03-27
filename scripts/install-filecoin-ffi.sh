@@ -6,4 +6,4 @@ subm_dir="vendors/filecoin-ffi"
 
 git submodule update --init --recursive $subm_dir
 
-(cd ${subm_dir} ; ./install-filecoin ;)
+(cd ${subm_dir} ; ./install-filcrypto ;)
