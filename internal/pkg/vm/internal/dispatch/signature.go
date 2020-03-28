@@ -36,17 +36,12 @@ func (ms *methodSignature) ArgInterface(argBytes []byte) (interface{}, error) {
 	t := ms.method.Type().In(1)
 	v := reflect.New(t)
 
-	// Dragons: fix this on our encoding library
+	// This would be better fixed in then encoding library.
 	obj := v.Elem().Interface()
 	if _, ok := obj.(runtime.CBORUnmarshaler); ok {
 		buf := bytes.NewBuffer(argBytes)
 		auxv := reflect.New(t.Elem())
 		obj = auxv.Interface()
-
-		// do not try to unmarshal empty arrays
-		if len(argBytes) == 0 {
-			return obj, nil
-		}
 
 		unmarsh := obj.(runtime.CBORUnmarshaler)
 		if err := unmarsh.UnmarshalCBOR(buf); err != nil {
