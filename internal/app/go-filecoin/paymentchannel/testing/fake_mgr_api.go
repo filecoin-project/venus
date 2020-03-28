@@ -1,4 +1,4 @@
-package paymentchannel
+package testing
 
 import (
 	"context"
@@ -15,6 +15,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -112,10 +113,10 @@ func GenCreatePaychActorMessage(
 
 	msg := types.NewUnsignedMessage(clientAccountAddr, builtin.InitActorAddr, 1,
 		types.NewAttoFIL(amt.Int), builtin.MethodsInit.Exec, []byte{})
-	msg.GasPrice = defaultGasPrice
-	msg.GasLimit = defaultGasLimit
+	msg.GasPrice = types.NewAttoFILFromFIL(100)
+	msg.GasLimit = gas.NewGas(300)
 
-	params, err := PaychActorCtorExecParamsFor(clientAccountAddr, minerAccountAddr)
+	params, err := paymentchannel.PaychActorCtorExecParamsFor(clientAccountAddr, minerAccountAddr)
 	if err != nil {
 		t.Fatal("could not construct send params")
 	}
@@ -144,5 +145,5 @@ func requireEncode(t *testing.T, params interface{}) []byte {
 	return encodedParams
 }
 
-var _ MsgSender = &FakePaymentChannelAPI{}
-var _ MsgWaiter = &FakePaymentChannelAPI{}
+var _ paymentchannel.MsgSender = &FakePaymentChannelAPI{}
+var _ paymentchannel.MsgWaiter = &FakePaymentChannelAPI{}

@@ -1,4 +1,4 @@
-package paymentchannel
+package testing
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
+
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 )
 
 // FakeStateViewer mocks a state viewer for payment channel actor testing
@@ -56,4 +58,4 @@ func (f *FakeStateViewer) AddMinerWithState(minerActor, minerWorker address.Addr
 	f.actors[minerActor] = &FakeActorState{MinerWorker: minerWorker}
 }
 
-var _ ActorStateViewer = &FakeStateViewer{}
+var _ paymentchannel.ActorStateViewer = &FakeStateViewer{}

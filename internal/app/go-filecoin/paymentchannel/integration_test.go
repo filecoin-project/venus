@@ -9,8 +9,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	specmock "github.com/filecoin-project/specs-actors/support/mock"
-	spect "github.com/filecoin-project/specs-actors/support/testing"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	dss "github.com/ipfs/go-datastore/sync"
@@ -21,6 +19,7 @@ import (
 
 	retrievalmarketconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/retrieval_market"
 	pch "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
+	paychtest "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel/testing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -32,26 +31,20 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
-//
 func TestConstructInitActor(t *testing.T) {
 	ctx := context.Background()
-	receiver := spect.NewIDAddr(t, 1000)
-	builder := specmock.NewBuilder(context.Background(), receiver).WithCaller(builtin.SystemActorAddr, builtin.SystemActorCodeID)
-	fms := pch.NewFakeActorInterface(t, ctx, builder)
+	fms := paychtest.NewFakeActorInterface(t, ctx, abi.NewTokenAmount(9999))
 	assert.NotNil(t, fms)
 }
 
+// TestCreatePaymentChannel tests that the RetrievalClient can call through to the InitActor and
+// successfully cause a new payment channel to be created.
 func TestCreatePaymentChannel(t *testing.T) {
 	ctx := context.Background()
-
 	balance := abi.NewTokenAmount(1000000)
 	chainBuilder, bs, genTs := testSetup2(ctx, t)
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
-	builder := specmock.NewBuilder(context.Background(), builtin.InitActorAddr).
-		WithBalance(balance, abi.NewTokenAmount(0))
-
-	fms := pch.NewFakeActorInterface(t, ctx, builder)
-	assert.NotNil(t, fms)
+	fms := paychtest.NewFakeActorInterface(t, ctx, balance)
 	rt := fms.Runtime
 
 	channelAmt := abi.NewTokenAmount(101)
@@ -62,7 +55,7 @@ func TestCreatePaymentChannel(t *testing.T) {
 	fakeProvider.SetHead(genTs.Key())
 	fakeProvider.SetActor(client, clientActor)
 
-	viewer := pch.NewFakeStateViewer(t)
+	viewer := paychtest.NewFakeStateViewer(t)
 
 	pchMgr := pch.NewManager(context.Background(), ds, fms, fms, viewer)
 
@@ -105,37 +98,12 @@ func testSetup2(ctx context.Context, t *testing.T) (*chain.Builder, bstore.Block
 	return builder, bs, genTs
 }
 
-func testSetup(ctx context.Context, t *testing.T, bal abi.TokenAmount) (bstore.Blockstore, *message.FakeProvider, address.Address, address.Address, block.TipSet) {
-	_, builder, genTs, chainStore, st1 := requireNewEmptyChainStore(ctx, t)
-	rootBlk := builder.AppendBlockOnBlocks()
-	th.RequireNewTipSet(t, rootBlk)
-	require.NoError(t, chainStore.SetHead(ctx, genTs))
-	root, err := st1.Commit(ctx)
-	require.NoError(t, err)
-
-	// add tipset and state to chainstore
-	require.NoError(t, chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
-		TipSet:          genTs,
-		TipSetStateRoot: root,
-		TipSetReceipts:  types.EmptyReceiptsCID,
-	}))
-
-	ds := repo.NewInMemoryRepo().ChainDatastore()
-	bs := bstore.NewBlockstore(ds)
-
-	// TODO: use a real provider?
-
-	fakeProvider := message.NewFakeProvider(t)
-	fakeProvider.Builder = builder
-	clientAddr := spect.NewIDAddr(t, 102)
-	clientActor := actor.NewActor(builtin.AccountActorCodeID, bal)
-	fakeProvider.SetHead(genTs.Key())
-	fakeProvider.SetActor(clientAddr, clientActor)
-
-	minerAddr := spect.NewIDAddr(t, 101)
-
-	return bs, fakeProvider, clientAddr, minerAddr, genTs
+func TestPaychActorIFace(t *testing.T) {
+	ctx := context.Background()
+	fai := paychtest.NewFakePaychActorIface(t, ctx, abi.NewTokenAmount(1200))
+	require.NotNil(t, fai)
 }
+
 func requireNewEmptyChainStore(ctx context.Context, t *testing.T) (cid.Cid, *chain.Builder, block.TipSet, *chain.Store, state.Tree) {
 	store := cbor.NewMemCborStore()
 

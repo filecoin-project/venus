@@ -52,6 +52,9 @@ func NewRetrievalProtocolSubmodule(
 	counter := storedcounter.New(ds, dsKey)
 	resolver := discovery.Multi(discovery.NewLocal(ds))
 	marketClient, err := impl.NewClient(netwk, bs, cnode, resolver, ds, counter)
+	if err != nil {
+		return nil, err
+	}
 	cnode.SetRetrievalClient(marketClient)
 
 	return &RetrievalProtocolSubmodule{pnode, cnode}, nil

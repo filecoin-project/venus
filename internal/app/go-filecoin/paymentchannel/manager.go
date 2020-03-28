@@ -284,17 +284,8 @@ func (pm *Manager) saveNewVoucher(paychAddr address.Address, voucher *paychActor
 	return nil
 }
 
-// GetMinerWorker mocks getting a miner worker address from the miner address
+// GetMinerWorkerAddress mocks getting a miner worker address from the miner address
 func (pm *Manager) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
 	_, fcworker, err := pm.stateViewer.MinerControlAddresses(ctx, miner, tok)
 	return fcworker, err
-}
-
-func (pm *Manager) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
-	_, workerAddr, err := pm.stateViewer.MinerControlAddresses(ctx, miner, nil)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	return workerAddr, nil
 }

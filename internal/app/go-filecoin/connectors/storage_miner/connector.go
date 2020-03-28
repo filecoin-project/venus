@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 
 	"github.com/filecoin-project/go-address"
 	storagenode "github.com/filecoin-project/go-storage-miner/apis/node"
@@ -32,6 +33,7 @@ import (
 
 type chainReader interface {
 	SampleChainRandomness(ctx context.Context, head block.TipSetKey, tag crypto.DomainSeparationTag, sampleHeight abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*actor.Actor, error)
 	GetTipSetStateRoot(ctx context.Context, tipKey block.TipSetKey) (cid.Cid, error)
 	GetTipSet(key block.TipSetKey) (block.TipSet, error)
 	Head() block.TipSetKey

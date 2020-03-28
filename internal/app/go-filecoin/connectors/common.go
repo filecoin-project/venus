@@ -22,6 +22,7 @@ type ChainReader interface {
 	Head() block.TipSetKey
 }
 
+// GetChainHead gets the chain hed for the provided token
 func GetChainHead(m ChainReader) (tipSetToken []byte, tipSetEpoch abi.ChainEpoch, err error) {
 	tsk := m.Head()
 
@@ -43,6 +44,7 @@ func GetChainHead(m ChainReader) (tipSetToken []byte, tipSetEpoch abi.ChainEpoch
 	return tok, h, nil
 }
 
+// GetTipSetAt gets the tipset at the provided token
 func GetTipSetAt(m ChainReader, tok shared.TipSetToken) (block.TipSet, error) {
 	var tsk block.TipSetKey
 	if err := tsk.UnmarshalCBOR(tok); err != nil {
@@ -57,6 +59,7 @@ func GetTipSetAt(m ChainReader, tok shared.TipSetToken) (block.TipSet, error) {
 	return ts, nil
 }
 
+// GetBalance gets the balance for `account` at token `tok`
 func GetBalance(ctx context.Context, m ChainReader, account address.Address, tok shared.TipSetToken) (types.AttoFIL, error) {
 	ts, err := GetTipSetAt(m, tok)
 	if err != nil {
@@ -72,6 +75,7 @@ func GetBalance(ctx context.Context, m ChainReader, account address.Address, tok
 
 }
 
+// GetBlockHeight gets the block height at token `tok`
 func GetBlockHeight(m ChainReader, tok shared.TipSetToken) (abi.ChainEpoch, error) {
 	ts, err := GetTipSetAt(m, tok)
 	if err != nil {

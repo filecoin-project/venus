@@ -22,6 +22,7 @@ import (
 
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/retrieval_market"
 	pch "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
+	paychtest "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel/testing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
@@ -164,14 +165,14 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 	})
 }
 
-func makeViewerAndManager(ctx context.Context, t *testing.T, client, miner, paych address.Address, root state.Root) (*pch.FakeStateViewer, *pch.Manager) {
+func makeViewerAndManager(ctx context.Context, t *testing.T, client, miner, paych address.Address, root state.Root) (*paychtest.FakeStateViewer, *pch.Manager) {
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
-	testAPI := pch.NewFakePaymentChannelAPI(ctx, t)
-	viewer := pch.NewFakeStateViewer(t)
+	testAPI := paychtest.NewFakePaymentChannelAPI(ctx, t)
+	viewer := paychtest.NewFakeStateViewer(t)
 	pchMgr := pch.NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 	blockHeight := uint64(1234)
 	balance := types.NewAttoFILFromFIL(1000)
 
-	testAPI.ExpectedMsgCid, testAPI.ExpectedResult = pch.GenCreatePaychActorMessage(t, client, miner, paych, balance, exitcode.Ok, blockHeight)
+	testAPI.ExpectedMsgCid, testAPI.ExpectedResult = paychtest.GenCreatePaychActorMessage(t, client, miner, paych, balance, exitcode.Ok, blockHeight)
 	return viewer, pchMgr
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
+	paychtest "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel/testing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -33,8 +34,8 @@ func TestManager_GetPaymentChannelInfo(t *testing.T) {
 	t.Run("returns err if info does not exist", func(t *testing.T) {
 		ds := dss.MutexWrap(datastore.NewMapDatastore())
 		ctx := context.Background()
-		testAPI := NewFakePaymentChannelAPI(ctx, t)
-		viewer := NewFakeStateViewer(t)
+		testAPI := paychtest.NewFakePaymentChannelAPI(ctx, t)
+		viewer := paychtest.NewFakeStateViewer(t)
 		m := NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 		res, err := m.GetPaymentChannelInfo(spect.NewIDAddr(t, 1020))
 		assert.EqualError(t, err, "No state for /t01020: datastore: key not found")
@@ -45,12 +46,12 @@ func TestManager_GetPaymentChannelInfo(t *testing.T) {
 func TestManager_CreatePaymentChannel(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
-	viewer := NewFakeStateViewer(t)
+	viewer := paychtest.NewFakeStateViewer(t)
 	balance := abi.NewTokenAmount(301)
 
 	t.Run("happy path", func(t *testing.T) {
 		ds := dss.MutexWrap(datastore.NewMapDatastore())
-		testAPI := NewFakePaymentChannelAPI(ctx, t)
+		testAPI := paychtest.NewFakePaymentChannelAPI(ctx, t)
 		m := NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 		clientAddr, minerAddr, paychUniqueAddr, _ := requireSetupPaymentChannel(t, testAPI, m, balance)
 		exists, err := m.ChannelExists(paychUniqueAddr)
@@ -79,7 +80,7 @@ func TestManager_CreatePaymentChannel(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ds := dss.MutexWrap(datastore.NewMapDatastore())
-			testAPI := NewFakePaymentChannelAPI(ctx, t)
+			testAPI := paychtest.NewFakePaymentChannelAPI(ctx, t)
 			testAPI.MsgSendErr = tc.sendErr
 			testAPI.MsgWaitErr = tc.waitErr
 			clientAddr := spect.NewIDAddr(t, rand.Uint64())
@@ -88,7 +89,7 @@ func TestManager_CreatePaymentChannel(t *testing.T) {
 			blockHeight := uint64(1234)
 			m := NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 
-			testAPI.ExpectedMsgCid, testAPI.ExpectedResult = GenCreatePaychActorMessage(t, clientAddr, minerAddr, paych, balance, exitcode.Ok, blockHeight)
+			testAPI.ExpectedMsgCid, testAPI.ExpectedResult = paychtest.GenCreatePaychActorMessage(t, clientAddr, minerAddr, paych, balance, exitcode.Ok, blockHeight)
 
 			_, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
 			assert.EqualError(t, err, tc.expErr)
@@ -97,7 +98,7 @@ func TestManager_CreatePaymentChannel(t *testing.T) {
 
 	t.Run("errors if payment channel exists", func(t *testing.T) {
 		ds := dss.MutexWrap(datastore.NewMapDatastore())
-		testAPI := NewFakePaymentChannelAPI(ctx, t)
+		testAPI := paychtest.NewFakePaymentChannelAPI(ctx, t)
 		m := NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 		clientAddr, minerAddr, _, _ := requireSetupPaymentChannel(t, testAPI, m, types.ZeroAttoFIL)
 		_, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
@@ -109,10 +110,10 @@ func TestManager_AllocateLane(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
-	testAPI := NewFakePaymentChannelAPI(ctx, t)
+	testAPI := paychtest.NewFakePaymentChannelAPI(ctx, t)
 	balance := big.NewInt(301)
 
-	viewer := NewFakeStateViewer(t)
+	viewer := paychtest.NewFakeStateViewer(t)
 	m := NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 	clientAddr, minerAddr, paychUniqueAddr, _ := requireSetupPaymentChannel(t, testAPI, m, balance)
 
@@ -164,17 +165,17 @@ func TestManager_AddVoucherToChannel(t *testing.T) {
 	newV := v
 	newV.Amount = abi.NewTokenAmount(500)
 
-	testAPI := NewFakePaymentChannelAPI(ctx, t)
+	testAPI := paychtest.NewFakePaymentChannelAPI(ctx, t)
 
 	t.Run("happy path", func(t *testing.T) {
 		ds := dss.MutexWrap(datastore.NewMapDatastore())
-		viewer := NewFakeStateViewer(t)
+		viewer := paychtest.NewFakeStateViewer(t)
 		manager := NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 		clientAddr, minerAddr, paychUniqueAddr, _ := requireSetupPaymentChannel(t, testAPI, manager, balance)
 		lane, err := manager.AllocateLane(paychUniqueAddr)
 		require.NoError(t, err)
 		v.Lane = lane
-		testAPI.ExpectedMsgCid, testAPI.ExpectedResult = GenCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, balance, exitcode.Ok, 42)
+		testAPI.ExpectedMsgCid, testAPI.ExpectedResult = paychtest.GenCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, balance, exitcode.Ok, 42)
 
 		assert.NoError(t, manager.AddVoucherToChannel(paychUniqueAddr, &v))
 	})
@@ -186,7 +187,7 @@ func TestManager_AddVoucherToChannel(t *testing.T) {
 
 	t.Run("returns error if lane does not exist", func(t *testing.T) {
 		ds := dss.MutexWrap(datastore.NewMapDatastore())
-		viewer := NewFakeStateViewer(t)
+		viewer := paychtest.NewFakeStateViewer(t)
 		manager := NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 		_, _, paychUniqueAddr, _ := requireSetupPaymentChannel(t, testAPI, manager, balance)
 		assert.EqualError(t, manager.AddVoucherToChannel(paychUniqueAddr, &v), "lane does not exist 0")
@@ -221,9 +222,9 @@ func TestManager_AddVoucher(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Adding a valid voucher creates a payment channel info and saves the voucher", func(t *testing.T) {
-		testAPI := NewFakePaymentChannelAPI(ctx, t)
+		testAPI := paychtest.NewFakePaymentChannelAPI(ctx, t)
 		ds := dss.MutexWrap(datastore.NewMapDatastore())
-		viewer := NewFakeStateViewer(t)
+		viewer := paychtest.NewFakeStateViewer(t)
 		manager := NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 		viewer.AddActorWithState(paychAddr, clientAddr, minerAddr, address.Undef)
 
@@ -325,21 +326,21 @@ func TestManager_GetMinerWorker(t *testing.T) {
 	})
 }
 
-func setupViewerManager(ctx context.Context, t *testing.T, root cid.Cid) (*FakeStateViewer, *Manager) {
-	testAPI := NewFakePaymentChannelAPI(ctx, t)
+func setupViewerManager(ctx context.Context, t *testing.T, root cid.Cid) (*paychtest.FakeStateViewer, *Manager) {
+	testAPI := paychtest.NewFakePaymentChannelAPI(ctx, t)
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
-	viewer := NewFakeStateViewer(t)
+	viewer := paychtest.NewFakeStateViewer(t)
 	return viewer, NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 }
 
-func requireSetupPaymentChannel(t *testing.T, testAPI *FakePaymentChannelAPI, m *Manager, balance abi.TokenAmount) (address.Address, address.Address, address.Address, uint64) {
+func requireSetupPaymentChannel(t *testing.T, testAPI *paychtest.FakePaymentChannelAPI, m *Manager, balance abi.TokenAmount) (address.Address, address.Address, address.Address, uint64) {
 
 	clientAddr := spect.NewIDAddr(t, 901)
 	minerAddr := spect.NewIDAddr(t, 902)
 	paychUniqueAddr := spect.NewActorAddr(t, "abcd123")
 	blockHeight := uint64(1234)
 
-	testAPI.ExpectedMsgCid, testAPI.ExpectedResult = GenCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, balance, exitcode.Ok, blockHeight)
+	testAPI.ExpectedMsgCid, testAPI.ExpectedResult = paychtest.GenCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, balance, exitcode.Ok, blockHeight)
 
 	addr, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
 	require.NoError(t, err)

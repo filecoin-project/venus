@@ -23,6 +23,7 @@ import (
 
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/retrieval_market"
 	pch "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
+	paychtest "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel/testing"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -375,12 +376,12 @@ func requireNewEmptyChainStore(ctx context.Context, t *testing.T) (cid.Cid, *cha
 
 func makePaychMgr(ctx context.Context, t *testing.T, client, miner, paych address.Address, channelAmt abi.TokenAmount) *pch.Manager {
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
-	testAPI := pch.NewFakePaymentChannelAPI(ctx, t)
-	viewer := pch.NewFakeStateViewer(t)
+	testAPI := paychtest.NewFakePaymentChannelAPI(ctx, t)
+	viewer := paychtest.NewFakeStateViewer(t)
 	pchMgr := pch.NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 	blockHeight := uint64(1234)
 
-	testAPI.ExpectedMsgCid, testAPI.ExpectedResult = pch.GenCreatePaychActorMessage(t, client, miner, paych, channelAmt, exitcode.Ok, blockHeight)
+	testAPI.ExpectedMsgCid, testAPI.ExpectedResult = paychtest.GenCreatePaychActorMessage(t, client, miner, paych, channelAmt, exitcode.Ok, blockHeight)
 
 	viewer.AddActorWithState(paych, client, miner, address.Undef)
 	return pchMgr
