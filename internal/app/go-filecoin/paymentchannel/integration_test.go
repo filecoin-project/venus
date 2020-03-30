@@ -26,20 +26,16 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
-func TestConstructInitActor(t *testing.T) {
-	ctx := context.Background()
-	fms := paychtest.NewFakeActorInterface(t, ctx, abi.NewTokenAmount(9999))
-	assert.NotNil(t, fms)
-}
-
 // TestCreatePaymentChannel tests that the RetrievalClient can call through to the InitActor and
 // successfully cause a new payment channel to be created.
 func TestCreatePaymentChannel(t *testing.T) {
+	tf.UnitTest(t)
 	ctx := context.Background()
 	balance := abi.NewTokenAmount(1000000)
 	chainBuilder, bs, genTs := testSetup2(ctx, t)
@@ -101,6 +97,7 @@ func testSetup2(ctx context.Context, t *testing.T) (*chain.Builder, bstore.Block
 }
 
 func TestPaychActorIFace(t *testing.T) {
+	tf.UnitTest(t)
 	ctx := context.Background()
 	fai := paychtest.NewFakePaychActorIface(t, ctx, abi.NewTokenAmount(1200))
 	require.NotNil(t, fai)
