@@ -46,12 +46,14 @@ func TestCreatePaymentChannel(t *testing.T) {
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
 	fms := paychtest.NewFakeActorInterface(t, ctx, balance)
 	rt := fms.Runtime
+	root, err := chainBuilder.GetTipSetStateRoot(genTs.Key())
+	require.NoError(t, err)
 
 	channelAmt := abi.NewTokenAmount(101)
 	_, client, miner, paychID, paych := fms.StubCtorSendResponse(channelAmt)
 	fakeProvider := message.NewFakeProvider(t)
 	fakeProvider.Builder = chainBuilder
-	clientActor := actor.NewActor(builtin.AccountActorCodeID, balance)
+	clientActor := actor.NewActor(builtin.AccountActorCodeID, balance, root)
 	fakeProvider.SetHead(genTs.Key())
 	fakeProvider.SetActor(client, clientActor)
 

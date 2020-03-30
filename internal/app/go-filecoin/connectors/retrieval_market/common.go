@@ -10,10 +10,20 @@ import (
 	paychActor "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
-// RetrievalSigner is an interface for signing data
+// ChainReaderAPI is the subset of the Wallet interface needed by the retrieval client node
+type ChainReaderAPI interface {
+	// GetBalance gets the balance in AttoFIL for a given address
+	Head() block.TipSetKey
+	GetTipSet(key block.TipSetKey) (block.TipSet, error)
+	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*actor.Actor, error)
+}
+
+// RetrievalSigner is an interface with the ability to sign data
 type RetrievalSigner interface {
 	SignBytes(ctx context.Context, data []byte, addr address.Address) (crypto.Signature, error)
 }

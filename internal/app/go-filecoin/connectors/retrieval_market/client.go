@@ -26,10 +26,10 @@ type RetrievalClientConnector struct {
 	bs blockstore.Blockstore
 
 	// APIs/interfaces
-	paychMgr    PaychMgrAPI
-	signer      RetrievalSigner
-	client      retrievalmarket.RetrievalClient
-	chainReader connectors.ChainReader
+	paychMgr PaychMgrAPI
+	signer   RetrievalSigner
+	client   retrievalmarket.RetrievalClient
+	cs       ChainReaderAPI
 }
 
 var _ retrievalmarket.RetrievalClientNode = new(RetrievalClientConnector)
@@ -37,15 +37,15 @@ var _ retrievalmarket.RetrievalClientNode = new(RetrievalClientConnector)
 // NewRetrievalClientConnector creates a new RetrievalClientConnector
 func NewRetrievalClientConnector(
 	bs blockstore.Blockstore,
-	cs connectors.ChainReader,
+	cs ChainReaderAPI,
 	signer RetrievalSigner,
 	paychMgr PaychMgrAPI,
 ) *RetrievalClientConnector {
 	return &RetrievalClientConnector{
-		bs:          bs,
-		chainReader: cs,
-		paychMgr:    paychMgr,
-		signer:      signer,
+		bs:       bs,
+		cs:       cs,
+		paychMgr: paychMgr,
+		signer:   signer,
 	}
 }
 
@@ -64,7 +64,7 @@ func (r *RetrievalClientConnector) GetOrCreatePaymentChannel(ctx context.Context
 	}
 	if chinfo.IsZero() {
 		// create the payment channel
-		bal, err := connectors.GetBalance(ctx, r.chainReader, clientAddress, tok)
+		bal, err := r.getBalance(ctx, clientAddress, tok)
 		if err != nil {
 			return address.Undef, err
 		}
@@ -86,12 +86,12 @@ func (r *RetrievalClientConnector) AllocateLane(paymentChannel address.Address) 
 
 // CreatePaymentVoucher creates a payment voucher for the retrieval client.
 func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, paychAddr address.Address, amount abi.TokenAmount, lane uint64, tok shared.TipSetToken) (*paychActor.SignedVoucher, error) {
-	height, err := connectors.GetBlockHeight(r.chainReader, tok)
+	height, err := r.getBlockHeight(tok)
 	if err != nil {
 		return nil, err
 	}
 
-	bal, err := connectors.GetBalance(ctx, r.chainReader, paychAddr, tok)
+	bal, err := r.getBalance(ctx, paychAddr, tok)
 	if err != nil {
 		return nil, err
 	}
