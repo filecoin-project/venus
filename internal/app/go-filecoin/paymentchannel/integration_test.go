@@ -71,9 +71,9 @@ func TestCreatePaymentChannel(t *testing.T) {
 	assert.Equal(t, paych, res)
 	var st init_.State
 	rt.GetState(&st)
-	actualIdAddr, err := st.ResolveAddress(adt.AsStore(rt), paych)
+	actualIDAddr, err := st.ResolveAddress(adt.AsStore(rt), paych)
 	require.NoError(t, err)
-	require.Equal(t, paychID, actualIdAddr)
+	require.Equal(t, paychID, actualIDAddr)
 }
 
 func testSetup2(ctx context.Context, t *testing.T) (*chain.Builder, bstore.Blockstore, block.TipSet) {
