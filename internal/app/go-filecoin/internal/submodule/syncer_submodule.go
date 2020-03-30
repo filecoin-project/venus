@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/fetcher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/blocksub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
@@ -27,6 +28,7 @@ type SyncerSubmodule struct {
 	Consensus        consensus.Protocol
 	FaultDetector    slashing.ConsensusFaultDetector
 	ChainSyncManager *chainsync.Manager
+	Drand            drand.IFace
 
 	// cancelChainSync cancels the context for chain sync subscriptions and handlers.
 	CancelChainSync context.CancelFunc
@@ -47,7 +49,7 @@ type nodeChainSelector interface {
 
 // NewSyncerSubmodule creates a new chain submodule.
 func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *BlockstoreSubmodule, network *NetworkSubmodule,
-	discovery *DiscoverySubmodule, chn *ChainSubmodule, postVerifier consensus.EPoStVerifier) (SyncerSubmodule, error) {
+	discovery *DiscoverySubmodule, chn *ChainSubmodule, postVerifier consensus.EPoStVerifier, drand drand.IFace) (SyncerSubmodule, error) {
 	// setup block validation
 	// TODO when #2961 is resolved do the needful here.
 	blkValid := consensus.NewDefaultBlockValidator(config.ChainClock())
@@ -88,6 +90,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 		Consensus:        nodeConsensus,
 		ChainSelector:    nodeChainSelector,
 		ChainSyncManager: &chainSyncManager,
+		Drand:            drand,
 		// cancelChainSync: nil,
 		faultCh: faultCh,
 	}, nil

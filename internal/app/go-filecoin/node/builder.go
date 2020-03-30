@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
@@ -36,6 +37,7 @@ type Builder struct {
 	isRelay     bool
 	chainClock  clock.ChainEpochClock
 	genCid      cid.Cid
+	drand       drand.IFace
 }
 
 // BuilderOpt is an option for building a filecoin node.
@@ -102,6 +104,14 @@ func ChainClockConfigOption(clk clock.ChainEpochClock) BuilderOpt {
 	}
 }
 
+// DrandConfigOption returns a function that sets the node's drand interface
+func DrandConfigOption(d drand.IFace) BuilderOpt {
+	return func(c *Builder) error {
+		c.drand = d
+		return nil
+	}
+}
+
 // JournalConfigOption returns a function that sets the journal to use in the node.
 func JournalConfigOption(jrl journal.Journal) BuilderOpt {
 	return func(c *Builder) error {
@@ -137,6 +147,9 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	if b.repo == nil {
 		b.repo = repo.NewInMemoryRepo()
+	}
+	if b.drand == nil {
+		b.drand = &drand.Utility{}
 	}
 	if b.journal == nil {
 		b.journal = journal.NewNoopJournal()
@@ -198,7 +211,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	}
 	nd.ChainClock = b.chainClock
 
-	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.ProofVerification.ProofVerifier)
+	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.ProofVerification.ProofVerifier, b.drand)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}
