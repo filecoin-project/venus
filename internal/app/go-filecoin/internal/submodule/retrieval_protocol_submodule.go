@@ -3,6 +3,7 @@ package submodule
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
+	iface "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	impl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
@@ -19,8 +20,8 @@ import (
 // RetrievalProtocolSubmodule enhances the node with retrieval protocol
 // capabilities.
 type RetrievalProtocolSubmodule struct {
-	pc *retmkt.RetrievalProviderConnector
-	cc *retmkt.RetrievalClientConnector
+	client   iface.RetrievalClient
+	provider iface.RetrievalProvider
 }
 
 // NewRetrievalProtocolSubmodule creates a new retrieval protocol submodule.
@@ -45,7 +46,6 @@ func NewRetrievalProtocolSubmodule(
 	if err != nil {
 		return nil, err
 	}
-	pnode.SetProvider(marketProvider)
 
 	cnode := retmkt.NewRetrievalClientConnector(bs, cr, signer, pchMgrAPI)
 	dsKey := datastore.NewKey("retrievalmarket/client/counter")
@@ -55,7 +55,14 @@ func NewRetrievalProtocolSubmodule(
 	if err != nil {
 		return nil, err
 	}
-	cnode.SetRetrievalClient(marketClient)
 
-	return &RetrievalProtocolSubmodule{pnode, cnode}, nil
+	return &RetrievalProtocolSubmodule{marketClient, marketProvider}, nil
+}
+
+func (rps *RetrievalProtocolSubmodule) Client() iface.RetrievalClient {
+	return rps.client
+}
+
+func (rps *RetrievalProtocolSubmodule) Provider() iface.RetrievalProvider {
+	return rps.provider
 }

@@ -28,7 +28,6 @@ type RetrievalClientConnector struct {
 	// APIs/interfaces
 	paychMgr PaychMgrAPI
 	signer   RetrievalSigner
-	client   retrievalmarket.RetrievalClient
 	cs       ChainReaderAPI
 }
 
@@ -47,10 +46,6 @@ func NewRetrievalClientConnector(
 		paychMgr: paychMgr,
 		signer:   signer,
 	}
-}
-
-func (r *RetrievalClientConnector) SetRetrievalClient(client retrievalmarket.RetrievalClient) {
-	r.client = client
 }
 
 // GetOrCreatePaymentChannel gets or creates a payment channel and posts to chain

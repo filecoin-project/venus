@@ -5,4 +5,7 @@ import (
 )
 
 // API is the retrieval api for the test environment
-type API = iface.RetrievalClient
+type API interface {
+	Client() iface.RetrievalClient
+	Provider() iface.RetrievalProvider
+}

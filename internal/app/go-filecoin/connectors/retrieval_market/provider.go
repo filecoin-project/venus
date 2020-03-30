@@ -27,7 +27,6 @@ type RetrievalProviderConnector struct {
 	bstore      blockstore.Blockstore
 	net         rmnet.RetrievalMarketNetwork
 	paychMgr    PaychMgrAPI
-	provider    retmkt.RetrievalProvider
 	unsealer    UnsealerAPI
 }
 
@@ -48,11 +47,6 @@ func NewRetrievalProviderConnector(net rmnet.RetrievalMarketNetwork, us Unsealer
 		unsealer:    us,
 		chainReader: chainReader,
 	}
-}
-
-// SetProvider sets the retrieval provider for the RetrievalProviderConnector
-func (r *RetrievalProviderConnector) SetProvider(provider retmkt.RetrievalProvider) {
-	r.provider = provider
 }
 
 // UnsealSector unseals the sector given by sectorId and offset with length `length`
