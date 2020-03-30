@@ -31,7 +31,7 @@ type FakePaychActorIface struct {
 	result                                          MsgResult
 }
 
-func NewFakePaychActorIface(t *testing.T, ctx context.Context, paychBal abi.TokenAmount) *FakePaychActorIface {
+func NewFakePaychActorIface(ctx context.Context, t *testing.T, paychBal abi.TokenAmount) *FakePaychActorIface {
 	fai := &FakePaychActorIface{
 		t:              t,
 		ctx:            ctx,

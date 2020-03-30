@@ -40,7 +40,7 @@ func TestCreatePaymentChannel(t *testing.T) {
 	balance := abi.NewTokenAmount(1000000)
 	chainBuilder, bs, genTs := testSetup2(ctx, t)
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
-	fms := paychtest.NewFakeActorInterface(t, ctx, balance)
+	fms := paychtest.NewFakeActorInterface(ctx, t, balance)
 	rt := fms.Runtime
 	root, err := chainBuilder.GetTipSetStateRoot(genTs.Key())
 	require.NoError(t, err)
@@ -99,7 +99,7 @@ func testSetup2(ctx context.Context, t *testing.T) (*chain.Builder, bstore.Block
 func TestPaychActorIFace(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
-	fai := paychtest.NewFakePaychActorIface(t, ctx, abi.NewTokenAmount(1200))
+	fai := paychtest.NewFakePaychActorIface(ctx, t, abi.NewTokenAmount(1200))
 	require.NotNil(t, fai)
 }
 

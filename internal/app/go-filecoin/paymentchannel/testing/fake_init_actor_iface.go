@@ -34,7 +34,7 @@ type FakeInitActorIface struct {
 
 // NewFakeActorInterface initializes a FakeInitActorIface and constructs
 // the InitActor.
-func NewFakeActorInterface(t *testing.T, ctx context.Context, balance abi.TokenAmount) *FakeInitActorIface {
+func NewFakeActorInterface(ctx context.Context, t *testing.T, balance abi.TokenAmount) *FakeInitActorIface {
 
 	builder := mock.NewBuilder(context.Background(), builtin.InitActorAddr).
 		WithBalance(balance, abi.NewTokenAmount(0))
