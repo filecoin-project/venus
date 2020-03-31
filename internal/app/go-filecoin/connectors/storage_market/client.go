@@ -77,7 +77,7 @@ func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr, wall
 func (s *StorageClientNodeConnector) ListClientDeals(ctx context.Context, addr address.Address, tok shared.TipSetToken) ([]storagemarket.StorageDeal, error) {
 	var tsk block.TipSetKey
 	if err := encoding.Decode(tok, &tsk); err != nil {
-		return nil, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
+		return nil, xerrors.Wrapf(err, "failed to marshal TipSetToken into a TipSetKey")
 	}
 
 	return s.listDeals(ctx, addr, tsk)
@@ -87,7 +87,7 @@ func (s *StorageClientNodeConnector) ListClientDeals(ctx context.Context, addr a
 func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context, tok shared.TipSetToken) ([]*storagemarket.StorageProviderInfo, error) {
 	var tsk block.TipSetKey
 	if err := encoding.Decode(tok, &tsk); err != nil {
-		return nil, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
+		return nil, xerrors.Wrapf(err, "failed to marshal TipSetToken into a TipSetKey")
 	}
 
 	var spState spapow.State

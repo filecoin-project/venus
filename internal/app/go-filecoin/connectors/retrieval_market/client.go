@@ -28,7 +28,6 @@ type RetrievalClientConnector struct {
 	// APIs/interfaces
 	paychMgr PaychMgrAPI
 	signer   RetrievalSigner
-	client   retrievalmarket.RetrievalClient
 	cs       ChainReaderAPI
 }
 
@@ -47,10 +46,6 @@ func NewRetrievalClientConnector(
 		paychMgr: paychMgr,
 		signer:   signer,
 	}
-}
-
-func (r *RetrievalClientConnector) SetRetrievalClient(client retrievalmarket.RetrievalClient) {
-	r.client = client
 }
 
 // GetOrCreatePaymentChannel gets or creates a payment channel and posts to chain
@@ -143,7 +138,7 @@ func (r *RetrievalClientConnector) getBlockHeight(tok shared.TipSetToken) (abi.C
 func (r *RetrievalClientConnector) getBalance(ctx context.Context, account address.Address, tok shared.TipSetToken) (types.AttoFIL, error) {
 	var tsk block.TipSetKey
 	if err := encoding.Decode(tok, &tsk); err != nil {
-		return types.ZeroAttoFIL, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
+		return types.ZeroAttoFIL, xerrors.Wrapf(err, "failed to marshal TipSetToken into a TipSetKey")
 	}
 
 	actor, err := r.cs.GetActorAt(ctx, tsk, account)
@@ -161,7 +156,7 @@ func (r *RetrievalClientConnector) GetChainHead(ctx context.Context) (shared.Tip
 func (r *RetrievalClientConnector) getTipSet(tok shared.TipSetToken) (block.TipSet, error) {
 	var tsk block.TipSetKey
 	if err := encoding.Decode(tok, &tsk); err != nil {
-		return block.TipSet{}, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
+		return block.TipSet{}, xerrors.Wrapf(err, "failed to marshal TipSetToken into a TipSetKey")
 	}
 
 	return r.cs.GetTipSet(tsk)

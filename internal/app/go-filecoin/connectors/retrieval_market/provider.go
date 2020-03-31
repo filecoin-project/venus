@@ -27,7 +27,6 @@ type RetrievalProviderConnector struct {
 	bstore      blockstore.Blockstore
 	net         rmnet.RetrievalMarketNetwork
 	paychMgr    PaychMgrAPI
-	provider    retmkt.RetrievalProvider
 	unsealer    UnsealerAPI
 }
 
@@ -48,11 +47,6 @@ func NewRetrievalProviderConnector(net rmnet.RetrievalMarketNetwork, us Unsealer
 		unsealer:    us,
 		chainReader: chainReader,
 	}
-}
-
-// SetProvider sets the retrieval provider for the RetrievalProviderConnector
-func (r *RetrievalProviderConnector) SetProvider(provider retmkt.RetrievalProvider) {
-	r.provider = provider
 }
 
 // UnsealSector unseals the sector given by sectorId and offset with length `length`
@@ -102,8 +96,9 @@ func (wrc limitedOffsetReadCloser) Close() error {
 	return wrc.originalRC.Close()
 }
 
-// SavePaymentVoucher stores the provided payment voucher with the payment channel actor
-// Returns actual amount available to be redeemed by voucher?
+// SavePaymentVoucher stores the provided payment voucher.
+// Returns the difference between voucher amount and largest previous voucher amount, and
+// error if this amount is less than `expected` amount
 func (r *RetrievalProviderConnector) SavePaymentVoucher(_ context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expected abi.TokenAmount, tok shared.TipSetToken) (actual abi.TokenAmount, err error) {
 	actual, err = r.paychMgr.AddVoucher(paymentChannel, voucher, proof, expected, tok)
 
