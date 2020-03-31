@@ -220,6 +220,7 @@ func (v *View) MinerClaimedPower(ctx context.Context, miner addr.Address) (abi.S
 	return claim.Power, nil
 }
 
+// PaychActorParties returns the From and To addresses for the given payment channel
 func (v *View) PaychActorParties(ctx context.Context, paychAddr addr.Address) (from, to addr.Address, err error) {
 	a, err := v.loadActor(ctx, paychAddr)
 	if err != nil {

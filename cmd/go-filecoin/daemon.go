@@ -163,7 +163,7 @@ func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig,
 		ctx:            ctx,
 		inspectorAPI:   NewInspectorAPI(nd.Repo),
 		porcelainAPI:   nd.PorcelainAPI,
-		//retrievalAPI:   nd.RetrievalProtocol.RetrievalClient,
+		retrievalAPI:   nd.RetrievalProtocol,
 	}
 
 	if nd.StorageProtocol != nil {
