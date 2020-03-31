@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
@@ -31,6 +32,10 @@ type Block struct {
 
 	// EPoStInfo wraps all data for verifying this block's Election PoSt
 	EPoStInfo EPoStInfo `json:"ePoStInfo"`
+
+	// DrandEntries contain the verifiable oracle randomness used to elect
+	// this block's author leader
+	DrandEntries []*drand.Entry
 
 	// Parents is the set of parents this block was based on. Typically one,
 	// but can be several in the case where there were multiple winning ticket-
@@ -72,10 +77,10 @@ type Block struct {
 }
 
 // IndexMessagesField is the message field position in the encoded block
-const IndexMessagesField = 8
+const IndexMessagesField = 9
 
 // IndexParentsField is the parents field position in the encoded block
-const IndexParentsField = 3
+const IndexParentsField = 4
 
 // Cid returns the content id of this block.
 func (b *Block) Cid() cid.Cid {
@@ -152,14 +157,15 @@ func (b *Block) Equals(other *Block) bool {
 func (b *Block) SignatureData() []byte {
 	tmp := &Block{
 		Miner:           b.Miner,
-		Ticket:          b.Ticket,  // deep copy needed??
-		Parents:         b.Parents, // deep copy needed??
+		Ticket:          b.Ticket,
+		Parents:         b.Parents,
 		ParentWeight:    b.ParentWeight,
 		Height:          b.Height,
 		Messages:        b.Messages,
 		StateRoot:       b.StateRoot,
 		MessageReceipts: b.MessageReceipts,
 		EPoStInfo:       b.EPoStInfo,
+		DrandEntries:    b.DrandEntries,
 		Timestamp:       b.Timestamp,
 		BLSAggregateSig: b.BLSAggregateSig,
 		ForkSignaling:   b.ForkSignaling,
