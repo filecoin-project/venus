@@ -89,10 +89,9 @@ func (w *DefaultWorker) Generate(
 		return NewOutputErr(errors.Wrapf(err, "error retrieving receipt root for tipset %s", baseTipSet.Key().String()))
 	}
 
-	// Set the block timestamp to be half-way through the target epoch, regardless of the current time.
+	// Set the block timestamp to be exactly the start of the target epoch, regardless of the current time.
 	// The real time might actually be much later than this if catching up from a pause in chain progress.
 	epochStartTime := w.clock.StartTimeOfEpoch(blockHeight)
-	midEpoch := epochStartTime.Add(w.clock.EpochDuration() / 2)
 
 	next := &block.Block{
 		Miner:           w.minerAddr,
@@ -104,7 +103,7 @@ func (w *DefaultWorker) Generate(
 		EPoStInfo:       ePoStInfo,
 		StateRoot:       e.NewCid(baseStateRoot),
 		Ticket:          ticket,
-		Timestamp:       uint64(midEpoch.Unix()),
+		Timestamp:       uint64(epochStartTime.Unix()),
 		BLSAggregateSig: &blsAggregateSig,
 	}
 
