@@ -19,6 +19,7 @@ type Round uint64
 // Entry is a verifiable entry in the drand chain carrying round and
 // randomness information
 type Entry struct {
+	_         struct{} `cbor:",toarray"`
 	Round     Round
 	Signature crypto.Signature
 }
