@@ -22,7 +22,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
-type FakePaychActorIface struct {
+// FakePaychActorUtil fulfils the MsgSender and MsgWaiter interfaces for a Manager
+// via the specs_actors mock runtime. It executes paych.Actor exports directly.
+type FakePaychActorUtil struct {
 	t   *testing.T
 	ctx context.Context
 	*mock.Runtime
@@ -31,8 +33,9 @@ type FakePaychActorIface struct {
 	result                                          MsgResult
 }
 
-func NewFakePaychActorIface(ctx context.Context, t *testing.T, paychBal abi.TokenAmount) *FakePaychActorIface {
-	fai := &FakePaychActorIface{
+// NewFakePaychActorUtil intializes a FakePaychActorUtil
+func NewFakePaychActorUtil(ctx context.Context, t *testing.T, paychBal abi.TokenAmount) *FakePaychActorUtil {
+	fai := &FakePaychActorUtil{
 		t:              t,
 		ctx:            ctx,
 		PaychAddr:      spect.NewActorAddr(t, "paychactor"),
@@ -46,7 +49,8 @@ func NewFakePaychActorIface(ctx context.Context, t *testing.T, paychBal abi.Toke
 	return fai
 }
 
-func (fai *FakePaychActorIface) constructPaychActor(paychBal abi.TokenAmount) {
+// constructPaychActor creates a mock.Runtime and constructs a payment channel harness + Actor
+func (fai *FakePaychActorUtil) constructPaychActor(paychBal abi.TokenAmount) {
 	versig := func(sig crypto.Signature, signer address.Address, plaintext []byte) error {
 		return nil
 	}
@@ -67,7 +71,8 @@ func (fai *FakePaychActorIface) constructPaychActor(paychBal abi.TokenAmount) {
 	fai.pcActorHarness.constructAndVerify(fai.t, fai.Runtime, fai.Client, fai.PaychAddr)
 }
 
-func (fai *FakePaychActorIface) Send(ctx context.Context,
+// Send stubs a message Sender
+func (fai *FakePaychActorUtil) Send(ctx context.Context,
 	from, to address.Address,
 	value types.AttoFIL,
 	gasPrice types.AttoFIL,
@@ -79,7 +84,8 @@ func (fai *FakePaychActorIface) Send(ctx context.Context,
 	return cid.Undef, nil, nil
 }
 
-func (fai *FakePaychActorIface) Wait(_ context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+// Wait stubs a message Waiter
+func (fai *FakePaychActorUtil) Wait(_ context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
 	require.Equal(fai.t, msgCid, fai.result.MsgCid)
 	res := fai.result
 	return cb(res.Block, res.Msg, res.Rcpt)

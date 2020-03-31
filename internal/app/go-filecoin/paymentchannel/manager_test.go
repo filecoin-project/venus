@@ -226,7 +226,7 @@ func TestManager_AddVoucher(t *testing.T) {
 		ds := dss.MutexWrap(datastore.NewMapDatastore())
 		viewer := paychtest.NewFakeStateViewer(t)
 		manager := NewManager(context.Background(), ds, testAPI, testAPI, viewer)
-		viewer.AddActorWithState(paychAddr, clientAddr, minerAddr, address.Undef)
+		viewer.GetFakeStateView().AddActorWithState(paychAddr, clientAddr, minerAddr, address.Undef)
 
 		increment := int64(10)
 		// increment voucher amount by 10, expect 10
@@ -250,7 +250,7 @@ func TestManager_AddVoucher(t *testing.T) {
 
 	t.Run("returns error if we try to save the same voucher", func(t *testing.T) {
 		viewer, manager := setupViewerManager(ctx, t, root)
-		viewer.AddActorWithState(paychAddr, clientAddr, minerAddr, paychIDAddr)
+		viewer.GetFakeStateView().AddActorWithState(paychAddr, clientAddr, minerAddr, paychIDAddr)
 		resAmt, err := manager.AddVoucher(paychAddr, &v, []byte("porkchops"), abi.NewTokenAmount(1), tok)
 		require.NoError(t, err)
 		assert.Equal(t, amt, resAmt)
@@ -262,7 +262,7 @@ func TestManager_AddVoucher(t *testing.T) {
 
 	t.Run("returns error if marshaling fails", func(t *testing.T) {
 		viewer, manager := setupViewerManager(ctx, t, root)
-		viewer.AddActorWithState(paychAddr, clientAddr, address.Undef, address.Undef)
+		viewer.GetFakeStateView().AddActorWithState(paychAddr, clientAddr, address.Undef, address.Undef)
 		resAmt, err := manager.AddVoucher(paychAddr, &v, []byte("applesauce"), abi.NewTokenAmount(1), tok)
 		assert.EqualError(t, err, "cannot marshal undefined address")
 		assert.Equal(t, abi.NewTokenAmount(0), resAmt)
@@ -270,8 +270,9 @@ func TestManager_AddVoucher(t *testing.T) {
 
 	t.Run("returns error if cannot get actor state/parties", func(t *testing.T) {
 		viewer, manager := setupViewerManager(ctx, t, root)
-		viewer.AddActorWithState(paychAddr, clientAddr, minerAddr, paychIDAddr)
-		viewer.PaychActorPartiesErr = errors.New("boom")
+		sv := viewer.GetFakeStateView()
+		sv.AddActorWithState(paychAddr, clientAddr, minerAddr, paychIDAddr)
+		sv.PaychActorPartiesErr = errors.New("boom")
 		resAmt, err := manager.AddVoucher(paychAddr, &v, []byte("porkchops"), abi.NewTokenAmount(1), tok)
 		assert.EqualError(t, err, "boom")
 		assert.Equal(t, abi.NewTokenAmount(0), resAmt)
@@ -280,7 +281,7 @@ func TestManager_AddVoucher(t *testing.T) {
 	t.Run("returns error if voucher amount is insufficient", func(t *testing.T) {
 		viewer, manager := setupViewerManager(ctx, t, root)
 
-		viewer.AddActorWithState(paychAddr, clientAddr, minerAddr, paychIDAddr)
+		viewer.GetFakeStateView().AddActorWithState(paychAddr, clientAddr, minerAddr, paychIDAddr)
 		resAmt, err := manager.AddVoucher(paychAddr, &v, []byte("porkchops"), abi.NewTokenAmount(1), tok)
 		require.NoError(t, err)
 		_, err = manager.AllocateLane(paychAddr)
@@ -306,21 +307,22 @@ func TestManager_GetMinerWorker(t *testing.T) {
 	minerWorkerAddr := spect.NewIDAddr(t, 101)
 	root := shared_testutil.GenerateCids(1)[0]
 	viewer, manager := setupViewerManager(ctx, t, root)
+	sv := viewer.GetFakeStateView()
 
 	tsk := block.NewTipSetKey(root)
 	tok, err := encoding.Encode(tsk)
 	require.NoError(t, err)
 
 	t.Run("happy path", func(t *testing.T) {
-		viewer.AddMinerWithState(minerAddr, minerWorkerAddr)
+		viewer.GetFakeStateView().AddMinerWithState(minerAddr, minerWorkerAddr)
 		res, err := manager.GetMinerWorkerAddress(ctx, minerAddr, tok)
 		assert.NoError(t, err)
 		assert.Equal(t, minerWorkerAddr, res)
 	})
 
 	t.Run("returns error if getting control addr fails", func(t *testing.T) {
-		viewer.AddMinerWithState(minerAddr, minerWorkerAddr)
-		viewer.MinerControlErr = errors.New("boom")
+		sv.AddMinerWithState(minerAddr, minerWorkerAddr)
+		sv.MinerControlErr = errors.New("boom")
 		_, err := manager.GetMinerWorkerAddress(ctx, minerAddr, tok)
 		assert.EqualError(t, err, "boom")
 	})

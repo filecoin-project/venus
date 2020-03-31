@@ -25,7 +25,7 @@ import (
 )
 
 var defaultGasPrice = types.NewAttoFILFromFIL(actor.DefaultGasCost)
-var defaultGasLimit = gas.NewGas(300)
+var defaultGasLimit = gas.NewGas(5000)
 var zeroAmt = abi.NewTokenAmount(0)
 
 // Manager manages payment channel actor and the data paymentChannels operations.
@@ -60,8 +60,7 @@ type MsgSender interface {
 
 // ActorStateViewer is an interface to StateViewer that the Manager uses
 type ActorStateViewer interface {
-	PaychActorParties(ctx context.Context, paychAddr address.Address, tok shared.TipSetToken) (from, to address.Address, err error)
-	MinerControlAddresses(ctx context.Context, addr address.Address, tok shared.TipSetToken) (owner, worker address.Address, err error)
+	GetStateView(ctx context.Context, tok shared.TipSetToken) (ManagerStateView, error)
 }
 
 // NewManager creates and returns a new paymentchannel.Manager
@@ -238,7 +237,11 @@ func PaychActorCtorExecParamsFor(client, miner address.Address) (initActor.ExecP
 }
 
 func (pm *Manager) createPaymentChannelWithVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte, tok shared.TipSetToken) (abi.TokenAmount, error) {
-	from, to, err := pm.stateViewer.PaychActorParties(pm.ctx, paychAddr, tok)
+	view, err := pm.stateViewer.GetStateView(pm.ctx, tok)
+	if err != nil {
+		return zeroAmt, err
+	}
+	from, to, err := view.PaychActorParties(pm.ctx, paychAddr)
 	if err != nil {
 		return zeroAmt, err
 	}
@@ -286,6 +289,10 @@ func (pm *Manager) saveNewVoucher(paychAddr address.Address, voucher *paychActor
 
 // GetMinerWorkerAddress mocks getting a miner worker address from the miner address
 func (pm *Manager) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
-	_, fcworker, err := pm.stateViewer.MinerControlAddresses(ctx, miner, tok)
+	view, err := pm.stateViewer.GetStateView(ctx, tok)
+	if err != nil {
+		return address.Undef, err
+	}
+	_, fcworker, err := view.MinerControlAddresses(ctx, miner)
 	return fcworker, err
 }

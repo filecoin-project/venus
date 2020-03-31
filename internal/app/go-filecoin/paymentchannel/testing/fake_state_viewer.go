@@ -10,28 +10,45 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 )
 
-// FakeStateViewer mocks a state viewer for payment channel actor testing
 type FakeStateViewer struct {
+	view *FakeStateView
+}
+
+// NewFakeStateViewer initializes a new FakeStateViewer
+func NewFakeStateViewer(t *testing.T) *FakeStateViewer {
+	view := &FakeStateView{
+		t:      t,
+		actors: make(map[address.Address]*FakeActorState),
+	}
+	return &FakeStateViewer{view: view}
+}
+
+// GetStateView returns the fake state view as a paymentchannel.ManagerStateView interface
+func (f FakeStateViewer) GetStateView(ctx context.Context, tok shared.TipSetToken) (paymentchannel.ManagerStateView, error) {
+	return f.view, nil
+}
+
+// GetFakeStateView returns the FakeStateView as itself so test setup can be done.
+func (f FakeStateViewer) GetFakeStateView() *FakeStateView {
+	return f.view
+}
+
+// FakeStateView mocks a state view for payment channel actor testing
+type FakeStateView struct {
 	t                                                          *testing.T
 	actors                                                     map[address.Address]*FakeActorState
 	PaychActorPartiesErr, ResolveAddressAtErr, MinerControlErr error
 }
+
+var _ paymentchannel.ManagerStateView = new(FakeStateView)
 
 // FakeActorState is a mock actor state containing test info
 type FakeActorState struct {
 	To, From, IDAddr, MinerWorker address.Address
 }
 
-// NewFakeStateView initializes a new FakeStateView
-func NewFakeStateViewer(t *testing.T) *FakeStateViewer {
-	return &FakeStateViewer{
-		t:      t,
-		actors: make(map[address.Address]*FakeActorState),
-	}
-}
-
 // MinerControlAddresses mocks returning miner worker and miner actor address
-func (f *FakeStateViewer) MinerControlAddresses(_ context.Context, addr address.Address, tok shared.TipSetToken) (owner, worker address.Address, err error) {
+func (f *FakeStateView) MinerControlAddresses(_ context.Context, addr address.Address) (owner, worker address.Address, err error) {
 	actorState, ok := f.actors[addr]
 	if !ok {
 		f.t.Fatalf("actor doesn't exist: %s", addr.String())
@@ -40,7 +57,7 @@ func (f *FakeStateViewer) MinerControlAddresses(_ context.Context, addr address.
 }
 
 // PaychActorParties mocks returning the From and To addrs of a paych.Actor
-func (f *FakeStateViewer) PaychActorParties(_ context.Context, paychAddr address.Address, tok shared.TipSetToken) (from, to address.Address, err error) {
+func (f *FakeStateView) PaychActorParties(_ context.Context, paychAddr address.Address) (from, to address.Address, err error) {
 	st, ok := f.actors[paychAddr]
 	if !ok {
 		f.t.Fatalf("actor does not exist %s", paychAddr.String())
@@ -49,12 +66,12 @@ func (f *FakeStateViewer) PaychActorParties(_ context.Context, paychAddr address
 }
 
 // AddActorWithState sets up a mock state for actorAddr
-func (f *FakeStateViewer) AddActorWithState(actorAddr, from, to, id address.Address) {
+func (f *FakeStateView) AddActorWithState(actorAddr, from, to, id address.Address) {
 	f.actors[actorAddr] = &FakeActorState{to, from, id, address.Undef}
 }
 
 // AddMinerWithState sets up a mock state for a miner actor with a worker address
-func (f *FakeStateViewer) AddMinerWithState(minerActor, minerWorker address.Address) {
+func (f *FakeStateView) AddMinerWithState(minerActor, minerWorker address.Address) {
 	f.actors[minerActor] = &FakeActorState{MinerWorker: minerWorker}
 }
 

@@ -21,9 +21,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
-// FakeInitActorIface fulfils the MsgSender and MsgWaiter interfaces for a Manager
+// FakeInitActorUtil fulfils the MsgSender and MsgWaiter interfaces for a Manager
 // via the specs_actors mock runtime. It executes init.Actor exports directly.
-type FakeInitActorIface struct {
+type FakeInitActorUtil struct {
 	t   *testing.T
 	ctx context.Context
 	*mock.Runtime
@@ -32,14 +32,14 @@ type FakeInitActorIface struct {
 	result                       MsgResult
 }
 
-// NewFakeActorInterface initializes a FakeInitActorIface and constructs
+// NewFakeInitActorUtil initializes a FakeInitActorUtil and constructs
 // the InitActor.
-func NewFakeActorInterface(ctx context.Context, t *testing.T, balance abi.TokenAmount) *FakeInitActorIface {
+func NewFakeInitActorUtil(ctx context.Context, t *testing.T, balance abi.TokenAmount) *FakeInitActorUtil {
 
 	builder := mock.NewBuilder(context.Background(), builtin.InitActorAddr).
 		WithBalance(balance, abi.NewTokenAmount(0))
 
-	fai := &FakeInitActorIface{
+	fai := &FakeInitActorUtil{
 		ctx:              ctx,
 		Runtime:          builder.Build(t),
 		initActorHarness: new(initActorHarness),
@@ -51,7 +51,7 @@ func NewFakeActorInterface(ctx context.Context, t *testing.T, balance abi.TokenA
 }
 
 // Send simulates posting to chain but calls actor code directly
-func (fai *FakeInitActorIface) Send(ctx context.Context,
+func (fai *FakeInitActorUtil) Send(ctx context.Context,
 	from, to address.Address,
 	value types.AttoFIL,
 	gasPrice types.AttoFIL,
@@ -70,7 +70,7 @@ func (fai *FakeInitActorIface) Send(ctx context.Context,
 }
 
 // Wait simulates waiting for the result of a message and calls the callback `cb`
-func (fai *FakeInitActorIface) Wait(_ context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+func (fai *FakeInitActorUtil) Wait(_ context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
 	require.Equal(fai.t, msgCid, fai.result.MsgCid)
 	res := fai.result
 	return cb(res.Block, res.Msg, res.Rcpt)
@@ -78,7 +78,7 @@ func (fai *FakeInitActorIface) Wait(_ context.Context, msgCid cid.Cid, cb func(*
 
 // StubCtorSendResponse sets up addresses for the initActor and generates
 // message responses from the call to create a new payment channel
-func (fai *FakeInitActorIface) StubCtorSendResponse(msgVal abi.TokenAmount) (msgCid cid.Cid, client, miner, idaddr, uniqueaddr address.Address) {
+func (fai *FakeInitActorUtil) StubCtorSendResponse(msgVal abi.TokenAmount) (msgCid cid.Cid, client, miner, idaddr, uniqueaddr address.Address) {
 	fai.caller = spect.NewActorAddr(fai.t, "client account addr")
 	fai.newActor = spect.NewActorAddr(fai.t, "new paych actor addr")
 	fai.newActorID = spect.NewIDAddr(fai.t, 100)
@@ -91,7 +91,7 @@ func (fai *FakeInitActorIface) StubCtorSendResponse(msgVal abi.TokenAmount) (msg
 }
 
 // ExecAndVerify sets up
-func (fai *FakeInitActorIface) ExecAndVerify(caller address.Address, value abi.TokenAmount, params *init_.ExecParams) {
+func (fai *FakeInitActorUtil) ExecAndVerify(caller address.Address, value abi.TokenAmount, params *init_.ExecParams) {
 	a := fai.initActorHarness
 	expParams := runtime.CBORBytes(params.ConstructorParams)
 
@@ -107,7 +107,7 @@ func (fai *FakeInitActorIface) ExecAndVerify(caller address.Address, value abi.T
 
 // constructInitActor constructs an initActor harness with the fai mock runtime, so that initActor exports
 // can be tested in go-filecoin.
-func (fai *FakeInitActorIface) constructInitActor() {
+func (fai *FakeInitActorUtil) constructInitActor() {
 	fai.Runtime.SetCaller(builtin.SystemActorAddr, builtin.SystemActorCodeID)
 	fai.Runtime.ExpectValidateCallerAddr(builtin.SystemActorAddr)
 	h := &initActorHarness{}

@@ -40,7 +40,7 @@ func TestCreatePaymentChannel(t *testing.T) {
 	balance := abi.NewTokenAmount(1000000)
 	chainBuilder, bs, genTs := testSetup2(ctx, t)
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
-	fms := paychtest.NewFakeActorInterface(ctx, t, balance)
+	fms := paychtest.NewFakeInitActorUtil(ctx, t, balance)
 	rt := fms.Runtime
 	root, err := chainBuilder.GetTipSetStateRoot(genTs.Key())
 	require.NoError(t, err)
@@ -57,7 +57,7 @@ func TestCreatePaymentChannel(t *testing.T) {
 
 	pchMgr := pch.NewManager(context.Background(), ds, fms, fms, viewer)
 
-	viewer.AddActorWithState(paych, client, miner, address.Undef)
+	viewer.GetFakeStateView().AddActorWithState(paych, client, miner, address.Undef)
 
 	rmc := retrievalmarketconnector.NewRetrievalMarketClientFakeAPI(t)
 
@@ -99,7 +99,7 @@ func testSetup2(ctx context.Context, t *testing.T) (*chain.Builder, bstore.Block
 func TestPaychActorIFace(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
-	fai := paychtest.NewFakePaychActorIface(ctx, t, abi.NewTokenAmount(1200))
+	fai := paychtest.NewFakePaychActorUtil(ctx, t, abi.NewTokenAmount(1200))
 	require.NotNil(t, fai)
 }
 

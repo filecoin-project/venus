@@ -383,7 +383,7 @@ func makePaychMgr(ctx context.Context, t *testing.T, client, miner, paych addres
 
 	testAPI.ExpectedMsgCid, testAPI.ExpectedResult = paychtest.GenCreatePaychActorMessage(t, client, miner, paych, channelAmt, exitcode.Ok, blockHeight)
 
-	viewer.AddActorWithState(paych, client, miner, address.Undef)
+	viewer.GetFakeStateView().AddActorWithState(paych, client, miner, address.Undef)
 	return pchMgr
 }
 

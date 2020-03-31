@@ -114,7 +114,7 @@ func GenCreatePaychActorMessage(
 	msg := types.NewUnsignedMessage(clientAccountAddr, builtin.InitActorAddr, 1,
 		types.NewAttoFIL(amt.Int), builtin.MethodsInit.Exec, []byte{})
 	msg.GasPrice = types.NewAttoFILFromFIL(100)
-	msg.GasLimit = gas.NewGas(300)
+	msg.GasLimit = gas.NewGas(5000)
 
 	params, err := paymentchannel.PaychActorCtorExecParamsFor(clientAccountAddr, minerAccountAddr)
 	if err != nil {
