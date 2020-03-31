@@ -14,6 +14,7 @@ import (
 	blk "github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -65,9 +66,18 @@ func TestTriangleEncoding(t *testing.T) {
 		candidate2 := blk.NewEPoStCandidate(3, []byte{0x04}, 3000)
 		postInfo := blk.NewEPoStInfo([]blk.EPoStProof{blk.NewEPoStProof(constants.DevRegisteredPoStProof, []byte{0x07})}, []byte{0x02, 0x06}, candidate1, candidate2)
 		b := &blk.Block{
-			Miner:           newAddress(),
-			Ticket:          blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-			Height:          2,
+			Miner:  newAddress(),
+			Ticket: blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
+			Height: 2,
+			DrandEntries: []*drand.Entry{
+				{
+					Round: drand.Round(1),
+					Signature: crypto.Signature{
+						Type: crypto.SigTypeBLS,
+						Data: []byte{0x3},
+					},
+				},
+			},
 			Messages:        e.NewCid(types.CidFromString(t, "somecid")),
 			MessageReceipts: e.NewCid(types.CidFromString(t, "somecid")),
 			Parents:         blk.NewTipSetKey(types.CidFromString(t, "somecid")),
@@ -91,7 +101,7 @@ func TestTriangleEncoding(t *testing.T) {
 		// Also please add non zero fields to "b" and "diff" in TestSignatureData
 		// and add a new check that different values of the new field result in
 		// different output data.
-		require.Equal(t, 16, s.NumField()) // Note: this also counts private fields
+		require.Equal(t, 17, s.NumField()) // Note: this also counts private fields
 		testRoundTrip(t, b)
 	})
 }
@@ -225,8 +235,17 @@ func TestSignatureData(t *testing.T) {
 	postInfo := blk.NewEPoStInfo([]blk.EPoStProof{blk.NewEPoStProof(constants.DevRegisteredPoStProof, []byte{0x07})}, []byte{0x02, 0x06}, candidate1, candidate2)
 
 	b := &blk.Block{
-		Miner:           newAddress(),
-		Ticket:          blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
+		Miner:  newAddress(),
+		Ticket: blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
+		DrandEntries: []*drand.Entry{
+			{
+				Round: drand.Round(5),
+				Signature: crypto.Signature{
+					Type: crypto.SigTypeBLS,
+					Data: []byte{0x0c},
+				},
+			},
+		},
 		Height:          2,
 		Messages:        e.NewCid(types.CidFromString(t, "somecid")),
 		MessageReceipts: e.NewCid(types.CidFromString(t, "somecid")),
@@ -247,8 +266,17 @@ func TestSignatureData(t *testing.T) {
 	diffPoStInfo := blk.NewEPoStInfo([]blk.EPoStProof{blk.NewEPoStProof(constants.DevRegisteredPoStProof, []byte{0x17})}, []byte{0x12, 0x16}, diffCandidate1, diffCandidate2)
 
 	diff := &blk.Block{
-		Miner:           newAddress(),
-		Ticket:          blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
+		Miner:  newAddress(),
+		Ticket: blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
+		DrandEntries: []*drand.Entry{
+			{
+				Round: drand.Round(44),
+				Signature: crypto.Signature{
+					Type: crypto.SigTypeBLS,
+					Data: []byte{0xc0},
+				},
+			},
+		},
 		Height:          3,
 		Messages:        e.NewCid(types.CidFromString(t, "someothercid")),
 		MessageReceipts: e.NewCid(types.CidFromString(t, "someothercid")),
@@ -456,6 +484,19 @@ func TestSignatureData(t *testing.T) {
 
 		b.EPoStInfo.Winners[0].SectorChallengeIndex = diff.EPoStInfo.Winners[0].SectorChallengeIndex
 		b.EPoStInfo.Winners[1].SectorChallengeIndex = diff.EPoStInfo.Winners[1].SectorChallengeIndex
+		after := b.SignatureData()
+
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+		cpy := b.DrandEntries
+		defer func() {
+			b.DrandEntries = cpy
+		}()
+
+		b.DrandEntries = diff.DrandEntries
 		after := b.SignatureData()
 
 		assert.False(t, bytes.Equal(before, after))
