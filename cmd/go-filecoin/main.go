@@ -352,7 +352,7 @@ func isConnectionRefused(err error) bool {
 }
 
 var priceOption = cmdkit.StringOption("gas-price", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
-var limitOption = cmdkit.Uint64Option("gas-limit", "Maximum GasUnits this message is allowed to consume")
+var limitOption = cmdkit.Int64Option("gas-limit", "Maximum GasUnits this message is allowed to consume")
 var previewOption = cmdkit.BoolOption("preview", "Preview the Gas cost of this command without actually executing it")
 
 func parseGasOptions(req *cmds.Request) (types.AttoFIL, gas.Unit, bool, error) {
