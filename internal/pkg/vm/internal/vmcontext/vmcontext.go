@@ -256,9 +256,6 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 			seenMsgs[mcid] = struct{}{}
 		}
 
-		// transfer gas reward from BurntFundsActor to RewardActor
-		vm.transfer(builtin.BurntFundsActorAddr, builtin.RewardActorAddr, minerGasRewardTotal)
-
 		// Pay block reward.
 		// Dragons: missing final protocol design on if/how to determine the nominal power
 		rewardMessage := makeBlockRewardMessage(blk.Miner, minerPenaltyTotal, minerGasRewardTotal, blk.TicketCount)
@@ -418,8 +415,8 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 
 	// 6. Deduct gas limit funds from sender first
 	// Note: this should always succeed, due to the sender balance check above
-	// Note: after this point, we nede to return this funds back before exiting
-	vm.transfer(msg.From, builtin.BurntFundsActorAddr, gasLimitCost)
+	// Note: after this point, we need to return this funds back before exiting
+	vm.transfer(msg.From, builtin.RewardActorAddr, gasLimitCost)
 
 	// reload from actor
 	// Note: balance might have changed
@@ -513,7 +510,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 	// 2. settle gas money around (unused_gas -> sender)
 	receipt.GasUsed = gasTank.GasConsumed()
 	refundGas := msg.GasLimit - receipt.GasUsed
-	vm.transfer(builtin.BurntFundsActorAddr, msg.From, refundGas.ToTokens(msg.GasPrice))
+	vm.transfer(builtin.RewardActorAddr, msg.From, refundGas.ToTokens(msg.GasPrice))
 
 	// 3. Success!
 	return receipt, big.Zero(), gasTank.GasConsumed().ToTokens(msg.GasPrice)
