@@ -65,7 +65,7 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 
 	// Sort blocks by ticket
 	sort.Slice(sorted, func(i, j int) bool {
-		cmp := bytes.Compare(sorted[i].Ticket.SortKey(), sorted[j].Ticket.SortKey())
+		cmp := sorted[i].Ticket.Compare(&sorted[j].Ticket)
 		if cmp == 0 {
 			// Break ticket ties with the block CIDs, which are distinct.
 			cmp = bytes.Compare(sorted[i].Cid().Bytes(), sorted[j].Cid().Bytes())

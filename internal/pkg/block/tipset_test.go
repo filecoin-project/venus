@@ -57,7 +57,7 @@ func TestTipSet(t *testing.T) {
 		// No other methods are defined
 	})
 
-	t.Run("ordered by ticket", func(t *testing.T) {
+	t.Run("ordered by ticket digest", func(t *testing.T) {
 		ts := RequireNewTipSet(t, b3, b2, b1) // Presented in reverse order
 		assert.True(t, ts.Defined())
 		assert.Equal(t, b1, ts.At(0))
@@ -196,39 +196,20 @@ func TestTipSet(t *testing.T) {
 	})
 }
 
-// TestTipSetMinTicket checks that MinTicket is the minimum of the last of the
-// tickets of the tipset, even when other tickets are smaller.
-func TestTipSetMinTicket(t *testing.T) {
-	ticket1 := blk.Ticket{VRFProof: []byte{0x3}}
-	ticket2 := blk.Ticket{VRFProof: []byte{0x4}}
-	ticket3 := blk.Ticket{VRFProof: []byte{0x5}}
-	expMinTicket := blk.Ticket{VRFProof: []byte{0x3}}
-
-	b1, b2, b3 := makeTestBlocks(t)
-	b1.Ticket = ticket1
-	b2.Ticket = ticket2
-	b3.Ticket = ticket3
-
-	ts := RequireNewTipSet(t, b1, b2, b3)
-	minTicket, err := ts.MinTicket()
-	assert.NoError(t, err)
-	assert.Equal(t, expMinTicket, minTicket)
-	assert.Equal(t, ts.At(0), b1)
-	assert.Equal(t, ts.At(1), b2)
-	assert.Equal(t, ts.At(2), b3)
-}
-
 func TestUndefKey(t *testing.T) {
 	ts := blk.UndefTipSet
 	udKey := ts.Key()
 	assert.True(t, udKey.Empty())
 }
 
-// Test methods: String, Key, ToSlice, MinTicket, Height, NewTipSet, Equals
 func makeTestBlocks(t *testing.T) (*blk.Block, *blk.Block, *blk.Block) {
-	b1 := block(t, []byte{1}, 1, cid1, parentWeight, 1, "1")
-	b2 := block(t, []byte{2}, 1, cid1, parentWeight, 2, "2")
-	b3 := block(t, []byte{3}, 1, cid1, parentWeight, 3, "3")
+	b1 := block(t, []byte{2}, 1, cid1, parentWeight, 1, "1")
+	b2 := block(t, []byte{3}, 1, cid1, parentWeight, 2, "2")
+	b3 := block(t, []byte{1}, 1, cid1, parentWeight, 3, "3")
+
+	// The tickets are constructed such that their digests are ordered.
+	require.True(t, b1.Ticket.Compare(&b2.Ticket) < 0)
+	require.True(t, b2.Ticket.Compare(&b3.Ticket) < 0)
 	return b1, b2, b3
 }
 
