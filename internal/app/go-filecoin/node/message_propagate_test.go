@@ -78,7 +78,7 @@ func TestMessagePropagation(t *testing.T) {
 			builtin.InitActorAddr,
 			specsbig.NewInt(100),
 			types.NewGasPrice(1),
-			gas.NewGas(0),
+			gas.Unit(5000),
 			fooMethod,
 			adt.Empty,
 		)

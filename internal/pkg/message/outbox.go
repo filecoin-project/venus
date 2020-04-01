@@ -99,6 +99,11 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 	if err != nil {
 		return cid.Undef, nil, errors.Wrap(err, "invalid params")
 	}
+	// Our encoder can't distinguish between producing a nil and producing an empty byte array,
+	// e.g. when encoding adt.Empty.
+	if encodedParams == nil {
+		encodedParams = []byte{}
+	}
 
 	// Lock to avoid a race inspecting the actor state and message queue to calculate next nonce.
 	ob.nonceLock.Lock()

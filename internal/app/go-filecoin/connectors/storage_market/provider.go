@@ -101,7 +101,7 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 		gas.NewGas(300),
 		true,
 		builtin.MethodsMarket.PublishStorageDeals,
-		params,
+		&params,
 	)
 	if err != nil {
 		return 0, cid.Undef, err

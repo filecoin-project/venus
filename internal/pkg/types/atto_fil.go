@@ -34,7 +34,7 @@ func NewAttoFIL(x *big.Int) AttoFIL {
 // NewAttoFILFromFIL returns a new AttoFIL representing a quantity
 // of attofilecoin equal to x filecoin.
 func NewAttoFILFromFIL(x uint64) AttoFIL {
-	xAsBigInt := specsbig.NewInt(int64(x))
+	xAsBigInt := specsbig.NewIntUnsigned(x)
 	return specsbig.Mul(xAsBigInt, tenToTheEighteen)
 }
 
