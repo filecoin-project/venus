@@ -201,7 +201,8 @@ func ImportPresealedSectors(rep repo.Repo, srcPath string, sectorSize abi.Sector
 }
 
 func findNextSecnum(srcPath string) (int64, error) {
-	secnuumPattern, err := regexp.Compile("\\w+-\\w+-(\\d+)")
+	// matches sector files (e.g. 's-t0106-3`, `s-t01000-19`) to find the sector number at the end.
+	secnuumPattern, err := regexp.Compile("^s-\\w+-(\\d+)$")
 	if err != nil {
 		return 0, err
 	}
