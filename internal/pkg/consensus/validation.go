@@ -6,43 +6,55 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
-var errNegativeValueCt *metrics.Int64Counter
-var errGasAboveBlockLimitCt *metrics.Int64Counter
-var errInsufficientGasCt *metrics.Int64Counter
-var errNonceTooLowCt *metrics.Int64Counter
-var errNonceTooHighCt *metrics.Int64Counter
+var dropNonAccountCt *metrics.Int64Counter
+var dropInsufficientGasCt *metrics.Int64Counter
+var dropNonceTooLowCt *metrics.Int64Counter
+var dropNonceTooHighCt *metrics.Int64Counter
 
-var (
-	// These errors are only to be used by ApplyMessage; they shouldn't be
-	// used in any other context as they are an implementation detail.
-	errGasAboveBlockLimit = fmt.Errorf("message gas limit above block gas limit")
-	errGasPriceZero       = fmt.Errorf("message gas price is zero")
-	errNonceTooHigh       = fmt.Errorf("nonce too high")
-	errNonceTooLow        = fmt.Errorf("nonce too low")
-	errNonAccountActor    = fmt.Errorf("message from non-account actor")
-	errNegativeValue      = fmt.Errorf("negative value")
-	errInsufficientGas    = fmt.Errorf("balance insufficient to cover transfer+gas")
-	errInvalidSignature   = fmt.Errorf("invalid signature by sender over message data")
-	errEmptySender        = fmt.Errorf("message sends from empty actor")
-)
+var invReceiverUndefCt *metrics.Int64Counter
+var invSenderUndefCt *metrics.Int64Counter
+var invValueAboveMaxCt *metrics.Int64Counter
+var invParamsNilCt *metrics.Int64Counter
+var invGasPriceNegativeCt *metrics.Int64Counter
+var invGasBelowMinimumCt *metrics.Int64Counter
+var invNegativeValueCt *metrics.Int64Counter
+var invGasAboveBlockLimitCt *metrics.Int64Counter
+
+// The maximum allowed message value.
+var msgMaxValue = types.NewAttoFILFromFIL(2e9)
+
+// These gas cost values must match those in vm/internal/gascost.
+// TODO: Look up gas costs from the same place the VM gets them, keyed by epoch. https://github.com/filecoin-project/go-filecoin/issues/3955
+const onChainMessageBase = gas.Unit(0)
+const onChainMessagePerByte = gas.Unit(2)
 
 func init() {
-	errNegativeValueCt = metrics.NewInt64Counter("consensus/msg_negative_value_err", "Number of negative valuedmessage")
-	errGasAboveBlockLimitCt = metrics.NewInt64Counter("consensus/msg_gas_above_blk_limit_err", "Number of messages with gas above block limit")
-	errInsufficientGasCt = metrics.NewInt64Counter("consensus/msg_insufficient_gas_err", "Number of messages with insufficient gas")
-	errNonceTooLowCt = metrics.NewInt64Counter("consensus/msg_nonce_low_err", "Number of messages with nonce too low")
-	errNonceTooHighCt = metrics.NewInt64Counter("consensus/msg_nonce_high_err", "Number of messages with nonce too high")
+	dropNonAccountCt = metrics.NewInt64Counter("consensus/msg_non_account_sender", "Count of dropped messages with non-account sender")
+	dropInsufficientGasCt = metrics.NewInt64Counter("consensus/msg_insufficient_gas_err", "Count of dropped messages with insufficient gas")
+	dropNonceTooLowCt = metrics.NewInt64Counter("consensus/msg_nonce_low_err", "Count of dropped  messages with nonce too low")
+	dropNonceTooHighCt = metrics.NewInt64Counter("consensus/msg_nonce_high_err", "Count of dropped  messages with nonce too high")
+
+	invReceiverUndefCt = metrics.NewInt64Counter("consensus/msg_undef_receiver", "Count of")
+	invSenderUndefCt = metrics.NewInt64Counter("consensus/msg_undef_sender", "Count of")
+	invValueAboveMaxCt = metrics.NewInt64Counter("consensus/msg_value_max", "Count of")
+	invParamsNilCt = metrics.NewInt64Counter("consensus/msg_params_nil", "Count of")
+	invGasPriceNegativeCt = metrics.NewInt64Counter("consensus/msg_gasprice_negative", "Count of")
+	invGasBelowMinimumCt = metrics.NewInt64Counter("consensus/msg_gaslimit_min", "Count of")
+	invNegativeValueCt = metrics.NewInt64Counter("consensus/msg_value_negative", "Count of invalid negative messages with negative value")
+	invGasAboveBlockLimitCt = metrics.NewInt64Counter("consensus/msg_gaslimit_max", "Count of invalid messages with gas above block limit")
 }
 
 // MessageSelectionChecker checks for miner penalties on signed messages
@@ -63,7 +75,7 @@ func NewMessagePenaltyChecker(api penaltyCheckerAPI) *MessagePenaltyChecker {
 }
 
 // PenaltyCheck checks that a message is semantically valid for processing without
-// causing miner penality.  It treats any miner penalty condtion as an error.
+// causing miner penality.  It treats any miner penalty condition as an error.
 func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.UnsignedMessage) error {
 	fromActor, err := v.api.GetActorAt(ctx, v.api.Head(), msg.From)
 	if err != nil {
@@ -71,31 +83,29 @@ func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.Uns
 	}
 	// Sender should not be an empty actor
 	if fromActor == nil || fromActor.Empty() {
-		return errEmptySender
+		return fmt.Errorf("sender %s is missing/empty: %s", msg.From, msg)
 	}
 
 	// Sender must be an account actor.
 	if !(builtin.AccountActorCodeID.Equals(fromActor.Code.Cid)) {
-		return errNonAccountActor
+		dropNonAccountCt.Inc(ctx, 1)
+		return fmt.Errorf("sender %s is non-account actor with code %s: %s", msg.From, fromActor.Code.Cid, msg)
 	}
 
 	// Avoid processing messages for actors that cannot pay.
 	if !canCoverGasLimit(msg, fromActor) {
-		log.Debugf("Insufficient funds for message: %s to cover gas limit from actor: %s", msg, msg.From)
-		errInsufficientGasCt.Inc(ctx, 1)
-		return errInsufficientGas
+		dropInsufficientGasCt.Inc(ctx, 1)
+		return fmt.Errorf("insufficient funds from sender %s to cover value and gas cost: %s ", msg.From, msg)
 	}
 
 	if msg.CallSeqNum < fromActor.CallSeqNum {
-		log.Debugf("Message: %s nonce lower than actor nonce: %s from actor: %s", msg, fromActor.CallSeqNum, msg.From)
-		errNonceTooLowCt.Inc(ctx, 1)
-		return errNonceTooLow
+		dropNonceTooLowCt.Inc(ctx, 1)
+		return fmt.Errorf("nonce %d lower than expected %d: %s", msg.CallSeqNum, fromActor.CallSeqNum, msg)
 	}
 
 	if msg.CallSeqNum > fromActor.CallSeqNum {
-		log.Debugf("Message: %s nonce greater than actor nonce: %s from actor: %s", msg, fromActor.CallSeqNum, msg.From)
-		errNonceTooHighCt.Inc(ctx, 1)
-		return errNonceTooHigh
+		dropNonceTooHighCt.Inc(ctx, 1)
+		return fmt.Errorf("nonce %d greater than expected: %d: %s", msg.CallSeqNum, fromActor.CallSeqNum, msg)
 	}
 
 	return nil
@@ -106,8 +116,8 @@ func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.Uns
 // more value from the actor's balance.
 func canCoverGasLimit(msg *types.UnsignedMessage, actor *actor.Actor) bool {
 	// balance >= (gasprice*gasLimit + value)
-	gascost := specsbig.Mul(abi.NewTokenAmount(msg.GasPrice.Int.Int64()), abi.NewTokenAmount(int64(msg.GasLimit)))
-	expense := specsbig.Add(gascost, abi.NewTokenAmount(msg.Value.Int.Int64()))
+	gascost := big.Mul(abi.NewTokenAmount(msg.GasPrice.Int.Int64()), abi.NewTokenAmount(int64(msg.GasLimit)))
+	expense := big.Add(gascost, abi.NewTokenAmount(msg.Value.Int.Int64()))
 	return actor.Balance.GreaterThanEqual(expense)
 }
 
@@ -118,25 +128,65 @@ func NewMessageSyntaxValidator() *MessageSyntaxValidator {
 	return &MessageSyntaxValidator{}
 }
 
+// Validates message syntax and state-independent invariants.
 func (v *MessageSyntaxValidator) Validate(ctx context.Context, smsg *types.SignedMessage) error {
-	// check non-state dependent invariants
-	msg := smsg.Message
+	msg := &smsg.Message
+	var msgLen int
+	if smsg.Signature.Type == crypto.SigTypeBLS {
+		enc, err := smsg.Message.Marshal()
+		if err != nil {
+			return errors.Wrapf(err, "failed to calculate message size")
+		}
+		msgLen = len(enc)
+	} else {
+		enc, err := smsg.Marshal()
+		if err != nil {
+			return errors.Wrapf(err, "failed to calculate message size")
+		}
+		msgLen = len(enc)
+	}
+
+	if msg.To.Empty() {
+		invReceiverUndefCt.Inc(ctx, 1)
+		return fmt.Errorf("empty receiver: %s", msg)
+	}
+	if msg.From.Empty() {
+		invSenderUndefCt.Inc(ctx, 1)
+		return fmt.Errorf("empty sender: %s", msg)
+	}
+	// The spec calls for validating a non-negative call sequence num, but by
+	// the time it's decoded into a uint64 the check is already passed
+
+	if msg.Value.LessThan(big.Zero()) {
+		invNegativeValueCt.Inc(ctx, 1)
+		return fmt.Errorf("negative value %s: %s", msg.Value, msg)
+	}
+	if msg.Value.GreaterThan(msgMaxValue) {
+		invValueAboveMaxCt.Inc(ctx, 1)
+		return fmt.Errorf("value %s exceeds max %s: %s", msg.Value, msgMaxValue, msg)
+	}
+	// The spec calls for validating a non-negative method num, but by the
+	// time it's decoded into a uint64 the check is already passed
+
+	if msg.Params == nil {
+		invParamsNilCt.Inc(ctx, 1)
+		return fmt.Errorf("nil params (should be empty-array): %s", msg)
+	}
+	if msg.GasPrice.LessThan(types.ZeroAttoFIL) {
+		invGasPriceNegativeCt.Inc(ctx, 1)
+		return fmt.Errorf("negative gas price %s: %s", msg.GasPrice, msg)
+	}
+	// The minimum gas limit ensures the sender has enough balance to pay for inclusion of the message in the chain
+	// *at all*. Without this, a message could hit out-of-gas but the sender pay nothing.
+	minMsgGas := onChainMessageBase + onChainMessagePerByte*gas.Unit(msgLen)
+	if msg.GasLimit < minMsgGas {
+		invGasBelowMinimumCt.Inc(ctx, 1)
+		return fmt.Errorf("gas limit %d below minimum %d to cover message size: %s", msg.GasLimit, minMsgGas, msg)
+	}
 	if msg.GasLimit > types.BlockGasLimit {
-		log.Debugf("Message: %s gas limit from actor: %s above block limit: %s", msg, msg.From, types.BlockGasLimit)
-		errGasAboveBlockLimitCt.Inc(ctx, 1)
-		return errGasAboveBlockLimit
+		invGasAboveBlockLimitCt.Inc(ctx, 1)
+		return fmt.Errorf("gas limit %d exceeds block limit %d: %s", msg.GasLimit, types.BlockGasLimit, msg)
 	}
-
-	if msg.Value.LessThan(specsbig.Zero()) {
-		log.Debugf("Cannot transfer negative value: %s from actor: %s", msg.Value, msg.From)
-		errNegativeValueCt.Inc(ctx, 1)
-		return errNegativeValue
-	}
-
-	if msg.GasPrice.LessThanEqual(types.ZeroAttoFIL) {
-		return errGasPriceZero
-	}
-
 	return nil
 }
 
@@ -170,7 +220,7 @@ func (v *MessageSignatureValidator) Validate(ctx context.Context, smsg *types.Si
 
 	// ensure message is properly signed
 	if err := sigValidator.ValidateMessageSignature(ctx, smsg); err != nil {
-		return errors.Wrap(err, errInvalidSignature.Error())
+		return errors.Wrap(err, fmt.Errorf("invalid signature by sender over message data").Error())
 	}
 	return nil
 }

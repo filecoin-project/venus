@@ -133,7 +133,7 @@ func GenCreatePaychActorMessage(
 		Msg:           &types.SignedMessage{Message: *msg, Signature: emptySig},
 		MsgCid:        newcid,
 		Rcpt:          &vm.MessageReceipt{ExitCode: code, ReturnValue: requireEncode(t, &retVal)},
-		DecodedParams: params,
+		DecodedParams: &params,
 	}
 }
 

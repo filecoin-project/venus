@@ -120,19 +120,19 @@ func TestMessageSyntaxValidator(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Actor not found is not an error", func(t *testing.T) {
-		msg, err := types.NewSignedMessage(ctx, *newMessage(t, bob, alice, 0, 0, 1, 0), signer)
+		msg, err := types.NewSignedMessage(ctx, *newMessage(t, bob, alice, 0, 0, 1, 5000), signer)
 		require.NoError(t, err)
 		assert.NoError(t, validator.Validate(ctx, msg))
 	})
 
 	t.Run("self send passes", func(t *testing.T) {
-		msg, err := types.NewSignedMessage(ctx, *newMessage(t, alice, alice, 100, 5, 1, 0), signer)
+		msg, err := types.NewSignedMessage(ctx, *newMessage(t, alice, alice, 100, 5, 1, 5000), signer)
 		require.NoError(t, err)
 		assert.NoError(t, validator.Validate(ctx, msg), "self")
 	})
 
 	t.Run("negative value fails", func(t *testing.T) {
-		msg, err := types.NewSignedMessage(ctx, *newMessage(t, alice, alice, 100, -5, 1, 0), signer)
+		msg, err := types.NewSignedMessage(ctx, *newMessage(t, alice, alice, 100, -5, 1, 5000), signer)
 		require.NoError(t, err)
 		assert.Errorf(t, validator.Validate(ctx, msg), "negative")
 	})

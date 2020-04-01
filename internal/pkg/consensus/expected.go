@@ -12,7 +12,6 @@ import (
 	cid "github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
@@ -28,7 +27,6 @@ import (
 
 var (
 	ticketDomain *big.Int
-	log          = logging.Logger("consensus.expected")
 )
 
 func init() {

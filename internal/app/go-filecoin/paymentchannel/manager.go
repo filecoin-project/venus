@@ -139,7 +139,7 @@ func (pm *Manager) CreatePaymentChannel(clientAddress, minerAddress address.Addr
 		defaultGasLimit,
 		true,
 		builtin.MethodsInit.Exec,
-		execParams,
+		&execParams,
 	)
 	if err != nil {
 		return address.Undef, err

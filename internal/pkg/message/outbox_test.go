@@ -114,7 +114,7 @@ func TestOutbox(t *testing.T) {
 			defer wg.Done()
 			for i := 0; i < msgCount; i++ {
 				method := abi.MethodNum(batch*10000 + i)
-				_, _, err := s.Send(ctx, sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), gas.NewGas(0), bcast, method, []byte{})
+				_, _, err := s.Send(ctx, sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), gas.NewGas(0), bcast, method, adt.Empty)
 				require.NoError(t, err)
 			}
 		}

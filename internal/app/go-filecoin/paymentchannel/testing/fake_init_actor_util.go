@@ -60,10 +60,10 @@ func (fai *FakeInitActorUtil) Send(ctx context.Context,
 	method abi.MethodNum,
 	params interface{}) (out cid.Cid, pubErrCh chan error, err error) {
 
-	execParams, ok := params.(init_.ExecParams)
+	execParams, ok := params.(*init_.ExecParams)
 	require.True(fai.t, ok)
 	if method == builtin.MethodsInit.Exec {
-		fai.ExecAndVerify(from, value, &execParams)
+		fai.ExecAndVerify(from, value, execParams)
 	}
 
 	return fai.result.MsgCid, nil, nil

@@ -41,6 +41,7 @@ type Pricelist interface {
 
 var prices = map[abi.ChainEpoch]Pricelist{
 	abi.ChainEpoch(0): &pricelistV0{
+		// These message base/byte values must match those in message validation.
 		onChainMessageBase:        gas.Zero,
 		onChainMessagePerByte:     gas.NewGas(2),
 		onChainReturnValuePerByte: gas.NewGas(8),
