@@ -2,6 +2,7 @@ package functional
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -75,16 +76,18 @@ func TestBootstrapMineOnce(t *testing.T) {
 }
 
 func TestBootstrapWindowedPoSt(t *testing.T) {
-	//tf.FunctionalTest(t)
+	tf.FunctionalTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	genCfgPath := filepath.Join("/Users/alexcruikshank/Projects/filecoin/512", "setup.json")
-	presealPath := "/Users/alexcruikshank/Projects/filecoin/512"
-	//wd, _ := os.Getwd()
-	//genCfgPath := filepath.Join(wd, "..", "fixtures/setup.json")
-	//presealPath := filepath.Join(wd, "..", "fixtures/genesis-sectors")
+	wd, _ := os.Getwd()
+	genCfgPath := filepath.Join(wd, "..", "fixtures/setup.json")
+	presealPath := filepath.Join(wd, "..", "fixtures/genesis-sectors")
+	// setup presealed sectors and uncomment to run test against sectors with larger sector size
+	//genCfgPath := filepath.Join("./512", "setup.json")
+	//presealPath := "./512"
+
 	genTime := int64(1000000000)
 	blockTime := 1 * time.Second
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
@@ -118,28 +121,24 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 
 	// mine once to enter proving period
 	fakeClock.Advance(blockTime)
-	t.Logf("Start mine once: %s", time.Now().String())
 	_, err = miner.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-	t.Logf("Stop mine once: %s", time.Now().String())
 	require.NoError(t, err)
 
-	//// Post should have been triggered, simulate mining while waiting for update to proving period start
-	//for i := 0; i < 25; i++ {
-	//	fakeClock.Advance(blockTime)
-	//	t.Logf("Start mine once: %s", time.Now().String())
-	//	_, err := miner.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-	//	t.Logf("Stop mine once: %s", time.Now().String())
-	//	require.NoError(t, err)
-	//
-	//	status, err := miner.PorcelainAPI.MinerGetStatus(ctx, maddr, requireChainHead(t, miner))
-	//	require.NoError(t, err)
-	//
-	//	if status.ProvingPeriodStart > 1 {
-	//		return
-	//	}
-	//
-	//	// If we mine too many blocks before the post is sent we could miss our window. Add some friction here.
-	//	time.Sleep(2 * time.Second)
-	//}
-	//t.Fatal("Timouut wating for windowed PoSt")
+	// Post should have been triggered, simulate mining while waiting for update to proving period start
+	for i := 0; i < 25; i++ {
+		fakeClock.Advance(blockTime)
+		_, err := miner.BlockMining.BlockMiningAPI.MiningOnce(ctx)
+		require.NoError(t, err)
+
+		status, err := miner.PorcelainAPI.MinerGetStatus(ctx, maddr, requireChainHead(t, miner))
+		require.NoError(t, err)
+
+		if status.ProvingPeriodStart > 1 {
+			return
+		}
+
+		// If we mine too many blocks before the post is sent we could miss our window. Add some friction here.
+		time.Sleep(2 * time.Second)
+	}
+	t.Fatal("Timouut waiting for windowed PoSt")
 }

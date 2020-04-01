@@ -155,7 +155,10 @@ func ImportPresealedSectors(rep repo.Repo, srcPath string, sectorSize abi.Sector
 	}
 
 	oldMetaDs := datastore.NewMapDatastore()
-	oldMetaDs.Put(datastore.NewKey("/sectorbuilder/last"), []byte(fmt.Sprint(nextSecnum)))
+	err = oldMetaDs.Put(datastore.NewKey("/sectorbuilder/last"), []byte(fmt.Sprint(nextSecnum)))
+	if err != nil {
+		return err
+	}
 
 	registeredSealProof, registeredPoStProof, err := registeredProofsFromSectorSize(sectorSize)
 	if err != nil {

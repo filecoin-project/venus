@@ -68,7 +68,7 @@ func (fem *FakeElectionMachine) GenerateEPoStVrfProof(ctx context.Context, base 
 }
 
 // GenerateCandidates returns one fake election post candidate
-func (fem *FakeElectionMachine) GenerateCandidates(poStRand abi.PoStRandomness, sectorInfos []abi.SectorInfo, ep postgenerator.PoStGenerator) ([]abi.PoStCandidate, error) {
+func (fem *FakeElectionMachine) GenerateCandidates(poStRand abi.PoStRandomness, sectorInfos []abi.SectorInfo, ep postgenerator.PoStGenerator, minerAddr address.Address) ([]abi.PoStCandidate, error) {
 	return []abi.PoStCandidate{
 		{
 
