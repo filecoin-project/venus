@@ -1,6 +1,7 @@
 package block
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
@@ -15,12 +16,13 @@ type Ticket struct {
 	VRFProof crypto.VRFPi
 }
 
-// SortKey returns the canonical byte ordering of the ticket
-func (t Ticket) SortKey() []byte {
-	return t.VRFProof
-}
-
 // String returns the string representation of the VRFProof of the ticket
 func (t Ticket) String() string {
 	return fmt.Sprintf("%x", t.VRFProof)
+}
+
+func (t *Ticket) Compare(o *Ticket) int {
+	tDigest := t.VRFProof.Digest()
+	oDigest := o.VRFProof.Digest()
+	return bytes.Compare(tDigest[:], oDigest[:])
 }
