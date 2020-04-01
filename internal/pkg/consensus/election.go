@@ -40,15 +40,30 @@ func (em ElectionMachine) GenerateEPoStVrfProof(ctx context.Context, base block.
 
 // GenerateCandidates creates candidate partial tickets for consideration in
 // block reward election
-func (em ElectionMachine) GenerateCandidates(poStRand abi.PoStRandomness, sectorInfos []abi.SectorInfo, ep postgenerator.PoStGenerator) ([]abi.PoStCandidate, error) {
+func (em ElectionMachine) GenerateCandidates(poStRand abi.PoStRandomness, sectorInfos []abi.SectorInfo, ep postgenerator.PoStGenerator, maddr address.Address) ([]abi.PoStCandidate, error) {
 	dummyFaults := []abi.SectorNumber{}
+	proofTypeBySectorNumber := make(map[abi.SectorNumber]abi.RegisteredProof, len(sectorInfos))
+	for _, s := range sectorInfos {
+		p, err := s.RegisteredPoStProof()
+		if err != nil {
+			return nil, err
+		}
+		proofTypeBySectorNumber[s.SectorNumber] = p
+	}
 	candidatesWithTicket, err := ep.GenerateEPostCandidates(sectorInfos, poStRand, dummyFaults)
 	if err != nil {
 		return nil, err
 	}
+	minerID, err := address.IDFromAddress(maddr)
+	if err != nil {
+		return nil, err
+	}
+
 	candidates := make([]abi.PoStCandidate, len(candidatesWithTicket))
 	for i, candidateWithTicket := range candidatesWithTicket {
 		candidates[i] = candidateWithTicket.Candidate
+		candidates[i].RegisteredProof = proofTypeBySectorNumber[candidates[i].SectorID.Number]
+		candidates[i].SectorID.Miner = abi.ActorID(minerID)
 	}
 	return candidates, nil
 }

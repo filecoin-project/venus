@@ -2,13 +2,16 @@ package node
 
 import (
 	"context"
+	"fmt"
+	"io/ioutil"
 	"path/filepath"
+	"regexp"
+	"strconv"
 
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	badger "github.com/ipfs/go-ds-badger2"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	keystore "github.com/ipfs/go-ipfs-keystore"
 	acrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -146,17 +149,13 @@ func importInitKeys(w *wallet.Wallet, importKeys []*crypto.KeyInfo) error {
 }
 
 func ImportPresealedSectors(rep repo.Repo, srcPath string, sectorSize abi.SectorSize, symlink bool) error {
-	badgerOptions := badger.Options{
-		GcDiscardRatio: badger.DefaultOptions.GcDiscardRatio,
-		GcInterval:     badger.DefaultOptions.GcInterval,
-		GcSleep:        badger.DefaultOptions.GcSleep,
-		Options:        badger.DefaultOptions.Options,
-	}
-	badgerOptions.ReadOnly = true
-	oldMetaDs, err := badger.NewDatastore(filepath.Join(srcPath, "badger"), &badgerOptions)
+	nextSecnum, err := findNextSecnum(srcPath)
 	if err != nil {
 		return err
 	}
+
+	oldMetaDs := datastore.NewMapDatastore()
+	oldMetaDs.Put(datastore.NewKey("/sectorbuilder/last"), []byte(fmt.Sprint(nextSecnum)))
 
 	registeredSealProof, registeredPoStProof, err := registeredProofsFromSectorSize(sectorSize)
 	if err != nil {
@@ -195,4 +194,36 @@ func ImportPresealedSectors(rep repo.Repo, srcPath string, sectorSize abi.Sector
 		return err
 	}
 	return nil
+}
+
+func findNextSecnum(srcPath string) (int64, error) {
+	secnuumPattern, err := regexp.Compile("\\w+-\\w+-(\\d+)")
+	if err != nil {
+		return 0, err
+	}
+
+	// find last sector id by examining paths
+	maxSecnum := int64(-1)
+	dirs := []string{"cache", "sealed", "staging", "unsealed"}
+	for _, dir := range dirs {
+		dirPath := filepath.Join(srcPath, dir)
+		files, err := ioutil.ReadDir(dirPath)
+		if err != nil {
+			return 0, err
+		}
+
+		for _, file := range files {
+			matches := secnuumPattern.FindStringSubmatch(file.Name())
+			if len(matches) == 2 {
+				secnum, err := strconv.ParseInt(matches[1], 10, 0)
+				if err != nil {
+					return 0, err
+				}
+				if secnum > maxSecnum {
+					maxSecnum = secnum
+				}
+			}
+		}
+	}
+	return maxSecnum + 1, nil
 }

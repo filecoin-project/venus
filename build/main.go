@@ -125,6 +125,7 @@ func deps() {
 		panic(errors.Wrap(err, "failed to read contents of ./parameters.json"))
 	}
 
+	log.Println("Getting parameters...")
 	err = pf.GetParams(dat, 2048)
 	if err != nil {
 		panic(errors.Wrap(err, "failed to acquire Groth parameters for development sectors"))

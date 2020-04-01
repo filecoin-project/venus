@@ -236,7 +236,7 @@ func winsAtEpoch(t *testing.T, em *ElectionMachine, head block.TipSetKey, epoch 
 	digest := epostVRFProof.Digest()
 
 	// does this postRandomness create a winner?
-	candidates, err := em.GenerateCandidates(digest[:], sectorInfos, &TestElectionPoster{})
+	candidates, err := em.GenerateCandidates(digest[:], sectorInfos, &TestElectionPoster{}, miner)
 	require.NoError(t, err)
 
 	for _, candidate := range candidates {

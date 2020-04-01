@@ -638,7 +638,7 @@ func (g *GenesisGenerator) putSectors(ctx context.Context, comm *CommitConfig, m
 
 	newSectorInfo := &miner.SectorOnChainInfo{
 		Info: miner.SectorPreCommitInfo{
-			RegisteredProof: abi.RegisteredProof_StackedDRG2KiBSeal, // default to 2kib, TODO set based on sector size
+			RegisteredProof: comm.ProofType,
 			SectorNumber:    abi.SectorNumber(comm.SectorNum),
 			SealedCID:       comm.CommR,
 			SealRandEpoch:   0,
