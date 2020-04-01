@@ -99,8 +99,8 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 	if err != nil {
 		return cid.Undef, nil, errors.Wrap(err, "invalid params")
 	}
-	// Our encoder can't distinguish between producing a nil and producing an empty byte array,
-	// e.g. when encoding adt.Empty.
+	// The spec's message syntax validation rules restricts empty parameters
+	//  to be encoded as an empty byte string not cbor null
 	if encodedParams == nil {
 		encodedParams = []byte{}
 	}

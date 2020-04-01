@@ -26,7 +26,6 @@ var dropNonceTooHighCt *metrics.Int64Counter
 
 var invReceiverUndefCt *metrics.Int64Counter
 var invSenderUndefCt *metrics.Int64Counter
-var invCallSeqNegativeCt *metrics.Int64Counter
 var invValueAboveMaxCt *metrics.Int64Counter
 var invParamsNilCt *metrics.Int64Counter
 var invGasPriceNegativeCt *metrics.Int64Counter
@@ -50,7 +49,6 @@ func init() {
 
 	invReceiverUndefCt = metrics.NewInt64Counter("consensus/msg_undef_receiver", "Count of")
 	invSenderUndefCt = metrics.NewInt64Counter("consensus/msg_undef_sender", "Count of")
-	invCallSeqNegativeCt = metrics.NewInt64Counter("consensus/msg_callseqno_negative", "Count of")
 	invValueAboveMaxCt = metrics.NewInt64Counter("consensus/msg_value_max", "Count of")
 	invParamsNilCt = metrics.NewInt64Counter("consensus/msg_params_nil", "Count of")
 	invGasPriceNegativeCt = metrics.NewInt64Counter("consensus/msg_gasprice_negative", "Count of")
@@ -156,10 +154,9 @@ func (v *MessageSyntaxValidator) Validate(ctx context.Context, smsg *types.Signe
 		invSenderUndefCt.Inc(ctx, 1)
 		return fmt.Errorf("empty sender: %s", msg)
 	}
-	if msg.CallSeqNum < 0 {
-		invCallSeqNegativeCt.Inc(ctx, 1)
-		return fmt.Errorf("negative callseqnum %d: %s", msg.CallSeqNum, msg)
-	}
+	// The spec calls for validating a non-negative call sequence num, but by
+	// the time it's decoded into a uint64 the check is already passed
+
 	if msg.Value.LessThan(big.Zero()) {
 		invNegativeValueCt.Inc(ctx, 1)
 		return fmt.Errorf("negative value %s: %s", msg.Value, msg)
@@ -168,8 +165,8 @@ func (v *MessageSyntaxValidator) Validate(ctx context.Context, smsg *types.Signe
 		invValueAboveMaxCt.Inc(ctx, 1)
 		return fmt.Errorf("value %s exceeds max %s: %s", msg.Value, msgMaxValue, msg)
 	}
-	// The spec calls for validating a non-negative method num, but by the time it's decoded into a uint64
-	// we can't do that any more.
+	// The spec calls for validating a non-negative method num, but by the
+	// time it's decoded into a uint64 the check is already passed
 
 	if msg.Params == nil {
 		invParamsNilCt.Inc(ctx, 1)
