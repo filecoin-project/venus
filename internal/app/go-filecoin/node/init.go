@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -210,6 +211,11 @@ func findNextSecnum(srcPath string) (int64, error) {
 	dirs := []string{"cache", "sealed", "staging", "unsealed"}
 	for _, dir := range dirs {
 		dirPath := filepath.Join(srcPath, dir)
+
+		if _, err = os.Stat(dirPath); os.IsNotExist(err) {
+			continue
+		}
+
 		files, err := ioutil.ReadDir(dirPath)
 		if err != nil {
 			return 0, err
