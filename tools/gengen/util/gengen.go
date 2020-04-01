@@ -54,6 +54,7 @@ type CommitConfig struct {
 	CommD     cid.Cid
 	SectorNum uint64
 	DealCfg   *DealConfig
+	ProofType abi.RegisteredProof
 }
 
 // DealConfig carries the information needed to specify a self-deal committing

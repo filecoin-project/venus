@@ -68,7 +68,7 @@ func (fem *FakeElectionMachine) GenerateEPoStVrfProof(ctx context.Context, base 
 }
 
 // GenerateCandidates returns one fake election post candidate
-func (fem *FakeElectionMachine) GenerateCandidates(poStRand abi.PoStRandomness, sectorInfos []abi.SectorInfo, ep postgenerator.PoStGenerator) ([]abi.PoStCandidate, error) {
+func (fem *FakeElectionMachine) GenerateCandidates(poStRand abi.PoStRandomness, sectorInfos []abi.SectorInfo, ep postgenerator.PoStGenerator, minerAddr address.Address) ([]abi.PoStCandidate, error) {
 	return []abi.PoStCandidate{
 		{
 
@@ -236,7 +236,7 @@ func winsAtEpoch(t *testing.T, em *ElectionMachine, head block.TipSetKey, epoch 
 	digest := epostVRFProof.Digest()
 
 	// does this postRandomness create a winner?
-	candidates, err := em.GenerateCandidates(digest[:], sectorInfos, &TestElectionPoster{})
+	candidates, err := em.GenerateCandidates(digest[:], sectorInfos, &TestElectionPoster{}, miner)
 	require.NoError(t, err)
 
 	for _, candidate := range candidates {

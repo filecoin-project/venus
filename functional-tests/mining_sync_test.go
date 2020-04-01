@@ -84,6 +84,10 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 	wd, _ := os.Getwd()
 	genCfgPath := filepath.Join(wd, "..", "fixtures/setup.json")
 	presealPath := filepath.Join(wd, "..", "fixtures/genesis-sectors")
+	// setup presealed sectors and uncomment to run test against sectors with larger sector size
+	//genCfgPath := filepath.Join("./512", "setup.json")
+	//presealPath := "./512"
+
 	genTime := int64(1000000000)
 	blockTime := 1 * time.Second
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
@@ -136,5 +140,5 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 		// If we mine too many blocks before the post is sent we could miss our window. Add some friction here.
 		time.Sleep(2 * time.Second)
 	}
-	t.Fatal("Timouut wating for windowed PoSt")
+	t.Fatal("Timouut waiting for windowed PoSt")
 }

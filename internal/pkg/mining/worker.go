@@ -86,7 +86,7 @@ type workerPorcelainAPI interface {
 
 type electionUtil interface {
 	GenerateEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error)
-	GenerateCandidates(abi.PoStRandomness, []abi.SectorInfo, postgenerator.PoStGenerator) ([]abi.PoStCandidate, error)
+	GenerateCandidates(abi.PoStRandomness, []abi.SectorInfo, postgenerator.PoStGenerator, address.Address) ([]abi.PoStCandidate, error)
 	GenerateEPoSt([]abi.SectorInfo, abi.PoStRandomness, []abi.PoStCandidate, postgenerator.PoStGenerator) ([]abi.PoStProof, error)
 	CandidateWins([]byte, uint64, uint64, uint64, uint64) bool
 }
@@ -250,7 +250,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	go func() {
 		defer close(done)
 		defer close(errCh)
-		candidates, err := w.election.GenerateCandidates(postVrfProofDigest[:], sortedSectorInfos, w.poster)
+		candidates, err := w.election.GenerateCandidates(postVrfProofDigest[:], sortedSectorInfos, w.poster, w.minerAddr)
 		if err != nil {
 			errCh <- err
 			return
