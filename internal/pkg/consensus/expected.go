@@ -238,6 +238,9 @@ func (c *Expected) validateMining(ctx context.Context,
 		}
 
 		// Verify all partial tickets are winners
+		// TODO this is not using nominal power, which must take into account undeclared faults
+		// TODO the nominal power must be tested against the minimum (power.minerNominalPowerMeetsConsensusMinimum)
+		// See https://github.com/filecoin-project/go-filecoin/issues/3958
 		sectorNum, err := powerTable.NumSectors(ctx, blk.Miner)
 		if err != nil {
 			return errors.Wrap(err, "failed to read sectorNum from power table")
