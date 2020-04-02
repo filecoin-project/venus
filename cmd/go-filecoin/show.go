@@ -75,9 +75,16 @@ Timestamp:  %s
 
 			showMessages, _ := req.Options["messages"].(bool)
 			if showMessages == true {
-				_, err = fmt.Fprintf(w, `Messages:  %s`+"\n", block.Messages)
+				_, err = fmt.Fprintf(w, `BLS Messages:\n  %s`+"\n", block.BLSMessages)
+				if err != nil {
+					return err
+				}
+				_, err = fmt.Fprintf(w, `SECP Messages:\n  %s`+"\n", block.SECPMessages)
+				if err != nil {
+					return err
+				}
 			}
-			return err
+			return nil
 		}),
 	},
 }
@@ -125,6 +132,11 @@ Timestamp:  %s
 	},
 }
 
+type allMessages struct {
+	BLS  []*types.UnsignedMessage
+	SECP []*types.SignedMessage
+}
+
 var showMessagesCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Show a filecoin message collection by txmeta CID",
@@ -141,18 +153,22 @@ the filecoin block header.`,
 			return err
 		}
 
-		messages, err := GetPorcelainAPI(env).ChainGetMessages(req.Context, cid)
+		bls, secp, err := GetPorcelainAPI(env).ChainGetMessages(req.Context, cid)
 		if err != nil {
 			return err
 		}
 
-		return re.Emit(messages)
+		return re.Emit(&allMessages{BLS: bls, SECP: secp})
 	},
-	Type: []*types.SignedMessage{},
+	Type: &allMessages{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, messages []*types.SignedMessage) error {
-			outStr := "Messages Details\n"
-			for _, msg := range messages {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, messages *allMessages) error {
+			outStr := "BLS messages \n"
+			for _, msg := range messages.BLS {
+				outStr += msg.String() + "\n"
+			}
+			outStr += "\nSECP messages \n"
+			for _, msg := range messages.SECP {
 				outStr += msg.String() + "\n"
 			}
 			_, err := fmt.Fprint(w, outStr)
