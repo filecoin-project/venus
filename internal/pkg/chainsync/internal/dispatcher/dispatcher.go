@@ -183,12 +183,13 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			if popped {
 				log.Debugf("processing %v", syncTarget)
 				// Do work
-				syncErr := d.syncer.HandleNewTipSet(syncingCtx, &syncTarget.ChainInfo, d.catchup)
+				err := d.syncer.HandleNewTipSet(syncingCtx, &syncTarget.ChainInfo, d.catchup)
+				log.Debugf("finished processing %v", syncTarget)
 				if err != nil {
-					log.Info("sync request could not complete: %s", err)
+					log.Infof("failed sync of %v (catchup=%s): %s", &syncTarget.ChainInfo, d.catchup, err)
 				}
 				d.syncTargetCount++
-				d.registeredCb(syncTarget, syncErr)
+				d.registeredCb(syncTarget, err)
 				follow, err := d.transitioner.MaybeTransitionToFollow(syncingCtx, d.catchup, d.workQueue.Len())
 				if err != nil {
 					log.Errorf("state update error setting head %s", err)
