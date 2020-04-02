@@ -3,6 +3,7 @@ package dispatcher
 import (
 	"container/heap"
 	"context"
+	"runtime/debug"
 
 	logging "github.com/ipfs/go-log"
 
@@ -121,11 +122,20 @@ func (d *Dispatcher) enqueue(ci *block.ChainInfo) error {
 // Start launches the business logic for the syncing subsystem.
 func (d *Dispatcher) Start(syncingCtx context.Context) {
 	go func() {
+		defer func() {
+			log.Errorf("exiting")
+			if r := recover(); r != nil {
+				log.Errorf("panic: %v", r)
+				debug.PrintStack()
+			}
+		}()
+
 		var last *Target
 		for {
 			// Handle shutdown
 			select {
 			case <-syncingCtx.Done():
+				log.Infof("context done")
 				return
 			default:
 			}
@@ -133,6 +143,7 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			// Handle control signals
 			select {
 			case ctrl := <-d.control:
+				log.Debugf("processing control: %v", ctrl)
 				d.processCtrl(ctrl)
 			default:
 			}
@@ -147,6 +158,7 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			case first := <-d.incoming:
 				ws = append(ws, first)
 				ws = append(ws, d.drainIncoming()...)
+				log.Debugf("received %d incoming targets: %v", len(ws), ws)
 			default:
 			}
 			catchup, err := d.transitioner.MaybeTransitionToCatchup(d.catchup, ws)
@@ -158,7 +170,7 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			for i, syncTarget := range ws {
 				// Drop targets we don't have room for
 				if d.workQueue.Len() >= d.workQueueSize {
-					log.Infof("not enough space for %d targets on dispatcher's work queue", len(ws)-i)
+					log.Infof("not enough space for %d targets on work queue", len(ws)-i)
 					break
 				}
 				// Sort new targets by putting on work queue.
@@ -166,8 +178,10 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			}
 
 			// Check for work to do
+			log.Debugf("processing work queue of %d", d.workQueue.Len())
 			syncTarget, popped := d.workQueue.Pop()
 			if popped {
+				log.Debugf("processing %v", syncTarget)
 				// Do work
 				syncErr := d.syncer.HandleNewTipSet(syncingCtx, &syncTarget.ChainInfo, d.catchup)
 				if err != nil {
@@ -180,11 +194,14 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 					log.Errorf("state update error setting head %s", err)
 				} else {
 					d.catchup = !follow
+					log.Debugf("catchup state: %v", d.catchup)
 				}
 			} else {
 				// No work left, block until something shows up
+				log.Debugf("drained work queue, waiting")
 				select {
 				case extra := <-d.incoming:
+					log.Debugf("stopped waiting, received %v", extra)
 					last = &extra
 				}
 			}
