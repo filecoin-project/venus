@@ -6,7 +6,6 @@ import (
 	"io"
 	mrand "math/rand"
 	"sort"
-	"strconv"
 
 	address "github.com/filecoin-project/go-address"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
@@ -53,14 +52,11 @@ func (s *cstore) Context() context.Context {
 }
 
 var (
-	defaultAccounts map[address.Address]abi.TokenAmount
-)
-
-func init() {
-	defaultAccounts = map[address.Address]abi.TokenAmount{
+	rewardActorInitialBalance = types.NewAttoFILFromFIL(1.4e9)
+	defaultAccounts           = map[address.Address]abi.TokenAmount{
 		builtin.BurntFundsActorAddr: abi.NewTokenAmount(0),
 	}
-}
+)
 
 type GenesisGenerator struct {
 	// actor state
@@ -161,7 +157,7 @@ func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
 		return err
 	}
 
-	rewardActor, err := g.createActor(builtin.RewardActorAddr, builtin.RewardActorCodeID, specsbig.Zero(), func() (interface{}, error) {
+	rewardActor, err := g.createActor(builtin.RewardActorAddr, builtin.RewardActorCodeID, rewardActorInitialBalance, func() (interface{}, error) {
 		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore())
 		if err != nil {
 			return nil, err
@@ -171,7 +167,6 @@ func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	rewardActor.Balance = abi.NewTokenAmount(100_000_000_000_000_000)
 	if err := g.stateTree.SetActor(ctx, builtin.RewardActorAddr, rewardActor); err != nil {
 		return err
 	}
@@ -250,19 +245,17 @@ func (g *GenesisGenerator) setupPrealloc() error {
 
 	for i, v := range g.cfg.PreallocatedFunds {
 		ki := g.keys[i]
-
 		addr, err := ki.Address()
 		if err != nil {
 			return err
 		}
 
-		valint, err := strconv.ParseUint(v, 10, 64)
-		if err != nil {
-			return err
+		value, ok := types.NewAttoFILFromFILString(v)
+		if !ok {
+			return fmt.Errorf("failed to parse FIL value '%s'", v)
 		}
 
-		_, err = g.vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr,
-			builtin.MethodSend, abi.NewTokenAmount(int64(valint)), nil, &g.chainRand)
+		_, err = g.vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr, builtin.MethodSend, value, nil, &g.chainRand)
 		if err != nil {
 			return err
 		}
