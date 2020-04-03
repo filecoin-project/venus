@@ -259,15 +259,15 @@ func (node *Node) handleNewMiningOutput(ctx context.Context, miningOutCh <-chan 
 
 }
 
-func (node *Node) handleNewChainHeads(ctx context.Context, prevHead block.TipSet) {
+func (node *Node) handleNewChainHeads(ctx context.Context, firstHead block.TipSet) {
 	newHeadCh := node.chain.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
 	defer log.Infof("new head handler exited")
 	defer node.chain.ChainReader.HeadEvents().Unsub(newHeadCh)
 
-	handler := message.NewHeadHandler(node.Messaging.Inbox, node.Messaging.Outbox, node.chain.ChainReader, prevHead)
+	handler := message.NewHeadHandler(node.Messaging.Inbox, node.Messaging.Outbox, node.chain.ChainReader, firstHead)
 
 	for {
-		log.Debugf("waiting for new head", prevHead.Key())
+		log.Debugf("waiting for new head")
 		select {
 		case ts, ok := <-newHeadCh:
 			if !ok {
@@ -585,6 +585,11 @@ func (node *Node) StartMining(ctx context.Context) error {
 		return fmt.Errorf("miner scheduler already started")
 	}
 
+	// The block mining scheduler Start() accepts a long-running context, and stopping is performed by cancellation of
+	// that context.
+	// The storage mining module and provider take the immediate context, hopefully don't run any goroutines that
+	// shut down when that context is done (which is ~immediately), and provide explicit Stop() methods instead.
+	// We should pick one consistent way of doing things.
 	var miningCtx context.Context
 	miningCtx, node.BlockMining.CancelMining = context.WithCancel(context.Background())
 

@@ -1,8 +1,6 @@
 package chainsampler
 
 import (
-	"context"
-
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
@@ -32,20 +30,13 @@ func NewHeightThresholdListener(target abi.ChainEpoch, hitCh chan block.TipSetKe
 	}
 }
 
-// NewTriggeredHeightThresholdListener creates a new listener
-func NewTriggeredHeightThresholdListener(target abi.ChainEpoch, hitCh chan block.TipSetKey, errCh chan error, invalidCh, doneCh chan struct{}) *HeightThresholdListener {
-	l := NewHeightThresholdListener(target, hitCh, errCh, invalidCh, doneCh)
-	l.targetHit = true
-	return l
-}
-
 // Handle a chainStore update by sending appropriate status messages back to the channels.
 // newChain is all the tipsets that are new since the last head update.
 // Normally, this will be a single tipset, but in the case of a re-org it will contain
 // all the common ancestors of the new tipset to the greatest common ancestor.
 // The tipsets must be ordered from newest (highest block height) to oldest.
 // Returns false if this handler is no longer valid.
-func (l *HeightThresholdListener) Handle(ctx context.Context, chain []block.TipSet) (bool, error) {
+func (l *HeightThresholdListener) Handle(chain []block.TipSet) (bool, error) {
 	if len(chain) < 1 {
 		return true, nil
 	}
@@ -75,7 +66,7 @@ func (l *HeightThresholdListener) Handle(ctx context.Context, chain []block.TipS
 			// if we've re-orged to a point before the target
 		} else if lcaHeight < l.target {
 			l.InvalidCh <- struct{}{}
-			err := l.sendHit(ctx, chain)
+			err := l.sendHit(chain)
 			if err != nil {
 				return true, err
 			}
@@ -86,7 +77,7 @@ func (l *HeightThresholdListener) Handle(ctx context.Context, chain []block.TipS
 	// otherwise send randomness if we've hit the height
 	if h >= l.target {
 		l.targetHit = true
-		err := l.sendHit(ctx, chain)
+		err := l.sendHit(chain)
 		if err != nil {
 			return true, err
 		}
@@ -94,7 +85,7 @@ func (l *HeightThresholdListener) Handle(ctx context.Context, chain []block.TipS
 	return true, nil
 }
 
-func (l *HeightThresholdListener) sendHit(ctx context.Context, chain []block.TipSet) error {
+func (l *HeightThresholdListener) sendHit(chain []block.TipSet) error {
 	// assume chainStore not empty and first tipset height greater than target
 	firstTargetTipset := chain[0]
 	for _, ts := range chain {
