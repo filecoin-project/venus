@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	notinit "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
@@ -164,16 +164,17 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 	}
 
 	// get a view into the actor state
-	var state notinit.State
+	var state init_.State
 	if _, err := vm.store.Get(vm.context, initActorEntry.Head.Cid, &state); err != nil {
 		panic(err)
 	}
 
 	idAddr, err := state.ResolveAddress(vm.ContextStore(), addr)
-	if err != nil {
+	if err == init_.ErrAddressNotFound {
 		return address.Undef, false
+	} else if err != nil {
+		panic(err)
 	}
-
 	return idAddr, true
 }
 

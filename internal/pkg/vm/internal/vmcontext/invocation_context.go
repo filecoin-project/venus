@@ -275,10 +275,8 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 
 	// lookup the ActorID based on the address
 	targetIDAddr, err := state.ResolveAddress(ctx.rt.ContextStore(), target)
-	// Dragons: move this logic to resolve address
-	notFound := (targetIDAddr == target && target.Protocol() != address.ID)
 	created := false
-	if err != nil || notFound {
+	if err == init_.ErrAddressNotFound {
 		// actor does not exist, create an account actor
 		// - precond: address must be a pub-key
 		// - sent init actor a msg to create the new account
@@ -324,6 +322,8 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 		}
 
 		created = true
+	} else if err != nil {
+		panic(err)
 	}
 
 	// load actor
