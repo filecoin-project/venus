@@ -4,11 +4,13 @@ import (
 	"context"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/prometheus/common/log"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 )
+
+var log = logging.Logger("chainsampler") // nolint: deadcode
 
 // HeightThresholdScheduler listens for changes to chain height and notifies when the threshold is hit or invalidated
 type HeightThresholdScheduler struct {
@@ -32,6 +34,7 @@ func NewHeightThresholdScheduler(chainStore *chain.Store) *HeightThresholdSchedu
 // StartHeightListener starts the scheduler that manages height listeners.
 func (m *HeightThresholdScheduler) StartHeightListener(ctx context.Context, htc <-chan interface{}) {
 	go func() {
+		defer log.Infof("height listener exiting")
 		var previousHead block.TipSet
 		for {
 			select {
@@ -53,8 +56,10 @@ func (m *HeightThresholdScheduler) StartHeightListener(ctx context.Context, htc 
 				}
 				m.heightListeners = listeners
 			case <-m.schedulerDone:
+				log.Debugf("height listener scheduler done")
 				return
 			case <-ctx.Done():
+				log.Debugf("height listener context done")
 				return
 			}
 		}

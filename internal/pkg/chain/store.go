@@ -87,6 +87,8 @@ type Store struct {
 	// Successive published tipsets may be supersets of previously published tipsets.
 	// TODO: rename to notifications.  Also, reconsider ordering assumption depending
 	// on decisions made around the FC node notification system.
+	// TODO: replace this with a synchronous event bus
+	// https://github.com/filecoin-project/go-filecoin/issues/2309
 	headEvents *pubsub.PubSub
 
 	// Tracks tipsets by height/parentset for use by expected consensus.
@@ -101,7 +103,7 @@ func NewStore(ds repo.Datastore, cst cbor.IpldStore, sr Reporter, genesisCid cid
 	return &Store{
 		stateAndBlockSource: newSource(cst),
 		ds:                  ds,
-		headEvents:          pubsub.New(128),
+		headEvents:          pubsub.New(12),
 		tipIndex:            NewTipIndex(),
 		genesis:             genesisCid,
 		reporter:            sr,

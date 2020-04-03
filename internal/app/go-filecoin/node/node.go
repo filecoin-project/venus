@@ -260,27 +260,36 @@ func (node *Node) handleNewMiningOutput(ctx context.Context, miningOutCh <-chan 
 }
 
 func (node *Node) handleNewChainHeads(ctx context.Context, prevHead block.TipSet) {
-	node.chain.HeaviestTipSetCh = node.chain.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
+	newHeadCh := node.chain.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
+	defer log.Infof("new head handler exited")
+	defer node.chain.ChainReader.HeadEvents().Unsub(newHeadCh)
+
 	handler := message.NewHeadHandler(node.Messaging.Inbox, node.Messaging.Outbox, node.chain.ChainReader, prevHead)
 
 	for {
+		log.Debugf("waiting for new head", prevHead.Key())
 		select {
-		case ts, ok := <-node.chain.HeaviestTipSetCh:
+		case ts, ok := <-newHeadCh:
 			if !ok {
+				log.Errorf("failed new head channel receive")
 				return
 			}
 			newHead, ok := ts.(block.TipSet)
 			if !ok {
-				log.Warn("non-tipset published on heaviest tipset channel")
+				log.Errorf("non-tipset published on heaviest tipset channel")
 				continue
 			}
+			height, _ := newHead.Height()
+			log.Debugf("received new head height %s, key %s", height, newHead.Key())
 
 			if node.StorageMining != nil {
+				log.Debugf("storage mining handling new head")
 				if err := node.StorageMining.HandleNewHead(ctx, newHead); err != nil {
 					log.Error(err)
 				}
 			}
 
+			log.Debugf("message pool handling new head")
 			if err := handler.HandleNewHead(ctx, newHead); err != nil {
 				log.Error(err)
 			}
@@ -308,7 +317,6 @@ func (node *Node) cancelSubscriptions() {
 
 // Stop initiates the shutdown of the node.
 func (node *Node) Stop(ctx context.Context) {
-	node.chain.ChainReader.HeadEvents().Unsub(node.chain.HeaviestTipSetCh)
 	node.StopMining(ctx)
 
 	node.cancelSubscriptions()
