@@ -31,10 +31,9 @@ type StorageMiningSubmodule struct {
 	// PoStGenerator generates election PoSts
 	PoStGenerator postgenerator.PoStGenerator
 
-	minerNode        *storageminerconnector.StorageMinerNodeConnector
-	storageMiner     *storage.Miner
-	heaviestTipSetCh chan interface{}
-	poster           *poster.Poster
+	minerNode    *storageminerconnector.StorageMinerNodeConnector
+	storageMiner *storage.Miner
+	poster       *poster.Poster
 }
 
 // NewStorageMiningSubmodule creates a new storage mining submodule.
@@ -74,12 +73,11 @@ func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching,
 	}
 
 	modu := &StorageMiningSubmodule{
-		PieceManager:     smbe,
-		PoStGenerator:    postGen,
-		minerNode:        minerNode,
-		storageMiner:     storageMiner,
-		heaviestTipSetCh: make(chan interface{}),
-		poster:           poster.NewPoster(minerAddr, m.Outbox, s, c.State, stateViewer, mw),
+		PieceManager:  smbe,
+		PoStGenerator: postGen,
+		minerNode:     minerNode,
+		storageMiner:  storageMiner,
+		poster:        poster.NewPoster(minerAddr, m.Outbox, s, c.State, stateViewer, mw),
 	}
 
 	return modu, nil
@@ -91,14 +89,12 @@ func (s *StorageMiningSubmodule) Start(ctx context.Context) error {
 		return nil
 	}
 
-	s.minerNode.StartHeightListener(ctx, s.heaviestTipSetCh)
 	err := s.storageMiner.Run(ctx)
 	if err != nil {
 		return err
 	}
 
 	s.started = true
-
 	return nil
 }
 
@@ -108,16 +104,13 @@ func (s *StorageMiningSubmodule) Stop(ctx context.Context) error {
 		return nil
 	}
 
-	s.minerNode.StopHeightListener()
 	err := s.storageMiner.Stop(ctx)
 	if err != nil {
 		return err
 	}
 
 	s.poster.StopPoSting()
-
 	s.started = false
-
 	return nil
 }
 
@@ -127,7 +120,10 @@ func (s *StorageMiningSubmodule) HandleNewHead(ctx context.Context, newHead bloc
 		return nil
 	}
 
-	s.heaviestTipSetCh <- newHead
+	err := s.minerNode.HandleNewTipSet(ctx, newHead)
+	if err != nil {
+		return err
+	}
 
 	return s.poster.HandleNewHead(ctx, newHead)
 }

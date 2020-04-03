@@ -70,19 +70,8 @@ func NewStorageMinerNodeConnector(minerAddress address.Address, chainStore *chai
 	}
 }
 
-// StartHeightListener starts the scheduler that manages height listeners.
-func (m *StorageMinerNodeConnector) StartHeightListener(ctx context.Context, htc <-chan interface{}) {
-	m.chainHeightScheduler.StartHeightListener(ctx, htc)
-}
-
-// StopHeightListener stops the scheduler that manages height listeners.
-func (m *StorageMinerNodeConnector) StopHeightListener() {
-	m.chainHeightScheduler.Stop()
-}
-
-func (m *StorageMinerNodeConnector) handleNewTipSet(ctx context.Context, previousHead block.TipSet) (block.TipSet, error) {
-
-	return m.chainHeightScheduler.HandleNewTipSet(ctx, previousHead)
+func (m *StorageMinerNodeConnector) HandleNewTipSet(ctx context.Context, newHead block.TipSet) error {
+	return m.chainHeightScheduler.HandleNewTipSet(ctx, newHead)
 }
 
 // SendSelfDeals creates self-deals and sends them to the network.

@@ -33,7 +33,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 		require.NoError(t, err)
 
 		go func() {
-			_, err := listener.Handle(ctx, newChain)
+			_, err := listener.Handle(newChain)
 			require.NoError(t, err)
 			cancel()
 		}()
@@ -47,7 +47,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 
 		nextTS := builder.Build(startHead, 1, nil)
 		go func() {
-			_, err := listener.Handle(context.TODO(), []block.TipSet{nextTS})
+			_, err := listener.Handle([]block.TipSet{nextTS})
 			require.NoError(t, err)
 		}()
 
@@ -64,7 +64,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 		require.NoError(t, err)
 
 		go func() {
-			_, err := listener.Handle(context.TODO(), newChain)
+			_, err := listener.Handle(newChain)
 			require.NoError(t, err)
 		}()
 
@@ -73,7 +73,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 
 		shorterFork := builder.BuildManyOn(1, startHead, nil)
 		go func() {
-			_, err := listener.Handle(context.TODO(), []block.TipSet{shorterFork})
+			_, err := listener.Handle([]block.TipSet{shorterFork})
 			require.NoError(t, err)
 		}()
 
@@ -89,7 +89,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 		require.NoError(t, err)
 
 		go func() {
-			_, err := listener.Handle(context.TODO(), newChain)
+			_, err := listener.Handle(newChain)
 			require.NoError(t, err)
 		}()
 
@@ -101,7 +101,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 		require.NoError(t, err)
 
 		go func() {
-			_, err := listener.Handle(context.TODO(), forkSlice)
+			_, err := listener.Handle(forkSlice)
 			require.NoError(t, err)
 		}()
 
@@ -125,7 +125,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 		require.NoError(t, err)
 
 		go func() {
-			_, err := listener.Handle(context.TODO(), newChain)
+			_, err := listener.Handle(newChain)
 			require.NoError(t, err)
 		}()
 
@@ -138,7 +138,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 		require.NoError(t, err)
 
 		go func() {
-			_, err := listener.Handle(ctx, newChain)
+			_, err := listener.Handle(newChain)
 			require.NoError(t, err)
 			cancel()
 		}()
@@ -156,7 +156,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 		require.NoError(t, err)
 
 		go func() {
-			_, err := listener.Handle(context.TODO(), newChain)
+			_, err := listener.Handle(newChain)
 			require.NoError(t, err)
 		}()
 
@@ -167,7 +167,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 		go func() {
 			for i := abi.ChainEpoch(0); i < miner.ChainFinalityish; i++ {
 				nextTS = builder.BuildOn(nextTS, 1, nil)
-				valid, err := listener.Handle(context.TODO(), []block.TipSet{nextTS})
+				valid, err := listener.Handle([]block.TipSet{nextTS})
 				require.NoError(t, err)
 
 				h, err := nextTS.Height()

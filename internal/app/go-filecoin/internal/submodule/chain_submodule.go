@@ -20,9 +20,6 @@ type ChainSubmodule struct {
 	ChainReader  *chain.Store
 	MessageStore *chain.MessageStore
 	State        *cst.ChainStateReadWriter
-	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
-	// https://github.com/filecoin-project/go-filecoin/issues/2309
-	HeaviestTipSetCh chan interface{}
 
 	Sampler    *chain.Sampler
 	ActorState *appstate.TipSetStateViewer
@@ -66,9 +63,8 @@ func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *Blockstor
 	processor := consensus.NewDefaultProcessor(syscalls, chainState)
 
 	return ChainSubmodule{
-		ChainReader:  chainStore,
-		MessageStore: messageStore,
-		// HeaviestTipSetCh nil
+		ChainReader:    chainStore,
+		MessageStore:   messageStore,
 		ActorState:     actorState,
 		State:          chainState,
 		Processor:      processor,
