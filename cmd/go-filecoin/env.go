@@ -6,6 +6,7 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/mining"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/retrieval"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
@@ -15,6 +16,7 @@ import (
 type Env struct {
 	blockMiningAPI *mining.API
 	ctx            context.Context
+	drandAPI       *drand.API
 	porcelainAPI   *porcelain.API
 	retrievalAPI   retrieval.API
 	storageAPI     *storage.API
@@ -62,4 +64,10 @@ func GetStorageAPI(env cmds.Environment) *storage.API {
 func GetInspectorAPI(env cmds.Environment) *Inspector {
 	ce := env.(*Env)
 	return ce.inspectorAPI
+}
+
+// GetDrandAPI returns the drand api from the given environment.
+func GetDrandAPI(env cmds.Environment) *drand.API {
+	ce := env.(*Env)
+	return ce.drandAPI
 }

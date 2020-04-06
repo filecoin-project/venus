@@ -131,11 +131,11 @@ func newDefaultWalletConfig() *WalletConfig {
 // DrandConfig holds all configuration options related to pulling randomness from Drand servers
 type DrandConfig struct {
 	// Addresses are are drand server addresses in the format
-	Addresses []string
+	Addresses []string `json:"addresses"`
 	// Secure is whether or not the drand address are secure (e.g. TLS)
-	Secure bool
+	Secure bool `json:"secure"`
 	// DistKey is the distributed public key of the server group expressed as hex encoded coefficients
-	DistKey []string
+	DistKey []string `json:"distKey"`
 }
 
 func newDefaultDrandConfig() *DrandConfig {
@@ -265,6 +265,7 @@ func NewDefaultConfig() *Config {
 		API:           newDefaultAPIConfig(),
 		Bootstrap:     newDefaultBootstrapConfig(),
 		Datastore:     newDefaultDatastoreConfig(),
+		Drand:         newDefaultDrandConfig(),
 		Swarm:         newDefaultSwarmConfig(),
 		Mining:        newDefaultMiningConfig(),
 		Wallet:        newDefaultWalletConfig(),

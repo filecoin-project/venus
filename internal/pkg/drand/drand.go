@@ -10,6 +10,7 @@ import (
 type IFace interface {
 	ReadEntry(ctx context.Context, drandRound Round) (*Entry, error)
 	VerifyEntry(parent, child *Entry) (bool, error)
+	FetchGroupConfig(addresses []string, secure bool, overrideGroupAddrs bool) ([]string, []string, error)
 }
 
 // Utility reads drand entries and verifies drand entries against their parents
@@ -25,6 +26,10 @@ func (d *Utility) ReadEntry(ctx context.Context, drandRound Round) (*Entry, erro
 // parent entry per the drand protocol.
 func (d *Utility) VerifyEntry(parent, child *Entry) (bool, error) {
 	panic("TODO: this is a stub that needs to be filled in")
+}
+
+func (d *Utility) FetchGroupConfig(addresses []string, secure bool, overrideGroupAddrs bool) ([]string, []string, error) {
+	return addresses, []string{}, nil
 }
 
 // Round is a type for recording drand round indexes

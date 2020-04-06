@@ -157,6 +157,7 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig, ready chan interface{}, terminate chan os.Signal) error {
 	servenv := &Env{
 		blockMiningAPI: nd.BlockMining.BlockMiningAPI,
+		drandAPI:       nd.DrandAPI,
 		ctx:            ctx,
 		inspectorAPI:   NewInspectorAPI(nd.Repo),
 		porcelainAPI:   nd.PorcelainAPI,

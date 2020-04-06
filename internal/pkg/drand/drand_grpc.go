@@ -82,30 +82,60 @@ func (d *GRPC) VerifyEntry(parent, child *Entry) (bool, error) {
 	return true, nil
 }
 
-// FetchGroupKey Should only be used when switching to a new drand server group.
+// FetchGroupConfig Should only be used when switching to a new drand server group.
 // Returns hex encoded group key coefficients that can be used to construct a public key.
-func FetchGroupKey(addresses []string, secure bool) ([]string, error) {
+// If overrideGroupAddrs is true, the given set of addresses will be set as the drand nodes.
+// Otherwise drand address config will be set from the retrieved group info. The
+// override is useful when the the drand server is behind NAT.
+func (d *GRPC) FetchGroupConfig(addresses []string, secure bool, overrideGroupAddrs bool) ([]string, []string, error) {
 	client := core.NewGrpcClient()
 
 	// try each address, stopping when we have a key
 	for _, addr := range addresses {
-		key, err := fetchGroupKeyFromServer(client, Address{addr, secure})
+		groupAddrs, keyCoeffs, err := fetchGroupServer(client, Address{addr, secure})
 		if err != nil {
 			log.Warnf("Error fetching drand group key from %s: %s", addr, err)
 			continue
 		}
-		return key, nil
+
+		distKey, err := groupKeycoefficientsToDistPublic(keyCoeffs)
+		if err != nil {
+			return nil, nil, err
+		}
+		d.key = distKey
+
+		if overrideGroupAddrs {
+			d.addresses = drandAddresses(addresses, secure)
+		} else {
+			d.addresses = drandAddresses(groupAddrs, secure)
+		}
+
+		return groupAddrs, keyCoeffs, nil
 	}
-	return nil, errors.New("Could not retrieve drand group key from any address")
+	return nil, nil, errors.New("Could not retrieve drand group key from any address")
 }
 
-func fetchGroupKeyFromServer(client *core.Client, address Address) ([]string, error) {
+func drandAddresses(addresses []string, secure bool) []Address {
+	addrs := make([]Address, len(addresses))
+	for i, a := range addresses {
+		addrs[i] = NewAddress(a, secure)
+	}
+	return addrs
+}
+
+func fetchGroupServer(client *core.Client, address Address) ([]string, []string, error) {
 	groupResp, err := client.Group(address.address, address.secure)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return groupResp.GetDistkey(), nil
+	nodes := groupResp.GetNodes()
+	addrs := make([]string, len(nodes))
+	for i, nd := range nodes {
+		addrs[i] = nd.GetAddress()
+	}
+
+	return addrs, groupResp.GetDistkey(), nil
 }
 
 func groupKeycoefficientsToDistPublic(coefficients []string) (*key.DistPublic, error) {
