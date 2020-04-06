@@ -147,7 +147,10 @@ func groupKeycoefficientsToDistPublic(coefficients []string) (*key.DistPublic, e
 			return nil, err
 		}
 		pubKey.Coefficients[i] = key.KeyGroup.Point()
-		pubKey.Coefficients[i].UnmarshalBinary(keyBytes)
+		err = pubKey.Coefficients[i].UnmarshalBinary(keyBytes)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &pubKey, nil
 }
