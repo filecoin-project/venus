@@ -25,7 +25,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
@@ -187,7 +187,7 @@ func initTextEncoder(_ *cmds.Request, w io.Writer, val interface{}) error {
 	return err
 }
 
-func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consensus.GenesisInitFunc, error) {
+func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (genesis.InitFunc, error) {
 	if sourceName == "" {
 		return gengen.MakeGenesisFunc(gengen.ProofsMode(types.LiveProofsMode)), nil
 	}

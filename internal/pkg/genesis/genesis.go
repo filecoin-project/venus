@@ -1,4 +1,4 @@
-package consensus
+package genesis
 
 import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -12,21 +12,21 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 )
 
-// GenesisInitFunc is the signature for function that is used to create a genesis block.
-type GenesisInitFunc func(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error)
+// InitFunc is the signature for function that is used to create a genesis block.
+type InitFunc func(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error)
 
-// GenesisTicket is the ticket to place in the genesis block header (which can't be derived from a prior ticket),
+// Ticket is the ticket to place in the genesis block header (which can't be derived from a prior ticket),
 // used in the evaluation of the messages in the genesis block,
 // and *also* the ticket value used when computing the genesis state (the parent state of the genesis block).
-var GenesisTicket = block.Ticket{
+var Ticket = block.Ticket{
 	VRFProof: []byte{
 		0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec,
 		0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec,
 	},
 }
 
-// GenesisVM is the view into the VM used during genesis block creation.
-type GenesisVM interface {
+// VM is the view into the VM used during genesis block creation.
+type VM interface {
 	ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}, rnd crypto.RandomnessSource) (interface{}, error)
 	ContextStore() adt.Store
 }
