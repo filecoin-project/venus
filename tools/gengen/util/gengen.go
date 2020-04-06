@@ -18,9 +18,9 @@ import (
 	dag "github.com/ipfs/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -185,7 +185,7 @@ func MinerConfigs(minerCfgs []*CreateStorageMinerConfig) GenOption {
 var defaultGenTimeOpt = GenTime(123456789)
 
 // MakeGenesisFunc returns a genesis function configured by a set of options.
-func MakeGenesisFunc(opts ...GenOption) consensus.GenesisInitFunc {
+func MakeGenesisFunc(opts ...GenOption) genesis.InitFunc {
 	// Dragons: GenesisInitFunc should take in only a blockstore to remove the hidden
 	// assumption that cst and bs are backed by the same storage.
 	return func(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {

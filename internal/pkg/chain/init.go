@@ -9,12 +9,12 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 )
 
 // Init initializes a DefaultSycner in the given repo.
-func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst cbor.IpldStore, gen consensus.GenesisInitFunc) (*Store, error) {
+func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst cbor.IpldStore, gen genesis.InitFunc) (*Store, error) {
 	// TODO the following should be wrapped in the chain.Store or a sub
 	// interface.
 	// Generate the genesis tipset.

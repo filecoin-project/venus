@@ -29,10 +29,10 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	gfcstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -63,7 +63,7 @@ type GenesisGenerator struct {
 	stateTree state.Tree
 	store     vm.Storage
 	cst       cbor.IpldStore
-	vm        consensus.GenesisVM
+	vm        genesis.VM
 
 	keys      []*crypto.KeyInfo
 	pnrg      *mrand.Rand
@@ -76,10 +76,10 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 	g := GenesisGenerator{}
 	g.stateTree = state.NewState(cst)
 	g.store = vm.NewStorage(bs)
-	g.vm = vm.NewVM(g.stateTree, &g.store, vmsupport.NewSyscalls(&vmsupport.NilFaultChecker{}, &proofs.FakeVerifier{})).(consensus.GenesisVM)
+	g.vm = vm.NewVM(g.stateTree, &g.store, vmsupport.NewSyscalls(&vmsupport.NilFaultChecker{}, &proofs.FakeVerifier{})).(genesis.VM)
 	g.cst = cst
 
-	g.chainRand = crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: consensus.GenesisTicket.VRFProof}}
+	g.chainRand = crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}}
 	return &g
 }
 
@@ -282,7 +282,7 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 
 	geneblk := &block.Block{
 		Miner:  builtin.SystemActorAddr,
-		Ticket: consensus.GenesisTicket,
+		Ticket: genesis.Ticket,
 		EPoStInfo: block.EPoStInfo{
 			PoStProofs: []block.EPoStProof{},
 			VRFProof:   abi.PoStRandomness(make([]byte, 32)),

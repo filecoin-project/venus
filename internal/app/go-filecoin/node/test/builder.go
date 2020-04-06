@@ -9,7 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
@@ -22,7 +22,7 @@ import (
 // injection. This builder avoids exposing the latter directly.
 type NodeBuilder struct {
 	// Initialisation function for the genesis block and state.
-	gif consensus.GenesisInitFunc
+	gif genesis.InitFunc
 	// Options to the repo initialisation.
 	initOpts []node.InitOpt
 	// Mutations to be applied to node config after initialisation.
@@ -53,7 +53,7 @@ func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 }
 
 // WithGenesisInit sets the built nodes' genesis function.
-func (b *NodeBuilder) WithGenesisInit(gif consensus.GenesisInitFunc) *NodeBuilder {
+func (b *NodeBuilder) WithGenesisInit(gif genesis.InitFunc) *NodeBuilder {
 	b.gif = gif
 	return b
 }

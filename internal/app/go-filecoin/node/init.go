@@ -22,8 +22,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
@@ -67,7 +67,7 @@ func ImportKeyOpt(ki *crypto.KeyInfo) InitOpt {
 // This will always set the configuration for wallet default address (to the specified default
 // key or a newly generated one), but otherwise leave the repo's config object intact.
 // Make further configuration changes after initialization.
-func Init(ctx context.Context, r repo.Repo, gen consensus.GenesisInitFunc, opts ...InitOpt) error {
+func Init(ctx context.Context, r repo.Repo, gen genesis.InitFunc, opts ...InitOpt) error {
 	cfg := new(initCfg)
 	for _, o := range opts {
 		o(cfg)
