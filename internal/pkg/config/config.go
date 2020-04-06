@@ -20,6 +20,7 @@ type Config struct {
 	API           *APIConfig           `json:"api"`
 	Bootstrap     *BootstrapConfig     `json:"bootstrap"`
 	Datastore     *DatastoreConfig     `json:"datastore"`
+	Drand         *DrandConfig         `json:"drand"`
 	Heartbeat     *HeartbeatConfig     `json:"heartbeat"`
 	Mining        *MiningConfig        `json:"mining"`
 	Mpool         *MessagePoolConfig   `json:"mpool"`
@@ -124,6 +125,34 @@ type WalletConfig struct {
 func newDefaultWalletConfig() *WalletConfig {
 	return &WalletConfig{
 		DefaultAddress: address.Undef,
+	}
+}
+
+// DrandConfig holds all configuration options related to pulling randomness from Drand servers
+type DrandConfig struct {
+	// Addresses are are drand server addresses in the format
+	Addresses []string
+	// Secure is whether or not the drand address are secure (e.g. TLS)
+	Secure bool
+	// DistKey is the distributed public key of the server group expressed as hex encoded coefficients
+	DistKey []string
+}
+
+func newDefaultDrandConfig() *DrandConfig {
+	return &DrandConfig{
+		Addresses: []string{
+			"localhost:8080",
+			"localhost:8081",
+			"localhost:8082",
+			"localhost:8083",
+			"localhost:8084",
+		},
+		Secure: false,
+		DistKey: []string{
+			"8d98373363b8b62da5d5ef24accd81a35254a37c2c706989ff425c7a0ac24abee024721db6e03478831523fb7bf02cad",
+			"a7a3af308609fcab403afeba2bdc5a7a1865274e13c9c3acadd0033400ae44f038ddf5d6eaca051502e8c58a3428abf3",
+			"a1b7add55289bca99a2c0fe647016ed82d494ec708468b037d322a43f073a60b42a428425317c32c81e2aa9687addbc2",
+		},
 	}
 }
 

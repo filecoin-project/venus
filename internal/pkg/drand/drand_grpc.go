@@ -21,6 +21,11 @@ type Address struct {
 	secure  bool
 }
 
+// NewAddress creates a new address
+func NewAddress(a string, secure bool) Address {
+	return Address{a, secure}
+}
+
 // GRPC is a drand client that can fetch and verify from a public drand network
 type GRPC struct {
 	addresses []Address
@@ -28,14 +33,20 @@ type GRPC struct {
 	key       *key.DistPublic
 }
 
-// NewDrandGRPC creates a client that will draw randomness from the given addresses.
+// NewGRPC creates a client that will draw randomness from the given addresses.
+// distKeyCoeff are hex encoded strings representing a distributed public key
 // Behavior is undefined if provided address do not point to Drand servers in the same group.
-func NewDrandGRPC(addresses []Address, distKey *key.DistPublic) *GRPC {
+func NewGRPC(addresses []Address, distKeyCoeff []string) (*GRPC, error) {
+	distKey, err := groupKeycoefficientsToDistPublic(distKeyCoeff)
+	if err != nil {
+		return nil, err
+	}
+
 	return &GRPC{
 		addresses: addresses,
 		client:    core.NewGrpcClient(),
 		key:       distKey,
-	}
+	}, nil
 }
 
 // ReadEntry immediately returns a drand entry with a signature equal to the
@@ -71,13 +82,16 @@ func (d *GRPC) VerifyEntry(parent, child *Entry) (bool, error) {
 	return true, nil
 }
 
-// FetchGroupKey Should only be used when switching to a new drand server group
-func (d *GRPC) FetchGroupKey() (*key.DistPublic, error) {
+// FetchGroupKey Should only be used when switching to a new drand server group.
+// Returns hex encoded group key coefficients that can be used to construct a public key.
+func FetchGroupKey(addresses []string, secure bool) ([]string, error) {
+	client := core.NewGrpcClient()
+
 	// try each address, stopping when we have a key
-	for _, addr := range d.addresses {
-		key, err := fetchGroupKeyFromServer(d.client, addr)
+	for _, addr := range addresses {
+		key, err := fetchGroupKeyFromServer(client, Address{addr, secure})
 		if err != nil {
-			log.Warnf("Error fetching drand group key from %s: %s", addr.address, err)
+			log.Warnf("Error fetching drand group key from %s: %s", addr, err)
 			continue
 		}
 		return key, nil
@@ -85,15 +99,19 @@ func (d *GRPC) FetchGroupKey() (*key.DistPublic, error) {
 	return nil, errors.New("Could not retrieve drand group key from any address")
 }
 
-func fetchGroupKeyFromServer(client *core.Client, address Address) (*key.DistPublic, error) {
+func fetchGroupKeyFromServer(client *core.Client, address Address) ([]string, error) {
 	groupResp, err := client.Group(address.address, address.secure)
 	if err != nil {
 		return nil, err
 	}
 
+	return groupResp.GetDistkey(), nil
+}
+
+func groupKeycoefficientsToDistPublic(coefficients []string) (*key.DistPublic, error) {
 	pubKey := key.DistPublic{}
-	pubKey.Coefficients = make([]kyber.Point, len(groupResp.Distkey))
-	for i, k := range groupResp.Distkey {
+	pubKey.Coefficients = make([]kyber.Point, len(coefficients))
+	for i, k := range coefficients {
 		keyBytes, err := hex.DecodeString(k)
 		if err != nil {
 			return nil, err
