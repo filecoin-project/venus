@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
@@ -13,7 +14,7 @@ var drandCmd = &cmds.Command{
 
 	Subcommands: map[string]*cmds.Command{
 		"configure": drandConfigure,
-		// "random":    drandFetch,
+		"random":    drandRandom,
 	},
 }
 
@@ -39,5 +40,23 @@ var drandConfigure = &cmds.Command{
 			return err
 		}
 		return re.Emit("drand group key configured")
+	},
+}
+
+var drandRandom = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Retrieve randomness round from drand group",
+	},
+	Options: []cmdkit.Option{
+		cmdkit.Uint64Option("round", "retrieve randomness at given round (default 0)"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		round, _ := req.Options["round"].(uint64)
+
+		entry, err := GetDrandAPI(env).GetEntry(req.Context, drand.Round(round))
+		if err != nil {
+			return err
+		}
+		return re.Emit(entry)
 	},
 }
