@@ -1,10 +1,8 @@
 package commands
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 
 	"github.com/filecoin-project/go-address"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
@@ -68,12 +66,6 @@ var addrsNewCmd = &cmds.Command{
 		cmdkit.StringOption("type", "The type of address to create: bls or secp256k1 (default)").WithDefault("secp256k1"),
 	},
 	Type: &addressResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *addressResult) error {
-			_, err := fmt.Fprintln(w, a.Address.String())
-			return err
-		}),
-	},
 }
 
 var addrsLsCmd = &cmds.Command{
@@ -88,17 +80,6 @@ var addrsLsCmd = &cmds.Command{
 		return re.Emit(&alr)
 	},
 	Type: &AddressLsResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addrs *AddressLsResult) error {
-			for _, addr := range addrs.Addresses {
-				_, err := fmt.Fprintln(w, addr.String())
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		}),
-	},
 }
 
 var defaultAddressCmd = &cmds.Command{
@@ -111,12 +92,6 @@ var defaultAddressCmd = &cmds.Command{
 		return re.Emit(&addressResult{addr})
 	},
 	Type: &addressResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *addressResult) error {
-			_, err := fmt.Fprintln(w, a.Address.String())
-			return err
-		}),
-	},
 }
 
 var balanceCmd = &cmds.Command{
@@ -136,11 +111,6 @@ var balanceCmd = &cmds.Command{
 		return re.Emit(balance)
 	},
 	Type: &types.AttoFIL{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, b types.AttoFIL) error {
-			return PrintString(w, b)
-		}),
-	},
 }
 
 // WalletSerializeResult is the type wallet export and import return and expect.
@@ -186,17 +156,6 @@ var walletImportCmd = &cmds.Command{
 		return re.Emit(&alr)
 	},
 	Type: &AddressLsResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addrs *AddressLsResult) error {
-			for _, addr := range addrs.Addresses {
-				_, err := fmt.Fprintln(w, addr.String())
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		}),
-	},
 }
 
 var walletExportCmd = &cmds.Command{
@@ -224,20 +183,4 @@ var walletExportCmd = &cmds.Command{
 		return re.Emit(klr)
 	},
 	Type: &WalletSerializeResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, klr *WalletSerializeResult) error {
-			for _, k := range klr.KeyInfo {
-				a, err := k.Address()
-				if err != nil {
-					return err
-				}
-				privateKeyInBase64 := base64.StdEncoding.EncodeToString(k.PrivateKey)
-				_, err = fmt.Fprintf(w, "Address:\t%s\nPrivateKey:\t%s\nCurve:\t\t%d\n\n", a, privateKeyInBase64, k.SigType)
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		}),
-	},
 }

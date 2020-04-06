@@ -39,7 +39,7 @@ func TestLeb128Encode(t *testing.T) {
 		Text string
 		Want string
 	}{
-		{"65", "A=="},
+		{"65", "QQ=="},
 	}
 
 	ctx := context.Background()

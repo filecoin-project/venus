@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"fmt"
-	"io"
 	"strconv"
 
 	"github.com/filecoin-project/go-leb128"
@@ -35,12 +33,6 @@ var decodeLeb128Cmd = &cmds.Command{
 		return cmds.EmitOnce(res, val)
 	},
 	Type: uint64(0),
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info uint64) error {
-			_, err := fmt.Fprintln(w, info)
-			return err
-		}),
-	},
 }
 
 var encodeLeb128Cmd = &cmds.Command{
@@ -60,16 +52,4 @@ var encodeLeb128Cmd = &cmds.Command{
 		return cmds.EmitOnce(res, out)
 	},
 	Type: []byte{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info []byte) error {
-			result := string(info)
-			if len(result)%3 == 1 {
-				result += "=="
-			} else if len(result)%3 == 2 {
-				result += "="
-			}
-			_, err := fmt.Fprintln(w, result)
-			return err
-		}),
-	},
 }

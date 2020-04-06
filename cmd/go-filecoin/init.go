@@ -118,9 +118,6 @@ var initCmd = &cmds.Command{
 		}
 		return nil
 	},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeEncoder(initTextEncoder),
-	},
 }
 
 func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {

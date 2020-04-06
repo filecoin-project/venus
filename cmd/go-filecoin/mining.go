@@ -1,10 +1,6 @@
 package commands
 
 import (
-	"fmt"
-	"io"
-	"strconv"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
@@ -38,12 +34,6 @@ var miningAddrCmd = &cmds.Command{
 		return re.Emit(minerAddress.String())
 	},
 	Type: address.Address{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a address.Address) error {
-			fmt.Fprintln(w, a.String()) // nolint: errcheck
-			return nil
-		}),
-	},
 }
 
 var miningOnceCmd = &cmds.Command{
@@ -58,12 +48,6 @@ var miningOnceCmd = &cmds.Command{
 		return re.Emit(blk.Cid())
 	},
 	Type: cid.Cid{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
-			fmt.Fprintln(w, c) // nolint: errcheck
-			return nil
-		}),
-	},
 }
 
 var miningSetupCmd = &cmds.Command{
@@ -76,8 +60,7 @@ var miningSetupCmd = &cmds.Command{
 		}
 		return re.Emit("mining ready")
 	},
-	Type:     "",
-	Encoders: stringEncoderMap,
+	Type: "",
 }
 
 var miningStartCmd = &cmds.Command{
@@ -90,8 +73,7 @@ var miningStartCmd = &cmds.Command{
 		}
 		return re.Emit("Started mining")
 	},
-	Type:     "",
-	Encoders: stringEncoderMap,
+	Type: "",
 }
 
 // MiningStatusResult is the type returned when get mining status.
@@ -119,16 +101,6 @@ var miningStatusCmd = &cmds.Command{
 		})
 	},
 	Type: &MiningStatusResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MiningStatusResult) error {
-			_, err := fmt.Fprintf(w, `Mining Status
-Active:     %s
-Address:    %s
-`, strconv.FormatBool(res.Active), res.Miner)
-
-			return err
-		}),
-	},
 }
 
 var miningStopCmd = &cmds.Command{
@@ -139,14 +111,6 @@ var miningStopCmd = &cmds.Command{
 		GetBlockAPI(env).MiningStop(req.Context)
 		return re.Emit("Stopped mining")
 	},
-	Encoders: stringEncoderMap,
-}
-
-var stringEncoderMap = cmds.EncoderMap{
-	cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, t string) error {
-		fmt.Fprintln(w, t) // nolint: errcheck
-		return nil
-	}),
 }
 
 var miningPledgeSectorCmd = &cmds.Command{
@@ -160,6 +124,5 @@ var miningPledgeSectorCmd = &cmds.Command{
 		}
 		return re.Emit("Sector pledged")
 	},
-	Type:     "",
-	Encoders: stringEncoderMap,
+	Type: "",
 }

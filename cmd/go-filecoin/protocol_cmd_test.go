@@ -30,6 +30,6 @@ func TestProtocol(t *testing.T) {
 	defer stop()
 
 	out := cmd.RunSuccess(ctx, "protocol").ReadStdout()
-	assert.Contains(t, out, "Network: gfctest")
-	assert.Contains(t, out, "Auto-Seal Interval: 120 seconds")
+	assert.Contains(t, out, "\"Network\":\"gfctest\"")
+	assert.Contains(t, out, "\"AutoSealInterval\":120")
 }

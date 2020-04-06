@@ -29,27 +29,6 @@ func TestId(t *testing.T) {
 	assert.Contains(t, idContent, "ID")
 }
 
-func TestIdFormat(t *testing.T) {
-	tf.IntegrationTest(t)
-
-	ctx := context.Background()
-
-	builder := test.NewNodeBuilder(t)
-	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
-	defer done()
-
-	idContent := cmdClient.RunSuccess(
-		ctx,
-		"id",
-		"--format=\"<id>\\t<aver>\\t<pver>\\t<pubkey>\\n<addrs>\"",
-	).ReadStdout()
-
-	assert.Contains(t, idContent, "\t")
-	assert.Contains(t, idContent, "\n")
-	assert.Containsf(t, idContent, "/ip4/127.0.0.1/tcp/", "default addr")
-	assert.NotContains(t, idContent, "ID")
-}
-
 func TestPersistId(t *testing.T) {
 	tf.IntegrationTest(t)
 

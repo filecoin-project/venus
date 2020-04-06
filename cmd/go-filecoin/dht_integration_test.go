@@ -31,7 +31,7 @@ func TestDhtFindPeer(t *testing.T) {
 	findpeerOutput := cmdClient.RunSuccess(ctx, "dht", "findpeer", n2Id.String()).ReadStdoutTrimNewlines()
 	n2Addr := n2.PorcelainAPI.NetworkGetPeerAddresses()[0]
 
-	assert.Contains(t, n2Addr.String(), findpeerOutput)
+	assert.Contains(t, findpeerOutput, n2Addr.String())
 }
 
 // TODO: findprovs will have to be untested until

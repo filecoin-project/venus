@@ -74,7 +74,7 @@ func TestConfigDaemon(t *testing.T) {
 		jsonOut := op1.ReadStdout()
 		bootstrapConfig := config.NewDefaultConfig().Bootstrap
 		bootstrapConfig.Addresses = []string{"fake1", "fake2"}
-		someJSON, err := json.MarshalIndent(bootstrapConfig, "", "\t")
+		someJSON, err := json.Marshal(bootstrapConfig)
 		require.NoError(t, err)
 		assert.Equal(t, fmt.Sprintf("%s\n", string(someJSON)), jsonOut)
 

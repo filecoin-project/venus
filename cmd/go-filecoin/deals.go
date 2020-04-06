@@ -1,9 +1,6 @@
 package commands
 
 import (
-	"encoding/json"
-	"io"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -54,13 +51,6 @@ deals, active deals, finished deals and cancelled deals.
 		panic("implement me in terms of the storage market module")
 	},
 	Type: DealsListResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *DealsListResult) error {
-			encoder := json.NewEncoder(w)
-			encoder.SetIndent("", "\t")
-			return encoder.Encode(res)
-		}),
-	},
 }
 
 // DealsShowResult contains Deal output with Payment Vouchers.
@@ -84,11 +74,4 @@ var dealsShowCmd = &cmds.Command{
 		panic("implement me in terms of the storage market module")
 	},
 	Type: DealsShowResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, dealResult *DealsShowResult) error {
-			encoder := json.NewEncoder(w)
-			encoder.SetIndent("", "\t")
-			return encoder.Encode(dealResult)
-		}),
-	},
 }

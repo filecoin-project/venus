@@ -2,9 +2,11 @@ package commands_test
 
 import (
 	"context"
+	"encoding/json"
 	"os"
-	"strings"
 	"testing"
+
+	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -161,41 +163,29 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
-	dw := cmdClient.RunSuccess(ctx, "address", "ls").ReadStdoutTrimNewlines()
+	lsJSON := cmdClient.RunSuccess(ctx, "address", "ls").ReadStdoutTrimNewlines()
+	var lsResult commands.AddressLsResult
+	err := json.Unmarshal([]byte(lsJSON), &lsResult)
+	require.NoError(t, err)
+	require.Len(t, lsResult.Addresses, 1)
 
-	ki := cmdClient.RunSuccess(ctx, "wallet", "export", dw, "--enc=json").ReadStdoutTrimNewlines()
+	exportJSON := cmdClient.RunSuccess(ctx, "wallet", "export", lsResult.Addresses[0].String(), "--enc=json").ReadStdout()
+	var exportResult commands.WalletSerializeResult
+	err = json.Unmarshal([]byte(exportJSON), &exportResult)
+	require.NoError(t, err)
 
 	wf, err := os.Create("walletFileTest")
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, os.Remove("walletFileTest"))
 	}()
-	_, err = wf.WriteString(ki)
+
+	_, err = wf.WriteString(exportJSON)
 	require.NoError(t, err)
 	require.NoError(t, wf.Close())
 
 	maybeAddr := cmdClient.RunSuccess(ctx, "wallet", "import", wf.Name()).ReadStdoutTrimNewlines()
-	assert.Equal(t, dw, maybeAddr)
-}
-
-func TestWalletExportPrivateKeyConsistentDisplay(t *testing.T) {
-	tf.IntegrationTest(t)
-
-	ctx := context.Background()
-	builder := test.NewNodeBuilder(t)
-
-	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
-	defer done()
-
-	dw := cmdClient.RunSuccess(ctx, "address", "ls").ReadStdoutTrimNewlines()
-
-	exportLines := cmdClient.RunSuccessLines(ctx, "wallet", "export", dw)
-	exportTextPrivateKeyLine := exportLines[1]
-	exportTextPrivateKey := strings.Split(exportTextPrivateKeyLine, "\t")[1]
-
-	exportJSON := cmdClient.RunSuccess(ctx, "wallet", "export", dw, "--enc=json").ReadStdoutTrimNewlines()
-
-	assert.Contains(t, exportJSON, exportTextPrivateKey)
+	assert.Equal(t, lsJSON, maybeAddr)
 }
 
 // MustDecodeCid decodes a string to a Cid pointer, panicking on error

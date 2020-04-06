@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 	logging "github.com/ipfs/go-log"
 	writer "github.com/ipfs/go-log/writer"
 )
@@ -99,12 +99,6 @@ the event log.
 		return cmds.EmitOnce(res, s)
 	},
 	Type: string(""),
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, out string) error {
-			_, err := fmt.Fprint(w, out)
-			return err
-		}),
-	},
 }
 
 var logLsCmd = &cmds.Command{
@@ -119,12 +113,4 @@ subsystems of a running daemon.
 		return cmds.EmitOnce(res, logging.GetSubsystems())
 	},
 	Type: []string{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, list []string) error {
-			for _, s := range list {
-				fmt.Fprintln(w, s) // nolint: errcheck
-			}
-			return nil
-		}),
-	},
 }
