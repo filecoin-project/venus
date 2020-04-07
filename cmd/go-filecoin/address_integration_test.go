@@ -167,7 +167,7 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	cmdClient.RunMarshaledJSON(ctx, &lsResult, "address", "ls")
 	require.Len(t, lsResult.Addresses, 1)
 
-	exportJSON := cmdClient.RunSuccess(ctx, "wallet", "export", lsResult.Addresses[0].String()	).ReadStdout()
+	exportJSON := cmdClient.RunSuccess(ctx, "wallet", "export", lsResult.Addresses[0].String()).ReadStdout()
 	var exportResult commands.WalletSerializeResult
 	err := json.Unmarshal([]byte(exportJSON), &exportResult)
 	require.NoError(t, err)

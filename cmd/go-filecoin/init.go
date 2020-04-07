@@ -179,11 +179,6 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 	return nil
 }
 
-func initTextEncoder(_ *cmds.Request, w io.Writer, val interface{}) error {
-	_, err := fmt.Fprintf(w, val.(string))
-	return err
-}
-
 func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (genesis.InitFunc, error) {
 	if sourceName == "" {
 		return gengen.MakeGenesisFunc(gengen.ProofsMode(types.LiveProofsMode)), nil
