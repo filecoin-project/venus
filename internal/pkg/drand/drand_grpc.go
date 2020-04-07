@@ -72,7 +72,7 @@ func (d *GRPC) ReadEntry(ctx context.Context, drandRound Round) (*Entry, error) 
 	return nil, errors.New("Could not retrieve drand randomess from any address")
 }
 
-// VerifyEntry always returns true without error
+// VerifyEntry verifies that the child's signature is a valid signature of the previous entry.
 func (d *GRPC) VerifyEntry(parent, child *Entry) (bool, error) {
 	msg := beacon.Message(parent.Signature.Data, uint64(child.Round))
 	err := key.Scheme.VerifyRecovered(d.key.Coefficients[0], msg, child.Signature.Data)
