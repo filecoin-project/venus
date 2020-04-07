@@ -6,6 +6,8 @@ import (
 
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-graphsync"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -75,6 +77,14 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, &stateViewer, config.GenesisCid())
 
 	// setup fecher
+	network.GraphExchange.RegisterIncomingRequestHook(func(p peer.ID, requestData graphsync.RequestData, hookActions graphsync.IncomingRequestHookActions) {
+		_, has := requestData.Extension(fetcher.ChainsyncProtocolExtension)
+		if has {
+			// TODO: Don't just validate every request with the extension -- support only known selectors
+			// TODO: use seperate block store for the chain (supported in GraphSync)
+			hookActions.ValidateRequest()
+		}
+	})
 	fetcher := fetcher.NewGraphSyncFetcher(ctx, network.GraphExchange, blockstore.Blockstore, blkValid, config.ChainClock(), discovery.PeerTracker)
 	faultCh := make(chan slashing.ConsensusFault)
 	faultDetector := slashing.NewConsensusFaultDetector(faultCh)

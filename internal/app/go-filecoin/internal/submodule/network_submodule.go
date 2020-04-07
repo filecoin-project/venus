@@ -10,7 +10,6 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	graphsync "github.com/ipfs/go-graphsync"
 	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
-	"github.com/ipfs/go-graphsync/ipldbridge"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
@@ -137,10 +136,9 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 
 	// set up graphsync
 	graphsyncNetwork := gsnet.NewFromLibp2pHost(peerHost)
-	bridge := ipldbridge.NewIPLDBridge()
 	loader := gsstoreutil.LoaderForBlockstore(blockstore.Blockstore)
 	storer := gsstoreutil.StorerForBlockstore(blockstore.Blockstore)
-	gsync := graphsyncimpl.New(ctx, graphsyncNetwork, bridge, loader, storer)
+	gsync := graphsyncimpl.New(ctx, graphsyncNetwork, loader, storer, graphsyncimpl.RejectAllRequestsByDefault())
 
 	// build network
 	network := net.New(peerHost, net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService))
