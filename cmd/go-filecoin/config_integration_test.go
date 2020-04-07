@@ -2,8 +2,6 @@ package commands_test
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,17 +22,15 @@ func TestConfigDaemon(t *testing.T) {
 		_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
-		op1 := cmdClient.RunSuccess(ctx, "config", "datastore")
-		jsonOut := op1.ReadStdout()
 		wrapped1 := config.NewDefaultConfig().Datastore
+
 		var decodedOutput1 config.DatastoreConfig
-		err := json.Unmarshal([]byte(jsonOut), &decodedOutput1)
-		require.NoError(t, err)
+		cmdClient.RunMarshaledJSON(ctx, &decodedOutput1, "config", "datastore")
 		assert.Equal(t, wrapped1, &decodedOutput1)
 
-		op2 := cmdClient.RunSuccess(ctx, "config", "datastore.path")
-		jsonOut = op2.ReadStdout()
-		assert.Equal(t, fmt.Sprintf("%q\n", config.NewDefaultConfig().Datastore.Path), jsonOut)
+		var path string
+		cmdClient.RunMarshaledJSON(ctx, &path, "config", "datastore.path")
+		assert.Equal(t, config.NewDefaultConfig().Datastore.Path, path)
 	})
 
 	t.Run("config <key> simple_value updates config", func(t *testing.T) {
@@ -46,19 +42,18 @@ func TestConfigDaemon(t *testing.T) {
 		period := "1m"
 		// check writing default does not error
 		cmdClient.RunSuccess(ctx, "config", "bootstrap.period", period)
-		op1 := cmdClient.RunSuccess(ctx, "config", "bootstrap.period")
 
 		// validate output
-		jsonOut := op1.ReadStdout()
-		bootstrapConfig := config.NewDefaultConfig().Bootstrap
-		assert.Equal(t, fmt.Sprintf("\"%s\"\n", period), jsonOut)
+		var retrievedPeriod string
+		cmdClient.RunMarshaledJSON(ctx, &retrievedPeriod, "config", "bootstrap.period")
+		assert.Equal(t, period, retrievedPeriod)
 
 		// validate config write
-		nbci, err := n.PorcelainAPI.ConfigGet("bootstrap")
+		nbci, err := n.PorcelainAPI.ConfigGet("bootstrap.period")
 		require.NoError(t, err)
-		nbc, ok := nbci.(*config.BootstrapConfig)
+		nbc, ok := nbci.(string)
 		require.True(t, ok)
-		assert.Equal(t, nbc, bootstrapConfig)
+		assert.Equal(t, nbc, period)
 	})
 
 	t.Run("config <key> <val> updates config", func(t *testing.T) {
@@ -68,15 +63,14 @@ func TestConfigDaemon(t *testing.T) {
 		defer done()
 
 		cmdClient.RunSuccess(ctx, "config", "bootstrap", `{"addresses": ["fake1", "fake2"], "period": "1m", "minPeerThreshold": 0}`)
-		op1 := cmdClient.RunSuccess(ctx, "config", "bootstrap")
+
+		var bootstrapConfig config.BootstrapConfig
+		cmdClient.RunMarshaledJSON(ctx, &bootstrapConfig, "config", "bootstrap")
 
 		// validate output
-		jsonOut := op1.ReadStdout()
-		bootstrapConfig := config.NewDefaultConfig().Bootstrap
-		bootstrapConfig.Addresses = []string{"fake1", "fake2"}
-		someJSON, err := json.Marshal(bootstrapConfig)
-		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%s\n", string(someJSON)), jsonOut)
+		require.Len(t, bootstrapConfig.Addresses, 2)
+		assert.Equal(t, "fake1", bootstrapConfig.Addresses[0])
+		assert.Equal(t, "fake2", bootstrapConfig.Addresses[1])
 
 		// validate config write
 		nbci, err := n.PorcelainAPI.ConfigGet("bootstrap")
@@ -84,6 +78,6 @@ func TestConfigDaemon(t *testing.T) {
 		nbc, ok := nbci.(*config.BootstrapConfig)
 		require.True(t, ok)
 
-		assert.Equal(t, nbc, bootstrapConfig)
+		assert.Equal(t, nbc, &bootstrapConfig)
 	})
 }
