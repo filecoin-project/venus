@@ -52,6 +52,14 @@ const challengeBits = 256
 // expectedLeadersPerEpoch is the mean number of leaders per epoch
 const expectedLeadersPerEpoch = 5
 
+// WinningPoStSectorSetLookback is the past epoch offset for reading the
+// winning post sector set
+const WinningPoStSectorSetLookback = 10
+
+// ElectionPowerTableLookback is the past epoch offset for reading the
+// election power values
+const ElectionPowerTableLookback = 10
+
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
