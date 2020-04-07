@@ -16,6 +16,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
+	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
 )
 
@@ -87,7 +88,7 @@ func (l *Localfilecoin) readerFor(file string) (io.ReadCloser, error) {
 // TODO this a temp fix, should read the nodes keystore instead
 func (l *Localfilecoin) GetPeerID() (cid.Cid, error) {
 	// run the id command
-	out, err := l.RunCmd(context.TODO(), nil, l.binPath, "id", "--format=<id>")
+	out, err := l.RunCmd(context.TODO(), nil, l.binPath, "id")
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -101,14 +102,18 @@ func (l *Localfilecoin) GetPeerID() (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	// convert the reader to a string TODO this is annoying
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(out.Stdout())
 	if err != nil {
 		return cid.Undef, err
 	}
-	cidStr := strings.TrimSpace(buf.String())
+
+	var details commands.IDDetails
+	err = details.UnmarshalJSON(buf.Bytes())
+	if err != nil {
+		return cid.Undef, err
+	}
 
 	// decode the parsed string to a cid...maybe
-	return cid.Decode(cidStr)
+	return cid.Decode(details.ID.String())
 }

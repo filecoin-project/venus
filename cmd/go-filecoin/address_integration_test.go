@@ -163,15 +163,13 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
-	lsJSON := cmdClient.RunSuccess(ctx, "address", "ls").ReadStdoutTrimNewlines()
 	var lsResult commands.AddressLsResult
-	err := json.Unmarshal([]byte(lsJSON), &lsResult)
-	require.NoError(t, err)
+	cmdClient.RunMarshaledJSON(ctx, &lsResult, "address", "ls")
 	require.Len(t, lsResult.Addresses, 1)
 
-	exportJSON := cmdClient.RunSuccess(ctx, "wallet", "export", lsResult.Addresses[0].String(), "--enc=json").ReadStdout()
+	exportJSON := cmdClient.RunSuccess(ctx, "wallet", "export", lsResult.Addresses[0].String()).ReadStdout()
 	var exportResult commands.WalletSerializeResult
-	err = json.Unmarshal([]byte(exportJSON), &exportResult)
+	err := json.Unmarshal([]byte(exportJSON), &exportResult)
 	require.NoError(t, err)
 
 	wf, err := os.Create("walletFileTest")
@@ -184,8 +182,10 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, wf.Close())
 
-	maybeAddr := cmdClient.RunSuccess(ctx, "wallet", "import", wf.Name()).ReadStdoutTrimNewlines()
-	assert.Equal(t, lsJSON, maybeAddr)
+	var importResult commands.AddressLsResult
+	cmdClient.RunMarshaledJSON(ctx, &importResult, "wallet", "import", wf.Name())
+	assert.Len(t, importResult.Addresses, 1)
+	assert.Equal(t, lsResult.Addresses[0], importResult.Addresses[0])
 }
 
 // MustDecodeCid decodes a string to a Cid pointer, panicking on error
