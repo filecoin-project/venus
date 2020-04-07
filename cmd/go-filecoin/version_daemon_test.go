@@ -25,7 +25,7 @@ func TestVersion(t *testing.T) {
 	require.NoError(t, err)
 
 	version := string(verOut)
-	assert.Exactly(t, fmt.Sprintf("{\"Commit\":\"%s\"}\n", commit), version)
+	assert.Exactly(t, fmt.Sprintf("{\n\t\"Commit\": \"%s\"\n}\n", commit), version)
 }
 
 func TestVersionOverHttp(t *testing.T) {

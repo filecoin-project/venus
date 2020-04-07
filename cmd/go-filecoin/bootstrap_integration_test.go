@@ -20,5 +20,5 @@ func TestBootstrapList(t *testing.T) {
 
 	bs := cmdClient.RunSuccess(ctx, "bootstrap", "ls")
 
-	assert.Equal(t, "{\"Peers\":[]}\n", bs.ReadStdout())
+	assert.Equal(t, "{\n\t\"Peers\": []\n}\n", bs.ReadStdout())
 }
