@@ -124,6 +124,7 @@ type DefaultWorker struct {
 	blockstore     blockstore.Blockstore
 	clock          clock.ChainEpochClock
 	poster         postgenerator.PoStGenerator
+	chainState     chain.TipSetProvider
 }
 
 // WorkerParameters use for NewDefaultWorker parameters
@@ -148,6 +149,7 @@ type WorkerParameters struct {
 	Blockstore    blockstore.Blockstore
 	Clock         clock.ChainEpochClock
 	Poster        postgenerator.PoStGenerator
+	ChainState    chain.TipSetProvider
 }
 
 // NewDefaultWorker instantiates a new Worker.
@@ -168,6 +170,7 @@ func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
 		tsMetadata:     parameters.TipSetMetadata,
 		clock:          parameters.Clock,
 		poster:         parameters.Poster,
+		chainState:     parameters.ChainState,
 	}
 }
 
