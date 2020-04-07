@@ -1,14 +1,9 @@
 package commands
 
 import (
-	"fmt"
-	"io"
-	"strings"
-
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/libp2p/go-libp2p-core/peer"
-	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 )
@@ -53,33 +48,6 @@ var swarmPeersCmd = &cmds.Command{
 
 		return re.Emit(&out)
 	},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ci *net.SwarmConnInfos) error {
-			pipfs := ma.ProtocolWithCode(ma.P_IPFS).Name
-			for _, info := range ci.Peers {
-				ids := fmt.Sprintf("/%s/%s", pipfs, info.Peer)
-				if strings.HasSuffix(info.Addr, ids) {
-					fmt.Fprintf(w, "%s", info.Addr) // nolint: errcheck
-				} else {
-					fmt.Fprintf(w, "%s%s", info.Addr, ids) // nolint: errcheck
-				}
-				if info.Latency != "" {
-					fmt.Fprintf(w, " %s", info.Latency) // nolint: errcheck
-				}
-				fmt.Fprintln(w) // nolint: errcheck
-
-				for _, s := range info.Streams {
-					if s.Protocol == "" {
-						s.Protocol = "<no protocol name>"
-					}
-
-					fmt.Fprintf(w, "  %s\n", s.Protocol) // nolint: errcheck
-				}
-			}
-
-			return nil
-		}),
-	},
 	Type: net.SwarmConnInfos{},
 }
 
@@ -115,10 +83,4 @@ go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUE
 		return nil
 	},
 	Type: peer.ID(""),
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, result peer.ID) error {
-			fmt.Fprintf(w, "connect %s success\n", result.Pretty()) // nolint: errcheck
-			return nil
-		}),
-	},
 }

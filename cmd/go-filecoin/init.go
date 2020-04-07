@@ -118,9 +118,6 @@ var initCmd = &cmds.Command{
 		}
 		return nil
 	},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeEncoder(initTextEncoder),
-	},
 }
 
 func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
@@ -180,11 +177,6 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 	}
 
 	return nil
-}
-
-func initTextEncoder(_ *cmds.Request, w io.Writer, val interface{}) error {
-	_, err := fmt.Fprintf(w, val.(string))
-	return err
 }
 
 func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (genesis.InitFunc, error) {

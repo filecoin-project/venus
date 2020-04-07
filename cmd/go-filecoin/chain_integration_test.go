@@ -31,11 +31,6 @@ func TestChainHead(t *testing.T) {
 	var cidsFromJSON []cid.Cid
 	err := json.Unmarshal([]byte(jsonResult), &cidsFromJSON)
 	assert.NoError(t, err)
-
-	textResult := cmdClient.RunSuccess(ctx, "chain", "ls", "--enc", "text").ReadStdoutTrimNewlines()
-	textCid, err := cid.Decode(textResult)
-	require.NoError(t, err)
-	assert.Equal(t, textCid, cidsFromJSON[0])
 }
 
 func TestChainLs(t *testing.T) {

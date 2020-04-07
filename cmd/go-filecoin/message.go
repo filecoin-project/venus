@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"strconv"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -131,16 +129,6 @@ var msgSendCmd = &cmds.Command{
 		})
 	},
 	Type: &MessageSendResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MessageSendResult) error {
-			if res.Preview {
-				output := strconv.FormatUint(uint64(res.GasUsed), 10)
-				_, err := w.Write([]byte(output))
-				return err
-			}
-			return PrintString(w, res.Cid)
-		}),
-	},
 }
 
 var signedMsgSendCmd = &cmds.Command{
@@ -179,16 +167,6 @@ var signedMsgSendCmd = &cmds.Command{
 		})
 	},
 	Type: &MessageSendResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MessageSendResult) error {
-			if res.Preview {
-				output := strconv.FormatUint(uint64(res.GasUsed), 10)
-				_, err := w.Write([]byte(output))
-				return err
-			}
-			return PrintString(w, res.Cid)
-		}),
-	},
 }
 
 // WaitResult is the result of a message wait call.
@@ -253,41 +231,6 @@ var msgWaitCmd = &cmds.Command{
 		return nil
 	},
 	Type: WaitResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *WaitResult) error {
-			messageOpt, _ := req.Options["message"].(bool)
-			receiptOpt, _ := req.Options["receipt"].(bool)
-			returnOpt, _ := req.Options["return"].(bool)
-
-			marshaled := []byte{}
-			var err error
-			if messageOpt {
-				marshaled, err = appendJSON(res.Message, marshaled)
-				if err != nil {
-					return err
-				}
-			}
-
-			if receiptOpt {
-				marshaled, err = appendJSON(res.Receipt, marshaled)
-				if err != nil {
-					return err
-				}
-			}
-
-			if returnOpt && res.Receipt != nil && res.Signature != nil {
-				val, err := res.Signature.ReturnInterface(res.Receipt.ReturnValue)
-				if err != nil {
-					return errors.Wrap(err, "unable to deserialize return value")
-				}
-
-				marshaled = append(marshaled, []byte(val.(fmt.Stringer).String())...)
-			}
-
-			_, err = w.Write(marshaled)
-			return err
-		}),
-	},
 }
 
 // MessageStatusResult is the status of a message on chain or in the message queue/pool
@@ -342,36 +285,4 @@ var msgStatusCmd = &cmds.Command{
 		return re.Emit(&result)
 	},
 	Type: &MessageStatusResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MessageStatusResult) error {
-			sw := NewSilentWriter(w)
-			var msg *types.SignedMessage
-			if res.InOutbox {
-				msg = res.OutboxMsg.Msg
-				sw.Printf("In outbox: %s, sent at height %d\n", res.OutboxMsg.Msg.Message.From, res.OutboxMsg.Stamp)
-			}
-			if res.InPool {
-				msg = res.PoolMsg
-				sw.Printf("In mpool\n")
-			}
-			if res.OnChain {
-				msg = res.ChainMsg.Message
-				sw.Printf("On chain at height %d, receipt %v\n", res.ChainMsg.Block.Height, res.ChainMsg.Receipt)
-			}
-			if msg != nil {
-				sw.Println(msg.String())
-			}
-			return sw.Error()
-		}),
-	},
-}
-
-func appendJSON(val interface{}, out []byte) ([]byte, error) {
-	m, err := json.MarshalIndent(val, "", "\t")
-	if err != nil {
-		return nil, err
-	}
-	out = append(out, m...)
-	out = append(out, byte('\n'))
-	return out, nil
 }

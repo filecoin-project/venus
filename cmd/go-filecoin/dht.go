@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -79,20 +78,6 @@ var queryDhtCmd = &cmds.Command{
 
 		return nil
 	},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, out *routing.QueryEvent) error {
-			pfm := pfuncMap{
-				routing.PeerResponse: func(obj *routing.QueryEvent, out io.Writer, verbose bool) {
-					for _, p := range obj.Responses {
-						fmt.Fprintf(out, "%s\n", p.ID.Pretty()) // nolint: errcheck
-					}
-				},
-			}
-			verbose, _ := req.Options[dhtVerboseOptionName].(bool)
-			printEvent(out, w, verbose, pfm)
-			return nil
-		}),
-	},
 	Type: routing.QueryEvent{},
 }
 
@@ -148,95 +133,7 @@ var findProvidersDhtCmd = &cmds.Command{
 
 		return nil
 	},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, out *routing.QueryEvent) error {
-			pfm := pfuncMap{
-				routing.FinalPeer: func(obj *routing.QueryEvent, out io.Writer, verbose bool) {
-					if verbose {
-						fmt.Fprintf(out, "* closest peer %s\n", obj.ID) // nolint: errcheck
-					}
-				},
-				routing.Provider: func(obj *routing.QueryEvent, out io.Writer, verbose bool) {
-					prov := obj.Responses[0]
-					if verbose {
-						fmt.Fprintf(out, "provider: ") // nolint: errcheck
-					}
-					fmt.Fprintf(out, "%s\n", prov.ID.Pretty()) // nolint: errcheck
-					if verbose {
-						for _, a := range prov.Addrs {
-							fmt.Fprintf(out, "\t%s\n", a) // nolint: errcheck
-						}
-					}
-				},
-			}
-
-			verbose, _ := req.Options[dhtVerboseOptionName].(bool)
-			printEvent(out, w, verbose, pfm)
-
-			return nil
-		}),
-	},
 	Type: routing.QueryEvent{},
-}
-
-type printFunc func(obj *routing.QueryEvent, out io.Writer, verbose bool)
-type pfuncMap map[routing.QueryEventType]printFunc
-
-// printEvent writes a libp2p event to a user friendly output on the out writer.
-// Note that this function is only needed to enable the output logging of
-// events that only show up during a "verbose" run. If we choose to eliminate
-// the verbose option this can be removed. However if we keep the verbose option
-// in findprovs and on any other dht subcommands we decide to copy over from
-// ipfs this function will stay needed.
-func printEvent(obj *routing.QueryEvent, out io.Writer, verbose bool, override pfuncMap) {
-	if verbose {
-		fmt.Fprintf(out, "%s: ", time.Now().Format("15:04:05.000")) // nolint: errcheck
-	}
-
-	if override != nil {
-		if pf, ok := override[obj.Type]; ok {
-			pf(obj, out, verbose)
-			return
-		}
-	}
-
-	switch obj.Type {
-	case routing.SendingQuery:
-		if verbose {
-			fmt.Fprintf(out, "* querying %s\n", obj.ID) // nolint: errcheck
-		}
-	case routing.Value:
-		if verbose {
-			fmt.Fprintf(out, "got value: '%s'\n", obj.Extra) // nolint: errcheck
-		} else {
-			fmt.Fprint(out, obj.Extra) // nolint: errcheck
-		}
-	case routing.PeerResponse:
-		if verbose {
-			fmt.Fprintf(out, "* %s says use ", obj.ID) // nolint: errcheck
-			for _, p := range obj.Responses {
-				fmt.Fprintf(out, "%s ", p.ID) // nolint: errcheck
-			}
-			fmt.Fprintln(out) // nolint: errcheck
-		}
-	case routing.QueryError:
-		if verbose {
-			fmt.Fprintf(out, "error: %s\n", obj.Extra) // nolint: errcheck
-		}
-	case routing.DialingPeer:
-		if verbose {
-			fmt.Fprintf(out, "dialing peer: %s\n", obj.ID) // nolint: errcheck
-		}
-	case routing.AddingPeer:
-		if verbose {
-			fmt.Fprintf(out, "adding peer to query: %s\n", obj.ID) // nolint: errcheck
-		}
-	case routing.FinalPeer:
-	default:
-		if verbose {
-			fmt.Fprintf(out, "unrecognized event type: %d\n", obj.Type) // nolint: errcheck
-		}
-	}
 }
 
 var findPeerDhtCmd = &cmds.Command{
@@ -264,11 +161,5 @@ var findPeerDhtCmd = &cmds.Command{
 			}
 		}
 		return nil
-	},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addr string) error {
-			_, err := fmt.Fprintln(w, addr)
-			return err
-		}),
 	},
 }

@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"io"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 
@@ -86,11 +85,6 @@ See the go-filecoin client cat command for more details.
 		return re.Emit(out.Cid())
 	},
 	Type: cid.Cid{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
-			return PrintString(w, c)
-		}),
-	},
 }
 
 var clientProposeStorageDealCmd = &cmds.Command{
@@ -153,14 +147,6 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 		//return re.Emit(resp)
 	},
 	Type: network.Response{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *network.Response) error {
-			fmt.Fprintf(w, "State:   %d\n", resp.State)               // nolint: errcheck
-			fmt.Fprintf(w, "Message: %s\n", resp.Message)             // nolint: errcheck
-			fmt.Fprintf(w, "Message CID:  %s\n", resp.PublishMessage) // nolint: errcheck
-			return nil
-		}),
-	},
 }
 
 var clientQueryStorageDealCmd = &cmds.Command{
@@ -191,13 +177,6 @@ format is specified with the --enc flag.
 		//return re.Emit(resp)
 	},
 	Type: network.SignedResponse{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *network.SignedResponse) error {
-			fmt.Fprintf(w, "Status: %d\n", resp.Response.State)    // nolint: errcheck
-			fmt.Fprintf(w, "Message: %s\n", resp.Response.Message) // nolint: errcheck
-			return nil
-		}),
-	},
 }
 
 // VerifyStorageDealResult wraps the success in an interface type
@@ -263,10 +242,4 @@ respectively.
 		return nil
 	},
 	Type: porcelain.Ask{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ask *porcelain.Ask) error {
-			fmt.Fprintf(w, "%s %.3d %s %d\n", ask.Miner, ask.ID, ask.Price, ask.Expiry) // nolint: errcheck
-			return nil
-		}),
-	},
 }

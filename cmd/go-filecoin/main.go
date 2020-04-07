@@ -2,7 +2,9 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/url"
 	"os"
@@ -99,6 +101,17 @@ const (
 	IsRelay = "is-relay"
 )
 
+func init() {
+	// add pretty json as an encoding type
+	cmds.Encoders["pretty-json"] = func(req *cmds.Request) func(io.Writer) cmds.Encoder {
+		return func(w io.Writer) cmds.Encoder {
+			enc := json.NewEncoder(w)
+			enc.SetIndent("", "\t")
+			return enc
+		}
+	}
+}
+
 // command object for the local cli
 var rootCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
@@ -153,7 +166,7 @@ TOOL COMMANDS
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(OptionAPI, "set the api port to use"),
 		cmdkit.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.filecoin/repo"),
-		cmds.OptionEncodingType,
+		cmdkit.StringOption(cmds.EncLong, cmds.EncShort, "The encoding type the output should be encoded with (pretty-json or json)").WithDefault("pretty-json"),
 		cmdkit.BoolOption("help", "Show the full command help text."),
 		cmdkit.BoolOption("h", "Show a short version of the command help text."),
 	},

@@ -2,9 +2,7 @@ package commands
 
 import (
 	"fmt"
-	"io"
 	"math/big"
-	"strconv"
 
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -133,16 +131,6 @@ additional sectors.`,
 		})
 	},
 	Type: &MinerCreateResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MinerCreateResult) error {
-			if res.Preview {
-				output := strconv.FormatUint(uint64(res.GasUsed), 10)
-				_, err := w.Write([]byte(output))
-				return err
-			}
-			return PrintString(w, res.Address)
-		}),
-	},
 }
 
 // MinerSetPriceResult is the return type for miner set-price command
@@ -211,12 +199,6 @@ This command waits for the ask to be mined.`,
 		return re.Emit(&MinerSetPriceResult{minerAddr, res.Price})
 	},
 	Type: &MinerSetPriceResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MinerSetPriceResult) error {
-			_, err := fmt.Fprintf(w, "%s", res)
-			return err
-		}),
-	},
 }
 
 // MinerUpdatePeerIDResult is the return type for miner update-peerid command
@@ -304,16 +286,6 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 		})
 	},
 	Type: &MinerUpdatePeerIDResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MinerUpdatePeerIDResult) error {
-			if res.Preview {
-				output := strconv.FormatUint(uint64(res.GasUsed), 10)
-				_, err := w.Write([]byte(output))
-				return err
-			}
-			return PrintString(w, res.Cid)
-		}),
-	},
 }
 
 var minerStatusCommand = &cmds.Command{
@@ -370,10 +342,4 @@ var minerSetWorkerAddressCmd = &cmds.Command{
 		return re.Emit(msgCid)
 	},
 	Type: cid.Cid{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
-			fmt.Fprintln(w, c) // nolint: errcheck
-			return nil
-		}),
-	},
 }

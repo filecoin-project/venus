@@ -42,9 +42,6 @@ var daemonCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		return daemonRun(req, re)
 	},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.Encoders[cmds.Text],
-	},
 }
 
 func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {

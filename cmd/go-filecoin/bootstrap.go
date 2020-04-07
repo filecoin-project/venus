@@ -1,9 +1,6 @@
 package commands
 
 import (
-	"fmt"
-	"io"
-
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
@@ -32,10 +29,4 @@ var bootstrapLsCmd = &cmds.Command{
 		return re.Emit(&BootstrapLsResult{peers.([]string)})
 	},
 	Type: &BootstrapLsResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, br *BootstrapLsResult) error {
-			_, err := fmt.Fprintln(w, br)
-			return err
-		}),
-	},
 }

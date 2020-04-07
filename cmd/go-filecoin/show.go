@@ -1,10 +1,6 @@
 package commands
 
 import (
-	"fmt"
-	"io"
-	"strconv"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -53,40 +49,6 @@ all other block properties will be included as well.`,
 		return re.Emit(block)
 	},
 	Type: block.FullBlock{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, block *block.FullBlock) error {
-			wStr := block.Header.ParentWeight.String()
-			_, err := fmt.Fprintf(w, `Block Details
-Miner:  %s
-Weight: %s
-Height: %s
-Messages:  %s
-Timestamp:  %s
-`,
-				block.Header.Miner,
-				wStr,
-				strconv.FormatInt(int64(block.Header.Height), 10),
-				block.Header.Messages.String(),
-				strconv.FormatUint(block.Header.Timestamp, 10),
-			)
-			if err != nil {
-				return err
-			}
-
-			showMessages, _ := req.Options["messages"].(bool)
-			if showMessages == true {
-				_, err = fmt.Fprintf(w, `BLS Messages:\n  %s`+"\n", block.BLSMessages)
-				if err != nil {
-					return err
-				}
-				_, err = fmt.Fprintf(w, `SECP Messages:\n  %s`+"\n", block.SECPMessages)
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		}),
-	},
 }
 
 var showHeaderCmd = &cmds.Command{
@@ -113,23 +75,6 @@ all other block properties will be included as well.`,
 		return re.Emit(block)
 	},
 	Type: block.Block{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, block *block.Block) error {
-			wStr := block.ParentWeight.String()
-			_, err := fmt.Fprintf(w, `Block Details
-Miner:  %s
-Weight: %s
-Height: %s
-Timestamp:  %s
-`,
-				block.Miner,
-				wStr,
-				strconv.FormatInt(int64(block.Height), 10),
-				strconv.FormatUint(block.Timestamp, 10),
-			)
-			return err
-		}),
-	},
 }
 
 type allMessages struct {
@@ -161,20 +106,6 @@ the filecoin block header.`,
 		return re.Emit(&allMessages{BLS: bls, SECP: secp})
 	},
 	Type: &allMessages{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, messages *allMessages) error {
-			outStr := "BLS messages \n"
-			for _, msg := range messages.BLS {
-				outStr += msg.String() + "\n"
-			}
-			outStr += "\nSECP messages \n"
-			for _, msg := range messages.SECP {
-				outStr += msg.String() + "\n"
-			}
-			_, err := fmt.Fprint(w, outStr)
-			return err
-		}),
-	},
 }
 
 var showReceiptsCmd = &cmds.Command{
@@ -201,14 +132,4 @@ field of the filecoin block header.`,
 		return re.Emit(receipts)
 	},
 	Type: []vm.MessageReceipt{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, receipts []vm.MessageReceipt) error {
-			outStr := "Receipt Details\n"
-			for _, r := range receipts {
-				outStr += r.String() + "\n"
-			}
-			_, err := fmt.Fprint(w, outStr)
-			return err
-		}),
-	},
 }
