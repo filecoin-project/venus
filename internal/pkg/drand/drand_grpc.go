@@ -50,8 +50,7 @@ func NewGRPC(addresses []Address, distKeyCoeff []string) (*GRPC, error) {
 	}, nil
 }
 
-// ReadEntry immediately returns a drand entry with a signature equal to the
-// round number
+// ReadEntry fetches an entry from one of the drand servers (trying them sequentially) and returns the result.
 func (d *GRPC) ReadEntry(ctx context.Context, drandRound Round) (*Entry, error) {
 	// try each address, stopping when we have a key
 	for _, addr := range d.addresses {
