@@ -75,6 +75,11 @@ type StateViewer interface {
 	StateView(root cid.Cid) PowerStateView
 }
 
+type chainReader interface {
+	GetTipSet(tsKey block.TipSetKey) (block.TipSet, error)
+	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
+}
+
 // Expected implements expected consensus.
 type Expected struct {
 	// ElectionValidator validates election proofs.
@@ -91,10 +96,13 @@ type Expected struct {
 	// accessing the power table.
 	bstore blockstore.Blockstore
 
+	// chainState is a reference to the current chain state
+	chainState chainReader
+
 	// processor is what we use to process messages and pay rewards
 	processor Processor
 
-	// state provides produces snapshots
+	// state produces snapshots
 	state StateViewer
 
 	blockTime time.Duration
@@ -108,7 +116,7 @@ var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
 func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processor, state StateViewer, bt time.Duration,
-	ev ElectionValidator, tv TicketValidator, pv EPoStVerifier) *Expected {
+	ev ElectionValidator, tv TicketValidator, pv EPoStVerifier, chainState chainReader) *Expected {
 	return &Expected{
 		cstore:            cs,
 		blockTime:         bt,
@@ -118,6 +126,7 @@ func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processo
 		ElectionValidator: ev,
 		TicketValidator:   tv,
 		postVerifier:      pv,
+		chainState:        chainState,
 	}
 }
 
