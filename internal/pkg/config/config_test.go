@@ -66,6 +66,17 @@ func TestWriteFile(t *testing.T) {
 		"type": "badgerds",
 		"path": "badger"
 	},
+	"drand": {
+		"addresses": [
+			"localhost:8080",
+			"localhost:8081",
+			"localhost:8082",
+			"localhost:8083",
+			"localhost:8084"
+		],
+		"secure": false,
+		"distKey": []
+	},
 	"heartbeat": {
 		"beatTarget": "",
 		"beatPeriod": "3s",

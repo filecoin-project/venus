@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
+	drandapi "github.com/filecoin-project/go-filecoin/internal/pkg/protocol/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 )
@@ -148,14 +149,25 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if b.repo == nil {
 		b.repo = repo.NewInMemoryRepo()
 	}
+
+	var err error
+
 	if b.drand == nil {
-		b.drand = &drand.Utility{}
+		drandConfig := b.repo.Config().Drand
+		addrs := make([]drand.Address, len(drandConfig.Addresses))
+		for i, a := range drandConfig.Addresses {
+			addrs[i] = drand.NewAddress(a, drandConfig.Secure)
+		}
+		d, err := drand.NewGRPC(addrs, drandConfig.DistKey)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to build Drand client")
+		}
+		b.drand = d
 	}
+
 	if b.journal == nil {
 		b.journal = journal.NewNoopJournal()
 	}
-
-	var err error
 
 	// fetch genesis block id
 	b.genCid, err = readGenesisCid(b.repo.Datastore())
@@ -250,6 +262,8 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		PieceManager: nd.PieceManager,
 		Wallet:       nd.Wallet.Wallet,
 	}))
+
+	nd.DrandAPI = drandapi.New(b.drand, nd.PorcelainAPI)
 
 	return nd, nil
 }
