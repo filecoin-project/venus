@@ -145,7 +145,7 @@ NETWORK COMMANDS
   go-filecoin ping <peer ID>...      - Send echo request packets to p2p network members
   go-filecoin swarm                  - Interact with the swarm
   go-filecoin stats                  - Monitor statistics on your network usage
-  go-filecion drand configure        - Configure drand srever connection
+  go-filecion drand configure        - Configure drand server connection
   go-filecoin drand random           - retrieve drand randomness
 
 ACTOR COMMANDS

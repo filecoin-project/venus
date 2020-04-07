@@ -8,6 +8,7 @@ import (
 	"github.com/drand/drand/beacon"
 	"github.com/drand/drand/core"
 	"github.com/drand/drand/key"
+	"github.com/drand/drand/net"
 	"github.com/drand/kyber"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	logging "github.com/ipfs/go-log"
@@ -88,7 +89,8 @@ func (d *GRPC) VerifyEntry(parent, child *Entry) (bool, error) {
 // Otherwise drand address config will be set from the retrieved group info. The
 // override is useful when the the drand server is behind NAT.
 func (d *GRPC) FetchGroupConfig(addresses []string, secure bool, overrideGroupAddrs bool) ([]string, []string, error) {
-	client := core.NewGrpcClient()
+	defaultManager := net.NewCertManager()
+	client := core.NewGrpcClientFromCert(defaultManager)
 
 	// try each address, stopping when we have a key
 	for _, addr := range addresses {
