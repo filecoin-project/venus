@@ -249,14 +249,20 @@ func newDefaultMessagePoolConfig() *MessagePoolConfig {
 // SectorBaseConfig holds all configuration options related to the node's
 // sector storage.
 type SectorBaseConfig struct {
-	// RootDir is the path to the root directory holding sector data.
+	// RootDir is the absolute path to the root directory holding sector data.
 	// If empty the default of <homedir>/sectors is implied.
-	RootDir string `json:"rootdir"`
+	RootDirPath string `json:"rootdir"`
+
+	// PreSealedSectorsDir is the absolute path to the directory holding any
+	// pre-sealed sector files and corresponding metadata JSON.
+	// If empty, it is assumed that no pre-sealed sectors exist.
+	PreSealedSectorsDirPath string `json:"preSealedSectorsDir"`
 }
 
 func newDefaultSectorbaseConfig() *SectorBaseConfig {
 	return &SectorBaseConfig{
-		RootDir: "",
+		RootDirPath:             "",
+		PreSealedSectorsDirPath: "",
 	}
 }
 

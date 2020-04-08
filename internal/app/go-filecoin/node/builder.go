@@ -4,11 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-
-	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p"
@@ -26,7 +22,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	drandapi "github.com/filecoin-project/go-filecoin/internal/pkg/protocol/drand"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 )
 
@@ -35,7 +33,7 @@ type Builder struct {
 	blockTime   time.Duration
 	libp2pOpts  []libp2p.Option
 	offlineMode bool
-	verifier    sectorbuilder.Verifier
+	verifier    ffiwrapper.Verifier
 	postGen     postgenerator.PoStGenerator
 	repo        repo.Repo
 	journal     journal.Journal
@@ -85,7 +83,7 @@ func Libp2pOptions(opts ...libp2p.Option) BuilderOpt {
 }
 
 // VerifierConfigOption returns a function that sets the verifier to use in the node consensus
-func VerifierConfigOption(verifier sectorbuilder.Verifier) BuilderOpt {
+func VerifierConfigOption(verifier ffiwrapper.Verifier) BuilderOpt {
 	return func(c *Builder) error {
 		c.verifier = verifier
 		return nil
@@ -131,7 +129,7 @@ func New(ctx context.Context, opts ...BuilderOpt) (*Node, error) {
 	n := &Builder{
 		offlineMode: false,
 		blockTime:   clock.DefaultEpochDuration,
-		verifier:    sectorbuilder.ProofVerifier,
+		verifier:    ffiwrapper.ProofVerifier,
 	}
 
 	// apply builder options
@@ -270,14 +268,9 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		Wallet:       nd.Wallet.Wallet,
 	}))
 
-	addr, err := nd.PorcelainAPI.WalletDefaultAddress()
-	if err != nil {
-		return nil, err
-	}
-
 	nd.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(
 		ctx,
-		addr,
+		nd.PorcelainAPI.WalletDefaultAddress,
 		&nd.chain,
 		&nd.Messaging,
 		waiter,

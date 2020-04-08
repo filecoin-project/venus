@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 )
 
-// Init initializes a DefaultSycner in the given repo.
+// Init initializes a DefaultSyncer in the given repo.
 func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst cbor.IpldStore, gen genesis.InitFunc) (*Store, error) {
 	// TODO the following should be wrapped in the chain.Store or a sub
 	// interface.

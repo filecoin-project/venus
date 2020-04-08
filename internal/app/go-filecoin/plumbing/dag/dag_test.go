@@ -33,7 +33,7 @@ func TestDAGGet(t *testing.T) {
 		dag := NewDAG(dserv)
 
 		_, err := dag.GetNode(ctx, "awful")
-		assert.EqualError(t, err, "invalid 'ipfs ref' path")
+		assert.EqualError(t, err, "invalid path \"awful\": selected encoding not supported")
 	})
 
 	t.Run("ILPD node not found results in error", func(t *testing.T) {

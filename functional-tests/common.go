@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
-	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/require"
 )
@@ -36,15 +36,23 @@ func makeNode(ctx context.Context, t *testing.T, seed *node.ChainSeed, chainCloc
 	return test.NewNodeBuilder(t).
 		WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
 		WithGenesisInit(seed.GenesisInitFunc).
-		WithBuilderOpt(node.VerifierConfigOption(sectorbuilder.ProofVerifier)).
+		WithBuilderOpt(node.VerifierConfigOption(ffiwrapper.ProofVerifier)).
 		Build(ctx)
 }
 
-func initNodeGenesisMiner(t *testing.T, nd *node.Node, seed *node.ChainSeed, minerIdx int, presealPath string, sectorSize abi.SectorSize) (address.Address, address.Address, error) {
+func initNodeGenesisMiner(ctx context.Context, t *testing.T, nd *node.Node, seed *node.ChainSeed, minerIdx int, presealPath string, sectorSize abi.SectorSize) (address.Address, address.Address, error) {
 	seed.GiveKey(t, nd, minerIdx)
 	miner, owner := seed.GiveMiner(t, nd, 0)
 
-	err := node.ImportPresealedSectors(nd.Repo, presealPath, sectorSize, true)
+	gen, err := nd.Chain().ChainReader.GetGenesisBlock(ctx)
+	require.NoError(t, err)
+
+	c := nd.Repo.Config()
+	c.SectorBase.PreSealedSectorsDirPath = presealPath
+	err = nd.Repo.ReplaceConfig(c)
+	require.NoError(t, err)
+
+	err = node.InitSectors(ctx, nd.Repo, gen)
 	require.NoError(t, err)
 	return miner, owner, err
 }

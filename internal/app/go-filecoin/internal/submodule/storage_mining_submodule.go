@@ -2,28 +2,36 @@ package submodule
 
 import (
 	"context"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"sync"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/go-storage-miner"
-	"github.com/filecoin-project/go-storage-miner/policies/precommit"
-	"github.com/filecoin-project/go-storage-miner/policies/selfdeal"
+	sectorstorage "github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	fsm "github.com/filecoin-project/storage-fsm"
 	"github.com/ipfs/go-datastore"
 
+	fsmeventsconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsm_events"
+	fsmnodeconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsm_node"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsmchain"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsmstorage"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/sectors"
 	storageminerconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/storage_miner"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsampler"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/poster"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 )
 
 // StorageMiningSubmodule enhances the `Node` with storage mining capabilities.
 type StorageMiningSubmodule struct {
-	started bool
+	started   bool
+	startedLk sync.RWMutex
 
 	// StorageMining is used by the miner to fill and seal sectors.
 	PieceManager piecemanager.PieceManager
@@ -31,53 +39,60 @@ type StorageMiningSubmodule struct {
 	// PoStGenerator generates election PoSts
 	PoStGenerator postgenerator.PoStGenerator
 
-	minerNode    *storageminerconnector.StorageMinerNodeConnector
-	storageMiner *storage.Miner
-	poster       *poster.Poster
+	minerNode *storageminerconnector.StorageMinerNodeConnector
+	fsm       *fsm.Sealing
+	poster    *poster.Poster
 }
 
 // NewStorageMiningSubmodule creates a new storage mining submodule.
-func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching, s sectorbuilder.Interface, c *ChainSubmodule,
-	m *MessagingSubmodule, mw *msg.Waiter, w *WalletSubmodule, stateViewer *appstate.Viewer, postGen postgenerator.PoStGenerator) (*StorageMiningSubmodule, error) {
-	minerNode := storageminerconnector.NewStorageMinerNodeConnector(minerAddr, c.ChainReader, c.State, m.Outbox, mw, w.Signer, stateViewer)
+func NewStorageMiningSubmodule(
+	minerAddr address.Address,
+	ds datastore.Batching,
+	c *ChainSubmodule,
+	m *MessagingSubmodule,
+	mw *msg.Waiter,
+	w *WalletSubmodule,
+	stateViewer *appstate.Viewer,
+	sealProofType abi.RegisteredProof,
+	postProofType abi.RegisteredProof,
+	r repo.Repo,
+) (*StorageMiningSubmodule, error) {
+	chainThresholdScheduler := chainsampler.NewHeightThresholdScheduler(c.ChainReader)
+	minerNode := storageminerconnector.NewStorageMinerNodeConnector(minerAddr, chainThresholdScheduler, c.State, m.Outbox, mw, w.Signer, stateViewer)
 
-	// The amount of epochs we expect the storage miner to take to replicate and
-	// prove a sector. This value should be shared with the storage miner side
-	// of go-fil-markets. The protocol specifies a maximum sealing duration (1)
-	// which could be used to improve the accuracy of provingDelay.
-	//
-	// 1: https://github.com/filecoin-project/specs-actors/commit/fa20d55a3ff0c0134b130dc27850998ffd432580#diff-5a14038af5531003ed825ab608d0dd51R21
-	//
-	// TODO: What is the correct value for proving delay given 32GiB sectors?
-	provingDelay := abi.ChainEpoch(2 * 60 * 24)
+	ccn := fsmchain.NewChainConnector(c.ChainReader)
 
-	// The quantity of epochs during which the self-deal will be valid.
-	selfDealDuration := abi.ChainEpoch(2 * 60 * 24)
+	sdx := stores.NewIndex()
 
-	sdp := selfdeal.NewBasicPolicy(minerNode, provingDelay, selfDealDuration)
+	fcg := ffiwrapper.Config{
+		SealProofType: sealProofType,
+		PoStProofType: postProofType,
+	}
 
-	// If a sector contains no pieces, this policy will set the sector
-	// pre-commit expiration to the current epoch + the provided value. If the
-	// sector does contain deals' pieces, the sector pre-commit expiration will
-	// be set to the farthest-into-the-future deal end-epoch.
-	pcp := precommit.NewBasicPolicy(minerNode, abi.ChainEpoch(2*60*24))
+	scg := sectorstorage.SealerConfig{AllowPreCommit1: true, AllowPreCommit2: true, AllowCommit: true}
 
-	storageMiner, err := storage.NewMiner(minerNode, ds, s, minerAddr, &sdp, &pcp)
+	mgr, err := sectorstorage.New(context.TODO(), fsmstorage.NewRepoStorageConnector(r), sdx, &fcg, scg, []string{}, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	smbe := piecemanager.NewStorageMinerBackEnd(storageMiner, s)
-	if postGen == nil {
-		postGen = postgenerator.NewSectorBuilderBackEnd(s)
-	}
+	sid := sectors.NewPersistedSectorNumberCounter(ds)
+
+	ncn := fsmnodeconnector.New(mw, c.ChainReader, c.ActorState, m.Outbox, c.State)
+
+	pcp := fsm.NewBasicPreCommitPolicy(&ccn, abi.ChainEpoch(2*60*24))
+
+	fsmConnector := fsmeventsconnector.New(chainThresholdScheduler, c.State)
+	fsm := fsm.New(ncn, fsmConnector, minerAddr, ds, mgr, sid, ffiwrapper.ProofVerifier, ncn.ChainGetTicket, &pcp)
+
+	bke := piecemanager.NewFiniteStateMachineBackEnd(fsm, sid)
 
 	modu := &StorageMiningSubmodule{
-		PieceManager:  smbe,
-		PoStGenerator: postGen,
+		PieceManager:  &bke,
+		PoStGenerator: mgr,
 		minerNode:     minerNode,
-		storageMiner:  storageMiner,
-		poster:        poster.NewPoster(minerAddr, m.Outbox, s, c.State, stateViewer, mw),
+		fsm:           fsm,
+		poster:        poster.NewPoster(minerAddr, m.Outbox, mgr, c.State, stateViewer, mw),
 	}
 
 	return modu, nil
@@ -85,11 +100,14 @@ func NewStorageMiningSubmodule(minerAddr address.Address, ds datastore.Batching,
 
 // Start starts the StorageMiningSubmodule
 func (s *StorageMiningSubmodule) Start(ctx context.Context) error {
+	s.startedLk.Lock()
+	defer s.startedLk.Unlock()
+
 	if s.started {
 		return nil
 	}
 
-	err := s.storageMiner.Run(ctx)
+	err := s.fsm.Run(ctx)
 	if err != nil {
 		return err
 	}
@@ -100,11 +118,14 @@ func (s *StorageMiningSubmodule) Start(ctx context.Context) error {
 
 // Stop stops the StorageMiningSubmodule
 func (s *StorageMiningSubmodule) Stop(ctx context.Context) error {
+	s.startedLk.Lock()
+	defer s.startedLk.Unlock()
+
 	if !s.started {
 		return nil
 	}
 
-	err := s.storageMiner.Stop(ctx)
+	err := s.fsm.Stop(ctx)
 	if err != nil {
 		return err
 	}
@@ -116,6 +137,9 @@ func (s *StorageMiningSubmodule) Stop(ctx context.Context) error {
 
 // HandleNewHead submits a new chain head for possible fallback PoSt.
 func (s *StorageMiningSubmodule) HandleNewHead(ctx context.Context, newHead block.TipSet) error {
+	s.startedLk.RLock()
+	defer s.startedLk.RUnlock()
+
 	if !s.started {
 		return nil
 	}

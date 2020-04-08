@@ -19,7 +19,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsampler"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
@@ -58,10 +57,10 @@ var _ storagenode.Interface = new(StorageMinerNodeConnector)
 // NewStorageMinerNodeConnector produces a StorageMinerNodeConnector, which adapts
 // types in this codebase to the interface representing "the node" which is
 // expected by the go-storage-miner project.
-func NewStorageMinerNodeConnector(minerAddress address.Address, chainStore *chain.Store, chainState chainReader, outbox *message.Outbox, waiter *msg.Waiter, wallet types.Signer, stateViewer *appstate.Viewer) *StorageMinerNodeConnector {
+func NewStorageMinerNodeConnector(minerAddress address.Address, heightScheduler *chainsampler.HeightThresholdScheduler, chainState chainReader, outbox *message.Outbox, waiter *msg.Waiter, wallet types.Signer, stateViewer *appstate.Viewer) *StorageMinerNodeConnector {
 	return &StorageMinerNodeConnector{
 		minerAddr:            minerAddress,
-		chainHeightScheduler: chainsampler.NewHeightThresholdScheduler(chainStore),
+		chainHeightScheduler: heightScheduler,
 		chainState:           chainState,
 		outbox:               outbox,
 		waiter:               waiter,

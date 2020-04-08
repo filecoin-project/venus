@@ -56,36 +56,20 @@ func (c *connectorCommon) GetChainHead(_ context.Context) (shared.TipSetToken, a
 }
 
 func (c *connectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan error) (*vm.MessageReceipt, error) {
-	receiptChan := make(chan *vm.MessageReceipt)
-	errChan := make(chan error)
-
 	err := <-pubErrCh
 	if err != nil {
 		return nil, err
 	}
 
-	go func() {
-		err := c.waiter.Wait(ctx, mcid, func(b *block.Block, message *types.SignedMessage, r *vm.MessageReceipt) error {
-			receiptChan <- r
-			return nil
-		})
-		if err != nil {
-			errChan <- err
-		}
-	}()
-
-	select {
-	case receipt := <-receiptChan:
-		if receipt.ExitCode != 0 {
-			return nil, xerrors.Errorf("non-zero exit code: %d", receipt.ExitCode)
-		}
-
-		return receipt, nil
-	case err := <-errChan:
+	var receipt *vm.MessageReceipt
+	err = c.waiter.Wait(ctx, mcid, func(b *block.Block, message *types.SignedMessage, r *vm.MessageReceipt) error {
+		receipt = r
+		return nil
+	})
+	if err != nil {
 		return nil, err
-	case <-ctx.Done():
-		return nil, xerrors.New("context ended prematurely")
 	}
+	return receipt, nil
 }
 
 func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address, addr address.Address, amount abi.TokenAmount) error {

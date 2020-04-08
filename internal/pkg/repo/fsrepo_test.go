@@ -86,7 +86,8 @@ const (
 		}
 	},
 	"sectorbase": {
-		"rootdir": ""
+		"rootdir": "",
+		"preSealedSectorsDir": ""
 	},
 	"swarm": {
 		"address": "/ip4/0.0.0.0/tcp/6000"

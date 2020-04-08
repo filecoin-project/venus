@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
@@ -31,10 +31,10 @@ type faultChecker interface {
 // in VM and supporting code. https://github.com/filecoin-project/go-filecoin/issues/3844
 type Syscalls struct {
 	faultChecker faultChecker
-	verifier     sectorbuilder.Verifier
+	verifier     ffiwrapper.Verifier
 }
 
-func NewSyscalls(faultChecker faultChecker, verifier sectorbuilder.Verifier) *Syscalls {
+func NewSyscalls(faultChecker faultChecker, verifier ffiwrapper.Verifier) *Syscalls {
 	return &Syscalls{
 		faultChecker: faultChecker,
 		verifier:     verifier,
@@ -50,7 +50,7 @@ func (s *Syscalls) HashBlake2b(data []byte) [32]byte {
 }
 
 func (s *Syscalls) ComputeUnsealedSectorCID(_ context.Context, proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
-	return sectorbuilder.GenerateUnsealedCID(proof, pieces)
+	return ffiwrapper.GenerateUnsealedCID(proof, pieces)
 }
 
 func (s *Syscalls) VerifySeal(_ context.Context, info abi.SealVerifyInfo) error {

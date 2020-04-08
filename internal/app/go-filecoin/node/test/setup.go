@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+
 	"github.com/filecoin-project/go-filecoin/build/project"
 
 	"github.com/filecoin-project/go-address"
@@ -31,6 +33,8 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	// set up paths and fake clock.
 	presealPath := project.Root("fixtures/genesis-sectors")
 	genCfgPath := project.Root("fixtures/setup.json")
+	minerAddress, err := address.NewIDAddress(106)
+	require.NoError(t, err)
 	genTime := int64(1000000000)
 	blockTime := 30 * time.Second
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
@@ -55,9 +59,13 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 			GenesisTime:   time.Unix(drandGenUnixSeconds, 0),
 			FirstFilecoin: 0,
 		})).
+		WithConfig(func(c *config.Config) {
+			c.SectorBase.PreSealedSectorsDirPath = presealPath
+			c.Mining.MinerAddress = minerAddress
+		}).
 		Build(ctx)
 
-	_, _, err := initNodeGenesisMiner(t, bootstrapMiner, seed, genCfg.Miners[0].Owner, presealPath, genCfg.Miners[0].SectorSize)
+	_, _, err = initNodeGenesisMiner(ctx, t, bootstrapMiner, seed, genCfg.Miners[0].Owner, presealPath, genCfg.Miners[0].SectorSize)
 	require.NoError(t, err)
 	err = bootstrapMiner.Start(ctx)
 	require.NoError(t, err)
@@ -76,7 +84,9 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 				FirstFilecoin: 0,
 			})).
 			Build(ctx)
-		seed.GiveKey(t, node, int(i+1))
+		addr := seed.GiveKey(t, node, int(i+1))
+		err := node.PorcelainAPI.ConfigSet("wallet.defaultAddress", addr.String())
+		require.NoError(t, err)
 		err = node.Start(ctx)
 		require.NoError(t, err)
 		nodes[i+1] = node
@@ -106,11 +116,14 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	return nodes, cancel
 }
 
-func initNodeGenesisMiner(t *testing.T, nd *node.Node, seed *node.ChainSeed, minerIdx int, presealPath string, sectorSize abi.SectorSize) (address.Address, address.Address, error) {
+func initNodeGenesisMiner(ctx context.Context, t *testing.T, nd *node.Node, seed *node.ChainSeed, minerIdx int, presealPath string, sectorSize abi.SectorSize) (address.Address, address.Address, error) {
 	seed.GiveKey(t, nd, minerIdx)
 	miner, owner := seed.GiveMiner(t, nd, 0)
 
-	err := node.ImportPresealedSectors(nd.Repo, presealPath, sectorSize, true)
+	genesisBlock, err := nd.Chain().ChainReader.GetGenesisBlock(ctx)
+	require.NoError(t, err)
+
+	err = node.InitSectors(ctx, nd.Repo, genesisBlock)
 	require.NoError(t, err)
 	return miner, owner, err
 }
