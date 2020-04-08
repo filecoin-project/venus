@@ -376,7 +376,11 @@ func (w *DefaultWorker) lookbackTipset(ctx context.Context, base block.TipSet, n
 	if lookback <= nullBlkCount+1 { // new block looks back to base
 		return base, nil
 	}
-	lookBackFromBase := abi.ChainEpoch(lookback - 1 - nullBlkCount)
+	baseHeight, err := base.Height()
+	if err != nil {
+		return block.UndefTipSet, err
+	}
+	targetEpoch := abi.ChainEpoch(uint64(baseHeight) + 1 + nullBlkCount - lookback)
 
-	return chain.FindTipsetAtEpoch(ctx, base, lookBackFromBase, w.chainState)
+	return chain.FindTipsetAtEpoch(ctx, base, targetEpoch, w.chainState)
 }

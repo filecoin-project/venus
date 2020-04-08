@@ -25,7 +25,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -79,7 +78,7 @@ func TestCreatePaymentChannel(t *testing.T) {
 func testSetup2(ctx context.Context, t *testing.T) (*chain.Builder, bstore.Blockstore, block.TipSet) {
 	_, builder, genTs, cs, st1 := requireNewEmptyChainStore(ctx, t)
 	rootBlk := builder.AppendBlockOnBlocks()
-	th.RequireNewTipSet(t, rootBlk)
+	block.RequireNewTipSet(t, rootBlk)
 	require.NoError(t, cs.SetHead(ctx, genTs))
 	root, err := st1.Commit(ctx)
 	require.NoError(t, err)

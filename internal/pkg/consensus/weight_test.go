@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -29,7 +28,7 @@ func TestWeight(t *testing.T) {
 	// Total is 16, so bitlen is 5, log2b is 4
 	viewer := makeStateViewer(fakeRoot, abi.NewStoragePower(16))
 	ticket := consensus.MakeFakeTicketForTest()
-	toWeigh := th.RequireNewTipSet(t, &block.Block{
+	toWeigh := block.RequireNewTipSet(t, &block.Block{
 		ParentWeight: fbig.Zero(),
 		Ticket:       ticket,
 	})
@@ -69,7 +68,7 @@ func TestWeight(t *testing.T) {
 
 	t.Run("non-zero parent weight", func(t *testing.T) {
 		parentWeight := fbig.NewInt(int64(49))
-		toWeighWithParent := th.RequireNewTipSet(t, &block.Block{
+		toWeighWithParent := block.RequireNewTipSet(t, &block.Block{
 			ParentWeight: parentWeight,
 			Ticket:       ticket,
 		})
@@ -81,7 +80,7 @@ func TestWeight(t *testing.T) {
 	})
 
 	t.Run("many blocks", func(t *testing.T) {
-		toWeighThreeBlock := th.RequireNewTipSet(t,
+		toWeighThreeBlock := block.RequireNewTipSet(t,
 			&block.Block{
 				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
