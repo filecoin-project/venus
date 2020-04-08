@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
@@ -21,6 +22,7 @@ func assertEmptyCh(t *testing.T, faultCh chan ConsensusFault) {
 }
 
 func TestNoFaults(t *testing.T) {
+	tf.UnitTest(t)
 	addrGetter := vmaddr.NewForTestGetter()
 	minerAddr1 := addrGetter()
 	minerAddr2 := addrGetter()
@@ -92,6 +94,7 @@ func TestNoFaults(t *testing.T) {
 }
 
 func TestFault(t *testing.T) {
+	tf.UnitTest(t)
 	addrGetter := vmaddr.NewForTestGetter()
 	minerAddr1 := addrGetter()
 
@@ -112,6 +115,7 @@ func TestFault(t *testing.T) {
 }
 
 func TestFaultNullBlocks(t *testing.T) {
+	tf.UnitTest(t)
 	addrGetter := vmaddr.NewForTestGetter()
 	minerAddr1 := addrGetter()
 
