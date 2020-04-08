@@ -164,7 +164,13 @@ func sendSignedMsg(ctx context.Context, ob *Outbox, signed *types.SignedMessage,
 		return cid.Undef, nil, errors.Wrap(err, "failed to add message to outbound queue")
 	}
 
-	c, err := signed.Cid()
+	var c cid.Cid
+	if signed.Message.From.Protocol() == address.BLS {
+		// drop signature before generating Cid to match cid of message retrieved from block.
+		c, err = signed.Message.Cid()
+	} else {
+		c, err = signed.Cid()
+	}
 	if err != nil {
 		return cid.Undef, nil, err
 	}
