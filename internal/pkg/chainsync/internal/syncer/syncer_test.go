@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -85,7 +84,7 @@ func TestTipSetIncremental(t *testing.T) {
 	_, err := store.GetTipSet(t2.Key())
 	require.Error(t, err)
 
-	merged := th.RequireNewTipSet(t, t1.At(0), t2.At(0))
+	merged := block.RequireNewTipSet(t, t1.At(0), t2.At(0))
 	verifyTip(t, store, merged, builder.StateForKey(merged.Key()))
 	require.NoError(t, syncer.SetStagedHead(ctx))
 	verifyHead(t, store, merged)
@@ -271,14 +270,14 @@ func TestSubsetParent(t *testing.T) {
 
 	// Sync one tipset with a parent equal to a subset of an existing
 	// tipset in the store: {B1, B2} -> {C1, C2}
-	tipB1B2 := th.RequireNewTipSet(t, tipB1B2B3.At(0), tipB1B2B3.At(1))
+	tipB1B2 := block.RequireNewTipSet(t, tipB1B2B3.At(0), tipB1B2B3.At(1))
 	tipC1C2 := builder.AppendOn(tipB1B2, 2)
 
 	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", tipC1C2.Key(), heightFromTip(t, tipC1C2)), false))
 
 	// Sync another tipset with a parent equal to a subset of the tipset
 	// just synced: C1 -> D1
-	tipC1 := th.RequireNewTipSet(t, tipC1C2.At(0))
+	tipC1 := block.RequireNewTipSet(t, tipC1C2.At(0))
 	tipD1OnC1 := builder.AppendOn(tipC1, 1)
 	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", tipD1OnC1.Key(), heightFromTip(t, tipD1OnC1)), false))
 
@@ -302,7 +301,7 @@ func TestWidenChainAncestor(t *testing.T) {
 	// Build another block with parents link1, but not included in link2.
 	link2Alt := builder.AppendOn(link1, 1)
 	// Build a tipset containing one block from link2, plus this new sibling.
-	link2UnionSubset := th.RequireNewTipSet(t, link2.At(0), link2Alt.At(0))
+	link2UnionSubset := block.RequireNewTipSet(t, link2.At(0), link2Alt.At(0))
 
 	// Sync the subset of link2 first
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", link2UnionSubset.Key(), heightFromTip(t, link2UnionSubset)), false))
@@ -315,7 +314,7 @@ func TestWidenChainAncestor(t *testing.T) {
 	verifyHead(t, store, link4)
 
 	// Check that the widened tipset (link2UnionSubset U link2) is tracked
-	link2Union := th.RequireNewTipSet(t, link2.At(0), link2.At(1), link2.At(2), link2Alt.At(0))
+	link2Union := block.RequireNewTipSet(t, link2.At(0), link2.At(1), link2.At(2), link2Alt.At(0))
 	verifyTip(t, store, link2Union, builder.StateForKey(link2Union.Key()))
 }
 
@@ -364,7 +363,7 @@ func TestHeaviestIsWidenedAncestor(t *testing.T) {
 	// Assert that widened chain is the new head
 	wideBlocks := link2.ToSlice()
 	wideBlocks = append(wideBlocks, forkLink2.ToSlice()...)
-	wideTs := th.RequireNewTipSet(t, wideBlocks...)
+	wideTs := block.RequireNewTipSet(t, wideBlocks...)
 
 	verifyTip(t, store, wideTs, builder.ComputeState(wideTs))
 	verifyHead(t, store, wideTs)
@@ -397,7 +396,7 @@ func TestBlockNotLinkedRejected(t *testing.T) {
 	// The two builders are expected to produce exactly the same blocks from the same sequence
 	// of calls.
 	shadowBuilder := chain.NewBuilder(t, address.Undef)
-	gen2 := th.RequireNewTipSet(t, shadowBuilder.AppendBlockOnBlocks())
+	gen2 := block.RequireNewTipSet(t, shadowBuilder.AppendBlockOnBlocks())
 	require.True(t, genesis.Equals(gen2))
 
 	// The syncer fails to fetch this block so cannot sync it.

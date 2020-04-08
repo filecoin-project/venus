@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
@@ -98,14 +97,14 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 
 // NewGenesis creates and returns a tipset of one block with no parents.
 func (f *Builder) NewGenesis() block.TipSet {
-	return th.RequireNewTipSet(f.t, f.AppendBlockOn(block.UndefTipSet))
+	return block.RequireNewTipSet(f.t, f.AppendBlockOn(block.UndefTipSet))
 }
 
 // AppendBlockOnBlocks creates and returns a new block child of `parents`, with no messages.
 func (f *Builder) AppendBlockOnBlocks(parents ...*block.Block) *block.Block {
 	tip := block.UndefTipSet
 	if len(parents) > 0 {
-		tip = th.RequireNewTipSet(f.t, parents...)
+		tip = block.RequireNewTipSet(f.t, parents...)
 	}
 	return f.AppendBlockOn(tip)
 }
@@ -124,7 +123,7 @@ func (f *Builder) AppendOn(parent block.TipSet, width int) block.TipSet {
 func (f *Builder) AppendManyBlocksOnBlocks(height int, parents ...*block.Block) *block.Block {
 	tip := block.UndefTipSet
 	if len(parents) > 0 {
-		tip = th.RequireNewTipSet(f.t, parents...)
+		tip = block.RequireNewTipSet(f.t, parents...)
 	}
 	return f.BuildManyOn(height, tip, nil).At(0)
 }
@@ -143,7 +142,7 @@ func (f *Builder) AppendManyOn(height int, parent block.TipSet) block.TipSet {
 func (f *Builder) BuildOnBlock(parent *block.Block, build func(b *BlockBuilder)) *block.Block {
 	tip := block.UndefTipSet
 	if parent != nil {
-		tip = th.RequireNewTipSet(f.t, parent)
+		tip = block.RequireNewTipSet(f.t, parent)
 	}
 	return f.BuildOneOn(tip, build).At(0)
 }
@@ -233,7 +232,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 		require.NoError(f.t, err)
 		blocks = append(blocks, b)
 	}
-	tip := th.RequireNewTipSet(f.t, blocks...)
+	tip := block.RequireNewTipSet(f.t, blocks...)
 	// Compute and remember state for the tipset.
 	f.tipStateCids[tip.Key().String()] = f.ComputeState(tip)
 

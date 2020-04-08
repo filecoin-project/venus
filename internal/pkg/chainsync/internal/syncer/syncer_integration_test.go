@@ -149,8 +149,8 @@ func TestSyncerWeighsPower(t *testing.T) {
 			)
 		}
 	})
-	fork1 := th.RequireNewTipSet(t, split.At(0))
-	fork2 := th.RequireNewTipSet(t, split.At(1))
+	fork1 := block.RequireNewTipSet(t, split.At(0))
+	fork2 := block.RequireNewTipSet(t, split.At(1))
 
 	// Builder adds 3 blocks to fork 1 and total storage power 2^0
 	// 3 + 3*delta = 3 + 3[V*1 + bits(2^0)] = 3 + 3[2 + 1] = 3 + 9 = 12

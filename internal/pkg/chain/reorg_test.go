@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
@@ -91,7 +90,7 @@ func getSubsetOldNewCommon(ctx context.Context, t *testing.T, builder *chain.Bui
 	block1 := builder.AppendBlockOnBlocks(commonHead)
 	block2 := builder.AppendBlockOnBlocks(commonHead)
 
-	oldHead := th.RequireNewTipSet(t, block1)
-	superset := th.RequireNewTipSet(t, block1, block2)
-	return oldHead, superset, th.RequireNewTipSet(t, commonHead)
+	oldHead := block.RequireNewTipSet(t, block1)
+	superset := block.RequireNewTipSet(t, block1, block2)
+	return oldHead, superset, block.RequireNewTipSet(t, commonHead)
 }

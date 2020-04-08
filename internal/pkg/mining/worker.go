@@ -124,6 +124,7 @@ type DefaultWorker struct {
 	blockstore     blockstore.Blockstore
 	clock          clock.ChainEpochClock
 	poster         postgenerator.PoStGenerator
+	chainState     chain.TipSetProvider
 }
 
 // WorkerParameters use for NewDefaultWorker parameters
@@ -148,6 +149,7 @@ type WorkerParameters struct {
 	Blockstore    blockstore.Blockstore
 	Clock         clock.ChainEpochClock
 	Poster        postgenerator.PoStGenerator
+	ChainState    chain.TipSetProvider
 }
 
 // NewDefaultWorker instantiates a new Worker.
@@ -168,6 +170,7 @@ func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
 		tsMetadata:     parameters.TipSetMetadata,
 		clock:          parameters.Clock,
 		poster:         parameters.Poster,
+		chainState:     parameters.ChainState,
 	}
 }
 
@@ -194,12 +197,12 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	}
 
 	// Read uncached worker address
-	view, err := w.api.PowerStateView(base.Key())
+	keyView, err := w.api.PowerStateView(base.Key())
 	if err != nil {
 		outCh <- NewOutputErr(err)
 		return
 	}
-	_, workerAddr, err := view.MinerControlAddresses(ctx, w.minerAddr)
+	_, workerAddr, err := keyView.MinerControlAddresses(ctx, w.minerAddr)
 	if err != nil {
 		outCh <- NewOutputErr(err)
 		return
@@ -211,7 +214,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	// The sampling code will handle this underflowing past the genesis.
 	lookbackEpoch := baseEpoch - (miner.ElectionLookback - 1) + abi.ChainEpoch(nullBlkCount)
 
-	workerSignerAddr, err := view.AccountSignerAddress(ctx, workerAddr)
+	workerSignerAddr, err := keyView.AccountSignerAddress(ctx, workerAddr)
 	if err != nil {
 		outCh <- NewOutputErr(err)
 		return
@@ -232,13 +235,19 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	}
 	postVrfProofDigest := postVrfProof.Digest()
 
-	powerTable, err := w.getPowerTable(base.Key())
+	sectorSetAncestor, err := w.lookbackTipset(ctx, base, nullBlkCount, consensus.WinningPoStSectorSetLookback)
+	if err != nil {
+		log.Errorf("Worker.Mine couldn't get ancestor tipset: %s", err.Error())
+		outCh <- NewOutputErr(err)
+		return
+	}
+	winningPoStSectorSetView, err := w.getPowerTable(sectorSetAncestor.Key())
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't get snapshot for tipset: %s", err.Error())
 		outCh <- NewOutputErr(err)
 		return
 	}
-	sortedSectorInfos, err := powerTable.SortedSectorInfos(ctx, w.minerAddr)
+	sortedSectorInfos, err := winningPoStSectorSetView.SortedSectorInfos(ctx, w.minerAddr)
 	if err != nil {
 		log.Warnf("Worker.Mine failed to get ssi for %s", w.minerAddr)
 		outCh <- NewOutputErr(err)
@@ -269,20 +278,33 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		candidates = genResult
 	}
 
+	electionPowerAncestor, err := w.lookbackTipset(ctx, base, nullBlkCount, consensus.ElectionPowerTableLookback)
+	if err != nil {
+		log.Errorf("Worker.Mine couldn't get ancestor tipset: %s", err.Error())
+		outCh <- NewOutputErr(err)
+		return
+	}
+	electionPowerTable, err := w.getPowerTable(electionPowerAncestor.Key())
+	if err != nil {
+		log.Errorf("Worker.Mine couldn't get snapshot for tipset: %s", err.Error())
+		outCh <- NewOutputErr(err)
+		return
+	}
+
 	// Look for any winning candidates
-	sectorNum, err := powerTable.NumSectors(ctx, w.minerAddr)
+	sectorNum, err := electionPowerTable.NumSectors(ctx, w.minerAddr)
 	if err != nil {
 		log.Errorf("failed to get number of sectors for miner: %s", err)
 		outCh <- NewOutputErr(err)
 		return
 	}
-	networkPower, err := powerTable.Total(ctx)
+	networkPower, err := electionPowerTable.Total(ctx)
 	if err != nil {
 		log.Errorf("failed to get total power: %s", err)
 		outCh <- NewOutputErr(err)
 		return
 	}
-	sectorSize, err := powerTable.SectorSize(ctx, w.minerAddr)
+	sectorSize, err := electionPowerTable.SectorSize(ctx, w.minerAddr)
 	if err != nil {
 		log.Errorf("failed to get sector size for miner: %s", err)
 		outCh <- NewOutputErr(err)
@@ -348,4 +370,17 @@ func (w *DefaultWorker) getPowerTable(baseKey block.TipSetKey) (consensus.PowerT
 		return consensus.PowerTableView{}, err
 	}
 	return consensus.NewPowerTableView(view), nil
+}
+
+func (w *DefaultWorker) lookbackTipset(ctx context.Context, base block.TipSet, nullBlkCount uint64, lookback uint64) (block.TipSet, error) {
+	if lookback <= nullBlkCount+1 { // new block looks back to base
+		return base, nil
+	}
+	baseHeight, err := base.Height()
+	if err != nil {
+		return block.UndefTipSet, err
+	}
+	targetEpoch := abi.ChainEpoch(uint64(baseHeight) + 1 + nullBlkCount - lookback)
+
+	return chain.FindTipsetAtEpoch(ctx, base, targetEpoch, w.chainState)
 }

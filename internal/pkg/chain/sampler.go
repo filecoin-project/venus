@@ -47,7 +47,7 @@ func (s *Sampler) Sample(ctx context.Context, head block.TipSetKey, epoch abi.Ch
 		// sought-after height may be after the base (last non-empty) tipset.
 		// It's also not an error for the requested epoch to be negative.
 
-		tip, err := s.findTipsetAtEpoch(ctx, start, epoch)
+		tip, err := FindTipsetAtEpoch(ctx, start, epoch, s.reader)
 		if err != nil {
 			return nil, err
 		}
@@ -61,27 +61,6 @@ func (s *Sampler) Sample(ctx context.Context, head block.TipSetKey, epoch abi.Ch
 	}
 
 	return crypto.MakeRandomSeed(ticket.VRFProof)
-}
-
-// Finds the the highest tipset with height <= the requested epoch, by traversing backward from start.
-func (s *Sampler) findTipsetAtEpoch(ctx context.Context, start block.TipSet, epoch abi.ChainEpoch) (ts block.TipSet, err error) {
-	iterator := IterAncestors(ctx, s.reader, start)
-	var h abi.ChainEpoch
-	for ; !iterator.Complete(); err = iterator.Next() {
-		if err != nil {
-			return
-		}
-		ts = iterator.Value()
-		h, err = ts.Height()
-		if err != nil {
-			return
-		}
-		if h <= epoch {
-			break
-		}
-	}
-	// If the iterator completed, ts is the genesis tipset.
-	return
 }
 
 ///// A chain sampler with a specific head tipset key. /////
