@@ -13,9 +13,11 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
 func TestNewHeightThresholdListener(t *testing.T) {
+	tf.UnitTest(t)
 	builder := chain.NewBuilder(t, address.Undef)
 	genesis := builder.NewGenesis()
 

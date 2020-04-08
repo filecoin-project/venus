@@ -30,7 +30,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
@@ -328,7 +327,7 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 func testSetup(ctx context.Context, t *testing.T, bal abi.TokenAmount) (bstore.Blockstore, *message.FakeProvider, address.Address, address.Address, block.TipSet) {
 	_, builder, genTs, chainStore, st1 := requireNewEmptyChainStore(ctx, t)
 	rootBlk := builder.AppendBlockOnBlocks()
-	th.RequireNewTipSet(t, rootBlk)
+	block.RequireNewTipSet(t, rootBlk)
 	require.NoError(t, chainStore.SetHead(ctx, genTs))
 	root, err := st1.Commit(ctx)
 	require.NoError(t, err)

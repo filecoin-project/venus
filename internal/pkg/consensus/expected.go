@@ -16,6 +16,7 @@ import (
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
@@ -52,6 +53,14 @@ const challengeBits = 256
 // expectedLeadersPerEpoch is the mean number of leaders per epoch
 const expectedLeadersPerEpoch = 5
 
+// WinningPoStSectorSetLookback is the past epoch offset for reading the
+// winning post sector set
+const WinningPoStSectorSetLookback = 10
+
+// ElectionPowerTableLookback is the past epoch offset for reading the
+// election power values
+const ElectionPowerTableLookback = 10
+
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
@@ -75,6 +84,11 @@ type StateViewer interface {
 	StateView(root cid.Cid) PowerStateView
 }
 
+type chainReader interface {
+	GetTipSet(tsKey block.TipSetKey) (block.TipSet, error)
+	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
+}
+
 // Expected implements expected consensus.
 type Expected struct {
 	// ElectionValidator validates election proofs.
@@ -91,10 +105,13 @@ type Expected struct {
 	// accessing the power table.
 	bstore blockstore.Blockstore
 
+	// chainState is a reference to the current chain state
+	chainState chainReader
+
 	// processor is what we use to process messages and pay rewards
 	processor Processor
 
-	// state provides produces snapshots
+	// state produces snapshots
 	state StateViewer
 
 	blockTime time.Duration
@@ -108,7 +125,7 @@ var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
 func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processor, state StateViewer, bt time.Duration,
-	ev ElectionValidator, tv TicketValidator, pv EPoStVerifier) *Expected {
+	ev ElectionValidator, tv TicketValidator, pv EPoStVerifier, chainState chainReader) *Expected {
 	return &Expected{
 		cstore:            cs,
 		blockTime:         bt,
@@ -118,6 +135,7 @@ func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processo
 		ElectionValidator: ev,
 		TicketValidator:   tv,
 		postVerifier:      pv,
+		chainState:        chainState,
 	}
 }
 
@@ -171,9 +189,36 @@ func (c *Expected) validateMining(ctx context.Context,
 	parentWeight fbig.Int,
 	parentReceiptRoot cid.Cid) error {
 
-	stateView := c.state.StateView(parentStateRoot)
-	sigValidator := appstate.NewSignatureValidator(stateView)
-	powerTable := NewPowerTableView(stateView)
+	keyStateView := c.state.StateView(parentStateRoot)
+	sigValidator := appstate.NewSignatureValidator(keyStateView)
+	keyPowerTable := NewPowerTableView(keyStateView)
+
+	tsHeight, err := ts.Height()
+	if err != nil {
+		return errors.Wrap(err, "could not get new tipset's height")
+	}
+
+	sectorSetAncestor, err := chain.FindTipsetAtEpoch(ctx, ts, tsHeight-WinningPoStSectorSetLookback, c.chainState)
+	if err != nil {
+		return errors.Wrap(err, "failed to find sector set lookback ancestor")
+	}
+	sectorSetStateRoot, err := c.chainState.GetTipSetStateRoot(sectorSetAncestor.Key())
+	if err != nil {
+		return errors.Wrap(err, "failed to get state root for sectorSet ancestor")
+	}
+	sectorSetStateView := c.state.StateView(sectorSetStateRoot)
+	sectorSetPowerTable := NewPowerTableView(sectorSetStateView)
+
+	electionPowerAncestor, err := chain.FindTipsetAtEpoch(ctx, ts, tsHeight-ElectionPowerTableLookback, c.chainState)
+	if err != nil {
+		return errors.Wrap(err, "failed to find election power lookback ancestor")
+	}
+	electionPowerStateRoot, err := c.chainState.GetTipSetStateRoot(electionPowerAncestor.Key())
+	if err != nil {
+		return errors.Wrap(err, "failed to get state root for election power ancestor")
+	}
+	electionPowerStateView := c.state.StateView(electionPowerStateRoot)
+	electionPowerTable := NewPowerTableView(electionPowerStateView)
 
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
@@ -191,11 +236,11 @@ func (c *Expected) validateMining(ctx context.Context,
 		if !parentWeight.Equals(blk.ParentWeight) {
 			return errors.Errorf("block %s has invalid parent weight %d expected %d", blk.Cid().String(), blk.ParentWeight, parentWeight)
 		}
-		workerAddr, err := powerTable.WorkerAddr(ctx, blk.Miner)
+		workerAddr, err := keyPowerTable.WorkerAddr(ctx, blk.Miner)
 		if err != nil {
 			return errors.Wrap(err, "failed to read worker address of block miner")
 		}
-		workerSignerAddr, err := powerTable.SignerAddress(ctx, workerAddr)
+		workerSignerAddr, err := keyPowerTable.SignerAddress(ctx, workerAddr)
 		if err != nil {
 			return errors.Wrapf(err, "failed to convert address, %s, to a signing address", workerAddr.String())
 		}
@@ -241,15 +286,15 @@ func (c *Expected) validateMining(ctx context.Context,
 		// TODO this is not using nominal power, which must take into account undeclared faults
 		// TODO the nominal power must be tested against the minimum (power.minerNominalPowerMeetsConsensusMinimum)
 		// See https://github.com/filecoin-project/go-filecoin/issues/3958
-		sectorNum, err := powerTable.NumSectors(ctx, blk.Miner)
+		sectorNum, err := electionPowerTable.NumSectors(ctx, blk.Miner)
 		if err != nil {
 			return errors.Wrap(err, "failed to read sectorNum from power table")
 		}
-		networkPower, err := powerTable.Total(ctx)
+		networkPower, err := electionPowerTable.Total(ctx)
 		if err != nil {
 			return errors.Wrap(err, "failed to read networkPower from power table")
 		}
-		sectorSize, err := powerTable.SectorSize(ctx, blk.Miner)
+		sectorSize, err := electionPowerTable.SectorSize(ctx, blk.Miner)
 		if err != nil {
 			return errors.Wrap(err, "failed to read sectorSize from power table")
 		}
@@ -263,7 +308,7 @@ func (c *Expected) validateMining(ctx context.Context,
 		}
 
 		// Verify PoSt is valid
-		allSectorInfos, err := powerTable.SortedSectorInfos(ctx, blk.Miner)
+		allSectorInfos, err := sectorSetPowerTable.SortedSectorInfos(ctx, blk.Miner)
 		if err != nil {
 			return errors.Wrapf(err, "failed to read sector infos from power table")
 		}

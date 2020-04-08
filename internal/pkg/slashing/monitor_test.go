@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
@@ -22,6 +22,7 @@ func assertEmptyCh(t *testing.T, faultCh chan ConsensusFault) {
 }
 
 func TestNoFaults(t *testing.T) {
+	tf.UnitTest(t)
 	addrGetter := vmaddr.NewForTestGetter()
 	minerAddr1 := addrGetter()
 	minerAddr2 := addrGetter()
@@ -29,7 +30,7 @@ func TestNoFaults(t *testing.T) {
 
 	t.Run("blocks mined by different miners don't slash", func(t *testing.T) {
 		parentBlock := &block.Block{Height: 42}
-		parentTipSet := th.RequireNewTipSet(t, parentBlock)
+		parentTipSet := block.RequireNewTipSet(t, parentBlock)
 
 		block1 := &block.Block{Miner: minerAddr1, Height: 43}
 		block2 := &block.Block{Miner: minerAddr2, Height: 43}
@@ -47,11 +48,11 @@ func TestNoFaults(t *testing.T) {
 
 	t.Run("blocks mined at different heights don't slash", func(t *testing.T) {
 		parent1Block := &block.Block{Height: 42}
-		parent1TipSet := th.RequireNewTipSet(t, parent1Block)
+		parent1TipSet := block.RequireNewTipSet(t, parent1Block)
 		block1 := &block.Block{Miner: minerAddr1, Height: 43}
 
 		parent2Block := &block.Block{Height: 55}
-		parent2TipSet := th.RequireNewTipSet(t, parent2Block)
+		parent2TipSet := block.RequireNewTipSet(t, parent2Block)
 		block2 := &block.Block{Miner: minerAddr1, Height: 56}
 
 		faultCh := make(chan ConsensusFault, 1)
@@ -64,10 +65,10 @@ func TestNoFaults(t *testing.T) {
 
 	t.Run("blocks with non-overlapping null intervals don't slash", func(t *testing.T) {
 		parent1Block := &block.Block{Height: 42}
-		parent1TipSet := th.RequireNewTipSet(t, parent1Block)
+		parent1TipSet := block.RequireNewTipSet(t, parent1Block)
 		block1 := &block.Block{Miner: minerAddr1, Height: 46}
 
-		parent2TipSet := th.RequireNewTipSet(t, block1)
+		parent2TipSet := block.RequireNewTipSet(t, block1)
 		block2 := &block.Block{Miner: minerAddr1, Height: 56}
 
 		faultCh := make(chan ConsensusFault, 1)
@@ -80,7 +81,7 @@ func TestNoFaults(t *testing.T) {
 
 	t.Run("duplicate equal blocks don't slash", func(t *testing.T) {
 		parentBlock := &block.Block{Height: 42}
-		parentTipSet := th.RequireNewTipSet(t, parentBlock)
+		parentTipSet := block.RequireNewTipSet(t, parentBlock)
 
 		block := &block.Block{Miner: minerAddr1, Height: 43}
 		faultCh := make(chan ConsensusFault, 1)
@@ -93,11 +94,12 @@ func TestNoFaults(t *testing.T) {
 }
 
 func TestFault(t *testing.T) {
+	tf.UnitTest(t)
 	addrGetter := vmaddr.NewForTestGetter()
 	minerAddr1 := addrGetter()
 
 	parentBlock := &block.Block{Height: 42}
-	parentTipSet := th.RequireNewTipSet(t, parentBlock)
+	parentTipSet := block.RequireNewTipSet(t, parentBlock)
 
 	block1 := &block.Block{Miner: minerAddr1, Height: 43, StateRoot: e.NewCid(types.CidFromString(t, "some-state"))}
 	block2 := &block.Block{Miner: minerAddr1, Height: 43, StateRoot: e.NewCid(types.CidFromString(t, "some-other-state"))}
@@ -113,12 +115,13 @@ func TestFault(t *testing.T) {
 }
 
 func TestFaultNullBlocks(t *testing.T) {
+	tf.UnitTest(t)
 	addrGetter := vmaddr.NewForTestGetter()
 	minerAddr1 := addrGetter()
 
 	t.Run("same base", func(t *testing.T) {
 		parentBlock := &block.Block{Height: 42}
-		parentTipSet := th.RequireNewTipSet(t, parentBlock)
+		parentTipSet := block.RequireNewTipSet(t, parentBlock)
 
 		block1 := &block.Block{Miner: minerAddr1, Height: 45}
 		block2 := &block.Block{Miner: minerAddr1, Height: 49}

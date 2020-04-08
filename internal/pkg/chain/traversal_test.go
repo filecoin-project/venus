@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
@@ -30,9 +29,9 @@ func TestIterAncestors(t *testing.T) {
 		b12 := store.AppendBlockOnBlocks(root)
 		b21 := store.AppendBlockOnBlocks(b11, b12)
 
-		t0 := th.RequireNewTipSet(t, root)
-		t1 := th.RequireNewTipSet(t, b11, b12)
-		t2 := th.RequireNewTipSet(t, b21)
+		t0 := block.RequireNewTipSet(t, root)
+		t1 := block.RequireNewTipSet(t, b11, b12)
+		t2 := block.RequireNewTipSet(t, b21)
 
 		it := chain.IterAncestors(ctx, store, t2)
 		assert.False(t, it.Complete())
@@ -59,9 +58,9 @@ func TestIterAncestors(t *testing.T) {
 		b12 := store.AppendBlockOnBlocks(root)
 		b21 := store.AppendBlockOnBlocks(b11, b12)
 
-		th.RequireNewTipSet(t, root)
-		t1 := th.RequireNewTipSet(t, b11, b12)
-		t2 := th.RequireNewTipSet(t, b21)
+		block.RequireNewTipSet(t, root)
+		t1 := block.RequireNewTipSet(t, b11, b12)
+		t2 := block.RequireNewTipSet(t, b21)
 
 		it := chain.IterAncestors(ctx, store, t2)
 		assert.False(t, it.Complete())
