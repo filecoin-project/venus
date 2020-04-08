@@ -117,3 +117,5 @@ require (
 )
 
 replace github.com/filecoin-project/filecoin-ffi => ./vendors/filecoin-ffi
+
+replace github.com/filecoin-project/go-storage-miner => /Users/erinswenson-healey/dev/go-storage-mining
