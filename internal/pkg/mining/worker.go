@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
@@ -125,6 +126,7 @@ type DefaultWorker struct {
 	clock          clock.ChainEpochClock
 	poster         postgenerator.PoStGenerator
 	chainState     chain.TipSetProvider
+	drand          drand.IFace
 }
 
 // WorkerParameters use for NewDefaultWorker parameters
@@ -142,6 +144,7 @@ type WorkerParameters struct {
 	GetWeight        GetWeight
 	Election         electionUtil
 	TicketGen        ticketGenerator
+	Drand            drand.IFace
 
 	// core filecoin things
 	MessageSource MessageSource
@@ -171,6 +174,7 @@ func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
 		clock:          parameters.Clock,
 		poster:         parameters.Poster,
 		chainState:     parameters.ChainState,
+		drand:          parameters.Drand,
 	}
 }
 
@@ -227,6 +231,12 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		return
 	}
 
+	drandEntries, err := w.drandEntriesForEpoch(ctx, base, nullBlkCount)
+	if err != nil {
+		log.Errorf("Worker.Mine failed to collect drand entries for block", err)
+		outCh <- NewOutputErr(err)
+		return
+	}
 	postVrfProof, err := w.election.GenerateEPoStVrfProof(ctx, base.Key(), lookbackEpoch, w.minerAddr, workerSignerAddr, w.workerSigner)
 	if err != nil {
 		log.Errorf("Worker.Mine failed to generate epost postVrfProof %s", err)
@@ -355,7 +365,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 
 	postInfo := block.NewEPoStInfo(block.FromABIPoStProofs(poStProofs...), abi.PoStRandomness(postVrfProof), block.FromFFICandidates(winners...)...)
 
-	next := w.Generate(ctx, base, nextTicket, abi.ChainEpoch(nullBlkCount), postInfo)
+	next := w.Generate(ctx, base, nextTicket, abi.ChainEpoch(nullBlkCount), postInfo, drandEntries)
 	if next.Err == nil {
 		log.Debugf("Worker.Mine generates new winning block! %s", next.Header.Cid().String())
 	}
@@ -383,4 +393,41 @@ func (w *DefaultWorker) lookbackTipset(ctx context.Context, base block.TipSet, n
 	targetEpoch := abi.ChainEpoch(uint64(baseHeight) + 1 + nullBlkCount - lookback)
 
 	return chain.FindTipsetAtEpoch(ctx, base, targetEpoch, w.chainState)
+}
+
+// drandEntriesForEpoch returns the array of drand entries that should be
+// included in the next block.  The return value maay be nil.
+func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.TipSet, nullBlkCount uint64) ([]*drand.Entry, error) {
+	baseHeight, err := base.Height()
+	if err != nil {
+		return nil, err
+	}
+	// Special case genesis
+	var startTime, endTime time.Time
+	if baseHeight == abi.ChainEpoch(0) {
+		// no latest entry, targetEpoch undefined as its before genesis
+
+		// There should be a first genesis drand round from time before genesis
+		// and then we grab everything between this round and genesis time
+		startTime = w.drand.StartTimeOfRound(w.drand.FirstFilecoinRound())
+		endTime = w.clock.StartTimeOfEpoch(0)
+	} else {
+		latestEntry, err := chain.FindLatestDRAND(ctx, base, w.chainState)
+		if err != nil {
+			return nil, err
+		}
+		targetEpoch := abi.ChainEpoch(uint64(baseHeight) + nullBlkCount + 1 - consensus.DRANDEpochLookback)
+		startTime = w.drand.StartTimeOfRound(latestEntry.Round)
+		endTime = w.clock.StartTimeOfEpoch(targetEpoch + 1)
+	}
+
+	rounds := w.drand.RoundsInInterval(startTime, endTime)
+	entries := make([]*drand.Entry, len(rounds)-1)
+	for i, round := range rounds[1:] { // first entry is latestEntry -- ignore
+		entries[i], err = w.drand.ReadEntry(ctx, round)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return entries, nil
 }
