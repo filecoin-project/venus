@@ -46,20 +46,24 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 
 	_, _, err := initNodeGenesisMiner(t, bootstrapMiner, seed, genCfg.Miners[0].Owner, presealPath, genCfg.Miners[0].SectorSize)
 	require.NoError(t, err)
-	bootstrapMiner.Start(ctx)
+	err = bootstrapMiner.Start(ctx)
+	require.NoError(t, err)
 
 	nodes[0] = bootstrapMiner
 
 	// create addtiional nodes
 	for i := uint(0); i < additionalNodes; i++ {
-		nodes[i+1] = NewNodeBuilder(t).
+		node := NewNodeBuilder(t).
 			WithGenesisInit(seed.GenesisInitFunc).
 			WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...).
 			WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
 			Build(ctx)
-		addr := seed.GiveKey(t, nodes[i+1], int(i+1))
-		nodes[i+1].PorcelainAPI.ConfigSet("wallet.defaultAddress", addr.String())
-		nodes[i+1].Start(ctx)
+		addr := seed.GiveKey(t, node, int(i+1))
+		err := node.PorcelainAPI.ConfigSet("wallet.defaultAddress", addr.String())
+		require.NoError(t, err)
+		err = node.Start(ctx)
+		require.NoError(t, err)
+		nodes[i+1] = node
 	}
 
 	// connect all nodes

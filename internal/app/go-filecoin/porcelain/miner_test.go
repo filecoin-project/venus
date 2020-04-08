@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
@@ -69,8 +72,21 @@ func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Addres
 
 func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
 	assert.Equal(mpc.testing, msgCid, msgCid)
+	midAddr, err := address.NewIDAddress(100)
+	if err != nil {
+		return err
+	}
+
+	value, err := encoding.Encode(&power.CreateMinerReturn{
+		IDAddress:     midAddr,
+		RobustAddress: mpc.address,
+	})
+	if err != nil {
+		return err
+	}
+
 	receipt := vm.MessageReceipt{
-		ReturnValue: mpc.address.Bytes(),
+		ReturnValue: value,
 		ExitCode:    exitcode.Ok,
 	}
 	return cb(nil, nil, &receipt)
@@ -142,7 +158,9 @@ func TestMinerCreateIntegration(t *testing.T) {
 	require.NoError(t, err)
 
 	view, err := newMiner.Chain().ActorState.StateView(tsk)
+	require.NoError(t, err)
 	resolvedDefaultAddress, err := view.InitResolveAddress(ctx, defaultAddr)
+	require.NoError(t, err)
 
 	assert.Equal(t, resolvedDefaultAddress, status.OwnerAddress)
 }
