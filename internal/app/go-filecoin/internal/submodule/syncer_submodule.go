@@ -81,7 +81,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 		_, has := requestData.Extension(fetcher.ChainsyncProtocolExtension)
 		if has {
 			// TODO: Don't just validate every request with the extension -- support only known selectors
-			// TODO: use seperate block store for the chain (supported in GraphSync)
+			// TODO: use separate block store for the chain (supported in GraphSync)
 			hookActions.ValidateRequest()
 		}
 	})
