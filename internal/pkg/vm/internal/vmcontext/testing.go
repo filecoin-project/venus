@@ -42,17 +42,17 @@ var _ vstate.Applier = (*ValidationApplier)(nil)
 var _ vstate.KeyManager = (*KeyManager)(nil)
 
 type Factories struct {
-	vstate.Applier
 	config *ValidationConfig
 }
 
 func NewFactories(config *ValidationConfig) *Factories {
-	factory := &Factories{&ValidationApplier{}, config}
+	factory := &Factories{config}
 	return factory
 }
 
-func (f *Factories) NewState() vstate.VMWrapper {
-	return NewState()
+func (f *Factories) NewStateAndApplier() (vstate.VMWrapper, vstate.Applier) {
+	st := NewState()
+	return st, &ValidationApplier{state: st}
 }
 
 func (f *Factories) NewKeyManager() vstate.KeyManager {
@@ -285,54 +285,63 @@ func (w *ValidationVMWrapper) PersistChanges() error {
 // Applier
 //
 
-type ValidationApplier struct{}
-
-func (a *ValidationApplier) ApplyMessage(context *vtypes.ExecutionContext, state vstate.VMWrapper, msg *vtypes.Message) (vtypes.MessageReceipt, abi.TokenAmount, abi.TokenAmount, error) {
-	st := state.(*ValidationVMWrapper)
-
-	// Prepare message and VM.
-	ourMsg := a.preApplyMessage(st, context, msg)
-
-	// Invoke.
-	ourreceipt, penalty, reward := st.vm.applyMessage(ourMsg, ourMsg.OnChainLen(), &fakeRandSrc{})
-
-	// Persist changes.
-	receipt, err := a.postApplyMessage(st, ourreceipt)
-	return receipt, penalty, reward, err
+type ValidationApplier struct {
+	state *ValidationVMWrapper
 }
 
-func (a *ValidationApplier) ApplySignedMessage(context *vtypes.ExecutionContext, state vstate.VMWrapper, msg *vtypes.SignedMessage) (vtypes.MessageReceipt, abi.TokenAmount, abi.TokenAmount, error) {
-	st := state.(*ValidationVMWrapper)
+func (a *ValidationApplier) ApplyMessage(epoch abi.ChainEpoch, msg *vtypes.Message) (vtypes.ApplyMessageResult, error) {
+	// Prepare message and VM.
+	ourMsg := a.preApplyMessage(epoch, msg)
+
+	// Invoke.
+	ourreceipt, penalty, reward := a.state.vm.applyMessage(ourMsg, ourMsg.OnChainLen(), &fakeRandSrc{})
+
+	// Persist changes.
+	receipt, err := a.postApplyMessage(ourreceipt)
+	return vtypes.ApplyMessageResult{
+		Receipt: receipt,
+		Penalty: penalty,
+		Reward:  reward,
+		Root:    a.state.Root().String(),
+	}, err
+}
+
+func (a *ValidationApplier) ApplySignedMessage(epoch abi.ChainEpoch, msg *vtypes.SignedMessage) (vtypes.ApplyMessageResult, error) {
 
 	// Prepare message and VM.
-	ourMsg := a.preApplyMessage(st, context, &msg.Message)
+	ourMsg := a.preApplyMessage(epoch, &msg.Message)
 	ourSigned := &types.SignedMessage{
 		Message:   *ourMsg,
 		Signature: msg.Signature,
 	}
 
 	// Invoke.
-	ourreceipt, penalty, reward := st.vm.applyMessage(ourMsg, ourSigned.OnChainLen(), &fakeRandSrc{})
+	ourreceipt, penalty, reward := a.state.vm.applyMessage(ourMsg, ourSigned.OnChainLen(), &fakeRandSrc{})
 
 	// Persist changes.
-	receipt, err := a.postApplyMessage(st, ourreceipt)
-	return receipt, penalty, reward, err
+	receipt, err := a.postApplyMessage(ourreceipt)
+	return vtypes.ApplyMessageResult{
+		Receipt: receipt,
+		Penalty: penalty,
+		Reward:  reward,
+		Root:    a.state.Root().String(),
+	}, err
 }
 
-func (a *ValidationApplier) preApplyMessage(st *ValidationVMWrapper, context *vtypes.ExecutionContext, msg *vtypes.Message) *types.UnsignedMessage {
+func (a *ValidationApplier) preApplyMessage(epoch abi.ChainEpoch, msg *vtypes.Message) *types.UnsignedMessage {
 	// set epoch
 	// Note: this would have normally happened during `ApplyTipset()`
-	st.vm.currentEpoch = context.Epoch
-	st.vm.pricelist = gascost.PricelistByEpoch(context.Epoch)
+	a.state.vm.currentEpoch = epoch
+	a.state.vm.pricelist = gascost.PricelistByEpoch(epoch)
 
 	// map message
 	return toOurMessage(msg)
 }
 
-func (a *ValidationApplier) postApplyMessage(st *ValidationVMWrapper, ourreceipt message.Receipt) (vtypes.MessageReceipt, error) {
+func (a *ValidationApplier) postApplyMessage(ourreceipt message.Receipt) (vtypes.MessageReceipt, error) {
 	// commit and persist changes
 	// Note: this is not done on production for each msg
-	if err := st.PersistChanges(); err != nil {
+	if err := a.state.PersistChanges(); err != nil {
 		return vtypes.MessageReceipt{}, err
 	}
 
@@ -396,15 +405,14 @@ func toOurBlockMessageInfoType(theirs []vtypes.BlockMessagesInfo) []interpreter.
 	return ours
 }
 
-func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.BlockMessagesInfo, epoch abi.ChainEpoch, rnd vstate.RandomnessSource) ([]vtypes.MessageReceipt, error) {
-	st := state.(*ValidationVMWrapper)
+func (a *ValidationApplier) ApplyTipSetMessages(epoch abi.ChainEpoch, blocks []vtypes.BlockMessagesInfo, rnd vstate.RandomnessSource) (vtypes.ApplyTipSetResult, error) {
 
 	ourBlkMsgs := toOurBlockMessageInfoType(blocks)
 	// TODO: pass through parameter when chain validation type signature is updated to propagate it
 	head := block.NewTipSetKey()
-	receipts, err := st.vm.ApplyTipSetMessages(ourBlkMsgs, head, epoch, rnd)
+	receipts, err := a.state.vm.ApplyTipSetMessages(ourBlkMsgs, head, epoch, rnd)
 	if err != nil {
-		return nil, err
+		return vtypes.ApplyTipSetResult{}, err
 	}
 
 	theirReceipts := make([]vtypes.MessageReceipt, len(receipts))
@@ -416,7 +424,10 @@ func (a *ValidationApplier) ApplyTipSetMessages(state vstate.VMWrapper, blocks [
 		}
 	}
 
-	return theirReceipts, nil
+	return vtypes.ApplyTipSetResult{
+		Receipts: theirReceipts,
+		Root:     a.state.Root().String(),
+	}, nil
 }
 
 //
