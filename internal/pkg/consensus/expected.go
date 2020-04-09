@@ -61,6 +61,10 @@ const WinningPoStSectorSetLookback = 10
 // election power values
 const ElectionPowerTableLookback = 10
 
+// DRANDEpochLookback is the past filecoin epoch offset at which DRAND entries
+// in that epoch should be included in a block.
+const DRANDEpochLookback = 2
+
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.

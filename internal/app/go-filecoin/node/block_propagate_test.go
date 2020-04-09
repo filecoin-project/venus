@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -114,15 +115,21 @@ func TestChainSyncWithMessages(t *testing.T) {
 	require.NoError(t, gengen.GenKeyPrealloc(2, "100")(genCfg))
 	require.NoError(t, gengen.NetworkName(version.TEST)(genCfg))
 	cs := MakeChainSeed(t, genCfg)
-	fakeClock := clock.NewFake(time.Unix(1234567890, 0))
+	genUnixSeconds := int64(1234567890)
+	fakeClock := clock.NewFake(time.Unix(genUnixSeconds, 0))
 	blockTime := 30 * time.Second
-	c := clock.NewChainClockFromClock(1234567890, blockTime, fakeClock)
+	c := clock.NewChainClockFromClock(uint64(genUnixSeconds), blockTime, fakeClock)
+	drandGenUnixSeconds := genUnixSeconds - int64(blockTime.Seconds())
 
 	// first node is the message sender.
 	builder1 := test.NewNodeBuilder(t).
 		WithBuilderOpt(ChainClockConfigOption(c)).
 		WithGenesisInit(cs.GenesisInitFunc).
-		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{}))
+		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
+		WithBuilderOpt(DrandConfigOption(&drand.Fake{
+			GenesisTime:   time.Unix(drandGenUnixSeconds, 0),
+			FirstFilecoin: 0,
+		}))
 	nodeSend := builder1.Build(ctx)
 	senderAddress := cs.GiveKey(t, nodeSend, 1)
 
@@ -130,7 +137,11 @@ func TestChainSyncWithMessages(t *testing.T) {
 	builder2 := test.NewNodeBuilder(t).
 		WithBuilderOpt(ChainClockConfigOption(c)).
 		WithGenesisInit(cs.GenesisInitFunc).
-		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{}))
+		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
+		WithBuilderOpt(DrandConfigOption(&drand.Fake{
+			GenesisTime:   time.Unix(drandGenUnixSeconds, 0),
+			FirstFilecoin: 0,
+		}))
 	nodeReceive := builder2.Build(ctx)
 	receiverAddress := cs.GiveKey(t, nodeReceive, 2)
 
@@ -139,7 +150,11 @@ func TestChainSyncWithMessages(t *testing.T) {
 		WithBuilderOpt(ChainClockConfigOption(c)).
 		WithGenesisInit(cs.GenesisInitFunc).
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
-		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{}))
+		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{})).
+		WithBuilderOpt(DrandConfigOption(&drand.Fake{
+			GenesisTime:   time.Unix(drandGenUnixSeconds, 0),
+			FirstFilecoin: 0,
+		}))
 	nodeMine := builder3.Build(ctx)
 	cs.GiveKey(t, nodeMine, 0)
 	cs.GiveMiner(t, nodeMine, 0)
@@ -201,15 +216,22 @@ func TestChainSyncWithMessages(t *testing.T) {
 func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*Node, clock.Fake, time.Duration) {
 	seed := MakeChainSeed(t, MakeTestGenCfg(t, 3))
 	ctx := context.Background()
-	fc := clock.NewFake(time.Unix(1234567890, 0))
-	blockTime := 100 * time.Millisecond
-	c := clock.NewChainClockFromClock(1234567890, 100*time.Millisecond, fc)
-	builder := test.NewNodeBuilder(t)
-	builder.WithGenesisInit(seed.GenesisInitFunc)
-	builder.WithBuilderOpt(ChainClockConfigOption(c))
-	builder.WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{}))
-	builder.WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{}))
-	builder.WithInitOpt(PeerKeyOpt(PeerKeys[0]))
+	genUnixSeconds := int64(1234567890)
+	fc := clock.NewFake(time.Unix(genUnixSeconds, 0))
+	blockTime := 30 * time.Second
+	c := clock.NewChainClockFromClock(1234567890, blockTime, fc)
+	drandGenUnixSeconds := genUnixSeconds - int64(blockTime.Seconds())
+
+	builder := test.NewNodeBuilder(t).
+		WithGenesisInit(seed.GenesisInitFunc).
+		WithBuilderOpt(ChainClockConfigOption(c)).
+		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
+		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{})).
+		WithBuilderOpt(DrandConfigOption(&drand.Fake{
+			GenesisTime:   time.Unix(drandGenUnixSeconds, 0),
+			FirstFilecoin: 0,
+		})).
+		WithInitOpt(PeerKeyOpt(PeerKeys[0]))
 	minerNode := builder.Build(ctx)
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, _ := seed.GiveMiner(t, minerNode, 0)
@@ -220,11 +242,15 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 	if numNodes > 2 {
 		nodeLimit = numNodes
 	}
-	builder2 := test.NewNodeBuilder(t)
-	builder2.WithGenesisInit(seed.GenesisInitFunc)
-	builder2.WithBuilderOpt(ChainClockConfigOption(c))
-	builder2.WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{}))
-	builder2.WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{}))
+	builder2 := test.NewNodeBuilder(t).
+		WithGenesisInit(seed.GenesisInitFunc).
+		WithBuilderOpt(ChainClockConfigOption(c)).
+		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
+		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{})).
+		WithBuilderOpt(DrandConfigOption(&drand.Fake{
+			GenesisTime:   time.Unix(drandGenUnixSeconds, 0),
+			FirstFilecoin: 0,
+		}))
 
 	for i := 0; i < nodeLimit; i++ {
 		nodes = append(nodes, builder2.Build(ctx))
