@@ -12,11 +12,17 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/require"
 )
 
+// MustCreateNodesWithBootstrap creates an in-process test setup capable of testing communication between nodes.
+// Every setup will have one bootstrap node (the first node that is called) that is setup to have power to mine.
+// All of the proofs for the set-up are fake (but additional nodes will still need to create miners and add storage to
+// gain power). All nodes will be started and connected to each other. The returned cancel function ensures all nodes
+// are stopped when the test is over.
 func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalNodes uint) ([]*node.Node, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(ctx)
 	nodes := make([]*node.Node, 1+additionalNodes)
@@ -25,14 +31,14 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	presealPath := project.Root("fixtures/genesis-sectors")
 	genCfgPath := project.Root("fixtures/setup.json")
 	genTime := int64(1000000000)
-	blockTime := 1 * time.Second
+	blockTime := 30 * time.Second
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
 
 	// Load genesis config fixture.
 	genCfg := loadGenesisConfig(t, genCfgPath)
 	genCfg.Miners = append(genCfg.Miners, &gengen.CreateStorageMinerConfig{
 		Owner:      1,
-		SectorSize: 2048,
+		SectorSize: constants.DevSectorSize,
 	})
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
