@@ -209,11 +209,16 @@ func (v *View) NetworkTotalPower(ctx context.Context) (abi.StoragePower, error) 
 
 // MinerClaimedPower Returns the power of a miner's committed sectors.
 func (v *View) MinerClaimedPower(ctx context.Context, miner addr.Address) (abi.StoragePower, error) {
+	minerResolved, err := v.InitResolveAddress(ctx, miner)
+	if err != nil {
+		return big.Zero(), err
+	}
+
 	powerState, err := v.loadPowerActor(ctx)
 	if err != nil {
 		return big.Zero(), err
 	}
-	claim, err := v.loadPowerClaim(ctx, powerState, miner)
+	claim, err := v.loadPowerClaim(ctx, powerState, minerResolved)
 	if err != nil {
 		return big.Zero(), err
 	}
@@ -248,17 +253,22 @@ func (v *View) loadPowerClaim(ctx context.Context, powerState *power.State, mine
 
 // MinerPledgeCollateral returns the locked and balance amounts for a miner actor
 func (v *View) MinerPledgeCollateral(ctx context.Context, miner addr.Address) (locked abi.TokenAmount, balance abi.TokenAmount, err error) {
+	minerResolved, err := v.InitResolveAddress(ctx, miner)
+	if err != nil {
+		return big.Zero(), big.Zero(), err
+	}
+
 	powerState, err := v.loadPowerActor(ctx)
 	if err != nil {
 		return big.Zero(), big.Zero(), err
 	}
-	claim, err := v.loadPowerClaim(ctx, powerState, miner)
+	claim, err := v.loadPowerClaim(ctx, powerState, minerResolved)
 	if err != nil {
 		return big.Zero(), big.Zero(), err
 	}
 	locked = claim.Pledge
 	escrow := v.asBalanceTable(ctx, powerState.EscrowTable)
-	balance, err = escrow.Get(miner)
+	balance, err = escrow.Get(minerResolved)
 	if err != nil {
 		return big.Zero(), big.Zero(), err
 	}
@@ -276,7 +286,11 @@ func (v *View) loadInitActor(ctx context.Context) (*notinit.State, error) {
 }
 
 func (v *View) loadMinerActor(ctx context.Context, address addr.Address) (*miner.State, error) {
-	actr, err := v.loadActor(ctx, address)
+	resolvedAddr, err := v.InitResolveAddress(ctx, address)
+	if err != nil {
+		return nil, err
+	}
+	actr, err := v.loadActor(ctx, resolvedAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -306,7 +320,11 @@ func (v *View) loadMarketActor(ctx context.Context) (*market.State, error) {
 }
 
 func (v *View) loadAccountActor(ctx context.Context, a addr.Address) (*account.State, error) {
-	actr, err := v.loadActor(ctx, a)
+	resolvedAddr, err := v.InitResolveAddress(ctx, a)
+	if err != nil {
+		return nil, err
+	}
+	actr, err := v.loadActor(ctx, resolvedAddr)
 	if err != nil {
 		return nil, err
 	}

@@ -6,13 +6,17 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cfg"
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -68,8 +72,21 @@ func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Addres
 
 func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
 	assert.Equal(mpc.testing, msgCid, msgCid)
+	midAddr, err := address.NewIDAddress(100)
+	if err != nil {
+		return err
+	}
+
+	value, err := encoding.Encode(&power.CreateMinerReturn{
+		IDAddress:     midAddr,
+		RobustAddress: mpc.address,
+	})
+	if err != nil {
+		return err
+	}
+
 	receipt := vm.MessageReceipt{
-		ReturnValue: mpc.address.Bytes(),
+		ReturnValue: value,
 		ExitCode:    exitcode.Ok,
 	}
 	return cb(nil, nil, &receipt)
@@ -119,6 +136,33 @@ func TestMinerCreate(t *testing.T) {
 		)
 		assert.Error(t, err, "Test Error")
 	})
+}
+
+func TestMinerCreateIntegration(t *testing.T) {
+	tf.IntegrationTest(t)
+
+	ctx := context.Background()
+	nodes, cancel := test.MustCreateNodesWithBootstrap(ctx, t, 1)
+	defer cancel()
+
+	newMiner := nodes[1]
+
+	defaultAddr := newMiner.Repo.Config().Wallet.DefaultAddress
+	peer := newMiner.Network().Network.GetPeerID()
+
+	minerAddr, err := newMiner.PorcelainAPI.MinerCreate(ctx, defaultAddr, types.NewAttoFILFromFIL(1), 10000, 2048, peer, types.NewAttoFILFromFIL(1))
+	require.NoError(t, err)
+
+	tsk := newMiner.Chain().ChainReader.GetHead()
+	status, err := newMiner.PorcelainAPI.MinerGetStatus(ctx, *minerAddr, tsk)
+	require.NoError(t, err)
+
+	view, err := newMiner.Chain().ActorState.StateView(tsk)
+	require.NoError(t, err)
+	resolvedDefaultAddress, err := view.InitResolveAddress(ctx, defaultAddr)
+	require.NoError(t, err)
+
+	assert.Equal(t, resolvedDefaultAddress, status.OwnerAddress)
 }
 
 type mStatusPlumbing struct {
