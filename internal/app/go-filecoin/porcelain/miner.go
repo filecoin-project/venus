@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
@@ -78,7 +79,7 @@ func MinerCreate(
 	smsgCid, _, err := plumbing.MessageSend(
 		ctx,
 		minerOwnerAddr,
-		builtin.StorageMarketActorAddr,
+		builtin.StoragePowerActorAddr,
 		collateral,
 		gasPrice,
 		gasLimit,
@@ -89,24 +90,23 @@ func MinerCreate(
 		return nil, err
 	}
 
-	var minerAddr address.Address
+	var result power.CreateMinerReturn
 	err = plumbing.MessageWait(ctx, smsgCid, func(blk *block.Block, smsg *types.SignedMessage, receipt *vm.MessageReceipt) (err error) {
 		if receipt.ExitCode != exitcode.Ok {
 			// Dragons: do we want to have this back?
 			return fmt.Errorf("Error executing actor code (exitcode: %d)", receipt.ExitCode)
 		}
-		minerAddr, err = address.NewFromBytes(receipt.ReturnValue)
-		return err
+		return encoding.Decode(receipt.ReturnValue, &result)
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	if err = plumbing.ConfigSet("mining.minerAddress", minerAddr.String()); err != nil {
+	if err = plumbing.ConfigSet("mining.minerAddress", result.RobustAddress.String()); err != nil {
 		return nil, err
 	}
 
-	return &minerAddr, nil
+	return &result.RobustAddress, nil
 }
 
 // mpcAPI is the subset of the plumbing.API that MinerPreviewCreate uses.
