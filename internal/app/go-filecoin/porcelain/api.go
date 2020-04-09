@@ -106,11 +106,6 @@ func (a *API) WalletDefaultAddress() (address.Address, error) {
 	return WalletDefaultAddress(a)
 }
 
-// ClientListAsks returns a channel with asks from the latest chain state
-func (a *API) ClientListAsks(ctx context.Context) <-chan Ask {
-	panic("implement me in terms of the storage market module")
-}
-
 // SealPieceIntoNewSector writes the provided piece into a new sector
 func (a *API) SealPieceIntoNewSector(ctx context.Context, dealID abi.DealID, dealStart, dealEnd abi.ChainEpoch, pieceSize uint64, pieceReader io.Reader) error {
 	return SealPieceIntoNewSector(ctx, a, dealID, dealStart, dealEnd, pieceSize, pieceReader)
