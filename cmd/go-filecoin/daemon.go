@@ -165,7 +165,7 @@ func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig,
 	}
 
 	if nd.StorageProtocol != nil {
-		servenv.storageAPI = storage.NewAPI(nd.StorageProtocol.StorageClient, nd.PieceManager())
+		servenv.storageAPI = storage.NewAPI(nd.StorageProtocol.StorageClient, nd.StorageProtocol.StorageProvider, nd.PieceManager())
 	}
 
 	cfg := cmdhttp.NewServerConfig()

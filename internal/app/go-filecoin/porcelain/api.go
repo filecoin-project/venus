@@ -3,7 +3,6 @@ package porcelain
 import (
 	"context"
 	"io"
-	"math/big"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -89,11 +88,6 @@ func (a *API) MinerPreviewCreate(
 // MinerGetStatus queries for status of a miner.
 func (a *API) MinerGetStatus(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (MinerStatus, error) {
 	return MinerGetStatus(ctx, a, minerAddr, baseKey)
-}
-
-// MinerSetPrice configures the price of storage. See implementation for details.
-func (a *API) MinerSetPrice(ctx context.Context, from address.Address, miner address.Address, gasPrice types.AttoFIL, gasLimit gas.Unit, price types.AttoFIL, expiry *big.Int) (MinerSetPriceResponse, error) {
-	panic("implement me in terms of the storage market module")
 }
 
 // ProtocolParameters fetches the current protocol configuration parameters.
