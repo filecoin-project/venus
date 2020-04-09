@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	cid "github.com/ipfs/go-cid"
@@ -147,13 +148,7 @@ This command waits for the ask to be mined.`,
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("storageprice", true, false, "The new price of storage in FIL per byte per block"),
-		cmdkit.StringArg("expiry", true, false, "How long this ask is valid for in blocks"),
-	},
-	Options: []cmdkit.Option{
-		cmdkit.StringOption("from", "Address to send from"),
-		cmdkit.StringOption("miner", "The address of the miner owning the ask"),
-		priceOption,
-		limitOption,
+		cmdkit.StringArg("duration", true, false, "How long this ask is valid for in epochs"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		price, ok := types.NewAttoFILFromFILString(req.Arguments[0])
@@ -161,42 +156,22 @@ This command waits for the ask to be mined.`,
 			return ErrInvalidPrice
 		}
 
-		fromAddr, err := fromAddrOrDefault(req, env)
-		if err != nil {
-			return err
-		}
-
-		var minerAddr address.Address
-		if req.Options["miner"] != nil {
-			minerAddr, err = address.NewFromString(req.Options["miner"].(string))
-			if err != nil {
-				return errors.Wrap(err, "miner must be an address")
-			}
-		}
-
 		expiry, ok := big.NewInt(0).SetString(req.Arguments[1], 10)
 		if !ok {
 			return fmt.Errorf("expiry must be a valid integer")
 		}
 
-		gasPrice, gasLimit, _, err := parseGasOptions(req)
+		err := GetStorageAPI(env).AddAsk(price, abi.ChainEpoch(expiry.Uint64()))
 		if err != nil {
 			return err
 		}
 
-		res, err := GetPorcelainAPI(env).MinerSetPrice(
-			req.Context,
-			fromAddr,
-			minerAddr,
-			gasPrice,
-			gasLimit,
-			price,
-			expiry)
+		minerAddr, err := GetBlockAPI(env).MinerAddress()
 		if err != nil {
 			return err
 		}
 
-		return re.Emit(&MinerSetPriceResult{minerAddr, res.Price})
+		return re.Emit(&MinerSetPriceResult{minerAddr, price})
 	},
 	Type: &MinerSetPriceResult{},
 }

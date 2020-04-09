@@ -3,7 +3,6 @@ package porcelain
 import (
 	"context"
 	"io"
-	"math/big"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -91,11 +90,6 @@ func (a *API) MinerGetStatus(ctx context.Context, minerAddr address.Address, bas
 	return MinerGetStatus(ctx, a, minerAddr, baseKey)
 }
 
-// MinerSetPrice configures the price of storage. See implementation for details.
-func (a *API) MinerSetPrice(ctx context.Context, from address.Address, miner address.Address, gasPrice types.AttoFIL, gasLimit gas.Unit, price types.AttoFIL, expiry *big.Int) (MinerSetPriceResponse, error) {
-	panic("implement me in terms of the storage market module")
-}
-
 // ProtocolParameters fetches the current protocol configuration parameters.
 func (a *API) ProtocolParameters(ctx context.Context) (*ProtocolParams, error) {
 	return ProtocolParameters(ctx, a)
@@ -110,11 +104,6 @@ func (a *API) WalletBalance(ctx context.Context, address address.Address) (abi.T
 // If none is set it picks the first address in the wallet and sets it as the default in the config.
 func (a *API) WalletDefaultAddress() (address.Address, error) {
 	return WalletDefaultAddress(a)
-}
-
-// ClientListAsks returns a channel with asks from the latest chain state
-func (a *API) ClientListAsks(ctx context.Context) <-chan Ask {
-	panic("implement me in terms of the storage market module")
 }
 
 // SealPieceIntoNewSector writes the provided piece into a new sector

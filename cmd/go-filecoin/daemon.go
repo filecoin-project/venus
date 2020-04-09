@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
+
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
@@ -23,7 +25,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 )
 
@@ -155,18 +156,7 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 // saved to the node's repo.
 // A message sent to or closure of the `terminate` channel signals the server to stop.
 func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig, ready chan interface{}, terminate chan os.Signal) error {
-	servenv := &Env{
-		blockMiningAPI: nd.BlockMining.BlockMiningAPI,
-		drandAPI:       nd.DrandAPI,
-		ctx:            ctx,
-		inspectorAPI:   NewInspectorAPI(nd.Repo),
-		porcelainAPI:   nd.PorcelainAPI,
-		retrievalAPI:   nd.RetrievalProtocol,
-	}
-
-	if nd.StorageProtocol != nil {
-		servenv.storageAPI = storage.NewAPI(nd.StorageProtocol.StorageClient, nd.PieceManager())
-	}
+	servenv := CreateServerEnv(ctx, nd)
 
 	cfg := cmdhttp.NewServerConfig()
 	cfg.APIPath = APIPrefix
@@ -223,4 +213,21 @@ func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig,
 	}
 
 	return nil
+}
+
+func CreateServerEnv(ctx context.Context, nd *node.Node) *Env {
+	var storageAPI *storage.API
+	if nd.StorageProtocol != nil {
+		storageAPI = storage.NewAPI(nd.StorageProtocol.StorageClient, nd.StorageProtocol.StorageProvider, nd.PieceManager())
+	}
+
+	return &Env{
+		blockMiningAPI: nd.BlockMining.BlockMiningAPI,
+		drandAPI:       nd.DrandAPI,
+		ctx:            ctx,
+		inspectorAPI:   NewInspectorAPI(nd.Repo),
+		porcelainAPI:   nd.PorcelainAPI,
+		retrievalAPI:   nd.RetrievalProtocol,
+		storageAPI:     storageAPI,
+	}
 }

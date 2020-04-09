@@ -3,14 +3,13 @@ package commands
 import (
 	"fmt"
 
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	files "github.com/ipfs/go-ipfs-files"
-
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 )
 
 var clientCmd = &cmds.Command{
@@ -223,23 +222,17 @@ var clientListAsksCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "List all asks in the storage market",
 		ShortDescription: `
-Lists all asks in the storage market. This command takes no arguments. Results
-will be returned as a space separated table with miner, id, price and expiration
-respectively.
+Lists all asks in the storage market. This command takes no arguments.
 `,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		asksCh := GetPorcelainAPI(env).ClientListAsks(req.Context)
-
-		for a := range asksCh {
-			if a.Error != nil {
-				return a.Error
-			}
-			if err := re.Emit(a); err != nil {
-				return err
-			}
+		minerAddr, err := GetBlockAPI(env).MinerAddress()
+		if err != nil {
+			return err
 		}
-		return nil
+
+		asks := GetStorageAPI(env).ListAsks(minerAddr)
+		return re.Emit(asks)
 	},
-	Type: porcelain.Ask{},
+	Type: []*storagemarket.SignedStorageAsk{},
 }
