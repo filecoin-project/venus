@@ -417,10 +417,12 @@ func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.Tip
 		if err != nil {
 			return nil, err
 		}
-		targetEpoch := abi.ChainEpoch(uint64(baseHeight) + nullBlkCount + 1 - consensus.DRANDEpochLookback)
+		lastTargetEpoch := abi.ChainEpoch(uint64(baseHeight) + nullBlkCount + 1 - consensus.DRANDEpochLookback)
 		startTime := w.drand.StartTimeOfRound(latestEntry.Round)
-		endTime := w.clock.StartTimeOfEpoch(targetEpoch + 1)
-		// first entry is latestEntry -- ignore
+		// end of interval is beginning of next epoch after lastTargetEpoch so
+		//  we add 1 to lastTargetEpoch
+		endTime := w.clock.StartTimeOfEpoch(lastTargetEpoch + 1)
+		// first round is round of latestEntry so omit the 0th round
 		rounds = w.drand.RoundsInInterval(startTime, endTime)[1:]
 	}
 
