@@ -403,27 +403,29 @@ func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.Tip
 		return nil, err
 	}
 	// Special case genesis
-	var startTime, endTime time.Time
+	var rounds []drand.Round
 	if baseHeight == abi.ChainEpoch(0) {
 		// no latest entry, targetEpoch undefined as its before genesis
 
 		// There should be a first genesis drand round from time before genesis
 		// and then we grab everything between this round and genesis time
-		startTime = w.drand.StartTimeOfRound(w.drand.FirstFilecoinRound())
-		endTime = w.clock.StartTimeOfEpoch(0)
+		startTime := w.drand.StartTimeOfRound(w.drand.FirstFilecoinRound())
+		endTime := w.clock.StartTimeOfEpoch(0)
+		rounds = w.drand.RoundsInInterval(startTime, endTime)
 	} else {
 		latestEntry, err := chain.FindLatestDRAND(ctx, base, w.chainState)
 		if err != nil {
 			return nil, err
 		}
 		targetEpoch := abi.ChainEpoch(uint64(baseHeight) + nullBlkCount + 1 - consensus.DRANDEpochLookback)
-		startTime = w.drand.StartTimeOfRound(latestEntry.Round)
-		endTime = w.clock.StartTimeOfEpoch(targetEpoch + 1)
+		startTime := w.drand.StartTimeOfRound(latestEntry.Round)
+		endTime := w.clock.StartTimeOfEpoch(targetEpoch + 1)
+		// first entry is latestEntry -- ignore
+		rounds = w.drand.RoundsInInterval(startTime, endTime)[1:]
 	}
 
-	rounds := w.drand.RoundsInInterval(startTime, endTime)
-	entries := make([]*drand.Entry, len(rounds)-1)
-	for i, round := range rounds[1:] { // first entry is latestEntry -- ignore
+	entries := make([]*drand.Entry, len(rounds))
+	for i, round := range rounds {
 		entries[i], err = w.drand.ReadEntry(ctx, round)
 		if err != nil {
 			return nil, err
