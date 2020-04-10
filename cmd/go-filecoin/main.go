@@ -113,7 +113,7 @@ func init() {
 }
 
 // command object for the local cli
-var rootCmd = &cmds.Command{
+var RootCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "A decentralized storage network",
 		Subcommands: `
@@ -221,18 +221,18 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 
 func init() {
 	for k, v := range rootSubcmdsLocal {
-		rootCmd.Subcommands[k] = v
+		RootCmd.Subcommands[k] = v
 	}
 
 	for k, v := range rootSubcmdsDaemon {
-		rootCmd.Subcommands[k] = v
+		RootCmd.Subcommands[k] = v
 		rootCmdDaemon.Subcommands[k] = v
 	}
 }
 
 // Run processes the arguments and stdin
 func Run(ctx context.Context, args []string, stdin, stdout, stderr *os.File) (int, error) {
-	err := cli.Run(ctx, rootCmd, args, stdin, stdout, stderr, buildEnv, makeExecutor)
+	err := cli.Run(ctx, RootCmd, args, stdin, stdout, stderr, buildEnv, makeExecutor)
 	if err == nil {
 		return 0, nil
 	}
@@ -297,7 +297,7 @@ func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
 
 	return &executor{
 		api:  api,
-		exec: cmds.NewExecutor(rootCmd),
+		exec: cmds.NewExecutor(RootCmd),
 	}, nil
 }
 

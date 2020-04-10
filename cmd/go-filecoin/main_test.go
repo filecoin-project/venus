@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,11 +16,11 @@ func TestRequiresDaemon(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, requiresDaemon(reqWithDaemon))
 
-	reqWithoutDaemon, err := cmds.NewRequest(context.Background(), []string{"daemon"}, nil, []string{}, nil, rootCmd)
+	reqWithoutDaemon, err := cmds.NewRequest(context.Background(), []string{"daemon"}, nil, []string{}, nil, RootCmd)
 	assert.NoError(t, err)
 	assert.False(t, requiresDaemon(reqWithoutDaemon))
 
-	reqSubcmdDaemon, err := cmds.NewRequest(context.Background(), []string{"leb128", "decode"}, nil, []string{"A=="}, nil, rootCmd)
+	reqSubcmdDaemon, err := cmds.NewRequest(context.Background(), []string{"leb128", "decode"}, nil, []string{"A=="}, nil, RootCmd)
 	assert.NoError(t, err)
 	assert.False(t, requiresDaemon(reqSubcmdDaemon))
 }

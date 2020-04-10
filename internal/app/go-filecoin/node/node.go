@@ -484,10 +484,9 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return err
 	}
 
-	node.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(
+	return node.StorageProtocol.AddStorageProvider(
 		ctx,
 		minerAddr,
-		address.Undef, // TODO: This is for setting up mining, we need to pass the client address in if this is going to be a storage client also
 		&node.chain,
 		&node.Messaging,
 		waiter,
@@ -501,11 +500,6 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		sectorBuilder.SealProofType(),
 		stateViewer,
 	)
-	if err != nil {
-		return errors.Wrap(err, "error initializing storage protocol")
-	}
-
-	return nil
 }
 
 func (node *Node) setupRetrievalMining(ctx context.Context) error {

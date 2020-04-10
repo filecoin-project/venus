@@ -60,7 +60,8 @@ func TestSetPrice(t *testing.T) {
 	minerAddr, err := commands.GetBlockAPI(env).MinerAddress()
 	require.NoError(t, err)
 
-	asks := commands.GetStorageAPI(env).ListAsks(minerAddr)
+	asks, err := commands.GetStorageAPI(env).ListAsks(minerAddr)
+	require.NoError(t, err)
 	require.Len(t, asks, 1)
 	assert.Equal(t, abi.NewTokenAmount(1000), asks[0].Ask.Price)
 	assert.Equal(t, abi.ChainEpoch(400), asks[0].Ask.Expiry)

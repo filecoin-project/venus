@@ -57,7 +57,7 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 
 	nodes[0] = bootstrapMiner
 
-	// create addtiional nodes
+	// create additional nodes
 	for i := uint(0); i < additionalNodes; i++ {
 		node := NewNodeBuilder(t).
 			WithGenesisInit(seed.GenesisInitFunc).

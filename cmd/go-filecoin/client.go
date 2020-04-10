@@ -2,9 +2,15 @@ package commands
 
 import (
 	"fmt"
+	"strconv"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/pkg/errors"
 
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
@@ -19,7 +25,7 @@ var clientCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
 		"cat":                  clientCatCmd,
 		"import":               clientImportDataCmd,
-		"propose-storage-deal": clientProposeStorageDealCmd,
+		"propose-storage-deal": ClientProposeStorageDealCmd,
 		"query-storage-deal":   clientQueryStorageDealCmd,
 		"verify-storage-deal":  clientVerifyStorageDealCmd,
 		"list-asks":            clientListAsksCmd,
@@ -86,7 +92,7 @@ See the go-filecoin client cat command for more details.
 	Type: cid.Cid{},
 }
 
-var clientProposeStorageDealCmd = &cmds.Command{
+var ClientProposeStorageDealCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline:          "Propose a storage deal with a storage miner",
 		ShortDescription: `Sends a storage deal proposal to a miner`,
@@ -107,43 +113,84 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("miner", true, false, "Address of miner to send storage proposal"),
 		cmdkit.StringArg("data", true, false, "CID of the data to be stored"),
-		cmdkit.StringArg("ask", true, false, "ID of ask for which to propose a deal"),
-		cmdkit.StringArg("duration", true, false, "Time in blocks (about 30 seconds per block) to store data"),
-	},
-	Options: []cmdkit.Option{
-		cmdkit.BoolOption("allow-duplicates", "Allows duplicate proposals to be created. Unless this flag is set, you will not be able to make more than one deal per piece per miner. This protection exists to prevent erroneous duplicate deals."),
+		cmdkit.StringArg("start", true, false, "Chain epoch at which deal should start"),
+		cmdkit.StringArg("end", true, false, "Chain epoch at which deal should end"),
+		cmdkit.StringArg("price", true, false, "Price of deal in FIL (e.g. 0.01)"),
+		cmdkit.StringArg("collateral", true, false, "Collateral of deal in FIL (e.g. 0.01)"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		panic("not implemented pending full storage market integration")
+		addr, err := GetPorcelainAPI(env).WalletDefaultAddress()
+		if err != nil {
+			return err
+		}
 
-		//allowDuplicates, _ := req.Options["allow-duplicates"].(bool)
-		//
-		//miner, err := address.NewFromString(req.Arguments[0])
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//data, err := cid.Decode(req.Arguments[1])
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//askid, err := strconv.ParseUint(req.Arguments[2], 10, 64)
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//duration, err := strconv.ParseUint(req.Arguments[3], 10, 64)
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//resp, err := GetStorageAPI(env).ProposeStorageDeal()
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//return re.Emit(resp)
+		maddr, err := address.NewFromString(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		chainHead := GetPorcelainAPI(env).ChainHeadKey()
+
+		dataCID, err := cid.Decode(req.Arguments[1])
+		if err != nil {
+			return errors.Wrap(err, "could not decode data cid")
+		}
+
+		data := &storagemarket.DataRef{
+			TransferType: "graphsync",
+			Root:         dataCID,
+		}
+
+		status, err := GetPorcelainAPI(env).MinerGetStatus(req.Context, maddr, chainHead)
+		if err != nil {
+			return err
+		}
+
+		providerInfo := &storagemarket.StorageProviderInfo{
+			Address:    maddr,
+			Owner:      status.OwnerAddress,
+			Worker:     status.WorkerAddress,
+			SectorSize: uint64(status.SectorSize),
+			PeerID:     status.PeerID,
+		}
+
+		start, err := strconv.ParseUint(req.Arguments[2], 10, 64)
+		if err != nil {
+			return errors.Wrap(err, "could not parse deal start")
+		}
+
+		end, err := strconv.ParseUint(req.Arguments[3], 10, 64)
+		if err != nil {
+			return errors.Wrap(err, "could not parse deal end")
+		}
+
+		price, valid := types.NewAttoFILFromFILString(req.Arguments[4])
+		if !valid {
+			return errors.Errorf("could not parse price %s", req.Arguments[5])
+		}
+
+		collateral, valid := types.NewAttoFILFromFILString(req.Arguments[5])
+		if !valid {
+			return errors.Errorf("could not parse collateral %s", req.Arguments[6])
+		}
+
+		resp, err := GetStorageAPI(env).ProposeStorageDeal(
+			req.Context,
+			addr,
+			providerInfo,
+			data,
+			abi.ChainEpoch(start),
+			abi.ChainEpoch(end),
+			price,
+			collateral,
+			// proof version (not circuit or size) should be all that is important here
+			constants.DevRegisteredPoStProof,
+		)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(resp)
 	},
 	Type: network.Response{},
 }
@@ -231,7 +278,11 @@ Lists all asks in the storage market. This command takes no arguments.
 			return err
 		}
 
-		asks := GetStorageAPI(env).ListAsks(minerAddr)
+		asks, err := GetStorageAPI(env).ListAsks(minerAddr)
+		if err != nil {
+			return err
+		}
+
 		return re.Emit(asks)
 	},
 	Type: []*storagemarket.SignedStorageAsk{},
