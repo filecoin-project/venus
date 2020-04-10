@@ -34,7 +34,7 @@ import (
 func TestNewRetrievalProviderNodeConnector(t *testing.T) {
 	tf.UnitTest(t)
 	rmnet := gfmtut.NewTestRetrievalMarketNetwork(gfmtut.TestNetworkParams{})
-	pm := piecemanager.NewStorageMinerBackEnd(nil, nil)
+	pm := piecemanager.NewFiniteStateMachineBackEnd(nil, nil)
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 
 	pchMgr := makePaychMgr(context.Background(), t,
@@ -42,7 +42,7 @@ func TestNewRetrievalProviderNodeConnector(t *testing.T) {
 		specst.NewIDAddr(t, 100),
 		specst.NewActorAddr(t, "foobar"),
 		abi.NewTokenAmount(10))
-	rpc := NewRetrievalProviderConnector(rmnet, pm, bs, pchMgr, nil)
+	rpc := NewRetrievalProviderConnector(rmnet, &pm, bs, pchMgr, nil)
 	assert.NotZero(t, rpc)
 }
 
@@ -110,7 +110,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 	ctx := context.Background()
 
 	rmnet := gfmtut.NewTestRetrievalMarketNetwork(gfmtut.TestNetworkParams{})
-	pm := piecemanager.NewStorageMinerBackEnd(nil, nil)
+	pm := piecemanager.NewFiniteStateMachineBackEnd(nil, nil)
 
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	pchan := specst.NewIDAddr(t, 100)
@@ -137,7 +137,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 		// simulate creating payment channel
 		rmp.ExpectedVouchers[pchan] = &pch.VoucherInfo{Voucher: voucher, Proof: proof}
 
-		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, pchMgr, nil)
+		rpc := NewRetrievalProviderConnector(rmnet, &pm, bs, pchMgr, nil)
 
 		tokenamt, err := rpc.SavePaymentVoucher(ctx, pchan, voucher, proof, voucher.Amount, tok)
 		assert.NoError(t, err)
@@ -156,7 +156,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 
 		rmp := NewRetrievalMarketClientFakeAPI(t)
 		rmp.ExpectedVouchers[pchan] = &pch.VoucherInfo{Voucher: voucher, Proof: proof}
-		rpc := NewRetrievalProviderConnector(rmnet, pm, bs, pchMgr, nil)
+		rpc := NewRetrievalProviderConnector(rmnet, &pm, bs, pchMgr, nil)
 		_, err := rpc.SavePaymentVoucher(ctx, pchan, voucher, proof, voucher.Amount, tok)
 		assert.EqualError(t, err, "boom")
 
