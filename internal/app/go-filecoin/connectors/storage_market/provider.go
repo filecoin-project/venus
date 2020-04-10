@@ -150,7 +150,7 @@ func (s *StorageProviderNodeConnector) OnDealComplete(ctx context.Context, deal 
 	// TODO: storage provider is expecting a sector ID here. This won't work. The sector ID needs to be removed from
 	// TODO: the return value, and storage provider needs to call OnDealSectorCommitted which should add Sector ID to its
 	// TODO: callback.
-	return s.pieceManager.SealPieceIntoNewSector(ctx, deal.DealID, deal.Proposal.StartEpoch, deal.Proposal.EndEpoch, uint64(pieceSize), pieceReader)
+	return s.pieceManager.SealPieceIntoNewSector(ctx, deal.DealID, deal.Proposal.StartEpoch, deal.Proposal.EndEpoch, pieceSize, pieceReader)
 }
 
 // LocatePieceForDealWithinSector finds the sector, offset and length of a piece associated with the given deal id
