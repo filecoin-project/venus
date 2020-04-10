@@ -280,6 +280,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		waiter,
 		nd.Wallet.Signer,
 		nd.Host(),
+		nd.Repo.Datastore(),
 		nd.Blockstore.Blockstore,
 		nd.network.GraphExchange,
 		state.NewViewer(nd.Blockstore.CborStore),

@@ -44,6 +44,7 @@ func NewStorageProtocolSubmodule(
 	mw *msg.Waiter,
 	s types.Signer,
 	h host.Host,
+	ds datastore.Batching,
 	bs blockstore.Blockstore,
 	gsync graphsync.GraphExchange,
 	stateViewer *appstate.Viewer,
@@ -52,7 +53,7 @@ func NewStorageProtocolSubmodule(
 
 	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync)
 
-	client, err := impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, dt, nil, nil, cnode)
+	client, err := impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, dt, nil, ds, cnode)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating storage client")
 	}
