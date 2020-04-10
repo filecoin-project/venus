@@ -117,3 +117,5 @@ require (
 )
 
 replace github.com/filecoin-project/filecoin-ffi => ./vendors/filecoin-ffi
+
+replace github.com/libp2p/go-libp2p-core => github.com/libp2p/go-libp2p-core v0.3.0
