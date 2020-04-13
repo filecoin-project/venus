@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"runtime"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/internal/submodule/storage_mining_submodule"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
