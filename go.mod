@@ -28,6 +28,7 @@ require (
 	github.com/filecoin-project/go-storage-miner v0.0.0-20200326201738-26de94e25d49
 	github.com/filecoin-project/sector-storage v0.0.0-20200406195014-a6d093838576
 	github.com/filecoin-project/specs-actors v0.0.0-20200324235424-aef9b20a9fb1
+	github.com/filecoin-project/specs-storage v0.0.0-20200317225704-7420bc655c38
 	github.com/filecoin-project/storage-fsm v0.0.0-20200409184938-8fc0fd3221d4
 	github.com/fxamacker/cbor v1.5.0
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
