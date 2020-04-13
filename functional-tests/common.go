@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
-	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/require"
 )
@@ -36,7 +36,7 @@ func makeNode(ctx context.Context, t *testing.T, seed *node.ChainSeed, chainCloc
 	return test.NewNodeBuilder(t).
 		WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
 		WithGenesisInit(seed.GenesisInitFunc).
-		WithBuilderOpt(node.VerifierConfigOption(sectorbuilder.ProofVerifier)).
+		WithBuilderOpt(node.VerifierConfigOption(ffiwrapper.ProofVerifier)).
 		Build(ctx)
 }
 
