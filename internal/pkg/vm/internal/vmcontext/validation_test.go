@@ -38,10 +38,10 @@ func init() {
 
 func TestChainValidationMessageSuite(t *testing.T) {
 	f := NewFactories(&ValidationConfig{
-		trackGas:         true,
-		checkExitCode:    true,
-		checkReturnValue: true,
-		checkStateRoot:   true,
+		TrackGas:         true,
+		CheckExitCode:    true,
+		CheckReturnValue: true,
+		CheckStateRoot:   true,
 	})
 	for _, testCase := range suites.MessageTestCases() {
 		if TestSuiteSkipper.Skip(testCase) {
@@ -55,10 +55,10 @@ func TestChainValidationMessageSuite(t *testing.T) {
 
 func TestChainValidationTipSetSuite(t *testing.T) {
 	f := NewFactories(&ValidationConfig{
-		trackGas:         true,
-		checkExitCode:    true,
-		checkReturnValue: true,
-		checkStateRoot:   true,
+		TrackGas:         true,
+		CheckExitCode:    true,
+		CheckReturnValue: true,
+		CheckStateRoot:   true,
 	})
 	for _, testCase := range suites.TipSetTestCases() {
 		if TestSuiteSkipper.Skip(testCase) {

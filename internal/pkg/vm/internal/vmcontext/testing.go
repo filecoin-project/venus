@@ -16,10 +16,10 @@ import (
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
@@ -35,6 +35,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
+
+var log = logging.Logger("vmcontext/testing")
 
 var _ vstate.Factories = &Factories{}
 var _ vstate.VMWrapper = (*ValidationVMWrapper)(nil)
@@ -79,26 +81,26 @@ func (f *Factories) NewValidationConfig() vstate.ValidationConfig {
 //
 
 type ValidationConfig struct {
-	trackGas         bool
-	checkExitCode    bool
-	checkReturnValue bool
-	checkStateRoot   bool
+	TrackGas         bool
+	CheckExitCode    bool
+	CheckReturnValue bool
+	CheckStateRoot   bool
 }
 
 func (v ValidationConfig) ValidateGas() bool {
-	return v.trackGas
+	return v.TrackGas
 }
 
 func (v ValidationConfig) ValidateExitCode() bool {
-	return v.checkExitCode
+	return v.CheckExitCode
 }
 
 func (v ValidationConfig) ValidateReturnValue() bool {
-	return v.checkReturnValue
+	return v.CheckReturnValue
 }
 
 func (v ValidationConfig) ValidateStateRoot() bool {
-	return v.checkStateRoot
+	return v.CheckStateRoot
 }
 
 //
@@ -147,6 +149,10 @@ type ValidationVMWrapper struct {
 	vm *VM
 }
 
+func (w *ValidationVMWrapper) NewVM() {
+	w.vm = NewState().vm
+}
+
 // Root implements ValidationVMWrapper.
 func (w *ValidationVMWrapper) Root() cid.Cid {
 	root, dirty := w.vm.state.Root()
@@ -156,9 +162,16 @@ func (w *ValidationVMWrapper) Root() cid.Cid {
 	return root
 }
 
-// Store implements ValidationVMWrapper.
-func (w *ValidationVMWrapper) Store() adt.Store {
-	return w.vm.ContextStore()
+// Get the value at key from vm store
+func (w *ValidationVMWrapper) StoreGet(key cid.Cid, out runtime.CBORUnmarshaler) error {
+	_, err := w.vm.store.Get(context.TODO(), key, out)
+	return err
+}
+
+// Put `value` into vm store
+func (w *ValidationVMWrapper) StorePut(value runtime.CBORMarshaler) (cid.Cid, error) {
+	c, _, err := w.vm.store.Put(context.TODO(), value)
+	return c, err
 }
 
 // Actor implements ValidationVMWrapper.
@@ -222,6 +235,8 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 	if err != nil {
 		return nil, address.Undef, err
 	}
+
+	log.Infow("CreateActor", "state", newState)
 
 	// create and store actor object
 	a := &actor.Actor{
