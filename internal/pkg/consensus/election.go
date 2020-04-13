@@ -50,11 +50,13 @@ func (em ElectionMachine) GenerateCandidates(poStRand abi.PoStRandomness, sector
 		}
 		proofTypeBySectorNumber[s.SectorNumber] = p
 	}
-	candidatesWithTicket, err := ep.GenerateEPostCandidates(sectorInfos, poStRand, dummyFaults)
+
+	minerID, err := address.IDFromAddress(maddr)
 	if err != nil {
 		return nil, err
 	}
-	minerID, err := address.IDFromAddress(maddr)
+
+	candidatesWithTicket, err := ep.GenerateEPostCandidates(context.TODO(), abi.ActorID(minerID), sectorInfos, poStRand, dummyFaults)
 	if err != nil {
 		return nil, err
 	}
@@ -70,8 +72,13 @@ func (em ElectionMachine) GenerateCandidates(poStRand abi.PoStRandomness, sector
 
 // GenerateEPoSt creates a PoSt proof over the input PoSt candidates.  Should
 // only be called on winning candidates.
-func (em ElectionMachine) GenerateEPoSt(allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate, ep postgenerator.PoStGenerator) ([]abi.PoStProof, error) {
-	return ep.ComputeElectionPoSt(allSectorInfos, challengeSeed, winners)
+func (em ElectionMachine) GenerateEPoSt(allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate, ep postgenerator.PoStGenerator, maddr address.Address) ([]abi.PoStProof, error) {
+	minerID, err := address.IDFromAddress(maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	return ep.ComputeElectionPoSt(context.TODO(), abi.ActorID(minerID), allSectorInfos, challengeSeed, winners)
 }
 
 // VerifyEPoStVrfProof verifies that the PoSt randomness is the result of the
