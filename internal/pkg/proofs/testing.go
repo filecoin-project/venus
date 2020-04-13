@@ -3,7 +3,7 @@ package proofs
 import (
 	"context"
 
-	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
@@ -11,7 +11,7 @@ import (
 type FakeVerifier struct {
 }
 
-var _ sectorbuilder.Verifier = (*FakeVerifier)(nil)
+var _ ffiwrapper.Verifier = (*FakeVerifier)(nil)
 
 func (f *FakeVerifier) VerifySeal(abi.SealVerifyInfo) (bool, error) {
 	return true, nil

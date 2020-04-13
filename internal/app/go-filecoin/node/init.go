@@ -2,24 +2,18 @@ package node
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	keystore "github.com/ipfs/go-ipfs-keystore"
 	acrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
@@ -150,54 +144,55 @@ func importInitKeys(w *wallet.Wallet, importKeys []*crypto.KeyInfo) error {
 }
 
 func ImportPresealedSectors(rep repo.Repo, srcPath string, sectorSize abi.SectorSize, symlink bool) error {
-	nextSecnum, err := findNextSecnum(srcPath)
-	if err != nil {
-		return err
-	}
-
-	oldMetaDs := datastore.NewMapDatastore()
-	err = oldMetaDs.Put(datastore.NewKey("/sectorbuilder/last"), []byte(fmt.Sprint(nextSecnum)))
-	if err != nil {
-		return err
-	}
-
-	registeredSealProof, registeredPoStProof, err := registeredProofsFromSectorSize(sectorSize)
-	if err != nil {
-		return err
-	}
-
-	oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
-		SealProofType: registeredSealProof,
-		PoStProofType: registeredPoStProof,
-		WorkerThreads: 1,
-		Paths:         sectorbuilder.SimplePath(srcPath),
-	}, namespace.Wrap(oldMetaDs, datastore.NewKey("/sectorbuilder")))
-	if err != nil {
-		return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
-	}
-
-	repoPath, err := rep.Path()
-	if err != nil {
-		return errors.Wrapf(err, "sector import destination repo")
-	}
-	dstPath, err := paths.GetSectorPath(rep.Config().SectorBase.RootDir, repoPath)
-	if err != nil {
-		return errors.Wrapf(err, "sector import sector path")
-	}
-	newsb, err := sectorbuilder.New(&sectorbuilder.Config{
-		SealProofType: registeredSealProof,
-		PoStProofType: registeredPoStProof,
-		WorkerThreads: 1,
-		Paths:         sectorbuilder.SimplePath(dstPath),
-	}, namespace.Wrap(rep.Datastore(), datastore.NewKey("/sectorbuilder")))
-	if err != nil {
-		return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
-	}
-
-	if err := newsb.ImportFrom(oldsb, symlink); err != nil {
-		return err
-	}
-	return nil
+	panic("not yet implemented")
+	//nextSecnum, err := findNextSecnum(srcPath)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//oldMetaDs := datastore.NewMapDatastore()
+	//err = oldMetaDs.Put(datastore.NewKey("/sectorbuilder/last"), []byte(fmt.Sprint(nextSecnum)))
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//registeredSealProof, registeredPoStProof, err := registeredProofsFromSectorSize(sectorSize)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
+	//	SealProofType: registeredSealProof,
+	//	PoStProofType: registeredPoStProof,
+	//	WorkerThreads: 1,
+	//	Paths:         sectorbuilder.SimplePath(srcPath),
+	//}, namespace.Wrap(oldMetaDs, datastore.NewKey("/sectorbuilder")))
+	//if err != nil {
+	//	return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
+	//}
+	//
+	//repoPath, err := rep.Path()
+	//if err != nil {
+	//	return errors.Wrapf(err, "sector import destination repo")
+	//}
+	//dstPath, err := paths.GetSectorPath(rep.Config().SectorBase.RootDir, repoPath)
+	//if err != nil {
+	//	return errors.Wrapf(err, "sector import sector path")
+	//}
+	//newsb, err := sectorbuilder.New(&sectorbuilder.Config{
+	//	SealProofType: registeredSealProof,
+	//	PoStProofType: registeredPoStProof,
+	//	WorkerThreads: 1,
+	//	Paths:         sectorbuilder.SimplePath(dstPath),
+	//}, namespace.Wrap(rep.Datastore(), datastore.NewKey("/sectorbuilder")))
+	//if err != nil {
+	//	return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
+	//}
+	//
+	//if err := newsb.ImportFrom(oldsb, symlink); err != nil {
+	//	return err
+	//}
+	//return nil
 }
 
 func findNextSecnum(srcPath string) (int64, error) {

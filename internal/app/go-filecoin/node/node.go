@@ -7,22 +7,17 @@ import (
 	"reflect"
 	"runtime"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/internal/submodule/storage_mining_submodule"
-
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/go-sectorbuilder/fs"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/internal/submodule"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/internal/submodule/storage_mining_submodule"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
@@ -465,23 +460,6 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return err
 	}
 
-	sectorBuilder, err := sectorbuilder.New(&sectorbuilder.Config{
-		PoStProofType: postProofType,
-		SealProofType: sealProofType,
-		Miner:         minerAddr,
-		WorkerThreads: 2,
-		Paths: []fs.PathConfig{
-			{
-				Path:   sectorDir,
-				Cache:  true,
-				Weight: 1,
-			},
-		},
-	}, namespace.Wrap(node.Repo.Datastore(), ds.NewKey("/sectorbuilder")))
-	if err != nil {
-		return err
-	}
-
 	cborStore := node.Blockstore.CborStore
 
 	waiter := msg.NewWaiter(node.chain.ChainReader, node.chain.MessageStore, node.Blockstore.Blockstore, cborStore)
@@ -507,7 +485,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		node.Blockstore.Blockstore,
 		node.network.GraphExchange,
 		repoPath,
-		sectorBuilder.SealProofType(),
+		sealProofType,
 		stateViewer,
 	)
 }
