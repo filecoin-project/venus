@@ -17,7 +17,9 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -122,6 +124,9 @@ type Expected struct {
 
 	// postVerifier verifies PoSt proofs and associated data
 	postVerifier EPoStVerifier
+
+	clock clock.ChainEpochClock
+	drand drand.IFace
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
@@ -129,7 +134,7 @@ var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
 func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processor, state StateViewer, bt time.Duration,
-	ev ElectionValidator, tv TicketValidator, pv EPoStVerifier, chainState chainReader) *Expected {
+	ev ElectionValidator, tv TicketValidator, pv EPoStVerifier, chainState chainReader, clock clock.ChainEpochClock, drand drand.IFace) *Expected {
 	return &Expected{
 		cstore:            cs,
 		blockTime:         bt,
@@ -140,6 +145,8 @@ func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processo
 		TicketValidator:   tv,
 		postVerifier:      pv,
 		chainState:        chainState,
+		clock:             clock,
+		drand:             drand,
 	}
 }
 
@@ -268,6 +275,11 @@ func (c *Expected) validateMining(ctx context.Context,
 			}
 		}
 
+		err = c.validateDRANDEntries(ctx, blk)
+		if err != nil {
+			return errors.Wrapf(err, "invalid DRAND entries")
+		}
+
 		// Epoch at which election post and ticket randomness must be sampled
 		sampleEpoch := blk.Height - miner.ElectionLookback
 
@@ -331,6 +343,66 @@ func (c *Expected) validateMining(ctx context.Context,
 			return errors.Wrapf(err, "invalid ticket: %s in block %s", blk.Ticket.String(), blk.Cid())
 		}
 	}
+	return nil
+}
+
+func (c *Expected) validateDRANDEntries(ctx context.Context, blk *block.Block) error {
+	targetEpoch := blk.Height - DRANDEpochLookback
+	parent, err := c.chainState.GetTipSet(blk.Parents)
+	if err != nil {
+		return err
+	}
+
+	numEntries := len(blk.DrandEntries)
+	// Note we don't check for genesis condition because first block must include > 0 drand entries
+	if numEntries == 0 {
+		prevEntry, err := chain.FindLatestDRAND(ctx, parent, c.chainState)
+		if err != nil {
+			return err
+		}
+		nextDRANDTime := c.drand.StartTimeOfRound(prevEntry.Round + drand.Round(1))
+		if c.clock.EpochAtTime(nextDRANDTime) > targetEpoch {
+			return nil
+		}
+		return errors.New("Block missing required DRAND entry")
+	}
+
+	lastRound := blk.DrandEntries[numEntries-1].Round
+	nextDRANDTime := c.drand.StartTimeOfRound(lastRound + 1)
+	if !(c.clock.EpochAtTime(nextDRANDTime) > targetEpoch) {
+		return errors.New("Block does not include all drand entries required")
+	}
+
+	// Validate that DRAND entries link up
+	// Detect case where we have just mined with genesis block as parent
+	parentHeight, err := parent.Height()
+	if err != nil {
+		return err
+	}
+	// No prevEntry in first block so this is skipped first time around
+	if parentHeight != abi.ChainEpoch(0) {
+		prevEntry, err := chain.FindLatestDRAND(ctx, parent, c.chainState)
+		if err != nil {
+			return err
+		}
+		valid, err := c.drand.VerifyEntry(prevEntry, blk.DrandEntries[0])
+		if err != nil {
+			return err
+		}
+		if !valid {
+			return errors.Errorf("invalid DRAND link rounds %d and %d", prevEntry.Round, blk.DrandEntries[0].Round)
+		}
+	}
+	for i := 0; i < numEntries-1; i++ {
+		valid, err := c.drand.VerifyEntry(blk.DrandEntries[i], blk.DrandEntries[i+1])
+		if err != nil {
+			return err
+		}
+		if !valid {
+			return errors.Errorf("invalid DRAND link rounds %d and %d", blk.DrandEntries[i].Round, blk.DrandEntries[i+1].Round)
+		}
+	}
+
 	return nil
 }
 
