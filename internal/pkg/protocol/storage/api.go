@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
@@ -69,4 +71,9 @@ func (api *API) ProposeStorageDeal(
 	rt abi.RegisteredProof,
 ) (*storagemarket.ProposeStorageDealResult, error) {
 	return api.storage.Client().ProposeStorageDeal(ctx, addr, info, data, startEpoch, endEpoch, price, collateral, rt)
+}
+
+// GetStorageDeal retrieves information about an in-progress deal
+func (api *API) GetStorageDeal(ctx context.Context, c cid.Cid) (storagemarket.ClientDeal, error) {
+	return api.storage.Client().GetInProgressDeal(ctx, c)
 }

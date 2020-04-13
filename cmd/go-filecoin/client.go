@@ -27,7 +27,7 @@ var clientCmd = &cmds.Command{
 		"cat":                  clientCatCmd,
 		"import":               clientImportDataCmd,
 		"propose-storage-deal": ClientProposeStorageDealCmd,
-		"query-storage-deal":   clientQueryStorageDealCmd,
+		"query-storage-deal":   ClientQueryStorageDealCmd,
 		"verify-storage-deal":  clientVerifyStorageDealCmd,
 		"list-asks":            clientListAsksCmd,
 	},
@@ -208,7 +208,7 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 	Type: network.Response{},
 }
 
-var clientQueryStorageDealCmd = &cmds.Command{
+var ClientQueryStorageDealCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Query a storage deal's status",
 		ShortDescription: `
@@ -221,19 +221,17 @@ format is specified with the --enc flag.
 		cmdkit.StringArg("id", true, false, "CID of deal to query"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		panic("not implemented pending full storage market integration")
+		dealCID, err := cid.Decode(req.Arguments[0])
+		if err != nil {
+			return errors.Wrap(err, "could not decode deal cid")
+		}
 
-		//propcid, err := cid.Decode(req.Arguments[0])
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//resp, err := GetStorageAPI(env).QueryStorageDeal(req.Context, propcid)
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//return re.Emit(resp)
+		deal, err := GetStorageAPI(env).GetStorageDeal(req.Context, dealCID)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(deal)
 	},
 	Type: network.SignedResponse{},
 }

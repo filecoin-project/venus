@@ -3,6 +3,9 @@ package submodule
 import (
 	"context"
 	"os"
+	"reflect"
+
+	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/go-address"
 	graphsyncimpl "github.com/filecoin-project/go-data-transfer/impl/graphsync"
@@ -11,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	iface "github.com/filecoin-project/go-fil-markets/storagemarket"
 	impl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	smvalid "github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	smnetwork "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-datastore"
@@ -53,6 +57,7 @@ func NewStorageProtocolSubmodule(
 	cnode := storagemarketconnector.NewStorageClientNodeConnector(cborutil.NewIpldStore(bs), c.State, mw, s, m.Outbox, clientAddr, stateViewer)
 
 	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync)
+	dt.RegisterVoucherType(reflect.TypeOf(&smvalid.StorageDataTransferVoucher{}), smvalid.NewClientRequestValidator(statestore.New(ds)))
 
 	client, err := impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, dt, discovery.NewLocal(ds), ds, cnode)
 	if err != nil {
@@ -101,6 +106,7 @@ func (sm *StorageProtocolSubmodule) AddStorageProvider(
 	}
 
 	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync)
+	dt.RegisterVoucherType(reflect.TypeOf(&smvalid.StorageDataTransferVoucher{}), smvalid.NewProviderRequestValidator(statestore.New(ds)))
 
 	sm.StorageProvider, err = impl.NewProvider(smnetwork.NewFromLibp2pHost(h), ds, bs, fs, piecestore.NewPieceStore(ds), dt, pnode, minerAddr, sealProofType)
 	return err

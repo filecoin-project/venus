@@ -1,16 +1,17 @@
 package commands_test
 
 import (
+	"bytes"
 	"context"
-	"io/ioutil"
-	"log"
-	"os"
 	"testing"
+	"time"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
-	cmds "github.com/ipfs/go-ipfs-cmds"
-
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
@@ -26,10 +27,7 @@ func TestProposeDeal(t *testing.T) {
 
 	miner := nodes[0]
 
-	// start mining so we can accept a deal
-	miner.StartMining(ctx)
-	defer miner.StopMining(ctx)
-
+	// get miner stats
 	maddr, err := miner.BlockMining.BlockMiningAPI.MinerAddress()
 	require.NoError(t, err)
 
@@ -38,53 +36,49 @@ func TestProposeDeal(t *testing.T) {
 
 	client := nodes[1]
 
-	// create a temp file to import
-	tmpFile, err := ioutil.TempFile(os.TempDir(), "test_propose_deal-")
-	require.NoError(t, err)
-	defer os.Remove(tmpFile.Name())
-
-	// Example writing to the file
-	if _, err = tmpFile.Write([]byte("he was way behind and he was in a bind and willing to make a deal.")); err != nil {
-		log.Fatal("Failed to write to temporary file", err)
-	}
-
-	node, err := client.PorcelainAPI.DAGImportData(ctx, tmpFile)
+	clientAddr, err := client.PorcelainAPI.WalletDefaultAddress()
 	require.NoError(t, err)
 
-	req, err := cmds.NewRequest(ctx, []string{}, cmdkit.OptMap{
-		"peerid": miner.Host().ID().String(),
-	}, []string{
+	// Add enough funds (1 FIL) for client and miner to to cover deal
+	err = miner.StorageProtocol.Provider().AddStorageCollateral(ctx, types.NewAttoFILFromFIL(1))
+	require.NoError(t, err)
+	err = client.StorageProtocol.Client().AddPaymentEscrow(ctx, clientAddr, types.NewAttoFILFromFIL(1))
+	require.NoError(t, err)
+
+	// import empty 1K of bytes to create piece
+	input := bytes.NewBuffer(make([]byte, 1024))
+	node, err := client.PorcelainAPI.DAGImportData(ctx, input)
+	require.NoError(t, err)
+
+	// propose deal
+	out, err := test.RunCommandInProcess(ctx, client, commands.ClientProposeStorageDealCmd,
+		cmdkit.OptMap{
+			"peerid": miner.Host().ID().String(),
+		},
 		mstats.ActorAddress.String(),
 		node.Cid().String(),
 		"1000",
 		"2000",
-		".0001",
+		".0000000000001",
 		"1",
-	}, nil, commands.ClientProposeStorageDealCmd)
-	require.NoError(t, err)
+	)
+	res := out.(*storagemarket.ProposeStorageDealResult)
 
-	emitter := &TestEmitter{}
-	err = commands.ClientProposeStorageDealCmd.Run(req, emitter, commands.CreateServerEnv(ctx, client))
-	require.NoError(t, err)
-	require.NoError(t, emitter.err)
+	// wait for deal to process
+	for i := 0; i < 30; i++ {
+		out, err := test.RunCommandInProcess(ctx, client, commands.ClientQueryStorageDealCmd, nil, res.ProposalCid.String())
+		require.NoError(t, err)
 
-	// TODO: query client staatus
-}
-
-type TestEmitter struct {
-	value interface{}
-	err   error
-}
-
-func (t *TestEmitter) SetLength(_ uint64) {}
-func (t *TestEmitter) Close() error       { return nil }
-
-func (t *TestEmitter) CloseWithError(err error) error {
-	t.err = err
-	return nil
-}
-
-func (t *TestEmitter) Emit(value interface{}) error {
-	t.value = value
-	return nil
+		deal := out.(storagemarket.ClientDeal)
+		switch deal.State {
+		case storagemarket.StorageDealUnknown, storagemarket.StorageDealValidating:
+			time.Sleep(1 * time.Second) // in progress, wait and continue
+		case storagemarket.StorageDealProposalAccepted:
+			return
+		default:
+			t.Errorf("unexpected state: %d %s", deal.State, deal.Message)
+			return
+		}
+	}
+	t.Error("timeout waiting for deal status update")
 }

@@ -3,6 +3,8 @@ package storagemarketconnector
 import (
 	"context"
 
+	cborutil "github.com/filecoin-project/go-cbor-util"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -148,7 +150,12 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 
 	unsigned := chnMsg.Message.Message
 
-	minerWorker, err := s.GetMinerWorkerAddress(ctx, deal.Proposal.Provider, nil)
+	tok, err := encoding.Encode(s.chainStore.Head())
+	if err != nil {
+		return 0, err
+	}
+
+	minerWorker, err := s.GetMinerWorkerAddress(ctx, deal.Proposal.Provider, tok)
 	if err != nil {
 		return 0, err
 	}
@@ -191,7 +198,7 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 
 // SignProposal uses the local wallet to sign the given proposal
 func (s *StorageClientNodeConnector) SignProposal(ctx context.Context, signer address.Address, proposal market.DealProposal) (*market.ClientDealProposal, error) {
-	buf, err := encoding.Encode(proposal)
+	buf, err := cborutil.Dump(&proposal)
 	if err != nil {
 		return nil, err
 	}

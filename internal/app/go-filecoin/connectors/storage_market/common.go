@@ -95,7 +95,7 @@ func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address
 		builtin.StorageMarketActorAddr,
 		types.NewAttoFIL(amount.Int),
 		types.NewGasPrice(1),
-		gas.NewGas(300),
+		gas.NewGas(5000),
 		true,
 		builtin.MethodsMarket.AddBalance,
 		&addr,
@@ -127,12 +127,21 @@ func (c *connectorCommon) GetBalance(ctx context.Context, addr address.Address, 
 		return storagemarket.Balance{}, err
 	}
 
-	available, err := c.getBalance(ctx, smState.EscrowTable, addr)
+	view, err := c.chainStore.StateView(tsk)
+	if err != nil {
+		return storagemarket.Balance{}, err
+	}
+	resAddr, err := view.InitResolveAddress(ctx, addr)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}
 
-	locked, err := c.getBalance(ctx, smState.LockedTable, addr)
+	available, err := c.getBalance(ctx, smState.EscrowTable, resAddr)
+	if err != nil {
+		return storagemarket.Balance{}, err
+	}
+
+	locked, err := c.getBalance(ctx, smState.LockedTable, resAddr)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}

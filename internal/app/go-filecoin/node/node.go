@@ -405,6 +405,19 @@ func (node *Node) SetupMining(ctx context.Context) error {
 		}
 	}
 
+	if err := node.StorageMining.Start(ctx); err != nil {
+		fmt.Printf("error starting storage miner: %s\n", err)
+	}
+
+	if err := node.StorageProtocol.StorageProvider.Start(ctx); err != nil {
+		fmt.Printf("error starting storage provider: %s\n", err)
+	}
+
+	// TODO: Retrieval Market Integration
+	//if err := node.RetrievalProtocol.RetrievalProvider.Start(); err != nil {
+	//	fmt.Printf("error starting retrieval provider: %s\n", err)
+	//}
+
 	return nil
 }
 
@@ -595,19 +608,6 @@ func (node *Node) StartMining(ctx context.Context) error {
 	node.BlockMining.AddNewlyMinedBlock = node.addNewlyMinedBlock
 	node.BlockMining.MiningDoneWg.Add(1)
 	go node.handleNewMiningOutput(miningCtx, outCh)
-
-	if err := node.StorageMining.Start(ctx); err != nil {
-		fmt.Printf("error starting storage miner: %s\n", err)
-	}
-
-	if err := node.StorageProtocol.StorageProvider.Start(ctx); err != nil {
-		fmt.Printf("error starting storage provider: %s\n", err)
-	}
-
-	// TODO: Retrieval Market Integration
-	//if err := node.RetrievalProtocol.RetrievalProvider.Start(); err != nil {
-	//	fmt.Printf("error starting retrieval provider: %s\n", err)
-	//}
 
 	node.setIsMining(true)
 

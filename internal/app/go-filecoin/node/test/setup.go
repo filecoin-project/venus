@@ -7,6 +7,10 @@ import (
 	"testing"
 	"time"
 
+	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
+
 	"github.com/filecoin-project/go-filecoin/build/project"
 
 	"github.com/filecoin-project/go-address"
@@ -37,7 +41,7 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	// Load genesis config fixture.
 	genCfg := loadGenesisConfig(t, genCfgPath)
 	genCfg.Miners = append(genCfg.Miners, &gengen.CreateStorageMinerConfig{
-		Owner:      1,
+		Owner:      5,
 		SectorSize: constants.DevSectorSize,
 	})
 	seed := node.MakeChainSeed(t, genCfg)
@@ -61,12 +65,11 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	for i := uint(0); i < additionalNodes; i++ {
 		node := NewNodeBuilder(t).
 			WithGenesisInit(seed.GenesisInitFunc).
+			WithConfig(node.DefaultAddressConfigOpt(seed.Addr(t, int(i+1)))).
 			WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...).
 			WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
 			Build(ctx)
-		addr := seed.GiveKey(t, node, int(i+1))
-		err := node.PorcelainAPI.ConfigSet("wallet.defaultAddress", addr.String())
-		require.NoError(t, err)
+		seed.GiveKey(t, node, int(i+1))
 		err = node.Start(ctx)
 		require.NoError(t, err)
 		nodes[i+1] = node
@@ -99,6 +102,22 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	return nodes, cancel
 }
 
+func RunCommandInProcess(ctx context.Context, nd *node.Node, cmd *cmds.Command, optMap cmdkit.OptMap, args ...string) (interface{}, error) {
+	req, err := cmds.NewRequest(ctx, []string{}, optMap, args, nil, cmd)
+	if err != nil {
+		return nil, err
+	}
+	emitter := &testEmitter{}
+	err = cmd.Run(req, emitter, commands.CreateServerEnv(ctx, nd))
+	if err != nil {
+		return nil, err
+	}
+	if emitter.err != nil {
+		return nil, err
+	}
+	return emitter.value, nil
+}
+
 func initNodeGenesisMiner(t *testing.T, nd *node.Node, seed *node.ChainSeed, minerIdx int, presealPath string, sectorSize abi.SectorSize) (address.Address, address.Address, error) {
 	seed.GiveKey(t, nd, minerIdx)
 	miner, owner := seed.GiveMiner(t, nd, 0)
@@ -120,4 +139,22 @@ func loadGenesisConfig(t *testing.T, path string) *gengen.GenesisCfg {
 		t.Errorf("failed to parse config: %s", err)
 	}
 	return &cfg
+}
+
+type testEmitter struct {
+	value interface{}
+	err   error
+}
+
+func (t *testEmitter) SetLength(_ uint64) {}
+func (t *testEmitter) Close() error       { return nil }
+
+func (t *testEmitter) CloseWithError(err error) error {
+	t.err = err
+	return nil
+}
+
+func (t *testEmitter) Emit(value interface{}) error {
+	t.value = value
+	return nil
 }
