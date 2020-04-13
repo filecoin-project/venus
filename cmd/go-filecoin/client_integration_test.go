@@ -20,16 +20,15 @@ import (
 func TestProposeDeal(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	// setup 2 nodes: bootstrap, client
-	// bootstrap: miner stats
-	// client: create file, import file, get cid
-	// client; propose storage deal
-
 	ctx := context.Background()
 	nodes, cancel := test.MustCreateNodesWithBootstrap(ctx, t, 1)
 	defer cancel()
 
 	miner := nodes[0]
+
+	// start mining so we can accept a deal
+	miner.StartMining(ctx)
+	defer miner.StopMining(ctx)
 
 	maddr, err := miner.BlockMining.BlockMiningAPI.MinerAddress()
 	require.NoError(t, err)
@@ -52,20 +51,24 @@ func TestProposeDeal(t *testing.T) {
 	node, err := client.PorcelainAPI.DAGImportData(ctx, tmpFile)
 	require.NoError(t, err)
 
-	req, err := cmds.NewRequest(ctx, []string{"client", "propose-storage-deal"}, cmdkit.OptMap{}, []string{
+	req, err := cmds.NewRequest(ctx, []string{}, cmdkit.OptMap{
+		"peerid": miner.Host().ID().String(),
+	}, []string{
 		mstats.ActorAddress.String(),
 		node.Cid().String(),
 		"1000",
 		"2000",
 		".0001",
 		"1",
-	}, nil, commands.RootCmd)
+	}, nil, commands.ClientProposeStorageDealCmd)
 	require.NoError(t, err)
 
 	emitter := &TestEmitter{}
 	err = commands.ClientProposeStorageDealCmd.Run(req, emitter, commands.CreateServerEnv(ctx, client))
 	require.NoError(t, err)
 	require.NoError(t, emitter.err)
+
+	// TODO: query client staatus
 }
 
 type TestEmitter struct {

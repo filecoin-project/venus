@@ -8,6 +8,7 @@ import (
 	graphsyncimpl "github.com/filecoin-project/go-data-transfer/impl/graphsync"
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	iface "github.com/filecoin-project/go-fil-markets/storagemarket"
 	impl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	smnetwork "github.com/filecoin-project/go-fil-markets/storagemarket/network"
@@ -53,7 +54,7 @@ func NewStorageProtocolSubmodule(
 
 	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync)
 
-	client, err := impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, dt, nil, ds, cnode)
+	client, err := impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, dt, discovery.NewLocal(ds), ds, cnode)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating storage client")
 	}

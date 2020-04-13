@@ -16,6 +16,7 @@ import (
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	files "github.com/ipfs/go-ipfs-files"
+	p2pcore "github.com/libp2p/go-libp2p-core/peer"
 )
 
 var clientCmd = &cmds.Command{
@@ -118,6 +119,9 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 		cmdkit.StringArg("price", true, false, "Price of deal in FIL (e.g. 0.01)"),
 		cmdkit.StringArg("collateral", true, false, "Collateral of deal in FIL (e.g. 0.01)"),
 	},
+	Options: []cmdkit.Option{
+		cmdkit.StringOption("peerid", "Override miner's peer id stored on chain"),
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addr, err := GetPorcelainAPI(env).WalletDefaultAddress()
 		if err != nil {
@@ -146,12 +150,21 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 			return err
 		}
 
+		peerID := status.PeerID
+		peerIDStr := req.Options["peerid"].(string)
+		if peerIDStr != "" {
+			peerID, err = p2pcore.Decode(peerIDStr)
+			if err != nil {
+				return err
+			}
+		}
+
 		providerInfo := &storagemarket.StorageProviderInfo{
 			Address:    maddr,
 			Owner:      status.OwnerAddress,
 			Worker:     status.WorkerAddress,
 			SectorSize: uint64(status.SectorSize),
-			PeerID:     status.PeerID,
+			PeerID:     peerID,
 		}
 
 		start, err := strconv.ParseUint(req.Arguments[2], 10, 64)
