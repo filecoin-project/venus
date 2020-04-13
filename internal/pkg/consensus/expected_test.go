@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -19,8 +20,10 @@ import (
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -50,6 +53,10 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 	ctx := context.Background()
 	mockSigner, kis := types.NewMockSignersAndKeyInfo(3)
+	fc := clock.NewFake(time.Unix(1234567890, 0))
+	blockTime := 30 * time.Second
+	cl := clock.NewChainClockFromClock(1234567890, blockTime, fc)
+	drand := &drand.Fake{}
 
 	t.Run("passes the validateMining section when given valid mining blocks", func(t *testing.T) {
 		cistore, bstore := setupCborBlockstore()
@@ -63,7 +70,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest,
-			&consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{}, &TestChainReader{})
+			&consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{}, &TestChainReader{}, cl, drand)
 
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, nextRoot, types.EmptyReceiptsCID, miners, m2w, mockSigner)
 		tipSet := block.RequireNewTipSet(t, nextBlocks...)
@@ -84,7 +91,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
 		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(&vm.FakeSyscalls{}, &consensus.FakeChainRandomness{}), &views, th.BlockTimeTest,
-			&consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{}, &TestChainReader{})
+			&consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{}, &TestChainReader{}, cl, drand)
 
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot.Cid, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
 		tipSet := block.RequireNewTipSet(t, nextBlocks...)
@@ -105,7 +112,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
-		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{}, &TestChainReader{})
+		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{}, &TestChainReader{}, cl, drand)
 
 		pTipSet := block.RequireNewTipSet(t, genesisBlock)
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot.Cid, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
@@ -134,7 +141,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
-		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{}, &TestChainReader{})
+		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{}, &TestChainReader{}, cl, drand)
 
 		pTipSet := block.RequireNewTipSet(t, genesisBlock)
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot.Cid, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
@@ -170,7 +177,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
-		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FailingTicketValidator{}, &consensus.TestElectionPoster{}, &TestChainReader{})
+		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FailingTicketValidator{}, &consensus.TestElectionPoster{}, &TestChainReader{}, cl, drand)
 
 		pTipSet := block.RequireNewTipSet(t, genesisBlock)
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot.Cid, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
@@ -190,7 +197,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
-		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{}, &TestChainReader{})
+		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{}, &TestChainReader{}, cl, drand)
 
 		pTipSet := block.RequireNewTipSet(t, genesisBlock)
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot.Cid, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
@@ -212,7 +219,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		miners, minerToWorker := minerToWorkerFromAddrs(ctx, t, state.NewState(cistore), vm.NewStorage(bstore), kis)
 		views := consensus.AsPowerStateViewer(appstate.NewViewer(cistore))
-		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{}, &TestChainReader{})
+		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{}, &TestChainReader{}, cl, drand)
 
 		pTipSet := block.RequireNewTipSet(t, genesisBlock)
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot.Cid, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
