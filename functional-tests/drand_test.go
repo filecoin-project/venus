@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
@@ -15,8 +17,8 @@ import (
 )
 
 func TestDrandPublic(t *testing.T) {
-	//tf.FunctionalTest(t)
-	//t.Skip(("requires local drand setup"))
+	tf.FunctionalTest(t)
+	t.Skip(("requires local drand setup"))
 
 	ctx := context.Background()
 	wd, _ := os.Getwd()
@@ -41,11 +43,8 @@ func TestDrandPublic(t *testing.T) {
 	defer nd.Stop(ctx)
 
 	err = nd.DrandAPI.Configure([]string{
-		"localhost:8080",
-		"localhost:8081",
-		"localhost:8082",
-		"localhost:8083",
-		"localhost:8084"}, false, true)
+		"drand-test3.nikkolasg.xyz:5003",
+	}, true, false)
 	require.NoError(t, err)
 
 	entry1, err := nd.DrandAPI.GetEntry(ctx, 1)

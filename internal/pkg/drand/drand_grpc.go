@@ -2,7 +2,6 @@ package drand
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 
 	"github.com/drand/drand/beacon"
@@ -37,7 +36,7 @@ type GRPC struct {
 // NewGRPC creates a client that will draw randomness from the given addresses.
 // distKeyCoeff are hex encoded strings representing a distributed public key
 // Behavior is undefined if provided address do not point to Drand servers in the same group.
-func NewGRPC(addresses []Address, distKeyCoeff []string) (*GRPC, error) {
+func NewGRPC(addresses []Address, distKeyCoeff [][]byte) (*GRPC, error) {
 	distKey, err := groupKeycoefficientsToDistPublic(distKeyCoeff)
 	if err != nil {
 		return nil, err
@@ -73,7 +72,7 @@ func (d *GRPC) ReadEntry(ctx context.Context, drandRound Round) (*Entry, error) 
 
 // VerifyEntry verifies that the child's signature is a valid signature of the previous entry.
 func (d *GRPC) VerifyEntry(parent, child *Entry) (bool, error) {
-	msg := beacon.Message(parent.Signature.Data, uint64(child.Round))
+	msg := beacon.Message(parent.Signature.Data, uint64(parent.Round), uint64(child.Round))
 	err := key.Scheme.VerifyRecovered(d.key.Coefficients[0], msg, child.Signature.Data)
 	if err != nil {
 		return false, err
@@ -87,7 +86,7 @@ func (d *GRPC) VerifyEntry(parent, child *Entry) (bool, error) {
 // If overrideGroupAddrs is true, the given set of addresses will be set as the drand nodes.
 // Otherwise drand address config will be set from the retrieved group info. The
 // override is useful when the the drand server is behind NAT.
-func (d *GRPC) FetchGroupConfig(addresses []string, secure bool, overrideGroupAddrs bool) ([]string, []string, error) {
+func (d *GRPC) FetchGroupConfig(addresses []string, secure bool, overrideGroupAddrs bool) ([]string, [][]byte, error) {
 	defaultManager := net.NewCertManager()
 	client := core.NewGrpcClientFromCert(defaultManager)
 
@@ -124,7 +123,7 @@ func drandAddresses(addresses []string, secure bool) []Address {
 	return addrs
 }
 
-func fetchGroupServer(client *core.Client, address Address) ([]string, []string, error) {
+func fetchGroupServer(client *core.Client, address Address) ([]string, [][]byte, error) {
 	groupResp, err := client.Group(address.address, address.secure)
 	if err != nil {
 		return nil, nil, err
@@ -136,19 +135,15 @@ func fetchGroupServer(client *core.Client, address Address) ([]string, []string,
 		addrs[i] = nd.GetAddress()
 	}
 
-	return addrs, groupResp.GetDistkey(), nil
+	return addrs, groupResp.DistKey, nil
 }
 
-func groupKeycoefficientsToDistPublic(coefficients []string) (*key.DistPublic, error) {
+func groupKeycoefficientsToDistPublic(coefficients [][]byte) (*key.DistPublic, error) {
 	pubKey := key.DistPublic{}
 	pubKey.Coefficients = make([]kyber.Point, len(coefficients))
 	for i, k := range coefficients {
-		keyBytes, err := hex.DecodeString(k)
-		if err != nil {
-			return nil, err
-		}
 		pubKey.Coefficients[i] = key.KeyGroup.Point()
-		err = pubKey.Coefficients[i].UnmarshalBinary(keyBytes)
+		err := pubKey.Coefficients[i].UnmarshalBinary(k)
 		if err != nil {
 			return nil, err
 		}
