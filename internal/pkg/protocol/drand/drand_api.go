@@ -82,7 +82,7 @@ func (api *API) GetEntry(ctx context.Context, round drand.Round) (*drand.Entry, 
 	return api.drand.ReadEntry(ctx, round)
 }
 
-// GetEntry retrieves a entry from the drand server
+// VerifyEntry verifies that child is a valid entry if its parent is.
 func (api *API) VerifyEntry(parent, child *drand.Entry) (bool, error) {
 	return api.drand.VerifyEntry(parent, child)
 }
