@@ -78,7 +78,6 @@ func TestChainSyncA(t *testing.T) {
 
 	ConnectNodes(t, nodes[0], nodes[1])
 
-	fmt.Printf("miner starting head: %s\n", nodes[0].PorcelainAPI.ChainHeadKey())
 	fakeClock.Advance(blockTime)
 	_, err := nodes[0].BlockMining.BlockMiningAPI.MiningOnce(ctx)
 	require.NoError(t, err)

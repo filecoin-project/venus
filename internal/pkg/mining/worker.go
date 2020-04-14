@@ -244,7 +244,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		return
 	}
 
-	electionVRFProof, err := w.election.GenerateElectionProof(ctx, electionEntry, lookbackEpoch, w.minerAddr, workerSignerAddr, w.workerSigner)
+	electionVRFProof, err := w.election.GenerateElectionProof(ctx, electionEntry, baseEpoch+1+abi.ChainEpoch(nullBlkCount), w.minerAddr, workerSignerAddr, w.workerSigner)
 	if err != nil {
 		log.Errorf("Worker.Mine failed to generate electionVRFProof %s", err)
 	}
