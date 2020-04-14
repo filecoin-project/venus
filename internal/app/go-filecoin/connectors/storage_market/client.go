@@ -2,6 +2,9 @@ package storagemarketconnector
 
 import (
 	"context"
+	"reflect"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
 
@@ -183,7 +186,7 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 	// in the market actor state.
 
 	for _, proposal := range msgProposals {
-		if proposal.Proposal == deal.Proposal {
+		if reflect.DeepEqual(proposal.Proposal, deal.Proposal) {
 			var ret market.PublishStorageDealsReturn
 			err := encoding.Decode(chnMsg.Receipt.ReturnValue, &ret)
 			if err != nil {
@@ -236,5 +239,50 @@ func (s *StorageClientNodeConnector) GetChainHead(ctx context.Context) (shared.T
 }
 
 func (s *StorageClientNodeConnector) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
-	panic("implement me") // @laser to do this
+	view, err := s.chainStore.StateView(s.chainStore.Head())
+	if err != nil {
+		cb(err)
+		return err
+	}
+
+	resolvedProvider, err := view.InitResolveAddress(ctx, provider)
+	if err != nil {
+		cb(err)
+		return err
+	}
+
+	err = s.waiter.WaitPredicate(ctx, func(msg *types.SignedMessage, c cid.Cid) bool {
+		if msg.Message.To != provider {
+			return false
+		}
+
+		// prove commit is method 8
+		if msg.Message.Method != abi.MethodNum(8) {
+			return false
+		}
+
+		// that's enough for us to check chain state
+		view, err = s.chainStore.StateView(s.chainStore.Head())
+		if err != nil {
+			return false
+		}
+
+		dealIDs, err := view.MarketGetDealIDs(ctx, resolvedProvider)
+		if err != nil {
+			return false
+		}
+
+		for _, id := range dealIDs {
+			if id == dealID {
+				return true
+			}
+		}
+
+		return false
+	}, func(b *block.Block, signedMessage *types.SignedMessage, receipt *vm.MessageReceipt) error {
+		return nil
+	})
+
+	cb(err)
+	return err
 }

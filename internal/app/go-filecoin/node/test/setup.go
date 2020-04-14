@@ -87,9 +87,6 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 		for {
 			select {
 			case <-ctx.Done():
-				for _, nd := range nodes {
-					nd.Stop(ctx)
-				}
 				return
 			default:
 				fakeClock.Advance(blockTime)

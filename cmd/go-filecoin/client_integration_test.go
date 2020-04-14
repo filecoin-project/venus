@@ -62,6 +62,7 @@ func TestProposeDeal(t *testing.T) {
 		".0000000000001",
 		"1",
 	)
+	require.NoError(t, err)
 	res := out.(*storagemarket.ProposeStorageDealResult)
 
 	// wait for deal to process
@@ -71,9 +72,15 @@ func TestProposeDeal(t *testing.T) {
 
 		deal := out.(storagemarket.ClientDeal)
 		switch deal.State {
-		case storagemarket.StorageDealUnknown, storagemarket.StorageDealValidating:
+		case storagemarket.StorageDealUnknown,
+			storagemarket.StorageDealValidating:
 			time.Sleep(1 * time.Second) // in progress, wait and continue
-		case storagemarket.StorageDealProposalAccepted:
+		case storagemarket.StorageDealProposalAccepted,
+			storagemarket.StorageDealStaged,
+			storagemarket.StorageDealSealing,
+			storagemarket.StorageDealActive:
+
+			// Deal accepted. Test passed.
 			return
 		default:
 			t.Errorf("unexpected state: %d %s", deal.State, deal.Message)

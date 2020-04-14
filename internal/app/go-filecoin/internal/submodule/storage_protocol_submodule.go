@@ -57,7 +57,10 @@ func NewStorageProtocolSubmodule(
 	cnode := storagemarketconnector.NewStorageClientNodeConnector(cborutil.NewIpldStore(bs), c.State, mw, s, m.Outbox, clientAddr, stateViewer)
 
 	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync)
-	dt.RegisterVoucherType(reflect.TypeOf(&smvalid.StorageDataTransferVoucher{}), smvalid.NewClientRequestValidator(statestore.New(ds)))
+	err := dt.RegisterVoucherType(reflect.TypeOf(&smvalid.StorageDataTransferVoucher{}), smvalid.NewClientRequestValidator(statestore.New(ds)))
+	if err != nil {
+		return nil, err
+	}
 
 	client, err := impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, dt, discovery.NewLocal(ds), ds, cnode)
 	if err != nil {
@@ -106,7 +109,10 @@ func (sm *StorageProtocolSubmodule) AddStorageProvider(
 	}
 
 	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync)
-	dt.RegisterVoucherType(reflect.TypeOf(&smvalid.StorageDataTransferVoucher{}), smvalid.NewProviderRequestValidator(statestore.New(ds)))
+	err = dt.RegisterVoucherType(reflect.TypeOf(&smvalid.StorageDataTransferVoucher{}), smvalid.NewProviderRequestValidator(statestore.New(ds)))
+	if err != nil {
+		return err
+	}
 
 	sm.StorageProvider, err = impl.NewProvider(smnetwork.NewFromLibp2pHost(h), ds, bs, fs, piecestore.NewPieceStore(ds), dt, pnode, minerAddr, sealProofType)
 	return err
