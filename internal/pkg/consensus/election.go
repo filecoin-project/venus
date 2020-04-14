@@ -8,10 +8,12 @@ import (
 	sector "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -32,10 +34,22 @@ func NewElectionMachine(chain ChainRandomness) *ElectionMachine {
 	return &ElectionMachine{chain: chain}
 }
 
-// GenerateEPoStVrfProof computes the Election PoSt challenge seed for a target epoch after a base tipset.
-func (em ElectionMachine) GenerateEPoStVrfProof(ctx context.Context, base block.TipSetKey,
+func (em ElectionMachine) GenerateElectionProof(ctx context.Context, entry *drand.Entry,
 	epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error) {
-	return sampleChainAndComputeVrf(ctx, em.chain, base, epoch, acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, miner, signer, worker)
+	entropy, err := encoding.Encode(miner)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to encode entropy")
+	}
+	seed := blake2b.Sum256(entry.Signature.Data)
+	randomness, err := crypto.BlendEntropy(acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, seed[:], epoch, entropy)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to generate election randomness randomness")
+	}
+	vrfProof, err := signer.SignBytes(ctx, randomness, worker)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to sign election post randomness")
+	}
+	return vrfProof.Data, nil
 }
 
 // GenerateCandidates creates candidate partial tickets for consideration in
@@ -74,37 +88,31 @@ func (em ElectionMachine) GenerateEPoSt(allSectorInfos []abi.SectorInfo, challen
 	return ep.ComputeElectionPoSt(allSectorInfos, challengeSeed, winners)
 }
 
-// VerifyEPoStVrfProof verifies that the PoSt randomness is the result of the
-// candidate signing the ticket.
-func (em ElectionMachine) VerifyEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof abi.PoStRandomness) error {
+func (em ElectionMachine) VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof abi.PoStRandomness) error {
 	entropy, err := encoding.Encode(miner)
 	if err != nil {
 		return errors.Wrapf(err, "failed to encode entropy")
 	}
-	randomness, err := em.chain.SampleChainRandomness(ctx, base, acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, epoch, entropy)
+	seed := blake2b.Sum256(entry.Signature.Data)
+	randomness, err := crypto.BlendEntropy(acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, seed[:], epoch, entropy)
 	if err != nil {
-		return errors.Wrap(err, "failed to generate epost randomness")
+		return errors.Wrap(err, "failed to reproduce election randomness")
 	}
 
 	return crypto.ValidateBlsSignature(randomness, workerSigner, vrfProof)
 }
 
-// CandidateWins returns true if the input candidate wins the election
-func (em ElectionMachine) CandidateWins(challengeTicket []byte, sectorNum, faultNum, networkPower, sectorSize uint64) bool {
-	numSectorsSampled := sector.ElectionPostChallengeCount(sectorNum, faultNum)
-
+// IsWinner returns true if the input challengeTicket wins the election
+func (em ElectionMachine) IsWinner(challengeTicket []byte, sectorNum, networkPower, sectorSize uint64) bool {
 	lhs := new(big.Int).SetBytes(challengeTicket[:])
 	lhs = lhs.Mul(lhs, big.NewInt(int64(networkPower)))
-	lhs = lhs.Mul(lhs, big.NewInt(int64(numSectorsSampled)))
 
-	// sectorPower * 2^len(H)
 	rhs := new(big.Int).Lsh(big.NewInt(int64(sectorSize)), challengeBits)
 	rhs = rhs.Mul(rhs, big.NewInt(int64(sectorNum)))
 	rhs = rhs.Mul(rhs, big.NewInt(expectedLeadersPerEpoch))
 
 	// lhs < rhs?
-	// (challengeTicket / maxChallengeTicket) < expectedLeadersPerEpoch * (effective miner power) / networkPower
-	// effective miner power = sectorSize * numberSectors / numSectorsSampled
+	// (ChallengeTicket / MaxChallengeTicket) < ExpectedLeadersPerEpoch *  (MinerPower / NetworkPower)
 	return lhs.Cmp(rhs) == -1
 }
 
@@ -175,10 +183,21 @@ func NewTicketMachine(chain ChainRandomness) *TicketMachine {
 // MakeTicket creates a new ticket from a chain and target epoch by running a verifiable
 // randomness function on the prior ticket.
 func (tm TicketMachine) MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (block.Ticket, error) {
-	vrfProof, err := sampleChainAndComputeVrf(ctx, tm.chain, base, epoch, acrypto.DomainSeparationTag_TicketProduction, miner, signer, worker)
+	entropy, err := encoding.Encode(miner)
+	if err != nil {
+		return block.Ticket{}, errors.Wrapf(err, "failed to encode entropy")
+	}
+	randomness, err := tm.chain.SampleChainRandomness(ctx, base, acrypto.DomainSeparationTag_TicketProduction, epoch, entropy)
+	if err != nil {
+		return block.Ticket{}, errors.Wrap(err, "failed to generate epost randomness")
+	}
+	vrfProof, err := signer.SignBytes(ctx, randomness, worker)
+	if err != nil {
+		return block.Ticket{}, errors.Wrap(err, "failed to sign election post randomness")
+	}
 	return block.Ticket{
-		VRFProof: vrfProof,
-	}, err
+		VRFProof: vrfProof.Data,
+	}, nil
 }
 
 // IsValidTicket verifies that the ticket's proof of randomness is valid with respect to its parent.
@@ -194,21 +213,4 @@ func (tm TicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey,
 	}
 
 	return crypto.ValidateBlsSignature(randomness, workerSigner, ticket.VRFProof)
-}
-
-func sampleChainAndComputeVrf(ctx context.Context, chain ChainRandomness, base block.TipSetKey, epoch abi.ChainEpoch, tag acrypto.DomainSeparationTag,
-	miner address.Address, signer types.Signer, worker address.Address) (crypto.VRFPi, error) {
-	entropy, err := encoding.Encode(miner)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to encode entropy")
-	}
-	randomness, err := chain.SampleChainRandomness(ctx, base, tag, epoch, entropy)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to generate epost randomness")
-	}
-	vrfProof, err := signer.SignBytes(ctx, randomness, worker)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to sign election post randomness")
-	}
-	return vrfProof.Data, nil
 }

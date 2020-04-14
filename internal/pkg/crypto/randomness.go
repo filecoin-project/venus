@@ -57,10 +57,10 @@ func (c *ChainRandomnessSource) Randomness(ctx context.Context, tag crypto.Domai
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to sample chain for randomness")
 	}
-	return blendEntropy(tag, seed, epoch, entropy)
+	return BlendEntropy(tag, seed, epoch, entropy)
 }
 
-func blendEntropy(tag crypto.DomainSeparationTag, seed RandomSeed, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func BlendEntropy(tag crypto.DomainSeparationTag, seed RandomSeed, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	buffer := bytes.Buffer{}
 	err := binary.Write(&buffer, binary.BigEndian, int64(tag))
 	if err != nil {

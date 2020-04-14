@@ -26,6 +26,7 @@ func (w *DefaultWorker) Generate(
 	ctx context.Context,
 	baseTipSet block.TipSet,
 	ticket block.Ticket,
+	electionProof crypto.VRFPi,
 	nullBlockCount abi.ChainEpoch,
 	ePoStInfo block.EPoStInfo,
 	drandEntries []*drand.Entry,
