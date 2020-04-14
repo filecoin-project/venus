@@ -88,7 +88,7 @@ func (em ElectionMachine) GenerateEPoSt(allSectorInfos []abi.SectorInfo, challen
 	return ep.ComputeElectionPoSt(allSectorInfos, challengeSeed, winners)
 }
 
-func (em ElectionMachine) VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof abi.PoStRandomness) error {
+func (em ElectionMachine) VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error {
 	entropy, err := encoding.Encode(miner)
 	if err != nil {
 		return errors.Wrapf(err, "failed to encode entropy")

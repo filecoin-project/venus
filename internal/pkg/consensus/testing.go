@@ -57,6 +57,12 @@ func (fem *FakeElectionMachine) GenerateEPoStVrfProof(ctx context.Context, base 
 	return MakeFakeVRFProofForTest(), nil
 }
 
+// GenerateElectionProof returns a fake randomness
+func (fem *FakeElectionMachine) GenerateElectionProof(_ context.Context, _ *drand.Entry,
+	_ abi.ChainEpoch, _ address.Address, _ address.Address, _ types.Signer) (crypto.VRFPi, error) {
+	return MakeFakeVRFProofForTest(), nil
+}
+
 // GenerateCandidates returns one fake election post candidate
 func (fem *FakeElectionMachine) GenerateCandidates(poStRand abi.PoStRandomness, sectorInfos []abi.SectorInfo, ep postgenerator.PoStGenerator, minerAddr address.Address) ([]abi.PoStCandidate, error) {
 	return []abi.PoStCandidate{
@@ -96,7 +102,7 @@ func (fem *FakeElectionMachine) IsWinner(_ []byte, _, _, _ uint64) bool {
 	return true
 }
 
-func (fem *FakeElectionMachine) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.Address, _ address.Address, _ abi.PoStRandomness) error {
+func (fem *FakeElectionMachine) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.Address, _ address.Address, _ crypto.VRFPi) error {
 	return nil
 }
 
@@ -135,7 +141,7 @@ func (fev *FailingElectionValidator) IsWinner(_ []byte, _, _, _ uint64) bool {
 	return false
 }
 
-func (fev *FailingElectionValidator) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.Address, _ address.Address, _ abi.PoStRandomness) error {
+func (fev *FailingElectionValidator) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.Address, _ address.Address, _ crypto.VRFPi) error {
 	return nil
 }
 

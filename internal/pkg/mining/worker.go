@@ -283,6 +283,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	wins := w.election.IsWinner(electionVRFDigest[:], sectorNum, networkPower.Uint64(), uint64(sectorSize))
 	if !wins {
 		// no winners we are done TODO check using electionProof VRF output election is winner
+		won = false
 		return
 	}
 

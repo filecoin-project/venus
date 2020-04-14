@@ -186,7 +186,7 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 				err := d.syncer.HandleNewTipSet(syncingCtx, &syncTarget.ChainInfo, d.catchup)
 				log.Debugf("finished processing %v", syncTarget)
 				if err != nil {
-					log.Infof("failed sync of %v (catchup=%s): %s", &syncTarget.ChainInfo, d.catchup, err)
+					log.Infof("failed sync of %v (catchup=%t): %s", &syncTarget.ChainInfo, d.catchup, err)
 				}
 				d.syncTargetCount++
 				d.registeredCb(syncTarget, err)

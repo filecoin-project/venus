@@ -30,6 +30,9 @@ type Block struct {
 	// Ticket is the ticket submitted with this block.
 	Ticket Ticket `json:"ticket"`
 
+	// ElectionProof is the vrf proof giving this block's miner authoring rights
+	ElectionProof crypto.VRFPi
+
 	// EPoStInfo wraps all data for verifying this block's Election PoSt
 	EPoStInfo EPoStInfo `json:"ePoStInfo"`
 
@@ -77,10 +80,10 @@ type Block struct {
 }
 
 // IndexMessagesField is the message field position in the encoded block
-const IndexMessagesField = 9
+const IndexMessagesField = 10
 
 // IndexParentsField is the parents field position in the encoded block
-const IndexParentsField = 4
+const IndexParentsField = 5
 
 // Cid returns the content id of this block.
 func (b *Block) Cid() cid.Cid {
@@ -158,6 +161,7 @@ func (b *Block) SignatureData() []byte {
 	tmp := &Block{
 		Miner:           b.Miner,
 		Ticket:          b.Ticket,
+		ElectionProof:   b.ElectionProof,
 		Parents:         b.Parents,
 		ParentWeight:    b.ParentWeight,
 		Height:          b.Height,
