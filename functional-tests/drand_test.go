@@ -10,14 +10,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDrandPublic(t *testing.T) {
-	tf.FunctionalTest(t)
-	t.Skip(("requires local drand setup"))
+	//tf.FunctionalTest(t)
+	//t.Skip(("requires local drand setup"))
 
 	ctx := context.Background()
 	wd, _ := os.Getwd()
@@ -49,9 +48,16 @@ func TestDrandPublic(t *testing.T) {
 		"localhost:8084"}, false, true)
 	require.NoError(t, err)
 
-	entry, err := nd.DrandAPI.GetEntry(ctx, 1)
+	entry1, err := nd.DrandAPI.GetEntry(ctx, 1)
 	require.NoError(t, err)
 
-	assert.Equal(t, drand.Round(1), entry.Round)
-	assert.NotNil(t, entry.Signature)
+	assert.Equal(t, drand.Round(1), entry1.Round)
+	assert.NotNil(t, entry1.Signature)
+
+	entry2, err := nd.DrandAPI.GetEntry(ctx, 2)
+	require.NoError(t, err)
+
+	valid, err := nd.DrandAPI.VerifyEntry(entry1, entry2)
+	require.NoError(t, err)
+	require.True(t, valid)
 }
