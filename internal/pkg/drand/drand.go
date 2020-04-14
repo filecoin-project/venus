@@ -10,7 +10,7 @@ import (
 type IFace interface {
 	ReadEntry(ctx context.Context, drandRound Round) (*Entry, error)
 	VerifyEntry(parent, child *Entry) (bool, error)
-	FetchGroupConfig(addresses []string, secure bool, overrideGroupAddrs bool) ([]string, []string, error)
+	FetchGroupConfig(addresses []string, secure bool, overrideGroupAddrs bool) ([]string, [][]byte, error)
 }
 
 // Round is a type for recording drand round indexes
