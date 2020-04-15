@@ -12,11 +12,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/uuid"
-
-	"github.com/filecoin-project/sector-storage/stores"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-car"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"

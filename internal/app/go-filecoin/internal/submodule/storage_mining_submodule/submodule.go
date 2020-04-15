@@ -4,33 +4,24 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-
-	sectorstorage "github.com/filecoin-project/sector-storage"
-
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/internal/submodule"
-
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-
-	"github.com/filecoin-project/sector-storage/stores"
-
-	fsmeventsconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsm_events"
-
-	fsmnodeconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsm_node"
-
-	fsm "github.com/filecoin-project/storage-fsm"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-
 	"github.com/filecoin-project/go-address"
+	sectorstorage "github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	fsm "github.com/filecoin-project/storage-fsm"
 	"github.com/ipfs/go-datastore"
 
+	fsmeventsconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsm_events"
+	fsmnodeconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsm_node"
 	storageminerconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/storage_miner"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/internal/submodule"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/poster"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 )
 
