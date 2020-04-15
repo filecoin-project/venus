@@ -105,6 +105,8 @@ var initCmd = &cmds.Command{
 			return err
 		}
 
+		panic("TODO: ensure that the sector number counter is initialized to the correct value in the presence of pre-sealed sectors")
+
 		return nil
 	},
 }
