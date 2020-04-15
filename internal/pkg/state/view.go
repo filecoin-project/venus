@@ -2,6 +2,10 @@ package state
 
 import (
 	"context"
+	"errors"
+	"fmt"
+
+	"github.com/filecoin-project/chain-validation/drivers"
 
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -218,6 +222,61 @@ func (v *View) MarketHasDealID(ctx context.Context, addr addr.Address, dealID ab
 	return found, err
 }
 
+// MarketComputeDataCommitment takes deal ids and uses associated commPs to compute commD for a sector that contains the deals
+func (v *View) MarketComputeDateCommitment(ctx context.Context, registeredProof abi.RegisteredProof, dealIDs []abi.DealID) (cid.Cid, error) {
+	marketState, err := v.loadMarketActor(ctx)
+	deals := v.asMap(ctx, marketState.Proposals)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	// map deals to pieceInfo
+	pieceInfos := make([]abi.PieceInfo, len(dealIDs))
+	for i, id := range dealIDs {
+		var proposal market.DealProposal
+		found, err := deals.Get(adt.UIntKey(uint64(id)), &proposal)
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		if !found {
+			return cid.Undef, errors.New(fmt.Sprintf("Could not find deal id %d", id))
+		}
+
+		pieceInfos[i].PieceCID = proposal.PieceCID
+		pieceInfos[i].Size = proposal.PieceSize
+	}
+
+	return drivers.NewChainValidationSyscalls().ComputeUnsealedSectorCID(registeredProof, pieceInfos)
+}
+
+func (v *View) MarketStorageDeal(ctx context.Context, dealID abi.DealID) (market.DealProposal, error) {
+	marketState, err := v.loadMarketActor(ctx)
+	deals := v.asMap(ctx, marketState.Proposals)
+	if err != nil {
+		return market.DealProposal{}, err
+	}
+
+	// map deals to pieceInfo
+	var proposal market.DealProposal
+	found, err := deals.Get(adt.UIntKey(uint64(dealID)), &proposal)
+	if !found {
+		return market.DealProposal{}, errors.New(fmt.Sprintf("Could not find deal id %d", dealID))
+	}
+
+	return proposal, nil
+}
+
+func (v *View) MarketDealState(ctx context.Context, dealID abi.DealID) (*market.DealState, error) {
+	marketState, err := v.loadMarketActor(ctx)
+	dealStates := v.asDealStateArray(ctx, marketState.States)
+	if err != nil {
+		return nil, err
+	}
+
+	return dealStates.Get(dealID)
+}
+
 // NetworkTotalPower Returns the storage power actor's value for network total power.
 func (v *View) NetworkTotalPower(ctx context.Context) (abi.StoragePower, error) {
 	powerState, err := v.loadPowerActor(ctx)
@@ -370,6 +429,10 @@ func (v *View) asArray(ctx context.Context, root cid.Cid) *adt.Array {
 
 func (v *View) asMap(ctx context.Context, root cid.Cid) *adt.Map {
 	return adt.AsMap(StoreFromCbor(ctx, v.ipldStore), root)
+}
+
+func (v *View) asDealStateArray(ctx context.Context, root cid.Cid) *market.DealMetaArray {
+	return market.AsDealStateArray(StoreFromCbor(ctx, v.ipldStore), root)
 }
 
 func (v *View) asBalanceTable(ctx context.Context, root cid.Cid) *adt.BalanceTable {
