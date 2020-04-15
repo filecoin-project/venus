@@ -36,12 +36,7 @@ func NewElectionMachine(chain ChainRandomness) *ElectionMachine {
 
 func (em ElectionMachine) GenerateElectionProof(ctx context.Context, entry *drand.Entry,
 	epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error) {
-	entropy, err := encoding.Encode(miner)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to encode entropy")
-	}
-	seed := blake2b.Sum256(entry.Signature.Data)
-	randomness, err := crypto.BlendEntropy(acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, seed[:], epoch, entropy)
+	randomness, err := electionVRFRandomness(entry, miner, epoch)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate election randomness randomness")
 	}
@@ -89,12 +84,7 @@ func (em ElectionMachine) GenerateEPoSt(allSectorInfos []abi.SectorInfo, challen
 }
 
 func (em ElectionMachine) VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error {
-	entropy, err := encoding.Encode(miner)
-	if err != nil {
-		return errors.Wrapf(err, "failed to encode entropy")
-	}
-	seed := blake2b.Sum256(entry.Signature.Data)
-	randomness, err := crypto.BlendEntropy(acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, seed[:], epoch, entropy)
+	randomness, err := electionVRFRandomness(entry, miner, epoch)
 	if err != nil {
 		return errors.Wrap(err, "failed to reproduce election randomness")
 	}
@@ -213,4 +203,13 @@ func (tm TicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey,
 	}
 
 	return crypto.ValidateBlsSignature(randomness, workerSigner, ticket.VRFProof)
+}
+
+func electionVRFRandomness(entry *drand.Entry, miner address.Address, epoch abi.ChainEpoch) (abi.Randomness, error) {
+	entropy, err := encoding.Encode(miner)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to encode entropy")
+	}
+	seed := blake2b.Sum256(entry.Signature.Data)
+	return crypto.BlendEntropy(acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, seed[:], epoch, entropy)
 }

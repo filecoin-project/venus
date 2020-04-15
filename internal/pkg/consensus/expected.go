@@ -308,7 +308,7 @@ func (c *Expected) validateMining(ctx context.Context,
 			return errors.Errorf("Block did not win election")
 		}
 
-		// TODO validate winning post
+		// TODO #3989 validate winning post
 		allSectorInfos, err := sectorSetPowerTable.SortedSectorInfos(ctx, blk.Miner)
 		if err != nil {
 			return errors.Wrapf(err, "failed to read sector infos from power table")
