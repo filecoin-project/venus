@@ -481,7 +481,7 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 
 	tipsets, err := syncer.fetchAndValidateHeaders(ctx, ci)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
 
 	// Once headers check out, fetch messages
@@ -500,7 +500,7 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 		return syncer.chainStore.HasTipSetAndState(ctx, parents), nil
 	})
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failure fetching full blocks")
 	}
 
 	syncer.reporter.UpdateStatus(status.SyncFetchComplete(true))
