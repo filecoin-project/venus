@@ -184,3 +184,24 @@ func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator
 	}
 	return ret, nil
 }
+
+// Finds the the highest tipset with height <= the requested epoch, by traversing backward from start.
+func FindTipsetAtEpoch(ctx context.Context, tsp TipSetProvider, start block.TipSet, epoch abi.ChainEpoch) (ts block.TipSet, err error) {
+	iterator := IterAncestors(ctx, tsp, start)
+	var h abi.ChainEpoch
+	for ; !iterator.Complete(); err = iterator.Next() {
+		if err != nil {
+			return
+		}
+		ts = iterator.Value()
+		h, err = ts.Height()
+		if err != nil {
+			return
+		}
+		if h <= epoch {
+			break
+		}
+	}
+	// If the iterator completed, ts is the genesis tipset.
+	return
+}
