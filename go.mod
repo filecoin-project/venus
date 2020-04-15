@@ -11,8 +11,8 @@ require (
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v0.7.3-0.20190315170154-87d593639c77
 	github.com/docker/go-connections v0.4.0 // indirect
-	github.com/drand/drand v0.5.5-0.20200404170830-998c611fb395
-	github.com/drand/kyber v1.0.1-0.20200128205555-52819dbafde7
+	github.com/drand/drand v0.7.2
+	github.com/drand/kyber v1.0.1-0.20200331114745-30e90cc60f99
 	github.com/filecoin-project/chain-validation v0.0.6-0.20200409170327-a94b502ea821
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200326153646-e899cc1dd072
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
@@ -23,7 +23,6 @@ require (
 	github.com/filecoin-project/go-fil-markets v0.0.0-20200326202058-16ce89e7bef4
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
-	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200326160829-51775363aa18
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storage-miner v0.0.0-20200326201738-26de94e25d49
 	github.com/filecoin-project/sector-storage v0.0.0-20200406195014-a6d093838576
@@ -112,7 +111,6 @@ require (
 	google.golang.org/api v0.13.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
-	gopkg.in/yaml.v2 v2.2.5 // indirect
 	gotest.tools v2.2.0+incompatible
 )
 
