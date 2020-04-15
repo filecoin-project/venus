@@ -82,6 +82,7 @@ type workerPorcelainAPI interface {
 	consensus.ChainRandomness
 	BlockTime() time.Duration
 	PowerStateView(baseKey block.TipSetKey) (consensus.PowerStateView, error)
+	FaultsStateView(baseKey block.TipSetKey) (consensus.FaultStateView, error)
 }
 
 type electionUtil interface {
@@ -255,7 +256,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- NewOutputErr(err)
 		return
 	}
-	electionPowerTable, err := w.getPowerTable(electionPowerAncestor.Key())
+	electionPowerTable, err := w.getPowerTable(electionPowerAncestor.Key(), base.Key())
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't get snapshot for tipset: %s", err.Error())
 		outCh <- NewOutputErr(err)
@@ -296,7 +297,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- NewOutputErr(err)
 		return
 	}
-	winningPoStSectorSetView, err := w.getPowerTable(sectorSetAncestor.Key())
+	winningPoStSectorSetView, err := w.getPowerTable(sectorSetAncestor.Key(), base.Key())
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't get snapshot for tipset: %s", err.Error())
 		outCh <- NewOutputErr(err)
@@ -321,12 +322,16 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	return
 }
 
-func (w *DefaultWorker) getPowerTable(baseKey block.TipSetKey) (consensus.PowerTableView, error) {
-	view, err := w.api.PowerStateView(baseKey)
+func (w *DefaultWorker) getPowerTable(powerKey, faultsKey block.TipSetKey) (consensus.PowerTableView, error) {
+	powerView, err := w.api.PowerStateView(powerKey)
 	if err != nil {
 		return consensus.PowerTableView{}, err
 	}
-	return consensus.NewPowerTableView(view), nil
+	faultsView, err := w.api.FaultsStateView(faultsKey)
+	if err != nil {
+		return consensus.PowerTableView{}, err
+	}
+	return consensus.NewPowerTableView(powerView, faultsView), nil
 }
 
 func (w *DefaultWorker) lookbackTipset(ctx context.Context, base block.TipSet, nullBlkCount uint64, lookback uint64) (block.TipSet, error) {

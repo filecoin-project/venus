@@ -86,7 +86,8 @@ type ElectionValidator interface {
 
 // StateViewer provides views into the chain state.
 type StateViewer interface {
-	StateView(root cid.Cid) PowerStateView
+	PowerStateView(root cid.Cid) PowerStateView
+	FaultStateView(root cid.Cid) FaultStateView
 }
 
 type chainReader interface {
@@ -199,9 +200,10 @@ func (c *Expected) validateMining(ctx context.Context,
 	parentWeight fbig.Int,
 	parentReceiptRoot cid.Cid) error {
 
-	keyStateView := c.state.StateView(parentStateRoot)
+	keyStateView := c.state.PowerStateView(parentStateRoot)
 	sigValidator := appstate.NewSignatureValidator(keyStateView)
-	keyPowerTable := NewPowerTableView(keyStateView)
+	faultsStateView := c.state.FaultStateView(parentStateRoot)
+	keyPowerTable := NewPowerTableView(keyStateView, faultsStateView)
 
 	tsHeight, err := ts.Height()
 	if err != nil {
@@ -216,8 +218,8 @@ func (c *Expected) validateMining(ctx context.Context,
 	if err != nil {
 		return errors.Wrap(err, "failed to get state root for sectorSet ancestor")
 	}
-	sectorSetStateView := c.state.StateView(sectorSetStateRoot)
-	sectorSetPowerTable := NewPowerTableView(sectorSetStateView)
+	sectorSetStateView := c.state.PowerStateView(sectorSetStateRoot)
+	sectorSetPowerTable := NewPowerTableView(sectorSetStateView, faultsStateView)
 
 	electionPowerAncestor, err := chain.FindTipsetAtEpoch(ctx, ts, tsHeight-ElectionPowerTableLookback, c.chainState)
 	if err != nil {
@@ -227,8 +229,8 @@ func (c *Expected) validateMining(ctx context.Context,
 	if err != nil {
 		return errors.Wrap(err, "failed to get state root for election power ancestor")
 	}
-	electionPowerStateView := c.state.StateView(electionPowerStateRoot)
-	electionPowerTable := NewPowerTableView(electionPowerStateView)
+	electionPowerStateView := c.state.PowerStateView(electionPowerStateRoot)
+	electionPowerTable := NewPowerTableView(electionPowerStateView, faultsStateView)
 
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
@@ -433,17 +435,22 @@ func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (*state.State,
 	return state.LoadState(ctx, c.cstore, id)
 }
 
-// PowerStateViewer a state viewer to the power state view interface.
-type PowerStateViewer struct {
+// DefaultStateViewer a state viewer to the power state view interface.
+type DefaultStateViewer struct {
 	*appstate.Viewer
 }
 
-// AsPowerStateViewer adapts a state viewer to a power state viewer.
-func AsPowerStateViewer(v *appstate.Viewer) PowerStateViewer {
-	return PowerStateViewer{v}
+// AsDefaultStateViewer adapts a state viewer to a power state viewer.
+func AsDefaultStateViewer(v *appstate.Viewer) DefaultStateViewer {
+	return DefaultStateViewer{v}
 }
 
-// StateView returns a power state view for a state root.
-func (p *PowerStateViewer) StateView(root cid.Cid) PowerStateView {
-	return p.Viewer.StateView(root)
+// PowerStateView returns a power state view for a state root.
+func (v *DefaultStateViewer) PowerStateView(root cid.Cid) PowerStateView {
+	return v.Viewer.StateView(root)
+}
+
+// FaultStateView returns a fault state view for a state root.
+func (v *DefaultStateViewer) FaultStateView(root cid.Cid) FaultStateView {
+	return v.Viewer.StateView(root)
 }

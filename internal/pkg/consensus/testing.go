@@ -29,13 +29,18 @@ func RequireNewTipSet(require *require.Assertions, blks ...*block.Block) block.T
 	return ts
 }
 
-// FakePowerStateViewer is a fake power state viewer.
-type FakePowerStateViewer struct {
+// FakeConsensusStateViewer is a fake power state viewer.
+type FakeConsensusStateViewer struct {
 	Views map[cid.Cid]*state.FakeStateView
 }
 
-// StateView returns the state view for a root.
-func (f *FakePowerStateViewer) StateView(root cid.Cid) PowerStateView {
+// PowerStateView returns the state view for a root.
+func (f *FakeConsensusStateViewer) PowerStateView(root cid.Cid) PowerStateView {
+	return f.Views[root]
+}
+
+// FaultStateView returns the state view for a root.
+func (f *FakeConsensusStateViewer) FaultStateView(root cid.Cid) FaultStateView {
 	return f.Views[root]
 }
 
