@@ -3,6 +3,8 @@ package storage_mining_submodule
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsampler"
+
 	sectorstorage "github.com/filecoin-project/sector-storage"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/internal/submodule"
@@ -79,11 +81,12 @@ func NewStorageMiningSubmodule(
 
 	sid := newPersistedSectorNumberCounter(ds)
 
-	ncn := fsmnodeconnector.New()
+	ncn := fsmnodeconnector.New(mw, c.ChainReader, c.ActorState, m.Outbox, c.State)
 
 	pcp := fsm.NewBasicPreCommitPolicy(&ccn, abi.ChainEpoch(2*60*24))
 
-	fsm := fsm.New(ncn, fsmeventsconnector.New(), minerAddr, ds, mgr, sid, ffiwrapper.ProofVerifier, ncn.ChainGetTicket, &pcp)
+	fsmConnector := fsmeventsconnector.New(chainsampler.NewHeightThresholdScheduler(c.ChainReader), c.State)
+	fsm := fsm.New(ncn, fsmConnector, minerAddr, ds, mgr, sid, ffiwrapper.ProofVerifier, ncn.ChainGetTicket, &pcp)
 
 	bke := piecemanager.NewFiniteStateMachineBackEnd(fsm, sid)
 

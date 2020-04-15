@@ -33,13 +33,13 @@ type FiniteStateMachineNodeConnector struct {
 	waiter      *msg.Waiter
 	chain       *chain.Store
 	chainState  *cst.ChainStateReadWriter
-	stateViewer *appstate.Viewer
+	stateViewer *appstate.TipSetStateViewer
 	outbox      *message.Outbox
 }
 
 var _ fsm.SealingAPI = new(FiniteStateMachineNodeConnector)
 
-func New(waiter *msg.Waiter, chain *chain.Store, viewer *appstate.Viewer, outbox *message.Outbox, chainState *cst.ChainStateReadWriter) FiniteStateMachineNodeConnector {
+func New(waiter *msg.Waiter, chain *chain.Store, viewer *appstate.TipSetStateViewer, outbox *message.Outbox, chainState *cst.ChainStateReadWriter) FiniteStateMachineNodeConnector {
 	return FiniteStateMachineNodeConnector{
 		chain:       chain,
 		chainState:  chainState,
@@ -240,6 +240,5 @@ func (f FiniteStateMachineNodeConnector) stateViewForToken(tok fsm.TipSetToken) 
 		return nil, err
 	}
 
-	stateRoot, err := f.chain.GetTipSetStateRoot(tsk)
-	return f.stateViewer.StateView(stateRoot), nil
+	return f.stateViewer.StateView(tsk)
 }
