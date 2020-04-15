@@ -259,7 +259,7 @@ func (s *StorageClientNodeConnector) OnDealSectorCommitted(ctx context.Context, 
 			return false
 		}
 
-		if msg.Message.Method != abi.MethodNum(builtin.MethodsMiner.ProveCommitSector) {
+		if msg.Message.Method != builtin.MethodsMiner.ProveCommitSector {
 			return false
 		}
 
