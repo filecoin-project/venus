@@ -62,6 +62,7 @@ func TestMiner(t *testing.T) {
 }
 
 func TestNoPowerAfterSlash(t *testing.T) {
+	tf.UnitTest(t)
 	// setup lookback state with 3 miners
 	ctx := context.Background()
 	numCommittedSectors := uint64(19)
@@ -78,7 +79,7 @@ func TestNoPowerAfterSlash(t *testing.T) {
 }
 
 func TestTotalPowerUnaffectedBySlash(t *testing.T) {
-
+	tf.UnitTest(t)
 	ctx := context.Background()
 	numCommittedSectors := uint64(19)
 	numMiners := 3
