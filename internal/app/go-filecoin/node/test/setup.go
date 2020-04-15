@@ -37,7 +37,7 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	// Load genesis config fixture.
 	genCfg := loadGenesisConfig(t, genCfgPath)
 	genCfg.Miners = append(genCfg.Miners, &gengen.CreateStorageMinerConfig{
-		Owner:      1,
+		Owner:      5,
 		SectorSize: constants.DevSectorSize,
 	})
 	seed := node.MakeChainSeed(t, genCfg)
@@ -57,16 +57,15 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 
 	nodes[0] = bootstrapMiner
 
-	// create addtiional nodes
+	// create additional nodes
 	for i := uint(0); i < additionalNodes; i++ {
 		node := NewNodeBuilder(t).
 			WithGenesisInit(seed.GenesisInitFunc).
+			WithConfig(node.DefaultAddressConfigOpt(seed.Addr(t, int(i+1)))).
 			WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...).
 			WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
 			Build(ctx)
-		addr := seed.GiveKey(t, node, int(i+1))
-		err := node.PorcelainAPI.ConfigSet("wallet.defaultAddress", addr.String())
-		require.NoError(t, err)
+		seed.GiveKey(t, node, int(i+1))
 		err = node.Start(ctx)
 		require.NoError(t, err)
 		nodes[i+1] = node
@@ -84,9 +83,6 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 		for {
 			select {
 			case <-ctx.Done():
-				for _, nd := range nodes {
-					nd.Stop(ctx)
-				}
 				return
 			default:
 				fakeClock.Advance(blockTime)

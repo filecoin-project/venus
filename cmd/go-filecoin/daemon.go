@@ -10,8 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
-
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
@@ -216,11 +214,6 @@ func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig,
 }
 
 func CreateServerEnv(ctx context.Context, nd *node.Node) *Env {
-	var storageAPI *storage.API
-	if nd.StorageProtocol != nil {
-		storageAPI = storage.NewAPI(nd.StorageProtocol.StorageClient, nd.StorageProtocol.StorageProvider, nd.PieceManager())
-	}
-
 	return &Env{
 		blockMiningAPI: nd.BlockMining.BlockMiningAPI,
 		drandAPI:       nd.DrandAPI,
@@ -228,6 +221,6 @@ func CreateServerEnv(ctx context.Context, nd *node.Node) *Env {
 		inspectorAPI:   NewInspectorAPI(nd.Repo),
 		porcelainAPI:   nd.PorcelainAPI,
 		retrievalAPI:   nd.RetrievalProtocol,
-		storageAPI:     storageAPI,
+		storageAPI:     nd.StorageAPI,
 	}
 }

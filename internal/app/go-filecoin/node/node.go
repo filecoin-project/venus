@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"runtime"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
@@ -66,6 +68,7 @@ type Node struct {
 
 	PorcelainAPI *porcelain.API
 	DrandAPI     *drand.API
+	StorageAPI   *storage.API
 
 	//
 	// Core services
@@ -405,6 +408,14 @@ func (node *Node) SetupMining(ctx context.Context) error {
 		}
 	}
 
+	if err := node.StorageMining.Start(ctx); err != nil {
+		fmt.Printf("error starting storage miner: %s\n", err)
+	}
+
+	if err := node.StorageProtocol.StorageProvider.Start(ctx); err != nil {
+		fmt.Printf("error starting storage provider: %s\n", err)
+	}
+
 	return nil
 }
 
@@ -484,10 +495,9 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return err
 	}
 
-	node.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(
+	return node.StorageProtocol.AddStorageProvider(
 		ctx,
 		minerAddr,
-		address.Undef, // TODO: This is for setting up mining, we need to pass the client address in if this is going to be a storage client also
 		&node.chain,
 		&node.Messaging,
 		waiter,
@@ -501,11 +511,6 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		sectorBuilder.SealProofType(),
 		stateViewer,
 	)
-	if err != nil {
-		return errors.Wrap(err, "error initializing storage protocol")
-	}
-
-	return nil
 }
 
 func (node *Node) setupRetrievalMining(ctx context.Context) error {
@@ -601,19 +606,6 @@ func (node *Node) StartMining(ctx context.Context) error {
 	node.BlockMining.AddNewlyMinedBlock = node.addNewlyMinedBlock
 	node.BlockMining.MiningDoneWg.Add(1)
 	go node.handleNewMiningOutput(miningCtx, outCh)
-
-	if err := node.StorageMining.Start(ctx); err != nil {
-		fmt.Printf("error starting storage miner: %s\n", err)
-	}
-
-	if err := node.StorageProtocol.StorageProvider.Start(ctx); err != nil {
-		fmt.Printf("error starting storage provider: %s\n", err)
-	}
-
-	// TODO: Retrieval Market Integration
-	//if err := node.RetrievalProtocol.RetrievalProvider.Start(); err != nil {
-	//	fmt.Printf("error starting retrieval provider: %s\n", err)
-	//}
 
 	node.setIsMining(true)
 

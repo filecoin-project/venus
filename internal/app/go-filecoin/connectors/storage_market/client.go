@@ -2,6 +2,9 @@ package storagemarketconnector
 
 import (
 	"context"
+	"reflect"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
@@ -148,7 +151,12 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 
 	unsigned := chnMsg.Message.Message
 
-	minerWorker, err := s.GetMinerWorkerAddress(ctx, deal.Proposal.Provider, nil)
+	tok, err := encoding.Encode(s.chainStore.Head())
+	if err != nil {
+		return 0, err
+	}
+
+	minerWorker, err := s.GetMinerWorkerAddress(ctx, deal.Proposal.Provider, tok)
 	if err != nil {
 		return 0, err
 	}
@@ -176,7 +184,7 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 	// in the market actor state.
 
 	for _, proposal := range msgProposals {
-		if proposal.Proposal == deal.Proposal {
+		if reflect.DeepEqual(proposal.Proposal, deal.Proposal) {
 			var ret market.PublishStorageDealsReturn
 			err := encoding.Decode(chnMsg.Receipt.ReturnValue, &ret)
 			if err != nil {
@@ -191,7 +199,7 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 
 // SignProposal uses the local wallet to sign the given proposal
 func (s *StorageClientNodeConnector) SignProposal(ctx context.Context, signer address.Address, proposal market.DealProposal) (*market.ClientDealProposal, error) {
-	buf, err := encoding.Encode(proposal)
+	buf, err := encoding.Encode(&proposal)
 	if err != nil {
 		return nil, err
 	}
@@ -229,5 +237,48 @@ func (s *StorageClientNodeConnector) GetChainHead(ctx context.Context) (shared.T
 }
 
 func (s *StorageClientNodeConnector) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
-	panic("implement me") // @laser to do this
+	view, err := s.chainStore.StateView(s.chainStore.Head())
+	if err != nil {
+		cb(err)
+		return err
+	}
+
+	resolvedProvider, err := view.InitResolveAddress(ctx, provider)
+	if err != nil {
+		cb(err)
+		return err
+	}
+
+	err = s.waiter.WaitPredicate(ctx, func(msg *types.SignedMessage, c cid.Cid) bool {
+		resolvedTo, err := view.InitResolveAddress(ctx, msg.Message.To)
+		if err != nil {
+			return false
+		}
+
+		if resolvedTo != resolvedProvider {
+			return false
+		}
+
+		if msg.Message.Method != builtin.MethodsMiner.ProveCommitSector {
+			return false
+		}
+
+		// that's enough for us to check chain state
+		view, err = s.chainStore.StateView(s.chainStore.Head())
+		if err != nil {
+			return false
+		}
+
+		found, err := view.MarketHasDealID(ctx, resolvedProvider, dealID)
+		if err != nil {
+			return false
+		}
+
+		return found
+	}, func(b *block.Block, signedMessage *types.SignedMessage, receipt *vm.MessageReceipt) error {
+		return nil
+	})
+
+	cb(err)
+	return err
 }

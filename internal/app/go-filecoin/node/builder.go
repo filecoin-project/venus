@@ -4,6 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
+
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
@@ -248,6 +252,8 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.BlockMining")
 	}
 
+	waiter := msg.NewWaiter(nd.chain.ChainReader, nd.chain.MessageStore, nd.Blockstore.Blockstore, nd.Blockstore.CborStore)
+
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Chain:        nd.chain.State,
 		Sync:         cst.NewChainSyncProvider(nd.syncer.ChainSyncManager),
@@ -256,13 +262,36 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		Expected:     nd.syncer.Consensus,
 		MsgPool:      nd.Messaging.MsgPool,
 		MsgPreviewer: msg.NewPreviewer(nd.chain.ChainReader, nd.Blockstore.CborStore, nd.Blockstore.Blockstore, nd.chain.Processor),
-		MsgWaiter:    msg.NewWaiter(nd.chain.ChainReader, nd.chain.MessageStore, nd.Blockstore.Blockstore, nd.Blockstore.CborStore),
+		MsgWaiter:    waiter,
 		Network:      nd.network.Network,
 		Outbox:       nd.Messaging.Outbox,
 		PieceManager: nd.PieceManager,
 		Wallet:       nd.Wallet.Wallet,
 	}))
 
+	addr, err := nd.PorcelainAPI.WalletDefaultAddress()
+	if err != nil {
+		return nil, err
+	}
+
+	nd.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(
+		ctx,
+		addr,
+		&nd.chain,
+		&nd.Messaging,
+		waiter,
+		nd.Wallet.Signer,
+		nd.Host(),
+		nd.Repo.Datastore(),
+		nd.Blockstore.Blockstore,
+		nd.network.GraphExchange,
+		state.NewViewer(nd.Blockstore.CborStore),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	nd.StorageAPI = storage.NewAPI(nd.StorageProtocol)
 	nd.DrandAPI = drandapi.New(b.drand, nd.PorcelainAPI)
 
 	return nd, nil

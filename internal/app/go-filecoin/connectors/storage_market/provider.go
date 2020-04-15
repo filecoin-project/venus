@@ -60,7 +60,12 @@ func NewStorageProviderNodeConnector(ma address.Address,
 
 // AddFunds sends a message to add storage market collateral for the given address
 func (s *StorageProviderNodeConnector) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) error {
-	workerAddr, err := s.GetMinerWorkerAddress(ctx, s.minerAddr, nil)
+	tok, err := encoding.Encode(s.chainStore.Head())
+	if err != nil {
+		return err
+	}
+
+	workerAddr, err := s.GetMinerWorkerAddress(ctx, s.minerAddr, tok)
 	if err != nil {
 		return err
 	}
@@ -87,7 +92,12 @@ func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr, wa
 func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (abi.DealID, cid.Cid, error) {
 	params := market.PublishStorageDealsParams{Deals: []market.ClientDealProposal{deal.ClientDealProposal}}
 
-	workerAddr, err := s.GetMinerWorkerAddress(ctx, s.minerAddr, nil)
+	tok, err := encoding.Encode(s.chainStore.Head())
+	if err != nil {
+		return 0, cid.Undef, err
+	}
+
+	workerAddr, err := s.GetMinerWorkerAddress(ctx, s.minerAddr, tok)
 	if err != nil {
 		return 0, cid.Undef, err
 	}
@@ -98,7 +108,7 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 		builtin.StorageMarketActorAddr,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
-		gas.NewGas(300),
+		gas.NewGas(10000),
 		true,
 		builtin.MethodsMarket.PublishStorageDeals,
 		&params,

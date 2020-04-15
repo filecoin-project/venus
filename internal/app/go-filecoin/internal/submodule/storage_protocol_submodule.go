@@ -3,13 +3,18 @@ package submodule
 import (
 	"context"
 	"os"
+	"reflect"
+
+	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/go-address"
 	graphsyncimpl "github.com/filecoin-project/go-data-transfer/impl/graphsync"
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	iface "github.com/filecoin-project/go-fil-markets/storagemarket"
 	impl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	smvalid "github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	smnetwork "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-datastore"
@@ -32,13 +37,44 @@ import (
 type StorageProtocolSubmodule struct {
 	StorageClient   iface.StorageClient
 	StorageProvider iface.StorageProvider
+	pieceManager    piecemanager.PieceManager
 }
 
 // NewStorageProtocolSubmodule creates a new storage protocol submodule.
 func NewStorageProtocolSubmodule(
 	ctx context.Context,
-	minerAddr address.Address,
 	clientAddr address.Address,
+	c *ChainSubmodule,
+	m *MessagingSubmodule,
+	mw *msg.Waiter,
+	s types.Signer,
+	h host.Host,
+	ds datastore.Batching,
+	bs blockstore.Blockstore,
+	gsync graphsync.GraphExchange,
+	stateViewer *appstate.Viewer,
+) (*StorageProtocolSubmodule, error) {
+	cnode := storagemarketconnector.NewStorageClientNodeConnector(cborutil.NewIpldStore(bs), c.State, mw, s, m.Outbox, clientAddr, stateViewer)
+
+	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync)
+	err := dt.RegisterVoucherType(reflect.TypeOf(&smvalid.StorageDataTransferVoucher{}), smvalid.NewClientRequestValidator(statestore.New(ds)))
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, dt, discovery.NewLocal(ds), ds, cnode)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating storage client")
+	}
+
+	return &StorageProtocolSubmodule{
+		StorageClient: client,
+	}, nil
+}
+
+func (sm *StorageProtocolSubmodule) AddStorageProvider(
+	ctx context.Context,
+	minerAddr address.Address,
 	c *ChainSubmodule,
 	m *MessagingSubmodule,
 	mw *msg.Waiter,
@@ -51,40 +87,51 @@ func NewStorageProtocolSubmodule(
 	repoPath string,
 	sealProofType abi.RegisteredProof,
 	stateViewer *appstate.Viewer,
-) (*StorageProtocolSubmodule, error) {
+) error {
+	sm.pieceManager = pm
+
 	pnode := storagemarketconnector.NewStorageProviderNodeConnector(minerAddr, c.State, m.Outbox, mw, pm, s, stateViewer)
-	cnode := storagemarketconnector.NewStorageClientNodeConnector(cborutil.NewIpldStore(bs), c.State, mw, s, m.Outbox, clientAddr, stateViewer)
 
 	pieceStagingPath, err := paths.PieceStagingDir(repoPath)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// ensure pieces directory exists
 	err = os.MkdirAll(pieceStagingPath, 0700)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	fs, err := filestore.NewLocalFileStore(filestore.OsPath(pieceStagingPath))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync)
-
-	provider, err := impl.NewProvider(smnetwork.NewFromLibp2pHost(h), ds, bs, fs, piecestore.NewPieceStore(ds), dt, pnode, minerAddr, sealProofType)
+	err = dt.RegisterVoucherType(reflect.TypeOf(&smvalid.StorageDataTransferVoucher{}), smvalid.NewProviderRequestValidator(statestore.New(ds)))
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating graphsync provider")
+		return err
 	}
 
-	client, err := impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, dt, nil, nil, cnode)
-	if err != nil {
-		return nil, errors.Wrap(err, "error creating storage client")
-	}
+	sm.StorageProvider, err = impl.NewProvider(smnetwork.NewFromLibp2pHost(h), ds, bs, fs, piecestore.NewPieceStore(ds), dt, pnode, minerAddr, sealProofType)
+	return err
+}
 
-	return &StorageProtocolSubmodule{
-		StorageClient:   client,
-		StorageProvider: provider,
-	}, nil
+func (sm *StorageProtocolSubmodule) Provider() (iface.StorageProvider, error) {
+	if sm.StorageProvider == nil {
+		return nil, errors.New("Mining has not been started so storage provider is not available")
+	}
+	return sm.StorageProvider, nil
+}
+
+func (sm *StorageProtocolSubmodule) Client() iface.StorageClient {
+	return sm.StorageClient
+}
+
+func (sm *StorageProtocolSubmodule) PieceManager() (piecemanager.PieceManager, error) {
+	if sm.StorageProvider == nil {
+		return nil, errors.New("Mining has not been started so piece manager is not available")
+	}
+	return sm.pieceManager, nil
 }
