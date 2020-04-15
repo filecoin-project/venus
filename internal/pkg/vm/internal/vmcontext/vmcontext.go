@@ -259,7 +259,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 
 		// Pay block reward.
 		// Dragons: missing final protocol design on if/how to determine the nominal power
-		rewardMessage := makeBlockRewardMessage(blk.Miner, minerPenaltyTotal, minerGasRewardTotal, blk.TicketCount)
+		rewardMessage := makeBlockRewardMessage(blk.Miner, minerPenaltyTotal, minerGasRewardTotal, 1)
 		if _, err := vm.applyImplicitMessage(rewardMessage, rnd); err != nil {
 			return nil, err
 		}

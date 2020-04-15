@@ -66,9 +66,10 @@ func TestTriangleEncoding(t *testing.T) {
 		candidate2 := blk.NewEPoStCandidate(3, []byte{0x04}, 3000)
 		postInfo := blk.NewEPoStInfo([]blk.EPoStProof{blk.NewEPoStProof(constants.DevRegisteredPoStProof, []byte{0x07})}, []byte{0x02, 0x06}, candidate1, candidate2)
 		b := &blk.Block{
-			Miner:  newAddress(),
-			Ticket: blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-			Height: 2,
+			Miner:         newAddress(),
+			Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
+			ElectionProof: []byte{0x0a, 0x0b},
+			Height:        2,
 			DrandEntries: []*drand.Entry{
 				{
 					Round: drand.Round(1),
@@ -101,7 +102,7 @@ func TestTriangleEncoding(t *testing.T) {
 		// Also please add non zero fields to "b" and "diff" in TestSignatureData
 		// and add a new check that different values of the new field result in
 		// different output data.
-		require.Equal(t, 17, s.NumField()) // Note: this also counts private fields
+		require.Equal(t, 18, s.NumField()) // Note: this also counts private fields
 		testRoundTrip(t, b)
 	})
 }
@@ -235,8 +236,9 @@ func TestSignatureData(t *testing.T) {
 	postInfo := blk.NewEPoStInfo([]blk.EPoStProof{blk.NewEPoStProof(constants.DevRegisteredPoStProof, []byte{0x07})}, []byte{0x02, 0x06}, candidate1, candidate2)
 
 	b := &blk.Block{
-		Miner:  newAddress(),
-		Ticket: blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
+		Miner:         newAddress(),
+		Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
+		ElectionProof: []byte{0x0a, 0x0b},
 		DrandEntries: []*drand.Entry{
 			{
 				Round: drand.Round(5),
@@ -266,8 +268,9 @@ func TestSignatureData(t *testing.T) {
 	diffPoStInfo := blk.NewEPoStInfo([]blk.EPoStProof{blk.NewEPoStProof(constants.DevRegisteredPoStProof, []byte{0x17})}, []byte{0x12, 0x16}, diffCandidate1, diffCandidate2)
 
 	diff := &blk.Block{
-		Miner:  newAddress(),
-		Ticket: blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
+		Miner:         newAddress(),
+		Ticket:        blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
+		ElectionProof: []byte{0x0c, 0x0d},
 		DrandEntries: []*drand.Entry{
 			{
 				Round: drand.Round(44),
@@ -325,6 +328,17 @@ func TestSignatureData(t *testing.T) {
 		defer func() { b.Ticket = cpy }()
 
 		b.Ticket = diff.Ticket
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.ElectionProof
+		defer func() { b.ElectionProof = cpy }()
+
+		b.ElectionProof = diff.ElectionProof
 		after := b.SignatureData()
 		assert.False(t, bytes.Equal(before, after))
 	}()

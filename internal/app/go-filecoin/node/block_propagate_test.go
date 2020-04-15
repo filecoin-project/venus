@@ -2,6 +2,7 @@ package node_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -66,7 +67,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	assert.True(t, equal, "failed to sync chains")
 }
 
-func TestChainSync(t *testing.T) {
+func TestChainSyncA(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
@@ -77,7 +78,6 @@ func TestChainSync(t *testing.T) {
 
 	ConnectNodes(t, nodes[0], nodes[1])
 
-	// Advance node's time so that it is epoch 1
 	fakeClock.Advance(blockTime)
 	_, err := nodes[0].BlockMining.BlockMiningAPI.MiningOnce(ctx)
 	require.NoError(t, err)
@@ -87,7 +87,6 @@ func TestChainSync(t *testing.T) {
 	fakeClock.Advance(blockTime)
 	thirdBlock, err := nodes[0].BlockMining.BlockMiningAPI.MiningOnce(ctx)
 	require.NoError(t, err)
-
 	equal := false
 	for i := 0; i < 30; i++ {
 		otherHead := nodes[1].PorcelainAPI.ChainHeadKey()
@@ -96,7 +95,7 @@ func TestChainSync(t *testing.T) {
 		if equal {
 			break
 		}
-		time.Sleep(time.Millisecond * 20)
+		time.Sleep(time.Millisecond * 50)
 	}
 
 	assert.True(t, equal, "failed to sync chains")
@@ -194,9 +193,10 @@ func TestChainSyncWithMessages(t *testing.T) {
 
 	/* mine block with message */
 	fakeClock.Advance(blockTime)
+	fmt.Printf("about to mining once\n")
 	_, err = nodeMine.BlockMining.BlockMiningAPI.MiningOnce(ctx)
 	require.NoError(t, err)
-
+	fmt.Printf("finished mining once\n")
 	/* verify new state */
 	_, err = nodeReceive.PorcelainAPI.MessageWaitDone(ctx, uCid)
 	require.NoError(t, err)
