@@ -3,6 +3,8 @@ package storage_mining_submodule
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+
 	sectorstorage "github.com/filecoin-project/sector-storage"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/internal/submodule"
@@ -57,7 +59,7 @@ func NewStorageMiningSubmodule(
 	stateViewer *appstate.Viewer,
 	sealProofType abi.RegisteredProof,
 	postProofType abi.RegisteredProof,
-	sectorDirPath string,
+	r repo.Repo,
 ) (*StorageMiningSubmodule, error) {
 	minerNode := storageminerconnector.NewStorageMinerNodeConnector(minerAddr, c.ChainReader, c.State, m.Outbox, mw, w.Signer, stateViewer)
 
@@ -72,7 +74,7 @@ func NewStorageMiningSubmodule(
 
 	scg := sectorstorage.SealerConfig{AllowPreCommit1: true, AllowPreCommit2: true, AllowCommit: true}
 
-	mgr, err := sectorstorage.New(context.TODO(), newSinglePathLocalStorage(sectorDirPath), sdx, &fcg, scg, []string{}, nil)
+	mgr, err := sectorstorage.New(context.TODO(), newRepoStorageConnector(r), sdx, &fcg, scg, []string{}, nil)
 	if err != nil {
 		return nil, err
 	}

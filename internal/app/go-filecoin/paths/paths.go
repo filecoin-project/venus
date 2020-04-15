@@ -55,15 +55,3 @@ func GetSectorPath(override, repoPath string) (string, error) {
 func PieceStagingDir(repoPath string) (string, error) {
 	return homedir.Expand(filepath.Join(repoPath, "../", defaultPieceStagingDir))
 }
-
-// StagingDir returns the path to the sector staging directory given the sector
-// storage directory path.
-func StagingDir(sectorPath string) (string, error) {
-	return homedir.Expand(filepath.Join(sectorPath, defaultSectorStagingDir))
-}
-
-// SealedDir returns the path to the sector sealed directory given the sector
-// storage directory path.
-func SealedDir(sectorPath string) (string, error) {
-	return homedir.Expand(filepath.Join(sectorPath, defaultSectorSealingDir))
-}

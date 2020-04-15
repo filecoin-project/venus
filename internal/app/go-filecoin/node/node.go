@@ -18,7 +18,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/internal/submodule"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/internal/submodule/storage_mining_submodule"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
@@ -451,11 +450,6 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return err
 	}
 
-	sectorDir, err := paths.GetSectorPath(node.Repo.Config().SectorBase.RootDir, repoPath)
-	if err != nil {
-		return err
-	}
-
 	postProofType, sealProofType, err := registeredProofsFromSectorSize(status.SectorSize)
 	if err != nil {
 		return err
@@ -468,7 +462,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 	// TODO: rework these modules so they can be at least partially constructed during the building phase #3738
 	stateViewer := state.NewViewer(cborStore)
 
-	node.StorageMining, err = storage_mining_submodule.NewStorageMiningSubmodule(minerAddr, node.Repo.Datastore(), &node.chain, &node.Messaging, waiter, &node.Wallet, stateViewer, sealProofType, postProofType, sectorDir)
+	node.StorageMining, err = storage_mining_submodule.NewStorageMiningSubmodule(minerAddr, node.Repo.Datastore(), &node.chain, &node.Messaging, waiter, &node.Wallet, stateViewer, sealProofType, postProofType, node.Repo)
 	if err != nil {
 		return err
 	}
