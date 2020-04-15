@@ -435,22 +435,22 @@ func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (*state.State,
 	return state.LoadState(ctx, c.cstore, id)
 }
 
-// ConsensusStateViewer a state viewer to the power state view interface.
-type ConsensusStateViewer struct {
+// DefaultStateViewer a state viewer to the power state view interface.
+type DefaultStateViewer struct {
 	*appstate.Viewer
 }
 
-// AsConsensusStateViewer adapts a state viewer to a power state viewer.
-func AsConsensusStateViewer(v *appstate.Viewer) ConsensusStateViewer {
-	return ConsensusStateViewer{v}
+// AsDefaultStateViewer adapts a state viewer to a power state viewer.
+func AsDefaultStateViewer(v *appstate.Viewer) DefaultStateViewer {
+	return DefaultStateViewer{v}
 }
 
 // PowerStateView returns a power state view for a state root.
-func (v *ConsensusStateViewer) PowerStateView(root cid.Cid) PowerStateView {
+func (v *DefaultStateViewer) PowerStateView(root cid.Cid) PowerStateView {
 	return v.Viewer.StateView(root)
 }
 
 // FaultStateView returns a fault state view for a state root.
-func (v *ConsensusStateViewer) FaultStateView(root cid.Cid) FaultStateView {
+func (v *DefaultStateViewer) FaultStateView(root cid.Cid) FaultStateView {
 	return v.Viewer.StateView(root)
 }
