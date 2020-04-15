@@ -166,6 +166,18 @@ func (v *View) MinerProvingSetForEach(ctx context.Context, maddr addr.Address,
 	})
 }
 
+// MinerExists Returns true iff the miner exists.
+func (v *View) MinerExists(ctx context.Context, maddr addr.Address) (bool, error) {
+	_, err := v.loadMinerActor(ctx, maddr)
+	if err == nil {
+		return true, nil
+	}
+	if err == types.ErrNotFound {
+		return false, nil
+	}
+	return false, err
+}
+
 // MinerFaults Returns all sector ids that are faults
 func (v *View) MinerFaults(ctx context.Context, maddr addr.Address) ([]uint64, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)

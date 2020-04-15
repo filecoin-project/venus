@@ -193,7 +193,7 @@ func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, candida
 }
 
 func (p *Poster) getProvingSet(ctx context.Context, stateView *appstate.View) ([]abi.SectorInfo, error) {
-	return consensus.NewPowerTableView(stateView).SortedSectorInfos(ctx, p.minerAddr)
+	return consensus.NewPowerTableView(stateView, stateView).SortedSectorInfos(ctx, p.minerAddr)
 }
 
 func (p *Poster) getChallengeSeed(ctx context.Context, head block.TipSetKey, height abi.ChainEpoch, minerAddr address.Address) ([32]byte, error) {

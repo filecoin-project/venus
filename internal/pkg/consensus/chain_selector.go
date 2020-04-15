@@ -55,7 +55,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID ci
 	if !pStateID.Defined() {
 		return fbig.Zero(), errors.New("undefined state passed to chain selector new weight")
 	}
-	powerTableView := NewPowerTableView(c.state.StateView(pStateID))
+	powerTableView := NewPowerTableView(c.state.PowerStateView(pStateID), c.state.FaultStateView(pStateID))
 	totalBytes, err := powerTableView.Total(ctx)
 	if err != nil {
 		return fbig.Zero(), err

@@ -150,6 +150,10 @@ func (a *API) MinerStateView(baseKey block.TipSetKey) (MinerStateView, error) {
 	return a.StateView(baseKey)
 }
 
+func (a *API) FaultsStateView(baseKey block.TipSetKey) (consensus.FaultStateView, error) {
+	return a.StateView(baseKey)
+}
+
 func (a *API) ProtocolStateView(baseKey block.TipSetKey) (ProtocolStateView, error) {
 	return a.StateView(baseKey)
 }

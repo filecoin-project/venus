@@ -83,6 +83,10 @@ func (v *FakeStateView) MinerControlAddresses(_ context.Context, maddr address.A
 	return m.Owner, m.Worker, nil
 }
 
+func (v *FakeStateView) MinerExists(_ context.Context, _ address.Address) (bool, error) {
+	return true, nil
+}
+
 func (v *FakeStateView) MinerPeerID(ctx context.Context, maddr address.Address) (peer.ID, error) {
 	m, ok := v.Miners[maddr]
 	if !ok {

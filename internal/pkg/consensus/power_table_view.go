@@ -23,16 +23,26 @@ type PowerStateView interface {
 	MinerClaimedPower(ctx context.Context, miner addr.Address) (abi.StoragePower, error)
 }
 
+// FaultStateView is the interface needed by the recent fault state to adjust
+// miner power claims based on consensus slashing events.
+type FaultStateView interface {
+	MinerExists(ctx context.Context, maddr addr.Address) (bool, error)
+}
+
 // PowerTableView defines the set of functions used by the ChainManager to view
 // the power table encoded in the tipset's state tree
 // PowerTableView is the power table view used for running expected consensus in
 type PowerTableView struct {
-	state PowerStateView
+	state      PowerStateView
+	faultState FaultStateView
 }
 
 // NewPowerTableView constructs a new view with a snapshot pinned to a particular tip set.
-func NewPowerTableView(state PowerStateView) PowerTableView {
-	return PowerTableView{state}
+func NewPowerTableView(state PowerStateView, faultState FaultStateView) PowerTableView {
+	return PowerTableView{
+		state:      state,
+		faultState: faultState,
+	}
 }
 
 // Total returns the total storage as a BytesAmount.
@@ -42,7 +52,20 @@ func (v PowerTableView) Total(ctx context.Context) (abi.StoragePower, error) {
 
 // MinerClaim returns the storage that this miner claims to have committed to the network.
 func (v PowerTableView) MinerClaim(ctx context.Context, mAddr addr.Address) (abi.StoragePower, error) {
-	return v.state.MinerClaimedPower(ctx, mAddr)
+	claim, err := v.state.MinerClaimedPower(ctx, mAddr)
+	if err != nil {
+		return abi.NewStoragePower(0), err
+	}
+	// Only return claim if fault state still tracks miner
+	exists, err := v.faultState.MinerExists(ctx, mAddr)
+	if err != nil {
+		return abi.NewStoragePower(0), err
+	}
+	if !exists { // miner was slashed
+		return abi.NewStoragePower(0), nil
+	}
+
+	return claim, nil
 }
 
 // WorkerAddr returns the address of the miner worker given the miner address.

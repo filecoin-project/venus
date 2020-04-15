@@ -67,7 +67,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 	}
 
 	// set up consensus
-	stateViewer := consensus.AsPowerStateViewer(state.NewViewer(blockstore.CborStore))
+	stateViewer := consensus.AsConsensusStateViewer(state.NewViewer(blockstore.CborStore))
 	elections := consensus.NewElectionMachine(chn.State)
 	tickets := consensus.NewTicketMachine(chn.State)
 	nodeConsensus := consensus.NewExpected(blockstore.CborStore, blockstore.Blockstore, chn.Processor, &stateViewer,
