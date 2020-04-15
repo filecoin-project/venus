@@ -16,6 +16,8 @@ type persistedSectorNumberCounter struct {
 	innerLk sync.Mutex
 }
 
+var _ fsm.SectorIDCounter = new(persistedSectorNumberCounter)
+
 func (s *persistedSectorNumberCounter) Next() (abi.SectorNumber, error) {
 	s.innerLk.Lock()
 	defer s.innerLk.Unlock()
