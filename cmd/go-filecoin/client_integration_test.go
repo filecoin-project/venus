@@ -10,8 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
-	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
@@ -35,6 +33,8 @@ func TestProposeDeal(t *testing.T) {
 	require.NoError(t, err)
 
 	client := nodes[1]
+	clientAPI, clientStop := test.RunNodeAPI(ctx, client, t)
+	defer clientStop()
 
 	clientAddr, err := client.PorcelainAPI.WalletDefaultAddress()
 	require.NoError(t, err)
@@ -54,10 +54,9 @@ func TestProposeDeal(t *testing.T) {
 	require.NoError(t, err)
 
 	// propose deal
-	out, err := test.RunCommandInProcess(ctx, client, commands.ClientProposeStorageDealCmd,
-		cmdkit.OptMap{
-			"peerid": miner.Host().ID().String(),
-		},
+	var result storagemarket.ProposeStorageDealResult
+	clientAPI.RunMarshaledJSON(ctx, &result, "client", "propose-storage-deal",
+		"--peerid", miner.Host().ID().String(),
 		mstats.ActorAddress.String(),
 		node.Cid().String(),
 		"1000",
@@ -65,16 +64,12 @@ func TestProposeDeal(t *testing.T) {
 		".0000000000001",
 		"1",
 	)
-	require.NoError(t, err)
-	res := out.(*storagemarket.ProposeStorageDealResult)
 
 	// wait for deal to process
+	var dealStatus storagemarket.ClientDeal
 	for i := 0; i < 30; i++ {
-		out, err := test.RunCommandInProcess(ctx, client, commands.ClientQueryStorageDealCmd, nil, res.ProposalCid.String())
-		require.NoError(t, err)
-
-		deal := out.(storagemarket.ClientDeal)
-		switch deal.State {
+		clientAPI.RunMarshaledJSON(ctx, &dealStatus, "client", "query-storage-deal", result.ProposalCid.String())
+		switch dealStatus.State {
 		case storagemarket.StorageDealUnknown,
 			storagemarket.StorageDealValidating:
 			time.Sleep(1 * time.Second) // in progress, wait and continue
@@ -86,7 +81,7 @@ func TestProposeDeal(t *testing.T) {
 			// Deal accepted. Test passed.
 			return
 		default:
-			t.Errorf("unexpected state: %d %s", deal.State, deal.Message)
+			t.Errorf("unexpected state: %d %s", dealStatus.State, dealStatus.Message)
 			return
 		}
 	}

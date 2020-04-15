@@ -6,7 +6,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -200,7 +199,7 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 
 		return re.Emit(resp)
 	},
-	Type: network.Response{},
+	Type: storagemarket.ProposeStorageDealResult{},
 }
 
 var ClientQueryStorageDealCmd = &cmds.Command{
@@ -228,7 +227,7 @@ format is specified with the --enc flag.
 
 		return re.Emit(deal)
 	},
-	Type: network.SignedResponse{},
+	Type: storagemarket.ClientDeal{},
 }
 
 // VerifyStorageDealResult wraps the success in an interface type
