@@ -2,6 +2,7 @@ package storage_mining_submodule
 
 import (
 	"context"
+	"sync"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 
@@ -35,7 +36,8 @@ import (
 
 // StorageMiningSubmodule enhances the `Node` with storage mining capabilities.
 type StorageMiningSubmodule struct {
-	started bool
+	started   bool
+	startedLk sync.RWMutex
 
 	// StorageMining is used by the miner to fill and seal sectors.
 	PieceManager piecemanager.PieceManager
@@ -102,6 +104,9 @@ func NewStorageMiningSubmodule(
 
 // Start starts the StorageMiningSubmodule
 func (s *StorageMiningSubmodule) Start(ctx context.Context) error {
+	s.startedLk.Lock()
+	defer s.startedLk.Lock()
+
 	if s.started {
 		return nil
 	}
@@ -117,6 +122,9 @@ func (s *StorageMiningSubmodule) Start(ctx context.Context) error {
 
 // Stop stops the StorageMiningSubmodule
 func (s *StorageMiningSubmodule) Stop(ctx context.Context) error {
+	s.startedLk.Lock()
+	defer s.startedLk.Unlock()
+
 	if !s.started {
 		return nil
 	}
@@ -133,6 +141,9 @@ func (s *StorageMiningSubmodule) Stop(ctx context.Context) error {
 
 // HandleNewHead submits a new chain head for possible fallback PoSt.
 func (s *StorageMiningSubmodule) HandleNewHead(ctx context.Context, newHead block.TipSet) error {
+	s.startedLk.RLock()
+	defer s.startedLk.RUnlock()
+
 	if !s.started {
 		return nil
 	}
