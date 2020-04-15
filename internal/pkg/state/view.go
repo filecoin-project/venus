@@ -199,21 +199,23 @@ func (v *View) MarketEscrowBalance(ctx context.Context, addr addr.Address) (foun
 }
 
 // MarketGetDeal finds a deal by (resolved) provider and deal id
-func (v *View) MarketGetDealIDs(ctx context.Context, addr addr.Address) ([]abi.DealID, error) {
+func (v *View) MarketHasDealID(ctx context.Context, addr addr.Address, dealID abi.DealID) (bool, error) {
 	marketState, err := v.loadMarketActor(ctx)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
+	found := false
 	byParty := market.AsSetMultimap(StoreFromCbor(ctx, v.ipldStore), marketState.DealIDsByParty)
-	var providerDealIds []abi.DealID
 	if err = byParty.ForEach(addr, func(i abi.DealID) error {
-		providerDealIds = append(providerDealIds, i)
+		if i == dealID {
+			found = true
+		}
 		return nil
 	}); err != nil {
-		return nil, err
+		return false, err
 	}
-	return providerDealIds, err
+	return found, err
 }
 
 // NetworkTotalPower Returns the storage power actor's value for network total power.

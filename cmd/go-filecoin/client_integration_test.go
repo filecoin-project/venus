@@ -40,7 +40,10 @@ func TestProposeDeal(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add enough funds (1 FIL) for client and miner to to cover deal
-	err = miner.StorageProtocol.Provider().AddStorageCollateral(ctx, types.NewAttoFILFromFIL(1))
+	provider, err := miner.StorageProtocol.Provider()
+	require.NoError(t, err)
+
+	err = provider.AddStorageCollateral(ctx, types.NewAttoFILFromFIL(1))
 	require.NoError(t, err)
 	err = client.StorageProtocol.Client().AddPaymentEscrow(ctx, clientAddr, types.NewAttoFILFromFIL(1))
 	require.NoError(t, err)

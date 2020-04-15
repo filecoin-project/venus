@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 
 	"github.com/filecoin-project/go-sectorbuilder"
@@ -289,6 +291,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
+	nd.StorageAPI = storage.NewAPI(nd.StorageProtocol)
 	nd.DrandAPI = drandapi.New(b.drand, nd.PorcelainAPI)
 
 	return nd, nil

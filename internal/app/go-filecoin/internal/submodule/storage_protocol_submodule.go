@@ -118,14 +118,20 @@ func (sm *StorageProtocolSubmodule) AddStorageProvider(
 	return err
 }
 
-func (sm *StorageProtocolSubmodule) Provider() iface.StorageProvider {
-	return sm.StorageProvider
+func (sm *StorageProtocolSubmodule) Provider() (iface.StorageProvider, error) {
+	if sm.StorageProvider == nil {
+		return nil, errors.New("Mining has not been started so storage provider is not available")
+	}
+	return sm.StorageProvider, nil
 }
 
 func (sm *StorageProtocolSubmodule) Client() iface.StorageClient {
 	return sm.StorageClient
 }
 
-func (sm *StorageProtocolSubmodule) PieceManager() piecemanager.PieceManager {
-	return sm.pieceManager
+func (sm *StorageProtocolSubmodule) PieceManager() (piecemanager.PieceManager, error) {
+	if sm.StorageProvider == nil {
+		return nil, errors.New("Mining has not been started so piece manager is not available")
+	}
+	return sm.pieceManager, nil
 }

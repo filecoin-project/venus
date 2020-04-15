@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 
 	"github.com/ipfs/go-cid"
 
@@ -14,8 +13,8 @@ import (
 
 type storage interface {
 	Client() storagemarket.StorageClient
-	Provider() storagemarket.StorageProvider
-	PieceManager() piecemanager.PieceManager
+	Provider() (storagemarket.StorageProvider, error)
+	PieceManager() (piecemanager.PieceManager, error)
 }
 
 // API is the storage API for the test environment
@@ -30,9 +29,9 @@ func NewAPI(storage storage) *API {
 
 // PledgeSector creates a new, empty sector and seals it.
 func (api *API) PledgeSector(ctx context.Context) error {
-	pm := api.storage.PieceManager()
-	if pm == nil {
-		return errors.New("Piece manager not initialized")
+	pm, err := api.storage.PieceManager()
+	if err != nil {
+		return err
 	}
 
 	return pm.PledgeSector(ctx)
@@ -40,9 +39,9 @@ func (api *API) PledgeSector(ctx context.Context) error {
 
 // AddAsk stores a new price for storage
 func (api *API) AddAsk(price abi.TokenAmount, duration abi.ChainEpoch) error {
-	provider := api.storage.Provider()
-	if provider == nil {
-		return errors.New("Storage provider not initialized")
+	provider, err := api.storage.Provider()
+	if err != nil {
+		return err
 	}
 
 	return provider.AddAsk(price, duration)
@@ -50,9 +49,9 @@ func (api *API) AddAsk(price abi.TokenAmount, duration abi.ChainEpoch) error {
 
 // ListAsks lists all asks for the miner
 func (api *API) ListAsks(maddr address.Address) ([]*storagemarket.SignedStorageAsk, error) {
-	provider := api.storage.Provider()
-	if provider == nil {
-		return nil, errors.New("Storage provider not initialized")
+	provider, err := api.storage.Provider()
+	if err != nil {
+		return nil, err
 	}
 
 	return provider.ListAsks(maddr), nil

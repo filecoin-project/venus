@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"runtime"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
@@ -66,6 +68,7 @@ type Node struct {
 
 	PorcelainAPI *porcelain.API
 	DrandAPI     *drand.API
+	StorageAPI   *storage.API
 
 	//
 	// Core services
@@ -412,11 +415,6 @@ func (node *Node) SetupMining(ctx context.Context) error {
 	if err := node.StorageProtocol.StorageProvider.Start(ctx); err != nil {
 		fmt.Printf("error starting storage provider: %s\n", err)
 	}
-
-	// TODO: Retrieval Market Integration
-	//if err := node.RetrievalProtocol.RetrievalProvider.Start(); err != nil {
-	//	fmt.Printf("error starting retrieval provider: %s\n", err)
-	//}
 
 	return nil
 }

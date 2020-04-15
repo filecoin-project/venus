@@ -6,8 +6,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 
-	cborutil "github.com/filecoin-project/go-cbor-util"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -201,7 +199,7 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 
 // SignProposal uses the local wallet to sign the given proposal
 func (s *StorageClientNodeConnector) SignProposal(ctx context.Context, signer address.Address, proposal market.DealProposal) (*market.ClientDealProposal, error) {
-	buf, err := cborutil.Dump(&proposal)
+	buf, err := encoding.Encode(&proposal)
 	if err != nil {
 		return nil, err
 	}
@@ -252,12 +250,16 @@ func (s *StorageClientNodeConnector) OnDealSectorCommitted(ctx context.Context, 
 	}
 
 	err = s.waiter.WaitPredicate(ctx, func(msg *types.SignedMessage, c cid.Cid) bool {
-		if msg.Message.To != provider {
+		resolvedTo, err := view.InitResolveAddress(ctx, msg.Message.To)
+		if err != nil {
 			return false
 		}
 
-		// prove commit is method 8
-		if msg.Message.Method != abi.MethodNum(8) {
+		if resolvedTo != resolvedProvider {
+			return false
+		}
+
+		if msg.Message.Method != abi.MethodNum(builtin.MethodsMiner.ProveCommitSector) {
 			return false
 		}
 
@@ -267,18 +269,12 @@ func (s *StorageClientNodeConnector) OnDealSectorCommitted(ctx context.Context, 
 			return false
 		}
 
-		dealIDs, err := view.MarketGetDealIDs(ctx, resolvedProvider)
+		found, err := view.MarketHasDealID(ctx, resolvedProvider, dealID)
 		if err != nil {
 			return false
 		}
 
-		for _, id := range dealIDs {
-			if id == dealID {
-				return true
-			}
-		}
-
-		return false
+		return found
 	}, func(b *block.Block, signedMessage *types.SignedMessage, receipt *vm.MessageReceipt) error {
 		return nil
 	})

@@ -98,14 +98,9 @@ var ClientProposeStorageDealCmd = &cmds.Command{
 		Tagline:          "Propose a storage deal with a storage miner",
 		ShortDescription: `Sends a storage deal proposal to a miner`,
 		LongDescription: `
-Send a storage deal proposal to a miner. IDs provided to this command should
-represent valid asks. Existing asks can be listed with the following command:
+Send a storage deal proposal to a miner.
 
-$ go-filecoin client list-asks
-
-See the miner command help text for more information on asks.
-
-Duration should be specified with the number of blocks for which to store the
+Start and end should be specified with the number of blocks for which to store the
 data. New blocks are generated about every 30 seconds, so the time given should
 be represented as a count of 30 second intervals. For example, 1 minute would
 be 2, 1 hour would be 120, and 1 day would be 2880.
@@ -116,7 +111,7 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 		cmdkit.StringArg("data", true, false, "CID of the data to be stored"),
 		cmdkit.StringArg("start", true, false, "Chain epoch at which deal should start"),
 		cmdkit.StringArg("end", true, false, "Chain epoch at which deal should end"),
-		cmdkit.StringArg("price", true, false, "Price of deal in FIL (e.g. 0.01)"),
+		cmdkit.StringArg("price", true, false, "Storage price per epoch of all data in FIL (e.g. 0.01)"),
 		cmdkit.StringArg("collateral", true, false, "Collateral of deal in FIL (e.g. 0.01)"),
 	},
 	Options: []cmdkit.Option{
