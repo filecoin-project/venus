@@ -162,7 +162,8 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		for i, a := range drandConfig.Addresses {
 			addrs[i] = drand.NewAddress(a, drandConfig.Secure)
 		}
-		d, err := drand.NewGRPC(addrs, drandConfig.DistKey)
+		d, err := drand.NewGRPC(addrs, drandConfig.DistKey, time.Unix(drandConfig.StartTimeUnix, 0),
+			drand.Round(drandConfig.FirstFilecoinRound), time.Duration(drandConfig.RoundSeconds)*time.Second)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to build Drand client")
 		}

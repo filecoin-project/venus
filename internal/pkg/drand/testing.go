@@ -19,17 +19,26 @@ type Fake struct {
 	FirstFilecoin Round
 }
 
+var _ IFace = &Fake{}
+
 // ReadEntry immediately returns a drand entry with a signature equal to the
 // round number
 func (d *Fake) ReadEntry(ctx context.Context, drandRound Round) (*Entry, error) {
 	fakeSigData := make([]byte, ffi.SignatureBytes)
 	binary.PutUvarint(fakeSigData, uint64(drandRound))
+	var parentRound Round
+	if drandRound == 0 {
+		parentRound = 0
+	} else {
+		parentRound = drandRound - 1
+	}
 	return &Entry{
 		Round: drandRound,
 		Signature: crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: fakeSigData,
 		},
+		parentRound: parentRound,
 	}, nil
 }
 
@@ -45,26 +54,36 @@ func (d *Fake) StartTimeOfRound(round Round) time.Time {
 // RoundsInInterval returns the DRAND round numbers within [startTime, endTime)
 // startTime inclusive, endTime exclusive.
 // No gaps in test DRAND so this doesn't need to consult the DRAND chain
-func (d *Fake) RoundsInInterval(startTime, endTime time.Time) []Round {
+func (d *Fake) RoundsInInterval(ctx context.Context, startTime, endTime time.Time) ([]Round, error) {
+	return roundsInIntervalWhenNoGaps(startTime, endTime, d.StartTimeOfRound, testDRANDRoundDuration), nil
+}
+
+func (d *Fake) FirstFilecoinRound() Round {
+	return d.FirstFilecoin
+}
+
+// FetchGroupConfig returns empty group addresses and key coefficients
+func (d *Fake) FetchGroupConfig(_ []string, _, _ bool) ([]string, [][]byte, uint64, int, error) {
+	return []string{}, [][]byte{}, 0, 0, nil
+}
+
+func roundsInIntervalWhenNoGaps(startTime, endTime time.Time, startTimeOfRound func(Round) time.Time, roundDuration time.Duration) []Round {
 	// Find first round after startTime
-	truncatedStartRound := Round(startTime.Sub(d.GenesisTime) / testDRANDRoundDuration)
+	genesisTime := startTimeOfRound(Round(0))
+	truncatedStartRound := Round(startTime.Sub(genesisTime) / roundDuration)
 	var round Round
-	if d.StartTimeOfRound(truncatedStartRound).Equal(startTime) {
+	if startTimeOfRound(truncatedStartRound).Equal(startTime) {
 		round = truncatedStartRound
 	} else {
 		round = truncatedStartRound + 1
 	}
-	roundTime := d.StartTimeOfRound(round)
+	roundTime := startTimeOfRound(round)
 	var rounds []Round
 	// Advance a round time until we hit endTime, adding rounds
 	for roundTime.Before(endTime) {
 		rounds = append(rounds, round)
 		round++
-		roundTime = d.StartTimeOfRound(round)
+		roundTime = startTimeOfRound(round)
 	}
 	return rounds
-}
-
-func (d *Fake) FirstFilecoinRound() Round {
-	return d.FirstFilecoin
 }

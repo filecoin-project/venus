@@ -11,9 +11,9 @@ import (
 type IFace interface {
 	ReadEntry(ctx context.Context, drandRound Round) (*Entry, error)
 	VerifyEntry(parent, child *Entry) (bool, error)
-	FetchGroupConfig(addresses []string, secure bool, overrideGroupAddrs bool) ([]string, [][]byte, error)
+	FetchGroupConfig(addresses []string, secure bool, overrideGroupAddrs bool) ([]string, [][]byte, uint64, int, error)
 	StartTimeOfRound(round Round) time.Time
-	RoundsInInterval(startTime, endTime time.Time) []Round
+	RoundsInInterval(ctx context.Context, startTime, endTime time.Time) ([]Round, error)
 	FirstFilecoinRound() Round
 }
 
@@ -26,4 +26,6 @@ type Entry struct {
 	_         struct{} `cbor:",toarray"`
 	Round     Round
 	Signature crypto.Signature
+
+	parentRound Round
 }
