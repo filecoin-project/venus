@@ -222,6 +222,9 @@ func (d *GRPC) RoundsInInterval(ctx context.Context, startTime, endTime time.Tim
 		// wait on network to determine which rounds exist.  If maxRound is
 		// skipped this will error or block indefinitely.
 		next, err = d.ReadEntry(ctx, maxRound)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var rounds []Round

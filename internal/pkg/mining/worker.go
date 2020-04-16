@@ -382,7 +382,7 @@ func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.Tip
 			return nil, err
 		}
 		// first round is round of latestEntry so omit the 0th round
-		rounds = rounds[:1]
+		rounds = rounds[1:]
 	}
 
 	entries := make([]*drand.Entry, len(rounds))
