@@ -3,6 +3,7 @@ package drand
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/drand/drand/beacon"
 	"github.com/drand/drand/core"
@@ -31,21 +32,26 @@ type GRPC struct {
 	addresses []Address
 	client    *core.Client
 	key       *key.DistPublic
+
+	genesisTime   time.Time
+	firstFilecoin Round
 }
 
 // NewGRPC creates a client that will draw randomness from the given addresses.
 // distKeyCoeff are hex encoded strings representing a distributed public key
 // Behavior is undefined if provided address do not point to Drand servers in the same group.
-func NewGRPC(addresses []Address, distKeyCoeff [][]byte) (*GRPC, error) {
+func NewGRPC(addresses []Address, distKeyCoeff [][]byte, gt time.Time, ffr Round) (*GRPC, error) {
 	distKey, err := groupKeycoefficientsToDistPublic(distKeyCoeff)
 	if err != nil {
 		return nil, err
 	}
 
 	return &GRPC{
-		addresses: addresses,
-		client:    core.NewGrpcClient(),
-		key:       distKey,
+		addresses:     addresses,
+		client:        core.NewGrpcClient(),
+		key:           distKey,
+		genesisTime:   gt,
+		firstFilecoin: ffr,
 	}, nil
 }
 
