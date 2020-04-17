@@ -75,7 +75,10 @@ func TestWriteFile(t *testing.T) {
 			"localhost:8084"
 		],
 		"secure": false,
-		"distKey": []
+		"distKey": [],
+		"startTimeUnix": 0,
+		"roundSeconds": 30,
+		"firstFilecoinRound": 0
 	},
 	"heartbeat": {
 		"beatTarget": "",

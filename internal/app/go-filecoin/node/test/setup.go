@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/require"
@@ -43,11 +44,17 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
 
+	drandGenUnixSeconds := genTime - int64(blockTime.Seconds())
+
 	// create bootstrap miner
 	bootstrapMiner := NewNodeBuilder(t).
 		WithGenesisInit(seed.GenesisInitFunc).
 		WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...).
 		WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
+		WithBuilderOpt(node.DrandConfigOption(&drand.Fake{
+			GenesisTime:   time.Unix(drandGenUnixSeconds, 0),
+			FirstFilecoin: 0,
+		})).
 		Build(ctx)
 
 	_, _, err := initNodeGenesisMiner(t, bootstrapMiner, seed, genCfg.Miners[0].Owner, presealPath, genCfg.Miners[0].SectorSize)
@@ -64,6 +71,10 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 			WithConfig(node.DefaultAddressConfigOpt(seed.Addr(t, int(i+1)))).
 			WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...).
 			WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
+			WithBuilderOpt(node.DrandConfigOption(&drand.Fake{
+				GenesisTime:   time.Unix(drandGenUnixSeconds, 0),
+				FirstFilecoin: 0,
+			})).
 			Build(ctx)
 		seed.GiveKey(t, node, int(i+1))
 		err = node.Start(ctx)

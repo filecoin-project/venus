@@ -363,7 +363,10 @@ func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.Tip
 		// and then we grab everything between this round and genesis time
 		startTime := w.drand.StartTimeOfRound(w.drand.FirstFilecoinRound())
 		endTime := w.clock.StartTimeOfEpoch(0)
-		rounds = w.drand.RoundsInInterval(startTime, endTime)
+		rounds, err = w.drand.RoundsInInterval(ctx, startTime, endTime)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		latestEntry, err := chain.FindLatestDRAND(ctx, base, w.chainState)
 		if err != nil {
@@ -374,8 +377,12 @@ func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.Tip
 		// end of interval is beginning of next epoch after lastTargetEpoch so
 		//  we add 1 to lastTargetEpoch
 		endTime := w.clock.StartTimeOfEpoch(lastTargetEpoch + 1)
+		rounds, err = w.drand.RoundsInInterval(ctx, startTime, endTime)
+		if err != nil {
+			return nil, err
+		}
 		// first round is round of latestEntry so omit the 0th round
-		rounds = w.drand.RoundsInInterval(startTime, endTime)[1:]
+		rounds = rounds[1:]
 	}
 
 	entries := make([]*drand.Entry, len(rounds))
