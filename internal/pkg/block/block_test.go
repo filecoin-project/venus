@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	blk "github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
@@ -62,9 +61,6 @@ func TestTriangleEncoding(t *testing.T) {
 	t.Run("encoding block with nonzero fields works", func(t *testing.T) {
 		// We should ensure that every field is set -- zero values might
 		// pass when non-zero values do not due to nil/null encoding.
-		candidate1 := blk.NewEPoStCandidate(5, []byte{0x05}, 52)
-		candidate2 := blk.NewEPoStCandidate(3, []byte{0x04}, 3000)
-		postInfo := blk.NewEPoStInfo([]blk.EPoStProof{blk.NewEPoStProof(constants.DevRegisteredPoStProof, []byte{0x07})}, []byte{0x02, 0x06}, candidate1, candidate2)
 		b := &blk.Block{
 			Miner:         newAddress(),
 			Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
@@ -93,7 +89,6 @@ func TestTriangleEncoding(t *testing.T) {
 				Type: crypto.SigTypeBLS,
 				Data: []byte{0x3},
 			},
-			EPoStInfo:     postInfo,
 			ForkSignaling: 6,
 		}
 		s := reflect.TypeOf(*b)
@@ -102,7 +97,7 @@ func TestTriangleEncoding(t *testing.T) {
 		// Also please add non zero fields to "b" and "diff" in TestSignatureData
 		// and add a new check that different values of the new field result in
 		// different output data.
-		require.Equal(t, 18, s.NumField()) // Note: this also counts private fields
+		require.Equal(t, 17, s.NumField()) // Note: this also counts private fields
 		testRoundTrip(t, b)
 	})
 }
@@ -231,9 +226,6 @@ func TestBlockJsonMarshal(t *testing.T) {
 func TestSignatureData(t *testing.T) {
 	tf.UnitTest(t)
 	newAddress := vmaddr.NewForTestGetter()
-	candidate1 := blk.NewEPoStCandidate(5, []byte{0x05}, 52)
-	candidate2 := blk.NewEPoStCandidate(3, []byte{0x04}, 3000)
-	postInfo := blk.NewEPoStInfo([]blk.EPoStProof{blk.NewEPoStProof(constants.DevRegisteredPoStProof, []byte{0x07})}, []byte{0x02, 0x06}, candidate1, candidate2)
 
 	b := &blk.Block{
 		Miner:         newAddress(),
@@ -256,16 +248,11 @@ func TestSignatureData(t *testing.T) {
 		ForkSignaling:   3,
 		StateRoot:       e.NewCid(types.CidFromString(t, "somecid")),
 		Timestamp:       1,
-		EPoStInfo:       postInfo,
 		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x3},
 		},
 	}
-
-	diffCandidate1 := blk.NewEPoStCandidate(0, []byte{0x04}, 25)
-	diffCandidate2 := blk.NewEPoStCandidate(1, []byte{0x05}, 3001)
-	diffPoStInfo := blk.NewEPoStInfo([]blk.EPoStProof{blk.NewEPoStProof(constants.DevRegisteredPoStProof, []byte{0x17})}, []byte{0x12, 0x16}, diffCandidate1, diffCandidate2)
 
 	diff := &blk.Block{
 		Miner:         newAddress(),
@@ -288,7 +275,6 @@ func TestSignatureData(t *testing.T) {
 		ForkSignaling:   2,
 		StateRoot:       e.NewCid(types.CidFromString(t, "someothercid")),
 		Timestamp:       4,
-		EPoStInfo:       diffPoStInfo,
 		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x4},
@@ -428,78 +414,6 @@ func TestSignatureData(t *testing.T) {
 
 		b.Timestamp = diff.Timestamp
 		after := b.SignatureData()
-		assert.False(t, bytes.Equal(before, after))
-	}()
-
-	func() {
-		before := b.SignatureData()
-
-		cpy := b.EPoStInfo.VRFProof
-		defer func() { b.EPoStInfo.VRFProof = cpy }()
-
-		b.EPoStInfo.VRFProof = diff.EPoStInfo.VRFProof
-		after := b.SignatureData()
-		assert.False(t, bytes.Equal(before, after))
-	}()
-
-	func() {
-		before := b.SignatureData()
-
-		cpy := b.EPoStInfo.PoStProofs
-		defer func() { b.EPoStInfo.PoStProofs = cpy }()
-
-		b.EPoStInfo.PoStProofs = diff.EPoStInfo.PoStProofs
-		after := b.SignatureData()
-		assert.False(t, bytes.Equal(before, after))
-	}()
-
-	func() {
-		before := b.SignatureData()
-
-		cpy0 := b.EPoStInfo.Winners[0].PartialTicket
-		cpy1 := b.EPoStInfo.Winners[1].PartialTicket
-		defer func() {
-			b.EPoStInfo.Winners[0].PartialTicket = cpy0
-			b.EPoStInfo.Winners[1].PartialTicket = cpy1
-
-		}()
-
-		b.EPoStInfo.Winners[0].PartialTicket = diff.EPoStInfo.Winners[0].PartialTicket
-		b.EPoStInfo.Winners[1].PartialTicket = diff.EPoStInfo.Winners[1].PartialTicket
-		after := b.SignatureData()
-		assert.False(t, bytes.Equal(before, after))
-	}()
-
-	func() {
-		before := b.SignatureData()
-		cpy0 := b.EPoStInfo.Winners[0].SectorID
-		cpy1 := b.EPoStInfo.Winners[1].SectorID
-		defer func() {
-			b.EPoStInfo.Winners[0].SectorID = cpy0
-			b.EPoStInfo.Winners[1].SectorID = cpy1
-		}()
-
-		b.EPoStInfo.Winners[0].SectorID = diff.EPoStInfo.Winners[0].SectorID
-		b.EPoStInfo.Winners[1].SectorID = diff.EPoStInfo.Winners[1].SectorID
-		after := b.SignatureData()
-
-		assert.False(t, bytes.Equal(before, after))
-	}()
-
-	func() {
-		before := b.SignatureData()
-		cpy0 := b.EPoStInfo.Winners[0].SectorChallengeIndex
-		cpy1 := b.EPoStInfo.Winners[1].SectorChallengeIndex
-		defer func() {
-			b.EPoStInfo.Winners[0].SectorChallengeIndex = cpy0
-			b.EPoStInfo.Winners[1].SectorChallengeIndex = cpy1
-
-		}()
-
-		b.EPoStInfo.Winners[0].SectorChallengeIndex = diff.EPoStInfo.Winners[0].SectorChallengeIndex
-		b.EPoStInfo.Winners[1].SectorChallengeIndex = diff.EPoStInfo.Winners[1].SectorChallengeIndex
-		after := b.SignatureData()
-
 		assert.False(t, bytes.Equal(before, after))
 	}()
 

@@ -281,13 +281,8 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 	}
 
 	geneblk := &block.Block{
-		Miner:  builtin.SystemActorAddr,
-		Ticket: genesis.Ticket,
-		EPoStInfo: block.EPoStInfo{
-			PoStProofs: []block.EPoStProof{},
-			VRFProof:   abi.PoStRandomness(make([]byte, 32)),
-			Winners:    []block.EPoStCandidate{},
-		},
+		Miner:           builtin.SystemActorAddr,
+		Ticket:          genesis.Ticket,
 		Parents:         block.NewTipSetKey(),
 		ParentWeight:    specsbig.Zero(),
 		Height:          0,

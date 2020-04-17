@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
@@ -94,9 +93,6 @@ func TestLookbackElection(t *testing.T) {
 		r := <-outCh
 		assert.NoError(t, r.Err)
 
-		expectedVrfProof := makeExpectedEPoStVRFProof(ctx, t, rnd, mockSigner, head, miner.PoStLookback, minerAddr, minerOwnerAddr)
-		assert.Equal(t, expectedVrfProof, r.Header.EPoStInfo.VRFProof)
-
 		expectedTicket := makeExpectedTicket(ctx, t, rnd, mockSigner, head, miner.PoStLookback, minerAddr, minerOwnerAddr)
 		assert.Equal(t, expectedTicket, r.Header.Ticket)
 	})
@@ -152,9 +148,6 @@ func Test_Mine(t *testing.T) {
 		go worker.Mine(ctx, tipSet, 0, outCh)
 		r := <-outCh
 		assert.NoError(t, r.Err)
-
-		expectedVrfProof := makeExpectedEPoStVRFProof(ctx, t, rnd, mockSigner, tipSet, miner.PoStLookback, minerAddr, minerOwnerAddr)
-		assert.Equal(t, expectedVrfProof, r.Header.EPoStInfo.VRFProof)
 
 		expectedTicket := makeExpectedTicket(ctx, t, rnd, mockSigner, tipSet, miner.PoStLookback, minerAddr, minerOwnerAddr)
 		assert.Equal(t, expectedTicket, r.Header.Ticket)
@@ -249,19 +242,6 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 	th.RequireInitAccountActor(ctx, t, st, vms, addr5, types.ZeroAttoFIL)
 	_, addr4 := th.RequireNewMinerActor(ctx, t, st, vms, addr5, 10, th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
 	return st, pool, []address.Address{addr1, addr2, addr3, addr4, addr5}, bs
-}
-
-func makeExpectedEPoStVRFProof(ctx context.Context, t *testing.T, rnd *consensus.FakeChainRandomness, mockSigner *types.MockSigner,
-	head block.TipSet, lookback abi.ChainEpoch, minerAddr address.Address, minerOwnerAddr address.Address) crypto.VRFPi {
-	height, err := head.Height()
-	require.NoError(t, err)
-	entropy, err := encoding.Encode(minerAddr)
-	require.NoError(t, err)
-	seed, err := rnd.SampleChainRandomness(ctx, head.Key(), acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, height-lookback, entropy)
-	require.NoError(t, err)
-	expectedVrfProof, err := mockSigner.SignBytes(ctx, seed, minerOwnerAddr)
-	require.NoError(t, err)
-	return expectedVrfProof.Data
 }
 
 func makeExpectedTicket(ctx context.Context, t *testing.T, rnd *consensus.FakeChainRandomness, mockSigner *types.MockSigner,
@@ -493,9 +473,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	baseTipset := builder.AppendOn(parentTipset, 2)
 	assert.Equal(t, 2, baseTipset.Len())
 
-	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStsForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
-
-	out := worker.Generate(ctx, baseTipset, block.Ticket{VRFProof: []byte{2}}, consensus.MakeFakeVRFProofForTest(), 0, fakePoStInfo, nil)
+	out := worker.Generate(ctx, baseTipset, block.Ticket{VRFProof: []byte{2}}, consensus.MakeFakeVRFProofForTest(), 0, nil)
 	assert.NoError(t, out.Err)
 
 	txMeta, err := messages.LoadTxMeta(ctx, out.Header.Messages.Cid)
@@ -598,9 +576,8 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		Height:    100,
 		StateRoot: e.NewCid(stateRoot),
 	}
-	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStsForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
 
-	out := worker.Generate(ctx, block.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, fakePoStInfo, nil)
+	out := worker.Generate(ctx, block.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, nil)
 	assert.NoError(t, out.Err)
 
 	// This is the temporary failure + the good message,
@@ -665,15 +642,14 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	}
 	baseTipSet := block.RequireNewTipSet(t, &baseBlock)
 	ticket := mining.NthTicket(7)
-	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStsForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
-	out := worker.Generate(ctx, baseTipSet, ticket, consensus.MakeFakeVRFProofForTest(), 0, fakePoStInfo, nil)
+	out := worker.Generate(ctx, baseTipSet, ticket, consensus.MakeFakeVRFProofForTest(), 0, nil)
 	assert.NoError(t, out.Err)
 
 	assert.Equal(t, h+1, out.Header.Height)
 	assert.Equal(t, minerAddr, out.Header.Miner)
 	assert.Equal(t, ticket, out.Header.Ticket)
 
-	out = worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 1, fakePoStInfo, nil)
+	out = worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 1, nil)
 	assert.NoError(t, out.Err)
 
 	assert.Equal(t, h+2, out.Header.Height)
@@ -722,8 +698,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		Height:    100,
 		StateRoot: e.NewCid(newCid()),
 	}
-	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStsForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
-	out := worker.Generate(ctx, block.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, fakePoStInfo, nil)
+	out := worker.Generate(ctx, block.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, nil)
 	assert.NoError(t, out.Err)
 
 	assert.Len(t, pool.Pending(), 0) // This is the temporary failure.
@@ -783,9 +758,8 @@ func TestGenerateError(t *testing.T) {
 		Height:    100,
 		StateRoot: e.NewCid(newCid()),
 	}
-	fakePoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStsForTest(), consensus.MakeFakeVRFProofForTest(), consensus.MakeFakeWinnersForTest()...)
 	baseTipSet := block.RequireNewTipSet(t, &baseBlock)
-	out := worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, fakePoStInfo, nil)
+	out := worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, nil)
 	assert.Error(t, out.Err, "boom")
 	assert.Nil(t, out.Header)
 

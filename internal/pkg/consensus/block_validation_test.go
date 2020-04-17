@@ -102,8 +102,6 @@ func TestBlockValidSyntax(t *testing.T) {
 	validSt := e.NewCid(types.NewCidForTestGetter()())
 	validAd := vmaddr.NewForTestGetter()()
 	validTi := block.Ticket{VRFProof: []byte{1}}
-	validCandidate := block.NewEPoStCandidate(1, []byte{1}, 1)
-	validPoStInfo := block.NewEPoStInfo(consensus.MakeFakePoStsForTest(), []byte{1}, validCandidate)
 	// create a valid block
 	blk := &block.Block{
 		Timestamp: validTs,
@@ -112,7 +110,6 @@ func TestBlockValidSyntax(t *testing.T) {
 		Ticket:    validTi,
 		Height:    1,
 
-		EPoStInfo: validPoStInfo,
 		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x3},
