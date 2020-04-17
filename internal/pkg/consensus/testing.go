@@ -14,10 +14,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
@@ -29,13 +29,18 @@ func RequireNewTipSet(require *require.Assertions, blks ...*block.Block) block.T
 	return ts
 }
 
-// FakePowerStateViewer is a fake power state viewer.
-type FakePowerStateViewer struct {
+// FakeConsensusStateViewer is a fake power state viewer.
+type FakeConsensusStateViewer struct {
 	Views map[cid.Cid]*state.FakeStateView
 }
 
-// StateView returns the state view for a root.
-func (f *FakePowerStateViewer) StateView(root cid.Cid) PowerStateView {
+// PowerStateView returns the state view for a root.
+func (f *FakeConsensusStateViewer) PowerStateView(root cid.Cid) PowerStateView {
+	return f.Views[root]
+}
+
+// FaultStateView returns the state view for a root.
+func (f *FakeConsensusStateViewer) FaultStateView(root cid.Cid) FaultStateView {
 	return f.Views[root]
 }
 
@@ -52,18 +57,14 @@ type FakeElectionMachine struct{}
 
 var _ ElectionValidator = new(FakeElectionMachine)
 
-// DeprecatedRunElection returns a fake election proof.
-func (fem *FakeElectionMachine) DeprecatedRunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullCount uint64) (crypto.VRFPi, error) {
+// GenerateEPoStVrfProof returns a fake post randomness byte array
+func (fem *FakeElectionMachine) GenerateEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error) {
 	return MakeFakeVRFProofForTest(), nil
 }
 
-// DeprecatedIsElectionWinner always returns true
-func (fem *FakeElectionMachine) DeprecatedIsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, nullCount uint64, electionProof crypto.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
-	return true, nil
-}
-
-// GenerateEPoStVrfProof returns a fake post randomness byte array
-func (fem *FakeElectionMachine) GenerateEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error) {
+// GenerateElectionProof returns a fake randomness
+func (fem *FakeElectionMachine) GenerateElectionProof(_ context.Context, _ *drand.Entry,
+	_ abi.ChainEpoch, _ address.Address, _ address.Address, _ types.Signer) (crypto.VRFPi, error) {
 	return MakeFakeVRFProofForTest(), nil
 }
 
@@ -102,6 +103,14 @@ func (fem *FakeElectionMachine) VerifyPoSt(_ context.Context, _ EPoStVerifier, _
 	return true, nil
 }
 
+func (fem *FakeElectionMachine) IsWinner(_ []byte, _, _, _ uint64) bool {
+	return true
+}
+
+func (fem *FakeElectionMachine) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.Address, _ address.Address, _ crypto.VRFPi) error {
+	return nil
+}
+
 // FakeTicketMachine generates fake tickets and verifies all tickets
 type FakeTicketMachine struct{}
 
@@ -131,6 +140,14 @@ var _ ElectionValidator = new(FailingElectionValidator)
 // CandidateWins always returns false
 func (fev *FailingElectionValidator) CandidateWins(_ []byte, _, _, _, _ uint64) bool {
 	return false
+}
+
+func (fev *FailingElectionValidator) IsWinner(_ []byte, _, _, _ uint64) bool {
+	return false
+}
+
+func (fev *FailingElectionValidator) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.Address, _ address.Address, _ crypto.VRFPi) error {
+	return nil
 }
 
 // VerifyPoSt returns true without error
@@ -184,70 +201,6 @@ func RequireFakeSectorInfos(t *testing.T, numSectors uint64) []abi.SectorInfo {
 	}
 
 	return infos
-}
-
-// SeedFirstWinnerInNRounds returns seeded fake chain randomness that when mined upon for N rounds
-// by a miner that has `minerPower` out of a system-wide `totalPower` and keyinfo
-// `ki` will produce a ticket that gives a winning election proof in exactly `n`
-// rounds.  No wins before n rounds are up.
-//
-// Note that this is a deterministic function of the inputs as we return the
-// first such seed.
-//
-// Note that there are no guarantees that this function will terminate on new
-// inputs as miner power might be so low that winning a ticket is very
-// unlikely.  However runtime is deterministic so if it runs fast once on
-// given inputs is safe to use in tests.
-func SeedFirstWinnerInNRounds(t *testing.T, n int, miner address.Address, ki *crypto.KeyInfo, networkPower, numSectors, sectorSize uint64) *FakeChainRandomness {
-	signer := types.NewMockSigner([]crypto.KeyInfo{*ki})
-	worker, err := ki.Address()
-	require.NoError(t, err)
-
-	// give it some fake sector infos
-	sectorInfos := RequireFakeSectorInfos(t, numSectors)
-	head := block.NewTipSetKey() // The fake chain randomness doesn't actually inspect any tipsets
-
-	rnd := &FakeChainRandomness{Seed: 1}
-	em := NewElectionMachine(rnd)
-
-	for {
-		if winsAtEpoch(t, em, head, abi.ChainEpoch(n), miner, worker, signer, networkPower, numSectors, sectorSize, sectorInfos) {
-			losesAllPrevious := true
-			for m := 0; m < n; m++ {
-				if winsAtEpoch(t, em, head, abi.ChainEpoch(m), miner, worker, signer, networkPower, numSectors, sectorSize, sectorInfos) {
-					losesAllPrevious = false
-					break
-				}
-			}
-			if losesAllPrevious {
-				return rnd
-			}
-		}
-		// Try a different seed.
-		rnd.Seed++
-	}
-}
-
-func winsAtEpoch(t *testing.T, em *ElectionMachine, head block.TipSetKey, epoch abi.ChainEpoch, miner, worker address.Address,
-	signer types.Signer, networkPower, numSectors, sectorSize uint64, sectorInfos []abi.SectorInfo) bool {
-
-	epostVRFProof, err := em.GenerateEPoStVrfProof(context.Background(), head, epoch, miner, worker, signer)
-	require.NoError(t, err)
-	digest := epostVRFProof.Digest()
-
-	// does this postRandomness create a winner?
-	candidates, err := em.GenerateCandidates(digest[:], sectorInfos, &TestElectionPoster{}, miner)
-	require.NoError(t, err)
-
-	for _, candidate := range candidates {
-		hasher := hasher.NewHasher()
-		hasher.Bytes(candidate.PartialTicket[:])
-		ct := hasher.Hash()
-		if em.CandidateWins(ct, numSectors, 0, networkPower, sectorSize) {
-			return true
-		}
-	}
-	return false
 }
 
 ///// Sampler /////

@@ -22,9 +22,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -82,13 +82,13 @@ type workerPorcelainAPI interface {
 	consensus.ChainRandomness
 	BlockTime() time.Duration
 	PowerStateView(baseKey block.TipSetKey) (consensus.PowerStateView, error)
+	FaultsStateView(baseKey block.TipSetKey) (consensus.FaultStateView, error)
 }
 
 type electionUtil interface {
-	GenerateEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error)
-	GenerateCandidates(abi.PoStRandomness, []abi.SectorInfo, postgenerator.PoStGenerator, address.Address) ([]abi.PoStCandidate, error)
-	GenerateEPoSt([]abi.SectorInfo, abi.PoStRandomness, []abi.PoStCandidate, postgenerator.PoStGenerator) ([]abi.PoStProof, error)
-	CandidateWins([]byte, uint64, uint64, uint64, uint64) bool
+	GenerateElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error)
+	IsWinner(challengeTicket []byte, sectorNum, networkPower, sectorSize uint64) bool
+	// TODO: GenerateWinningPoSt (maybe also winning post candidates?)
 }
 
 // ticketGenerator creates tickets.
@@ -124,6 +124,8 @@ type DefaultWorker struct {
 	blockstore     blockstore.Blockstore
 	clock          clock.ChainEpochClock
 	poster         postgenerator.PoStGenerator
+	chainState     chain.TipSetProvider
+	drand          drand.IFace
 }
 
 // WorkerParameters use for NewDefaultWorker parameters
@@ -141,6 +143,7 @@ type WorkerParameters struct {
 	GetWeight        GetWeight
 	Election         electionUtil
 	TicketGen        ticketGenerator
+	Drand            drand.IFace
 
 	// core filecoin things
 	MessageSource MessageSource
@@ -148,6 +151,7 @@ type WorkerParameters struct {
 	Blockstore    blockstore.Blockstore
 	Clock         clock.ChainEpochClock
 	Poster        postgenerator.PoStGenerator
+	ChainState    chain.TipSetProvider
 }
 
 // NewDefaultWorker instantiates a new Worker.
@@ -168,6 +172,8 @@ func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
 		tsMetadata:     parameters.TipSetMetadata,
 		clock:          parameters.Clock,
 		poster:         parameters.Poster,
+		chainState:     parameters.ChainState,
+		drand:          parameters.Drand,
 	}
 }
 
@@ -194,12 +200,12 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	}
 
 	// Read uncached worker address
-	view, err := w.api.PowerStateView(base.Key())
+	keyView, err := w.api.PowerStateView(base.Key())
 	if err != nil {
 		outCh <- NewOutputErr(err)
 		return
 	}
-	_, workerAddr, err := view.MinerControlAddresses(ctx, w.minerAddr)
+	_, workerAddr, err := keyView.MinerControlAddresses(ctx, w.minerAddr)
 	if err != nil {
 		outCh <- NewOutputErr(err)
 		return
@@ -211,7 +217,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	// The sampling code will handle this underflowing past the genesis.
 	lookbackEpoch := baseEpoch - (miner.ElectionLookback - 1) + abi.ChainEpoch(nullBlkCount)
 
-	workerSignerAddr, err := view.AccountSignerAddress(ctx, workerAddr)
+	workerSignerAddr, err := keyView.AccountSignerAddress(ctx, workerAddr)
 	if err != nil {
 		outCh <- NewOutputErr(err)
 		return
@@ -224,116 +230,90 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		return
 	}
 
-	postVrfProof, err := w.election.GenerateEPoStVrfProof(ctx, base.Key(), lookbackEpoch, w.minerAddr, workerSignerAddr, w.workerSigner)
+	drandEntries, err := w.drandEntriesForEpoch(ctx, base, nullBlkCount)
 	if err != nil {
-		log.Errorf("Worker.Mine failed to generate epost postVrfProof %s", err)
+		log.Errorf("Worker.Mine failed to collect drand entries for block %s", err)
 		outCh <- NewOutputErr(err)
 		return
 	}
-	postVrfProofDigest := postVrfProof.Digest()
 
-	powerTable, err := w.getPowerTable(base.Key())
+	// Determine if we've won election
+	electionEntry, err := w.electionEntry(ctx, base, drandEntries)
+	if err != nil {
+		log.Errorf("Worker.Mine failed to calculate drand entry for election randomness %s", err)
+		outCh <- NewOutputErr(err)
+		return
+	}
+
+	electionVRFProof, err := w.election.GenerateElectionProof(ctx, electionEntry, baseEpoch+1+abi.ChainEpoch(nullBlkCount), w.minerAddr, workerSignerAddr, w.workerSigner)
+	if err != nil {
+		log.Errorf("Worker.Mine failed to generate electionVRFProof %s", err)
+	}
+	electionVRFDigest := electionVRFProof.Digest()
+	electionPowerAncestor, err := w.lookbackTipset(ctx, base, nullBlkCount, consensus.ElectionPowerTableLookback)
+	if err != nil {
+		log.Errorf("Worker.Mine couldn't get ancestor tipset: %s", err.Error())
+		outCh <- NewOutputErr(err)
+		return
+	}
+	electionPowerTable, err := w.getPowerTable(electionPowerAncestor.Key(), base.Key())
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't get snapshot for tipset: %s", err.Error())
 		outCh <- NewOutputErr(err)
 		return
 	}
-	sortedSectorInfos, err := powerTable.SortedSectorInfos(ctx, w.minerAddr)
-	if err != nil {
-		log.Warnf("Worker.Mine failed to get ssi for %s", w.minerAddr)
-		outCh <- NewOutputErr(err)
-		return
-	}
-	// Generate election post candidates
-	done := make(chan []abi.PoStCandidate)
-	errCh := make(chan error)
-	go func() {
-		defer close(done)
-		defer close(errCh)
-		candidates, err := w.election.GenerateCandidates(postVrfProofDigest[:], sortedSectorInfos, w.poster, w.minerAddr)
-		if err != nil {
-			errCh <- err
-			return
-		}
-		done <- candidates
-	}()
-	var candidates []abi.PoStCandidate
-	select {
-	case <-ctx.Done():
-		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base.Key(), "nullBlocks", nullBlkCount)
-	case err := <-errCh:
-		log.Warnf("Worker.Mine failed to get ssi: %s", err)
-		outCh <- NewOutputErr(err)
-		return
-	case genResult := <-done:
-		candidates = genResult
-	}
-
-	// Look for any winning candidates
-	sectorNum, err := powerTable.NumSectors(ctx, w.minerAddr)
+	sectorNum, err := electionPowerTable.NumSectors(ctx, w.minerAddr)
 	if err != nil {
 		log.Errorf("failed to get number of sectors for miner: %s", err)
 		outCh <- NewOutputErr(err)
 		return
 	}
-	networkPower, err := powerTable.Total(ctx)
+	networkPower, err := electionPowerTable.Total(ctx)
 	if err != nil {
 		log.Errorf("failed to get total power: %s", err)
 		outCh <- NewOutputErr(err)
 		return
 	}
-	sectorSize, err := powerTable.SectorSize(ctx, w.minerAddr)
+	sectorSize, err := electionPowerTable.SectorSize(ctx, w.minerAddr)
 	if err != nil {
 		log.Errorf("failed to get sector size for miner: %s", err)
 		outCh <- NewOutputErr(err)
 		return
 	}
-	hasher := hasher.NewHasher()
-	var winners []abi.PoStCandidate
-	for _, candidate := range candidates {
-		hasher.Bytes(candidate.PartialTicket[:])
-		challengeTicket := hasher.Hash()
-		// Dragons: converting to uint64 here is not safe
-		// Dragons: must set fault count, not zero
-		if w.election.CandidateWins(challengeTicket, sectorNum, 0, networkPower.Uint64(), uint64(sectorSize)) {
-			winners = append(winners, candidate)
-		}
-	}
 
-	// no winners we are done
-	if len(winners) == 0 {
+	wins := w.election.IsWinner(electionVRFDigest[:], sectorNum, networkPower.Uint64(), uint64(sectorSize))
+	if !wins {
+		// no winners we are done TODO check using electionProof VRF output election is winner
+		won = false
 		return
 	}
+
 	// we have a winning block
 
-	// Generate PoSt
-	postDone := make(chan []abi.PoStProof)
-	errCh = make(chan error)
-	go func() {
-		defer close(postDone)
-		defer close(errCh)
-		postProofs, err := w.election.GenerateEPoSt(sortedSectorInfos, postVrfProofDigest[:], winners, w.poster)
-		if err != nil {
-			errCh <- err
-			return
-		}
-		postDone <- postProofs
-	}()
-	var poStProofs []abi.PoStProof
-	select {
-	case <-ctx.Done():
-		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base, "nullBlocks", nullBlkCount)
-	case err := <-errCh:
-		log.Warnf("Worker.Mine failed to generate post: %s", err)
+	// TODO -- winning postProof
+	sectorSetAncestor, err := w.lookbackTipset(ctx, base, nullBlkCount, consensus.WinningPoStSectorSetLookback)
+	if err != nil {
+		log.Errorf("Worker.Mine couldn't get ancestor tipset: %s", err.Error())
 		outCh <- NewOutputErr(err)
 		return
-	case postOut := <-postDone:
-		poStProofs = postOut
 	}
+	winningPoStSectorSetView, err := w.getPowerTable(sectorSetAncestor.Key(), base.Key())
+	if err != nil {
+		log.Errorf("Worker.Mine couldn't get snapshot for tipset: %s", err.Error())
+		outCh <- NewOutputErr(err)
+		return
+	}
+	sortedSectorInfos, err := winningPoStSectorSetView.SortedSectorInfos(ctx, w.minerAddr)
+	if err != nil {
+		log.Warnf("Worker.Mine failed to get ssi for %s", w.minerAddr)
+		outCh <- NewOutputErr(err)
+		return
+	}
+	_ = sortedSectorInfos // TODO use for winning post
+	//postInfo := block.NewEPoStInfo(block.FromABIPoStProofs([]abi.PoStProof{})), abi.PoStRandomness(postVrfProof), block.FromFFICandidates(winners...)...)
+	postInfo := block.EPoStInfo{}
 
-	postInfo := block.NewEPoStInfo(block.FromABIPoStProofs(poStProofs...), abi.PoStRandomness(postVrfProof), block.FromFFICandidates(winners...)...)
-
-	next := w.Generate(ctx, base, nextTicket, abi.ChainEpoch(nullBlkCount), postInfo)
+	next := w.Generate(ctx, base, nextTicket, electionVRFProof, abi.ChainEpoch(nullBlkCount), postInfo, drandEntries)
 	if next.Err == nil {
 		log.Debugf("Worker.Mine generates new winning block! %s", next.Header.Cid().String())
 	}
@@ -342,10 +322,84 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	return
 }
 
-func (w *DefaultWorker) getPowerTable(baseKey block.TipSetKey) (consensus.PowerTableView, error) {
-	view, err := w.api.PowerStateView(baseKey)
+func (w *DefaultWorker) getPowerTable(powerKey, faultsKey block.TipSetKey) (consensus.PowerTableView, error) {
+	powerView, err := w.api.PowerStateView(powerKey)
 	if err != nil {
 		return consensus.PowerTableView{}, err
 	}
-	return consensus.NewPowerTableView(view), nil
+	faultsView, err := w.api.FaultsStateView(faultsKey)
+	if err != nil {
+		return consensus.PowerTableView{}, err
+	}
+	return consensus.NewPowerTableView(powerView, faultsView), nil
+}
+
+func (w *DefaultWorker) lookbackTipset(ctx context.Context, base block.TipSet, nullBlkCount uint64, lookback uint64) (block.TipSet, error) {
+	if lookback <= nullBlkCount+1 { // new block looks back to base
+		return base, nil
+	}
+	baseHeight, err := base.Height()
+	if err != nil {
+		return block.UndefTipSet, err
+	}
+	targetEpoch := abi.ChainEpoch(uint64(baseHeight) + 1 + nullBlkCount - lookback)
+
+	return chain.FindTipsetAtEpoch(ctx, base, targetEpoch, w.chainState)
+}
+
+// drandEntriesForEpoch returns the array of drand entries that should be
+// included in the next block.  The return value maay be nil.
+func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.TipSet, nullBlkCount uint64) ([]*drand.Entry, error) {
+	baseHeight, err := base.Height()
+	if err != nil {
+		return nil, err
+	}
+	// Special case genesis
+	var rounds []drand.Round
+	if baseHeight == abi.ChainEpoch(0) {
+		// no latest entry, targetEpoch undefined as its before genesis
+
+		// There should be a first genesis drand round from time before genesis
+		// and then we grab everything between this round and genesis time
+		startTime := w.drand.StartTimeOfRound(w.drand.FirstFilecoinRound())
+		endTime := w.clock.StartTimeOfEpoch(0)
+		rounds, err = w.drand.RoundsInInterval(ctx, startTime, endTime)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		latestEntry, err := chain.FindLatestDRAND(ctx, base, w.chainState)
+		if err != nil {
+			return nil, err
+		}
+		lastTargetEpoch := abi.ChainEpoch(uint64(baseHeight) + nullBlkCount + 1 - consensus.DRANDEpochLookback)
+		startTime := w.drand.StartTimeOfRound(latestEntry.Round)
+		// end of interval is beginning of next epoch after lastTargetEpoch so
+		//  we add 1 to lastTargetEpoch
+		endTime := w.clock.StartTimeOfEpoch(lastTargetEpoch + 1)
+		rounds, err = w.drand.RoundsInInterval(ctx, startTime, endTime)
+		if err != nil {
+			return nil, err
+		}
+		// first round is round of latestEntry so omit the 0th round
+		rounds = rounds[1:]
+	}
+
+	entries := make([]*drand.Entry, len(rounds))
+	for i, round := range rounds {
+		entries[i], err = w.drand.ReadEntry(ctx, round)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return entries, nil
+}
+
+func (w *DefaultWorker) electionEntry(ctx context.Context, base block.TipSet, drandEntriesInBlock []*drand.Entry) (*drand.Entry, error) {
+	numEntries := len(drandEntriesInBlock)
+	if numEntries > 0 {
+		return drandEntriesInBlock[numEntries-1], nil
+	}
+
+	return chain.FindLatestDRAND(ctx, base, w.chainState)
 }

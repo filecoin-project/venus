@@ -16,11 +16,13 @@ import (
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/util/hasher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -52,6 +54,18 @@ const challengeBits = 256
 // expectedLeadersPerEpoch is the mean number of leaders per epoch
 const expectedLeadersPerEpoch = 5
 
+// WinningPoStSectorSetLookback is the past epoch offset for reading the
+// winning post sector set
+const WinningPoStSectorSetLookback = 10
+
+// ElectionPowerTableLookback is the past epoch offset for reading the
+// election power values
+const ElectionPowerTableLookback = 10
+
+// DRANDEpochLookback is the past filecoin epoch offset at which DRAND entries
+// in that epoch should be included in a block.
+const DRANDEpochLookback = 2
+
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
@@ -66,13 +80,19 @@ type TicketValidator interface {
 // ElectionValidator validates that an election fairly produced a winner.
 type ElectionValidator interface {
 	VerifyPoSt(ctx context.Context, ep EPoStVerifier, allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, proofs []block.EPoStProof, candidates []block.EPoStCandidate, mIDAddr address.Address) (bool, error)
-	CandidateWins(challengeTicket []byte, sectorNum, faultNum, networkPower, sectorSize uint64) bool
-	VerifyEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, vrfProof abi.PoStRandomness) error
+	IsWinner(challengeTicket []byte, sectorNum, networkPower, sectorSize uint64) bool
+	VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error
 }
 
 // StateViewer provides views into the chain state.
 type StateViewer interface {
-	StateView(root cid.Cid) PowerStateView
+	PowerStateView(root cid.Cid) PowerStateView
+	FaultStateView(root cid.Cid) FaultStateView
+}
+
+type chainReader interface {
+	GetTipSet(tsKey block.TipSetKey) (block.TipSet, error)
+	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
 }
 
 // Expected implements expected consensus.
@@ -91,16 +111,22 @@ type Expected struct {
 	// accessing the power table.
 	bstore blockstore.Blockstore
 
+	// chainState is a reference to the current chain state
+	chainState chainReader
+
 	// processor is what we use to process messages and pay rewards
 	processor Processor
 
-	// state provides produces snapshots
+	// state produces snapshots
 	state StateViewer
 
 	blockTime time.Duration
 
 	// postVerifier verifies PoSt proofs and associated data
 	postVerifier EPoStVerifier
+
+	clock clock.ChainEpochClock
+	drand drand.IFace
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
@@ -108,7 +134,7 @@ var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
 func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processor, state StateViewer, bt time.Duration,
-	ev ElectionValidator, tv TicketValidator, pv EPoStVerifier) *Expected {
+	ev ElectionValidator, tv TicketValidator, pv EPoStVerifier, chainState chainReader, clock clock.ChainEpochClock, drand drand.IFace) *Expected {
 	return &Expected{
 		cstore:            cs,
 		blockTime:         bt,
@@ -118,6 +144,9 @@ func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processo
 		ElectionValidator: ev,
 		TicketValidator:   tv,
 		postVerifier:      pv,
+		chainState:        chainState,
+		clock:             clock,
+		drand:             drand,
 	}
 }
 
@@ -171,9 +200,37 @@ func (c *Expected) validateMining(ctx context.Context,
 	parentWeight fbig.Int,
 	parentReceiptRoot cid.Cid) error {
 
-	stateView := c.state.StateView(parentStateRoot)
-	sigValidator := appstate.NewSignatureValidator(stateView)
-	powerTable := NewPowerTableView(stateView)
+	keyStateView := c.state.PowerStateView(parentStateRoot)
+	sigValidator := appstate.NewSignatureValidator(keyStateView)
+	faultsStateView := c.state.FaultStateView(parentStateRoot)
+	keyPowerTable := NewPowerTableView(keyStateView, faultsStateView)
+
+	tsHeight, err := ts.Height()
+	if err != nil {
+		return errors.Wrap(err, "could not get new tipset's height")
+	}
+
+	sectorSetAncestor, err := chain.FindTipsetAtEpoch(ctx, ts, tsHeight-WinningPoStSectorSetLookback, c.chainState)
+	if err != nil {
+		return errors.Wrap(err, "failed to find sector set lookback ancestor")
+	}
+	sectorSetStateRoot, err := c.chainState.GetTipSetStateRoot(sectorSetAncestor.Key())
+	if err != nil {
+		return errors.Wrap(err, "failed to get state root for sectorSet ancestor")
+	}
+	sectorSetStateView := c.state.PowerStateView(sectorSetStateRoot)
+	sectorSetPowerTable := NewPowerTableView(sectorSetStateView, faultsStateView)
+
+	electionPowerAncestor, err := chain.FindTipsetAtEpoch(ctx, ts, tsHeight-ElectionPowerTableLookback, c.chainState)
+	if err != nil {
+		return errors.Wrap(err, "failed to find election power lookback ancestor")
+	}
+	electionPowerStateRoot, err := c.chainState.GetTipSetStateRoot(electionPowerAncestor.Key())
+	if err != nil {
+		return errors.Wrap(err, "failed to get state root for election power ancestor")
+	}
+	electionPowerStateView := c.state.PowerStateView(electionPowerStateRoot)
+	electionPowerTable := NewPowerTableView(electionPowerStateView, faultsStateView)
 
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
@@ -191,11 +248,11 @@ func (c *Expected) validateMining(ctx context.Context,
 		if !parentWeight.Equals(blk.ParentWeight) {
 			return errors.Errorf("block %s has invalid parent weight %d expected %d", blk.Cid().String(), blk.ParentWeight, parentWeight)
 		}
-		workerAddr, err := powerTable.WorkerAddr(ctx, blk.Miner)
+		workerAddr, err := keyPowerTable.WorkerAddr(ctx, blk.Miner)
 		if err != nil {
 			return errors.Wrap(err, "failed to read worker address of block miner")
 		}
-		workerSignerAddr, err := powerTable.SignerAddress(ctx, workerAddr)
+		workerSignerAddr, err := keyPowerTable.SignerAddress(ctx, workerAddr)
 		if err != nil {
 			return errors.Wrapf(err, "failed to convert address, %s, to a signing address", workerAddr.String())
 		}
@@ -219,70 +276,127 @@ func (c *Expected) validateMining(ctx context.Context,
 			}
 		}
 
-		// Epoch at which election post and ticket randomness must be sampled
-		sampleEpoch := blk.Height - miner.ElectionLookback
-
-		// Verify EPoSt VRF proof ("PoSt randomness")
-		if err := c.VerifyEPoStVrfProof(ctx, blk.Parents, sampleEpoch, blk.Miner, workerSignerAddr, blk.EPoStInfo.VRFProof); err != nil {
-			return errors.Wrapf(err, "failed to verify EPoSt VRF proof (PoSt randomness) in block %s", blk.Cid())
+		err = c.validateDRANDEntries(ctx, blk)
+		if err != nil {
+			return errors.Wrapf(err, "invalid DRAND entries")
 		}
 
-		// Verify no duplicate challenge indexes
-		challengeIndexes := make(map[int64]struct{})
-		for _, winner := range blk.EPoStInfo.Winners {
-			index := winner.SectorChallengeIndex
-			if _, dup := challengeIndexes[index]; dup {
-				return errors.Errorf("Duplicate partial ticket submitted, challenge idx: %d", index)
-			}
-			challengeIndexes[index] = struct{}{}
+		electionEntry, err := c.electionEntry(ctx, blk)
+		if err != nil {
+			return errors.Wrapf(err, "failed to get election entry")
 		}
-
-		// Verify all partial tickets are winners
+		err = c.VerifyElectionProof(ctx, electionEntry, blk.Height, blk.Miner, workerSignerAddr, blk.ElectionProof)
+		if err != nil {
+			return errors.Wrapf(err, "failed to verify election proof")
+		}
 		// TODO this is not using nominal power, which must take into account undeclared faults
 		// TODO the nominal power must be tested against the minimum (power.minerNominalPowerMeetsConsensusMinimum)
 		// See https://github.com/filecoin-project/go-filecoin/issues/3958
-		sectorNum, err := powerTable.NumSectors(ctx, blk.Miner)
+		sectorNum, err := electionPowerTable.NumSectors(ctx, blk.Miner)
 		if err != nil {
 			return errors.Wrap(err, "failed to read sectorNum from power table")
 		}
-		networkPower, err := powerTable.Total(ctx)
+		networkPower, err := electionPowerTable.Total(ctx)
 		if err != nil {
 			return errors.Wrap(err, "failed to read networkPower from power table")
 		}
-		sectorSize, err := powerTable.SectorSize(ctx, blk.Miner)
+		sectorSize, err := electionPowerTable.SectorSize(ctx, blk.Miner)
 		if err != nil {
 			return errors.Wrap(err, "failed to read sectorSize from power table")
 		}
-		hasher := hasher.NewHasher()
-		for i, candidate := range blk.EPoStInfo.Winners {
-			hasher.Bytes(candidate.PartialTicket)
-			// Dragons: must pass fault count value here, not zero.
-			if !c.ElectionValidator.CandidateWins(hasher.Hash(), sectorNum, 0, networkPower.Uint64(), uint64(sectorSize)) {
-				return errors.Errorf("partial ticket %d lost election", i)
-			}
+		electionVRFDigest := blk.ElectionProof.Digest()
+		wins := c.IsWinner(electionVRFDigest[:], sectorNum, networkPower.Uint64(), uint64(sectorSize))
+		if !wins {
+			return errors.Errorf("Block did not win election")
 		}
 
-		// Verify PoSt is valid
-		allSectorInfos, err := powerTable.SortedSectorInfos(ctx, blk.Miner)
+		// TODO #3989 validate winning post
+		allSectorInfos, err := sectorSetPowerTable.SortedSectorInfos(ctx, blk.Miner)
 		if err != nil {
 			return errors.Wrapf(err, "failed to read sector infos from power table")
 		}
-		vrfDigest := crypto.VRFPi(blk.EPoStInfo.VRFProof).Digest()
-		valid, err := c.VerifyPoSt(ctx, c.postVerifier, allSectorInfos, vrfDigest[:],
-			blk.EPoStInfo.PoStProofs, blk.EPoStInfo.Winners, blk.Miner)
-		if err != nil {
-			return errors.Wrapf(err, "error checking PoSt")
-		}
-		if !valid {
-			return errors.Errorf("invalid PoSt")
-		}
+		_ = allSectorInfos
 
 		// Ticket was correctly generated by miner
+		sampleEpoch := blk.Height - miner.ElectionLookback
 		if err := c.IsValidTicket(ctx, blk.Parents, sampleEpoch, blk.Miner, workerSignerAddr, blk.Ticket); err != nil {
 			return errors.Wrapf(err, "invalid ticket: %s in block %s", blk.Ticket.String(), blk.Cid())
 		}
 	}
 	return nil
+}
+
+func (c *Expected) validateDRANDEntries(ctx context.Context, blk *block.Block) error {
+	targetEpoch := blk.Height - DRANDEpochLookback
+	parent, err := c.chainState.GetTipSet(blk.Parents)
+	if err != nil {
+		return err
+	}
+
+	numEntries := len(blk.DrandEntries)
+	// Note we don't check for genesis condition because first block must include > 0 drand entries
+	if numEntries == 0 {
+		prevEntry, err := chain.FindLatestDRAND(ctx, parent, c.chainState)
+		if err != nil {
+			return err
+		}
+		nextDRANDTime := c.drand.StartTimeOfRound(prevEntry.Round + drand.Round(1))
+		if c.clock.EpochAtTime(nextDRANDTime) > targetEpoch {
+			return nil
+		}
+		return errors.New("Block missing required DRAND entry")
+	}
+
+	lastRound := blk.DrandEntries[numEntries-1].Round
+	nextDRANDTime := c.drand.StartTimeOfRound(lastRound + 1)
+	if !(c.clock.EpochAtTime(nextDRANDTime) > targetEpoch) {
+		return errors.New("Block does not include all drand entries required")
+	}
+
+	// Validate that DRAND entries link up
+	// Detect case where we have just mined with genesis block as parent
+	parentHeight, err := parent.Height()
+	if err != nil {
+		return err
+	}
+	// No prevEntry in first block so this is skipped first time around
+	if parentHeight != abi.ChainEpoch(0) {
+		prevEntry, err := chain.FindLatestDRAND(ctx, parent, c.chainState)
+		if err != nil {
+			return err
+		}
+		valid, err := c.drand.VerifyEntry(prevEntry, blk.DrandEntries[0])
+		if err != nil {
+			return err
+		}
+		if !valid {
+			return errors.Errorf("invalid DRAND link rounds %d and %d", prevEntry.Round, blk.DrandEntries[0].Round)
+		}
+	}
+	for i := 0; i < numEntries-1; i++ {
+		valid, err := c.drand.VerifyEntry(blk.DrandEntries[i], blk.DrandEntries[i+1])
+		if err != nil {
+			return err
+		}
+		if !valid {
+			return errors.Errorf("invalid DRAND link rounds %d and %d", blk.DrandEntries[i].Round, blk.DrandEntries[i+1].Round)
+		}
+	}
+
+	return nil
+
+}
+
+func (c *Expected) electionEntry(ctx context.Context, blk *block.Block) (*drand.Entry, error) {
+	if len(blk.DrandEntries) > 0 {
+		return blk.DrandEntries[len(blk.DrandEntries)-1], nil
+	}
+
+	parent, err := c.chainState.GetTipSet(blk.Parents)
+	if err != nil {
+		return nil, err
+	}
+	return chain.FindLatestDRAND(ctx, parent, c.chainState)
 }
 
 // runMessages applies the messages of all blocks within the input
@@ -303,7 +417,6 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 			BLSMessages:  blsMessages[i],
 			SECPMessages: secpMessages[i],
 			Miner:        blk.Miner,
-			TicketCount:  int64(len(blk.EPoStInfo.Winners)),
 		}
 
 		msgs = append(msgs, msgInfo)
@@ -322,17 +435,22 @@ func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (*state.State,
 	return state.LoadState(ctx, c.cstore, id)
 }
 
-// PowerStateViewer a state viewer to the power state view interface.
-type PowerStateViewer struct {
+// DefaultStateViewer a state viewer to the power state view interface.
+type DefaultStateViewer struct {
 	*appstate.Viewer
 }
 
-// AsPowerStateViewer adapts a state viewer to a power state viewer.
-func AsPowerStateViewer(v *appstate.Viewer) PowerStateViewer {
-	return PowerStateViewer{v}
+// AsDefaultStateViewer adapts a state viewer to a power state viewer.
+func AsDefaultStateViewer(v *appstate.Viewer) DefaultStateViewer {
+	return DefaultStateViewer{v}
 }
 
-// StateView returns a power state view for a state root.
-func (p *PowerStateViewer) StateView(root cid.Cid) PowerStateView {
-	return p.Viewer.StateView(root)
+// PowerStateView returns a power state view for a state root.
+func (v *DefaultStateViewer) PowerStateView(root cid.Cid) PowerStateView {
+	return v.Viewer.StateView(root)
+}
+
+// FaultStateView returns a fault state view for a state root.
+func (v *DefaultStateViewer) FaultStateView(root cid.Cid) FaultStateView {
+	return v.Viewer.StateView(root)
 }

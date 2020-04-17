@@ -2,6 +2,7 @@ package drand
 
 import (
 	"context"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 )
@@ -10,7 +11,10 @@ import (
 type IFace interface {
 	ReadEntry(ctx context.Context, drandRound Round) (*Entry, error)
 	VerifyEntry(parent, child *Entry) (bool, error)
-	FetchGroupConfig(addresses []string, secure bool, overrideGroupAddrs bool) ([]string, [][]byte, error)
+	FetchGroupConfig(addresses []string, secure bool, overrideGroupAddrs bool) ([]string, [][]byte, uint64, int, error)
+	StartTimeOfRound(round Round) time.Time
+	RoundsInInterval(ctx context.Context, startTime, endTime time.Time) ([]Round, error)
+	FirstFilecoinRound() Round
 }
 
 // Round is a type for recording drand round indexes
@@ -19,6 +23,9 @@ type Round uint64
 // Entry is a verifiable entry in the drand chain carrying round and
 // randomness information
 type Entry struct {
+	_         struct{} `cbor:",toarray"`
 	Round     Round
 	Signature crypto.Signature
+
+	parentRound Round
 }

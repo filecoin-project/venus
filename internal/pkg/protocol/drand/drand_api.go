@@ -35,7 +35,7 @@ func New(drand drand.IFace, config Config) *API {
 // This method assumes all drand nodes are secure or that all of them are not. This
 // mis-models the drand config, but is unlikely to be false in practice.
 func (api *API) Configure(addrs []string, secure bool, overrideGroupAddrs bool) error {
-	groupAddrs, keyCoeffs, err := api.drand.FetchGroupConfig(addrs, secure, overrideGroupAddrs)
+	groupAddrs, keyCoeffs, genesisTime, roundSeconds, err := api.drand.FetchGroupConfig(addrs, secure, overrideGroupAddrs)
 	if err != nil {
 		return errors.Wrapf(err, "Could not retrieve drand group from %+v", addrs)
 	}
@@ -72,6 +72,24 @@ func (api *API) Configure(addrs []string, secure bool, overrideGroupAddrs bool) 
 	err = api.config.ConfigSet("drand.secure", string(jsonSecure))
 	if err != nil {
 		return errors.Wrap(err, "Could not set drand secure in config")
+	}
+
+	jsonStart, err := json.Marshal(genesisTime)
+	if err != nil {
+		return errors.Wrap(err, "Could not convert startTimeUnix to json")
+	}
+	err = api.config.ConfigSet("drand.startTimeUnix", string(jsonStart))
+	if err != nil {
+		return errors.Wrap(err, "Could not set drand start time unix in config")
+	}
+
+	jsonRoundSeconds, err := json.Marshal(roundSeconds)
+	if err != nil {
+		return errors.Wrap(err, "Could not convert roundSeconds to json")
+	}
+	err = api.config.ConfigSet("drand.roundSeconds", string(jsonRoundSeconds))
+	if err != nil {
+		return errors.Wrap(err, "Could not set drand round seconds in config")
 	}
 
 	return nil

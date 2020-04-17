@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 )
 
 // TipSetProvider provides tipsets for traversal.
@@ -183,4 +184,47 @@ func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator
 		ret = append(ret, iterator.Value())
 	}
 	return ret, nil
+}
+
+// FindTipSetAtEpoch finds the highest tipset with height <= the input epoch
+// by traversing backwards from start
+func FindTipsetAtEpoch(ctx context.Context, start block.TipSet, epoch abi.ChainEpoch, reader TipSetProvider) (ts block.TipSet, err error) {
+	iterator := IterAncestors(ctx, reader, start)
+	var h abi.ChainEpoch
+	for ; !iterator.Complete(); err = iterator.Next() {
+		if err != nil {
+			return
+		}
+		ts = iterator.Value()
+		h, err = ts.Height()
+		if err != nil {
+			return
+		}
+		if h <= epoch {
+			break
+		}
+	}
+	// If the iterator completed, ts is the genesis tipset.
+	return
+}
+
+// FindLatestDRAND returns the latest DRAND entry in the chain beginning at start
+func FindLatestDRAND(ctx context.Context, start block.TipSet, reader TipSetProvider) (*drand.Entry, error) {
+	iterator := IterAncestors(ctx, reader, start)
+	var err error
+	for ; !iterator.Complete(); err = iterator.Next() {
+		if err != nil {
+			return nil, err
+		}
+		ts := iterator.Value()
+		// DRAND entries must be the same for all blocks on the tipset as
+		// an invariant of the tipset provider
+
+		entries := ts.At(0).DrandEntries
+		if len(entries) > 0 {
+			return entries[len(entries)-1], nil
+		}
+		// No entries, simply move on to the next ancestor
+	}
+	return nil, errors.New("no DRAND entries in chain")
 }

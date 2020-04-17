@@ -85,6 +85,16 @@ func MustGenerateMixedKeyInfo(m int, n int) []crypto.KeyInfo {
 	return info
 }
 
+// MustGenerateBLSKeyInfo produces n distinct BLS keyinfos.
+func MustGenerateBLSKeyInfo(n int) []crypto.KeyInfo {
+	info := []crypto.KeyInfo{}
+	for i := 0; i < n; i++ {
+		ki := crypto.NewBLSKeyRandom()
+		info = append(info, ki)
+	}
+	return info
+}
+
 // MustGenerateKeyInfo generates `n` distinct keyinfos using seed `seed`.
 // The result is deterministic (for stable tests), don't use this for real keys!
 func MustGenerateKeyInfo(n int, seed byte) []crypto.KeyInfo {

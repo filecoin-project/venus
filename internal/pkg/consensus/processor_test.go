@@ -88,7 +88,7 @@ package consensus_test
 // 	}
 
 // 	tsMsgs := [][]*types.UnsignedMessage{msgs1, msgs2}
-// 	res, err := NewDefaultProcessor().ProcessTipSet(ctx, st, vms, th.RequireNewTipSet(t, blk1, blk2), tsMsgs, nil)
+// 	res, err := NewDefaultProcessor().ProcessTipSet(ctx, st, vms, block.RequireNewTipSet(t, blk1, blk2), tsMsgs, nil)
 // 	require.NoError(t, err)
 // 	assert.Len(t, res, 2)
 // 	for _, r := range res {
@@ -139,7 +139,7 @@ package consensus_test
 // 	}
 
 // 	tsMsgs := [][]*types.UnsignedMessage{msgs1, msgs2}
-// 	res, err := NewDefaultProcessor().ProcessTipSet(ctx, st, vms, th.RequireNewTipSet(t, blk1, blk2), tsMsgs, nil)
+// 	res, err := NewDefaultProcessor().ProcessTipSet(ctx, st, vms, block.RequireNewTipSet(t, blk1, blk2), tsMsgs, nil)
 // 	require.NoError(t, err)
 // 	assert.Len(t, res, 2)
 // 	require.NoError(t, res[0].Failure)

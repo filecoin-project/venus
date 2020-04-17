@@ -15,6 +15,7 @@ import (
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -25,8 +26,10 @@ func (w *DefaultWorker) Generate(
 	ctx context.Context,
 	baseTipSet block.TipSet,
 	ticket block.Ticket,
+	electionProof crypto.VRFPi,
 	nullBlockCount abi.ChainEpoch,
 	ePoStInfo block.EPoStInfo,
+	drandEntries []*drand.Entry,
 ) Output {
 
 	generateTimer := time.Now()
@@ -96,6 +99,8 @@ func (w *DefaultWorker) Generate(
 	next := &block.Block{
 		Miner:           w.minerAddr,
 		Height:          blockHeight,
+		DrandEntries:    drandEntries,
+		ElectionProof:   electionProof,
 		Messages:        e.NewCid(txMetaCid),
 		MessageReceipts: e.NewCid(baseReceiptRoot),
 		Parents:         baseTipSet.Key(),

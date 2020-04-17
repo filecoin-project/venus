@@ -70,6 +70,10 @@ func (t *FakeWorkerPorcelainAPI) PowerStateView(_ block.TipSetKey) (consensus.Po
 	return t.stateView, nil
 }
 
+func (t *FakeWorkerPorcelainAPI) FaultsStateView(_ block.TipSetKey) (consensus.FaultStateView, error) {
+	return t.stateView, nil
+}
+
 func (t *FakeWorkerPorcelainAPI) SampleChainRandomness(ctx context.Context, head block.TipSetKey, tag acrypto.DomainSeparationTag,
 	epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	return t.rnd.SampleChainRandomness(ctx, head, tag, epoch, entropy)

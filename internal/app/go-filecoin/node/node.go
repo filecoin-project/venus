@@ -712,6 +712,8 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 		Blockstore:       node.Blockstore.Blockstore,
 		Clock:            node.ChainClock,
 		Poster:           node.StorageMining.PoStGenerator,
+		ChainState:       node.chain.ChainReader,
+		Drand:            node.Syncer().Drand,
 	}), nil
 }
 
