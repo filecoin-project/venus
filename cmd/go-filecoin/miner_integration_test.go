@@ -15,6 +15,7 @@ import (
 )
 
 func TestMinerCreateIntegration(t *testing.T) {
+	t.Skip("try this")
 	tf.IntegrationTest(t)
 
 	ctx := context.Background()
