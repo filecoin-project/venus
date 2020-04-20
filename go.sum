@@ -205,8 +205,6 @@ github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9 h
 github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9/go.mod h1:FGwQgZAt2Gh5mjlwJUlVB62JeYdo+if0xWxSEfBD9ig=
 github.com/filecoin-project/go-statestore v0.1.0 h1:t56reH59843TwXHkMcwyuayStBIiWBRilQjQ+5IiwdQ=
 github.com/filecoin-project/go-statestore v0.1.0/go.mod h1:LFc9hD+fRxPqiHiaqUEZOinUJB4WARkRfNl10O7kTnI=
-github.com/filecoin-project/go-storage-miner v0.0.0-20200326201738-26de94e25d49 h1:YjqcHxgFzYq3jT7XLEGz3fpQ+Xkc9TqbnSy8JmNaCw4=
-github.com/filecoin-project/go-storage-miner v0.0.0-20200326201738-26de94e25d49/go.mod h1:54/xL8fyojWk2ezDxSuWtA8G9Fht/hNUKiZNbrzMdYE=
 github.com/filecoin-project/lotus v0.2.10 h1:ijrj/nYdKu5GiMo9r1+Zcp2A4jKHSOMZ2WNy2K/mtOE=
 github.com/filecoin-project/lotus v0.2.10/go.mod h1:om5PQA9ZT0lf16qI7Fz/ZGLn4LDCMqPC8ntZA9uncRE=
 github.com/filecoin-project/sector-storage v0.0.0-20200406195014-a6d093838576 h1:MzBqbddYp/vdFOC3WNu3tSWfLFwHUP8Orcx2CxjRPyo=
