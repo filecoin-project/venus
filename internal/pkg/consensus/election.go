@@ -5,7 +5,7 @@ import (
 	"math/big"
 
 	address "github.com/filecoin-project/go-address"
-	sector "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/minio/blake2b-simd"
@@ -21,7 +21,7 @@ import (
 
 // Interface to PoSt verification.
 type EPoStVerifier interface {
-	// This is a sub-interface of go-sectorbuilder's Verifier interface.
+	// VerifyElectionPost verifies an election PoSt.
 	VerifyElectionPost(ctx context.Context, post abi.PoStVerifyInfo) (bool, error)
 }
 
@@ -59,11 +59,13 @@ func (em ElectionMachine) GenerateCandidates(poStRand abi.PoStRandomness, sector
 		}
 		proofTypeBySectorNumber[s.SectorNumber] = p
 	}
-	candidatesWithTicket, err := ep.GenerateEPostCandidates(sectorInfos, poStRand, dummyFaults)
+
+	minerID, err := address.IDFromAddress(maddr)
 	if err != nil {
 		return nil, err
 	}
-	minerID, err := address.IDFromAddress(maddr)
+
+	candidatesWithTicket, err := ep.GenerateEPostCandidates(context.TODO(), abi.ActorID(minerID), sectorInfos, poStRand, dummyFaults)
 	if err != nil {
 		return nil, err
 	}
@@ -79,8 +81,13 @@ func (em ElectionMachine) GenerateCandidates(poStRand abi.PoStRandomness, sector
 
 // GenerateEPoSt creates a PoSt proof over the input PoSt candidates.  Should
 // only be called on winning candidates.
-func (em ElectionMachine) GenerateEPoSt(allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate, ep postgenerator.PoStGenerator) ([]abi.PoStProof, error) {
-	return ep.ComputeElectionPoSt(allSectorInfos, challengeSeed, winners)
+func (em ElectionMachine) GenerateEPoSt(allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate, ep postgenerator.PoStGenerator, maddr address.Address) ([]abi.PoStProof, error) {
+	minerID, err := address.IDFromAddress(maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	return ep.ComputeElectionPoSt(context.TODO(), abi.ActorID(minerID), allSectorInfos, challengeSeed, winners)
 }
 
 func (em ElectionMachine) VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error {
@@ -110,7 +117,7 @@ func (em ElectionMachine) IsWinner(challengeTicket []byte, sectorNum, networkPow
 func (em ElectionMachine) VerifyPoSt(ctx context.Context, ep EPoStVerifier, allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, proofs []block.EPoStProof, candidates []block.EPoStCandidate, mIDAddr address.Address) (bool, error) {
 	// filter down sector infos to only those referenced by candidates
 	// TODO: pass an actual faults count to this challenge count. https://github.com/filecoin-project/go-filecoin/issues/3875
-	challengeCount := sector.ElectionPostChallengeCount(uint64(len(allSectorInfos)), 0)
+	challengeCount := ffiwrapper.ElectionPostChallengeCount(uint64(len(allSectorInfos)), 0)
 	minerID, err := address.IDFromAddress(mIDAddr)
 	if err != nil {
 		return false, err

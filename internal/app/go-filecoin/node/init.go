@@ -2,29 +2,35 @@ package node
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strconv"
 
-	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	fsm "github.com/filecoin-project/storage-fsm"
+	"github.com/google/uuid"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	keystore "github.com/ipfs/go-ipfs-keystore"
 	acrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/sectors"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -75,7 +81,8 @@ func Init(ctx context.Context, r repo.Repo, gen genesis.InitFunc, opts ...InitOp
 
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	if _, err := chain.Init(ctx, r, bs, cst, gen); err != nil {
+	chainstore, err := chain.Init(ctx, r, bs, cst, gen)
+	if err != nil {
 		return errors.Wrap(err, "Could not Init Node")
 	}
 
@@ -107,7 +114,11 @@ func Init(ctx context.Context, r repo.Repo, gen genesis.InitFunc, opts ...InitOp
 		return errors.Wrap(err, "failed to write config")
 	}
 
-	return nil
+	genesisBlock, err := chainstore.GetGenesisBlock(ctx)
+	if err != nil {
+		return err
+	}
+	return InitSectors(ctx, r, genesisBlock)
 }
 
 func initPeerKey(store keystore.Keystore, key acrypto.PrivKey) error {
@@ -149,91 +160,195 @@ func importInitKeys(w *wallet.Wallet, importKeys []*crypto.KeyInfo) error {
 	return nil
 }
 
-func ImportPresealedSectors(rep repo.Repo, srcPath string, sectorSize abi.SectorSize, symlink bool) error {
-	nextSecnum, err := findNextSecnum(srcPath)
+func InitSectors(ctx context.Context, rep repo.Repo, genesisBlock *block.Block) error {
+	cfg := rep.Config()
+
+	rpt, err := rep.Path()
 	if err != nil {
 		return err
 	}
 
-	oldMetaDs := datastore.NewMapDatastore()
-	err = oldMetaDs.Put(datastore.NewKey("/sectorbuilder/last"), []byte(fmt.Sprint(nextSecnum)))
+	spt, err := paths.GetSectorPath(cfg.SectorBase.RootDirPath, rpt)
 	if err != nil {
 		return err
 	}
 
-	registeredSealProof, registeredPoStProof, err := registeredProofsFromSectorSize(sectorSize)
-	if err != nil {
+	if err := ensureSectorDirAndMetadata(false, spt); err != nil {
 		return err
 	}
 
-	oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
-		SealProofType: registeredSealProof,
-		PoStProofType: registeredPoStProof,
-		WorkerThreads: 1,
-		Paths:         sectorbuilder.SimplePath(srcPath),
-	}, namespace.Wrap(oldMetaDs, datastore.NewKey("/sectorbuilder")))
-	if err != nil {
-		return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
-	}
+	if cfg.SectorBase.PreSealedSectorsDirPath != "" && cfg.Mining.MinerAddress != address.Undef {
+		if err := ensureSectorDirAndMetadata(true, cfg.SectorBase.PreSealedSectorsDirPath); err != nil {
+			return err
+		}
 
-	repoPath, err := rep.Path()
-	if err != nil {
-		return errors.Wrapf(err, "sector import destination repo")
-	}
-	dstPath, err := paths.GetSectorPath(rep.Config().SectorBase.RootDir, repoPath)
-	if err != nil {
-		return errors.Wrapf(err, "sector import sector path")
-	}
-	newsb, err := sectorbuilder.New(&sectorbuilder.Config{
-		SealProofType: registeredSealProof,
-		PoStProofType: registeredPoStProof,
-		WorkerThreads: 1,
-		Paths:         sectorbuilder.SimplePath(dstPath),
-	}, namespace.Wrap(rep.Datastore(), datastore.NewKey("/sectorbuilder")))
-	if err != nil {
-		return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
-	}
-
-	if err := newsb.ImportFrom(oldsb, symlink); err != nil {
-		return err
+		if err := importPreSealedSectorMetadata(ctx, rep, genesisBlock, cfg.Mining.MinerAddress); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func findNextSecnum(srcPath string) (int64, error) {
-	// matches sector files (e.g. 's-t0106-3`, `s-t01000-19`) to find the sector number at the end.
-	secnuumPattern, err := regexp.Compile("^s-\\w+-(\\d+)$")
-	if err != nil {
-		return 0, err
+// Save the provided slice of sector metadata (corresponding to pre-sealed
+// sectors) to the keyspace used by the finite-state machine.
+func persistGenesisFSMState(rep repo.Repo, info []fsm.SectorInfo) error {
+	for idx := range info {
+		key := datastore.NewKey(fsm.SectorStorePrefix).ChildString(fmt.Sprint(info[idx].SectorNumber))
+
+		b, err := encoding.Encode(&info[idx])
+		if err != nil {
+			return err
+		}
+
+		if err := rep.Datastore().Put(key, b); err != nil {
+			return err
+		}
 	}
 
-	// find last sector id by examining paths
-	maxSecnum := int64(-1)
-	dirs := []string{"cache", "sealed", "staging", "unsealed"}
-	for _, dir := range dirs {
-		dirPath := filepath.Join(srcPath, dir)
+	return nil
+}
 
-		if _, err = os.Stat(dirPath); os.IsNotExist(err) {
-			continue
+func importPreSealedSectorMetadata(ctx context.Context, rep repo.Repo, genesisBlock *block.Block, maddr address.Address) error {
+	stateFSM, err := createGenesisFSMState(ctx, rep, genesisBlock, maddr)
+	if err != nil {
+		return err
+	}
+
+	err = persistGenesisFSMState(rep, stateFSM)
+	if err != nil {
+		return err
+	}
+
+	max := abi.SectorNumber(0)
+	for idx := range stateFSM {
+		if stateFSM[idx].SectorNumber > max {
+			max = stateFSM[idx].SectorNumber
 		}
+	}
 
-		files, err := ioutil.ReadDir(dirPath)
+	// Increment the sector number counter until it is ready to dispense numbers
+	// outside of the range of numbers already consumed by the pre-sealed
+	// sectors.
+	cnt := sectors.NewPersistedSectorNumberCounter(rep.Datastore())
+	for {
+		num, err := cnt.Next()
 		if err != nil {
-			return 0, err
+			return err
+		}
+		if num > max {
+			break
+		}
+	}
+
+	return nil
+}
+
+func ensureSectorDirAndMetadata(containsPreSealedSectors bool, dirPath string) error {
+	_, err := os.Stat(filepath.Join(dirPath, stores.MetaFile))
+	if os.IsNotExist(err) {
+		// TODO: Set the appropriate permissions.
+		_ = os.MkdirAll(dirPath, 0777)
+
+		dirMeta := stores.LocalStorageMeta{
+			ID:       stores.ID(uuid.New().String()),
+			Weight:   10,
+			CanSeal:  true,
+			CanStore: true,
 		}
 
-		for _, file := range files {
-			matches := secnuumPattern.FindStringSubmatch(file.Name())
-			if len(matches) == 2 {
-				secnum, err := strconv.ParseInt(matches[1], 10, 0)
-				if err != nil {
-					return 0, err
-				}
-				if secnum > maxSecnum {
-					maxSecnum = secnum
-				}
+		if containsPreSealedSectors {
+			dirMeta.CanSeal = false
+			dirMeta.CanStore = false
+			dirMeta.Weight = 0
+		}
+
+		b, err := json.MarshalIndent(&dirMeta, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		// TODO: Set the appropriate permissions.
+		if err := ioutil.WriteFile(filepath.Join(dirPath, stores.MetaFile), b, 0777); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Produce a slice of fsm.SectorInfo (used to seed the storage finite-state
+// machine with pre-sealed sectors) for a storage miner given a newly-minted
+// genesis block.
+func createGenesisFSMState(ctx context.Context, rep repo.Repo, genesisBlock *block.Block, maddr address.Address) ([]fsm.SectorInfo, error) {
+	view := state.NewViewer(cborutil.NewIpldStore(bstore.NewBlockstore(rep.Datastore()))).StateView(genesisBlock.StateRoot.Cid)
+
+	size, err := view.MinerSectorSize(ctx, maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	_, spt, err := ffiwrapper.ProofTypeFromSectorSize(size)
+	if err != nil {
+		return nil, err
+	}
+
+	// Loop through all the sectors in the genesis miner's proving set and
+	// persist to the shared (with storage-fsm) data store the relevant bits of
+	// sector and deal metadata.
+	var out []fsm.SectorInfo
+
+	err = view.MinerProvingSetForEach(ctx, maddr, func(sectorNumber abi.SectorNumber, sealedCID cid.Cid, proofType abi.RegisteredProof, dealIDs []abi.DealID) error {
+		pieces := make([]fsm.Piece, len(dealIDs))
+		for idx := range dealIDs {
+			deal, err := view.MarketStorageDeal(ctx, dealIDs[idx])
+			if err != nil {
+				return err
+			}
+
+			pieces[idx] = fsm.Piece{
+				Piece: abi.PieceInfo{
+					Size:     deal.PieceSize,
+					PieceCID: deal.PieceCID,
+				},
+				DealInfo: &fsm.DealInfo{
+					DealID: dealIDs[idx],
+					DealSchedule: fsm.DealSchedule{
+						StartEpoch: deal.StartEpoch,
+						EndEpoch:   deal.EndEpoch,
+					},
+				},
 			}
 		}
+
+		unsealedCID, err := view.MarketComputeDataCommitment(ctx, spt, dealIDs)
+		if err != nil {
+			return err
+		}
+
+		out = append(out, fsm.SectorInfo{
+			State:            fsm.Proving,
+			SectorNumber:     sectorNumber,
+			SectorType:       proofType,
+			Pieces:           pieces,
+			TicketValue:      abi.SealRandomness{},
+			TicketEpoch:      0,
+			PreCommit1Out:    nil,
+			CommD:            &unsealedCID,
+			CommR:            &sealedCID,
+			Proof:            nil,
+			PreCommitMessage: nil,
+			SeedValue:        abi.InteractiveSealRandomness{},
+			SeedEpoch:        0,
+			CommitMessage:    nil,
+		})
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	return maxSecnum + 1, nil
+
+	return out, nil
 }

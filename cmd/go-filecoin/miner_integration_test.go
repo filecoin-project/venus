@@ -3,6 +3,7 @@ package commands_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
@@ -15,11 +16,14 @@ import (
 )
 
 func TestMinerCreateIntegration(t *testing.T) {
+	t.Skip("Unskip after resolving issue #4003")
 	tf.IntegrationTest(t)
 
-	ctx := context.Background()
-	nodes, cancel := test.MustCreateNodesWithBootstrap(ctx, t, 1)
-	defer cancel()
+	ctx, cancel1 := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel1()
+
+	nodes, cancel2 := test.MustCreateNodesWithBootstrap(ctx, t, 1)
+	defer cancel2()
 
 	newMiner := nodes[1]
 
@@ -48,9 +52,11 @@ func TestMinerCreateIntegration(t *testing.T) {
 func TestSetPrice(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx := context.Background()
-	nodes, cancel := test.MustCreateNodesWithBootstrap(ctx, t, 0)
-	defer cancel()
+	ctx, cancel1 := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel1()
+
+	nodes, cancel2 := test.MustCreateNodesWithBootstrap(ctx, t, 0)
+	defer cancel2()
 
 	env := commands.CreateServerEnv(ctx, nodes[0])
 

@@ -43,7 +43,7 @@ type StorageProtocolSubmodule struct {
 // NewStorageProtocolSubmodule creates a new storage protocol submodule.
 func NewStorageProtocolSubmodule(
 	ctx context.Context,
-	clientAddr address.Address,
+	clientAddr storagemarketconnector.ClientAddressGetter,
 	c *ChainSubmodule,
 	m *MessagingSubmodule,
 	mw *msg.Waiter,

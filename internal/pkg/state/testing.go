@@ -104,14 +104,14 @@ func (v *FakeStateView) MinerProvingPeriod(ctx context.Context, maddr address.Ad
 }
 
 // MinerProvingSetForEach iterates sectors in a miner's proving set.
-func (v *FakeStateView) MinerProvingSetForEach(_ context.Context, maddr address.Address, f func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof) error) error {
+func (v *FakeStateView) MinerProvingSetForEach(_ context.Context, maddr address.Address, f func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof, dealIDs []abi.DealID) error) error {
 	m, ok := v.Miners[maddr]
 	if !ok {
 		return errors.Errorf("no miner %s", maddr)
 	}
 
 	for _, si := range m.ProvingSet {
-		err := f(si.ID, si.SealedCID, constants.DevRegisteredSealProof)
+		err := f(si.ID, si.SealedCID, constants.DevRegisteredSealProof, nil)
 		if err != nil {
 			return err
 		}

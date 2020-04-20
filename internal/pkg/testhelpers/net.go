@@ -13,11 +13,11 @@ import (
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/mux"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	smux "github.com/libp2p/go-stream-muxer"
 	ma "github.com/multiformats/go-multiaddr"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/pkg/errors"
@@ -86,7 +86,7 @@ func (fd *FakeDialer) StopNotify(inet.Notifiee)                             { pa
 
 // fakeStream is a test inet.Stream
 type fakeStream struct {
-	_   smux.Stream
+	_   mux.MuxedStream
 	pid protocol.ID
 }
 

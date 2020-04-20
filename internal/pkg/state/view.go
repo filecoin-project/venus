@@ -2,6 +2,9 @@ package state
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -152,7 +155,7 @@ func (v *View) MinerProvingPeriod(ctx context.Context, maddr addr.Address) (star
 
 // MinerProvingSetForEach Iterates over the sectors in a miner's proving set.
 func (v *View) MinerProvingSetForEach(ctx context.Context, maddr addr.Address,
-	f func(abi.SectorNumber, cid.Cid, abi.RegisteredProof) error) error {
+	f func(abi.SectorNumber, cid.Cid, abi.RegisteredProof, []abi.DealID) error) error {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
 		return err
@@ -162,7 +165,7 @@ func (v *View) MinerProvingSetForEach(ctx context.Context, maddr addr.Address,
 	var sector miner.SectorOnChainInfo
 	return v.asArray(ctx, minerState.ProvingSet).ForEach(&sector, func(i int64) error {
 		// Add more fields here as required by new callers.
-		return f(sector.Info.SectorNumber, sector.Info.SealedCID, sector.Info.RegisteredProof)
+		return f(sector.Info.SectorNumber, sector.Info.SealedCID, sector.Info.RegisteredProof, sector.Info.DealIDs)
 	})
 }
 
@@ -228,6 +231,63 @@ func (v *View) MarketHasDealID(ctx context.Context, addr addr.Address, dealID ab
 		return false, err
 	}
 	return found, err
+}
+
+// MarketComputeDataCommitment takes deal ids and uses associated commPs to compute commD for a sector that contains the deals
+func (v *View) MarketComputeDataCommitment(ctx context.Context, registeredProof abi.RegisteredProof, dealIDs []abi.DealID) (cid.Cid, error) {
+	marketState, err := v.loadMarketActor(ctx)
+	deals := v.asArray(ctx, marketState.Proposals)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	// map deals to pieceInfo
+	pieceInfos := make([]abi.PieceInfo, len(dealIDs))
+	for i, id := range dealIDs {
+		var proposal market.DealProposal
+		found, err := deals.Get(uint64(id), &proposal)
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		if !found {
+			return cid.Undef, fmt.Errorf("Could not find deal id %d", id)
+		}
+
+		pieceInfos[i].PieceCID = proposal.PieceCID
+		pieceInfos[i].Size = proposal.PieceSize
+	}
+
+	return ffiwrapper.GenerateUnsealedCID(registeredProof, pieceInfos)
+}
+
+func (v *View) MarketStorageDeal(ctx context.Context, dealID abi.DealID) (market.DealProposal, error) {
+	marketState, err := v.loadMarketActor(ctx)
+	if err != nil {
+		return market.DealProposal{}, err
+	}
+	deals := v.asArray(ctx, marketState.Proposals)
+
+	var proposal market.DealProposal
+	found, err := deals.Get(uint64(dealID), &proposal)
+	if err != nil {
+		return market.DealProposal{}, err
+	}
+	if !found {
+		return market.DealProposal{}, fmt.Errorf("Could not find deal id %d", dealID)
+	}
+
+	return proposal, nil
+}
+
+func (v *View) MarketDealState(ctx context.Context, dealID abi.DealID) (*market.DealState, error) {
+	marketState, err := v.loadMarketActor(ctx)
+	dealStates := v.asDealStateArray(ctx, marketState.States)
+	if err != nil {
+		return nil, err
+	}
+
+	return dealStates.Get(dealID)
 }
 
 // NetworkTotalPower Returns the storage power actor's value for network total power.
@@ -382,6 +442,10 @@ func (v *View) asArray(ctx context.Context, root cid.Cid) *adt.Array {
 
 func (v *View) asMap(ctx context.Context, root cid.Cid) *adt.Map {
 	return adt.AsMap(StoreFromCbor(ctx, v.ipldStore), root)
+}
+
+func (v *View) asDealStateArray(ctx context.Context, root cid.Cid) *market.DealMetaArray {
+	return market.AsDealStateArray(StoreFromCbor(ctx, v.ipldStore), root)
 }
 
 func (v *View) asBalanceTable(ctx context.Context, root cid.Cid) *adt.BalanceTable {

@@ -81,15 +81,16 @@ func (b *NodeBuilder) WithConfig(cm node.ConfigOpt) *NodeBuilder {
 func (b *NodeBuilder) Build(ctx context.Context) *node.Node {
 	// Initialise repo.
 	repo := repo.NewInMemoryRepo()
-	b.requireNoError(node.Init(ctx, repo, b.gif, b.initOpts...))
 
 	// Apply configuration changes (must happen before node.OptionsFromRepo()).
 	sectorDir, err := ioutil.TempDir("", "go-fil-test-sectors")
 	b.requireNoError(err)
-	repo.Config().SectorBase.RootDir = sectorDir
+	repo.Config().SectorBase.RootDirPath = sectorDir
 	for _, m := range b.configMutations {
 		m(repo.Config())
 	}
+
+	b.requireNoError(node.Init(ctx, repo, b.gif, b.initOpts...))
 
 	// Initialize the node.
 	repoConfigOpts, err := node.OptionsFromRepo(repo)

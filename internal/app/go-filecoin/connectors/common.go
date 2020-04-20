@@ -23,7 +23,7 @@ func GetChainHead(m chainState) (tipSetToken []byte, tipSetEpoch abi.ChainEpoch,
 
 	h, err := ts.Height()
 	if err != nil {
-		return nil, 0, xerrors.Errorf("failed to get tipset height: %w")
+		return nil, 0, err
 	}
 
 	tok, err := encoding.Encode(tsk)

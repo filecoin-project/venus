@@ -33,9 +33,11 @@ import (
 type StorageClientNodeConnector struct {
 	connectorCommon
 
-	clientAddr address.Address
+	clientAddr ClientAddressGetter
 	cborStore  cbor.IpldStore
 }
+
+type ClientAddressGetter func() (address.Address, error)
 
 var _ storagemarket.StorageClientNode = &StorageClientNodeConnector{}
 
@@ -46,7 +48,7 @@ func NewStorageClientNodeConnector(
 	w *msg.Waiter,
 	s types.Signer,
 	ob *message.Outbox,
-	ca address.Address,
+	ca ClientAddressGetter,
 	sv *appstate.Viewer,
 ) *StorageClientNodeConnector {
 	return &StorageClientNodeConnector{
@@ -58,7 +60,11 @@ func NewStorageClientNodeConnector(
 
 // AddFunds sends a message to add collateral for the given address
 func (s *StorageClientNodeConnector) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) error {
-	return s.addFunds(ctx, s.clientAddr, addr, amount)
+	clientAddr, err := s.clientAddr()
+	if err != nil {
+		return err
+	}
+	return s.addFunds(ctx, clientAddr, addr, amount)
 }
 
 // EnsureFunds checks the current balance for an address and adds funds if the balance is below the given amount
@@ -217,7 +223,7 @@ func (s *StorageClientNodeConnector) SignProposal(ctx context.Context, signer ad
 
 // GetDefaultWalletAddress returns the default account for this node
 func (s *StorageClientNodeConnector) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {
-	return s.clientAddr, nil
+	return s.clientAddr()
 }
 
 // ValidateAskSignature ensures the given ask has been signed correctly

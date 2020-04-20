@@ -11,7 +11,6 @@ import (
 	"os"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-car"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
@@ -50,8 +49,6 @@ var initCmd = &cmds.Command{
 		cmdkit.BoolOption(DevnetNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters"),
 		cmdkit.BoolOption(DevnetUser, "when set, populates config bootstrap addrs with the dns multiaddrs of the user devnet and other user devnet specific bootstrap parameters"),
 		cmdkit.StringOption(OptionPresealedSectorDir, "when set to the path of a directory, imports pre-sealed sector data from that directory"),
-		cmdkit.Uint64Option(OptionPresealedSectorSize, "the sector size in bytes of sectors to be presealed (default 2kb)."),
-		cmdkit.BoolOption(OptionSymlinkImportedSectors, "when set, create symlinks to imported presealed sectors rather than copying them into the repo"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
@@ -88,34 +85,22 @@ var initCmd = &cmds.Command{
 			return err
 		}
 
-		if err := node.Init(req.Context, rep, genesisFile, initopts...); err != nil {
-			return err
-		}
-
 		cfg := rep.Config()
 		if err := setConfigFromOptions(cfg, req.Options); err != nil {
+			logInit.Errorf("Error setting config %s", err)
 			return err
 		}
 		if err := rep.ReplaceConfig(cfg); err != nil {
+			logInit.Errorf("Error replacing config %s", err)
 			return err
 		}
 
-		presealedSectorDir, shouldImport := req.Options[OptionPresealedSectorDir].(string)
-		if shouldImport && presealedSectorDir != "" {
-			symlink, _ := req.Options[OptionSymlinkImportedSectors].(bool)
-
-			var sectorSize abi.SectorSize
-			sectorSizeOption, _ := req.Options[OptionPresealedSectorSize]
-			if sectorSizeOption != nil {
-				sectorSize = abi.SectorSize(sectorSizeOption.(uint64))
-			} else {
-				sectorSize = abi.SectorSize(2048)
-			}
-
-			if err := node.ImportPresealedSectors(rep, presealedSectorDir, sectorSize, symlink); err != nil {
-				return err
-			}
+		logInit.Info("Initializing node")
+		if err := node.Init(req.Context, rep, genesisFile, initopts...); err != nil {
+			logInit.Errorf("Error initializing node %s", err)
+			return err
 		}
+
 		return nil
 	},
 }
@@ -123,7 +108,7 @@ var initCmd = &cmds.Command{
 func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 	var err error
 	if dir, ok := options[OptionSectorDir].(string); ok {
-		cfg.SectorBase.RootDir = dir
+		cfg.SectorBase.RootDirPath = dir
 	}
 
 	if m, ok := options[WithMiner].(string); ok {
@@ -146,6 +131,14 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 		if cfg.Mining.MinerAddress, err = address.NewFromString(ma); err != nil {
 			return err
 		}
+	}
+
+	if dir, ok := options[OptionPresealedSectorDir].(string); ok {
+		if cfg.Mining.MinerAddress == address.Undef {
+			return fmt.Errorf("if --%s is provided, --%s or --%s must also be provided", OptionPresealedSectorDir, MinerActorAddress, WithMiner)
+		}
+
+		cfg.SectorBase.PreSealedSectorsDirPath = dir
 	}
 
 	devnetTest, _ := options[DevnetStaging].(bool)

@@ -15,8 +15,6 @@ const defaultRepoDir = "~/.filecoin"
 const filSectorPathVar = "FIL_SECTOR_PATH"
 const defaultSectorDir = ".filecoin_sectors"
 const defaultPieceStagingDir = "pieces"
-const defaultSectorStagingDir = "staging"
-const defaultSectorSealingDir = "sealed"
 
 // GetRepoPath returns the path of the filecoin repo from a potential override
 // string, the FIL_PATH environment variable and a default of ~/.filecoin/repo.
@@ -54,16 +52,4 @@ func GetSectorPath(override, repoPath string) (string, error) {
 // PieceStagingDir returns the path to the piece staging directory repo path
 func PieceStagingDir(repoPath string) (string, error) {
 	return homedir.Expand(filepath.Join(repoPath, "../", defaultPieceStagingDir))
-}
-
-// StagingDir returns the path to the sector staging directory given the sector
-// storage directory path.
-func StagingDir(sectorPath string) (string, error) {
-	return homedir.Expand(filepath.Join(sectorPath, defaultSectorStagingDir))
-}
-
-// SealedDir returns the path to the sector sealed directory given the sector
-// storage directory path.
-func SealedDir(sectorPath string) (string, error) {
-	return homedir.Expand(filepath.Join(sectorPath, defaultSectorSealingDir))
 }

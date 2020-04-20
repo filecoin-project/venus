@@ -4,8 +4,9 @@ import (
 	"context"
 	"sync"
 
+	sectorstorage "github.com/filecoin-project/sector-storage"
+
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
@@ -29,30 +30,30 @@ type Poster struct {
 	postCancel     context.CancelFunc
 	scheduleCancel context.CancelFunc
 
-	minerAddr     address.Address
-	outbox        *message.Outbox
-	sectorbuilder sectorbuilder.Interface
-	chain         *cst.ChainStateReadWriter
-	stateViewer   *appstate.Viewer
-	waiter        *msg.Waiter
+	minerAddr   address.Address
+	outbox      *message.Outbox
+	mgr         sectorstorage.SectorManager
+	chain       *cst.ChainStateReadWriter
+	stateViewer *appstate.Viewer
+	waiter      *msg.Waiter
 }
 
 // NewPoster creates a Poster struct
 func NewPoster(
 	minerAddr address.Address,
 	outbox *message.Outbox,
-	sb sectorbuilder.Interface,
+	mgr sectorstorage.SectorManager,
 	chain *cst.ChainStateReadWriter,
 	stateViewer *appstate.Viewer,
 	waiter *msg.Waiter) *Poster {
 
 	return &Poster{
-		minerAddr:     minerAddr,
-		outbox:        outbox,
-		sectorbuilder: sb,
-		chain:         chain,
-		stateViewer:   stateViewer,
-		waiter:        waiter,
+		minerAddr:   minerAddr,
+		outbox:      outbox,
+		mgr:         mgr,
+		chain:       chain,
+		stateViewer: stateViewer,
+		waiter:      waiter,
 	}
 }
 
@@ -136,18 +137,24 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, provingPe
 		faultsPrime[idx] = abi.SectorNumber(faults[idx])
 	}
 
-	candidates, proofs, err := p.sectorbuilder.GenerateFallbackPoSt(sortedSectorInfo, abi.PoStRandomness(challengeSeed[:]), faultsPrime)
+	minerID, err := address.IDFromAddress(p.minerAddr)
+	if err != nil {
+		log.Error("error mapping from miner address to ID: ", err)
+		return
+	}
+
+	output, err := p.mgr.GenerateFallbackPoSt(ctx, abi.ActorID(minerID), sortedSectorInfo, abi.PoStRandomness(challengeSeed[:]), faultsPrime)
 	if err != nil {
 		log.Error("error generating fallback PoSt: ", err)
 		return
 	}
 
-	poStCandidates := make([]abi.PoStCandidate, len(candidates))
-	for i := range candidates {
-		poStCandidates[i] = candidates[i].Candidate
+	poStCandidates := make([]abi.PoStCandidate, len(output.PoStInputs))
+	for i := range output.PoStInputs {
+		poStCandidates[i] = output.PoStInputs[i].Candidate
 	}
 
-	err = p.sendPoSt(ctx, stateView, poStCandidates, proofs)
+	err = p.sendPoSt(ctx, stateView, poStCandidates, output.Proof)
 	if err != nil {
 		log.Error("error sending fallback PoSt: ", err)
 		return

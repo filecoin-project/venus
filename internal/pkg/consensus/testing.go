@@ -81,7 +81,7 @@ func (fem *FakeElectionMachine) GenerateCandidates(poStRand abi.PoStRandomness, 
 }
 
 // GenerateEPoSt returns a fake post proof
-func (fem *FakeElectionMachine) GenerateEPoSt(_ []abi.SectorInfo, _ abi.PoStRandomness, _ []abi.PoStCandidate, _ postgenerator.PoStGenerator) ([]abi.PoStProof, error) {
+func (fem *FakeElectionMachine) GenerateEPoSt(_ []abi.SectorInfo, _ abi.PoStRandomness, _ []abi.PoStCandidate, _ postgenerator.PoStGenerator, _ address.Address) ([]abi.PoStProof, error) {
 	return []abi.PoStProof{{
 		RegisteredProof: constants.DevRegisteredPoStProof,
 		ProofBytes:      []byte{0xe},

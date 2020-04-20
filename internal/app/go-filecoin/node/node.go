@@ -7,23 +7,16 @@ import (
 	"reflect"
 	"runtime"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
-
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/go-sectorbuilder/fs"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/internal/submodule"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
@@ -41,6 +34,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/drand"
 	mining_protocol "github.com/filecoin-project/go-filecoin/internal/pkg/protocol/mining"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
@@ -455,29 +449,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return err
 	}
 
-	sectorDir, err := paths.GetSectorPath(node.Repo.Config().SectorBase.RootDir, repoPath)
-	if err != nil {
-		return err
-	}
-
 	postProofType, sealProofType, err := registeredProofsFromSectorSize(status.SectorSize)
-	if err != nil {
-		return err
-	}
-
-	sectorBuilder, err := sectorbuilder.New(&sectorbuilder.Config{
-		PoStProofType: postProofType,
-		SealProofType: sealProofType,
-		Miner:         minerAddr,
-		WorkerThreads: 2,
-		Paths: []fs.PathConfig{
-			{
-				Path:   sectorDir,
-				Cache:  true,
-				Weight: 1,
-			},
-		},
-	}, namespace.Wrap(node.Repo.Datastore(), ds.NewKey("/sectorbuilder")))
 	if err != nil {
 		return err
 	}
@@ -489,8 +461,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 	// TODO: rework these modules so they can be at least partially constructed during the building phase #3738
 	stateViewer := state.NewViewer(cborStore)
 
-	node.StorageMining, err = submodule.NewStorageMiningSubmodule(minerAddr, node.Repo.Datastore(),
-		sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet, stateViewer, node.BlockMining.PoStGenerator)
+	node.StorageMining, err = submodule.NewStorageMiningSubmodule(minerAddr, node.Repo.Datastore(), &node.chain, &node.Messaging, waiter, stateViewer, sealProofType, postProofType, node.Repo, node.BlockMining.PoStGenerator)
 	if err != nil {
 		return err
 	}
@@ -508,7 +479,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		node.Blockstore.Blockstore,
 		node.network.GraphExchange,
 		repoPath,
-		sectorBuilder.SealProofType(),
+		sealProofType,
 		stateViewer,
 	)
 }
@@ -693,6 +664,11 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 		return nil, err
 	}
 
+	poster := node.BlockMining.PoStGenerator
+	if poster == nil {
+		poster = node.StorageMining.PoStGenerator
+	}
+
 	return mining.NewDefaultWorker(mining.WorkerParameters{
 		API: node.PorcelainAPI,
 
@@ -711,7 +687,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 		MessageQualifier: consensus.NewMessagePenaltyChecker(node.Chain().State),
 		Blockstore:       node.Blockstore.Blockstore,
 		Clock:            node.ChainClock,
-		Poster:           node.StorageMining.PoStGenerator,
+		Poster:           poster,
 		ChainState:       node.chain.ChainReader,
 		Drand:            node.Syncer().Drand,
 	}), nil
