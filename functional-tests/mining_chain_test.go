@@ -22,7 +22,6 @@ func TestSingleMiner(t *testing.T) {
 	t.Skip("Unskip when we have implemented production drand component and local drand network for functional tests")
 
 	tf.FunctionalTest(t)
-	t.Skip("isolating ci failure")
 	ctx := context.Background()
 	wd, _ := os.Getwd()
 	genCfgPath := filepath.Join(wd, "..", "fixtures/setup.json")
