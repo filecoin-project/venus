@@ -7,18 +7,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/build/project"
-
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/stretchr/testify/require"
 )
 
 // MustCreateNodesWithBootstrap creates an in-process test setup capable of testing communication between nodes.
@@ -54,6 +54,7 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	bootstrapMiner := NewNodeBuilder(t).
 		WithGenesisInit(seed.GenesisInitFunc).
 		WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...).
+		WithBuilderOpt(node.PoStGeneratorOption(&consensus.TestElectionPoster{})).
 		WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
 		WithBuilderOpt(node.DrandConfigOption(&drand.Fake{
 			GenesisTime:   time.Unix(drandGenUnixSeconds, 0),
@@ -77,6 +78,7 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 		node := NewNodeBuilder(t).
 			WithGenesisInit(seed.GenesisInitFunc).
 			WithConfig(node.DefaultAddressConfigOpt(seed.Addr(t, int(i+1)))).
+			WithBuilderOpt(node.PoStGeneratorOption(&consensus.TestElectionPoster{})).
 			WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...).
 			WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
 			WithBuilderOpt(node.DrandConfigOption(&drand.Fake{

@@ -54,6 +54,7 @@ func NewStorageMiningSubmodule(
 	sealProofType abi.RegisteredProof,
 	postProofType abi.RegisteredProof,
 	r repo.Repo,
+	postGeneratorOverride postgenerator.PoStGenerator,
 ) (*StorageMiningSubmodule, error) {
 	chainThresholdScheduler := chainsampler.NewHeightThresholdScheduler(c.ChainReader)
 
@@ -85,11 +86,17 @@ func NewStorageMiningSubmodule(
 	bke := piecemanager.NewFiniteStateMachineBackEnd(fsm, sid)
 
 	modu := &StorageMiningSubmodule{
-		PieceManager:  &bke,
-		PoStGenerator: mgr,
-		hs:            chainThresholdScheduler,
-		fsm:           fsm,
-		poster:        poster.NewPoster(minerAddr, m.Outbox, mgr, c.State, stateViewer, mw),
+		PieceManager: &bke,
+		hs:           chainThresholdScheduler,
+		fsm:          fsm,
+		poster:       poster.NewPoster(minerAddr, m.Outbox, mgr, c.State, stateViewer, mw),
+	}
+
+	// allow the caller to provide a thing which generates fake PoSts
+	if postGeneratorOverride == nil {
+		modu.PoStGenerator = mgr
+	} else {
+		modu.PoStGenerator = postGeneratorOverride
 	}
 
 	return modu, nil

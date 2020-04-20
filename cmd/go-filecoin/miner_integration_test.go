@@ -18,7 +18,7 @@ import (
 func TestMinerCreateIntegration(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx, cancel1 := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel1 := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel1()
 
 	nodes, cancel2 := test.MustCreateNodesWithBootstrap(ctx, t, 1)
@@ -51,7 +51,7 @@ func TestMinerCreateIntegration(t *testing.T) {
 func TestSetPrice(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx, cancel1 := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel1 := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel1()
 
 	nodes, cancel2 := test.MustCreateNodesWithBootstrap(ctx, t, 0)
