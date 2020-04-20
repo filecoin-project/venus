@@ -49,7 +49,7 @@ func (f FiniteStateMachineEventsConnector) ChainAt(hnd fsm.HeightHandler, rev fs
 					return
 				}
 
-				targetTipset, err := chain.FindTipsetAtEpoch(ctx, f.tsp, ts, h)
+				targetTipset, err := chain.FindTipsetAtEpoch(ctx, ts, h, f.tsp)
 				if err != nil {
 					log.Error(err)
 					return

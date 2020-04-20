@@ -64,7 +64,7 @@ func (f FiniteStateMachineNodeConnector) StateWaitMsg(ctx context.Context, mcid 
 		if err != nil {
 			return err
 		}
-		tsAtHeight, err := chain.FindTipsetAtEpoch(ctx, f.chain, tsHead, blk.Height)
+		tsAtHeight, err := chain.FindTipsetAtEpoch(ctx, tsHead, blk.Height, f.chain)
 		if err != nil {
 			return err
 		}
