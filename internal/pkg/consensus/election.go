@@ -113,8 +113,8 @@ func (em ElectionMachine) IsWinner(challengeTicket []byte, sectorNum, networkPow
 	return lhs.Cmp(rhs) == -1
 }
 
-// VerifyPoSt verifies a PoSt proof.
-func (em ElectionMachine) VerifyPoSt(ctx context.Context, ep EPoStVerifier, allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, proofs []block.EPoStProof, candidates []block.EPoStCandidate, mIDAddr address.Address) (bool, error) {
+// VerifyWinningPoSt verifies a Winning PoSt proof.
+func (em ElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, challengedSectorInfos []abi.SectorInfo, seed []byte, proofs []block.PoStProof, mIDAddr address.Address) (bool, error) {
 	// filter down sector infos to only those referenced by candidates
 	// TODO: pass an actual faults count to this challenge count. https://github.com/filecoin-project/go-filecoin/issues/3875
 	challengeCount := ffiwrapper.ElectionPostChallengeCount(uint64(len(allSectorInfos)), 0)
@@ -156,15 +156,14 @@ func (em ElectionMachine) VerifyPoSt(ctx context.Context, ep EPoStVerifier, allS
 	}
 
 	poStVerifyInfo := abi.PoStVerifyInfo{
-		Randomness:      challengeSeed,
-		Candidates:      ffiCandidates,
+		Randomness:      seed,
 		Proofs:          proofsPrime,
 		EligibleSectors: allSectorInfos,
 		Prover:          abi.ActorID(minerID),
 		ChallengeCount:  challengeCount,
 	}
-
-	return ep.VerifyElectionPost(ctx, poStVerifyInfo)
+	return false nil
+//	return ep.VerifyWinningPost(ctx, poStVerifyInfo)
 }
 
 // TicketMachine uses a VRF and VDF to generate deterministic, unpredictable

@@ -4,6 +4,17 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
+<<<<<<< HEAD
+=======
+// EPoStInfo wraps all data needed to verify an election post proof
+type EPoStInfo struct {
+	_          struct{} `cbor:",toarray"`
+	PoStProofs []PoStProof
+	VRFProof   abi.PoStRandomness
+	Winners    []EPoStCandidate
+}
+
+>>>>>>> WIP
 // EPoStCandidate wraps the input data needed to verify an election PoSt
 type EPoStCandidate struct {
 	_                    struct{} `cbor:",toarray"`
@@ -12,7 +23,7 @@ type EPoStCandidate struct {
 	SectorChallengeIndex int64
 }
 
-type EPoStProof struct {
+type PoStProof struct {
 	_               struct{} `cbor:",toarray"`
 	RegisteredProof abi.RegisteredProof
 	ProofBytes      []byte
