@@ -3,15 +3,16 @@ package fsmeventsconnector
 import (
 	"context"
 
-	"github.com/prometheus/common/log"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	fsm "github.com/filecoin-project/storage-fsm"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsampler"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	fsm "github.com/filecoin-project/storage-fsm"
 )
+
+var log = logging.Logger("fsm_events") // nolint: deadcode
 
 type FiniteStateMachineEventsConnector struct {
 	scheduler *chainsampler.HeightThresholdScheduler
