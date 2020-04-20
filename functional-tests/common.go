@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,7 +39,7 @@ func makeNode(ctx context.Context, t *testing.T, seed *node.ChainSeed, chainCloc
 		Build(ctx)
 }
 
-func initNodeGenesisMiner(ctx context.Context, t *testing.T, nd *node.Node, seed *node.ChainSeed, minerIdx int, presealPath string, sectorSize abi.SectorSize) (address.Address, address.Address, error) {
+func initNodeGenesisMiner(ctx context.Context, t *testing.T, nd *node.Node, seed *node.ChainSeed, minerIdx int, presealPath string) (address.Address, address.Address, error) {
 	seed.GiveKey(t, nd, minerIdx)
 	miner, owner := seed.GiveMiner(t, nd, 0)
 
