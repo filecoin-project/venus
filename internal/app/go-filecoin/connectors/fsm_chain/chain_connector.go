@@ -1,4 +1,4 @@
-package fsm_chain
+package fsmchain
 
 import (
 	"context"

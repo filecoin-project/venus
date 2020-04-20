@@ -1,4 +1,4 @@
-package fsm_storage
+package fsmstorage
 
 import (
 	"errors"

@@ -12,10 +12,10 @@ import (
 	fsm "github.com/filecoin-project/storage-fsm"
 	"github.com/ipfs/go-datastore"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsm_chain"
+	fsmchain "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsm_chain"
 	fsmeventsconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsm_events"
 	fsmnodeconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsm_node"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsm_storage"
+	fsmstorage "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsm_storage"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/sectors"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -58,7 +58,7 @@ func NewStorageMiningSubmodule(
 ) (*StorageMiningSubmodule, error) {
 	chainThresholdScheduler := chainsampler.NewHeightThresholdScheduler(c.ChainReader)
 
-	ccn := fsm_chain.NewChainConnector(c.ChainReader)
+	ccn := fsmchain.NewChainConnector(c.ChainReader)
 
 	sdx := stores.NewIndex()
 
@@ -69,7 +69,7 @@ func NewStorageMiningSubmodule(
 
 	scg := sectorstorage.SealerConfig{AllowPreCommit1: true, AllowPreCommit2: true, AllowCommit: true}
 
-	mgr, err := sectorstorage.New(context.TODO(), fsm_storage.NewRepoStorageConnector(r), sdx, &fcg, scg, []string{}, nil)
+	mgr, err := sectorstorage.New(context.TODO(), fsmstorage.NewRepoStorageConnector(r), sdx, &fcg, scg, []string{}, nil)
 	if err != nil {
 		return nil, err
 	}
