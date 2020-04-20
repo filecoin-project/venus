@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsmchain"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsmstorage"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/sectors"
-	storageminerconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/storage_miner"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsampler"
@@ -39,9 +38,9 @@ type StorageMiningSubmodule struct {
 	// PoStGenerator generates election PoSts
 	PoStGenerator postgenerator.PoStGenerator
 
-	minerNode *storageminerconnector.StorageMinerNodeConnector
-	fsm       *fsm.Sealing
-	poster    *poster.Poster
+	hs     *chainsampler.HeightThresholdScheduler
+	fsm    *fsm.Sealing
+	poster *poster.Poster
 }
 
 // NewStorageMiningSubmodule creates a new storage mining submodule.
@@ -51,14 +50,12 @@ func NewStorageMiningSubmodule(
 	c *ChainSubmodule,
 	m *MessagingSubmodule,
 	mw *msg.Waiter,
-	w *WalletSubmodule,
 	stateViewer *appstate.Viewer,
 	sealProofType abi.RegisteredProof,
 	postProofType abi.RegisteredProof,
 	r repo.Repo,
 ) (*StorageMiningSubmodule, error) {
 	chainThresholdScheduler := chainsampler.NewHeightThresholdScheduler(c.ChainReader)
-	minerNode := storageminerconnector.NewStorageMinerNodeConnector(minerAddr, chainThresholdScheduler, c.State, m.Outbox, mw, w.Signer, stateViewer)
 
 	ccn := fsmchain.NewChainConnector(c.ChainReader)
 
@@ -90,7 +87,7 @@ func NewStorageMiningSubmodule(
 	modu := &StorageMiningSubmodule{
 		PieceManager:  &bke,
 		PoStGenerator: mgr,
-		minerNode:     minerNode,
+		hs:            chainThresholdScheduler,
 		fsm:           fsm,
 		poster:        poster.NewPoster(minerAddr, m.Outbox, mgr, c.State, stateViewer, mw),
 	}
@@ -144,7 +141,7 @@ func (s *StorageMiningSubmodule) HandleNewHead(ctx context.Context, newHead bloc
 		return nil
 	}
 
-	err := s.minerNode.HandleNewTipSet(ctx, newHead)
+	err := s.hs.HandleNewTipSet(ctx, newHead)
 	if err != nil {
 		return err
 	}
