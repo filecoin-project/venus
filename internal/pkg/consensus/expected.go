@@ -285,7 +285,7 @@ func (c *Expected) validateMining(ctx context.Context,
 		if err != nil {
 			return errors.Wrapf(err, "failed to get election entry")
 		}
-		err = c.VerifyElectionProof(ctx, electionEntry, blk.Height, blk.Miner, workerSignerAddr, blk.ElectionProof)
+		err = c.VerifyElectionProof(ctx, electionEntry, blk.Height, blk.Miner, workerSignerAddr, blk.ElectionProof.VRFProof)
 		if err != nil {
 			return errors.Wrapf(err, "failed to verify election proof")
 		}
@@ -304,7 +304,7 @@ func (c *Expected) validateMining(ctx context.Context,
 		if err != nil {
 			return errors.Wrap(err, "failed to read sectorSize from power table")
 		}
-		electionVRFDigest := blk.ElectionProof.Digest()
+		electionVRFDigest := blk.ElectionProof.VRFProof.Digest()
 		wins := c.IsWinner(electionVRFDigest[:], sectorNum, networkPower.Uint64(), uint64(sectorSize))
 		if !wins {
 			return errors.Errorf("Block did not win election")

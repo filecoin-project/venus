@@ -64,15 +64,12 @@ func TestTriangleEncoding(t *testing.T) {
 		b := &blk.Block{
 			Miner:         newAddress(),
 			Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-			ElectionProof: []byte{0x0a, 0x0b},
+			ElectionProof: crypto.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
 			Height:        2,
 			DrandEntries: []*drand.Entry{
 				{
-					Round: drand.Round(1),
-					Signature: crypto.Signature{
-						Type: crypto.SigTypeBLS,
-						Data: []byte{0x3},
-					},
+					Round:     drand.Round(1),
+					Signature: []byte{0x3},
 				},
 			},
 			Messages:        e.NewCid(types.CidFromString(t, "somecid")),
@@ -230,14 +227,11 @@ func TestSignatureData(t *testing.T) {
 	b := &blk.Block{
 		Miner:         newAddress(),
 		Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-		ElectionProof: []byte{0x0a, 0x0b},
+		ElectionProof: crypto.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
 		DrandEntries: []*drand.Entry{
 			{
-				Round: drand.Round(5),
-				Signature: crypto.Signature{
-					Type: crypto.SigTypeBLS,
-					Data: []byte{0x0c},
-				},
+				Round:     drand.Round(5),
+				Signature: []byte{0x0c},
 			},
 		},
 		Height:          2,
@@ -257,14 +251,11 @@ func TestSignatureData(t *testing.T) {
 	diff := &blk.Block{
 		Miner:         newAddress(),
 		Ticket:        blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
-		ElectionProof: []byte{0x0c, 0x0d},
+		ElectionProof: crypto.ElectionProof{VRFProof: []byte{0x0c, 0x0d}},
 		DrandEntries: []*drand.Entry{
 			{
-				Round: drand.Round(44),
-				Signature: crypto.Signature{
-					Type: crypto.SigTypeBLS,
-					Data: []byte{0xc0},
-				},
+				Round:     drand.Round(44),
+				Signature: []byte{0xc0},
 			},
 		},
 		Height:          3,

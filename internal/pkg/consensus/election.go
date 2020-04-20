@@ -217,6 +217,6 @@ func electionVRFRandomness(entry *drand.Entry, miner address.Address, epoch abi.
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to encode entropy")
 	}
-	seed := blake2b.Sum256(entry.Signature.Data)
+	seed := blake2b.Sum256(entry.Signature)
 	return crypto.BlendEntropy(acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, seed[:], epoch, entropy)
 }

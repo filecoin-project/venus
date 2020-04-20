@@ -99,7 +99,7 @@ func (w *DefaultWorker) Generate(
 		Miner:           w.minerAddr,
 		Height:          blockHeight,
 		DrandEntries:    drandEntries,
-		ElectionProof:   electionProof,
+		ElectionProof:   crypto.ElectionProof{VRFProof: electionProof},
 		Messages:        e.NewCid(txMetaCid),
 		MessageReceipts: e.NewCid(baseReceiptRoot),
 		Parents:         baseTipSet.Key(),

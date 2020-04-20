@@ -10,7 +10,6 @@ import (
 	"github.com/drand/drand/key"
 	"github.com/drand/drand/net"
 	"github.com/drand/kyber"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	logging "github.com/ipfs/go-log"
 )
 
@@ -83,11 +82,8 @@ func (d *GRPC) ReadEntry(ctx context.Context, drandRound Round) (*Entry, error) 
 		}
 
 		entry := &Entry{
-			Round: drandRound,
-			Signature: crypto.Signature{
-				Type: crypto.SigTypeBLS,
-				Data: pub.GetSignature(),
-			},
+			Round:       drandRound,
+			Signature:   pub.GetSignature(),
 			parentRound: Round(pub.PreviousRound),
 		}
 		d.updateLocalState(entry)
@@ -108,8 +104,8 @@ func (d *GRPC) updateLocalState(entry *Entry) {
 
 // VerifyEntry verifies that the child's signature is a valid signature of the previous entry.
 func (d *GRPC) VerifyEntry(parent, child *Entry) (bool, error) {
-	msg := beacon.Message(parent.Signature.Data, uint64(parent.Round), uint64(child.Round))
-	err := key.Scheme.VerifyRecovered(d.key.Coefficients[0], msg, child.Signature.Data)
+	msg := beacon.Message(parent.Signature, uint64(parent.Round), uint64(child.Round))
+	err := key.Scheme.VerifyRecovered(d.key.Coefficients[0], msg, child.Signature)
 	if err != nil {
 		return false, err
 	}

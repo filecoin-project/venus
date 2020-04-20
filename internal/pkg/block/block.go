@@ -31,7 +31,7 @@ type Block struct {
 	Ticket Ticket `json:"ticket"`
 
 	// ElectionProof is the vrf proof giving this block's miner authoring rights
-	ElectionProof crypto.VRFPi
+	ElectionProof crypto.ElectionProof
 
 	// DrandEntries contain the verifiable oracle randomness used to elect
 	// this block's author leader
