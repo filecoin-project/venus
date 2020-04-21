@@ -98,11 +98,6 @@ func (fem *FakeElectionMachine) CandidateWins(_ []byte, _ uint64, _ uint64, _ ui
 	return true
 }
 
-// VerifyPoSt return true
-func (fem *FakeElectionMachine) VerifyPoSt(_ context.Context, _ EPoStVerifier, _ []abi.SectorInfo, _ abi.PoStRandomness, _ []block.EPoStProof, _ []block.EPoStCandidate, _ address.Address) (bool, error) {
-	return true, nil
-}
-
 func (fem *FakeElectionMachine) IsWinner(_ []byte, _, _, _ uint64) bool {
 	return true
 }
@@ -150,11 +145,6 @@ func (fev *FailingElectionValidator) VerifyElectionProof(_ context.Context, _ *d
 	return nil
 }
 
-// VerifyPoSt returns true without error
-func (fev *FailingElectionValidator) VerifyPoSt(ctx context.Context, ep EPoStVerifier, allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, proofs []block.EPoStProof, candidates []block.EPoStCandidate, mIDAddr address.Address) (bool, error) {
-	return true, nil
-}
-
 // VerifyEPoStVrfProof return true
 func (fev *FailingElectionValidator) VerifyEPoStVrfProof(context.Context, block.TipSetKey, abi.ChainEpoch, address.Address, address.Address, abi.PoStRandomness) error {
 	return nil
@@ -177,16 +167,11 @@ func MakeFakeVRFProofForTest() []byte {
 }
 
 // MakeFakePoStForTest creates a fake post
-func MakeFakePoStsForTest() []block.EPoStProof {
-	return []block.EPoStProof{{
+func MakeFakePoStsForTest() []block.PoStProof {
+	return []block.PoStProof{{
 		RegisteredProof: constants.DevRegisteredPoStProof,
 		ProofBytes:      []byte{0xe},
 	}}
-}
-
-// MakeFakeWinnersForTest creats an empty winners array
-func MakeFakeWinnersForTest() []block.EPoStCandidate {
-	return []block.EPoStCandidate{}
 }
 
 // NFakeSectorInfos returns numSectors fake sector infos

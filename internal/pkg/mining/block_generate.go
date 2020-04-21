@@ -28,6 +28,7 @@ func (w *DefaultWorker) Generate(
 	ticket block.Ticket,
 	electionProof crypto.VRFPi,
 	nullBlockCount abi.ChainEpoch,
+	posts []block.PoStProof,
 	drandEntries []*drand.Entry,
 ) Output {
 
@@ -104,6 +105,7 @@ func (w *DefaultWorker) Generate(
 		MessageReceipts: e.NewCid(baseReceiptRoot),
 		Parents:         baseTipSet.Key(),
 		ParentWeight:    weight,
+		PoStProofs:      posts,
 		StateRoot:       e.NewCid(baseStateRoot),
 		Ticket:          ticket,
 		Timestamp:       uint64(epochStartTime.Unix()),

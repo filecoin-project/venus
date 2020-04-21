@@ -310,8 +310,10 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		return
 	}
 	_ = sortedSectorInfos // TODO use for winning post
+	//postInfo := block.NewEPoStInfo(block.FromABIPoStProofs([]abi.PoStProof{})), abi.PoStRandomness(postVrfProof), block.FromFFICandidates(winners...)...)
+	posts := []block.PoStProof{}
 
-	next := w.Generate(ctx, base, nextTicket, electionVRFProof, abi.ChainEpoch(nullBlkCount), drandEntries)
+	next := w.Generate(ctx, base, nextTicket, electionVRFProof, abi.ChainEpoch(nullBlkCount), posts, drandEntries)
 	if next.Err == nil {
 		log.Debugf("Worker.Mine generates new winning block! %s", next.Header.Cid().String())
 	}

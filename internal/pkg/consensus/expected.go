@@ -79,7 +79,6 @@ type TicketValidator interface {
 
 // ElectionValidator validates that an election fairly produced a winner.
 type ElectionValidator interface {
-	VerifyPoSt(ctx context.Context, ep EPoStVerifier, allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, proofs []block.EPoStProof, candidates []block.EPoStCandidate, mIDAddr address.Address) (bool, error)
 	IsWinner(challengeTicket []byte, sectorNum, networkPower, sectorSize uint64) bool
 	VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error
 }

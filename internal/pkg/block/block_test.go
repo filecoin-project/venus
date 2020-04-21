@@ -61,6 +61,10 @@ func TestTriangleEncoding(t *testing.T) {
 	t.Run("encoding block with nonzero fields works", func(t *testing.T) {
 		// We should ensure that every field is set -- zero values might
 		// pass when non-zero values do not due to nil/null encoding.
+<<<<<<< HEAD
+=======
+		posts := []blk.PoStProof{blk.NewPoStProof(constants.DevRegisteredPoStProof, []byte{0x07})}
+>>>>>>> WIP
 		b := &blk.Block{
 			Miner:         newAddress(),
 			Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
@@ -86,6 +90,10 @@ func TestTriangleEncoding(t *testing.T) {
 				Type: crypto.SigTypeBLS,
 				Data: []byte{0x3},
 			},
+<<<<<<< HEAD
+=======
+			PoStProofs:    posts,
+>>>>>>> WIP
 			ForkSignaling: 6,
 		}
 		s := reflect.TypeOf(*b)
@@ -223,6 +231,10 @@ func TestBlockJsonMarshal(t *testing.T) {
 func TestSignatureData(t *testing.T) {
 	tf.UnitTest(t)
 	newAddress := vmaddr.NewForTestGetter()
+<<<<<<< HEAD
+=======
+	posts := []blk.PoStProof{blk.NewPoStProof(constants.DevRegisteredPoStProof, []byte{0x07})}
+>>>>>>> WIP
 
 	b := &blk.Block{
 		Miner:         newAddress(),
@@ -242,12 +254,21 @@ func TestSignatureData(t *testing.T) {
 		ForkSignaling:   3,
 		StateRoot:       e.NewCid(types.CidFromString(t, "somecid")),
 		Timestamp:       1,
+<<<<<<< HEAD
+=======
+		PoStProofs:      posts,
+>>>>>>> WIP
 		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x3},
 		},
 	}
 
+<<<<<<< HEAD
+=======
+	diffPoSts := []blk.PoStProof{blk.NewPoStProof(constants.DevRegisteredPoStProof, []byte{0x17})}
+
+>>>>>>> WIP
 	diff := &blk.Block{
 		Miner:         newAddress(),
 		Ticket:        blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
@@ -266,6 +287,10 @@ func TestSignatureData(t *testing.T) {
 		ForkSignaling:   2,
 		StateRoot:       e.NewCid(types.CidFromString(t, "someothercid")),
 		Timestamp:       4,
+<<<<<<< HEAD
+=======
+		PoStProofs:      diffPoSts,
+>>>>>>> WIP
 		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x4},
@@ -410,6 +435,20 @@ func TestSignatureData(t *testing.T) {
 
 	func() {
 		before := b.SignatureData()
+<<<<<<< HEAD
+=======
+
+		cpy := b.PoStProofs
+		defer func() { b.PoStProofs = cpy }()
+
+		b.PoStProofs = diff.PoStProofs
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+>>>>>>> WIP
 		cpy := b.DrandEntries
 		defer func() {
 			b.DrandEntries = cpy
