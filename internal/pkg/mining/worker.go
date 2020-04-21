@@ -93,7 +93,7 @@ type electionUtil interface {
 
 // ticketGenerator creates tickets.
 type ticketGenerator interface {
-	MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (block.Ticket, error)
+	MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, entry *drand.Entry, newPeriod bool, worker address.Address, signer types.Signer) (block.Ticket, error)
 }
 
 type tipSetMetadata interface {
@@ -224,13 +224,6 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		return
 	}
 
-	nextTicket, err := w.ticketGen.MakeTicket(ctx, base.Key(), lookbackEpoch, w.minerAddr, workerSignerAddr, w.workerSigner)
-	if err != nil {
-		log.Warnf("Worker.Mine couldn't generate next ticket %s", err)
-		outCh <- NewOutputErr(err)
-		return
-	}
-
 	drandEntries, err := w.drandEntriesForEpoch(ctx, base, nullBlkCount)
 	if err != nil {
 		log.Errorf("Worker.Mine failed to collect drand entries for block %s", err)
@@ -242,6 +235,14 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	electionEntry, err := w.electionEntry(ctx, base, drandEntries)
 	if err != nil {
 		log.Errorf("Worker.Mine failed to calculate drand entry for election randomness %s", err)
+		outCh <- NewOutputErr(err)
+		return
+	}
+
+	newPeriod := len(drandEntries) > 0
+	nextTicket, err := w.ticketGen.MakeTicket(ctx, base.Key(), lookbackEpoch, w.minerAddr, electionEntry, newPeriod, workerSignerAddr, w.workerSigner)
+	if err != nil {
+		log.Warnf("Worker.Mine couldn't generate next ticket %s", err)
 		outCh <- NewOutputErr(err)
 		return
 	}

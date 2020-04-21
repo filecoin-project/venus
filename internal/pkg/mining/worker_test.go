@@ -60,6 +60,7 @@ func TestLookbackElection(t *testing.T) {
 	}
 
 	rnd := &consensus.FakeChainRandomness{Seed: 0}
+	samp := &consensus.FakeSampler{Seed: 0}
 	minerAddr := addrs[3]      // addr4 in sharedSetup
 	minerOwnerAddr := addrs[4] // addr5 in sharedSetup
 
@@ -80,7 +81,7 @@ func TestLookbackElection(t *testing.T) {
 			GetStateTree:   getStateTree,
 			GetWeight:      getWeightTest,
 			Election:       consensus.NewElectionMachine(rnd),
-			TicketGen:      consensus.NewTicketMachine(rnd),
+			TicketGen:      consensus.NewTicketMachine(samp),
 
 			MessageSource:    pool,
 			MessageQualifier: &mining.NoMessageQualifier{},
@@ -116,6 +117,7 @@ func Test_Mine(t *testing.T) {
 	}
 
 	rnd := &consensus.FakeChainRandomness{Seed: 0}
+	samp := &consensus.FakeSampler{Seed: 0}
 	minerAddr := addrs[3]      // addr4 in sharedSetup
 	minerOwnerAddr := addrs[4] // addr5 in sharedSetup
 	messages := chain.NewMessageStore(bs)
@@ -136,7 +138,7 @@ func Test_Mine(t *testing.T) {
 			GetStateTree:   getStateTree,
 			GetWeight:      getWeightTest,
 			Election:       consensus.NewElectionMachine(rnd),
-			TicketGen:      consensus.NewTicketMachine(rnd),
+			TicketGen:      consensus.NewTicketMachine(samp),
 
 			MessageSource:    pool,
 			MessageQualifier: &mining.NoMessageQualifier{},
@@ -167,7 +169,7 @@ func Test_Mine(t *testing.T) {
 			GetStateTree:   getStateTree,
 			GetWeight:      getWeightTest,
 			Election:       consensus.NewElectionMachine(rnd),
-			TicketGen:      consensus.NewTicketMachine(rnd),
+			TicketGen:      consensus.NewTicketMachine(samp),
 
 			MessageSource:    pool,
 			MessageQualifier: &mining.NoMessageQualifier{},
@@ -197,7 +199,7 @@ func Test_Mine(t *testing.T) {
 			GetStateTree:   getStateTree,
 			GetWeight:      getWeightTest,
 			Election:       consensus.NewElectionMachine(rnd),
-			TicketGen:      consensus.NewTicketMachine(rnd),
+			TicketGen:      consensus.NewTicketMachine(samp),
 
 			MessageSource:    pool,
 			MessageQualifier: &mining.NoMessageQualifier{},
