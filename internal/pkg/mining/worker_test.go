@@ -473,7 +473,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	baseTipset := builder.AppendOn(parentTipset, 2)
 	assert.Equal(t, 2, baseTipset.Len())
 
-	out := worker.Generate(ctx, baseTipset, block.Ticket{VRFProof: []byte{2}}, consensus.MakeFakeVRFProofForTest(), 0, nil)
+	out := worker.Generate(ctx, baseTipset, block.Ticket{VRFProof: []byte{2}}, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)
 	assert.NoError(t, out.Err)
 
 	txMeta, err := messages.LoadTxMeta(ctx, out.Header.Messages.Cid)
@@ -577,7 +577,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		StateRoot: e.NewCid(stateRoot),
 	}
 
-	out := worker.Generate(ctx, block.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, nil)
+	out := worker.Generate(ctx, block.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)
 	assert.NoError(t, out.Err)
 
 	// This is the temporary failure + the good message,
@@ -642,14 +642,14 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	}
 	baseTipSet := block.RequireNewTipSet(t, &baseBlock)
 	ticket := mining.NthTicket(7)
-	out := worker.Generate(ctx, baseTipSet, ticket, consensus.MakeFakeVRFProofForTest(), 0, nil)
+	out := worker.Generate(ctx, baseTipSet, ticket, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)
 	assert.NoError(t, out.Err)
 
 	assert.Equal(t, h+1, out.Header.Height)
 	assert.Equal(t, minerAddr, out.Header.Miner)
 	assert.Equal(t, ticket, out.Header.Ticket)
 
-	out = worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 1, nil)
+	out = worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 1, consensus.MakeFakePoStsForTest(), nil)
 	assert.NoError(t, out.Err)
 
 	assert.Equal(t, h+2, out.Header.Height)
@@ -698,7 +698,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		Height:    100,
 		StateRoot: e.NewCid(newCid()),
 	}
-	out := worker.Generate(ctx, block.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, nil)
+	out := worker.Generate(ctx, block.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)
 	assert.NoError(t, out.Err)
 
 	assert.Len(t, pool.Pending(), 0) // This is the temporary failure.
@@ -759,7 +759,7 @@ func TestGenerateError(t *testing.T) {
 		StateRoot: e.NewCid(newCid()),
 	}
 	baseTipSet := block.RequireNewTipSet(t, &baseBlock)
-	out := worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, nil)
+	out := worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)
 	assert.Error(t, out.Err, "boom")
 	assert.Nil(t, out.Header)
 

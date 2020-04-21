@@ -80,10 +80,10 @@ type Block struct {
 }
 
 // IndexMessagesField is the message field position in the encoded block
-const IndexMessagesField = 9
+const IndexMessagesField = 10
 
 // IndexParentsField is the parents field position in the encoded block
-const IndexParentsField = 4
+const IndexParentsField = 5
 
 // Cid returns the content id of this block.
 func (b *Block) Cid() cid.Cid {
