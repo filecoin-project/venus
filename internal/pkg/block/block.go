@@ -31,10 +31,7 @@ type Block struct {
 	Ticket Ticket `json:"ticket"`
 
 	// ElectionProof is the vrf proof giving this block's miner authoring rights
-	ElectionProof crypto.VRFPi
-
-	// EPoStInfo wraps all data for verifying this block's Election PoSt
-	EPoStInfo EPoStInfo `json:"ePoStInfo"`
+	ElectionProof crypto.ElectionProof
 
 	// DrandEntries contain the verifiable oracle randomness used to elect
 	// this block's author leader
@@ -80,10 +77,10 @@ type Block struct {
 }
 
 // IndexMessagesField is the message field position in the encoded block
-const IndexMessagesField = 10
+const IndexMessagesField = 9
 
 // IndexParentsField is the parents field position in the encoded block
-const IndexParentsField = 5
+const IndexParentsField = 4
 
 // Cid returns the content id of this block.
 func (b *Block) Cid() cid.Cid {
@@ -168,7 +165,6 @@ func (b *Block) SignatureData() []byte {
 		Messages:        b.Messages,
 		StateRoot:       b.StateRoot,
 		MessageReceipts: b.MessageReceipts,
-		EPoStInfo:       b.EPoStInfo,
 		DrandEntries:    b.DrandEntries,
 		Timestamp:       b.Timestamp,
 		BLSAggregateSig: b.BLSAggregateSig,

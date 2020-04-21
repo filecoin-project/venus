@@ -5,8 +5,6 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-
 	ffi "github.com/filecoin-project/filecoin-ffi"
 )
 
@@ -33,11 +31,8 @@ func (d *Fake) ReadEntry(ctx context.Context, drandRound Round) (*Entry, error) 
 		parentRound = drandRound - 1
 	}
 	return &Entry{
-		Round: drandRound,
-		Signature: crypto.Signature{
-			Type: crypto.SigTypeBLS,
-			Data: fakeSigData,
-		},
+		Round:       drandRound,
+		Signature:   fakeSigData,
 		parentRound: parentRound,
 	}, nil
 }

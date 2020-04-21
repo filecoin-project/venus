@@ -3,8 +3,6 @@ package drand
 import (
 	"context"
 	"time"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 )
 
 // IFace is the standard inferface for interacting with the drand network
@@ -25,7 +23,7 @@ type Round uint64
 type Entry struct {
 	_         struct{} `cbor:",toarray"`
 	Round     Round
-	Signature crypto.Signature
+	Signature []byte
 
 	parentRound Round
 }
