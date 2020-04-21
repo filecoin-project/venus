@@ -191,17 +191,17 @@ func electionVRFRandomness(entry *drand.Entry, miner address.Address, epoch abi.
 	return crypto.BlendEntropy(acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, seed[:], epoch, entropy)
 }
 
-func filterSectorInfosByIndex(allSectorInfos []abi.SectorInfo, challengeIDs []uint64) []abi.SectorInfo {
-	idSet := make(map[uint64]struct{})
-	for _, id := range challengeIDs {
-		idSet[id] = struct{}{}
-	}
+// func filterSectorInfosByIndex(allSectorInfos []abi.SectorInfo, challengeIDs []uint64) []abi.SectorInfo {
+// 	idSet := make(map[uint64]struct{})
+// 	for _, id := range challengeIDs {
+// 		idSet[id] = struct{}{}
+// 	}
 
-	var filteredSectorInfos []abi.SectorInfo
-	for _, si := range allSectorInfos {
-		if _, ok := idSet[uint64(si.SectorNumber)]; ok {
-			filteredSectorInfos = append(filteredSectorInfos, si)
-		}
-	}
-	return filteredSectorInfos
-}
+// 	var filteredSectorInfos []abi.SectorInfo
+// 	for _, si := range allSectorInfos {
+// 		if _, ok := idSet[uint64(si.SectorNumber)]; ok {
+// 			filteredSectorInfos = append(filteredSectorInfos, si)
+// 		}
+// 	}
+// 	return filteredSectorInfos
+// }
