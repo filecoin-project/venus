@@ -57,45 +57,18 @@ type FakeElectionMachine struct{}
 
 var _ ElectionValidator = new(FakeElectionMachine)
 
-// GenerateEPoStVrfProof returns a fake post randomness byte array
-func (fem *FakeElectionMachine) GenerateEPoStVrfProof(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error) {
-	return MakeFakeVRFProofForTest(), nil
-}
-
 // GenerateElectionProof returns a fake randomness
 func (fem *FakeElectionMachine) GenerateElectionProof(_ context.Context, _ *drand.Entry,
 	_ abi.ChainEpoch, _ address.Address, _ address.Address, _ types.Signer) (crypto.VRFPi, error) {
 	return MakeFakeVRFProofForTest(), nil
 }
 
-// GenerateCandidates returns one fake election post candidate
-func (fem *FakeElectionMachine) GenerateCandidates(poStRand abi.PoStRandomness, sectorInfos []abi.SectorInfo, ep postgenerator.PoStGenerator, minerAddr address.Address) ([]abi.PoStCandidate, error) {
-	return []abi.PoStCandidate{
-		{
-
-			SectorID:       abi.SectorID{Miner: abi.ActorID(1), Number: 0},
-			PartialTicket:  []byte{0xf},
-			ChallengeIndex: 0,
-		},
-	}, nil
-}
-
 // GenerateEPoSt returns a fake post proof
-func (fem *FakeElectionMachine) GenerateEPoSt(_ []abi.SectorInfo, _ abi.PoStRandomness, _ []abi.PoStCandidate, _ postgenerator.PoStGenerator, _ address.Address) ([]abi.PoStProof, error) {
+func (fem *FakeElectionMachine) GenerateWinningPoSt(allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]abi.PoStProof, error) {
 	return []abi.PoStProof{{
 		RegisteredProof: constants.DevRegisteredPoStProof,
 		ProofBytes:      []byte{0xe},
 	}}, nil
-}
-
-// VerifyEPoStVrfProof returns true
-func (fem *FakeElectionMachine) VerifyEPoStVrfProof(context.Context, block.TipSetKey, abi.ChainEpoch, address.Address, address.Address, abi.PoStRandomness) error {
-	return nil
-}
-
-// CandidateWins returns true
-func (fem *FakeElectionMachine) CandidateWins(_ []byte, _ uint64, _ uint64, _ uint64, _ uint64) bool {
-	return true
 }
 
 func (fem *FakeElectionMachine) IsWinner(_ []byte, _, _, _ uint64) bool {
@@ -104,6 +77,10 @@ func (fem *FakeElectionMachine) IsWinner(_ []byte, _, _, _ uint64) bool {
 
 func (fem *FakeElectionMachine) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.Address, _ address.Address, _ crypto.VRFPi) error {
 	return nil
+}
+
+func (fem *FakeElectionMachine) VerifyWinningPoSt(_ context.Context, _ EPoStVerifier, _ []abi.SectorInfo, _ *drand.Entry, _ abi.ChainEpoch, _ []block.PoStProof, _ address.Address) (bool, error) {
+	return true, nil
 }
 
 // FakeTicketMachine generates fake tickets and verifies all tickets
@@ -132,11 +109,6 @@ type FailingElectionValidator struct{}
 
 var _ ElectionValidator = new(FailingElectionValidator)
 
-// CandidateWins always returns false
-func (fev *FailingElectionValidator) CandidateWins(_ []byte, _, _, _, _ uint64) bool {
-	return false
-}
-
 func (fev *FailingElectionValidator) IsWinner(_ []byte, _, _, _ uint64) bool {
 	return false
 }
@@ -145,9 +117,8 @@ func (fev *FailingElectionValidator) VerifyElectionProof(_ context.Context, _ *d
 	return nil
 }
 
-// VerifyEPoStVrfProof return true
-func (fev *FailingElectionValidator) VerifyEPoStVrfProof(context.Context, block.TipSetKey, abi.ChainEpoch, address.Address, address.Address, abi.PoStRandomness) error {
-	return nil
+func (fev *FailingElectionValidator) VerifyWinningPoSt(_ context.Context, _ EPoStVerifier, _ []abi.SectorInfo, _ *drand.Entry, _ abi.ChainEpoch, _ []block.PoStProof, _ address.Address) (bool, error) {
+	return true, nil
 }
 
 // MakeFakeTicketForTest creates a fake ticket

@@ -88,7 +88,7 @@ type workerPorcelainAPI interface {
 type electionUtil interface {
 	GenerateElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error)
 	IsWinner(challengeTicket []byte, sectorNum, networkPower, sectorSize uint64) bool
-	// TODO: GenerateWinningPoSt (maybe also winning post candidates?)
+	GenerateWinningPoSt(allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]abi.PoStProof, error)
 }
 
 // ticketGenerator creates tickets.
@@ -192,6 +192,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- NewOutputErr(err)
 		return
 	}
+	currEpoch := baseEpoch + abi.ChainEpoch(1) + abi.ChainEpoch(nullBlkCount)
 
 	log.Debugf("Mining on tipset %s, at epoch %d with %d null blocks.", base.String(), baseEpoch, nullBlkCount)
 	if ctx.Err() != nil {
@@ -215,7 +216,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	// The parameter is interpreted as: lookback=1 means parent tipset. Subtract one here because the base from
 	// which the lookback is counted is already the parent, rather than "current" tipset.
 	// The sampling code will handle this underflowing past the genesis.
-	lookbackEpoch := baseEpoch - (miner.ElectionLookback - 1) + abi.ChainEpoch(nullBlkCount)
+	lookbackEpoch := currEpoch - miner.ElectionLookback
 
 	workerSignerAddr, err := keyView.AccountSignerAddress(ctx, workerAddr)
 	if err != nil {
@@ -245,7 +246,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		return
 	}
 
-	electionVRFProof, err := w.election.GenerateElectionProof(ctx, electionEntry, baseEpoch+1+abi.ChainEpoch(nullBlkCount), w.minerAddr, workerSignerAddr, w.workerSigner)
+	electionVRFProof, err := w.election.GenerateElectionProof(ctx, electionEntry, currEpoch, w.minerAddr, workerSignerAddr, w.workerSigner)
 	if err != nil {
 		log.Errorf("Worker.Mine failed to generate electionVRFProof %s", err)
 	}
@@ -309,9 +310,15 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- NewOutputErr(err)
 		return
 	}
-	_ = sortedSectorInfos // TODO use for winning post
-	//postInfo := block.NewEPoStInfo(block.FromABIPoStProofs([]abi.PoStProof{})), abi.PoStRandomness(postVrfProof), block.FromFFICandidates(winners...)...)
+	_ = sortedSectorInfos
 	posts := []block.PoStProof{}
+	// be able to get the cachedir and the sectordir to fill out private sector info
+	//	posts, err := w.election.GenerateWinningPoSt(sortedSectorInfos, electionEntry, currEpoch, w.poster, w.minerAddr)
+	//	if err != nil {
+	//		log.Warnf("Worker.Mine failed to generate post")
+	//		outCh <- NewOutputErr(err)
+	// 		return
+	//	}
 
 	next := w.Generate(ctx, base, nextTicket, electionVRFProof, abi.ChainEpoch(nullBlkCount), posts, drandEntries)
 	if next.Err == nil {

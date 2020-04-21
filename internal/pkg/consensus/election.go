@@ -7,6 +7,7 @@ import (
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
+
 	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 
@@ -25,12 +26,10 @@ type EPoStVerifier interface {
 }
 
 // ElectionMachine generates and validates PoSt partial tickets and PoSt proofs.
-type ElectionMachine struct {
-	chain ChainRandomness
-}
+type ElectionMachine struct{}
 
 func NewElectionMachine(chain ChainRandomness) *ElectionMachine {
-	return &ElectionMachine{chain: chain}
+	return &ElectionMachine{}
 }
 
 func (em ElectionMachine) GenerateElectionProof(ctx context.Context, entry *drand.Entry,
@@ -47,13 +46,28 @@ func (em ElectionMachine) GenerateElectionProof(ctx context.Context, entry *dran
 }
 
 // GenerateWinningPoSt creates a PoSt proof over the input miner ID and sector infos.
-func (em ElectionMachine) GenerateEPoSt(allSectorInfos []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate, ep postgenerator.PoStGenerator, maddr address.Address) ([]abi.PoStProof, error) {
+func (em ElectionMachine) GenerateWinningPoSt(allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]abi.PoStProof, error) {
 	minerID, err := address.IDFromAddress(maddr)
 	if err != nil {
 		return nil, err
 	}
+	_ = minerID
 
-	return ep.ComputeElectionPoSt(context.TODO(), abi.ActorID(minerID), allSectorInfos, challengeSeed, winners)
+	seed := blake2b.Sum256(entry.Signature)
+	randomness, err := crypto.BlendEntropy(acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, seed[:], epoch, []byte{})
+	if err != nil {
+		return nil, err
+	}
+	_ = randomness
+
+	// challengeIndexes, err := ep.GenerateWinningPoStSectorChallenge(proofs[0].RegisteredProof, minerID, randomness, len(allPrivateSectorInfos))
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// challengedSectorInfos := filterSectorInfosByIndex(allSectorInfos, challengeIndexes)
+	// return ep.GenerateWinningPoSt(minerID, challengedSectorInfos, randomness)
+
+	return nil, nil
 }
 
 func (em ElectionMachine) VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error {
@@ -80,12 +94,30 @@ func (em ElectionMachine) IsWinner(challengeTicket []byte, sectorNum, networkPow
 }
 
 // VerifyWinningPoSt verifies a Winning PoSt proof.
-func (em ElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, allSectorInfos []abi.SectorInfo, seed []byte, proofs []block.PoStProof, mIDAddr address.Address) (bool, error) {
+func (em ElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address) (bool, error) {
+	if len(proofs) == 0 {
+		return false, nil
+	}
+
+	seed := blake2b.Sum256(entry.Signature)
+	randomness, err := crypto.BlendEntropy(acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, seed[:], epoch, []byte{})
+	if err != nil {
+		return false, err
+	}
+	_ = randomness
+
 	minerID, err := address.IDFromAddress(mIDAddr)
 	if err != nil {
 		return false, err
 	}
 	_ = minerID
+
+	// Gather sector inputs for each proof
+	// challengeIndexes, err := ep.GenerateWinningPoStSectorChallenge(proofs[0].RegisteredProof, minerID, randomness, len(allSectorInfos))
+	// if err != nil {
+	// 	return false, nil
+	// }
+	// challengedSectorsInfos := filterSectorInfosByIndex(allSectorInfos, challengeIndexes)
 
 	proofsPrime := make([]abi.PoStProof, len(proofs))
 	for idx := range proofsPrime {
@@ -95,15 +127,12 @@ func (em ElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifie
 		}
 	}
 
-	// TODO convert allSectorInfos to challengedSector infos using GenerateWinningPoStSectorChallenge
-
 	return true, nil
 	// verifyInfo := abi.WinningPoStVerifyInfo{
-	// 	Randomness:      seed,
+	// 	Randomness:      randomness,
 	// 	Proofs:          proofsPrime,
 	// 	EligibleSectors: challengedSectorInfos,
 	// 	Prover:          abi.ActorID(minerID),
-	// 	ChallengeCount:  challengeCount,
 	// }
 	//	return ep.VerifyWinningPost(ctx, poStVerifyInfo)
 }
@@ -162,6 +191,17 @@ func electionVRFRandomness(entry *drand.Entry, miner address.Address, epoch abi.
 	return crypto.BlendEntropy(acrypto.DomainSeparationTag_ElectionPoStChallengeSeed, seed[:], epoch, entropy)
 }
 
-// func challengedSectorInfos(allSectorInfos []abi.SectorInfos, challengeIDs []uint64) []abi.SectorInfos {
-// 	allSectorInfos[0].
-// }
+func filterSectorInfosByIndex(allSectorInfos []abi.SectorInfo, challengeIDs []uint64) []abi.SectorInfo {
+	idSet := make(map[uint64]struct{})
+	for _, id := range challengeIDs {
+		idSet[id] = struct{}{}
+	}
+
+	var filteredSectorInfos []abi.SectorInfo
+	for _, si := range allSectorInfos {
+		if _, ok := idSet[uint64(si.SectorNumber)]; ok {
+			filteredSectorInfos = append(filteredSectorInfos, si)
+		}
+	}
+	return filteredSectorInfos
+}
