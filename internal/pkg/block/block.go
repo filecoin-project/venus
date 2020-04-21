@@ -33,6 +33,9 @@ type Block struct {
 	// ElectionProof is the vrf proof giving this block's miner authoring rights
 	ElectionProof crypto.ElectionProof
 
+	// PoStProofs are the winning post proofs
+	PoStProofs []PoStProof `json:"PoStProofs"`
+
 	// DrandEntries contain the verifiable oracle randomness used to elect
 	// this block's author leader
 	DrandEntries []*drand.Entry
@@ -77,10 +80,10 @@ type Block struct {
 }
 
 // IndexMessagesField is the message field position in the encoded block
-const IndexMessagesField = 9
+const IndexMessagesField = 10
 
 // IndexParentsField is the parents field position in the encoded block
-const IndexParentsField = 4
+const IndexParentsField = 5
 
 // Cid returns the content id of this block.
 func (b *Block) Cid() cid.Cid {
@@ -165,6 +168,7 @@ func (b *Block) SignatureData() []byte {
 		Messages:        b.Messages,
 		StateRoot:       b.StateRoot,
 		MessageReceipts: b.MessageReceipts,
+		PoStProofs:      b.PoStProofs,
 		DrandEntries:    b.DrandEntries,
 		Timestamp:       b.Timestamp,
 		BLSAggregateSig: b.BLSAggregateSig,

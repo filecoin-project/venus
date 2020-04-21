@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	blk "github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
@@ -61,6 +62,7 @@ func TestTriangleEncoding(t *testing.T) {
 	t.Run("encoding block with nonzero fields works", func(t *testing.T) {
 		// We should ensure that every field is set -- zero values might
 		// pass when non-zero values do not due to nil/null encoding.
+		posts := []blk.PoStProof{blk.NewPoStProof(constants.DevRegisteredPoStProof, []byte{0x07})}
 		b := &blk.Block{
 			Miner:         newAddress(),
 			Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
@@ -86,6 +88,7 @@ func TestTriangleEncoding(t *testing.T) {
 				Type: crypto.SigTypeBLS,
 				Data: []byte{0x3},
 			},
+			PoStProofs:    posts,
 			ForkSignaling: 6,
 		}
 		s := reflect.TypeOf(*b)
@@ -94,7 +97,7 @@ func TestTriangleEncoding(t *testing.T) {
 		// Also please add non zero fields to "b" and "diff" in TestSignatureData
 		// and add a new check that different values of the new field result in
 		// different output data.
-		require.Equal(t, 17, s.NumField()) // Note: this also counts private fields
+		require.Equal(t, 18, s.NumField()) // Note: this also counts private fields
 		testRoundTrip(t, b)
 	})
 }
@@ -223,6 +226,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 func TestSignatureData(t *testing.T) {
 	tf.UnitTest(t)
 	newAddress := vmaddr.NewForTestGetter()
+	posts := []blk.PoStProof{blk.NewPoStProof(constants.DevRegisteredPoStProof, []byte{0x07})}
 
 	b := &blk.Block{
 		Miner:         newAddress(),
@@ -242,11 +246,14 @@ func TestSignatureData(t *testing.T) {
 		ForkSignaling:   3,
 		StateRoot:       e.NewCid(types.CidFromString(t, "somecid")),
 		Timestamp:       1,
+		PoStProofs:      posts,
 		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x3},
 		},
 	}
+
+	diffPoSts := []blk.PoStProof{blk.NewPoStProof(constants.DevRegisteredPoStProof, []byte{0x17})}
 
 	diff := &blk.Block{
 		Miner:         newAddress(),
@@ -266,6 +273,7 @@ func TestSignatureData(t *testing.T) {
 		ForkSignaling:   2,
 		StateRoot:       e.NewCid(types.CidFromString(t, "someothercid")),
 		Timestamp:       4,
+		PoStProofs:      diffPoSts,
 		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x4},
@@ -404,6 +412,17 @@ func TestSignatureData(t *testing.T) {
 		defer func() { b.Timestamp = cpy }()
 
 		b.Timestamp = diff.Timestamp
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.PoStProofs
+		defer func() { b.PoStProofs = cpy }()
+
+		b.PoStProofs = diff.PoStProofs
 		after := b.SignatureData()
 		assert.False(t, bytes.Equal(before, after))
 	}()
