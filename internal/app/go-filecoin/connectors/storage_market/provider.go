@@ -167,7 +167,10 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 	}
 
 	stateStore := state.StoreFromCbor(ctx, s.chainStore)
-	proposals := adt.AsArray(stateStore, smState.Proposals)
+	proposals, err := adt.AsArray(stateStore, smState.Proposals)
+	if err != nil {
+		return 0, 0, 0, err
+	}
 
 	var minerState spaminer.State
 	err = s.chainStore.GetActorStateAt(ctx, tsk, s.minerAddr, &minerState)
@@ -175,7 +178,11 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 		return 0, 0, 0, err
 	}
 
-	precommitted := adt.AsMap(stateStore, minerState.PreCommittedSectors)
+	precommitted, err := adt.AsMap(stateStore, minerState.PreCommittedSectors)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
 	var sectorInfo spaminer.SectorPreCommitOnChainInfo
 	err = precommitted.ForEach(&sectorInfo, func(key string) error {
 		k, err := adt.ParseIntKey(key)

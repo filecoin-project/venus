@@ -8,7 +8,6 @@ import (
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
-
 	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 
@@ -22,8 +21,8 @@ import (
 
 // Interface to PoSt verification.
 type EPoStVerifier interface {
-	// VerifyElectionPost verifies an election PoSt.
-	VerifyElectionPost(ctx context.Context, post abi.PoStVerifyInfo) (bool, error)
+	// VerifyWinningPoSt verifies an election PoSt.
+	VerifyWinningPoSt(ctx context.Context, post abi.WinningPoStVerifyInfo) (bool, error)
 }
 
 // ElectionMachine generates and validates PoSt partial tickets and PoSt proofs.

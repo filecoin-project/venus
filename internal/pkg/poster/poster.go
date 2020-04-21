@@ -7,11 +7,6 @@ import (
 	sectorstorage "github.com/filecoin-project/sector-storage"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/prometheus/common/log"
-
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -19,9 +14,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 )
 
 // Poster listens for changes to the chain head and generates and submits a PoSt if one is required.
@@ -76,128 +70,130 @@ func (p *Poster) StopPoSting() {
 }
 
 func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) error {
-	p.postMutex.Lock()
-	defer p.postMutex.Unlock()
-
-	if p.postCancel != nil {
-		// already posting
-		return nil
-	}
-
-	tipsetHeight, err := newHead.Height()
-	if err != nil {
-		return err
-	}
-
-	root, err := p.chain.GetTipSetStateRoot(ctx, newHead.Key())
-	if err != nil {
-		return err
-	}
-
-	stateView := p.stateViewer.StateView(root)
-	provingPeriodStart, _, _, err := stateView.MinerProvingPeriod(ctx, p.minerAddr)
-	if err != nil {
-		return nil
-	}
-
-	if provingPeriodStart > tipsetHeight {
-		// it's not time to PoSt
-		return nil
-	}
-
-	ctx, p.postCancel = context.WithCancel(ctx)
-	go p.doPoSt(ctx, stateView, provingPeriodStart, newHead.Key())
-
+	// TODO: Winning PoSt
+	//p.postMutex.Lock()
+	//defer p.postMutex.Unlock()
+	//
+	//if p.postCancel != nil {
+	//	// already posting
+	//	return nil
+	//}
+	//
+	//tipsetHeight, err := newHead.Height()
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//root, err := p.chain.GetTipSetStateRoot(ctx, newHead.Key())
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//stateView := p.stateViewer.StateView(root)
+	//provingPeriodStart, _, _, err := stateView.MinerProvingPeriod(ctx, p.minerAddr)
+	//if err != nil {
+	//	return nil
+	//}
+	//
+	//if provingPeriodStart > tipsetHeight {
+	//	// it's not time to PoSt
+	//	return nil
+	//}
+	//
+	//ctx, p.postCancel = context.WithCancel(ctx)
+	//go p.doPoSt(ctx, stateView, provingPeriodStart, newHead.Key())
+	//
 	return nil
 }
 
-func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, provingPeriodStart abi.ChainEpoch, head block.TipSetKey) {
-	defer p.cancelPost()
-
-	sortedSectorInfo, err := p.getProvingSet(ctx, stateView)
-	if err != nil {
-		log.Error("error getting proving set: ", err)
-		return
-	}
-
-	faults, err := stateView.MinerFaults(ctx, p.minerAddr)
-	if err != nil {
-		log.Error("error getting faults: ", err)
-		return
-	}
-
-	challengeSeed, err := p.getChallengeSeed(ctx, head, provingPeriodStart, p.minerAddr)
-	if err != nil {
-		log.Error("error getting challenge seed: ", err)
-		return
-	}
-
-	faultsPrime := make([]abi.SectorNumber, len(faults))
-	for idx := range faultsPrime {
-		faultsPrime[idx] = abi.SectorNumber(faults[idx])
-	}
-
-	minerID, err := address.IDFromAddress(p.minerAddr)
-	if err != nil {
-		log.Error("error mapping from miner address to ID: ", err)
-		return
-	}
-
-	output, err := p.mgr.GenerateFallbackPoSt(ctx, abi.ActorID(minerID), sortedSectorInfo, abi.PoStRandomness(challengeSeed[:]), faultsPrime)
-	if err != nil {
-		log.Error("error generating fallback PoSt: ", err)
-		return
-	}
-
-	poStCandidates := make([]abi.PoStCandidate, len(output.PoStInputs))
-	for i := range output.PoStInputs {
-		poStCandidates[i] = output.PoStInputs[i].Candidate
-	}
-
-	err = p.sendPoSt(ctx, stateView, poStCandidates, output.Proof)
-	if err != nil {
-		log.Error("error sending fallback PoSt: ", err)
-		return
-	}
-}
-
-func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, candidates []abi.PoStCandidate, proofs []abi.PoStProof) error {
-
-	windowedPost := &abi.OnChainPoStVerifyInfo{
-		Candidates: candidates,
-		Proofs:     proofs,
-	}
-
-	_, workerAddr, err := stateView.MinerControlAddresses(ctx, p.minerAddr)
-	if err != nil {
-		return err
-	}
-
-	mcid, _, err := p.outbox.Send(
-		ctx,
-		workerAddr,
-		p.minerAddr,
-		types.ZeroAttoFIL,
-		types.NewGasPrice(1),
-		gas.NewGas(5000),
-		true,
-		builtin.MethodsMiner.SubmitWindowedPoSt,
-		windowedPost,
-	)
-	if err != nil {
-		return err
-	}
-
-	// wait until we see the post on chain at least once
-	err = p.waiter.Wait(ctx, mcid, func(_ *block.Block, _ *types.SignedMessage, recp *vm.MessageReceipt) error {
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+// TODO: Winning PoSt
+//func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, provingPeriodStart abi.ChainEpoch, head block.TipSetKey) {
+//	defer p.cancelPost()
+//
+//	sortedSectorInfo, err := p.getProvingSet(ctx, stateView)
+//	if err != nil {
+//		log.Error("error getting proving set: ", err)
+//		return
+//	}
+//
+//	faults, err := stateView.MinerFaults(ctx, p.minerAddr)
+//	if err != nil {
+//		log.Error("error getting faults: ", err)
+//		return
+//	}
+//
+//	challengeSeed, err := p.getChallengeSeed(ctx, head, provingPeriodStart, p.minerAddr)
+//	if err != nil {
+//		log.Error("error getting challenge seed: ", err)
+//		return
+//	}
+//
+//	faultsPrime := make([]abi.SectorNumber, len(faults))
+//	for idx := range faultsPrime {
+//		faultsPrime[idx] = abi.SectorNumber(faults[idx])
+//	}
+//
+//	minerID, err := address.IDFromAddress(p.minerAddr)
+//	if err != nil {
+//		log.Error("error mapping from miner address to ID: ", err)
+//		return
+//	}
+//
+//	output, err := p.mgr.GenerateFallbackPoSt(ctx, abi.ActorID(minerID), sortedSectorInfo, abi.PoStRandomness(challengeSeed[:]), faultsPrime)
+//	if err != nil {
+//		log.Error("error generating fallback PoSt: ", err)
+//		return
+//	}
+//
+//	poStCandidates := make([]abi.PoStCandidate, len(output.PoStInputs))
+//	for i := range output.PoStInputs {
+//		poStCandidates[i] = output.PoStInputs[i].Candidate
+//	}
+//
+//	err = p.sendPoSt(ctx, stateView, poStCandidates, output.Proof)
+//	if err != nil {
+//		log.Error("error sending fallback PoSt: ", err)
+//		return
+//	}
+//}
+//
+//func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, candidates []abi.PoStCandidate, proofs []abi.PoStProof) error {
+//
+//	windowedPost := &abi.OnChainPoStVerifyInfo{
+//		Candidates: candidates,
+//		Proofs:     proofs,
+//	}
+//
+//	_, workerAddr, err := stateView.MinerControlAddresses(ctx, p.minerAddr)
+//	if err != nil {
+//		return err
+//	}
+//
+//	mcid, _, err := p.outbox.Send(
+//		ctx,
+//		workerAddr,
+//		p.minerAddr,
+//		types.ZeroAttoFIL,
+//		types.NewGasPrice(1),
+//		gas.NewGas(5000),
+//		true,
+//		builtin.MethodsMiner.SubmitWindowedPoSt,
+//		windowedPost,
+//	)
+//	if err != nil {
+//		return err
+//	}
+//
+//	// wait until we see the post on chain at least once
+//	err = p.waiter.Wait(ctx, mcid, func(_ *block.Block, _ *types.SignedMessage, recp *vm.MessageReceipt) error {
+//		return nil
+//	})
+//	if err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
 
 func (p *Poster) getProvingSet(ctx context.Context, stateView *appstate.View) ([]abi.SectorInfo, error) {
 	return consensus.NewPowerTableView(stateView, stateView).SortedSectorInfos(ctx, p.minerAddr)

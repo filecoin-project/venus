@@ -137,6 +137,15 @@ func (chn *ChainStateReadWriter) GetBlock(ctx context.Context, id cid.Cid) (*blo
 	return block.DecodeBlock(bsblk.RawData())
 }
 
+func (chn *ChainStateReadWriter) ReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
+	blk, err := chn.bstore.Get(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	return blk.RawData(), nil
+}
+
 // GetMessages gets a message collection by CID returned as unsigned bls and signed secp
 func (chn *ChainStateReadWriter) GetMessages(ctx context.Context, metaCid cid.Cid) ([]*types.UnsignedMessage, []*types.SignedMessage, error) {
 	secp, bls, err := chn.messageProvider.LoadMessages(ctx, metaCid)

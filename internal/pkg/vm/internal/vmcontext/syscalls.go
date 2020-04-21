@@ -26,8 +26,9 @@ type SyscallsImpl interface {
 	HashBlake2b(data []byte) [32]byte
 	ComputeUnsealedSectorCID(ctx context.Context, proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error)
 	VerifySeal(ctx context.Context, info abi.SealVerifyInfo) error
-	VerifyPoSt(ctx context.Context, info abi.PoStVerifyInfo) error
-	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view SyscallsStateView, earliest abi.ChainEpoch) (*specsruntime.ConsensusFault, error)
+	VerifyWinningPoSt(ctx context.Context, info abi.WinningPoStVerifyInfo) error
+	VerifyPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) error
+	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view SyscallsStateView) (*specsruntime.ConsensusFault, error)
 }
 
 type syscalls struct {
@@ -61,12 +62,17 @@ func (sys syscalls) VerifySeal(info abi.SealVerifyInfo) error {
 	return sys.impl.VerifySeal(sys.ctx, info)
 }
 
-func (sys syscalls) VerifyPoSt(info abi.PoStVerifyInfo) error {
-	sys.gasTank.Charge(sys.pricelist.OnVerifyPost(info), "VerifyPoSt")
+func (sys syscalls) VerifyWinningPoSt(info abi.WinningPoStVerifyInfo) error {
+	sys.gasTank.Charge(sys.pricelist.OnVerifyWinningPoSt(info), "VerifyWinningPoSt")
+	return sys.impl.VerifyWinningPoSt(sys.ctx, info)
+}
+
+func (sys syscalls) VerifyPoSt(info abi.WindowPoStVerifyInfo) error {
+	sys.gasTank.Charge(sys.pricelist.OnVerifyPoSt(info), "VerifyWindowPoSt")
 	return sys.impl.VerifyPoSt(sys.ctx, info)
 }
 
-func (sys syscalls) VerifyConsensusFault(h1, h2, extra []byte, earliest abi.ChainEpoch) (*specsruntime.ConsensusFault, error) {
+func (sys syscalls) VerifyConsensusFault(h1, h2, extra []byte) (*specsruntime.ConsensusFault, error) {
 	sys.gasTank.Charge(sys.pricelist.OnVerifyConsensusFault(), "VerifyConsensusFault")
-	return sys.impl.VerifyConsensusFault(sys.ctx, h1, h2, extra, sys.head, sys.state, earliest)
+	return sys.impl.VerifyConsensusFault(sys.ctx, h1, h2, extra, sys.head, sys.state)
 }

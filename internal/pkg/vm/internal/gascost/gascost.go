@@ -35,7 +35,8 @@ type Pricelist interface {
 	OnHashing(dataSize int) gas.Unit
 	OnComputeUnsealedSectorCid(proofType abi.RegisteredProof, pieces *[]abi.PieceInfo) gas.Unit
 	OnVerifySeal(info abi.SealVerifyInfo) gas.Unit
-	OnVerifyPost(info abi.PoStVerifyInfo) gas.Unit
+	OnVerifyWinningPoSt(info abi.WinningPoStVerifyInfo) gas.Unit
+	OnVerifyPoSt(info abi.WindowPoStVerifyInfo) gas.Unit
 	OnVerifyConsensusFault() gas.Unit
 }
 

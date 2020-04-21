@@ -17,10 +17,14 @@ func (f *FakeVerifier) VerifySeal(abi.SealVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (f *FakeVerifier) VerifyElectionPost(context.Context, abi.PoStVerifyInfo) (bool, error) {
+func (f *FakeVerifier) VerifyWinningPoSt(context.Context, abi.WinningPoStVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (f *FakeVerifier) VerifyFallbackPost(context.Context, abi.PoStVerifyInfo) (bool, error) {
+func (f *FakeVerifier) VerifyWindowPoSt(context.Context, abi.WindowPoStVerifyInfo) (bool, error) {
 	return true, nil
+}
+
+func (f *FakeVerifier) GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error) {
+	return []uint64{}, nil
 }

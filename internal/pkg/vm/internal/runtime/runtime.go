@@ -59,7 +59,7 @@ type ExtendedInvocationContext interface {
 	// WARNING: May only be called by InitActor.
 	CreateActor(codeID cid.Cid, addr address.Address)
 
-	DeleteActor()
+	DeleteActor(beneficiary address.Address)
 }
 
 // PatternContext is the context a pattern gets access to in order to determine if the caller matches.

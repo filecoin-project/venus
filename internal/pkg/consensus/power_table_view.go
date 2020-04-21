@@ -18,9 +18,9 @@ type PowerStateView interface {
 	state.AccountStateView
 	MinerSectorSize(ctx context.Context, maddr addr.Address) (abi.SectorSize, error)
 	MinerControlAddresses(ctx context.Context, maddr addr.Address) (owner, worker addr.Address, err error)
-	MinerProvingSetForEach(ctx context.Context, maddr addr.Address, f func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof, dealIDs []abi.DealID) error) error
-	NetworkTotalPower(ctx context.Context) (abi.StoragePower, error)
-	MinerClaimedPower(ctx context.Context, miner addr.Address) (abi.StoragePower, error)
+	MinerSectorsForEach(ctx context.Context, maddr addr.Address, f func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof, dealIDs []abi.DealID) error) error
+	NetworkTotalRawBytePower(ctx context.Context) (abi.StoragePower, error)
+	MinerClaimedRawBytePower(ctx context.Context, miner addr.Address) (abi.StoragePower, error)
 }
 
 // FaultStateView is the interface needed by the recent fault state to adjust
@@ -47,12 +47,12 @@ func NewPowerTableView(state PowerStateView, faultState FaultStateView) PowerTab
 
 // Total returns the total storage as a BytesAmount.
 func (v PowerTableView) Total(ctx context.Context) (abi.StoragePower, error) {
-	return v.state.NetworkTotalPower(ctx)
+	return v.state.NetworkTotalRawBytePower(ctx)
 }
 
 // MinerClaim returns the storage that this miner claims to have committed to the network.
 func (v PowerTableView) MinerClaim(ctx context.Context, mAddr addr.Address) (abi.StoragePower, error) {
-	claim, err := v.state.MinerClaimedPower(ctx, mAddr)
+	claim, err := v.state.MinerClaimedRawBytePower(ctx, mAddr)
 	if err != nil {
 		return abi.NewStoragePower(0), err
 	}
@@ -94,7 +94,7 @@ func (v PowerTableView) HasClaimedPower(ctx context.Context, mAddr addr.Address)
 // SortedSectorInfos returns the sector information for the given miner
 func (v PowerTableView) SortedSectorInfos(ctx context.Context, mAddr addr.Address) ([]abi.SectorInfo, error) {
 	var infos []abi.SectorInfo
-	err := v.state.MinerProvingSetForEach(ctx, mAddr, func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof, _ []abi.DealID) error {
+	err := v.state.MinerSectorsForEach(ctx, mAddr, func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof, _ []abi.DealID) error {
 		infos = append(infos, abi.SectorInfo{
 			SectorNumber:    id,
 			SealedCID:       sealedCID,

@@ -64,7 +64,6 @@ func NewStorageMiningSubmodule(
 
 	fcg := ffiwrapper.Config{
 		SealProofType: sealProofType,
-		PoStProofType: postProofType,
 	}
 
 	scg := sectorstorage.SealerConfig{AllowPreCommit1: true, AllowPreCommit2: true, AllowCommit: true}
@@ -78,7 +77,20 @@ func NewStorageMiningSubmodule(
 
 	ncn := fsmnodeconnector.New(mw, c.ChainReader, c.ActorState, m.Outbox, c.State)
 
-	pcp := fsm.NewBasicPreCommitPolicy(&ccn, abi.ChainEpoch(2*60*24))
+	tsk := c.ChainReader.GetHead()
+	root, err := c.ChainReader.GetTipSetStateRoot(tsk)
+	if err != nil {
+		return nil, err
+	}
+	view := stateViewer.StateView(root)
+	if err != nil {
+		return nil, err
+	}
+	info, err := view.MinerInfo(context.Background(), minerAddr)
+	if err != nil {
+		return nil, err
+	}
+	pcp := fsm.NewBasicPreCommitPolicy(&ccn, abi.ChainEpoch(2*60*24), info.ProvingPeriodBoundary)
 
 	fsmConnector := fsmeventsconnector.New(chainThresholdScheduler, c.State)
 	fsm := fsm.New(ncn, fsmConnector, minerAddr, ds, mgr, sid, ffiwrapper.ProofVerifier, ncn.ChainGetTicket, &pcp)

@@ -147,6 +147,31 @@ func (f FiniteStateMachineNodeConnector) StateMarketStorageDeal(ctx context.Cont
 	return deal, *state, err
 }
 
+func (f FiniteStateMachineNodeConnector) StateMinerDeadlines(ctx context.Context, maddr address.Address, tok fsm.TipSetToken) (*miner.Deadlines, error) {
+	var tsk block.TipSetKey
+	err := encoding.Decode(tok, &tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	ts, err := f.chainState.GetTipSet(tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	chainHeight, err := ts.Height()
+	if err != nil {
+		return nil, err
+	}
+
+	view, err := f.stateViewer.StateView(tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	return view.MinerDeadlines(ctx, maddr, chainHeight)
+}
+
 func (f FiniteStateMachineNodeConnector) SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, gasPrice big.Int, gasLimit int64, params []byte) (cid.Cid, error) {
 	mcid, cerr, err := f.outbox.SendEncoded(
 		ctx,
@@ -216,6 +241,10 @@ func (f FiniteStateMachineNodeConnector) ChainGetTicket(ctx context.Context, tok
 
 	randomness, err := f.ChainGetRandomness(ctx, tok, crypto.DomainSeparationTag_SealRandomness, randomEpoch, nil)
 	return abi.SealRandomness(randomness), randomEpoch, err
+}
+
+func (f FiniteStateMachineNodeConnector) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
+	return f.chainState.ReadObj(ctx, obj)
 }
 
 func (f FiniteStateMachineNodeConnector) stateViewForToken(tok fsm.TipSetToken) (*appstate.View, error) {

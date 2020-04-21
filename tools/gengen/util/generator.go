@@ -147,22 +147,22 @@ func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
 	}
 
 	_, err = g.createActor(builtin.InitActorAddr, builtin.InitActorCodeID, specsbig.Zero(), func() (interface{}, error) {
-		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore())
+		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore()).Root()
 		if err != nil {
 			return nil, err
 		}
-		return init_.ConstructState(emptyMap.Root(), g.cfg.Network), nil
+		return init_.ConstructState(emptyMap, g.cfg.Network), nil
 	})
 	if err != nil {
 		return err
 	}
 
 	rewardActor, err := g.createActor(builtin.RewardActorAddr, builtin.RewardActorCodeID, rewardActorInitialBalance, func() (interface{}, error) {
-		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore())
+		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore()).Root()
 		if err != nil {
 			return nil, err
 		}
-		return reward.ConstructState(emptyMap.Root()), nil
+		return reward.ConstructState(emptyMap), nil
 	})
 	if err != nil {
 		return err
@@ -172,32 +172,32 @@ func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
 	}
 
 	_, err = g.createActor(builtin.StoragePowerActorAddr, builtin.StoragePowerActorCodeID, specsbig.Zero(), func() (interface{}, error) {
-		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore())
+		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore()).Root()
 		if err != nil {
 			return nil, err
 		}
-		return power.ConstructState(emptyMap.Root()), nil
+		return power.ConstructState(emptyMap), nil
 	})
 	if err != nil {
 		return err
 	}
 
 	_, err = g.createActor(builtin.StorageMarketActorAddr, builtin.StorageMarketActorCodeID, specsbig.Zero(), func() (interface{}, error) {
-		emptyArray, err := adt.MakeEmptyArray(g.vm.ContextStore())
+		emptyArray, err := adt.MakeEmptyArray(g.vm.ContextStore()).Root()
 		if err != nil {
 			return nil, err
 		}
 
-		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore())
+		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore()).Root()
 		if err != nil {
 			return nil, err
 		}
 
-		emptyMSet, err := market.MakeEmptySetMultimap(g.vm.ContextStore())
+		emptyMSet, err := market.MakeEmptySetMultimap(g.vm.ContextStore()).Root()
 		if err != nil {
 			return nil, err
 		}
-		return market.ConstructState(emptyArray.Root(), emptyMap.Root(), emptyMSet.Root()), nil
+		return market.ConstructState(emptyArray, emptyMap, emptyMSet), nil
 	})
 	if err != nil {
 		return err
@@ -331,12 +331,6 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 			}
 		}
 
-		// Setup windowed post including cron registration
-		err = g.setupPost(ctx, wAddr, mIDAddr, m.ProvingPeriodStart)
-		if err != nil {
-			return nil, err
-		}
-
 		for i, comm := range m.CommittedSectors {
 			// Acquire deal weight value
 			// call deal verify market actor to do calculation
@@ -390,7 +384,7 @@ func (g *GenesisGenerator) initPowerTable(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	powerActorState.TotalNetworkPower = networkPower
+	powerActorState.TotalRawBytePower = networkPower
 	newPowCid, _, err := g.store.Put(ctx, &powerActorState)
 	if err != nil {
 		return err
@@ -506,57 +500,6 @@ func (g *GenesisGenerator) commitDeals(ctx context.Context, addr, mIDAddr addres
 	return ret.IDs, nil
 }
 
-func (g *GenesisGenerator) setupPost(ctx context.Context, addr, mIDAddr address.Address, provingPeriodStart *abi.ChainEpoch) error {
-	mAct, found, err := g.stateTree.GetActor(ctx, mIDAddr)
-	if err != nil {
-		return err
-	}
-	if !found {
-		return fmt.Errorf("state tree could not find power actor")
-	}
-	var minerActorState miner.State
-	_, err = g.store.Get(ctx, mAct.Head.Cid, &minerActorState)
-	if err != nil {
-		return err
-	}
-
-	// set provingperiod start state field
-	ppStart := abi.ChainEpoch(miner.ProvingPeriod)
-	if provingPeriodStart != nil {
-		ppStart = *provingPeriodStart
-	}
-	minerActorState.PoStState.ProvingPeriodStart = ppStart
-
-	// register event on cron actor by sending from miner actor address
-	// Dragons need to include empty val to prevent cbor gen from panicing
-	provingPeriodEvent := &miner.CronEventPayload{
-		EventType: miner.CronEventWindowedPoStExpiration,
-	}
-	provingPeriodEventPayload, err := encoding.Encode(provingPeriodEvent)
-	if err != nil {
-		return err
-	}
-	params := &power.EnrollCronEventParams{
-		EventEpoch: miner.ProvingPeriod,
-		Payload:    provingPeriodEventPayload,
-	}
-	_, err = g.vm.ApplyGenesisMessage(mIDAddr, builtin.StoragePowerActorAddr, builtin.MethodsPower.EnrollCronEvent, specsbig.Zero(), params, &g.chainRand)
-	if err != nil {
-		return err
-	}
-	// Write miner actor
-	newMinerCid, _, err := g.store.Put(ctx, &minerActorState)
-	if err != nil {
-		return err
-	}
-	mAct.Head = e.NewCid(newMinerCid)
-	err = g.stateTree.SetActor(ctx, mIDAddr, mAct)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (g *GenesisGenerator) getDealWeight(dealID abi.DealID, endEpoch abi.ChainEpoch, minerIDAddr address.Address) (specsbig.Int, error) {
 	weightParams := &market.VerifyDealsOnSectorProveCommitParams{
 		DealIDs:      []abi.DealID{dealID},
@@ -567,9 +510,11 @@ func (g *GenesisGenerator) getDealWeight(dealID abi.DealID, endEpoch abi.ChainEp
 	if err != nil {
 		return specsbig.Zero(), err
 	}
-	return *weightOut.(*specsbig.Int), nil
+	ret := weightOut.(*market.VerifyDealsOnSectorProveCommitReturn)
+	return ret.VerifiedDealWeight, nil
 }
 
+// TODO: This might not be right
 func (g *GenesisGenerator) updatePower(ctx context.Context, dealWeight specsbig.Int, sectorSize abi.SectorSize, endEpoch abi.ChainEpoch, minerIDAddr address.Address) (specsbig.Int, error) {
 	powAct, found, err := g.stateTree.GetActor(ctx, builtin.StoragePowerActorAddr)
 	if err != nil {
@@ -584,16 +529,14 @@ func (g *GenesisGenerator) updatePower(ctx context.Context, dealWeight specsbig.
 		return specsbig.Zero(), err
 	}
 	weight := &power.SectorStorageWeightDesc{
-		SectorSize: sectorSize,
-		Duration:   endEpoch,
-		DealWeight: dealWeight,
+		SectorSize:         sectorSize,
+		Duration:           endEpoch,
+		DealWeight:         specsbig.NewInt(0),
+		VerifiedDealWeight: dealWeight,
 	}
-	spower := power.ConsensusPowerForWeight(weight)
-	if !spower.Equals(powerActorState.TotalNetworkPower) { // avoid div by 0 with 1 miner and 1 sector
-		spower = specsbig.Sub(powerActorState.TotalNetworkPower, spower)
-	}
-	pledge := power.PledgeForWeight(weight, spower)
-	err = powerActorState.AddToClaim(&cstore{ctx, g.cst}, minerIDAddr, spower, pledge)
+	spower := specsbig.NewInt(int64(sectorSize))
+	qapower := power.QAPowerForWeight(weight)
+	err = powerActorState.AddToClaim(&cstore{ctx, g.cst}, minerIDAddr, spower, qapower)
 	if err != nil {
 		return specsbig.Zero(), err
 	}
@@ -607,7 +550,7 @@ func (g *GenesisGenerator) updatePower(ctx context.Context, dealWeight specsbig.
 		return specsbig.Zero(), err
 	}
 
-	return pledge, nil
+	return qapower, nil
 }
 
 func (g *GenesisGenerator) putSectors(ctx context.Context, comm *CommitConfig, mIDAddr address.Address, dealID abi.DealID, dealWeight, pledge specsbig.Int) error {
@@ -633,17 +576,15 @@ func (g *GenesisGenerator) putSectors(ctx context.Context, comm *CommitConfig, m
 			DealIDs:         []abi.DealID{dealID},
 			Expiration:      abi.ChainEpoch(comm.DealCfg.EndEpoch),
 		},
-		ActivationEpoch:       0,
-		DealWeight:            dealWeight,
-		PledgeRequirement:     pledge,
-		DeclaredFaultEpoch:    -1,
-		DeclaredFaultDuration: -1,
+		ActivationEpoch:    0,
+		DealWeight:         dealWeight,
+		VerifiedDealWeight: specsbig.NewInt(0), // TODO: what should this be
 	}
 	err = minerActorState.PutSector(&cstore{ctx, g.cst}, newSectorInfo)
 	if err != nil {
 		return err
 	}
-	minerActorState.ProvingSet = minerActorState.Sectors
+	minerActorState.Sectors = minerActorState.Sectors
 	// Write miner actor
 	newMinerCid, _, err := g.store.Put(ctx, &minerActorState)
 	if err != nil {
@@ -660,8 +601,8 @@ func (g *GenesisGenerator) putSectors(ctx context.Context, comm *CommitConfig, m
 	sectorBf.Set(comm.SectorNum)
 
 	sectorExpiryEvent := &miner.CronEventPayload{
-		EventType: miner.CronEventSectorExpiry,
-		Sectors:   &sectorBf,
+		EventType: miner.CronEventProvingPeriod,
+		Sectors:   sectorBf,
 	}
 	sectorExpiryEventPayload, err := encoding.Encode(sectorExpiryEvent)
 	if err != nil {
@@ -681,5 +622,5 @@ func (g *GenesisGenerator) getPower(ctx context.Context, mIDAddr address.Address
 		return specsbig.Zero(), err
 	}
 	view := gfcstate.NewView(g.cst, stateRoot)
-	return view.MinerClaimedPower(ctx, mIDAddr)
+	return view.MinerClaimedRawBytePower(ctx, mIDAddr)
 }

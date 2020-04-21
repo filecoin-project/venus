@@ -2,6 +2,7 @@ package vmsupport
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
@@ -19,7 +20,7 @@ import (
 )
 
 type faultChecker interface {
-	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view slashing.FaultStateView, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error)
+	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view slashing.FaultStateView) (*runtime.ConsensusFault, error)
 }
 
 // Syscalls contains the concrete implementation of VM system calls, including connection to
@@ -63,16 +64,28 @@ func (s *Syscalls) VerifySeal(_ context.Context, info abi.SealVerifyInfo) error 
 	return nil
 }
 
-func (s *Syscalls) VerifyPoSt(ctx context.Context, info abi.PoStVerifyInfo) error {
-	ok, err := s.verifier.VerifyFallbackPost(ctx, info)
+func (s *Syscalls) VerifyWinningPoSt(ctx context.Context, info abi.WinningPoStVerifyInfo) error {
+	ok, err := s.verifier.VerifyWinningPoSt(ctx, info)
 	if err != nil {
 		return err
-	} else if !ok {
-		return fmt.Errorf("proof invalid")
+	}
+	if !ok {
+		return errors.New("winning PoSt verification failed")
 	}
 	return nil
 }
 
-func (s *Syscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view vm.SyscallsStateView, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error) {
-	return s.faultChecker.VerifyConsensusFault(ctx, h1, h2, extra, head, view, earliest)
+func (s *Syscalls) VerifyPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) error {
+	ok, err := s.verifier.VerifyWindowPoSt(ctx, info)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return errors.New("window PoSt verification failed")
+	}
+	return nil
+}
+
+func (s *Syscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view vm.SyscallsStateView) (*runtime.ConsensusFault, error) {
+	return s.faultChecker.VerifyConsensusFault(ctx, h1, h2, extra, head, view)
 }

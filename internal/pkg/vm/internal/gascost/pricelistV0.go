@@ -154,8 +154,14 @@ func (pl *pricelistV0) OnVerifySeal(info abi.SealVerifyInfo) gas.Unit {
 	return pl.verifySealBase
 }
 
-// OnVerifyPost
-func (pl *pricelistV0) OnVerifyPost(info abi.PoStVerifyInfo) gas.Unit {
+// OnVerifyWinningPoSt
+func (pl *pricelistV0) OnVerifyWinningPoSt(info abi.WinningPoStVerifyInfo) gas.Unit {
+	// TODO: this needs more cost tunning, check with @lotus
+	return pl.verifyPostBase
+}
+
+// OnVerifyPoSt
+func (pl *pricelistV0) OnVerifyPoSt(info abi.WindowPoStVerifyInfo) gas.Unit {
 	// TODO: this needs more cost tunning, check with @lotus
 	return pl.verifyPostBase
 }

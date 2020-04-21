@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -34,10 +36,9 @@ type MinerStateView interface {
 	MinerPeerID(ctx context.Context, maddr address.Address) (peer.ID, error)
 	MinerSectorSize(ctx context.Context, maddr address.Address) (abi.SectorSize, error)
 	MinerSectorCount(ctx context.Context, maddr address.Address) (int, error)
-	MinerProvingPeriod(ctx context.Context, maddr address.Address) (start abi.ChainEpoch, end abi.ChainEpoch, failureCount int, err error)
-	NetworkTotalPower(ctx context.Context) (abi.StoragePower, error)
-	MinerClaimedPower(ctx context.Context, miner address.Address) (abi.StoragePower, error)
-	MinerPledgeCollateral(ctx context.Context, miner address.Address) (locked abi.TokenAmount, total abi.TokenAmount, err error)
+	MinerDeadlines(ctx context.Context, maddr address.Address, currentEpoch abi.ChainEpoch) (*miner.Deadlines, error)
+	NetworkTotalRawBytePower(ctx context.Context) (abi.StoragePower, error)
+	MinerClaimedRawBytePower(ctx context.Context, miner address.Address) (abi.StoragePower, error)
 }
 
 // MinerCreate creates a new miner actor for the given account and returns its address.
@@ -163,6 +164,7 @@ type MinerSetPriceResponse struct {
 
 type minerStatusPlumbing interface {
 	MinerStateView(baseKey block.TipSetKey) (MinerStateView, error)
+	ChainTipSet(key block.TipSetKey) (block.TipSet, error)
 }
 
 // MinerProvingWindow contains a miners proving period start and end as well
@@ -186,14 +188,22 @@ type MinerStatus struct {
 	PledgeRequirement abi.TokenAmount
 	PledgeBalance     abi.TokenAmount
 
-	ProvingPeriodStart abi.ChainEpoch
-	ProvingPeriodEnd   abi.ChainEpoch
-	PoStFailureCount   int
-	NetworkPower       abi.StoragePower
+	Deadlines        miner.Deadlines
+	PoStFailureCount int
+	NetworkPower     abi.StoragePower
 }
 
 // MinerGetStatus queries the power of a given miner.
 func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr address.Address, key block.TipSetKey) (MinerStatus, error) {
+	ts, err := plumbing.ChainTipSet(key)
+	if err != nil {
+		return MinerStatus{}, err
+	}
+	epoch, err := ts.Height()
+	if err != nil {
+		return MinerStatus{}, err
+	}
+
 	view, err := plumbing.MinerStateView(key)
 	if err != nil {
 		return MinerStatus{}, err
@@ -214,19 +224,15 @@ func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr
 	if err != nil {
 		return MinerStatus{}, err
 	}
-	periodStart, periodEnd, failureCount, err := view.MinerProvingPeriod(ctx, minerAddr)
+	deadlines, err := view.MinerDeadlines(ctx, minerAddr, epoch)
 	if err != nil {
 		return MinerStatus{}, err
 	}
-	claimedPower, err := view.MinerClaimedPower(ctx, minerAddr)
+	claimedPower, err := view.MinerClaimedRawBytePower(ctx, minerAddr)
 	if err != nil {
 		return MinerStatus{}, err
 	}
-	totalPower, err := view.NetworkTotalPower(ctx)
-	if err != nil {
-		return MinerStatus{}, err
-	}
-	requirement, balance, err := view.MinerPledgeCollateral(ctx, minerAddr)
+	totalPower, err := view.NetworkTotalRawBytePower(ctx)
 	if err != nil {
 		return MinerStatus{}, err
 	}
@@ -239,14 +245,10 @@ func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr
 		SectorSize:    sectorSize,
 		SectorCount:   sectorCount,
 
-		Power:             claimedPower,
-		PledgeRequirement: requirement,
-		PledgeBalance:     balance,
+		Power: claimedPower,
 
-		ProvingPeriodStart: periodStart,
-		ProvingPeriodEnd:   periodEnd,
-		PoStFailureCount:   failureCount,
-		NetworkPower:       totalPower,
+		Deadlines:    *deadlines,
+		NetworkPower: totalPower,
 	}, nil
 }
 

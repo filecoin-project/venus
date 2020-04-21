@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/pkg/errors"
 
@@ -37,7 +36,7 @@ func NewFaultChecker(chain chainReader) *ConsensusFaultChecker {
 
 // Checks the validity of a consensus fault reported by serialized block headers h1, h2, and optional
 // common-ancestor witness h3.
-func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view FaultStateView, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error) {
+func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view FaultStateView) (*runtime.ConsensusFault, error) {
 	if bytes.Equal(h1, h2) {
 		return nil, fmt.Errorf("no consensus fault: blocks identical")
 	}
@@ -116,7 +115,7 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 	if err != nil {
 		return nil, err
 	}
-	err = verifyOneBlockInChain(ctx, s.chain, head, b1, b2, earliest)
+	err = verifyOneBlockInChain(ctx, s.chain, head, b1, b2)
 	if err != nil {
 		return nil, err
 	}
@@ -141,24 +140,21 @@ func verifyBlockSignature(ctx context.Context, view FaultStateView, blk block.Bl
 }
 
 // Checks whether at least one of b1, b2 appear in the chain defined by `head`.
-func verifyOneBlockInChain(ctx context.Context, chn chainReader, head block.TipSetKey, b1 block.Block, b2 block.Block, earliest abi.ChainEpoch) error {
-	if chainHasB1, err := chainContainsBlock(ctx, chn, head, b1, earliest); err != nil {
+func verifyOneBlockInChain(ctx context.Context, chn chainReader, head block.TipSetKey, b1 block.Block, b2 block.Block) error {
+	if chainHasB1, err := chainContainsBlock(ctx, chn, head, b1); err != nil {
 		panic(errors.Wrapf(err, "failed to inspect chain")) // This idiosyncratic failure shouldn't go on chain
 	} else if chainHasB1 {
 		return nil
 	}
-	if chainHasB2, err := chainContainsBlock(ctx, chn, head, b2, earliest); err != nil {
+	if chainHasB2, err := chainContainsBlock(ctx, chn, head, b2); err != nil {
 		panic(errors.Wrapf(err, "failed to inspect chain"))
 	} else if chainHasB2 {
 		return nil
 	}
-	return fmt.Errorf("no consensus fault: neither block in chain since %d", earliest)
+	return fmt.Errorf("no consensus fault: neither block in")
 }
 
-func chainContainsBlock(ctx context.Context, chn chainReader, head block.TipSetKey, blk block.Block, earliest abi.ChainEpoch) (bool, error) {
-	if blk.Height < earliest { // Short-circuit
-		return false, nil
-	}
+func chainContainsBlock(ctx context.Context, chn chainReader, head block.TipSetKey, blk block.Block) (bool, error) {
 	ts, err := chn.GetTipSet(head)
 	if err != nil {
 		return false, err
@@ -168,13 +164,6 @@ func chainContainsBlock(ctx context.Context, chn chainReader, head block.TipSetK
 	for ts := itr.Value(); !itr.Complete(); err = itr.Next() {
 		if err != nil {
 			return false, err
-		}
-		height, err := ts.Height()
-		if err != nil {
-			return false, err
-		}
-		if height < earliest {
-			return false, nil
 		}
 		if ts.Key().Has(blk.Cid()) {
 			return true, nil

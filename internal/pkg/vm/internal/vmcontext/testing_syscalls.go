@@ -33,10 +33,14 @@ func (f FakeSyscalls) VerifySeal(ctx context.Context, info abi.SealVerifyInfo) e
 	panic("implement me")
 }
 
-func (f FakeSyscalls) VerifyPoSt(ctx context.Context, info abi.PoStVerifyInfo) error {
+func (f FakeSyscalls) VerifyWinningPoSt(ctx context.Context, info abi.WinningPoStVerifyInfo) error {
 	panic("implement me")
 }
 
-func (f FakeSyscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view SyscallsStateView, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error) {
+func (f FakeSyscalls) VerifyPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) error {
+	panic("implement me")
+}
+
+func (f FakeSyscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view SyscallsStateView) (*runtime.ConsensusFault, error) {
 	panic("implement me")
 }
