@@ -106,7 +106,7 @@ func NewStorageMiningSubmodule(
 
 	// allow the caller to provide a thing which generates fake PoSts
 	if postGeneratorOverride == nil {
-		modu.PoStGenerator = mgr
+		modu.PoStGenerator = mgr.Prover
 	} else {
 		modu.PoStGenerator = postGeneratorOverride
 	}
