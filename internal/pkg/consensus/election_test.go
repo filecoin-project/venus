@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 
@@ -43,7 +44,7 @@ func TestGenValidTicketChain(t *testing.T) {
 		Addrs: []address.Address{addr1, addr1, addr1, addr2, addr3, addr3, addr1, addr2},
 	}
 
-	rnd := consensus.FakeChainRandomness{Seed: 0}
+	rnd := consensus.FakeSampler{Seed: 0}
 	tm := consensus.NewTicketMachine(&rnd)
 
 	// Grow the specified ticket chain without error
@@ -54,10 +55,12 @@ func TestGenValidTicketChain(t *testing.T) {
 
 func requireValidTicket(ctx context.Context, t *testing.T, tm *consensus.TicketMachine, head block.TipSetKey, epoch abi.ChainEpoch,
 	miner, worker address.Address, signer types.Signer) {
-	ticket, err := tm.MakeTicket(ctx, head, epoch, miner, worker, signer)
+	electionEntry := &drand.Entry{}
+	newPeriod := false
+	ticket, err := tm.MakeTicket(ctx, head, epoch, miner, electionEntry, newPeriod, worker, signer)
 	require.NoError(t, err)
 
-	err = tm.IsValidTicket(ctx, head, epoch, miner, worker, ticket)
+	err = tm.IsValidTicket(ctx, head, electionEntry, newPeriod, epoch, miner, worker, ticket)
 	require.NoError(t, err)
 }
 
@@ -69,9 +72,11 @@ func TestNextTicketFailsWithInvalidSigner(t *testing.T) {
 
 	signer, _ := types.NewMockSignersAndKeyInfo(1)
 	badAddr := vmaddr.RequireIDAddress(t, 100)
-	rnd := consensus.FakeChainRandomness{Seed: 0}
+	rnd := consensus.FakeSampler{Seed: 0}
 	tm := consensus.NewTicketMachine(&rnd)
-	badTicket, err := tm.MakeTicket(ctx, head, abi.ChainEpoch(1), miner, badAddr, signer)
+	electionEntry := &drand.Entry{}
+	newPeriod := false
+	badTicket, err := tm.MakeTicket(ctx, head, abi.ChainEpoch(1), miner, electionEntry, newPeriod, badAddr, signer)
 	assert.Error(t, err)
 	assert.Nil(t, badTicket.VRFProof)
 }

@@ -87,12 +87,13 @@ func (fem *FakeElectionMachine) VerifyWinningPoSt(_ context.Context, _ EPoStVeri
 type FakeTicketMachine struct{}
 
 // MakeTicket returns a fake ticket
-func (ftm *FakeTicketMachine) MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (block.Ticket, error) {
+func (ftm *FakeTicketMachine) MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, entry *drand.Entry, newPeriod bool, worker address.Address, signer types.Signer) (block.Ticket, error) {
 	return MakeFakeTicketForTest(), nil
 }
 
 // IsValidTicket always returns true
-func (ftm *FakeTicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, ticket block.Ticket) error {
+func (ftm *FakeTicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey, entry *drand.Entry, newPeriod bool,
+	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket block.Ticket) error {
 	return nil
 }
 
@@ -100,7 +101,8 @@ func (ftm *FakeTicketMachine) IsValidTicket(ctx context.Context, base block.TipS
 type FailingTicketValidator struct{}
 
 // IsValidTicket always returns false
-func (ftv *FailingTicketValidator) IsValidTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, ticket block.Ticket) error {
+func (ftv *FailingTicketValidator) IsValidTicket(ctx context.Context, base block.TipSetKey, entry *drand.Entry, newPeriod bool,
+	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket block.Ticket) error {
 	return fmt.Errorf("invalid ticket")
 }
 
@@ -169,4 +171,12 @@ type FakeChainRandomness struct {
 
 func (s *FakeChainRandomness) SampleChainRandomness(_ context.Context, _ block.TipSetKey, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	return []byte(fmt.Sprintf("s=%d,e=%d,t=%d,p=%s", s.Seed, epoch, tag, string(entropy))), nil
+}
+
+type FakeSampler struct {
+	Seed uint
+}
+
+func (s *FakeSampler) Sample(_ context.Context, _ block.TipSetKey, epoch abi.ChainEpoch) (crypto.RandomSeed, error) {
+	return []byte(fmt.Sprintf("s=%d,e=%d", s.Seed, epoch)), nil
 }

@@ -668,6 +668,11 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 	if poster == nil {
 		poster = node.StorageMining.PoStGenerator
 	}
+	genBlk, err := node.Chain().ChainReader.GetGenesisBlock(ctx)
+	if err != nil {
+		return nil, err
+	}
+	sampler := chain.NewSampler(node.Chain().ChainReader, genBlk.Ticket)
 
 	return mining.NewDefaultWorker(mining.WorkerParameters{
 		API: node.PorcelainAPI,
@@ -679,7 +684,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 		GetStateTree:   node.chain.ChainReader.GetTipSetState,
 		GetWeight:      node.getWeight,
 		Election:       consensus.NewElectionMachine(node.PorcelainAPI),
-		TicketGen:      consensus.NewTicketMachine(node.PorcelainAPI),
+		TicketGen:      consensus.NewTicketMachine(sampler),
 		TipSetMetadata: node.chain.ChainReader,
 
 		MessageSource:    node.Messaging.Inbox.Pool(),

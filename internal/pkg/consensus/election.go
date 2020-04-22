@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"bytes"
 	"context"
 	"math/big"
 
@@ -137,26 +138,26 @@ func (em ElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifie
 	//	return ep.VerifyWinningPost(ctx, poStVerifyInfo)
 }
 
+type ChainSampler interface {
+	Sample(ctx context.Context, head block.TipSetKey, epoch abi.ChainEpoch) (crypto.RandomSeed, error)
+}
+
 // TicketMachine uses a VRF and VDF to generate deterministic, unpredictable
 // and time delayed tickets and validates these tickets.
 type TicketMachine struct {
-	chain ChainRandomness
+	sampler ChainSampler
 }
 
-func NewTicketMachine(chain ChainRandomness) *TicketMachine {
-	return &TicketMachine{chain: chain}
+func NewTicketMachine(sampler ChainSampler) *TicketMachine {
+	return &TicketMachine{sampler: sampler}
 }
 
 // MakeTicket creates a new ticket from a chain and target epoch by running a verifiable
 // randomness function on the prior ticket.
-func (tm TicketMachine) MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (block.Ticket, error) {
-	entropy, err := encoding.Encode(miner)
+func (tm TicketMachine) MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, entry *drand.Entry, newPeriod bool, worker address.Address, signer types.Signer) (block.Ticket, error) {
+	randomness, err := tm.ticketVRFRandomness(ctx, base, entry, newPeriod, miner, epoch)
 	if err != nil {
-		return block.Ticket{}, errors.Wrapf(err, "failed to encode entropy")
-	}
-	randomness, err := tm.chain.SampleChainRandomness(ctx, base, acrypto.DomainSeparationTag_TicketProduction, epoch, entropy)
-	if err != nil {
-		return block.Ticket{}, errors.Wrap(err, "failed to generate epost randomness")
+		return block.Ticket{}, errors.Wrap(err, "failed to generate ticket randomness")
 	}
 	vrfProof, err := signer.SignBytes(ctx, randomness, worker)
 	if err != nil {
@@ -168,18 +169,38 @@ func (tm TicketMachine) MakeTicket(ctx context.Context, base block.TipSetKey, ep
 }
 
 // IsValidTicket verifies that the ticket's proof of randomness is valid with respect to its parent.
-func (tm TicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey,
+func (tm TicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey, entry *drand.Entry, newPeriod bool,
 	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket block.Ticket) error {
-	entropy, err := encoding.Encode(miner)
+	randomness, err := tm.ticketVRFRandomness(ctx, base, entry, newPeriod, miner, epoch)
 	if err != nil {
-		return errors.Wrapf(err, "failed to encode entropy")
-	}
-	randomness, err := tm.chain.SampleChainRandomness(ctx, base, acrypto.DomainSeparationTag_TicketProduction, epoch, entropy)
-	if err != nil {
-		return errors.Wrap(err, "failed to generate epost randomness")
+		return errors.Wrap(err, "failed to generate ticket randomness")
 	}
 
 	return crypto.ValidateBlsSignature(randomness, workerSigner, ticket.VRFProof)
+}
+
+func (tm TicketMachine) ticketVRFRandomness(ctx context.Context, base block.TipSetKey, entry *drand.Entry, newPeriod bool, miner address.Address, epoch abi.ChainEpoch) (abi.Randomness, error) {
+	entropyBuf := bytes.Buffer{}
+	minerEntropy, err := encoding.Encode(miner)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to encode miner entropy")
+	}
+	_, err = entropyBuf.Write(minerEntropy)
+	if err != nil {
+		return nil, err
+	}
+	if !newPeriod { // resample previous ticket and add to entropy
+		ticketSeed, err := tm.sampler.Sample(ctx, base, epoch)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to sample previous ticket")
+		}
+		_, err = entropyBuf.Write(ticketSeed)
+		if err != nil {
+			return nil, err
+		}
+	}
+	seed := blake2b.Sum256(entry.Signature)
+	return crypto.BlendEntropy(acrypto.DomainSeparationTag_TicketProduction, seed[:], epoch, entropyBuf.Bytes())
 }
 
 func electionVRFRandomness(entry *drand.Entry, miner address.Address, epoch abi.ChainEpoch) (abi.Randomness, error) {
