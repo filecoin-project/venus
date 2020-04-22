@@ -106,7 +106,6 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) er
 	return nil
 }
 
-// TODO: Winning PoSt
 //func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, provingPeriodStart abi.ChainEpoch, head block.TipSetKey) {
 //	defer p.cancelPost()
 //

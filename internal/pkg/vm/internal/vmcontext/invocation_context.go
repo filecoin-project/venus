@@ -545,7 +545,7 @@ func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 }
 
 func (ctx *invocationContext) TotalFilCircSupply() abi.TokenAmount {
-	// TODO: this isn't right, but it's close (#TODO issue)
+	// TODO: this isn't right, but it's close (#4012)
 	reward, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.RewardActorAddr)
 	if err != nil {
 		panic(err)

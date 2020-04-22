@@ -514,7 +514,7 @@ func (g *GenesisGenerator) getDealWeight(dealID abi.DealID, endEpoch abi.ChainEp
 	return ret.VerifiedDealWeight, nil
 }
 
-// TODO: This might not be right
+// TODO: This might not be right (#4011)
 func (g *GenesisGenerator) updatePower(ctx context.Context, dealWeight specsbig.Int, sectorSize abi.SectorSize, endEpoch abi.ChainEpoch, minerIDAddr address.Address) (specsbig.Int, error) {
 	powAct, found, err := g.stateTree.GetActor(ctx, builtin.StoragePowerActorAddr)
 	if err != nil {

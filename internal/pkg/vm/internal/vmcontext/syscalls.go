@@ -26,7 +26,6 @@ type SyscallsImpl interface {
 	HashBlake2b(data []byte) [32]byte
 	ComputeUnsealedSectorCID(ctx context.Context, proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error)
 	VerifySeal(ctx context.Context, info abi.SealVerifyInfo) error
-	VerifyWinningPoSt(ctx context.Context, info abi.WinningPoStVerifyInfo) error
 	VerifyPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) error
 	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view SyscallsStateView) (*specsruntime.ConsensusFault, error)
 }
@@ -60,11 +59,6 @@ func (sys syscalls) ComputeUnsealedSectorCID(proof abi.RegisteredProof, pieces [
 func (sys syscalls) VerifySeal(info abi.SealVerifyInfo) error {
 	sys.gasTank.Charge(sys.pricelist.OnVerifySeal(info), "VerifySeal")
 	return sys.impl.VerifySeal(sys.ctx, info)
-}
-
-func (sys syscalls) VerifyWinningPoSt(info abi.WinningPoStVerifyInfo) error {
-	sys.gasTank.Charge(sys.pricelist.OnVerifyWinningPoSt(info), "VerifyWinningPoSt")
-	return sys.impl.VerifyWinningPoSt(sys.ctx, info)
 }
 
 func (sys syscalls) VerifyPoSt(info abi.WindowPoStVerifyInfo) error {

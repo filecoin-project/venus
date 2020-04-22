@@ -64,17 +64,6 @@ func (s *Syscalls) VerifySeal(_ context.Context, info abi.SealVerifyInfo) error 
 	return nil
 }
 
-func (s *Syscalls) VerifyWinningPoSt(ctx context.Context, info abi.WinningPoStVerifyInfo) error {
-	ok, err := s.verifier.VerifyWinningPoSt(ctx, info)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return errors.New("winning PoSt verification failed")
-	}
-	return nil
-}
-
 func (s *Syscalls) VerifyPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) error {
 	ok, err := s.verifier.VerifyWindowPoSt(ctx, info)
 	if err != nil {

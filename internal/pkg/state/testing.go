@@ -103,7 +103,7 @@ func (v *FakeStateView) MinerProvingPeriod(ctx context.Context, maddr address.Ad
 	return m.ProvingPeriodStart, m.ProvingPeriodEnd, m.PoStFailures, nil
 }
 
-// MinerSectorsForEach iterates sectors in a miner's proving set.
+// MinerSectorsForEach iterates a miner's sectors.
 func (v *FakeStateView) MinerSectorsForEach(_ context.Context, maddr address.Address, f func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof, dealIDs []abi.DealID) error) error {
 	m, ok := v.Miners[maddr]
 	if !ok {
