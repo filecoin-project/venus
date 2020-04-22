@@ -112,8 +112,8 @@ func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
 }
 
 // DeleteActor implements Runtime.
-func (a *runtimeAdapter) DeleteActor() {
-	a.ctx.DeleteActor()
+func (a *runtimeAdapter) DeleteActor(beneficiary address.Address) {
+	a.ctx.DeleteActor(beneficiary)
 }
 
 // SyscallsImpl implements Runtime.
@@ -126,6 +126,10 @@ func (a *runtimeAdapter) Syscalls() specsruntime.Syscalls {
 		head:      a.ctx.rt.currentHead,
 		state:     a.ctx.rt.stateView(),
 	}
+}
+
+func (a *runtimeAdapter) TotalFilCircSupply() abi.TokenAmount {
+	return a.ctx.TotalFilCircSupply()
 }
 
 // Context implements Runtime.

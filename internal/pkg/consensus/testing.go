@@ -64,7 +64,7 @@ func (fem *FakeElectionMachine) GenerateElectionProof(_ context.Context, _ *dran
 }
 
 // GenerateEPoSt returns a fake post proof
-func (fem *FakeElectionMachine) GenerateWinningPoSt(allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]abi.PoStProof, error) {
+func (fem *FakeElectionMachine) GenerateWinningPoSt(ctx context.Context, allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]abi.PoStProof, error) {
 	return []abi.PoStProof{{
 		RegisteredProof: constants.DevRegisteredPoStProof,
 		ProofBytes:      []byte{0xe},

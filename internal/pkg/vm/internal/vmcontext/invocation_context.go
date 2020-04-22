@@ -521,9 +521,8 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 }
 
 // DeleteActor implements runtime.ExtendedInvocationContext.
-func (ctx *invocationContext) DeleteActor() {
+func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 	receiver := ctx.msg.to
-	beneficiary := builtin.BurntFundsActorAddr
 	receiverActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, receiver)
 	if err != nil {
 		panic(err)
@@ -543,6 +542,19 @@ func (ctx *invocationContext) DeleteActor() {
 	if err := ctx.rt.state.DeleteActor(ctx.rt.context, receiver); err != nil {
 		panic(err)
 	}
+}
+
+func (ctx *invocationContext) TotalFilCircSupply() abi.TokenAmount {
+	// TODO: this isn't right, but it's close (#4012)
+	reward, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.RewardActorAddr)
+	if err != nil {
+		panic(err)
+	}
+	if !found {
+		runtime.Abort(exitcode.SysErrSenderInvalid)
+	}
+
+	return reward.Balance
 }
 
 // patternContext implements the PatternContext

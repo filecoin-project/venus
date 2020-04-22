@@ -94,7 +94,7 @@ func TestLookbackElection(t *testing.T) {
 		r := <-outCh
 		assert.NoError(t, r.Err)
 
-		expectedTicket := makeExpectedTicket(ctx, t, rnd, mockSigner, head, miner.PoStLookback, minerAddr, minerOwnerAddr)
+		expectedTicket := makeExpectedTicket(ctx, t, rnd, mockSigner, head, miner.ElectionLookback, minerAddr, minerOwnerAddr)
 		assert.Equal(t, expectedTicket, r.Header.Ticket)
 	})
 }
@@ -151,7 +151,7 @@ func Test_Mine(t *testing.T) {
 		r := <-outCh
 		assert.NoError(t, r.Err)
 
-		expectedTicket := makeExpectedTicket(ctx, t, rnd, mockSigner, tipSet, miner.PoStLookback, minerAddr, minerOwnerAddr)
+		expectedTicket := makeExpectedTicket(ctx, t, rnd, mockSigner, tipSet, miner.ElectionLookback, minerAddr, minerOwnerAddr)
 		assert.Equal(t, expectedTicket, r.Header.Ticket)
 	})
 

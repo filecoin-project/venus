@@ -133,37 +133,54 @@ func (v *View) MinerSectorCount(ctx context.Context, maddr addr.Address) (int, e
 	}
 	count := 0
 	var sector miner.SectorOnChainInfo
-	err = v.asArray(ctx, minerState.Sectors).ForEach(&sector, func(i int64) error {
+	sectors, err := v.asArray(ctx, minerState.Sectors)
+	if err != nil {
+		return 0, err
+	}
+
+	err = sectors.ForEach(&sector, func(_ int64) error {
 		count++
 		return nil
 	})
 	return count, err
 }
 
-// MinerProvingPeriod Returns the start and end of the miner's current/next proving window.
-func (v *View) MinerProvingPeriod(ctx context.Context, maddr addr.Address) (start abi.ChainEpoch, end abi.ChainEpoch, failureCount int, err error) {
+// DeadlineInfo returns information about the next proving period
+func (v *View) MinerDeadlines(ctx context.Context, maddr addr.Address, currentEpoch abi.ChainEpoch) (*miner.Deadlines, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
-		return 0, 0, 0, err
+		return nil, err
 	}
-	start = minerState.PoStState.ProvingPeriodStart
-	end = start + power.WindowedPostChallengeDuration
-	// Dragons: change the return to be int64 and all its uses to support it
-	failureCount = (int)(minerState.PoStState.NumConsecutiveFailures)
-	return
+
+	return minerState.LoadDeadlines(StoreFromCbor(ctx, v.ipldStore))
 }
 
-// MinerProvingSetForEach Iterates over the sectors in a miner's proving set.
-func (v *View) MinerProvingSetForEach(ctx context.Context, maddr addr.Address,
+// DeadlineInfo returns information about the next proving period
+func (v *View) MinerInfo(ctx context.Context, maddr addr.Address) (miner.MinerInfo, error) {
+	minerState, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return miner.MinerInfo{}, err
+	}
+
+	return minerState.Info, err
+}
+
+// MinerSectorsForEach Iterates over the sectors in a miner's proving set.
+func (v *View) MinerSectorsForEach(ctx context.Context, maddr addr.Address,
 	f func(abi.SectorNumber, cid.Cid, abi.RegisteredProof, []abi.DealID) error) error {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
 		return err
 	}
 
+	sectors, err := v.asArray(ctx, minerState.Sectors)
+	if err != nil {
+		return err
+	}
+
 	// This version for the new actors
 	var sector miner.SectorOnChainInfo
-	return v.asArray(ctx, minerState.ProvingSet).ForEach(&sector, func(i int64) error {
+	return sectors.ForEach(&sector, func(secnum int64) error {
 		// Add more fields here as required by new callers.
 		return f(sector.Info.SectorNumber, sector.Info.SealedCID, sector.Info.RegisteredProof, sector.Info.DealIDs)
 	})
@@ -188,7 +205,7 @@ func (v *View) MinerFaults(ctx context.Context, maddr addr.Address) ([]uint64, e
 		return nil, err
 	}
 
-	return minerState.FaultSet.All(miner.MaxFaultsCount)
+	return minerState.Faults.All(miner.SectorsMax)
 }
 
 // MinerGetPrecommittedSector Looks up info for a miners precommitted sector.
@@ -208,8 +225,13 @@ func (v *View) MarketEscrowBalance(ctx context.Context, addr addr.Address) (foun
 		return false, abi.NewTokenAmount(0), err
 	}
 
+	escrow, err := v.asMap(ctx, marketState.EscrowTable)
+	if err != nil {
+		return false, abi.NewTokenAmount(0), err
+	}
+
 	var value abi.TokenAmount
-	found, err = v.asMap(ctx, marketState.EscrowTable).Get(adt.AddrKey(addr), &value)
+	found, err = escrow.Get(adt.AddrKey(addr), &value)
 	return
 }
 
@@ -221,7 +243,11 @@ func (v *View) MarketHasDealID(ctx context.Context, addr addr.Address, dealID ab
 	}
 
 	found := false
-	byParty := market.AsSetMultimap(StoreFromCbor(ctx, v.ipldStore), marketState.DealIDsByParty)
+	byParty, err := market.AsSetMultimap(StoreFromCbor(ctx, v.ipldStore), marketState.DealIDsByParty)
+	if err != nil {
+		return false, err
+	}
+
 	if err = byParty.ForEach(addr, func(i abi.DealID) error {
 		if i == dealID {
 			found = true
@@ -236,7 +262,11 @@ func (v *View) MarketHasDealID(ctx context.Context, addr addr.Address, dealID ab
 // MarketComputeDataCommitment takes deal ids and uses associated commPs to compute commD for a sector that contains the deals
 func (v *View) MarketComputeDataCommitment(ctx context.Context, registeredProof abi.RegisteredProof, dealIDs []abi.DealID) (cid.Cid, error) {
 	marketState, err := v.loadMarketActor(ctx)
-	deals := v.asArray(ctx, marketState.Proposals)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	deals, err := v.asArray(ctx, marketState.Proposals)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -266,7 +296,11 @@ func (v *View) MarketStorageDeal(ctx context.Context, dealID abi.DealID) (market
 	if err != nil {
 		return market.DealProposal{}, err
 	}
-	deals := v.asArray(ctx, marketState.Proposals)
+
+	deals, err := v.asArray(ctx, marketState.Proposals)
+	if err != nil {
+		return market.DealProposal{}, err
+	}
 
 	var proposal market.DealProposal
 	found, err := deals.Get(uint64(dealID), &proposal)
@@ -282,7 +316,11 @@ func (v *View) MarketStorageDeal(ctx context.Context, dealID abi.DealID) (market
 
 func (v *View) MarketDealState(ctx context.Context, dealID abi.DealID) (*market.DealState, error) {
 	marketState, err := v.loadMarketActor(ctx)
-	dealStates := v.asDealStateArray(ctx, marketState.States)
+	if err != nil {
+		return nil, err
+	}
+
+	dealStates, err := v.asDealStateArray(ctx, marketState.States)
 	if err != nil {
 		return nil, err
 	}
@@ -290,17 +328,17 @@ func (v *View) MarketDealState(ctx context.Context, dealID abi.DealID) (*market.
 	return dealStates.Get(dealID)
 }
 
-// NetworkTotalPower Returns the storage power actor's value for network total power.
-func (v *View) NetworkTotalPower(ctx context.Context) (abi.StoragePower, error) {
+// NetworkTotalRawBytePower Returns the storage power actor's value for network total power.
+func (v *View) NetworkTotalRawBytePower(ctx context.Context) (abi.StoragePower, error) {
 	powerState, err := v.loadPowerActor(ctx)
 	if err != nil {
 		return big.Zero(), err
 	}
-	return powerState.TotalNetworkPower, nil
+	return powerState.TotalRawBytePower, nil
 }
 
-// MinerClaimedPower Returns the power of a miner's committed sectors.
-func (v *View) MinerClaimedPower(ctx context.Context, miner addr.Address) (abi.StoragePower, error) {
+// MinerClaimedRawBytePower Returns the power of a miner's committed sectors.
+func (v *View) MinerClaimedRawBytePower(ctx context.Context, miner addr.Address) (abi.StoragePower, error) {
 	minerResolved, err := v.InitResolveAddress(ctx, miner)
 	if err != nil {
 		return big.Zero(), err
@@ -314,7 +352,7 @@ func (v *View) MinerClaimedPower(ctx context.Context, miner addr.Address) (abi.S
 	if err != nil {
 		return big.Zero(), err
 	}
-	return claim.Power, nil
+	return claim.RawBytePower, nil
 }
 
 // PaychActorParties returns the From and To addresses for the given payment channel
@@ -332,8 +370,13 @@ func (v *View) PaychActorParties(ctx context.Context, paychAddr addr.Address) (f
 }
 
 func (v *View) loadPowerClaim(ctx context.Context, powerState *power.State, miner addr.Address) (*power.Claim, error) {
+	claims, err := v.asMap(ctx, powerState.Claims)
+	if err != nil {
+		return nil, err
+	}
+
 	var claim power.Claim
-	found, err := v.asMap(ctx, powerState.Claims).Get(adt.AddrKey(miner), &claim)
+	found, err := claims.Get(adt.AddrKey(miner), &claim)
 	if err != nil {
 		return nil, err
 	}
@@ -341,30 +384,6 @@ func (v *View) loadPowerClaim(ctx context.Context, powerState *power.State, mine
 		return nil, types.ErrNotFound
 	}
 	return &claim, nil
-}
-
-// MinerPledgeCollateral returns the locked and balance amounts for a miner actor
-func (v *View) MinerPledgeCollateral(ctx context.Context, miner addr.Address) (locked abi.TokenAmount, balance abi.TokenAmount, err error) {
-	minerResolved, err := v.InitResolveAddress(ctx, miner)
-	if err != nil {
-		return big.Zero(), big.Zero(), err
-	}
-
-	powerState, err := v.loadPowerActor(ctx)
-	if err != nil {
-		return big.Zero(), big.Zero(), err
-	}
-	claim, err := v.loadPowerClaim(ctx, powerState, minerResolved)
-	if err != nil {
-		return big.Zero(), big.Zero(), err
-	}
-	locked = claim.Pledge
-	escrow := v.asBalanceTable(ctx, powerState.EscrowTable)
-	balance, err = escrow.Get(minerResolved)
-	if err != nil {
-		return big.Zero(), big.Zero(), err
-	}
-	return
 }
 
 func (v *View) loadInitActor(ctx context.Context) (*notinit.State, error) {
@@ -426,7 +445,11 @@ func (v *View) loadAccountActor(ctx context.Context, a addr.Address) (*account.S
 }
 
 func (v *View) loadActor(ctx context.Context, address addr.Address) (*actor.Actor, error) {
-	tree := v.asMap(ctx, v.root)
+	tree, err := v.asMap(ctx, v.root)
+	if err != nil {
+		return nil, err
+	}
+
 	var actr actor.Actor
 	found, err := tree.Get(adt.AddrKey(address), &actr)
 	if !found {
@@ -436,19 +459,19 @@ func (v *View) loadActor(ctx context.Context, address addr.Address) (*actor.Acto
 	return &actr, err
 }
 
-func (v *View) asArray(ctx context.Context, root cid.Cid) *adt.Array {
+func (v *View) asArray(ctx context.Context, root cid.Cid) (*adt.Array, error) {
 	return adt.AsArray(StoreFromCbor(ctx, v.ipldStore), root)
 }
 
-func (v *View) asMap(ctx context.Context, root cid.Cid) *adt.Map {
+func (v *View) asMap(ctx context.Context, root cid.Cid) (*adt.Map, error) {
 	return adt.AsMap(StoreFromCbor(ctx, v.ipldStore), root)
 }
 
-func (v *View) asDealStateArray(ctx context.Context, root cid.Cid) *market.DealMetaArray {
+func (v *View) asDealStateArray(ctx context.Context, root cid.Cid) (*market.DealMetaArray, error) {
 	return market.AsDealStateArray(StoreFromCbor(ctx, v.ipldStore), root)
 }
 
-func (v *View) asBalanceTable(ctx context.Context, root cid.Cid) *adt.BalanceTable {
+func (v *View) asBalanceTable(ctx context.Context, root cid.Cid) (*adt.BalanceTable, error) {
 	return adt.AsBalanceTable(StoreFromCbor(ctx, v.ipldStore), root)
 }
 

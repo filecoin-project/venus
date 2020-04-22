@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	fsm "github.com/filecoin-project/storage-fsm"
 	"github.com/ipfs/go-datastore"
 
@@ -64,7 +65,6 @@ func NewStorageMiningSubmodule(
 
 	fcg := ffiwrapper.Config{
 		SealProofType: sealProofType,
-		PoStProofType: postProofType,
 	}
 
 	scg := sectorstorage.SealerConfig{AllowPreCommit1: true, AllowPreCommit2: true, AllowCommit: true}
@@ -78,7 +78,12 @@ func NewStorageMiningSubmodule(
 
 	ncn := fsmnodeconnector.New(mw, c.ChainReader, c.ActorState, m.Outbox, c.State)
 
-	pcp := fsm.NewBasicPreCommitPolicy(&ccn, abi.ChainEpoch(2*60*24))
+	info, err := getMinerInfo(c, minerAddr, stateViewer)
+	if err != nil {
+		return nil, err
+	}
+
+	pcp := fsm.NewBasicPreCommitPolicy(&ccn, abi.ChainEpoch(2*60*24), info.ProvingPeriodBoundary)
 
 	fsmConnector := fsmeventsconnector.New(chainThresholdScheduler, c.State)
 	fsm := fsm.New(ncn, fsmConnector, minerAddr, ds, mgr, sid, ffiwrapper.ProofVerifier, ncn.ChainGetTicket, &pcp)
@@ -94,7 +99,7 @@ func NewStorageMiningSubmodule(
 
 	// allow the caller to provide a thing which generates fake PoSts
 	if postGeneratorOverride == nil {
-		modu.PoStGenerator = mgr
+		modu.PoStGenerator = mgr.Prover
 	} else {
 		modu.PoStGenerator = postGeneratorOverride
 	}
@@ -154,4 +159,17 @@ func (s *StorageMiningSubmodule) HandleNewHead(ctx context.Context, newHead bloc
 	}
 
 	return s.poster.HandleNewHead(ctx, newHead)
+}
+
+func getMinerInfo(c *ChainSubmodule, minerAddr address.Address, viewer *appstate.Viewer) (miner.MinerInfo, error) {
+	tsk := c.ChainReader.GetHead()
+	root, err := c.ChainReader.GetTipSetStateRoot(tsk)
+	if err != nil {
+		return miner.MinerInfo{}, err
+	}
+	view := viewer.StateView(root)
+	if err != nil {
+		return miner.MinerInfo{}, err
+	}
+	return view.MinerInfo(context.Background(), minerAddr)
 }

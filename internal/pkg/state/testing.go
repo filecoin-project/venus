@@ -103,8 +103,8 @@ func (v *FakeStateView) MinerProvingPeriod(ctx context.Context, maddr address.Ad
 	return m.ProvingPeriodStart, m.ProvingPeriodEnd, m.PoStFailures, nil
 }
 
-// MinerProvingSetForEach iterates sectors in a miner's proving set.
-func (v *FakeStateView) MinerProvingSetForEach(_ context.Context, maddr address.Address, f func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof, dealIDs []abi.DealID) error) error {
+// MinerSectorsForEach iterates a miner's sectors.
+func (v *FakeStateView) MinerSectorsForEach(_ context.Context, maddr address.Address, f func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof, dealIDs []abi.DealID) error) error {
 	m, ok := v.Miners[maddr]
 	if !ok {
 		return errors.Errorf("no miner %s", maddr)
@@ -123,13 +123,13 @@ func (v *FakeStateView) AccountSignerAddress(ctx context.Context, a address.Addr
 	return a, nil
 }
 
-// NetworkTotalPower reports a network's total power.
-func (v *FakeStateView) NetworkTotalPower(_ context.Context) (abi.StoragePower, error) {
+// NetworkTotalRawBytePower reports a network's total power.
+func (v *FakeStateView) NetworkTotalRawBytePower(_ context.Context) (abi.StoragePower, error) {
 	return v.NetworkPower, nil
 }
 
-// MinerClaimedPower reports a miner's claimed power.
-func (v *FakeStateView) MinerClaimedPower(_ context.Context, maddr address.Address) (abi.StoragePower, error) {
+// MinerClaimedRawBytePower reports a miner's claimed power.
+func (v *FakeStateView) MinerClaimedRawBytePower(_ context.Context, maddr address.Address) (abi.StoragePower, error) {
 	m, ok := v.Miners[maddr]
 	if !ok {
 		return big.Zero(), errors.Errorf("no miner %s", maddr)
@@ -143,4 +143,12 @@ func (v *FakeStateView) MinerPledgeCollateral(_ context.Context, maddr address.A
 		return big.Zero(), big.Zero(), errors.Errorf("no miner %s", maddr)
 	}
 	return m.PledgeRequirement, m.PledgeBalance, nil
+}
+
+func (v *FakeStateView) MinerDeadlines(ctx context.Context, maddr address.Address, currentEpoch abi.ChainEpoch) (*miner.Deadlines, error) {
+	return nil, nil
+}
+
+func (v *FakeStateView) MinerInfo(ctx context.Context, maddr address.Address) (miner.MinerInfo, error) {
+	return miner.MinerInfo{}, nil
 }

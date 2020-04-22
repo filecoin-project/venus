@@ -201,7 +201,11 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 
 func (c *connectorCommon) getBalance(ctx context.Context, root cid.Cid, addr address.Address) (abi.TokenAmount, error) {
 	// These should be replaced with methods on the state view
-	table := adt.AsBalanceTable(state.StoreFromCbor(ctx, c.chainStore), root)
+	table, err := adt.AsBalanceTable(state.StoreFromCbor(ctx, c.chainStore), root)
+	if err != nil {
+		return abi.TokenAmount{}, err
+	}
+
 	hasBalance, err := table.Has(addr)
 	if err != nil {
 		return big.Zero(), err
@@ -225,7 +229,11 @@ func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address, t
 
 	// These should be replaced with methods on the state view
 	stateStore := state.StoreFromCbor(ctx, c.chainStore)
-	byParty := spasm.AsSetMultimap(stateStore, smState.DealIDsByParty)
+	byParty, err := spasm.AsSetMultimap(stateStore, smState.DealIDsByParty)
+	if err != nil {
+		return nil, err
+	}
+
 	var providerDealIds []abi.DealID
 	if err = byParty.ForEach(addr, func(i abi.DealID) error {
 		providerDealIds = append(providerDealIds, i)
@@ -234,8 +242,15 @@ func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address, t
 		return nil, err
 	}
 
-	proposals := adt.AsArray(stateStore, smState.Proposals)
-	dealStates := adt.AsArray(stateStore, smState.States)
+	proposals, err := adt.AsArray(stateStore, smState.Proposals)
+	if err != nil {
+		return nil, err
+	}
+
+	dealStates, err := adt.AsArray(stateStore, smState.States)
+	if err != nil {
+		return nil, err
+	}
 
 	deals := []storagemarket.StorageDeal{}
 	for _, dealID := range providerDealIds {

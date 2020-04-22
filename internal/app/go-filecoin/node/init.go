@@ -289,7 +289,7 @@ func createGenesisFSMState(ctx context.Context, rep repo.Repo, genesisBlock *blo
 		return nil, err
 	}
 
-	_, spt, err := ffiwrapper.ProofTypeFromSectorSize(size)
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(size)
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +299,7 @@ func createGenesisFSMState(ctx context.Context, rep repo.Repo, genesisBlock *blo
 	// sector and deal metadata.
 	var out []fsm.SectorInfo
 
-	err = view.MinerProvingSetForEach(ctx, maddr, func(sectorNumber abi.SectorNumber, sealedCID cid.Cid, proofType abi.RegisteredProof, dealIDs []abi.DealID) error {
+	err = view.MinerSectorsForEach(ctx, maddr, func(sectorNumber abi.SectorNumber, sealedCID cid.Cid, proofType abi.RegisteredProof, dealIDs []abi.DealID) error {
 		pieces := make([]fsm.Piece, len(dealIDs))
 		for idx := range dealIDs {
 			deal, err := view.MarketStorageDeal(ctx, dealIDs[idx])
