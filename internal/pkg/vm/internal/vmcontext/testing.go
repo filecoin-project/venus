@@ -1,6 +1,6 @@
 package vmcontext
 
-// TODO: Restore when chain validation supports current specs-actors (#TODO issue)
+// TODO: Restore when chain validation supports current specs-actors (#4009)
 
 import (
 	"fmt"
