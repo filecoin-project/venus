@@ -269,7 +269,7 @@ func (w *ValidationVMWrapper) PersistChanges() error {
 //
 
 type ValidationApplier struct {
-	state *ValidationVMWrapper
+	//state *ValidationVMWrapper
 }
 
 //func (a *ValidationApplier) ApplyMessage(epoch abi.ChainEpoch, msg *vtypes.Message) (vtypes.ApplyMessageResult, error) {
@@ -426,12 +426,12 @@ type KeyManager struct {
 	blsSeed int64 // nolint: structcheck
 }
 
-func newKeyManager() *KeyManager {
-	return &KeyManager{
-		keys:     make(map[address.Address]*gfcrypto.KeyInfo),
-		secpSeed: 0,
-	}
-}
+//func newKeyManager() *KeyManager {
+//	return &KeyManager{
+//		keys:     make(map[address.Address]*gfcrypto.KeyInfo),
+//		secpSeed: 0,
+//	}
+//}
 
 func (k *KeyManager) NewSECP256k1AccountAddress() address.Address {
 	secpKey := k.newSecp256k1Key()

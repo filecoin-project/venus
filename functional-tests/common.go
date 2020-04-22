@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
@@ -67,10 +66,4 @@ func simulateBlockMining(ctx context.Context, t *testing.T, fakeClock clock.Fake
 			require.NoError(t, err)
 		}
 	}
-}
-
-func requireChainHead(t *testing.T, node *node.Node) block.TipSetKey {
-	tsk, err := node.PorcelainAPI.ChainHead()
-	require.NoError(t, err)
-	return tsk.Key()
 }

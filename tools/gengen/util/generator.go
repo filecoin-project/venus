@@ -578,13 +578,12 @@ func (g *GenesisGenerator) putSectors(ctx context.Context, comm *CommitConfig, m
 		},
 		ActivationEpoch:    0,
 		DealWeight:         dealWeight,
-		VerifiedDealWeight: specsbig.NewInt(0), // TODO: what should this be
+		VerifiedDealWeight: specsbig.NewInt(0), // TODO: what should this be?
 	}
 	err = minerActorState.PutSector(&cstore{ctx, g.cst}, newSectorInfo)
 	if err != nil {
 		return err
 	}
-	minerActorState.Sectors = minerActorState.Sectors
 	// Write miner actor
 	newMinerCid, _, err := g.store.Put(ctx, &minerActorState)
 	if err != nil {
