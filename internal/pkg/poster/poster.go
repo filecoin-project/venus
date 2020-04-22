@@ -70,7 +70,7 @@ func (p *Poster) StopPoSting() {
 }
 
 func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) error {
-	// TODO: Winning PoSt
+	// TODO: Window PoSt (#4010)
 	//p.postMutex.Lock()
 	//defer p.postMutex.Unlock()
 	//
