@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 )
 
@@ -26,5 +27,8 @@ func (ep *TestElectionPoster) GenerateWinningPoStSectorChallenge(ctx context.Con
 
 // GenerateWinningPoSt creates a post proof for a winning block
 func (ep *TestElectionPoster) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
-	return nil, nil
+	return []abi.PoStProof{abi.PoStProof{
+		RegisteredProof: constants.DevRegisteredWinningPoStProof,
+		ProofBytes:      []byte{0xe},
+	}}, nil
 }

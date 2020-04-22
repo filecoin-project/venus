@@ -48,7 +48,7 @@ func (em ElectionMachine) GenerateElectionProof(ctx context.Context, entry *dran
 }
 
 // GenerateWinningPoSt creates a PoSt proof over the input miner ID and sector infos.
-func (em ElectionMachine) GenerateWinningPoSt(ctx context.Context, allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]abi.PoStProof, error) {
+func (em ElectionMachine) GenerateWinningPoSt(ctx context.Context, allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]block.PoStProof, error) {
 	minerIDuint64, err := address.IDFromAddress(maddr)
 	if err != nil {
 		return nil, err
@@ -62,12 +62,22 @@ func (em ElectionMachine) GenerateWinningPoSt(ctx context.Context, allSectorInfo
 	}
 	poStRandomness := abi.PoStRandomness(randomness)
 
-	challengeIndexes, err := ffiwrapper.ProofVerifier.GenerateWinningPoStSectorChallenge(ctx, allSectorInfos[0].RegisteredProof, minerID, poStRandomness, uint64(len(allSectorInfos)))
+	rp, err := allSectorInfos[0].RegisteredProof.RegisteredWinningPoStProof()
+	if err != nil {
+		return nil, err
+	}
+	challengeIndexes, err := ffiwrapper.ProofVerifier.GenerateWinningPoStSectorChallenge(ctx, rp, minerID, poStRandomness, uint64(len(allSectorInfos)))
 	if err != nil {
 		return nil, err
 	}
 	challengedSectorInfos := filterSectorInfosByIndex(allSectorInfos, challengeIndexes)
-	return ep.GenerateWinningPoSt(ctx, minerID, challengedSectorInfos, poStRandomness)
+
+	posts, err := ep.GenerateWinningPoSt(ctx, minerID, challengedSectorInfos, poStRandomness)
+	if err != nil {
+		return nil, err
+	}
+
+	return block.FromABIPoStProofs(posts...), nil
 }
 
 func (em ElectionMachine) VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error {
@@ -113,7 +123,11 @@ func (em ElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifie
 	minerID := abi.ActorID(minerIDuint64)
 
 	// Gather sector inputs for each proof
-	challengeIndexes, err := ep.GenerateWinningPoStSectorChallenge(ctx, allSectorInfos[0].RegisteredProof, minerID, poStRandomness, uint64(len(allSectorInfos)))
+	rp, err := allSectorInfos[0].RegisteredProof.RegisteredWinningPoStProof()
+	if err != nil {
+		return false, err
+	}
+	challengeIndexes, err := ep.GenerateWinningPoStSectorChallenge(ctx, rp, minerID, poStRandomness, uint64(len(allSectorInfos)))
 	if err != nil {
 		return false, err
 	}
