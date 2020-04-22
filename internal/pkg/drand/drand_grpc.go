@@ -144,7 +144,7 @@ func (d *GRPC) FetchGroupConfig(addresses []string, secure bool, overrideGroupAd
 			d.addresses = drandAddresses(groupAddrs, secure)
 		}
 
-		return groupAddrs, keyCoeffs, 0, 0, nil
+		return groupAddrs, keyCoeffs, genesisTime, roundSeconds, nil
 	}
 	return nil, nil, 0, 0, errors.New("Could not retrieve drand group key from any address")
 }
