@@ -5,9 +5,8 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-
 	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/minio/blake2b-simd"

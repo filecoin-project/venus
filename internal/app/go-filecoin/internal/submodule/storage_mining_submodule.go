@@ -4,13 +4,12 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-
 	"github.com/filecoin-project/go-address"
 	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	fsm "github.com/filecoin-project/storage-fsm"
 	"github.com/ipfs/go-datastore"
 
