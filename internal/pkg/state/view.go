@@ -133,12 +133,12 @@ func (v *View) MinerSectorCount(ctx context.Context, maddr addr.Address) (int, e
 	}
 	count := 0
 	var sector miner.SectorOnChainInfo
-	sectors, err := v.asMap(ctx, minerState.Sectors)
+	sectors, err := v.asArray(ctx, minerState.Sectors)
 	if err != nil {
 		return 0, err
 	}
 
-	err = sectors.ForEach(&sector, func(_ string) error {
+	err = sectors.ForEach(&sector, func(_ int64) error {
 		count++
 		return nil
 	})
@@ -173,14 +173,14 @@ func (v *View) MinerSectorsForEach(ctx context.Context, maddr addr.Address,
 		return err
 	}
 
-	sectors, err := v.asMap(ctx, minerState.Sectors)
+	sectors, err := v.asArray(ctx, minerState.Sectors)
 	if err != nil {
 		return err
 	}
 
 	// This version for the new actors
 	var sector miner.SectorOnChainInfo
-	return sectors.ForEach(&sector, func(secnum string) error {
+	return sectors.ForEach(&sector, func(secnum int64) error {
 		// Add more fields here as required by new callers.
 		return f(sector.Info.SectorNumber, sector.Info.SealedCID, sector.Info.RegisteredProof, sector.Info.DealIDs)
 	})

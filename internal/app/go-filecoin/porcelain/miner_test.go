@@ -138,12 +138,17 @@ func TestMinerCreate(t *testing.T) {
 }
 
 type mStatusPlumbing struct {
+	ts                   block.TipSet
 	head                 block.TipSetKey
 	miner, owner, worker address.Address
 }
 
 func (p *mStatusPlumbing) ChainHeadKey() block.TipSetKey {
 	return p.head
+}
+
+func (p *mStatusPlumbing) ChainTipSet(_ block.TipSetKey) (block.TipSet, error) {
+	return p.ts, nil
 }
 
 func (p *mStatusPlumbing) MinerStateView(baseKey block.TipSetKey) (MinerStateView, error) {
@@ -162,9 +167,11 @@ func (p *mStatusPlumbing) MinerStateView(baseKey block.TipSetKey) (MinerStateVie
 func TestMinerGetStatus(t *testing.T) {
 	tf.UnitTest(t)
 	key := block.NewTipSetKey(types.NewCidForTestGetter()())
+	ts, err := block.NewTipSet(&block.Block{})
+	require.NoError(t, err)
 
 	plumbing := mStatusPlumbing{
-		key, vmaddr.RequireIDAddress(t, 1), vmaddr.RequireIDAddress(t, 2), vmaddr.RequireIDAddress(t, 3),
+		ts, key, vmaddr.RequireIDAddress(t, 1), vmaddr.RequireIDAddress(t, 2), vmaddr.RequireIDAddress(t, 3),
 	}
 	status, err := MinerGetStatus(context.Background(), &plumbing, plumbing.miner, key)
 	assert.NoError(t, err)

@@ -39,6 +39,7 @@ type MinerStateView interface {
 	MinerDeadlines(ctx context.Context, maddr address.Address, currentEpoch abi.ChainEpoch) (*miner.Deadlines, error)
 	NetworkTotalRawBytePower(ctx context.Context) (abi.StoragePower, error)
 	MinerClaimedRawBytePower(ctx context.Context, miner address.Address) (abi.StoragePower, error)
+	MinerInfo(ctx context.Context, maddr address.Address) (miner.MinerInfo, error)
 }
 
 // MinerCreate creates a new miner actor for the given account and returns its address.
@@ -188,7 +189,9 @@ type MinerStatus struct {
 	PledgeRequirement abi.TokenAmount
 	PledgeBalance     abi.TokenAmount
 
-	Deadlines        miner.Deadlines
+	Deadlines *miner.Deadlines
+	MinerInfo miner.MinerInfo
+
 	PoStFailureCount int
 	NetworkPower     abi.StoragePower
 }
@@ -228,6 +231,10 @@ func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr
 	if err != nil {
 		return MinerStatus{}, err
 	}
+	minerInfo, err := view.MinerInfo(ctx, minerAddr)
+	if err != nil {
+		return MinerStatus{}, err
+	}
 	claimedPower, err := view.MinerClaimedRawBytePower(ctx, minerAddr)
 	if err != nil {
 		return MinerStatus{}, err
@@ -247,7 +254,8 @@ func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr
 
 		Power: claimedPower,
 
-		Deadlines:    *deadlines,
+		Deadlines:    deadlines,
+		MinerInfo:    minerInfo,
 		NetworkPower: totalPower,
 	}, nil
 }
