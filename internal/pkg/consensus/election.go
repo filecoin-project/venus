@@ -68,8 +68,6 @@ func (em ElectionMachine) GenerateWinningPoSt(ctx context.Context, allSectorInfo
 	}
 	challengedSectorInfos := filterSectorInfosByIndex(allSectorInfos, challengeIndexes)
 	return ep.GenerateWinningPoSt(ctx, minerID, challengedSectorInfos, poStRandomness)
-
-	return nil, nil
 }
 
 func (em ElectionMachine) VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error {
