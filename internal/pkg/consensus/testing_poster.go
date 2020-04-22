@@ -27,7 +27,7 @@ func (ep *TestElectionPoster) GenerateWinningPoStSectorChallenge(ctx context.Con
 
 // GenerateWinningPoSt creates a post proof for a winning block
 func (ep *TestElectionPoster) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error) {
-	return []abi.PoStProof{abi.PoStProof{
+	return []abi.PoStProof{{
 		RegisteredProof: constants.DevRegisteredWinningPoStProof,
 		ProofBytes:      []byte{0xe},
 	}}, nil
