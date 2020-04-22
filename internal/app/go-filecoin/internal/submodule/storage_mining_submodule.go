@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
 	"github.com/filecoin-project/go-address"
 	sectorstorage "github.com/filecoin-project/sector-storage"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
@@ -77,19 +79,11 @@ func NewStorageMiningSubmodule(
 
 	ncn := fsmnodeconnector.New(mw, c.ChainReader, c.ActorState, m.Outbox, c.State)
 
-	tsk := c.ChainReader.GetHead()
-	root, err := c.ChainReader.GetTipSetStateRoot(tsk)
+	info, err := getMinerInfo(c, minerAddr, stateViewer)
 	if err != nil {
 		return nil, err
 	}
-	view := stateViewer.StateView(root)
-	if err != nil {
-		return nil, err
-	}
-	info, err := view.MinerInfo(context.Background(), minerAddr)
-	if err != nil {
-		return nil, err
-	}
+
 	pcp := fsm.NewBasicPreCommitPolicy(&ccn, abi.ChainEpoch(2*60*24), info.ProvingPeriodBoundary)
 
 	fsmConnector := fsmeventsconnector.New(chainThresholdScheduler, c.State)
@@ -166,4 +160,17 @@ func (s *StorageMiningSubmodule) HandleNewHead(ctx context.Context, newHead bloc
 	}
 
 	return s.poster.HandleNewHead(ctx, newHead)
+}
+
+func getMinerInfo(c *ChainSubmodule, minerAddr address.Address, viewer *appstate.Viewer) (miner.MinerInfo, error) {
+	tsk := c.ChainReader.GetHead()
+	root, err := c.ChainReader.GetTipSetStateRoot(tsk)
+	if err != nil {
+		return miner.MinerInfo{}, err
+	}
+	view := viewer.StateView(root)
+	if err != nil {
+		return miner.MinerInfo{}, err
+	}
+	return view.MinerInfo(context.Background(), minerAddr)
 }
