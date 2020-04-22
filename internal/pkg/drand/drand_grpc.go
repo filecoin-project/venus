@@ -192,7 +192,7 @@ func (d *GRPC) FirstFilecoinRound() Round {
 
 // StartTimeOfRound returns the time the given DRAND round will start if it is unskipped
 func (d *GRPC) StartTimeOfRound(round Round) time.Time {
-	return d.genesisTime.Add(testDRANDRoundDuration * time.Duration(round))
+	return d.genesisTime.Add(d.roundTime * time.Duration(round))
 }
 
 // RoundsInInterval returns all rounds in the given interval.
