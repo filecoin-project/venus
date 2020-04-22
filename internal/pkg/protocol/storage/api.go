@@ -74,5 +74,5 @@ func (api *API) ProposeStorageDeal(
 
 // GetStorageDeal retrieves information about an in-progress deal
 func (api *API) GetStorageDeal(ctx context.Context, c cid.Cid) (storagemarket.ClientDeal, error) {
-	return api.storage.Client().GetInProgressDeal(ctx, c)
+	return api.storage.Client().GetLocalDeal(ctx, c)
 }

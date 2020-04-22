@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-datastore"
 	dss "github.com/ipfs/go-datastore/sync"
-	graphsync "github.com/ipfs/go-graphsync/impl"
-	"github.com/ipfs/go-graphsync/ipldbridge"
+	"github.com/ipfs/go-graphsync"
+	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -803,8 +803,6 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 
 	// setup a graphsync fetcher and a graphsync responder
 
-	bridge1 := ipldbridge.NewIPLDBridge()
-	bridge2 := ipldbridge.NewIPLDBridge()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 
 	bv := consensus.NewDefaultBlockValidator(chainClock)
@@ -814,7 +812,7 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 	localLoader := gsstoreutil.LoaderForBlockstore(bs)
 	localStorer := gsstoreutil.StorerForBlockstore(bs)
 
-	localGraphsync := graphsync.New(ctx, gsnet1, bridge1, localLoader, localStorer)
+	localGraphsync := graphsyncimpl.New(ctx, gsnet1, localLoader, localStorer)
 
 	fetcher := fetcher.NewGraphSyncFetcher(ctx, localGraphsync, bs, bv, fc, pt)
 
@@ -826,7 +824,7 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 		}
 		return bytes.NewBuffer(b.RawData()), nil
 	}
-	graphsync.New(ctx, gsnet2, bridge2, remoteLoader, nil)
+	graphsyncimpl.New(ctx, gsnet2, remoteLoader, nil)
 
 	tipsets, err := fetcher.FetchTipSetHeaders(ctx, final.Key(), host2.ID(), func(ts block.TipSet) (bool, error) {
 		if ts.Key().Equals(gen.Key()) {
@@ -897,8 +895,6 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 
 	// setup a graphsync fetcher and a graphsync responder
 
-	bridge1 := ipldbridge.NewIPLDBridge()
-	bridge2 := ipldbridge.NewIPLDBridge()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	bv := th.NewFakeBlockValidator()
 	fc := clock.NewFake(time.Now())
@@ -908,9 +904,8 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	localLoader := gsstoreutil.LoaderForBlockstore(bs)
 	localStorer := gsstoreutil.StorerForBlockstore(bs)
 
-	localGraphsync := graphsync.New(ctx, gsnet1, bridge1, localLoader, localStorer)
-
-	fetcher := fetcher.NewGraphSyncFetcher(ctx, localGraphsync, bs, bv, fc, pt)
+	localGraphsync := graphsyncimpl.New(ctx, gsnet1, localLoader, localStorer)
+	gsFetcher := fetcher.NewGraphSyncFetcher(ctx, localGraphsync, bs, bv, fc, pt)
 
 	remoteLoader := func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
 		cid := lnk.(cidlink.Link).Cid
@@ -920,9 +915,14 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 		}
 		return bytes.NewBuffer(node.RawData()), nil
 	}
-	graphsync.New(ctx, gsnet2, bridge2, remoteLoader, nil)
-
-	tipsets, err := fetcher.FetchTipSets(ctx, final.Key(), host2.ID(), func(ts block.TipSet) (bool, error) {
+	otherGraphsync := graphsyncimpl.New(ctx, gsnet2, remoteLoader, nil, graphsyncimpl.RejectAllRequestsByDefault())
+	otherGraphsync.RegisterIncomingRequestHook(func(p peer.ID, requestData graphsync.RequestData, hookActions graphsync.IncomingRequestHookActions) {
+		_, has := requestData.Extension(fetcher.ChainsyncProtocolExtension)
+		if has {
+			hookActions.ValidateRequest()
+		}
+	})
+	tipsets, err := gsFetcher.FetchTipSets(ctx, final.Key(), host2.ID(), func(ts block.TipSet) (bool, error) {
 		if ts.Key().Equals(gen.Key()) {
 			return true, nil
 		}

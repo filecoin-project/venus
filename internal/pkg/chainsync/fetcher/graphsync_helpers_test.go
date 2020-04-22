@@ -16,13 +16,13 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
-	"github.com/ipfs/go-graphsync/ipldbridge"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-ipld-prime"
 	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/ipld/go-ipld-prime/traversal"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
@@ -250,7 +250,7 @@ func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s select
 		return
 	}
 	visited := 0
-	visitor := func(tp ipldbridge.TraversalProgress, n ipld.Node, tr ipldbridge.TraversalReason) error {
+	visitor := func(tp traversal.Progress, n ipld.Node, tr traversal.VisitReason) error {
 		if hangup != noHangup && visited >= hangup {
 			return errHangup
 		}
@@ -258,8 +258,8 @@ func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s select
 		responses = append(responses, graphsync.ResponseProgress{Node: n, Path: tp.Path, LastBlock: tp.LastBlock})
 		return nil
 	}
-	err = ipldbridge.TraversalProgress{
-		Cfg: &ipldbridge.TraversalConfig{
+	err = traversal.Progress{
+		Cfg: &traversal.Config{
 			Ctx:        mgs.ctx,
 			LinkLoader: linkLoader,
 		},

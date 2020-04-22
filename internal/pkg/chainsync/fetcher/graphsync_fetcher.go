@@ -52,6 +52,9 @@ const (
 	amtNodeValuesFieldIndex = 2
 )
 
+// ChainsyncProtocolExtension is the extension name to indicate graphsync requests are to sync the chain
+const ChainsyncProtocolExtension = graphsync.ExtensionName("chainsync")
+
 // interface conformance check
 var _ syncer.Fetcher = (*GraphSyncFetcher)(nil)
 
@@ -268,7 +271,7 @@ func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, selGen func() ipld
 	for _, c := range cids {
 		requestCtx, requestCancel := context.WithCancel(ctx)
 		defer requestCancel()
-		requestChan, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: c}, selector)
+		requestChan, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: c}, selector, graphsync.ExtensionData{Name: ChainsyncProtocolExtension})
 		wg.Add(1)
 		go func(requestChan <-chan graphsync.ResponseProgress, errChan <-chan error, cancelFunc func()) {
 			defer wg.Done()
@@ -353,7 +356,7 @@ func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, recSelG
 	defer requestCancel()
 	selector := recSelGen(recursionDepth)
 
-	requestChan, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: baseCid}, selector)
+	requestChan, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: baseCid}, selector, graphsync.ExtensionData{Name: ChainsyncProtocolExtension})
 	return gsf.consumeResponse(requestChan, errChan, requestCancel)
 }
 
