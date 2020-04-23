@@ -318,15 +318,8 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- NewOutputErr(err)
 		return
 	}
-	poStProofs := make([]block.PoStProof, len(posts))
-	for i, proof := range posts {
-		poStProofs[i] = block.PoStProof{
-			RegisteredProof: proof.RegisteredProof,
-			ProofBytes:      proof.ProofBytes,
-		}
-	}
 
-	next := w.Generate(ctx, base, nextTicket, electionVRFProof, abi.ChainEpoch(nullBlkCount), poStProofs, drandEntries)
+	next := w.Generate(ctx, base, nextTicket, electionVRFProof, abi.ChainEpoch(nullBlkCount), posts, drandEntries)
 	if next.Err == nil {
 		log.Debugf("Worker.Mine generates new winning block! %s", next.Header.Cid().String())
 	}
