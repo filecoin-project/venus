@@ -21,7 +21,7 @@ import (
 )
 
 func TestSingleMiner(t *testing.T) {
-	tf.FunctionalTest(t)
+	//tf.FunctionalTest(t)
 	ctx := context.Background()
 	wd, _ := os.Getwd()
 	genCfgPath := filepath.Join(wd, "..", "fixtures/setup.json")
