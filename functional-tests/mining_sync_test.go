@@ -105,7 +105,7 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
 
-	miner := makeNode(ctx, t, seed, chainClock)
+	miner := makeNode(ctx, t, seed, chainClock, nil)
 	_, _, err := initNodeGenesisMiner(ctx, t, miner, seed, genCfg.Miners[0].Owner, presealPath)
 	require.NoError(t, err)
 

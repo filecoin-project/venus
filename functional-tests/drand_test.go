@@ -36,7 +36,7 @@ func TestDrandPublic(t *testing.T) {
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
 
-	nd := makeNode(ctx, t, seed, chainClock)
+	nd := makeNode(ctx, t, seed, chainClock, nil)
 
 	err := nd.Start(ctx)
 	require.NoError(t, err)
