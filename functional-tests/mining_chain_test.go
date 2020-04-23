@@ -40,7 +40,7 @@ func TestSingleMiner(t *testing.T) {
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
 
 	drandImpl := &drand.Fake{
-		GenesisTime:   time.Unix(int64(genTime), 0).Add(-1 * blockTime),
+		GenesisTime:   time.Unix(genTime, 0).Add(-1 * blockTime),
 		FirstFilecoin: 0,
 	}
 
@@ -91,7 +91,7 @@ func TestSyncFromSingleMiner(t *testing.T) {
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
 
 	drandImpl := &drand.Fake{
-		GenesisTime:   time.Unix(int64(genTime), 0).Add(-1 * blockTime),
+		GenesisTime:   time.Unix(genTime, 0).Add(-1 * blockTime),
 		FirstFilecoin: 0,
 	}
 
