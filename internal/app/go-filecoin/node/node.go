@@ -413,7 +413,7 @@ func (node *Node) SetupMining(ctx context.Context) error {
 	return nil
 }
 
-func registeredProofsFromSectorSize(ss abi.SectorSize) (registeredSealProof abi.RegisteredProof, registeredPoStProof abi.RegisteredProof, err error) {
+func registeredProofsFromSectorSize(ss abi.SectorSize) (registeredPoStProof abi.RegisteredProof, registeredSealProof abi.RegisteredProof, err error) {
 	switch ss {
 	case constants.DevSectorSize:
 		return constants.DevRegisteredWindowPoStProof, constants.DevRegisteredSealProof, nil
