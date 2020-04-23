@@ -38,11 +38,11 @@ func TestMiningPledgeSector(t *testing.T) {
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
 
-	bootstrapMiner := makeNode(ctx, t, seed, chainClock)
+	bootstrapMiner := makeNode(ctx, t, seed, chainClock, nil)
 	_, _, err := initNodeGenesisMiner(ctx, t, bootstrapMiner, seed, genCfg.Miners[0].Owner, presealPath)
 	require.NoError(t, err)
 
-	newMiner := makeNode(ctx, t, seed, chainClock)
+	newMiner := makeNode(ctx, t, seed, chainClock, nil)
 	seed.GiveKey(t, newMiner, 1)
 	_, _ = seed.GiveMiner(t, newMiner, 1)
 
