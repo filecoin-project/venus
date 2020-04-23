@@ -25,6 +25,7 @@ import (
 )
 
 func TestBootstrapMineOnce(t *testing.T) {
+	t.Skip("pending iptb Drand solution (maybe delete?)")
 	tf.FunctionalTest(t)
 
 	ctx := context.Background()
