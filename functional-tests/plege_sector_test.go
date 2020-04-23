@@ -7,17 +7,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
 func TestMiningPledgeSector(t *testing.T) {
-	t.Skip("Unskip when we have implemented production drand component and local drand network for functional tests")
-	tf.FunctionalTest(t)
+	//tf.FunctionalTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -38,11 +38,16 @@ func TestMiningPledgeSector(t *testing.T) {
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
 
-	bootstrapMiner := makeNode(ctx, t, seed, chainClock, nil)
+	drandImpl := &drand.Fake{
+		GenesisTime:   time.Unix(int64(genTime), 0).Add(-1 * blockTime),
+		FirstFilecoin: 0,
+	}
+
+	bootstrapMiner := makeNode(ctx, t, seed, chainClock, drandImpl)
 	_, _, err := initNodeGenesisMiner(ctx, t, bootstrapMiner, seed, genCfg.Miners[0].Owner, presealPath)
 	require.NoError(t, err)
 
-	newMiner := makeNode(ctx, t, seed, chainClock, nil)
+	newMiner := makeNode(ctx, t, seed, chainClock, drandImpl)
 	seed.GiveKey(t, newMiner, 1)
 	_, _ = seed.GiveMiner(t, newMiner, 1)
 

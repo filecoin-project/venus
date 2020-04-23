@@ -25,8 +25,6 @@ import (
 )
 
 func TestBootstrapMineOnce(t *testing.T) {
-	t.Skip("Unskip when we have implemented production drand component and local drand network for functional tests")
-
 	tf.FunctionalTest(t)
 
 	ctx := context.Background()
