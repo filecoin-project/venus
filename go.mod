@@ -15,7 +15,6 @@ require (
 	github.com/drand/drand v0.7.2
 	github.com/drand/kyber v1.0.1-0.20200331114745-30e90cc60f99
 	github.com/elastic/go-windows v1.0.1 // indirect
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200409170327-a94b502ea821
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200414233031-ec8c702c0e2b
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
@@ -29,7 +28,7 @@ require (
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/sector-storage v0.0.0-20200417225459-e75536581a08
 	github.com/filecoin-project/specs-actors v0.0.0-20200421022603-5c6cb184cefa
-	github.com/filecoin-project/specs-storage v0.0.0-20200417160546-e150c0f5e3c4
+	github.com/filecoin-project/specs-storage v0.0.0-20200417160546-e150c0f5e3c4 // indirect
 	github.com/filecoin-project/storage-fsm v0.0.0-20200420183220-1515cffb5d13
 	github.com/fxamacker/cbor v1.5.0
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
@@ -76,13 +75,10 @@ require (
 	github.com/libp2p/go-libp2p-autonat-svc v0.1.0
 	github.com/libp2p/go-libp2p-circuit v0.1.4
 	github.com/libp2p/go-libp2p-core v0.5.1
-	github.com/libp2p/go-libp2p-discovery v0.2.0
 	github.com/libp2p/go-libp2p-kad-dht v0.1.1
 	github.com/libp2p/go-libp2p-peerstore v0.2.0
 	github.com/libp2p/go-libp2p-pubsub v0.2.6
-	github.com/libp2p/go-libp2p-secio v0.2.1
 	github.com/libp2p/go-libp2p-swarm v0.2.2
-	github.com/libp2p/go-libp2p-yamux v0.2.5
 	github.com/mattn/go-isatty v0.0.10 // indirect
 	github.com/mattn/go-runewidth v0.0.8 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
@@ -100,7 +96,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/prometheus/client_golang v1.2.1
-	github.com/prometheus/common v0.9.1
+	github.com/prometheus/common v0.9.1 // indirect
 	github.com/prometheus/procfs v0.0.11 // indirect
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect

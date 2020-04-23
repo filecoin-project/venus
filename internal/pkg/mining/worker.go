@@ -88,7 +88,7 @@ type workerPorcelainAPI interface {
 type electionUtil interface {
 	GenerateElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error)
 	IsWinner(challengeTicket []byte, sectorNum, networkPower, sectorSize uint64) bool
-	GenerateWinningPoSt(ctx context.Context, allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]abi.PoStProof, error)
+	GenerateWinningPoSt(ctx context.Context, allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]block.PoStProof, error)
 }
 
 // ticketGenerator creates tickets.
@@ -311,15 +311,12 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- NewOutputErr(err)
 		return
 	}
-	_ = sortedSectorInfos
-	posts := []block.PoStProof{}
-	// be able to get the cachedir and the sectordir to fill out private sector info
-	//	posts, err := w.election.GenerateWinningPoSt(sortedSectorInfos, electionEntry, currEpoch, w.poster, w.minerAddr)
-	//	if err != nil {
-	//		log.Warnf("Worker.Mine failed to generate post")
-	//		outCh <- NewOutputErr(err)
-	// 		return
-	//	}
+	posts, err := w.election.GenerateWinningPoSt(ctx, sortedSectorInfos, electionEntry, currEpoch, w.poster, w.minerAddr)
+	if err != nil {
+		log.Warnf("Worker.Mine failed to generate post")
+		outCh <- NewOutputErr(err)
+		return
+	}
 
 	next := w.Generate(ctx, base, nextTicket, electionVRFProof, abi.ChainEpoch(nullBlkCount), posts, drandEntries)
 	if next.Err == nil {
