@@ -6,6 +6,7 @@ package mining
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
@@ -361,13 +362,14 @@ func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.Tip
 	}
 	// Special case genesis
 	var rounds []drand.Round
+	lastTargetEpoch := abi.ChainEpoch(uint64(baseHeight) + nullBlkCount + 1 - consensus.DRANDEpochLookback)
 	if baseHeight == abi.ChainEpoch(0) {
 		// no latest entry, targetEpoch undefined as its before genesis
 
 		// There should be a first genesis drand round from time before genesis
 		// and then we grab everything between this round and genesis time
 		startTime := w.drand.StartTimeOfRound(w.drand.FirstFilecoinRound())
-		endTime := w.clock.StartTimeOfEpoch(0)
+		endTime := w.clock.StartTimeOfEpoch(lastTargetEpoch + 1)
 		rounds, err = w.drand.RoundsInInterval(ctx, startTime, endTime)
 		if err != nil {
 			return nil, err
@@ -377,7 +379,7 @@ func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.Tip
 		if err != nil {
 			return nil, err
 		}
-		lastTargetEpoch := abi.ChainEpoch(uint64(baseHeight) + nullBlkCount + 1 - consensus.DRANDEpochLookback)
+
 		startTime := w.drand.StartTimeOfRound(latestEntry.Round)
 		// end of interval is beginning of next epoch after lastTargetEpoch so
 		//  we add 1 to lastTargetEpoch
