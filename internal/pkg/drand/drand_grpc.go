@@ -237,5 +237,13 @@ func (d *GRPC) RoundsInInterval(ctx context.Context, startTime, endTime time.Tim
 			return nil, err
 		}
 	}
-	return rounds, nil
+	return reverse(rounds), nil
+}
+
+func reverse(rounds []Round) []Round {
+	revRounds := make([]Round, len(rounds))
+	for i := 0; i < len(rounds); i++ {
+		revRounds[i] = rounds[len(rounds)-1-i]
+	}
+	return revRounds
 }

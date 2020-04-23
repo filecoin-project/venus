@@ -390,6 +390,7 @@ func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.Tip
 		rounds = rounds[1:]
 	}
 
+	fmt.Printf("rounds: %v\n", rounds)
 	entries := make([]*drand.Entry, len(rounds))
 	for i, round := range rounds {
 		entries[i], err = w.drand.ReadEntry(ctx, round)
