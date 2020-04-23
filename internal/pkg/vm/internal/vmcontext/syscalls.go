@@ -42,7 +42,11 @@ type syscalls struct {
 var _ specsruntime.Syscalls = (*syscalls)(nil)
 
 func (sys syscalls) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) error {
-	sys.gasTank.Charge(sys.pricelist.OnVerifySignature(signature.Type, len(plaintext)), "VerifySignature")
+	charge, err := sys.pricelist.OnVerifySignature(signature.Type, len(plaintext))
+	if err != nil {
+		return err
+	}
+	sys.gasTank.Charge(charge, "VerifySignature")
 	return sys.impl.VerifySignature(sys.ctx, sys.state, signature, signer, plaintext)
 }
 

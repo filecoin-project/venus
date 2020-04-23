@@ -1,13 +1,14 @@
 package gascost
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 )
 
 type pricelistV0 struct {
@@ -129,12 +130,12 @@ func (pl *pricelistV0) OnDeleteActor() gas.Unit {
 }
 
 // OnVerifySignature
-func (pl *pricelistV0) OnVerifySignature(sigType crypto.SigType, planTextSize int) gas.Unit {
+func (pl *pricelistV0) OnVerifySignature(sigType crypto.SigType, planTextSize int) (gas.Unit, error) {
 	costFn, ok := pl.verifySignature[sigType]
 	if !ok {
-		runtime.Abortf(exitcode.SysErrInternal, "Cost function for signature type %d not supported", sigType)
+		return 0, fmt.Errorf("cost function for signature type %d not supported", sigType)
 	}
-	return costFn(gas.Unit(planTextSize))
+	return costFn(gas.Unit(planTextSize)), nil
 }
 
 // OnHashing
