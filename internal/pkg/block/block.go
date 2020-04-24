@@ -31,7 +31,7 @@ type Block struct {
 	Ticket Ticket `json:"ticket"`
 
 	// ElectionProof is the vrf proof giving this block's miner authoring rights
-	ElectionProof crypto.ElectionProof
+	ElectionProof *crypto.ElectionProof
 
 	// PoStProofs are the winning post proofs
 	PoStProofs []PoStProof `json:"PoStProofs"`
