@@ -83,7 +83,9 @@ func TestSingleMiner(t *testing.T) {
 
 func TestSyncFromSingleMiner(t *testing.T) {
 	tf.FunctionalTest(t)
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	wd, _ := os.Getwd()
 	genCfgPath := filepath.Join(wd, "..", "fixtures/setup.json")
 	presealPath := filepath.Join(wd, "..", "fixtures/genesis-sectors")
