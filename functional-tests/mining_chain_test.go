@@ -21,7 +21,6 @@ import (
 )
 
 func TestSingleMiner(t *testing.T) {
-	t.Skip("possible CI hang")
 	tf.FunctionalTest(t)
 	ctx := context.Background()
 	wd, _ := os.Getwd()
@@ -82,7 +81,6 @@ func TestSingleMiner(t *testing.T) {
 }
 
 func TestSyncFromSingleMiner(t *testing.T) {
-	t.Skip("still hanging in CI")
 	tf.FunctionalTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
