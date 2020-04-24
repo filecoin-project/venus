@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 // MakeCommitCfgs creates n gengen commit configs, casting strings to cids.
@@ -40,7 +39,7 @@ func MakeCommitCfgs(n int) ([]*CommitConfig, error) {
 			CommD:     commD,
 			SectorNum: uint64(i),
 			DealCfg:   dealCfg,
-			ProofType: abi.RegisteredProof_StackedDRG2KiBPoSt,
+			ProofType: constants.DevRegisteredSealProof,
 		}
 	}
 	return cfgs, nil

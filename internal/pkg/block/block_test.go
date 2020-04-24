@@ -62,7 +62,7 @@ func TestTriangleEncoding(t *testing.T) {
 	t.Run("encoding block with nonzero fields works", func(t *testing.T) {
 		// We should ensure that every field is set -- zero values might
 		// pass when non-zero values do not due to nil/null encoding.
-		posts := []blk.PoStProof{blk.NewPoStProof(constants.DevRegisteredPoStProof, []byte{0x07})}
+		posts := []blk.PoStProof{blk.NewPoStProof(constants.DevRegisteredWinningPoStProof, []byte{0x07})}
 		b := &blk.Block{
 			Miner:         newAddress(),
 			Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
@@ -226,7 +226,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 func TestSignatureData(t *testing.T) {
 	tf.UnitTest(t)
 	newAddress := vmaddr.NewForTestGetter()
-	posts := []blk.PoStProof{blk.NewPoStProof(constants.DevRegisteredPoStProof, []byte{0x07})}
+	posts := []blk.PoStProof{blk.NewPoStProof(constants.DevRegisteredWinningPoStProof, []byte{0x07})}
 
 	b := &blk.Block{
 		Miner:         newAddress(),
@@ -253,7 +253,7 @@ func TestSignatureData(t *testing.T) {
 		},
 	}
 
-	diffPoSts := []blk.PoStProof{blk.NewPoStProof(constants.DevRegisteredPoStProof, []byte{0x17})}
+	diffPoSts := []blk.PoStProof{blk.NewPoStProof(constants.DevRegisteredWinningPoStProof, []byte{0x17})}
 
 	diff := &blk.Block{
 		Miner:         newAddress(),
