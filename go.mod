@@ -27,7 +27,7 @@ require (
 	github.com/filecoin-project/go-statemachine v0.0.0-20200314004106-2e7830fc1948 // indirect
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/sector-storage v0.0.0-20200417225459-e75536581a08
-	github.com/filecoin-project/specs-actors v0.0.0-20200421022603-5c6cb184cefa
+	github.com/filecoin-project/specs-actors v1.0.0
 	github.com/filecoin-project/specs-storage v0.0.0-20200417160546-e150c0f5e3c4 // indirect
 	github.com/filecoin-project/storage-fsm v0.0.0-20200420183220-1515cffb5d13
 	github.com/fxamacker/cbor v1.5.0
