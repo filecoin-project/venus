@@ -144,7 +144,7 @@ func (d *GRPC) FetchGroupConfig(addresses []string, secure bool, overrideGroupAd
 			d.addresses = drandAddresses(groupAddrs, secure)
 		}
 
-		return groupAddrs, keyCoeffs, 0, 0, nil
+		return groupAddrs, keyCoeffs, genesisTime, roundSeconds, nil
 	}
 	return nil, nil, 0, 0, errors.New("Could not retrieve drand group key from any address")
 }
@@ -192,7 +192,7 @@ func (d *GRPC) FirstFilecoinRound() Round {
 
 // StartTimeOfRound returns the time the given DRAND round will start if it is unskipped
 func (d *GRPC) StartTimeOfRound(round Round) time.Time {
-	return d.genesisTime.Add(testDRANDRoundDuration * time.Duration(round))
+	return d.genesisTime.Add(d.roundTime * time.Duration(round))
 }
 
 // RoundsInInterval returns all rounds in the given interval.
@@ -237,5 +237,13 @@ func (d *GRPC) RoundsInInterval(ctx context.Context, startTime, endTime time.Tim
 			return nil, err
 		}
 	}
-	return rounds, nil
+	return reverse(rounds), nil
+}
+
+func reverse(rounds []Round) []Round {
+	revRounds := make([]Round, len(rounds))
+	for i := 0; i < len(rounds); i++ {
+		revRounds[i] = rounds[len(rounds)-1-i]
+	}
+	return revRounds
 }

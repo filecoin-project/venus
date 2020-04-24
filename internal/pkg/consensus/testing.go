@@ -64,9 +64,9 @@ func (fem *FakeElectionMachine) GenerateElectionProof(_ context.Context, _ *dran
 }
 
 // GenerateEPoSt returns a fake post proof
-func (fem *FakeElectionMachine) GenerateWinningPoSt(ctx context.Context, allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]abi.PoStProof, error) {
-	return []abi.PoStProof{{
-		RegisteredProof: constants.DevRegisteredPoStProof,
+func (fem *FakeElectionMachine) GenerateWinningPoSt(ctx context.Context, allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]block.PoStProof, error) {
+	return []block.PoStProof{{
+		RegisteredProof: constants.DevRegisteredWinningPoStProof,
 		ProofBytes:      []byte{0xe},
 	}}, nil
 }
@@ -142,7 +142,7 @@ func MakeFakeVRFProofForTest() []byte {
 // MakeFakePoStForTest creates a fake post
 func MakeFakePoStsForTest() []block.PoStProof {
 	return []block.PoStProof{{
-		RegisteredProof: constants.DevRegisteredPoStProof,
+		RegisteredProof: constants.DevRegisteredWinningPoStProof,
 		ProofBytes:      []byte{0xe},
 	}}
 }

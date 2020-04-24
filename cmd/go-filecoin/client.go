@@ -191,7 +191,7 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 			price,
 			collateral,
 			// proof version (not circuit or size) should be all that is important here
-			constants.DevRegisteredPoStProof,
+			constants.DevRegisteredWindowPoStProof,
 		)
 		if err != nil {
 			return err

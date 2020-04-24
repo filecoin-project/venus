@@ -88,7 +88,7 @@ type workerPorcelainAPI interface {
 type electionUtil interface {
 	GenerateElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error)
 	IsWinner(challengeTicket []byte, sectorNum, networkPower, sectorSize uint64) bool
-	GenerateWinningPoSt(ctx context.Context, allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]abi.PoStProof, error)
+	GenerateWinningPoSt(ctx context.Context, allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]block.PoStProof, error)
 }
 
 // ticketGenerator creates tickets.
@@ -311,15 +311,12 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- NewOutputErr(err)
 		return
 	}
-	_ = sortedSectorInfos
-	posts := []block.PoStProof{}
-	// be able to get the cachedir and the sectordir to fill out private sector info
-	//	posts, err := w.election.GenerateWinningPoSt(sortedSectorInfos, electionEntry, currEpoch, w.poster, w.minerAddr)
-	//	if err != nil {
-	//		log.Warnf("Worker.Mine failed to generate post")
-	//		outCh <- NewOutputErr(err)
-	// 		return
-	//	}
+	posts, err := w.election.GenerateWinningPoSt(ctx, sortedSectorInfos, electionEntry, currEpoch, w.poster, w.minerAddr)
+	if err != nil {
+		log.Warnf("Worker.Mine failed to generate post")
+		outCh <- NewOutputErr(err)
+		return
+	}
 
 	next := w.Generate(ctx, base, nextTicket, electionVRFProof, abi.ChainEpoch(nullBlkCount), posts, drandEntries)
 	if next.Err == nil {
@@ -364,13 +361,14 @@ func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.Tip
 	}
 	// Special case genesis
 	var rounds []drand.Round
+	lastTargetEpoch := abi.ChainEpoch(uint64(baseHeight) + nullBlkCount + 1 - consensus.DRANDEpochLookback)
 	if baseHeight == abi.ChainEpoch(0) {
 		// no latest entry, targetEpoch undefined as its before genesis
 
 		// There should be a first genesis drand round from time before genesis
 		// and then we grab everything between this round and genesis time
 		startTime := w.drand.StartTimeOfRound(w.drand.FirstFilecoinRound())
-		endTime := w.clock.StartTimeOfEpoch(0)
+		endTime := w.clock.StartTimeOfEpoch(lastTargetEpoch + 1)
 		rounds, err = w.drand.RoundsInInterval(ctx, startTime, endTime)
 		if err != nil {
 			return nil, err
@@ -380,7 +378,7 @@ func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.Tip
 		if err != nil {
 			return nil, err
 		}
-		lastTargetEpoch := abi.ChainEpoch(uint64(baseHeight) + nullBlkCount + 1 - consensus.DRANDEpochLookback)
+
 		startTime := w.drand.StartTimeOfRound(latestEntry.Round)
 		// end of interval is beginning of next epoch after lastTargetEpoch so
 		//  we add 1 to lastTargetEpoch

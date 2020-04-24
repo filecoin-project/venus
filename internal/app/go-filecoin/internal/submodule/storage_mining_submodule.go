@@ -76,7 +76,7 @@ func NewStorageMiningSubmodule(
 
 	sid := sectors.NewPersistedSectorNumberCounter(ds)
 
-	ncn := fsmnodeconnector.New(mw, c.ChainReader, c.ActorState, m.Outbox, c.State)
+	ncn := fsmnodeconnector.New(minerAddr, mw, c.ChainReader, c.ActorState, m.Outbox, c.State)
 
 	info, err := getMinerInfo(c, minerAddr, stateViewer)
 	if err != nil {
