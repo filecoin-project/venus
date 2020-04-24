@@ -311,6 +311,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- NewOutputErr(err)
 		return
 	}
+
 	posts, err := w.election.GenerateWinningPoSt(ctx, sortedSectorInfos, electionEntry, currEpoch, w.poster, w.minerAddr)
 	if err != nil {
 		log.Warnf("Worker.Mine failed to generate post")

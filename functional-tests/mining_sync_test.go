@@ -25,8 +25,7 @@ import (
 )
 
 func TestBootstrapMineOnce(t *testing.T) {
-	t.Skip("Unskip when we have implemented production drand component and local drand network for functional tests")
-
+	t.Skip("pending iptb Drand solution (maybe delete?)")
 	tf.FunctionalTest(t)
 
 	ctx := context.Background()
@@ -105,7 +104,7 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
 
-	miner := makeNode(ctx, t, seed, chainClock)
+	miner := makeNode(ctx, t, seed, chainClock, nil)
 	_, _, err := initNodeGenesisMiner(ctx, t, miner, seed, genCfg.Miners[0].Owner, presealPath)
 	require.NoError(t, err)
 

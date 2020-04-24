@@ -231,8 +231,8 @@ func filterSectorInfosByIndex(allSectorInfos []abi.SectorInfo, challengeIDs []ui
 	}
 
 	var filteredSectorInfos []abi.SectorInfo
-	for _, si := range allSectorInfos {
-		if _, ok := idSet[uint64(si.SectorNumber)]; ok {
+	for i, si := range allSectorInfos {
+		if _, ok := idSet[uint64(i)]; ok {
 			filteredSectorInfos = append(filteredSectorInfos, si)
 		}
 	}

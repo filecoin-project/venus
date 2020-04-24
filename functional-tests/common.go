@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,12 +31,14 @@ func loadGenesisConfig(t *testing.T, path string) *gengen.GenesisCfg {
 	return &cfg
 }
 
-func makeNode(ctx context.Context, t *testing.T, seed *node.ChainSeed, chainClock clock.ChainEpochClock) *node.Node {
-	return test.NewNodeBuilder(t).
+func makeNode(ctx context.Context, t *testing.T, seed *node.ChainSeed, chainClock clock.ChainEpochClock, drand drand.IFace) *node.Node {
+	builder := test.NewNodeBuilder(t).
 		WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
-		WithGenesisInit(seed.GenesisInitFunc).
-		WithBuilderOpt(node.VerifierConfigOption(ffiwrapper.ProofVerifier)).
-		Build(ctx)
+		WithGenesisInit(seed.GenesisInitFunc)
+	if drand != nil {
+		builder = builder.WithBuilderOpt(node.DrandConfigOption(drand))
+	}
+	return builder.Build(ctx)
 }
 
 func initNodeGenesisMiner(ctx context.Context, t *testing.T, nd *node.Node, seed *node.ChainSeed, minerIdx int, presealPath string) (address.Address, address.Address, error) {

@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
@@ -19,8 +21,6 @@ import (
 )
 
 func TestSingleMiner(t *testing.T) {
-	t.Skip("Unskip when we have implemented production drand component and local drand network for functional tests")
-
 	tf.FunctionalTest(t)
 	ctx := context.Background()
 	wd, _ := os.Getwd()
@@ -39,7 +39,12 @@ func TestSingleMiner(t *testing.T) {
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
 
-	nd := makeNode(ctx, t, seed, chainClock)
+	drandImpl := &drand.Fake{
+		GenesisTime:   time.Unix(genTime, 0).Add(-1 * blockTime),
+		FirstFilecoin: 0,
+	}
+
+	nd := makeNode(ctx, t, seed, chainClock, drandImpl)
 	minerAddr, _, err := initNodeGenesisMiner(ctx, t, nd, seed, genCfg.Miners[0].Owner, presealPath)
 	require.NoError(t, err)
 
@@ -76,10 +81,10 @@ func TestSingleMiner(t *testing.T) {
 }
 
 func TestSyncFromSingleMiner(t *testing.T) {
-	t.Skip("Unskip when we have implemented production drand component and local drand network for functional tests")
-
 	tf.FunctionalTest(t)
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	wd, _ := os.Getwd()
 	genCfgPath := filepath.Join(wd, "..", "fixtures/setup.json")
 	presealPath := filepath.Join(wd, "..", "fixtures/genesis-sectors")
@@ -87,16 +92,22 @@ func TestSyncFromSingleMiner(t *testing.T) {
 	blockTime := 30 * time.Second
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
 
+	drandImpl := &drand.Fake{
+		GenesisTime:   time.Unix(genTime, 0).Add(-1 * blockTime),
+		FirstFilecoin: 0,
+	}
+
 	// Load genesis config fixture.
 	genCfg := loadGenesisConfig(t, genCfgPath)
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
+	assert.Equal(t, fakeClock.Now(), chainClock.Now())
 
-	ndMiner := makeNode(ctx, t, seed, chainClock)
+	ndMiner := makeNode(ctx, t, seed, chainClock, drandImpl)
 	_, _, err := initNodeGenesisMiner(ctx, t, ndMiner, seed, genCfg.Miners[0].Owner, presealPath)
 	require.NoError(t, err)
 
-	ndValidator := makeNode(ctx, t, seed, chainClock)
+	ndValidator := makeNode(ctx, t, seed, chainClock, drandImpl)
 
 	err = ndMiner.Start(ctx)
 	require.NoError(t, err)
