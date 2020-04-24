@@ -118,18 +118,23 @@ func (pm *Manager) GetPaymentChannelInfo(paychAddr address.Address) (*ChannelInf
 // If successful, a new payment channel entry will be persisted to the
 // paymentChannels via a message wait handler.  Returns the created payment channel address
 func (pm *Manager) CreatePaymentChannel(clientAddress, minerAddress address.Address, amt abi.TokenAmount) (address.Address, cid.Cid, error) {
-	chinfo, err := pm.GetPaymentChannelByAccounts(clientAddress, minerAddress)
-	if err != nil {
+	errReturn := func(err error) (address.Address, cid.Cid, error) {
 		return address.Undef, cid.Undef, err
 	}
+
+	chinfo, err := pm.GetPaymentChannelByAccounts(clientAddress, minerAddress)
+	if err != nil {
+		return errReturn(err)
+	}
 	if !chinfo.IsZero() {
-		return address.Undef, cid.Undef, xerrors.Errorf("payment channel exists for client %s, miner %s", clientAddress, minerAddress)
+		return errReturn(xerrors.Errorf("payment channel exists for client %s, miner %s", clientAddress, minerAddress))
 	}
 
 	execParams, err := PaychActorCtorExecParamsFor(clientAddress, minerAddress)
 	if err != nil {
-		return address.Undef, cid.Undef, err
+		return errReturn(err)
 	}
+
 	msgCid, _, err := pm.sender.Send(
 		pm.ctx,
 		clientAddress,
@@ -142,7 +147,7 @@ func (pm *Manager) CreatePaymentChannel(clientAddress, minerAddress address.Addr
 		&execParams,
 	)
 	if err != nil {
-		return address.Undef, cid.Undef, err
+		return errReturn(err)
 	}
 
 	var newPaychAddr address.Address
@@ -170,10 +175,10 @@ func (pm *Manager) CreatePaymentChannel(clientAddress, minerAddress address.Addr
 
 	err = pm.waiter.Wait(pm.ctx, msgCid, handleResult)
 	if err != nil {
-		return address.Undef, cid.Undef, err
+		return errReturn(err)
 	}
 
-	return newPaychAddr, msgCid, nil
+	return newPaychAddr, cid.Undef, nil
 }
 
 // AddVoucherToChannel saves a new signed voucher entry to the payment store

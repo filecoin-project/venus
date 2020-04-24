@@ -50,24 +50,30 @@ func NewRetrievalClientConnector(
 
 // GetOrCreatePaymentChannel gets or creates a payment channel and posts to chain
 func (r *RetrievalClientConnector) GetOrCreatePaymentChannel(ctx context.Context, clientAddress address.Address, minerAddress address.Address, clientFundsAvailable abi.TokenAmount, tok shared.TipSetToken) (address.Address, cid.Cid, error) {
+
+	errReturn := func(err error) (address.Address, cid.Cid, error) {
+		return address.Undef, cid.Undef, err
+	}
+
 	if clientAddress == address.Undef || minerAddress == address.Undef {
-		return address.Undef, cid.Undef, errors.New("empty address")
+		return errReturn(xerrors.New("empty address"))
 	}
 	chinfo, err := r.paychMgr.GetPaymentChannelByAccounts(clientAddress, minerAddress)
 	if err != nil {
-		return address.Undef, cid.Undef, err
+		return errReturn(err)
 	}
 	if chinfo.IsZero() {
 		// create the payment channel
 		bal, err := r.getBalance(ctx, clientAddress, tok)
 		if err != nil {
-			return address.Undef, cid.Undef, err
+			return errReturn(err)
 		}
 
 		filAmt := types.NewAttoFIL(clientFundsAvailable.Int)
 		if bal.LessThan(filAmt) {
-			return address.Undef, cid.Undef, errors.New("not enough funds in wallet")
+			return errReturn(xerrors.New("not enough funds in wallet"))
 		}
+
 		return r.paychMgr.CreatePaymentChannel(clientAddress, minerAddress, clientFundsAvailable)
 	}
 	// TODO: I think this is supposed to return the message CID from the creation of the payment channel.
