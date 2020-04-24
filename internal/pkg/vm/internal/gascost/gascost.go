@@ -31,7 +31,7 @@ type Pricelist interface {
 	// OnDeleteActor returns the gas used for deleting an actor
 	OnDeleteActor() gas.Unit
 
-	OnVerifySignature(sigType crypto.SigType, planTextSize int) gas.Unit
+	OnVerifySignature(sigType crypto.SigType, planTextSize int) (gas.Unit, error)
 	OnHashing(dataSize int) gas.Unit
 	OnComputeUnsealedSectorCid(proofType abi.RegisteredProof, pieces *[]abi.PieceInfo) gas.Unit
 	OnVerifySeal(info abi.SealVerifyInfo) gas.Unit

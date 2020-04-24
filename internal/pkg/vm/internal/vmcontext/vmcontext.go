@@ -317,7 +317,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 	} else if builtin.IsBuiltinActor(fromActor.Code.Cid) {
 		originator = imsg.from // Cannot resolve non-account actor to pubkey addresses.
 	} else {
-		runtime.Abortf(exitcode.SysErrInternal, "implicit message from non-account or -singleton actor code %s", fromActor.Code.Cid)
+		panic(fmt.Sprintf("implicit message from non-account or -singleton actor code %s", fromActor.Code.Cid))
 	}
 
 	// 2. increment seq number (only for account actors).
@@ -662,7 +662,7 @@ func (vm *syscallsStateView) MinerControlAddresses(ctx context.Context, maddr ad
 func msgCID(msg *types.UnsignedMessage) cid.Cid {
 	cid, err := msg.Cid()
 	if err != nil {
-		runtime.Abortf(exitcode.SysErrInternal, "Could not compute CID for message")
+		panic(fmt.Sprintf("failed to compute message CID: %v; %+v", err, msg))
 	}
 	return cid
 }
