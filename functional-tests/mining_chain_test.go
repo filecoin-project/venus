@@ -21,7 +21,8 @@ import (
 )
 
 func TestSingleMiner(t *testing.T) {
-	//tf.FunctionalTest(t)
+	t.Skip("possible CI hang")
+	tf.FunctionalTest(t)
 	ctx := context.Background()
 	wd, _ := os.Getwd()
 	genCfgPath := filepath.Join(wd, "..", "fixtures/setup.json")
