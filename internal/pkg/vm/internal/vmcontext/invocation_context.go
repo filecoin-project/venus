@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
@@ -545,16 +546,43 @@ func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 }
 
 func (ctx *invocationContext) TotalFilCircSupply() abi.TokenAmount {
-	// TODO: this isn't right, but it's close (#4012)
-	reward, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.RewardActorAddr)
-	if err != nil {
-		panic(err)
-	}
-	if !found {
-		runtime.Abort(exitcode.SysErrSenderInvalid)
+	rewardActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.RewardActorAddr)
+	if !found || err != nil {
+		panic(fmt.Sprintf("failed to get rewardActor actor for computing total supply: %s", err))
 	}
 
-	return reward.Balance
+	burntActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.BurntFundsActorAddr)
+	if !found || err != nil {
+		panic(fmt.Sprintf("failed to get burntActor funds actor for computing total supply: %s", err))
+	}
+
+	marketActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.StorageMarketActorAddr)
+	if !found || err != nil {
+		panic(fmt.Sprintf("failed to get storage marketActor actor for computing total supply: %s", err))
+	}
+
+	// TODO: remove this, https://github.com/filecoin-project/go-filecoin/issues/4017
+	powerActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.StoragePowerActorAddr)
+	if !found || err != nil {
+		panic(fmt.Sprintf("failed to get storage powerActor actor for computing total supply: %s", err))
+	}
+
+	// TODO: this 2 billion is coded for temporary compatibility with the Lotus implementation of this function,
+	// but including it here is brittle. Instead, this should inspect the reward actor's state which records
+	// exactly how much has actually been distributed in block rewards to this point, robust to various
+	// network initial conditions.
+	// https://github.com/filecoin-project/go-filecoin/issues/4017
+	total := big.NewInt(2e9)
+	total = big.Sub(total, rewardActor.Balance)
+	total = big.Sub(total, burntActor.Balance)
+	total = big.Sub(total, marketActor.Balance)
+
+	var st power.State
+	if found = ctx.Store().Get(powerActor.Head.Cid, &st); !found {
+		panic("failed to get storage powerActor state")
+	}
+
+	return big.Sub(total, st.TotalPledgeCollateral)
 }
 
 // patternContext implements the PatternContext
