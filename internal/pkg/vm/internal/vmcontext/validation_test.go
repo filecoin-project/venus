@@ -1,7 +1,15 @@
 package vmcontext
 
-// TODO: Bring back when chain-validation is compatible with specs-actors
-/*
+import (
+	"fmt"
+	"reflect"
+	"runtime"
+	"strings"
+	"testing"
+
+	"github.com/filecoin-project/chain-validation/suites"
+)
+
 // TestSkipper contains a list of test cases skipped by the implementation.
 type TestSkipper struct {
 	testSkips []suites.TestCase
@@ -24,7 +32,7 @@ var TestSuiteSkipper TestSkipper
 func init() {
 	// initialize the test skipper with tests being skipped
 	TestSuiteSkipper = TestSkipper{testSkips: []suites.TestCase{
-		// None!
+		// None
 	}}
 }
 
@@ -67,4 +75,3 @@ func caseName(testCase suites.TestCase) string {
 	toks := strings.Split(fqName, ".")
 	return toks[len(toks)-1]
 }
-*/
