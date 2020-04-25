@@ -87,7 +87,7 @@ type workerPorcelainAPI interface {
 
 type electionUtil interface {
 	GenerateElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error)
-	IsWinner(challengeTicket []byte, minerPower, networkPower big.Int) bool
+	IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool
 	GenerateWinningPoSt(ctx context.Context, allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]block.PoStProof, error)
 }
 
@@ -264,13 +264,13 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- NewOutputErr(err)
 		return
 	}
-	networkPower, err := electionPowerTable.Total(ctx)
+	networkPower, err := electionPowerTable.NetworkTotalPower(ctx)
 	if err != nil {
-		log.Errorf("failed to get total power: %s", err)
+		log.Errorf("failed to get network power: %s", err)
 		outCh <- NewOutputErr(err)
 		return
 	}
-	minerPower, err := electionPowerTable.MinerClaim(ctx, w.minerAddr)
+	minerPower, err := electionPowerTable.MinerClaimedPower(ctx, w.minerAddr)
 	if err != nil {
 		log.Errorf("failed to get power claim for miner: %s", err)
 		outCh <- NewOutputErr(err)

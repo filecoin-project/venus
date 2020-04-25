@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
@@ -34,16 +35,17 @@ func TestTotal(t *testing.T) {
 	cst, _, root := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis)
 
 	table := consensus.NewPowerTableView(state.NewView(cst, root), state.NewView(cst, root))
-	actual, err := table.Total(ctx)
+	networkPower, err := table.NetworkTotalPower(ctx)
 	require.NoError(t, err)
 
-	expected := abi.NewStoragePower(int64(uint64(constants.DevSectorSize) * numCommittedSectors * uint64(numMiners)))
-	assert.True(t, expected.Equals(actual))
+	// TODO: test that the QA power is used when it differs from raw byte power after gengen computes it properly
+	// https://github.com/filecoin-project/go-filecoin/issues/4011
+	expected := big.NewIntUnsigned(uint64(constants.DevSectorSize) * numCommittedSectors * uint64(numMiners))
+	assert.True(t, expected.Equals(networkPower))
 }
 
 func TestMiner(t *testing.T) {
 	tf.UnitTest(t)
-	t.Skip("power setting has become more complex and gengen setup and testing expectations need to reflect that")
 
 	ctx := context.Background()
 	kis := types.MustGenerateBLSKeyInfo(1)
@@ -53,7 +55,7 @@ func TestMiner(t *testing.T) {
 	addr := addrs[0]
 
 	table := consensus.NewPowerTableView(state.NewView(cst, root), state.NewView(cst, root))
-	actual, err := table.MinerClaim(ctx, addr)
+	actual, err := table.MinerClaimedPower(ctx, addr)
 	require.NoError(t, err)
 
 	expected := abi.NewStoragePower(int64(uint64(constants.DevSectorSize) * numCommittedSectors))
@@ -73,7 +75,7 @@ func TestNoPowerAfterSlash(t *testing.T) {
 	table := consensus.NewPowerTableView(state.NewView(cstPower, rootPower), state.NewView(cstFaults, rootFaults))
 
 	// verify that faulted miner claim is 0 power
-	claim, err := table.MinerClaim(ctx, addrsPower[2])
+	claim, err := table.MinerClaimedPower(ctx, addrsPower[2])
 	require.NoError(t, err)
 	assert.Equal(t, abi.NewStoragePower(0), claim)
 }
@@ -89,7 +91,7 @@ func TestTotalPowerUnaffectedBySlash(t *testing.T) {
 	table := consensus.NewPowerTableView(state.NewView(cstPower, rootPower), state.NewView(cstFaults, rootFaults))
 
 	// verify that faulted miner claim is 0 power
-	total, err := table.Total(ctx)
+	total, err := table.NetworkTotalPower(ctx)
 	require.NoError(t, err)
 	expected := abi.NewStoragePower(int64(uint64(constants.DevSectorSize) * numCommittedSectors * uint64(numMiners)))
 

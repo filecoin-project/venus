@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
@@ -20,6 +19,7 @@ import (
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -153,12 +153,18 @@ func (p *mStatusPlumbing) ChainTipSet(_ block.TipSetKey) (block.TipSet, error) {
 
 func (p *mStatusPlumbing) MinerStateView(baseKey block.TipSetKey) (MinerStateView, error) {
 	return &state.FakeStateView{
-		NetworkPower: abi.NewStoragePower(4),
+		Power: &state.NetworkPower{
+			RawBytePower:         big.NewInt(4),
+			QualityAdjustedPower: big.NewInt(4),
+			MinerCount:           0,
+			MinPowerMinerCount:   0,
+		},
 		Miners: map[address.Address]*state.FakeMinerState{
 			p.miner: {
-				Owner:        p.owner,
-				Worker:       p.worker,
-				ClaimedPower: abi.NewStoragePower(2),
+				Owner:           p.owner,
+				Worker:          p.worker,
+				ClaimedRawPower: abi.NewStoragePower(2),
+				ClaimedQAPower:  abi.NewStoragePower(2),
 			},
 		},
 	}, nil
@@ -177,8 +183,8 @@ func TestMinerGetStatus(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, plumbing.owner, status.OwnerAddress)
 	assert.Equal(t, plumbing.worker, status.WorkerAddress)
-	assert.Equal(t, "4", status.NetworkPower.String())
-	assert.Equal(t, "2", status.Power.String())
+	assert.Equal(t, "4", status.NetworkQualityAdjustedPower.String())
+	assert.Equal(t, "2", status.QualityAdjustedPower.String())
 }
 
 type mSetWorkerPlumbing struct {

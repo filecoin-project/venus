@@ -66,7 +66,7 @@ type TicketValidator interface {
 
 // ElectionValidator validates that an election fairly produced a winner.
 type ElectionValidator interface {
-	IsWinner(challengeTicket []byte, minerPower, networkPower big.Int) bool
+	IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool
 	VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error
 	VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, allSectorInfos []abi.SectorInfo, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address) (bool, error)
 }
@@ -279,13 +279,13 @@ func (c *Expected) validateMining(ctx context.Context,
 		// TODO this is not using nominal power, which must take into account undeclared faults
 		// TODO the nominal power must be tested against the minimum (power.minerNominalPowerMeetsConsensusMinimum)
 		// See https://github.com/filecoin-project/go-filecoin/issues/3958
-		minerPower, err := electionPowerTable.MinerClaim(ctx, blk.Miner)
+		minerPower, err := electionPowerTable.MinerClaimedPower(ctx, blk.Miner)
 		if err != nil {
 			return errors.Wrap(err, "failed to read miner claim from power table")
 		}
-		networkPower, err := electionPowerTable.Total(ctx)
+		networkPower, err := electionPowerTable.NetworkTotalPower(ctx)
 		if err != nil {
-			return errors.Wrap(err, "failed to read networkPower from power table")
+			return errors.Wrap(err, "failed to read power table")
 		}
 		electionVRFDigest := blk.ElectionProof.VRFProof.Digest()
 		wins := c.IsWinner(electionVRFDigest[:], minerPower, networkPower)
