@@ -315,15 +315,14 @@ func TestApplyBLSMessages(t *testing.T) {
 	defer cancel()
 
 	ki := types.MustGenerateMixedKeyInfo(5, 5)
-	mockSignerVal := types.NewMockSigner(ki)
-	mockSigner := &mockSignerVal
+	mockSigner := types.NewMockSigner(ki)
 
 	newCid := types.NewCidForTestGetter()
 	stateRoot := newCid()
 	baseBlock := &block.Block{Height: 0, StateRoot: e.NewCid(stateRoot), Ticket: block.Ticket{VRFProof: []byte{0}}}
 	tipSet := block.RequireNewTipSet(t, baseBlock)
 
-	st, pool, addrs, bs := sharedSetup(t, mockSignerVal)
+	st, pool, addrs, bs := sharedSetup(t, mockSigner)
 	getStateTree := func(c context.Context, tsKey block.TipSetKey) (state.Tree, error) {
 		return st, nil
 	}
@@ -345,17 +344,17 @@ func TestApplyBLSMessages(t *testing.T) {
 		} else {
 			addr = secpAddress
 		}
-		smsg := requireSignedMessage(t, mockSigner, addr, addrs[3], uint64(i/2), types.NewAttoFILFromFIL(1))
+		smsg := requireSignedMessage(t, &mockSigner, addr, addrs[3], uint64(i/2), types.NewAttoFILFromFIL(1))
 		_, err := pool.Add(ctx, smsg, abi.ChainEpoch(0))
 		require.NoError(t, err)
 	}
 
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
-		API: th.NewDefaultFakeWorkerPorcelainAPI(mockSigner.Addresses[5], rnd),
+		API: th.NewDefaultFakeWorkerPorcelainAPI((&mockSigner).Addresses[5], rnd),
 
 		MinerAddr:      addrs[3],
 		MinerOwnerAddr: addrs[4],
-		WorkerSigner:   mockSigner,
+		WorkerSigner:   &mockSigner,
 
 		TipSetMetadata: fakeTSMetadata{},
 		GetStateTree:   getStateTree,

@@ -29,7 +29,7 @@ func TestTotal(t *testing.T) {
 	ctx := context.Background()
 	numCommittedSectors := uint64(19)
 	numMiners := 3
-	kis := types.MustGenerateBLSKeyInfo(numMiners)
+	kis := types.MustGenerateBLSKeyInfo(numMiners, 0)
 
 	cst, _, root := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis)
 
@@ -46,7 +46,7 @@ func TestMiner(t *testing.T) {
 	t.Skip("power setting has become more complex and gengen setup and testing expectations need to reflect that")
 
 	ctx := context.Background()
-	kis := types.MustGenerateBLSKeyInfo(1)
+	kis := types.MustGenerateBLSKeyInfo(1, 0)
 
 	numCommittedSectors := uint64(10)
 	cst, addrs, root := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis)
@@ -67,7 +67,7 @@ func TestNoPowerAfterSlash(t *testing.T) {
 	ctx := context.Background()
 	numCommittedSectors := uint64(19)
 	numMiners := 3
-	kis := types.MustGenerateBLSKeyInfo(numMiners)
+	kis := types.MustGenerateBLSKeyInfo(numMiners, 0)
 	cstPower, addrsPower, rootPower := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis)
 	cstFaults, _, rootFaults := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis[0:2]) // drop the third key
 	table := consensus.NewPowerTableView(state.NewView(cstPower, rootPower), state.NewView(cstFaults, rootFaults))
@@ -83,7 +83,7 @@ func TestTotalPowerUnaffectedBySlash(t *testing.T) {
 	ctx := context.Background()
 	numCommittedSectors := uint64(19)
 	numMiners := 3
-	kis := types.MustGenerateBLSKeyInfo(numMiners)
+	kis := types.MustGenerateBLSKeyInfo(numMiners, 0)
 	cstPower, _, rootPower := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis)
 	cstFaults, _, rootFaults := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis[0:2]) // drop the third key
 	table := consensus.NewPowerTableView(state.NewView(cstPower, rootPower), state.NewView(cstFaults, rootFaults))
