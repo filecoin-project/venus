@@ -126,7 +126,7 @@ additional sectors.`,
 		}
 
 		return re.Emit(&MinerCreateResult{
-			Address: *addr,
+			Address: addr,
 			GasUsed: gas.NewGas(0),
 			Preview: false,
 		})

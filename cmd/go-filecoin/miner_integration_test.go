@@ -36,17 +36,17 @@ func TestMinerCreateIntegration(t *testing.T) {
 	minerAddr, err := porcelainAPI.MinerCreate(ctx, defaultAddr, types.NewAttoFILFromFIL(1), 10000, 2048, peer, types.NewAttoFILFromFIL(1))
 	require.NoError(t, err)
 
-	tsk := newMiner.Chain().ChainReader.GetHead()
-	status, err := porcelainAPI.MinerGetStatus(ctx, *minerAddr, tsk)
-	require.NoError(t, err)
-
 	// inspect results on chain
+	tsk := newMiner.Chain().ChainReader.GetHead()
 	view, err := newMiner.Chain().ActorState.StateView(tsk)
 	require.NoError(t, err)
+	owner, _, err := view.MinerControlAddresses(ctx, minerAddr)
+	require.NoError(t, err)
+
 	resolvedDefaultAddress, err := view.InitResolveAddress(ctx, defaultAddr)
 	require.NoError(t, err)
 
-	assert.Equal(t, resolvedDefaultAddress, status.OwnerAddress)
+	assert.Equal(t, resolvedDefaultAddress, owner)
 }
 
 func TestSetPrice(t *testing.T) {

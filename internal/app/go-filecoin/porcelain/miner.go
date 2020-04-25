@@ -37,7 +37,7 @@ type MinerStateView interface {
 	MinerPeerID(ctx context.Context, maddr address.Address) (peer.ID, error)
 	MinerSectorSize(ctx context.Context, maddr address.Address) (abi.SectorSize, error)
 	MinerSectorCount(ctx context.Context, maddr address.Address) (int, error)
-	MinerDeadlines(ctx context.Context, maddr address.Address, currentEpoch abi.ChainEpoch) (*miner.Deadlines, error)
+	MinerDeadlines(ctx context.Context, maddr address.Address) (*miner.Deadlines, error)
 	PowerNetworkTotal(ctx context.Context) (*state.NetworkPower, error)
 	MinerClaimedPower(ctx context.Context, miner address.Address) (raw, qa abi.StoragePower, err error)
 	MinerInfo(ctx context.Context, maddr address.Address) (miner.MinerInfo, error)
@@ -56,20 +56,20 @@ func MinerCreate(
 	sectorSize abi.SectorSize,
 	pid peer.ID,
 	collateral types.AttoFIL,
-) (_ *address.Address, err error) {
+) (_ address.Address, err error) {
 	if minerOwnerAddr == (address.Address{}) {
 		minerOwnerAddr, err = plumbing.WalletDefaultAddress()
 		if err != nil {
-			return nil, err
+			return address.Undef, err
 		}
 	}
 
 	addr, err := plumbing.ConfigGet("mining.minerAddress")
 	if err != nil {
-		return nil, err
+		return address.Undef, err
 	}
 	if addr != address.Undef {
-		return nil, fmt.Errorf("can only have one miner per node")
+		return address.Undef, fmt.Errorf("can only have one miner per node")
 	}
 
 	params := power.CreateMinerParams{
@@ -90,7 +90,7 @@ func MinerCreate(
 		&params,
 	)
 	if err != nil {
-		return nil, err
+		return address.Undef, err
 	}
 
 	var result power.CreateMinerReturn
@@ -102,14 +102,14 @@ func MinerCreate(
 		return encoding.Decode(receipt.ReturnValue, &result)
 	})
 	if err != nil {
-		return nil, err
+		return address.Undef, err
 	}
 
 	if err = plumbing.ConfigSet("mining.minerAddress", result.RobustAddress.String()); err != nil {
-		return nil, err
+		return address.Undef, err
 	}
 
-	return &result.RobustAddress, nil
+	return result.RobustAddress, nil
 }
 
 // mpcAPI is the subset of the plumbing.API that MinerPreviewCreate uses.
@@ -201,15 +201,6 @@ type MinerStatus struct {
 
 // MinerGetStatus queries the power of a given miner.
 func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr address.Address, key block.TipSetKey) (MinerStatus, error) {
-	ts, err := plumbing.ChainTipSet(key)
-	if err != nil {
-		return MinerStatus{}, err
-	}
-	epoch, err := ts.Height()
-	if err != nil {
-		return MinerStatus{}, err
-	}
-
 	view, err := plumbing.MinerStateView(key)
 	if err != nil {
 		return MinerStatus{}, err
@@ -230,7 +221,7 @@ func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr
 	if err != nil {
 		return MinerStatus{}, err
 	}
-	deadlines, err := view.MinerDeadlines(ctx, minerAddr, epoch)
+	deadlines, err := view.MinerDeadlines(ctx, minerAddr)
 	if err != nil {
 		return MinerStatus{}, err
 	}

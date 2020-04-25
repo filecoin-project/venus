@@ -149,7 +149,7 @@ func (v *FakeStateView) MinerPledgeCollateral(_ context.Context, maddr address.A
 	return m.PledgeRequirement, m.PledgeBalance, nil
 }
 
-func (v *FakeStateView) MinerDeadlines(ctx context.Context, maddr address.Address, currentEpoch abi.ChainEpoch) (*miner.Deadlines, error) {
+func (v *FakeStateView) MinerDeadlines(ctx context.Context, maddr address.Address) (*miner.Deadlines, error) {
 	return nil, nil
 }
 
