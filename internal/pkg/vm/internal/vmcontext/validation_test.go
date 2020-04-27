@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/chain-validation/suites"
+	"github.com/filecoin-project/chain-validation/suites/message"
+	"github.com/filecoin-project/chain-validation/suites/tipset"
 )
 
 // TestSkipper contains a list of test cases skipped by the implementation.
@@ -32,7 +34,17 @@ var TestSuiteSkipper TestSkipper
 func init() {
 	// initialize the test skipper with tests being skipped
 	TestSuiteSkipper = TestSkipper{testSkips: []suites.TestCase{
-		// None
+		message.TestAccountActorCreation,
+		message.TestInitActorSequentialIDAddressCreate,
+		message.TestMessageApplicationEdgecases,
+		message.TestMultiSigActor,
+		//message.TestNestedSends,
+		message.TestPaych,
+		message.TestValueTransferAdvance,
+		message.TestValueTransferSimple,
+
+		tipset.TestBlockMessageDeduplication,
+		tipset.TestMinerRewardsAndPenalties,
 	}}
 }
 
