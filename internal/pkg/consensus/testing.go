@@ -71,7 +71,7 @@ func (fem *FakeElectionMachine) GenerateWinningPoSt(ctx context.Context, allSect
 	}}, nil
 }
 
-func (fem *FakeElectionMachine) IsWinner(_ []byte, _, _, _ uint64) bool {
+func (fem *FakeElectionMachine) IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool {
 	return true
 }
 
@@ -111,7 +111,7 @@ type FailingElectionValidator struct{}
 
 var _ ElectionValidator = new(FailingElectionValidator)
 
-func (fev *FailingElectionValidator) IsWinner(_ []byte, _, _, _ uint64) bool {
+func (fev *FailingElectionValidator) IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool {
 	return false
 }
 

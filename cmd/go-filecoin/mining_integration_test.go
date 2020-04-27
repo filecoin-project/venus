@@ -101,7 +101,7 @@ func TestMiningAddPieceAndSealNow(t *testing.T) {
 		power, err := minerNode.MinerStatus(ctx, miningAddress)
 		require.NoError(t, err)
 
-		if power.Power.GreaterThan(fbig.Zero()) {
+		if power.QualityAdjustedPower.GreaterThan(fbig.Zero()) {
 			// miner has gained power, so seal was successful
 			return
 		}

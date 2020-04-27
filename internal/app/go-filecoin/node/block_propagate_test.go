@@ -109,9 +109,7 @@ func TestChainSyncWithMessages(t *testing.T) {
 	// genesis has two accounts
 	genCfg := &gengen.GenesisCfg{}
 	require.NoError(t, gengen.MinerConfigs(MakeTestGenCfg(t, 1).Miners)(genCfg))
-	require.NoError(t, gengen.GenKeys(3)(genCfg))
-	require.NoError(t, gengen.GenKeyPrealloc(1, "100000")(genCfg))
-	require.NoError(t, gengen.GenKeyPrealloc(2, "100")(genCfg))
+	require.NoError(t, gengen.GenKeys(3, "1000000")(genCfg))
 	require.NoError(t, gengen.NetworkName(version.TEST)(genCfg))
 	cs := MakeChainSeed(t, genCfg)
 	genUnixSeconds := int64(1234567890)
