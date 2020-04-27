@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"io"
 	mrand "math/rand"
-	"sort"
 
 	address "github.com/filecoin-project/go-address"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
@@ -20,6 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/system"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cid "github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -53,9 +53,6 @@ func (s *cstore) Context() context.Context {
 
 var (
 	rewardActorInitialBalance = types.NewAttoFILFromFIL(1.4e9)
-	defaultAccounts           = map[address.Address]abi.TokenAmount{
-		builtin.BurntFundsActorAddr: abi.NewTokenAmount(0),
-	}
 )
 
 type GenesisGenerator struct {
@@ -65,7 +62,8 @@ type GenesisGenerator struct {
 	cst       cbor.IpldStore
 	vm        genesis.VM
 
-	keys      []*crypto.KeyInfo
+	keys      []*crypto.KeyInfo // Keys for pre-alloc accounts
+	vrkey     *crypto.KeyInfo   // Key for verified registry root
 	pnrg      *mrand.Rand
 	chainRand crypto.ChainRandomnessSource
 	cfg       *GenesisCfg
@@ -85,14 +83,21 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 
 func (g *GenesisGenerator) Init(cfg *GenesisCfg) error {
 	g.pnrg = mrand.New(mrand.NewSource(cfg.Seed))
+
 	keys, err := genKeys(cfg.KeysToGen, g.pnrg)
 	if err != nil {
 		return err
 	}
 	keys = append(keys, cfg.ImportKeys...)
 	g.keys = keys
-	g.cfg = cfg
 
+	vrKey, err := crypto.NewSecpKeyFromSeed(g.pnrg)
+	if err != nil {
+		return err
+	}
+	g.vrkey = &vrKey
+
+	g.cfg = cfg
 	return nil
 }
 
@@ -104,7 +109,10 @@ func (g *GenesisGenerator) flush(ctx context.Context) (cid.Cid, error) {
 	return g.stateTree.Commit(ctx)
 }
 
-func (g *GenesisGenerator) createActor(addr address.Address, codeCid cid.Cid, balance abi.TokenAmount, stateFn func() (interface{}, error)) (*actor.Actor, error) {
+func (g *GenesisGenerator) createSingletonActor(ctx context.Context, addr address.Address, codeCid cid.Cid, balance abi.TokenAmount, stateFn func() (interface{}, error)) (*actor.Actor, error) {
+	if addr.Protocol() != address.ID {
+		return nil, fmt.Errorf("non-singleton actor would be missing from Init actor's address table")
+	}
 	state, err := stateFn()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create state")
@@ -120,23 +128,32 @@ func (g *GenesisGenerator) createActor(addr address.Address, codeCid cid.Cid, ba
 		Balance:    balance,
 		Head:       e.NewCid(headCid),
 	}
-	if err := g.stateTree.SetActor(context.Background(), addr, &a); err != nil {
+	if err := g.stateTree.SetActor(ctx, addr, &a); err != nil {
 		return nil, fmt.Errorf("failed to create actor during genesis block creation")
 	}
 
 	return &a, nil
 }
 
-func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
+func (g *GenesisGenerator) setupBuiltInActors(ctx context.Context) error {
+	emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore()).Root()
+	if err != nil {
+		return err
+	}
+	emptyArray, err := adt.MakeEmptyArray(g.vm.ContextStore()).Root()
+	if err != nil {
+		return err
+	}
 
-	_, err := g.createActor(builtin.SystemActorAddr, builtin.SystemActorCodeID, specsbig.Zero(), func() (interface{}, error) {
+	_, err = g.createSingletonActor(ctx, builtin.SystemActorAddr, builtin.SystemActorCodeID, big.Zero(), func() (interface{}, error) {
 		return &system.State{}, nil
 	})
 	if err != nil {
 		return err
 	}
 
-	_, err = g.createActor(builtin.CronActorAddr, builtin.CronActorCodeID, specsbig.Zero(), func() (interface{}, error) {
+	_, err = g.createSingletonActor(ctx, builtin.CronActorAddr, builtin.CronActorCodeID, big.Zero(), func() (interface{}, error) {
+		// TODO: replace this with value form specs-actors after https://github.com/filecoin-project/specs-actors/pull/326
 		return &cron.State{Entries: []cron.Entry{{
 			Receiver:  builtin.StoragePowerActorAddr,
 			MethodNum: builtin.MethodsPower.OnEpochTickEnd,
@@ -146,53 +163,28 @@ func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
 		return err
 	}
 
-	_, err = g.createActor(builtin.InitActorAddr, builtin.InitActorCodeID, specsbig.Zero(), func() (interface{}, error) {
-		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore()).Root()
-		if err != nil {
-			return nil, err
-		}
+	_, err = g.createSingletonActor(ctx, builtin.InitActorAddr, builtin.InitActorCodeID, big.Zero(), func() (interface{}, error) {
 		return init_.ConstructState(emptyMap, g.cfg.Network), nil
 	})
 	if err != nil {
 		return err
 	}
 
-	rewardActor, err := g.createActor(builtin.RewardActorAddr, builtin.RewardActorCodeID, rewardActorInitialBalance, func() (interface{}, error) {
-		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore()).Root()
-		if err != nil {
-			return nil, err
-		}
+	_, err = g.createSingletonActor(ctx, builtin.RewardActorAddr, builtin.RewardActorCodeID, rewardActorInitialBalance, func() (interface{}, error) {
 		return reward.ConstructState(emptyMap), nil
 	})
 	if err != nil {
 		return err
 	}
-	if err := g.stateTree.SetActor(ctx, builtin.RewardActorAddr, rewardActor); err != nil {
-		return err
-	}
 
-	_, err = g.createActor(builtin.StoragePowerActorAddr, builtin.StoragePowerActorCodeID, specsbig.Zero(), func() (interface{}, error) {
-		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore()).Root()
-		if err != nil {
-			return nil, err
-		}
+	_, err = g.createSingletonActor(ctx, builtin.StoragePowerActorAddr, builtin.StoragePowerActorCodeID, big.Zero(), func() (interface{}, error) {
 		return power.ConstructState(emptyMap), nil
 	})
 	if err != nil {
 		return err
 	}
 
-	_, err = g.createActor(builtin.StorageMarketActorAddr, builtin.StorageMarketActorCodeID, specsbig.Zero(), func() (interface{}, error) {
-		emptyArray, err := adt.MakeEmptyArray(g.vm.ContextStore()).Root()
-		if err != nil {
-			return nil, err
-		}
-
-		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore()).Root()
-		if err != nil {
-			return nil, err
-		}
-
+	_, err = g.createSingletonActor(ctx, builtin.StorageMarketActorAddr, builtin.StorageMarketActorCodeID, big.Zero(), func() (interface{}, error) {
 		emptyMSet, err := market.MakeEmptySetMultimap(g.vm.ContextStore()).Root()
 		if err != nil {
 			return nil, err
@@ -203,38 +195,27 @@ func (g *GenesisGenerator) setupDefaultActors(ctx context.Context) error {
 		return err
 	}
 
-	// sort addresses so genesis generation will be stable
-	sortedAddresses := []string{}
-	for addr := range defaultAccounts {
-		sortedAddresses = append(sortedAddresses, string(addr.Bytes()))
-	}
-	sort.Strings(sortedAddresses)
-	// BurntFunds
-	for _, addrBytes := range sortedAddresses {
-		addr, err := address.NewFromBytes([]byte(addrBytes))
+	_, err = g.createSingletonActor(ctx, builtin.VerifiedRegistryActorAddr, builtin.VerifiedRegistryActorCodeID, big.Zero(), func() (interface{}, error) {
+		rootAddr, err := g.vrkey.Address()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		balance := defaultAccounts[addr]
-		if addr.Protocol() == address.ID {
-			var state account.State
-			state.Address = addr
-			stateCid, _, err := g.store.Put(ctx, &state)
-			if err != nil {
-				return err
-			}
-			a := actor.NewActor(builtin.AccountActorCodeID, balance, stateCid)
-			if err := g.stateTree.SetActor(ctx, addr, a); err != nil {
-				return err
-			}
-		} else {
-			_, err = g.vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr, builtin.MethodSend, balance, nil, &g.chainRand)
-			if err != nil {
-				return err
-			}
-		}
+		return verifreg.ConstructState(emptyMap, rootAddr), nil
+	})
+	if err != nil {
+		return err
 	}
 
+	_, err = g.createSingletonActor(ctx, builtin.BurntFundsActorAddr, builtin.AccountActorCodeID, big.Zero(), func() (interface{}, error) {
+		pkAddr, err := address.NewSecp256k1Address([]byte{})
+		if err != nil {
+			return nil, err
+		}
+		return &account.State{Address: pkAddr}, nil
+	})
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -284,7 +265,7 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 		Miner:           builtin.SystemActorAddr,
 		Ticket:          genesis.Ticket,
 		Parents:         block.NewTipSetKey(),
-		ParentWeight:    specsbig.Zero(),
+		ParentWeight:    big.Zero(),
 		Height:          0,
 		StateRoot:       e.NewCid(stateRoot),
 		MessageReceipts: e.NewCid(emptyAMTCid),
@@ -306,18 +287,44 @@ func genKeys(cfgkeys int, pnrg io.Reader) ([]*crypto.KeyInfo, error) {
 	return keys, nil
 }
 
+type sectorCommitInfo struct {
+	miner          address.Address
+	owner          address.Address
+	comm           *CommitConfig
+	dealIDs        []abi.DealID
+	dealWeight     abi.DealWeight
+	verifiedWeight abi.DealWeight
+	rawPower       abi.StoragePower
+	qaPower        abi.StoragePower
+	expiration     abi.ChainEpoch
+}
+
 func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInfo, error) {
 	var minfos []*RenderedMinerInfo
 
-	// Setup total network power
-	err := g.initPowerTable(ctx)
-	if err != nil {
-		return nil, err
-	}
+	var sectorsToCommit []*sectorCommitInfo
+	networkQAPower := big.Zero()
 
+	// Estimate the first epoch's block reward as a linear release over 6 years.
+	// The actual release will be initially faster, with exponential decay.
+	// Replace this code with calls to the reward actor when it's fixed.
+	// See https://github.com/filecoin-project/specs-actors/issues/317
+	sixYearEpochs := 6 * 365 * 86400 / miner.EpochDurationSeconds
+	initialBlockReward := big.Div(rewardActorInitialBalance, big.NewInt(int64(sixYearEpochs)))
+
+	// First iterate all miners and sectors to compute sector info, and accumulate the total network power that
+	// will be present (which determines the necessary pledge amounts).
+	// One reason that this state can't be computed purely by applying messages is that we wish to compute the
+	// initial pledge for the sectors based on the total genesis power, regardless of the order in which
+	// sectors are inserted here.
 	for _, m := range g.cfg.Miners {
 		// Create miner actor
-		wAddr, mIDAddr, err := g.createMiner(ctx, m)
+		ownerAddr, actorAddr, err := g.createMiner(ctx, m)
+		if err != nil {
+			return nil, err
+		}
+
+		mState, err := g.loadMinerState(ctx, actorAddr)
 		if err != nil {
 			return nil, err
 		}
@@ -325,76 +332,104 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		// Add configured deals to the market actor with miner as provider and worker as client
 		dealIDs := []abi.DealID{}
 		if len(m.CommittedSectors) > 0 {
-			dealIDs, err = g.commitDeals(ctx, wAddr, mIDAddr, m)
+			ownerKey := g.keys[m.Owner]
+			dealIDs, err = g.publishDeals(actorAddr, ownerAddr, ownerKey, m.CommittedSectors)
 			if err != nil {
 				return nil, err
 			}
 		}
 
+		minerQAPower := big.Zero()
 		for i, comm := range m.CommittedSectors {
+			// Adjust sector expiration up to the epoch before the subsequent proving period starts.
+			periodOffset := mState.Info.ProvingPeriodBoundary // soon: mState.ProvingPeriodStart % miner.WPoStProvingPeriod
+			expiryOffset := abi.ChainEpoch(comm.DealCfg.EndEpoch+1) % miner.WPoStProvingPeriod
+			sectorExpiration := abi.ChainEpoch(comm.DealCfg.EndEpoch) + miner.WPoStProvingPeriod + (periodOffset - expiryOffset)
+
 			// Acquire deal weight value
 			// call deal verify market actor to do calculation
-			dealWeight, err := g.getDealWeight(dealIDs[i], abi.ChainEpoch(comm.DealCfg.EndEpoch), mIDAddr)
+			dealWeight, verifiedWeight, err := g.getDealWeight(dealIDs[i], sectorExpiration, actorAddr)
 			if err != nil {
 				return nil, err
 			}
 
-			// Update Power
-			// directly set power actor state to new power accounting for deal weight duration and sector size
-			pledge, err := g.updatePower(ctx, dealWeight, m.SectorSize, abi.ChainEpoch(comm.DealCfg.EndEpoch), mIDAddr)
-			if err != nil {
-				return nil, err
-			}
+			rawPower, qaPower := computeSectorPower(m.SectorSize, sectorExpiration, dealWeight, verifiedWeight)
 
-			// Put sectors in miner sector sets
-			// add sector info for given sector to proving set and sector set and register sector expiry on cron
-			err = g.putSectors(ctx, comm, mIDAddr, dealIDs[i], dealWeight, pledge)
-			if err != nil {
-				return nil, err
-			}
+			sectorsToCommit = append(sectorsToCommit, &sectorCommitInfo{
+				miner:          actorAddr,
+				owner:          ownerAddr,
+				comm:           comm,
+				dealIDs:        []abi.DealID{dealIDs[i]},
+				dealWeight:     dealWeight,
+				verifiedWeight: verifiedWeight,
+				rawPower:       rawPower,
+				qaPower:        qaPower,
+				expiration:     sectorExpiration,
+			})
+			minerQAPower = big.Add(minerQAPower, qaPower)
+			networkQAPower = big.Add(networkQAPower, qaPower)
 		}
-		power, err := g.getPower(ctx, mIDAddr)
+
+		minfo := &RenderedMinerInfo{
+			Address: actorAddr,
+			Owner:   m.Owner,
+			Power:   minerQAPower,
+		}
+		minfos = append(minfos, minfo)
+	}
+
+	// Now commit the sectors and power updates.
+	for _, sector := range sectorsToCommit {
+		// Update power, setting state directly
+		sectorPledge, err := g.updatePower(ctx, sector.miner, sector.rawPower, sector.qaPower, networkQAPower, initialBlockReward)
 		if err != nil {
 			return nil, err
 		}
-		minfo := &RenderedMinerInfo{
-			Address: mIDAddr,
-			Owner:   m.Owner,
-			Power:   power,
+
+		// Put sector info in miner sector set.
+		err = g.putSector(ctx, sector, sectorPledge)
+		if err != nil {
+			return nil, err
 		}
-		minfos = append(minfos, minfo)
+
+		// Transfer the pledge amount from the owner to the miner actor
+		_, err = g.vm.ApplyGenesisMessage(sector.owner, sector.miner, builtin.MethodSend, sectorPledge, nil, &g.chainRand)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return minfos, nil
 }
 
-func (g *GenesisGenerator) initPowerTable(ctx context.Context) error {
-	networkPower := specsbig.Zero()
-	for _, m := range g.cfg.Miners {
-		networkPower = specsbig.Add(networkPower, specsbig.NewInt(int64(m.SectorSize)*int64(len(m.CommittedSectors))))
-	}
-	powAct, found, err := g.stateTree.GetActor(ctx, builtin.StoragePowerActorAddr)
+func (g *GenesisGenerator) loadMinerState(ctx context.Context, actorAddr address.Address) (*miner.State, error) {
+	mAct, found, err := g.stateTree.GetActor(ctx, actorAddr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !found {
-		return fmt.Errorf("state tree could not find power actor")
+		return nil, fmt.Errorf("no such miner actor %s", actorAddr)
 	}
-	var powerActorState power.State
-	_, err = g.store.Get(ctx, powAct.Head.Cid, &powerActorState)
+	var mState miner.State
+	_, err = g.store.Get(ctx, mAct.Head.Cid, &mState)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	powerActorState.TotalRawBytePower = networkPower
-	newPowCid, _, err := g.store.Put(ctx, &powerActorState)
-	if err != nil {
-		return err
-	}
-	powAct.Head = e.NewCid(newPowCid)
-	return g.stateTree.SetActor(ctx, builtin.StoragePowerActorAddr, powAct)
+	return &mState, nil
 }
 
 func (g *GenesisGenerator) createMiner(ctx context.Context, m *CreateStorageMinerConfig) (address.Address, address.Address, error) {
-	wAddr, err := g.keys[m.Owner].Address()
+	pkAddr, err := g.keys[m.Owner].Address()
+	if err != nil {
+		return address.Undef, address.Undef, err
+	}
+
+	// Resolve worker account's ID address.
+	stateRoot, err := g.flush(ctx)
+	if err != nil {
+		return address.Undef, address.Undef, err
+	}
+	view := gfcstate.NewView(g.cst, stateRoot)
+	ownerAddr, err := view.InitResolveAddress(ctx, pkAddr)
 	if err != nil {
 		return address.Undef, address.Undef, err
 	}
@@ -408,22 +443,16 @@ func (g *GenesisGenerator) createMiner(ctx context.Context, m *CreateStorageMine
 		pid = p
 	} else {
 		// this is just deterministically deriving from the owner
-		h, err := mh.Sum(wAddr.Bytes(), mh.SHA2_256, -1)
+		h, err := mh.Sum(ownerAddr.Bytes(), mh.SHA2_256, -1)
 		if err != nil {
 			return address.Undef, address.Undef, err
 		}
 		pid = peer.ID(h)
 	}
 
-	// give collateral to account actor
-	_, err = g.vm.ApplyGenesisMessage(builtin.RewardActorAddr, wAddr, builtin.MethodSend, abi.NewTokenAmount(100000), nil, &g.chainRand)
-	if err != nil {
-		return address.Undef, address.Undef, err
-	}
-
-	out, err := g.vm.ApplyGenesisMessage(wAddr, builtin.StoragePowerActorAddr, builtin.MethodsPower.CreateMiner, abi.NewTokenAmount(100000), &power.CreateMinerParams{
-		Owner:      wAddr,
-		Worker:     wAddr,
+	out, err := g.vm.ApplyGenesisMessage(ownerAddr, builtin.StoragePowerActorAddr, builtin.MethodsPower.CreateMiner, big.Zero(), &power.CreateMinerParams{
+		Owner:      ownerAddr,
+		Worker:     ownerAddr,
 		Peer:       pid,
 		SectorSize: m.SectorSize,
 	}, &g.chainRand)
@@ -433,29 +462,16 @@ func (g *GenesisGenerator) createMiner(ctx context.Context, m *CreateStorageMine
 
 	// get miner ID address
 	ret := out.(*power.CreateMinerReturn)
-	return wAddr, ret.IDAddress, nil
+	return ownerAddr, ret.IDAddress, nil
 }
 
-func (g *GenesisGenerator) commitDeals(ctx context.Context, addr, mIDAddr address.Address, m *CreateStorageMinerConfig) ([]abi.DealID, error) {
-
-	comms := m.CommittedSectors
-	// Look up worker address's id address
-	stateRoot, err := g.flush(ctx)
-	if err != nil {
-		return nil, err
-	}
-	view := gfcstate.NewView(g.cst, stateRoot)
-	workerID, err := view.InitResolveAddress(ctx, addr)
-	if err != nil {
-		return nil, err
-	}
-
+func (g *GenesisGenerator) publishDeals(actorAddr, clientAddr address.Address, clientkey *crypto.KeyInfo, comms []*CommitConfig) ([]abi.DealID, error) {
 	// Add 0 balance to escrow and locked table
-	_, err = g.vm.ApplyGenesisMessage(addr, builtin.StorageMarketActorAddr, builtin.MethodsMarket.AddBalance, specsbig.Zero(), &workerID, &g.chainRand)
+	_, err := g.vm.ApplyGenesisMessage(clientAddr, builtin.StorageMarketActorAddr, builtin.MethodsMarket.AddBalance, big.Zero(), &clientAddr, &g.chainRand)
 	if err != nil {
 		return nil, err
 	}
-	_, err = g.vm.ApplyGenesisMessage(addr, builtin.StorageMarketActorAddr, builtin.MethodsMarket.AddBalance, specsbig.Zero(), &mIDAddr, &g.chainRand)
+	_, err = g.vm.ApplyGenesisMessage(clientAddr, builtin.StorageMarketActorAddr, builtin.MethodsMarket.AddBalance, big.Zero(), &actorAddr, &g.chainRand)
 	if err != nil {
 		return nil, err
 	}
@@ -466,19 +482,20 @@ func (g *GenesisGenerator) commitDeals(ctx context.Context, addr, mIDAddr addres
 		proposal := market.DealProposal{
 			PieceCID:             comm.DealCfg.CommP,
 			PieceSize:            abi.PaddedPieceSize(comm.DealCfg.PieceSize),
-			Client:               workerID,
-			Provider:             mIDAddr,
+			VerifiedDeal:         comm.DealCfg.Verified,
+			Client:               clientAddr,
+			Provider:             actorAddr,
 			StartEpoch:           0,
-			EndEpoch:             abi.ChainEpoch(comm.DealCfg.EndEpoch), // TODO min and max epoch bounds
-			StoragePricePerEpoch: specsbig.Zero(),
-			ProviderCollateral:   specsbig.Zero(), // collateral should actually be good
-			ClientCollateral:     specsbig.Zero(),
+			EndEpoch:             abi.ChainEpoch(comm.DealCfg.EndEpoch),
+			StoragePricePerEpoch: big.Zero(),
+			ProviderCollateral:   big.Zero(), // collateral should actually be good
+			ClientCollateral:     big.Zero(),
 		}
 		proposalBytes, err := encoding.Encode(&proposal)
 		if err != nil {
 			return nil, err
 		}
-		sig, err := crypto.Sign(proposalBytes, g.keys[m.Owner].PrivateKey, crypto.SigTypeBLS)
+		sig, err := crypto.Sign(proposalBytes, clientkey.PrivateKey, crypto.SigTypeBLS)
 		if err != nil {
 			return nil, err
 		}
@@ -490,136 +507,126 @@ func (g *GenesisGenerator) commitDeals(ctx context.Context, addr, mIDAddr addres
 	}
 
 	// apply deal builtin.MethodsMarket.PublishStorageDeals
-	out, err := g.vm.ApplyGenesisMessage(addr, builtin.StorageMarketActorAddr, builtin.MethodsMarket.PublishStorageDeals, specsbig.Zero(), params, &g.chainRand)
+	out, err := g.vm.ApplyGenesisMessage(clientAddr, builtin.StorageMarketActorAddr, builtin.MethodsMarket.PublishStorageDeals, big.Zero(), params, &g.chainRand)
 	if err != nil {
 		return nil, err
 	}
 
 	ret := out.(*market.PublishStorageDealsReturn)
-
 	return ret.IDs, nil
 }
 
-func (g *GenesisGenerator) getDealWeight(dealID abi.DealID, endEpoch abi.ChainEpoch, minerIDAddr address.Address) (specsbig.Int, error) {
+func (g *GenesisGenerator) getDealWeight(dealID abi.DealID, sectorExpiry abi.ChainEpoch, minerIDAddr address.Address) (dealWeight, verifiedWeight abi.DealWeight, err error) {
 	weightParams := &market.VerifyDealsOnSectorProveCommitParams{
 		DealIDs:      []abi.DealID{dealID},
-		SectorExpiry: endEpoch,
+		SectorExpiry: sectorExpiry,
 	}
 
-	weightOut, err := g.vm.ApplyGenesisMessage(minerIDAddr, builtin.StorageMarketActorAddr, builtin.MethodsMarket.VerifyDealsOnSectorProveCommit, specsbig.Zero(), weightParams, &g.chainRand)
+	weightOut, err := g.vm.ApplyGenesisMessage(minerIDAddr, builtin.StorageMarketActorAddr, builtin.MethodsMarket.VerifyDealsOnSectorProveCommit, big.Zero(), weightParams, &g.chainRand)
 	if err != nil {
-		return specsbig.Zero(), err
+		return big.Zero(), big.Zero(), err
 	}
 	ret := weightOut.(*market.VerifyDealsOnSectorProveCommitReturn)
-	return ret.VerifiedDealWeight, nil
+	return ret.DealWeight, ret.VerifiedDealWeight, nil
 }
 
-// TODO: This might not be right (#4011)
-func (g *GenesisGenerator) updatePower(ctx context.Context, dealWeight specsbig.Int, sectorSize abi.SectorSize, endEpoch abi.ChainEpoch, minerIDAddr address.Address) (specsbig.Int, error) {
+func (g *GenesisGenerator) updatePower(ctx context.Context, miner address.Address, rawPower, qaPower, networkPower abi.StoragePower, epochBlockReward big.Int) (abi.TokenAmount, error) {
+	// NOTE: it would be much better to use OnSectorProveCommit, which would then calculate the initial pledge amount.
 	powAct, found, err := g.stateTree.GetActor(ctx, builtin.StoragePowerActorAddr)
 	if err != nil {
-		return specsbig.Zero(), err
+		return big.Zero(), err
 	}
 	if !found {
-		return specsbig.Zero(), fmt.Errorf("state tree could not find power actor")
+		return big.Zero(), fmt.Errorf("state tree could not find power actor")
 	}
-	var powerActorState power.State
-	_, err = g.store.Get(ctx, powAct.Head.Cid, &powerActorState)
+	var powerState power.State
+	_, err = g.store.Get(ctx, powAct.Head.Cid, &powerState)
 	if err != nil {
-		return specsbig.Zero(), err
+		return big.Zero(), err
 	}
-	weight := &power.SectorStorageWeightDesc{
-		SectorSize:         sectorSize,
-		Duration:           endEpoch,
-		DealWeight:         specsbig.NewInt(0),
-		VerifiedDealWeight: dealWeight,
-	}
-	spower := specsbig.NewInt(int64(sectorSize))
-	qapower := power.QAPowerForWeight(weight)
-	err = powerActorState.AddToClaim(&cstore{ctx, g.cst}, minerIDAddr, spower, qapower)
+
+	err = powerState.AddToClaim(&cstore{ctx, g.cst}, miner, rawPower, qaPower)
 	if err != nil {
-		return specsbig.Zero(), err
+		return big.Zero(), err
 	}
-	newPowCid, _, err := g.store.Put(ctx, &powerActorState)
+	// Adjusting the total power here is technically wrong and unnecessary (it happens in AddToClaim),
+	// but needed due to gain non-zero power in small networks when no miner meets the consensus minimum.
+	// At present, both impls ignore the consensus minimum and rely on this incorrect value.
+	// See https://github.com/filecoin-project/specs-actors/issues/266
+	//     https://github.com/filecoin-project/go-filecoin/issues/3958
+	powerState.TotalRawBytePower = big.Add(powerState.TotalRawBytePower, rawPower)
+	powerState.TotalQualityAdjPower = big.Add(powerState.TotalQualityAdjPower, qaPower)
+
+	// Persist new state.
+	newPowCid, _, err := g.store.Put(ctx, &powerState)
 	if err != nil {
-		return specsbig.Zero(), err
+		return big.Zero(), err
 	}
 	powAct.Head = e.NewCid(newPowCid)
 	err = g.stateTree.SetActor(ctx, builtin.StoragePowerActorAddr, powAct)
 	if err != nil {
-		return specsbig.Zero(), err
+		return big.Zero(), err
 	}
 
-	return qapower, nil
+	initialPledge := big.Div(big.Mul(qaPower, epochBlockReward), networkPower)
+	return initialPledge, nil
 }
 
-func (g *GenesisGenerator) putSectors(ctx context.Context, comm *CommitConfig, mIDAddr address.Address, dealID abi.DealID, dealWeight, pledge specsbig.Int) error {
-	mAct, found, err := g.stateTree.GetActor(ctx, mIDAddr)
+func (g *GenesisGenerator) putSector(ctx context.Context, sector *sectorCommitInfo, pledge abi.TokenAmount) error {
+	mAct, found, err := g.stateTree.GetActor(ctx, sector.miner)
 	if err != nil {
 		return err
 	}
 	if !found {
-		return fmt.Errorf("state tree could not find power actor")
+		return fmt.Errorf("mState tree could not find miner actor %s", sector.miner)
 	}
-	var minerActorState miner.State
-	_, err = g.store.Get(ctx, mAct.Head.Cid, &minerActorState)
+	var mState miner.State
+	_, err = g.store.Get(ctx, mAct.Head.Cid, &mState)
 	if err != nil {
 		return err
 	}
 
 	newSectorInfo := &miner.SectorOnChainInfo{
 		Info: miner.SectorPreCommitInfo{
-			RegisteredProof: comm.ProofType,
-			SectorNumber:    abi.SectorNumber(comm.SectorNum),
-			SealedCID:       comm.CommR,
+			RegisteredProof: sector.comm.ProofType,
+			SectorNumber:    sector.comm.SectorNum,
+			SealedCID:       sector.comm.CommR,
 			SealRandEpoch:   0,
-			DealIDs:         []abi.DealID{dealID},
-			Expiration:      abi.ChainEpoch(comm.DealCfg.EndEpoch),
+			DealIDs:         sector.dealIDs,
+			Expiration:      sector.expiration,
 		},
 		ActivationEpoch:    0,
-		DealWeight:         dealWeight,
-		VerifiedDealWeight: specsbig.NewInt(0), // TODO: what should this be?
+		DealWeight:         sector.dealWeight,
+		VerifiedDealWeight: sector.verifiedWeight,
 	}
-	err = minerActorState.PutSector(&cstore{ctx, g.cst}, newSectorInfo)
+	err = mState.PutSector(&cstore{ctx, g.cst}, newSectorInfo)
 	if err != nil {
 		return err
 	}
-	// Write miner actor
-	newMinerCid, _, err := g.store.Put(ctx, &minerActorState)
+
+	err = mState.AddNewSectors(sector.comm.SectorNum)
+	if err != nil {
+		return err
+	}
+
+	// Persist new state.
+	newMinerCid, _, err := g.store.Put(ctx, &mState)
 	if err != nil {
 		return err
 	}
 	mAct.Head = e.NewCid(newMinerCid)
-	err = g.stateTree.SetActor(ctx, mIDAddr, mAct)
-	if err != nil {
-		return err
-	}
-
-	// register sector expiry on cron
-	sectorBf := abi.NewBitField()
-	sectorBf.Set(comm.SectorNum)
-
-	sectorExpiryEvent := &miner.CronEventPayload{
-		EventType: miner.CronEventProvingPeriod,
-		Sectors:   sectorBf,
-	}
-	sectorExpiryEventPayload, err := encoding.Encode(sectorExpiryEvent)
-	if err != nil {
-		return err
-	}
-	params := &power.EnrollCronEventParams{
-		EventEpoch: abi.ChainEpoch(comm.DealCfg.EndEpoch),
-		Payload:    sectorExpiryEventPayload,
-	}
-	_, err = g.vm.ApplyGenesisMessage(mIDAddr, builtin.StoragePowerActorAddr, builtin.MethodsPower.EnrollCronEvent, specsbig.Zero(), params, &g.chainRand)
+	err = g.stateTree.SetActor(ctx, sector.miner, mAct)
 	return err
 }
 
-func (g *GenesisGenerator) getPower(ctx context.Context, mIDAddr address.Address) (abi.StoragePower, error) {
-	stateRoot, err := g.flush(ctx)
-	if err != nil {
-		return specsbig.Zero(), err
+func computeSectorPower(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, verifiedDealWeight abi.DealWeight) (abi.StoragePower, abi.StoragePower) {
+	weight := &power.SectorStorageWeightDesc{
+		SectorSize:         size,
+		Duration:           duration,
+		DealWeight:         dealWeight,
+		VerifiedDealWeight: verifiedDealWeight,
 	}
-	view := gfcstate.NewView(g.cst, stateRoot)
-	return view.MinerClaimedRawBytePower(ctx, mIDAddr)
+	spower := big.NewIntUnsigned(uint64(size))
+	qapower := power.QAPowerForWeight(weight)
+	return spower, qapower
 }
