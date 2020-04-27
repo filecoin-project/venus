@@ -2,12 +2,11 @@ package consensus
 
 import (
 	"context"
-	"math/big"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	cid "github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -26,18 +25,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
-
-var (
-	ticketDomain *big.Int
-)
-
-func init() {
-	ticketDomain = &big.Int{}
-	// DEPRECATED: The size of the ticket domain must equal the size of the Signature (ticket) generated.
-	// Currently this is a secp256k1.Sign signature, which is 65 bytes.
-	ticketDomain.Exp(big.NewInt(2), big.NewInt(65*8), nil)
-	ticketDomain.Sub(ticketDomain, big.NewInt(1))
-}
 
 var (
 	// ErrStateRootMismatch is returned when the computed state root doesn't match the expected result.
@@ -79,7 +66,7 @@ type TicketValidator interface {
 
 // ElectionValidator validates that an election fairly produced a winner.
 type ElectionValidator interface {
-	IsWinner(challengeTicket []byte, sectorNum, networkPower, sectorSize uint64) bool
+	IsWinner(challengeTicket []byte, minerPower, networkPower big.Int) bool
 	VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error
 	VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, allSectorInfos []abi.SectorInfo, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address) (bool, error)
 }
@@ -159,7 +146,7 @@ func (c *Expected) BlockTime() time.Duration {
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
 func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage,
-	parentWeight fbig.Int, parentStateRoot cid.Cid, parentReceiptRoot cid.Cid) (root cid.Cid, receipts []vm.MessageReceipt, err error) {
+	parentWeight big.Int, parentStateRoot cid.Cid, parentReceiptRoot cid.Cid) (root cid.Cid, receipts []vm.MessageReceipt, err error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -197,7 +184,7 @@ func (c *Expected) validateMining(ctx context.Context,
 	parentStateRoot cid.Cid,
 	blsMsgs [][]*types.UnsignedMessage,
 	secpMsgs [][]*types.SignedMessage,
-	parentWeight fbig.Int,
+	parentWeight big.Int,
 	parentReceiptRoot cid.Cid) error {
 
 	keyStateView := c.state.PowerStateView(parentStateRoot)
@@ -292,20 +279,16 @@ func (c *Expected) validateMining(ctx context.Context,
 		// TODO this is not using nominal power, which must take into account undeclared faults
 		// TODO the nominal power must be tested against the minimum (power.minerNominalPowerMeetsConsensusMinimum)
 		// See https://github.com/filecoin-project/go-filecoin/issues/3958
-		sectorNum, err := electionPowerTable.NumSectors(ctx, blk.Miner)
+		minerPower, err := electionPowerTable.MinerClaim(ctx, blk.Miner)
 		if err != nil {
-			return errors.Wrap(err, "failed to read sectorNum from power table")
+			return errors.Wrap(err, "failed to read miner claim from power table")
 		}
 		networkPower, err := electionPowerTable.Total(ctx)
 		if err != nil {
 			return errors.Wrap(err, "failed to read networkPower from power table")
 		}
-		sectorSize, err := electionPowerTable.SectorSize(ctx, blk.Miner)
-		if err != nil {
-			return errors.Wrap(err, "failed to read sectorSize from power table")
-		}
 		electionVRFDigest := blk.ElectionProof.VRFProof.Digest()
-		wins := c.IsWinner(electionVRFDigest[:], sectorNum, networkPower.Uint64(), uint64(sectorSize))
+		wins := c.IsWinner(electionVRFDigest[:], minerPower, networkPower)
 		if !wins {
 			return errors.Errorf("Block did not win election")
 		}

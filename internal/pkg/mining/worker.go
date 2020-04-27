@@ -10,7 +10,7 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	cid "github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -63,7 +63,7 @@ type GetStateTree func(context.Context, block.TipSetKey) (state.Tree, error)
 
 // GetWeight is a function that calculates the weight of a TipSet.  Weight is
 // expressed as two uint64s comprising a rational number.
-type GetWeight func(context.Context, block.TipSet) (fbig.Int, error)
+type GetWeight func(context.Context, block.TipSet) (big.Int, error)
 
 // MessageSource provides message candidates for mining into blocks
 type MessageSource interface {
@@ -87,7 +87,7 @@ type workerPorcelainAPI interface {
 
 type electionUtil interface {
 	GenerateElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error)
-	IsWinner(challengeTicket []byte, sectorNum, networkPower, sectorSize uint64) bool
+	IsWinner(challengeTicket []byte, minerPower, networkPower big.Int) bool
 	GenerateWinningPoSt(ctx context.Context, allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]block.PoStProof, error)
 }
 
@@ -264,35 +264,26 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- NewOutputErr(err)
 		return
 	}
-	sectorNum, err := electionPowerTable.NumSectors(ctx, w.minerAddr)
-	if err != nil {
-		log.Errorf("failed to get number of sectors for miner: %s", err)
-		outCh <- NewOutputErr(err)
-		return
-	}
 	networkPower, err := electionPowerTable.Total(ctx)
 	if err != nil {
 		log.Errorf("failed to get total power: %s", err)
 		outCh <- NewOutputErr(err)
 		return
 	}
-	sectorSize, err := electionPowerTable.SectorSize(ctx, w.minerAddr)
+	minerPower, err := electionPowerTable.MinerClaim(ctx, w.minerAddr)
 	if err != nil {
-		log.Errorf("failed to get sector size for miner: %s", err)
+		log.Errorf("failed to get power claim for miner: %s", err)
 		outCh <- NewOutputErr(err)
 		return
 	}
-
-	wins := w.election.IsWinner(electionVRFDigest[:], sectorNum, networkPower.Uint64(), uint64(sectorSize))
+	wins := w.election.IsWinner(electionVRFDigest[:], minerPower, networkPower)
 	if !wins {
-		// no winners we are done TODO check using electionProof VRF output election is winner
+		// no winners we are done
 		won = false
 		return
 	}
 
 	// we have a winning block
-
-	// TODO -- winning postProof
 	sectorSetAncestor, err := w.lookbackTipset(ctx, base, nullBlkCount, consensus.WinningPoStSectorSetLookback)
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't get ancestor tipset: %s", err.Error())
