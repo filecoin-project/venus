@@ -135,10 +135,9 @@ type DrandConfig struct {
 	// Secure is whether or not the drand address are secure (e.g. TLS)
 	Secure bool `json:"secure"`
 	// DistKey is the distributed public key of the server group expressed as hex encoded coefficients
-	DistKey            [][]byte `json:"distKey"`
-	StartTimeUnix      int64    `json:"startTimeUnix"`
-	RoundSeconds       int      `json:"roundSeconds"`
-	FirstFilecoinRound uint64   `json:"firstFilecoinRound"`
+	DistKey       [][]byte `json:"distKey"`
+	StartTimeUnix int64    `json:"startTimeUnix"`
+	RoundSeconds  int      `json:"roundSeconds"`
 }
 
 func newDefaultDrandConfig() *DrandConfig {
@@ -150,11 +149,10 @@ func newDefaultDrandConfig() *DrandConfig {
 			"localhost:8083",
 			"localhost:8084",
 		},
-		Secure:             false,
-		DistKey:            [][]byte{},
-		StartTimeUnix:      0,
-		RoundSeconds:       30,
-		FirstFilecoinRound: 0,
+		Secure:        false,
+		DistKey:       [][]byte{},
+		StartTimeUnix: 0,
+		RoundSeconds:  30,
 	}
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/fetcher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/blocksub"
@@ -52,7 +53,7 @@ type nodeChainSelector interface {
 
 // NewSyncerSubmodule creates a new chain submodule.
 func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *BlockstoreSubmodule, network *NetworkSubmodule,
-	discovery *DiscoverySubmodule, chn *ChainSubmodule, postVerifier consensus.EPoStVerifier, drand drand.IFace) (SyncerSubmodule, error) {
+	discovery *DiscoverySubmodule, chn *ChainSubmodule, postVerifier consensus.EPoStVerifier, d drand.IFace, cfg *config.Config) (SyncerSubmodule, error) {
 	// setup block validation
 	// TODO when #2961 is resolved do the needful here.
 	blkValid := consensus.NewDefaultBlockValidator(config.ChainClock())
@@ -79,7 +80,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 	tickets := consensus.NewTicketMachine(sampler)
 	stateViewer := consensus.AsDefaultStateViewer(state.NewViewer(blockstore.CborStore))
 	nodeConsensus := consensus.NewExpected(blockstore.CborStore, blockstore.Blockstore, chn.Processor, &stateViewer,
-		config.BlockTime(), elections, tickets, postVerifier, chn.ChainReader, config.ChainClock(), drand)
+		config.BlockTime(), elections, tickets, postVerifier, chn.ChainReader, config.ChainClock(), d)
 	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, &stateViewer, config.GenesisCid())
 
 	// setup fecher
@@ -101,18 +102,18 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 	}
 
 	// setup default drand
-	if b.drand == nil {
-		drandConfig := b.repo.Config().Drand
+	if d == nil {
+		drandConfig := cfg.Drand
 		addrs := make([]drand.Address, len(drandConfig.Addresses))
 		for i, a := range drandConfig.Addresses {
 			addrs[i] = drand.NewAddress(a, drandConfig.Secure)
 		}
-		d, err := drand.NewGRPC(addrs, drandConfig.DistKey, time.Unix(drandConfig.StartTimeUnix, 0),
-			time.Unix(genBlk.Timestamp, 0), time.Duration(drandConfig.RoundSeconds)*time.Second)
+		dGRPC, err := drand.NewGRPC(addrs, drandConfig.DistKey, time.Unix(drandConfig.StartTimeUnix, 0),
+			time.Unix(int64(genBlk.Timestamp), 0), time.Duration(drandConfig.RoundSeconds)*time.Second)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to build Drand client")
+			return SyncerSubmodule{}, errors.Wrap(err, "failed to build Drand client")
 		}
-		b.drand = d
+		d = dGRPC
 	}
 
 	return SyncerSubmodule{
@@ -121,7 +122,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 		Consensus:        nodeConsensus,
 		ChainSelector:    nodeChainSelector,
 		ChainSyncManager: &chainSyncManager,
-		Drand:            drand,
+		Drand:            d,
 		// cancelChainSync: nil,
 		faultCh: faultCh,
 	}, nil

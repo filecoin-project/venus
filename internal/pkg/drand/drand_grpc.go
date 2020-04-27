@@ -3,6 +3,7 @@ package drand
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/drand/drand/beacon"
@@ -56,14 +57,21 @@ func NewGRPC(addresses []Address, distKeyCoeff [][]byte, drandGenTime time.Time,
 	}
 
 	// First filecoin round is the first drand round before filecoinGenesisTime
-
-	// check that there is a drand round between drandGenTime and filecoinGenTime and error otherwise
+	searchStart := filecoinGenTime.Add(-1 * rd)
+	startTimeOfRound := func(round Round) time.Time {
+		return drandGenTime.Add(rd * time.Duration(round))
+	}
+	results := roundsInIntervalWhenNoGaps(searchStart, filecoinGenTime, startTimeOfRound, rd)
+	if len(results) != 1 {
+		return nil, fmt.Errorf("found %d drand rounds between filecoinGenTime and filecoinGenTime - drandRountDuration, expected 1", len(results))
+	}
+	ffr := results[0]
 
 	return &GRPC{
 		addresses:     addresses,
 		client:        core.NewGrpcClient(),
 		key:           distKey,
-		genesisTime:   gt,
+		genesisTime:   drandGenTime,
 		roundTime:     rd,
 		firstFilecoin: ffr,
 		cache:         make(map[Round]*Entry),
