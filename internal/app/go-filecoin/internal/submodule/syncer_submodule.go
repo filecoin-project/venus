@@ -100,6 +100,21 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 		return SyncerSubmodule{}, err
 	}
 
+	// setup default drand
+	if b.drand == nil {
+		drandConfig := b.repo.Config().Drand
+		addrs := make([]drand.Address, len(drandConfig.Addresses))
+		for i, a := range drandConfig.Addresses {
+			addrs[i] = drand.NewAddress(a, drandConfig.Secure)
+		}
+		d, err := drand.NewGRPC(addrs, drandConfig.DistKey, time.Unix(drandConfig.StartTimeUnix, 0),
+			time.Unix(genBlk.Timestamp, 0), time.Duration(drandConfig.RoundSeconds)*time.Second)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to build Drand client")
+		}
+		b.drand = d
+	}
+
 	return SyncerSubmodule{
 		BlockTopic: pubsub.NewTopic(topic),
 		// BlockSub: nil,

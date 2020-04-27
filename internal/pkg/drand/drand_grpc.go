@@ -49,11 +49,15 @@ var _ IFace = &GRPC{}
 // NewGRPC creates a client that will draw randomness from the given addresses.
 // distKeyCoeff are hex encoded strings representing a distributed public key
 // Behavior is undefined if provided address do not point to Drand servers in the same group.
-func NewGRPC(addresses []Address, distKeyCoeff [][]byte, gt time.Time, ffr Round, rd time.Duration) (*GRPC, error) {
+func NewGRPC(addresses []Address, distKeyCoeff [][]byte, drandGenTime time.Time, filecoinGenTime time.Time, rd time.Duration) (*GRPC, error) {
 	distKey, err := groupKeycoefficientsToDistPublic(distKeyCoeff)
 	if err != nil {
 		return nil, err
 	}
+
+	// First filecoin round is the first drand round before filecoinGenesisTime
+
+	// check that there is a drand round between drandGenTime and filecoinGenTime and error otherwise
 
 	return &GRPC{
 		addresses:     addresses,
