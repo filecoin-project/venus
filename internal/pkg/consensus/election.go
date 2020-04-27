@@ -90,7 +90,7 @@ func (em ElectionMachine) VerifyElectionProof(_ context.Context, entry *drand.En
 }
 
 // IsWinner returns true if the input challengeTicket wins the election
-func (em ElectionMachine) IsWinner(challengeTicket []byte, minerPower, networkPower big.Int) bool {
+func (em ElectionMachine) IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool {
 	// (ChallengeTicket / MaxChallengeTicket) < ExpectedLeadersPerEpoch * (MinerPower / NetworkPower)
 	// ->
 	// ChallengeTicket * NetworkPower < ExpectedLeadersPerEpoch * MinerPower * MaxChallengeTicket

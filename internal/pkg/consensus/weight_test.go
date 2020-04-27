@@ -107,7 +107,7 @@ func TestWeight(t *testing.T) {
 func makeStateViewer(stateRoot cid.Cid, networkPower abi.StoragePower) consensus.FakeConsensusStateViewer {
 	return consensus.FakeConsensusStateViewer{
 		Views: map[cid.Cid]*appstate.FakeStateView{
-			stateRoot: appstate.NewFakeStateView(networkPower),
+			stateRoot: appstate.NewFakeStateView(networkPower, networkPower, 0, 0),
 		},
 	}
 }

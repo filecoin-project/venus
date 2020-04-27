@@ -23,8 +23,7 @@ var (
 	wPrecision = fbig.NewInt(256)
 )
 
-// ChainSelector weighs and compares chains according to the deprecated v0
-// Storage Power Consensus Protocol
+// ChainSelector weighs and compares chains.
 type ChainSelector struct {
 	cstore     cbor.IpldStore
 	state      StateViewer
@@ -56,11 +55,11 @@ func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID ci
 		return fbig.Zero(), errors.New("undefined state passed to chain selector new weight")
 	}
 	powerTableView := NewPowerTableView(c.state.PowerStateView(pStateID), c.state.FaultStateView(pStateID))
-	totalBytes, err := powerTableView.Total(ctx)
+	networkPower, err := powerTableView.NetworkTotalPower(ctx)
 	if err != nil {
 		return fbig.Zero(), err
 	}
-	powerMeasure := log2b(totalBytes)
+	powerMeasure := log2b(networkPower)
 
 	wPowerFactor := fbig.Mul(wPrecision, powerMeasure)
 	wBlocksFactorNum := fbig.Mul(wRatioNum, fbig.Mul(powerMeasure, fbig.NewInt(int64(ts.Len()))))

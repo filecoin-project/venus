@@ -16,16 +16,21 @@ import (
 
 // FakeStateView is a fake state view.
 type FakeStateView struct {
-	NetworkName  string
-	NetworkPower abi.StoragePower
-	Miners       map[address.Address]*FakeMinerState
+	NetworkName string
+	Power       *NetworkPower
+	Miners      map[address.Address]*FakeMinerState
 }
 
 // NewFakeStateView creates a new fake state view.
-func NewFakeStateView(networkPower abi.StoragePower) *FakeStateView {
+func NewFakeStateView(rawBytePower, qaPower abi.StoragePower, minerCount, minPowerMinerCount int64) *FakeStateView {
 	return &FakeStateView{
-		NetworkPower: networkPower,
-		Miners:       make(map[address.Address]*FakeMinerState),
+		Power: &NetworkPower{
+			RawBytePower:         rawBytePower,
+			QualityAdjustedPower: qaPower,
+			MinerCount:           minerCount,
+			MinPowerMinerCount:   minPowerMinerCount,
+		},
+		Miners: make(map[address.Address]*FakeMinerState),
 	}
 }
 
@@ -40,7 +45,8 @@ type FakeMinerState struct {
 	PoStFailures       int
 	Sectors            []miner.SectorOnChainInfo
 	ProvingSet         []FakeSectorInfo
-	ClaimedPower       abi.StoragePower
+	ClaimedRawPower    abi.StoragePower
+	ClaimedQAPower     abi.StoragePower
 	PledgeRequirement  abi.TokenAmount
 	PledgeBalance      abi.TokenAmount
 }
@@ -123,18 +129,16 @@ func (v *FakeStateView) AccountSignerAddress(ctx context.Context, a address.Addr
 	return a, nil
 }
 
-// NetworkTotalRawBytePower reports a network's total power.
-func (v *FakeStateView) NetworkTotalRawBytePower(_ context.Context) (abi.StoragePower, error) {
-	return v.NetworkPower, nil
+func (v *FakeStateView) PowerNetworkTotal(_ context.Context) (*NetworkPower, error) {
+	return v.Power, nil
 }
 
-// MinerClaimedRawBytePower reports a miner's claimed power.
-func (v *FakeStateView) MinerClaimedRawBytePower(_ context.Context, maddr address.Address) (abi.StoragePower, error) {
-	m, ok := v.Miners[maddr]
+func (v *FakeStateView) MinerClaimedPower(ctx context.Context, miner address.Address) (abi.StoragePower, abi.StoragePower, error) {
+	m, ok := v.Miners[miner]
 	if !ok {
-		return big.Zero(), errors.Errorf("no miner %s", maddr)
+		return big.Zero(), big.Zero(), errors.Errorf("no miner %s", miner)
 	}
-	return m.ClaimedPower, nil
+	return m.ClaimedRawPower, m.ClaimedQAPower, nil
 }
 
 func (v *FakeStateView) MinerPledgeCollateral(_ context.Context, maddr address.Address) (locked abi.TokenAmount, total abi.TokenAmount, err error) {

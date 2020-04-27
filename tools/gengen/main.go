@@ -129,7 +129,7 @@ func main() {
 	}
 
 	for _, m := range info.Miners {
-		fmt.Fprintf(os.Stderr, "created miner %s, owned by %d, power = %s\n", m.Address, m.Owner, m.Power) // nolint: errcheck
+		fmt.Fprintf(os.Stderr, "created miner %s, owned by %d, power = %s (raw %s)\n", m.Address, m.Owner, m.QAPower, m.RawPower) // nolint: errcheck
 	}
 }
 

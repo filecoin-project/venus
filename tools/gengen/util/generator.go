@@ -153,7 +153,6 @@ func (g *GenesisGenerator) setupBuiltInActors(ctx context.Context) error {
 	}
 
 	_, err = g.createSingletonActor(ctx, builtin.CronActorAddr, builtin.CronActorCodeID, big.Zero(), func() (interface{}, error) {
-		// TODO: replace this with value form specs-actors after https://github.com/filecoin-project/specs-actors/pull/326
 		return &cron.State{Entries: []cron.Entry{{
 			Receiver:  builtin.StoragePowerActorAddr,
 			MethodNum: builtin.MethodsPower.OnEpochTickEnd,
@@ -164,6 +163,10 @@ func (g *GenesisGenerator) setupBuiltInActors(ctx context.Context) error {
 	}
 
 	_, err = g.createSingletonActor(ctx, builtin.InitActorAddr, builtin.InitActorCodeID, big.Zero(), func() (interface{}, error) {
+		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore()).Root()
+		if err != nil {
+			return nil, err
+		}
 		return init_.ConstructState(emptyMap, g.cfg.Network), nil
 	})
 	if err != nil {
@@ -178,6 +181,10 @@ func (g *GenesisGenerator) setupBuiltInActors(ctx context.Context) error {
 	}
 
 	_, err = g.createSingletonActor(ctx, builtin.StoragePowerActorAddr, builtin.StoragePowerActorCodeID, big.Zero(), func() (interface{}, error) {
+		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore()).Root()
+		if err != nil {
+			return nil, err
+		}
 		return power.ConstructState(emptyMap), nil
 	})
 	if err != nil {
@@ -340,6 +347,7 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		}
 
 		minerQAPower := big.Zero()
+		minerRawPower := big.Zero()
 		for i, comm := range m.CommittedSectors {
 			// Adjust sector expiration up to the epoch before the subsequent proving period starts.
 			periodOffset := mState.Info.ProvingPeriodBoundary // soon: mState.ProvingPeriodStart % miner.WPoStProvingPeriod
@@ -367,13 +375,15 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 				expiration:     sectorExpiration,
 			})
 			minerQAPower = big.Add(minerQAPower, qaPower)
+			minerRawPower = big.Add(minerRawPower, rawPower)
 			networkQAPower = big.Add(networkQAPower, qaPower)
 		}
 
 		minfo := &RenderedMinerInfo{
-			Address: actorAddr,
-			Owner:   m.Owner,
-			Power:   minerQAPower,
+			Address:  actorAddr,
+			Owner:    m.Owner,
+			RawPower: minerRawPower,
+			QAPower:  minerQAPower,
 		}
 		minfos = append(minfos, minfo)
 	}

@@ -31,8 +31,13 @@ func NewDefaultFakeWorkerPorcelainAPI(signer address.Address, rnd consensus.Chai
 	return &FakeWorkerPorcelainAPI{
 		blockTime: BlockTimeTest,
 		stateView: &state.FakeStateView{
-			NetworkPower: abi.NewStoragePower(1),
-			Miners:       map[address.Address]*state.FakeMinerState{},
+			Power: &state.NetworkPower{
+				RawBytePower:         big.NewInt(1),
+				QualityAdjustedPower: big.NewInt(1),
+				MinerCount:           0,
+				MinPowerMinerCount:   0,
+			},
+			Miners: map[address.Address]*state.FakeMinerState{},
 		},
 		rnd: rnd,
 	}
@@ -43,8 +48,13 @@ func NewFakeWorkerPorcelainAPI(rnd consensus.ChainRandomness, totalPower uint64,
 	f := &FakeWorkerPorcelainAPI{
 		blockTime: BlockTimeTest,
 		stateView: &state.FakeStateView{
-			NetworkPower: abi.NewStoragePower(int64(totalPower)),
-			Miners:       map[address.Address]*state.FakeMinerState{},
+			Power: &state.NetworkPower{
+				RawBytePower:         big.NewIntUnsigned(totalPower),
+				QualityAdjustedPower: big.NewIntUnsigned(totalPower),
+				MinerCount:           0,
+				MinPowerMinerCount:   0,
+			},
+			Miners: map[address.Address]*state.FakeMinerState{},
 		},
 		rnd: rnd,
 	}
@@ -52,7 +62,8 @@ func NewFakeWorkerPorcelainAPI(rnd consensus.ChainRandomness, totalPower uint64,
 		f.stateView.Miners[k] = &state.FakeMinerState{
 			Owner:             v,
 			Worker:            v,
-			ClaimedPower:      big.Zero(),
+			ClaimedRawPower:   big.Zero(),
+			ClaimedQAPower:    big.Zero(),
 			PledgeRequirement: big.Zero(),
 			PledgeBalance:     big.Zero(),
 		}

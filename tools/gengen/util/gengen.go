@@ -120,8 +120,9 @@ type RenderedMinerInfo struct {
 	// Address is the address generated on-chain for the miner
 	Address address.Address
 
-	// Power is the amount of storage power this miner was created with
-	Power abi.StoragePower
+	// The amount of storage power this miner was created with
+	RawPower abi.StoragePower
+	QAPower  abi.StoragePower
 }
 
 // GenOption is a configuration option.
