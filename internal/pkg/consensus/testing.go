@@ -7,6 +7,7 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
@@ -71,7 +72,7 @@ func (fem *FakeElectionMachine) GenerateWinningPoSt(ctx context.Context, allSect
 	}}, nil
 }
 
-func (fem *FakeElectionMachine) IsWinner(_ []byte, _, _, _ uint64) bool {
+func (fem *FakeElectionMachine) IsWinner(challengeTicket []byte, minerPower, networkPower big.Int) bool {
 	return true
 }
 
@@ -111,7 +112,7 @@ type FailingElectionValidator struct{}
 
 var _ ElectionValidator = new(FailingElectionValidator)
 
-func (fev *FailingElectionValidator) IsWinner(_ []byte, _, _, _ uint64) bool {
+func (fev *FailingElectionValidator) IsWinner(challengeTicket []byte, minerPower, networkPower big.Int) bool {
 	return false
 }
 

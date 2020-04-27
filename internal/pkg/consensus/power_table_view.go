@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"context"
-	"fmt"
 
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -103,26 +102,4 @@ func (v PowerTableView) SortedSectorInfos(ctx context.Context, mAddr addr.Addres
 		return nil
 	})
 	return infos, err
-}
-
-// SectorSize returns the sector size for this miner
-func (v PowerTableView) SectorSize(ctx context.Context, mAddr addr.Address) (abi.SectorSize, error) {
-	return v.state.MinerSectorSize(ctx, mAddr)
-}
-
-// NumSectors returns the number of sectors this miner has committed, computed as the quotient of the miner's claimed
-// power and sector size.
-func (v PowerTableView) NumSectors(ctx context.Context, mAddr addr.Address) (uint64, error) {
-	minerBytes, err := v.MinerClaim(ctx, mAddr)
-	if err != nil {
-		return 0, err
-	}
-	sectorSize, err := v.SectorSize(ctx, mAddr)
-	if err != nil {
-		return 0, err
-	}
-	if minerBytes.Uint64()%uint64(sectorSize) != 0 {
-		return 0, fmt.Errorf("total power byte count %d is not a multiple of sector size %d ", minerBytes.Uint64(), sectorSize)
-	}
-	return minerBytes.Uint64() / uint64(sectorSize), nil
 }

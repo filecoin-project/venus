@@ -3,11 +3,11 @@ package consensus
 import (
 	"bytes"
 	"context"
-	"math/big"
 
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
@@ -30,7 +30,7 @@ type EPoStVerifier interface {
 // ElectionMachine generates and validates PoSt partial tickets and PoSt proofs.
 type ElectionMachine struct{}
 
-func NewElectionMachine(chain ChainRandomness) *ElectionMachine {
+func NewElectionMachine(_ ChainRandomness) *ElectionMachine {
 	return &ElectionMachine{}
 }
 
@@ -80,7 +80,7 @@ func (em ElectionMachine) GenerateWinningPoSt(ctx context.Context, allSectorInfo
 	return block.FromABIPoStProofs(posts...), nil
 }
 
-func (em ElectionMachine) VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error {
+func (em ElectionMachine) VerifyElectionProof(_ context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error {
 	randomness, err := electionVRFRandomness(entry, miner, epoch)
 	if err != nil {
 		return errors.Wrap(err, "failed to reproduce election randomness")
@@ -90,17 +90,18 @@ func (em ElectionMachine) VerifyElectionProof(ctx context.Context, entry *drand.
 }
 
 // IsWinner returns true if the input challengeTicket wins the election
-func (em ElectionMachine) IsWinner(challengeTicket []byte, sectorNum, networkPower, sectorSize uint64) bool {
-	lhs := new(big.Int).SetBytes(challengeTicket[:])
-	lhs = lhs.Mul(lhs, big.NewInt(int64(networkPower)))
+func (em ElectionMachine) IsWinner(challengeTicket []byte, minerPower, networkPower big.Int) bool {
+	// (ChallengeTicket / MaxChallengeTicket) < ExpectedLeadersPerEpoch * (MinerPower / NetworkPower)
+	// ->
+	// ChallengeTicket * NetworkPower < ExpectedLeadersPerEpoch * MinerPower * MaxChallengeTicket
 
-	rhs := new(big.Int).Lsh(big.NewInt(int64(sectorSize)), challengeBits)
-	rhs = rhs.Mul(rhs, big.NewInt(int64(sectorNum)))
-	rhs = rhs.Mul(rhs, big.NewInt(expectedLeadersPerEpoch))
+	lhs := big.PositiveFromUnsignedBytes(challengeTicket[:])
+	lhs = big.Mul(lhs, networkPower)
 
-	// lhs < rhs?
-	// (ChallengeTicket / MaxChallengeTicket) < ExpectedLeadersPerEpoch *  (MinerPower / NetworkPower)
-	return lhs.Cmp(rhs) == -1
+	rhs := big.Lsh(minerPower, challengeBits)
+	rhs = big.Mul(rhs, big.NewInt(expectedLeadersPerEpoch))
+
+	return big.Cmp(lhs, rhs) < 0
 }
 
 // VerifyWinningPoSt verifies a Winning PoSt proof.
