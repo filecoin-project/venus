@@ -241,7 +241,6 @@ func generateGenesis() {
 		"--out-car", filepath.Join(testFixtures, "genesis.car"),
 		"--out-json", filepath.Join(testFixtures, "gen.json"),
 		"--config", "./fixtures/setup.json",
-		"--test-proofs-mode",
 	}...))
 }
 

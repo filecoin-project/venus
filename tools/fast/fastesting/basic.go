@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
@@ -43,7 +42,7 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.File
 	require.NoError(t, err)
 
 	// Create an environment that includes a genesis block with 1MM FIL
-	env, err := environment.NewMemoryGenesis(big.NewInt(1000000), dir, types.TestProofsMode)
+	env, err := environment.NewMemoryGenesis(big.NewInt(1000000), dir)
 	require.NoError(t, err)
 
 	defer func() {

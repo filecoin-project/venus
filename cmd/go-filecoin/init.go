@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
@@ -174,7 +173,7 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 
 func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (genesis.InitFunc, error) {
 	if sourceName == "" {
-		return gengen.MakeGenesisFunc(gengen.ProofsMode(types.LiveProofsMode)), nil
+		return gengen.MakeGenesisFunc(), nil
 	}
 
 	source, err := openGenesisSource(sourceName)

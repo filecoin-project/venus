@@ -18,7 +18,6 @@ import (
 
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
@@ -48,7 +47,7 @@ func TestRetrievalLocalNetwork(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create an environment that includes a genesis block with 1MM FIL
-	env, err := environment.NewMemoryGenesis(big.NewInt(1000000), dir, types.TestProofsMode)
+	env, err := environment.NewMemoryGenesis(big.NewInt(1000000), dir)
 	require.NoError(t, err)
 
 	// Teardown will shutdown all running processes the environment knows about
