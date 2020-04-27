@@ -32,9 +32,10 @@ var confidenceInterval uint64 = 7
 
 // Poster listens for changes to the chain head and generates and submits a PoSt if one is required.
 type Poster struct {
-	postMutex      sync.Mutex
-	postCancel     context.CancelFunc
-	scheduleCancel context.CancelFunc
+	postMutex         sync.Mutex
+	postCancel        context.CancelFunc
+	scheduleCancel    context.CancelFunc
+	poStDeadlineIndex int64
 
 	minerAddr   address.Address
 	outbox      *message.Outbox
@@ -54,12 +55,13 @@ func NewPoster(
 	waiter *msg.Waiter) *Poster {
 
 	return &Poster{
-		minerAddr:   minerAddr,
-		outbox:      outbox,
-		mgr:         mgr,
-		chain:       chain,
-		stateViewer: stateViewer,
-		waiter:      waiter,
+		minerAddr:         minerAddr,
+		outbox:            outbox,
+		mgr:               mgr,
+		chain:             chain,
+		stateViewer:       stateViewer,
+		waiter:            waiter,
+		poStDeadlineIndex: -1,
 	}
 }
 
@@ -101,81 +103,101 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) er
 	}
 
 	stateView := p.stateViewer.StateView(root)
-	open, _, challenge, err := stateView.MinerDeadlineInfo(ctx, p.minerAddr, tipsetHeight)
+	index, _, _, challenge, err := stateView.MinerDeadlineInfo(ctx, p.minerAddr, tipsetHeight)
 	if err != nil {
 		return nil
 	}
 
 	// check that we haven't already seen this deadline
+	if int64(index) == p.poStDeadlineIndex {
+		return nil
+	}
+	p.poStDeadlineIndex = int64(index)
 
 	ctx, p.postCancel = context.WithCancel(ctx)
-	go p.doPoSt(ctx, stateView, challenge, newHead.Key())
+	go p.doPoSt(ctx, stateView, index, challenge, newHead.Key())
 
 	return nil
 }
 
-func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, deadline *miner.DeadlineInfo, sectorIndicies *abi.BitField, head block.TipSetKey) {
+func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, deadlineIndex uint64, challengeAt abi.ChainEpoch, head block.TipSetKey) {
 	defer p.cancelPost()
 
 	minerID, err := address.IDFromAddress(p.minerAddr)
 	if err != nil {
+		log.Errorf("Error retrieving miner ID from address %s: %s", p.minerAddr, err)
 		return
 	}
 
-	sectors, err := stateView.MinerSectorsByIndex(ctx, p.minerAddr, sectorIndicies)
+	partitions, err := stateView.MinerPartitionIndicesForDeadline(ctx, p.minerAddr, deadlineIndex)
 	if err != nil {
+		log.Errorf("Error retrieving partitions for address %s at index %d: %s", p.minerAddr, deadlineIndex, err)
+		return
+	}
+
+	// Some day we might want to choose a subset of partitions to prove at one time. Today is not that day.
+	sectors, err := stateView.MinerSectorInfoForDeadline(ctx, p.minerAddr, deadlineIndex, partitions)
+	if err != nil {
+		log.Errorf("error retrieving sector info for miner %s partitions at index %d: %s", p.minerAddr, deadlineIndex, err)
 		return
 	}
 
 	buf := new(bytes.Buffer)
 	err = p.minerAddr.MarshalCBOR(buf)
 	if err != nil {
+		log.Errorf("could not create entropy from miner address %s: %s", p.minerAddr, err)
 		return
 	}
 
-	randomness, err := p.chain.SampleChainRandomness(ctx, head, acrypto.DomainSeparationTag_WindowedPoStChallengeSeed, deadline.Challenge, buf.Bytes())
+	randomness, err := p.chain.SampleChainRandomness(ctx, head, acrypto.DomainSeparationTag_WindowedPoStChallengeSeed, challengeAt, buf.Bytes())
 	if err != nil {
+		log.Errorf("could not sample chain randomness at %d: %s", challengeAt, err)
 		return
 	}
 
-	output, err := p.mgr.GenerateWindowPoSt(ctx, abi.ActorID(minerID), sectors, abi.PoStRandomness(randomness))
+	proofs, err := p.mgr.GenerateWindowPoSt(ctx, abi.ActorID(minerID), sectors, abi.PoStRandomness(randomness))
 	if err != nil {
+		log.Errorf("error generating window PoSt: %s", err)
 		return
-	}
-
-	err = p.sendPoSt(ctx, stateView, deadline, output)
-	if err != nil {
-		log.Error("error sending fallback PoSt: ", err)
-		return
-	}
-}
-
-func (p *Poster) sendPoSt(ctx context.Context, stateView *appstate.View, deadline *miner.DeadlineInfo, proofs []abi.PoStProof) error {
-
-	windowedPost := &miner.SubmitWindowedPoStParams{
-		Deadline:   deadline.Index,
-		Partitions: nil,
-		Proofs:     nil,
-		Skipped:    abi.BitField{},
 	}
 
 	_, workerAddr, err := stateView.MinerControlAddresses(ctx, p.minerAddr)
 	if err != nil {
-		return err
+		log.Errorf("could not get miner worker address fro miner %s: %s", p.minerAddr, err)
+		return
 	}
 
-	mcid, _, err := p.outbox.Send(
+	err = p.sendPoSt(ctx, workerAddr, deadlineIndex, partitions, proofs)
+	if err != nil {
+		log.Error("error sending window PoSt: ", err)
+		return
+	}
+}
+
+func (p *Poster) sendPoSt(ctx context.Context, workerAddr address.Address, index uint64, partitions []uint64, proofs []abi.PoStProof) error {
+
+	windowedPost := &miner.SubmitWindowedPoStParams{
+		Deadline:   index,
+		Partitions: partitions,
+		Proofs:     proofs,
+		Skipped:    abi.BitField{},
+	}
+
+	mcid, errCh, err := p.outbox.Send(
 		ctx,
 		workerAddr,
 		p.minerAddr,
 		types.ZeroAttoFIL,
 		types.NewGasPrice(1),
-		gas.NewGas(5000),
+		gas.NewGas(10000),
 		true,
 		builtin.MethodsMiner.SubmitWindowedPoSt,
 		windowedPost,
 	)
 	if err != nil {
+		return err
+	}
+	if err := <-errCh; err != nil {
 		return err
 	}
 
