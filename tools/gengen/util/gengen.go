@@ -52,7 +52,7 @@ type CreateStorageMinerConfig struct {
 type CommitConfig struct {
 	CommR     cid.Cid
 	CommD     cid.Cid
-	SectorNum uint64
+	SectorNum abi.SectorNumber
 	DealCfg   *DealConfig
 	ProofType abi.RegisteredProof
 }
@@ -62,6 +62,7 @@ type CommitConfig struct {
 type DealConfig struct {
 	CommP     cid.Cid
 	PieceSize uint64
+	Verified  bool
 	// Client and Provider are miner worker and miner address
 
 	// StartEpoch is 0
@@ -71,8 +72,7 @@ type DealConfig struct {
 	// Collateral values are 0 for now (might need to change to some minimum)
 }
 
-// GenesisCfg is the top level configuration struct used to create a genesis
-// block.
+// GenesisCfg is the top level configuration struct used to create a genesis block.
 type GenesisCfg struct {
 	// Seed is used to sample randomness for generating keys
 	Seed int64
@@ -136,20 +136,32 @@ func GenTime(t uint64) GenOption {
 }
 
 // GenKeys returns a config option that sets the number of keys to generate
-func GenKeys(n int) GenOption {
+func GenKeys(n int, prealloc string) GenOption {
 	return func(gc *GenesisCfg) error {
+		if gc.KeysToGen > 0 {
+			return fmt.Errorf("repeated genkeys not supported")
+		}
 		gc.KeysToGen = n
-		gc.PreallocatedFunds = make([]string, n)
-		// By default keys get nothing
-		for i := range gc.PreallocatedFunds {
-			gc.PreallocatedFunds[i] = "0"
+		for i := 0; i < n; i++ {
+			gc.PreallocatedFunds = append(gc.PreallocatedFunds, prealloc)
 		}
 		return nil
 	}
 }
 
-// GenKeyPrealloc returns a config option that sets up an actor account.
-func GenKeyPrealloc(idx int, amt string) GenOption {
+// ImportKeys returns a config option that imports keys and pre-allocates to them
+func ImportKeys(kis []crypto.KeyInfo, prealloc string) GenOption {
+	return func(gc *GenesisCfg) error {
+		for _, ki := range kis {
+			gc.ImportKeys = append(gc.ImportKeys, &ki)
+			gc.PreallocatedFunds = append(gc.PreallocatedFunds, prealloc)
+		}
+		return nil
+	}
+}
+
+// Prealloc returns a config option that sets up an actor account.
+func Prealloc(idx int, amt string) GenOption {
 	return func(gc *GenesisCfg) error {
 		if len(gc.PreallocatedFunds)-1 < idx {
 			return fmt.Errorf("bad actor account idx %d for only %d pre alloc gen keys", idx, len(gc.PreallocatedFunds))
@@ -226,7 +238,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, bs blockstore.Blockstore) (*Re
 		return nil, err
 	}
 
-	err = generator.setupDefaultActors(ctx)
+	err = generator.setupBuiltInActors(ctx)
 	if err != nil {
 		return nil, err
 	}

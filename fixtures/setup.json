@@ -21,6 +21,7 @@
       "dealCfg": {
         "commP": {"/":"bafk4chzavlx2s3zsomp6beohyevpbql477qyr7qnvgkvfwbbcqzfijo62arq"},
         "pieceSize": 2048,
+        "verified": false,
         "endEpoch": 9001
       }
     },{
@@ -31,6 +32,7 @@
       "dealCfg": {
         "commP": {"/":"bafk4chzaqfni3wpij32pzgv2vuf63utnufburrjzrcoud75oz3pxkfisligq"},
         "pieceSize": 2048,
+        "verified": false,
         "endEpoch": 9001
       }
     }]

@@ -106,24 +106,17 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 		commCfgs, err := gengen.MakeCommitCfgs(int(numCommittedSectors))
 		require.NoError(t, err)
 		minerConfigs[i] = &gengen.CreateStorageMinerConfig{
+			Owner:            i,
 			CommittedSectors: commCfgs,
 			SectorSize:       constants.DevSectorSize,
 		}
 	}
 
-	// Tedious conversion to pointer type
-	genKis := make([]*crypto.KeyInfo, numMiners)
-	for i, ki := range ownerKeys {
-		genKis[i] = &ki
-	}
-
 	// set up genesis block containing some miners with non-zero power
-	genCfg := &gengen.GenesisCfg{
-		ProofsMode: types.TestProofsMode,
-		Miners:     minerConfigs,
-		Network:    "ptvtest",
-		ImportKeys: genKis,
-	}
+	genCfg := &gengen.GenesisCfg{}
+	require.NoError(t, gengen.MinerConfigs(minerConfigs)(genCfg))
+	require.NoError(t, gengen.NetworkName("ptvtest")(genCfg))
+	require.NoError(t, gengen.ImportKeys(ownerKeys, "1000000")(genCfg))
 
 	info, err := gengen.GenGen(ctx, genCfg, bs)
 	require.NoError(t, err)

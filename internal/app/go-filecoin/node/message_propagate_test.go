@@ -34,8 +34,7 @@ func TestMessagePropagation(t *testing.T) {
 
 	// Generate a key and install an account actor at genesis which will be able to send messages.
 	genCfg := &gengen.GenesisCfg{}
-	require.NoError(t, gengen.GenKeys(1)(genCfg))
-	require.NoError(t, gengen.GenKeyPrealloc(0, "100000")(genCfg))
+	require.NoError(t, gengen.GenKeys(1, "1000000")(genCfg))
 	require.NoError(t, gengen.NetworkName(version.TEST)(genCfg))
 
 	cs := MakeChainSeed(t, genCfg)

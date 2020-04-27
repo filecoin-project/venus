@@ -3,6 +3,7 @@ package gengen
 import (
 	"fmt"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 
@@ -31,13 +32,14 @@ func MakeCommitCfgs(n int) ([]*CommitConfig, error) {
 		dealCfg := &DealConfig{
 			CommP:     commP,
 			PieceSize: uint64(1),
+			Verified:  false,
 			EndEpoch:  int64(1024),
 		}
 
 		cfgs[i] = &CommitConfig{
 			CommR:     commR,
 			CommD:     commD,
-			SectorNum: uint64(i),
+			SectorNum: abi.SectorNumber(i),
 			DealCfg:   dealCfg,
 			ProofType: constants.DevRegisteredSealProof,
 		}
