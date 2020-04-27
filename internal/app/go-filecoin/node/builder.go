@@ -154,20 +154,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	var err error
 
-	if b.drand == nil {
-		drandConfig := b.repo.Config().Drand
-		addrs := make([]drand.Address, len(drandConfig.Addresses))
-		for i, a := range drandConfig.Addresses {
-			addrs[i] = drand.NewAddress(a, drandConfig.Secure)
-		}
-		d, err := drand.NewGRPC(addrs, drandConfig.DistKey, time.Unix(drandConfig.StartTimeUnix, 0),
-			drand.Round(drandConfig.FirstFilecoinRound), time.Duration(drandConfig.RoundSeconds)*time.Second)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to build Drand client")
-		}
-		b.drand = d
-	}
-
 	if b.journal == nil {
 		b.journal = journal.NewNoopJournal()
 	}
@@ -226,7 +212,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	}
 	nd.ChainClock = b.chainClock
 
-	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.ProofVerification.ProofVerifier, b.drand)
+	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.ProofVerification.ProofVerifier, b.drand, b.repo.Config())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}

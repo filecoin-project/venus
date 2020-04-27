@@ -19,6 +19,16 @@ type Fake struct {
 
 var _ IFace = &Fake{}
 
+// NewFake sets up a fake drand that starts exactly one testDRANDRoundDuration before
+// the provided filecoin genesis time.
+func NewFake(filecoinGenTime time.Time) *Fake {
+	drandGenTime := filecoinGenTime.Add(-1 * testDRANDRoundDuration)
+	return &Fake{
+		GenesisTime:   drandGenTime,
+		FirstFilecoin: Round(0),
+	}
+}
+
 // ReadEntry immediately returns a drand entry with a signature equal to the
 // round number
 func (d *Fake) ReadEntry(ctx context.Context, drandRound Round) (*Entry, error) {

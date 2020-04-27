@@ -55,8 +55,7 @@ const (
 		"secure": false,
 		"distKey": [],
 		"startTimeUnix": 0,
-		"roundSeconds": 30,
-		"firstFilecoinRound": 0
+		"roundSeconds": 30
 	},
 	"heartbeat": {
 		"beatTarget": "",

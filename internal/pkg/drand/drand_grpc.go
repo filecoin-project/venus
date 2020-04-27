@@ -3,6 +3,7 @@ package drand
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/drand/drand/beacon"
@@ -49,17 +50,28 @@ var _ IFace = &GRPC{}
 // NewGRPC creates a client that will draw randomness from the given addresses.
 // distKeyCoeff are hex encoded strings representing a distributed public key
 // Behavior is undefined if provided address do not point to Drand servers in the same group.
-func NewGRPC(addresses []Address, distKeyCoeff [][]byte, gt time.Time, ffr Round, rd time.Duration) (*GRPC, error) {
+func NewGRPC(addresses []Address, distKeyCoeff [][]byte, drandGenTime time.Time, filecoinGenTime time.Time, rd time.Duration) (*GRPC, error) {
 	distKey, err := groupKeycoefficientsToDistPublic(distKeyCoeff)
 	if err != nil {
 		return nil, err
 	}
 
+	// First filecoin round is the first drand round before filecoinGenesisTime
+	searchStart := filecoinGenTime.Add(-1 * rd)
+	startTimeOfRound := func(round Round) time.Time {
+		return drandGenTime.Add(rd * time.Duration(round))
+	}
+	results := roundsInIntervalWhenNoGaps(searchStart, filecoinGenTime, startTimeOfRound, rd)
+	if len(results) != 1 {
+		return nil, fmt.Errorf("found %d drand rounds between filecoinGenTime and filecoinGenTime - drandRountDuration, expected 1", len(results))
+	}
+	ffr := results[0]
+
 	return &GRPC{
 		addresses:     addresses,
 		client:        core.NewGrpcClient(),
 		key:           distKey,
-		genesisTime:   gt,
+		genesisTime:   drandGenTime,
 		roundTime:     rd,
 		firstFilecoin: ffr,
 		cache:         make(map[Round]*Entry),

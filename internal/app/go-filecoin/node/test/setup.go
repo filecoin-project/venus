@@ -48,18 +48,13 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
 
-	drandGenUnixSeconds := genTime - int64(blockTime.Seconds())
-
 	// create bootstrap miner
 	bootstrapMiner := NewNodeBuilder(t).
 		WithGenesisInit(seed.GenesisInitFunc).
 		WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...).
 		WithBuilderOpt(node.PoStGeneratorOption(&consensus.TestElectionPoster{})).
 		WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
-		WithBuilderOpt(node.DrandConfigOption(&drand.Fake{
-			GenesisTime:   time.Unix(drandGenUnixSeconds, 0),
-			FirstFilecoin: 0,
-		})).
+		WithBuilderOpt(node.DrandConfigOption(drand.NewFake(time.Unix(genTime, 0)))).
 		WithConfig(func(c *config.Config) {
 			c.SectorBase.PreSealedSectorsDirPath = presealPath
 			c.Mining.MinerAddress = minerAddress
@@ -81,10 +76,7 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 			WithBuilderOpt(node.PoStGeneratorOption(&consensus.TestElectionPoster{})).
 			WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...).
 			WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
-			WithBuilderOpt(node.DrandConfigOption(&drand.Fake{
-				GenesisTime:   time.Unix(drandGenUnixSeconds, 0),
-				FirstFilecoin: 0,
-			})).
+			WithBuilderOpt(node.DrandConfigOption(drand.NewFake(time.Unix(genTime, 0)))).
 			Build(ctx)
 		addr := seed.GiveKey(t, node, int(i+1))
 		err := node.PorcelainAPI.ConfigSet("wallet.defaultAddress", addr.String())
