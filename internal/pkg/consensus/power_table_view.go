@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"context"
-	"fmt"
 
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -10,34 +9,32 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
-// PowerStateView is the consensus package's interface to chain state.
+// PowerStateView is a view of chain state for election computations, typically at some lookback from the
+// immediate parent state.
 type PowerStateView interface {
 	state.AccountStateView
 	MinerSectorSize(ctx context.Context, maddr addr.Address) (abi.SectorSize, error)
 	MinerControlAddresses(ctx context.Context, maddr addr.Address) (owner, worker addr.Address, err error)
 	MinerSectorsForEach(ctx context.Context, maddr addr.Address, f func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof, dealIDs []abi.DealID) error) error
-	NetworkTotalRawBytePower(ctx context.Context) (abi.StoragePower, error)
-	MinerClaimedRawBytePower(ctx context.Context, miner addr.Address) (abi.StoragePower, error)
+	PowerNetworkTotal(ctx context.Context) (*state.NetworkPower, error)
+	MinerClaimedPower(ctx context.Context, miner addr.Address) (raw, qa abi.StoragePower, err error)
 }
 
-// FaultStateView is the interface needed by the recent fault state to adjust
-// miner power claims based on consensus slashing events.
+// FaultStateView is a view of chain state for adjustment of miner power claims based on changes since the
+// power state's lookback (primarily, the miner ceasing to be registered).
 type FaultStateView interface {
 	MinerExists(ctx context.Context, maddr addr.Address) (bool, error)
 }
 
-// PowerTableView defines the set of functions used by the ChainManager to view
-// the power table encoded in the tipset's state tree
-// PowerTableView is the power table view used for running expected consensus in
+// An interface to the network power table for elections.
+// Elections use the quality-adjusted power, rather than raw byte power.
 type PowerTableView struct {
 	state      PowerStateView
 	faultState FaultStateView
 }
 
-// NewPowerTableView constructs a new view with a snapshot pinned to a particular tip set.
 func NewPowerTableView(state PowerStateView, faultState FaultStateView) PowerTableView {
 	return PowerTableView{
 		state:      state,
@@ -45,30 +42,33 @@ func NewPowerTableView(state PowerStateView, faultState FaultStateView) PowerTab
 	}
 }
 
-// Total returns the total storage as a BytesAmount.
-func (v PowerTableView) Total(ctx context.Context) (abi.StoragePower, error) {
-	return v.state.NetworkTotalRawBytePower(ctx)
+// Returns the network's total quality-adjusted power.
+func (v PowerTableView) NetworkTotalPower(ctx context.Context) (abi.StoragePower, error) {
+	total, err := v.state.PowerNetworkTotal(ctx)
+	if err != nil {
+		return big.Zero(), err
+	}
+	return total.QualityAdjustedPower, nil
 }
 
-// MinerClaim returns the storage that this miner claims to have committed to the network.
-func (v PowerTableView) MinerClaim(ctx context.Context, mAddr addr.Address) (abi.StoragePower, error) {
-	claim, err := v.state.MinerClaimedRawBytePower(ctx, mAddr)
+// Returns a miner's claimed quality-adjusted power.
+func (v PowerTableView) MinerClaimedPower(ctx context.Context, mAddr addr.Address) (abi.StoragePower, error) {
+	_, qa, err := v.state.MinerClaimedPower(ctx, mAddr)
 	if err != nil {
-		return abi.NewStoragePower(0), err
+		return big.Zero(), err
 	}
 	// Only return claim if fault state still tracks miner
 	exists, err := v.faultState.MinerExists(ctx, mAddr)
 	if err != nil {
-		return abi.NewStoragePower(0), err
+		return big.Zero(), err
 	}
 	if !exists { // miner was slashed
-		return abi.NewStoragePower(0), nil
+		return big.Zero(), nil
 	}
-
-	return claim, nil
+	return qa, nil
 }
 
-// WorkerAddr returns the address of the miner worker given the miner address.
+// WorkerAddr returns the worker address for a miner actor.
 func (v PowerTableView) WorkerAddr(ctx context.Context, mAddr addr.Address) (addr.Address, error) {
 	_, worker, err := v.state.MinerControlAddresses(ctx, mAddr)
 	return worker, err
@@ -79,19 +79,7 @@ func (v PowerTableView) SignerAddress(ctx context.Context, a addr.Address) (addr
 	return v.state.AccountSignerAddress(ctx, a)
 }
 
-// HasClaimedPower returns true if the provided address belongs to a miner with claimed power in the storage market
-func (v PowerTableView) HasClaimedPower(ctx context.Context, mAddr addr.Address) (bool, error) {
-	numBytes, err := v.MinerClaim(ctx, mAddr)
-	if err == types.ErrNotFound {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return numBytes.GreaterThan(big.Zero()), nil
-}
-
-// SortedSectorInfos returns the sector information for the given miner
+// SortedSectorInfos returns the sector information for a given miner
 func (v PowerTableView) SortedSectorInfos(ctx context.Context, mAddr addr.Address) ([]abi.SectorInfo, error) {
 	var infos []abi.SectorInfo
 	err := v.state.MinerSectorsForEach(ctx, mAddr, func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof, _ []abi.DealID) error {
@@ -103,26 +91,4 @@ func (v PowerTableView) SortedSectorInfos(ctx context.Context, mAddr addr.Addres
 		return nil
 	})
 	return infos, err
-}
-
-// SectorSize returns the sector size for this miner
-func (v PowerTableView) SectorSize(ctx context.Context, mAddr addr.Address) (abi.SectorSize, error) {
-	return v.state.MinerSectorSize(ctx, mAddr)
-}
-
-// NumSectors returns the number of sectors this miner has committed, computed as the quotient of the miner's claimed
-// power and sector size.
-func (v PowerTableView) NumSectors(ctx context.Context, mAddr addr.Address) (uint64, error) {
-	minerBytes, err := v.MinerClaim(ctx, mAddr)
-	if err != nil {
-		return 0, err
-	}
-	sectorSize, err := v.SectorSize(ctx, mAddr)
-	if err != nil {
-		return 0, err
-	}
-	if minerBytes.Uint64()%uint64(sectorSize) != 0 {
-		return 0, fmt.Errorf("total power byte count %d is not a multiple of sector size %d ", minerBytes.Uint64(), sectorSize)
-	}
-	return minerBytes.Uint64() / uint64(sectorSize), nil
 }

@@ -17,6 +17,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
@@ -37,8 +38,8 @@ type MinerStateView interface {
 	MinerSectorSize(ctx context.Context, maddr address.Address) (abi.SectorSize, error)
 	MinerSectorCount(ctx context.Context, maddr address.Address) (int, error)
 	MinerDeadlines(ctx context.Context, maddr address.Address, currentEpoch abi.ChainEpoch) (*miner.Deadlines, error)
-	NetworkTotalRawBytePower(ctx context.Context) (abi.StoragePower, error)
-	MinerClaimedRawBytePower(ctx context.Context, miner address.Address) (abi.StoragePower, error)
+	PowerNetworkTotal(ctx context.Context) (*state.NetworkPower, error)
+	MinerClaimedPower(ctx context.Context, miner address.Address) (raw, qa abi.StoragePower, err error)
 	MinerInfo(ctx context.Context, maddr address.Address) (miner.MinerInfo, error)
 }
 
@@ -185,15 +186,17 @@ type MinerStatus struct {
 	SectorSize    abi.SectorSize
 	SectorCount   int
 
-	Power             abi.StoragePower
-	PledgeRequirement abi.TokenAmount
-	PledgeBalance     abi.TokenAmount
+	RawPower             abi.StoragePower
+	QualityAdjustedPower abi.StoragePower
+	PledgeRequirement    abi.TokenAmount
+	PledgeBalance        abi.TokenAmount
 
 	Deadlines *miner.Deadlines
 	MinerInfo miner.MinerInfo
 
-	PoStFailureCount int
-	NetworkPower     abi.StoragePower
+	PoStFailureCount            int
+	NetworkRawPower             abi.StoragePower
+	NetworkQualityAdjustedPower abi.StoragePower
 }
 
 // MinerGetStatus queries the power of a given miner.
@@ -235,11 +238,11 @@ func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr
 	if err != nil {
 		return MinerStatus{}, err
 	}
-	claimedPower, err := view.MinerClaimedRawBytePower(ctx, minerAddr)
+	rawPower, qaPower, err := view.MinerClaimedPower(ctx, minerAddr)
 	if err != nil {
 		return MinerStatus{}, err
 	}
-	totalPower, err := view.NetworkTotalRawBytePower(ctx)
+	totalPower, err := view.PowerNetworkTotal(ctx)
 	if err != nil {
 		return MinerStatus{}, err
 	}
@@ -252,11 +255,13 @@ func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr
 		SectorSize:    sectorSize,
 		SectorCount:   sectorCount,
 
-		Power: claimedPower,
+		RawPower:             rawPower,
+		QualityAdjustedPower: qaPower,
 
-		Deadlines:    deadlines,
-		MinerInfo:    minerInfo,
-		NetworkPower: totalPower,
+		Deadlines:                   deadlines,
+		MinerInfo:                   minerInfo,
+		NetworkRawPower:             totalPower.RawBytePower,
+		NetworkQualityAdjustedPower: totalPower.QualityAdjustedPower,
 	}, nil
 }
 

@@ -55,8 +55,8 @@ func TestBootstrapMineOnce(t *testing.T) {
 
 	// expected miner power is 2 2kib sectors
 	expectedMinerPower := constants.DevSectorSize * 2
-	actualMinerPower := status.Power.Uint64()
-	assert.Equal(t, uint64(expectedMinerPower), status.Power.Uint64(), "expected miner power: %d actual miner power: %d", expectedMinerPower, actualMinerPower)
+	actualMinerPower := status.QualityAdjustedPower.Uint64()
+	assert.Equal(t, uint64(expectedMinerPower), status.QualityAdjustedPower.Uint64(), "expected miner power: %d actual miner power: %d", expectedMinerPower, actualMinerPower)
 
 	// Assert that the chain head is genesis block
 	var blocks []block.Block

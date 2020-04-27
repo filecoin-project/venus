@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 )
@@ -50,12 +49,7 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 	if innerErr != nil {
 		return nil, errors.Wrapf(innerErr, "failed to decode h2")
 	}
-	if len(extra) > 0 {
-		innerErr = encoding.Decode(extra, &b3)
-		if innerErr != nil {
-			return nil, errors.Wrapf(innerErr, "failed to decode extra")
-		}
-	}
+
 	// Block syntax is not validated. This implements the strictest check possible, and is also the simplest check
 	// possible.
 	// This means that blocks that could never have been included in the chain (e.g. with an empty parent state)
@@ -91,31 +85,34 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 		}
 	}
 	// Parent-grinding fault: one block’s parent is a tipset that provably should have included some block but does not.
-	// The provable case is that two blocks are mined in consecutive epochs and the later one does not include the
-	// earlier one as a parent.
-	// B3 must prove that the higher block (B2) has grandparent equal to B1's parent.
-	if b1.Height+1 == b2.Height && !b2.Parents.Has(b1.Cid()) && b2.Parents.Has(b3.Cid()) && b3.Parents.Equals(b1.Parents) {
-		fault = &runtime.ConsensusFault{
-			Target: b1.Miner,
-			Epoch:  b2.Height,
-			Type:   runtime.ConsensusFaultParentGrinding,
+	// The provable case is that two blocks are mined and the later one does not include the
+	// earlier one as a parent even though it could have.
+	// B3 must prove that the higher block (B2) could have been included in B1's tipset.
+	if len(extra) > 0 {
+		innerErr = encoding.Decode(extra, &b3)
+		if innerErr != nil {
+			return nil, errors.Wrapf(innerErr, "failed to decode extra")
+		}
+		if b1.Height == b3.Height && b3.Parents.Equals(b1.Parents) && !b2.Parents.Has(b1.Cid()) && b2.Parents.Has(b3.Cid()) {
+			fault = &runtime.ConsensusFault{
+				Target: b1.Miner,
+				Epoch:  b2.Height,
+				Type:   runtime.ConsensusFaultParentGrinding,
+			}
 		}
 	}
+
 	if fault == nil {
 		return nil, fmt.Errorf("no consensus fault: blocks are ok")
 	}
 
-	// Expensive validation: signatures and chain history.
+	// Expensive validation: signatures.
 
 	err := verifyBlockSignature(ctx, view, b1)
 	if err != nil {
 		return nil, err
 	}
 	err = verifyBlockSignature(ctx, view, b2)
-	if err != nil {
-		return nil, err
-	}
-	err = verifyOneBlockInChain(ctx, s.chain, head, b1, b2)
 	if err != nil {
 		return nil, err
 	}
@@ -137,37 +134,4 @@ func verifyBlockSignature(ctx context.Context, view FaultStateView, blk block.Bl
 		return errors.Wrapf(err, "no consensus fault: block %s signature invalid", blk.Cid())
 	}
 	return err
-}
-
-// Checks whether at least one of b1, b2 appear in the chain defined by `head`.
-func verifyOneBlockInChain(ctx context.Context, chn chainReader, head block.TipSetKey, b1 block.Block, b2 block.Block) error {
-	if chainHasB1, err := chainContainsBlock(ctx, chn, head, b1); err != nil {
-		panic(errors.Wrapf(err, "failed to inspect chain")) // This idiosyncratic failure shouldn't go on chain
-	} else if chainHasB1 {
-		return nil
-	}
-	if chainHasB2, err := chainContainsBlock(ctx, chn, head, b2); err != nil {
-		panic(errors.Wrapf(err, "failed to inspect chain"))
-	} else if chainHasB2 {
-		return nil
-	}
-	return fmt.Errorf("no consensus fault: neither block in")
-}
-
-func chainContainsBlock(ctx context.Context, chn chainReader, head block.TipSetKey, blk block.Block) (bool, error) {
-	ts, err := chn.GetTipSet(head)
-	if err != nil {
-		return false, err
-	}
-
-	itr := chain.IterAncestors(ctx, chn, ts)
-	for ts := itr.Value(); !itr.Complete(); err = itr.Next() {
-		if err != nil {
-			return false, err
-		}
-		if ts.Key().Has(blk.Cid()) {
-			return true, nil
-		}
-	}
-	return false, nil
 }

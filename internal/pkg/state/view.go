@@ -328,31 +328,42 @@ func (v *View) MarketDealState(ctx context.Context, dealID abi.DealID) (*market.
 	return dealStates.Get(dealID)
 }
 
-// NetworkTotalRawBytePower Returns the storage power actor's value for network total power.
-func (v *View) NetworkTotalRawBytePower(ctx context.Context) (abi.StoragePower, error) {
-	powerState, err := v.loadPowerActor(ctx)
-	if err != nil {
-		return big.Zero(), err
-	}
-	return powerState.TotalRawBytePower, nil
+type NetworkPower struct {
+	RawBytePower         abi.StoragePower
+	QualityAdjustedPower abi.StoragePower
+	MinerCount           int64
+	MinPowerMinerCount   int64
 }
 
-// MinerClaimedRawBytePower Returns the power of a miner's committed sectors.
-func (v *View) MinerClaimedRawBytePower(ctx context.Context, miner addr.Address) (abi.StoragePower, error) {
+// Returns the storage power actor's values for network total power.
+func (v *View) PowerNetworkTotal(ctx context.Context) (*NetworkPower, error) {
+	st, err := v.loadPowerActor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &NetworkPower{
+		RawBytePower:         st.TotalRawBytePower,
+		QualityAdjustedPower: st.TotalQualityAdjPower,
+		MinerCount:           st.MinerCount,
+		MinPowerMinerCount:   st.NumMinersMeetingMinPower,
+	}, nil
+}
+
+// Returns the power of a miner's committed sectors.
+func (v *View) MinerClaimedPower(ctx context.Context, miner addr.Address) (raw, qa abi.StoragePower, err error) {
 	minerResolved, err := v.InitResolveAddress(ctx, miner)
 	if err != nil {
-		return big.Zero(), err
+		return big.Zero(), big.Zero(), err
 	}
-
 	powerState, err := v.loadPowerActor(ctx)
 	if err != nil {
-		return big.Zero(), err
+		return big.Zero(), big.Zero(), err
 	}
 	claim, err := v.loadPowerClaim(ctx, powerState, minerResolved)
 	if err != nil {
-		return big.Zero(), err
+		return big.Zero(), big.Zero(), err
 	}
-	return claim.RawBytePower, nil
+	return claim.RawBytePower, claim.QualityAdjPower, nil
 }
 
 // PaychActorParties returns the From and To addresses for the given payment channel

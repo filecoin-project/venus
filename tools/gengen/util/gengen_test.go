@@ -28,7 +28,7 @@ func testConfig(t *testing.T) *GenesisCfg {
 	return &GenesisCfg{
 		ProofsMode:        types.TestProofsMode,
 		KeysToGen:         4,
-		PreallocatedFunds: []string{"10", "50"},
+		PreallocatedFunds: []string{"1000000", "500000"},
 		Miners: []*CreateStorageMinerConfig{
 			{
 				Owner:            0,
@@ -71,13 +71,12 @@ func TestGenGenLoading(t *testing.T) {
 	assert.Contains(t, stdout, builtin.InitActorCodeID.String())
 }
 
-func TestGenGenDeterministicBetweenBuilds(t *testing.T) {
-	tf.UnitTest(t)
-	t.Skip("Non-deterministic BLS key generation https://github.com/filecoin-project/go-filecoin/issues/3781")
+func TestGenGenDeterministic(t *testing.T) {
+	tf.IntegrationTest(t)
 
 	ctx := context.Background()
 	var info *RenderedGenInfo
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 5; i++ {
 		bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
 		inf, err := GenGen(ctx, testConfig(t), bstore)
 		assert.NoError(t, err)
