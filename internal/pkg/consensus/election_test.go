@@ -25,11 +25,7 @@ func TestGenValidTicketChain(t *testing.T) {
 	head := block.NewTipSetKey() // Tipset key is unused by fake randomness
 
 	// Interleave 3 signers
-	kis := []crypto.KeyInfo{
-		crypto.NewBLSKeyRandom(),
-		crypto.NewBLSKeyRandom(),
-		crypto.NewBLSKeyRandom(),
-	}
+	kis := types.MustGenerateBLSKeyInfo(3, 0)
 
 	miner, err := address.NewIDAddress(uint64(1))
 	require.NoError(t, err)

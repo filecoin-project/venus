@@ -287,10 +287,12 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 func genKeys(cfgkeys int, pnrg io.Reader) ([]*crypto.KeyInfo, error) {
 	keys := make([]*crypto.KeyInfo, cfgkeys)
 	for i := 0; i < cfgkeys; i++ {
-		ki := crypto.NewBLSKeyRandom() // TODO: use seed, https://github.com/filecoin-project/go-filecoin/issues/3781
+		ki, err := crypto.NewBLSKeyFromSeed(pnrg)
+		if err != nil {
+			return nil, err
+		}
 		keys[i] = &ki
 	}
-
 	return keys, nil
 }
 

@@ -109,12 +109,15 @@ func (backend *DSBackend) newSecpAddress() (address.Address, error) {
 	if err := backend.putKeyInfo(&ki); err != nil {
 		return address.Undef, err
 	}
-
 	return ki.Address()
 }
 
 func (backend *DSBackend) newBLSAddress() (address.Address, error) {
-	ki := crypto.NewBLSKeyRandom()
+	ki, err := crypto.NewBLSKeyFromSeed(rand.Reader)
+	if err != nil {
+		return address.Undef, err
+	}
+
 	if err := backend.putKeyInfo(&ki); err != nil {
 		return address.Undef, err
 	}

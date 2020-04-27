@@ -68,7 +68,10 @@ func MustGenerateMixedKeyInfo(m int, n int) []crypto.KeyInfo {
 	info := []crypto.KeyInfo{}
 	for m > 0 && n > 0 {
 		if m > 0 {
-			ki := crypto.NewBLSKeyRandom()
+			ki, err := crypto.NewBLSKeyFromSeed(rand.Reader)
+			if err != nil {
+				panic(err)
+			}
 			info = append(info, ki)
 			m--
 		}
@@ -86,13 +89,18 @@ func MustGenerateMixedKeyInfo(m int, n int) []crypto.KeyInfo {
 }
 
 // MustGenerateBLSKeyInfo produces n distinct BLS keyinfos.
-func MustGenerateBLSKeyInfo(n int) []crypto.KeyInfo {
-	info := []crypto.KeyInfo{}
+func MustGenerateBLSKeyInfo(n int, seed byte) []crypto.KeyInfo {
+	token := bytes.Repeat([]byte{seed}, 512)
+	var keyinfos []crypto.KeyInfo
 	for i := 0; i < n; i++ {
-		ki := crypto.NewBLSKeyRandom()
-		info = append(info, ki)
+		token[0] = byte(i)
+		ki, err := crypto.NewBLSKeyFromSeed(bytes.NewReader(token))
+		if err != nil {
+			panic(err)
+		}
+		keyinfos = append(keyinfos, ki)
 	}
-	return info
+	return keyinfos
 }
 
 // MustGenerateKeyInfo generates `n` distinct keyinfos using seed `seed`.

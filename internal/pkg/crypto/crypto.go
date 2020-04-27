@@ -3,6 +3,7 @@ package crypto
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"fmt"
 	"io"
 
 	secp256k1 "github.com/ipsn/go-secp256k1"
@@ -97,12 +98,20 @@ func NewSecpKeyFromSeed(seed io.Reader) (KeyInfo, error) {
 	}, nil
 }
 
-func NewBLSKeyRandom() KeyInfo {
-	k := bls.PrivateKeyGenerate()
+func NewBLSKeyFromSeed(seed io.Reader) (KeyInfo, error) {
+	var seedBytes bls.PrivateKeyGenSeed
+	read, err := seed.Read(seedBytes[:])
+	if err != nil {
+		return KeyInfo{}, err
+	}
+	if read != len(seedBytes) {
+		return KeyInfo{}, fmt.Errorf("read only %d bytes of %d required from seed", read, len(seedBytes))
+	}
+	k := bls.PrivateKeyGenerateWithSeed(seedBytes)
 	return KeyInfo{
 		PrivateKey: k[:],
 		SigType:    SigTypeBLS,
-	}
+	}, nil
 }
 
 // EcRecover recovers the public key from a message, signature pair.
