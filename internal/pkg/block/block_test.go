@@ -66,7 +66,7 @@ func TestTriangleEncoding(t *testing.T) {
 		b := &blk.Block{
 			Miner:         newAddress(),
 			Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-			ElectionProof: crypto.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
+			ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
 			Height:        2,
 			DrandEntries: []*drand.Entry{
 				{
@@ -231,7 +231,7 @@ func TestSignatureData(t *testing.T) {
 	b := &blk.Block{
 		Miner:         newAddress(),
 		Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-		ElectionProof: crypto.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
+		ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
 		DrandEntries: []*drand.Entry{
 			{
 				Round:     drand.Round(5),
@@ -258,7 +258,7 @@ func TestSignatureData(t *testing.T) {
 	diff := &blk.Block{
 		Miner:         newAddress(),
 		Ticket:        blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
-		ElectionProof: crypto.ElectionProof{VRFProof: []byte{0x0c, 0x0d}},
+		ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0c, 0x0d}},
 		DrandEntries: []*drand.Entry{
 			{
 				Round:     drand.Round(44),
