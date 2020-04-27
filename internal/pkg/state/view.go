@@ -159,6 +159,98 @@ func (v *View) MinerDeadlines(ctx context.Context, maddr addr.Address) (*miner.D
 	return minerState.LoadDeadlines(StoreFromCbor(ctx, v.ipldStore))
 }
 
+// MinerPartitionIndexesForDeadline returns all partitions that need to be proven in the proving period deadline for the given epoch
+func (v *View) MinerPartitionIndicesForDeadline(ctx context.Context, maddr addr.Address, epoch abi.ChainEpoch) ([]uint64, error) {
+	minerState, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	deadlineInfo := minerState.DeadlineInfo(epoch)
+	if err != nil {
+		return nil, err
+	}
+
+	deadlines, err := minerState.LoadDeadlines(StoreFromCbor(ctx, v.ipldStore))
+	if err != nil {
+		return nil, err
+	}
+
+	// compute first partition index
+	start, sectorCount, err := miner.PartitionsForDeadline(deadlines, deadlineInfo.Index)
+	if err != nil {
+		return nil, err
+	}
+
+	// if deadline contains no sectors, return no partitions
+	if sectorCount == 0 {
+		return nil, nil
+	}
+
+	// compute number of partitions
+	partitionCount, _, err := miner.DeadlineCount(deadlines, deadlineInfo.Index)
+	if err != nil {
+		return nil, err
+	}
+
+	partitions := make([]uint64, partitionCount)
+	for i := uint64(0); i < partitionCount; i++ {
+		partitions[i] = start + i
+	}
+
+	return partitions, err
+}
+
+// nerSectorInfoForPartitions retrieves sector info for sectors needed to be proven over for the given proving window partitions
+func (v *View) MinerSectorInfoForPartitions(ctx context.Context, maddr addr.Address, epoch abi.ChainEpoch, partitions []uint64) ([][]abi.SectorInfo, error) {
+	minerState, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	deadlineInfo := minerState.DeadlineInfo(epoch)
+	if err != nil {
+		return nil, err
+	}
+
+	deadlines, err := minerState.LoadDeadlines(StoreFromCbor(ctx, v.ipldStore))
+	if err != nil {
+		return nil, err
+	}
+
+	sectorIndices, err := miner.ComputePartitionsSectors(deadlines, deadlineInfo.Index, partitions)
+	if err != nil {
+		return nil, err
+	}
+
+	// convert bitfields to sector info slices
+	sectors, err := v.asArray(ctx, minerState.Sectors)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([][]abi.SectorInfo, len(sectorIndices))
+	for i, field := range sectorIndices {
+		err = field.ForEach(func(u uint64) error {
+			sectorInfo := abi.SectorInfo{}
+			found, err := sectors.Get(u, &sectorInfo)
+			if err != nil {
+				return err
+			}
+			if !found {
+				return fmt.Errorf("bit field indexes sector outside miner sectors, %d", u)
+			}
+			out[i] = append(out[i], sectorInfo)
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return out, nil
+}
+
 // DeadlineInfo returns information about the next proving period
 // Do not use this, it exposes chain state specifics unnecessarily.
 // https://github.com/filecoin-project/go-filecoin/issues/4025
