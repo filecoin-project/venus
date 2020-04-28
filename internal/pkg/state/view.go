@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 
 	addr "github.com/filecoin-project/go-address"
@@ -145,7 +146,142 @@ func (v *View) MinerSectorCount(ctx context.Context, maddr addr.Address) (int, e
 	return count, err
 }
 
-// DeadlineInfo returns information about the next proving period
+// MinerDeadlineInfo returns information relevant to the current proving deadline
+func (v *View) MinerDeadlineInfo(ctx context.Context, maddr addr.Address, epoch abi.ChainEpoch) (index uint64, open, close, challenge abi.ChainEpoch, _ error) {
+	minerState, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+
+	deadlineInfo := minerState.DeadlineInfo(epoch)
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+
+	return deadlineInfo.Index, deadlineInfo.Open, deadlineInfo.Close, deadlineInfo.Challenge, nil
+}
+
+// MinerPartitionIndexesForDeadline returns all partitions that need to be proven in the proving period deadline for the given epoch
+func (v *View) MinerPartitionIndicesForDeadline(ctx context.Context, maddr addr.Address, deadlineIndex uint64) ([]uint64, error) {
+	minerState, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	deadlines, err := minerState.LoadDeadlines(StoreFromCbor(ctx, v.ipldStore))
+	if err != nil {
+		return nil, err
+	}
+
+	// compute first partition index
+	start, sectorCount, err := miner.PartitionsForDeadline(deadlines, deadlineIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	// if deadline contains no sectors, return no partitions
+	if sectorCount == 0 {
+		return nil, nil
+	}
+
+	// compute number of partitions
+	partitionCount, _, err := miner.DeadlineCount(deadlines, deadlineIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	partitions := make([]uint64, partitionCount)
+	for i := uint64(0); i < partitionCount; i++ {
+		partitions[i] = start + i
+	}
+
+	return partitions, err
+}
+
+// MinerSectorInfoForPartitions retrieves sector info for sectors needed to be proven over for the given proving window partitions
+func (v *View) MinerSectorInfoForDeadline(ctx context.Context, maddr addr.Address, deadlineIndex uint64, partitions []uint64) ([]abi.SectorInfo, error) {
+	minerState, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	deadlines, err := minerState.LoadDeadlines(StoreFromCbor(ctx, v.ipldStore))
+	if err != nil {
+		return nil, err
+	}
+
+	// This is copied from miner.Actor SubmitWindowedPoSt. It should be logic in miner.State.
+	partitionsSectors, err := miner.ComputePartitionsSectors(deadlines, deadlineIndex, partitions)
+	if err != nil {
+		return nil, err
+	}
+
+	provenSectors, err := abi.BitFieldUnion(partitionsSectors...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract a fault set relevant to the sectors being submitted, for expansion into a map.
+	declaredFaults, err := bitfield.IntersectBitField(provenSectors, minerState.Faults)
+	if err != nil {
+		return nil, err
+	}
+
+	declaredRecoveries, err := bitfield.IntersectBitField(declaredFaults, minerState.Recoveries)
+	if err != nil {
+		return nil, err
+	}
+
+	expectedFaults, err := bitfield.SubtractBitField(declaredFaults, declaredRecoveries)
+	if err != nil {
+		return nil, err
+	}
+
+	nonFaults, err := bitfield.SubtractBitField(provenSectors, expectedFaults)
+	if err != nil {
+		return nil, err
+	}
+
+	empty, err := nonFaults.IsEmpty()
+	if err != nil {
+		return nil, err
+	}
+
+	if empty {
+		return nil, fmt.Errorf("no non-faulty sectors in partitions %+v", partitions)
+	}
+
+	// Select a non-faulty sector as a substitute for faulty ones.
+	goodSectorNo, err := nonFaults.First()
+	if err != nil {
+		return nil, err
+	}
+
+	// Load sector infos for proof
+	sectors, err := minerState.LoadSectorInfosWithFaultMask(StoreFromCbor(ctx, v.ipldStore), provenSectors, expectedFaults, abi.SectorNumber(goodSectorNo))
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]abi.SectorInfo, len(sectors))
+	for i, sector := range sectors {
+		out[i] = sector.AsSectorInfo()
+	}
+
+	return out, nil
+}
+
+// MinerSuccessfulPoSts counts how many successful window PoSts have been made this proving period so far.
+func (v *View) MinerSuccessfulPoSts(ctx context.Context, maddr addr.Address) (uint64, error) {
+	minerState, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return 0, err
+	}
+
+	return minerState.PostSubmissions.Count()
+}
+
+// MinerDeadlines returns a bitfield of sectors in a proving period
 // This concrete chain state type is exposed because it's referenced directly by the storage-fsm module.
 // This is in conflict with the general goal of the state view of hiding the chain state representations from
 // consumers in order to support versioning that representation through protocol upgrades.
@@ -159,9 +295,7 @@ func (v *View) MinerDeadlines(ctx context.Context, maddr addr.Address) (*miner.D
 	return minerState.LoadDeadlines(StoreFromCbor(ctx, v.ipldStore))
 }
 
-// DeadlineInfo returns information about the next proving period
-// Do not use this, it exposes chain state specifics unnecessarily.
-// https://github.com/filecoin-project/go-filecoin/issues/4025
+// MinerInfo returns information about the next proving period
 func (v *View) MinerInfo(ctx context.Context, maddr addr.Address) (miner.MinerInfo, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
