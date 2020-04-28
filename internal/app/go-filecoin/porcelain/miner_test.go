@@ -115,7 +115,7 @@ func TestMinerCreate(t *testing.T) {
 			collateral,
 		)
 		require.NoError(t, err)
-		assert.Equal(t, expectedAddress, *addr)
+		assert.Equal(t, expectedAddress, addr)
 	})
 
 	t.Run("failure to send", func(t *testing.T) {

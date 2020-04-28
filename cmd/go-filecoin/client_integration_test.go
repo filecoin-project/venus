@@ -26,11 +26,7 @@ func TestProposeDeal(t *testing.T) {
 
 	miner := nodes[0]
 
-	// get miner stats
 	maddr, err := miner.BlockMining.BlockMiningAPI.MinerAddress()
-	require.NoError(t, err)
-
-	mstats, err := miner.PorcelainAPI.MinerGetStatus(ctx, maddr, miner.PorcelainAPI.ChainHeadKey())
 	require.NoError(t, err)
 
 	client := nodes[1]
@@ -58,7 +54,7 @@ func TestProposeDeal(t *testing.T) {
 	var result storagemarket.ProposeStorageDealResult
 	clientAPI.RunMarshaledJSON(ctx, &result, "client", "propose-storage-deal",
 		"--peerid", miner.Host().ID().String(),
-		mstats.ActorAddress.String(),
+		maddr.String(),
 		node.Cid().String(),
 		"1000",
 		"2000",

@@ -378,7 +378,11 @@ func (node *Node) SetupMining(ctx context.Context) error {
 		return errors.Wrap(err, "failed to get mining address")
 	}
 	head := node.PorcelainAPI.ChainHeadKey()
-	_, err = node.PorcelainAPI.MinerGetStatus(ctx, minerAddr, head)
+	view, err := node.PorcelainAPI.MinerStateView(head)
+	if err != nil {
+		return errors.Wrap(err, "failed to load state view")
+	}
+	_, _, err = view.MinerControlAddresses(ctx, minerAddr)
 	if err != nil {
 		return errors.Wrap(err, "failed to get miner actor")
 	}
@@ -658,10 +662,13 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 	}
 
 	head := node.PorcelainAPI.ChainHeadKey()
-	minerStatus, err := node.PorcelainAPI.MinerGetStatus(ctx, minerAddr, head)
+	view, err := node.PorcelainAPI.MinerStateView(head)
 	if err != nil {
-		log.Errorf("could not get owner address of miner actor")
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to load miner state")
+	}
+	owner, _, err := view.MinerControlAddresses(ctx, minerAddr)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to read miner control addresses")
 	}
 
 	poster := node.BlockMining.PoStGenerator
@@ -678,7 +685,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 		API: node.PorcelainAPI,
 
 		MinerAddr:      minerAddr,
-		MinerOwnerAddr: minerStatus.OwnerAddress,
+		MinerOwnerAddr: owner,
 		WorkerSigner:   node.Wallet.Signer,
 
 		GetStateTree:   node.chain.ChainReader.GetTipSetState,

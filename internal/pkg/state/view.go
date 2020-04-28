@@ -146,7 +146,11 @@ func (v *View) MinerSectorCount(ctx context.Context, maddr addr.Address) (int, e
 }
 
 // DeadlineInfo returns information about the next proving period
-func (v *View) MinerDeadlines(ctx context.Context, maddr addr.Address, currentEpoch abi.ChainEpoch) (*miner.Deadlines, error) {
+// This concrete chain state type is exposed because it's referenced directly by the storage-fsm module.
+// This is in conflict with the general goal of the state view of hiding the chain state representations from
+// consumers in order to support versioning that representation through protocol upgrades.
+// See https://github.com/filecoin-project/storage-fsm/issues/13
+func (v *View) MinerDeadlines(ctx context.Context, maddr addr.Address) (*miner.Deadlines, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
 		return nil, err
@@ -156,6 +160,8 @@ func (v *View) MinerDeadlines(ctx context.Context, maddr addr.Address, currentEp
 }
 
 // DeadlineInfo returns information about the next proving period
+// Do not use this, it exposes chain state specifics unnecessarily.
+// https://github.com/filecoin-project/go-filecoin/issues/4025
 func (v *View) MinerInfo(ctx context.Context, maddr addr.Address) (miner.MinerInfo, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {

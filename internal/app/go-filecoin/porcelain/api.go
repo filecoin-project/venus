@@ -71,7 +71,7 @@ func (a *API) MinerCreate(
 	sectorSize abi.SectorSize,
 	pid peer.ID,
 	collateral types.AttoFIL,
-) (_ *address.Address, err error) {
+) (_ address.Address, err error) {
 	return MinerCreate(ctx, a, accountAddr, gasPrice, gasLimit, sectorSize, pid, collateral)
 }
 

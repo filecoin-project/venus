@@ -85,7 +85,7 @@ func (f FiniteStateMachineNodeConnector) StateWaitMsg(ctx context.Context, mcid 
 	return lookup, err
 }
 
-func (f FiniteStateMachineNodeConnector) StateComputeDataCommitment(ctx context.Context, maddr address.Address, sectorType abi.RegisteredProof, deals []abi.DealID, tok fsm.TipSetToken) (cid.Cid, error) {
+func (f FiniteStateMachineNodeConnector) StateComputeDataCommitment(ctx context.Context, _ address.Address, sectorType abi.RegisteredProof, deals []abi.DealID, tok fsm.TipSetToken) (cid.Cid, error) {
 	view, err := f.stateViewForToken(tok)
 	if err != nil {
 		return cid.Undef, err
@@ -157,22 +157,12 @@ func (f FiniteStateMachineNodeConnector) StateMinerDeadlines(ctx context.Context
 		return nil, err
 	}
 
-	ts, err := f.chainState.GetTipSet(tsk)
-	if err != nil {
-		return nil, err
-	}
-
-	chainHeight, err := ts.Height()
-	if err != nil {
-		return nil, err
-	}
-
 	view, err := f.stateViewer.StateView(tsk)
 	if err != nil {
 		return nil, err
 	}
 
-	return view.MinerDeadlines(ctx, maddr, chainHeight)
+	return view.MinerDeadlines(ctx, maddr)
 }
 
 func (f FiniteStateMachineNodeConnector) SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, gasPrice big.Int, gasLimit int64, params []byte) (cid.Cid, error) {
@@ -197,7 +187,7 @@ func (f FiniteStateMachineNodeConnector) SendMsg(ctx context.Context, from, to a
 	return mcid, nil
 }
 
-func (f FiniteStateMachineNodeConnector) ChainHead(ctx context.Context) (fsm.TipSetToken, abi.ChainEpoch, error) {
+func (f FiniteStateMachineNodeConnector) ChainHead(_ context.Context) (fsm.TipSetToken, abi.ChainEpoch, error) {
 	ts, err := f.chain.GetTipSet(f.chain.GetHead())
 	if err != nil {
 		return fsm.TipSetToken{}, 0, err
