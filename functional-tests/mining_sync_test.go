@@ -148,7 +148,7 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 			return
 		}
 
-		// If we mine too many blocks before the post is sent we could miss our window. Add some friction here.
+		// We need to mine enough blocks to get to get to the deadline that contains our sectors. Add some friction here.
 		time.Sleep(2 * time.Second)
 	}
 	t.Fatal("Timouut waiting for windowed PoSt")

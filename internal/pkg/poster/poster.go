@@ -114,7 +114,7 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) er
 		return err
 	}
 
-	// If we have already seen this randomness, either the deadline has changed or
+	// If we have not already seen this randomness, either the deadline has changed
 	// or the chain as reorged to a point prior to the challenge. Either way,
 	// it is time to start a new PoSt.
 	if bytes.Equal(p.challenge, randomness) {

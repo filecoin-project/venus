@@ -146,7 +146,7 @@ func (v *View) MinerSectorCount(ctx context.Context, maddr addr.Address) (int, e
 	return count, err
 }
 
-// MinerDeadlineInfo returns all partitions that need to be proven for the
+// MinerDeadlineInfo returns information relevant to the current proving deadline
 func (v *View) MinerDeadlineInfo(ctx context.Context, maddr addr.Address, epoch abi.ChainEpoch) (index uint64, open, close, challenge abi.ChainEpoch, _ error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
@@ -198,7 +198,7 @@ func (v *View) MinerPartitionIndicesForDeadline(ctx context.Context, maddr addr.
 	return partitions, err
 }
 
-// nerSectorInfoForPartitions retrieves sector info for sectors needed to be proven over for the given proving window partitions
+// MinerSectorInfoForPartitions retrieves sector info for sectors needed to be proven over for the given proving window partitions
 func (v *View) MinerSectorInfoForDeadline(ctx context.Context, maddr addr.Address, deadlineIndex uint64, partitions []uint64) ([]abi.SectorInfo, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
