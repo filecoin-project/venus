@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
 
 	addr "github.com/filecoin-project/go-address"
@@ -149,12 +150,12 @@ func (v *View) MinerSectorCount(ctx context.Context, maddr addr.Address) (int, e
 func (v *View) MinerDeadlineInfo(ctx context.Context, maddr addr.Address, epoch abi.ChainEpoch) (index uint64, open, close, challenge abi.ChainEpoch, _ error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, 0, err
 	}
 
 	deadlineInfo := minerState.DeadlineInfo(epoch)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, 0, err
 	}
 
 	return deadlineInfo.Index, deadlineInfo.Open, deadlineInfo.Close, deadlineInfo.Challenge, nil
@@ -209,34 +210,62 @@ func (v *View) MinerSectorInfoForDeadline(ctx context.Context, maddr addr.Addres
 		return nil, err
 	}
 
-	sectorIndices, err := miner.ComputePartitionsSectors(deadlines, deadlineIndex, partitions)
+	// This is copied from miner.Actor SubmitWindowedPoSt. It should be logic in miner.State.
+	partitionsSectors, err := miner.ComputePartitionsSectors(deadlines, deadlineIndex, partitions)
 	if err != nil {
 		return nil, err
 	}
 
-	// convert bitfields to sector info slices
-	sectors, err := v.asArray(ctx, minerState.Sectors)
+	provenSectors, err := abi.BitFieldUnion(partitionsSectors...)
 	if err != nil {
 		return nil, err
 	}
 
-	out := []abi.SectorInfo{}
-	for _, field := range sectorIndices {
-		err = field.ForEach(func(u uint64) error {
-			sectorOnChainInfo := miner.SectorOnChainInfo{}
-			found, err := sectors.Get(u, &sectorOnChainInfo)
-			if err != nil {
-				return err
-			}
-			if !found {
-				return fmt.Errorf("bit field indexes sector outside miner sectors, %d", u)
-			}
-			out = append(out, sectorOnChainInfo.AsSectorInfo())
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
+	// Extract a fault set relevant to the sectors being submitted, for expansion into a map.
+	declaredFaults, err := bitfield.IntersectBitField(provenSectors, minerState.Faults)
+	if err != nil {
+		return nil, err
+	}
+
+	declaredRecoveries, err := bitfield.IntersectBitField(declaredFaults, minerState.Recoveries)
+	if err != nil {
+		return nil, err
+	}
+
+	expectedFaults, err := bitfield.SubtractBitField(declaredFaults, declaredRecoveries)
+	if err != nil {
+		return nil, err
+	}
+
+	nonFaults, err := bitfield.SubtractBitField(provenSectors, expectedFaults)
+	if err != nil {
+		return nil, err
+	}
+
+	empty, err := nonFaults.IsEmpty()
+	if err != nil {
+		return nil, err
+	}
+
+	if empty {
+		return nil, fmt.Errorf("no non-faulty sectors in partitions %s", partitions)
+	}
+
+	// Select a non-faulty sector as a substitute for faulty ones.
+	goodSectorNo, err := nonFaults.First()
+	if err != nil {
+		return nil, err
+	}
+
+	// Load sector infos for proof
+	sectors, err := minerState.LoadSectorInfosWithFaultMask(StoreFromCbor(ctx, v.ipldStore), provenSectors, expectedFaults, abi.SectorNumber(goodSectorNo))
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]abi.SectorInfo, len(sectors))
+	for i, sector := range sectors {
+		out[i] = sector.AsSectorInfo()
 	}
 
 	return out, nil

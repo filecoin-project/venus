@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -29,10 +28,10 @@ var log = logging.Logger("poster")
 
 // Poster listens for changes to the chain head and generates and submits a PoSt if one is required.
 type Poster struct {
-	postMutex         sync.Mutex
-	postCancel        context.CancelFunc
-	scheduleCancel    context.CancelFunc
-	poStDeadlineIndex int64
+	postMutex      sync.Mutex
+	postCancel     context.CancelFunc
+	scheduleCancel context.CancelFunc
+	challenge      abi.Randomness
 
 	minerAddr   address.Address
 	outbox      *message.Outbox
@@ -52,13 +51,13 @@ func NewPoster(
 	waiter *msg.Waiter) *Poster {
 
 	return &Poster{
-		minerAddr:         minerAddr,
-		outbox:            outbox,
-		mgr:               mgr,
-		chain:             chain,
-		stateViewer:       stateViewer,
-		waiter:            waiter,
-		poStDeadlineIndex: -1,
+		minerAddr:   minerAddr,
+		outbox:      outbox,
+		mgr:         mgr,
+		chain:       chain,
+		stateViewer: stateViewer,
+		waiter:      waiter,
+		challenge:   abi.Randomness{},
 	}
 }
 
@@ -100,25 +99,40 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) er
 	}
 
 	stateView := p.stateViewer.StateView(root)
-	index, _, _, challenge, err := stateView.MinerDeadlineInfo(ctx, p.minerAddr, tipsetHeight)
+	index, open, _, challengeAt, err := stateView.MinerDeadlineInfo(ctx, p.minerAddr, tipsetHeight)
 	if err != nil {
+		return err
+	}
+
+	// exit if we haven't yet hit the deadline
+	if tipsetHeight < open {
 		return nil
 	}
 
-	// check that we haven't already seen this deadline
-	if int64(index) == p.poStDeadlineIndex {
+	randomness, err := p.getChallenge(ctx, newHead.Key(), challengeAt)
+	if err != nil {
+		return err
+	}
+
+	// If we have already seen this randomness, either the deadline has changed or
+	// or the chain as reorged to a point prior to the challenge. Either way,
+	// it is time to start a new PoSt.
+	if bytes.Equal(p.challenge, randomness) {
 		return nil
 	}
-	p.poStDeadlineIndex = int64(index)
+	p.challenge = randomness
+
+	// stop existing PoSt, if one exists
+	p.cancelPoSt()
 
 	ctx, p.postCancel = context.WithCancel(ctx)
-	go p.doPoSt(ctx, stateView, index, challenge, newHead.Key())
+	go p.doPoSt(ctx, stateView, index)
 
 	return nil
 }
 
-func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, deadlineIndex uint64, challengeAt abi.ChainEpoch, head block.TipSetKey) {
-	defer p.cancelPost()
+func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, deadlineIndex uint64) {
+	defer p.safeCancelPoSt()
 
 	minerID, err := address.IDFromAddress(p.minerAddr)
 	if err != nil {
@@ -144,25 +158,7 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, deadlineI
 		return
 	}
 
-	// if no sectors, we're done
-	if len(sectors) == 0 {
-		return
-	}
-
-	buf := new(bytes.Buffer)
-	err = p.minerAddr.MarshalCBOR(buf)
-	if err != nil {
-		log.Errorf("could not create entropy from miner address %s: %s", p.minerAddr, err)
-		return
-	}
-
-	randomness, err := p.chain.SampleChainRandomness(ctx, head, acrypto.DomainSeparationTag_WindowedPoStChallengeSeed, challengeAt, buf.Bytes())
-	if err != nil {
-		log.Errorf("could not sample chain randomness at %d: %s", challengeAt, err)
-		return
-	}
-
-	proofs, err := p.mgr.GenerateWindowPoSt(ctx, abi.ActorID(minerID), sectors, abi.PoStRandomness(randomness))
+	proofs, err := p.mgr.GenerateWindowPoSt(ctx, abi.ActorID(minerID), sectors, abi.PoStRandomness(p.challenge))
 	if err != nil {
 		log.Errorf("error generating window PoSt: %s", err)
 		return
@@ -219,14 +215,24 @@ func (p *Poster) sendPoSt(ctx context.Context, workerAddr address.Address, index
 	return nil
 }
 
-func (p *Poster) getProvingSet(ctx context.Context, stateView *appstate.View) ([]abi.SectorInfo, error) {
-	return consensus.NewPowerTableView(stateView, stateView).SortedSectorInfos(ctx, p.minerAddr)
+func (p *Poster) getChallenge(ctx context.Context, head block.TipSetKey, at abi.ChainEpoch) (abi.Randomness, error) {
+	buf := new(bytes.Buffer)
+	err := p.minerAddr.MarshalCBOR(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return p.chain.SampleChainRandomness(ctx, head, acrypto.DomainSeparationTag_WindowedPoStChallengeSeed, at, buf.Bytes())
 }
 
-func (p *Poster) cancelPost() {
+func (p *Poster) safeCancelPoSt() {
 	p.postMutex.Lock()
 	defer p.postMutex.Unlock()
 
+	p.cancelPoSt()
+}
+
+func (p *Poster) cancelPoSt() {
 	if p.postCancel != nil {
 		p.postCancel()
 		p.postCancel = nil
