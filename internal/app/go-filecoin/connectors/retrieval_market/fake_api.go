@@ -12,7 +12,6 @@ import (
 	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -94,9 +93,6 @@ func (rmFake *RetrievalMarketClientFakeAPI) UnsealSector(_ context.Context, sect
 }
 
 // ---------------  Testing methods
-func (rmFake *RetrievalMarketClientFakeAPI) Verify() {
-	assert.Equal(rmFake.t, len(rmFake.ActualSectorIDs), len(rmFake.ExpectedSectorIDs))
-}
 
 // StubMessageResponse sets up a message, message receipt and return value for a create payment
 // channel message

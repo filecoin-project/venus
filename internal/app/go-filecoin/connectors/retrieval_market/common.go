@@ -37,6 +37,9 @@ type PaychMgrAPI interface {
 	GetPaymentChannelInfo(paychAddr address.Address) (*paymentchannel.ChannelInfo, error)
 	GetPaymentChannelByAccounts(payer, payee address.Address) (*paymentchannel.ChannelInfo, error)
 	CreatePaymentChannel(payer, payee address.Address, amt abi.TokenAmount) (address.Address, cid.Cid, error)
+	AddFundsToChannel(paychAddr address.Address, amt abi.TokenAmount) (cid.Cid, error)
 	AddVoucherToChannel(paychAddr address.Address, voucher *paychActor.SignedVoucher) error
 	AddVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte, expected big.Int, tok shared.TipSetToken) (abi.TokenAmount, error)
+	WaitForCreatePaychMessage(ctx context.Context, mcid cid.Cid) (address.Address, error)
+	WaitForAddFundsMessage(ctx context.Context, mcid cid.Cid) error
 }

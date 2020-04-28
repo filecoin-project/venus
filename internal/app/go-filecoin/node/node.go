@@ -128,9 +128,6 @@ func (node *Node) Start(ctx context.Context) error {
 		return errors.Wrap(err, "failed to set up protocols:")
 	}
 
-	// DRAGONS: uncomment when we have retrieval market integration
-	//node.RetrievalProtocol.RetrievalProvider = retrieval.NewMiner()
-
 	var syncCtx context.Context
 	syncCtx, node.syncer.CancelChainSync = context.WithCancel(context.Background())
 

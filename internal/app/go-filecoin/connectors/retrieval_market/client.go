@@ -80,7 +80,8 @@ func (r *RetrievalClientConnector) GetOrCreatePaymentChannel(ctx context.Context
 	// If there was one already, what CID should this return?
 	// What happens if that message is subsequently re-orged out of the chain and never replayed?
 	// https://github.com/filecoin-project/go-filecoin/issues/4034
-	return chinfo.UniqueAddr, cid.Undef, nil
+	mcid, err := r.paychMgr.AddFundsToChannel(chinfo.UniqueAddr, clientFundsAvailable)
+	return chinfo.UniqueAddr, mcid, err
 }
 
 // AllocateLane creates a new lane for this paymentChannel with 0 FIL in the lane
@@ -137,14 +138,12 @@ func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, pay
 	return &v, nil
 }
 
-func (r *RetrievalClientConnector) WaitForPaymentChannelCreation(messageCID cid.Cid) (address.Address, error) {
-	// TODO https://github.com/filecoin-project/go-filecoin/issues/4034
-	panic("implement me")
+func (r *RetrievalClientConnector) WaitForPaymentChannelAddFunds(messageCID cid.Cid) error {
+	return r.paychMgr.WaitForAddFundsMessage(context.Background(), messageCID)
 }
 
-func (r *RetrievalClientConnector) WaitForPaymentChannelAddFunds(messageCID cid.Cid) error {
-	// TODO https://github.com/filecoin-project/go-filecoin/issues/4034
-	panic("implement me")
+func (r *RetrievalClientConnector) WaitForPaymentChannelCreation(messageCID cid.Cid) (address.Address, error) {
+	return r.paychMgr.WaitForCreatePaychMessage(context.Background(), messageCID)
 }
 
 func (r *RetrievalClientConnector) getBlockHeight(tok shared.TipSetToken) (abi.ChainEpoch, error) {

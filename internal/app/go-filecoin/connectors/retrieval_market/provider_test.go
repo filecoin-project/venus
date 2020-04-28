@@ -37,11 +37,10 @@ func TestNewRetrievalProviderNodeConnector(t *testing.T) {
 	pm := piecemanager.NewFiniteStateMachineBackEnd(nil, nil)
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 
-	pchMgr := makePaychMgr(context.Background(), t,
+	pchMgr, _ := makePaychMgr(context.Background(), t,
 		specst.NewIDAddr(t, 99),
 		specst.NewIDAddr(t, 100),
-		specst.NewActorAddr(t, "foobar"),
-		abi.NewTokenAmount(10))
+		specst.NewActorAddr(t, "foobar"))
 	rpc := NewRetrievalProviderConnector(rmnet, &pm, bs, pchMgr, nil)
 	assert.NotZero(t, rpc)
 }
@@ -87,7 +86,6 @@ func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
 
 				// check that it read something & the offset worked
 				assert.Equal(t, "xtures", string(readBytes[0:6]))
-				rmp.Verify()
 			}
 		})
 	}
@@ -97,11 +95,10 @@ func unsealTestSetup(ctx context.Context, t *testing.T) (*RetrievalMarketClientF
 	rmnet := gfmtut.NewTestRetrievalMarketNetwork(gfmtut.TestNetworkParams{})
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	rmp := NewRetrievalMarketClientFakeAPI(t)
-	pchMgr := makePaychMgr(ctx, t,
+	pchMgr, _ := makePaychMgr(ctx, t,
 		specst.NewIDAddr(t, 99),
 		specst.NewIDAddr(t, 100),
-		specst.NewActorAddr(t, "foobar"),
-		abi.NewTokenAmount(10))
+		specst.NewActorAddr(t, "foobar"))
 	rpc := NewRetrievalProviderConnector(rmnet, rmp, bs, pchMgr, nil)
 	return rmp, rpc
 }
@@ -146,7 +143,6 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 		chinfo, err := pchMgr.GetPaymentChannelInfo(pchan)
 		require.NoError(t, err)
 		assert.True(t, chinfo.HasVoucher(voucher))
-		rmp.Verify()
 	})
 
 	t.Run("errors if manager fails to save voucher, does not store new channel info", func(t *testing.T) {

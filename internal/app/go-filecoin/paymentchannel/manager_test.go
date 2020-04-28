@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared_testutil"
@@ -48,10 +49,13 @@ func TestManager_CreatePaymentChannel(t *testing.T) {
 	ctx := context.Background()
 	viewer := paychtest.NewFakeStateViewer(t)
 	balance := abi.NewTokenAmount(301)
+	expectedMsgCID := shared_testutil.GenerateCids(1)[0]
 
 	t.Run("happy path", func(t *testing.T) {
 		ds := dss.MutexWrap(datastore.NewMapDatastore())
 		testAPI := paychtest.NewFakePaymentChannelAPI(ctx, t)
+		testAPI.ExpectedMsgCid = expectedMsgCID
+
 		m := NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 		clientAddr, minerAddr, paychUniqueAddr, _ := requireSetupPaymentChannel(t, testAPI, m, balance)
 		exists, err := m.ChannelExists(paychUniqueAddr)
@@ -91,7 +95,8 @@ func TestManager_CreatePaymentChannel(t *testing.T) {
 
 			testAPI.ExpectedMsgCid, testAPI.ExpectedResult = paychtest.GenCreatePaychActorMessage(t, clientAddr, minerAddr, paych, balance, exitcode.Ok, blockHeight)
 
-			_, _, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
+			_, mcid, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
+			assert.True(t, mcid.Equals(expectedMsgCID))
 			assert.EqualError(t, err, tc.expErr)
 		})
 	}
@@ -101,7 +106,8 @@ func TestManager_CreatePaymentChannel(t *testing.T) {
 		testAPI := paychtest.NewFakePaymentChannelAPI(ctx, t)
 		m := NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 		clientAddr, minerAddr, _, _ := requireSetupPaymentChannel(t, testAPI, m, types.ZeroAttoFIL)
-		_, _, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
+		_, mcid, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
+		assert.True(t, mcid.Equals(expectedMsgCID))
 		assert.EqualError(t, err, "payment channel exists for client t0901, miner t0902")
 	})
 }
@@ -336,7 +342,6 @@ func setupViewerManager(ctx context.Context, t *testing.T, root cid.Cid) (*paych
 }
 
 func requireSetupPaymentChannel(t *testing.T, testAPI *paychtest.FakePaymentChannelAPI, m *Manager, balance abi.TokenAmount) (address.Address, address.Address, address.Address, uint64) {
-
 	clientAddr := spect.NewIDAddr(t, 901)
 	minerAddr := spect.NewIDAddr(t, 902)
 	paychUniqueAddr := spect.NewActorAddr(t, "abcd123")
@@ -344,9 +349,11 @@ func requireSetupPaymentChannel(t *testing.T, testAPI *paychtest.FakePaymentChan
 
 	testAPI.ExpectedMsgCid, testAPI.ExpectedResult = paychtest.GenCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, balance, exitcode.Ok, blockHeight)
 
-	addr, mcid, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
+	_, mcid, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
 	require.NoError(t, err)
-	require.Equal(t, addr, paychUniqueAddr)
+
+	// give goroutine a chance to update channel store
+	time.Sleep(100 * time.Millisecond)
 	assert.True(t, testAPI.ExpectedMsgCid.Equals(testAPI.ActualWaitCid))
 	assert.True(t, testAPI.ExpectedMsgCid.Equals(mcid))
 	return clientAddr, minerAddr, paychUniqueAddr, blockHeight
