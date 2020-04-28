@@ -15,6 +15,7 @@ require (
 	github.com/drand/drand v0.7.2
 	github.com/drand/kyber v1.0.1-0.20200331114745-30e90cc60f99
 	github.com/elastic/go-windows v1.0.1 // indirect
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200424212533-860752305527
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200414233031-ec8c702c0e2b
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
