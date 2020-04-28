@@ -30,6 +30,8 @@ type FakeInitActorUtil struct {
 	*initActorHarness
 	newActor, newActorID, caller address.Address
 	result                       MsgResult
+	msgSender                    sender
+	msgWaiter                    waiter
 }
 
 // NewFakeInitActorUtil initializes a FakeInitActorUtil and constructs
@@ -47,8 +49,21 @@ func NewFakeInitActorUtil(ctx context.Context, t *testing.T, balance abi.TokenAm
 	}
 	fai.constructInitActor()
 	fai.Runtime.Verify()
+	fai.msgSender = fai.defaultSend
+	fai.msgWaiter = fai.defaultWait
 	return fai
 }
+
+type sender func(ctx context.Context,
+	from, to address.Address,
+	value types.AttoFIL,
+	gasPrice types.AttoFIL,
+	gasLimit gas.Unit,
+	bcast bool,
+	method abi.MethodNum,
+	params interface{}) (out cid.Cid, pubErrCh chan error, err error)
+
+type waiter func(_ context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error
 
 // Send simulates posting to chain but calls actor code directly
 func (fai *FakeInitActorUtil) Send(ctx context.Context,
@@ -59,7 +74,16 @@ func (fai *FakeInitActorUtil) Send(ctx context.Context,
 	bcast bool,
 	method abi.MethodNum,
 	params interface{}) (out cid.Cid, pubErrCh chan error, err error) {
-
+	return fai.msgSender(ctx, from, to, value, gasPrice, gasLimit, bcast, method, params)
+}
+func (fai *FakeInitActorUtil) defaultSend(ctx context.Context,
+	from, to address.Address,
+	value types.AttoFIL,
+	gasPrice types.AttoFIL,
+	gasLimit gas.Unit,
+	bcast bool,
+	method abi.MethodNum,
+	params interface{}) (out cid.Cid, pubErrCh chan error, err error) {
 	execParams, ok := params.(*init_.ExecParams)
 	require.True(fai.t, ok)
 	if method == builtin.MethodsInit.Exec {
@@ -70,10 +94,24 @@ func (fai *FakeInitActorUtil) Send(ctx context.Context,
 }
 
 // Wait simulates waiting for the result of a message and calls the callback `cb`
-func (fai *FakeInitActorUtil) Wait(_ context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+func (fai *FakeInitActorUtil) Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+	return fai.msgWaiter(ctx, msgCid, cb)
+}
+
+func (fai *FakeInitActorUtil) defaultWait(_ context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
 	require.Equal(fai.t, msgCid, fai.result.MsgCid)
 	res := fai.result
 	return cb(res.Block, res.Msg, res.Rcpt)
+}
+
+// DelegateSender allows test to substitute a sender function
+func (fai *FakeInitActorUtil) DelegateSender(delegate sender) {
+	fai.msgSender = delegate
+}
+
+// DelegateWaiter allows test to substitute a waiter function
+func (fai *FakeInitActorUtil) DelegateWaiter(delegate waiter) {
+	fai.msgWaiter = delegate
 }
 
 // StubCtorSendResponse sets up addresses for the initActor and generates
@@ -90,7 +128,7 @@ func (fai *FakeInitActorUtil) StubCtorSendResponse(msgVal abi.TokenAmount) (msgC
 	return msgCid, fai.caller, miner, fai.newActorID, fai.newActor
 }
 
-// ExecAndVerify sets up
+// ExecAndVerify sets up init actor to execute a constructor given a caller and value
 func (fai *FakeInitActorUtil) ExecAndVerify(caller address.Address, value abi.TokenAmount, params *init_.ExecParams) {
 	a := fai.initActorHarness
 	expParams := runtime.CBORBytes(params.ConstructorParams)
