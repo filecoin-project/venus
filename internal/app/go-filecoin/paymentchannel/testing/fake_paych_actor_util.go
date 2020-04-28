@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
@@ -51,19 +50,12 @@ func NewFakePaychActorUtil(ctx context.Context, t *testing.T, paychBal abi.Token
 
 // constructPaychActor creates a mock.Runtime and constructs a payment channel harness + Actor
 func (fai *FakePaychActorUtil) constructPaychActor(paychBal abi.TokenAmount) {
-	versig := func(sig crypto.Signature, signer address.Address, plaintext []byte) error {
-		return nil
-	}
-	hasher := func(data []byte) [32]byte { return [32]byte{} }
-
 	builder := mock.NewBuilder(fai.ctx, fai.PaychAddr).
 		WithBalance(paychBal, big.Zero()).
 		WithEpoch(abi.ChainEpoch(42)).
 		WithCaller(builtin.InitActorAddr, builtin.InitActorCodeID).
 		WithActorType(fai.PaychIDAddr, builtin.AccountActorCodeID).
-		WithActorType(fai.ClientID, builtin.AccountActorCodeID).
-		WithVerifiesSig(versig).
-		WithHasher(hasher)
+		WithActorType(fai.ClientID, builtin.AccountActorCodeID)
 
 	fai.Runtime = builder.Build(fai.t)
 	fai.Runtime.AddIDAddress(fai.PaychAddr, fai.PaychIDAddr)

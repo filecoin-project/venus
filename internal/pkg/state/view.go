@@ -171,6 +171,14 @@ func (v *View) MinerInfo(ctx context.Context, maddr addr.Address) (miner.MinerIn
 	return minerState.Info, err
 }
 
+func (v *View) MinerProvingPeriodStart(ctx context.Context, maddr addr.Address) (abi.ChainEpoch, error) {
+	minerState, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return 0, err
+	}
+	return minerState.ProvingPeriodStart, nil
+}
+
 // MinerSectorsForEach Iterates over the sectors in a miner's proving set.
 func (v *View) MinerSectorsForEach(ctx context.Context, maddr addr.Address,
 	f func(abi.SectorNumber, cid.Cid, abi.RegisteredProof, []abi.DealID) error) error {

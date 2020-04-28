@@ -5,18 +5,18 @@ import (
 	"context"
 	"errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	paychActor "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -49,28 +49,32 @@ func NewRetrievalClientConnector(
 }
 
 // GetOrCreatePaymentChannel gets or creates a payment channel and posts to chain
-func (r *RetrievalClientConnector) GetOrCreatePaymentChannel(ctx context.Context, clientAddress address.Address, minerAddress address.Address, clientFundsAvailable abi.TokenAmount, tok shared.TipSetToken) (address.Address, error) {
+func (r *RetrievalClientConnector) GetOrCreatePaymentChannel(ctx context.Context, clientAddress address.Address, minerAddress address.Address, clientFundsAvailable abi.TokenAmount, tok shared.TipSetToken) (address.Address, cid.Cid, error) {
 	if clientAddress == address.Undef || minerAddress == address.Undef {
-		return address.Undef, errors.New("empty address")
+		return address.Undef, cid.Undef, errors.New("empty address")
 	}
 	chinfo, err := r.paychMgr.GetPaymentChannelByAccounts(clientAddress, minerAddress)
 	if err != nil {
-		return address.Undef, err
+		return address.Undef, cid.Undef, err
 	}
 	if chinfo.IsZero() {
 		// create the payment channel
 		bal, err := r.getBalance(ctx, clientAddress, tok)
 		if err != nil {
-			return address.Undef, err
+			return address.Undef, cid.Undef, err
 		}
 
 		filAmt := types.NewAttoFIL(clientFundsAvailable.Int)
 		if bal.LessThan(filAmt) {
-			return address.Undef, errors.New("not enough funds in wallet")
+			return address.Undef, cid.Undef, errors.New("not enough funds in wallet")
 		}
 		return r.paychMgr.CreatePaymentChannel(clientAddress, minerAddress, clientFundsAvailable)
 	}
-	return chinfo.UniqueAddr, nil
+	// TODO: I think this is supposed to return the message CID from the creation of the payment channel.
+	// If there was one already, what CID should this return?
+	// What happens if that message is subsequently re-orged out of the chain and never replayed?
+	// https://github.com/filecoin-project/go-filecoin/issues/4034
+	return chinfo.UniqueAddr, cid.Undef, nil
 }
 
 // AllocateLane creates a new lane for this paymentChannel with 0 FIL in the lane
@@ -125,6 +129,16 @@ func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, pay
 		return nil, err
 	}
 	return &v, nil
+}
+
+func (r *RetrievalClientConnector) WaitForPaymentChannelCreation(messageCID cid.Cid) (address.Address, error) {
+	// TODO https://github.com/filecoin-project/go-filecoin/issues/4034
+	panic("implement me")
+}
+
+func (r *RetrievalClientConnector) WaitForPaymentChannelAddFunds(messageCID cid.Cid) error {
+	// TODO https://github.com/filecoin-project/go-filecoin/issues/4034
+	panic("implement me")
 }
 
 func (r *RetrievalClientConnector) getBlockHeight(tok shared.TipSetToken) (abi.ChainEpoch, error) {

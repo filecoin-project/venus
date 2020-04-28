@@ -37,8 +37,8 @@ type FiniteStateMachineNodeConnector struct {
 
 var _ fsm.SealingAPI = new(FiniteStateMachineNodeConnector)
 
-func New(minerAddr address.Address, waiter *msg.Waiter, chain *chain.Store, viewer *appstate.TipSetStateViewer, outbox *message.Outbox, chainState *cst.ChainStateReadWriter) FiniteStateMachineNodeConnector {
-	return FiniteStateMachineNodeConnector{
+func New(minerAddr address.Address, waiter *msg.Waiter, chain *chain.Store, viewer *appstate.TipSetStateViewer, outbox *message.Outbox, chainState *cst.ChainStateReadWriter) *FiniteStateMachineNodeConnector {
+	return &FiniteStateMachineNodeConnector{
 		minerAddr:   minerAddr,
 		chain:       chain,
 		chainState:  chainState,
@@ -48,7 +48,7 @@ func New(minerAddr address.Address, waiter *msg.Waiter, chain *chain.Store, view
 	}
 }
 
-func (f FiniteStateMachineNodeConnector) StateWaitMsg(ctx context.Context, mcid cid.Cid) (fsm.MsgLookup, error) {
+func (f *FiniteStateMachineNodeConnector) StateWaitMsg(ctx context.Context, mcid cid.Cid) (fsm.MsgLookup, error) {
 	var lookup fsm.MsgLookup
 	err := f.waiter.Wait(ctx, mcid, func(blk *block.Block, message *types.SignedMessage, r *vm.MessageReceipt) error {
 		lookup.Height = blk.Height
@@ -85,7 +85,7 @@ func (f FiniteStateMachineNodeConnector) StateWaitMsg(ctx context.Context, mcid 
 	return lookup, err
 }
 
-func (f FiniteStateMachineNodeConnector) StateComputeDataCommitment(ctx context.Context, _ address.Address, sectorType abi.RegisteredProof, deals []abi.DealID, tok fsm.TipSetToken) (cid.Cid, error) {
+func (f *FiniteStateMachineNodeConnector) StateComputeDataCommitment(ctx context.Context, _ address.Address, sectorType abi.RegisteredProof, deals []abi.DealID, tok fsm.TipSetToken) (cid.Cid, error) {
 	view, err := f.stateViewForToken(tok)
 	if err != nil {
 		return cid.Undef, err
@@ -94,7 +94,7 @@ func (f FiniteStateMachineNodeConnector) StateComputeDataCommitment(ctx context.
 	return view.MarketComputeDataCommitment(ctx, sectorType, deals)
 }
 
-func (f FiniteStateMachineNodeConnector) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok fsm.TipSetToken) (*miner.SectorPreCommitOnChainInfo, error) {
+func (f *FiniteStateMachineNodeConnector) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok fsm.TipSetToken) (*miner.SectorPreCommitOnChainInfo, error) {
 	view, err := f.stateViewForToken(tok)
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func (f FiniteStateMachineNodeConnector) StateSectorPreCommitInfo(ctx context.Co
 	return info, nil
 }
 
-func (f FiniteStateMachineNodeConnector) StateMinerSectorSize(ctx context.Context, maddr address.Address, tok fsm.TipSetToken) (abi.SectorSize, error) {
+func (f *FiniteStateMachineNodeConnector) StateMinerSectorSize(ctx context.Context, maddr address.Address, tok fsm.TipSetToken) (abi.SectorSize, error) {
 	view, err := f.stateViewForToken(tok)
 	if err != nil {
 		return 0, err
@@ -121,7 +121,7 @@ func (f FiniteStateMachineNodeConnector) StateMinerSectorSize(ctx context.Contex
 	return view.MinerSectorSize(ctx, maddr)
 }
 
-func (f FiniteStateMachineNodeConnector) StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tok fsm.TipSetToken) (address.Address, error) {
+func (f *FiniteStateMachineNodeConnector) StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tok fsm.TipSetToken) (address.Address, error) {
 	view, err := f.stateViewForToken(tok)
 	if err != nil {
 		return address.Undef, err
@@ -131,7 +131,7 @@ func (f FiniteStateMachineNodeConnector) StateMinerWorkerAddress(ctx context.Con
 	return worker, err
 }
 
-func (f FiniteStateMachineNodeConnector) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tok fsm.TipSetToken) (market.DealProposal, market.DealState, error) {
+func (f *FiniteStateMachineNodeConnector) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tok fsm.TipSetToken) (market.DealProposal, market.DealState, error) {
 	view, err := f.stateViewForToken(tok)
 	if err != nil {
 		return market.DealProposal{}, market.DealState{}, err
@@ -150,7 +150,7 @@ func (f FiniteStateMachineNodeConnector) StateMarketStorageDeal(ctx context.Cont
 	return deal, *state, err
 }
 
-func (f FiniteStateMachineNodeConnector) StateMinerDeadlines(ctx context.Context, maddr address.Address, tok fsm.TipSetToken) (*miner.Deadlines, error) {
+func (f *FiniteStateMachineNodeConnector) StateMinerDeadlines(ctx context.Context, maddr address.Address, tok fsm.TipSetToken) (*miner.Deadlines, error) {
 	var tsk block.TipSetKey
 	err := encoding.Decode(tok, &tsk)
 	if err != nil {
@@ -165,7 +165,16 @@ func (f FiniteStateMachineNodeConnector) StateMinerDeadlines(ctx context.Context
 	return view.MinerDeadlines(ctx, maddr)
 }
 
-func (f FiniteStateMachineNodeConnector) SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, gasPrice big.Int, gasLimit int64, params []byte) (cid.Cid, error) {
+func (f *FiniteStateMachineNodeConnector) StateMinerInitialPledgeCollateral(context.Context, address.Address, abi.SectorNumber, fsm.TipSetToken) (big.Int, error) {
+	// The FSM uses this result to attach value equal to the collateral to the ProveCommit message sent from the
+	// worker account. This isn't absolutely necessary if the miner actor already has sufficient unlocked balance.
+	// The initial pledge requirement calculations are currently very difficult to access, so I'm returning
+	// zero here pending a proper implementation after cleaning up the actors.
+	// TODO https://github.com/filecoin-project/go-filecoin/issues/4035
+	return big.Zero(), nil
+}
+
+func (f *FiniteStateMachineNodeConnector) SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, gasPrice big.Int, gasLimit int64, params []byte) (cid.Cid, error) {
 	mcid, cerr, err := f.outbox.SendEncoded(
 		ctx,
 		from,
@@ -187,7 +196,7 @@ func (f FiniteStateMachineNodeConnector) SendMsg(ctx context.Context, from, to a
 	return mcid, nil
 }
 
-func (f FiniteStateMachineNodeConnector) ChainHead(_ context.Context) (fsm.TipSetToken, abi.ChainEpoch, error) {
+func (f *FiniteStateMachineNodeConnector) ChainHead(_ context.Context) (fsm.TipSetToken, abi.ChainEpoch, error) {
 	ts, err := f.chain.GetTipSet(f.chain.GetHead())
 	if err != nil {
 		return fsm.TipSetToken{}, 0, err
@@ -206,7 +215,7 @@ func (f FiniteStateMachineNodeConnector) ChainHead(_ context.Context) (fsm.TipSe
 	return tok, epoch, nil
 }
 
-func (f FiniteStateMachineNodeConnector) ChainGetRandomness(ctx context.Context, tok fsm.TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (f *FiniteStateMachineNodeConnector) ChainGetRandomness(ctx context.Context, tok fsm.TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	var tsk block.TipSetKey
 	if err := encoding.Decode(tok, &tsk); err != nil {
 		return abi.Randomness{}, err
@@ -214,7 +223,7 @@ func (f FiniteStateMachineNodeConnector) ChainGetRandomness(ctx context.Context,
 	return f.chainState.SampleChainRandomness(ctx, tsk, personalization, randEpoch, entropy)
 }
 
-func (f FiniteStateMachineNodeConnector) ChainGetTicket(ctx context.Context, tok fsm.TipSetToken) (abi.SealRandomness, abi.ChainEpoch, error) {
+func (f *FiniteStateMachineNodeConnector) ChainGetTicket(ctx context.Context, tok fsm.TipSetToken) (abi.SealRandomness, abi.ChainEpoch, error) {
 	var tsk block.TipSetKey
 	if err := encoding.Decode(tok, &tsk); err != nil {
 		return abi.SealRandomness{}, 0, err
@@ -242,11 +251,11 @@ func (f FiniteStateMachineNodeConnector) ChainGetTicket(ctx context.Context, tok
 	return abi.SealRandomness(randomness), randomEpoch, err
 }
 
-func (f FiniteStateMachineNodeConnector) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
+func (f *FiniteStateMachineNodeConnector) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
 	return f.chainState.ReadObj(ctx, obj)
 }
 
-func (f FiniteStateMachineNodeConnector) stateViewForToken(tok fsm.TipSetToken) (*appstate.View, error) {
+func (f *FiniteStateMachineNodeConnector) stateViewForToken(tok fsm.TipSetToken) (*appstate.View, error) {
 	var tsk block.TipSetKey
 	err := encoding.Decode(tok, &tsk)
 	if err != nil {

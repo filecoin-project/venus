@@ -15,22 +15,23 @@ require (
 	github.com/drand/drand v0.7.2
 	github.com/drand/kyber v1.0.1-0.20200331114745-30e90cc60f99
 	github.com/elastic/go-windows v1.0.1 // indirect
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200424212533-860752305527
-	github.com/filecoin-project/filecoin-ffi v0.0.0-20200414233031-ec8c702c0e2b
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200428034610-8b7656bd8e8b
+	github.com/filecoin-project/filecoin-ffi v0.0.0-20200427223233-a0014b17f124
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.0.0-20200408061858-82c58b423ca6
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
-	github.com/filecoin-project/go-fil-markets v0.0.0-20200413210904-e232e405d026
+	github.com/filecoin-project/go-fil-markets v0.0.0-20200427202705-c923d094d901
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
 	github.com/filecoin-project/go-statemachine v0.0.0-20200314004106-2e7830fc1948 // indirect
 	github.com/filecoin-project/go-statestore v0.1.0
-	github.com/filecoin-project/sector-storage v0.0.0-20200417225459-e75536581a08
-	github.com/filecoin-project/specs-actors v1.0.0
-	github.com/filecoin-project/specs-storage v0.0.0-20200417160546-e150c0f5e3c4 // indirect
-	github.com/filecoin-project/storage-fsm v0.0.0-20200420183220-1515cffb5d13
+	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
+	github.com/filecoin-project/sector-storage v0.0.0-20200425102315-c19a25449861
+	github.com/filecoin-project/specs-actors v0.2.0
+	github.com/filecoin-project/specs-storage v0.0.0-20200427220711-ae5a7f26c65f // indirect
+	github.com/filecoin-project/storage-fsm v0.0.0-20200427182014-01487d5ad3c8
 	github.com/fxamacker/cbor v1.5.0
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golangci/golangci-lint v1.21.0
@@ -102,7 +103,7 @@ require (
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.5.0 // indirect
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.5.1
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200414195334-429a0b5e922e
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
