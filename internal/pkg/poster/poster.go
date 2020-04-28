@@ -27,9 +27,6 @@ import (
 
 var log = logging.Logger("poster")
 
-// epochs to wait past proving period to avoid invalid posts due to reorgs
-var confidenceInterval uint64 = 7
-
 // Poster listens for changes to the chain head and generates and submits a PoSt if one is required.
 type Poster struct {
 	postMutex         sync.Mutex

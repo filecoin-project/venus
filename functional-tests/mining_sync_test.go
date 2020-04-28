@@ -84,7 +84,7 @@ func TestBootstrapMineOnce(t *testing.T) {
 }
 
 func TestBootstrapWindowedPoSt(t *testing.T) {
-	//tf.FunctionalTest(t)
+	tf.FunctionalTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
