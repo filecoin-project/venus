@@ -135,16 +135,18 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 	minerAddr := miner.Repo.Config().Mining.MinerAddress
 
 	// Post should have been triggered, simulate mining while waiting for update to proving period start
-	for i := 0; i < 500; i++ {
+	for i := 0; i < 50; i++ {
 		head := miner.Chain().ChainReader.GetHead()
 
-		status, err := miner.PorcelainAPI.MinerGetStatus(ctx, minerAddr, head)
+		view, err := miner.Chain().State.StateView(head)
 		require.NoError(t, err)
 
-		_ = status
-		//if status.Power.GreaterThan(big.Zero()) {
-		//	return
-		//}
+		poSts, err := view.MinerSuccessfulPoSts(ctx, minerAddr)
+		require.NoError(t, err)
+
+		if poSts > 0 {
+			return
+		}
 
 		// If we mine too many blocks before the post is sent we could miss our window. Add some friction here.
 		time.Sleep(2 * time.Second)

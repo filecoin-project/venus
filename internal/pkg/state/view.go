@@ -223,15 +223,15 @@ func (v *View) MinerSectorInfoForDeadline(ctx context.Context, maddr addr.Addres
 	out := []abi.SectorInfo{}
 	for _, field := range sectorIndices {
 		err = field.ForEach(func(u uint64) error {
-			sectorInfo := abi.SectorInfo{}
-			found, err := sectors.Get(u, &sectorInfo)
+			sectorOnChainInfo := miner.SectorOnChainInfo{}
+			found, err := sectors.Get(u, &sectorOnChainInfo)
 			if err != nil {
 				return err
 			}
 			if !found {
 				return fmt.Errorf("bit field indexes sector outside miner sectors, %d", u)
 			}
-			out = append(out, sectorInfo)
+			out = append(out, sectorOnChainInfo.AsSectorInfo())
 			return nil
 		})
 		if err != nil {
@@ -240,6 +240,16 @@ func (v *View) MinerSectorInfoForDeadline(ctx context.Context, maddr addr.Addres
 	}
 
 	return out, nil
+}
+
+// MinerSuccessfulPoSts counts how many successful window PoSts have been made this proving period so far.
+func (v *View) MinerSuccessfulPoSts(ctx context.Context, maddr addr.Address) (uint64, error) {
+	minerState, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return 0, err
+	}
+
+	return minerState.PostSubmissions.Count()
 }
 
 // MinerDeadlines returns a bitfield of sectors in a proving period
