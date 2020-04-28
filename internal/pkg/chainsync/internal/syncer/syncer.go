@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -214,6 +215,18 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 	}
 	// Fetcher returns chain in Traversal order, reverse it to height order
 	chain.Reverse(headers)
+	// DEBUG DEBUG DEBUG
+	for i, header := range headers {
+		first := header.At(0)
+		numEntries := len(first.DrandEntries)
+		if numEntries < 0 {
+			fmt.Printf("header #%d, no drand entries\n", i)
+		}
+		for j := 0; j < numEntries; j++ {
+			fmt.Printf("header #%d, drand round: %d, rand: %x\n", i, first.DrandEntries[j].Round, first.DrandEntries[j].Signature)
+		}
+	}
+	// DEBUG DEBUG DEBUG
 
 	parent, _, err := syncer.ancestorsFromStore(headers[0])
 	if err != nil {

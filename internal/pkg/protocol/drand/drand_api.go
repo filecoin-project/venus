@@ -3,6 +3,7 @@ package drand
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -35,10 +36,12 @@ func New(drand drand.IFace, config Config) *API {
 // This method assumes all drand nodes are secure or that all of them are not. This
 // mis-models the drand config, but is unlikely to be false in practice.
 func (api *API) Configure(addrs []string, secure bool, overrideGroupAddrs bool) error {
+	fmt.Printf("configuring...\n")
 	groupAddrs, keyCoeffs, genesisTime, roundSeconds, err := api.drand.FetchGroupConfig(addrs, secure, overrideGroupAddrs)
 	if err != nil {
 		return errors.Wrapf(err, "Could not retrieve drand group from %+v", addrs)
 	}
+	fmt.Printf("got the stuff...\n")
 
 	jsonCoeffs, err := json.Marshal(keyCoeffs)
 	if err != nil {

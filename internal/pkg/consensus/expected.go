@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
@@ -323,6 +324,7 @@ func (c *Expected) validateDRANDEntries(ctx context.Context, blk *block.Block) e
 	}
 
 	numEntries := len(blk.DrandEntries)
+	fmt.Printf("[DRAND] numEntries: %d\n", numEntries)
 	// Note we don't check for genesis condition because first block must include > 0 drand entries
 	if numEntries == 0 {
 		prevEntry, err := chain.FindLatestDRAND(ctx, parent, c.chainState)
@@ -338,6 +340,12 @@ func (c *Expected) validateDRANDEntries(ctx context.Context, blk *block.Block) e
 
 	lastRound := blk.DrandEntries[numEntries-1].Round
 	nextDRANDTime := c.drand.StartTimeOfRound(lastRound + 1)
+
+	fmt.Printf("[DRAND] lastRound: %d\n", lastRound)
+	fmt.Printf("[DRAND] firstRound: %d\n", blk.DrandEntries[0].Round)
+	fmt.Printf("[DRAND] nextDRANDTime: %v\n", nextDRANDTime)
+	fmt.Printf("[DRAND] current block height: %d, targetEpoch: %d\n", blk.Height, targetEpoch)
+	fmt.Printf("epoch at next drand time: %v\n", c.clock.EpochAtTime(nextDRANDTime))
 	if !(c.clock.EpochAtTime(nextDRANDTime) > targetEpoch) {
 		return errors.New("Block does not include all drand entries required")
 	}
