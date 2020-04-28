@@ -7,6 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
+
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -77,9 +84,7 @@ func TestBootstrapMineOnce(t *testing.T) {
 }
 
 func TestBootstrapWindowedPoSt(t *testing.T) {
-	t.Skip("Unskip when we have implemented production drand component and local drand network for functional tests")
-
-	tf.FunctionalTest(t)
+	//tf.FunctionalTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -92,19 +97,29 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 	//presealPath := "./512"
 
 	genTime := int64(1000000000)
-	blockTime := 1 * time.Second
+	blockTime := 30 * time.Second
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
 
 	// Load genesis config fixture.
 	genCfg := loadGenesisConfig(t, genCfgPath)
 	// set proving period start to something soon
-	start := abi.ChainEpoch(1)
+	start := abi.ChainEpoch(0)
 	genCfg.Miners[0].ProvingPeriodStart = &start
 
 	seed := node.MakeChainSeed(t, genCfg)
-	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
 
-	miner := makeNode(ctx, t, seed, chainClock, nil)
+	// fake proofs so we can run through a proving period quickly
+	miner := test.NewNodeBuilder(t).
+		WithBuilderOpt(node.ChainClockConfigOption(clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock))).
+		WithGenesisInit(seed.GenesisInitFunc).
+		WithBuilderOpt(node.DrandConfigOption(&drand.Fake{
+			GenesisTime:   time.Unix(genTime, 0).Add(-1 * blockTime),
+			FirstFilecoin: 0,
+		})).
+		WithBuilderOpt(node.VerifierConfigOption(&proofs.FakeVerifier{})).
+		WithBuilderOpt(node.PoStGeneratorOption(&consensus.TestElectionPoster{})).
+		Build(ctx)
+
 	_, _, err := initNodeGenesisMiner(ctx, t, miner, seed, genCfg.Miners[0].Owner, presealPath)
 	require.NoError(t, err)
 
@@ -115,22 +130,19 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 	require.NoError(t, err)
 
 	// mine once to enter proving period
-	fakeClock.Advance(blockTime)
-	_, err = miner.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-	require.NoError(t, err)
+	go simulateBlockMining(ctx, t, fakeClock, blockTime, miner)
+
+	minerAddr := miner.Repo.Config().Mining.MinerAddress
 
 	// Post should have been triggered, simulate mining while waiting for update to proving period start
-	for i := 0; i < 25; i++ {
-		fakeClock.Advance(blockTime)
-		_, err := miner.BlockMining.BlockMiningAPI.MiningOnce(ctx)
+	for i := 0; i < 500; i++ {
+		head := miner.Chain().ChainReader.GetHead()
+
+		status, err := miner.PorcelainAPI.MinerGetStatus(ctx, minerAddr, head)
 		require.NoError(t, err)
 
-		// Replace this with better heuristic that PoSt has occurred
-
-		//status, err := miner.PorcelainAPI.MinerGetStatus(ctx, maddr, requireChainHead(t, miner))
-		//require.NoError(t, err)
-
-		//if status.ProvingPeriodStart > 1 {
+		_ = status
+		//if status.Power.GreaterThan(big.Zero()) {
 		//	return
 		//}
 

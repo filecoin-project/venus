@@ -135,10 +135,20 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, deadlineI
 		return
 	}
 
+	// if no partitions, we're done
+	if len(partitions) == 0 {
+		return
+	}
+
 	// Some day we might want to choose a subset of partitions to prove at one time. Today is not that day.
 	sectors, err := stateView.MinerSectorInfoForDeadline(ctx, p.minerAddr, deadlineIndex, partitions)
 	if err != nil {
 		log.Errorf("error retrieving sector info for miner %s partitions at index %d: %s", p.minerAddr, deadlineIndex, err)
+		return
+	}
+
+	// if no sectors, we're done
+	if len(sectors) == 0 {
 		return
 	}
 
