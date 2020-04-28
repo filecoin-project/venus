@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	. "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 
 	"github.com/stretchr/testify/assert"
@@ -26,7 +25,6 @@ func testConfig(t *testing.T) *GenesisCfg {
 	require.NoError(t, err)
 
 	return &GenesisCfg{
-		ProofsMode:        types.TestProofsMode,
 		KeysToGen:         4,
 		PreallocatedFunds: []string{"1000000", "500000"},
 		Miners: []*CreateStorageMinerConfig{

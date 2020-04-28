@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
@@ -204,8 +203,7 @@ func MakeTestGenCfg(t *testing.T, numSectors int) *gengen.GenesisCfg {
 	commCfgs, err := gengen.MakeCommitCfgs(numSectors)
 	require.NoError(t, err)
 	return &gengen.GenesisCfg{
-		ProofsMode: types.TestProofsMode,
-		KeysToGen:  2,
+		KeysToGen: 2,
 		Miners: []*gengen.CreateStorageMinerConfig{
 			{
 				Owner:            0,

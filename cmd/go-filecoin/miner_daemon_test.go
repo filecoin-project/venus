@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
@@ -356,9 +355,8 @@ func minerDaemonTestConfig(t *testing.T) *gengen.GenesisCfg {
 	commCfgs, err := gengen.MakeCommitCfgs(3)
 	require.NoError(t, err)
 	return &gengen.GenesisCfg{
-		Seed:       0,
-		ProofsMode: types.TestProofsMode,
-		KeysToGen:  4,
+		Seed:      0,
+		KeysToGen: 4,
 		PreallocatedFunds: []string{
 			"0",
 			"0",

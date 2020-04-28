@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
@@ -36,7 +37,7 @@ func TestMiningPledgeSector(t *testing.T) {
 	genCfg := loadGenesisConfig(t, genCfgPath)
 	genCfg.Miners = append(genCfg.Miners, &gengen.CreateStorageMinerConfig{
 		Owner:      1,
-		SectorSize: 2048,
+		SectorSize: constants.DevSectorSize,
 	})
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)

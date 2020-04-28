@@ -67,14 +67,12 @@ var (
 
 func main() {
 	jsonout := flag.Bool("json", false, "sets output to be json")
-	testProofsMode := flag.Bool("test-proofs-mode", false, "change sealing, sector packing, PoSt, etc. to be compatible with test environments (overrides proofs mode read from JSON)")
 	keypath := flag.String("keypath", ".", "sets location to write key files to")
 	outJSON := flag.String("out-json", "", "enables json output and writes it to the given file")
 	outCar := flag.String("out-car", "", "writes the generated car file to the give path, instead of stdout")
 	configFilePath := flag.String("config", "", "reads configuration from this json file, instead of stdin")
 
-	// ExitOnError is set
-	flag.Parse(os.Args[1:]) // nolint: errcheck
+	_ = flag.Parse(os.Args[1:])
 
 	jsonEnabled := *jsonout || *outJSON != ""
 
@@ -82,8 +80,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	gengen.ApplyProofsModeDefaults(cfg, !*testProofsMode, isFlagPassed("test-proofs-mode"))
 
 	outfile := os.Stdout
 	if *outCar != "" {
@@ -149,17 +145,4 @@ func readConfig(filePath string) (*gengen.GenesisCfg, error) {
 	}
 
 	return &cfg, nil
-}
-
-// isFlagPassed returns true if a flag with the given name was provided by the
-// caller.
-func isFlagPassed(name string) bool {
-	found := false
-	flag.Visit(func(f *flg.Flag) {
-		if f.Name == name {
-			found = true
-		}
-	})
-
-	return found
 }

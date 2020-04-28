@@ -29,7 +29,6 @@ import (
 	"github.com/mitchellh/go-homedir"
 
 	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
@@ -171,7 +170,7 @@ func main() {
 		return
 	}
 
-	env, err := environment.NewMemoryGenesis(&balance, workdir, getProofsMode(smallSectors))
+	env, err := environment.NewMemoryGenesis(&balance, workdir)
 	if err != nil {
 		exitcode = handleError(err)
 		return
@@ -409,13 +408,6 @@ func isEmpty(name string) (bool, error) {
 		return true, nil
 	}
 	return false, err // Either not empty or error, suits both cases
-}
-
-func getProofsMode(smallSectors bool) types.ProofsMode {
-	if smallSectors {
-		return types.TestProofsMode
-	}
-	return types.LiveProofsMode
 }
 
 func getFilecoinBinary() (string, error) {

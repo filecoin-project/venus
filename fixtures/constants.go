@@ -71,7 +71,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	gen.ApplyProofsModeDefaults(&TestGenGenConfig, false, false)
 }
 
 func init() {

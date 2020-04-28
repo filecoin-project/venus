@@ -17,7 +17,7 @@ import (
 	logging "github.com/ipfs/go-log"
 
 	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
@@ -45,18 +45,15 @@ type MemoryGenesis struct {
 
 	processCountMu sync.Mutex
 	processCount   int
-
-	proofsMode types.ProofsMode
 }
 
 // NewMemoryGenesis builds an environment with a local genesis that can be used
 // to initialize nodes and create a genesis node. The genesis file is provided by an http
 // server.
-func NewMemoryGenesis(funds *big.Int, location string, proofsMode types.ProofsMode) (Environment, error) {
+func NewMemoryGenesis(funds *big.Int, location string) (Environment, error) {
 	env := &MemoryGenesis{
-		location:   location,
-		log:        logging.Logger("environment"),
-		proofsMode: proofsMode,
+		location: location,
+		log:      logging.Logger("environment"),
 	}
 
 	if err := env.buildGenesis(funds); err != nil {
@@ -241,19 +238,14 @@ func (e *MemoryGenesis) buildGenesis(funds *big.Int) error {
 		Miners: []*gengen.CreateStorageMinerConfig{
 			{
 				Owner:            0,
+				SectorSize:       constants.DevSectorSize,
 				CommittedSectors: commCfgs,
 			},
 		},
-		Network:    "gfctest",
-		ProofsMode: e.proofsMode,
+		Network: "gfctest",
 	}
 
-	// ensure miners' sector size is set appropriately for the configured
-	// proofs mode
-	gengen.ApplyProofsModeDefaults(cfg, e.proofsMode == types.LiveProofsMode, true)
-
 	var genbuffer bytes.Buffer
-
 	info, err := gengen.GenGenesisCar(cfg, &genbuffer)
 	if err != nil {
 		return err

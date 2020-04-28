@@ -18,7 +18,6 @@ import (
 	dag "github.com/ipfs/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -92,9 +91,6 @@ type GenesisCfg struct {
 
 	// Network is the name of the network
 	Network string
-
-	// ProofsMode affects sealing, sector packing, PoSt, etc. in the proofs library
-	ProofsMode types.ProofsMode
 
 	// Time is the genesis block time in unix seconds
 	Time uint64
@@ -176,14 +172,6 @@ func Prealloc(idx int, amt string) GenOption {
 func NetworkName(name string) GenOption {
 	return func(gc *GenesisCfg) error {
 		gc.Network = name
-		return nil
-	}
-}
-
-// ProofsMode sets the mode of operation for the proofs library.
-func ProofsMode(proofsMode types.ProofsMode) GenOption {
-	return func(gc *GenesisCfg) error {
-		gc.ProofsMode = proofsMode
 		return nil
 	}
 }
@@ -313,28 +301,4 @@ func (ggs *signer) SignBytes(_ context.Context, data []byte, addr address.Addres
 
 func (ggs *signer) HasAddress(_ context.Context, addr address.Address) (bool, error) {
 	return true, nil
-}
-
-// ApplyProofsModeDefaults mutates the given genesis configuration, setting the
-// appropriate proofs mode and corresponding storage miner sector size. If
-// force is true, proofs mode and sector size-values will be overridden with the
-// appropriate defaults for the selected proofs mode.
-func ApplyProofsModeDefaults(cfg *GenesisCfg, useLiveProofsMode bool, force bool) {
-	mode := types.TestProofsMode
-	sectorSize := constants.DevSectorSize
-
-	if useLiveProofsMode {
-		mode = types.LiveProofsMode
-		sectorSize = constants.FiveHundredTwelveMiBSectorSize
-	}
-
-	if cfg.ProofsMode == types.UnsetProofsMode || force {
-		cfg.ProofsMode = mode
-	}
-
-	for _, m := range cfg.Miners {
-		if m.SectorSize == 0 || force {
-			m.SectorSize = sectorSize
-		}
-	}
 }
