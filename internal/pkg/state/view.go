@@ -248,7 +248,7 @@ func (v *View) MinerSectorInfoForDeadline(ctx context.Context, maddr addr.Addres
 	}
 
 	if empty {
-		return nil, fmt.Errorf("no non-faulty sectors in partitions %s", partitions)
+		return nil, fmt.Errorf("no non-faulty sectors in partitions %+v", partitions)
 	}
 
 	// Select a non-faulty sector as a substitute for faulty ones.
