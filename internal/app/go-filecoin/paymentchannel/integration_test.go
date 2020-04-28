@@ -65,7 +65,7 @@ func TestCreatePaymentChannel(t *testing.T) {
 	tok, err := encoding.Encode(genTs.Key())
 	require.NoError(t, err)
 
-	res, err := rcnc.GetOrCreatePaymentChannel(ctx, client, miner, channelAmt, tok)
+	res, _, err := rcnc.GetOrCreatePaymentChannel(ctx, client, miner, channelAmt, tok)
 	require.NoError(t, err)
 	assert.Equal(t, paych, res)
 	var st init_.State

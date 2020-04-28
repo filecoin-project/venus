@@ -91,7 +91,7 @@ func TestManager_CreatePaymentChannel(t *testing.T) {
 
 			testAPI.ExpectedMsgCid, testAPI.ExpectedResult = paychtest.GenCreatePaychActorMessage(t, clientAddr, minerAddr, paych, balance, exitcode.Ok, blockHeight)
 
-			_, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
+			_, _, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
 			assert.EqualError(t, err, tc.expErr)
 		})
 	}
@@ -101,7 +101,7 @@ func TestManager_CreatePaymentChannel(t *testing.T) {
 		testAPI := paychtest.NewFakePaymentChannelAPI(ctx, t)
 		m := NewManager(context.Background(), ds, testAPI, testAPI, viewer)
 		clientAddr, minerAddr, _, _ := requireSetupPaymentChannel(t, testAPI, m, types.ZeroAttoFIL)
-		_, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
+		_, _, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
 		assert.EqualError(t, err, "payment channel exists for client t0901, miner t0902")
 	})
 }
@@ -344,9 +344,10 @@ func requireSetupPaymentChannel(t *testing.T, testAPI *paychtest.FakePaymentChan
 
 	testAPI.ExpectedMsgCid, testAPI.ExpectedResult = paychtest.GenCreatePaychActorMessage(t, clientAddr, minerAddr, paychUniqueAddr, balance, exitcode.Ok, blockHeight)
 
-	addr, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
+	addr, mcid, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
 	require.NoError(t, err)
 	require.Equal(t, addr, paychUniqueAddr)
 	assert.True(t, testAPI.ExpectedMsgCid.Equals(testAPI.ActualWaitCid))
+	assert.True(t, testAPI.ExpectedMsgCid.Equals(mcid))
 	return clientAddr, minerAddr, paychUniqueAddr, blockHeight
 }

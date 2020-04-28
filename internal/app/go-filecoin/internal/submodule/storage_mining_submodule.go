@@ -78,15 +78,15 @@ func NewStorageMiningSubmodule(
 
 	ncn := fsmnodeconnector.New(minerAddr, mw, c.ChainReader, c.ActorState, m.Outbox, c.State)
 
-	info, err := getMinerInfo(c, minerAddr, stateViewer)
+	ppStart, err := getMinerProvingPeriod(c, minerAddr, stateViewer)
 	if err != nil {
 		return nil, err
 	}
 
-	pcp := fsm.NewBasicPreCommitPolicy(&ccn, abi.ChainEpoch(2*60*24), info.ProvingPeriodBoundary)
+	pcp := fsm.NewBasicPreCommitPolicy(&ccn, abi.ChainEpoch(2*60*24), ppStart%miner.WPoStProvingPeriod)
 
 	fsmConnector := fsmeventsconnector.New(chainThresholdScheduler, c.State)
-	fsm := fsm.New(ncn, fsmConnector, minerAddr, ds, mgr, sid, ffiwrapper.ProofVerifier, ncn.ChainGetTicket, &pcp)
+	fsm := fsm.New(ncn, fsmConnector, minerAddr, ds, mgr, sid, ffiwrapper.ProofVerifier, &pcp)
 
 	bke := piecemanager.NewFiniteStateMachineBackEnd(fsm, sid)
 
@@ -161,15 +161,12 @@ func (s *StorageMiningSubmodule) HandleNewHead(ctx context.Context, newHead bloc
 	return s.poster.HandleNewHead(ctx, newHead)
 }
 
-func getMinerInfo(c *ChainSubmodule, minerAddr address.Address, viewer *appstate.Viewer) (miner.MinerInfo, error) {
+func getMinerProvingPeriod(c *ChainSubmodule, minerAddr address.Address, viewer *appstate.Viewer) (abi.ChainEpoch, error) {
 	tsk := c.ChainReader.GetHead()
 	root, err := c.ChainReader.GetTipSetStateRoot(tsk)
 	if err != nil {
-		return miner.MinerInfo{}, err
+		return 0, err
 	}
 	view := viewer.StateView(root)
-	if err != nil {
-		return miner.MinerInfo{}, err
-	}
-	return view.MinerInfo(context.Background(), minerAddr)
+	return view.MinerProvingPeriodStart(context.Background(), minerAddr)
 }

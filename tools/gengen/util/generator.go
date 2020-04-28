@@ -352,7 +352,7 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		minerRawPower := big.Zero()
 		for i, comm := range m.CommittedSectors {
 			// Adjust sector expiration up to the epoch before the subsequent proving period starts.
-			periodOffset := mState.Info.ProvingPeriodBoundary // soon: mState.ProvingPeriodStart % miner.WPoStProvingPeriod
+			periodOffset := mState.ProvingPeriodStart % miner.WPoStProvingPeriod
 			expiryOffset := abi.ChainEpoch(comm.DealCfg.EndEpoch+1) % miner.WPoStProvingPeriod
 			sectorExpiration := abi.ChainEpoch(comm.DealCfg.EndEpoch) + miner.WPoStProvingPeriod + (periodOffset - expiryOffset)
 

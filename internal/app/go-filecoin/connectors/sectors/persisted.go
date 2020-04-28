@@ -3,7 +3,7 @@ package sectors
 import (
 	"sync"
 
-	"github.com/filecoin-project/go-fil-markets/storedcounter"
+	"github.com/filecoin-project/go-storedcounter"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	fsm "github.com/filecoin-project/storage-fsm"
 	"github.com/ipfs/go-datastore"
