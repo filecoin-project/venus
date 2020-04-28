@@ -3,6 +3,7 @@ package paymentchannel
 import (
 	"bytes"
 	"context"
+	"sync"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
@@ -31,10 +32,11 @@ var defaultGasPrice = types.NewAttoFILFromFIL(actor.DefaultGasCost)
 var defaultGasLimit = gas.NewGas(5000)
 var zeroAmt = abi.NewTokenAmount(0)
 
+
 // Manager manages payment channel actor and the data paymentChannels operations.
 type Manager struct {
 	ctx             context.Context
-	paymentChannels *statestore.StateStore
+	paymentChannels *paychStore
 	sender          MsgSender
 	waiter          MsgWaiter
 	stateViewer     ActorStateViewer
@@ -68,20 +70,21 @@ type ActorStateViewer interface {
 
 // NewManager creates and returns a new paymentchannel.Manager
 func NewManager(ctx context.Context, ds datastore.Batching, waiter MsgWaiter, sender MsgSender, viewer ActorStateViewer) *Manager {
-	store := statestore.New(namespace.Wrap(ds, datastore.NewKey(PaymentChannelStorePrefix)))
-	return &Manager{ctx, store, sender, waiter, viewer}
+	s := statestore.New(namespace.Wrap(ds, datastore.NewKey(PaymentChannelStorePrefix)))
+
+	store := paychStore{ store: s}
+
+	return &Manager{ctx, &store, sender, waiter, viewer}
 }
 
 // AllocateLane adds a new lane to a payment channel entry
 func (pm *Manager) AllocateLane(paychAddr address.Address) (laneID uint64, err error) {
-	err = pm.paymentChannels.
-		Get(paychAddr).
-		Mutate(func(info *ChannelInfo) error {
-			laneID = info.NextLane
-			info.NextLane++
-			info.NextNonce++
-			return nil
-		})
+	err = pm.paymentChannels.Mutate(paychAddr, func(info *ChannelInfo) error {
+		laneID = info.NextLane
+		info.NextLane++
+		info.NextNonce++
+		return nil
+	})
 	return laneID, err
 }
 
@@ -366,4 +369,38 @@ func (pm *Manager) saveNewVoucher(paychAddr address.Address, voucher *paychActor
 		return err
 	}
 	return nil
+}
+
+//  paychStore is a thin threadsafe wrapper for StateStore
+type paychStore struct {
+	storeLk sync.RWMutex
+	store *statestore.StateStore
+}
+
+type mutator func(info *ChannelInfo) error
+func (ps *paychStore) Mutate(addr address.Address, m mutator ) error {
+	ps.storeLk.Lock()
+	defer ps.storeLk.Unlock()
+	return ps.store.Get(addr).Mutate(m)
+}
+func (ps *paychStore)List(info *[]ChannelInfo) error {
+	ps.storeLk.Lock()
+	defer ps.storeLk.Unlock()
+	return ps.store.List(info)
+}
+func (ps *paychStore)Get(addr address.Address) *statestore.StoredState {
+	ps.storeLk.Lock()
+	defer ps.storeLk.Unlock()
+	return ps.store.Get(addr)
+}
+func (ps *paychStore)Has(addr address.Address) (bool, error) {
+	ps.storeLk.Lock()
+	defer ps.storeLk.Unlock()
+	return ps.store.Has(addr)
+}
+
+func (ps *paychStore)Begin(addr address.Address, info *ChannelInfo) error {
+	ps.storeLk.Lock()
+	defer ps.storeLk.Unlock()
+	return ps.store.Begin(addr,  info)
 }
