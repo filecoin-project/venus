@@ -65,8 +65,6 @@ func (fai *FakePaychActorUtil) Send(ctx context.Context,
 	method abi.MethodNum,
 	params interface{}) (mcid cid.Cid, pubErrCh chan error, err error) {
 
-	err = fai.SendErr
-
 	if fai.result != msgRcptsUndef {
 		mcid = fai.result.MsgCid
 	}
