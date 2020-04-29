@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
@@ -417,7 +418,9 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 	// 6. Deduct gas limit funds from sender first
 	// Note: this should always succeed, due to the sender balance check above
 	// Note: after this point, we need to return this funds back before exiting
-	vm.transfer(msg.From, builtin.RewardActorAddr, gasLimitCost)
+	if !gasLimitCost.Nil() && !gasLimitCost.IsZero() {
+		vm.transfer(msg.From, builtin.RewardActorAddr, gasLimitCost)
+	}
 
 	// reload from actor
 	// Note: balance might have changed
@@ -511,26 +514,25 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 	// 2. settle gas money around (unused_gas -> sender)
 	receipt.GasUsed = gasTank.GasConsumed()
 	refundGas := msg.GasLimit - receipt.GasUsed
-	vm.transfer(builtin.RewardActorAddr, msg.From, refundGas.ToTokens(msg.GasPrice))
+	amount := refundGas.ToTokens(msg.GasPrice)
+	if !amount.Nil() && !amount.IsZero() {
+		vm.transfer(builtin.RewardActorAddr, msg.From, refundGas.ToTokens(msg.GasPrice))
+	}
 
 	// 3. Success!
 	return receipt, big.Zero(), gasTank.GasConsumed().ToTokens(msg.GasPrice)
 }
 
 // transfer debits money from one account and credits it to another.
+// avoid calling this method with a zero amount else it will perform unnecessary actor loading.
 //
 // WARNING: this method will panic if the the amount is negative, accounts dont exist, or have inssuficient funds.
 //
 // Note: this is not idiomatic, it follows the Spec expectations for this method.
-func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amount abi.TokenAmount) {
+func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amount abi.TokenAmount) (*actor.Actor, *actor.Actor) {
 	// allow only for positive amounts
 	if amount.LessThan(abi.NewTokenAmount(0)) {
 		panic("unreachable: negative funds transfer not allowed")
-	}
-
-	if amount.Nil() || amount.IsZero() {
-		// nothing to transfer
-		return
 	}
 
 	ctx := context.Background()
@@ -569,6 +571,7 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 	if err := vm.state.SetActor(ctx, creditTo, toActor); err != nil {
 		panic(err)
 	}
+	return toActor, fromActor
 }
 
 func (vm *VM) getActorImpl(code cid.Cid) dispatch.Dispatcher {

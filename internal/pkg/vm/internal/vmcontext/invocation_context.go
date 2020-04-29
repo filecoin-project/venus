@@ -189,7 +189,9 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 	ctx.toActor, ctx.msg.to = ctx.resolveTarget(ctx.msg.to)
 
 	// 3. transfer funds carried by the msg
-	ctx.rt.transfer(ctx.msg.from, ctx.msg.to, ctx.msg.value)
+	if !ctx.msg.value.Nil() && !ctx.msg.value.IsZero() {
+		ctx.toActor, ctx.fromActor = ctx.rt.transfer(ctx.msg.from, ctx.msg.to, ctx.msg.value)
+	}
 
 	// 4. if we are just sending funds, there is nothing else to do.
 	if ctx.msg.method == builtin.MethodSend {
