@@ -174,7 +174,8 @@ func (v *View) MinerPartitionIndicesForDeadline(ctx context.Context, maddr addr.
 	}
 
 	// compute first partition index
-	start, sectorCount, err := miner.PartitionsForDeadline(deadlines, deadlineIndex)
+	partitionSize := minerState.Info.WindowPoStPartitionSectors
+	start, sectorCount, err := miner.PartitionsForDeadline(deadlines, partitionSize, deadlineIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +186,7 @@ func (v *View) MinerPartitionIndicesForDeadline(ctx context.Context, maddr addr.
 	}
 
 	// compute number of partitions
-	partitionCount, _, err := miner.DeadlineCount(deadlines, deadlineIndex)
+	partitionCount, _, err := miner.DeadlineCount(deadlines, partitionSize, deadlineIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +212,8 @@ func (v *View) MinerSectorInfoForDeadline(ctx context.Context, maddr addr.Addres
 	}
 
 	// This is copied from miner.Actor SubmitWindowedPoSt. It should be logic in miner.State.
-	partitionsSectors, err := miner.ComputePartitionsSectors(deadlines, deadlineIndex, partitions)
+	partitionSize := minerState.Info.WindowPoStPartitionSectors
+	partitionsSectors, err := miner.ComputePartitionsSectors(deadlines, partitionSize, deadlineIndex, partitions)
 	if err != nil {
 		return nil, err
 	}
