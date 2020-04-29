@@ -29,7 +29,7 @@ type FakePaychActorUtil struct {
 	*testing.T
 	ctx context.Context
 	*mock.Runtime
-	*PcActorHarness
+	*pcActorHarness
 	PaychAddr, PaychIDAddr, Client, ClientID, Miner address.Address
 	SendErr                                         error
 	result                                          MsgResult
@@ -55,7 +55,8 @@ func (fai *FakePaychActorUtil) ConstructPaychActor(t *testing.T, paychBal abi.To
 	fai.Runtime = builder.Build(fai.T)
 	fai.Runtime.AddIDAddress(fai.PaychAddr, fai.PaychIDAddr)
 	fai.Runtime.AddIDAddress(fai.Client, fai.ClientID)
-	fai.PcActorHarness.constructAndVerify(fai.T, fai.Runtime, fai.Client, fai.PaychAddr)
+	fai.pcActorHarness = new(pcActorHarness)
+	fai.pcActorHarness.constructAndVerify(fai.T, fai.Runtime, fai.Client, fai.PaychAddr)
 }
 
 // Send stubs a message Sender
@@ -66,16 +67,20 @@ func (fai *FakePaychActorUtil) Send(ctx context.Context,
 	gasLimit gas.Unit,
 	bcast bool,
 	method abi.MethodNum,
-	params interface{}) (out cid.Cid, pubErrCh chan error, err error) {
+	params interface{}) (mcid cid.Cid, pubErrCh chan error, err error) {
 
-	if fai.SendErr == nil {
-		fai.doSend(from, value)
+	err = fai.SendErr
+
+	if fai.result != msgRcptsUndef {
+		mcid = fai.result.MsgCid
 	}
-	return fai.result.MsgCid, nil, fai.SendErr
+
+	fai.doSend(value)
+	return mcid, pubErrCh, fai.SendErr
 }
 
 // Wait stubs a message Waiter
-func (fai *FakePaychActorUtil) Wait(_ context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+func (fai *FakePaychActorUtil) Wait(_ context.Context, _ cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
 	res := fai.result
 	return cb(res.Block, res.Msg, res.Rcpt)
 }
@@ -99,17 +104,17 @@ func (fai *FakePaychActorUtil) StubSendFundsResponse(from address.Address, amt a
 	return newCID
 }
 
-func (fai *FakePaychActorUtil) doSend(caller address.Address, amt abi.TokenAmount) {
+func (fai *FakePaychActorUtil) doSend(amt abi.TokenAmount) {
 	require.Equal(fai, amt, fai.result.Msg.Message.Value)
 	fai.Runtime.SetReceived(amt)
 }
 
-type PcActorHarness struct {
+type pcActorHarness struct {
 	paych.Actor
 	t testing.TB
 }
 
-func (h *PcActorHarness) constructAndVerify(t *testing.T, rt *mock.Runtime, sender, receiver address.Address) {
+func (h *pcActorHarness) constructAndVerify(t *testing.T, rt *mock.Runtime, sender, receiver address.Address) {
 	params := &paych.ConstructorParams{To: receiver, From: sender}
 	rt.ExpectValidateCallerType(builtin.InitActorCodeID)
 	ret := rt.Call(h.Actor.Constructor, params)

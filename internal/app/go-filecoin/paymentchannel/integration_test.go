@@ -87,7 +87,6 @@ func TestPaymentChannel(t *testing.T) {
 		Client:         client,
 		ClientID:       spect.NewIDAddr(t, 999),
 		Miner:          miner,
-		PcActorHarness: new(paychtest.PcActorHarness),
 	}
 	paychActorUtil.ConstructPaychActor(t, initialChannelAmt)
 

@@ -175,7 +175,7 @@ func (pm *Manager) AddVoucher(paychAddr address.Address, voucher *paychActor.Sig
 		return zeroAmt, err
 	}
 	if !has {
-		return pm.createPaymentChannelWithVoucher(paychAddr, voucher, proof, tok)
+		return pm.providerCreatePaymentChannelWithVoucher(paychAddr, voucher, proof, tok)
 	}
 
 	chinfo, err := pm.GetPaymentChannelInfo(paychAddr)
@@ -218,7 +218,7 @@ func PaychActorCtorExecParamsFor(client, miner address.Address) (initActor.ExecP
 	return p, nil
 }
 
-// GetMinerWorkerAddress mocks getting a miner worker address from the miner address
+// GetMinerWorkerAddress gets a miner worker address from the miner address
 func (pm *Manager) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
 	view, err := pm.stateViewer.GetStateView(ctx, tok)
 	if err != nil {
@@ -290,7 +290,7 @@ func (pm *Manager) WaitForAddFundsMessage(ctx context.Context, mcid cid.Cid) err
 func (pm *Manager) handlePaychCreateResult(ctx context.Context, mcid cid.Cid, client, miner address.Address) {
 
 	handleResult := func(_ *block.Block, _ *types.SignedMessage, mr *vm.MessageReceipt) error {
-		if mr.ExitCode != 0 {
+		if mr.ExitCode != exitcode.Ok {
 			log.Errorf("create message failed with exit code %d", mr.ExitCode)
 		}
 
@@ -317,7 +317,7 @@ func (pm *Manager) handlePaychCreateResult(ctx context.Context, mcid cid.Cid, cl
 }
 
 // Called ONLY in context of a retrieval provider.
-func (pm *Manager) createPaymentChannelWithVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte, tok shared.TipSetToken) (abi.TokenAmount, error) {
+func (pm *Manager) providerCreatePaymentChannelWithVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte, tok shared.TipSetToken) (abi.TokenAmount, error) {
 	view, err := pm.stateViewer.GetStateView(pm.ctx, tok)
 	if err != nil {
 		return zeroAmt, err
