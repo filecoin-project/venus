@@ -77,16 +77,17 @@ func TestPaymentChannel(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, paych, addr)
 
+	// make sure the channel info is there
 	chinfo, err := pchMgr.GetPaymentChannelInfo(paych)
 	require.NoError(t, err)
 	require.Equal(t, paych, chinfo.UniqueAddr)
 
 	paychActorUtil := paychtest.FakePaychActorUtil{
-		PaychAddr:      paych,
-		PaychIDAddr:    paychID,
-		Client:         client,
-		ClientID:       spect.NewIDAddr(t, 999),
-		Miner:          miner,
+		PaychAddr:   paych,
+		PaychIDAddr: paychID,
+		Client:      client,
+		ClientID:    spect.NewIDAddr(t, 999),
+		Miner:       miner,
 	}
 	paychActorUtil.ConstructPaychActor(t, initialChannelAmt)
 

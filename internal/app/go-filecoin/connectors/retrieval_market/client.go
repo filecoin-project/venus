@@ -3,7 +3,6 @@ package retrievalmarketconnector
 import (
 	"bytes"
 	"context"
-	"errors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -51,35 +50,27 @@ func NewRetrievalClientConnector(
 // GetOrCreatePaymentChannel gets or creates a payment channel and posts to chain
 func (r *RetrievalClientConnector) GetOrCreatePaymentChannel(ctx context.Context, clientAddress address.Address, minerAddress address.Address, clientFundsAvailable abi.TokenAmount, tok shared.TipSetToken) (address.Address, cid.Cid, error) {
 
-	errReturn := func(err error) (address.Address, cid.Cid, error) {
-		return address.Undef, cid.Undef, err
-	}
-
 	if clientAddress == address.Undef || minerAddress == address.Undef {
-		return errReturn(xerrors.New("empty address"))
+		return address.Undef, cid.Undef, xerrors.New("empty address")
 	}
 	chinfo, err := r.paychMgr.GetPaymentChannelByAccounts(clientAddress, minerAddress)
 	if err != nil {
-		return errReturn(err)
+		return address.Undef, cid.Undef, err
 	}
 	if chinfo.IsZero() {
 		// create the payment channel
 		bal, err := r.getBalance(ctx, clientAddress, tok)
 		if err != nil {
-			return errReturn(err)
+			return address.Undef, cid.Undef, err
 		}
 
 		filAmt := types.NewAttoFIL(clientFundsAvailable.Int)
 		if bal.LessThan(filAmt) {
-			return errReturn(xerrors.New("not enough funds in wallet"))
+			return address.Undef, cid.Undef, xerrors.New("not enough funds in wallet")
 		}
 
 		return r.paychMgr.CreatePaymentChannel(clientAddress, minerAddress, clientFundsAvailable)
 	}
-	// TODO: I think this is supposed to return the message CID from the creation of the payment channel.
-	// If there was one already, what CID should this return?
-	// What happens if that message is subsequently re-orged out of the chain and never replayed?
-	// https://github.com/filecoin-project/go-filecoin/issues/4034
 	mcid, err := r.paychMgr.AddFundsToChannel(chinfo.UniqueAddr, clientFundsAvailable)
 	return chinfo.UniqueAddr, mcid, err
 }

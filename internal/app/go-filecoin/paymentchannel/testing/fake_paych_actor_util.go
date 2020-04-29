@@ -37,9 +37,6 @@ type FakePaychActorUtil struct {
 
 // ConstructPaychActor creates a mock.Runtime and constructs a payment channel harness + Actor
 func (fai *FakePaychActorUtil) ConstructPaychActor(t *testing.T, paychBal abi.TokenAmount) {
-	versig := func(sig crypto.Signature, signer address.Address, plaintext []byte) error {
-		return nil
-	}
 	hasher := func(data []byte) [32]byte { return [32]byte{} }
 
 	builder := mock.NewBuilder(fai.ctx, fai.PaychAddr).
@@ -48,7 +45,6 @@ func (fai *FakePaychActorUtil) ConstructPaychActor(t *testing.T, paychBal abi.To
 		WithCaller(builtin.InitActorAddr, builtin.InitActorCodeID).
 		WithActorType(fai.PaychIDAddr, builtin.AccountActorCodeID).
 		WithActorType(fai.ClientID, builtin.AccountActorCodeID).
-		WithVerifiesSig(versig).
 		WithHasher(hasher)
 
 	fai.T = t
