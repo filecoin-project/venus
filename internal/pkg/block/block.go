@@ -33,12 +33,12 @@ type Block struct {
 	// ElectionProof is the vrf proof giving this block's miner authoring rights
 	ElectionProof *crypto.ElectionProof
 
-	// PoStProofs are the winning post proofs
-	PoStProofs []PoStProof `json:"PoStProofs"`
-
 	// DrandEntries contain the verifiable oracle randomness used to elect
 	// this block's author leader
 	DrandEntries []*drand.Entry
+
+	// PoStProofs are the winning post proofs
+	PoStProofs []PoStProof `json:"PoStProofs"`
 
 	// Parents is the set of parents this block was based on. Typically one,
 	// but can be several in the case where there were multiple winning ticket-
