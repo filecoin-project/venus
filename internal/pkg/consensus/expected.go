@@ -338,6 +338,7 @@ func (c *Expected) validateDRANDEntries(ctx context.Context, blk *block.Block) e
 
 	lastRound := blk.DrandEntries[numEntries-1].Round
 	nextDRANDTime := c.drand.StartTimeOfRound(lastRound + 1)
+
 	if !(c.clock.EpochAtTime(nextDRANDTime) > targetEpoch) {
 		return errors.New("Block does not include all drand entries required")
 	}

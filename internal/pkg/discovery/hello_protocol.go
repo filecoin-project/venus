@@ -119,7 +119,7 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 		h.peerDiscovered(ci)
 	// processing errors
 	case err == ErrBadGenesis:
-		log.Debugf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, h.genesis, from)
+		log.Debugf("peer genesis cid: %s does not match ours: %s, disconnecting from peer: %s", &hello.GenesisHash, h.genesis, from)
 		genesisErrCt.Inc(context.Background(), 1)
 		_ = s.Conn().Close()
 		return
