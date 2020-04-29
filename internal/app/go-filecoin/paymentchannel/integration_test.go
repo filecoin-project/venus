@@ -70,8 +70,9 @@ func TestPaymentChannel(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, address.Undef, addr)
 
-	// give a chance for the goroutine to finish creating channel info
+	// let the goroutine finish creating channel info
 	time.Sleep(100 * time.Millisecond)
+
 	addr, err = connector.WaitForPaymentChannelCreation(mcid)
 	require.NoError(t, err)
 	assert.Equal(t, paych, addr)
@@ -133,13 +134,6 @@ func testSetup2(ctx context.Context, t *testing.T) (*chain.Builder, bstore.Block
 	ds := repo.NewInMemoryRepo().ChainDatastore()
 	bs := bstore.NewBlockstore(ds)
 	return builder, bs, genTs
-}
-
-func TestPaychActorIFace(t *testing.T) {
-	tf.UnitTest(t)
-	ctx := context.Background()
-	fai := paychtest.NewFakePaychActorUtil(ctx, t, abi.NewTokenAmount(1200))
-	require.NotNil(t, fai)
 }
 
 func requireNewEmptyChainStore(ctx context.Context, t *testing.T) (cid.Cid, *chain.Builder, block.TipSet, *chain.Store, state.Tree) {

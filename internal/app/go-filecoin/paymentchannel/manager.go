@@ -32,7 +32,6 @@ var defaultGasPrice = types.NewAttoFILFromFIL(actor.DefaultGasCost)
 var defaultGasLimit = gas.NewGas(5000)
 var zeroAmt = abi.NewTokenAmount(0)
 
-
 // Manager manages payment channel actor and the data paymentChannels operations.
 type Manager struct {
 	ctx             context.Context
@@ -72,7 +71,7 @@ type ActorStateViewer interface {
 func NewManager(ctx context.Context, ds datastore.Batching, waiter MsgWaiter, sender MsgSender, viewer ActorStateViewer) *Manager {
 	s := statestore.New(namespace.Wrap(ds, datastore.NewKey(PaymentChannelStorePrefix)))
 
-	store := paychStore{ store: s}
+	store := paychStore{store: s}
 
 	return &Manager{ctx, &store, sender, waiter, viewer}
 }
@@ -286,7 +285,7 @@ func (pm *Manager) WaitForAddFundsMessage(ctx context.Context, mcid cid.Cid) err
 
 // WaitForPaychCreateMsg waits for mcid to appear on chain and returns the robust address of the
 // created payment channel
-// TODO: paych store locking, wait outside store lock, also set up channel tracking somehow
+// TODO: wait outside store lock, also set up channel tracking somehow
 // before knowing paych addr
 func (pm *Manager) handlePaychCreateResult(ctx context.Context, mcid cid.Cid, client, miner address.Address) {
 
@@ -345,27 +344,27 @@ func (pm *Manager) createPaymentChannelWithVoucher(paychAddr address.Address, vo
 
 // saveNewVoucher saves a voucher to an existing payment channel
 func (pm *Manager) saveNewVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte) error {
-	var chinfo ChannelInfo
-	st := pm.paymentChannels.Get(paychAddr)
-	if err := st.Get(&chinfo); err != nil {
+	has, err := pm.paymentChannels.Has(paychAddr)
+	if err != nil {
 		return err
 	}
-	if chinfo.NextLane <= voucher.Lane {
-		return xerrors.Errorf("lane does not exist %d", voucher.Lane)
+	if !has {
+		return xerrors.Errorf("channel does not exist %s", paychAddr.String())
 	}
-	if chinfo.HasVoucher(voucher) {
-		return xerrors.Errorf("voucher already saved")
-	}
-	if err := pm.paymentChannels.
-		Get(paychAddr).
-		Mutate(func(info *ChannelInfo) error {
-			info.NextNonce++
-			info.Vouchers = append(info.Vouchers, &VoucherInfo{
-				Voucher: voucher,
-				Proof:   proof,
-			})
-			return nil
-		}); err != nil {
+	if err := pm.paymentChannels.Mutate(paychAddr, func(info *ChannelInfo) error {
+		if info.NextLane <= voucher.Lane {
+			return xerrors.Errorf("lane does not exist %d", voucher.Lane)
+		}
+		if info.HasVoucher(voucher) {
+			return xerrors.Errorf("voucher already saved")
+		}
+		info.NextNonce++
+		info.Vouchers = append(info.Vouchers, &VoucherInfo{
+			Voucher: voucher,
+			Proof:   proof,
+		})
+		return nil
+	}); err != nil {
 		return err
 	}
 	return nil
@@ -374,33 +373,34 @@ func (pm *Manager) saveNewVoucher(paychAddr address.Address, voucher *paychActor
 //  paychStore is a thin threadsafe wrapper for StateStore
 type paychStore struct {
 	storeLk sync.RWMutex
-	store *statestore.StateStore
+	store   *statestore.StateStore
 }
 
 type mutator func(info *ChannelInfo) error
-func (ps *paychStore) Mutate(addr address.Address, m mutator ) error {
+
+func (ps *paychStore) Mutate(addr address.Address, m mutator) error {
 	ps.storeLk.Lock()
 	defer ps.storeLk.Unlock()
 	return ps.store.Get(addr).Mutate(m)
 }
-func (ps *paychStore)List(info *[]ChannelInfo) error {
+func (ps *paychStore) List(info *[]ChannelInfo) error {
 	ps.storeLk.Lock()
 	defer ps.storeLk.Unlock()
 	return ps.store.List(info)
 }
-func (ps *paychStore)Get(addr address.Address) *statestore.StoredState {
+func (ps *paychStore) Get(addr address.Address) *statestore.StoredState {
 	ps.storeLk.Lock()
 	defer ps.storeLk.Unlock()
 	return ps.store.Get(addr)
 }
-func (ps *paychStore)Has(addr address.Address) (bool, error) {
+func (ps *paychStore) Has(addr address.Address) (bool, error) {
 	ps.storeLk.Lock()
 	defer ps.storeLk.Unlock()
 	return ps.store.Has(addr)
 }
 
-func (ps *paychStore)Begin(addr address.Address, info *ChannelInfo) error {
+func (ps *paychStore) Begin(addr address.Address, info *ChannelInfo) error {
 	ps.storeLk.Lock()
 	defer ps.storeLk.Unlock()
-	return ps.store.Begin(addr,  info)
+	return ps.store.Begin(addr, info)
 }

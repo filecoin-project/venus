@@ -178,7 +178,7 @@ func TestManager_AddVoucherToChannel(t *testing.T) {
 
 	t.Run("errors if channel doesn't exist", func(t *testing.T) {
 		_, manager := setupViewerManager(ctx, t, root)
-		assert.EqualError(t, manager.AddVoucherToChannel(spect.NewActorAddr(t, "not-there"), &v), "No state for /t2bfuuk4wniuwo2tfso3bfar55hf4d6zq4fbcagui: datastore: key not found")
+		assert.EqualError(t, manager.AddVoucherToChannel(spect.NewActorAddr(t, "not-there"), &v), "channel does not exist t2bfuuk4wniuwo2tfso3bfar55hf4d6zq4fbcagui")
 	})
 
 	t.Run("returns error if lane does not exist", func(t *testing.T) {

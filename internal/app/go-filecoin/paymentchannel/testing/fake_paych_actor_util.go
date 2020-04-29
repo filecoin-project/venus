@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/filecoin-project/specs-actors/support/mock"
-	spect "github.com/filecoin-project/specs-actors/support/testing"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,21 +33,6 @@ type FakePaychActorUtil struct {
 	PaychAddr, PaychIDAddr, Client, ClientID, Miner address.Address
 	SendErr                                         error
 	result                                          MsgResult
-}
-
-// NewFakePaychActorUtil intializes a FakePaychActorUtil
-func NewFakePaychActorUtil(ctx context.Context, t *testing.T, paychBal abi.TokenAmount) *FakePaychActorUtil {
-	fai := &FakePaychActorUtil{
-		ctx:            ctx,
-		PaychAddr:      spect.NewActorAddr(t, "paychactor"),
-		PaychIDAddr:    spect.NewIDAddr(t, 999),
-		Client:         spect.NewActorAddr(t, "clientactor"),
-		ClientID:       spect.NewIDAddr(t, 980),
-		Miner:          spect.NewActorAddr(t, "mineractor"),
-		PcActorHarness: new(PcActorHarness),
-	}
-	fai.ConstructPaychActor(t, paychBal)
-	return fai
 }
 
 // ConstructPaychActor creates a mock.Runtime and constructs a payment channel harness + Actor

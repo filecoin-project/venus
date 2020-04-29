@@ -86,10 +86,7 @@ func (fai *FakeInitActorUtil) defaultSend(ctx context.Context,
 	params interface{}) (out cid.Cid, pubErrCh chan error, err error) {
 	execParams, ok := params.(*init_.ExecParams)
 	require.True(fai.t, ok)
-	if method == builtin.MethodsInit.Exec {
-		fai.ExecAndVerify(from, value, execParams)
-	}
-
+	fai.ExecAndVerify(from, value, execParams)
 	return fai.result.MsgCid, nil, nil
 }
 
@@ -104,12 +101,12 @@ func (fai *FakeInitActorUtil) defaultWait(_ context.Context, msgCid cid.Cid, cb 
 	return cb(res.Block, res.Msg, res.Rcpt)
 }
 
-// DelegateSender allows test to substitute a sender function
+// DelegateSender allows test to delegate a sender function
 func (fai *FakeInitActorUtil) DelegateSender(delegate sender) {
 	fai.msgSender = delegate
 }
 
-// DelegateWaiter allows test to substitute a waiter function
+// DelegateWaiter allows test to deletate a waiter function
 func (fai *FakeInitActorUtil) DelegateWaiter(delegate waiter) {
 	fai.msgWaiter = delegate
 }
