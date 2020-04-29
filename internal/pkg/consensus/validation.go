@@ -146,6 +146,10 @@ func (v *MessageSyntaxValidator) Validate(ctx context.Context, smsg *types.Signe
 		msgLen = len(enc)
 	}
 
+	if msg.Version != types.MessageVersion {
+		return fmt.Errorf("version %d, expected %d", msg.Version, types.MessageVersion)
+	}
+
 	if msg.To.Empty() {
 		invReceiverUndefCt.Inc(ctx, 1)
 		return fmt.Errorf("empty receiver: %s", msg)
@@ -178,6 +182,8 @@ func (v *MessageSyntaxValidator) Validate(ctx context.Context, smsg *types.Signe
 	}
 	// The minimum gas limit ensures the sender has enough balance to pay for inclusion of the message in the chain
 	// *at all*. Without this, a message could hit out-of-gas but the sender pay nothing.
+	// NOTE(anorth): this check has been moved to execution time, and the miner is penalized for including
+	// such a message. We can probably remove this.
 	minMsgGas := onChainMessageBase + onChainMessagePerByte*gas.Unit(msgLen)
 	if msg.GasLimit < minMsgGas {
 		invGasBelowMinimumCt.Inc(ctx, 1)

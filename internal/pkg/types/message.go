@@ -26,6 +26,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
+const MessageVersion = 0
+
 // BlockGasLimit is the maximum amount of gas that can be used to execute messages in a single block
 var BlockGasLimit = gas.NewGas(10000000)
 
@@ -58,6 +60,8 @@ type UnsignedMessage struct {
 	// control field for encoding struct as an array
 	_ struct{} `cbor:",toarray"`
 
+	Version int64 `json:"version"`
+
 	To   address.Address `json:"to"`
 	From address.Address `json:"from"`
 	// When receiving a message from a user account the nonce in
@@ -78,8 +82,9 @@ type UnsignedMessage struct {
 // NewUnsignedMessage creates a new message.
 func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte) *UnsignedMessage {
 	return &UnsignedMessage{
-		From:       from,
+		Version:    MessageVersion,
 		To:         to,
+		From:       from,
 		CallSeqNum: nonce,
 		Value:      value,
 		Method:     method,
@@ -90,14 +95,15 @@ func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, m
 // NewMeteredMessage adds gas price and gas limit to the message
 func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte, price AttoFIL, limit gas.Unit) *UnsignedMessage {
 	return &UnsignedMessage{
-		From:       from,
+		Version:    MessageVersion,
 		To:         to,
+		From:       from,
 		CallSeqNum: nonce,
 		Value:      value,
-		Method:     method,
-		Params:     params,
 		GasPrice:   price,
 		GasLimit:   limit,
+		Method:     method,
+		Params:     params,
 	}
 }
 

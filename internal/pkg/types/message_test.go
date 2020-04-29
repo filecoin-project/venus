@@ -17,10 +17,6 @@ func TestMessageMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
 	addrGetter := vmaddr.NewForTestGetter()
-
-	// TODO: allow more types than just strings for the params
-	// currently []interface{} results in type information getting lost when doing
-	// a roundtrip with the default cbor encoder.
 	msg := NewMeteredMessage(
 		addrGetter(),
 		addrGetter(),
@@ -34,7 +30,7 @@ func TestMessageMarshal(t *testing.T) {
 
 	// This check requests that you add a non-zero value for new fields above,
 	// then update the field count below.
-	require.Equal(t, 9, reflect.TypeOf(*msg).NumField())
+	require.Equal(t, 10, reflect.TypeOf(*msg).NumField())
 
 	marshalled, err := msg.Marshal()
 	assert.NoError(t, err)
@@ -45,6 +41,7 @@ func TestMessageMarshal(t *testing.T) {
 	err = msgBack.Unmarshal(marshalled)
 	assert.NoError(t, err)
 
+	assert.Equal(t, msg.Version, msgBack.Version)
 	assert.Equal(t, msg.To, msgBack.To)
 	assert.Equal(t, msg.From, msgBack.From)
 	assert.Equal(t, msg.Value, msgBack.Value)

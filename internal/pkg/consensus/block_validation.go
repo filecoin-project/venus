@@ -117,5 +117,7 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 		return fmt.Errorf("block %s has nil signature", blk.Cid())
 	}
 
+	//TODO: validate all the messages syntax
+
 	return nil
 }
