@@ -36,8 +36,8 @@ func TestMiningPledgeSector(t *testing.T) {
 	// Load genesis config fixture.
 	genCfg := loadGenesisConfig(t, genCfgPath)
 	genCfg.Miners = append(genCfg.Miners, &gengen.CreateStorageMinerConfig{
-		Owner:      1,
-		SectorSize: constants.DevSectorSize,
+		Owner:         1,
+		SealProofType: constants.DevSealProofType,
 	})
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)

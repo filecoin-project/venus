@@ -53,7 +53,6 @@ func NewStorageMiningSubmodule(
 	mw *msg.Waiter,
 	stateViewer *appstate.Viewer,
 	sealProofType abi.RegisteredProof,
-	postProofType abi.RegisteredProof,
 	r repo.Repo,
 	postGeneratorOverride postgenerator.PoStGenerator,
 ) (*StorageMiningSubmodule, error) {

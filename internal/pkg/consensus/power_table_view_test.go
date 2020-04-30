@@ -110,7 +110,7 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 		minerConfigs[i] = &gengen.CreateStorageMinerConfig{
 			Owner:            i,
 			CommittedSectors: commCfgs,
-			SectorSize:       constants.DevSectorSize,
+			SealProofType:    constants.DevSealProofType,
 		}
 	}
 

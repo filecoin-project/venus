@@ -363,7 +363,11 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 				return nil, err
 			}
 
-			rawPower, qaPower := computeSectorPower(m.SectorSize, sectorExpiration, dealWeight, verifiedWeight)
+			sectorSize, err := m.SealProofType.SectorSize()
+			if err != nil {
+				return nil, err
+			}
+			rawPower, qaPower := computeSectorPower(sectorSize, sectorExpiration, dealWeight, verifiedWeight)
 
 			sectorsToCommit = append(sectorsToCommit, &sectorCommitInfo{
 				miner:          actorAddr,
@@ -463,10 +467,10 @@ func (g *GenesisGenerator) createMiner(ctx context.Context, m *CreateStorageMine
 	}
 
 	out, err := g.vm.ApplyGenesisMessage(ownerAddr, builtin.StoragePowerActorAddr, builtin.MethodsPower.CreateMiner, big.Zero(), &power.CreateMinerParams{
-		Owner:      ownerAddr,
-		Worker:     ownerAddr,
-		Peer:       pid,
-		SectorSize: m.SectorSize,
+		Owner:         ownerAddr,
+		Worker:        ownerAddr,
+		Peer:          pid,
+		SealProofType: m.SealProofType,
 	}, &g.chainRand)
 	if err != nil {
 		return address.Undef, address.Undef, err

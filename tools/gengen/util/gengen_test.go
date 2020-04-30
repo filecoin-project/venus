@@ -31,12 +31,12 @@ func testConfig(t *testing.T) *GenesisCfg {
 			{
 				Owner:            0,
 				CommittedSectors: fiftyCommCfgs,
-				SectorSize:       constants.DevSectorSize,
+				SealProofType:    constants.DevSealProofType,
 			},
 			{
 				Owner:            1,
 				CommittedSectors: tenCommCfgs,
-				SectorSize:       constants.DevSectorSize,
+				SealProofType:    constants.DevSealProofType,
 			},
 		},
 		Network: "gfctest",

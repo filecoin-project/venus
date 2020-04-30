@@ -117,13 +117,23 @@ func (v *View) MinerPeerID(ctx context.Context, maddr addr.Address) (peer.ID, er
 	return minerState.Info.PeerId, nil
 }
 
-// MinerSectorSize returns the sector size for a miner actor
-func (v *View) MinerSectorSize(ctx context.Context, maddr addr.Address) (abi.SectorSize, error) {
+type MinerSectorConfiguration struct {
+	SealProofType              abi.RegisteredProof
+	SectorSize                 abi.SectorSize
+	WindowPoStPartitionSectors uint64
+}
+
+// MinerSectorConfiguration returns the sector size for a miner actor
+func (v *View) MinerSectorConfiguration(ctx context.Context, maddr addr.Address) (*MinerSectorConfiguration, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return minerState.Info.SectorSize, nil
+	return &MinerSectorConfiguration{
+		SealProofType:              minerState.Info.SealProofType,
+		SectorSize:                 minerState.Info.SectorSize,
+		WindowPoStPartitionSectors: minerState.Info.WindowPoStPartitionSectors,
+	}, nil
 }
 
 // MinerSectorCount counts all the on-chain sectors

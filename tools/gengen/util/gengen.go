@@ -38,8 +38,9 @@ type CreateStorageMinerConfig struct {
 	// CommittedSectors is the list of sector commitments in this miner's proving set
 	CommittedSectors []*CommitConfig
 
-	// SectorSize is the size of the sectors that this miner commits, in bytes.
-	SectorSize abi.SectorSize
+	// SealProofType is the proof configuration used by this miner
+	// (which implies sector size and window post partition size)
+	SealProofType abi.RegisteredProof
 
 	// ProvingPeriodStart is next chain epoch at which a miner will need to submit a windowed post
 	// If unset, it will be set to the proving period.

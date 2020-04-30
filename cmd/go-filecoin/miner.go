@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -68,6 +69,11 @@ additional sectors.`,
 			return err
 		}
 
+		sealProofType, err := ffiwrapper.SealProofTypeFromSectorSize(sectorSize)
+		if err != nil {
+			return err
+		}
+
 		fromAddr, err := fromAddrOrDefault(req, env)
 		if err != nil {
 			return err
@@ -117,7 +123,7 @@ additional sectors.`,
 			fromAddr,
 			gasPrice,
 			gasLimit,
-			sectorSize,
+			sealProofType,
 			pid,
 			collateral,
 		)

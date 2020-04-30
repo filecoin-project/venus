@@ -15,7 +15,7 @@ require (
 	github.com/drand/drand v0.7.2
 	github.com/drand/kyber v1.0.1-0.20200331114745-30e90cc60f99
 	github.com/elastic/go-windows v1.0.1 // indirect
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200429030643-df5c922faea1
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200429181200-c83b25321997
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200427223233-a0014b17f124
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
@@ -23,13 +23,13 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.0.0-20200408061858-82c58b423ca6
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
-	github.com/filecoin-project/go-fil-markets v0.0.0-20200427202705-c923d094d901
+	github.com/filecoin-project/go-fil-markets v0.1.1
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
 	github.com/filecoin-project/go-statemachine v0.0.0-20200314004106-2e7830fc1948 // indirect
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/sector-storage v0.0.0-20200425102315-c19a25449861
+	github.com/filecoin-project/sector-storage v0.0.0-20200429180615-83b1b9403480
 	github.com/filecoin-project/specs-actors v0.3.0
 	github.com/filecoin-project/specs-storage v0.0.0-20200427220711-ae5a7f26c65f // indirect
 	github.com/filecoin-project/storage-fsm v0.0.0-20200427182014-01487d5ad3c8
