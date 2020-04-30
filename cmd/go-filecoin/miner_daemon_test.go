@@ -367,12 +367,12 @@ func minerDaemonTestConfig(t *testing.T) *gengen.GenesisCfg {
 			{
 				Owner:            0,
 				CommittedSectors: commCfgs,
-				SectorSize:       constants.DevSectorSize,
+				SealProofType:    constants.DevSealProofType,
 			},
 			{
 				Owner:            1,
 				CommittedSectors: commCfgs,
-				SectorSize:       constants.DevSectorSize,
+				SealProofType:    constants.DevSealProofType,
 			},
 		},
 		Network: "gfctest",

@@ -209,7 +209,7 @@ func MakeTestGenCfg(t *testing.T, numSectors int) *gengen.GenesisCfg {
 				Owner:            0,
 				PeerID:           mustPeerID(PeerKeys[0]).Pretty(),
 				CommittedSectors: commCfgs,
-				SectorSize:       constants.DevSectorSize,
+				SealProofType:    constants.DevSealProofType,
 			},
 		},
 		Network: "gfctest",

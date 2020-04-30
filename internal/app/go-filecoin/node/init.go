@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/sector-storage/stores"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	fsm "github.com/filecoin-project/storage-fsm"
@@ -284,12 +283,7 @@ func ensureSectorDirAndMetadata(containsPreSealedSectors bool, dirPath string) e
 func createGenesisFSMState(ctx context.Context, rep repo.Repo, genesisBlock *block.Block, maddr address.Address) ([]fsm.SectorInfo, error) {
 	view := state.NewViewer(cborutil.NewIpldStore(bstore.NewBlockstore(rep.Datastore()))).StateView(genesisBlock.StateRoot.Cid)
 
-	size, err := view.MinerSectorSize(ctx, maddr)
-	if err != nil {
-		return nil, err
-	}
-
-	spt, err := ffiwrapper.SealProofTypeFromSectorSize(size)
+	conf, err := view.MinerSectorConfiguration(ctx, maddr)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +316,7 @@ func createGenesisFSMState(ctx context.Context, rep repo.Repo, genesisBlock *blo
 			}
 		}
 
-		unsealedCID, err := view.MarketComputeDataCommitment(ctx, spt, dealIDs)
+		unsealedCID, err := view.MarketComputeDataCommitment(ctx, conf.SealProofType, dealIDs)
 		if err != nil {
 			return err
 		}

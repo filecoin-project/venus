@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/build/project"
@@ -42,8 +41,8 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	// Load genesis config fixture.
 	genCfg := loadGenesisConfig(t, genCfgPath)
 	genCfg.Miners = append(genCfg.Miners, &gengen.CreateStorageMinerConfig{
-		Owner:      5,
-		SectorSize: constants.DevSectorSize,
+		Owner:         5,
+		SealProofType: constants.DevSealProofType,
 	})
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
@@ -61,7 +60,7 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 		}).
 		Build(ctx)
 
-	_, _, err = initNodeGenesisMiner(ctx, t, bootstrapMiner, seed, genCfg.Miners[0].Owner, presealPath, genCfg.Miners[0].SectorSize)
+	_, _, err = initNodeGenesisMiner(ctx, t, bootstrapMiner, seed, genCfg.Miners[0].Owner)
 	require.NoError(t, err)
 	err = bootstrapMiner.Start(ctx)
 	require.NoError(t, err)
@@ -110,7 +109,7 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	return nodes, cancel
 }
 
-func initNodeGenesisMiner(ctx context.Context, t *testing.T, nd *node.Node, seed *node.ChainSeed, minerIdx int, presealPath string, sectorSize abi.SectorSize) (address.Address, address.Address, error) {
+func initNodeGenesisMiner(ctx context.Context, t *testing.T, nd *node.Node, seed *node.ChainSeed, minerIdx int) (address.Address, address.Address, error) {
 	seed.GiveKey(t, nd, minerIdx)
 	miner, owner := seed.GiveMiner(t, nd, 0)
 

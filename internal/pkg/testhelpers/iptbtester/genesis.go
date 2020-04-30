@@ -54,7 +54,7 @@ func RequireGenerateGenesis(t *testing.T, funds int64, dir string, genesisTime t
 			{
 				Owner:            0,
 				CommittedSectors: commCfgs,
-				SectorSize:       constants.DevSectorSize,
+				SealProofType:    constants.DevSealProofType,
 			},
 		},
 		Network: "gfctest",

@@ -15,7 +15,7 @@ import (
 // immediate parent state.
 type PowerStateView interface {
 	state.AccountStateView
-	MinerSectorSize(ctx context.Context, maddr addr.Address) (abi.SectorSize, error)
+	MinerSectorConfiguration(ctx context.Context, maddr addr.Address) (*state.MinerSectorConfiguration, error)
 	MinerControlAddresses(ctx context.Context, maddr addr.Address) (owner, worker addr.Address, err error)
 	MinerSectorsForEach(ctx context.Context, maddr addr.Address, f func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof, dealIDs []abi.DealID) error) error
 	PowerNetworkTotal(ctx context.Context) (*state.NetworkPower, error)

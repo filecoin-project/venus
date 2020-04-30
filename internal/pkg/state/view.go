@@ -117,13 +117,23 @@ func (v *View) MinerPeerID(ctx context.Context, maddr addr.Address) (peer.ID, er
 	return minerState.Info.PeerId, nil
 }
 
-// MinerSectorSize returns the sector size for a miner actor
-func (v *View) MinerSectorSize(ctx context.Context, maddr addr.Address) (abi.SectorSize, error) {
+type MinerSectorConfiguration struct {
+	SealProofType              abi.RegisteredProof
+	SectorSize                 abi.SectorSize
+	WindowPoStPartitionSectors uint64
+}
+
+// MinerSectorConfiguration returns the sector size for a miner actor
+func (v *View) MinerSectorConfiguration(ctx context.Context, maddr addr.Address) (*MinerSectorConfiguration, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return minerState.Info.SectorSize, nil
+	return &MinerSectorConfiguration{
+		SealProofType:              minerState.Info.SealProofType,
+		SectorSize:                 minerState.Info.SectorSize,
+		WindowPoStPartitionSectors: minerState.Info.WindowPoStPartitionSectors,
+	}, nil
 }
 
 // MinerSectorCount counts all the on-chain sectors
@@ -174,7 +184,8 @@ func (v *View) MinerPartitionIndicesForDeadline(ctx context.Context, maddr addr.
 	}
 
 	// compute first partition index
-	start, sectorCount, err := miner.PartitionsForDeadline(deadlines, deadlineIndex)
+	partitionSize := minerState.Info.WindowPoStPartitionSectors
+	start, sectorCount, err := miner.PartitionsForDeadline(deadlines, partitionSize, deadlineIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +196,7 @@ func (v *View) MinerPartitionIndicesForDeadline(ctx context.Context, maddr addr.
 	}
 
 	// compute number of partitions
-	partitionCount, _, err := miner.DeadlineCount(deadlines, deadlineIndex)
+	partitionCount, _, err := miner.DeadlineCount(deadlines, partitionSize, deadlineIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +222,8 @@ func (v *View) MinerSectorInfoForDeadline(ctx context.Context, maddr addr.Addres
 	}
 
 	// This is copied from miner.Actor SubmitWindowedPoSt. It should be logic in miner.State.
-	partitionsSectors, err := miner.ComputePartitionsSectors(deadlines, deadlineIndex, partitions)
+	partitionSize := minerState.Info.WindowPoStPartitionSectors
+	partitionsSectors, err := miner.ComputePartitionsSectors(deadlines, partitionSize, deadlineIndex, partitions)
 	if err != nil {
 		return nil, err
 	}

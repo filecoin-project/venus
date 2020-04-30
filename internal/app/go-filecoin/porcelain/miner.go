@@ -35,7 +35,7 @@ type mcAPI interface {
 type MinerStateView interface {
 	MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error)
 	MinerPeerID(ctx context.Context, maddr address.Address) (peer.ID, error)
-	MinerSectorSize(ctx context.Context, maddr address.Address) (abi.SectorSize, error)
+	MinerSectorConfiguration(ctx context.Context, maddr address.Address) (*state.MinerSectorConfiguration, error)
 	MinerSectorCount(ctx context.Context, maddr address.Address) (int, error)
 	MinerDeadlines(ctx context.Context, maddr address.Address) (*miner.Deadlines, error)
 	PowerNetworkTotal(ctx context.Context) (*state.NetworkPower, error)
@@ -53,7 +53,7 @@ func MinerCreate(
 	minerOwnerAddr address.Address,
 	gasPrice types.AttoFIL,
 	gasLimit gas.Unit,
-	sectorSize abi.SectorSize,
+	sealProofType abi.RegisteredProof,
 	pid peer.ID,
 	collateral types.AttoFIL,
 ) (_ address.Address, err error) {
@@ -73,10 +73,10 @@ func MinerCreate(
 	}
 
 	params := power.CreateMinerParams{
-		Worker:     minerOwnerAddr,
-		Owner:      minerOwnerAddr,
-		Peer:       pid,
-		SectorSize: sectorSize,
+		Worker:        minerOwnerAddr,
+		Owner:         minerOwnerAddr,
+		Peer:          pid,
+		SealProofType: sealProofType,
 	}
 
 	smsgCid, _, err := plumbing.MessageSend(
@@ -179,12 +179,12 @@ type MinerProvingWindow struct {
 
 // MinerStatus contains a miners power and the total power of the network
 type MinerStatus struct {
-	ActorAddress  address.Address
-	OwnerAddress  address.Address
-	WorkerAddress address.Address
-	PeerID        peer.ID
-	SectorSize    abi.SectorSize
-	SectorCount   int
+	ActorAddress        address.Address
+	OwnerAddress        address.Address
+	WorkerAddress       address.Address
+	PeerID              peer.ID
+	SectorConfiguration *state.MinerSectorConfiguration
+	SectorCount         int
 
 	RawPower             abi.StoragePower
 	QualityAdjustedPower abi.StoragePower
@@ -213,7 +213,7 @@ func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr
 	if err != nil {
 		return MinerStatus{}, err
 	}
-	sectorSize, err := view.MinerSectorSize(ctx, minerAddr)
+	sectorConfig, err := view.MinerSectorConfiguration(ctx, minerAddr)
 	if err != nil {
 		return MinerStatus{}, err
 	}
@@ -239,12 +239,12 @@ func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr
 	}
 
 	return MinerStatus{
-		ActorAddress:  minerAddr,
-		OwnerAddress:  owner,
-		WorkerAddress: worker,
-		PeerID:        peerID,
-		SectorSize:    sectorSize,
-		SectorCount:   sectorCount,
+		ActorAddress:        minerAddr,
+		OwnerAddress:        owner,
+		WorkerAddress:       worker,
+		PeerID:              peerID,
+		SectorConfiguration: sectorConfig,
+		SectorCount:         sectorCount,
 
 		RawPower:             rawPower,
 		QualityAdjustedPower: qaPower,

@@ -343,7 +343,8 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 	// 4. invoke message
 	ret, code := ctx.invoke()
 	if code.IsError() {
-		return nil, fmt.Errorf("Invalid exit code during implicit message execution (code: %d)", code)
+		return nil, fmt.Errorf("invalid exit code %d during implicit message execution: from %s, to %s, method %d, value %s, params %v",
+			code, imsg.from, imsg.to, imsg.method, imsg.value, imsg.params)
 	}
 	return ret.inner, nil
 }

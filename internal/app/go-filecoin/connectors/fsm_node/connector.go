@@ -118,7 +118,11 @@ func (f *FiniteStateMachineNodeConnector) StateMinerSectorSize(ctx context.Conte
 		return 0, err
 	}
 
-	return view.MinerSectorSize(ctx, maddr)
+	conf, err := view.MinerSectorConfiguration(ctx, maddr)
+	if err != nil {
+		return 0, err
+	}
+	return conf.SectorSize, err
 }
 
 func (f *FiniteStateMachineNodeConnector) StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tok fsm.TipSetToken) (address.Address, error) {

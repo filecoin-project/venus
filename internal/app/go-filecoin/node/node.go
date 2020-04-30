@@ -8,7 +8,6 @@ import (
 	"runtime"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -26,7 +25,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
@@ -417,21 +415,6 @@ func (node *Node) SetupMining(ctx context.Context) error {
 	return nil
 }
 
-func registeredProofsFromSectorSize(ss abi.SectorSize) (registeredPoStProof abi.RegisteredProof, registeredSealProof abi.RegisteredProof, err error) {
-	switch ss {
-	case constants.DevSectorSize:
-		return constants.DevRegisteredWindowPoStProof, constants.DevRegisteredSealProof, nil
-	case constants.ThirtyTwoGiBSectorSize:
-		return abi.RegisteredProof_StackedDRG32GiBWindowPoSt, abi.RegisteredProof_StackedDRG32GiBSeal, nil
-	case constants.EightMiBSectorSize:
-		return abi.RegisteredProof_StackedDRG8MiBWindowPoSt, abi.RegisteredProof_StackedDRG8MiBSeal, nil
-	case constants.FiveHundredTwelveMiBSectorSize:
-		return abi.RegisteredProof_StackedDRG512MiBWindowPoSt, abi.RegisteredProof_StackedDRG512MiBSeal, nil
-	default:
-		return 0, 0, errors.Errorf("unsupported sector size %d", ss)
-	}
-}
-
 func (node *Node) setupStorageMining(ctx context.Context) error {
 	if node.StorageMining != nil {
 		return errors.New("storage mining submodule has already been initialized")
@@ -453,10 +436,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return err
 	}
 
-	postProofType, sealProofType, err := registeredProofsFromSectorSize(status.SectorSize)
-	if err != nil {
-		return err
-	}
+	sealProofType := status.SectorConfiguration.SealProofType
 
 	cborStore := node.Blockstore.CborStore
 
@@ -465,7 +445,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 	// TODO: rework these modules so they can be at least partially constructed during the building phase #3738
 	stateViewer := state.NewViewer(cborStore)
 
-	node.StorageMining, err = submodule.NewStorageMiningSubmodule(minerAddr, node.Repo.Datastore(), &node.chain, &node.Messaging, waiter, stateViewer, sealProofType, postProofType, node.Repo, node.BlockMining.PoStGenerator)
+	node.StorageMining, err = submodule.NewStorageMiningSubmodule(minerAddr, node.Repo.Datastore(), &node.chain, &node.Messaging, waiter, stateViewer, sealProofType, node.Repo, node.BlockMining.PoStGenerator)
 	if err != nil {
 		return err
 	}

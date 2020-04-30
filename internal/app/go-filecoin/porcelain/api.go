@@ -68,11 +68,11 @@ func (a *API) MinerCreate(
 	accountAddr address.Address,
 	gasPrice types.AttoFIL,
 	gasLimit gas.Unit,
-	sectorSize abi.SectorSize,
+	sealProofType abi.RegisteredProof,
 	pid peer.ID,
 	collateral types.AttoFIL,
 ) (_ address.Address, err error) {
-	return MinerCreate(ctx, a, accountAddr, gasPrice, gasLimit, sectorSize, pid, collateral)
+	return MinerCreate(ctx, a, accountAddr, gasPrice, gasLimit, sealProofType, pid, collateral)
 }
 
 // MinerPreviewCreate previews the Gas cost of creating a miner

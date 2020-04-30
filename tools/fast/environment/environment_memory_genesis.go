@@ -238,7 +238,7 @@ func (e *MemoryGenesis) buildGenesis(funds *big.Int) error {
 		Miners: []*gengen.CreateStorageMinerConfig{
 			{
 				Owner:            0,
-				SectorSize:       constants.DevSectorSize,
+				SealProofType:    constants.DevSealProofType,
 				CommittedSectors: commCfgs,
 			},
 		},

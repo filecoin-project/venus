@@ -110,7 +110,7 @@ func TestMinerCreate(t *testing.T) {
 			address.Address{},
 			types.NewGasPrice(0),
 			gas.NewGas(100),
-			constants.DevSectorSize,
+			constants.DevSealProofType,
 			"",
 			collateral,
 		)
@@ -129,7 +129,7 @@ func TestMinerCreate(t *testing.T) {
 			address.Address{},
 			types.NewGasPrice(0),
 			gas.NewGas(100),
-			constants.DevSectorSize,
+			constants.DevSealProofType,
 			"",
 			collateral,
 		)
