@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
@@ -37,6 +38,7 @@ import (
 )
 
 func TestRetrievalClientConnector_GetOrCreatePaymentChannel(t *testing.T) {
+	testflags.IntegrationTest(t)
 	ctx := context.Background()
 
 	paych := specst.NewActorAddr(t, "paych")
@@ -113,6 +115,7 @@ func TestRetrievalClientConnector_GetOrCreatePaymentChannel(t *testing.T) {
 }
 
 func TestRetrievalClientConnector_AllocateLane(t *testing.T) {
+	testflags.IntegrationTest(t)
 	ctx := context.Background()
 	bs, cs, client, miner, _ := testSetup(ctx, t, abi.NewTokenAmount(100))
 
@@ -147,6 +150,7 @@ func TestRetrievalClientConnector_AllocateLane(t *testing.T) {
 }
 
 func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
+	testflags.IntegrationTest(t)
 	ctx := context.Background()
 	balance := abi.NewTokenAmount(1000)
 	bs, cs, client, miner, genTs := testSetup(ctx, t, balance)

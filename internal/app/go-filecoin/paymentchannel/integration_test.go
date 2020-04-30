@@ -2,6 +2,7 @@ package paymentchannel_test
 
 import (
 	"context"
+	"math/big"
 	"testing"
 	"time"
 
@@ -35,7 +36,7 @@ import (
 // TestAddFundsToChannel verifies that a call to GetOrCreatePaymentChannel sends
 // funds to the actor if it  already exists
 func TestPaymentChannel(t *testing.T) {
-	tf.UnitTest(t)
+	tf.IntegrationTest(t)
 	ctx := context.Background()
 	chainBuilder, bs, genTs := testSetup2(ctx, t)
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
@@ -83,13 +84,14 @@ func TestPaymentChannel(t *testing.T) {
 	require.Equal(t, paych, chinfo.UniqueAddr)
 
 	paychActorUtil := paychtest.FakePaychActorUtil{
+		T:           t,
+		Balance:     types.NewAttoFIL(initialChannelAmt.Int),
 		PaychAddr:   paych,
 		PaychIDAddr: paychID,
 		Client:      client,
 		ClientID:    spect.NewIDAddr(t, 999),
 		Miner:       miner,
 	}
-	paychActorUtil.ConstructPaychActor(t, initialChannelAmt)
 
 	fakeProvider.SetHead(genTs.Key())
 	fakeProvider.SetActor(client, clientActor)
@@ -109,11 +111,11 @@ func TestPaymentChannel(t *testing.T) {
 	assert.Equal(t, paychActorUtil.PaychAddr, addr)
 	assert.True(t, mcid.Equals(expCid))
 
-	paychActorUtil.Runtime.Verify()
-
 	err = connector.WaitForPaymentChannelAddFunds(mcid)
 	require.NoError(t, err)
-	assert.Equal(t, abi.NewTokenAmount(333), paychActorUtil.Runtime.ValueReceived())
+
+	expBal := types.NewAttoFIL(big.NewInt(1533))
+	assert.True(t, expBal.Equals(paychActorUtil.Balance))
 }
 
 func testSetup2(ctx context.Context, t *testing.T) (*chain.Builder, bstore.Blockstore, block.TipSet) {

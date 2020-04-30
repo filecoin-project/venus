@@ -2,18 +2,15 @@ package testing
 
 import (
 	"context"
+	"math/big"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-	"github.com/filecoin-project/specs-actors/support/mock"
 	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -27,32 +24,10 @@ import (
 // via the specs_actors mock runtime. It executes paych.Actor exports directly.
 type FakePaychActorUtil struct {
 	*testing.T
-	ctx context.Context
-	*mock.Runtime
-	*pcActorHarness
+	Balance                                         types.AttoFIL
 	PaychAddr, PaychIDAddr, Client, ClientID, Miner address.Address
 	SendErr                                         error
 	result                                          MsgResult
-}
-
-// ConstructPaychActor creates a mock.Runtime and constructs a payment channel harness + Actor
-func (fai *FakePaychActorUtil) ConstructPaychActor(t *testing.T, paychBal abi.TokenAmount) {
-	hasher := func(data []byte) [32]byte { return [32]byte{} }
-
-	builder := mock.NewBuilder(fai.ctx, fai.PaychAddr).
-		WithBalance(paychBal, big.Zero()).
-		WithEpoch(abi.ChainEpoch(42)).
-		WithCaller(builtin.InitActorAddr, builtin.InitActorCodeID).
-		WithActorType(fai.PaychIDAddr, builtin.AccountActorCodeID).
-		WithActorType(fai.ClientID, builtin.AccountActorCodeID).
-		WithHasher(hasher)
-
-	fai.T = t
-	fai.Runtime = builder.Build(fai.T)
-	fai.Runtime.AddIDAddress(fai.PaychAddr, fai.PaychIDAddr)
-	fai.Runtime.AddIDAddress(fai.Client, fai.ClientID)
-	fai.pcActorHarness = new(pcActorHarness)
-	fai.pcActorHarness.constructAndVerify(fai.T, fai.Runtime, fai.Client, fai.PaychAddr)
 }
 
 // Send stubs a message Sender
@@ -100,18 +75,6 @@ func (fai *FakePaychActorUtil) StubSendFundsResponse(from address.Address, amt a
 
 func (fai *FakePaychActorUtil) doSend(amt abi.TokenAmount) {
 	require.Equal(fai, amt, fai.result.Msg.Message.Value)
-	fai.Runtime.SetReceived(amt)
-}
-
-type pcActorHarness struct {
-	paych.Actor
-	t testing.TB
-}
-
-func (h *pcActorHarness) constructAndVerify(t *testing.T, rt *mock.Runtime, sender, receiver address.Address) {
-	params := &paych.ConstructorParams{To: receiver, From: sender}
-	rt.ExpectValidateCallerType(builtin.InitActorCodeID)
-	ret := rt.Call(h.Actor.Constructor, params)
-	assert.Nil(h.t, ret)
-	rt.Verify()
+	nb := big.NewInt(0).Add(fai.Balance.Int, amt.Int)
+	fai.Balance = types.NewAttoFIL(nb)
 }
