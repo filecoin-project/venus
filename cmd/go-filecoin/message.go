@@ -277,11 +277,6 @@ var msgStatusCmd = &cmds.Command{
 			}
 		}
 
-		// Look on chain
-		result.ChainMsg, result.OnChain, err = api.MessageFind(req.Context, msgCid)
-		if err != nil {
-			return err
-		}
 		return re.Emit(&result)
 	},
 	Type: &MessageStatusResult{},

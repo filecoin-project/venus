@@ -334,6 +334,7 @@ func (store *Store) SetHead(ctx context.Context, ts block.TipSet) error {
 	}
 	store.reporter.UpdateStatus(validateHead(ts.Key()), validateHeight(h))
 	// Publish an event that we have a new head.
+	logStore.Errorf("publishing new head")
 	store.HeadEvents().Pub(ts, NewHeadTopic)
 
 	return nil

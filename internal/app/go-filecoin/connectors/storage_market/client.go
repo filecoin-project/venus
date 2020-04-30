@@ -144,7 +144,9 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context, t
 // Adapted from https://github.com/filecoin-project/lotus/blob/3b34eba6124d16162b712e971f0db2ee108e0f67/markets/storageadapter/client.go#L156
 func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (dealID abi.DealID, err error) {
 	// Fetch receipt to return dealId
-	chnMsg, found, err := s.waiter.Find(ctx, func(msg *types.SignedMessage, c cid.Cid) bool {
+	// TODO: This is an inefficient way to discover a deal ID. See if we can find it uniquely on chain some other way or store the dealID when the message first lands.
+	about2Days := uint64(24 * 60)
+	chnMsg, found, err := s.waiter.Find(ctx, about2Days, func(msg *types.SignedMessage, c cid.Cid) bool {
 		return c.Equals(*deal.PublishMessage)
 	})
 	if err != nil {
@@ -255,7 +257,7 @@ func (s *StorageClientNodeConnector) OnDealSectorCommitted(ctx context.Context, 
 		return err
 	}
 
-	err = s.waiter.WaitPredicate(ctx, func(msg *types.SignedMessage, c cid.Cid) bool {
+	err = s.waiter.WaitPredicate(ctx, msg.DefaultMessageWaitLookback, func(msg *types.SignedMessage, c cid.Cid) bool {
 		resolvedTo, err := view.InitResolveAddress(ctx, msg.Message.To)
 		if err != nil {
 			return false

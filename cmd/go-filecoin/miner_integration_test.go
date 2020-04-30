@@ -16,8 +16,7 @@ import (
 )
 
 func TestMinerCreateIntegration(t *testing.T) {
-	t.Skip("Unskip after resolving issue #4003")
-	tf.IntegrationTest(t)
+	//tf.IntegrationTest(t)
 
 	ctx, cancel1 := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel1()

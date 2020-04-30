@@ -23,6 +23,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
+var log = logging.Logger("syncer")
+
 // Syncer updates its chain.Store according to the methods of its
 // consensus.Protocol.  It uses a bad tipset cache and a limit on new
 // blocks to traverse during chain collection.  The Syncer can query the
@@ -268,6 +270,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 
 		nextBlsMessages = append(nextBlsMessages, blsMsgs)
 		nextSecpMessages = append(nextSecpMessages, secpMsgs)
+		log.Errorf("Syncer validated tipset %s with (%d, %d) messages", next.Key(), len(blsMsgs), len(secpMsgs))
 	}
 
 	// Gather validated parent weight
@@ -458,6 +461,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, 
 	if catchup {
 		return nil
 	}
+	log.Errorf("Setting head %s", syncer.staged.Key())
 	return syncer.SetStagedHead(ctx)
 }
 
@@ -483,6 +487,7 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
+	log.Errorf("Syncer handling %d tipsets", len(tipsets))
 
 	// Once headers check out, fetch messages
 	_, err = syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Sender, func(t block.TipSet) (bool, error) {

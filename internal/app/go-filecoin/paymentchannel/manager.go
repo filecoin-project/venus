@@ -46,7 +46,7 @@ var PaymentChannelStorePrefix = "/retrievaldeals/paymentchannel"
 
 // MsgWaiter is an interface for waiting for a message to appear on chain
 type MsgWaiter interface {
-	Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error
+	Wait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error
 }
 
 // MsgSender is an interface for something that can post messages on chain

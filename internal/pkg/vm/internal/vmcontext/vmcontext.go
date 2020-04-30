@@ -226,6 +226,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(m, m.OnChainLen(), rnd)
 
 			// accumulate result
+			vmlog.Errorf("message processed")
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)
 			minerGasRewardTotal = big.Add(minerGasRewardTotal, minerGasRewardCurr)
 			receipts = append(receipts, receipt)
