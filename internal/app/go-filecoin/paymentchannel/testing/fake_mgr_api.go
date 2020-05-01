@@ -102,6 +102,7 @@ func (f *FakePaymentChannelAPI) Send(_ context.Context,
 // testing methods
 
 // GenCreatePaychActorMessage sets up a message response, with desired exit code and block height
+// for creating a payment channel actor
 func GenCreatePaychActorMessage(
 	t *testing.T,
 	clientAccountAddr, minerAccountAddr, paychUniqueAddr address.Address,
@@ -134,6 +135,28 @@ func GenCreatePaychActorMessage(
 		MsgCid:        newcid,
 		Rcpt:          &vm.MessageReceipt{ExitCode: code, ReturnValue: requireEncode(t, &retVal)},
 		DecodedParams: &params,
+	}
+}
+
+// GenSendFundsMessage sets up a message response, with desired exit code and block height
+// for a message that just sends funds between two addresses
+func GenSendFundsMessage(
+	from, to address.Address,
+	amt abi.TokenAmount,
+	code exitcode.ExitCode,
+	height uint64) (cid.Cid, MsgResult) {
+	newcid := shared_testutil.GenerateCids(1)[0]
+
+	msg := types.NewUnsignedMessage(from, to, 2,
+		types.NewAttoFIL(amt.Int), builtin.MethodSend, []byte{})
+	msg.GasPrice = types.NewAttoFILFromFIL(100)
+	msg.GasLimit = gas.NewGas(5000)
+	emptySig := crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{'0'}}
+	return newcid, MsgResult{
+		Block:  &block.Block{Height: abi.ChainEpoch(height)},
+		Msg:    &types.SignedMessage{Message: *msg, Signature: emptySig},
+		MsgCid: newcid,
+		Rcpt:   &vm.MessageReceipt{ExitCode: code},
 	}
 }
 

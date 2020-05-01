@@ -3,7 +3,6 @@ package retrievalmarketconnector
 import (
 	"bytes"
 	"context"
-	"errors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -50,8 +49,9 @@ func NewRetrievalClientConnector(
 
 // GetOrCreatePaymentChannel gets or creates a payment channel and posts to chain
 func (r *RetrievalClientConnector) GetOrCreatePaymentChannel(ctx context.Context, clientAddress address.Address, minerAddress address.Address, clientFundsAvailable abi.TokenAmount, tok shared.TipSetToken) (address.Address, cid.Cid, error) {
+
 	if clientAddress == address.Undef || minerAddress == address.Undef {
-		return address.Undef, cid.Undef, errors.New("empty address")
+		return address.Undef, cid.Undef, xerrors.New("empty address")
 	}
 	chinfo, err := r.paychMgr.GetPaymentChannelByAccounts(clientAddress, minerAddress)
 	if err != nil {
@@ -66,15 +66,13 @@ func (r *RetrievalClientConnector) GetOrCreatePaymentChannel(ctx context.Context
 
 		filAmt := types.NewAttoFIL(clientFundsAvailable.Int)
 		if bal.LessThan(filAmt) {
-			return address.Undef, cid.Undef, errors.New("not enough funds in wallet")
+			return address.Undef, cid.Undef, xerrors.New("not enough funds in wallet")
 		}
+
 		return r.paychMgr.CreatePaymentChannel(clientAddress, minerAddress, clientFundsAvailable)
 	}
-	// TODO: I think this is supposed to return the message CID from the creation of the payment channel.
-	// If there was one already, what CID should this return?
-	// What happens if that message is subsequently re-orged out of the chain and never replayed?
-	// https://github.com/filecoin-project/go-filecoin/issues/4034
-	return chinfo.UniqueAddr, cid.Undef, nil
+	mcid, err := r.paychMgr.AddFundsToChannel(chinfo.UniqueAddr, clientFundsAvailable)
+	return chinfo.UniqueAddr, mcid, err
 }
 
 // AllocateLane creates a new lane for this paymentChannel with 0 FIL in the lane
@@ -131,14 +129,12 @@ func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, pay
 	return &v, nil
 }
 
-func (r *RetrievalClientConnector) WaitForPaymentChannelCreation(messageCID cid.Cid) (address.Address, error) {
-	// TODO https://github.com/filecoin-project/go-filecoin/issues/4034
-	panic("implement me")
+func (r *RetrievalClientConnector) WaitForPaymentChannelAddFunds(messageCID cid.Cid) error {
+	return r.paychMgr.WaitForAddFundsMessage(context.Background(), messageCID)
 }
 
-func (r *RetrievalClientConnector) WaitForPaymentChannelAddFunds(messageCID cid.Cid) error {
-	// TODO https://github.com/filecoin-project/go-filecoin/issues/4034
-	panic("implement me")
+func (r *RetrievalClientConnector) WaitForPaymentChannelCreation(messageCID cid.Cid) (address.Address, error) {
+	return r.paychMgr.WaitForCreatePaychMessage(context.Background(), messageCID)
 }
 
 func (r *RetrievalClientConnector) getBlockHeight(tok shared.TipSetToken) (abi.ChainEpoch, error) {
