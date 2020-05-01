@@ -164,7 +164,10 @@ func (d *GRPC) FetchGroupConfig(addresses []string, secure bool, overrideGroupAd
 			d.addresses = drandAddresses(groupAddrs, secure)
 		}
 
-		d.updateFirstFilecoinRound() // this depends on genesis and round time so recalculate
+		err = d.updateFirstFilecoinRound() // this depends on genesis and round time so recalculate
+		if err != nil {
+			return nil, nil, 0, 0, err
+		}
 
 		return groupAddrs, keyCoeffs, genesisTime, roundSeconds, nil
 	}
