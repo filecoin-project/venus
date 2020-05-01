@@ -49,19 +49,24 @@ func (em ElectionMachine) GenerateElectionProof(ctx context.Context, entry *dran
 
 // GenerateWinningPoSt creates a PoSt proof over the input miner ID and sector infos.
 func (em ElectionMachine) GenerateWinningPoSt(ctx context.Context, allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]block.PoStProof, error) {
-	minerIDuint64, err := address.IDFromAddress(maddr)
+	entropy, err := encoding.Encode(maddr)
 	if err != nil {
 		return nil, err
 	}
-	minerID := abi.ActorID(minerIDuint64)
 
 	seed := blake2b.Sum256(entry.Data)
-	randomness, err := crypto.BlendEntropy(acrypto.DomainSeparationTag_WinningPoStChallengeSeed, seed[:], epoch, []byte{})
+	randomness, err := crypto.BlendEntropy(acrypto.DomainSeparationTag_WinningPoStChallengeSeed, seed[:], epoch, entropy)
+
 	if err != nil {
 		return nil, err
 	}
 	poStRandomness := abi.PoStRandomness(randomness)
 
+	minerIDuint64, err := address.IDFromAddress(maddr)
+	if err != nil {
+		return nil, err
+	}
+	minerID := abi.ActorID(minerIDuint64)
 	rp, err := allSectorInfos[0].RegisteredProof.RegisteredWinningPoStProof()
 	if err != nil {
 		return nil, err
@@ -110,8 +115,13 @@ func (em ElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifie
 		return false, nil
 	}
 
+	entropy, err := encoding.Encode(mIDAddr)
+	if err != nil {
+		return false, err
+	}
+
 	seed := blake2b.Sum256(entry.Data)
-	randomness, err := crypto.BlendEntropy(acrypto.DomainSeparationTag_WinningPoStChallengeSeed, seed[:], epoch, []byte{})
+	randomness, err := crypto.BlendEntropy(acrypto.DomainSeparationTag_WinningPoStChallengeSeed, seed[:], epoch, entropy)
 	if err != nil {
 		return false, err
 	}
