@@ -99,7 +99,7 @@ func (w *DefaultWorker) Generate(
 	next := &block.Block{
 		Miner:           w.minerAddr,
 		Height:          blockHeight,
-		DrandEntries:    drandEntries,
+		BeaconEntries:   drandEntries,
 		ElectionProof:   &crypto.ElectionProof{VRFProof: electionProof},
 		Messages:        e.NewCid(txMetaCid),
 		MessageReceipts: e.NewCid(baseReceiptRoot),

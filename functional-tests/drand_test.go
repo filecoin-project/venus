@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
 func TestDrandPublic(t *testing.T) {
@@ -51,7 +51,7 @@ func TestDrandPublic(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, drand.Round(1), entry1.Round)
-	assert.NotNil(t, entry1.Signature)
+	assert.NotNil(t, entry1.Data)
 
 	entry2, err := nd.DrandAPI.GetEntry(ctx, 2)
 	require.NoError(t, err)

@@ -53,8 +53,11 @@ func (em ElectionMachine) GenerateWinningPoSt(ctx context.Context, allSectorInfo
 	if err != nil {
 		return nil, err
 	}
-	seed := blake2b.Sum256(entry.Signature)
+
+	seed := blake2b.Sum256(entry.Data)
 	randomness, err := crypto.BlendEntropy(acrypto.DomainSeparationTag_WinningPoStChallengeSeed, seed[:], epoch, entropy)
+  crypto.BlendEntropy(acrypto.DomainSeparationTag_WinningPoStChallengeSeed, seed[:], epoch, []byte{})
+
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +121,7 @@ func (em ElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifie
 		return false, err
 	}
 
-	seed := blake2b.Sum256(entry.Signature)
+	seed := blake2b.Sum256(entry.Data)
 	randomness, err := crypto.BlendEntropy(acrypto.DomainSeparationTag_WinningPoStChallengeSeed, seed[:], epoch, entropy)
 	if err != nil {
 		return false, err
@@ -220,7 +223,7 @@ func (tm TicketMachine) ticketVRFRandomness(ctx context.Context, base block.TipS
 			return nil, err
 		}
 	}
-	seed := blake2b.Sum256(entry.Signature)
+	seed := blake2b.Sum256(entry.Data)
 	return crypto.BlendEntropy(acrypto.DomainSeparationTag_TicketProduction, seed[:], epoch, entropyBuf.Bytes())
 }
 
@@ -229,7 +232,7 @@ func electionVRFRandomness(entry *drand.Entry, miner address.Address, epoch abi.
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to encode entropy")
 	}
-	seed := blake2b.Sum256(entry.Signature)
+	seed := blake2b.Sum256(entry.Data)
 	return crypto.BlendEntropy(acrypto.DomainSeparationTag_ElectionProofProduction, seed[:], epoch, entropy)
 }
 

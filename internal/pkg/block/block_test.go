@@ -68,10 +68,10 @@ func TestTriangleEncoding(t *testing.T) {
 			Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
 			ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
 			Height:        2,
-			DrandEntries: []*drand.Entry{
+			BeaconEntries: []*drand.Entry{
 				{
-					Round:     drand.Round(1),
-					Signature: []byte{0x3},
+					Round: drand.Round(1),
+					Data:  []byte{0x3},
 				},
 			},
 			Messages:        e.NewCid(types.CidFromString(t, "somecid")),
@@ -232,10 +232,10 @@ func TestSignatureData(t *testing.T) {
 		Miner:         newAddress(),
 		Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
 		ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
-		DrandEntries: []*drand.Entry{
+		BeaconEntries: []*drand.Entry{
 			{
-				Round:     drand.Round(5),
-				Signature: []byte{0x0c},
+				Round: drand.Round(5),
+				Data:  []byte{0x0c},
 			},
 		},
 		Height:          2,
@@ -259,10 +259,10 @@ func TestSignatureData(t *testing.T) {
 		Miner:         newAddress(),
 		Ticket:        blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
 		ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0c, 0x0d}},
-		DrandEntries: []*drand.Entry{
+		BeaconEntries: []*drand.Entry{
 			{
-				Round:     drand.Round(44),
-				Signature: []byte{0xc0},
+				Round: drand.Round(44),
+				Data:  []byte{0xc0},
 			},
 		},
 		Height:          3,
@@ -429,12 +429,12 @@ func TestSignatureData(t *testing.T) {
 
 	func() {
 		before := b.SignatureData()
-		cpy := b.DrandEntries
+		cpy := b.BeaconEntries
 		defer func() {
-			b.DrandEntries = cpy
+			b.BeaconEntries = cpy
 		}()
 
-		b.DrandEntries = diff.DrandEntries
+		b.BeaconEntries = diff.BeaconEntries
 		after := b.SignatureData()
 
 		assert.False(t, bytes.Equal(before, after))

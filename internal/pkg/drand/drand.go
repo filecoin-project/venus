@@ -18,12 +18,9 @@ type IFace interface {
 // Round is a type for recording drand round indexes
 type Round uint64
 
-// Entry is a verifiable entry in the drand chain carrying round and
-// randomness information
+// A verifiable entry from a beacon chain, carrying round and randomness information.
 type Entry struct {
-	_         struct{} `cbor:",toarray"`
-	Round     Round
-	Signature []byte
-
-	parentRound Round
+	_     struct{} `cbor:",toarray"`
+	Round Round
+	Data  []byte
 }
