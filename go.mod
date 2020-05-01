@@ -49,7 +49,7 @@ require (
 	github.com/ipfs/go-ds-badger2 v0.0.0-20200211201106-609c9d2a39c7
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-graphsync v0.0.6-0.20200408061628-e1a98fc64c42
-	github.com/ipfs/go-hamt-ipld v0.0.15-0.20200219230615-d4e402c05ab0
+	github.com/ipfs/go-hamt-ipld v0.1.1-0.20200501020327-d53d20a7063e
 	github.com/ipfs/go-ipfs-blockstore v0.1.4
 	github.com/ipfs/go-ipfs-chunker v0.0.1
 	github.com/ipfs/go-ipfs-cmdkit v0.0.1
@@ -105,7 +105,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.5.0 // indirect
 	github.com/stretchr/testify v1.5.1
-	github.com/whyrusleeping/cbor-gen v0.0.0-20200414195334-429a0b5e922e
+	github.com/whyrusleeping/cbor-gen v0.0.0-20200501014322-5f9941ef88e0
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
 	go.opencensus.io v0.22.3
