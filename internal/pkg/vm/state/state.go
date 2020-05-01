@@ -197,7 +197,7 @@ func (st *State) getActorsFromPointers(ctx context.Context, out chan<- GetAllAct
 				}
 				return
 			default:
-				addr, err := address.NewFromBytes([]byte(kv.Key))
+				addr, err := address.NewFromBytes(kv.Key)
 				if err != nil {
 					fmt.Printf("bad address key bytes: %x\n", kv.Value.Raw)
 					panic(err)
