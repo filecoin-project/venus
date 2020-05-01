@@ -123,7 +123,6 @@ func (pm *Manager) GetPaymentChannelInfo(paychAddr address.Address) (*ChannelInf
 // If successful, a new payment channel entry will be persisted to the
 // paymentChannels via a message wait handler.  Returns the created payment channel address
 func (pm *Manager) CreatePaymentChannel(client, miner address.Address, amt abi.TokenAmount) (address.Address, cid.Cid, error) {
-
 	chinfo, err := pm.GetPaymentChannelByAccounts(client, miner)
 	if err != nil {
 		return address.Undef, cid.Undef, err
@@ -131,9 +130,11 @@ func (pm *Manager) CreatePaymentChannel(client, miner address.Address, amt abi.T
 	if !chinfo.IsZero() {
 		return address.Undef, cid.Undef, xerrors.Errorf("payment channel exists for client %s, miner %s", client, miner)
 	}
+	pm.paymentChannels.storeLk.Lock()
 
 	execParams, err := PaychActorCtorExecParamsFor(client, miner)
 	if err != nil {
+		pm.paymentChannels.storeLk.Unlock()
 		return address.Undef, cid.Undef, err
 	}
 
@@ -149,6 +150,7 @@ func (pm *Manager) CreatePaymentChannel(client, miner address.Address, amt abi.T
 		&execParams,
 	)
 	if err != nil {
+		pm.paymentChannels.storeLk.Unlock()
 		return address.Undef, cid.Undef, err
 	}
 	go pm.handlePaychCreateResult(pm.ctx, mcid, client, miner)
@@ -275,6 +277,7 @@ func (pm *Manager) WaitForAddFundsMessage(ctx context.Context, mcid cid.Cid) err
 // TODO: set up channel tracking before knowing paych addr: https://github.com/filecoin-project/go-filecoin/issues/4045
 //
 func (pm *Manager) handlePaychCreateResult(ctx context.Context, mcid cid.Cid, client, miner address.Address) {
+	defer pm.paymentChannels.storeLk.Unlock()
 	var paychAddr address.Address
 
 	handleResult := func(_ *block.Block, _ *types.SignedMessage, mr *vm.MessageReceipt) error {
@@ -291,7 +294,7 @@ func (pm *Manager) handlePaychCreateResult(ctx context.Context, mcid cid.Cid, cl
 	}
 
 	if err := pm.waiter.Wait(ctx, mcid, handleResult); err != nil {
-		log.Errorf("payment channel creation failed because: %w", err)
+		log.Errorf("payment channel creation failed because: %s", err.Error())
 		return
 	}
 
@@ -310,6 +313,8 @@ func (pm *Manager) handlePaychCreateResult(ctx context.Context, mcid cid.Cid, cl
 
 // Called ONLY in context of a retrieval provider.
 func (pm *Manager) providerCreatePaymentChannelWithVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte, tok shared.TipSetToken) (abi.TokenAmount, error) {
+	pm.paymentChannels.storeLk.Lock()
+	defer pm.paymentChannels.storeLk.Unlock()
 	view, err := pm.stateViewer.GetStateView(pm.ctx, tok)
 	if err != nil {
 		return zeroAmt, err
@@ -392,7 +397,5 @@ func (ps *paychStore) Has(addr address.Address) (bool, error) {
 }
 
 func (ps *paychStore) Begin(addr address.Address, info *ChannelInfo) error {
-	ps.storeLk.Lock()
-	defer ps.storeLk.Unlock()
 	return ps.store.Begin(addr, info)
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"math/big"
 	"testing"
-	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -70,9 +69,6 @@ func TestPaymentChannel(t *testing.T) {
 	addr, mcid, err := connector.GetOrCreatePaymentChannel(ctx, client, miner, initialChannelAmt, tok)
 	require.NoError(t, err)
 	assert.Equal(t, address.Undef, addr)
-
-	// let the goroutine finish creating channel info
-	time.Sleep(100 * time.Millisecond)
 
 	addr, err = connector.WaitForPaymentChannelCreation(mcid)
 	require.NoError(t, err)

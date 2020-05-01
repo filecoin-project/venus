@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared_testutil"
@@ -342,13 +341,13 @@ func requireSetupPaymentChannel(t *testing.T, testAPI *paychtest.FakePaymentChan
 	_, mcid, err := m.CreatePaymentChannel(clientAddr, minerAddr, balance)
 	require.NoError(t, err)
 
-	// give goroutine a chance to update channel store
-	time.Sleep(100 * time.Millisecond)
-	assert.True(t, testAPI.ExpectedMsgCid.Equals(testAPI.ActualWaitCid))
-	assert.True(t, testAPI.ExpectedMsgCid.Equals(mcid))
-
 	chinfo, err := m.GetPaymentChannelInfo(paychUniqueAddr)
 	require.NoError(t, err)
 	require.Equal(t, paychUniqueAddr, chinfo.UniqueAddr)
+
+	// give goroutine a chance to update channel store
+	assert.True(t, testAPI.ExpectedMsgCid.Equals(testAPI.ActualWaitCid))
+	assert.True(t, testAPI.ExpectedMsgCid.Equals(mcid))
+
 	return clientAddr, minerAddr, paychUniqueAddr, blockHeight
 }
