@@ -80,7 +80,7 @@ func NewGRPC(addresses []Address, distKeyCoeff [][]byte, drandGenTime time.Time,
 
 // ReadEntry fetches an entry from one of the drand servers (trying them sequentially) and returns the result.
 // **NOTE** this will block if called on a skipped round.
-func (d *GRPC) ReadEntry(ctx context.Context, drandRound Round) (*Entry, error) {
+func (d *GRPC) ReadEntry(_ context.Context, drandRound Round) (*Entry, error) {
 	if entry, ok := d.cache[drandRound]; ok {
 		return entry, nil
 	}
@@ -94,14 +94,13 @@ func (d *GRPC) ReadEntry(ctx context.Context, drandRound Round) (*Entry, error) 
 		}
 
 		entry := &Entry{
-			Round:       drandRound,
-			Signature:   pub.GetSignature(),
-			parentRound: Round(pub.PreviousRound),
+			Round: drandRound,
+			Data:  pub.GetSignature(),
 		}
 		d.updateLocalState(entry)
 		return entry, nil
 	}
-	return nil, errors.New("Could not retrieve drand randomess from any address")
+	return nil, errors.New("could not retrieve drand randomess from any address")
 }
 
 func (d *GRPC) updateLocalState(entry *Entry) {
@@ -116,8 +115,8 @@ func (d *GRPC) updateLocalState(entry *Entry) {
 
 // VerifyEntry verifies that the child's signature is a valid signature of the previous entry.
 func (d *GRPC) VerifyEntry(parent, child *Entry) (bool, error) {
-	msg := beacon.Message(parent.Signature, uint64(parent.Round), uint64(child.Round))
-	err := key.Scheme.VerifyRecovered(d.key.Coefficients[0], msg, child.Signature)
+	msg := beacon.Message(uint64(child.Round), parent.Data)
+	err := key.Scheme.VerifyRecovered(d.key.Coefficients[0], msg, child.Data)
 	if err != nil {
 		return false, err
 	}
@@ -213,6 +212,8 @@ func (d *GRPC) StartTimeOfRound(round Round) time.Time {
 // 1. RoundsInInterval is called on an interval extending into the future
 // 2. There is an ongoing drand outage causing a gap in drand rounds
 // 3. There is a network partition blocking this GPRC from the latest rounds
+// TODO remove gap-handling logic now that the protocol has no gaps
+// https://github.com/filecoin-project/go-filecoin/issues/4053
 func (d *GRPC) RoundsInInterval(ctx context.Context, startTime, endTime time.Time) ([]Round, error) {
 	idealRounds := roundsInIntervalWhenNoGaps(startTime, endTime, d.StartTimeOfRound, d.roundTime)
 	if len(idealRounds) == 0 { // exit early if no rounds possible
@@ -244,7 +245,7 @@ func (d *GRPC) RoundsInInterval(ctx context.Context, startTime, endTime time.Tim
 		if next.Round == 0 {
 			break
 		}
-		next, err = d.ReadEntry(ctx, next.parentRound)
+		next, err = d.ReadEntry(ctx, next.Round-1)
 		if err != nil {
 			return nil, err
 		}

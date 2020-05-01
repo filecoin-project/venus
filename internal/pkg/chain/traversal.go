@@ -220,7 +220,7 @@ func FindLatestDRAND(ctx context.Context, start block.TipSet, reader TipSetProvi
 		// DRAND entries must be the same for all blocks on the tipset as
 		// an invariant of the tipset provider
 
-		entries := ts.At(0).DrandEntries
+		entries := ts.At(0).BeaconEntries
 		if len(entries) > 0 {
 			return entries[len(entries)-1], nil
 		}

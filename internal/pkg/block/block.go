@@ -33,9 +33,9 @@ type Block struct {
 	// ElectionProof is the vrf proof giving this block's miner authoring rights
 	ElectionProof *crypto.ElectionProof
 
-	// DrandEntries contain the verifiable oracle randomness used to elect
+	// BeaconEntries contain the verifiable oracle randomness used to elect
 	// this block's author leader
-	DrandEntries []*drand.Entry
+	BeaconEntries []*drand.Entry
 
 	// PoStProofs are the winning post proofs
 	PoStProofs []PoStProof `json:"PoStProofs"`
@@ -169,7 +169,7 @@ func (b *Block) SignatureData() []byte {
 		StateRoot:       b.StateRoot,
 		MessageReceipts: b.MessageReceipts,
 		PoStProofs:      b.PoStProofs,
-		DrandEntries:    b.DrandEntries,
+		BeaconEntries:   b.BeaconEntries,
 		Timestamp:       b.Timestamp,
 		BLSAggregateSig: b.BLSAggregateSig,
 		ForkSignaling:   b.ForkSignaling,
