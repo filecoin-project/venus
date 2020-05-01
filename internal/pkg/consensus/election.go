@@ -56,7 +56,7 @@ func (em ElectionMachine) GenerateWinningPoSt(ctx context.Context, allSectorInfo
 
 	seed := blake2b.Sum256(entry.Data)
 	randomness, err := crypto.BlendEntropy(acrypto.DomainSeparationTag_WinningPoStChallengeSeed, seed[:], epoch, entropy)
-  crypto.BlendEntropy(acrypto.DomainSeparationTag_WinningPoStChallengeSeed, seed[:], epoch, []byte{})
+        crypto.BlendEntropy(acrypto.DomainSeparationTag_WinningPoStChallengeSeed, seed[:], epoch, []byte{})
 
 	if err != nil {
 		return nil, err
