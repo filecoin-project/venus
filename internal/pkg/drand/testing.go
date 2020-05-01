@@ -31,19 +31,12 @@ func NewFake(filecoinGenTime time.Time) *Fake {
 
 // ReadEntry immediately returns a drand entry with a signature equal to the
 // round number
-func (d *Fake) ReadEntry(ctx context.Context, drandRound Round) (*Entry, error) {
+func (d *Fake) ReadEntry(_ context.Context, drandRound Round) (*Entry, error) {
 	fakeSigData := make([]byte, ffi.SignatureBytes)
 	binary.PutUvarint(fakeSigData, uint64(drandRound))
-	var parentRound Round
-	if drandRound == 0 {
-		parentRound = 0
-	} else {
-		parentRound = drandRound - 1
-	}
 	return &Entry{
-		Round:       drandRound,
-		Signature:   fakeSigData,
-		parentRound: parentRound,
+		Round: drandRound,
+		Data:  fakeSigData,
 	}, nil
 }
 
