@@ -10,8 +10,8 @@ import (
 )
 
 // Creates a new sampler for the chain identified by `head`.
-func NewSamplerAtHead(reader TipSetProvider, genesisTicket block.Ticket, head block.TipSetKey) *SamplerAtHead {
-	return &SamplerAtHead{
+func NewRandomnessSamplerAtHead(reader TipSetProvider, genesisTicket block.Ticket, head block.TipSetKey) *RandomnessSamplerAtHead {
+	return &RandomnessSamplerAtHead{
 		sampler: NewSampler(reader, genesisTicket),
 		head:    head,
 	}
@@ -30,18 +30,18 @@ func NewSampler(reader TipSetProvider, genesisTicket block.Ticket) *Sampler {
 	return &Sampler{reader, genesisTicket}
 }
 
-// Draws a randomness seed from the chain identified by `head` and the highest tipset with height <= `epoch`.
+// Draws a ticket from the chain identified by `head` and the highest tipset with height <= `epoch`.
 // If `head` is empty (as when processing the pre-genesis state or the genesis block), the seed derived from
 // a fixed genesis ticket.
 // Note that this may produce the same value for different, neighbouring epochs when the epoch references a round
 // in which no blocks were produced (an empty tipset or "null block"). A caller desiring a unique see for each epoch
-// should blend in some distinguishing value (such as the epoch itself).
-func (s *Sampler) Sample(ctx context.Context, head block.TipSetKey, epoch abi.ChainEpoch) (crypto.RandomSeed, error) {
+// should blend in some distinguishing value (such as the epoch itself) into a hash of this ticket.
+func (s *Sampler) SampleTicket(ctx context.Context, head block.TipSetKey, epoch abi.ChainEpoch) (block.Ticket, error) {
 	var ticket block.Ticket
 	if !head.Empty() {
 		start, err := s.reader.GetTipSet(head)
 		if err != nil {
-			return nil, err
+			return block.Ticket{}, err
 		}
 		// Note: it is not an error to have epoch > start.Height(); in the case of a run of null blocks the
 		// sought-after height may be after the base (last non-empty) tipset.
@@ -49,27 +49,31 @@ func (s *Sampler) Sample(ctx context.Context, head block.TipSetKey, epoch abi.Ch
 
 		tip, err := FindTipsetAtEpoch(ctx, start, epoch, s.reader)
 		if err != nil {
-			return nil, err
+			return block.Ticket{}, err
 		}
 		ticket, err = tip.MinTicket()
 		if err != nil {
-			return nil, err
+			return block.Ticket{}, err
 		}
 	} else {
 		// Sampling for the genesis state or genesis tipset.
 		ticket = s.genesisTicket
 	}
 
-	return crypto.MakeRandomSeed(ticket.VRFProof)
+	return ticket, nil
 }
 
 ///// A chain sampler with a specific head tipset key. /////
 
-type SamplerAtHead struct {
+type RandomnessSamplerAtHead struct {
 	sampler *Sampler
 	head    block.TipSetKey
 }
 
-func (s *SamplerAtHead) Sample(ctx context.Context, epoch abi.ChainEpoch) (crypto.RandomSeed, error) {
-	return s.sampler.Sample(ctx, s.head, epoch)
+func (s *RandomnessSamplerAtHead) Sample(ctx context.Context, epoch abi.ChainEpoch) (crypto.RandomSeed, error) {
+	ticket, err := s.sampler.SampleTicket(ctx, s.head, epoch)
+	if err != nil {
+		return nil, err
+	}
+	return crypto.MakeRandomSeed(ticket.VRFProof)
 }

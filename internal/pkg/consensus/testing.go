@@ -177,6 +177,8 @@ type FakeSampler struct {
 	Seed uint
 }
 
-func (s *FakeSampler) Sample(_ context.Context, _ block.TipSetKey, epoch abi.ChainEpoch) (crypto.RandomSeed, error) {
-	return []byte(fmt.Sprintf("s=%d,e=%d", s.Seed, epoch)), nil
+func (s *FakeSampler) SampleTicket(_ context.Context, _ block.TipSetKey, epoch abi.ChainEpoch) (block.Ticket, error) {
+	return block.Ticket{
+		VRFProof: []byte(fmt.Sprintf("s=%d,e=%d", s.Seed, epoch)),
+	}, nil
 }

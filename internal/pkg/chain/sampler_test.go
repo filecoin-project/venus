@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
@@ -20,13 +19,14 @@ func TestSamplingChainRandomness(t *testing.T) {
 	ctx := context.Background()
 	genesisTicket := block.Ticket{VRFProof: []byte{1, 2, 3, 4}}
 
-	makeSample := func(sampleEpoch int) crypto.RandomSeed {
+	makeSample := func(sampleEpoch int) block.Ticket {
 		vrfProof := genesisTicket.VRFProof
 		if sampleEpoch >= 0 {
 			vrfProof = []byte(strconv.Itoa(sampleEpoch))
 		}
-		vrfDigest := vrfProof.Digest()
-		return vrfDigest[:]
+		return block.Ticket{
+			VRFProof: vrfProof,
+		}
 	}
 
 	t.Run("happy path", func(t *testing.T) {
@@ -34,15 +34,15 @@ func TestSamplingChainRandomness(t *testing.T) {
 		head := ch[0].Key()
 		sampler := chain.NewSampler(builder, genesisTicket)
 
-		r, err := sampler.Sample(ctx, head, abi.ChainEpoch(20))
+		r, err := sampler.SampleTicket(ctx, head, abi.ChainEpoch(20))
 		assert.NoError(t, err)
 		assert.Equal(t, makeSample(20), r)
 
-		r, err = sampler.Sample(ctx, head, abi.ChainEpoch(3))
+		r, err = sampler.SampleTicket(ctx, head, abi.ChainEpoch(3))
 		assert.NoError(t, err)
 		assert.Equal(t, makeSample(3), r)
 
-		r, err = sampler.Sample(ctx, head, abi.ChainEpoch(0))
+		r, err = sampler.SampleTicket(ctx, head, abi.ChainEpoch(0))
 		assert.NoError(t, err)
 		assert.Equal(t, makeSample(0), r)
 	})
@@ -54,12 +54,12 @@ func TestSamplingChainRandomness(t *testing.T) {
 
 		// Sample height after the head falls back to the head.
 		headParent := ch[1].Key()
-		r, err := sampler.Sample(ctx, headParent, abi.ChainEpoch(20))
+		r, err := sampler.SampleTicket(ctx, headParent, abi.ChainEpoch(20))
 		assert.NoError(t, err)
 		assert.Equal(t, makeSample(19), r)
 
 		// Another way of the same thing, sample > head.
-		r, err = sampler.Sample(ctx, head, abi.ChainEpoch(21))
+		r, err = sampler.SampleTicket(ctx, head, abi.ChainEpoch(21))
 		assert.NoError(t, err)
 		assert.Equal(t, makeSample(20), r)
 
@@ -71,7 +71,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 		})
 
 		// Sampling in the nulls falls back to the last non-null
-		r, err = sampler.Sample(ctx, headAfterNulls.Key(), abi.ChainEpoch(24))
+		r, err = sampler.SampleTicket(ctx, headAfterNulls.Key(), abi.ChainEpoch(24))
 		assert.NoError(t, err)
 		assert.Equal(t, makeSample(20), r)
 	})
@@ -83,30 +83,30 @@ func TestSamplingChainRandomness(t *testing.T) {
 		sampler := chain.NewSampler(builder, genesisTicket)
 
 		// Sample genesis from longer chain.
-		r, err := sampler.Sample(ctx, head, abi.ChainEpoch(0))
+		r, err := sampler.SampleTicket(ctx, head, abi.ChainEpoch(0))
 		assert.NoError(t, err)
 		assert.Equal(t, makeSample(0), r)
 
 		// Sample before genesis from longer chain.
-		r, err = sampler.Sample(ctx, head, abi.ChainEpoch(-1))
+		r, err = sampler.SampleTicket(ctx, head, abi.ChainEpoch(-1))
 		assert.NoError(t, err)
 		assert.Equal(t, makeSample(0), r)
 
 		// Sample genesis from genesis-only chain.
-		r, err = sampler.Sample(ctx, gen, abi.ChainEpoch(0))
+		r, err = sampler.SampleTicket(ctx, gen, abi.ChainEpoch(0))
 		assert.NoError(t, err)
 		assert.Equal(t, makeSample(0), r)
 
 		// Sample before genesis from genesis-only chain.
-		r, err = sampler.Sample(ctx, gen, abi.ChainEpoch(-1))
+		r, err = sampler.SampleTicket(ctx, gen, abi.ChainEpoch(-1))
 		assert.NoError(t, err)
 		assert.Equal(t, makeSample(0), r)
 
 		// Sample empty chain.
-		r, err = sampler.Sample(ctx, block.NewTipSetKey(), abi.ChainEpoch(0))
+		r, err = sampler.SampleTicket(ctx, block.NewTipSetKey(), abi.ChainEpoch(0))
 		assert.NoError(t, err)
 		assert.Equal(t, makeSample(-1), r)
-		r, err = sampler.Sample(ctx, block.NewTipSetKey(), abi.ChainEpoch(-1))
+		r, err = sampler.SampleTicket(ctx, block.NewTipSetKey(), abi.ChainEpoch(-1))
 		assert.NoError(t, err)
 		assert.Equal(t, makeSample(-1), r)
 	})
