@@ -3,6 +3,7 @@ package gengen
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"io"
 	mrand "math/rand"
 
@@ -271,6 +272,8 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 	geneblk := &block.Block{
 		Miner:           builtin.SystemActorAddr,
 		Ticket:          genesis.Ticket,
+		BeaconEntries:   []*drand.Entry{},
+		PoStProofs:      []block.PoStProof{},
 		Parents:         block.NewTipSetKey(),
 		ParentWeight:    big.Zero(),
 		Height:          0,
