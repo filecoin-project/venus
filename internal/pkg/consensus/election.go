@@ -162,7 +162,7 @@ func (em ElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifie
 }
 
 type ChainSampler interface {
-	Sample(ctx context.Context, head block.TipSetKey, epoch abi.ChainEpoch) (crypto.RandomSeed, error)
+	SampleTicket(ctx context.Context, head block.TipSetKey, epoch abi.ChainEpoch) (block.Ticket, error)
 }
 
 // TicketMachine uses a VRF and VDF to generate deterministic, unpredictable
@@ -213,11 +213,11 @@ func (tm TicketMachine) ticketVRFRandomness(ctx context.Context, base block.TipS
 		return nil, err
 	}
 	if !newPeriod { // resample previous ticket and add to entropy
-		ticketSeed, err := tm.sampler.Sample(ctx, base, epoch)
+		ticket, err := tm.sampler.SampleTicket(ctx, base, epoch)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to sample previous ticket")
 		}
-		_, err = entropyBuf.Write(ticketSeed)
+		_, err = entropyBuf.Write(ticket.VRFProof)
 		if err != nil {
 			return nil, err
 		}
