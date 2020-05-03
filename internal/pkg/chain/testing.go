@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -200,6 +201,8 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 		b := &block.Block{
 			Ticket:          ticket,
 			Miner:           f.minerAddress,
+			BeaconEntries:   []*drand.Entry{},
+			PoStProofs:      []block.PoStProof{},
 			ParentWeight:    parentWeight,
 			Parents:         parent.Key(),
 			Height:          height,

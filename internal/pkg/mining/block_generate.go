@@ -96,6 +96,14 @@ func (w *DefaultWorker) Generate(
 	// The real time might actually be much later than this if catching up from a pause in chain progress.
 	epochStartTime := w.clock.StartTimeOfEpoch(blockHeight)
 
+	if drandEntries == nil {
+		drandEntries = []*drand.Entry{}
+	}
+
+	if posts == nil {
+		posts = []block.PoStProof{}
+	}
+
 	next := &block.Block{
 		Miner:           w.minerAddr,
 		Height:          blockHeight,
