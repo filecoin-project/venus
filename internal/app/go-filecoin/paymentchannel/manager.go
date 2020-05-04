@@ -5,6 +5,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-statestore"
@@ -240,7 +242,7 @@ func (pm *Manager) WaitForCreatePaychMessage(ctx context.Context, mcid cid.Cid) 
 		return nil
 	}
 
-	err := pm.waiter.Wait(pm.ctx, mcid, handleResult)
+	err := pm.waiter.Wait(pm.ctx, mcid, msg.DefaultMessageWaitLookback, handleResult)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -269,7 +271,7 @@ func (pm *Manager) WaitForAddFundsMessage(ctx context.Context, mcid cid.Cid) err
 		}
 		return nil
 	}
-	return pm.waiter.Wait(pm.ctx, mcid, handleResult)
+	return pm.waiter.Wait(pm.ctx, mcid, msg.DefaultMessageWaitLookback, handleResult)
 }
 
 // WaitForPaychCreateMsg waits for mcid to appear on chain and returns the robust address of the
@@ -293,7 +295,7 @@ func (pm *Manager) handlePaychCreateResult(ctx context.Context, mcid cid.Cid, cl
 		return nil
 	}
 
-	if err := pm.waiter.Wait(ctx, mcid, handleResult); err != nil {
+	if err := pm.waiter.Wait(ctx, mcid, msg.DefaultMessageWaitLookback, handleResult); err != nil {
 		log.Errorf("payment channel creation failed because: %s", err.Error())
 		return
 	}

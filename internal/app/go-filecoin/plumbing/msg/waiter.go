@@ -80,10 +80,8 @@ func (w *Waiter) Find(ctx context.Context, lookback uint64, pred WaitPredicate) 
 // A lookback parameter > 1 will cause this method to check for the message in
 // up to that many previous tipsets on the chain of the current head.
 func (w *Waiter) WaitPredicate(ctx context.Context, lookback uint64, pred WaitPredicate, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
-	log.Errorf("Waiter subscribing to head events")
 	ch := w.chainReader.HeadEvents().Sub(chain.NewHeadTopic)
 	defer func() {
-		log.Errorf("Waiter UNSUBSCRIBE")
 		w.chainReader.HeadEvents().Unsub(ch, chain.NewHeadTopic)
 	}()
 
@@ -247,11 +245,9 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts block.TipSet, pred Wai
 			wrappedMsgs[len(blsMsgs)+j] = msg
 		}
 		tsMessages[i] = unwrappedMsgs
-		log.Errorf("Waiter tipset messages: %d", len(wrappedMsgs))
 
 		for k, wrapped := range wrappedMsgs {
 			if pred(wrapped, originalCids[k]) {
-				log.Errorf("Waiter MESSAGE FOUND")
 				// Take CID of the unwrapped message, which might be different from the original.
 				unwrappedTarget, err := wrapped.Message.Cid()
 				if err != nil {
