@@ -3,6 +3,7 @@ package storagemarketconnector
 import (
 	"context"
 	"reflect"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 
@@ -143,19 +144,24 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context, t
 // ValidatePublishedDeal validates a deal has been published correctly
 // Adapted from https://github.com/filecoin-project/lotus/blob/3b34eba6124d16162b712e971f0db2ee108e0f67/markets/storageadapter/client.go#L156
 func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (dealID abi.DealID, err error) {
+	var unsigned types.UnsignedMessage
+	var receipt *vm.MessageReceipt
+
+	// TODO: This is an inefficient way to discover a deal ID. See if we can find it uniquely on chain some other way or store the dealID when the message first lands (#4066).
+	// give the wait 30 seconds to avoid races
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	// Fetch receipt to return dealId
-	chnMsg, found, err := s.waiter.Find(ctx, func(msg *types.SignedMessage, c cid.Cid) bool {
-		return c.Equals(*deal.PublishMessage)
+	about2Days := uint64(24 * 60)
+	err = s.waiter.Wait(ctx, *deal.PublishMessage, about2Days, func(_ *block.Block, msg *types.SignedMessage, rcpt *vm.MessageReceipt) error {
+		unsigned = msg.Message
+		receipt = rcpt
+		return nil
 	})
 	if err != nil {
 		return 0, err
 	}
-
-	if !found {
-		return 0, xerrors.Errorf("Could not find published deal message %s", deal.PublishMessage.String())
-	}
-
-	unsigned := chnMsg.Message.Message
 
 	tok, err := encoding.Encode(s.chainStore.Head())
 	if err != nil {
@@ -192,7 +198,7 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 	for _, proposal := range msgProposals {
 		if reflect.DeepEqual(proposal.Proposal, deal.Proposal) {
 			var ret market.PublishStorageDealsReturn
-			err := encoding.Decode(chnMsg.Receipt.ReturnValue, &ret)
+			err := encoding.Decode(receipt.ReturnValue, &ret)
 			if err != nil {
 				return 0, err
 			}
@@ -255,7 +261,7 @@ func (s *StorageClientNodeConnector) OnDealSectorCommitted(ctx context.Context, 
 		return err
 	}
 
-	err = s.waiter.WaitPredicate(ctx, func(msg *types.SignedMessage, c cid.Cid) bool {
+	err = s.waiter.WaitPredicate(ctx, msg.DefaultMessageWaitLookback, func(msg *types.SignedMessage, c cid.Cid) bool {
 		resolvedTo, err := view.InitResolveAddress(ctx, msg.Message.To)
 		if err != nil {
 			return false

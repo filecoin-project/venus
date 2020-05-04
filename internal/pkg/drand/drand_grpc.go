@@ -35,6 +35,8 @@ type GRPC struct {
 
 	// The time of the 0th round of the DRAND chain
 	genesisTime time.Time
+	// the time of genesis block of the Filecoin chain
+	filecoinGenesisTime time.Time
 	// The DRAND round first included in the filecoin blockchain
 	firstFilecoin Round
 	// Duration of a round in this DRAND network
@@ -56,26 +58,32 @@ func NewGRPC(addresses []Address, distKeyCoeff [][]byte, drandGenTime time.Time,
 		return nil, err
 	}
 
-	// First filecoin round is the first drand round before filecoinGenesisTime
-	searchStart := filecoinGenTime.Add(-1 * rd)
-	startTimeOfRound := func(round Round) time.Time {
-		return drandGenTime.Add(rd * time.Duration(round))
+	grpc := &GRPC{
+		addresses:           addresses,
+		client:              core.NewGrpcClient(),
+		key:                 distKey,
+		genesisTime:         drandGenTime,
+		filecoinGenesisTime: filecoinGenTime,
+		// firstFilecoin set in updateFirsFilecoinRound below
+		roundTime: rd,
+		cache:     make(map[Round]*Entry),
 	}
-	results := roundsInIntervalWhenNoGaps(searchStart, filecoinGenTime, startTimeOfRound, rd)
-	if len(results) != 1 {
-		return nil, fmt.Errorf("found %d drand rounds between filecoinGenTime and filecoinGenTime - drandRountDuration, expected 1", len(results))
+	err = grpc.updateFirstFilecoinRound()
+	if err != nil {
+		return nil, err
 	}
-	ffr := results[0]
+	return grpc, nil
+}
 
-	return &GRPC{
-		addresses:     addresses,
-		client:        core.NewGrpcClient(),
-		key:           distKey,
-		genesisTime:   drandGenTime,
-		roundTime:     rd,
-		firstFilecoin: ffr,
-		cache:         make(map[Round]*Entry),
-	}, nil
+func (d *GRPC) updateFirstFilecoinRound() error {
+	// First filecoin round is the first drand round before filecoinGenesisTime
+	searchStart := d.filecoinGenesisTime.Add(-1 * d.roundTime)
+	results := roundsInIntervalWhenNoGaps(searchStart, d.filecoinGenesisTime, d.StartTimeOfRound, d.roundTime)
+	if len(results) != 1 {
+		return fmt.Errorf("found %d drand rounds between filecoinGenTime and filecoinGenTime - drandRountDuration, expected 1", len(results))
+	}
+	d.firstFilecoin = results[0]
+	return nil
 }
 
 // ReadEntry fetches an entry from one of the drand servers (trying them sequentially) and returns the result.
@@ -153,6 +161,11 @@ func (d *GRPC) FetchGroupConfig(addresses []string, secure bool, overrideGroupAd
 			d.addresses = drandAddresses(addresses, secure)
 		} else {
 			d.addresses = drandAddresses(groupAddrs, secure)
+		}
+
+		err = d.updateFirstFilecoinRound() // this depends on genesis and round time so recalculate
+		if err != nil {
+			return nil, nil, 0, 0, err
 		}
 
 		return groupAddrs, keyCoeffs, genesisTime, roundSeconds, nil

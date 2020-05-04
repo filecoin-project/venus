@@ -62,7 +62,7 @@ func (c *connectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan 
 	}
 
 	var receipt *vm.MessageReceipt
-	err = c.waiter.Wait(ctx, mcid, func(b *block.Block, message *types.SignedMessage, r *vm.MessageReceipt) error {
+	err = c.waiter.Wait(ctx, mcid, msg.DefaultMessageWaitLookback, func(b *block.Block, message *types.SignedMessage, r *vm.MessageReceipt) error {
 		receipt = r
 		return nil
 	})
@@ -183,19 +183,9 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 		return false
 	}
 
-	_, found, err := c.waiter.Find(ctx, pred)
-	if err != nil {
-		cb(err)
-		return err
-	}
-	if found {
-		cb(err)
-		return err
-	}
-
-	return c.waiter.WaitPredicate(ctx, pred, func(_ *block.Block, msg *types.SignedMessage, _ *vm.MessageReceipt) error {
-		cb(err)
-		return err
+	return c.waiter.WaitPredicate(ctx, msg.DefaultMessageWaitLookback, pred, func(_ *block.Block, msg *types.SignedMessage, _ *vm.MessageReceipt) error {
+		cb(nil)
+		return nil
 	})
 }
 

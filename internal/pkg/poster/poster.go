@@ -205,7 +205,7 @@ func (p *Poster) sendPoSt(ctx context.Context, workerAddr address.Address, index
 	}
 
 	// wait until we see the post on chain at least once
-	err = p.waiter.Wait(ctx, mcid, func(_ *block.Block, _ *types.SignedMessage, recp *vm.MessageReceipt) error {
+	err = p.waiter.Wait(ctx, mcid, msg.DefaultMessageWaitLookback, func(_ *block.Block, _ *types.SignedMessage, recp *vm.MessageReceipt) error {
 		return nil
 	})
 	if err != nil {

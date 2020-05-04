@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-	"github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
@@ -42,7 +42,7 @@ func testWaitHelp(wg *sync.WaitGroup, t *testing.T, waiter *Waiter, expectMsg *t
 	}
 	assert.NoError(t, err)
 
-	err = waiter.Wait(context.Background(), expectCid, cb)
+	err = waiter.Wait(context.Background(), expectCid, DefaultMessageWaitLookback, cb)
 	assert.Equal(t, expectError, err != nil)
 }
 
@@ -148,7 +148,7 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 	doneCh := make(chan struct{})
 	go func() {
 		defer close(doneCh)
-		err = waiter.Wait(ctx, types.CidFromString(t, "somecid"), failIfCalledCb)
+		err = waiter.Wait(ctx, types.CidFromString(t, "somecid"), DefaultMessageWaitLookback, failIfCalledCb)
 	}()
 
 	cancel()
