@@ -122,7 +122,7 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb f
 // findMessage looks for a matching in the chain and returns the message,
 // block and receipt, when it is found. Returns the found message/block or nil
 // if now block with the given CID exists in the chain.
-// The lookback parameter is the number of tipsets this method will check before giving up.
+// The lookback parameter is the number of tipsets in the past this method will check before giving up.
 func (w *Waiter) findMessage(ctx context.Context, head block.TipSet, lookback uint64, pred WaitPredicate) (*ChainMessage, bool, error) {
 	var err error
 	for iterator := chain.IterAncestors(ctx, w.chainReader, head); err == nil && !iterator.Complete(); err = iterator.Next() {

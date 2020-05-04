@@ -239,7 +239,6 @@ type MessageStatusResult struct {
 	PoolMsg   *types.SignedMessage
 	InOutbox  bool // Whether the message is found in the outbox
 	OutboxMsg *message.Queued
-	OnChain   bool // Whether the message is found on chain
 	ChainMsg  *msg.ChainMessage
 }
 
