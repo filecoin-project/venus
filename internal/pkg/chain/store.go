@@ -315,7 +315,7 @@ func (store *Store) SetHead(ctx context.Context, ts block.TipSet) error {
 
 	// Add logging to debug sporadic test failure.
 	if !ts.Defined() {
-		logStore.Error("publishing empty tipset")
+		logStore.Errorf("publishing empty tipset")
 		logStore.Error(debug.Stack())
 	}
 

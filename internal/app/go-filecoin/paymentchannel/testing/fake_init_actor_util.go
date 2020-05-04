@@ -74,6 +74,7 @@ func (fai *FakeInitActorUtil) Send(ctx context.Context,
 	bcast bool,
 	method abi.MethodNum,
 	params interface{}) (out cid.Cid, pubErrCh chan error, err error) {
+
 	return fai.msgSender(ctx, from, to, value, gasPrice, gasLimit, bcast, method, params)
 }
 func (fai *FakeInitActorUtil) defaultSend(ctx context.Context,
@@ -91,7 +92,7 @@ func (fai *FakeInitActorUtil) defaultSend(ctx context.Context,
 }
 
 // Wait simulates waiting for the result of a message and calls the callback `cb`
-func (fai *FakeInitActorUtil) Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+func (fai *FakeInitActorUtil) Wait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
 	return fai.msgWaiter(ctx, msgCid, cb)
 }
 

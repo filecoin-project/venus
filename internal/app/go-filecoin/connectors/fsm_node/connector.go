@@ -50,7 +50,7 @@ func New(minerAddr address.Address, waiter *msg.Waiter, chain *chain.Store, view
 
 func (f *FiniteStateMachineNodeConnector) StateWaitMsg(ctx context.Context, mcid cid.Cid) (fsm.MsgLookup, error) {
 	var lookup fsm.MsgLookup
-	err := f.waiter.Wait(ctx, mcid, func(blk *block.Block, message *types.SignedMessage, r *vm.MessageReceipt) error {
+	err := f.waiter.Wait(ctx, mcid, msg.DefaultMessageWaitLookback, func(blk *block.Block, message *types.SignedMessage, r *vm.MessageReceipt) error {
 		lookup.Height = blk.Height
 		receipt := fsm.MessageReceipt{
 			ExitCode: r.ExitCode,
