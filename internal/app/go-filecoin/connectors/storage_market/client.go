@@ -144,7 +144,7 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context, t
 // Adapted from https://github.com/filecoin-project/lotus/blob/3b34eba6124d16162b712e971f0db2ee108e0f67/markets/storageadapter/client.go#L156
 func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (dealID abi.DealID, err error) {
 	// Fetch receipt to return dealId
-	// TODO: This is an inefficient way to discover a deal ID. See if we can find it uniquely on chain some other way or store the dealID when the message first lands.
+	// TODO: This is an inefficient way to discover a deal ID. See if we can find it uniquely on chain some other way or store the dealID when the message first lands (#4066).
 	about2Days := uint64(24 * 60)
 	chnMsg, found, err := s.waiter.Find(ctx, about2Days, func(msg *types.SignedMessage, c cid.Cid) bool {
 		return c.Equals(*deal.PublishMessage)

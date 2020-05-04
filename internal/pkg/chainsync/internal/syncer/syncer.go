@@ -23,8 +23,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
-var log = logging.Logger("syncer")
-
 // Syncer updates its chain.Store according to the methods of its
 // consensus.Protocol.  It uses a bad tipset cache and a limit on new
 // blocks to traverse during chain collection.  The Syncer can query the

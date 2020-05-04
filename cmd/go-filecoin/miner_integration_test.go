@@ -16,7 +16,7 @@ import (
 )
 
 func TestMinerCreateIntegration(t *testing.T) {
-	//tf.IntegrationTest(t)
+	tf.IntegrationTest(t)
 
 	ctx, cancel1 := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel1()
