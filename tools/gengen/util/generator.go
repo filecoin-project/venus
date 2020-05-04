@@ -272,7 +272,7 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 	geneblk := &block.Block{
 		Miner:           builtin.SystemActorAddr,
 		Ticket:          genesis.Ticket,
-		BeaconEntries:   []*drand.Entry{},
+		BeaconEntries:   []*drand.Entry{&drand.Entry{Data: []byte{0xca, 0xfe, 0xfa, 0xce}}},
 		PoStProofs:      []block.PoStProof{},
 		Parents:         block.NewTipSetKey(),
 		ParentWeight:    big.Zero(),
