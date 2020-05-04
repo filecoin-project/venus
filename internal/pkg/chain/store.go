@@ -315,7 +315,6 @@ func (store *Store) SetHead(ctx context.Context, ts block.TipSet) error {
 
 	// Add logging to debug sporadic test failure.
 	if !ts.Defined() {
-		logStore.Error("publishing empty tipset")
 		logStore.Error(debug.Stack())
 	}
 
@@ -334,7 +333,6 @@ func (store *Store) SetHead(ctx context.Context, ts block.TipSet) error {
 	}
 	store.reporter.UpdateStatus(validateHead(ts.Key()), validateHeight(h))
 	// Publish an event that we have a new head.
-	logStore.Errorf("publishing new head")
 	store.HeadEvents().Pub(ts, NewHeadTopic)
 
 	return nil

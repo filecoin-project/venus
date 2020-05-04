@@ -62,7 +62,7 @@ func NewFakePaymentChannelAPI(ctx context.Context, t *testing.T) *FakePaymentCha
 // API methods
 
 // Wait mocks waiting for a message to be mined
-func (f *FakePaymentChannelAPI) Wait(_ context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+func (f *FakePaymentChannelAPI) Wait(_ context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
 	if f.MsgWaitErr != nil {
 		return f.MsgWaitErr
 	}
