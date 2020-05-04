@@ -82,8 +82,7 @@ func (d *GRPC) updateFirstFilecoinRound() error {
 	if len(results) != 1 {
 		return fmt.Errorf("found %d drand rounds between filecoinGenTime and filecoinGenTime - drandRountDuration, expected 1", len(results))
 	}
-	ffr := results[0]
-	d.firstFilecoin = ffr
+	d.firstFilecoin = results[0]
 	return nil
 }
 
