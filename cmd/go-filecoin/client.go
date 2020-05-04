@@ -145,7 +145,7 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 		}
 
 		peerID := status.PeerID
-		peerIDStr := req.Options["peerid"].(string)
+		peerIDStr, _ := req.Options["peerid"].(string)
 		if peerIDStr != "" {
 			peerID, err = p2pcore.Decode(peerIDStr)
 			if err != nil {
