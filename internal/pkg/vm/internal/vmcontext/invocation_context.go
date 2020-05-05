@@ -424,6 +424,10 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 	from := ctx.msg.to
 	fromActor := ctx.toActor
 
+	if fromActor.Balance.LessThan(value) {
+		runtime.Abort(exitcode.SysErrInsufficientFunds)
+	}
+
 	// 2. build internal message
 	newMsg := internalMessage{
 		from:   from,
