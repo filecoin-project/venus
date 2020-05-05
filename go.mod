@@ -21,9 +21,9 @@ require (
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
 	github.com/filecoin-project/go-bitfield v0.0.0-20200416002808-b3ee67ec9060
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
-	github.com/filecoin-project/go-data-transfer v0.2.0
+	github.com/filecoin-project/go-data-transfer v0.2.1
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
-	github.com/filecoin-project/go-fil-markets v0.1.2
+	github.com/filecoin-project/go-fil-markets v0.1.3
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200505180321-973f8949ea8e
 	github.com/filecoin-project/go-statemachine v0.0.0-20200314004106-2e7830fc1948 // indirect
