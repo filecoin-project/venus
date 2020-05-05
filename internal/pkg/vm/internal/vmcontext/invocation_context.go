@@ -357,12 +357,7 @@ func (ctx *invocationContext) Runtime() runtime.Runtime {
 
 // Store implements runtime.Runtime.
 func (ctx *invocationContext) Store() specsruntime.Store {
-	return actorStorage{
-		context:   ctx.rt.context,
-		inner:     ctx.rt.store,
-		gasTank:   ctx.gasTank,
-		pricelist: ctx.rt.pricelist,
-	}
+	return NewActorStorage(ctx.rt.context, ctx.rt.store, ctx.gasTank, ctx.rt.pricelist)
 }
 
 // Message implements runtime.InvocationContext.

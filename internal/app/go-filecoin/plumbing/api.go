@@ -248,20 +248,13 @@ func (api *API) SignedMessageSend(ctx context.Context, smsg *types.SignedMessage
 	return api.outbox.SignedSend(ctx, smsg, true)
 }
 
-// MessageFind returns a message and receipt from the blockchain, if it exists.
-func (api *API) MessageFind(ctx context.Context, mcid cid.Cid) (*msg.ChainMessage, bool, error) {
-	return api.msgWaiter.Find(ctx, func(msg *types.SignedMessage, msgCid cid.Cid) bool {
-		return msgCid.Equals(mcid)
-	})
-}
-
 // MessageWait invokes the callback when a message with the given cid appears on chain.
 // It will find the message in both the case that it is already on chain and
 // the case that it appears in a newly mined block. An error is returned if one is
 // encountered or if the context is canceled. Otherwise, it waits forever for the message
 // to appear on chain.
 func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
-	return api.msgWaiter.Wait(ctx, msgCid, cb)
+	return api.msgWaiter.Wait(ctx, msgCid, msg.DefaultMessageWaitLookback, cb)
 }
 
 // NetworkGetBandwidthStats gets stats on the current bandwidth usage of the network

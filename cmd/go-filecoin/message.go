@@ -239,7 +239,6 @@ type MessageStatusResult struct {
 	PoolMsg   *types.SignedMessage
 	InOutbox  bool // Whether the message is found in the outbox
 	OutboxMsg *message.Queued
-	OnChain   bool // Whether the message is found on chain
 	ChainMsg  *msg.ChainMessage
 }
 
@@ -277,11 +276,6 @@ var msgStatusCmd = &cmds.Command{
 			}
 		}
 
-		// Look on chain
-		result.ChainMsg, result.OnChain, err = api.MessageFind(req.Context, msgCid)
-		if err != nil {
-			return err
-		}
 		return re.Emit(&result)
 	},
 	Type: &MessageStatusResult{},
