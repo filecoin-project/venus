@@ -548,7 +548,7 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 				// there is no assumption that the running node's data is valid at all,
 				// so we don't really lose anything with this simplification.
 				syncer.badTipSets.AddChain(tipsets[i:])
-				return err
+				return errors.Wrapf(err, "failed to sync tipset %s, number %d of %d in chain", ts.Key(), i, len(tipsets))
 			}
 		}
 
