@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	cbor "github.com/fxamacker/cbor"
+	cbor "github.com/fxamacker/cbor/v2"
 	cid "github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 )
@@ -44,7 +44,7 @@ func (w Cid) MarshalCBOR() ([]byte, error) {
 	}
 	// because we need to do the cbor tag outside the byte string we are forced
 	// to write the cbor type-len value for a byte string of raw's length
-	cborLen, err := cbor.Marshal(len(raw), cbor.EncOptions{})
+	cborLen, err := cbor.Marshal(len(raw))
 	if err != nil {
 		return nil, err
 	}

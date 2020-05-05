@@ -6,7 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 
-	fxamackercbor "github.com/fxamacker/cbor"
+	fxamackercbor "github.com/fxamacker/cbor/v2"
 	"github.com/ipfs/go-cid"
 
 	"github.com/pkg/errors"
@@ -81,7 +81,7 @@ func (a *Actor) UnmarshalCBOR(r io.Reader) error {
 
 // MarshalCBOR must implement cbg.Marshaller to insert this into a hamt.
 func (a *Actor) MarshalCBOR(w io.Writer) error {
-	bs, err := fxamackercbor.Marshal(a, fxamackercbor.EncOptions{})
+	bs, err := fxamackercbor.Marshal(a)
 	if err != nil {
 		return err
 	}

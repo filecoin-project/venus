@@ -3,7 +3,7 @@ package enccid_test
 import (
 	"testing"
 
-	cbor "github.com/fxamacker/cbor"
+	cbor "github.com/fxamacker/cbor/v2"
 	cid "github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
@@ -20,7 +20,7 @@ func TestCborRoundTrip(t *testing.T) {
 	c, err := constants.DefaultCidBuilder.Sum([]byte("epigram"))
 	require.NoError(t, err)
 	w := NewCid(c)
-	cbytes, err := cbor.Marshal(w, cbor.EncOptions{})
+	cbytes, err := cbor.Marshal(w)
 	require.NoError(t, err)
 
 	olcbytes, err := ipldcbor.DumpObject(c)
@@ -40,7 +40,7 @@ func TestEmptyCid(t *testing.T) {
 	tf.UnitTest(t)
 
 	nullCid := NewCid(cid.Undef)
-	cbytes, err := cbor.Marshal(nullCid, cbor.EncOptions{})
+	cbytes, err := cbor.Marshal(nullCid)
 	require.NoError(t, err)
 
 	var retUndefCid Cid
