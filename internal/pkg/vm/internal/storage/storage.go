@@ -26,8 +26,13 @@ type VMStorage struct {
 	readCacheEnabled bool
 }
 
-// ErrNotFound is returned by storage when no object matches a requested Cid
+// ErrNotFound is returned by storage when no object matches a requested Cid.
 var ErrNotFound = errors.New("object not found")
+
+// SerializationError is returned by storage when de/serialization of the object fails.
+type SerializationError struct {
+	error
+}
 
 // NewStorage creates a new VMStorage.
 func NewStorage(bs blockstore.Blockstore) VMStorage {
@@ -48,7 +53,7 @@ func (s *VMStorage) SetReadCache(enabled bool) {
 func (s *VMStorage) Put(ctx context.Context, obj interface{}) (cid.Cid, int, error) {
 	nd, err := s.toNode(obj)
 	if err != nil {
-		return cid.Undef, 0, err
+		return cid.Undef, 0, SerializationError{err}
 	}
 
 	// append the object to the buffer
@@ -73,7 +78,11 @@ func (s *VMStorage) Get(ctx context.Context, cid cid.Cid, obj interface{}) (int,
 	if err != nil {
 		return 0, err
 	}
-	return len(raw), encoding.Decode(raw, obj)
+	err = encoding.Decode(raw, obj)
+	if err != nil {
+		return 0, SerializationError{err}
+	}
+	return len(raw), nil
 }
 
 // GetRaw retrieves the raw bytes stored, returns true if it exists.
