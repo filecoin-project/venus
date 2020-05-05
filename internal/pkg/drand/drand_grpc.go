@@ -220,56 +220,7 @@ func (d *GRPC) StartTimeOfRound(round Round) time.Time {
 }
 
 // RoundsInInterval returns all rounds in the given interval.
-// **IMPORTANT** This function will block if it cannot determine the exact
-// rounds in this interval due to potential gaps.  This happens in two cases:
-// 1. RoundsInInterval is called on an interval extending into the future
-// 2. There is an ongoing drand outage causing a gap in drand rounds
-// 3. There is a network partition blocking this GPRC from the latest rounds
-// TODO remove gap-handling logic now that the protocol has no gaps
-// https://github.com/filecoin-project/go-filecoin/issues/4053
-func (d *GRPC) RoundsInInterval(ctx context.Context, startTime, endTime time.Time) ([]Round, error) {
-	idealRounds := roundsInIntervalWhenNoGaps(startTime, endTime, d.StartTimeOfRound, d.roundTime)
-	if len(idealRounds) == 0 { // exit early if no rounds possible
-		return []Round{}, nil
-	}
-	minRound := idealRounds[0]
-	maxRound := idealRounds[len(idealRounds)-1]
 
-	// if our latest round is greater set traverse to start at our latest round
-	var next *Entry
-	var err error
-	if d.latestEntry != nil && d.latestEntry.Round > idealRounds[len(idealRounds)-1] {
-		next = d.latestEntry
-	} else {
-		// wait on network to determine which rounds exist.  If maxRound is
-		// skipped this will error or block indefinitely.
-		next, err = d.ReadEntry(ctx, maxRound)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	var rounds []Round
-	for next.Round >= minRound {
-		if next.Round <= maxRound {
-			rounds = append(rounds, next.Round)
-		}
-		// handle possible first-DRAND-round edge case
-		if next.Round == 0 {
-			break
-		}
-		next, err = d.ReadEntry(ctx, next.Round-1)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return reverse(rounds), nil
-}
-
-func reverse(rounds []Round) []Round {
-	revRounds := make([]Round, len(rounds))
-	for i := 0; i < len(rounds); i++ {
-		revRounds[i] = rounds[len(rounds)-1-i]
-	}
-	return revRounds
+func (d *GRPC) RoundsInInterval(ctx context.Context, startTime, endTime time.Time) []Round {
+	return roundsInIntervalWhenNoGaps(startTime, endTime, d.StartTimeOfRound, d.roundTime)
 }
