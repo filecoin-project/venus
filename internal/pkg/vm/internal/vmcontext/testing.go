@@ -5,22 +5,33 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	vtypes "github.com/filecoin-project/chain-validation/chain/types"
-	vdriver "github.com/filecoin-project/chain-validation/drivers"
-	vstate "github.com/filecoin-project/chain-validation/state"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-crypto"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	"github.com/filecoin-project/specs-actors/actors/builtin/system"
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/puppet"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
+	vtypes "github.com/filecoin-project/chain-validation/chain/types"
+	vdriver "github.com/filecoin-project/chain-validation/drivers"
+	vstate "github.com/filecoin-project/chain-validation/state"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
@@ -28,8 +39,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	gfcbuiltin "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
@@ -134,11 +145,27 @@ func (s specialSyscallWrapper) VerifyConsensusFault(_ context.Context, h1, h2, e
 	return s.internal.VerifyConsensusFault(h1, h2, extra)
 }
 
+var ChainvalActors = dispatch.NewBuilder().
+	Add(builtin.InitActorCodeID, &init_.Actor{}).
+	Add(builtin.AccountActorCodeID, &account.Actor{}).
+	Add(builtin.MultisigActorCodeID, &multisig.Actor{}).
+	Add(builtin.PaymentChannelActorCodeID, &paych.Actor{}).
+	Add(builtin.StoragePowerActorCodeID, &power.Actor{}).
+	Add(builtin.StorageMarketActorCodeID, &market.Actor{}).
+	Add(builtin.StorageMinerActorCodeID, &miner.Actor{}).
+	Add(builtin.SystemActorCodeID, &system.Actor{}).
+	Add(builtin.RewardActorCodeID, &reward.Actor{}).
+	Add(builtin.CronActorCodeID, &cron.Actor{}).
+	// add the puppet actor
+	Add(puppet.PuppetActorCodeID, &puppet.Actor{}).
+	Build()
+
 func NewState() *ValidationVMWrapper {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	cst := cborutil.NewIpldStore(bs)
 	vmstrg := storage.NewStorage(bs)
-	vm := NewVM(gfcbuiltin.DefaultActors, &vmstrg, state.NewState(cst), specialSyscallWrapper{vdriver.NewChainValidationSyscalls()})
+
+	vm := NewVM(ChainvalActors, &vmstrg, state.NewState(cst), specialSyscallWrapper{vdriver.NewChainValidationSyscalls()})
 	return &ValidationVMWrapper{
 		vm: &vm,
 	}
