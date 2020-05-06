@@ -25,7 +25,7 @@ require (
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
 	github.com/filecoin-project/go-fil-markets v0.1.1
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
-	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
+	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200505180321-973f8949ea8e
 	github.com/filecoin-project/go-statemachine v0.0.0-20200314004106-2e7830fc1948 // indirect
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
@@ -69,19 +69,18 @@ require (
 	github.com/ipfs/iptb v1.3.8-0.20190401234037-98ccf4228a73
 	github.com/ipld/go-ipld-prime v0.0.2-0.20191108012745-28a82f04c785
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
-	github.com/jackpal/gateway v1.0.6 // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/jbenet/goprocess v0.1.4
 	github.com/jstemmer/go-junit-report v0.9.1
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
-	github.com/libp2p/go-libp2p v0.6.1
+	github.com/libp2p/go-libp2p v0.8.1
 	github.com/libp2p/go-libp2p-autonat-svc v0.1.0
-	github.com/libp2p/go-libp2p-circuit v0.1.4
+	github.com/libp2p/go-libp2p-circuit v0.2.1
 	github.com/libp2p/go-libp2p-core v0.5.1
 	github.com/libp2p/go-libp2p-kad-dht v0.1.1
-	github.com/libp2p/go-libp2p-peerstore v0.2.0
+	github.com/libp2p/go-libp2p-peerstore v0.2.2
 	github.com/libp2p/go-libp2p-pubsub v0.2.6
-	github.com/libp2p/go-libp2p-swarm v0.2.2
+	github.com/libp2p/go-libp2p-swarm v0.2.3
 	github.com/mattn/go-isatty v0.0.10 // indirect
 	github.com/mattn/go-runewidth v0.0.8 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
@@ -89,7 +88,7 @@ require (
 	github.com/morikuni/aec v0.0.0-20170113033406-39771216ff4c // indirect
 	github.com/multiformats/go-multiaddr v0.2.1
 	github.com/multiformats/go-multiaddr-dns v0.2.0
-	github.com/multiformats/go-multiaddr-net v0.1.3
+	github.com/multiformats/go-multiaddr-net v0.1.4
 	github.com/multiformats/go-multibase v0.0.2 // indirect
 	github.com/multiformats/go-multihash v0.0.13
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect

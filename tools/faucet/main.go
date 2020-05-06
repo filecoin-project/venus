@@ -81,12 +81,12 @@ func main() {
 			return
 		}
 
-		reqStr := fmt.Sprintf("http://%s/api/message/send?arg=%s&value=%d&from=%s&gas-price=1&gas-limit=0", *filapi, addr, *faucetval, *filwal)
+		reqStr := fmt.Sprintf("http://%s/api/message/send?arg=%s&value=%d&from=%s&gas-price=0.0001&gas-limit=1000", *filapi, addr, *faucetval, *filwal)
 		log.Infof("Request URL: %s", reqStr)
 
 		resp, err := http.Post(reqStr, "application/json", nil)
 		if err != nil {
-			log.Errorf("failed to Post request. Status: %s Error: %s", resp.Status, err)
+			log.Errorf("failed to Post request: %s", err)
 			http.Error(w, err.Error(), 500)
 			return
 		}

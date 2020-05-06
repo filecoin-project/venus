@@ -2,8 +2,6 @@ package functional
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -24,21 +22,17 @@ import (
 )
 
 func TestSingleMiner(t *testing.T) {
-	tf.FunctionalTest(t)
+	tf.IntegrationTest(t)
 	ctx := context.Background()
-	wd, _ := os.Getwd()
-	genCfgPath := filepath.Join(wd, "..", "fixtures/setup.json")
-	presealPath := filepath.Join(wd, "..", "fixtures/genesis-sectors")
 	genTime := int64(1000000000)
 	blockTime := 30 * time.Second
 	// The clock is intentionally set some way ahead of the genesis time so the miner can produce
 	// catch-up blocks as quickly as possible.
 	fakeClock := clock.NewFake(time.Unix(genTime, 0).Add(4 * time.Hour))
 
-	// Load genesis config fixture.
 	// The fixture is needed in order to use the presealed genesis sectors fixture.
 	// Future code could decouple the whole setup.json from the presealed information.
-	genCfg := loadGenesisConfig(t, genCfgPath)
+	genCfg := loadGenesisConfig(t, fixtureGenCfg())
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
 
@@ -48,7 +42,7 @@ func TestSingleMiner(t *testing.T) {
 	}
 
 	nd := makeNode(ctx, t, seed, chainClock, drandImpl)
-	minerAddr, _, err := initNodeGenesisMiner(ctx, t, nd, seed, genCfg.Miners[0].Owner, presealPath)
+	minerAddr, _, err := initNodeGenesisMiner(ctx, t, nd, seed, genCfg.Miners[0].Owner, fixturePresealPath())
 	require.NoError(t, err)
 
 	err = nd.Start(ctx)
@@ -84,13 +78,10 @@ func TestSingleMiner(t *testing.T) {
 }
 
 func TestSyncFromSingleMiner(t *testing.T) {
-	tf.FunctionalTest(t)
+	tf.IntegrationTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
-	wd, _ := os.Getwd()
-	genCfgPath := filepath.Join(wd, "..", "fixtures/setup.json")
-	presealPath := filepath.Join(wd, "..", "fixtures/genesis-sectors")
 	genTime := int64(1000000000)
 	blockTime := 30 * time.Second
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
@@ -100,14 +91,13 @@ func TestSyncFromSingleMiner(t *testing.T) {
 		FirstFilecoin: 0,
 	}
 
-	// Load genesis config fixture.
-	genCfg := loadGenesisConfig(t, genCfgPath)
+	genCfg := loadGenesisConfig(t, fixtureGenCfg())
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
 	assert.Equal(t, fakeClock.Now(), chainClock.Now())
 
 	ndMiner := makeNode(ctx, t, seed, chainClock, drandImpl)
-	_, _, err := initNodeGenesisMiner(ctx, t, ndMiner, seed, genCfg.Miners[0].Owner, presealPath)
+	_, _, err := initNodeGenesisMiner(ctx, t, ndMiner, seed, genCfg.Miners[0].Owner, fixturePresealPath())
 	require.NoError(t, err)
 
 	ndValidator := makeNode(ctx, t, seed, chainClock, drandImpl)
@@ -141,24 +131,18 @@ func TestSyncFromSingleMiner(t *testing.T) {
 }
 
 func TestBootstrapWindowedPoSt(t *testing.T) {
+	// This test can require up to a whole proving period to elapse, which is slow even with fake proofs.
 	tf.FunctionalTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	wd, _ := os.Getwd()
-	genCfgPath := filepath.Join(wd, "..", "fixtures/setup.json")
-	presealPath := filepath.Join(wd, "..", "fixtures/genesis-sectors")
-	// setup presealed sectors and uncomment to run test against sectors with larger sector size
-	//genCfgPath := filepath.Join("./512", "setup.json")
-	//presealPath := "./512"
 
 	genTime := int64(1000000000)
 	blockTime := 30 * time.Second
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
 
 	// Load genesis config fixture.
-	genCfg := loadGenesisConfig(t, genCfgPath)
+	genCfg := loadGenesisConfig(t, fixtureGenCfg())
 	// set proving period start to something soon
 	start := abi.ChainEpoch(0)
 	genCfg.Miners[0].ProvingPeriodStart = &start
@@ -177,7 +161,7 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 		WithBuilderOpt(node.PoStGeneratorOption(&consensus.TestElectionPoster{})).
 		Build(ctx)
 
-	_, _, err := initNodeGenesisMiner(ctx, t, miner, seed, genCfg.Miners[0].Owner, presealPath)
+	_, _, err := initNodeGenesisMiner(ctx, t, miner, seed, genCfg.Miners[0].Owner, fixturePresealPath())
 	require.NoError(t, err)
 
 	err = miner.Start(ctx)
