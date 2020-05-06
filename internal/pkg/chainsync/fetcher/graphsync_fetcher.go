@@ -16,8 +16,8 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/ipld/go-ipld-prime"
-	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	ipldselector "github.com/ipld/go-ipld-prime/traversal/selector"
 	selectorbuilder "github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -88,7 +88,7 @@ func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore
 		store:       blockstore,
 		validator:   bv,
 		exchange:    exchange,
-		ssb:         selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder()),
+		ssb:         selectorbuilder.NewSelectorSpecBuilder(basicnode.Style.Any),
 		peerTracker: pt,
 		systemClock: systemClock,
 	}

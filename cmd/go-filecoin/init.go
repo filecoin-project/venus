@@ -11,12 +11,12 @@ import (
 	"os"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/ipfs/go-car"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
+	"github.com/ipld/go-car"
 	"github.com/libp2p/go-libp2p-core/crypto"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"

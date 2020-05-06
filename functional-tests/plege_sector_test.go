@@ -2,8 +2,6 @@ package functional
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -24,15 +22,11 @@ func TestMiningPledgeSector(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	wd, _ := os.Getwd()
-	genCfgPath := filepath.Join(wd, "..", "fixtures/setup.json")
-	presealPath := filepath.Join(wd, "..", "fixtures/genesis-sectors")
 	genTime := int64(1000000000)
 	blockTime := 1 * time.Second
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
 
-	// Load genesis config fixture.
-	genCfg := loadGenesisConfig(t, genCfgPath)
+	genCfg := loadGenesisConfig(t, fixtureGenCfg())
 	genCfg.Miners = append(genCfg.Miners, &gengen.CreateStorageMinerConfig{
 		Owner:         1,
 		SealProofType: constants.DevSealProofType,
@@ -46,7 +40,7 @@ func TestMiningPledgeSector(t *testing.T) {
 	}
 
 	bootstrapMiner := makeNode(ctx, t, seed, chainClock, drandImpl)
-	_, _, err := initNodeGenesisMiner(ctx, t, bootstrapMiner, seed, genCfg.Miners[0].Owner, presealPath)
+	_, _, err := initNodeGenesisMiner(ctx, t, bootstrapMiner, seed, genCfg.Miners[0].Owner, fixturePresealPath())
 	require.NoError(t, err)
 
 	newMiner := makeNode(ctx, t, seed, chainClock, drandImpl)
