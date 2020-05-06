@@ -4,23 +4,36 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
-	"github.com/stretchr/testify/require"
 )
+
+// setup presealed sectors and use these paths to run test against sectors with larger sector size
+//genCfgPath := filepath.Join("./512", "setup.json")
+//presealPath := "./512"
+func fixtureGenCfg() string {
+	wd, _ := os.Getwd()
+	return filepath.Join(wd, "..", "fixtures/setup.json")
+}
+
+func fixturePresealPath() string {
+	wd, _ := os.Getwd()
+	return filepath.Join(wd, "..", "fixtures/genesis-sectors")
+}
 
 func loadGenesisConfig(t *testing.T, path string) *gengen.GenesisCfg {
 	configFile, err := os.Open(path)
