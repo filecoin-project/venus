@@ -64,19 +64,14 @@ func TestProposeDeal(t *testing.T) {
 	for i := 0; i < 30; i++ {
 		clientAPI.RunMarshaledJSON(ctx, &dealStatus, "client", "query-storage-deal", result.ProposalCid.String())
 		switch dealStatus.State {
-		case storagemarket.StorageDealUnknown,
-			storagemarket.StorageDealValidating:
-			time.Sleep(1 * time.Second) // in progress, wait and continue
 		case storagemarket.StorageDealProposalAccepted,
 			storagemarket.StorageDealStaged,
 			storagemarket.StorageDealSealing,
 			storagemarket.StorageDealActive:
-
 			// Deal accepted. Test passed.
 			return
 		default:
-			t.Errorf("unexpected state: %d %s", dealStatus.State, dealStatus.Message)
-			return
+			time.Sleep(1 * time.Second) // in progress, wait and continue
 		}
 	}
 	t.Error("timeout waiting for deal status update")
