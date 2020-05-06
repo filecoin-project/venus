@@ -7,20 +7,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
-
-	"github.com/stretchr/testify/require"
-
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestMiningPledgeSector(t *testing.T) {
-	t.Skip("This test fails until either the reward actor.LastPerEpochReward verifies its caller, or we relax that condition in the VM")
 	tf.FunctionalTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -66,6 +64,9 @@ func TestMiningPledgeSector(t *testing.T) {
 
 	// Have bootstrap miner mine continuously so newMiner's pledgeSector can put multiple messages on chain.
 	go simulateBlockMining(ctx, t, fakeClock, blockTime, bootstrapMiner)
+
+	// give the miner some collateral
+	transferFunds(ctx, t, newMiner, seed.Addr(t, 1), newMiner.Repo.Config().Mining.MinerAddress, types.NewAttoFILFromFIL(5))
 
 	err = newMiner.StorageMining.Start(ctx)
 	require.NoError(t, err)
