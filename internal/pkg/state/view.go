@@ -403,19 +403,11 @@ func (v *View) MarketHasDealID(ctx context.Context, addr addr.Address, dealID ab
 	}
 
 	found := false
-	byParty, err := market.AsSetMultimap(StoreFromCbor(ctx, v.ipldStore), marketState.DealIDsByParty)
+	dealStates, err := v.asDealStateArray(ctx, marketState.States)
 	if err != nil {
 		return false, err
 	}
-
-	if err = byParty.ForEach(addr, func(i abi.DealID) error {
-		if i == dealID {
-			found = true
-		}
-		return nil
-	}); err != nil {
-		return false, err
-	}
+	_, found, err = dealStates.Get(dealID)
 	return found, err
 }
 
@@ -484,8 +476,11 @@ func (v *View) MarketDealState(ctx context.Context, dealID abi.DealID) (*market.
 	if err != nil {
 		return nil, err
 	}
-
-	return dealStates.Get(dealID)
+	st, found, err := dealStates.Get(dealID)
+	if !found {
+		return nil, fmt.Errorf("DealID: %d not found", dealID)
+	}
+	return st, err
 }
 
 type NetworkPower struct {
