@@ -7,6 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 
 	"github.com/filecoin-project/go-address"
@@ -69,4 +74,25 @@ func simulateBlockMining(ctx context.Context, t *testing.T, fakeClock clock.Fake
 			require.NoError(t, err)
 		}
 	}
+}
+
+// send funds from one actor to another. The from account must be an address with a private key imported into the node.
+// This function blocks until the message to lands on chain to avoid call sequence number races.
+func transferFunds(ctx context.Context, t *testing.T, nd *node.Node, from address.Address, to address.Address, amount types.AttoFIL) {
+	mcid, errCh, err := nd.Messaging.Outbox.SendEncoded(ctx,
+		from,
+		to,
+		amount,
+		types.NewGasPrice(1),
+		10000,
+		true,
+		builtin.MethodSend,
+		nil,
+	)
+	require.NoError(t, err)
+	require.NoError(t, <-errCh)
+
+	require.NoError(t, nd.PorcelainAPI.MessageWait(ctx, mcid, func(block *block.Block, message *types.SignedMessage, receipt *vm.MessageReceipt) error {
+		return nil
+	}))
 }
