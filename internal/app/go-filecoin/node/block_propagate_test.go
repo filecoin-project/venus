@@ -27,7 +27,7 @@ import (
 )
 
 func TestBlockPropsManyNodes(t *testing.T) {
-	tf.UnitTest(t)
+	tf.IntegrationTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -68,7 +68,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 }
 
 func TestChainSyncA(t *testing.T) {
-	tf.UnitTest(t)
+	tf.IntegrationTest(t)
 
 	ctx := context.Background()
 	_, nodes, fakeClock, blockTime := makeNodesBlockPropTests(t, 2)
@@ -102,7 +102,7 @@ func TestChainSyncA(t *testing.T) {
 }
 
 func TestChainSyncWithMessages(t *testing.T) {
-	tf.UnitTest(t)
+	tf.IntegrationTest(t)
 	ctx := context.Background()
 
 	/* setup */

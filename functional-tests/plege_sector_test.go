@@ -2,39 +2,31 @@ package functional
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
-
-	"github.com/stretchr/testify/require"
-
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestMiningPledgeSector(t *testing.T) {
-	t.Skip("This test fails until either the reward actor.LastPerEpochReward verifies its caller, or we relax that condition in the VM")
 	tf.FunctionalTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	wd, _ := os.Getwd()
-	genCfgPath := filepath.Join(wd, "..", "fixtures/setup.json")
-	presealPath := filepath.Join(wd, "..", "fixtures/genesis-sectors")
 	genTime := int64(1000000000)
 	blockTime := 1 * time.Second
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
 
-	// Load genesis config fixture.
-	genCfg := loadGenesisConfig(t, genCfgPath)
+	genCfg := loadGenesisConfig(t, fixtureGenCfg())
 	genCfg.Miners = append(genCfg.Miners, &gengen.CreateStorageMinerConfig{
 		Owner:         1,
 		SealProofType: constants.DevSealProofType,
@@ -48,7 +40,7 @@ func TestMiningPledgeSector(t *testing.T) {
 	}
 
 	bootstrapMiner := makeNode(ctx, t, seed, chainClock, drandImpl)
-	_, _, err := initNodeGenesisMiner(ctx, t, bootstrapMiner, seed, genCfg.Miners[0].Owner, presealPath)
+	_, _, err := initNodeGenesisMiner(ctx, t, bootstrapMiner, seed, genCfg.Miners[0].Owner, fixturePresealPath())
 	require.NoError(t, err)
 
 	newMiner := makeNode(ctx, t, seed, chainClock, drandImpl)
@@ -66,6 +58,9 @@ func TestMiningPledgeSector(t *testing.T) {
 
 	// Have bootstrap miner mine continuously so newMiner's pledgeSector can put multiple messages on chain.
 	go simulateBlockMining(ctx, t, fakeClock, blockTime, bootstrapMiner)
+
+	// give the miner some collateral
+	transferFunds(ctx, t, newMiner, seed.Addr(t, 1), newMiner.Repo.Config().Mining.MinerAddress, types.NewAttoFILFromFIL(5))
 
 	err = newMiner.StorageMining.Start(ctx)
 	require.NoError(t, err)

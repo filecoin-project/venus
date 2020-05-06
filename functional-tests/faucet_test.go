@@ -1,8 +1,10 @@
 package functional
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -12,129 +14,112 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/iptbtester"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 var faucetBinary = "../tools/faucet/faucet"
 
 func TestFaucetSendFunds(t *testing.T) {
 	tf.FunctionalTest(t)
-	t.Skip("Dragons: fake proofs???")
-
 	if _, err := os.Stat(faucetBinary); os.IsNotExist(err) {
 		panic("faucet not found, run `go run build/*.go build` to fix")
 	}
 
 	ctx := context.Background()
+	genTime := int64(1000000000)
+	blockTime := 30 * time.Second
+	// Set clock ahead so the miner can produce catch-up blocks as quickly as possible.
+	fakeClock := clock.NewFake(time.Unix(genTime, 0).Add(1 * time.Hour))
 
-	tns, err := iptbtester.NewTestNodes(t, 2, nil)
-	require.NoError(t, err)
-
-	node0 := tns[0]
-	node1 := tns[1]
-
-	fundAmount := int64(532)
-	blockTime := time.Second * 5
-
-	// Setup first node, note: Testbed.Name() is the directory
-	genesisTime := time.Now()
-	genesis := iptbtester.RequireGenerateGenesis(t, 10000, node0.Testbed.Name(), genesisTime)
-
-	node0.MustInitWithGenesis(ctx, genesis)
-	node0.MustStart(ctx, "--block-time="+blockTime.String())
-	defer node0.MustStop(ctx)
-
-	// Import the funded wallet
-	iptbtester.MustImportGenesisMiner(node0, genesis)
-
-	// Start mining
-	node0.MustRunCmd(ctx, "go-filecoin", "mining", "start")
-
-	// Setup second node
-
-	// Init && Start
-	node1.MustInitWithGenesis(ctx, genesis)
-	node1.MustStart(ctx, "--block-time="+blockTime.String())
-	defer node1.MustStop(ctx)
-
-	// Connect nodes together
-	node0.MustConnect(ctx, node1)
-
-	// Setup faucet
-
-	faucetctx, faucetcancel := context.WithCancel(context.Background())
-	MustStartFaucet(t, faucetctx, node0, fundAmount, time.Second*30)
-	defer faucetcancel()
-
-	// Get address for target node
-	var targetAddr commands.AddressLsResult
-	node1.MustRunCmdJSON(ctx, &targetAddr, "go-filecoin", "address", "ls")
-
-	// Start Tests
-
-	// Make request for funds
-	msgcid := MustSendFundsFaucet(t, "localhost:9797", targetAddr.Addresses[0].String())
-
-	// Wait around for message to appear
-	msgctx, msgcancel := context.WithTimeout(context.Background(), blockTime*3)
-	node1.MustRunCmd(msgctx, "go-filecoin", "message", "wait", msgcid)
-	msgcancel()
-
-	// Read wallet balance
-	var balanceStr string
-	node1.MustRunCmdJSON(ctx, &balanceStr, "go-filecoin", "wallet", "balance", targetAddr.Addresses[0].String())
-	balance, err := strconv.ParseInt(balanceStr, 10, 64)
-	require.NoError(t, err)
-
-	// Assert funds have arrived
-	assert.Equal(t, fundAmount, balance)
-}
-
-// MustStartFaucet runs the faucet using the given node. It sends funds from the nodes default wallet
-func MustStartFaucet(t *testing.T, ctx context.Context, node *iptbtester.TestNode, faucetVal int64, limiterExpiry time.Duration) { // nolint: golint
-	api, err := node.APIAddr()
-	if err != nil {
-		t.Fatal(err)
+	genCfg := loadGenesisConfig(t, fixtureGenCfg())
+	seed := node.MakeChainSeed(t, genCfg)
+	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
+	drandImpl := &drand.Fake{
+		GenesisTime:   time.Unix(genTime, 0).Add(-1 * blockTime),
+		FirstFilecoin: 0,
 	}
 
-	filWallet := ""
-	node.MustRunCmdJSON(ctx, &filWallet, "go-filecoin", "config", "wallet.defaultAddress")
+	nd := makeNode(ctx, t, seed, chainClock, drandImpl)
+	api, stopAPI := test.RunNodeAPI(ctx, nd, t)
+	defer stopAPI()
 
-	parts := strings.Split(api, "/")
+	_, owner, err := initNodeGenesisMiner(ctx, t, nd, seed, genCfg.Miners[0].Owner, fixturePresealPath())
+	require.NoError(t, err)
+	err = nd.Start(ctx)
+	require.NoError(t, err)
+	defer nd.Stop(ctx)
+
+	// Start faucet server
+	faucetctx, faucetcancel := context.WithCancel(context.Background())
+	faucetDripFil := uint64(123)
+	MustStartFaucet(faucetctx, t, api.Address(), owner, faucetDripFil)
+	defer faucetcancel()
+	// Wait for faucet to be ready
+	time.Sleep(1 * time.Second)
+
+	// Generate an address to receive funds.
+	targetKi, err := crypto.NewSecpKeyFromSeed(bytes.NewReader(bytes.Repeat([]byte{1, 2, 3, 4}, 16)))
+	require.NoError(t, err)
+	targetAddr, err := targetKi.Address()
+	require.NoError(t, err)
+
+	// Make request for funds
+	msgcid := MustSendFundsFaucet(t, "localhost:9797", targetAddr)
+	assert.NotEmpty(t, msgcid)
+
+	// Mine the block containing the message, and another one to evaluate that state.
+	for i := 0; i < 2; i++ {
+		_, err := nd.BlockMining.BlockMiningAPI.MiningOnce(ctx)
+		require.NoError(t, err)
+	}
+
+	// Check that funds have been transferred
+	expectedBalance := types.NewAttoFILFromFIL(faucetDripFil)
+	actr, err := nd.PorcelainAPI.ActorGet(ctx, targetAddr)
+	require.NoError(t, err)
+	assert.True(t, actr.Balance.Equals(expectedBalance))
+}
+
+// MustStartFaucet runs the faucet with a provided node API endpoint and wallet from which to source transfers.
+func MustStartFaucet(ctx context.Context, t *testing.T, endpoint string, sourceWallet address.Address, faucetVal uint64) {
+	parts := strings.Split(endpoint, "/")
 	filAPI := fmt.Sprintf("%s:%s", parts[2], parts[4])
-
-	faucetValStr := strconv.FormatInt(faucetVal, 10)
-	limiterExpiryStr := limiterExpiry.String()
 
 	cmd := exec.CommandContext(ctx,
 		faucetBinary,
 		"-fil-api="+filAPI,
-		"-fil-wallet="+filWallet,
-		"-limiter-expiry="+limiterExpiryStr,
-		"-faucet-val="+faucetValStr,
+		"-fil-wallet="+sourceWallet.String(),
+		"-faucet-val="+strconv.FormatUint(faucetVal, 10),
 	)
-
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
 }
 
 // MustMustSendFundsFaucet sends funds to the given wallet address
-func MustSendFundsFaucet(t *testing.T, host, target string) string {
+func MustSendFundsFaucet(t *testing.T, host string, target address.Address) string {
 	data := url.Values{}
-	data.Set("target", target)
+	data.Set("target", target.String())
 
 	resp, err := http.PostForm("http://"+host+"/tap", data)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if resp.StatusCode != 200 {
+		all, _ := ioutil.ReadAll(resp.Body)
+		t.Fatalf("faucet request failed: %d %s", resp.StatusCode, all)
+	}
 
 	msgcid := resp.Header.Get("Message-Cid")
-
 	return msgcid
 }

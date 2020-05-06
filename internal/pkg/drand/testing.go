@@ -52,8 +52,8 @@ func (d *Fake) StartTimeOfRound(round Round) time.Time {
 // RoundsInInterval returns the DRAND round numbers within [startTime, endTime)
 // startTime inclusive, endTime exclusive.
 // No gaps in test DRAND so this doesn't need to consult the DRAND chain
-func (d *Fake) RoundsInInterval(ctx context.Context, startTime, endTime time.Time) ([]Round, error) {
-	return roundsInIntervalWhenNoGaps(startTime, endTime, d.StartTimeOfRound, testDRANDRoundDuration), nil
+func (d *Fake) RoundsInInterval(ctx context.Context, startTime, endTime time.Time) []Round {
+	return roundsInIntervalWhenNoGaps(startTime, endTime, d.StartTimeOfRound, testDRANDRoundDuration)
 }
 
 func (d *Fake) FirstFilecoinRound() Round {
