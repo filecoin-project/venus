@@ -20,8 +20,8 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-ipld-prime"
-	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -241,7 +241,8 @@ func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s select
 		return bytes.NewBuffer(node.RawData()), nil
 	}
 	root := cidlink.Link{Cid: c}
-	node, err := root.Load(mgs.ctx, ipld.LinkContext{}, ipldfree.NodeBuilder(), linkLoader)
+	nb := basicnode.Style.Any.NewBuilder()
+	err := root.Load(mgs.ctx, ipld.LinkContext{}, nb, linkLoader)
 	if err != nil {
 		mgs.stubs = append(mgs.stubs, requestResponse{
 			fakeRequest{pid, root, s},
@@ -249,6 +250,7 @@ func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s select
 		})
 		return
 	}
+	node := nb.Build()
 	visited := 0
 	visitor := func(tp traversal.Progress, n ipld.Node, tr traversal.VisitReason) error {
 		if hangup != noHangup && visited >= hangup {
@@ -262,6 +264,9 @@ func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s select
 		Cfg: &traversal.Config{
 			Ctx:        mgs.ctx,
 			LinkLoader: linkLoader,
+			LinkTargetNodeStyleChooser: func(lnk ipld.Link, lnkCtx ipld.LinkContext) (ipld.NodeStyle, error) {
+				return basicnode.Style.Any, nil
+			},
 		},
 	}.WalkAdv(node, s, visitor)
 	if err == errHangup {

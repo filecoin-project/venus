@@ -21,9 +21,9 @@ require (
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
 	github.com/filecoin-project/go-bitfield v0.0.0-20200416002808-b3ee67ec9060
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
-	github.com/filecoin-project/go-data-transfer v0.0.0-20200408061858-82c58b423ca6
+	github.com/filecoin-project/go-data-transfer v0.2.1
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5
-	github.com/filecoin-project/go-fil-markets v0.1.1
+	github.com/filecoin-project/go-fil-markets v0.1.3
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200505180321-973f8949ea8e
 	github.com/filecoin-project/go-statemachine v0.0.0-20200314004106-2e7830fc1948 // indirect
@@ -43,15 +43,14 @@ require (
 	github.com/ipfs/go-bitswap v0.2.8
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.3
-	github.com/ipfs/go-car v0.0.3-0.20200221191037-3762780fa84e
 	github.com/ipfs/go-cid v0.0.5
 	github.com/ipfs/go-datastore v0.4.4
 	github.com/ipfs/go-ds-badger2 v0.0.0-20200211201106-609c9d2a39c7
 	github.com/ipfs/go-fs-lock v0.0.1
-	github.com/ipfs/go-graphsync v0.0.6-0.20200408061628-e1a98fc64c42
+	github.com/ipfs/go-graphsync v0.0.6-0.20200504202014-9d5f2c26a103
 	github.com/ipfs/go-hamt-ipld v0.1.1-0.20200501020327-d53d20a7063e
 	github.com/ipfs/go-ipfs-blockstore v0.1.4
-	github.com/ipfs/go-ipfs-chunker v0.0.1
+	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-cmdkit v0.0.1
 	github.com/ipfs/go-ipfs-cmds v0.0.1
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
@@ -65,9 +64,10 @@ require (
 	github.com/ipfs/go-log/v2 v2.0.4 // indirect
 	github.com/ipfs/go-merkledag v0.3.1
 	github.com/ipfs/go-path v0.0.7
-	github.com/ipfs/go-unixfs v0.2.2
+	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/iptb v1.3.8-0.20190401234037-98ccf4228a73
-	github.com/ipld/go-ipld-prime v0.0.2-0.20191108012745-28a82f04c785
+	github.com/ipld/go-car v0.1.1-0.20200429200904-c222d793c339
+	github.com/ipld/go-ipld-prime v0.0.2-0.20200428162820-8b59dc292b8e
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/jbenet/goprocess v0.1.4

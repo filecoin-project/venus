@@ -5,11 +5,11 @@ import (
 	"io"
 
 	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-car"
-	carutil "github.com/ipfs/go-car/util"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
+	"github.com/ipld/go-car"
+	carutil "github.com/ipld/go-car/util"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"

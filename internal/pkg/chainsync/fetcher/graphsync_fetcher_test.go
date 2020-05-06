@@ -20,8 +20,8 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-ipld-prime"
-	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	selectorbuilder "github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -74,7 +74,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	alice := mm.Addresses()[0]
 	bob := mm.Addresses()[1]
 
-	ssb := selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
+	ssb := selectorbuilder.NewSelectorSpecBuilder(basicnode.Style.Any)
 
 	amtSelector := ssb.ExploreIndex(2,
 		ssb.ExploreRecursive(selector.RecursionLimitDepth(10),
@@ -663,7 +663,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 
 	alice := mm.Addresses()[0]
 
-	ssb := selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
+	ssb := selectorbuilder.NewSelectorSpecBuilder(basicnode.Style.Any)
 	layer1Selector, err := ssb.Matcher().Selector()
 	require.NoError(t, err)
 
