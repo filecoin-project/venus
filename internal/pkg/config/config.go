@@ -239,7 +239,7 @@ type MessagePoolConfig struct {
 
 func newDefaultMessagePoolConfig() *MessagePoolConfig {
 	return &MessagePoolConfig{
-		MaxPoolSize: 10000,
+		MaxPoolSize: 1000000,
 		MaxNonceGap: 100,
 	}
 }

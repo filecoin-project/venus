@@ -69,7 +69,7 @@ const (
 		"storagePrice": "0"
 	},
 	"mpool": {
-		"maxPoolSize": 10000,
+		"maxPoolSize": 1000000,
 		"maxNonceGap": 100
 	},
 	"observability": {
