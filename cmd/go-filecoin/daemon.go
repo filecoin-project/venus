@@ -18,6 +18,9 @@ import (
 	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
@@ -25,6 +28,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 )
+
+func init() {
+	power.ConsensusMinerMinPower = abi.NewStoragePower(2 << 30)
+}
 
 var daemonCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
