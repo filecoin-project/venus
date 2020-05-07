@@ -37,6 +37,9 @@ const (
 	// OptionPresealedSectorDir is the name of the option for specifying the directory from which presealed sectors should be pulled when initializing.
 	OptionPresealedSectorDir = "presealed-sectordir"
 
+	// OptionDrandConfigAddr is the init option for configuring drand to a given network address at init time
+	OptionDrandConfigAddr = "drand-config-addr"
+
 	// APIPrefix is the prefix for the http version of the api.
 	APIPrefix = "/api"
 
