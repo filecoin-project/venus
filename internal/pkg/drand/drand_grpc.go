@@ -78,7 +78,7 @@ func NewGRPC(addresses []Address, distKeyCoeff [][]byte, drandGenTime time.Time,
 func (d *GRPC) updateFirstFilecoinRound() error {
 	// First filecoin round is the first drand round before filecoinGenesisTime
 	searchStart := d.filecoinGenesisTime.Add(-1 * d.roundTime)
-	results := roundsInIntervalWhenNoGaps(searchStart, d.filecoinGenesisTime, d.StartTimeOfRound, d.roundTime)
+	results := d.RoundsInInterval(searchStart, d.filecoinGenesisTime)
 	if len(results) != 1 {
 		return fmt.Errorf("found %d drand rounds between filecoinGenTime and filecoinGenTime - drandRountDuration, expected 1", len(results))
 	}
@@ -87,18 +87,31 @@ func (d *GRPC) updateFirstFilecoinRound() error {
 }
 
 // ReadEntry fetches an entry from one of the drand servers (trying them sequentially) and returns the result.
-// **NOTE** this will block if called on a skipped round.
-func (d *GRPC) ReadEntry(_ context.Context, drandRound Round) (*Entry, error) {
+func (d *GRPC) ReadEntry(ctx context.Context, drandRound Round) (*Entry, error) {
 	if entry, ok := d.cache[drandRound]; ok {
 		return entry, nil
 	}
 
 	// try each address, stopping when we have a key
 	for _, addr := range d.addresses {
+		if ctx.Err() != nil { // Don't try any more peers after cancellation.
+			return nil, ctx.Err()
+		}
+		// The drand client doesn't accept a context, so is un-cancellable :-(
 		pub, err := d.client.Public(addr.address, d.key, addr.secure, int(drandRound))
 		if err != nil {
 			log.Warnf("Error fetching drand randomness from %s: %s", addr.address, err)
 			continue
+		}
+
+		// Because the client.Public() call can't be cancelled by this context, it can return at any time,
+		// potentially leading to concurrent state updates below racing a new call to into ReadEntry() (because
+		// the caller thought it was cancelled already).
+		// This check will mostly, but not completely securely, avoid this. A robust fix requires avoiding
+		// concurrent calls to here completely, which ultimately arise from the goroutine in the mining scheduler.
+		// https://github.com/filecoin-project/go-filecoin/issues/4065
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
 		}
 
 		entry := &Entry{
@@ -221,6 +234,27 @@ func (d *GRPC) StartTimeOfRound(round Round) time.Time {
 
 // RoundsInInterval returns all rounds in the given interval.
 
-func (d *GRPC) RoundsInInterval(ctx context.Context, startTime, endTime time.Time) []Round {
-	return roundsInIntervalWhenNoGaps(startTime, endTime, d.StartTimeOfRound, d.roundTime)
+func (d *GRPC) RoundsInInterval(startTime, endTime time.Time) []Round {
+	return roundsInInterval(startTime, endTime, d.StartTimeOfRound, d.roundTime)
+}
+
+func roundsInInterval(startTime, endTime time.Time, startTimeOfRound func(Round) time.Time, roundDuration time.Duration) []Round {
+	// Find first round after startTime
+	genesisTime := startTimeOfRound(Round(0))
+	truncatedStartRound := Round(startTime.Sub(genesisTime) / roundDuration)
+	var round Round
+	if startTimeOfRound(truncatedStartRound).Equal(startTime) {
+		round = truncatedStartRound
+	} else {
+		round = truncatedStartRound + 1
+	}
+	roundTime := startTimeOfRound(round)
+	var rounds []Round
+	// Advance a round time until we hit endTime, adding rounds
+	for roundTime.Before(endTime) {
+		rounds = append(rounds, round)
+		round++
+		roundTime = startTimeOfRound(round)
+	}
+	return rounds
 }

@@ -95,6 +95,9 @@ func (s *timingScheduler) mineLoop(miningCtx context.Context, outCh chan Output,
 		nullBlkCount := uint64(currEpoch-h) - 1
 		doneWg.Add(1)
 		go func(ctx context.Context) {
+			// Mine is not intended to be re-entrant, but using a go-routine here makes it impossible to enforce
+			// single-threaded access.
+			// Some context in https://github.com/filecoin-project/go-filecoin/issues/4065
 			s.worker.Mine(ctx, base, nullBlkCount, outCh)
 			doneWg.Done()
 		}(workContext)
