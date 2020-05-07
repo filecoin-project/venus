@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
@@ -206,15 +207,9 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to construct drand grpc")
 		}
-		drandConfig := b.repo.Config().Drand
-		addrs := make([]drand.Address, len(drandConfig.Addresses))
-		for i, a := range drandConfig.Addresses {
-			addrs[i] = drand.NewAddress(a, drandConfig.Secure)
-		}
-		dGRPC, err := drand.NewGRPC(addrs, drandConfig.DistKey, time.Unix(drandConfig.StartTimeUnix, 0),
-			time.Unix(int64(genBlk.Timestamp), 0), time.Duration(drandConfig.RoundSeconds)*time.Second)
+		dGRPC, err := DefaultDrandIfaceFromConfig(b.repo.Config(), genBlk.Timestamp)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to build Drand client")
+			return nil, err
 		}
 		b.drand = dGRPC
 	}
@@ -337,4 +332,14 @@ func (b builder) OfflineMode() bool {
 
 func (b builder) Drand() drand.IFace {
 	return b.drand
+}
+
+func DefaultDrandIfaceFromConfig(cfg *config.Config, fcGenTS uint64) (drand.IFace, error) {
+	drandConfig := cfg.Drand
+	addrs := make([]drand.Address, len(drandConfig.Addresses))
+	for i, a := range drandConfig.Addresses {
+		addrs[i] = drand.NewAddress(a, drandConfig.Secure)
+	}
+	return drand.NewGRPC(addrs, drandConfig.DistKey, time.Unix(drandConfig.StartTimeUnix, 0),
+		time.Unix(int64(fcGenTS), 0), time.Duration(drandConfig.RoundSeconds)*time.Second)
 }
