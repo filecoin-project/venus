@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors"
@@ -105,6 +104,7 @@ func (c *connectorCommon) GetBalance(ctx context.Context, addr address.Address, 
 		return storagemarket.Balance{}, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
 	}
 
+	// Direct state access should be replaced with use of the state view.
 	var smState spasm.State
 	err := c.chainStore.GetActorStateAt(ctx, tsk, builtin.StorageMarketActorAddr, &smState)
 	if err != nil {
@@ -137,17 +137,11 @@ func (c *connectorCommon) GetBalance(ctx context.Context, addr address.Address, 
 }
 
 func (c *connectorCommon) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
-	var tsk block.TipSetKey
-	if err := encoding.Decode(tok, &tsk); err != nil {
-		return address.Undef, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
-	}
-
-	root, err := c.chainStore.GetTipSetStateRoot(ctx, tsk)
+	view, err := c.loadStateView(tok)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to get tip state: %w", err)
+		return address.Undef, err
 	}
 
-	view := c.stateViewer.StateView(root)
 	_, fcworker, err := view.MinerControlAddresses(ctx, miner)
 	if err != nil {
 		return address.Undef, err
@@ -210,79 +204,47 @@ func (c *connectorCommon) getBalance(ctx context.Context, root cid.Cid, addr add
 	return balance, nil
 }
 
-func (c *connectorCommon) listDeals(ctx context.Context, addr address.Address, tsk block.TipSetKey) ([]storagemarket.StorageDeal, error) {
-	var smState spasm.State
-	err := c.chainStore.GetActorStateAt(ctx, tsk, builtin.StorageMarketActorAddr, &smState)
+func (c *connectorCommon) listDeals(ctx context.Context, tok shared.TipSetToken, predicate func(proposal *spasm.DealProposal, dealState *spasm.DealState) bool) ([]storagemarket.StorageDeal, error) {
+	view, err := c.loadStateView(tok)
 	if err != nil {
 		return nil, err
 	}
 
-	// These should be replaced with methods on the state view
-	stateStore := state.StoreFromCbor(ctx, c.chainStore)
-	byParty, err := spasm.AsSetMultimap(stateStore, smState.DealIDsByParty)
-	if err != nil {
-		return nil, err
-	}
-
-	var providerDealIds []abi.DealID
-	if err = byParty.ForEach(addr, func(i abi.DealID) error {
-		providerDealIds = append(providerDealIds, i)
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	proposals, err := adt.AsArray(stateStore, smState.Proposals)
-	if err != nil {
-		return nil, err
-	}
-
-	dealStates, err := adt.AsArray(stateStore, smState.States)
-	if err != nil {
-		return nil, err
-	}
-
+	// Deals are not indexed in (expensive) chain state.
+	// This iterates *all* deal states, loads the associated proposals, and filters by provider.
+	// This is going to be really slow until we find a place to index deals, either here or in the module.
 	deals := []storagemarket.StorageDeal{}
-	for _, dealID := range providerDealIds {
-		var proposal spasm.DealProposal
-		found, err := proposals.Get(uint64(dealID), &proposal)
+	err = view.MarketDealStatesForEach(ctx, func(dealId abi.DealID, state *spasm.DealState) error {
+		proposal, err := view.MarketDealProposal(ctx, dealId)
 		if err != nil {
-			return nil, err
+			return xerrors.Errorf("no proposal for deal %d: %w", dealId, err)
 		}
-		if !found {
-			return nil, errors.Errorf("Could not find deal proposal for id %d", dealID)
+		if predicate(&proposal, state) {
+			deals = append(deals, storagemarket.StorageDeal{
+				DealProposal: proposal,
+				DealState:    *state,
+			})
 		}
-
-		var ds spasm.DealState
-		found, err = dealStates.Get(uint64(dealID), &ds)
-		if err != nil {
-			return nil, err
-		}
-		if !found {
-			return nil, errors.Errorf("Could not find deal state for id %d", dealID)
-		}
-
-		deals = append(deals, storagemarket.StorageDeal{
-			DealProposal: proposal,
-			DealState:    ds,
-		})
-	}
-
-	return deals, nil
+		return nil
+	})
+	return deals, err
 }
 
 func (c *connectorCommon) VerifySignature(ctx context.Context, signature crypto.Signature, signer address.Address, plaintext []byte, tok shared.TipSetToken) (bool, error) {
-	var tsk block.TipSetKey
-	if err := encoding.Decode(tok, &tsk); err != nil {
-		return false, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
-	}
-
-	view, err := c.chainStore.StateView(tsk)
+	view, err := c.loadStateView(tok)
 	if err != nil {
-		return false, nil
+		return false, err
 	}
 
 	validator := state.NewSignatureValidator(view)
 
 	return nil == validator.ValidateSignature(ctx, plaintext, signer, signature), nil
+}
+
+func (c *connectorCommon) loadStateView(tok shared.TipSetToken) (*appstate.View, error) {
+	var tsk block.TipSetKey
+	if err := encoding.Decode(tok, &tsk); err != nil {
+		return nil, xerrors.Errorf("failed to marshal tok to a tipset key: %w", err)
+	}
+	return c.chainStore.StateView(tsk)
 }

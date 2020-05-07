@@ -85,12 +85,9 @@ func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr, wall
 
 // ListClientDeals returns all deals published on chain for the given account
 func (s *StorageClientNodeConnector) ListClientDeals(ctx context.Context, addr address.Address, tok shared.TipSetToken) ([]storagemarket.StorageDeal, error) {
-	var tsk block.TipSetKey
-	if err := encoding.Decode(tok, &tsk); err != nil {
-		return nil, xerrors.Wrapf(err, "failed to marshal TipSetToken into a TipSetKey")
-	}
-
-	return s.listDeals(ctx, addr, tsk)
+	return s.listDeals(ctx, tok, func(proposal *market.DealProposal, _ *market.DealState) bool {
+		return proposal.Client == addr
+	})
 }
 
 // ListStorageProviders finds all miners that will provide storage
@@ -228,7 +225,7 @@ func (s *StorageClientNodeConnector) SignProposal(ctx context.Context, signer ad
 }
 
 // GetDefaultWalletAddress returns the default account for this node
-func (s *StorageClientNodeConnector) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {
+func (s *StorageClientNodeConnector) GetDefaultWalletAddress(_ context.Context) (address.Address, error) {
 	return s.clientAddr()
 }
 
@@ -244,7 +241,7 @@ func (s *StorageClientNodeConnector) ValidateAskSignature(ctx context.Context, s
 	return s.VerifySignature(ctx, *signed.Signature, ask.Miner, buf, tok)
 }
 
-func (s *StorageClientNodeConnector) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
+func (s *StorageClientNodeConnector) GetChainHead(_ context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
 	return connectors.GetChainHead(s.chainStore)
 }
 
@@ -281,7 +278,7 @@ func (s *StorageClientNodeConnector) OnDealSectorCommitted(ctx context.Context, 
 			return false
 		}
 
-		found, err := view.MarketHasDealID(ctx, resolvedProvider, dealID)
+		_, found, err := view.MarketDealState(ctx, dealID)
 		if err != nil {
 			return false
 		}

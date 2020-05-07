@@ -164,10 +164,6 @@ func (v *View) MinerDeadlineInfo(ctx context.Context, maddr addr.Address, epoch 
 	}
 
 	deadlineInfo := minerState.DeadlineInfo(epoch)
-	if err != nil {
-		return 0, 0, 0, 0, err
-	}
-
 	return deadlineInfo.Index, deadlineInfo.Open, deadlineInfo.Close, deadlineInfo.Challenge, nil
 }
 
@@ -209,7 +205,8 @@ func (v *View) MinerPartitionIndicesForDeadline(ctx context.Context, maddr addr.
 	return partitions, err
 }
 
-// MinerSectorInfoForPartitions retrieves sector info for sectors needed to be proven over for the given proving window partitions
+// MinerSectorInfoForPartitions retrieves sector info for sectors needed to be proven over for the given proving window partitions.
+// NOTE: exposes on-chain structures directly because specs-storage requires it.
 func (v *View) MinerSectorInfoForDeadline(ctx context.Context, maddr addr.Address, deadlineIndex uint64, partitions []uint64) ([]abi.SectorInfo, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
@@ -294,7 +291,7 @@ func (v *View) MinerSuccessfulPoSts(ctx context.Context, maddr addr.Address) (ui
 }
 
 // MinerDeadlines returns a bitfield of sectors in a proving period
-// This concrete chain state type is exposed because it's referenced directly by the storage-fsm module.
+// NOTE: exposes on-chain structures directly because it's referenced directly by the storage-fsm module.
 // This is in conflict with the general goal of the state view of hiding the chain state representations from
 // consumers in order to support versioning that representation through protocol upgrades.
 // See https://github.com/filecoin-project/storage-fsm/issues/13
@@ -308,6 +305,7 @@ func (v *View) MinerDeadlines(ctx context.Context, maddr addr.Address) (*miner.D
 }
 
 // MinerInfo returns information about the next proving period
+// NOTE: exposes on-chain structures directly (but not necessary to)
 func (v *View) MinerInfo(ctx context.Context, maddr addr.Address) (miner.MinerInfo, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
@@ -369,6 +367,7 @@ func (v *View) MinerFaults(ctx context.Context, maddr addr.Address) ([]uint64, e
 }
 
 // MinerGetPrecommittedSector Looks up info for a miners precommitted sector.
+// NOTE: exposes on-chain structures directly for storage FSM API.
 func (v *View) MinerGetPrecommittedSector(ctx context.Context, maddr addr.Address, sectorNum uint64) (*miner.SectorPreCommitOnChainInfo, bool, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
@@ -393,30 +392,6 @@ func (v *View) MarketEscrowBalance(ctx context.Context, addr addr.Address) (foun
 	var value abi.TokenAmount
 	found, err = escrow.Get(adt.AddrKey(addr), &value)
 	return
-}
-
-// MarketGetDeal finds a deal by (resolved) provider and deal id
-func (v *View) MarketHasDealID(ctx context.Context, addr addr.Address, dealID abi.DealID) (bool, error) {
-	marketState, err := v.loadMarketActor(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	found := false
-	byParty, err := market.AsSetMultimap(StoreFromCbor(ctx, v.ipldStore), marketState.DealIDsByParty)
-	if err != nil {
-		return false, err
-	}
-
-	if err = byParty.ForEach(addr, func(i abi.DealID) error {
-		if i == dealID {
-			found = true
-		}
-		return nil
-	}); err != nil {
-		return false, err
-	}
-	return found, err
 }
 
 // MarketComputeDataCommitment takes deal ids and uses associated commPs to compute commD for a sector that contains the deals
@@ -451,7 +426,8 @@ func (v *View) MarketComputeDataCommitment(ctx context.Context, registeredProof 
 	return ffiwrapper.GenerateUnsealedCID(registeredProof, pieceInfos)
 }
 
-func (v *View) MarketStorageDeal(ctx context.Context, dealID abi.DealID) (market.DealProposal, error) {
+// NOTE: exposes on-chain structures directly for storage FSM interface.
+func (v *View) MarketDealProposal(ctx context.Context, dealID abi.DealID) (market.DealProposal, error) {
 	marketState, err := v.loadMarketActor(ctx)
 	if err != nil {
 		return market.DealProposal{}, err
@@ -474,18 +450,37 @@ func (v *View) MarketStorageDeal(ctx context.Context, dealID abi.DealID) (market
 	return proposal, nil
 }
 
-func (v *View) MarketDealState(ctx context.Context, dealID abi.DealID) (*market.DealState, error) {
+// NOTE: exposes on-chain structures directly for storage FSM and market module interfaces.
+func (v *View) MarketDealState(ctx context.Context, dealID abi.DealID) (*market.DealState, bool, error) {
 	marketState, err := v.loadMarketActor(ctx)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	dealStates, err := v.asDealStateArray(ctx, marketState.States)
 	if err != nil {
-		return nil, err
+		return nil, false, err
+	}
+	return dealStates.Get(dealID)
+}
+
+// NOTE: exposes on-chain structures directly for market interface.
+// The callback receives a pointer to a transient object; take a copy or drop the reference outside the callback.
+func (v *View) MarketDealStatesForEach(ctx context.Context, f func(id abi.DealID, state *market.DealState) error) error {
+	marketState, err := v.loadMarketActor(ctx)
+	if err != nil {
+		return err
 	}
 
-	return dealStates.Get(dealID)
+	dealStates, err := v.asDealStateArray(ctx, marketState.States)
+	if err != nil {
+		return err
+	}
+
+	var ds market.DealState
+	return dealStates.ForEach(&ds, func(dealId int64) error {
+		return f(abi.DealID(dealId), &ds)
+	})
 }
 
 type NetworkPower struct {
