@@ -137,12 +137,9 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 
 // ListProviderDeals lists all deals for the given provider
 func (s *StorageProviderNodeConnector) ListProviderDeals(ctx context.Context, addr address.Address, tok shared.TipSetToken) ([]storagemarket.StorageDeal, error) {
-	var tsk block.TipSetKey
-	if err := encoding.Decode(tok, &tsk); err != nil {
-		return nil, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
-	}
-
-	return s.listDeals(ctx, addr, tsk)
+	return s.listDeals(ctx, tok, func(proposal *market.DealProposal, dealState *market.DealState) bool {
+		return proposal.Provider == addr
+	})
 }
 
 // OnDealComplete adds the piece to the storage provider

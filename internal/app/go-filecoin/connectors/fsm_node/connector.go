@@ -141,14 +141,16 @@ func (f *FiniteStateMachineNodeConnector) StateMarketStorageDeal(ctx context.Con
 		return market.DealProposal{}, market.DealState{}, err
 	}
 
-	deal, err := view.MarketStorageDeal(ctx, dealID)
+	deal, err := view.MarketDealProposal(ctx, dealID)
 	if err != nil {
 		return market.DealProposal{}, market.DealState{}, err
 	}
 
-	state, err := view.MarketDealState(ctx, dealID)
+	state, found, err := view.MarketDealState(ctx, dealID)
 	if err != nil {
 		return market.DealProposal{}, market.DealState{}, err
+	} else if !found {
+		return market.DealProposal{}, market.DealState{}, fmt.Errorf("deal %d not found", dealID)
 	}
 
 	return deal, *state, err
