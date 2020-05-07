@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
+	drandapi "github.com/filecoin-project/go-filecoin/internal/pkg/protocol/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
@@ -48,6 +49,7 @@ var initCmd = &cmds.Command{
 		cmdkit.BoolOption(DevnetNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters"),
 		cmdkit.BoolOption(DevnetUser, "when set, populates config bootstrap addrs with the dns multiaddrs of the user devnet and other user devnet specific bootstrap parameters"),
 		cmdkit.StringOption(OptionPresealedSectorDir, "when set to the path of a directory, imports pre-sealed sector data from that directory"),
+		cmdkit.StringOption(OptionDrandConfigAddr, "configure drand with given address, uses secure contact protocol and no override.  If you need different settings use daemon drand command"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
@@ -70,9 +72,7 @@ var initCmd = &cmds.Command{
 		defer func() { _ = rep.Close() }()
 
 		genesisFileSource, _ := req.Options[GenesisFile].(string)
-		// Writing to the repo here is messed up; this should create a genesis init function that
-		// writes to the repo when invoked.
-		genesisFile, err := loadGenesis(req.Context, rep, genesisFileSource)
+		gif, err := loadGenesis(req.Context, rep, genesisFileSource)
 		if err != nil {
 			return err
 		}
@@ -89,13 +89,18 @@ var initCmd = &cmds.Command{
 			logInit.Errorf("Error setting config %s", err)
 			return err
 		}
+
+		if err := setDrandConfig(rep, req.Options); err != nil {
+			logInit.Error("Error configuring drand config %s", err)
+			return err
+		}
 		if err := rep.ReplaceConfig(cfg); err != nil {
 			logInit.Errorf("Error replacing config %s", err)
 			return err
 		}
 
 		logInit.Info("Initializing node")
-		if err := node.Init(req.Context, rep, genesisFile, initopts...); err != nil {
+		if err := node.Init(req.Context, rep, gif, initopts...); err != nil {
 			logInit.Errorf("Error initializing node %s", err)
 			return err
 		}
@@ -169,6 +174,32 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 	}
 
 	return nil
+}
+
+// helper type to implement plumbing subset
+type setWrapper struct {
+	cfg *config.Config
+}
+
+func (w *setWrapper) ConfigSet(dottedKey string, jsonString string) error {
+	return w.cfg.Set(dottedKey, jsonString)
+}
+
+func setDrandConfig(repo repo.Repo, options cmdkit.OptMap) error {
+	drandAddrStr, ok := options[OptionDrandConfigAddr].(string)
+	if !ok {
+		// skip configuring drand during init
+		return nil
+	}
+
+	// Arbitrary filecoin genesis time, it will be set correctly when daemon runs
+	// It is not needed to set config properly
+	dGRPC, err := node.DefaultDrandIfaceFromConfig(repo.Config(), 0)
+	if err != nil {
+		return err
+	}
+	d := drandapi.New(dGRPC, &setWrapper{repo.Config()})
+	return d.Configure([]string{drandAddrStr}, true, false)
 }
 
 func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (genesis.InitFunc, error) {
