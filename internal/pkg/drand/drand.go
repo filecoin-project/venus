@@ -11,7 +11,7 @@ type IFace interface {
 	VerifyEntry(parent, child *Entry) (bool, error)
 	FetchGroupConfig(addresses []string, secure bool, overrideGroupAddrs bool) ([]string, [][]byte, uint64, int, error)
 	StartTimeOfRound(round Round) time.Time
-	RoundsInInterval(ctx context.Context, startTime, endTime time.Time) []Round
+	RoundsInInterval(startTime, endTime time.Time) []Round
 	FirstFilecoinRound() Round
 }
 
