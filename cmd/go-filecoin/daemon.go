@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
@@ -49,23 +51,24 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	if err != nil {
 		return err
 	}
+	config := rep.Config()
 
 	// second highest precedence is env vars.
 	if envAPI := os.Getenv("FIL_API"); envAPI != "" {
-		rep.Config().API.Address = envAPI
+		config.API.Address = envAPI
 	}
 
 	// highest precedence is cmd line flag.
 	if flagAPI, ok := req.Options[OptionAPI].(string); ok && flagAPI != "" {
-		rep.Config().API.Address = flagAPI
+		config.API.Address = flagAPI
 	}
 
 	if swarmAddress, ok := req.Options[SwarmAddress].(string); ok && swarmAddress != "" {
-		rep.Config().Swarm.Address = swarmAddress
+		config.Swarm.Address = swarmAddress
 	}
 
 	if publicRelayAddress, ok := req.Options[SwarmPublicRelayAddress].(string); ok && publicRelayAddress != "" {
-		rep.Config().Swarm.PublicRelayAddress = publicRelayAddress
+		config.Swarm.PublicRelayAddress = publicRelayAddress
 	}
 
 	opts, err := node.OptionsFromRepo(rep)
@@ -98,6 +101,9 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	}
 	opts = append(opts, node.JournalConfigOption(journal))
 
+	// Monkey-patch network parameters
+	monkeyPatchNetworkParameters(config.NetworkParams)
+
 	// Instantiate the node.
 	fcn, err := node.New(req.Context, opts...)
 	if err != nil {
@@ -127,7 +133,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	ready := make(chan interface{}, 1)
 	go func() {
 		<-ready
-		_ = re.Emit(fmt.Sprintf("API server listening on %s\n", rep.Config().API.Address))
+		_ = re.Emit(fmt.Sprintf("API server listening on %s\n", config.API.Address))
 	}()
 
 	var terminate = make(chan os.Signal, 1)
@@ -137,7 +143,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	// The request is expected to remain open so the daemon uses the request context.
 	// Pass a new context here if the flow changes such that the command should exit while leaving
 	// a forked deamon running.
-	return RunAPIAndWait(req.Context, fcn, rep.Config().API, ready, terminate)
+	return RunAPIAndWait(req.Context, fcn, config.API, ready, terminate)
 }
 
 func getRepo(req *cmds.Request) (repo.Repo, error) {
@@ -147,6 +153,12 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 		return nil, err
 	}
 	return repo.OpenFSRepo(repoDir, repo.Version)
+}
+
+func monkeyPatchNetworkParameters(params *config.NetworkParamsConfig) {
+	if params.ConsensusMinerMinPower > 0 {
+		power.ConsensusMinerMinPower = big.NewIntUnsigned(params.ConsensusMinerMinPower)
+	}
 }
 
 // RunAPIAndWait starts an API server and waits for it to finish.
