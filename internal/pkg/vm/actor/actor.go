@@ -46,7 +46,7 @@ type Actor struct {
 	// CallSeqNum is the number expected on the next message from this actor.
 	// Messages are processed in strict, contiguous order.
 	CallSeqNum uint64
-	// Balance is the amount of FIL in the actor's account.
+	// Balance is the amount of attoFIL in the actor's account.
 	Balance abi.TokenAmount
 }
 

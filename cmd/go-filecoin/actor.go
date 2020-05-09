@@ -72,7 +72,7 @@ func makeActorView(act *actor.Actor, addr address.Address) *ActorView {
 		Address: addr.String(),
 		Code:    act.Code.Cid,
 		Nonce:   act.CallSeqNum,
-		Balance: types.NewAttoFILFromFIL(uint64(act.Balance.Int64())),
+		Balance: act.Balance,
 		Head:    act.Head.Cid,
 	}
 }
