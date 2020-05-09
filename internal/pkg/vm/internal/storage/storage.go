@@ -131,12 +131,22 @@ func (s *VMStorage) Flush() error {
 	for _, nd := range s.writeBuffer {
 		blks = append(blks, nd)
 	}
-	// write objects to store
-	if err := s.blockstore.PutMany(blks); err != nil {
-		return err
-	}
 
-	// Dragons: check if the blockstore has a flush and flush it too
+	// From https://github.com/dgraph-io/badger/issues/441: "a txn should not exceed the size of a single memtable"
+	// Default badger.DefaultOptions.MaxTableSize is 64Mib
+	// Pushing this hard would require measuring the size of each block and also accounting for badger object overheads.
+	// 1024 would give us very generous room for 64Kib per object.
+	maxBatchSize := 4 * 1024
+
+	// Write at most maxBatchSize objects to store at a time
+	remaining := blks
+	for len(remaining) > 0 {
+		last := min(len(remaining), maxBatchSize)
+		if err := s.blockstore.PutMany(remaining[:last]); err != nil {
+			return err
+		}
+		remaining = remaining[last:]
+	}
 
 	if s.readCacheEnabled {
 		// move objects to read cache
@@ -182,4 +192,11 @@ func (s *VMStorage) toNode(v interface{}) (ipld.Node, error) {
 		return nil, err
 	}
 	return nd, nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
