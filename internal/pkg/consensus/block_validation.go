@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // BlockValidator defines an interface used to validate a blocks syntax and
@@ -19,6 +20,7 @@ type BlockValidator interface {
 // syntax of constituent messages
 type SyntaxValidator interface {
 	BlockSyntaxValidator
+	MessageSyntaxValidator
 }
 
 // BlockSemanticValidator defines an interface used to validate a blocks
@@ -33,9 +35,22 @@ type BlockSyntaxValidator interface {
 	ValidateSyntax(ctx context.Context, blk *block.Block) error
 }
 
+// MessageSyntaxValidator defines an interface used to validate a message's
+// syntax.
+type MessageSyntaxValidator interface {
+	ValidateSignedMessageSyntax(ctx context.Context, smsg *types.SignedMessage) error
+	ValidateUnsignedMessageSyntax(ctx context.Context, msg *types.UnsignedMessage) error
+}
+
 // DefaultBlockValidator implements the BlockValidator interface.
 type DefaultBlockValidator struct {
 	clock.ChainEpochClock
+}
+
+// WrappedSyntaxValidator implements syntax validator interface
+type WrappedSyntaxValidator struct {
+	BlockSyntaxValidator
+	MessageSyntaxValidator
 }
 
 // NewDefaultBlockValidator returns a new DefaultBlockValidator. It uses `blkTime`

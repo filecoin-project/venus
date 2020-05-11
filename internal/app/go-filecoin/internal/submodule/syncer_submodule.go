@@ -54,9 +54,10 @@ type nodeChainSelector interface {
 // NewSyncerSubmodule creates a new chain submodule.
 func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *BlockstoreSubmodule, network *NetworkSubmodule,
 	discovery *DiscoverySubmodule, chn *ChainSubmodule, postVerifier consensus.EPoStVerifier) (SyncerSubmodule, error) {
-	// setup block validation
-	// TODO when #2961 is resolved do the needful here.
+	// setup validation
 	blkValid := consensus.NewDefaultBlockValidator(config.ChainClock())
+	msgValid := consensus.NewMessageSyntaxValidator()
+	syntax := consensus.WrappedSyntaxValidator{blkValid, msgValid}
 
 	// register block validation on pubsub
 	btv := blocksub.NewBlockTopicValidator(blkValid)
@@ -96,7 +97,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 			hookActions.ValidateRequest()
 		}
 	})
-	fetcher := fetcher.NewGraphSyncFetcher(ctx, network.GraphExchange, blockstore.Blockstore, blkValid, config.ChainClock(), discovery.PeerTracker)
+	fetcher := fetcher.NewGraphSyncFetcher(ctx, network.GraphExchange, blockstore.Blockstore, syntax, config.ChainClock(), discovery.PeerTracker)
 	faultCh := make(chan slashing.ConsensusFault)
 	faultDetector := slashing.NewConsensusFaultDetector(faultCh)
 

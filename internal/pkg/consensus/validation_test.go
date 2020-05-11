@@ -116,7 +116,7 @@ func TestMessageSyntaxValidator(t *testing.T) {
 	alice := addresses[0]
 	bob := addresses[1]
 
-	validator := consensus.NewMessageSyntaxValidator()
+	validator := consensus.NewDefaultMessageSyntaxValidator()
 	ctx := context.Background()
 
 	t.Run("Actor not found is not an error", func(t *testing.T) {
