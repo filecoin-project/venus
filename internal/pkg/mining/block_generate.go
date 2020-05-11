@@ -55,6 +55,9 @@ func (w *DefaultWorker) Generate(
 	mq := NewMessageQueue(pending)
 	candidateMsgs := orderMessageCandidates(mq.Drain())
 	candidateMsgs = w.filterPenalizableMessages(ctx, candidateMsgs)
+	if len(candidateMsgs) > block.BlockMessageLimit {
+		candidateMsgs = candidateMsgs[:block.BlockMessageLimit]
+	}
 
 	var blsAccepted []*types.SignedMessage
 	var secpAccepted []*types.SignedMessage
