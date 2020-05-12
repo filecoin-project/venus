@@ -135,16 +135,19 @@ func MonkeyPatchNetworkParamsOption(params *config.NetworkParamsConfig) BuilderO
 		if params.ConsensusMinerMinPower > 0 {
 			power.ConsensusMinerMinPower = big.NewIntUnsigned(params.ConsensusMinerMinPower)
 		}
-		for _, proofType := range params.ExtraProofTypes {
-			miner.SupportedProofTypes[abi.RegisteredProof(proofType)] = struct{}{}
+		if len(params.ReplaceProofTypes) > 0 {
+			miner.SupportedProofTypes = make(map[abi.RegisteredProof]struct{})
+			for _, proofType := range params.ReplaceProofTypes {
+				miner.SupportedProofTypes[abi.RegisteredProof(proofType)] = struct{}{}
+			}
 		}
 		return nil
 	}
 }
 
-// MonkeyPatchProofTypeOption returns a function that sets package variable
+// MonkeyPatchAddProofTypeOption returns a function that sets package variable
 // SuppurtedProofTypes to include the given registered proof type
-func MonkeyPatchProofTypeOption(proofType abi.RegisteredProof) BuilderOpt {
+func MonkeyPatchAddProofTypeOption(proofType abi.RegisteredProof) BuilderOpt {
 	return func(c *Builder) error {
 		miner.SupportedProofTypes[proofType] = struct{}{}
 		return nil

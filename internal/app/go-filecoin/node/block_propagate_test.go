@@ -124,7 +124,7 @@ func TestChainSyncWithMessages(t *testing.T) {
 		WithBuilderOpt(ChainClockConfigOption(c)).
 		WithGenesisInit(cs.GenesisInitFunc).
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
-		WithBuilderOpt(MonkeyPatchProofTypeOption(constants.DevRegisteredSealProof)).
+		WithBuilderOpt(MonkeyPatchAddProofTypeOption(constants.DevRegisteredSealProof)).
 		WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
 	nodeSend := builder1.Build(ctx)
 	senderAddress := cs.GiveKey(t, nodeSend, 1)
@@ -134,7 +134,7 @@ func TestChainSyncWithMessages(t *testing.T) {
 		WithBuilderOpt(ChainClockConfigOption(c)).
 		WithGenesisInit(cs.GenesisInitFunc).
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
-		WithBuilderOpt(MonkeyPatchProofTypeOption(constants.DevRegisteredSealProof)).
+		WithBuilderOpt(MonkeyPatchAddProofTypeOption(constants.DevRegisteredSealProof)).
 		WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
 	nodeReceive := builder2.Build(ctx)
 	receiverAddress := cs.GiveKey(t, nodeReceive, 2)
@@ -144,7 +144,7 @@ func TestChainSyncWithMessages(t *testing.T) {
 		WithBuilderOpt(ChainClockConfigOption(c)).
 		WithGenesisInit(cs.GenesisInitFunc).
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
-		WithBuilderOpt(MonkeyPatchProofTypeOption(constants.DevRegisteredSealProof)).
+		WithBuilderOpt(MonkeyPatchAddProofTypeOption(constants.DevRegisteredSealProof)).
 		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{})).
 		WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
 	nodeMine := builder3.Build(ctx)
@@ -220,7 +220,7 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 		WithBuilderOpt(ChainClockConfigOption(c)).
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
 		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{})).
-		WithBuilderOpt(MonkeyPatchProofTypeOption(constants.DevRegisteredSealProof)).
+		WithBuilderOpt(MonkeyPatchAddProofTypeOption(constants.DevRegisteredSealProof)).
 		WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime))).
 		WithInitOpt(PeerKeyOpt(PeerKeys[0]))
 	minerNode := builder.Build(ctx)
@@ -238,7 +238,7 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 		WithBuilderOpt(ChainClockConfigOption(c)).
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
 		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{})).
-		WithBuilderOpt(MonkeyPatchProofTypeOption(constants.DevRegisteredSealProof)).
+		WithBuilderOpt(MonkeyPatchAddProofTypeOption(constants.DevRegisteredSealProof)).
 		WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
 
 	for i := 0; i < nodeLimit; i++ {

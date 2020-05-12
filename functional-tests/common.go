@@ -54,7 +54,7 @@ func makeNode(ctx context.Context, t *testing.T, seed *node.ChainSeed, chainCloc
 	builder := test.NewNodeBuilder(t).
 		WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
 		WithGenesisInit(seed.GenesisInitFunc).
-		WithBuilderOpt(node.MonkeyPatchProofTypeOption(constants.DevRegisteredSealProof))
+		WithBuilderOpt(node.MonkeyPatchAddProofTypeOption(constants.DevRegisteredSealProof))
 	if drand != nil {
 		builder = builder.WithBuilderOpt(node.DrandConfigOption(drand))
 	}
