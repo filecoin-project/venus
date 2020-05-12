@@ -5,12 +5,12 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	spaminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -20,7 +20,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -58,7 +57,7 @@ func NewStorageClientNodeConnector(
 	}
 }
 
-// AddFunds sends a message to add collateral for the given address
+// AddFunds adds storage market funds for a storage client
 func (s *StorageClientNodeConnector) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	clientAddr, err := s.clientAddr()
 	if err != nil {
@@ -67,9 +66,18 @@ func (s *StorageClientNodeConnector) AddFunds(ctx context.Context, addr address.
 	return s.addFunds(ctx, clientAddr, addr, amount)
 }
 
-// EnsureFunds checks the current balance for an address and adds funds if the balance is below the given amount
+// EnsureFunds compares the passed amount to the available balance for an address, and will add funds if necessary
 func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr, walletAddr address.Address, amount abi.TokenAmount, tok shared.TipSetToken) (cid.Cid, error) {
-	return s.ensureFunds(ctx, addr, walletAddr, amount, tok, s.AddFunds)
+	balance, err := s.GetBalance(ctx, addr, tok)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	if balance.Available.LessThan(amount) {
+		return s.AddFunds(ctx, addr, big.Sub(amount, balance.Available))
+	}
+
+	return cid.Undef, err
 }
 
 // ListClientDeals returns all deals published on chain for the given account
@@ -228,55 +236,4 @@ func (s *StorageClientNodeConnector) ValidateAskSignature(ctx context.Context, s
 	}
 
 	return s.VerifySignature(ctx, *signed.Signature, ask.Miner, buf, tok)
-}
-
-func (s *StorageClientNodeConnector) GetChainHead(_ context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
-	return connectors.GetChainHead(s.chainStore)
-}
-
-func (s *StorageClientNodeConnector) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
-	view, err := s.chainStore.StateView(s.chainStore.Head())
-	if err != nil {
-		cb(err)
-		return err
-	}
-
-	resolvedProvider, err := view.InitResolveAddress(ctx, provider)
-	if err != nil {
-		cb(err)
-		return err
-	}
-
-	err = s.waiter.WaitPredicate(ctx, msg.DefaultMessageWaitLookback, func(msg *types.SignedMessage, c cid.Cid) bool {
-		resolvedTo, err := view.InitResolveAddress(ctx, msg.Message.To)
-		if err != nil {
-			return false
-		}
-
-		if resolvedTo != resolvedProvider {
-			return false
-		}
-
-		if msg.Message.Method != builtin.MethodsMiner.ProveCommitSector {
-			return false
-		}
-
-		// that's enough for us to check chain state
-		view, err = s.chainStore.StateView(s.chainStore.Head())
-		if err != nil {
-			return false
-		}
-
-		_, found, err := view.MarketDealState(ctx, dealID)
-		if err != nil {
-			return false
-		}
-
-		return found
-	}, func(b *block.Block, signedMessage *types.SignedMessage, receipt *vm.MessageReceipt) error {
-		return nil
-	})
-
-	cb(err)
-	return err
 }
