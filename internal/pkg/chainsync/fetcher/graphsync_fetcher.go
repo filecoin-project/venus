@@ -83,10 +83,10 @@ type GraphSyncFetcher struct {
 // NewGraphSyncFetcher returns a GraphsyncFetcher wired up to the input Graphsync exchange and
 // attached local blockservice for reloading blocks in memory once they are returned
 func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore bstore.Blockstore,
-	bv consensus.SyntaxValidator, systemClock clock.Clock, pt graphsyncFallbackPeerTracker) *GraphSyncFetcher {
+	v consensus.SyntaxValidator, systemClock clock.Clock, pt graphsyncFallbackPeerTracker) *GraphSyncFetcher {
 	gsf := &GraphSyncFetcher{
 		store:       blockstore,
-		validator:   bv,
+		validator:   v,
 		exchange:    exchange,
 		ssb:         selectorbuilder.NewSelectorSpecBuilder(basicnode.Style.Any),
 		peerTracker: pt,
@@ -404,6 +404,9 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 				if err := encoding.Decode(msgBlock.RawData(), &message); err != nil {
 					return errors.Wrapf(err, "could not decode secp message (cid %s)", msgBlock.Cid())
 				}
+				if err := gsf.validator.ValidateSignedMessageSyntax(ctx, &message); err != nil {
+					return errors.Wrapf(err, "invalid syntax for secp message (cid %s)", msgBlock.Cid())
+				}
 				messages = append(messages, &message)
 				return nil
 			})
@@ -429,6 +432,10 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 				if err := encoding.Decode(msgBlock.RawData(), &message); err != nil {
 					return errors.Wrapf(err, "could not decode bls message (cid %s)", msgBlock.Cid())
 				}
+				if err := gsf.validator.ValidateUnsignedMessageSyntax(ctx, &message); err != nil {
+					return errors.Wrapf(err, "invalid syntax for bls message (cid %s)", msgBlock.Cid())
+				}
+
 				messages = append(messages, &message)
 				return nil
 			})

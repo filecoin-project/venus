@@ -47,7 +47,7 @@ type Outbox struct {
 
 type messageValidator interface {
 	// Validate checks a message for validity.
-	Validate(ctx context.Context, msg *types.SignedMessage) error
+	ValidateSignedMessageSyntax(ctx context.Context, msg *types.SignedMessage) error
 }
 
 type actorProvider interface {
@@ -138,7 +138,7 @@ func (ob *Outbox) SendEncoded(ctx context.Context, from, to address.Address, val
 
 	// Slightly awkward: it would be better validate before signing but the MeteredMessage construction
 	// is hidden inside NewSignedMessage.
-	err = ob.validator.Validate(ctx, signed)
+	err = ob.validator.ValidateSignedMessageSyntax(ctx, signed)
 	if err != nil {
 		return cid.Undef, nil, errors.Wrap(err, "invalid message")
 	}

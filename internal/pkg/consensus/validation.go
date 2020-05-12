@@ -121,15 +121,16 @@ func canCoverGasLimit(msg *types.UnsignedMessage, actor *actor.Actor) bool {
 	return actor.Balance.GreaterThanEqual(expense)
 }
 
-// MessageSyntaxValidator checks basic conditions independent of current state
-type MessageSyntaxValidator struct{}
+// DefaultMessageSyntaxValidator checks basic conditions independent of current state
+type DefaultMessageSyntaxValidator struct{}
 
-func NewMessageSyntaxValidator() *MessageSyntaxValidator {
-	return &MessageSyntaxValidator{}
+func NewMessageSyntaxValidator() *DefaultMessageSyntaxValidator {
+	return &DefaultMessageSyntaxValidator{}
 }
 
-// Validates message syntax and state-independent invariants.
-func (v *MessageSyntaxValidator) Validate(ctx context.Context, smsg *types.SignedMessage) error {
+// ValidateSignedMessageSyntax validates signed message syntax and state-independent invariants.
+// Used for incoming messages over pubsub and secp messages included in blocks.
+func (v *DefaultMessageSyntaxValidator) ValidateSignedMessageSyntax(ctx context.Context, smsg *types.SignedMessage) error {
 	msg := &smsg.Message
 	var msgLen int
 	if smsg.Signature.Type == crypto.SigTypeBLS {
@@ -145,7 +146,21 @@ func (v *MessageSyntaxValidator) Validate(ctx context.Context, smsg *types.Signe
 		}
 		msgLen = len(enc)
 	}
+	return v.validateMessageSyntaxShared(ctx, msg, msgLen)
+}
 
+// ValidateUnsignedMessageSyntax validates unisigned message syntax and state-independent invariants.
+// Used for bls messages included in blocks.
+func (v *DefaultMessageSyntaxValidator) ValidateUnsignedMessageSyntax(ctx context.Context, msg *types.UnsignedMessage) error {
+	enc, err := msg.Marshal()
+	if err != nil {
+		return errors.Wrapf(err, "failed to calculate message size")
+	}
+	msgLen := len(enc)
+	return v.validateMessageSyntaxShared(ctx, msg, msgLen)
+}
+
+func (v *DefaultMessageSyntaxValidator) validateMessageSyntaxShared(ctx context.Context, msg *types.UnsignedMessage, msgLen int) error {
 	if msg.Version != types.MessageVersion {
 		return fmt.Errorf("version %d, expected %d", msg.Version, types.MessageVersion)
 	}

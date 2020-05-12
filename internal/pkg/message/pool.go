@@ -18,7 +18,7 @@ var mpSize = metrics.NewInt64Gauge("message_pool_size", "The size of the message
 
 // PoolValidator defines a validator that ensures a message can go through the pool.
 type PoolValidator interface {
-	Validate(ctx context.Context, msg *types.SignedMessage) error
+	ValidateSignedMessageSyntax(ctx context.Context, msg *types.SignedMessage) error
 }
 
 // Pool keeps an unordered, de-duplicated set of Messages and supports removal by CID.
@@ -169,5 +169,5 @@ func (pool *Pool) validateMessage(ctx context.Context, message *types.SignedMess
 	}
 
 	// check that the message is likely to succeed in processing
-	return pool.validator.Validate(ctx, message)
+	return pool.validator.ValidateSignedMessageSyntax(ctx, message)
 }

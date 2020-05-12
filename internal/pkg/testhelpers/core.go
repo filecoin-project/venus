@@ -157,7 +157,7 @@ func NewMockMessagePoolValidator() *MockMessagePoolValidator {
 }
 
 // Validate returns true if the mock validator is set to validate the message
-func (v *MockMessagePoolValidator) Validate(ctx context.Context, msg *types.SignedMessage) error {
+func (v *MockMessagePoolValidator) ValidateSignedMessageSyntax(ctx context.Context, msg *types.SignedMessage) error {
 	if v.Valid {
 		return nil
 	}

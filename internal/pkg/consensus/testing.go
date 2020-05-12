@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
@@ -47,8 +46,11 @@ func (f *FakeConsensusStateViewer) FaultStateView(root cid.Cid) FaultStateView {
 // FakeMessageValidator is a validator that doesn't validate to simplify message creation in tests.
 type FakeMessageValidator struct{}
 
-// Validate always returns nil
-func (tsmv *FakeMessageValidator) Validate(ctx context.Context, msg *types.UnsignedMessage, fromActor *actor.Actor) error {
+func (mv *FakeMessageValidator) ValidateSignedMessageSyntax(ctx context.Context, smsg *types.SignedMessage) error {
+	return nil
+}
+
+func (mv *FakeMessageValidator) ValidateUnsignedMessageSyntax(ctx context.Context, msg *types.UnsignedMessage) error {
 	return nil
 }
 

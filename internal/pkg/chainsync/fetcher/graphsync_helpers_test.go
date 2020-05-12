@@ -397,11 +397,11 @@ func (mv mockSyntaxValidator) ValidateSyntax(ctx context.Context, blk *block.Blo
 	return nil
 }
 
-func (mv mockSyntaxValidator) ValidateMessagesSyntax(ctx context.Context, messages []*types.SignedMessage) error {
+func (mv mockSyntaxValidator) ValidateSignedMessageSyntax(ctx context.Context, message *types.SignedMessage) error {
 	return mv.validateMessagesError
 }
 
-func (mv mockSyntaxValidator) ValidateUnsignedMessagesSyntax(ctx context.Context, messages []*types.UnsignedMessage) error {
+func (mv mockSyntaxValidator) ValidateUnsignedMessageSyntax(ctx context.Context, message *types.UnsignedMessage) error {
 	return nil
 }
 
