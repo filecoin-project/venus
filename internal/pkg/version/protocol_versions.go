@@ -4,15 +4,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
-// USER is the user network
-const USER = "alpha2"
-
-// INTEROP is the network name of an interop net
-const INTEROP = "interop"
-
-// LOCALNET is the network name of localnet
-const LOCALNET = "localnet"
-
 // TEST is the network name for internal tests
 const TEST = "gfctest"
 
@@ -24,9 +15,10 @@ const Protocol0 = 0
 // network upgrades need to be represented here. See #3491.
 func ConfigureProtocolVersions(network string) (*ProtocolVersionTable, error) {
 	return NewProtocolVersionTableBuilder(network).
-		Add(USER, Protocol0, abi.ChainEpoch(0)).
-		Add(INTEROP, Protocol0, abi.ChainEpoch(0)).
-		Add(LOCALNET, Protocol0, abi.ChainEpoch(0)).
+		Add("alpha2", Protocol0, abi.ChainEpoch(0)).
+		Add("interop", Protocol0, abi.ChainEpoch(0)).
+		Add("localnet", Protocol0, abi.ChainEpoch(0)).
+		Add("testnet", Protocol0, abi.ChainEpoch(0)).
 		Add(TEST, Protocol0, abi.ChainEpoch(0)).
 		Build()
 }
