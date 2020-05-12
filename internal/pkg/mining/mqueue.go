@@ -73,10 +73,14 @@ func (mq *MessageQueue) Pop() (*types.SignedMessage, bool) {
 	return msg, true
 }
 
-// Drain removes and returns all messages in a slice.
-func (mq *MessageQueue) Drain() []*types.SignedMessage {
+// Drain removes and returns all messages in a slice.  If max is < 0 returns all
+func (mq *MessageQueue) Drain(nToPop int) []*types.SignedMessage {
 	var out []*types.SignedMessage
 	for msg, hasMore := mq.Pop(); hasMore; msg, hasMore = mq.Pop() {
+		if nToPop == 0 {
+			break
+		}
+		nToPop--
 		out = append(out, msg)
 	}
 	return out

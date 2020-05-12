@@ -3,7 +3,6 @@ package fetcher
 import (
 	"context"
 	"fmt"
-	"golang.org/x/xerrors"
 	"sync"
 	"time"
 
@@ -393,8 +392,6 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 		return block.UndefTipSet, nil, err
 	}
 
-	messageCount := 0
-
 	err = gsf.loadAndVerifySubComponents(ctx, tip, incomplete,
 		func(meta types.TxMeta) cid.Cid {
 			return meta.SecpRoot.Cid
@@ -417,7 +414,6 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 				return err
 			}
 
-			messageCount += len(messages)
 			return nil
 		})
 	if err != nil {
@@ -447,13 +443,9 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 				return err
 			}
 
-			messageCount += len(messages)
 			return nil
 		})
 
-	if messageCount > block.BlockMessageLimit {
-		return block.UndefTipSet, nil, xerrors.New("Number of messages in block exceeds block message limit")
-	}
 	// TODO #3312 we should validate these messages in the same way we validate blocks
 	if err != nil {
 		return block.UndefTipSet, nil, err
