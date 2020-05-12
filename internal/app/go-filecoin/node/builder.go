@@ -146,7 +146,7 @@ func MonkeyPatchNetworkParamsOption(params *config.NetworkParamsConfig) BuilderO
 // SuppurtedProofTypes to include the given registered proof type
 func MonkeyPatchProofTypeOption(proofType abi.RegisteredProof) BuilderOpt {
 	return func(c *Builder) error {
-		miner.SupportedProofTypes[abi.RegisteredProof(proofType)] = struct{}{}
+		miner.SupportedProofTypes[proofType] = struct{}{}
 		return nil
 	}
 }

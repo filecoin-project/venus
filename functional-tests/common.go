@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -52,7 +53,8 @@ func loadGenesisConfig(t *testing.T, path string) *gengen.GenesisCfg {
 func makeNode(ctx context.Context, t *testing.T, seed *node.ChainSeed, chainClock clock.ChainEpochClock, drand drand.IFace) *node.Node {
 	builder := test.NewNodeBuilder(t).
 		WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
-		WithGenesisInit(seed.GenesisInitFunc)
+		WithGenesisInit(seed.GenesisInitFunc).
+		WithBuilderOpt(node.MonkeyPatchProofTypeOption(constants.DevRegisteredSealProof))
 	if drand != nil {
 		builder = builder.WithBuilderOpt(node.DrandConfigOption(drand))
 	}
