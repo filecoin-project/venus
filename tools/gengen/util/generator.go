@@ -98,6 +98,13 @@ func (g *GenesisGenerator) Init(cfg *GenesisCfg) error {
 	}
 	g.vrkey = &vrKey
 
+	// Monkey patch all proof types into the specs-actors package variable
+	for _, mCfg := range cfg.Miners {
+		if _, ok := miner.SupportedProofTypes[mCfg.SealProofType]; !ok {
+			miner.SupportedProofTypes[mCfg.SealProofType] = struct{}{}
+		}
+	}
+
 	g.cfg = cfg
 	return nil
 }

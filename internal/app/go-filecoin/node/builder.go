@@ -27,6 +27,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 )
 
 // Builder is a helper to aid in the construction of a filecoin node.
@@ -120,6 +124,29 @@ func DrandConfigOption(d drand.IFace) BuilderOpt {
 func JournalConfigOption(jrl journal.Journal) BuilderOpt {
 	return func(c *Builder) error {
 		c.journal = jrl
+		return nil
+	}
+}
+
+// MonkeyPatchNetworkParamsOption returns a function that sets global vars in the
+// binary's specs actor dependency to change network parameters that live there
+func MonkeyPatchNetworkParamsOption(params *config.NetworkParamsConfig) BuilderOpt {
+	return func(c *Builder) error {
+		if params.ConsensusMinerMinPower > 0 {
+			power.ConsensusMinerMinPower = big.NewIntUnsigned(params.ConsensusMinerMinPower)
+		}
+		for _, proofType := range params.ExtraProofTypes {
+			miner.SupportedProofTypes[abi.RegisteredProof(proofType)] = struct{}{}
+		}
+		return nil
+	}
+}
+
+// MonkeyPatchProofTypeOption returns a function that sets package variable
+// SuppurtedProofTypes to include the given registered proof type
+func MonkeyPatchProofTypeOption(proofType abi.RegisteredProof) BuilderOpt {
+	return func(c *Builder) error {
+		miner.SupportedProofTypes[abi.RegisteredProof(proofType)] = struct{}{}
 		return nil
 	}
 }
