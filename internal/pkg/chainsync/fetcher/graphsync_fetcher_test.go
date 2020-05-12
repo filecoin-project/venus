@@ -818,7 +818,9 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 
 	bv := consensus.NewDefaultBlockValidator(chainClock)
 	msgV := &consensus.FakeMessageValidator{}
-	syntax := consensus.WrappedSyntaxValidator{bv, msgV}
+	syntax := consensus.WrappedSyntaxValidator{BlockSyntaxValidator: bv,
+		MessageSyntaxValidator: msgV,
+	}
 	pt := discovery.NewPeerTracker(peer.ID(""))
 	pt.Track(block.NewChainInfo(host2.ID(), host2.ID(), block.TipSetKey{}, 0))
 
@@ -911,7 +913,10 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	bv := th.NewFakeBlockValidator()
 	msgV := &consensus.FakeMessageValidator{}
-	syntax := consensus.WrappedSyntaxValidator{bv, msgV}
+	syntax := consensus.WrappedSyntaxValidator{
+		BlockSyntaxValidator:   bv,
+		MessageSyntaxValidator: msgV,
+	}
 	fc := clock.NewFake(time.Now())
 	pt := discovery.NewPeerTracker(peer.ID(""))
 	pt.Track(block.NewChainInfo(host2.ID(), host2.ID(), block.TipSetKey{}, 0))
