@@ -116,31 +116,31 @@ func TestMessageSyntaxValidator(t *testing.T) {
 	alice := addresses[0]
 	bob := addresses[1]
 
-	validator := consensus.NewDefaultMessageSyntaxValidator()
+	validator := consensus.NewMessageSyntaxValidator()
 	ctx := context.Background()
 
 	t.Run("Actor not found is not an error", func(t *testing.T) {
 		msg, err := types.NewSignedMessage(ctx, *newMessage(t, bob, alice, 0, 0, 1, 5000), signer)
 		require.NoError(t, err)
-		assert.NoError(t, validator.Validate(ctx, msg))
+		assert.NoError(t, validator.ValidateSignedMessageSyntax(ctx, msg))
 	})
 
 	t.Run("self send passes", func(t *testing.T) {
 		msg, err := types.NewSignedMessage(ctx, *newMessage(t, alice, alice, 100, 5, 1, 5000), signer)
 		require.NoError(t, err)
-		assert.NoError(t, validator.Validate(ctx, msg), "self")
+		assert.NoError(t, validator.ValidateSignedMessageSyntax(ctx, msg), "self")
 	})
 
 	t.Run("negative value fails", func(t *testing.T) {
 		msg, err := types.NewSignedMessage(ctx, *newMessage(t, alice, alice, 100, -5, 1, 5000), signer)
 		require.NoError(t, err)
-		assert.Errorf(t, validator.Validate(ctx, msg), "negative")
+		assert.Errorf(t, validator.ValidateSignedMessageSyntax(ctx, msg), "negative")
 	})
 
 	t.Run("block gas limit fails", func(t *testing.T) {
 		msg, err := types.NewSignedMessage(ctx, *newMessage(t, alice, bob, 100, 5, 1, types.BlockGasLimit+1), signer)
 		require.NoError(t, err)
-		assert.Errorf(t, validator.Validate(ctx, msg), "block limit")
+		assert.Errorf(t, validator.ValidateSignedMessageSyntax(ctx, msg), "block limit")
 	})
 
 }

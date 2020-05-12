@@ -100,7 +100,7 @@ type FakeValidator struct {
 }
 
 // Validate returns an error only if `RejectMessages` is true.
-func (v FakeValidator) Validate(ctx context.Context, msg *types.SignedMessage) error {
+func (v FakeValidator) ValidateSignedMessageSyntax(ctx context.Context, msg *types.SignedMessage) error {
 	if v.RejectMessages {
 		return errors.New("rejected for testing")
 	}
