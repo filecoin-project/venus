@@ -403,6 +403,11 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
 
+		messageCount := len(blsMessages[i]) + len(secpMessages[i])
+		if messageCount > block.BlockMessageLimit {
+			return nil, nil, errors.Errorf("Number of messages in block %s is %d which exceeds block message limit", blk.Cid(), messageCount)
+		}
+
 		msgInfo := vm.BlockMessagesInfo{
 			BLSMessages:  blsMessages[i],
 			SECPMessages: secpMessages[i],

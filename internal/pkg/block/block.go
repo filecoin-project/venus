@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
 
-// TODO: If this is gonna stay, it should move to specs-actors
+// BlockMessageLimit is the maximum number of messages in a block
 const BlockMessageLimit = 512
 
 // Block is a block in the blockchain.
