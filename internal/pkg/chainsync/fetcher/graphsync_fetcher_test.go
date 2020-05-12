@@ -63,7 +63,10 @@ func TestGraphsyncFetcher(t *testing.T) {
 	fc, chainClock := clock.NewFakeChain(1234567890, 5*time.Second, time.Now().Unix())
 	bv := consensus.NewDefaultBlockValidator(chainClock)
 	msgV := &consensus.FakeMessageValidator{}
-	syntax := consensus.WrappedSyntaxValidator{bv, msgV}
+	syntax := consensus.WrappedSyntaxValidator{
+		BlockSyntaxValidator:   bv,
+		MessageSyntaxValidator: msgV,
+	}
 
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilderWithDeps(t, address.Undef, &chain.FakeStateBuilder{}, chain.NewClockTimestamper(chainClock))
@@ -658,7 +661,10 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	chainClock := clock.NewChainClockFromClock(genTime, 5*time.Second, fc)
 	bv := consensus.NewDefaultBlockValidator(chainClock)
 	msgV := &consensus.FakeMessageValidator{}
-	syntax := consensus.WrappedSyntaxValidator{bv, msgV}
+	syntax := consensus.WrappedSyntaxValidator{
+		BlockSyntaxValidator:   bv,
+		MessageSyntaxValidator: msgV,
+	}
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilderWithDeps(t, address.Undef, &chain.FakeStateBuilder{}, chain.NewClockTimestamper(chainClock))
 	keys := types.MustGenerateKeyInfo(1, 42)

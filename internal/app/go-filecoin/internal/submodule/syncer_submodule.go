@@ -57,7 +57,10 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 	// setup validation
 	blkValid := consensus.NewDefaultBlockValidator(config.ChainClock())
 	msgValid := consensus.NewMessageSyntaxValidator()
-	syntax := consensus.WrappedSyntaxValidator{blkValid, msgValid}
+	syntax := consensus.WrappedSyntaxValidator{
+		BlockSyntaxValidator:   blkValid,
+		MessageSyntaxValidator: msgValid,
+	}
 
 	// register block validation on pubsub
 	btv := blocksub.NewBlockTopicValidator(blkValid)
