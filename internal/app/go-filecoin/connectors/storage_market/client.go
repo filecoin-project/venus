@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	spaminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -60,27 +59,17 @@ func NewStorageClientNodeConnector(
 }
 
 // AddFunds sends a message to add collateral for the given address
-func (s *StorageClientNodeConnector) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) error {
+func (s *StorageClientNodeConnector) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	clientAddr, err := s.clientAddr()
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 	return s.addFunds(ctx, clientAddr, addr, amount)
 }
 
 // EnsureFunds checks the current balance for an address and adds funds if the balance is below the given amount
-func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr, walletAddr address.Address, amount abi.TokenAmount, tok shared.TipSetToken) error {
-	balance, err := s.GetBalance(ctx, addr, tok)
-	if err != nil {
-		return err
-	}
-
-	if !balance.Available.LessThan(amount) {
-		// TODO: Transfer funds to the market actor on behalf of `addr`
-		return nil
-	}
-
-	return s.AddFunds(ctx, addr, big.Sub(amount, balance.Available))
+func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr, walletAddr address.Address, amount abi.TokenAmount, tok shared.TipSetToken) (cid.Cid, error) {
+	return s.ensureFunds(ctx, addr, walletAddr, amount, tok, s.AddFunds)
 }
 
 // ListClientDeals returns all deals published on chain for the given account

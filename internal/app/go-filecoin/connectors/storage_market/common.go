@@ -12,6 +12,7 @@ import (
 	spasm "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -54,6 +55,14 @@ func (c *connectorCommon) GetChainHead(_ context.Context) (shared.TipSetToken, a
 	return connectors.GetChainHead(c.chainStore)
 }
 
+func (c *connectorCommon) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(exitcode.ExitCode, []byte, error) error) error {
+	rcpt, err := c.wait(ctx, mcid, nil)
+	if rcpt == nil {
+		return cb(exitcode.ErrPlaceholder, []byte{}, err)
+	}
+	return cb(rcpt.ExitCode, rcpt.ReturnValue, err)
+}
+
 func (c *connectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan error) (*vm.MessageReceipt, error) {
 	err := <-pubErrCh
 	if err != nil {
@@ -71,8 +80,26 @@ func (c *connectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan 
 	return receipt, nil
 }
 
-func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address, addr address.Address, amount abi.TokenAmount) error {
-	mcid, cerr, err := c.outbox.Send(
+type fundsAdder func(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error)
+
+// ensureFunds checks the balance for an account
+// TODO: transfer funds to the  market actor on behalf of 'addr'
+func (c *connectorCommon) ensureFunds(ctx context.Context, addr, wallet address.Address, amt abi.TokenAmount, tok shared.TipSetToken, adder fundsAdder) (cid.Cid, error) {
+	balance, err := c.GetBalance(ctx, addr, tok)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	if !balance.Available.LessThan(amt) {
+		// TODO: Transfer funds to the market actor on behalf of `addr`
+		return cid.Undef, nil
+	}
+
+	return adder(ctx, addr, big.Sub(amt, balance.Available))
+}
+
+func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
+	mcid, _, err := c.outbox.Send(
 		ctx,
 		fromAddr,
 		builtin.StorageMarketActorAddr,
@@ -83,13 +110,7 @@ func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address
 		builtin.MethodsMarket.AddBalance,
 		&addr,
 	)
-	if err != nil {
-		return err
-	}
-
-	_, err = c.wait(ctx, mcid, cerr)
-
-	return err
+	return mcid, err
 }
 
 // SignBytes uses the local wallet to sign the bytes with the given address

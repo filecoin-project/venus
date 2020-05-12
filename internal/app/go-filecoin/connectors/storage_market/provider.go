@@ -59,33 +59,23 @@ func NewStorageProviderNodeConnector(ma address.Address,
 }
 
 // AddFunds sends a message to add storage market collateral for the given address
-func (s *StorageProviderNodeConnector) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) error {
+func (s *StorageProviderNodeConnector) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	tok, err := encoding.Encode(s.chainStore.Head())
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
 	workerAddr, err := s.GetMinerWorkerAddress(ctx, s.minerAddr, tok)
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
 	return s.addFunds(ctx, workerAddr, addr, amount)
 }
 
-// EnsureFunds checks the balance for an account and adds funds to the given amount if the balance is insufficient
-func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr, walletAddr address.Address, amount abi.TokenAmount, tok shared.TipSetToken) error {
-	balance, err := s.GetBalance(ctx, addr, tok)
-	if err != nil {
-		return err
-	}
-
-	if !balance.Available.LessThan(amount) {
-		// TODO: Transfer funds to the market actor on behalf of `addr`
-		return nil
-	}
-
-	return s.AddFunds(ctx, addr, big.Sub(amount, balance.Available))
+// EnsureFunds is a light wrapper for connectorCommon ensureFunds
+func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr, walletAddr address.Address, amount abi.TokenAmount, tok shared.TipSetToken) (cid.Cid, error) {
+	return s.ensureFunds(ctx, addr, walletAddr, amount, tok, s.AddFunds)
 }
 
 // PublishDeals publishes storage deals on chain
