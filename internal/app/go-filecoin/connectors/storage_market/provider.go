@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	spaminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -79,20 +78,20 @@ func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr, wa
 }
 
 // PublishDeals publishes storage deals on chain
-func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (abi.DealID, cid.Cid, error) {
+func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (cid.Cid, error) {
 	params := market.PublishStorageDealsParams{Deals: []market.ClientDealProposal{deal.ClientDealProposal}}
 
 	tok, err := encoding.Encode(s.chainStore.Head())
 	if err != nil {
-		return 0, cid.Undef, err
+		return cid.Undef, err
 	}
 
 	workerAddr, err := s.GetMinerWorkerAddress(ctx, s.minerAddr, tok)
 	if err != nil {
-		return 0, cid.Undef, err
+		return cid.Undef, err
 	}
 
-	mcid, cerr, err := s.outbox.Send(
+	mcid, _, err := s.outbox.Send(
 		ctx,
 		workerAddr,
 		builtin.StorageMarketActorAddr,
@@ -103,26 +102,12 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 		builtin.MethodsMarket.PublishStorageDeals,
 		&params,
 	)
+
 	if err != nil {
-		return 0, cid.Undef, err
+		return cid.Undef, err
 	}
 
-	receipt, err := s.wait(ctx, mcid, cerr)
-	if err != nil {
-		return 0, cid.Undef, err
-	}
-
-	var ret market.PublishStorageDealsReturn
-	err = encoding.Decode(receipt.ReturnValue, &ret)
-	if err != nil {
-		return 0, cid.Undef, err
-	}
-
-	if len(ret.IDs) < 1 {
-		return 0, cid.Undef, xerrors.New("Successful call to publish storage deals did not return deal ids")
-	}
-
-	return ret.IDs[0], mcid, err
+	return mcid, err
 }
 
 // ListProviderDeals lists all deals for the given provider

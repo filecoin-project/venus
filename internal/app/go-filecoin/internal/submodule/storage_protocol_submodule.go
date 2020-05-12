@@ -3,7 +3,6 @@ package submodule
 import (
 	"context"
 	"os"
-	"reflect"
 
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
@@ -58,7 +57,7 @@ func NewStorageProtocolSubmodule(
 	cnode := storagemarketconnector.NewStorageClientNodeConnector(cborutil.NewIpldStore(bs), c.State, mw, s, m.Outbox, clientAddr, stateViewer)
 	dtStoredCounter := storedcounter.New(ds, datastore.NewKey("datatransfer/client/counter"))
 	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync, dtStoredCounter)
-	err := dt.RegisterVoucherType(reflect.TypeOf(&smvalid.StorageDataTransferVoucher{}), smvalid.NewClientRequestValidator(statestore.New(ds)))
+	err := dt.RegisterVoucherType(&smvalid.StorageDataTransferVoucher{}, smvalid.NewClientRequestValidator(statestore.New(ds)))
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +110,7 @@ func (sm *StorageProtocolSubmodule) AddStorageProvider(
 
 	dtStoredCounter := storedcounter.New(ds, datastore.NewKey("datatransfer/provider/counter"))
 	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync, dtStoredCounter)
-	err = dt.RegisterVoucherType(reflect.TypeOf(&smvalid.StorageDataTransferVoucher{}), smvalid.NewProviderRequestValidator(statestore.New(ds)))
+	err = dt.RegisterVoucherType(&smvalid.StorageDataTransferVoucher{}, smvalid.NewProviderRequestValidator(statestore.New(ds)))
 	if err != nil {
 		return err
 	}
