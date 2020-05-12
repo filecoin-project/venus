@@ -53,8 +53,11 @@ func (w *DefaultWorker) Generate(
 	// These messages will be processed, and those that fail excluded from the block.
 	pending := w.messageSource.Pending()
 	mq := NewMessageQueue(pending)
-	candidateMsgs := orderMessageCandidates(mq.Drain())
+	candidateMsgs := orderMessageCandidates(mq.Drain(block.BlockMessageLimit))
 	candidateMsgs = w.filterPenalizableMessages(ctx, candidateMsgs)
+	if len(candidateMsgs) > block.BlockMessageLimit {
+		return NewOutputErr(errors.Errorf("too many messages returned from mq.Drain: %d", len(candidateMsgs)))
+	}
 
 	var blsAccepted []*types.SignedMessage
 	var secpAccepted []*types.SignedMessage

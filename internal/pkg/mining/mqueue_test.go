@@ -85,7 +85,7 @@ func TestMessageQueueOrder(t *testing.T) {
 		}
 		q := NewMessageQueue(msgs)
 		expected := []*types.SignedMessage{msgs[1], msgs[0], msgs[2]}
-		actual := q.Drain()
+		actual := q.Drain(-1)
 		assert.Equal(t, expected, actual)
 		assert.True(t, q.Empty())
 	})
@@ -99,8 +99,21 @@ func TestMessageQueueOrder(t *testing.T) {
 		expected := []*types.SignedMessage{msgs[2], msgs[0], msgs[1]}
 
 		q := NewMessageQueue(msgs)
-		actual := q.Drain()
+		actual := q.Drain(-1)
 		assert.Equal(t, expected, actual)
 		assert.True(t, q.Empty())
+	})
+
+	t.Run("only take as many as specified", func(t *testing.T) {
+		msgs := []*types.SignedMessage{
+			sign(a0, to, 0, 0, 2),
+			sign(a1, to, 0, 0, 3),
+			sign(a2, to, 0, 0, 1),
+		}
+		q := NewMessageQueue(msgs)
+		expected := []*types.SignedMessage{msgs[1]}
+		actual := q.Drain(1)
+		assert.Equal(t, expected, actual)
+		assert.False(t, q.Empty())
 	})
 }

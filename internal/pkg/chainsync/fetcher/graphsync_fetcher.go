@@ -445,6 +445,7 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 
 			return nil
 		})
+
 	// TODO #3312 we should validate these messages in the same way we validate blocks
 	if err != nil {
 		return block.UndefTipSet, nil, err

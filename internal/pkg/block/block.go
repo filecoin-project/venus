@@ -19,6 +19,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
 
+// BlockMessageLimit is the maximum number of messages in a block
+const BlockMessageLimit = 512
+
 // Block is a block in the blockchain.
 type Block struct {
 	// control field for encoding struct as an array
