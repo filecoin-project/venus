@@ -64,9 +64,10 @@ func TestMessagePoolValidate(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("message pool rejects messages after it reaches its limit", func(t *testing.T) {
-		// pull the default size from the default config value
+		// alter the config to have a max size that can be quickly tested
 		mpoolCfg := config.NewDefaultConfig().Mpool
-		maxMessagePoolSize := mpoolCfg.MaxPoolSize
+		maxMessagePoolSize := uint(100)
+		mpoolCfg.MaxPoolSize = maxMessagePoolSize
 		ctx := context.Background()
 		pool := message.NewPool(mpoolCfg, th.NewMockMessagePoolValidator())
 
