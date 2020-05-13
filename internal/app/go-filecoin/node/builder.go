@@ -5,6 +5,10 @@ import (
 	"time"
 
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p"
@@ -120,6 +124,35 @@ func DrandConfigOption(d drand.IFace) BuilderOpt {
 func JournalConfigOption(jrl journal.Journal) BuilderOpt {
 	return func(c *Builder) error {
 		c.journal = jrl
+		return nil
+	}
+}
+
+// MonkeyPatchNetworkParamsOption returns a function that sets global vars in the
+// binary's specs actor dependency to change network parameters that live there
+func MonkeyPatchNetworkParamsOption(params *config.NetworkParamsConfig) BuilderOpt {
+	return func(c *Builder) error {
+		if params.ConsensusMinerMinPower > 0 {
+			power.ConsensusMinerMinPower = big.NewIntUnsigned(params.ConsensusMinerMinPower)
+		}
+		if len(params.ReplaceProofTypes) > 0 {
+			newSupportedTypes := make(map[abi.RegisteredProof]struct{})
+			for _, proofType := range params.ReplaceProofTypes {
+				newSupportedTypes[abi.RegisteredProof(proofType)] = struct{}{}
+			}
+			// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
+			miner.SupportedProofTypes = newSupportedTypes
+		}
+		return nil
+	}
+}
+
+// MonkeyPatchSetProofTypeOption returns a function that sets package variable
+// SuppurtedProofTypes to be only the given registered proof type
+func MonkeyPatchSetProofTypeOption(proofType abi.RegisteredProof) BuilderOpt {
+	return func(c *Builder) error {
+		// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
+		miner.SupportedProofTypes = map[abi.RegisteredProof]struct{}{proofType: {}}
 		return nil
 	}
 }

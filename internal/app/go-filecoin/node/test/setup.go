@@ -54,6 +54,7 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 		WithBuilderOpt(node.PoStGeneratorOption(&consensus.TestElectionPoster{})).
 		WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
 		WithBuilderOpt(node.DrandConfigOption(drand.NewFake(time.Unix(genTime, 0)))).
+		WithBuilderOpt(node.MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
 		WithConfig(func(c *config.Config) {
 			c.SectorBase.PreSealedSectorsDirPath = presealPath
 			c.Mining.MinerAddress = minerAddress

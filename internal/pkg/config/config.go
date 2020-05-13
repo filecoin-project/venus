@@ -247,11 +247,13 @@ func newDefaultMessagePoolConfig() *MessagePoolConfig {
 
 type NetworkParamsConfig struct {
 	ConsensusMinerMinPower uint64 // uint64 goes up to 18 EiB
+	ReplaceProofTypes      []int64
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 	return &NetworkParamsConfig{
-		ConsensusMinerMinPower: 0, // 0 means don't override the value
+		ConsensusMinerMinPower: 0,         // 0 means don't override the value
+		ReplaceProofTypes:      []int64{}, // 0 value means don't override
 	}
 }
 
