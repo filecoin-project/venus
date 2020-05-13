@@ -156,19 +156,18 @@ func TestMineOneEpoch10Null(t *testing.T) {
 	assert.Equal(t, chainClock.EpochAtTime(time.Unix(int64(blk.Timestamp), 0)), blk.Height)
 }
 
+const epochDuration = 1 * time.Second
+
 // Mining loop unit tests
 
 func TestWorkerCalled(t *testing.T) {
 	tf.UnitTest(t)
 	ts := testHead(t)
 
-	called := false
-	var wg sync.WaitGroup
-	wg.Add(1)
-	w := NewTestWorker(t, func(_ context.Context, workHead block.TipSet, _ uint64, _ chan<- Output) bool {
-		called = true
+	called := make(chan struct{}, 1)
+	w := NewTestWorker(t, func(_ context.Context, workHead block.TipSet, _ uint64, out chan<- Output) bool {
 		assert.True(t, workHead.Equals(ts))
-		wg.Done()
+		called <- struct{}{}
 		return true
 	})
 
@@ -181,8 +180,7 @@ func TestWorkerCalled(t *testing.T) {
 	fakeClock.BlockUntil(1)
 	fakeClock.Advance(epochDuration)
 
-	wg.Wait()
-	assert.True(t, called)
+	<-called
 }
 
 func TestCorrectNullBlocksGivenEpoch(t *testing.T) {
@@ -200,11 +198,10 @@ func TestCorrectNullBlocksGivenEpoch(t *testing.T) {
 		fakeClock.Advance(epochDuration)
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	called := make(chan struct{}, 20)
 	w := NewTestWorker(t, func(_ context.Context, _ block.TipSet, nullCount uint64, _ chan<- Output) bool {
 		assert.Equal(t, uint64(h+19), nullCount)
-		wg.Done()
+		called <- struct{}{}
 		return true
 	})
 
@@ -214,7 +211,7 @@ func TestCorrectNullBlocksGivenEpoch(t *testing.T) {
 	// Move forward 1 epoch for a total of 21
 	fakeClock.Advance(epochDuration)
 
-	wg.Wait()
+	<-called
 }
 
 func TestWaitsForEpochStart(t *testing.T) {
@@ -268,7 +265,6 @@ func TestCancelsLateWork(t *testing.T) {
 
 	fakeClock, chainClock := clock.NewFakeChain(1234567890, epochDuration, 1234567890)
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -287,8 +283,7 @@ func TestCancelsLateWork(t *testing.T) {
 	scheduler.Start(ctx)
 	fakeClock.BlockUntil(1)
 	fakeClock.Advance(epochDuration) // schedule first work item
-	fakeClock.BlockUntil(1)
-	fakeClock.Advance(epochDuration) // enter next epoch, should cancel first work item
+	cancel()
 
 	wg.Wait()
 }
