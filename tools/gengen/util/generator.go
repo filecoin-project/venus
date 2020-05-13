@@ -3,7 +3,6 @@ package gengen
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"io"
 	mrand "math/rand"
 
@@ -31,6 +30,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
@@ -97,6 +97,14 @@ func (g *GenesisGenerator) Init(cfg *GenesisCfg) error {
 		return err
 	}
 	g.vrkey = &vrKey
+
+	// Monkey patch all proof types into the specs-actors package variable
+	newSupportedTypes := make(map[abi.RegisteredProof]struct{})
+	for _, mCfg := range cfg.Miners {
+		newSupportedTypes[mCfg.SealProofType] = struct{}{}
+	}
+	// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
+	miner.SupportedProofTypes = newSupportedTypes
 
 	g.cfg = cfg
 	return nil
@@ -175,7 +183,7 @@ func (g *GenesisGenerator) setupBuiltInActors(ctx context.Context) error {
 	}
 
 	_, err = g.createSingletonActor(ctx, builtin.RewardActorAddr, builtin.RewardActorCodeID, rewardActorInitialBalance, func() (interface{}, error) {
-		return reward.ConstructState(emptyMap), nil
+		return reward.ConstructState(), nil
 	})
 	if err != nil {
 		return err
@@ -321,7 +329,7 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 	// The actual release will be initially faster, with exponential decay.
 	// Replace this code with calls to the reward actor when it's fixed.
 	// See https://github.com/filecoin-project/specs-actors/issues/317
-	sixYearEpochs := 6 * 365 * 86400 / miner.EpochDurationSeconds
+	sixYearEpochs := 6 * 365 * 86400 / builtin.EpochDurationSeconds
 	initialBlockReward := big.Div(rewardActorInitialBalance, big.NewInt(int64(sixYearEpochs)))
 
 	// First iterate all miners and sectors to compute sector info, and accumulate the total network power that

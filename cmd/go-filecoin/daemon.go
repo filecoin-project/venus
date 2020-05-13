@@ -10,8 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
@@ -101,8 +99,8 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	}
 	opts = append(opts, node.JournalConfigOption(journal))
 
-	// Monkey-patch network parameters
-	monkeyPatchNetworkParameters(config.NetworkParams)
+	// Monkey-patch network parameters option will set package variables during node build
+	opts = append(opts, node.MonkeyPatchNetworkParamsOption(config.NetworkParams))
 
 	// Instantiate the node.
 	fcn, err := node.New(req.Context, opts...)
@@ -153,12 +151,6 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 		return nil, err
 	}
 	return repo.OpenFSRepo(repoDir, repo.Version)
-}
-
-func monkeyPatchNetworkParameters(params *config.NetworkParamsConfig) {
-	if params.ConsensusMinerMinPower > 0 {
-		power.ConsensusMinerMinPower = big.NewIntUnsigned(params.ConsensusMinerMinPower)
-	}
 }
 
 // RunAPIAndWait starts an API server and waits for it to finish.

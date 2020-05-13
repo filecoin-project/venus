@@ -14,6 +14,7 @@ import (
 
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -43,6 +44,7 @@ func TestMessagePropagation(t *testing.T) {
 	builder1 := test.NewNodeBuilder(t)
 	builder1.WithGenesisInit(cs.GenesisInitFunc)
 	builder1.WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{}))
+	builder1.WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof))
 
 	sender := builder1.Build(ctx)
 	senderAddress := cs.GiveKey(t, sender, 0)
@@ -51,6 +53,7 @@ func TestMessagePropagation(t *testing.T) {
 	builder2 := test.NewNodeBuilder(t)
 	builder2.WithGenesisInit(cs.GenesisInitFunc)
 	builder2.WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{}))
+	builder2.WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof))
 	receiverCount := 2
 	receivers := builder2.BuildMany(ctx, receiverCount)
 
