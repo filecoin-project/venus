@@ -721,10 +721,6 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		initopts = append(initopts, fmt.Sprintf("--with-miner=%s", td.withMiner))
 	}
 
-	if td.defaultAddress != address.Undef {
-		initopts = append(initopts, fmt.Sprintf("--default-address=%s", td.defaultAddress))
-	}
-
 	if td.autoSealInterval != "" {
 		initopts = append(initopts, fmt.Sprintf("--auto-seal-interval-seconds=%s", td.autoSealInterval))
 	}

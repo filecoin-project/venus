@@ -42,7 +42,6 @@ var initCmd = &cmds.Command{
 		cmdkit.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
 		cmdkit.StringOption(WithMiner, "when set, creates a custom genesis block  a pre generated miner account, requires running the daemon using dev mode (--dev)"),
 		cmdkit.StringOption(OptionSectorDir, "path of directory into which staged and sealed sectors will be written"),
-		cmdkit.StringOption(DefaultAddress, "when set, sets the daemons's default address to the provided address"),
 		cmdkit.StringOption(MinerActorAddress, "when set, sets the daemons's miner actor address to the provided address"),
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
 		cmdkit.BoolOption(DevnetStaging, "when set, populates config bootstrap addrs with the dns multiaddrs of the staging devnet and other staging devnet specific bootstrap parameters."),
@@ -123,12 +122,6 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 
 	if autoSealIntervalSeconds, ok := options[AutoSealIntervalSeconds]; ok {
 		cfg.Mining.AutoSealIntervalSeconds = autoSealIntervalSeconds.(uint)
-	}
-
-	if da, ok := options[DefaultAddress].(string); ok {
-		if cfg.Wallet.DefaultAddress, err = address.NewFromString(da); err != nil {
-			return err
-		}
 	}
 
 	if ma, ok := options[MinerActorAddress].(string); ok {
@@ -251,7 +244,11 @@ func getNodeInitOpts(peerKeyFile string, walletKeyFile string) ([]node.InitOpt, 
 			return nil, err
 		}
 
-		for _, k := range wir.KeyInfo {
+		if len(wir.KeyInfo) > 0 {
+			initOpts = append(initOpts, node.DefaultKeyOpt(wir.KeyInfo[0]))
+		}
+
+		for _, k := range wir.KeyInfo[1:] {
 			initOpts = append(initOpts, node.ImportKeyOpt(k))
 		}
 	}
