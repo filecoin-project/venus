@@ -5,6 +5,10 @@ import (
 	"time"
 
 	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p"
@@ -27,10 +31,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 )
 
 // Builder is a helper to aid in the construction of a filecoin node.
@@ -136,20 +136,23 @@ func MonkeyPatchNetworkParamsOption(params *config.NetworkParamsConfig) BuilderO
 			power.ConsensusMinerMinPower = big.NewIntUnsigned(params.ConsensusMinerMinPower)
 		}
 		if len(params.ReplaceProofTypes) > 0 {
-			miner.SupportedProofTypes = make(map[abi.RegisteredProof]struct{})
+			newSupportedTypes := make(map[abi.RegisteredProof]struct{})
 			for _, proofType := range params.ReplaceProofTypes {
-				miner.SupportedProofTypes[abi.RegisteredProof(proofType)] = struct{}{}
+				newSupportedTypes[abi.RegisteredProof(proofType)] = struct{}{}
 			}
+			// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
+			miner.SupportedProofTypes = newSupportedTypes
 		}
 		return nil
 	}
 }
 
-// MonkeyPatchAddProofTypeOption returns a function that sets package variable
-// SuppurtedProofTypes to include the given registered proof type
-func MonkeyPatchAddProofTypeOption(proofType abi.RegisteredProof) BuilderOpt {
+// MonkeyPatchSetProofTypeOption returns a function that sets package variable
+// SuppurtedProofTypes to be only the given registered proof type
+func MonkeyPatchSetProofTypeOption(proofType abi.RegisteredProof) BuilderOpt {
 	return func(c *Builder) error {
-		miner.SupportedProofTypes[proofType] = struct{}{}
+		// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
+		miner.SupportedProofTypes = map[abi.RegisteredProof]struct{}{proofType: {}}
 		return nil
 	}
 }

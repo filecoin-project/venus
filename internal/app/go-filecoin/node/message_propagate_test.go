@@ -44,7 +44,7 @@ func TestMessagePropagation(t *testing.T) {
 	builder1 := test.NewNodeBuilder(t)
 	builder1.WithGenesisInit(cs.GenesisInitFunc)
 	builder1.WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{}))
-	builder1.WithBuilderOpt(MonkeyPatchAddProofTypeOption(constants.DevRegisteredSealProof))
+	builder1.WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof))
 
 	sender := builder1.Build(ctx)
 	senderAddress := cs.GiveKey(t, sender, 0)
@@ -53,7 +53,7 @@ func TestMessagePropagation(t *testing.T) {
 	builder2 := test.NewNodeBuilder(t)
 	builder2.WithGenesisInit(cs.GenesisInitFunc)
 	builder2.WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{}))
-	builder2.WithBuilderOpt(MonkeyPatchAddProofTypeOption(constants.DevRegisteredSealProof))
+	builder2.WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof))
 	receiverCount := 2
 	receivers := builder2.BuildMany(ctx, receiverCount)
 

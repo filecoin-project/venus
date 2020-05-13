@@ -99,11 +99,12 @@ func (g *GenesisGenerator) Init(cfg *GenesisCfg) error {
 	g.vrkey = &vrKey
 
 	// Monkey patch all proof types into the specs-actors package variable
+	newSupportedTypes := make(map[abi.RegisteredProof]struct{})
 	for _, mCfg := range cfg.Miners {
-		if _, ok := miner.SupportedProofTypes[mCfg.SealProofType]; !ok {
-			miner.SupportedProofTypes[mCfg.SealProofType] = struct{}{}
-		}
+		newSupportedTypes[mCfg.SealProofType] = struct{}{}
 	}
+	// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
+	miner.SupportedProofTypes = newSupportedTypes
 
 	g.cfg = cfg
 	return nil
