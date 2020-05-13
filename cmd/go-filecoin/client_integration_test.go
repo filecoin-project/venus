@@ -61,16 +61,14 @@ func TestProposeDeal(t *testing.T) {
 
 	// wait for deal to process
 	var dealStatus storagemarket.ClientDeal
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 120; i++ {
 		clientAPI.RunMarshaledJSON(ctx, &dealStatus, "client", "query-storage-deal", result.ProposalCid.String())
 		switch dealStatus.State {
-		case storagemarket.StorageDealProposalAccepted,
-			storagemarket.StorageDealStaged,
-			storagemarket.StorageDealSealing,
-			storagemarket.StorageDealActive:
+		case storagemarket.StorageDealActive:
 			// Deal accepted. Test passed.
 			return
 		default:
+			t.Logf("Current deal state: %s", storagemarket.DealStates[dealStatus.State])
 			time.Sleep(1 * time.Second) // in progress, wait and continue
 		}
 	}
