@@ -58,51 +58,50 @@ func NewStorageProviderNodeConnector(ma address.Address,
 	}
 }
 
-// AddFunds sends a message to add storage market collateral for the given address
-func (s *StorageProviderNodeConnector) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) error {
+// AddFunds adds storage market funds for a storage provider
+func (s *StorageProviderNodeConnector) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	tok, err := encoding.Encode(s.chainStore.Head())
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
 	workerAddr, err := s.GetMinerWorkerAddress(ctx, s.minerAddr, tok)
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
 	return s.addFunds(ctx, workerAddr, addr, amount)
 }
 
-// EnsureFunds checks the balance for an account and adds funds to the given amount if the balance is insufficient
-func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr, walletAddr address.Address, amount abi.TokenAmount, tok shared.TipSetToken) error {
+// EnsureFunds compares the passed amount to the available balance for an address, and will add funds if necessary
+func (s *StorageProviderNodeConnector) EnsureFunds(ctx context.Context, addr, walletAddr address.Address, amount abi.TokenAmount, tok shared.TipSetToken) (cid.Cid, error) {
 	balance, err := s.GetBalance(ctx, addr, tok)
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
-	if !balance.Available.LessThan(amount) {
-		// TODO: Transfer funds to the market actor on behalf of `addr`
-		return nil
+	if balance.Available.LessThan(amount) {
+		return s.AddFunds(ctx, addr, big.Sub(amount, balance.Available))
 	}
 
-	return s.AddFunds(ctx, addr, big.Sub(amount, balance.Available))
+	return cid.Undef, err
 }
 
 // PublishDeals publishes storage deals on chain
-func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (abi.DealID, cid.Cid, error) {
+func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (cid.Cid, error) {
 	params := market.PublishStorageDealsParams{Deals: []market.ClientDealProposal{deal.ClientDealProposal}}
 
 	tok, err := encoding.Encode(s.chainStore.Head())
 	if err != nil {
-		return 0, cid.Undef, err
+		return cid.Undef, err
 	}
 
 	workerAddr, err := s.GetMinerWorkerAddress(ctx, s.minerAddr, tok)
 	if err != nil {
-		return 0, cid.Undef, err
+		return cid.Undef, err
 	}
 
-	mcid, cerr, err := s.outbox.Send(
+	mcid, _, err := s.outbox.Send(
 		ctx,
 		workerAddr,
 		builtin.StorageMarketActorAddr,
@@ -113,26 +112,12 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 		builtin.MethodsMarket.PublishStorageDeals,
 		&params,
 	)
+
 	if err != nil {
-		return 0, cid.Undef, err
+		return cid.Undef, err
 	}
 
-	receipt, err := s.wait(ctx, mcid, cerr)
-	if err != nil {
-		return 0, cid.Undef, err
-	}
-
-	var ret market.PublishStorageDealsReturn
-	err = encoding.Decode(receipt.ReturnValue, &ret)
-	if err != nil {
-		return 0, cid.Undef, err
-	}
-
-	if len(ret.IDs) < 1 {
-		return 0, cid.Undef, xerrors.New("Successful call to publish storage deals did not return deal ids")
-	}
-
-	return ret.IDs[0], mcid, err
+	return mcid, err
 }
 
 // ListProviderDeals lists all deals for the given provider

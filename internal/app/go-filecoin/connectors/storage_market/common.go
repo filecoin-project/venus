@@ -10,8 +10,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	spasm "github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -54,25 +54,14 @@ func (c *connectorCommon) GetChainHead(_ context.Context) (shared.TipSetToken, a
 	return connectors.GetChainHead(c.chainStore)
 }
 
-func (c *connectorCommon) wait(ctx context.Context, mcid cid.Cid, pubErrCh chan error) (*vm.MessageReceipt, error) {
-	err := <-pubErrCh
-	if err != nil {
-		return nil, err
-	}
-
-	var receipt *vm.MessageReceipt
-	err = c.waiter.Wait(ctx, mcid, msg.DefaultMessageWaitLookback, func(b *block.Block, message *types.SignedMessage, r *vm.MessageReceipt) error {
-		receipt = r
-		return nil
+func (c *connectorCommon) WaitForMessage(ctx context.Context, mcid cid.Cid, onCompletion func(exitcode.ExitCode, []byte, error) error) error {
+	return c.waiter.Wait(ctx, mcid, msg.DefaultMessageWaitLookback, func(b *block.Block, message *types.SignedMessage, r *vm.MessageReceipt) error {
+		return onCompletion(r.ExitCode, r.ReturnValue, nil)
 	})
-	if err != nil {
-		return nil, err
-	}
-	return receipt, nil
 }
 
-func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address, addr address.Address, amount abi.TokenAmount) error {
-	mcid, cerr, err := c.outbox.Send(
+func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
+	mcid, _, err := c.outbox.Send(
 		ctx,
 		fromAddr,
 		builtin.StorageMarketActorAddr,
@@ -83,13 +72,7 @@ func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address
 		builtin.MethodsMarket.AddBalance,
 		&addr,
 	)
-	if err != nil {
-		return err
-	}
-
-	_, err = c.wait(ctx, mcid, cerr)
-
-	return err
+	return mcid, err
 }
 
 // SignBytes uses the local wallet to sign the bytes with the given address
@@ -151,36 +134,50 @@ func (c *connectorCommon) GetMinerWorkerAddress(ctx context.Context, miner addre
 }
 
 func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
-	// TODO: is this provider address the miner address or the miner worker address?
+	view, err := c.chainStore.StateView(c.chainStore.Head())
+	if err != nil {
+		cb(err)
+		return err
+	}
 
-	pred := func(msg *types.SignedMessage, msgCid cid.Cid) bool {
-		m := msg.Message
-		if m.Method != builtin.MethodsMiner.PreCommitSector {
-			return false
-		}
+	resolvedProvider, err := view.InitResolveAddress(ctx, provider)
+	if err != nil {
+		cb(err)
+		return err
+	}
 
-		if m.From != provider {
-			return false
-		}
-
-		var params miner.SectorPreCommitInfo
-		err := encoding.Decode(m.Params, &params)
+	err = c.waiter.WaitPredicate(ctx, msg.DefaultMessageWaitLookback, func(msg *types.SignedMessage, msgCid cid.Cid) bool {
+		resolvedTo, err := view.InitResolveAddress(ctx, msg.Message.To)
 		if err != nil {
 			return false
 		}
 
-		for _, id := range params.DealIDs {
-			if id == dealID {
-				return true
-			}
+		if resolvedTo != resolvedProvider {
+			return false
 		}
-		return false
-	}
 
-	return c.waiter.WaitPredicate(ctx, msg.DefaultMessageWaitLookback, pred, func(_ *block.Block, msg *types.SignedMessage, _ *vm.MessageReceipt) error {
-		cb(nil)
+		if msg.Message.Method != builtin.MethodsMiner.ProveCommitSector {
+			return false
+		}
+
+		// that's enough for us to check chain state
+		view, err = c.chainStore.StateView(c.chainStore.Head())
+		if err != nil {
+			return false
+		}
+
+		_, found, err := view.MarketDealState(ctx, dealID)
+		if err != nil {
+			return false
+		}
+
+		return found
+	}, func(b *block.Block, signedMessage *types.SignedMessage, receipt *vm.MessageReceipt) error {
 		return nil
 	})
+
+	cb(err)
+	return err
 }
 
 func (c *connectorCommon) getBalance(ctx context.Context, root cid.Cid, addr address.Address) (abi.TokenAmount, error) {
