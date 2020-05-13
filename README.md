@@ -176,10 +176,10 @@ Note that updating the `rust-fil-proofs` submodule in this way will require a co
 
 ## Usage
 
-The [Getting Started](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started) wiki page contains
+The [Getting Started](https://go.filecoin.io/go-filecoin-tutorial/Getting-Started.html) tutorial contains
 a simple sequence to get your Filecoin node up and running and connected to a devnet.
 
-The [Commands](https://github.com/filecoin-project/go-filecoin/wiki/Commands) page contains further detail about
+The [Commands](https://go.filecoin.io/go-filecoin-tutorial/Commands.html) page contains further detail about
 specific commands and environment variables, as well as scripts for for setting up a miner and making a deal.
 
 To see a full list of commands, run `go-filecoin --help`.
@@ -199,7 +199,7 @@ Check out the [Go-Filecoin code overview](CODEWALK.md) for a brief tour of the c
 ## Community
 
 Here are a few places to get help and connect with the Filecoin community:
-- [Documentation Wiki](https://github.com/filecoin-project/go-filecoin/wiki) — for tutorials, troubleshooting, and FAQs
+- [go-filecoin Documentation](http://go.filecoin.io/) — for tutorials, troubleshooting, and FAQs
 - The `#fil-dev` channel on [Filecoin Project Slack](https://filecoinproject.slack.com/messages/CEHHJNJS3/) or [Matrix/Riot](https://riot.im/app/#/room/#fil-dev:matrix.org) - for live help and some dev discussions
 - [Filecoin Community Forum](https://discuss.filecoin.io) - for talking about design decisions, use cases, implementation advice, and longer-running conversations
 - [GitHub issues](https://github.com/filecoin-project/go-filecoin/issues) - for now, use only to report bugs, and view or contribute to ongoing development. PRs welcome! Please see [our contributing guidelines](CONTRIBUTING.md).
