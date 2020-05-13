@@ -24,6 +24,7 @@ import (
 	pch "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	paychtest "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel/testing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -34,12 +35,13 @@ import (
 func TestNewRetrievalProviderNodeConnector(t *testing.T) {
 	tf.UnitTest(t)
 	rmnet := gfmtut.NewTestRetrievalMarketNetwork(gfmtut.TestNetworkParams{})
-	pm := piecemanager.NewFiniteStateMachineBackEnd(nil, nil)
+	ma := specst.NewIDAddr(t, 100)
+	pm := piecemanager.NewFiniteStateMachineBackEnd(ma, constants.DevSectorSize, nil, nil, nil)
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 
 	pchMgr, _ := makePaychMgr(context.Background(), t,
 		specst.NewIDAddr(t, 99),
-		specst.NewIDAddr(t, 100),
+		ma,
 		specst.NewActorAddr(t, "foobar"))
 	rpc := NewRetrievalProviderConnector(rmnet, &pm, bs, pchMgr, nil)
 	assert.NotZero(t, rpc)
@@ -107,7 +109,8 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 	ctx := context.Background()
 
 	rmnet := gfmtut.NewTestRetrievalMarketNetwork(gfmtut.TestNetworkParams{})
-	pm := piecemanager.NewFiniteStateMachineBackEnd(nil, nil)
+	ma := specst.NewIDAddr(t, 100)
+	pm := piecemanager.NewFiniteStateMachineBackEnd(ma, constants.DevSectorSize, nil, nil, nil)
 
 	bs := blockstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	pchan := specst.NewIDAddr(t, 100)

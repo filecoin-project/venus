@@ -4,10 +4,12 @@ import (
 	"context"
 	"io"
 
-	"github.com/pkg/errors"
-
+	"github.com/filecoin-project/go-address"
+	sectorstorage "github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	fsm "github.com/filecoin-project/storage-fsm"
+	"github.com/pkg/errors"
 )
 
 var _ PieceManager = new(FiniteStateMachineBackEnd)
@@ -15,12 +17,18 @@ var _ PieceManager = new(FiniteStateMachineBackEnd)
 type FiniteStateMachineBackEnd struct {
 	idc fsm.SectorIDCounter
 	fsm *fsm.Sealing
+	mgr sectorstorage.SectorManager
+	mad address.Address
+	ssz abi.SectorSize
 }
 
-func NewFiniteStateMachineBackEnd(fsm *fsm.Sealing, idc fsm.SectorIDCounter) FiniteStateMachineBackEnd {
+func NewFiniteStateMachineBackEnd(mad address.Address, ssz abi.SectorSize, fsm *fsm.Sealing, mgr sectorstorage.SectorManager, idc fsm.SectorIDCounter) FiniteStateMachineBackEnd {
 	return FiniteStateMachineBackEnd{
-		idc: idc,
 		fsm: fsm,
+		idc: idc,
+		mad: mad,
+		mgr: mgr,
+		ssz: ssz,
 	}
 }
 
@@ -43,8 +51,27 @@ func (f *FiniteStateMachineBackEnd) PledgeSector(ctx context.Context) error {
 	return f.fsm.PledgeSector()
 }
 
-func (f *FiniteStateMachineBackEnd) UnsealSector(ctx context.Context, sectorID uint64) (io.ReadCloser, error) {
-	panic("implement me")
+func (f *FiniteStateMachineBackEnd) UnsealSector(ctx context.Context, sectorNumber uint64) (io.ReadCloser, error) {
+	sn := abi.SectorNumber(sectorNumber)
+
+	info, err := f.fsm.GetSectorInfo(sn)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get sector info from FSM for sector unseal")
+	}
+
+	minerID, err := address.IDFromAddress(f.mad)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to convert miner address to ID for sector unseal")
+	}
+
+	sectorID := abi.SectorID{
+		Miner:  abi.ActorID(minerID),
+		Number: sn,
+	}
+
+	sectorSizeUnpadded := abi.PaddedPieceSize(f.ssz).Unpadded()
+
+	return f.mgr.ReadPieceFromSealedSector(ctx, sectorID, ffiwrapper.UnpaddedByteIndex(0), sectorSizeUnpadded, info.TicketValue, *info.CommD)
 }
 
 func (f *FiniteStateMachineBackEnd) LocatePieceForDealWithinSector(ctx context.Context, dealID uint64) (sectorID uint64, offset uint64, length uint64, err error) {

@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/poster"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 )
 
@@ -77,7 +78,7 @@ func NewStorageMiningSubmodule(
 
 	ncn := fsmnodeconnector.New(minerAddr, mw, c.ChainReader, c.ActorState, m.Outbox, c.State)
 
-	ppStart, err := getMinerProvingPeriod(c, minerAddr, stateViewer)
+	ppStart, err := getMinerProvingPeriod(c, stateViewer, minerAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +88,12 @@ func NewStorageMiningSubmodule(
 	fsmConnector := fsmeventsconnector.New(chainThresholdScheduler, c.State)
 	fsm := fsm.New(ncn, fsmConnector, minerAddr, ds, mgr, sid, ffiwrapper.ProofVerifier, &pcp)
 
-	bke := piecemanager.NewFiniteStateMachineBackEnd(fsm, sid)
+	ssz, err := getMinerSectorSize(c, stateViewer, minerAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	bke := piecemanager.NewFiniteStateMachineBackEnd(minerAddr, ssz, fsm, mgr, sid)
 
 	modu := &StorageMiningSubmodule{
 		PieceManager: &bke,
@@ -160,12 +166,35 @@ func (s *StorageMiningSubmodule) HandleNewHead(ctx context.Context, newHead bloc
 	return s.poster.HandleNewHead(ctx, newHead)
 }
 
-func getMinerProvingPeriod(c *ChainSubmodule, minerAddr address.Address, viewer *appstate.Viewer) (abi.ChainEpoch, error) {
-	tsk := c.ChainReader.GetHead()
-	root, err := c.ChainReader.GetTipSetStateRoot(tsk)
+func getMinerSectorSize(c *ChainSubmodule, viewer *appstate.Viewer, minerAddr address.Address) (abi.SectorSize, error) {
+	view, err := getStateViewAtHead(c, viewer)
 	if err != nil {
 		return 0, err
 	}
-	view := viewer.StateView(root)
+
+	config, err := view.MinerSectorConfiguration(context.Background(), minerAddr)
+	if err != nil {
+		return 0, err
+	}
+
+	return config.SectorSize, nil
+}
+
+func getMinerProvingPeriod(c *ChainSubmodule, viewer *appstate.Viewer, minerAddr address.Address) (abi.ChainEpoch, error) {
+	view, err := getStateViewAtHead(c, viewer)
+	if err != nil {
+		return 0, err
+	}
+
 	return view.MinerProvingPeriodStart(context.Background(), minerAddr)
+}
+
+func getStateViewAtHead(c *ChainSubmodule, viewer *appstate.Viewer) (*state.View, error) {
+	tsk := c.ChainReader.GetHead()
+	root, err := c.ChainReader.GetTipSetStateRoot(tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	return viewer.StateView(root), nil
 }
