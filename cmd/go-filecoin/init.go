@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,6 +19,8 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/ipld/go-car"
 	"github.com/libp2p/go-libp2p-core/crypto"
+
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
@@ -45,9 +48,7 @@ var initCmd = &cmds.Command{
 		cmdkit.StringOption(DefaultAddress, "when set, sets the daemons's default address to the provided address"),
 		cmdkit.StringOption(MinerActorAddress, "when set, sets the daemons's miner actor address to the provided address"),
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
-		cmdkit.BoolOption(DevnetStaging, "when set, populates config bootstrap addrs with the dns multiaddrs of the staging devnet and other staging devnet specific bootstrap parameters."),
-		cmdkit.BoolOption(DevnetNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters"),
-		cmdkit.BoolOption(DevnetUser, "when set, populates config bootstrap addrs with the dns multiaddrs of the user devnet and other user devnet specific bootstrap parameters"),
+		cmdkit.BoolOption(DevnetInterop, "when set, populates config bootstrap addrs with the dns multiaddrs of the user devnet and other user devnet specific bootstrap parameters"),
 		cmdkit.StringOption(OptionPresealedSectorDir, "when set to the path of a directory, imports pre-sealed sector data from that directory"),
 		cmdkit.StringOption(OptionDrandConfigAddr, "configure drand with given address, uses secure contact protocol and no override.  If you need different settings use daemon drand command"),
 	},
@@ -145,32 +146,52 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 		cfg.SectorBase.PreSealedSectorsDirPath = dir
 	}
 
-	devnetTest, _ := options[DevnetStaging].(bool)
-	devnetNightly, _ := options[DevnetNightly].(bool)
-	devnetUser, _ := options[DevnetUser].(bool)
-	if (devnetTest && devnetNightly) || (devnetTest && devnetUser) || (devnetNightly && devnetUser) {
-		return fmt.Errorf(`cannot specify more than one "devnet-" option`)
-	}
+	devnetInterop, _ := options[DevnetInterop].(bool)
 
 	// Setup devnet specific config options.
-	if devnetTest || devnetNightly || devnetUser {
+	if devnetInterop {
+		keys := []string{
+			"gsJ5zOdERQ5o3pjuCPlpigHdOPjjvjxT8rhA+50JrWKgtrh5geF54bFLyaLShMmF",
+			"gtUTCK00bGhvgbgJRVFZfXuWMpXL8xNAGpPfm69S1a6YqHdFvucIOaTW5lw0K9Fb",
+			"lO6/1T9LpqO4MEI2QAoS5ziF5aeBUJpcjUHS6LR2kj2OpgUmSbPBcoL1liF/lsXe",
+			"jcQjHkK07fOehu8VeUAWkkgGR5GCddp2fT5VjFINY3WtlTUwYQ/Sfa8RAYeHemXQ",
+		}
+
+		var distKey [][]byte
+
+		for _, key := range keys {
+			bs, err := base64.StdEncoding.DecodeString(key)
+			if err != nil {
+				return err
+			}
+
+			distKey = append(distKey, bs)
+		}
+
+		cfg.Bootstrap.Addresses = fixtures.DevnetInteropBootstrapAddrs
 		cfg.Bootstrap.MinPeerThreshold = 1
 		cfg.Bootstrap.Period = "10s"
-	}
-
-	// Setup devnet staging specific config options.
-	if devnetTest {
-		cfg.Bootstrap.Addresses = fixtures.DevnetStagingBootstrapAddrs
-	}
-
-	// Setup devnet nightly specific config options.
-	if devnetNightly {
-		cfg.Bootstrap.Addresses = fixtures.DevnetNightlyBootstrapAddrs
-	}
-
-	// Setup devnet user specific config options.
-	if devnetUser {
-		cfg.Bootstrap.Addresses = fixtures.DevnetUserBootstrapAddrs
+		cfg.Drand = &config.DrandConfig{
+			Addresses: []string{
+				"gabbi.drand.fil-test.net:443",
+				"linus.drand.fil-test.net:443",
+				"nicolas.drand.fil-test.net:443",
+				"mathilde.drand.fil-test.net:443",
+				"jeff.drand.fil-test.net:443",
+				"philipp.drand.fil-test.net:443",
+				"ludovic.drand.fil-test.net:443",
+			},
+			Secure:        true,
+			DistKey:       distKey,
+			StartTimeUnix: 1588221360,
+			RoundSeconds:  30,
+		}
+		cfg.NetworkParams.ConsensusMinerMinPower = 2 << 30
+		cfg.NetworkParams.ReplaceProofTypes = []int64{
+			int64(abi.RegisteredProof_StackedDRG512MiBSeal),
+			int64(abi.RegisteredProof_StackedDRG32GiBSeal),
+			int64(abi.RegisteredProof_StackedDRG64GiBSeal),
+		}
 	}
 
 	return nil

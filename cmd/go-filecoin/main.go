@@ -84,14 +84,8 @@ const (
 	// GenesisFile is the path of file containing archive of genesis block DAG data
 	GenesisFile = "genesisfile"
 
-	// DevnetStaging populates config bootstrap addrs with the dns multiaddrs of the staging devnet and other staging devnet specific bootstrap parameters
-	DevnetStaging = "devnet-staging"
-
-	// DevnetNightly populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters
-	DevnetNightly = "devnet-nightly"
-
-	// DevnetUser populates config bootstrap addrs with the dns multiaddrs of the user devnet and other user devnet specific bootstrap parameters
-	DevnetUser = "devnet-user"
+	// DevnetInterop populates config bootstrap addrs with the dns multiaddrs of the interop devnet and other interop devnet specific bootstrap parameters
+	DevnetInterop = "devnet-interop"
 
 	// IsRelay when set causes the the daemon to provide libp2p relay
 	// services allowing other filecoin nodes behind NATs to talk directly.
