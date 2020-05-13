@@ -13,7 +13,8 @@ type chainState interface {
 	Head() block.TipSetKey
 }
 
-func GetChainHead(m chainState) (tipSetToken []byte, tipSetEpoch abi.ChainEpoch, err error) {
+// GetChainHead gets the tipset token in byte form + epoch at current chain head
+func GetChainHead(m chainState) ([]byte, abi.ChainEpoch, error) {
 	tsk := m.Head()
 
 	ts, err := m.GetTipSet(tsk)

@@ -202,7 +202,7 @@ func (v *DefaultMessageSyntaxValidator) validateMessageSyntaxShared(ctx context.
 	minMsgGas := onChainMessageBase + onChainMessagePerByte*gas.Unit(msgLen)
 	if msg.GasLimit < minMsgGas {
 		invGasBelowMinimumCt.Inc(ctx, 1)
-		return fmt.Errorf("gas limit %d below minimum %d to cover message size: %s", msg.GasLimit, minMsgGas, msg)
+		return fmt.Errorf("gas limit %d is below minimum %d to cover message size: %s", msg.GasLimit, minMsgGas, msg)
 	}
 	if msg.GasLimit > types.BlockGasLimit {
 		invGasAboveBlockLimitCt.Inc(ctx, 1)

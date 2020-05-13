@@ -55,7 +55,7 @@ func NewRetrievalProtocolSubmodule(
 	if err != nil {
 		return nil, err
 	}
-
+	log.Infof("marketClient: %v", marketClient)
 	return &RetrievalProtocolSubmodule{marketClient, marketProvider}, nil
 }
 

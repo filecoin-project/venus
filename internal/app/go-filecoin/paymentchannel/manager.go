@@ -255,6 +255,7 @@ func (pm *Manager) AddFundsToChannel(paychAddr address.Address, amt abi.TokenAmo
 	if err := st.Get(&chinfo); err != nil {
 		return cid.Undef, err
 	}
+	// 	minMsgGas := onChainMessageBase + onChainMessagePerByte*gas.Unit(msgLen)
 
 	mcid, _, err := pm.sender.Send(context.TODO(), chinfo.From, paychAddr, amt, defaultGasPrice, defaultGasLimit, true, builtin.MethodSend, nil)
 	if err != nil {

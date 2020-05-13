@@ -186,7 +186,7 @@ func TestChainSyncWithMessages(t *testing.T) {
 
 	/* mine block with message */
 	fakeClock.Advance(blockTime)
-	fmt.Printf("about to mining once\n")
+	fmt.Printf("about to Xmining once\n")
 	_, err = nodeMine.BlockMining.BlockMiningAPI.MiningOnce(ctx)
 	require.NoError(t, err)
 	fmt.Printf("finished mining once\n")
