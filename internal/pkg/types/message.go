@@ -28,8 +28,8 @@ import (
 
 const MessageVersion = 0
 
-// BlockGasLimit is the maximum amount of gas that can be used to execute messages in a single block
-var BlockGasLimit = gas.NewGas(10000000)
+// BlockGasLimit is the maximum amount of gas that can be used to execute messages in a single block.
+var BlockGasLimit = gas.NewGas(100e6)
 
 // EmptyMessagesCID is the cid of an empty collection of messages.
 var EmptyMessagesCID cid.Cid
