@@ -45,6 +45,7 @@ var initCmd = &cmds.Command{
 		cmdkit.StringOption(MinerActorAddress, "when set, sets the daemons's miner actor address to the provided address"),
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
 		cmdkit.BoolOption(DevnetInterop, "when set, populates config with interop-net specific bootstrap parameters"),
+		cmdkit.BoolOption(DevnetTestnet, "when set, populates config with testnet specific bootstrap parameters"),
 		cmdkit.StringOption(OptionPresealedSectorDir, "when set to the path of a directory, imports pre-sealed sector data from that directory"),
 		cmdkit.StringOption(OptionDrandConfigAddr, "configure drand with given address, uses secure contact protocol and no override.  If you need different settings use daemon drand command"),
 	},
@@ -137,12 +138,23 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 	}
 
 	devnetInterop, _ := options[DevnetInterop].(bool)
+	devnetTestnet, _ := options[DevnetTestnet].(bool)
+
+	if devnetInterop && devnetTestnet {
+		return fmt.Errorf("Please only specify a single network to configure")
+	}
 
 	// Setup devnet specific config options.
 	if devnetInterop {
 		cfg.Bootstrap = &networks.InteropNet.Bootstrap
 		cfg.Drand = &networks.InteropNet.Drand
 		cfg.NetworkParams = &networks.InteropNet.Network
+	}
+
+	if devnetTestnet {
+		cfg.Bootstrap = &networks.TestNet.Bootstrap
+		cfg.Drand = &networks.TestNet.Drand
+		cfg.NetworkParams = &networks.TestNet.Network
 	}
 
 	return nil
