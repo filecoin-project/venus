@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	testing2 "github.com/filecoin-project/specs-actors/support/testing"
 	files "github.com/ipfs/go-ipfs-files"
+	"github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -24,22 +26,6 @@ func TestRetrieveFromSelf(t *testing.T) {
 
 	newMiner := nodes[1]
 
-	wallet, err := newMiner.PorcelainAPI.WalletDefaultAddress()
-	require.NoError(t, err)
-
-	toctx, canc2 := context.WithTimeout(ctx, 30*time.Second)
-	defer canc2()
-	peer := newMiner.PorcelainAPI.NetworkGetPeerID()
-	minerAddr, err := newMiner.PorcelainAPI.MinerCreate(toctx, wallet, types.NewAttoFILFromFIL(1), 10000, abi.RegisteredProof_StackedDRG2KiBSeal, peer, types.NewAttoFILFromFIL(1))
-	require.NoError(t, err)
-
-	configMinerAddr, err := newMiner.PorcelainAPI.ConfigGet("mining.minerAddress")
-	require.NoError(t, err)
-	require.Equal(t, minerAddr, configMinerAddr)
-
-	// setup mining so retrieval protocol gets set up
-	require.NoError(t, newMiner.SetupMining(ctx))
-
 	// create a file to import
 	contents := []byte("satyamevajayate")
 	f := files.NewBytesFile(contents)
@@ -55,14 +41,19 @@ func TestRetrieveFromSelf(t *testing.T) {
 		apiDone()
 		newMiner.Stop(ctx)
 	}()
+
+	// minerAddr won't be used since we'll get the data locally but right now
+	// it's required
+	minerAddr := testing2.NewIDAddr(t, 1001)
 	testout := cmdClient.RunSuccess(ctx, "retrieval-client", "retrieve-piece",
 		minerAddr.String(), out.Cid().String())
 
 	assert.Equal(t, contents, testout.Stdout())
 }
 
-func TestRetrieveFromOther(t *testing.T) {
+func TestRetrieveFromPeer(t *testing.T) {
 	tf.IntegrationTest(t)
+	log.SetDebugLogging()
 	ctx := context.Background()
 
 	nodes, canc1 := test.MustCreateNodesWithBootstrap(ctx, t, 2)
@@ -81,17 +72,8 @@ func TestRetrieveFromOther(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, retMiner.SetupMining(ctx))
 
-	toctx3, canc3 := context.WithTimeout(ctx, 30*time.Second)
-	defer canc3()
-	clientPeer := retClient.PorcelainAPI.NetworkGetPeerID()
-	clientWallet, err := retClient.PorcelainAPI.WalletDefaultAddress()
-	require.NoError(t, err)
-	_, err = retClient.PorcelainAPI.MinerCreate(toctx3, clientWallet, types.NewAttoFILFromFIL(1), 10000, abi.RegisteredProof_StackedDRG2KiBSeal, clientPeer, types.NewAttoFILFromFIL(1))
-	require.NoError(t, err)
-	require.NoError(t, retClient.SetupMining(ctx))
-
-	// create a file to import
-	contents := []byte("satyamevajayate")
+	// create a file to import, retrieval miner imports the data
+	contents := []byte("Hatch green chile, grown only in the valley around Hatch, New Mexico, is famous for its great flavor")
 	f := files.NewBytesFile(contents)
 	out, err := retMiner.PorcelainAPI.DAGImportData(ctx, f)
 	require.NoError(t, err)
@@ -108,5 +90,4 @@ func TestRetrieveFromOther(t *testing.T) {
 		minerAddr.String(), out.Cid().String())
 
 	assert.Equal(t, contents, testout.Stdout())
-
 }

@@ -7,5 +7,6 @@ import (
 // API is the retrieval api for the test environment
 type API interface {
 	Client() iface.RetrievalClient
-	Provider() iface.RetrievalProvider
+	Provider() (iface.RetrievalProvider, error)
+	IsProvider() bool
 }

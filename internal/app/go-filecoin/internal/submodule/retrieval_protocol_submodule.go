@@ -11,6 +11,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/host"
+	xerrors "github.com/pkg/errors"
 
 	retmkt "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/retrieval_market"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
@@ -25,28 +26,14 @@ type RetrievalProtocolSubmodule struct {
 }
 
 // NewRetrievalProtocolSubmodule creates a new retrieval protocol submodule.
-func NewRetrievalProtocolSubmodule(
-	bs blockstore.Blockstore,
+func NewRetrievalProtocolSubmodule(bs blockstore.Blockstore,
 	ds datastore.Batching,
 	cr *cst.ChainStateReadWriter,
-	host host.Host,
-	providerAddr address.Address,
+	h host.Host,
 	signer retmkt.RetrievalSigner,
 	pchMgrAPI retmkt.PaychMgrAPI,
-	pieceManager piecemanager.PieceManager,
 ) (*RetrievalProtocolSubmodule, error) {
-
-	retrievalDealPieceStore := piecestore.NewPieceStore(ds)
-
-	netwk := network.NewFromLibp2pHost(host)
-	pnode := retmkt.NewRetrievalProviderConnector(netwk, pieceManager, bs, pchMgrAPI, nil)
-
-	// TODO: use latest go-fil-markets with persisted deal store
-	marketProvider, err := impl.NewProvider(providerAddr, pnode, netwk, retrievalDealPieceStore, bs, ds)
-	if err != nil {
-		return nil, err
-	}
-
+	netwk := network.NewFromLibp2pHost(h)
 	cnode := retmkt.NewRetrievalClientConnector(bs, cr, signer, pchMgrAPI)
 	dsKey := datastore.NewKey("retrievalmarket/client/counter")
 	counter := storedcounter.New(ds, dsKey)
@@ -56,13 +43,39 @@ func NewRetrievalProtocolSubmodule(
 		return nil, err
 	}
 	log.Infof("marketClient: %v", marketClient)
-	return &RetrievalProtocolSubmodule{marketClient, marketProvider}, nil
+	return &RetrievalProtocolSubmodule{client: marketClient}, nil
 }
 
 func (rps *RetrievalProtocolSubmodule) Client() iface.RetrievalClient {
 	return rps.client
 }
 
-func (rps *RetrievalProtocolSubmodule) Provider() iface.RetrievalProvider {
-	return rps.provider
+func (rps *RetrievalProtocolSubmodule) Provider() (iface.RetrievalProvider, error) {
+	if !rps.IsProvider() {
+		return nil, xerrors.New("retrieval provider not configured")
+	}
+	return rps.provider, nil
+}
+
+func (rps *RetrievalProtocolSubmodule) IsProvider() bool {
+	return rps.provider != nil
+}
+
+func (rps *RetrievalProtocolSubmodule) AddProvider(h host.Host,
+	providerAddr address.Address,
+	pm piecemanager.PieceManager,
+	bs blockstore.Blockstore,
+	ds datastore.Batching,
+	pchMgrAPI retmkt.PaychMgrAPI) error {
+	netwk := network.NewFromLibp2pHost(h)
+	pnode := retmkt.NewRetrievalProviderConnector(netwk, pm, bs, pchMgrAPI, nil)
+	retrievalDealPieceStore := piecestore.NewPieceStore(ds)
+
+	// TODO: use latest go-fil-markets with persisted deal store
+	marketProvider, err := impl.NewProvider(providerAddr, pnode, netwk, retrievalDealPieceStore, bs, ds)
+	if err != nil {
+		return err
+	}
+	rps.provider = marketProvider
+	return nil
 }

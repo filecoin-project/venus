@@ -136,7 +136,7 @@ func (w *Waiter) findMessage(ctx context.Context, head block.TipSet, lookback ui
 		}
 
 		lookback--
-		if lookback <= 0 {
+		if lookback == 0 {
 			break
 		}
 	}

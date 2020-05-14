@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/internal/submodule"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
@@ -319,7 +320,34 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.StorageAPI = storage.NewAPI(nd.StorageProtocol)
 	nd.DrandAPI = drandapi.New(b.drand, nd.PorcelainAPI)
 
+	rp, err := b.setupRetrievalClient(ctx, nd)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to set up RetrievalProtocolSubmodule: ")
+	}
+	nd.RetrievalProtocol = rp
 	return nd, nil
+}
+
+func (b *Builder) setupRetrievalClient(ctx context.Context, nd *Node) (*submodule.RetrievalProtocolSubmodule, error) {
+	waiter := msg.NewWaiter(nd.chain.ChainReader, nd.chain.MessageStore, nd.Blockstore.Blockstore, nd.Blockstore.CborStore)
+
+	mgrStateViewer := paymentchannel.NewManagerStateViewer(nd.Chain().ChainReader, nd.Blockstore.CborStore)
+
+	paychMgr := paymentchannel.NewManager(
+		ctx,
+		nd.Repo.Datastore(),
+		waiter,
+		nd.Messaging.Outbox,
+		mgrStateViewer)
+
+	return submodule.NewRetrievalProtocolSubmodule(
+		nd.Blockstore.Blockstore,
+		nd.Repo.Datastore(),
+		nd.chain.State,
+		nd.Host(),
+		nd.Wallet.Signer,
+		paychMgr,
+	)
 }
 
 // Repo returns the repo.

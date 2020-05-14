@@ -6,6 +6,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
+	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 	xerrors "github.com/pkg/errors"
 )
@@ -42,29 +43,40 @@ var clientRetrievePieceCmd = &cmds.Command{
 			return err
 		}
 
-		// first see if we have it locally
+		// first see if we have it locally; don't charge ourselves for retrieval
 		rdr, err := porcelainAPI.DAGCat(req.Context, payloadCID)
 		if err == nil {
 			return re.Emit(rdr)
 		}
+		if err == ipld.ErrNotFound {
+			logRetrieval.Infof("payloadCID %s not found locally; trying peer(s)", payloadCID.String())
+		} else {
+			logRetrieval.Infof("failed local storage DAGCat with %w", err)
+		}
 
-		logRetrieval.Infof("payloadCID %s not found locally: %w", payloadCID.String(), err)
-
-		head := porcelainAPI.ChainHeadKey()
-		status, err := porcelainAPI.MinerGetStatus(req.Context, minerAddr, head)
+		status, err := porcelainAPI.MinerGetStatus(req.Context, minerAddr, porcelainAPI.ChainHeadKey())
 		if err != nil {
 			return err
 		}
 
 		client := GetRetrievalAPI(env).Client()
 
-		retPeer := retrievalmarket.RetrievalPeer{Address: minerAddr, ID: status.PeerID}
-		resp, err := client.Query(req.Context, retPeer, payloadCID, retrievalmarket.QueryParams{})
+		resp, err := client.Query(
+			req.Context,
+			retrievalmarket.RetrievalPeer{Address: minerAddr, ID: status.PeerID},
+			payloadCID,
+			retrievalmarket.QueryParams{},
+		)
 		if err != nil {
 			return err
 		}
 
-		retParams := retrievalmarket.NewParamsV0(resp.MinPricePerByte, resp.MaxPaymentInterval, resp.MaxPaymentIntervalIncrease)
+		if resp.Size == 0 {
+			return xerrors.New("cannot make retrieval deal for 0 bytes")
+		}
+
+		retParams := retrievalmarket.NewParamsV0(
+			resp.MinPricePerByte, resp.MaxPaymentInterval, resp.MaxPaymentIntervalIncrease)
 		clientWallet, err := porcelainAPI.WalletDefaultAddress()
 		if err != nil {
 			return err
@@ -76,7 +88,7 @@ var clientRetrievePieceCmd = &cmds.Command{
 		}
 
 		if bal.LessThan(retrievalPrice) {
-			return xerrors.New("insufficient wallet balance for retrieval")
+			return xerrors.New("insufficient balance for retrieval")
 		}
 
 		retrievalResult := make(chan error, 1)
@@ -106,7 +118,7 @@ var clientRetrievePieceCmd = &cmds.Command{
 			return xerrors.New("Retrieval Timed Out")
 		case err := <-retrievalResult:
 			if err != nil {
-				return xerrors.Errorf("RetrieveUnixfs: %w", err)
+				return xerrors.Wrap(err, "retrieval failed: ")
 			}
 		}
 		unsub()

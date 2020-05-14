@@ -389,10 +389,8 @@ func (node *Node) SetupMining(ctx context.Context) error {
 		}
 	}
 
-	if node.RetrievalProtocol == nil {
-		if err := node.setupRetrievalMining(ctx); err != nil {
-			return err
-		}
+	if err := node.setupRetrievalMining(ctx); err != nil {
+		return err
 	}
 	// ensure we have a mining worker
 	if node.BlockMining.MiningWorker == nil {
@@ -465,10 +463,11 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 	)
 }
 
+// setupRetrievalMining sets up a retrieval provider. It expects node to have initialized
+// retrieval protocol.
 func (node *Node) setupRetrievalMining(ctx context.Context) error {
-	providerAddr, err := node.MiningAddress()
-	if err != nil {
-		return errors.Wrap(err, "failed to get mining address")
+	if node.RetrievalProtocol == nil {
+		return errors.New("retrieval protocol not initialized")
 	}
 
 	waiter := msg.NewWaiter(node.chain.ChainReader, node.chain.MessageStore, node.Blockstore.Blockstore, node.Blockstore.CborStore)
@@ -481,21 +480,12 @@ func (node *Node) setupRetrievalMining(ctx context.Context) error {
 		node.Messaging.Outbox,
 		mgrStateViewer)
 
-	rp, err := submodule.NewRetrievalProtocolSubmodule(
-		node.Blockstore.Blockstore,
-		node.Repo.Datastore(),
-		node.chain.State,
-		node.Host(),
-		providerAddr,
-		node.Wallet.Signer,
-		paychMgr,
-		node.PieceManager(),
-	)
+	providerAddr, err := node.MiningAddress()
 	if err != nil {
-		return errors.Wrap(err, "failed to build node.RetrievalProtocol")
+		return errors.Wrap(err, "failed to get mining address")
 	}
-	node.RetrievalProtocol = rp
-	return nil
+
+	return node.RetrievalProtocol.AddProvider(node.Host(), providerAddr, node.StorageMining.PieceManager, node.Blockstore.Blockstore, node.Repo.Datastore(), paychMgr)
 }
 
 func (node *Node) doMiningPause(ctx context.Context) {
