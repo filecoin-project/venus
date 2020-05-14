@@ -144,10 +144,16 @@ For a complete step-by-step tutorial, see [Getting Started](https://go.filecoin.
 rm ~/.filecoin
 
 # Initialize a new repository, downloading a genesis file and setting network parameters (in this case, for the Testnet network)
-./go-filecoin init --genesisfile=https://ipfs.io/ipfs/QmXZQeezX1x8uRQX9EUaYxnyivUpTfJqQTvszk3c8SnFPN/testnet.car --network=testnet
+go-filecoin init --genesisfile=https://ipfs.io/ipfs/QmXZQeezX1x8uRQX9EUaYxnyivUpTfJqQTvszk3c8SnFPN/testnet.car --network=testnet
 
-# Run the daemon
-./go-filecoin daemon
+# Start the daemon
+go-filecoin daemon
+
+# Print a list of bootstrap node addresses
+go-filecoin config bootstrap.addresses
+
+# Choose any address from the list you just printed, and connect to it (Automatic peer discovery and connection coming soon.)
+go-filecoin swarm connect <any-filecoin-node-mulitaddr>
 ```
 
 Your node should now be connected to some peers, and begin downloading and validating the blockchain.
@@ -156,10 +162,10 @@ Open a new terminal to interact with your node:
 
 ```sh
 # Print the node's connection information
-./go-filecoin id
+go-filecoin id
 
 # Show chain sync status
-./go-filecoin chain status
+go-filecoin chain status
 ```
 
 To see a full list of commands, run `./go-filecoin --help`.
