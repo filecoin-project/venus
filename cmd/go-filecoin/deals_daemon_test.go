@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"io"
 	"math/big"
-	"strings"
 	"testing"
 	"time"
 
@@ -16,9 +15,7 @@ import (
 	files "github.com/ipfs/go-ipfs-files"
 	multihash "github.com/multiformats/go-multihash"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
@@ -27,84 +24,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestDealsList(t *testing.T) {
-	t.Skip("Long term solution: #3642")
-	tf.IntegrationTest(t)
-
-	clientDaemon := th.NewDaemon(t,
-		th.KeyFile(fixtures.KeyFilePaths()[1]),
-		th.DefaultAddress(fixtures.TestAddresses[1]),
-	).Start()
-	defer clientDaemon.ShutdownSuccess()
-
-	minerDaemon := th.NewDaemon(t,
-		th.WithMiner(fixtures.TestMiners[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.DefaultAddress(fixtures.TestAddresses[0]),
-		th.AutoSealInterval("1"),
-	).Start()
-	defer minerDaemon.ShutdownSuccess()
-
-	minerDaemon.RunSuccess("mining", "start")
-	minerDaemon.UpdatePeerID()
-
-	minerDaemon.ConnectSuccess(clientDaemon)
-
-	// Create a deal from the client daemon to the miner daemon
-	addAskCid := minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
-	clientDaemon.WaitForMessageRequireSuccess(addAskCid)
-	dataCid := clientDaemon.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
-	proposeDealOutput := clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0].String(), dataCid, "0", "5").ReadStdoutTrimNewlines()
-	splitOnSpace := strings.Split(proposeDealOutput, " ")
-	dealCid1 := splitOnSpace[len(splitOnSpace)-1]
-
-	// create another deal with zero price
-	dataCid = clientDaemon.RunWithStdin(strings.NewReader("FREEASINBEER"), "client", "import").ReadStdoutTrimNewlines()
-	addAskCid = minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "0", "10")
-	clientDaemon.WaitForMessageRequireSuccess(addAskCid)
-	proposeDealOutput = clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0].String(), dataCid, "1", "5").ReadStdoutTrimNewlines()
-	splitOnSpace = strings.Split(proposeDealOutput, " ")
-	dealCid2 := splitOnSpace[len(splitOnSpace)-1]
-
-	t.Run("with no filters", func(t *testing.T) {
-		// Client sees both deals
-		clientOutput := clientDaemon.RunSuccess("deals", "list").ReadStdoutTrimNewlines()
-		assert.Contains(t, clientOutput, dealCid1)
-		assert.Contains(t, clientOutput, dealCid2)
-
-		// Miner sees the deal
-		minerOutput := minerDaemon.RunSuccess("deals", "list").ReadStdoutTrimNewlines()
-		assert.Contains(t, minerOutput, dealCid1)
-		assert.Contains(t, minerOutput, dealCid2)
-	})
-
-	t.Run("with --miner", func(t *testing.T) {
-		// Client does not see the deal
-		clientOutput := clientDaemon.RunSuccess("deals", "list", "--miner").ReadStdoutTrimNewlines()
-		assert.NotContains(t, clientOutput, dealCid1)
-
-		// Miner sees the deal
-		minerOutput := minerDaemon.RunSuccess("deals", "list", "--miner").ReadStdoutTrimNewlines()
-		assert.Contains(t, minerOutput, dealCid1)
-	})
-
-	t.Run("with --client", func(t *testing.T) {
-		// Client sees the deal
-		clientOutput := clientDaemon.RunSuccess("deals", "list", "--client").ReadStdoutTrimNewlines()
-		assert.Contains(t, clientOutput, dealCid1)
-
-		// Miner does not see the deal
-		minerOutput := minerDaemon.RunSuccess("deals", "list", "--client").ReadStdoutTrimNewlines()
-		assert.NotContains(t, minerOutput, dealCid1)
-	})
-
-	t.Run("with --help", func(t *testing.T) {
-		clientOutput := clientDaemon.RunSuccess("deals", "list", "--help").ReadStdoutTrimNewlines()
-		assert.Contains(t, clientOutput, "only return deals made as a client")
-		assert.Contains(t, clientOutput, "only return deals made as a miner")
-	})
-}
 
 func TestDealsShow(t *testing.T) {
 	t.Skip("Long term solution: #3642")

@@ -232,40 +232,35 @@ format is specified with the --enc flag.
 
 // VerifyStorageDealResult wraps the success in an interface type
 type VerifyStorageDealResult struct {
-	validPip bool // nolint: structcheck
 }
 
 var clientVerifyStorageDealCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Verify a storage deal",
 		ShortDescription: `
-Returns an error if the deal is not in the Complete state or the Piece Inclusion Proof
-is invalid.  Returns nil otherwise.
+Returns an error if the deal is not in the Complete state.  Returns nil otherwise.
 `,
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("id", true, false, "CID of deal to query"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		panic("not implemented pending full storage market integration")
+		dealCID, err := cid.Decode(req.Arguments[0])
+		if err != nil {
+			return errors.Wrap(err, "could not decode deal cid")
+		}
 
-		//proposalCid, err := cid.Decode(req.Arguments[0])
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//resp, err := GetStorageAPI(env).QueryStorageDeal(req.Context, proposalCid)
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//if resp.State != storagedeal.Complete {
-		//	return errors.New("storage deal not in Complete state")
-		//}
-		//
-		//validateError := GetPorcelainAPI(env).ClientValidateDeal(req.Context, proposalCid, resp.ProofInfo)
-		//
-		//return re.Emit(VerifyStorageDealResult{validateError == nil})
+		deal, err := GetStorageAPI(env).GetStorageDeal(req.Context, dealCID)
+		if err != nil {
+			return err
+		}
+
+		if deal.State != storagemarket.StorageDealActive {
+			return errors.New("storage deal not in Active state")
+		}
+
+		// TODO: Check for slashes
+		return re.Emit(&VerifyStorageDealResult{})
 	},
 	Type: &VerifyStorageDealResult{},
 }
