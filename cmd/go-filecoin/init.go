@@ -19,7 +19,7 @@ import (
 	"github.com/ipld/go-car"
 	"github.com/libp2p/go-libp2p-core/crypto"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/fixtures/networks"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -44,9 +44,7 @@ var initCmd = &cmds.Command{
 		cmdkit.StringOption(OptionSectorDir, "path of directory into which staged and sealed sectors will be written"),
 		cmdkit.StringOption(MinerActorAddress, "when set, sets the daemons's miner actor address to the provided address"),
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
-		cmdkit.BoolOption(DevnetStaging, "when set, populates config bootstrap addrs with the dns multiaddrs of the staging devnet and other staging devnet specific bootstrap parameters."),
-		cmdkit.BoolOption(DevnetNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters"),
-		cmdkit.BoolOption(DevnetUser, "when set, populates config bootstrap addrs with the dns multiaddrs of the user devnet and other user devnet specific bootstrap parameters"),
+		cmdkit.BoolOption(DevnetInterop, "when set, populates config with interop-net specific bootstrap parameters"),
 		cmdkit.StringOption(OptionPresealedSectorDir, "when set to the path of a directory, imports pre-sealed sector data from that directory"),
 		cmdkit.StringOption(OptionDrandConfigAddr, "configure drand with given address, uses secure contact protocol and no override.  If you need different settings use daemon drand command"),
 	},
@@ -138,32 +136,13 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 		cfg.SectorBase.PreSealedSectorsDirPath = dir
 	}
 
-	devnetTest, _ := options[DevnetStaging].(bool)
-	devnetNightly, _ := options[DevnetNightly].(bool)
-	devnetUser, _ := options[DevnetUser].(bool)
-	if (devnetTest && devnetNightly) || (devnetTest && devnetUser) || (devnetNightly && devnetUser) {
-		return fmt.Errorf(`cannot specify more than one "devnet-" option`)
-	}
+	devnetInterop, _ := options[DevnetInterop].(bool)
 
 	// Setup devnet specific config options.
-	if devnetTest || devnetNightly || devnetUser {
-		cfg.Bootstrap.MinPeerThreshold = 1
-		cfg.Bootstrap.Period = "10s"
-	}
-
-	// Setup devnet staging specific config options.
-	if devnetTest {
-		cfg.Bootstrap.Addresses = fixtures.DevnetStagingBootstrapAddrs
-	}
-
-	// Setup devnet nightly specific config options.
-	if devnetNightly {
-		cfg.Bootstrap.Addresses = fixtures.DevnetNightlyBootstrapAddrs
-	}
-
-	// Setup devnet user specific config options.
-	if devnetUser {
-		cfg.Bootstrap.Addresses = fixtures.DevnetUserBootstrapAddrs
+	if devnetInterop {
+		cfg.Bootstrap = &networks.InteropNet.Bootstrap
+		cfg.Drand = &networks.InteropNet.Drand
+		cfg.NetworkParams = &networks.InteropNet.Network
 	}
 
 	return nil
