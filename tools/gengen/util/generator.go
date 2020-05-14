@@ -162,10 +162,7 @@ func (g *GenesisGenerator) setupBuiltInActors(ctx context.Context) error {
 	}
 
 	_, err = g.createSingletonActor(ctx, builtin.CronActorAddr, builtin.CronActorCodeID, big.Zero(), func() (interface{}, error) {
-		return &cron.State{Entries: []cron.Entry{{
-			Receiver:  builtin.StoragePowerActorAddr,
-			MethodNum: builtin.MethodsPower.OnEpochTickEnd,
-		}}}, nil
+		return &cron.State{Entries: cron.BuiltInEntries()}, nil
 	})
 	if err != nil {
 		return err
