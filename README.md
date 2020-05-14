@@ -5,11 +5,9 @@
 [![Nightly Devnet Release](https://img.shields.io/endpoint.svg?color=blue&style=flat&logo=GitHub&url=https://raw.githubusercontent.com/filecoin-project/go-filecoin-badges/master/nightly-devnet.json)](https://github.com/filecoin-project/go-filecoin/releases)
 [![Staging Devnet Release](https://img.shields.io/endpoint.svg?color=brightgreen&style=flat&logo=GitHub&url=https://raw.githubusercontent.com/filecoin-project/go-filecoin-badges/master/staging-devnet.json)](https://github.com/filecoin-project/go-filecoin/releases)
 
-> Filecoin implementation in Go, turning the world’s unused storage into an algorithmic market.
+The original Filecoin node implementation in Go.
 
 __Questions or problems with go-filecoin? [Ask the community first](#community)__. Your problem may already be solved.
-
-__Want to connect to a devnet (developer network)? See the [Usage](#usage) section below.__
 
 ## Table of Contents
 <!--
@@ -25,102 +23,85 @@ __Want to connect to a devnet (developer network)? See the [Usage](#usage) secti
 - [What is Filecoin?](#what-is-filecoin)
 - [Install](#install)
   - [System Requirements](#system-requirements)
-<!--  - [Install from Release Binary](#install-from-release-binary) -->
   - [Install from Source](#install-from-source)
-    - [Install Go and Rust](#install-go-and-rust)
+    - [Install Go](#install-go)
     - [Install Dependencies](#install-dependencies)
-    - [Build, Run Tests, and Install](#build-run-tests-and-install)
-    - [Manage Submodules Manually (optional)](#manage-submodules-manually-optional)
+    - [Build and run tests](#build-and-run-tests)
 - [Usage](#usage)
   - [Advanced usage](#advanced-usage)
     - [Setting up a localnet](#setting-up-a-localnet)
 - [Contributing](#contributing)
 - [Community](#community)
-- [Developer Networks](#developer-networks)
 - [License](#license)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## What is Filecoin?
-Filecoin is a decentralized storage network that turns the world’s unused storage into an algorithmic market, creating a permanent, decentralized future for the web. **Miners** earn the native protocol token (also called “filecoin”) by providing data storage and/or retrieval. **Clients** pay miners to store or distribute data and to retrieve it. Check out [How Filecoin Works](https://github.com/filecoin-project/go-filecoin/wiki/How-Filecoin-Works) for more.
-
-**WARNING**: `go-filecoin` is a work in progress and is not ready for production use.
-See [KNOWN_ISSUES](https://github.com/filecoin-project/go-filecoin/blob/master/KNOWN_ISSUES.md) for an outline of known vulnerabilities.
+Filecoin is a decentralized storage network that turns the world’s unused storage into an algorithmic market, creating a permanent, decentralized future for the web.
+**Miners** earn the native protocol token (also called “Filecoin”) by providing data storage and/or retrieval. 
+**Clients** pay miners to store or distribute data and to retrieve it.
+Check out the [Filecoin website](https://filecoin.io/) and [Filecoin Documentation](https://docs.filecoin.io/) for more.
 
 ## Install
 
 👋 Welcome to Go Filecoin!
 
-<!--
-- To **run** `go-filecoin` for mining, storing or other exploring, jump straight to
-  [detailed setup instructions](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started).
-- To **build** `go-filecoin` from source for development, keep following this README.
--->
+This README outlines the basics for building and running Go-filecoin.
+**For more background, configuration, and troubleshooting information check out the [Go-filecoin Docs](https://go.filecoin.io/)**.
 
 ### System Requirements
 
-Filecoin can build and run on most Linux and MacOS systems with at least 8GB of RAM. Windows is not yet supported.
+Go-filecoin can build and run on most Linux and MacOS systems. 
+Windows is not yet supported.
 
-<!--
-### Install from Release Binary
-
-- We host prebuilt binaries for Linux and OSX at [Releases](https://github.com/filecoin-project/go-filecoin/releases/). Log in with Github.
-- Follow the remaining steps in [Start running Filecoin](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started#start-running-filecoin)
--->
+A validating node can run on most systems with at least 8GB of RAM. 
+A mining node requires significant RAM and GPU resources, depending on the sector configuration to be used.
 
 ### Install from Source
 
-Clone the git repository:
+Clone this git repository to your machine:
 
 ```sh
-mkdir -p ${GOPATH}/src/github.com/filecoin-project
-git clone https://github.com/filecoin-project/go-filecoin.git ${GOPATH}/src/github.com/filecoin-project/go-filecoin
+mkdir -p /path/to/filecoin-project
+git clone https://github.com/filecoin-project/go-filecoin.git /path/to/filecoin-project/go-filecoin
 ```
 
-Now install the tools and dependencies listed below. If you have **any problems building go-filecoin**, see the [Troubleshooting & FAQ](https://github.com/filecoin-project/go-filecoin/wiki/Troubleshooting-&-FAQ) Wiki page.
+#### Install Go
 
-#### Install Go and Rust
+The build process for go-filecoin requires [Go](https://golang.org/doc/install) >= v1.13
 
-The build process for go-filecoin requires:
+> Installing Go for the first time? We recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.
 
-- [Go](https://golang.org/doc/install) >= v1.13
-  - Installing Go for the first time? We recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.
-- [Rust](https://www.rust-lang.org/) >= v1.36.0 and `cargo`
-- `pkg-config` - used by go-filecoin to handle generating linker flags
-  - Mac OS devs can install through brew `brew install pkg-config`
+Due to our use of `cgo`, you'll need a C compiler to build go-filecoin whether you're using a prebuilt library or building it yourself from source. 
+If you want to use `gcc` (e.g. `export CC=gcc`) when building go-filecoin, you will need to use v7.4.0 or higher.
 
-Due to our use of `cgo`, you'll need a C compiler to build go-filecoin whether you're using a prebuilt libsector_builder_ffi (our cgo-compatible rust-fil-proofs library) or building it yourself from source. If you want to use `gcc` (e.g. `export CC=gcc`) when building go-filecoin, you will need to use v7.4.0 or higher.
-  - You must have libclang on you linker search path in order to build
-    rust-fil-proofs from source. You can satisfy this requirement in most
-    environments by installing Clang using your favorite package manager.
+The build process will download a static library containing the [Filecoin proofs implementation](https://github.com/filecoin-project/rust-fil-proofs) (which is written in Rust).
+
+> If instead you wish to build proofs from source, you'll need (1) Rust development environment and (2) to set the environment variable `FFI_BUILD_FROM_SOURCE=1`.
+More info at [filecoin-ffi](https://github.com/filecoin-project/filecoin-ffi).
 
 #### Install Dependencies
 
-`go-filecoin` depends on some proofs code written in Rust, housed in the
-[rust-fil-proofs](https://github.com/filecoin-project/rust-fil-proofs) repo and consumed as a submodule. You will need to have `cargo` and `jq` installed.
-
-First we need to load all the submodules.
+First, load all the Git submodules.
 
 ```sh
 git submodule update --init --recursive
 ```
 
-To install golangci-lint and other build and test dependencies (with precompiled
-proofs, recommended), run:
+Initialize build dependencies.
 
 ```sh
-cd ${GOPATH}/src/github.com/filecoin-project/go-filecoin
-FILECOIN_USE_PRECOMPILED_RUST_PROOFS=true go run ./build deps
+make deps
 ```
 
-Note: The first time you run `deps` can be **slow** as a ~1.6GB parameter file is either downloaded or generated locally in `/var/tmp/filecoin-proof-parameters`.
+Note: The first time you run `deps` can be **slow** as very large parameter files are either downloaded or generated locally in `/var/tmp/filecoin-proof-parameters`.
 Have patience; future runs will be faster.
 
-#### Build, Run Tests, and Install
+#### Build and run tests
 
 ```sh
 # First, build the binary
-go run ./build build
+make
 
 # Then, run the unit tests.
 go run ./build test
@@ -150,45 +131,47 @@ go run ./build all
 
 Note: Any flag passed to `go run ./build test` (e.g. `-cover`) will be passed on to `go test`.
 
-If you have **problems with the build**, please see the [Troubleshooting & FAQ](https://github.com/filecoin-project/go-filecoin/wiki/Troubleshooting-&-FAQ) Wiki page.
-
-
-#### Manage Submodules Manually (optional)
-
-If you're editing `rust-fil-proofs`, you need to manage the submodule manually. If you're *not* editing `rust-fil-proofs` you can relax:
-`deps` build (above) will do it for you. You may need to run `deps` again after pulling master if the submodule is
-updated by someone else (it will appear modified in `git status`).
-
-To initialize the submodule:
-
-```sh
-cd ${GOPATH}/src/github.com/filecoin-project/go-filecoin
-git submodule update --init
-```
-
-Later, when the head of the `rust-fil-proofs` `master` branch changes, you may want to update `go-filecoin` to use these changes:
-
-```sh
-git submodule update --remote
-```
-
-Note that updating the `rust-fil-proofs` submodule in this way will require a commit to `go-filecoin` (changing the submodule hash).
+If you have **problems with the build**, please consult the [Troubleshooting](https://go.filecoin.io/go-filecoin-tutorial/Troubleshooting-&-FAQ.html) section of the [Go-filecoin Documentation](https://go.filecoin.io/).
 
 ## Usage
 
-The [Getting Started](https://go.filecoin.io/go-filecoin-tutorial/Getting-Started.html) tutorial contains
-a simple sequence to get your Filecoin node up and running and connected to a devnet.
+For a complete step-by-step tutorial, see [Getting Started](https://go.filecoin.io/go-filecoin-tutorial/Getting-Started.html).
 
-The [Commands](https://go.filecoin.io/go-filecoin-tutorial/Commands.html) page contains further detail about
-specific commands and environment variables, as well as scripts for for setting up a miner and making a deal.
+#### Quick start:
 
-To see a full list of commands, run `go-filecoin --help`.
+```sh
+# Remove any existing symlink to a repo directory
+rm ~/.filecoin
+
+# Initialize a new repository, downloading a genesis file and setting network parameters for the "interop" developer network
+./go-filecoin init --genesisfile=https://gateway.ipfs.io/ipfs/QmZ7ENWU2TYBuRfdXRjoEFvF6mNpYzyALPHexcgnonUeoK/interop.car --devnet-interop
+
+# Run the daemon
+./go-filecoin daemon
+```
+> Note: This connects you to the "interop" developer network. To connect to a different network, replace the URL after `--genesisfile=` and update the last flag.
+
+Your node should now be connected to some peers, and begin downloading and validating the blockchain.
+
+Open a new terminal to interact with your node:
+
+```sh
+# Print the node's connection information
+./go-filecoin id
+
+# Show chain sync status
+./go-filecoin chain status
+```
+
+To see a full list of commands, run `./go-filecoin --help`.
 
 ### Advanced usage
 
 #### Setting up a localnet
 
-The localnet FAST binary tool allows users to quickly and easily setup a local network on the users computer. Please refer to the [localnet README](https://github.com/filecoin-project/go-filecoin/tree/master/tools/fast/bin/localnet#localnet) for more information. The localnet tool is only compatible when built from the same git ref as the targeted `go-filecoin` binary.
+The localnet FAST binary tool allows users to quickly and easily setup a local network on the users computer. 
+Please refer to the [localnet README](https://github.com/filecoin-project/go-filecoin/tree/master/tools/fast/bin/localnet#localnet) for more information. 
+The localnet tool is only compatible when built from the same git ref as the targeted `go-filecoin` binary.
 
 ## Contributing
 
@@ -199,18 +182,13 @@ Check out the [Go-Filecoin code overview](CODEWALK.md) for a brief tour of the c
 ## Community
 
 Here are a few places to get help and connect with the Filecoin community:
-- [go-filecoin Documentation](http://go.filecoin.io/) — for tutorials, troubleshooting, and FAQs
-- The `#fil-dev` channel on [Filecoin Project Slack](https://filecoinproject.slack.com/messages/CEHHJNJS3/) or [Matrix/Riot](https://riot.im/app/#/room/#fil-dev:matrix.org) - for live help and some dev discussions
+- [Go-filecoin Documentation](http://go.filecoin.io/) — for tutorials, troubleshooting, and FAQs
+- The `#fil-go-filecoin` channel on [Filecoin Project Slack](https://filecoinproject.slack.com/messages/CEHHJNJS3/) or [Matrix/Riot](https://riot.im/app/#/room/#fil-dev:matrix.org) - for live help and some dev discussions
 - [Filecoin Community Forum](https://discuss.filecoin.io) - for talking about design decisions, use cases, implementation advice, and longer-running conversations
-- [GitHub issues](https://github.com/filecoin-project/go-filecoin/issues) - for now, use only to report bugs, and view or contribute to ongoing development. PRs welcome! Please see [our contributing guidelines](CONTRIBUTING.md).
-- [Filecoin Project Specification](https://github.com/filecoin-project/specs) - how Filecoin is supposed to work
+- [GitHub issues](https://github.com/filecoin-project/go-filecoin/issues) - to report bugs, and view or contribute to ongoing development.
+- [Filecoin Specification](https://github.com/filecoin-project/specs) - how Filecoin is supposed to work
 
 Looking for even more? See the full rundown at [filecoin-project/community](https://github.com/filecoin-project/community).
-
-## Developer Networks
-
-There are currently 3 developer networks (aka devnets) available for development and testing. These are subject to _**frequent downtimes and breaking changes**_. See [Devnets](https://github.com/filecoin-project/go-filecoin/wiki/Devnets) in the wiki for a description of
-these developer networks and instructions for connecting your nodes to them.
 
 ## License
 
@@ -218,9 +196,3 @@ The Filecoin Project is dual-licensed under Apache 2.0 and MIT terms:
 
 - Apache License, Version 2.0, ([LICENSE-APACHE](https://github.com/filecoin-project/go-filecoin/blob/master/LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
 - MIT license ([LICENSE-MIT](https://github.com/filecoin-project/go-filecoin/blob/master/LICENSE-MIT) or http://opensource.org/licenses/MIT)
-
-
-[1]: https://golang.org/dl/
-[3]: https://github.com/RichardLitt/standard-readme
-[4]: https://golang.org/doc/install
-[5]: https://www.rust-lang.org/en-US/install.html
