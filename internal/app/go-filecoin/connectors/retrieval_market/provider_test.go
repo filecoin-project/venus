@@ -3,7 +3,9 @@ package retrievalmarketconnector_test
 import (
 	"context"
 	"errors"
+	"io/ioutil"
 	"math/rand"
+	"os"
 	"reflect"
 	"testing"
 
@@ -28,7 +30,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 func TestNewRetrievalProviderNodeConnector(t *testing.T) {
@@ -49,7 +50,12 @@ func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	sectorID := rand.Uint64()
-	fixtureFile := "../../../../../fixtures/constants.go"
+	fixtureFile, err := ioutil.TempFile(".", "file")
+	require.NoError(t, err)
+	fileData := "somedata"
+	_, err = fixtureFile.WriteString(fileData)
+	require.NoError(t, err)
+	defer func() { _ = os.Remove(fixtureFile.Name()) }()
 
 	intSz := reflect.TypeOf(0).Size()*8 - 1
 	maxOffset := uint64(1 << intSz)
@@ -60,8 +66,8 @@ func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
 		unsealErr                   error
 		expectedErr                 string
 	}{
-		{name: "happy path", offset: 10, length: 50, expectedLen: 50, expectedErr: ""},
-		{name: "happy even if length more than file length", offset: 10, length: 9999, expectedLen: 4086, expectedErr: ""},
+		{name: "happy path", offset: 2, length: 6, expectedLen: 6, expectedErr: ""},
+		{name: "happy even if length more than file length", offset: 2, length: 9999, expectedLen: 6, expectedErr: ""},
 		{name: "returns error if Unseal errors", unsealErr: errors.New("boom"), expectedErr: "boom"},
 		{name: "returns EOF if offset more than file length", offset: 9999, expectedErr: "EOF"},
 		{name: "returns error if offset > int64", offset: maxOffset, expectedErr: "offset overflows int"},
@@ -70,7 +76,7 @@ func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			rmp, rpc := unsealTestSetup(ctx, t)
-			rmp.ExpectedSectorIDs[sectorID] = fixtureFile
+			rmp.ExpectedSectorIDs[sectorID] = fixtureFile.Name()
 
 			if tc.expectedErr != "" {
 				rmp.UnsealErr = tc.unsealErr
@@ -85,7 +91,7 @@ func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
 				assert.Equal(t, int(tc.expectedLen), readlen)
 
 				// check that it read something & the offset worked
-				assert.Equal(t, "xtures", string(readBytes[0:6]))
+				assert.Equal(t, fileData[2:], string(readBytes[0:6]))
 			}
 		})
 	}
@@ -128,7 +134,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 	proof := []byte("proof")
 
 	t.Run("saves payment voucher and returns voucher amount if new", func(t *testing.T) {
-		viewer, pchMgr := makeViewerAndManager(ctx, t, clientAddr, minerAddr, pchan, root)
+		viewer, pchMgr := makeViewerAndManager(ctx, t, clientAddr, minerAddr, pchan)
 		viewer.GetFakeStateView().AddActorWithState(pchan, clientAddr, minerAddr, address.Undef)
 		rmp := NewRetrievalMarketClientFakeAPI(t)
 		// simulate creating payment channel
@@ -146,7 +152,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 	})
 
 	t.Run("errors if manager fails to save voucher, does not store new channel info", func(t *testing.T) {
-		viewer, pchMgr := makeViewerAndManager(ctx, t, clientAddr, minerAddr, pchan, root)
+		viewer, pchMgr := makeViewerAndManager(ctx, t, clientAddr, minerAddr, pchan)
 		viewer.GetFakeStateView().AddActorWithState(pchan, clientAddr, minerAddr, address.Undef)
 		viewer.GetFakeStateView().PaychActorPartiesErr = errors.New("boom")
 
@@ -161,7 +167,7 @@ func TestRetrievalProviderConnector_SavePaymentVoucher(t *testing.T) {
 	})
 }
 
-func makeViewerAndManager(ctx context.Context, t *testing.T, client, miner, paych address.Address, root state.Root) (*paychtest.FakeStateViewer, *pch.Manager) {
+func makeViewerAndManager(ctx context.Context, t *testing.T, client, miner, paych address.Address) (*paychtest.FakeStateViewer, *pch.Manager) {
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
 	testAPI := paychtest.NewFakePaymentChannelAPI(ctx, t)
 	viewer := paychtest.NewFakeStateViewer(t)
