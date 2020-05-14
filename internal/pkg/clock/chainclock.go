@@ -17,6 +17,7 @@ type ChainEpochClock interface {
 	EpochRangeAtTimestamp(t uint64) (abi.ChainEpoch, abi.ChainEpoch)
 	StartTimeOfEpoch(e abi.ChainEpoch) time.Time
 	WaitForEpoch(ctx context.Context, e abi.ChainEpoch)
+	WaitForEpochOffset(ctx context.Context, e abi.ChainEpoch, offset time.Duration)
 	WaitNextEpoch(ctx context.Context) abi.ChainEpoch
 	Clock
 }
@@ -86,9 +87,9 @@ func (cc *chainClock) WaitNextEpoch(ctx context.Context) abi.ChainEpoch {
 	return nextEpoch
 }
 
-// WaitNextEpoch returns when an epoch is due to start, or ctx is done.
-func (cc *chainClock) WaitForEpoch(ctx context.Context, e abi.ChainEpoch) {
-	epochStart := cc.StartTimeOfEpoch(e)
+// WaitNextEpochOffset returns when time is offset past the start of the epoch, or ctx is done.
+func (cc *chainClock) WaitForEpochOffset(ctx context.Context, e abi.ChainEpoch, offset time.Duration) {
+	epochStart := cc.StartTimeOfEpoch(e).Add(offset)
 	nowB4 := cc.Now()
 	waitDur := epochStart.Sub(nowB4)
 	if waitDur > 0 {
@@ -98,4 +99,9 @@ func (cc *chainClock) WaitForEpoch(ctx context.Context, e abi.ChainEpoch) {
 		case <-ctx.Done():
 		}
 	}
+}
+
+// WaitNextEpoch returns when an epoch is due to start, or ctx is done.
+func (cc *chainClock) WaitForEpoch(ctx context.Context, e abi.ChainEpoch) {
+	cc.WaitForEpochOffset(ctx, e, 0)
 }
