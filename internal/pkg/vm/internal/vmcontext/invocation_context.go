@@ -190,6 +190,14 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 
 	// 3. transfer funds carried by the msg
 	if !ctx.msg.value.Nil() && !ctx.msg.value.IsZero() {
+		if ctx.msg.value.LessThan(big.Zero()) {
+			runtime.Abortf(exitcode.SysErrForbidden, "attempt to transfer negative value %s from %s to %s",
+				ctx.msg.value, ctx.msg.from, ctx.msg.to)
+		}
+		if ctx.fromActor.Balance.LessThan(ctx.msg.value) {
+			runtime.Abortf(exitcode.SysErrInsufficientFunds, "sender %s insufficient balance %s to transfer %s to %s",
+				ctx.msg.from, ctx.fromActor.Balance, ctx.msg.value, ctx.msg.to)
+		}
 		ctx.toActor, ctx.fromActor = ctx.rt.transfer(ctx.msg.from, ctx.msg.to, ctx.msg.value)
 	}
 
