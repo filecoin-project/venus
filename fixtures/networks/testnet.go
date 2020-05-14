@@ -24,7 +24,7 @@ var TestNet = NetworkConf{
 			testnetBootstrap10,
 			testnetBootstrap11,
 		},
-		MinPeerThreshold: 1,
+		MinPeerThreshold: 0,
 		Period:           "10s",
 	},
 	Drand: config.DrandConfig{
