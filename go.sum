@@ -208,7 +208,6 @@ github.com/filecoin-project/specs-actors v0.2.0 h1:bKxloHLegeYJttIJbQjl4/tdsKOUt
 github.com/filecoin-project/specs-actors v0.2.0/go.mod h1:nQYnFbQ7Y0bHZyq6HDEuVlCPR+U3z5Q3wMOQ+2aiV+Y=
 github.com/filecoin-project/specs-actors v0.3.0 h1:QxgAuTrZr5TPqjyprZk0nTYW5o0JWpzbb5v+4UHHvN0=
 github.com/filecoin-project/specs-actors v0.3.0/go.mod h1:nQYnFbQ7Y0bHZyq6HDEuVlCPR+U3z5Q3wMOQ+2aiV+Y=
-github.com/filecoin-project/specs-actors v0.5.1 h1:uBPdtCnGRuBo/BNw9nrnf5NCdsaVJB/8FdfIpee1HZg=
 github.com/filecoin-project/specs-actors v0.5.1/go.mod h1:r5btrNzZD0oBkEz1pohv80gSCXQnqGrD0kYwOTiExyE=
 github.com/filecoin-project/specs-actors v0.5.3 h1:fdq8Gx0izhnUKl6sYEtI4SUEjT2U6W2w06HeqLz5vmw=
 github.com/filecoin-project/specs-actors v0.5.3/go.mod h1:r5btrNzZD0oBkEz1pohv80gSCXQnqGrD0kYwOTiExyE=

@@ -8,7 +8,6 @@ package mining
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/pkg/errors"
 
@@ -26,12 +25,11 @@ type Scheduler interface {
 
 // NewScheduler returns a new timingScheduler to schedule mining work on the
 // input worker.
-func NewScheduler(w Worker, f func() (block.TipSet, error), c clock.ChainEpochClock, propDelay time.Duration) Scheduler {
+func NewScheduler(w Worker, f func() (block.TipSet, error), c clock.ChainEpochClock) Scheduler {
 	return &timingScheduler{
 		worker:       w,
 		pollHeadFunc: f,
 		chainClock:   c,
-		propDelay:    propDelay,
 	}
 }
 
@@ -43,9 +41,6 @@ type timingScheduler struct {
 	pollHeadFunc func() (block.TipSet, error)
 	// chainClock measures time and tracks the epoch-time relationship
 	chainClock clock.ChainEpochClock
-	// propDelay is the time between the start of the epoch and the start
-	// of mining to wait for parent blocks to arrive
-	propDelay time.Duration
 
 	// mu protects skipping
 	mu sync.Mutex
@@ -93,7 +88,7 @@ func (s *timingScheduler) mineLoop(ctx context.Context, outCh chan Output) error
 	// The scheduler will skip mining jobs if the skipping flag is set
 	for {
 		// wait for prop delay after epoch start for parent blocks to arrive
-		s.chainClock.WaitForEpochOffset(ctx, targetEpoch, s.propDelay)
+		s.chainClock.WaitForEpochPropDelay(ctx, targetEpoch)
 		if s.isDone(ctx) {
 			return nil
 		}

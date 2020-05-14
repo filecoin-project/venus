@@ -117,7 +117,8 @@ func TestChainSyncWithMessages(t *testing.T) {
 	genTime := time.Unix(genUnixSeconds, 0)
 	fakeClock := clock.NewFake(genTime)
 	blockTime := 30 * time.Second
-	c := clock.NewChainClockFromClock(uint64(genUnixSeconds), blockTime, fakeClock)
+	propDelay := 6 * time.Second
+	c := clock.NewChainClockFromClock(uint64(genUnixSeconds), blockTime, propDelay, fakeClock)
 
 	// first node is the message sender.
 	builder1 := test.NewNodeBuilder(t).
@@ -213,7 +214,8 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 	genTime := time.Unix(genUnixSeconds, 0)
 	fc := clock.NewFake(genTime)
 	blockTime := 30 * time.Second
-	c := clock.NewChainClockFromClock(1234567890, blockTime, fc)
+	propDelay := 5 * time.Second
+	c := clock.NewChainClockFromClock(1234567890, blockTime, propDelay, fc)
 
 	builder := test.NewNodeBuilder(t).
 		WithGenesisInit(seed.GenesisInitFunc).

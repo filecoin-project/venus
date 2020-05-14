@@ -26,6 +26,7 @@ func TestSingleMiner(t *testing.T) {
 	ctx := context.Background()
 	genTime := int64(1000000000)
 	blockTime := 30 * time.Second
+	propDelay := 6 * time.Second
 	// The clock is intentionally set some way ahead of the genesis time so the miner can produce
 	// catch-up blocks as quickly as possible.
 	fakeClock := clock.NewFake(time.Unix(genTime, 0).Add(4 * time.Hour))
@@ -34,7 +35,7 @@ func TestSingleMiner(t *testing.T) {
 	// Future code could decouple the whole setup.json from the presealed information.
 	genCfg := loadGenesisConfig(t, fixtureGenCfg())
 	seed := node.MakeChainSeed(t, genCfg)
-	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
+	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, propDelay, fakeClock)
 
 	drandImpl := &drand.Fake{
 		GenesisTime:   time.Unix(genTime, 0).Add(-1 * blockTime),
@@ -84,6 +85,7 @@ func TestSyncFromSingleMiner(t *testing.T) {
 
 	genTime := int64(1000000000)
 	blockTime := 30 * time.Second
+	propDelay := 6 * time.Second
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
 
 	drandImpl := &drand.Fake{
@@ -93,7 +95,7 @@ func TestSyncFromSingleMiner(t *testing.T) {
 
 	genCfg := loadGenesisConfig(t, fixtureGenCfg())
 	seed := node.MakeChainSeed(t, genCfg)
-	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
+	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, propDelay, fakeClock)
 	assert.Equal(t, fakeClock.Now(), chainClock.Now())
 
 	ndMiner := makeNode(ctx, t, seed, chainClock, drandImpl)
@@ -139,6 +141,7 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 
 	genTime := int64(1000000000)
 	blockTime := 30 * time.Second
+	propDelay := 6 * time.Second
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
 
 	// Load genesis config fixture.
@@ -151,7 +154,7 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 
 	// fake proofs so we can run through a proving period quickly
 	miner := test.NewNodeBuilder(t).
-		WithBuilderOpt(node.ChainClockConfigOption(clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock))).
+		WithBuilderOpt(node.ChainClockConfigOption(clock.NewChainClockFromClock(uint64(genTime), blockTime, propDelay, fakeClock))).
 		WithGenesisInit(seed.GenesisInitFunc).
 		WithBuilderOpt(node.DrandConfigOption(&drand.Fake{
 			GenesisTime:   time.Unix(genTime, 0).Add(-1 * blockTime),

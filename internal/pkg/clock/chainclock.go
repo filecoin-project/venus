@@ -10,6 +10,9 @@ import (
 // DefaultEpochDuration is the default duration of epochs
 const DefaultEpochDuration = 25 * time.Second
 
+// DefaultPropagationDelay is the default time to await for blocks to arrive before mining
+const DefaultPropagationDelay = 6 * time.Second
+
 // ChainEpochClock is an interface for a clock that represents epochs of the protocol.
 type ChainEpochClock interface {
 	EpochDuration() time.Duration
@@ -17,7 +20,7 @@ type ChainEpochClock interface {
 	EpochRangeAtTimestamp(t uint64) (abi.ChainEpoch, abi.ChainEpoch)
 	StartTimeOfEpoch(e abi.ChainEpoch) time.Time
 	WaitForEpoch(ctx context.Context, e abi.ChainEpoch)
-	WaitForEpochOffset(ctx context.Context, e abi.ChainEpoch, offset time.Duration)
+	WaitForEpochPropDelay(ctx context.Context, e abi.ChainEpoch)
 	WaitNextEpoch(ctx context.Context) abi.ChainEpoch
 	Clock
 }
@@ -28,22 +31,26 @@ type chainClock struct {
 	genesisTime time.Time
 	// The fixed time length of the epoch window
 	epochDuration time.Duration
+	// propDelay is the time between the start of the epoch and the start
+	// of mining to wait for parent blocks to arrive
+	propDelay time.Duration
 
 	Clock
 }
 
 // NewChainClock returns a ChainEpochClock wrapping a default clock.Clock
-func NewChainClock(genesisTime uint64, blockTime time.Duration) ChainEpochClock {
-	return NewChainClockFromClock(genesisTime, blockTime, NewSystemClock())
+func NewChainClock(genesisTime uint64, blockTime time.Duration, propDelay time.Duration) ChainEpochClock {
+	return NewChainClockFromClock(genesisTime, blockTime, propDelay, NewSystemClock())
 }
 
 // NewChainClockFromClock returns a ChainEpochClock wrapping the provided
 // clock.Clock
-func NewChainClockFromClock(genesisSeconds uint64, blockTime time.Duration, c Clock) ChainEpochClock {
+func NewChainClockFromClock(genesisSeconds uint64, blockTime time.Duration, propDelay time.Duration, c Clock) ChainEpochClock {
 	gt := time.Unix(int64(genesisSeconds), 0)
 	return &chainClock{
 		genesisTime:   gt,
 		epochDuration: blockTime,
+		propDelay:     propDelay,
 		Clock:         c,
 	}
 }
@@ -87,8 +94,18 @@ func (cc *chainClock) WaitNextEpoch(ctx context.Context) abi.ChainEpoch {
 	return nextEpoch
 }
 
-// WaitNextEpochOffset returns when time is offset past the start of the epoch, or ctx is done.
-func (cc *chainClock) WaitForEpochOffset(ctx context.Context, e abi.ChainEpoch, offset time.Duration) {
+// WaitForEpoch returns when an epoch is due to start, or ctx is done.
+func (cc *chainClock) WaitForEpoch(ctx context.Context, e abi.ChainEpoch) {
+	cc.waitForEpochOffset(ctx, e, 0)
+}
+
+// WaitForEpochPropDelay returns propDelay time after the start of the epoch, or when ctx is done.
+func (cc *chainClock) WaitForEpochPropDelay(ctx context.Context, e abi.ChainEpoch) {
+	cc.waitForEpochOffset(ctx, e, cc.propDelay)
+}
+
+// waitNextEpochOffset returns when time is offset past the start of the epoch, or ctx is done.
+func (cc *chainClock) waitForEpochOffset(ctx context.Context, e abi.ChainEpoch, offset time.Duration) {
 	epochStart := cc.StartTimeOfEpoch(e).Add(offset)
 	nowB4 := cc.Now()
 	waitDur := epochStart.Sub(nowB4)
@@ -99,9 +116,4 @@ func (cc *chainClock) WaitForEpochOffset(ctx context.Context, e abi.ChainEpoch, 
 		case <-ctx.Done():
 		}
 	}
-}
-
-// WaitNextEpoch returns when an epoch is due to start, or ctx is done.
-func (cc *chainClock) WaitForEpoch(ctx context.Context, e abi.ChainEpoch) {
-	cc.WaitForEpochOffset(ctx, e, 0)
 }

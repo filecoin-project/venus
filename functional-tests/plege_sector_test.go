@@ -27,6 +27,7 @@ func TestMiningPledgeSector(t *testing.T) {
 
 	genTime := int64(1000000000)
 	blockTime := 1 * time.Second
+	propDelay := 200 * time.Millisecond
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
 
 	genCfg := loadGenesisConfig(t, fixtureGenCfg())
@@ -35,7 +36,7 @@ func TestMiningPledgeSector(t *testing.T) {
 		SealProofType: constants.DevSealProofType,
 	})
 	seed := node.MakeChainSeed(t, genCfg)
-	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
+	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, propDelay, fakeClock)
 
 	drandImpl := &drand.Fake{
 		GenesisTime:   time.Unix(genTime, 0).Add(-1 * blockTime),
