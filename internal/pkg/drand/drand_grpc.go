@@ -136,6 +136,9 @@ func (d *GRPC) updateLocalState(entry *Entry) {
 
 // VerifyEntry verifies that the child's signature is a valid signature of the previous entry.
 func (d *GRPC) VerifyEntry(parent, child *Entry) (bool, error) {
+	if len(d.key.Coefficients) == 0 {
+		return false, fmt.Errorf("no dist key configured")
+	}
 	msg := beacon.Message(uint64(child.Round), parent.Data)
 	err := key.Scheme.VerifyRecovered(d.key.Coefficients[0], msg, child.Data)
 	if err != nil {
