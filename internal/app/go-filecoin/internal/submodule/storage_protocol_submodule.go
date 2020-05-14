@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-storedcounter"
 
 	"github.com/filecoin-project/go-address"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	graphsyncimpl "github.com/filecoin-project/go-data-transfer/impl/graphsync"
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -18,8 +19,10 @@ import (
 	smnetwork "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-graphsync"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
 
@@ -32,12 +35,16 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
+var storageLog = logging.Logger("storage-protocol")
+
 // StorageProtocolSubmodule enhances the node with storage protocol
 // capabilities.
 type StorageProtocolSubmodule struct {
-	StorageClient   iface.StorageClient
-	StorageProvider iface.StorageProvider
-	pieceManager    piecemanager.PieceManager
+	StorageClient    iface.StorageClient
+	StorageProvider  iface.StorageProvider
+	dataTransfer     datatransfer.Manager
+	requestValidator *smvalid.UnifiedRequestValidator
+	pieceManager     piecemanager.PieceManager
 }
 
 // NewStorageProtocolSubmodule creates a new storage protocol submodule.
@@ -55,22 +62,27 @@ func NewStorageProtocolSubmodule(
 	stateViewer *appstate.Viewer,
 ) (*StorageProtocolSubmodule, error) {
 	cnode := storagemarketconnector.NewStorageClientNodeConnector(cborutil.NewIpldStore(bs), c.State, mw, s, m.Outbox, clientAddr, stateViewer)
-	dtStoredCounter := storedcounter.New(ds, datastore.NewKey("datatransfer/client/counter"))
+	dtStoredCounter := storedcounter.New(ds, datastore.NewKey("datatransfer/counter"))
 	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync, dtStoredCounter)
-	validator := smvalid.NewUnifiedRequestValidator(false, true, statestore.New(ds))
+	clientDs := namespace.Wrap(ds, datastore.NewKey("/deals/client"))
+	validator := smvalid.NewUnifiedRequestValidator(nil, statestore.New(clientDs))
 	err := dt.RegisterVoucherType(&smvalid.StorageDataTransferVoucher{}, validator)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, dt, discovery.NewLocal(ds), ds, cnode)
+	client, err := impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, dt, discovery.NewLocal(ds), clientDs, cnode)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating storage client")
 	}
 
-	return &StorageProtocolSubmodule{
-		StorageClient: client,
-	}, nil
+	sm := &StorageProtocolSubmodule{
+		StorageClient:    client,
+		dataTransfer:     dt,
+		requestValidator: validator,
+	}
+	sm.StorageClient.SubscribeToEvents(sm.clientEventLogger)
+	return sm, nil
 }
 
 func (sm *StorageProtocolSubmodule) AddStorageProvider(
@@ -109,15 +121,14 @@ func (sm *StorageProtocolSubmodule) AddStorageProvider(
 		return err
 	}
 
-	dtStoredCounter := storedcounter.New(ds, datastore.NewKey("datatransfer/provider/counter"))
-	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync, dtStoredCounter)
-	validator := smvalid.NewUnifiedRequestValidator(true, false, statestore.New(ds))
-	err = dt.RegisterVoucherType(&smvalid.StorageDataTransferVoucher{}, validator)
-	if err != nil {
-		return err
+	providerDs := namespace.Wrap(ds, datastore.NewKey(impl.ProviderDsPrefix))
+	sm.requestValidator.SetPushDeals(statestore.New(providerDs))
+	// TODO: see https://github.com/filecoin-project/go-fil-markets/issues/251 -- this should accept providerDs so
+	// the node can configure the namespace
+	sm.StorageProvider, err = impl.NewProvider(smnetwork.NewFromLibp2pHost(h), ds, bs, fs, piecestore.NewPieceStore(ds), sm.dataTransfer, pnode, minerAddr, sealProofType)
+	if err == nil {
+		sm.StorageProvider.SubscribeToEvents(sm.providerEventLogger)
 	}
-
-	sm.StorageProvider, err = impl.NewProvider(smnetwork.NewFromLibp2pHost(h), ds, bs, fs, piecestore.NewPieceStore(ds), dt, pnode, minerAddr, sealProofType)
 	return err
 }
 
@@ -137,4 +148,20 @@ func (sm *StorageProtocolSubmodule) PieceManager() (piecemanager.PieceManager, e
 		return nil, errors.New("Mining has not been started so piece manager is not available")
 	}
 	return sm.pieceManager, nil
+}
+
+func (sm *StorageProtocolSubmodule) DataTransfer() datatransfer.Manager {
+	return sm.dataTransfer
+}
+
+func (sm *StorageProtocolSubmodule) RequestValidator() datatransfer.RequestValidator {
+	return sm.requestValidator
+}
+
+func (sm *StorageProtocolSubmodule) clientEventLogger(event iface.ClientEvent, deal iface.ClientDeal) {
+	storageLog.Infof("Event: %s, Proposal CID: %s, State: %s, Message: %s", iface.ClientEvents[event], deal.ProposalCid, iface.DealStates[deal.State], deal.Message)
+}
+
+func (sm *StorageProtocolSubmodule) providerEventLogger(event iface.ProviderEvent, deal iface.MinerDeal) {
+	storageLog.Infof("Event: %s, Proposal CID: %s, State: %s, Message: %s", iface.ProviderEvents[event], deal.ProposalCid, iface.DealStates[deal.State], deal.Message)
 }
