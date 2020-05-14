@@ -44,8 +44,7 @@ var initCmd = &cmds.Command{
 		cmdkit.StringOption(OptionSectorDir, "path of directory into which staged and sealed sectors will be written"),
 		cmdkit.StringOption(MinerActorAddress, "when set, sets the daemons's miner actor address to the provided address"),
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
-		cmdkit.BoolOption(DevnetInterop, "when set, populates config with interop-net specific bootstrap parameters"),
-		cmdkit.BoolOption(DevnetTestnet, "when set, populates config with testnet specific bootstrap parameters"),
+		cmdkit.StringOption(Network, "when set, populates config with network specific parameters"),
 		cmdkit.StringOption(OptionPresealedSectorDir, "when set to the path of a directory, imports pre-sealed sector data from that directory"),
 		cmdkit.StringOption(OptionDrandConfigAddr, "configure drand with given address, uses secure contact protocol and no override.  If you need different settings use daemon drand command"),
 	},
@@ -56,7 +55,7 @@ var initCmd = &cmds.Command{
 			return err
 		}
 
-		if err := re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)); err != nil {
+		if err := re.Emit(repoDir); err != nil {
 			return err
 		}
 		if err := repo.InitFSRepo(repoDir, repo.Version, config.NewDefaultConfig()); err != nil {
@@ -137,24 +136,19 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 		cfg.SectorBase.PreSealedSectorsDirPath = dir
 	}
 
-	devnetInterop, _ := options[DevnetInterop].(bool)
-	devnetTestnet, _ := options[DevnetTestnet].(bool)
-
-	if devnetInterop && devnetTestnet {
-		return fmt.Errorf("Please only specify a single network to configure")
-	}
+	netName, _ := options[Network].(string)
 
 	// Setup devnet specific config options.
-	if devnetInterop {
+	if netName == "interop" {
 		cfg.Bootstrap = &networks.InteropNet.Bootstrap
 		cfg.Drand = &networks.InteropNet.Drand
 		cfg.NetworkParams = &networks.InteropNet.Network
-	}
-
-	if devnetTestnet {
+	} else if netName == "testnet" {
 		cfg.Bootstrap = &networks.TestNet.Bootstrap
 		cfg.Drand = &networks.TestNet.Drand
 		cfg.NetworkParams = &networks.TestNet.Network
+	} else if netName != "" {
+		return fmt.Errorf("unknown network name %s", netName)
 	}
 
 	return nil

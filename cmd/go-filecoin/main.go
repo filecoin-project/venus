@@ -81,11 +81,8 @@ const (
 	// GenesisFile is the path of file containing archive of genesis block DAG data
 	GenesisFile = "genesisfile"
 
-	// DevnetInterop populates config bootstrap addrs with the dns multiaddrs of the interop devnet and other interop devnet specific bootstrap parameters
-	DevnetInterop = "devnet-interop"
-
-	// DevnetInterop populates config bootstrap addrs with the dns multiaddrs of the testnet devnet and other testnet devnet specific bootstrap parameters
-	DevnetTestnet = "devnet-testnet"
+	// Network populates config with network-specific parameters for a known network (e.g. testnet2)
+	Network = "network"
 
 	// IsRelay when set causes the the daemon to provide libp2p relay
 	// services allowing other filecoin nodes behind NATs to talk directly.
