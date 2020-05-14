@@ -40,14 +40,14 @@ __Questions or problems with go-filecoin? [Ask the community first](#community)_
 Filecoin is a decentralized storage network that turns the world’s unused storage into an algorithmic market, creating a permanent, decentralized future for the web.
 **Miners** earn the native protocol token (also called “Filecoin”) by providing data storage and/or retrieval. 
 **Clients** pay miners to store or distribute data and to retrieve it.
-Check out the [Filecoin home page](https://filecoin.io/) and [documentation site](https://docs.filecoin.io/) for more.
+Check out the [Filecoin website](https://filecoin.io/) and [Filecoin Documentation](https://docs.filecoin.io/) for more.
 
 ## Install
 
 👋 Welcome to Go Filecoin!
 
 This README outlines the basics for building and running Go-filecoin.
-**For more background, configuration, and troubleshooting information check out the [Go-filecoin docs](https://go.filecoin.io/)**.
+**For more background, configuration, and troubleshooting information check out the [Go-filecoin Docs](https://go.filecoin.io/)**.
 
 ### System Requirements
 
@@ -76,12 +76,13 @@ Due to our use of `cgo`, you'll need a C compiler to build go-filecoin whether y
 If you want to use `gcc` (e.g. `export CC=gcc`) when building go-filecoin, you will need to use v7.4.0 or higher.
 
 The build process will download a static library containing the [Filecoin proofs implementation](https://github.com/filecoin-project/rust-fil-proofs) (which is written in Rust).
-If instead you wish to build it from source, by setting the environment variable `FFI_BUILD_FROM_SOURCE=1`, you'll need a Rust development environment too.
+
+> If instead you wish to build proofs from source, you'll need (1) Rust development environment and (2) to set the environment variable `FFI_BUILD_FROM_SOURCE=1`.
 More info at [filecoin-ffi](https://github.com/filecoin-project/filecoin-ffi).
 
 #### Install Dependencies
 
-First, to load all the Git submodules.
+First, load all the Git submodules.
 
 ```sh
 git submodule update --init --recursive
@@ -130,16 +131,13 @@ go run ./build all
 
 Note: Any flag passed to `go run ./build test` (e.g. `-cover`) will be passed on to `go test`.
 
-If you have **problems with the build**, please consult the [Go-filecoin docs](https://go.filecoin.io/) site.
+If you have **problems with the build**, please consult the [Troubleshooting](https://go.filecoin.io/go-filecoin-tutorial/Troubleshooting-&-FAQ.html) section of the [Go-filecoin Documentation](https://go.filecoin.io/).
 
 ## Usage
 
-The [Go-filecoin docs](https://go.filecoin.io/) site contains a tutorial sequence to guide you through
-running a Filecoin node and performing some basic storage operations. 
+For a complete step-by-step tutorial, see [Getting Started](https://go.filecoin.io/go-filecoin-tutorial/Getting-Started.html).
 
-To see a full list of commands, run `./go-filecoin --help`.
-
-A quick start for connecting to an existing network:
+#### Quick start:
 
 ```sh
 # Remove any existing symlink to a repo directory
@@ -151,21 +149,21 @@ rm ~/.filecoin
 # Run the daemon
 ./go-filecoin daemon
 ```
+> Note: This connects you to the "interop" developer network. To connect to a different network, replace the URL after `--genesisfile=` and update the last flag.
 
-Your node should connect to some peers and begin downloading and validating the blockchain.
+Your node should now be connected to some peers, and begin downloading and validating the blockchain.
 
-You can interact with your node by running the `go-filecoin` binary again in a different terminal.
+Open a new terminal to interact with your node:
 
 ```sh
 # Print the node's connection information
 ./go-filecoin id
 
-# Connect to a peer
-./go-filecoin swarm connect <peerid>
-
 # Show chain sync status
 ./go-filecoin chain status
 ```
+
+To see a full list of commands, run `./go-filecoin --help`.
 
 ### Advanced usage
 
