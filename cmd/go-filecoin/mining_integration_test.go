@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -30,7 +30,7 @@ func TestMiningGenBlock(t *testing.T) {
 	n := builder.BuildAndStart(ctx)
 	defer n.Stop(ctx)
 
-	addr := fixtures.TestAddresses[0]
+	addr := fortest.TestAddresses[0]
 
 	attoFILBefore, err := n.PorcelainAPI.WalletBalance(ctx, addr)
 	require.NoError(t, err)

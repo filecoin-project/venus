@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
@@ -37,21 +37,21 @@ func TestOutbox(t *testing.T) {
 		_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
-		c1 := sendMessage(ctx, cmdClient, fixtures.TestAddresses[0], fixtures.TestAddresses[2]).ReadStdoutTrimNewlines()
-		c2 := sendMessage(ctx, cmdClient, fixtures.TestAddresses[0], fixtures.TestAddresses[2]).ReadStdoutTrimNewlines()
-		c3 := sendMessage(ctx, cmdClient, fixtures.TestAddresses[1], fixtures.TestAddresses[2]).ReadStdoutTrimNewlines()
+		c1 := sendMessage(ctx, cmdClient, fortest.TestAddresses[0], fortest.TestAddresses[2]).ReadStdoutTrimNewlines()
+		c2 := sendMessage(ctx, cmdClient, fortest.TestAddresses[0], fortest.TestAddresses[2]).ReadStdoutTrimNewlines()
+		c3 := sendMessage(ctx, cmdClient, fortest.TestAddresses[1], fortest.TestAddresses[2]).ReadStdoutTrimNewlines()
 
 		out := cmdClient.RunSuccess(ctx, "outbox", "ls").ReadStdout()
-		assert.Contains(t, out, fixtures.TestAddresses[0])
-		assert.Contains(t, out, fixtures.TestAddresses[1])
+		assert.Contains(t, out, fortest.TestAddresses[0])
+		assert.Contains(t, out, fortest.TestAddresses[1])
 		assert.Contains(t, out, c1)
 		assert.Contains(t, out, c2)
 		assert.Contains(t, out, c3)
 
 		// With address filter
-		out = cmdClient.RunSuccess(ctx, "outbox", "ls", fixtures.TestAddresses[1].String()).ReadStdout()
-		assert.NotContains(t, out, fixtures.TestAddresses[0])
-		assert.Contains(t, out, fixtures.TestAddresses[1])
+		out = cmdClient.RunSuccess(ctx, "outbox", "ls", fortest.TestAddresses[1].String()).ReadStdout()
+		assert.NotContains(t, out, fortest.TestAddresses[0])
+		assert.Contains(t, out, fortest.TestAddresses[1])
 		assert.NotContains(t, out, c1)
 		assert.NotContains(t, out, c2)
 		assert.Contains(t, out, c3)
@@ -67,21 +67,21 @@ func TestOutbox(t *testing.T) {
 		_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
-		c1 := sendMessage(ctx, cmdClient, fixtures.TestAddresses[0], fixtures.TestAddresses[2]).ReadStdoutTrimNewlines()
-		c2 := sendMessage(ctx, cmdClient, fixtures.TestAddresses[0], fixtures.TestAddresses[2]).ReadStdoutTrimNewlines()
-		c3 := sendMessage(ctx, cmdClient, fixtures.TestAddresses[1], fixtures.TestAddresses[2]).ReadStdoutTrimNewlines()
+		c1 := sendMessage(ctx, cmdClient, fortest.TestAddresses[0], fortest.TestAddresses[2]).ReadStdoutTrimNewlines()
+		c2 := sendMessage(ctx, cmdClient, fortest.TestAddresses[0], fortest.TestAddresses[2]).ReadStdoutTrimNewlines()
+		c3 := sendMessage(ctx, cmdClient, fortest.TestAddresses[1], fortest.TestAddresses[2]).ReadStdoutTrimNewlines()
 
 		// With address filter
-		cmdClient.RunSuccess(ctx, "outbox", "clear", fixtures.TestAddresses[1].String())
+		cmdClient.RunSuccess(ctx, "outbox", "clear", fortest.TestAddresses[1].String())
 		out := cmdClient.RunSuccess(ctx, "outbox", "ls").ReadStdout()
-		assert.Contains(t, out, fixtures.TestAddresses[0])
-		assert.NotContains(t, out, fixtures.TestAddresses[1]) // Cleared
+		assert.Contains(t, out, fortest.TestAddresses[0])
+		assert.NotContains(t, out, fortest.TestAddresses[1]) // Cleared
 		assert.Contains(t, out, c1)
 		assert.Contains(t, out, c2)
 		assert.NotContains(t, out, c3) // cleared
 
 		// Repopulate
-		sendMessage(ctx, cmdClient, fixtures.TestAddresses[1], fixtures.TestAddresses[2]).ReadStdoutTrimNewlines()
+		sendMessage(ctx, cmdClient, fortest.TestAddresses[1], fortest.TestAddresses[2]).ReadStdoutTrimNewlines()
 
 		// #nofilter
 		cmdClient.RunSuccess(ctx, "outbox", "clear")

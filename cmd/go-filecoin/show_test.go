@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -151,7 +151,7 @@ func TestBlockDaemon(t *testing.T) {
 
 	t.Run("show messages", func(t *testing.T) {
 		cs := node.FixtureChainSeed(t)
-		defaultAddr := fixtures.TestAddresses[0]
+		defaultAddr := fortest.TestAddresses[0]
 		ctx := context.Background()
 		builder := test.NewNodeBuilder(t)
 		builder.WithGenesisInit(cs.GenesisInitFunc)
@@ -172,7 +172,7 @@ func TestBlockDaemon(t *testing.T) {
 			"--from", from.String(),
 			"--gas-price", "1",
 			"--gas-limit", "300",
-			fixtures.TestAddresses[3].String(),
+			fortest.TestAddresses[3].String(),
 		)
 
 		cmdClient.RunSuccess(ctx, "message", "send",
@@ -180,7 +180,7 @@ func TestBlockDaemon(t *testing.T) {
 			"--gas-price", "1",
 			"--gas-limit", "300",
 			"--value", "10",
-			fixtures.TestAddresses[3].String(),
+			fortest.TestAddresses[3].String(),
 		)
 
 		cmdClient.RunSuccess(ctx, "message", "send",
@@ -188,7 +188,7 @@ func TestBlockDaemon(t *testing.T) {
 			"--gas-price", "1",
 			"--gas-limit", "300",
 			"--value", "5.5",
-			fixtures.TestAddresses[3].String(),
+			fortest.TestAddresses[3].String(),
 		)
 
 		blk, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
