@@ -143,13 +143,12 @@ For a complete step-by-step tutorial, see [Getting Started](https://go.filecoin.
 # Remove any existing symlink to a repo directory
 rm ~/.filecoin
 
-# Initialize a new repository, downloading a genesis file and setting network parameters for the "interop" developer network
-./go-filecoin init --genesisfile=https://gateway.ipfs.io/ipfs/QmZ7ENWU2TYBuRfdXRjoEFvF6mNpYzyALPHexcgnonUeoK/interop.car --devnet-interop
+# Initialize a new repository, downloading a genesis file and setting network parameters (in this case, for the Testnet network)
+./go-filecoin init --genesisfile=https://ipfs.io/ipfs/QmXZQeezX1x8uRQX9EUaYxnyivUpTfJqQTvszk3c8SnFPN/testnet.car --network=testnet
 
 # Run the daemon
 ./go-filecoin daemon
 ```
-> Note: This connects you to the "interop" developer network. To connect to a different network, replace the URL after `--genesisfile=` and update the last flag.
 
 Your node should now be connected to some peers, and begin downloading and validating the blockchain.
 
