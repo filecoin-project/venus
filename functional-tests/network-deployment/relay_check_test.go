@@ -304,7 +304,7 @@ func networkBootstrapPeers(network string) []string {
 
 	switch network {
 	case "interop":
-		return networks.InteropNet.Bootstrap.Addresses
+		return networks.Interop().Bootstrap.Addresses
 	}
 
 	return []string{}
