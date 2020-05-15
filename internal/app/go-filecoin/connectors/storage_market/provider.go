@@ -129,8 +129,6 @@ func (s *StorageProviderNodeConnector) ListProviderDeals(ctx context.Context, ad
 
 // OnDealComplete adds the piece to the storage provider
 func (s *StorageProviderNodeConnector) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceReader io.Reader) error {
-	// TODO: storage provider is expecting a sector ID here. This won't work. The sector ID needs to be removed from
-	// TODO: the return value, and storage provider needs to call OnDealSectorCommitted which should add Sector ID to its
 	// TODO: callback.
 	return s.pieceManager.SealPieceIntoNewSector(ctx, deal.DealID, deal.Proposal.StartEpoch, deal.Proposal.EndEpoch, pieceSize, pieceReader)
 }
@@ -198,4 +196,9 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 		return errors.New("Deal not found")
 	})
 	return
+}
+
+// EventLogger logs new events on the storage provider
+func (s *StorageProviderNodeConnector) EventLogger(event storagemarket.ProviderEvent, deal storagemarket.MinerDeal) {
+	log.Infof("Event: %s, Proposal CID: %s, State: %s, Message: %s", storagemarket.ProviderEvents[event], deal.ProposalCid, storagemarket.DealStates[deal.State], deal.Message)
 }
