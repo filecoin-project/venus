@@ -15,6 +15,9 @@ type chainState interface {
 
 // GetChainHead gets the tipset token in byte form + epoch at current chain head
 func GetChainHead(m chainState) ([]byte, abi.ChainEpoch, error) {
+	if m == nil {
+		return []byte{}, 0, xerrors.New("chainState cannot be nil")
+	}
 	tsk := m.Head()
 
 	ts, err := m.GetTipSet(tsk)

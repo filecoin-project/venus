@@ -42,7 +42,6 @@ func NewRetrievalProtocolSubmodule(bs blockstore.Blockstore,
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("marketClient: %v", marketClient)
 	return &RetrievalProtocolSubmodule{client: marketClient}, nil
 }
 
@@ -64,16 +63,20 @@ func (rps *RetrievalProtocolSubmodule) IsProvider() bool {
 func (rps *RetrievalProtocolSubmodule) AddProvider(h host.Host,
 	providerAddr address.Address,
 	pm piecemanager.PieceManager,
+	ps piecestore.PieceStore,
 	bs blockstore.Blockstore,
 	ds datastore.Batching,
-	pchMgrAPI retmkt.PaychMgrAPI) error {
+	pchMgrAPI retmkt.PaychMgrAPI,
+	cr retmkt.ChainReaderAPI) error {
 	netwk := network.NewFromLibp2pHost(h)
-	pnode := retmkt.NewRetrievalProviderConnector(netwk, pm, bs, pchMgrAPI, nil)
-	retrievalDealPieceStore := piecestore.NewPieceStore(ds)
+	pnode := retmkt.NewRetrievalProviderConnector(netwk, pm, bs, pchMgrAPI, cr)
 
 	// TODO: use latest go-fil-markets with persisted deal store
-	marketProvider, err := impl.NewProvider(providerAddr, pnode, netwk, retrievalDealPieceStore, bs, ds)
+	marketProvider, err := impl.NewProvider(providerAddr, pnode, netwk, ps, bs, ds)
 	if err != nil {
+		return err
+	}
+	if err = marketProvider.Start(); err != nil {
 		return err
 	}
 	rps.provider = marketProvider

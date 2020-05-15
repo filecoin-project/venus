@@ -71,6 +71,13 @@ var clientRetrievePieceCmd = &cmds.Command{
 			return err
 		}
 
+		if resp.Status == retrievalmarket.QueryResponseUnavailable {
+			return xerrors.Errorf("payloadCID %s not found", req.Arguments[1])
+		}
+		if resp.Status == retrievalmarket.QueryResponseError {
+			return xerrors.Errorf("retrieve failed: %s", resp.Message)
+		}
+
 		if resp.Size == 0 {
 			return xerrors.New("cannot make retrieval deal for 0 bytes")
 		}

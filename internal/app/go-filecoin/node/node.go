@@ -8,6 +8,7 @@ import (
 	"runtime"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -485,7 +486,14 @@ func (node *Node) setupRetrievalMining(ctx context.Context) error {
 		return errors.Wrap(err, "failed to get mining address")
 	}
 
-	return node.RetrievalProtocol.AddProvider(node.Host(), providerAddr, node.StorageMining.PieceManager, node.Blockstore.Blockstore, node.Repo.Datastore(), paychMgr)
+	return node.RetrievalProtocol.AddProvider(node.Host(),
+		providerAddr,
+		node.StorageMining.PieceManager,
+		piecestore.NewPieceStore(node.Repo.Datastore()), // TODO: #251 this needs to be the same one as StorageProvider uses
+		node.Blockstore.Blockstore,
+		node.Repo.Datastore(),
+		paychMgr,
+		node.Chain().State)
 }
 
 func (node *Node) doMiningPause(ctx context.Context) {
@@ -570,6 +578,13 @@ func (node *Node) StopMining(ctx context.Context) {
 		err := node.StorageMining.Stop(ctx)
 		if err != nil {
 			log.Warn("Error stopping storage miner", err)
+		}
+	}
+	if node.RetrievalProtocol.IsProvider() {
+		// can ignore error since we checked above
+		p, _ := node.RetrievalProtocol.Provider()
+		if err := p.Stop(); err != nil {
+			log.Warn("problem stopping retrieval provider")
 		}
 	}
 }
