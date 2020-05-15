@@ -197,3 +197,8 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 	})
 	return
 }
+
+// EventLogger logs new events on the storage provider
+func (s *StorageProviderNodeConnector) EventLogger(event storagemarket.ProviderEvent, deal storagemarket.MinerDeal) {
+	log.Infof("Event: %s, Proposal CID: %s, State: %s, Message: %s", storagemarket.ProviderEvents[event], deal.ProposalCid, storagemarket.DealStates[deal.State], deal.Message)
+}

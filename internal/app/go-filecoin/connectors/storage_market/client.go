@@ -237,3 +237,8 @@ func (s *StorageClientNodeConnector) ValidateAskSignature(ctx context.Context, s
 
 	return s.VerifySignature(ctx, *signed.Signature, ask.Miner, buf, tok)
 }
+
+// EventLogger logs new events on the storage client
+func (s *StorageClientNodeConnector) EventLogger(event storagemarket.ClientEvent, deal storagemarket.ClientDeal) {
+	log.Infof("Event: %s, Proposal CID: %s, State: %s, Message: %s", storagemarket.ClientEvents[event], deal.ProposalCid, storagemarket.DealStates[deal.State], deal.Message)
+}

@@ -22,7 +22,6 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-graphsync"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
 
@@ -34,8 +33,6 @@ import (
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
-
-var storageLog = logging.Logger("storage-protocol")
 
 // StorageProtocolSubmodule enhances the node with storage protocol
 // capabilities.
@@ -81,7 +78,7 @@ func NewStorageProtocolSubmodule(
 		dataTransfer:     dt,
 		requestValidator: validator,
 	}
-	sm.StorageClient.SubscribeToEvents(sm.clientEventLogger)
+	sm.StorageClient.SubscribeToEvents(cnode.EventLogger)
 	return sm, nil
 }
 
@@ -127,7 +124,7 @@ func (sm *StorageProtocolSubmodule) AddStorageProvider(
 	// the node can configure the namespace
 	sm.StorageProvider, err = impl.NewProvider(smnetwork.NewFromLibp2pHost(h), ds, bs, fs, piecestore.NewPieceStore(ds), sm.dataTransfer, pnode, minerAddr, sealProofType)
 	if err == nil {
-		sm.StorageProvider.SubscribeToEvents(sm.providerEventLogger)
+		sm.StorageProvider.SubscribeToEvents(pnode.EventLogger)
 	}
 	return err
 }
@@ -148,20 +145,4 @@ func (sm *StorageProtocolSubmodule) PieceManager() (piecemanager.PieceManager, e
 		return nil, errors.New("Mining has not been started so piece manager is not available")
 	}
 	return sm.pieceManager, nil
-}
-
-func (sm *StorageProtocolSubmodule) DataTransfer() datatransfer.Manager {
-	return sm.dataTransfer
-}
-
-func (sm *StorageProtocolSubmodule) RequestValidator() datatransfer.RequestValidator {
-	return sm.requestValidator
-}
-
-func (sm *StorageProtocolSubmodule) clientEventLogger(event iface.ClientEvent, deal iface.ClientDeal) {
-	storageLog.Infof("Event: %s, Proposal CID: %s, State: %s, Message: %s", iface.ClientEvents[event], deal.ProposalCid, iface.DealStates[deal.State], deal.Message)
-}
-
-func (sm *StorageProtocolSubmodule) providerEventLogger(event iface.ProviderEvent, deal iface.MinerDeal) {
-	storageLog.Infof("Event: %s, Proposal CID: %s, State: %s, Message: %s", iface.ProviderEvents[event], deal.ProposalCid, iface.DealStates[deal.State], deal.Message)
 }
