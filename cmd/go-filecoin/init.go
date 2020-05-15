@@ -136,19 +136,20 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 		cfg.SectorBase.PreSealedSectorsDirPath = dir
 	}
 
-	netName, _ := options[Network].(string)
-
 	// Setup devnet specific config options.
+	netName, _ := options[Network].(string)
+	var netcfg *networks.NetworkConf
 	if netName == "interop" {
-		cfg.Bootstrap = &networks.InteropNet.Bootstrap
-		cfg.Drand = &networks.InteropNet.Drand
-		cfg.NetworkParams = &networks.InteropNet.Network
+		netcfg = networks.Interop()
 	} else if netName == "testnet" {
-		cfg.Bootstrap = &networks.TestNet.Bootstrap
-		cfg.Drand = &networks.TestNet.Drand
-		cfg.NetworkParams = &networks.TestNet.Network
+		netcfg = networks.Testnet()
 	} else if netName != "" {
 		return fmt.Errorf("unknown network name %s", netName)
+	}
+	if netcfg != nil {
+		cfg.Bootstrap = &netcfg.Bootstrap
+		cfg.Drand = &netcfg.Drand
+		cfg.NetworkParams = &netcfg.Network
 	}
 
 	return nil
