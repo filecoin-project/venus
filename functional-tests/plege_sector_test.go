@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
@@ -45,7 +48,6 @@ func TestMiningPledgeSector(t *testing.T) {
 
 	newMiner := makeNode(ctx, t, seed, chainClock, drandImpl)
 	seed.GiveKey(t, newMiner, 1)
-	_, _ = seed.GiveMiner(t, newMiner, 1)
 
 	err = bootstrapMiner.Start(ctx)
 	require.NoError(t, err)
@@ -59,9 +61,16 @@ func TestMiningPledgeSector(t *testing.T) {
 	// Have bootstrap miner mine continuously so newMiner's pledgeSector can put multiple messages on chain.
 	go simulateBlockMining(ctx, t, fakeClock, blockTime, bootstrapMiner)
 
-	// give the miner some collateral
-	transferFunds(ctx, t, newMiner, seed.Addr(t, 1), newMiner.Repo.Config().Mining.MinerAddress, types.NewAttoFILFromFIL(5))
+	// create a miner
+	env := commands.CreateServerEnv(ctx, newMiner)
+	porcelainAPI := commands.GetPorcelainAPI(env)
+	peer := newMiner.Network().Network.GetPeerID()
 
+	_, err = porcelainAPI.MinerCreate(ctx, seed.Addr(t, 1), types.NewAttoFILFromFIL(1), 10000, abi.RegisteredProof_StackedDRG2KiBSeal, peer, types.NewAttoFILFromFIL(5))
+	require.NoError(t, err)
+
+	// setup mining with new miner address and start mining
+	require.NoError(t, newMiner.SetupMining(ctx))
 	err = newMiner.StorageMining.Start(ctx)
 	require.NoError(t, err)
 
