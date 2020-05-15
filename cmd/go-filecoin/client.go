@@ -189,9 +189,7 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 			abi.ChainEpoch(end),
 			price,
 			collateral,
-			// This constant represents StackedDRG encoding for the piece commitment computation.
-			// It's sector size and proof type are irrelevant.
-			abi.RegisteredProof_StackedDRG64GiBSeal,
+			status.MinerInfo.SealProofType,
 		)
 		if err != nil {
 			return err
