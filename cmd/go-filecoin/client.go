@@ -6,7 +6,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/pkg/errors"
@@ -190,8 +189,9 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 			abi.ChainEpoch(end),
 			price,
 			collateral,
-			// proof version (not circuit or size) should be all that is important here
-			constants.DevRegisteredWindowPoStProof,
+			// This constant represents StackedDRG encoding for the piece commitment computation.
+			// It's sector size and proof type are irrelevant.
+			abi.RegisteredProof_StackedDRG64GiBSeal,
 		)
 		if err != nil {
 			return err
