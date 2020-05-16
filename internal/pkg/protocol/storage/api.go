@@ -76,3 +76,17 @@ func (api *API) ProposeStorageDeal(
 func (api *API) GetStorageDeal(ctx context.Context, c cid.Cid) (storagemarket.ClientDeal, error) {
 	return api.storage.Client().GetLocalDeal(ctx, c)
 }
+
+// GetClientDeals retrieves information about a in-progress deals on th miner side
+func (api *API) GetClientDeals(ctx context.Context) ([]storagemarket.ClientDeal, error) {
+	return api.storage.Client().ListLocalDeals(ctx)
+}
+
+// GetProviderDeals retrieves information about a in-progress deals on th miner side
+func (api *API) GetProviderDeals(ctx context.Context) ([]storagemarket.MinerDeal, error) {
+	provider, err := api.storage.Provider()
+	if err != nil {
+		return nil, err
+	}
+	return provider.ListLocalDeals()
+}

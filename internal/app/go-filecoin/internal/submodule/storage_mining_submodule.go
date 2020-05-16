@@ -84,8 +84,14 @@ func NewStorageMiningSubmodule(
 
 	pcp := fsm.NewBasicPreCommitPolicy(&ccn, abi.ChainEpoch(2*60*24), ppStart%miner.WPoStProvingPeriod)
 
+	// FSM requires id address to work correctly. Resolve it now and hope it's stable
+	minerAddrID, err := resolveMinerAddress(context.TODO(), c, minerAddr, stateViewer)
+	if err != nil {
+		return nil, err
+	}
+
 	fsmConnector := fsmeventsconnector.New(chainThresholdScheduler, c.State)
-	fsm := fsm.New(ncn, fsmConnector, minerAddr, ds, mgr, sid, ffiwrapper.ProofVerifier, &pcp)
+	fsm := fsm.New(ncn, fsmConnector, minerAddrID, ds, mgr, sid, ffiwrapper.ProofVerifier, &pcp)
 
 	bke := piecemanager.NewFiniteStateMachineBackEnd(fsm, sid)
 
@@ -168,4 +174,14 @@ func getMinerProvingPeriod(c *ChainSubmodule, minerAddr address.Address, viewer 
 	}
 	view := viewer.StateView(root)
 	return view.MinerProvingPeriodStart(context.Background(), minerAddr)
+}
+
+func resolveMinerAddress(ctx context.Context, c *ChainSubmodule, minerAddr address.Address, viewer *appstate.Viewer) (address.Address, error) {
+	tsk := c.ChainReader.GetHead()
+	root, err := c.ChainReader.GetTipSetStateRoot(tsk)
+	if err != nil {
+		return address.Undef, err
+	}
+	view := viewer.StateView(root)
+	return view.InitResolveAddress(ctx, minerAddr)
 }
