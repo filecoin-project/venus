@@ -150,7 +150,14 @@ func (f *FiniteStateMachineNodeConnector) StateMarketStorageDeal(ctx context.Con
 	if err != nil {
 		return market.DealProposal{}, market.DealState{}, err
 	} else if !found {
-		return market.DealProposal{}, market.DealState{}, fmt.Errorf("deal %d not found", dealID)
+		// The FSM actually ignores this value because it calls this before the sector is committed.
+		// But it can't tolerate returning an error here for not found.
+		// See https://github.com/filecoin-project/storage-fsm/issues/18
+		state = &market.DealState{
+			SectorStartEpoch: -1,
+			LastUpdatedEpoch: -1,
+			SlashEpoch:       -1,
+		}
 	}
 
 	return deal, *state, err
