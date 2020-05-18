@@ -9,15 +9,28 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 )
 
+// FullBlock is the result of a single mining attempt. It will have a new block header with included messages.
+type FullBlock struct {
+	Header       *block.Block
+	BLSMessages  []*types.SignedMessage
+	SECPMessages []*types.SignedMessage
+}
+
+func NewfullBlock(b *block.Block, BLSMessages, SECPMessages []*types.SignedMessage) FullBlock {
+	return FullBlock{Header: b, BLSMessages: BLSMessages, SECPMessages: SECPMessages}
+}
+
 // Scheduler is the mining interface consumers use.
 type Scheduler interface {
-	Start(miningCtx context.Context) (<-chan Output, *sync.WaitGroup)
+	Start(miningCtx context.Context) (<-chan FullBlock, *sync.WaitGroup)
 	IsStarted() bool
 	Pause()
 	Continue()
@@ -54,16 +67,17 @@ type timingScheduler struct {
 // It returns a channel for reading mining outputs and a waitgroup for teardown.
 // It is the callers responsibility to close the out channel only after waiting
 // on the waitgroup.
-func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync.WaitGroup) {
+func (s *timingScheduler) Start(miningCtx context.Context) (<-chan FullBlock, *sync.WaitGroup) {
 	var doneWg sync.WaitGroup
-	outCh := make(chan Output, 1)
+	outCh := make(chan FullBlock, 1)
 
 	// loop mining work
 	doneWg.Add(1)
 	go func() {
 		err := s.mineLoop(miningCtx, outCh)
 		if err != nil {
-			outCh <- NewOutputErr(err)
+			log.Errorf("Unrecoverable error in mining loop. Mining stoped: %s", err)
+			close(outCh)
 		}
 		doneWg.Done()
 	}()
@@ -72,9 +86,7 @@ func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync
 	return outCh, &doneWg
 }
 
-func (s *timingScheduler) mineLoop(ctx context.Context, outCh chan Output) error {
-	mineCh := make(chan Output, 1)
-
+func (s *timingScheduler) mineLoop(ctx context.Context, outCh chan FullBlock) error {
 	// start on epoch boundary
 	targetEpoch := s.chainClock.WaitNextEpoch(ctx)
 	if s.isDone(ctx) {
@@ -121,8 +133,11 @@ func (s *timingScheduler) mineLoop(ctx context.Context, outCh chan Output) error
 		nullCount := uint64(targetEpoch-baseHeight) - 1
 
 		// mine now
-		s.worker.Mine(ctx, base, nullCount, mineCh)
-		out := <-mineCh
+		blk, bls, secp, err := s.worker.Mine(ctx, base, nullCount)
+		if err != nil {
+			log.Errorf("Mining failed: %s", err)
+			continue
+		}
 
 		// wait until target to send
 		s.chainClock.WaitForEpoch(ctx, targetEpoch)
@@ -131,7 +146,7 @@ func (s *timingScheduler) mineLoop(ctx context.Context, outCh chan Output) error
 		}
 
 		// send output at epoch boundary
-		outCh <- out
+		outCh <- NewfullBlock(blk, bls, secp)
 	}
 }
 
@@ -172,32 +187,25 @@ func (s *timingScheduler) isDone(ctx context.Context) bool {
 	return false
 }
 
-// MineOnce mines on a given base until it finds a winner.
-func MineOnce(ctx context.Context, w DefaultWorker, ts block.TipSet) Output {
+// MineOnce mines on a given base until it finds a winner or errors out.
+func MineOnce(ctx context.Context, w DefaultWorker, ts block.TipSet) (FullBlock, error) {
 	var nullCount uint64
 	for {
-		out := MineOneEpoch(ctx, w, ts, nullCount)
-		if out.Err != nil || out.Header != nil {
-			return out
+		blk, bls, secp, err := MineOneEpoch(ctx, w, ts, nullCount)
+		if err != nil {
+			return FullBlock{}, err
 		}
+
+		if blk != nil {
+			return NewfullBlock(blk, bls, secp), nil
+		}
+
 		nullCount++
 	}
 }
 
 // MineOneEpoch attempts to mine a block in an epoch and returns the mined block,
 // or nil if no block could be mined
-func MineOneEpoch(ctx context.Context, w DefaultWorker, ts block.TipSet, nullCount uint64) Output {
-	workCtx, workCancel := context.WithCancel(ctx)
-	defer workCancel()
-	outCh := make(chan Output, 1)
-
-	won := w.Mine(workCtx, ts, nullCount, outCh)
-	if !won {
-		return NewOutputEmpty()
-	}
-	out, ok := <-outCh
-	if !ok {
-		return NewOutputErr(errors.New("Mining completed without returning block"))
-	}
-	return out
+func MineOneEpoch(ctx context.Context, w DefaultWorker, ts block.TipSet, nullCount uint64) (*block.Block, []*types.SignedMessage, []*types.SignedMessage, error) {
+	return w.Mine(ctx, ts, nullCount)
 }

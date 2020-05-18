@@ -30,7 +30,7 @@ func (w *DefaultWorker) Generate(
 	nullBlockCount abi.ChainEpoch,
 	posts []block.PoStProof,
 	drandEntries []*drand.Entry,
-) Output {
+) (*block.Block, []*types.SignedMessage, []*types.SignedMessage, error) {
 
 	generateTimer := time.Now()
 	defer func() {
@@ -39,12 +39,12 @@ func (w *DefaultWorker) Generate(
 
 	weight, err := w.getWeight(ctx, baseTipSet)
 	if err != nil {
-		return NewOutputErr(errors.Wrap(err, "get weight"))
+		return nil, nil, nil, errors.Wrap(err, "get weight")
 	}
 
 	baseHeight, err := baseTipSet.Height()
 	if err != nil {
-		return NewOutputErr(errors.Wrap(err, "get base tip set height"))
+		return nil, nil, nil, errors.Wrap(err, "get base tip set height")
 	}
 
 	blockHeight := baseHeight + nullBlockCount + 1
@@ -56,7 +56,7 @@ func (w *DefaultWorker) Generate(
 	candidateMsgs := orderMessageCandidates(mq.Drain(block.BlockMessageLimit))
 	candidateMsgs = w.filterPenalizableMessages(ctx, candidateMsgs)
 	if len(candidateMsgs) > block.BlockMessageLimit {
-		return NewOutputErr(errors.Errorf("too many messages returned from mq.Drain: %d", len(candidateMsgs)))
+		return nil, nil, nil, errors.Errorf("too many messages returned from mq.Drain: %d", len(candidateMsgs))
 	}
 
 	var blsAccepted []*types.SignedMessage
@@ -75,24 +75,24 @@ func (w *DefaultWorker) Generate(
 	// Create an aggregage signature for messages
 	unwrappedBLSMessages, blsAggregateSig, err := aggregateBLS(blsAccepted)
 	if err != nil {
-		return NewOutputErr(errors.Wrap(err, "could not aggregate bls messages"))
+		return nil, nil, nil, errors.Wrap(err, "could not aggregate bls messages")
 	}
 
 	// Persist messages to ipld storage
 	txMetaCid, err := w.messageStore.StoreMessages(ctx, secpAccepted, unwrappedBLSMessages)
 	if err != nil {
-		return NewOutputErr(errors.Wrap(err, "error persisting messages"))
+		return nil, nil, nil, errors.Wrap(err, "error persisting messages")
 	}
 
 	// get tipset state root and receipt root
 	baseStateRoot, err := w.tsMetadata.GetTipSetStateRoot(baseTipSet.Key())
 	if err != nil {
-		return NewOutputErr(errors.Wrapf(err, "error retrieving state root for tipset %s", baseTipSet.Key().String()))
+		return nil, nil, nil, errors.Wrapf(err, "error retrieving state root for tipset %s", baseTipSet.Key().String())
 	}
 
 	baseReceiptRoot, err := w.tsMetadata.GetTipSetReceiptsRoot(baseTipSet.Key())
 	if err != nil {
-		return NewOutputErr(errors.Wrapf(err, "error retrieving receipt root for tipset %s", baseTipSet.Key().String()))
+		return nil, nil, nil, errors.Wrapf(err, "error retrieving receipt root for tipset %s", baseTipSet.Key().String())
 	}
 
 	// Set the block timestamp to be exactly the start of the target epoch, regardless of the current time.
@@ -125,23 +125,23 @@ func (w *DefaultWorker) Generate(
 
 	view, err := w.api.PowerStateView(baseTipSet.Key())
 	if err != nil {
-		return NewOutputErr(errors.Wrapf(err, "failed to read state view"))
+		return nil, nil, nil, errors.Wrapf(err, "failed to read state view")
 	}
 	_, workerAddr, err := view.MinerControlAddresses(ctx, w.minerAddr)
 	if err != nil {
-		return NewOutputErr(errors.Wrap(err, "failed to read workerAddr during block generation"))
+		return nil, nil, nil, errors.Wrap(err, "failed to read workerAddr during block generation")
 	}
 	workerSigningAddr, err := view.AccountSignerAddress(ctx, workerAddr)
 	if err != nil {
-		return NewOutputErr(errors.Wrap(err, "failed to convert worker address to signing address"))
+		return nil, nil, nil, errors.Wrap(err, "failed to convert worker address to signing address")
 	}
 	blockSig, err := w.workerSigner.SignBytes(ctx, next.SignatureData(), workerSigningAddr)
 	if err != nil {
-		return NewOutputErr(errors.Wrap(err, "failed to sign block"))
+		return nil, nil, nil, errors.Wrap(err, "failed to sign block")
 	}
 	next.BlockSig = &blockSig
 
-	return NewOutput(next, blsAccepted, secpAccepted)
+	return next, blsAccepted, secpAccepted, nil
 }
 
 func aggregateBLS(blsMessages []*types.SignedMessage) ([]*types.UnsignedMessage, crypto.Signature, error) {

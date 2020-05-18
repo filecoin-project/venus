@@ -10,23 +10,25 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
+type miningFunc func(runCtx context.Context, base block.TipSet, nullBlkCount uint64) (*block.Block, []*types.SignedMessage, []*types.SignedMessage, error)
+
 // TestWorker is a worker with a customizable work function to facilitate
 // easy testing.
 type TestWorker struct {
-	WorkFunc func(context.Context, block.TipSet, uint64, chan<- Output) bool
+	WorkFunc miningFunc
 	t        *testing.T
 }
 
 // Mine is the TestWorker's Work function.  It simply calls the WorkFunc
 // field.
-func (w *TestWorker) Mine(ctx context.Context, ts block.TipSet, nullBlockCount uint64, outCh chan<- Output) bool {
+func (w *TestWorker) Mine(ctx context.Context, ts block.TipSet, nullBlockCount uint64) (*block.Block, []*types.SignedMessage, []*types.SignedMessage, error) {
 	require.NotNil(w.t, w.WorkFunc)
-	return w.WorkFunc(ctx, ts, nullBlockCount, outCh)
+	return w.WorkFunc(ctx, ts, nullBlockCount)
 }
 
 // NewTestWorker creates a worker that calls the provided input
 // function when Mine() is called.
-func NewTestWorker(t *testing.T, f func(context.Context, block.TipSet, uint64, chan<- Output) bool) *TestWorker {
+func NewTestWorker(t *testing.T, f miningFunc) *TestWorker {
 	return &TestWorker{
 		WorkFunc: f,
 		t:        t,

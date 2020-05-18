@@ -19,7 +19,7 @@ type miningChainReader interface {
 // API provides an interface to the block mining protocol.
 type API struct {
 	minerAddress    func() (address.Address, error)
-	addNewBlockFunc func(context.Context, mining.Output) (err error)
+	addNewBlockFunc func(context.Context, mining.FullBlock) (err error)
 	chainReader     miningChainReader
 	isMiningFunc    func() bool
 	setupMiningFunc func(context.Context) error
@@ -32,7 +32,7 @@ type API struct {
 // New creates a new API instance with the provided deps
 func New(
 	minerAddr func() (address.Address, error),
-	addNewBlockFunc func(context.Context, mining.Output) (err error),
+	addNewBlockFunc func(context.Context, mining.FullBlock) (err error),
 	chainReader miningChainReader,
 	isMiningFunc func() bool,
 	setupMiningFunc func(ctx context.Context) error,
@@ -82,9 +82,9 @@ func (a *API) MiningOnce(ctx context.Context) (*block.Block, error) {
 		return nil, err
 	}
 
-	res := mining.MineOnce(ctx, *miningWorker, ts)
-	if res.Err != nil {
-		return nil, res.Err
+	res, err := mining.MineOnce(ctx, *miningWorker, ts)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := a.addNewBlockFunc(ctx, res); err != nil {

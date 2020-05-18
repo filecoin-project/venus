@@ -28,11 +28,10 @@ func TestWorkerCalled(t *testing.T) {
 	ts := testHead(t)
 
 	called := make(chan struct{}, 1)
-	w := NewTestWorker(t, func(_ context.Context, workHead block.TipSet, _ uint64, out chan<- Output) bool {
+	w := NewTestWorker(t, func(_ context.Context, workHead block.TipSet, _ uint64) (*block.Block, []*types.SignedMessage, []*types.SignedMessage, error) {
 		assert.True(t, workHead.Equals(ts))
-		out <- NewOutputEmpty()
 		called <- struct{}{}
-		return true
+		return nil, nil, nil, nil
 	})
 
 	fakeClock, chainClock := clock.NewFakeChain(1234567890, epochDuration, propDelay, 1234567890)
@@ -64,11 +63,10 @@ func TestCorrectNullBlocksGivenEpoch(t *testing.T) {
 	}
 
 	called := make(chan struct{}, 20)
-	w := NewTestWorker(t, func(_ context.Context, _ block.TipSet, nullCount uint64, out chan<- Output) bool {
+	w := NewTestWorker(t, func(_ context.Context, workHead block.TipSet, nullCount uint64) (*block.Block, []*types.SignedMessage, []*types.SignedMessage, error) {
 		assert.Equal(t, uint64(h+20), nullCount)
-		out <- NewOutputEmpty()
 		called <- struct{}{}
-		return true
+		return nil, nil, nil, nil
 	})
 
 	scheduler := NewScheduler(w, headFunc(ts), chainClock)
@@ -103,15 +101,14 @@ func TestWaitsForEpochStart(t *testing.T) {
 
 	called := make(chan struct{}, 1)
 	expectMiningCall := false
-	w := NewTestWorker(t, func(_ context.Context, workHead block.TipSet, _ uint64, _ chan<- Output) bool {
+	w := NewTestWorker(t, func(_ context.Context, workHead block.TipSet, _ uint64) (*block.Block, []*types.SignedMessage, []*types.SignedMessage, error) {
 		if !expectMiningCall {
 			t.Fatal("mining worker called too early")
-			return true
 		}
 		// This doesn't get called until the clock has advanced to prop delay past epoch
 		assert.Equal(t, genTime.Add(epochDuration).Add(propDelay), chainClock.Now())
 		called <- struct{}{}
-		return true
+		return nil, nil, nil, nil
 	})
 
 	scheduler := NewScheduler(w, headFunc(ts), chainClock)
@@ -139,15 +136,14 @@ func TestSkips(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	w := NewTestWorker(t, func(_ context.Context, _ block.TipSet, nullCount uint64, _ chan<- Output) bool {
+	w := NewTestWorker(t, func(_ context.Context, workHead block.TipSet, nullCount uint64) (*block.Block, []*types.SignedMessage, []*types.SignedMessage, error) {
 		// This should never be reached as the first epoch should skip mining
 		if nullCount == 0 {
 			t.Fail()
-			return true
+			return nil, nil, nil, nil
 		}
 		wg.Done()
-
-		return true
+		return nil, nil, nil, nil
 	})
 
 	scheduler := NewScheduler(w, headFunc(ts), chainClock)

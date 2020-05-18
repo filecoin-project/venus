@@ -224,7 +224,7 @@ func (node *Node) setIsMining(isMining bool) {
 	node.BlockMining.Mining.IsMining = isMining
 }
 
-func (node *Node) handleNewMiningOutput(ctx context.Context, miningOutCh <-chan mining.Output) {
+func (node *Node) handleNewMiningOutput(ctx context.Context, miningOutCh <-chan mining.FullBlock) {
 	defer func() {
 		node.BlockMining.MiningDoneWg.Done()
 	}()
@@ -234,11 +234,9 @@ func (node *Node) handleNewMiningOutput(ctx context.Context, miningOutCh <-chan 
 			return
 		case output, ok := <-miningOutCh:
 			if !ok {
-				return
-			}
-			if output.Err != nil {
-				log.Errorf("stopping mining. error: %s", output.Err.Error())
+				log.Errorf("scheduler stopped. stopping mining.")
 				node.StopMining(context.Background())
+				return
 			} else {
 				node.BlockMining.MiningDoneWg.Add(1)
 				go func() {
@@ -336,14 +334,14 @@ func (node *Node) Stop(ctx context.Context) {
 	fmt.Println("stopping filecoin :(")
 }
 
-func (node *Node) addNewlyMinedBlock(ctx context.Context, o mining.Output) {
+func (node *Node) addNewlyMinedBlock(ctx context.Context, o mining.FullBlock) {
 	log.Debugf("Got a newly mined block from the mining worker: %s", o.Header)
 	if err := node.AddNewBlock(ctx, o); err != nil {
 		log.Warnf("error adding new mined block: %s. err: %s", o.Header.Cid().String(), err.Error())
 	}
 }
 
-func (node *Node) addMinedBlockSynchronous(ctx context.Context, o mining.Output) error {
+func (node *Node) addMinedBlockSynchronous(ctx context.Context, o mining.FullBlock) error {
 	wait := node.syncer.ChainSyncManager.BlockProposer().WaiterForTarget(block.NewTipSetKey(o.Header.Cid()))
 	err := node.AddNewBlock(ctx, o)
 	if err != nil {
