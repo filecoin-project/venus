@@ -75,14 +75,17 @@ func initNodeGenesisMiner(ctx context.Context, t *testing.T, nd *node.Node, seed
 }
 
 func simulateBlockMining(ctx context.Context, t *testing.T, fakeClock clock.Fake, blockTime time.Duration, node *node.Node) {
+	var err error
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			fakeClock.Advance(blockTime)
-			_, err := node.BlockMining.BlockMiningAPI.MiningOnce(ctx)
+			// check error from previous loop (but only if not done)
 			require.NoError(t, err)
+
+			fakeClock.Advance(blockTime)
+			_, err = node.BlockMining.BlockMiningAPI.MiningOnce(ctx)
 		}
 	}
 }
