@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
@@ -39,8 +39,8 @@ func TestMpoolLs(t *testing.T) {
 		_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
-		sendMessage(ctx, cmdClient, fixtures.TestAddresses[0], fixtures.TestAddresses[2])
-		sendMessage(ctx, cmdClient, fixtures.TestAddresses[0], fixtures.TestAddresses[2])
+		sendMessage(ctx, cmdClient, fortest.TestAddresses[0], fortest.TestAddresses[2])
+		sendMessage(ctx, cmdClient, fortest.TestAddresses[0], fortest.TestAddresses[2])
 
 		cids := cmdClient.RunSuccessLines(ctx, "mpool", "ls")
 
@@ -77,11 +77,11 @@ func TestMpoolLs(t *testing.T) {
 			wg.Done()
 		}()
 
-		sendMessage(ctx, cmdClient, fixtures.TestAddresses[0], fixtures.TestAddresses[1])
+		sendMessage(ctx, cmdClient, fortest.TestAddresses[0], fortest.TestAddresses[1])
 		assert.False(t, complete)
-		sendMessage(ctx, cmdClient, fixtures.TestAddresses[0], fixtures.TestAddresses[1])
+		sendMessage(ctx, cmdClient, fortest.TestAddresses[0], fortest.TestAddresses[1])
 		assert.False(t, complete)
-		sendMessage(ctx, cmdClient, fixtures.TestAddresses[0], fixtures.TestAddresses[1])
+		sendMessage(ctx, cmdClient, fortest.TestAddresses[0], fortest.TestAddresses[1])
 
 		wg.Wait()
 
@@ -105,15 +105,15 @@ func TestMpoolShow(t *testing.T) {
 		defer done()
 
 		msgCid := cmdClient.RunSuccess(ctx, "message", "send",
-			"--from", fixtures.TestAddresses[0].String(),
+			"--from", fortest.TestAddresses[0].String(),
 			"--gas-price", "1", "--gas-limit", "300",
-			"--value=10", fixtures.TestAddresses[2].String(),
+			"--value=10", fortest.TestAddresses[2].String(),
 		).ReadStdoutTrimNewlines()
 
 		out := cmdClient.RunSuccess(ctx, "mpool", "show", msgCid).ReadStdoutTrimNewlines()
 
-		assert.Contains(t, out, "From:      "+fixtures.TestAddresses[0].String())
-		assert.Contains(t, out, "To:        "+fixtures.TestAddresses[2].String())
+		assert.Contains(t, out, "From:      "+fortest.TestAddresses[0].String())
+		assert.Contains(t, out, "To:        "+fortest.TestAddresses[2].String())
 		assert.Contains(t, out, "Value:     10")
 	})
 
@@ -149,9 +149,9 @@ func TestMpoolRm(t *testing.T) {
 		defer done()
 
 		msgCid := cmdClient.RunSuccess(ctx, "message", "send",
-			"--from", fixtures.TestAddresses[0].String(),
+			"--from", fortest.TestAddresses[0].String(),
 			"--gas-price", "1", "--gas-limit", "300",
-			"--value=10", fixtures.TestAddresses[2].String(),
+			"--value=10", fortest.TestAddresses[2].String(),
 		).ReadStdoutTrimNewlines()
 
 		// wait for the pool to have the message

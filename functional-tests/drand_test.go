@@ -21,6 +21,7 @@ func TestDrandPublic(t *testing.T) {
 	ctx := context.Background()
 	genTime := int64(1000000000)
 	blockTime := 30 * time.Second
+	propDelay := 6 * time.Second
 	// The clock is intentionally set some way ahead of the genesis time so the miner can produce
 	// catch-up blocks as quickly as possible.
 	fakeClock := clock.NewFake(time.Unix(genTime, 0).Add(4 * time.Hour))
@@ -29,7 +30,7 @@ func TestDrandPublic(t *testing.T) {
 	// Future code could decouple the whole setup.json from the presealed information.
 	genCfg := loadGenesisConfig(t, fixtureGenCfg())
 	seed := node.MakeChainSeed(t, genCfg)
-	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
+	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, propDelay, fakeClock)
 
 	nd := makeNode(ctx, t, seed, chainClock, nil)
 

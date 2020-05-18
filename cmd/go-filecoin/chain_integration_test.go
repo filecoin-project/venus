@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -118,7 +118,7 @@ func TestChainLs(t *testing.T) {
 		chainLsResult := cmdClient.RunSuccess(ctx, "chain", "ls", "--long").ReadStdoutTrimNewlines()
 
 		assert.Contains(t, chainLsResult, newBlockCid)
-		assert.Contains(t, chainLsResult, fixtures.TestMiners[0])
+		assert.Contains(t, chainLsResult, fortest.TestMiners[0])
 		assert.Contains(t, chainLsResult, "1")
 		assert.Contains(t, chainLsResult, "0")
 	})

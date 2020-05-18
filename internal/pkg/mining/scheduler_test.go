@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,33 +18,34 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
+const epochDuration = builtin.EpochDurationSeconds
+const propDelay = 6 * time.Second
+
 // Mining loop unit tests
 
 func TestWorkerCalled(t *testing.T) {
 	tf.UnitTest(t)
 	ts := testHead(t)
 
-	called := false
-	var wg sync.WaitGroup
-	wg.Add(1)
-	w := NewTestWorker(t, func(_ context.Context, workHead block.TipSet, _ uint64, _ chan<- Output) bool {
-		called = true
+	called := make(chan struct{}, 1)
+	w := NewTestWorker(t, func(_ context.Context, workHead block.TipSet, _ uint64, out chan<- Output) bool {
 		assert.True(t, workHead.Equals(ts))
-		wg.Done()
+		out <- NewOutputEmpty()
+		called <- struct{}{}
 		return true
 	})
 
-	fakeClock, chainClock, blockTime := testClock(t)
+	fakeClock, chainClock := clock.NewFakeChain(1234567890, epochDuration, propDelay, 1234567890)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	scheduler := NewScheduler(w, headFunc(ts), chainClock)
 	scheduler.Start(ctx)
 	fakeClock.BlockUntil(1)
-	fakeClock.Advance(blockTime)
+	fakeClock.Advance(epochDuration)
+	fakeClock.Advance(propDelay)
 
-	wg.Wait()
-	assert.True(t, called)
+	<-called
 }
 
 func TestCorrectNullBlocksGivenEpoch(t *testing.T) {
@@ -52,20 +54,20 @@ func TestCorrectNullBlocksGivenEpoch(t *testing.T) {
 	h, err := ts.Height()
 	require.NoError(t, err)
 
-	fakeClock, chainClock, blockTime := testClock(t)
+	fakeClock, chainClock := clock.NewFakeChain(1234567890, epochDuration, propDelay, 1234567890)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Move forward 20 epochs
 	for i := 0; i < 19; i++ {
-		fakeClock.Advance(blockTime)
+		fakeClock.Advance(epochDuration)
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	w := NewTestWorker(t, func(_ context.Context, _ block.TipSet, nullCount uint64, _ chan<- Output) bool {
-		assert.Equal(t, uint64(h+19), nullCount)
-		wg.Done()
+	called := make(chan struct{}, 20)
+	w := NewTestWorker(t, func(_ context.Context, _ block.TipSet, nullCount uint64, out chan<- Output) bool {
+		assert.Equal(t, uint64(h+20), nullCount)
+		out <- NewOutputEmpty()
+		called <- struct{}{}
 		return true
 	})
 
@@ -73,9 +75,10 @@ func TestCorrectNullBlocksGivenEpoch(t *testing.T) {
 	scheduler.Start(ctx)
 	fakeClock.BlockUntil(1)
 	// Move forward 1 epoch for a total of 21
-	fakeClock.Advance(blockTime)
+	fakeClock.Advance(epochDuration)
+	fakeClock.Advance(propDelay)
 
-	wg.Wait()
+	<-called
 }
 
 func TestWaitsForEpochStart(t *testing.T) {
@@ -84,7 +87,7 @@ func TestWaitsForEpochStart(t *testing.T) {
 	tf.UnitTest(t)
 	ts := testHead(t)
 
-	fakeClock, chainClock, blockTime := testClock(t)
+	fakeClock, chainClock := clock.NewFakeChain(1234567890, epochDuration, propDelay, 1234567890)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -97,105 +100,40 @@ func TestWaitsForEpochStart(t *testing.T) {
 		wg.Wait()
 		waitGroupDoneCh <- struct{}{}
 	}()
+
+	called := make(chan struct{}, 1)
+	expectMiningCall := false
 	w := NewTestWorker(t, func(_ context.Context, workHead block.TipSet, _ uint64, _ chan<- Output) bool {
-		// This doesn't get called until the clock has advanced one blocktime
-		assert.Equal(t, genTime.Add(blockTime), chainClock.Now())
-		wg.Done()
+		if !expectMiningCall {
+			t.Fatal("mining worker called too early")
+			return true
+		}
+		// This doesn't get called until the clock has advanced to prop delay past epoch
+		assert.Equal(t, genTime.Add(epochDuration).Add(propDelay), chainClock.Now())
+		called <- struct{}{}
 		return true
 	})
 
 	scheduler := NewScheduler(w, headFunc(ts), chainClock)
 	scheduler.Start(ctx)
+
 	fakeClock.BlockUntil(1)
-	fakeClock.Advance(blockTime / time.Duration(2)) // advance half a blocktime
-	// Test relies on race, that this sleep would be enough time for the mining job
-	// to hit wg.Done() if it was triggered partway through the epoch
-	time.Sleep(300 * time.Millisecond)
-	// assert that waitgroup is not done and hence mining job is not yet run.
-	select {
-	case <-waitGroupDoneCh:
-		t.Fatal()
-	default:
-	}
+	expectMiningCall = false
+	fakeClock.Advance(epochDuration) // advance to epoch start
+	fakeClock.Advance(propDelay / 2) // advance halfway into prop delay
 
-	fakeClock.Advance(blockTime / time.Duration(2))
-	wg.Wait()
-}
-
-func TestCancelsLateWork(t *testing.T) {
-	// Test will hang if work is not cancelled
-	tf.UnitTest(t)
-	ts := testHead(t)
-
-	fakeClock, chainClock, blockTime := testClock(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	w := NewTestWorker(t, func(workCtx context.Context, _ block.TipSet, nullCount uint64, _ chan<- Output) bool {
-		if nullCount != 0 { // only first job blocks
-			return true
-		}
-		select {
-		case <-workCtx.Done():
-			wg.Done()
-			return true
-		}
-	})
-
-	scheduler := NewScheduler(w, headFunc(ts), chainClock)
-	scheduler.Start(ctx)
+	// advance past propagation delay in next block and expect worker to be called
 	fakeClock.BlockUntil(1)
-	fakeClock.Advance(blockTime) // schedule first work item
-	fakeClock.BlockUntil(1)
-	fakeClock.Advance(blockTime) // enter next epoch, should cancel first work item
-
-	wg.Wait()
-}
-
-func TestShutdownWaitgroup(t *testing.T) {
-	// waitgroup waits for all mining jobs to shut down properly
-	tf.IntegrationTest(t)
-	genTime := time.Now()
-	chainClock := clock.NewChainClock(uint64(genTime.Unix()), 100*time.Millisecond)
-	ts := testHead(t)
-	ctx, cancel := context.WithCancel(context.Background())
-
-	var mu sync.Mutex
-	jobs := make(map[uint64]bool)
-	w := NewTestWorker(t, func(workContext context.Context, _ block.TipSet, null uint64, _ chan<- Output) bool {
-		mu.Lock()
-		jobs[null] = false
-		mu.Unlock()
-		select {
-		case <-workContext.Done():
-			mu.Lock()
-			jobs[null] = true
-			mu.Unlock()
-			return true
-		}
-	})
-
-	scheduler := NewScheduler(w, headFunc(ts), chainClock)
-	_, wg := scheduler.Start(ctx)
-	time.Sleep(600 * time.Millisecond) // run through some epochs
-	cancel()
-	wg.Wait()
-
-	// After passing barrier all jobs should be finished
-	mu.Lock()
-	defer mu.Unlock()
-	for _, waitedForFin := range jobs {
-		assert.True(t, waitedForFin)
-	}
+	expectMiningCall = true
+	fakeClock.Advance(propDelay / 2)
+	<-called
 }
 
 func TestSkips(t *testing.T) {
 	tf.UnitTest(t)
 	ts := testHead(t)
 
-	fakeClock, chainClock, blockTime := testClock(t)
+	fakeClock, chainClock := clock.NewFakeChain(1234567890, epochDuration, propDelay, 1234567890)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -216,10 +154,10 @@ func TestSkips(t *testing.T) {
 	scheduler.Pause()
 	scheduler.Start(ctx)
 	fakeClock.BlockUntil(1)
-	fakeClock.Advance(blockTime)
+	fakeClock.Advance(epochDuration + propDelay)
 	fakeClock.BlockUntil(1)
 	scheduler.Continue()
-	fakeClock.Advance(blockTime)
+	fakeClock.Advance(epochDuration)
 	wg.Wait()
 }
 
@@ -230,17 +168,6 @@ func testHead(t *testing.T) block.TipSet {
 	ts, err := block.NewTipSet(baseBlock)
 	require.NoError(t, err)
 	return ts
-}
-
-func testClock(t *testing.T) (clock.Fake, clock.ChainEpochClock, time.Duration) {
-	// return a fake clock for running tests a ChainEpochClock for
-	// using in the scheduler, and the testing blocktime
-	gt := time.Unix(1234567890, 1234567890%1000000000)
-	fc := clock.NewFake(gt)
-	DefaultEpochDurationTest := 1 * time.Second
-	chainClock := clock.NewChainClockFromClock(uint64(gt.Unix()), DefaultEpochDurationTest, fc)
-
-	return fc, chainClock, DefaultEpochDurationTest
 }
 
 func headFunc(ts block.TipSet) func() (block.TipSet, error) {

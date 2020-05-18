@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -22,7 +22,7 @@ func TestMessageSend(t *testing.T) {
 	tf.IntegrationTest(t)
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
-	defaultAddr := fixtures.TestAddresses[0]
+	defaultAddr := fortest.TestAddresses[0]
 
 	cs := node.FixtureChainSeed(t)
 	builder.WithGenesisInit(cs.GenesisInitFunc)
@@ -57,7 +57,7 @@ func TestMessageSend(t *testing.T) {
 		"--from", from.String(),
 		"--gas-price", "1",
 		"--gas-limit", "300",
-		fixtures.TestAddresses[3].String(),
+		fortest.TestAddresses[3].String(),
 	)
 
 	t.Log("[success] with from and int value")
@@ -68,7 +68,7 @@ func TestMessageSend(t *testing.T) {
 		"--gas-price", "1",
 		"--gas-limit", "300",
 		"--value", "10",
-		fixtures.TestAddresses[3].String(),
+		fortest.TestAddresses[3].String(),
 	)
 
 	t.Log("[success] with from and decimal value")
@@ -79,7 +79,7 @@ func TestMessageSend(t *testing.T) {
 		"--gas-price", "1",
 		"--gas-limit", "300",
 		"--value", "5.5",
-		fixtures.TestAddresses[3].String(),
+		fortest.TestAddresses[3].String(),
 	)
 }
 
@@ -95,10 +95,10 @@ func TestMessageWait(t *testing.T) {
 
 	t.Run("[success] transfer only", func(t *testing.T) {
 		msg := cmdClient.RunSuccess(ctx, "message", "send",
-			"--from", fixtures.TestAddresses[0].String(),
+			"--from", fortest.TestAddresses[0].String(),
 			"--gas-price", "1",
 			"--gas-limit", "300",
-			fixtures.TestAddresses[1].String(),
+			fortest.TestAddresses[1].String(),
 		)
 		msgcid := msg.ReadStdoutTrimNewlines()
 
@@ -136,7 +136,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
-	defaultAddr := fixtures.TestAddresses[0]
+	defaultAddr := fortest.TestAddresses[0]
 
 	buildWithMiner(t, builder)
 	builder.WithConfig(node.DefaultAddressConfigOpt(defaultAddr))
@@ -153,7 +153,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 			"block gas limit",
 			"message", "send",
 			"--gas-price", "1", "--gas-limit", doubleTheBlockGasLimit,
-			"--value=10", fixtures.TestAddresses[1].String(),
+			"--value=10", fortest.TestAddresses[1].String(),
 		)
 	})
 
@@ -162,7 +162,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 			ctx,
 			"message", "send",
 			"--gas-price", "1", "--gas-limit", halfTheBlockGasLimit,
-			"--value=10", fixtures.TestAddresses[1].String(),
+			"--value=10", fortest.TestAddresses[1].String(),
 		)
 
 		blk, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
@@ -191,10 +191,10 @@ func TestMessageStatus(t *testing.T) {
 		msg := cmdClient.RunSuccess(
 			ctx,
 			"message", "send",
-			"--from", fixtures.TestAddresses[0].String(),
+			"--from", fortest.TestAddresses[0].String(),
 			"--gas-price", "1", "--gas-limit", "300",
 			"--value=1234",
-			fixtures.TestAddresses[1].String(),
+			fortest.TestAddresses[1].String(),
 		)
 
 		msgcid := msg.ReadStdoutTrimNewlines()

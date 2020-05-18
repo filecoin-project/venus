@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
 func TestNodeConstruct(t *testing.T) {
@@ -208,10 +208,12 @@ func TestNodeConfig(t *testing.T) {
 	verifier := &proofs.FakeVerifier{}
 
 	configBlockTime := 99
+	configPropagationDelay := 20
 
 	builderOptions := []node.BuilderOpt{
 		node.VerifierConfigOption(verifier),
 		node.BlockTime(time.Duration(configBlockTime)),
+		node.PropagationDelay(time.Duration(configPropagationDelay)),
 	}
 
 	initOpts := []node.InitOpt{}
