@@ -5,28 +5,29 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
-
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
+
+const defaultBlockTime = builtin.EpochDurationSeconds
+const defaultPropDelay = 6 * time.Second
 
 func TestSingleMiner(t *testing.T) {
 	tf.IntegrationTest(t)
 	ctx := context.Background()
 	genTime := int64(1000000000)
-	blockTime := 30 * time.Second
-	propDelay := 6 * time.Second
 	// The clock is intentionally set some way ahead of the genesis time so the miner can produce
 	// catch-up blocks as quickly as possible.
 	fakeClock := clock.NewFake(time.Unix(genTime, 0).Add(4 * time.Hour))
@@ -35,10 +36,10 @@ func TestSingleMiner(t *testing.T) {
 	// Future code could decouple the whole setup.json from the presealed information.
 	genCfg := loadGenesisConfig(t, fixtureGenCfg())
 	seed := node.MakeChainSeed(t, genCfg)
-	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, propDelay, fakeClock)
+	chainClock := clock.NewChainClockFromClock(uint64(genTime), defaultBlockTime, defaultPropDelay, fakeClock)
 
 	drandImpl := &drand.Fake{
-		GenesisTime:   time.Unix(genTime, 0).Add(-1 * blockTime),
+		GenesisTime:   time.Unix(genTime, 0).Add(-1 * defaultBlockTime),
 		FirstFilecoin: 0,
 	}
 
@@ -61,8 +62,8 @@ func TestSingleMiner(t *testing.T) {
 	assert.Equal(t, abi.ChainEpoch(1), blk.Height)
 	assert.Assert(t, head.Equals(blk.Parents))
 	assert.Equal(t, minerAddr, blk.Miner)
-	assert.Assert(t, int64(blk.Timestamp) >= genTime+30)
-	assert.Assert(t, int64(blk.Timestamp) < genTime+60)
+	assert.Assert(t, int64(blk.Timestamp) >= genTime)
+	assert.Assert(t, int64(blk.Timestamp) < genTime+defaultBlockTime)
 	head = block.NewTipSetKey(blk.Cid())
 
 	// Inspect chain state.
@@ -84,18 +85,16 @@ func TestSyncFromSingleMiner(t *testing.T) {
 	defer cancel()
 
 	genTime := int64(1000000000)
-	blockTime := 30 * time.Second
-	propDelay := 6 * time.Second
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
 
 	drandImpl := &drand.Fake{
-		GenesisTime:   time.Unix(genTime, 0).Add(-1 * blockTime),
+		GenesisTime:   time.Unix(genTime, 0).Add(-1 * defaultBlockTime),
 		FirstFilecoin: 0,
 	}
 
 	genCfg := loadGenesisConfig(t, fixtureGenCfg())
 	seed := node.MakeChainSeed(t, genCfg)
-	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, propDelay, fakeClock)
+	chainClock := clock.NewChainClockFromClock(uint64(genTime), defaultBlockTime, defaultPropDelay, fakeClock)
 	assert.Equal(t, fakeClock.Now(), chainClock.Now())
 
 	ndMiner := makeNode(ctx, t, seed, chainClock, drandImpl)
@@ -119,7 +118,7 @@ func TestSyncFromSingleMiner(t *testing.T) {
 
 	// Mine some blocks.
 	for i := 1; i <= 3; i++ {
-		fakeClock.Advance(blockTime)
+		fakeClock.Advance(defaultBlockTime)
 		blk, err := ndMiner.BlockMining.BlockMiningAPI.MiningOnce(ctx)
 		require.NoError(t, err)
 		assert.Equal(t, abi.ChainEpoch(i), blk.Height)
@@ -140,8 +139,6 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 	defer cancel()
 
 	genTime := int64(1000000000)
-	blockTime := 30 * time.Second
-	propDelay := 6 * time.Second
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
 
 	// Load genesis config fixture.
@@ -154,10 +151,10 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 
 	// fake proofs so we can run through a proving period quickly
 	miner := test.NewNodeBuilder(t).
-		WithBuilderOpt(node.ChainClockConfigOption(clock.NewChainClockFromClock(uint64(genTime), blockTime, propDelay, fakeClock))).
+		WithBuilderOpt(node.ChainClockConfigOption(clock.NewChainClockFromClock(uint64(genTime), defaultBlockTime, defaultPropDelay, fakeClock))).
 		WithGenesisInit(seed.GenesisInitFunc).
 		WithBuilderOpt(node.DrandConfigOption(&drand.Fake{
-			GenesisTime:   time.Unix(genTime, 0).Add(-1 * blockTime),
+			GenesisTime:   time.Unix(genTime, 0).Add(-1 * defaultBlockTime),
 			FirstFilecoin: 0,
 		})).
 		WithBuilderOpt(node.VerifierConfigOption(&proofs.FakeVerifier{})).
@@ -174,7 +171,7 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 	require.NoError(t, err)
 
 	// mine once to enter proving period
-	go simulateBlockMining(ctx, t, fakeClock, blockTime, miner)
+	go simulateBlockMining(ctx, t, fakeClock, defaultBlockTime, miner)
 
 	minerAddr := miner.Repo.Config().Mining.MinerAddress
 

@@ -214,7 +214,7 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 	genTime := time.Unix(genUnixSeconds, 0)
 	fc := clock.NewFake(genTime)
 	blockTime := 30 * time.Second
-	propDelay := 5 * time.Second
+	propDelay := 6 * time.Second
 	c := clock.NewChainClockFromClock(1234567890, blockTime, propDelay, fc)
 
 	builder := test.NewNodeBuilder(t).

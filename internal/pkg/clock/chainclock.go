@@ -4,11 +4,13 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 // DefaultEpochDuration is the default duration of epochs
-const DefaultEpochDuration = 25 * time.Second
+const DefaultEpochDuration = builtin.EpochDurationSeconds * time.Second
 
 // DefaultPropagationDelay is the default time to await for blocks to arrive before mining
 const DefaultPropagationDelay = 6 * time.Second
@@ -32,7 +34,8 @@ type chainClock struct {
 	// The fixed time length of the epoch window
 	epochDuration time.Duration
 	// propDelay is the time between the start of the epoch and the start
-	// of mining to wait for parent blocks to arrive
+	// of mining for the subsequent epoch. This delay provides time for
+	// blocks from the previous epoch to arrive.
 	propDelay time.Duration
 
 	Clock
@@ -106,9 +109,9 @@ func (cc *chainClock) WaitForEpochPropDelay(ctx context.Context, e abi.ChainEpoc
 
 // waitNextEpochOffset returns when time is offset past the start of the epoch, or ctx is done.
 func (cc *chainClock) waitForEpochOffset(ctx context.Context, e abi.ChainEpoch, offset time.Duration) {
-	epochStart := cc.StartTimeOfEpoch(e).Add(offset)
+	targetTime := cc.StartTimeOfEpoch(e).Add(offset)
 	nowB4 := cc.Now()
-	waitDur := epochStart.Sub(nowB4)
+	waitDur := targetTime.Sub(nowB4)
 	if waitDur > 0 {
 		newEpochCh := cc.After(waitDur)
 		select {

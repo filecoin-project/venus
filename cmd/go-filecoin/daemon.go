@@ -36,7 +36,7 @@ var daemonCmd = &cmds.Command{
 		cmdkit.BoolOption(OfflineMode, "start the node without networking"),
 		cmdkit.BoolOption(ELStdout),
 		cmdkit.BoolOption(IsRelay, "advertise and allow filecoin network traffic to be relayed through this node"),
-		cmdkit.StringOption(BlockTime, "period a node waits between mining successive blocks").WithDefault(clock.DefaultEpochDuration.String()),
+		cmdkit.StringOption(BlockTime, "period a node waits between mining successive blocks").WithDefault(clock.DefaultEpochDuration),
 		cmdkit.StringOption(PropagationDelay, "time a node waits after the start of an epoch for blocks to arrive").WithDefault(clock.DefaultPropagationDelay.String()),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,8 +18,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
-const epochDuration = 1 * time.Second
-const propDelay = 200 * time.Millisecond
+const epochDuration = builtin.EpochDurationSeconds
+const propDelay = 6 * time.Second
 
 // Mining loop unit tests
 
@@ -107,23 +108,24 @@ func TestWaitsForEpochStart(t *testing.T) {
 			t.Fatal("mining worker called too early")
 			return true
 		}
-		// This doesn't get called until the clock has advanced one and a half block times
-		assert.Equal(t, genTime.Add(epochDuration/2).Add(epochDuration), chainClock.Now())
+		// This doesn't get called until the clock has advanced to prop delay past epoch
+		assert.Equal(t, genTime.Add(epochDuration).Add(propDelay), chainClock.Now())
 		called <- struct{}{}
 		return true
 	})
 
 	scheduler := NewScheduler(w, headFunc(ts), chainClock)
 	scheduler.Start(ctx)
+
 	fakeClock.BlockUntil(1)
-	fakeClock.Advance(epochDuration / time.Duration(2)) // advance half a blocktime
-	// Test relies on race, that this sleep would be enough time for the mining job
-	// to hit wg.Done() if it was triggered partway through the epoch
-	time.Sleep(300 * time.Millisecond)
+	expectMiningCall = false
+	fakeClock.Advance(epochDuration) // advance to epoch start
+	fakeClock.Advance(propDelay / 2) // advance halfway into prop delay
 
 	// advance past propagation delay in next block and expect worker to be called
+	fakeClock.BlockUntil(1)
 	expectMiningCall = true
-	fakeClock.Advance(epochDuration)
+	fakeClock.Advance(propDelay / 2)
 	<-called
 }
 
@@ -152,7 +154,7 @@ func TestSkips(t *testing.T) {
 	scheduler.Pause()
 	scheduler.Start(ctx)
 	fakeClock.BlockUntil(1)
-	fakeClock.Advance(epochDuration)
+	fakeClock.Advance(epochDuration + propDelay)
 	fakeClock.BlockUntil(1)
 	scheduler.Continue()
 	fakeClock.Advance(epochDuration)
