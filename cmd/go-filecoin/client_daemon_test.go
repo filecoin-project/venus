@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
@@ -31,26 +31,26 @@ func TestListAsks(t *testing.T) {
 	defer minerDaemon.ShutdownSuccess()
 
 	minerDaemon.RunSuccess("mining start")
-	minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	minerDaemon.MinerSetPrice(fortest.TestMiners[0], fortest.TestAddresses[0], "20", "10")
 
 	listAsksOutput := minerDaemon.RunSuccess("client", "list-asks").ReadStdoutTrimNewlines()
-	assert.Equal(t, fixtures.TestMiners[0].String()+" 000 20 11", listAsksOutput)
+	assert.Equal(t, fortest.TestMiners[0].String()+" 000 20 11", listAsksOutput)
 }
 
 func TestStorageDealsAfterRestart(t *testing.T) {
 	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 	minerDaemon := th.NewDaemon(t,
-		th.WithMiner(fixtures.TestMiners[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.DefaultAddress(fixtures.TestAddresses[0]),
+		th.WithMiner(fortest.TestMiners[0]),
+		th.KeyFile(fortest.KeyFilePaths()[0]),
+		th.DefaultAddress(fortest.TestAddresses[0]),
 		th.AutoSealInterval("1"),
 	).Start()
 	defer minerDaemon.ShutdownSuccess()
 
 	clientDaemon := th.NewDaemon(t,
-		th.KeyFile(fixtures.KeyFilePaths()[1]),
-		th.DefaultAddress(fixtures.TestAddresses[1]),
+		th.KeyFile(fortest.KeyFilePaths()[1]),
+		th.DefaultAddress(fortest.TestAddresses[1]),
 	).Start()
 	defer clientDaemon.ShutdownSuccess()
 
@@ -59,11 +59,11 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 
 	minerDaemon.ConnectSuccess(clientDaemon)
 
-	addAskCid := minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	addAskCid := minerDaemon.MinerSetPrice(fortest.TestMiners[0], fortest.TestAddresses[0], "20", "10")
 	clientDaemon.WaitForMessageRequireSuccess(addAskCid)
 	dataCid := clientDaemon.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
 
-	proposeDealOutput := clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0].String(), dataCid, "0", "5").ReadStdoutTrimNewlines()
+	proposeDealOutput := clientDaemon.RunSuccess("client", "propose-storage-deal", fortest.TestMiners[0].String(), dataCid, "0", "5").ReadStdoutTrimNewlines()
 
 	splitOnSpace := strings.Split(proposeDealOutput, " ")
 
@@ -211,13 +211,13 @@ func TestVoucherPersistenceAndPayments(t *testing.T) {
 
 	// DefaultAddress required here
 	miner := th.NewDaemon(t,
-		th.WithMiner(fixtures.TestMiners[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.DefaultAddress(fixtures.TestAddresses[0]),
+		th.WithMiner(fortest.TestMiners[0]),
+		th.KeyFile(fortest.KeyFilePaths()[0]),
+		th.DefaultAddress(fortest.TestAddresses[0]),
 	).Start()
 	defer miner.ShutdownSuccess()
 
-	client := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2]), th.DefaultAddress(fixtures.TestAddresses[2])).Start()
+	client := th.NewDaemon(t, th.KeyFile(fortest.KeyFilePaths()[2]), th.DefaultAddress(fortest.TestAddresses[2])).Start()
 	defer client.ShutdownSuccess()
 
 	miner.RunSuccess("mining start")
@@ -225,10 +225,10 @@ func TestVoucherPersistenceAndPayments(t *testing.T) {
 
 	miner.ConnectSuccess(client)
 
-	miner.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	miner.MinerSetPrice(fortest.TestMiners[0], fortest.TestAddresses[0], "20", "10")
 	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
 
-	proposeDealOutput := client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0].String(), dataCid, "0", "3000").ReadStdoutTrimNewlines()
+	proposeDealOutput := client.RunSuccess("client", "propose-storage-deal", fortest.TestMiners[0].String(), dataCid, "0", "3000").ReadStdoutTrimNewlines()
 
 	splitOnSpace := strings.Split(proposeDealOutput, " ")
 
@@ -252,16 +252,16 @@ func TestPieceRejectionInProposeStorageDeal(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	minerDaemon := th.NewDaemon(t,
-		th.WithMiner(fixtures.TestMiners[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.DefaultAddress(fixtures.TestAddresses[0]),
+		th.WithMiner(fortest.TestMiners[0]),
+		th.KeyFile(fortest.KeyFilePaths()[0]),
+		th.DefaultAddress(fortest.TestAddresses[0]),
 		th.AutoSealInterval("1"),
 	).Start()
 	defer minerDaemon.Shutdown()
 
 	clientDaemon := th.NewDaemon(t,
-		th.KeyFile(fixtures.KeyFilePaths()[1]),
-		th.DefaultAddress(fixtures.TestAddresses[1]),
+		th.KeyFile(fortest.KeyFilePaths()[1]),
+		th.DefaultAddress(fortest.TestAddresses[1]),
 	).Start()
 	defer clientDaemon.ShutdownSuccess()
 
@@ -270,12 +270,12 @@ func TestPieceRejectionInProposeStorageDeal(t *testing.T) {
 
 	minerDaemon.ConnectSuccess(clientDaemon)
 
-	addAskCid := minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	addAskCid := minerDaemon.MinerSetPrice(fortest.TestMiners[0], fortest.TestAddresses[0], "20", "10")
 	clientDaemon.WaitForMessageRequireSuccess(addAskCid)
 
 	dataCid := clientDaemon.RunWithStdin(bytes.NewReader(make([]byte, 3000)), "client", "import").ReadStdoutTrimNewlines()
 
-	proposeDealErrors := clientDaemon.Run("client", "propose-storage-deal", fixtures.TestMiners[0].String(), dataCid, "0", "5").ReadStderr()
+	proposeDealErrors := clientDaemon.Run("client", "propose-storage-deal", fortest.TestMiners[0].String(), dataCid, "0", "5").ReadStderr()
 
 	assert.Contains(t, proposeDealErrors, "piece is 3000 bytes but sector size is 1016 bytes")
 }

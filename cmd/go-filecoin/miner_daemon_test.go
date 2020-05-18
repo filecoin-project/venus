@@ -12,15 +12,14 @@ import (
 	"testing"
 	"time"
 
+	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	address "github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
-
-	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -120,7 +119,7 @@ func TestMinerCreate(t *testing.T) {
 	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 
-	testAddr := fixtures.TestAddresses[2]
+	testAddr := fortest.TestAddresses[2]
 	t.Run("success", func(t *testing.T) {
 
 		var err error
@@ -130,7 +129,7 @@ func TestMinerCreate(t *testing.T) {
 			d1 := makeTestDaemonWithMinerAndStart(t)
 			defer d1.ShutdownSuccess()
 
-			d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+			d := th.NewDaemon(t, th.KeyFile(fortest.KeyFilePaths()[2])).Start()
 			defer d.ShutdownSuccess()
 
 			d1.ConnectSuccess(d)
@@ -213,15 +212,15 @@ func TestMinerSetPrice(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	d1 := th.NewDaemon(t,
-		th.WithMiner(fixtures.TestMiners[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.DefaultAddress(fixtures.TestAddresses[0])).Start()
+		th.WithMiner(fortest.TestMiners[0]),
+		th.KeyFile(fortest.KeyFilePaths()[0]),
+		th.DefaultAddress(fortest.TestAddresses[0])).Start()
 	defer d1.ShutdownSuccess()
 
 	d1.RunSuccess("mining", "start")
 
 	setPrice := d1.RunSuccess("miner", "set-price", "62", "6", "--gas-price", "1", "--gas-limit", "300")
-	assert.Contains(t, setPrice.ReadStdoutTrimNewlines(), fmt.Sprintf("Set price for miner %s to 62.", fixtures.TestMiners[0]))
+	assert.Contains(t, setPrice.ReadStdoutTrimNewlines(), fmt.Sprintf("Set price for miner %s to 62.", fortest.TestMiners[0]))
 
 	configuredPrice := d1.RunSuccess("config", "mining.storagePrice")
 
