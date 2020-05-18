@@ -187,6 +187,7 @@ var msgWaitCmd = &cmds.Command{
 		cmdkit.BoolOption("message", "Print the whole message").WithDefault(true),
 		cmdkit.BoolOption("receipt", "Print the whole message receipt").WithDefault(true),
 		cmdkit.BoolOption("return", "Print the return value from the receipt").WithDefault(false),
+		cmdkit.Uint64Option("lookback", "Number of previous tipsets to be checked before waiting").WithDefault(msg.DefaultMessageWaitLookback),
 		cmdkit.StringOption("timeout", "Maximum time to wait for message. e.g., 300ms, 1.5h, 2h45m.").WithDefault("10m"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -204,10 +205,12 @@ var msgWaitCmd = &cmds.Command{
 			return errors.Wrap(err, "Invalid timeout string")
 		}
 
+		lookback, _ := req.Options["lookback"].(uint64)
+
 		ctx, cancel := context.WithTimeout(req.Context, timeoutDuration)
 		defer cancel()
 
-		err = GetPorcelainAPI(env).MessageWait(ctx, msgCid, func(blk *block.Block, msg *types.SignedMessage, receipt *vm.MessageReceipt) error {
+		err = GetPorcelainAPI(env).MessageWait(ctx, msgCid, lookback, func(blk *block.Block, msg *types.SignedMessage, receipt *vm.MessageReceipt) error {
 			found = true
 			sig, err := GetPorcelainAPI(env).ActorGetSignature(req.Context, msg.Message.To, msg.Message.Method)
 			if err != nil && err != cst.ErrNoMethod && err != cst.ErrNoActorImpl {

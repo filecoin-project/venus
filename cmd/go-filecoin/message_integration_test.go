@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
@@ -84,23 +85,22 @@ func TestMessageSend(t *testing.T) {
 }
 
 func TestMessageWait(t *testing.T) {
-	t.Skip("Dragons: fake proofs")
 	tf.IntegrationTest(t)
 	ctx := context.Background()
-	builder := test.NewNodeBuilder(t)
 
-	buildWithMiner(t, builder)
-	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
-	defer done()
+	seed, genCfg, fakeClock, chainClock := test.CreateBootstrapSetup(t)
+	node := test.CreateBootstrapMiner(ctx, t, seed, chainClock, genCfg)
+
+	cmdClient, clientStop := test.RunNodeAPI(ctx, node, t)
+	defer clientStop()
 
 	t.Run("[success] transfer only", func(t *testing.T) {
-		msg := cmdClient.RunSuccess(ctx, "message", "send",
-			"--from", fortest.TestAddresses[0].String(),
+		var sendResult commands.MessageSendResult
+		cmdClient.RunMarshaledJSON(ctx, &sendResult, "message", "send",
 			"--gas-price", "1",
 			"--gas-limit", "300",
 			fortest.TestAddresses[1].String(),
 		)
-		msgcid := msg.ReadStdoutTrimNewlines()
 
 		// Fail with timeout before the message has been mined
 		cmdClient.RunFail(
@@ -111,22 +111,64 @@ func TestMessageWait(t *testing.T) {
 			"--receipt=false",
 			"--timeout=100ms",
 			"--return",
-			msgcid,
+			sendResult.Cid.String(),
 		)
 
-		_, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-		require.NoError(t, err)
+		test.RequireMineOnce(ctx, t, fakeClock, node)
 
-		wait := cmdClient.RunSuccess(
+		var waitResult commands.WaitResult
+		cmdClient.RunMarshaledJSON(
 			ctx,
+			&waitResult,
 			"message", "wait",
 			"--message=false",
 			"--receipt=false",
 			"--timeout=1m",
 			"--return",
-			msgcid,
+			sendResult.Cid.String(),
 		)
-		assert.Equal(t, "", wait.ReadStdout())
+		assert.Equal(t, fortest.TestAddresses[1], waitResult.Message.Message.To)
+	})
+
+	t.Run("[success] lookback", func(t *testing.T) {
+		var sendResult commands.MessageSendResult
+		cmdClient.RunMarshaledJSON(ctx, &sendResult, "message", "send",
+			"--from", fortest.TestAddresses[0].String(),
+			"--gas-price", "1",
+			"--gas-limit", "300",
+			fortest.TestAddresses[1].String(),
+		)
+
+		// mine 4 times so message is on the chain a few tipsets back
+		for i := 0; i < 4; i++ {
+			test.RequireMineOnce(ctx, t, fakeClock, node)
+		}
+
+		// Fail with timeout because the message is too early for the default lookback (2)
+		cmdClient.RunFail(
+			ctx,
+			"deadline exceeded",
+			"message", "wait",
+			"--message=false",
+			"--receipt=false",
+			"--timeout=1s",
+			"--return",
+			sendResult.Cid.String(),
+		)
+
+		// succeed by specifying a higher lookback
+		var waitResult commands.WaitResult
+		cmdClient.RunMarshaledJSON(
+			ctx,
+			&waitResult,
+			"message", "wait",
+			"--message=false",
+			"--receipt=false",
+			"--lookback=10",
+			"--timeout=1m",
+			"--return",
+			sendResult.Cid.String(),
+		)
 	})
 }
 
