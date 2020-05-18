@@ -100,7 +100,7 @@ func (f *FiniteStateMachineNodeConnector) StateSectorPreCommitInfo(ctx context.C
 		return nil, err
 	}
 
-	info, found, err := view.MinerGetPrecommittedSector(ctx, maddr, uint64(sectorNumber))
+	info, found, err := view.MinerGetPrecommittedSector(ctx, maddr, sectorNumber)
 	if err != nil {
 		return nil, err
 	}

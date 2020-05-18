@@ -82,7 +82,7 @@ func (v *View) InitResolveAddress(ctx context.Context, a addr.Address) (addr.Add
 	state := &notinit.State{
 		AddressMap: initState.AddressMap,
 	}
-	return state.ResolveAddress(StoreFromCbor(ctx, v.ipldStore), a)
+	return state.ResolveAddress(v.adtStore(ctx), a)
 }
 
 // Returns public key address if id address is given
@@ -137,23 +137,26 @@ func (v *View) MinerSectorConfiguration(ctx context.Context, maddr addr.Address)
 }
 
 // MinerSectorCount counts all the on-chain sectors
-func (v *View) MinerSectorCount(ctx context.Context, maddr addr.Address) (int, error) {
+func (v *View) MinerSectorCount(ctx context.Context, maddr addr.Address) (uint64, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
 		return 0, err
 	}
-	count := 0
-	var sector miner.SectorOnChainInfo
 	sectors, err := v.asArray(ctx, minerState.Sectors)
 	if err != nil {
 		return 0, err
 	}
+	length := sectors.Length()
+	return length, nil
+}
 
-	err = sectors.ForEach(&sector, func(_ int64) error {
-		count++
-		return nil
-	})
-	return count, err
+// Loads sector info from miner state.
+func (v *View) MinerGetSector(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, bool, error) {
+	minerState, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return nil, false, err
+	}
+	return minerState.GetSector(v.adtStore(ctx), sectorNum)
 }
 
 // MinerDeadlineInfo returns information relevant to the current proving deadline
@@ -174,7 +177,7 @@ func (v *View) MinerPartitionIndicesForDeadline(ctx context.Context, maddr addr.
 		return nil, err
 	}
 
-	deadlines, err := minerState.LoadDeadlines(StoreFromCbor(ctx, v.ipldStore))
+	deadlines, err := minerState.LoadDeadlines(v.adtStore(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +216,7 @@ func (v *View) MinerSectorInfoForDeadline(ctx context.Context, maddr addr.Addres
 		return nil, err
 	}
 
-	deadlines, err := minerState.LoadDeadlines(StoreFromCbor(ctx, v.ipldStore))
+	deadlines, err := minerState.LoadDeadlines(v.adtStore(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +270,7 @@ func (v *View) MinerSectorInfoForDeadline(ctx context.Context, maddr addr.Addres
 	}
 
 	// Load sector infos for proof
-	sectors, err := minerState.LoadSectorInfosWithFaultMask(StoreFromCbor(ctx, v.ipldStore), provenSectors, expectedFaults, abi.SectorNumber(goodSectorNo))
+	sectors, err := minerState.LoadSectorInfosWithFaultMask(v.adtStore(ctx), provenSectors, expectedFaults, abi.SectorNumber(goodSectorNo))
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +304,32 @@ func (v *View) MinerDeadlines(ctx context.Context, maddr addr.Address) (*miner.D
 		return nil, err
 	}
 
-	return minerState.LoadDeadlines(StoreFromCbor(ctx, v.ipldStore))
+	return minerState.LoadDeadlines(v.adtStore(ctx))
+}
+
+type MinerSectorStates struct {
+	Deadlines  []*abi.BitField
+	Faults     *abi.BitField
+	Recoveries *abi.BitField
+	NewSectors *abi.BitField
+}
+
+func (v *View) MinerSectorStates(ctx context.Context, maddr addr.Address) (*MinerSectorStates, error) {
+	minerState, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	deadlines, err := minerState.LoadDeadlines(v.adtStore(ctx))
+	if err != nil {
+		return nil, err
+	}
+	return &MinerSectorStates{
+		Deadlines:  deadlines.Due[:],
+		Faults:     minerState.Faults,
+		Recoveries: minerState.Recoveries,
+		NewSectors: minerState.NewSectors,
+	}, nil
 }
 
 // MinerInfo returns information about the next proving period
@@ -368,13 +396,13 @@ func (v *View) MinerFaults(ctx context.Context, maddr addr.Address) ([]uint64, e
 
 // MinerGetPrecommittedSector Looks up info for a miners precommitted sector.
 // NOTE: exposes on-chain structures directly for storage FSM API.
-func (v *View) MinerGetPrecommittedSector(ctx context.Context, maddr addr.Address, sectorNum uint64) (*miner.SectorPreCommitOnChainInfo, bool, error) {
+func (v *View) MinerGetPrecommittedSector(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*miner.SectorPreCommitOnChainInfo, bool, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
 		return nil, false, err
 	}
 
-	return minerState.GetPrecommittedSector(StoreFromCbor(ctx, v.ipldStore), abi.SectorNumber(sectorNum))
+	return minerState.GetPrecommittedSector(v.adtStore(ctx), sectorNum)
 }
 
 // MarketEscrowBalance looks up a token amount in the escrow table for the given address
@@ -625,20 +653,24 @@ func (v *View) loadActor(ctx context.Context, address addr.Address) (*actor.Acto
 	return &actr, err
 }
 
+func (v *View) adtStore(ctx context.Context) adt.Store {
+	return StoreFromCbor(ctx, v.ipldStore)
+}
+
 func (v *View) asArray(ctx context.Context, root cid.Cid) (*adt.Array, error) {
-	return adt.AsArray(StoreFromCbor(ctx, v.ipldStore), root)
+	return adt.AsArray(v.adtStore(ctx), root)
 }
 
 func (v *View) asMap(ctx context.Context, root cid.Cid) (*adt.Map, error) {
-	return adt.AsMap(StoreFromCbor(ctx, v.ipldStore), root)
+	return adt.AsMap(v.adtStore(ctx), root)
 }
 
 func (v *View) asDealStateArray(ctx context.Context, root cid.Cid) (*market.DealMetaArray, error) {
-	return market.AsDealStateArray(StoreFromCbor(ctx, v.ipldStore), root)
+	return market.AsDealStateArray(v.adtStore(ctx), root)
 }
 
 func (v *View) asBalanceTable(ctx context.Context, root cid.Cid) (*adt.BalanceTable, error) {
-	return adt.AsBalanceTable(StoreFromCbor(ctx, v.ipldStore), root)
+	return adt.AsBalanceTable(v.adtStore(ctx), root)
 }
 
 // StoreFromCbor wraps a cbor ipldStore for ADT access.
