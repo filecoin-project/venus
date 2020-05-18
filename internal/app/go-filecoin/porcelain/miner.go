@@ -36,7 +36,7 @@ type MinerStateView interface {
 	MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error)
 	MinerPeerID(ctx context.Context, maddr address.Address) (peer.ID, error)
 	MinerSectorConfiguration(ctx context.Context, maddr address.Address) (*state.MinerSectorConfiguration, error)
-	MinerSectorCount(ctx context.Context, maddr address.Address) (int, error)
+	MinerSectorCount(ctx context.Context, maddr address.Address) (uint64, error)
 	MinerDeadlines(ctx context.Context, maddr address.Address) (*miner.Deadlines, error)
 	PowerNetworkTotal(ctx context.Context) (*state.NetworkPower, error)
 	MinerClaimedPower(ctx context.Context, miner address.Address) (raw, qa abi.StoragePower, err error)
@@ -184,7 +184,7 @@ type MinerStatus struct {
 	WorkerAddress       address.Address
 	PeerID              peer.ID
 	SectorConfiguration *state.MinerSectorConfiguration
-	SectorCount         int
+	SectorCount         uint64
 
 	RawPower             abi.StoragePower
 	QualityAdjustedPower abi.StoragePower
