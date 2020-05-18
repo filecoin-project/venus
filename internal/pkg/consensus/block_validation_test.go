@@ -26,7 +26,7 @@ func TestBlockValidSemantic(t *testing.T) {
 	blockTime := clock.DefaultEpochDuration
 	ts := time.Unix(1234567890, 0)
 	genTime := ts
-	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, clock.NewFake(ts))
+	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, clock.DefaultPropagationDelay, clock.NewFake(ts))
 	ctx := context.Background()
 
 	validator := consensus.NewDefaultBlockValidator(mclock)
@@ -54,7 +54,7 @@ func TestMismatchedTime(t *testing.T) {
 	blockTime := clock.DefaultEpochDuration
 	genTime := time.Unix(1234567890, 1234567890%int64(time.Second))
 	fc := clock.NewFake(genTime)
-	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, fc)
+	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, clock.DefaultPropagationDelay, fc)
 	validator := consensus.NewDefaultBlockValidator(mclock)
 
 	fc.Advance(blockTime)
@@ -76,7 +76,7 @@ func TestFutureEpoch(t *testing.T) {
 	blockTime := clock.DefaultEpochDuration
 	genTime := time.Unix(1234567890, 1234567890%int64(time.Second))
 	fc := clock.NewFake(genTime)
-	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, fc)
+	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, clock.DefaultPropagationDelay, fc)
 	validator := consensus.NewDefaultBlockValidator(mclock)
 
 	// Fails in future epoch
@@ -92,7 +92,7 @@ func TestBlockValidSyntax(t *testing.T) {
 	blockTime := clock.DefaultEpochDuration
 	ts := time.Unix(1234567890, 0)
 	mclock := clock.NewFake(ts)
-	chainClock := clock.NewChainClockFromClock(uint64(ts.Unix()), blockTime, mclock)
+	chainClock := clock.NewChainClockFromClock(uint64(ts.Unix()), blockTime, clock.DefaultPropagationDelay, mclock)
 	ctx := context.Background()
 	mclock.Advance(blockTime)
 

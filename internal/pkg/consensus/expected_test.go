@@ -31,7 +31,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
 type TestChainReader struct{}
@@ -55,7 +55,8 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	mockSigner, kis := types.NewMockSignersAndKeyInfo(3)
 	fc := clock.NewFake(time.Unix(1234567890, 0))
 	blockTime := 30 * time.Second
-	cl := clock.NewChainClockFromClock(1234567890, blockTime, fc)
+	propDelay := 5 * time.Second
+	cl := clock.NewChainClockFromClock(1234567890, blockTime, propDelay, fc)
 	drand := &drand.Fake{}
 
 	t.Run("passes the validateMining section when given valid mining blocks", func(t *testing.T) {

@@ -16,7 +16,8 @@ func TestChainEpochClock(t *testing.T) {
 
 	now := int64(123456789)
 	bt := clock.DefaultEpochDuration
-	cec := clock.NewChainClock(uint64(now), bt)
+	pd := clock.DefaultPropagationDelay
+	cec := clock.NewChainClock(uint64(now), bt, pd)
 
 	epoch0Start := time.Unix(now, 0)
 	epoch1Start := epoch0Start.Add(bt)

@@ -66,6 +66,9 @@ const (
 	// with testing as we won't be able to set blocktime in production.
 	BlockTime = "block-time"
 
+	// PropagationDelay is the duration the miner will wait for blocks to arrive before attempting to mine a new one
+	PropagationDelay = "prop-delay"
+
 	// PeerKeyFile is the path of file containing key to use for new nodes libp2p identity
 	PeerKeyFile = "peerkeyfile"
 

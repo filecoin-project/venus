@@ -67,9 +67,10 @@ func TestBlockPubSubValidation(t *testing.T) {
 	mclock := clock.NewFake(now)
 	// block time will be 1 second
 	blocktime := time.Second * 1
+	propDelay := 200 * time.Millisecond
 
 	// setup a block validator and a topic validator
-	chainClock := clock.NewChainClockFromClock(uint64(now.Unix()), blocktime, mclock)
+	chainClock := clock.NewChainClockFromClock(uint64(now.Unix()), blocktime, propDelay, mclock)
 	bv := consensus.NewDefaultBlockValidator(chainClock)
 	btv := blocksub.NewBlockTopicValidator(bv)
 
