@@ -237,15 +237,15 @@ func (node *Node) handleNewMiningOutput(ctx context.Context, miningOutCh <-chan 
 				log.Errorf("scheduler stopped. stopping mining.")
 				node.StopMining(context.Background())
 				return
-			} else {
-				node.BlockMining.MiningDoneWg.Add(1)
-				go func() {
-					if node.IsMining() {
-						node.BlockMining.AddNewlyMinedBlock(ctx, output)
-					}
-					node.BlockMining.MiningDoneWg.Done()
-				}()
 			}
+
+			node.BlockMining.MiningDoneWg.Add(1)
+			go func() {
+				if node.IsMining() {
+					node.BlockMining.AddNewlyMinedBlock(ctx, output)
+				}
+				node.BlockMining.MiningDoneWg.Done()
+			}()
 		}
 	}
 
