@@ -238,7 +238,7 @@ jobs:
       - image: circleci/golang:1.13.1-stretch
     parallelism: 2 # Check .codecov.yml "after_n_builds" if changing this
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
-    resource_class: large
+    resource_class: xlarge
     steps:
       - linux_configure
       - add_ssh_keys:
