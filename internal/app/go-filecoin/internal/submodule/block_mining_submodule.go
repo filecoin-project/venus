@@ -29,7 +29,7 @@ type BlockMiningSubmodule struct {
 	PoStGenerator postgenerator.PoStGenerator
 }
 
-type newBlockFunc func(context.Context, mining.Output)
+type newBlockFunc func(context.Context, mining.FullBlock)
 
 // NewBlockMiningSubmodule creates a new block mining submodule.
 func NewBlockMiningSubmodule(ctx context.Context, gen postgenerator.PoStGenerator) (BlockMiningSubmodule, error) {

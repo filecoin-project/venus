@@ -15,7 +15,7 @@ import (
 )
 
 // AddNewBlock receives a newly mined block and stores, validates and propagates it to the network.
-func (node *Node) AddNewBlock(ctx context.Context, o mining.Output) (err error) {
+func (node *Node) AddNewBlock(ctx context.Context, o mining.FullBlock) (err error) {
 	b := o.Header
 	ctx, span := trace.StartSpan(ctx, "Node.AddNewBlock")
 	span.AddAttributes(trace.StringAttribute("block", b.Cid().String()))
