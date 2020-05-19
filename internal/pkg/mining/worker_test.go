@@ -89,11 +89,11 @@ func TestLookbackElection(t *testing.T) {
 			Clock:            clock.NewChainClock(100000000, 30*time.Second, 6*time.Second),
 		})
 
-		header, _, _, err := worker.Mine(ctx, head, 0)
+		blk, err := worker.Mine(ctx, head, 0)
 		assert.NoError(t, err)
 
 		expectedTicket := makeExpectedTicket(ctx, t, rnd, mockSigner, head, miner.ElectionLookback, minerAddr, minerOwnerAddr)
-		assert.Equal(t, expectedTicket, header.Ticket)
+		assert.Equal(t, expectedTicket, blk.Header.Ticket)
 	})
 }
 
@@ -144,11 +144,11 @@ func Test_Mine(t *testing.T) {
 			Clock:            clock.NewChainClock(100000000, 30*time.Second, 6*time.Second),
 		})
 
-		header, _, _, err := worker.Mine(ctx, tipSet, 0)
+		blk, err := worker.Mine(ctx, tipSet, 0)
 		assert.NoError(t, err)
 
 		expectedTicket := makeExpectedTicket(ctx, t, rnd, mockSigner, tipSet, miner.ElectionLookback, minerAddr, minerOwnerAddr)
-		assert.Equal(t, expectedTicket, header.Ticket)
+		assert.Equal(t, expectedTicket, blk.Header.Ticket)
 	})
 
 	t.Run("Block generation fails", func(t *testing.T) {
@@ -174,7 +174,7 @@ func Test_Mine(t *testing.T) {
 			Clock:            clock.NewChainClock(100000000, 30*time.Second, 6*time.Second),
 		})
 
-		_, _, _, err := worker.Mine(ctx, tipSet, 0)
+		_, err := worker.Mine(ctx, tipSet, 0)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "test error retrieving state root")
 	})
@@ -202,7 +202,7 @@ func Test_Mine(t *testing.T) {
 			Clock:            clock.NewChainClock(100000000, 30*time.Second, 6*time.Second),
 		})
 		input := block.TipSet{}
-		_, _, _, err := worker.Mine(ctx, input, 0)
+		_, err := worker.Mine(ctx, input, 0)
 		assert.EqualError(t, err, "bad input tipset with no blocks sent to Mine()")
 	})
 }
@@ -361,11 +361,11 @@ func TestApplyBLSMessages(t *testing.T) {
 		Clock:            clock.NewChainClock(100000000, 30*time.Second, 6*time.Second),
 	})
 
-	block, _, _, err := worker.Mine(ctx, tipSet, 0)
+	block, err := worker.Mine(ctx, tipSet, 0)
 	require.NoError(t, err)
 
 	t.Run("messages are divided into bls and secp messages", func(t *testing.T) {
-		secpMessages, blsMessages, err := msgStore.LoadMessages(ctx, block.Messages.Cid)
+		secpMessages, blsMessages, err := msgStore.LoadMessages(ctx, block.Header.Messages.Cid)
 		require.NoError(t, err)
 
 		assert.Len(t, secpMessages, 5)
@@ -381,7 +381,7 @@ func TestApplyBLSMessages(t *testing.T) {
 	})
 
 	t.Run("all 10 messages are stored", func(t *testing.T) {
-		secpMessages, blsMessages, err := msgStore.LoadMessages(ctx, block.Messages.Cid)
+		secpMessages, blsMessages, err := msgStore.LoadMessages(ctx, block.Header.Messages.Cid)
 		require.NoError(t, err)
 
 		assert.Len(t, secpMessages, 5)
@@ -392,7 +392,7 @@ func TestApplyBLSMessages(t *testing.T) {
 		digests := []bls.Digest{}
 		keys := []bls.PublicKey{}
 
-		_, blsMessages, err := msgStore.LoadMessages(ctx, block.Messages.Cid)
+		_, blsMessages, err := msgStore.LoadMessages(ctx, block.Header.Messages.Cid)
 		require.NoError(t, err)
 		for _, msg := range blsMessages {
 			msgBytes, err := msg.Marshal()
@@ -405,7 +405,7 @@ func TestApplyBLSMessages(t *testing.T) {
 		}
 
 		blsSig := bls.Signature{}
-		copy(blsSig[:], block.BLSAggregateSig.Data)
+		copy(blsSig[:], block.Header.BLSAggregateSig.Data)
 		valid := bls.Verify(&blsSig, digests, keys)
 
 		assert.True(t, valid)
@@ -463,24 +463,24 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	baseTipset := builder.AppendOn(parentTipset, 2)
 	assert.Equal(t, 2, baseTipset.Len())
 
-	header, _, _, err := worker.Generate(ctx, baseTipset, block.Ticket{VRFProof: []byte{2}}, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)
+	blk, err := worker.Generate(ctx, baseTipset, block.Ticket{VRFProof: []byte{2}}, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)
 	assert.NoError(t, err)
 
-	txMeta, err := messages.LoadTxMeta(ctx, header.Messages.Cid)
+	txMeta, err := messages.LoadTxMeta(ctx, blk.Header.Messages.Cid)
 	require.NoError(t, err)
 	assert.Equal(t, types.EmptyMessagesCID, txMeta.SecpRoot.Cid)
 
 	expectedStateRoot, err := meta.GetTipSetStateRoot(parentTipset.Key())
 	require.NoError(t, err)
-	assert.Equal(t, expectedStateRoot, header.StateRoot.Cid)
+	assert.Equal(t, expectedStateRoot, blk.Header.StateRoot.Cid)
 
 	expectedReceipts, err := meta.GetTipSetReceiptsRoot(parentTipset.Key())
 	require.NoError(t, err)
-	assert.Equal(t, expectedReceipts, header.MessageReceipts.Cid)
+	assert.Equal(t, expectedReceipts, blk.Header.MessageReceipts.Cid)
 
-	assert.Equal(t, uint64(101), header.Height)
-	assert.Equal(t, fbig.NewInt(120), header.ParentWeight)
-	assert.Equal(t, block.Ticket{VRFProof: []byte{2}}, header.Ticket)
+	assert.Equal(t, uint64(101), blk.Header.Height)
+	assert.Equal(t, fbig.NewInt(120), blk.Header.ParentWeight)
+	assert.Equal(t, block.Ticket{VRFProof: []byte{2}}, blk.Header.Ticket)
 }
 
 // After calling Generate, do the new block and new state of the message pool conform to our expectations?
@@ -567,7 +567,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		StateRoot: e.NewCid(stateRoot),
 	}
 
-	header, _, _, err := worker.Generate(ctx, block.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)
+	blk, err := worker.Generate(ctx, block.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)
 	assert.NoError(t, err)
 
 	// This is the temporary failure + the good message,
@@ -578,7 +578,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 
 	// message and receipts can be loaded from message store and have
 	// length 1.
-	msgs, _, err := messages.LoadMessages(ctx, header.Messages.Cid)
+	msgs, _, err := messages.LoadMessages(ctx, blk.Header.Messages.Cid)
 	require.NoError(t, err)
 	assert.Len(t, msgs, 1) // This is the good message
 }
@@ -632,19 +632,19 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	}
 	baseTipSet := block.RequireNewTipSet(t, &baseBlock)
 	ticket := mining.NthTicket(7)
-	header, _, _, err := worker.Generate(ctx, baseTipSet, ticket, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)
+	blk, err := worker.Generate(ctx, baseTipSet, ticket, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)
 	assert.NoError(t, err)
 
-	assert.Equal(t, h+1, header.Height)
-	assert.Equal(t, minerAddr, header.Miner)
-	assert.Equal(t, ticket, header.Ticket)
+	assert.Equal(t, h+1, blk.Header.Height)
+	assert.Equal(t, minerAddr, blk.Header.Miner)
+	assert.Equal(t, ticket, blk.Header.Ticket)
 
-	header, _, _, err = worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 1, consensus.MakeFakePoStsForTest(), nil)
+	blk, err = worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 1, consensus.MakeFakePoStsForTest(), nil)
 	assert.NoError(t, err)
 
-	assert.Equal(t, h+2, header.Height)
-	assert.Equal(t, fbig.Add(w, fbig.NewInt(10.0)), header.ParentWeight)
-	assert.Equal(t, minerAddr, header.Miner)
+	assert.Equal(t, h+2, blk.Header.Height)
+	assert.Equal(t, fbig.Add(w, fbig.NewInt(10.0)), blk.Header.ParentWeight)
+	assert.Equal(t, minerAddr, blk.Header.Miner)
 }
 
 func TestGenerateWithoutMessages(t *testing.T) {
@@ -688,11 +688,11 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		Height:    100,
 		StateRoot: e.NewCid(newCid()),
 	}
-	header, _, _, err := worker.Generate(ctx, block.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)
+	blk, err := worker.Generate(ctx, block.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)
 	assert.NoError(t, err)
 
 	assert.Len(t, pool.Pending(), 0) // This is the temporary failure.
-	txMeta, err := messages.LoadTxMeta(ctx, header.Messages.Cid)
+	txMeta, err := messages.LoadTxMeta(ctx, blk.Header.Messages.Cid)
 	require.NoError(t, err)
 	assert.Equal(t, types.EmptyMessagesCID, txMeta.SecpRoot.Cid)
 	assert.Equal(t, types.EmptyMessagesCID, txMeta.BLSRoot.Cid)
@@ -749,9 +749,9 @@ func TestGenerateError(t *testing.T) {
 		StateRoot: e.NewCid(newCid()),
 	}
 	baseTipSet := block.RequireNewTipSet(t, &baseBlock)
-	header, _, _, err := worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)
+	blk, err := worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)
 	assert.Error(t, err, "boom")
-	assert.Nil(t, header)
+	assert.Nil(t, blk.Header)
 
 	assert.Len(t, pool.Pending(), 1) // No messages are removed from the pool.
 }

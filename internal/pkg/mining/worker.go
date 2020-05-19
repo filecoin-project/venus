@@ -33,7 +33,7 @@ var log = logging.Logger("mining")
 // Worker is the interface called by the Scheduler to run the mining work being
 // scheduled.
 type Worker interface {
-	Mine(runCtx context.Context, base block.TipSet, nullBlkCount uint64) (*block.Block, []*types.SignedMessage, []*types.SignedMessage, error)
+	Mine(runCtx context.Context, base block.TipSet, nullBlkCount uint64) (*FullBlock, error)
 }
 
 // GetStateTree is a function that gets the aggregate state tree of a TipSet. It's
@@ -158,33 +158,33 @@ func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
 
 // Mine implements the DefaultWorkers main mining function..
 // The returned bool indicates if this miner created a new block or not.
-func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCount uint64) (blk *block.Block, bls []*types.SignedMessage, secp []*types.SignedMessage, err error) {
+func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCount uint64) (*FullBlock, error) {
 	log.Info("Worker.Mine")
 	if !base.Defined() {
 		log.Warn("Worker.Mine returning because it can't mine on an empty tipset")
-		return nil, nil, nil, errors.New("bad input tipset with no blocks sent to Mine()")
+		return nil, errors.New("bad input tipset with no blocks sent to Mine()")
 	}
 	baseEpoch, err := base.Height()
 	if err != nil {
 		log.Warnf("Worker.Mine couldn't read base height %s", err)
-		return nil, nil, nil, err
+		return nil, err
 	}
 	currEpoch := baseEpoch + abi.ChainEpoch(1) + abi.ChainEpoch(nullBlkCount)
 
 	log.Debugf("Mining on tipset %s, at epoch %d with %d null blocks.", base.String(), baseEpoch, nullBlkCount)
 	if ctx.Err() != nil {
 		log.Warnf("Worker.Mine returning with ctx error %s", ctx.Err().Error())
-		return nil, nil, nil, ctx.Err()
+		return nil, ctx.Err()
 	}
 
 	// Read uncached worker address
 	keyView, err := w.api.PowerStateView(base.Key())
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 	_, workerAddr, err := keyView.MinerControlAddresses(ctx, w.minerAddr)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 
 	// Look-back for the election ticket.
@@ -195,27 +195,27 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 
 	workerSignerAddr, err := keyView.AccountSignerAddress(ctx, workerAddr)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 
 	drandEntries, err := w.drandEntriesForEpoch(ctx, base, nullBlkCount)
 	if err != nil {
 		log.Errorf("Worker.Mine failed to collect drand entries for block %s", err)
-		return nil, nil, nil, err
+		return nil, err
 	}
 
 	// Determine if we've won election
 	electionEntry, err := w.electionEntry(ctx, base, drandEntries)
 	if err != nil {
 		log.Errorf("Worker.Mine failed to calculate drand entry for election randomness %s", err)
-		return nil, nil, nil, err
+		return nil, err
 	}
 
 	newPeriod := len(drandEntries) > 0
 	nextTicket, err := w.ticketGen.MakeTicket(ctx, base.Key(), lookbackEpoch, w.minerAddr, electionEntry, newPeriod, workerSignerAddr, w.workerSigner)
 	if err != nil {
 		log.Warnf("Worker.Mine couldn't generate next ticket %s", err)
-		return nil, nil, nil, err
+		return nil, err
 	}
 
 	electionVRFProof, err := w.election.GenerateElectionProof(ctx, electionEntry, currEpoch, w.minerAddr, workerSignerAddr, w.workerSigner)
@@ -226,45 +226,45 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 	electionPowerAncestor, err := w.lookbackTipset(ctx, base, nullBlkCount, consensus.ElectionPowerTableLookback)
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't get ancestor tipset: %s", err.Error())
-		return nil, nil, nil, err
+		return nil, err
 	}
 	electionPowerTable, err := w.getPowerTable(electionPowerAncestor.Key(), base.Key())
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't get snapshot for tipset: %s", err.Error())
-		return nil, nil, nil, err
+		return nil, err
 	}
 	networkPower, err := electionPowerTable.NetworkTotalPower(ctx)
 	if err != nil {
 		log.Errorf("failed to get network power: %s", err)
-		return nil, nil, nil, err
+		return nil, err
 	}
 	minerPower, err := electionPowerTable.MinerClaimedPower(ctx, w.minerAddr)
 	if err != nil {
 		log.Errorf("failed to get power claim for miner: %s", err)
-		return nil, nil, nil, err
+		return nil, err
 	}
 	wins := w.election.IsWinner(electionVRFDigest[:], minerPower, networkPower)
 	if !wins {
 		// no winners we are done
-		return nil, nil, nil, nil
+		return nil, nil
 	}
 
 	// we have a winning block
 	sectorSetAncestor, err := w.lookbackTipset(ctx, base, nullBlkCount, consensus.WinningPoStSectorSetLookback)
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't get ancestor tipset: %s", err.Error())
-		return nil, nil, nil, err
+		return nil, err
 	}
 	sectorStateView, err := w.api.PowerStateView(sectorSetAncestor.Key())
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't get snapshot for tipset: %s", err.Error())
-		return nil, nil, nil, err
+		return nil, err
 	}
 
 	posts, err := w.election.GenerateWinningPoSt(ctx, electionEntry, currEpoch, w.poster, w.minerAddr, sectorStateView)
 	if err != nil {
 		log.Warnf("Worker.Mine failed to generate post")
-		return nil, nil, nil, err
+		return nil, err
 	}
 
 	return w.Generate(ctx, base, nextTicket, electionVRFProof, abi.ChainEpoch(nullBlkCount), posts, drandEntries)

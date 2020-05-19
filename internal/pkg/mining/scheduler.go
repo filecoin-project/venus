@@ -9,12 +9,11 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // FullBlock is the result of a single mining attempt. It will have a new block header with included messages.
@@ -24,8 +23,8 @@ type FullBlock struct {
 	SECPMessages []*types.SignedMessage
 }
 
-func NewfullBlock(b *block.Block, BLSMessages, SECPMessages []*types.SignedMessage) FullBlock {
-	return FullBlock{Header: b, BLSMessages: BLSMessages, SECPMessages: SECPMessages}
+func NewfullBlock(b *block.Block, BLSMessages, SECPMessages []*types.SignedMessage) *FullBlock {
+	return &FullBlock{Header: b, BLSMessages: BLSMessages, SECPMessages: SECPMessages}
 }
 
 // Scheduler is the mining interface consumers use.
@@ -133,7 +132,7 @@ func (s *timingScheduler) mineLoop(ctx context.Context, outCh chan FullBlock) er
 		nullCount := uint64(targetEpoch-baseHeight) - 1
 
 		// mine now
-		blk, bls, secp, err := s.worker.Mine(ctx, base, nullCount)
+		block, err := s.worker.Mine(ctx, base, nullCount)
 		if err != nil {
 			log.Errorf("Mining failed: %s", err)
 			continue
@@ -145,8 +144,10 @@ func (s *timingScheduler) mineLoop(ctx context.Context, outCh chan FullBlock) er
 			return nil
 		}
 
-		// send output at epoch boundary
-		outCh <- NewfullBlock(blk, bls, secp)
+		// send block at epoch boundary if we won
+		if block != nil {
+			outCh <- *block
+		}
 	}
 }
 
@@ -188,16 +189,16 @@ func (s *timingScheduler) isDone(ctx context.Context) bool {
 }
 
 // MineOnce mines on a given base until it finds a winner or errors out.
-func MineOnce(ctx context.Context, w DefaultWorker, ts block.TipSet) (FullBlock, error) {
+func MineOnce(ctx context.Context, w DefaultWorker, ts block.TipSet) (*FullBlock, error) {
 	var nullCount uint64
 	for {
-		blk, bls, secp, err := MineOneEpoch(ctx, w, ts, nullCount)
+		blk, err := MineOneEpoch(ctx, w, ts, nullCount)
 		if err != nil {
-			return FullBlock{}, err
+			return nil, err
 		}
 
 		if blk != nil {
-			return NewfullBlock(blk, bls, secp), nil
+			return blk, nil
 		}
 
 		nullCount++
@@ -206,6 +207,6 @@ func MineOnce(ctx context.Context, w DefaultWorker, ts block.TipSet) (FullBlock,
 
 // MineOneEpoch attempts to mine a block in an epoch and returns the mined block,
 // or nil if no block could be mined
-func MineOneEpoch(ctx context.Context, w DefaultWorker, ts block.TipSet, nullCount uint64) (*block.Block, []*types.SignedMessage, []*types.SignedMessage, error) {
+func MineOneEpoch(ctx context.Context, w DefaultWorker, ts block.TipSet, nullCount uint64) (*FullBlock, error) {
 	return w.Mine(ctx, ts, nullCount)
 }

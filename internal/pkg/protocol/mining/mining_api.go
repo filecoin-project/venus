@@ -87,7 +87,7 @@ func (a *API) MiningOnce(ctx context.Context) (*block.Block, error) {
 		return nil, err
 	}
 
-	if err := a.addNewBlockFunc(ctx, res); err != nil {
+	if err := a.addNewBlockFunc(ctx, *res); err != nil {
 		return nil, err
 	}
 
