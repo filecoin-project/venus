@@ -79,7 +79,14 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 func RequireMineOnce(ctx context.Context, t *testing.T, fakeClock clock.Fake, node *node.Node) {
 	fakeClock.Advance(blockTime)
 	_, err := node.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-	require.NoError(t, err)
+
+	// fail only if ctx not done
+	select {
+	case <-ctx.Done():
+		return
+	default:
+		require.NoError(t, err)
+	}
 }
 
 func CreateBootstrapSetup(t *testing.T) (*node.ChainSeed, *gengen.GenesisCfg, clock.Fake, clock.ChainEpochClock) {
