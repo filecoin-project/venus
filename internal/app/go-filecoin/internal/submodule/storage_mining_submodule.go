@@ -75,7 +75,14 @@ func NewStorageMiningSubmodule(
 
 	sid := sectors.NewPersistedSectorNumberCounter(ds)
 
-	ncn := fsmnodeconnector.New(minerAddr, mw, c.ChainReader, c.ActorState, m.Outbox, c.State)
+	// FSM requires id address to work correctly. Resolve it now and hope it's stable
+	//
+	minerAddrID, err := resolveMinerAddress(context.TODO(), c, minerAddr, stateViewer)
+	if err != nil {
+		return nil, err
+	}
+
+	ncn := fsmnodeconnector.New(minerAddrID, mw, c.ChainReader, c.ActorState, m.Outbox, c.State)
 
 	ppStart, err := getMinerProvingPeriod(c, minerAddr, stateViewer)
 	if err != nil {
@@ -83,12 +90,6 @@ func NewStorageMiningSubmodule(
 	}
 
 	pcp := fsm.NewBasicPreCommitPolicy(&ccn, abi.ChainEpoch(2*60*24), ppStart%miner.WPoStProvingPeriod)
-
-	// FSM requires id address to work correctly. Resolve it now and hope it's stable
-	minerAddrID, err := resolveMinerAddress(context.TODO(), c, minerAddr, stateViewer)
-	if err != nil {
-		return nil, err
-	}
 
 	fsmConnector := fsmeventsconnector.New(chainThresholdScheduler, c.State)
 	fsm := fsm.New(ncn, fsmConnector, minerAddrID, ds, mgr, sid, ffiwrapper.ProofVerifier, &pcp)
