@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
@@ -408,7 +409,7 @@ func (r returnWrapper) Into(o specsruntime.CBORUnmarshaler) error {
 	// TODO: if inner is also a specsruntime.CBORUnmarshaler, overwrite o with inner.
 	b := bytes.Buffer{}
 	if r.inner == nil {
-		return fmt.Errorf("failed to unmarshal nil return")
+		r.inner = adt.Empty
 	}
 	err := r.inner.MarshalCBOR(&b)
 	if err != nil {
