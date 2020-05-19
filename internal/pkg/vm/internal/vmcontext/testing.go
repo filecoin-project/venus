@@ -3,6 +3,17 @@ package vmcontext
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	"github.com/filecoin-project/specs-actors/actors/builtin/system"
+	"github.com/filecoin-project/specs-actors/actors/puppet"
 	"math/rand"
 
 	"github.com/ipfs/go-cid"
@@ -28,7 +39,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	gfcbuiltin "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
@@ -41,6 +51,21 @@ var _ vstate.Factories = &Factories{}
 var _ vstate.VMWrapper = (*ValidationVMWrapper)(nil)
 var _ vstate.Applier = (*ValidationApplier)(nil)
 var _ vstate.KeyManager = (*KeyManager)(nil)
+
+var ChainvalActors = dispatch.NewBuilder().
+	Add(builtin.InitActorCodeID, &init_.Actor{}).
+	Add(builtin.AccountActorCodeID, &account.Actor{}).
+	Add(builtin.MultisigActorCodeID, &multisig.Actor{}).
+	Add(builtin.PaymentChannelActorCodeID, &paych.Actor{}).
+	Add(builtin.StoragePowerActorCodeID, &power.Actor{}).
+	Add(builtin.StorageMarketActorCodeID, &market.Actor{}).
+	Add(builtin.StorageMinerActorCodeID, &miner.Actor{}).
+	Add(builtin.SystemActorCodeID, &system.Actor{}).
+	Add(builtin.RewardActorCodeID, &reward.Actor{}).
+	Add(builtin.CronActorCodeID, &cron.Actor{}).
+	// add the puppet actor
+	Add(puppet.PuppetActorCodeID, &puppet.Actor{}).
+	Build()
 
 type Factories struct {
 	config *ValidationConfig
@@ -138,7 +163,7 @@ func NewState() *ValidationVMWrapper {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	cst := cborutil.NewIpldStore(bs)
 	vmstrg := storage.NewStorage(bs)
-	vm := NewVM(gfcbuiltin.DefaultActors, &vmstrg, state.NewState(cst), specialSyscallWrapper{vdriver.NewChainValidationSyscalls()})
+	vm := NewVM(ChainvalActors, &vmstrg, state.NewState(cst), specialSyscallWrapper{vdriver.NewChainValidationSyscalls()})
 	return &ValidationVMWrapper{
 		vm: &vm,
 	}
