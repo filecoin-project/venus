@@ -88,7 +88,7 @@ type workerPorcelainAPI interface {
 type electionUtil interface {
 	GenerateElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error)
 	IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool
-	GenerateWinningPoSt(ctx context.Context, allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]block.PoStProof, error)
+	GenerateWinningPoSt(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address, sectors consensus.SectorsStateView) ([]block.PoStProof, error)
 }
 
 // ticketGenerator creates tickets.
@@ -290,20 +290,14 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		outCh <- NewOutputErr(err)
 		return
 	}
-	winningPoStSectorSetView, err := w.getPowerTable(sectorSetAncestor.Key(), base.Key())
+	sectorStateView, err := w.api.PowerStateView(sectorSetAncestor.Key())
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't get snapshot for tipset: %s", err.Error())
 		outCh <- NewOutputErr(err)
 		return
 	}
-	sortedSectorInfos, err := winningPoStSectorSetView.SortedSectorInfos(ctx, w.minerAddr)
-	if err != nil {
-		log.Warnf("Worker.Mine failed to get ssi for %s", w.minerAddr)
-		outCh <- NewOutputErr(err)
-		return
-	}
 
-	posts, err := w.election.GenerateWinningPoSt(ctx, sortedSectorInfos, electionEntry, currEpoch, w.poster, w.minerAddr)
+	posts, err := w.election.GenerateWinningPoSt(ctx, electionEntry, currEpoch, w.poster, w.minerAddr, sectorStateView)
 	if err != nil {
 		log.Warnf("Worker.Mine failed to generate post")
 		outCh <- NewOutputErr(err)
@@ -315,8 +309,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		log.Debugf("Worker.Mine generates new winning block! %s", next.Header.Cid().String())
 	}
 	outCh <- next
-	won = true
-	return
+	return true
 }
 
 func (w *DefaultWorker) getPowerTable(powerKey, faultsKey block.TipSetKey) (consensus.PowerTableView, error) {

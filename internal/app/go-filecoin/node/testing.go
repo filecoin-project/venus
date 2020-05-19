@@ -13,7 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
@@ -136,7 +136,7 @@ func (cs *ChainSeed) KeyInitOpt(which int) InitOpt {
 
 // FixtureChainSeed returns the genesis function that
 func FixtureChainSeed(t *testing.T) *ChainSeed {
-	return MakeChainSeed(t, &fixtures.TestGenGenConfig)
+	return MakeChainSeed(t, &fortest.TestGenGenConfig)
 }
 
 // DefaultAddressConfigOpt is a node config option setting the default address

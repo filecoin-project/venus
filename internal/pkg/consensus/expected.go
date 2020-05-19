@@ -68,7 +68,7 @@ type TicketValidator interface {
 type ElectionValidator interface {
 	IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool
 	VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error
-	VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, allSectorInfos []abi.SectorInfo, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address) (bool, error)
+	VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error)
 }
 
 // StateViewer provides views into the chain state.
@@ -206,7 +206,6 @@ func (c *Expected) validateMining(ctx context.Context,
 		return errors.Wrap(err, "failed to get state root for sectorSet ancestor")
 	}
 	sectorSetStateView := c.state.PowerStateView(sectorSetStateRoot)
-	sectorSetPowerTable := NewPowerTableView(sectorSetStateView, faultsStateView)
 
 	electionPowerAncestor, err := chain.FindTipsetAtEpoch(ctx, ts, tsHeight-ElectionPowerTableLookback, c.chainState)
 	if err != nil {
@@ -293,11 +292,7 @@ func (c *Expected) validateMining(ctx context.Context,
 			return errors.Errorf("Block did not win election")
 		}
 
-		allSectorInfos, err := sectorSetPowerTable.SortedSectorInfos(ctx, blk.Miner)
-		if err != nil {
-			return errors.Wrapf(err, "failed to read sector infos from power table")
-		}
-		valid, err := c.VerifyWinningPoSt(ctx, c.postVerifier, allSectorInfos, electionEntry, blk.Height, blk.PoStProofs, blk.Miner)
+		valid, err := c.VerifyWinningPoSt(ctx, c.postVerifier, electionEntry, blk.Height, blk.PoStProofs, blk.Miner, sectorSetStateView)
 		if err != nil {
 			return errors.Wrapf(err, "failed verifying winning post")
 		}

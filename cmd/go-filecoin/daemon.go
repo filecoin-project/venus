@@ -36,7 +36,8 @@ var daemonCmd = &cmds.Command{
 		cmdkit.BoolOption(OfflineMode, "start the node without networking"),
 		cmdkit.BoolOption(ELStdout),
 		cmdkit.BoolOption(IsRelay, "advertise and allow filecoin network traffic to be relayed through this node"),
-		cmdkit.StringOption(BlockTime, "time a node waits before trying to mine the next block").WithDefault(clock.DefaultEpochDuration.String()),
+		cmdkit.StringOption(BlockTime, "period a node waits between mining successive blocks").WithDefault(clock.DefaultEpochDuration.String()),
+		cmdkit.StringOption(PropagationDelay, "time a node waits after the start of an epoch for blocks to arrive").WithDefault(clock.DefaultPropagationDelay.String()),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		return daemonRun(req, re)
@@ -84,14 +85,23 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 
 	durStr, ok := req.Options[BlockTime].(string)
 	if !ok {
-		return errors.New("Bad block time passed")
+		return fmt.Errorf("invalid %s: %v", BlockTime, req.Options[BlockTime])
 	}
-
 	blockTime, err := time.ParseDuration(durStr)
 	if err != nil {
-		return errors.Wrap(err, "Bad block time passed")
+		return fmt.Errorf("invalid %s: %s", BlockTime, durStr)
 	}
 	opts = append(opts, node.BlockTime(blockTime))
+
+	delayStr, ok := req.Options[PropagationDelay].(string)
+	if !ok {
+		return fmt.Errorf("invalid %s: %v", PropagationDelay, req.Options[PropagationDelay])
+	}
+	propDelay, err := time.ParseDuration(delayStr)
+	if err != nil {
+		return fmt.Errorf("invalid %s: %s", PropagationDelay, delayStr)
+	}
+	opts = append(opts, node.PropagationDelay(propDelay))
 
 	journal, err := journal.NewZapJournal(rep.JournalPath())
 	if err != nil {

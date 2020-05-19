@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
@@ -93,8 +93,8 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 
 	node.ConnectNodes(t, n1, n2)
 
-	addr := fixtures.TestAddresses[0]
-	minerAddr := fixtures.TestMiners[0]
+	addr := fortest.TestAddresses[0]
+	minerAddr := fortest.TestMiners[0]
 	minerPidForUpdate := th.RequireRandomPeerID(t)
 
 	// capture original, pre-update miner pid
@@ -138,19 +138,19 @@ func TestWalletLoadFromFile(t *testing.T) {
 	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
-	for _, p := range fixtures.KeyFilePaths() {
+	for _, p := range fortest.KeyFilePaths() {
 		cmdClient.RunSuccess(ctx, "wallet", "import", p)
 	}
 
 	dw := cmdClient.RunSuccess(ctx, "address", "ls").ReadStdoutTrimNewlines()
 
-	for _, addr := range fixtures.TestAddresses {
+	for _, addr := range fortest.TestAddresses {
 		// assert we loaded the test address from the file
 		assert.Contains(t, dw, addr)
 	}
 
 	// assert default amount of funds were allocated to address during genesis
-	wb := cmdClient.RunSuccess(ctx, "wallet", "balance", fixtures.TestAddresses[0].String()).ReadStdoutTrimNewlines()
+	wb := cmdClient.RunSuccess(ctx, "wallet", "balance", fortest.TestAddresses[0].String()).ReadStdoutTrimNewlines()
 	assert.Contains(t, wb, "10000")
 }
 

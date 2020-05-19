@@ -40,6 +40,7 @@ type Builder struct {
 	offlineMode bool
 	verifier    ffiwrapper.Verifier
 	postGen     postgenerator.PoStGenerator
+	propDelay   time.Duration
 	repo        repo.Repo
 	journal     journal.Journal
 	isRelay     bool
@@ -71,6 +72,14 @@ func IsRelay() BuilderOpt {
 func BlockTime(blockTime time.Duration) BuilderOpt {
 	return func(c *Builder) error {
 		c.blockTime = blockTime
+		return nil
+	}
+}
+
+// PropagationDelay sets the time the node needs to wait for blocks to arrive before mining.
+func PropagationDelay(propDelay time.Duration) BuilderOpt {
+	return func(c *Builder) error {
+		c.propDelay = propDelay
 		return nil
 	}
 }
@@ -163,6 +172,7 @@ func New(ctx context.Context, opts ...BuilderOpt) (*Node, error) {
 	n := &Builder{
 		offlineMode: false,
 		blockTime:   clock.DefaultEpochDuration,
+		propDelay:   clock.DefaultPropagationDelay,
 		verifier:    ffiwrapper.ProofVerifier,
 	}
 
@@ -253,7 +263,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		b.chainClock = clock.NewChainClock(geneBlk.Timestamp, b.blockTime)
+		b.chainClock = clock.NewChainClock(geneBlk.Timestamp, b.blockTime, b.propDelay)
 	}
 	nd.ChainClock = b.chainClock
 

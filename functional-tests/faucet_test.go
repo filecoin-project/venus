@@ -38,12 +38,13 @@ func TestFaucetSendFunds(t *testing.T) {
 	ctx := context.Background()
 	genTime := int64(1000000000)
 	blockTime := 30 * time.Second
+	propDelay := 6 * time.Second
 	// Set clock ahead so the miner can produce catch-up blocks as quickly as possible.
 	fakeClock := clock.NewFake(time.Unix(genTime, 0).Add(1 * time.Hour))
 
 	genCfg := loadGenesisConfig(t, fixtureGenCfg())
 	seed := node.MakeChainSeed(t, genCfg)
-	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
+	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, propDelay, fakeClock)
 	drandImpl := &drand.Fake{
 		GenesisTime:   time.Unix(genTime, 0).Add(-1 * blockTime),
 		FirstFilecoin: 0,

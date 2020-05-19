@@ -66,7 +66,7 @@ func (fem *FakeElectionMachine) GenerateElectionProof(_ context.Context, _ *dran
 }
 
 // GenerateEPoSt returns a fake post proof
-func (fem *FakeElectionMachine) GenerateWinningPoSt(ctx context.Context, allSectorInfos []abi.SectorInfo, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address) ([]block.PoStProof, error) {
+func (fem *FakeElectionMachine) GenerateWinningPoSt(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address, sectors SectorsStateView) ([]block.PoStProof, error) {
 	return []block.PoStProof{{
 		RegisteredProof: constants.DevRegisteredWinningPoStProof,
 		ProofBytes:      []byte{0xe},
@@ -81,7 +81,7 @@ func (fem *FakeElectionMachine) VerifyElectionProof(_ context.Context, _ *drand.
 	return nil
 }
 
-func (fem *FakeElectionMachine) VerifyWinningPoSt(_ context.Context, _ EPoStVerifier, _ []abi.SectorInfo, _ *drand.Entry, _ abi.ChainEpoch, _ []block.PoStProof, _ address.Address) (bool, error) {
+func (fem *FakeElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error) {
 	return true, nil
 }
 
@@ -121,7 +121,7 @@ func (fev *FailingElectionValidator) VerifyElectionProof(_ context.Context, _ *d
 	return nil
 }
 
-func (fev *FailingElectionValidator) VerifyWinningPoSt(_ context.Context, _ EPoStVerifier, _ []abi.SectorInfo, _ *drand.Entry, _ abi.ChainEpoch, _ []block.PoStProof, _ address.Address) (bool, error) {
+func (fev *FailingElectionValidator) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error) {
 	return true, nil
 }
 
