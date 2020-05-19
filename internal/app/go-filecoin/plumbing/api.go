@@ -253,8 +253,8 @@ func (api *API) SignedMessageSend(ctx context.Context, smsg *types.SignedMessage
 // the case that it appears in a newly mined block. An error is returned if one is
 // encountered or if the context is canceled. Otherwise, it waits forever for the message
 // to appear on chain.
-func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
-	return api.msgWaiter.Wait(ctx, msgCid, msg.DefaultMessageWaitLookback, cb)
+func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+	return api.msgWaiter.Wait(ctx, msgCid, lookback, cb)
 }
 
 // NetworkGetBandwidthStats gets stats on the current bandwidth usage of the network

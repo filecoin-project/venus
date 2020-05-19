@@ -69,7 +69,7 @@ func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Addres
 	return mpc.msgCid, nil, nil
 }
 
-func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
 	assert.Equal(mpc.testing, msgCid, msgCid)
 	midAddr, err := address.NewIDAddress(100)
 	if err != nil {
