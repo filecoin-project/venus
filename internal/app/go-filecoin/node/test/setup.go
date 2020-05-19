@@ -36,6 +36,7 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	require.NoError(t, err)
 	genTime := int64(1000000000)
 	blockTime := 30 * time.Second
+	propDelay := 6 * time.Second
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
 
 	// Load genesis config fixture.
@@ -45,7 +46,7 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 		SealProofType: constants.DevSealProofType,
 	})
 	seed := node.MakeChainSeed(t, genCfg)
-	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
+	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, propDelay, fakeClock)
 
 	// create bootstrap miner
 	bootstrapMiner := NewNodeBuilder(t).

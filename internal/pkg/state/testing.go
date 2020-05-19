@@ -3,8 +3,6 @@ package state
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -44,7 +42,7 @@ type FakeMinerState struct {
 	ProvingPeriodEnd    abi.ChainEpoch
 	PoStFailures        int
 	Sectors             []miner.SectorOnChainInfo
-	ProvingSet          []FakeSectorInfo
+	Deadlines           []*abi.BitField
 	ClaimedRawPower     abi.StoragePower
 	ClaimedQAPower      abi.StoragePower
 	PledgeRequirement   abi.TokenAmount
@@ -71,13 +69,39 @@ func (v *FakeStateView) MinerSectorConfiguration(ctx context.Context, maddr addr
 }
 
 // MinerSectorCount reports the number of sectors a miner has pledged
-func (v *FakeStateView) MinerSectorCount(ctx context.Context, maddr address.Address) (int, error) {
+func (v *FakeStateView) MinerSectorCount(ctx context.Context, maddr address.Address) (uint64, error) {
 	m, ok := v.Miners[maddr]
 	if !ok {
 		return 0, errors.Errorf("no miner %s", maddr)
 	}
 
-	return len(m.Sectors), nil
+	return uint64(len(m.Sectors)), nil
+}
+
+func (v *FakeStateView) MinerSectorStates(_ context.Context, maddr address.Address) (*MinerSectorStates, error) {
+	m, ok := v.Miners[maddr]
+	if !ok {
+		return nil, errors.Errorf("no miner %s", maddr)
+	}
+	return &MinerSectorStates{
+		Deadlines:  m.Deadlines,
+		Faults:     abi.NewBitField(),
+		Recoveries: abi.NewBitField(),
+		NewSectors: abi.NewBitField(),
+	}, nil
+}
+
+func (v *FakeStateView) MinerGetSector(_ context.Context, maddr address.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, bool, error) {
+	m, ok := v.Miners[maddr]
+	if !ok {
+		return nil, false, errors.Errorf("no miner %s", maddr)
+	}
+	for _, s := range m.Sectors {
+		if s.Info.SectorNumber == sectorNum {
+			return &s, true, nil
+		}
+	}
+	return nil, false, nil
 }
 
 // MinerControlAddresses reports a miner's control addresses.
@@ -107,22 +131,6 @@ func (v *FakeStateView) MinerProvingPeriod(ctx context.Context, maddr address.Ad
 		return 0, 0, 0, errors.Errorf("no miner %s", maddr)
 	}
 	return m.ProvingPeriodStart, m.ProvingPeriodEnd, m.PoStFailures, nil
-}
-
-// MinerSectorsForEach iterates a miner's sectors.
-func (v *FakeStateView) MinerSectorsForEach(_ context.Context, maddr address.Address, f func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof, dealIDs []abi.DealID) error) error {
-	m, ok := v.Miners[maddr]
-	if !ok {
-		return errors.Errorf("no miner %s", maddr)
-	}
-
-	for _, si := range m.ProvingSet {
-		err := f(si.ID, si.SealedCID, constants.DevRegisteredSealProof, nil)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (v *FakeStateView) AccountSignerAddress(ctx context.Context, a address.Address) (address.Address, error) {

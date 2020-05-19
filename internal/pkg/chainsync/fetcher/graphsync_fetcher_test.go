@@ -60,7 +60,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	fc, chainClock := clock.NewFakeChain(1234567890, 5*time.Second, time.Now().Unix())
+	fc, chainClock := clock.NewFakeChain(1234567890, 5*time.Second, time.Second, time.Now().Unix())
 	bv := consensus.NewDefaultBlockValidator(chainClock)
 	msgV := &consensus.FakeMessageValidator{}
 	syntax := consensus.WrappedSyntaxValidator{
@@ -658,7 +658,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	fc := clock.NewFake(time.Now())
 	genTime := uint64(1234567890)
-	chainClock := clock.NewChainClockFromClock(genTime, 5*time.Second, fc)
+	chainClock := clock.NewChainClockFromClock(genTime, 5*time.Second, time.Second, fc)
 	bv := consensus.NewDefaultBlockValidator(chainClock)
 	msgV := &consensus.FakeMessageValidator{}
 	syntax := consensus.WrappedSyntaxValidator{
@@ -768,7 +768,7 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 	tf.IntegrationTest(t)
 	ctx := context.Background()
 	// setup a chain
-	fc, chainClock := clock.NewFakeChain(1234567890, 5*time.Second, time.Now().Unix())
+	fc, chainClock := clock.NewFakeChain(1234567890, 5*time.Second, time.Second, time.Now().Unix())
 	builder := chain.NewBuilderWithDeps(t, address.Undef, &chain.FakeStateBuilder{}, chain.NewClockTimestamper(chainClock))
 	keys := types.MustGenerateKeyInfo(2, 42)
 	mm := vm.NewMessageMaker(t, keys)

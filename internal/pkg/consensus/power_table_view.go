@@ -6,18 +6,20 @@ import (
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/ipfs/go-cid"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 )
 
 // PowerStateView is a view of chain state for election computations, typically at some lookback from the
 // immediate parent state.
+// This type isn't doing much that the state view doesn't already do, consider removing it.
 type PowerStateView interface {
 	state.AccountStateView
 	MinerSectorConfiguration(ctx context.Context, maddr addr.Address) (*state.MinerSectorConfiguration, error)
 	MinerControlAddresses(ctx context.Context, maddr addr.Address) (owner, worker addr.Address, err error)
-	MinerSectorsForEach(ctx context.Context, maddr addr.Address, f func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof, dealIDs []abi.DealID) error) error
+	MinerSectorStates(ctx context.Context, maddr addr.Address) (*state.MinerSectorStates, error)
+	MinerGetSector(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, bool, error)
 	PowerNetworkTotal(ctx context.Context) (*state.NetworkPower, error)
 	MinerClaimedPower(ctx context.Context, miner addr.Address) (raw, qa abi.StoragePower, err error)
 }
@@ -77,18 +79,4 @@ func (v PowerTableView) WorkerAddr(ctx context.Context, mAddr addr.Address) (add
 // SignerAddress returns the public key address associated with the given address.
 func (v PowerTableView) SignerAddress(ctx context.Context, a addr.Address) (addr.Address, error) {
 	return v.state.AccountSignerAddress(ctx, a)
-}
-
-// SortedSectorInfos returns the sector information for a given miner
-func (v PowerTableView) SortedSectorInfos(ctx context.Context, mAddr addr.Address) ([]abi.SectorInfo, error) {
-	var infos []abi.SectorInfo
-	err := v.state.MinerSectorsForEach(ctx, mAddr, func(id abi.SectorNumber, sealedCID cid.Cid, rpp abi.RegisteredProof, _ []abi.DealID) error {
-		infos = append(infos, abi.SectorInfo{
-			SectorNumber:    id,
-			SealedCID:       sealedCID,
-			RegisteredProof: rpp,
-		})
-		return nil
-	})
-	return infos, err
 }

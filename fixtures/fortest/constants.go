@@ -1,4 +1,4 @@
-package fixtures
+package fortest
 
 import (
 	"encoding/json"
