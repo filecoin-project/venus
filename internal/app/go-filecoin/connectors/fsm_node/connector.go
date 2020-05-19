@@ -254,18 +254,8 @@ func (f *FiniteStateMachineNodeConnector) ChainGetTicket(ctx context.Context, to
 
 	randomEpoch := epoch - miner.ChainFinalityish
 
-	// resolve miner address if it is not already
-	view, err := f.stateViewer.StateView(ts.Key())
-	if err != nil {
-		return abi.SealRandomness{}, 0, err
-	}
-	minerIDAddr, err := view.InitResolveAddress(ctx, f.minerAddr)
-	if err != nil {
-		return abi.SealRandomness{}, 0, err
-	}
-
 	buf := new(bytes.Buffer)
-	err = minerIDAddr.MarshalCBOR(buf)
+	err = f.minerAddr.MarshalCBOR(buf)
 	if err != nil {
 		return abi.SealRandomness{}, 0, err
 	}
