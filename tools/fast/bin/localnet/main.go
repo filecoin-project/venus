@@ -25,7 +25,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	files "github.com/ipfs/go-ipfs-files"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 
 	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"

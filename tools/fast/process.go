@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	iptb "github.com/ipfs/iptb/testbed"
 	"github.com/ipfs/iptb/testbed/interfaces"
 	"github.com/libp2p/go-libp2p-core/peer"

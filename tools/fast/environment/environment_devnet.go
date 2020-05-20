@@ -15,7 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	cid "github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	iptb "github.com/ipfs/iptb/testbed"
 
 	"github.com/filecoin-project/go-filecoin/tools/fast"

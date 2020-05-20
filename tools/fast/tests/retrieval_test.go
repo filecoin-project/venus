@@ -12,7 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	files "github.com/ipfs/go-ipfs-files"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/stretchr/testify/require"
 
