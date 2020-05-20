@@ -16,6 +16,7 @@ import (
 	iface "github.com/filecoin-project/go-fil-markets/storagemarket"
 	impl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	smvalid "github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnetwork "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-datastore"
@@ -33,6 +34,24 @@ import (
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
+
+// DiscoveryDSPrefix is a prefix for all datastore keys used by the local
+const DiscoveryDSPrefix = "deals/local"
+
+// ClientDSPrefix is a prefix for all datastore keys used by a storage client
+const ClientDSPrefix = "deals/client"
+
+// ProviderDSPrefix is a prefix for all datastore keys used by the storage provider
+const ProviderDSPrefix = "deals/provider"
+
+// DTCounterDSKey is the datastore key for the stored counter used by data transfer
+const DTCounterDSKey = "datatransfer/counter"
+
+// PieceStoreDSPrefix is a prefix for all datastore keys used by the piecestore
+const PieceStoreDSPrefix = "piecestore"
+
+// AskDSKey is the datastore key for the stored ask used by the storage provider
+const AskDSKey = "deals/latest-ask"
 
 // StorageProtocolSubmodule enhances the node with storage protocol
 // capabilities.
@@ -59,16 +78,17 @@ func NewStorageProtocolSubmodule(
 	stateViewer *appstate.Viewer,
 ) (*StorageProtocolSubmodule, error) {
 	cnode := storagemarketconnector.NewStorageClientNodeConnector(cborutil.NewIpldStore(bs), c.State, mw, s, m.Outbox, clientAddr, stateViewer)
-	dtStoredCounter := storedcounter.New(ds, datastore.NewKey("datatransfer/counter"))
+	dtStoredCounter := storedcounter.New(ds, datastore.NewKey(DTCounterDSKey))
 	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync, dtStoredCounter)
-	clientDs := namespace.Wrap(ds, datastore.NewKey("/deals/client"))
+	clientDs := namespace.Wrap(ds, datastore.NewKey(ClientDSPrefix))
 	validator := smvalid.NewUnifiedRequestValidator(nil, statestore.New(clientDs))
 	err := dt.RegisterVoucherType(&smvalid.StorageDataTransferVoucher{}, validator)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, dt, discovery.NewLocal(ds), clientDs, cnode)
+	local := discovery.NewLocal(namespace.Wrap(ds, datastore.NewKey(DiscoveryDSPrefix)))
+	client, err := impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, dt, local, clientDs, cnode)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating storage client")
 	}
@@ -118,11 +138,14 @@ func (sm *StorageProtocolSubmodule) AddStorageProvider(
 		return err
 	}
 
-	providerDs := namespace.Wrap(ds, datastore.NewKey(impl.ProviderDsPrefix))
+	providerDs := namespace.Wrap(ds, datastore.NewKey(ProviderDSPrefix))
 	sm.requestValidator.SetPushDeals(statestore.New(providerDs))
-	// TODO: see https://github.com/filecoin-project/go-fil-markets/issues/251 -- this should accept providerDs so
-	// the node can configure the namespace
-	sm.StorageProvider, err = impl.NewProvider(smnetwork.NewFromLibp2pHost(h), ds, bs, fs, piecestore.NewPieceStore(ds), sm.dataTransfer, pnode, minerAddr, sealProofType)
+	ps := piecestore.NewPieceStore(namespace.Wrap(ds, datastore.NewKey(PieceStoreDSPrefix)))
+	storedAsk, err := storedask.NewStoredAsk(ds, datastore.NewKey(AskDSKey), pnode, minerAddr)
+	if err != nil {
+		return err
+	}
+	sm.StorageProvider, err = impl.NewProvider(smnetwork.NewFromLibp2pHost(h), providerDs, bs, fs, ps, sm.dataTransfer, pnode, minerAddr, sealProofType, storedAsk)
 	if err == nil {
 		sm.StorageProvider.SubscribeToEvents(pnode.EventLogger)
 	}

@@ -18,6 +18,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 )
 
+// RetrievalProviderDSPrefix is a prefix for all datastore keys related to the retrieval provider
+const RetrievalProviderDSPrefix = "retrievalmarket/provider"
+
+// RetrievalCounterDSKey is the datastore key for the stored counter used by the retrieval counter
+const RetrievalCounterDSKey = "retrievalmarket/client/counter"
+
+// RetrievalClientDSPrefix is a prefix for all datastore keys related to the retrieval clients
+const RetrievalClientDSPrefix = "retrievalmarket/client"
+
 // RetrievalProtocolSubmodule enhances the node with retrieval protocol
 // capabilities.
 type RetrievalProtocolSubmodule struct {
@@ -37,23 +46,23 @@ func NewRetrievalProtocolSubmodule(
 	pieceManager piecemanager.PieceManager,
 ) (*RetrievalProtocolSubmodule, error) {
 
-	retrievalDealPieceStore := piecestore.NewPieceStore(ds)
+	retrievalDealPieceStore := piecestore.NewPieceStore(namespace.Wrap(ds, datastore.NewKey(PieceStoreDSPrefix)))
 
 	netwk := network.NewFromLibp2pHost(host)
 	pnode := retmkt.NewRetrievalProviderConnector(netwk, pieceManager, bs, pchMgrAPI, nil)
 
 	// TODO: use latest go-fil-markets with persisted deal store\
 
-	marketProvider, err := impl.NewProvider(providerAddr, pnode, netwk, retrievalDealPieceStore, bs, namespace.Wrap(ds, datastore.NewKey("/retrievalmarket/provider")))
+	marketProvider, err := impl.NewProvider(providerAddr, pnode, netwk, retrievalDealPieceStore, bs, namespace.Wrap(ds, datastore.NewKey(RetrievalProviderDSPrefix)))
 	if err != nil {
 		return nil, err
 	}
 
 	cnode := retmkt.NewRetrievalClientConnector(bs, cr, signer, pchMgrAPI)
-	counter := storedcounter.New(ds, datastore.NewKey("retrievalmarket/client/counter"))
+	counter := storedcounter.New(ds, datastore.NewKey(RetrievalCounterDSKey))
 
-	resolver := discovery.Multi(discovery.NewLocal(ds))
-	marketClient, err := impl.NewClient(netwk, bs, cnode, resolver, namespace.Wrap(ds, datastore.NewKey("retrievalmarket/client")), counter)
+	resolver := discovery.Multi(discovery.NewLocal(namespace.Wrap(ds, datastore.NewKey(DiscoveryDSPrefix))))
+	marketClient, err := impl.NewClient(netwk, bs, cnode, resolver, namespace.Wrap(ds, datastore.NewKey(RetrievalClientDSPrefix)), counter)
 	if err != nil {
 		return nil, err
 	}
