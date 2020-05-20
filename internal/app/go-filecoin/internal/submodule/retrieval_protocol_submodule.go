@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/host"
 
@@ -41,17 +42,18 @@ func NewRetrievalProtocolSubmodule(
 	netwk := network.NewFromLibp2pHost(host)
 	pnode := retmkt.NewRetrievalProviderConnector(netwk, pieceManager, bs, pchMgrAPI, nil)
 
-	// TODO: use latest go-fil-markets with persisted deal store
-	marketProvider, err := impl.NewProvider(providerAddr, pnode, netwk, retrievalDealPieceStore, bs, ds)
+	// TODO: use latest go-fil-markets with persisted deal store\
+
+	marketProvider, err := impl.NewProvider(providerAddr, pnode, netwk, retrievalDealPieceStore, bs, namespace.Wrap(ds, datastore.NewKey("/retrievalmarket/provider")))
 	if err != nil {
 		return nil, err
 	}
 
 	cnode := retmkt.NewRetrievalClientConnector(bs, cr, signer, pchMgrAPI)
-	dsKey := datastore.NewKey("retrievalmarket/client/counter")
-	counter := storedcounter.New(ds, dsKey)
+	counter := storedcounter.New(ds, datastore.NewKey("retrievalmarket/client/counter"))
+
 	resolver := discovery.Multi(discovery.NewLocal(ds))
-	marketClient, err := impl.NewClient(netwk, bs, cnode, resolver, ds, counter)
+	marketClient, err := impl.NewClient(netwk, bs, cnode, resolver, namespace.Wrap(ds, datastore.NewKey("retrievalmarket/client")), counter)
 	if err != nil {
 		return nil, err
 	}
