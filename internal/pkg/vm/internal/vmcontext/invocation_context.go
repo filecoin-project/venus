@@ -159,7 +159,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 					"methodNum", ctx.msg.method,
 					"value", ctx.msg.value,
 					"gasLimit", ctx.gasTank.gasLimit)
-				ret = returnWrapper{}
+				ret = returnWrapper{adt.Empty} // The Empty here should never be used, but slightly safer than zero value.
 				errcode = p.Code()
 				return
 			default:
@@ -204,7 +204,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 
 	// 4. if we are just sending funds, there is nothing else to do.
 	if ctx.msg.method == builtin.MethodSend {
-		return returnWrapper{}, exitcode.Ok
+		return returnWrapper{adt.Empty}, exitcode.Ok
 	}
 
 	// 5. load target actor code
@@ -222,7 +222,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 	}
 
 	// assert output implements expected interface
-	var marsh specsruntime.CBORMarshaler
+	var marsh specsruntime.CBORMarshaler = adt.Empty
 	if out != nil {
 		var ok bool
 		marsh, ok = out.(specsruntime.CBORMarshaler)
@@ -230,7 +230,6 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 			runtime.Abortf(exitcode.SysErrorIllegalActor, "Returned value is not a CBORMarshaler")
 		}
 	}
-
 	ret = returnWrapper{inner: marsh}
 
 	// post-dispatch
@@ -394,29 +393,33 @@ type returnWrapper struct {
 	inner specsruntime.CBORMarshaler
 }
 
-func (r returnWrapper) ToCbor() ([]byte, error) {
+func (r returnWrapper) ToCbor() (out []byte, err error) {
 	if r.inner == nil {
-		return []byte{}, nil
+		return nil, fmt.Errorf("failed to unmarshal nil return (did you mean adt.Empty?)")
 	}
 	b := bytes.Buffer{}
-	if err := r.inner.MarshalCBOR(&b); err != nil {
-		return []byte{}, err
+	if err = r.inner.MarshalCBOR(&b); err != nil {
+		return
 	}
-	return b.Bytes(), nil
+	out = b.Bytes()
+	if out == nil {
+		// A buffer with zero bytes written returns nil rather than an empty array,
+		// but the distinction matters for CBOR.
+		out = []byte{}
+	}
+	return
 }
 
 func (r returnWrapper) Into(o specsruntime.CBORUnmarshaler) error {
 	// TODO: if inner is also a specsruntime.CBORUnmarshaler, overwrite o with inner.
-	b := bytes.Buffer{}
 	if r.inner == nil {
-		r.inner = adt.Empty
+		return fmt.Errorf("failed to unmarshal nil return (did you mean adt.Empty?)")
 	}
-	err := r.inner.MarshalCBOR(&b)
-	if err != nil {
+	b := bytes.Buffer{}
+	if err := r.inner.MarshalCBOR(&b); err != nil {
 		return err
 	}
-	err = o.UnmarshalCBOR(&b)
-	return err
+	return o.UnmarshalCBOR(&b)
 }
 
 // Send implements runtime.InvocationContext.
