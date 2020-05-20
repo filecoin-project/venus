@@ -19,13 +19,13 @@ import (
 )
 
 // RetrievalProviderDSPrefix is a prefix for all datastore keys related to the retrieval provider
-const RetrievalProviderDSPrefix = "retrievalmarket/provider"
+const RetrievalProviderDSPrefix = "/retrievalmarket/provider"
 
 // RetrievalCounterDSKey is the datastore key for the stored counter used by the retrieval counter
-const RetrievalCounterDSKey = "retrievalmarket/client/counter"
+const RetrievalCounterDSKey = "/retrievalmarket/client/counter"
 
 // RetrievalClientDSPrefix is a prefix for all datastore keys related to the retrieval clients
-const RetrievalClientDSPrefix = "retrievalmarket/client"
+const RetrievalClientDSPrefix = "/retrievalmarket/client"
 
 // RetrievalProtocolSubmodule enhances the node with retrieval protocol
 // capabilities.

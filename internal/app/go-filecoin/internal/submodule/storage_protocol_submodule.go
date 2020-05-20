@@ -36,22 +36,22 @@ import (
 )
 
 // DiscoveryDSPrefix is a prefix for all datastore keys used by the local
-const DiscoveryDSPrefix = "deals/local"
+const DiscoveryDSPrefix = "/deals/local"
 
 // ClientDSPrefix is a prefix for all datastore keys used by a storage client
-const ClientDSPrefix = "deals/client"
+const ClientDSPrefix = "/deals/client"
 
 // ProviderDSPrefix is a prefix for all datastore keys used by the storage provider
-const ProviderDSPrefix = "deals/provider"
+const ProviderDSPrefix = "/deals/provider"
 
 // DTCounterDSKey is the datastore key for the stored counter used by data transfer
-const DTCounterDSKey = "datatransfer/counter"
+const DTCounterDSKey = "/datatransfer/counter"
 
 // PieceStoreDSPrefix is a prefix for all datastore keys used by the piecestore
-const PieceStoreDSPrefix = "piecestore"
+const PieceStoreDSPrefix = "/piecestore"
 
 // AskDSKey is the datastore key for the stored ask used by the storage provider
-const AskDSKey = "deals/latest-ask"
+const AskDSKey = "/deals/latest-ask"
 
 // StorageProtocolSubmodule enhances the node with storage protocol
 // capabilities.
