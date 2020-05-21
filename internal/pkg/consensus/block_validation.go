@@ -4,10 +4,27 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/ipfs/go-cid"
+	"github.com/pkg/errors"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
+
+type messageStore interface {
+	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
+	LoadReceipts(context.Context, cid.Cid) ([]vm.MessageReceipt, error)
+}
+
+type chainState interface {
+	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*actor.Actor, error)
+}
 
 // BlockValidator defines an interface used to validate a blocks syntax and
 // semantics.
@@ -26,7 +43,8 @@ type SyntaxValidator interface {
 // BlockSemanticValidator defines an interface used to validate a blocks
 // semantics.
 type BlockSemanticValidator interface {
-	ValidateSemantic(ctx context.Context, child *block.Block, parents block.TipSet) error
+	ValidateHeaderSemantic(ctx context.Context, child *block.Block, parents block.TipSet) error
+	ValidateMessagesSemantic(ctx context.Context, child *block.Block, parents block.TipSetKey) error
 }
 
 // BlockSyntaxValidator defines an interface used to validate a blocks
@@ -45,6 +63,8 @@ type MessageSyntaxValidator interface {
 // DefaultBlockValidator implements the BlockValidator interface.
 type DefaultBlockValidator struct {
 	clock.ChainEpochClock
+	ms messageStore
+	cs chainState
 }
 
 // WrappedSyntaxValidator implements syntax validator interface
@@ -55,9 +75,11 @@ type WrappedSyntaxValidator struct {
 
 // NewDefaultBlockValidator returns a new DefaultBlockValidator. It uses `blkTime`
 // to validate blocks and uses the DefaultBlockValidationClock.
-func NewDefaultBlockValidator(c clock.ChainEpochClock) *DefaultBlockValidator {
+func NewDefaultBlockValidator(c clock.ChainEpochClock, m messageStore, cs chainState) *DefaultBlockValidator {
 	return &DefaultBlockValidator{
 		ChainEpochClock: c,
+		ms:              m,
+		cs:              cs,
 	}
 }
 
@@ -89,9 +111,9 @@ func (dv *DefaultBlockValidator) TimeMatchesEpoch(b *block.Block) error {
 	return nil
 }
 
-// ValidateSemantic checks validation conditions on a header that can be
+// ValidateHeaderSemantic checks validation conditions on a header that can be
 // checked given only the parent header.
-func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *block.Block, parents block.TipSet) error {
+func (dv *DefaultBlockValidator) ValidateHeaderSemantic(ctx context.Context, child *block.Block, parents block.TipSet) error {
 	ph, err := parents.Height()
 	if err != nil {
 		return err
@@ -101,6 +123,81 @@ func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *bl
 		return fmt.Errorf("block %s has invalid height %d", child.Cid().String(), child.Height)
 	}
 
+	return nil
+}
+
+// ValidateFullSemantic checks validation conditions on a block's messages that don't require message execution.
+func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, child *block.Block, parents block.TipSetKey) error {
+	// validate call sequence numbers
+	secpMsgs, blsMsgs, err := dv.ms.LoadMessages(ctx, child.Messages.Cid)
+	if err != nil {
+		return errors.Wrapf(err, "block validation failed loading message list %s for block %s", child.Messages, child.Cid())
+	}
+
+	expectedCallSeqNum := map[address.Address]uint64{}
+	for _, msg := range blsMsgs {
+		msgCid, err := msg.Cid()
+		if err != nil {
+			return err
+		}
+
+		from, err := dv.getAndValidateFromActor(ctx, msg, parents)
+		if err != nil {
+			return errors.Wrapf(err, "from actor %s for message %s of block %s invalid", msg.From, msgCid, child.Cid())
+		}
+
+		err = dv.validateMessage(msg, expectedCallSeqNum, from)
+		if err != nil {
+			return errors.Wrapf(err, "message %s of block %s invalid", msgCid, child.Cid())
+		}
+	}
+
+	for _, msg := range secpMsgs {
+		msgCid, err := msg.Cid()
+		if err != nil {
+			return err
+		}
+
+		from, err := dv.getAndValidateFromActor(ctx, &msg.Message, parents)
+		if err != nil {
+			return errors.Wrapf(err, "from actor %s for message %s of block %s invalid", msg.Message.From, msgCid, child.Cid())
+		}
+
+		err = dv.validateMessage(&msg.Message, expectedCallSeqNum, from)
+		if err != nil {
+			return errors.Wrapf(err, "message %s of block %s invalid", msgCid, child.Cid())
+		}
+	}
+
+	return nil
+}
+
+func (dv *DefaultBlockValidator) getAndValidateFromActor(ctx context.Context, msg *types.UnsignedMessage, parents block.TipSetKey) (*actor.Actor, error) {
+	actor, err := dv.cs.GetActorAt(ctx, parents, msg.From)
+	if err != nil {
+		return nil, err
+	}
+
+	// ensure actor is an account actor
+	if !actor.Code.Equals(builtin.AccountActorCodeID) {
+		return nil, errors.New("sent from non-account actor")
+	}
+
+	return actor, nil
+}
+
+func (dv *DefaultBlockValidator) validateMessage(msg *types.UnsignedMessage, expectedCallSeqNum map[address.Address]uint64, fromActor *actor.Actor) error {
+	callSeq, ok := expectedCallSeqNum[msg.From]
+	if !ok {
+		callSeq = fromActor.CallSeqNum
+	}
+
+	// ensure message is in the correct order
+	if callSeq != msg.CallSeqNum {
+		return fmt.Errorf("callseqnum (%d) out of order (expected %d)", msg.CallSeqNum, callSeq)
+	}
+
+	expectedCallSeqNum[msg.From] = callSeq + 1
 	return nil
 }
 

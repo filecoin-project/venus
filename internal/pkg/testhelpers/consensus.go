@@ -55,8 +55,8 @@ func NewFakeBlockValidator() *FakeBlockValidator {
 	return &FakeBlockValidator{}
 }
 
-// ValidateSemantic does nothing.
-func (fbv *FakeBlockValidator) ValidateSemantic(ctx context.Context, child *block.Block, parents block.TipSet) error {
+// ValidateHeaderSemantic does nothing.
+func (fbv *FakeBlockValidator) ValidateHeaderSemantic(ctx context.Context, child *block.Block, parents block.TipSet) error {
 	return nil
 }
 
@@ -95,7 +95,7 @@ func NewStubBlockValidator() *StubBlockValidator {
 	}
 }
 
-// ValidateSemantic returns nil or error for stubbed block `child`.
+// ValidateHeaderSemantic returns nil or error for stubbed block `child`.
 func (mbv *StubBlockValidator) ValidateSemantic(ctx context.Context, child *block.Block, parents *block.TipSet, _ uint64) error {
 	return mbv.semanticStubs[child.Cid()]
 }
@@ -111,7 +111,7 @@ func (mbv *StubBlockValidator) StubSyntaxValidationForBlock(blk *block.Block, er
 	mbv.syntaxStubs[blk.Cid()] = err
 }
 
-// StubSemanticValidationForBlock stubs an error when the ValidateSemantic is called
+// StubSemanticValidationForBlock stubs an error when the ValidateHeaderSemantic is called
 // on the with the given child block.
 func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *block.Block, err error) {
 	mbv.semanticStubs[child.Cid()] = err

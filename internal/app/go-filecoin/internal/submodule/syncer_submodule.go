@@ -55,7 +55,7 @@ type nodeChainSelector interface {
 func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *BlockstoreSubmodule, network *NetworkSubmodule,
 	discovery *DiscoverySubmodule, chn *ChainSubmodule, postVerifier consensus.EPoStVerifier) (SyncerSubmodule, error) {
 	// setup validation
-	blkValid := consensus.NewDefaultBlockValidator(config.ChainClock())
+	blkValid := consensus.NewDefaultBlockValidator(config.ChainClock(), chn.MessageStore, chn.State)
 	msgValid := consensus.NewMessageSyntaxValidator()
 	syntax := consensus.WrappedSyntaxValidator{
 		BlockSyntaxValidator:   blkValid,

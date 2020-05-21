@@ -61,7 +61,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	fc, chainClock := clock.NewFakeChain(1234567890, 5*time.Second, time.Second, time.Now().Unix())
-	bv := consensus.NewDefaultBlockValidator(chainClock)
+	bv := consensus.NewDefaultBlockValidator(chainClock, nil, nil)
 	msgV := &consensus.FakeMessageValidator{}
 	syntax := consensus.WrappedSyntaxValidator{
 		BlockSyntaxValidator:   bv,
@@ -659,7 +659,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	fc := clock.NewFake(time.Now())
 	genTime := uint64(1234567890)
 	chainClock := clock.NewChainClockFromClock(genTime, 5*time.Second, time.Second, fc)
-	bv := consensus.NewDefaultBlockValidator(chainClock)
+	bv := consensus.NewDefaultBlockValidator(chainClock, nil, nil)
 	msgV := &consensus.FakeMessageValidator{}
 	syntax := consensus.WrappedSyntaxValidator{
 		BlockSyntaxValidator:   bv,
@@ -816,7 +816,7 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 
-	bv := consensus.NewDefaultBlockValidator(chainClock)
+	bv := consensus.NewDefaultBlockValidator(chainClock, nil, nil)
 	msgV := &consensus.FakeMessageValidator{}
 	syntax := consensus.WrappedSyntaxValidator{BlockSyntaxValidator: bv,
 		MessageSyntaxValidator: msgV,

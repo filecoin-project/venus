@@ -45,8 +45,8 @@ type Syncer struct {
 
 	// Evaluates tipset messages and stores the resulting states.
 	fullValidator FullBlockValidator
-	// Validates headers
-	headerValidator HeaderValidator
+	// Validates headers and message structure
+	blockValidator BlockValidator
 	// Selects the heaviest of two chains
 	chainSelector ChainSelector
 	// Provides and stores validated tipsets and their state roots.
@@ -105,11 +105,13 @@ type ChainSelector interface {
 	Weight(ctx context.Context, ts block.TipSet, stRoot cid.Cid) (fbig.Int, error)
 }
 
-// HeaderValidator does semanitc validation on headers
-type HeaderValidator interface {
-	// ValidateSemantic validates conditions on a block header that can be
+// BlockValidator does semanitc validation on headers
+type BlockValidator interface {
+	// ValidateHeaderSemantic validates conditions on a block header that can be
 	// checked with the parent header but not parent state.
-	ValidateSemantic(ctx context.Context, header *block.Block, parents block.TipSet) error
+	ValidateHeaderSemantic(ctx context.Context, header *block.Block, parents block.TipSet) error
+	// ValidateMessagesSemantic validates a block's messages against parent state without applying the messages
+	ValidateMessagesSemantic(ctx context.Context, child *block.Block, parents block.TipSetKey) error
 }
 
 // FullBlockValidator does semantic validation on fullblocks.
@@ -150,14 +152,14 @@ var logSyncer = logging.Logger("chainsync.syncer")
 
 // NewSyncer constructs a Syncer ready for use.  The chain reader must have a
 // head tipset to initialize the staging field.
-func NewSyncer(fv FullBlockValidator, hv HeaderValidator, cs ChainSelector, s ChainReaderWriter, m messageStore, f Fetcher, sr status.Reporter, c clock.Clock, fd faultDetector) (*Syncer, error) {
+func NewSyncer(fv FullBlockValidator, hv BlockValidator, cs ChainSelector, s ChainReaderWriter, m messageStore, f Fetcher, sr status.Reporter, c clock.Clock, fd faultDetector) (*Syncer, error) {
 	return &Syncer{
 		fetcher: f,
 		badTipSets: &BadTipSetCache{
 			bad: make(map[string]struct{}),
 		},
 		fullValidator:   fv,
-		headerValidator: hv,
+		blockValidator:  hv,
 		chainSelector:   cs,
 		chainStore:      s,
 		messageProvider: m,
@@ -221,7 +223,7 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 	}
 	for i, ts := range headers {
 		for i := 0; i < ts.Len(); i++ {
-			err = syncer.headerValidator.ValidateSemantic(ctx, ts.At(i), parent)
+			err = syncer.blockValidator.ValidateHeaderSemantic(ctx, ts.At(i), parent)
 			if err != nil {
 				return nil, err
 			}
@@ -486,7 +488,7 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 
 	// Once headers check out, fetch messages
 	_, err = syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Sender, func(t block.TipSet) (bool, error) {
-		parents, err := t.Parents()
+		parentsKey, err := t.Parents()
 		if err != nil {
 			return true, err
 		}
@@ -495,9 +497,17 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 			return false, err
 		}
 
+		// validate block message structure
+		for i := 0; i < t.Len(); i++ {
+			err := syncer.blockValidator.ValidateMessagesSemantic(ctx, t.At(i), parentsKey)
+			if err != nil {
+				return false, err
+			}
+		}
+
 		// update status with latest fetched head and height
 		syncer.reporter.UpdateStatus(status.FetchHead(t.Key()), status.FetchHeight(height))
-		return syncer.chainStore.HasTipSetAndState(ctx, parents), nil
+		return syncer.chainStore.HasTipSetAndState(ctx, parentsKey), nil
 	})
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching full blocks")

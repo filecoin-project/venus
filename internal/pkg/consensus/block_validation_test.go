@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,10 +19,12 @@ import (
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
-func TestBlockValidSemantic(t *testing.T) {
+func TestBlockValidHeaderSemantic(t *testing.T) {
 	tf.UnitTest(t)
 
 	blockTime := clock.DefaultEpochDuration
@@ -29,22 +33,152 @@ func TestBlockValidSemantic(t *testing.T) {
 	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, clock.DefaultPropagationDelay, clock.NewFake(ts))
 	ctx := context.Background()
 
-	validator := consensus.NewDefaultBlockValidator(mclock)
+	validator := consensus.NewDefaultBlockValidator(mclock, nil, nil)
 
 	t.Run("reject block with same height as parents", func(t *testing.T) {
 		// passes with valid height
 		c := &block.Block{Height: 2, Timestamp: uint64(ts.Add(blockTime).Unix())}
 		p := &block.Block{Height: 1, Timestamp: uint64(ts.Unix())}
 		parents := consensus.RequireNewTipSet(require.New(t), p)
-		require.NoError(t, validator.ValidateSemantic(ctx, c, parents))
+		require.NoError(t, validator.ValidateHeaderSemantic(ctx, c, parents))
 
 		// invalidate parent by matching child height
 		p = &block.Block{Height: 2, Timestamp: uint64(ts.Unix())}
 		parents = consensus.RequireNewTipSet(require.New(t), p)
 
-		err := validator.ValidateSemantic(ctx, c, parents)
+		err := validator.ValidateHeaderSemantic(ctx, c, parents)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid height")
+	})
+}
+
+func TestBlockValidMessageSemantic(t *testing.T) {
+	tf.UnitTest(t)
+
+	blockTime := clock.DefaultEpochDuration
+	ts := time.Unix(1234567890, 0)
+	genTime := ts
+	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, clock.DefaultPropagationDelay, clock.NewFake(ts))
+	ctx := context.Background()
+
+	c := &block.Block{Height: 2, Timestamp: uint64(ts.Add(blockTime).Unix())}
+	p := &block.Block{Height: 1, Timestamp: uint64(ts.Unix())}
+	parents := consensus.RequireNewTipSet(require.New(t), p)
+
+	msg0 := &types.UnsignedMessage{From: address.TestAddress, CallSeqNum: 1}
+	msg1 := &types.UnsignedMessage{From: address.TestAddress, CallSeqNum: 2}
+	msg2 := &types.UnsignedMessage{From: address.TestAddress, CallSeqNum: 3}
+	msg3 := &types.UnsignedMessage{From: address.TestAddress, CallSeqNum: 4}
+
+	t.Run("rejects block with message from missing actor", func(t *testing.T) {
+		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{
+			blsMessages: []*types.UnsignedMessage{msg1},
+		}, &fakeChainState{
+			err: blockstore.ErrNotFound,
+		})
+
+		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "not found")
+	})
+
+	t.Run("rejects block with message from non-account actor", func(t *testing.T) {
+		actor := newActor(t, 0, 2)
+
+		// set invalid code
+		actor.Code = e.NewCid(builtin.RewardActorCodeID)
+
+		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{
+			blsMessages: []*types.UnsignedMessage{msg1},
+		}, &fakeChainState{
+			actor: actor,
+		})
+
+		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "non-account actor")
+	})
+
+	t.Run("accepts block with bls messages in monotonic sequence", func(t *testing.T) {
+		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{
+			blsMessages: []*types.UnsignedMessage{msg1, msg2, msg3},
+		}, &fakeChainState{
+			actor: newActor(t, 0, 2),
+		})
+
+		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		require.NoError(t, err)
+	})
+
+	t.Run("accepts block with secp messages in monotonic sequence", func(t *testing.T) {
+		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{
+			secpMessages: []*types.SignedMessage{{Message: *msg1}, {Message: *msg2}, {Message: *msg3}},
+		}, &fakeChainState{
+			actor: newActor(t, 0, 2),
+		})
+
+		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		require.NoError(t, err)
+	})
+
+	t.Run("rejects block with messages out of order", func(t *testing.T) {
+		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{
+			blsMessages: []*types.UnsignedMessage{msg1, msg3, msg2},
+		}, &fakeChainState{
+			actor: newActor(t, 0, 2),
+		})
+
+		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "out of order")
+	})
+
+	t.Run("rejects block with gaps", func(t *testing.T) {
+		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{
+			blsMessages: []*types.UnsignedMessage{msg1, msg3},
+		}, &fakeChainState{
+			actor: newActor(t, 0, 2),
+		})
+
+		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "out of order")
+	})
+
+	t.Run("rejects block with bls message with nonce too low", func(t *testing.T) {
+		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{
+			blsMessages: []*types.UnsignedMessage{msg0},
+		}, &fakeChainState{
+			actor: newActor(t, 0, 2),
+		})
+
+		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "out of order")
+	})
+
+	t.Run("rejects block with secp message with nonce too low", func(t *testing.T) {
+		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{
+			secpMessages: []*types.SignedMessage{{Message: *msg0}},
+		}, &fakeChainState{
+			actor: newActor(t, 0, 2),
+		})
+
+		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "out of order")
+	})
+
+	t.Run("rejects block with message too high", func(t *testing.T) {
+		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{
+			blsMessages: []*types.UnsignedMessage{msg2},
+		}, &fakeChainState{
+			actor: newActor(t, 0, 2),
+		})
+
+		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "out of order")
 	})
 }
 
@@ -55,7 +189,7 @@ func TestMismatchedTime(t *testing.T) {
 	genTime := time.Unix(1234567890, 1234567890%int64(time.Second))
 	fc := clock.NewFake(genTime)
 	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, clock.DefaultPropagationDelay, fc)
-	validator := consensus.NewDefaultBlockValidator(mclock)
+	validator := consensus.NewDefaultBlockValidator(mclock, nil, nil)
 
 	fc.Advance(blockTime)
 
@@ -77,7 +211,7 @@ func TestFutureEpoch(t *testing.T) {
 	genTime := time.Unix(1234567890, 1234567890%int64(time.Second))
 	fc := clock.NewFake(genTime)
 	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, clock.DefaultPropagationDelay, fc)
-	validator := consensus.NewDefaultBlockValidator(mclock)
+	validator := consensus.NewDefaultBlockValidator(mclock, nil, nil)
 
 	// Fails in future epoch
 	c := &block.Block{Height: 1, Timestamp: uint64(genTime.Add(blockTime).Unix())}
@@ -96,7 +230,7 @@ func TestBlockValidSyntax(t *testing.T) {
 	ctx := context.Background()
 	mclock.Advance(blockTime)
 
-	validator := consensus.NewDefaultBlockValidator(chainClock)
+	validator := consensus.NewDefaultBlockValidator(chainClock, nil, nil)
 
 	validTs := uint64(mclock.Now().Unix())
 	validSt := e.NewCid(types.NewCidForTestGetter()())
@@ -144,4 +278,26 @@ func TestBlockValidSyntax(t *testing.T) {
 	blk.Ticket = validTi
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
+}
+
+type fakeMsgSource struct {
+	blsMessages  []*types.UnsignedMessage
+	secpMessages []*types.SignedMessage
+}
+
+func (fms *fakeMsgSource) LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
+	return fms.secpMessages, fms.blsMessages, nil
+}
+
+func (fms *fakeMsgSource) LoadReceipts(context.Context, cid.Cid) ([]vm.MessageReceipt, error) {
+	return nil, nil
+}
+
+type fakeChainState struct {
+	actor *actor.Actor
+	err   error
+}
+
+func (fcs *fakeChainState) GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*actor.Actor, error) {
+	return fcs.actor, fcs.err
 }
