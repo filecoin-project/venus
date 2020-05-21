@@ -6,7 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 // Reporter defines an interface to updating and reporting the status of the blockchain.

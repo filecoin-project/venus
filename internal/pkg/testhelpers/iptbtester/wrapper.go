@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	testbedi "github.com/ipfs/iptb/testbed/interfaces"
 
 	iptb "github.com/ipfs/iptb/testbed"

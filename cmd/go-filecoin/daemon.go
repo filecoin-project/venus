@@ -13,7 +13,6 @@ import (
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
-	writer "github.com/ipfs/go-log/writer"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/pkg/errors"
@@ -128,7 +127,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	}
 
 	if _, ok := req.Options[ELStdout].(bool); ok {
-		writer.WriterGroup.AddWriter(os.Stdout)
+		_ = re.Emit("--" + ELStdout + " option is deprecated\n")
 	}
 
 	// Start the node.

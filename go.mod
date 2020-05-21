@@ -55,7 +55,7 @@ require (
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.5-0.20200204214505-252690b78669
 	github.com/ipfs/go-ipld-format v0.2.0
-	github.com/ipfs/go-log v1.0.3
+	github.com/ipfs/go-log/v2 v2.0.9-0.20200520025255-8c45666d33d4
 	github.com/ipfs/go-merkledag v0.3.1
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.4
@@ -92,7 +92,8 @@ require (
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
 	go.opencensus.io v0.22.3
-	go.uber.org/zap v1.14.1
+	go.uber.org/zap v1.15.0
+	golang.org/x/net v0.0.0-20200301022130-244492dfa37a // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543

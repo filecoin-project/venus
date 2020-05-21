@@ -14,7 +14,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-address"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 
 	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
