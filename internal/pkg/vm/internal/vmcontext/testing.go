@@ -21,7 +21,6 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
 	vtypes "github.com/filecoin-project/chain-validation/chain/types"
-	vdriver "github.com/filecoin-project/chain-validation/drivers"
 	vstate "github.com/filecoin-project/chain-validation/state"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-crypto"
@@ -76,8 +75,8 @@ func NewFactories(config *ValidationConfig) *Factories {
 	return factory
 }
 
-func (f *Factories) NewStateAndApplier() (vstate.VMWrapper, vstate.Applier) {
-	st := NewState()
+func (f *Factories) NewStateAndApplier(syscalls runtime.Syscalls) (vstate.VMWrapper, vstate.Applier) {
+	st := NewState(syscalls)
 	return st, &ValidationApplier{state: st}
 }
 
@@ -132,7 +131,7 @@ func (v ValidationConfig) ValidateStateRoot() bool {
 //
 
 type specialSyscallWrapper struct {
-	internal *vdriver.ChainValidationSyscalls
+	internal runtime.Syscalls
 }
 
 func (s specialSyscallWrapper) VerifySignature(_ context.Context, _ SyscallsStateView, signature gfcrypto.Signature, signer address.Address, plaintext []byte) error {
@@ -159,11 +158,11 @@ func (s specialSyscallWrapper) VerifyConsensusFault(_ context.Context, h1, h2, e
 	return s.internal.VerifyConsensusFault(h1, h2, extra)
 }
 
-func NewState() *ValidationVMWrapper {
+func NewState(syscalls runtime.Syscalls) *ValidationVMWrapper {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	cst := cborutil.NewIpldStore(bs)
 	vmstrg := storage.NewStorage(bs)
-	vm := NewVM(ChainvalActors, &vmstrg, state.NewState(cst), specialSyscallWrapper{vdriver.NewChainValidationSyscalls()})
+	vm := NewVM(ChainvalActors, &vmstrg, state.NewState(cst), specialSyscallWrapper{syscalls})
 	return &ValidationVMWrapper{
 		vm: &vm,
 	}
