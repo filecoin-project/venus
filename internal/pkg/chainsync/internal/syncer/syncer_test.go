@@ -426,10 +426,15 @@ func (pv *poisonValidator) RunStateTransition(_ context.Context, ts block.TipSet
 	return cid.Undef, nil, nil
 }
 
-func (pv *poisonValidator) ValidateSemantic(_ context.Context, header *block.Block, _ block.TipSet) error {
+func (pv *poisonValidator) ValidateHeaderSemantic(_ context.Context, header *block.Block, _ block.TipSet) error {
 	if pv.headerFailureTS == header.Timestamp {
 		return errors.New("val semantic fails on poison timestamp")
 	}
+	return nil
+}
+
+// ValidateHeaderSemantic is a stub that always returns no error
+func (pv *poisonValidator) ValidateMessagesSemantic(_ context.Context, _ *block.Block, _ block.TipSetKey) error {
 	return nil
 }
 
@@ -546,7 +551,7 @@ func setup(ctx context.Context, t *testing.T) (*chain.Builder, *chain.Store, *sy
 	return setupWithValidator(ctx, t, eval, eval)
 }
 
-func setupWithValidator(ctx context.Context, t *testing.T, fullVal syncer.FullBlockValidator, headerVal syncer.HeaderValidator) (*chain.Builder, *chain.Store, *syncer.Syncer) {
+func setupWithValidator(ctx context.Context, t *testing.T, fullVal syncer.FullBlockValidator, headerVal syncer.BlockValidator) (*chain.Builder, *chain.Store, *syncer.Syncer) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genesis := builder.NewGenesis()
 	genStateRoot, err := builder.GetTipSetStateRoot(genesis.Key())

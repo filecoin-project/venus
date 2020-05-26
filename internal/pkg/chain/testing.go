@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"testing"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -456,8 +457,13 @@ func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip block.T
 	return e.ComputeState(stateID, blsMessages, secpMessages)
 }
 
-// ValidateSemantic is a stub that always returns no error
-func (e *FakeStateEvaluator) ValidateSemantic(_ context.Context, _ *block.Block, _ block.TipSet) error {
+// ValidateHeaderSemantic is a stub that always returns no error
+func (e *FakeStateEvaluator) ValidateHeaderSemantic(_ context.Context, _ *block.Block, _ block.TipSet) error {
+	return nil
+}
+
+// ValidateHeaderSemantic is a stub that always returns no error
+func (e *FakeStateEvaluator) ValidateMessagesSemantic(_ context.Context, _ *block.Block, _ block.TipSetKey) error {
 	return nil
 }
 

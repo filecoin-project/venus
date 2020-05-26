@@ -71,7 +71,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 
 	// setup a block validator and a topic validator
 	chainClock := clock.NewChainClockFromClock(uint64(now.Unix()), blocktime, propDelay, mclock)
-	bv := consensus.NewDefaultBlockValidator(chainClock)
+	bv := consensus.NewDefaultBlockValidator(chainClock, nil, nil)
 	btv := blocksub.NewBlockTopicValidator(bv)
 
 	// setup a floodsub instance on the host and register the topic validator
