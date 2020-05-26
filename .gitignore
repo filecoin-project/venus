@@ -31,3 +31,6 @@ tools/chain-util/chain-util
 // IDE (vscode)
 .vscode
 debug.test
+
+// HomeBrew
+Brewfile.lock.json
