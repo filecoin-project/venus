@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,8 +18,8 @@ func TestDefaultMessagePublisher_Publish(t *testing.T) {
 	pool := message.NewPool(config.NewDefaultConfig().Mpool, testhelpers.NewMockMessagePoolValidator())
 
 	ms, _ := types.NewMockSignersAndKeyInfo(2)
-	msg := types.NewUnsignedMessage(ms.Addresses[0], ms.Addresses[1], 0, types.ZeroAttoFIL, types.InvalidMethodID, []byte{})
-	signed, err := types.NewSignedMessage(*msg, ms)
+	msg := types.NewUnsignedMessage(ms.Addresses[0], ms.Addresses[1], 0, types.ZeroAttoFIL, builtin.MethodSend, []byte{})
+	signed, err := types.NewSignedMessage(context.TODO(), *msg, ms)
 	require.NoError(t, err)
 	msgCid, err := signed.Cid()
 	require.NoError(t, err)

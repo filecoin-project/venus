@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -9,23 +10,24 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/ipfs/go-car"
-	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
-	logging "github.com/ipfs/go-log"
+	"github.com/filecoin-project/go-address"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/ipld/go-car"
 	"github.com/libp2p/go-libp2p-core/crypto"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/fixtures/networks"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
+	drandapi "github.com/filecoin-project/go-filecoin/internal/pkg/protocol/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
 var logInit = logging.Logger("commands/init")
@@ -37,13 +39,14 @@ var initCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
 		cmdkit.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
+		cmdkit.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
 		cmdkit.StringOption(WithMiner, "when set, creates a custom genesis block  a pre generated miner account, requires running the daemon using dev mode (--dev)"),
 		cmdkit.StringOption(OptionSectorDir, "path of directory into which staged and sealed sectors will be written"),
-		cmdkit.StringOption(DefaultAddress, "when set, sets the daemons's default address to the provided address"),
+		cmdkit.StringOption(MinerActorAddress, "when set, sets the daemons's miner actor address to the provided address"),
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
-		cmdkit.BoolOption(DevnetStaging, "when set, populates config bootstrap addrs with the dns multiaddrs of the staging devnet and other staging devnet specific bootstrap parameters."),
-		cmdkit.BoolOption(DevnetNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters"),
-		cmdkit.BoolOption(DevnetUser, "when set, populates config bootstrap addrs with the dns multiaddrs of the user devnet and other user devnet specific bootstrap parameters"),
+		cmdkit.StringOption(Network, "when set, populates config with network specific parameters"),
+		cmdkit.StringOption(OptionPresealedSectorDir, "when set to the path of a directory, imports pre-sealed sector data from that directory"),
+		cmdkit.StringOption(OptionDrandConfigAddr, "configure drand with given address, uses secure contact protocol and no override.  If you need different settings use daemon drand command"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
@@ -52,7 +55,7 @@ var initCmd = &cmds.Command{
 			return err
 		}
 
-		if err := re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)); err != nil {
+		if err := re.Emit(repoDir); err != nil {
 			return err
 		}
 		if err := repo.InitFSRepo(repoDir, repo.Version, config.NewDefaultConfig()); err != nil {
@@ -66,41 +69,47 @@ var initCmd = &cmds.Command{
 		defer func() { _ = rep.Close() }()
 
 		genesisFileSource, _ := req.Options[GenesisFile].(string)
-		// Writing to the repo here is messed up; this should create a genesis init function that
-		// writes to the repo when invoked.
-		genesisFile, err := loadGenesis(req.Context, rep, genesisFileSource)
+		gif, err := loadGenesis(req.Context, rep, genesisFileSource)
 		if err != nil {
 			return err
 		}
 
 		peerKeyFile, _ := req.Options[PeerKeyFile].(string)
-		initopts, err := getNodeInitOpts(peerKeyFile)
+		walletKeyFile, _ := req.Options[WalletKeyFile].(string)
+		initopts, err := getNodeInitOpts(peerKeyFile, walletKeyFile)
 		if err != nil {
-			return err
-		}
-
-		if err := node.Init(req.Context, rep, genesisFile, initopts...); err != nil {
 			return err
 		}
 
 		cfg := rep.Config()
 		if err := setConfigFromOptions(cfg, req.Options); err != nil {
+			logInit.Errorf("Error setting config %s", err)
+			return err
+		}
+
+		if err := setDrandConfig(rep, req.Options); err != nil {
+			logInit.Error("Error configuring drand config %s", err)
 			return err
 		}
 		if err := rep.ReplaceConfig(cfg); err != nil {
+			logInit.Errorf("Error replacing config %s", err)
 			return err
 		}
+
+		logInit.Info("Initializing node")
+		if err := node.Init(req.Context, rep, gif, initopts...); err != nil {
+			logInit.Errorf("Error initializing node %s", err)
+			return err
+		}
+
 		return nil
-	},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeEncoder(initTextEncoder),
 	},
 }
 
 func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 	var err error
 	if dir, ok := options[OptionSectorDir].(string); ok {
-		cfg.SectorBase.RootDir = dir
+		cfg.SectorBase.RootDirPath = dir
 	}
 
 	if m, ok := options[WithMiner].(string); ok {
@@ -113,51 +122,68 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 		cfg.Mining.AutoSealIntervalSeconds = autoSealIntervalSeconds.(uint)
 	}
 
-	if m, ok := options[DefaultAddress].(string); ok {
-		if cfg.Wallet.DefaultAddress, err = address.NewFromString(m); err != nil {
+	if ma, ok := options[MinerActorAddress].(string); ok {
+		if cfg.Mining.MinerAddress, err = address.NewFromString(ma); err != nil {
 			return err
 		}
 	}
 
-	devnetTest, _ := options[DevnetStaging].(bool)
-	devnetNightly, _ := options[DevnetNightly].(bool)
-	devnetUser, _ := options[DevnetUser].(bool)
-	if (devnetTest && devnetNightly) || (devnetTest && devnetUser) || (devnetNightly && devnetUser) {
-		return fmt.Errorf(`cannot specify more than one "devnet-" option`)
+	if dir, ok := options[OptionPresealedSectorDir].(string); ok {
+		if cfg.Mining.MinerAddress == address.Undef {
+			return fmt.Errorf("if --%s is provided, --%s or --%s must also be provided", OptionPresealedSectorDir, MinerActorAddress, WithMiner)
+		}
+
+		cfg.SectorBase.PreSealedSectorsDirPath = dir
 	}
 
 	// Setup devnet specific config options.
-	if devnetTest || devnetNightly || devnetUser {
-		cfg.Bootstrap.MinPeerThreshold = 1
-		cfg.Bootstrap.Period = "10s"
+	netName, _ := options[Network].(string)
+	var netcfg *networks.NetworkConf
+	if netName == "interop" {
+		netcfg = networks.Interop()
+	} else if netName == "testnet" {
+		netcfg = networks.Testnet()
+	} else if netName != "" {
+		return fmt.Errorf("unknown network name %s", netName)
 	}
-
-	// Setup devnet staging specific config options.
-	if devnetTest {
-		cfg.Bootstrap.Addresses = fixtures.DevnetStagingBootstrapAddrs
-	}
-
-	// Setup devnet nightly specific config options.
-	if devnetNightly {
-		cfg.Bootstrap.Addresses = fixtures.DevnetNightlyBootstrapAddrs
-	}
-
-	// Setup devnet user specific config options.
-	if devnetUser {
-		cfg.Bootstrap.Addresses = fixtures.DevnetUserBootstrapAddrs
+	if netcfg != nil {
+		cfg.Bootstrap = &netcfg.Bootstrap
+		cfg.Drand = &netcfg.Drand
+		cfg.NetworkParams = &netcfg.Network
 	}
 
 	return nil
 }
 
-func initTextEncoder(_ *cmds.Request, w io.Writer, val interface{}) error {
-	_, err := fmt.Fprintf(w, val.(string))
-	return err
+// helper type to implement plumbing subset
+type setWrapper struct {
+	cfg *config.Config
 }
 
-func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consensus.GenesisInitFunc, error) {
+func (w *setWrapper) ConfigSet(dottedKey string, jsonString string) error {
+	return w.cfg.Set(dottedKey, jsonString)
+}
+
+func setDrandConfig(repo repo.Repo, options cmdkit.OptMap) error {
+	drandAddrStr, ok := options[OptionDrandConfigAddr].(string)
+	if !ok {
+		// skip configuring drand during init
+		return nil
+	}
+
+	// Arbitrary filecoin genesis time, it will be set correctly when daemon runs
+	// It is not needed to set config properly
+	dGRPC, err := node.DefaultDrandIfaceFromConfig(repo.Config(), 0)
+	if err != nil {
+		return err
+	}
+	d := drandapi.New(dGRPC, &setWrapper{repo.Config()})
+	return d.Configure([]string{drandAddrStr}, true, false)
+}
+
+func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (genesis.InitFunc, error) {
 	if sourceName == "" {
-		return consensus.MakeGenesisFunc(consensus.ProofsMode(types.LiveProofsMode)), nil
+		return gengen.MakeGenesisFunc(), nil
 	}
 
 	source, err := openGenesisSource(sourceName)
@@ -171,7 +197,7 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consens
 		return nil, err
 	}
 
-	gif := func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+	gif := func(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
 		return genesisBlk, err
 	}
 
@@ -179,7 +205,7 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consens
 
 }
 
-func getNodeInitOpts(peerKeyFile string) ([]node.InitOpt, error) {
+func getNodeInitOpts(peerKeyFile string, walletKeyFile string) ([]node.InitOpt, error) {
 	var initOpts []node.InitOpt
 	if peerKeyFile != "" {
 		data, err := ioutil.ReadFile(peerKeyFile)
@@ -191,6 +217,26 @@ func getNodeInitOpts(peerKeyFile string) ([]node.InitOpt, error) {
 			return nil, err
 		}
 		initOpts = append(initOpts, node.PeerKeyOpt(peerKey))
+	}
+
+	if walletKeyFile != "" {
+		f, err := os.Open(walletKeyFile)
+		if err != nil {
+			return nil, err
+		}
+
+		var wir *WalletSerializeResult
+		if err := json.NewDecoder(f).Decode(&wir); err != nil {
+			return nil, err
+		}
+
+		if len(wir.KeyInfo) > 0 {
+			initOpts = append(initOpts, node.DefaultKeyOpt(wir.KeyInfo[0]))
+		}
+
+		for _, k := range wir.KeyInfo[1:] {
+			initOpts = append(initOpts, node.ImportKeyOpt(k))
+		}
 	}
 
 	return initOpts, nil

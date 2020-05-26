@@ -2,6 +2,7 @@ package encoding
 
 import (
 	"fmt"
+	"io"
 	"reflect"
 )
 
@@ -63,8 +64,18 @@ type Decoder interface {
 	DecodeStruct(obj interface{}) error
 }
 
-type defaultEncoder = IpldCborEncoder
-type defaultDecoder = IpldCborDecoder
+type defaultEncoder = FxamackerCborEncoder
+type defaultDecoder = FxamackerCborDecoder
+
+var defaultNewStreamDecoder = FxamackerNewStreamDecoder
+
+// NewStreamDecoder is a function initializing a new stream decoder
+type NewStreamDecoder func(io.Reader) StreamDecoder
+
+// StreamDecoder wraps a stream of bytes and decodes them into an object
+type StreamDecoder interface {
+	Decode(v interface{}) error
+}
 
 // Encode encodes an object, returning a byte array.
 func Encode(obj interface{}) ([]byte, error) {
@@ -117,6 +128,8 @@ func encode(obj interface{}, v reflect.Value, encoder Encoder) ([]byte, error) {
 	case reflect.String:
 		err = encoder.EncodeString(v.Convert(reflect.TypeOf("")).Interface().(string))
 	case reflect.Slice:
+		err = encoder.EncodeArray(obj)
+	case reflect.Array:
 		err = encoder.EncodeArray(obj)
 	case reflect.Map:
 		err = encoder.EncodeMap(obj)
@@ -198,6 +211,8 @@ func decode(obj interface{}, v reflect.Value, decoder Decoder) error {
 		return decoder.DecodeValue(obj)
 	case reflect.Slice:
 		return decoder.DecodeArray(obj)
+	case reflect.Array:
+		return decoder.DecodeArray(obj)
 	case reflect.Map:
 		return decoder.DecodeMap(obj)
 	case reflect.Struct:
@@ -214,4 +229,10 @@ func decode(obj interface{}, v reflect.Value, decoder Decoder) error {
 	default:
 		return fmt.Errorf("unsupported type for decoding: %T, kind: %v", obj, k)
 	}
+}
+
+// StreamDecode decodes a decodable type from a reader.
+func StreamDecode(r io.Reader, obj interface{}) error {
+	streamDecoder := defaultNewStreamDecoder(r)
+	return streamDecoder.Decode(obj)
 }

@@ -1,720 +1,702 @@
-// Package vmcontext is the internal implementation of the runtime package.
-//
-// Actors see the interfaces defined in the `runtime` while the concrete implementation is defined here.
 package vmcontext
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
-	"math/big"
+	"fmt"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gastracker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/ipfs/go-cid"
 )
 
-// ExecutableActorLookup provides a method to get an executable actor by code and protocol version
-type ExecutableActorLookup interface {
-	GetActorCode(code cid.Cid, version uint64) (dispatch.ExecutableActor, error)
+var vmlog = logging.Logger("vm.context")
+
+// VM holds the state and executes messages over the state.
+type VM struct {
+	context      context.Context
+	actorImpls   ActorImplLookup
+	store        *storage.VMStorage
+	state        state.Tree
+	syscalls     SyscallsImpl
+	currentHead  block.TipSetKey
+	currentEpoch abi.ChainEpoch
+	pricelist    gascost.Pricelist
 }
 
-// VMContext is the only thing exposed to an actor while executing.
-// All methods on the VMContext are ABI methods exposed to actors.
-type VMContext struct {
-	from              *actor.Actor
-	to                *actor.Actor
-	toAddr            address.Address
-	message           *types.UnsignedMessage
-	originMsg         *types.UnsignedMessage
-	state             *state.CachedTree
-	storageMap        storagemap.StorageMap
-	gasTracker        *gastracker.LegacyGasTracker
-	blockHeight       *types.BlockHeight
-	ancestors         []block.TipSet
-	actors            ExecutableActorLookup
-	isCallerValidated bool
-	allowSideEffects  bool
-	stateHandle       actorStateHandle
-	blockMiner        address.Address
-
-	deps *deps // Inject external dependencies so we can unit test robustly.
+// ActorImplLookup provides access to upgradeable actor code.
+type ActorImplLookup interface {
+	GetActorImpl(code cid.Cid) (dispatch.Dispatcher, error)
 }
 
-// NewContextParams is passed to NewVMContext to construct a new context.
-type NewContextParams struct {
-	From        *actor.Actor
-	To          *actor.Actor
-	ToAddr      address.Address
-	Message     *types.UnsignedMessage
-	OriginMsg   *types.UnsignedMessage
-	State       *state.CachedTree
-	StorageMap  storagemap.StorageMap
-	GasTracker  *gastracker.LegacyGasTracker
-	BlockHeight *types.BlockHeight
-	Ancestors   []block.TipSet
-	Actors      ExecutableActorLookup
-	BlockMiner  address.Address
+type minerPenaltyFIL = abi.TokenAmount
+
+type gasRewardFIL = abi.TokenAmount
+
+type internalMessage struct {
+	from   address.Address
+	to     address.Address
+	value  abi.TokenAmount
+	method abi.MethodNum
+	params interface{}
 }
 
-// NewVMContext returns an initialized context.
-func NewVMContext(params NewContextParams) *VMContext {
-	ctx := VMContext{
-		from:              params.From,
-		to:                params.To,
-		toAddr:            params.ToAddr,
-		message:           params.Message,
-		originMsg:         params.OriginMsg,
-		state:             params.State,
-		storageMap:        params.StorageMap,
-		gasTracker:        params.GasTracker,
-		blockHeight:       params.BlockHeight,
-		ancestors:         params.Ancestors,
-		actors:            params.Actors,
-		isCallerValidated: false,
-		allowSideEffects:  true,
-		blockMiner:        params.BlockMiner,
-		deps:              makeDeps(params.State),
+// NewVM creates a new runtime for executing messages.
+// Dragons: change to take a root and the store, build the tree internally
+func NewVM(actorImpls ActorImplLookup, store *storage.VMStorage, st state.Tree, syscalls SyscallsImpl) VM {
+	return VM{
+		context:    context.Background(),
+		actorImpls: actorImpls,
+		store:      store,
+		state:      st,
+		syscalls:   syscalls,
+		// loaded during execution
+		// currentEpoch: ..,
 	}
-	ctx.stateHandle = newActorStateHandle(&ctx, ctx.to.Head)
-	return &ctx
 }
 
-// GasUnits retrieves the gas cost so far
-func (ctx *VMContext) GasUnits() types.GasUnits {
-	return ctx.gasTracker.GasConsumedByMessage()
-}
-
-var _ runtime.Runtime = (*VMContext)(nil)
-
-// CurrentEpoch is the current chain epoch.
-func (ctx *VMContext) CurrentEpoch() types.BlockHeight {
-	return *ctx.blockHeight
-}
-
-// Randomness gives the actors access to sampling peudo-randomess from the chain.
-func (ctx *VMContext) Randomness(epoch types.BlockHeight, offset uint64) runtime.Randomness {
-	rnd, err := sampling.SampleChainRandomness(&epoch, ctx.ancestors)
-	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "failed to sample randomness")
-	}
-	return rnd
-}
-
-// LegacySend allows actors to invoke methods on other actors
-func (ctx *VMContext) LegacySend(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
-	// check if side-effects are allowed
-	if !ctx.allowSideEffects {
-		runtime.Abortf(exitcode.MethodAbort, "Calling Send() is not allowed during side-effet lock")
-	}
-
-	deps := ctx.deps
-
-	// the message sender is the `to` actor, so this is what we set as `from` in the new message
-	from := ctx.toAddr
-	fromActor := ctx.to
-
-	vals, err := deps.ToValues(params)
-	if err != nil {
-		return nil, 1, errors.FaultErrorWrap(err, "failed to convert inputs to abi values")
-	}
-
-	paramData, err := deps.EncodeValues(vals)
-	if err != nil {
-		return nil, 1, errors.RevertErrorWrap(err, "encoding params failed")
-	}
-
-	msg := types.NewUnsignedMessage(from, to, 0, value, method, paramData)
-	if msg.From == msg.To {
-		// TODO 3647: handle this
-		return nil, 1, errors.NewFaultErrorf("unhandled: sending to self (%s)", msg.From)
-	}
-
-	// get actor and id address or create a new account actor.
-	toActor, toAddr, err := ctx.getOrCreateActor(context.TODO(), ctx.state, msg.To)
-	if err != nil {
-		return nil, 1, errors.FaultErrorWrapf(err, "failed to get or create To actor %s", msg.To)
-	}
-	// TODO(fritz) de-dup some of the logic between here and core.Send
-	innerParams := NewContextParams{
-		From:        fromActor,
-		To:          toActor,
-		ToAddr:      toAddr,
-		Message:     msg,
-		OriginMsg:   ctx.originMsg,
-		State:       ctx.state,
-		StorageMap:  ctx.storageMap,
-		GasTracker:  ctx.gasTracker,
-		BlockHeight: ctx.blockHeight,
-		Ancestors:   ctx.ancestors,
-		Actors:      ctx.actors,
-	}
-	innerCtx := NewVMContext(innerParams)
-
-	out, ret, err := deps.LegacySend(context.Background(), innerCtx)
-	if err != nil {
-		return nil, ret, err
-	}
-
-	// validate state access
-	ctx.stateHandle.Validate()
-
-	return out, ret, nil
-}
-
-// Send allows actors to invoke methods on other actors
-func (ctx *VMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) interface{} {
-	// check if side-effects are allowed
-	if !ctx.allowSideEffects {
-		runtime.Abortf(exitcode.MethodAbort, "Calling Send() is not allowed during side-effet lock")
-	}
-
-	deps := ctx.deps
-
-	// the message sender is the `to` actor, so this is what we set as `from` in the new message
-	from := ctx.toAddr
-	fromActor := ctx.to
-
-	vals, err := deps.ToValues(params)
-	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "failed to convert inputs to abi values")
-	}
-
-	paramData, err := deps.EncodeValues(vals)
-	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "encoding params failed")
-	}
-
-	msg := types.NewUnsignedMessage(from, to, 0, value, method, paramData)
-	if msg.From == msg.To {
-		// TODO 3647: handle this
-		runtime.Abortf(exitcode.MethodAbort, "unhandled: sending to self (%s)", msg.From)
-	}
-
-	// fetch actor and id address, creating actor if necessary
-	toActor, toAddr, err := ctx.getOrCreateActor(context.TODO(), ctx.state, msg.To)
-	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "failed to get or create To actor %s", msg.To)
-	}
-	// TODO(fritz) de-dup some of the logic between here and core.Send
-	innerParams := NewContextParams{
-		From:        fromActor,
-		To:          toActor,
-		ToAddr:      toAddr,
-		Message:     msg,
-		OriginMsg:   ctx.originMsg,
-		State:       ctx.state,
-		StorageMap:  ctx.storageMap,
-		GasTracker:  ctx.gasTracker,
-		BlockHeight: ctx.blockHeight,
-		Ancestors:   ctx.ancestors,
-		Actors:      ctx.actors,
-	}
-	innerCtx := NewVMContext(innerParams)
-
-	return deps.Apply(innerCtx)
-}
-
-func apply(ctx *VMContext) interface{} {
-	filValue := ctx.message.Value
-	if !filValue.Equal(types.ZeroAttoFIL) {
-		if filValue.IsNegative() {
-			runtime.Abortf(exitcode.MethodAbort, "Can not transfer negative FIL value")
-		}
-		if err := Transfer(ctx.from, ctx.to, filValue); err != nil {
-			runtime.Abort(exitcode.InsufficientFunds)
-		}
-	}
-
-	msg := ctx.message
-
-	if msg.Method == types.SendMethodID {
-		// if only tokens are transferred there is no need for a method
-		// this means we can shortcircuit execution
-		return nil
-	}
-
-	if msg.Method == types.InvalidMethodID {
-		// your test should not be getting here..
-		// Note: this method is not materialized in production but could occur on tests
-		panic("trying to execute fake method on the actual VM, fix test")
-	}
-
-	// TODO: use chain height based protocol version here (#3360)
-	toExecutable, err := ctx.Actors().GetActorCode(ctx.To().Code, 0)
-	if err != nil {
-		runtime.Abort(exitcode.ActorCodeNotFound)
-	}
-
-	exportedFn, ok := makeTypedExport(toExecutable, msg.Method)
-	if !ok {
-		runtime.Abort(exitcode.InvalidMethod)
-	}
-
-	vals, code, err := exportedFn(ctx)
-
-	// Handle legacy codes and errors
-	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "Legacy actor code returned an error: %s", err.Error())
-	}
-
-	if code != 0 {
-		runtime.Abortf(exitcode.MethodAbort, "Legacy actor code returned with non-zero error code")
-	}
-
-	// validate state access
-	ctx.stateHandle.Validate()
-
-	if len(vals) > 0 {
-		return vals[0]
-	}
-	return nil
-}
-
-var _ runtime.MessageInfo = (*VMContext)(nil)
-
-// BlockMiner is the address for the actor miner who mined the block in which the initial on-chain message appears.
-func (ctx *VMContext) BlockMiner() address.Address {
-	return ctx.blockMiner
-}
-
-// ValueReceived is the amount of FIL received by this actor during this method call.
+// ApplyGenesisMessage forces the execution of a message in the vm actor.
 //
-// Note: the value is already been deposited on the actors account and is reflected on the balance.
-func (ctx *VMContext) ValueReceived() types.AttoFIL {
-	return ctx.message.Value
-}
+// This method is intended to be used in the generation of the genesis block only.
+func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}, rnd crypto.RandomnessSource) (interface{}, error) {
+	vm.pricelist = gascost.PricelistByEpoch(vm.currentEpoch)
 
-// Caller is the immediate caller to the current executing method.
-func (ctx *VMContext) Caller() address.Address {
-	return ctx.message.From
-}
-
-var _ runtime.InvocationContext = (*VMContext)(nil)
-
-// Runtime exposes some methods on the runtime to the actor.
-func (ctx *VMContext) Runtime() runtime.Runtime {
-	return ctx
-}
-
-// Message contains information available to the actor about the executing message.
-func (ctx *VMContext) Message() runtime.MessageInfo {
-	return ctx
-}
-
-// ValidateCaller validates the caller against a patter.
-//
-// All actor methods MUST call this method before returning.
-func (ctx *VMContext) ValidateCaller(pattern runtime.CallerPattern) {
-	if ctx.isCallerValidated {
-		runtime.Abortf(exitcode.MethodAbort, "Method must validate caller identity exactly once")
-	}
-	if !pattern.IsMatch(patternContext{vm: ctx}) {
-		runtime.Abortf(exitcode.MethodAbort, "Method invoked by incorrect caller")
-	}
-	ctx.isCallerValidated = true
-}
-
-// StateHandle handles access to the actor state.
-func (ctx *VMContext) StateHandle() runtime.ActorStateHandle {
-	return &ctx.stateHandle
-}
-
-// Balance is the current balance on the current actors account.
-//
-// Note: the value received for this invocation is already reflected on the balance.
-func (ctx *VMContext) Balance() types.AttoFIL {
-	return ctx.to.Balance
-}
-
-// Storage returns an implementation of the storage module for this context.
-func (ctx *VMContext) Storage() runtime.Storage {
-	panic("new method, legacy vmcontext wont provide access to")
-}
-
-// LegacyStorage returns an implementation of the storage module for this context.
-func (ctx *VMContext) LegacyStorage() runtime.LegacyStorage {
-	return ctx.storageMap.NewStorage(ctx.toAddr, ctx.to)
-}
-
-// Charge attempts to add the given cost to the accrued gas cost of this transaction
-func (ctx *VMContext) Charge(cost types.GasUnits) error {
-	return ctx.gasTracker.Charge(cost)
-}
-
-var _ runtime.ExtendedInvocationContext = (*VMContext)(nil)
-
-func isBuiltinActor(code cid.Cid) bool {
-	return code.Equals(types.AccountActorCodeCid) ||
-		code.Equals(types.StorageMarketActorCodeCid) ||
-		code.Equals(types.InitActorCodeCid) ||
-		code.Equals(types.MinerActorCodeCid) ||
-		code.Equals(types.BootstrapMinerActorCodeCid) ||
-		code.Equals(types.PaymentBrokerActorCodeCid)
-}
-
-func isSingletonActor(code cid.Cid) bool {
-	return code.Equals(types.StorageMarketActorCodeCid) ||
-		code.Equals(types.InitActorCodeCid) ||
-		code.Equals(types.PaymentBrokerActorCodeCid)
-}
-
-// CreateActor implements the ExtendedInvocationContext interface.
-func (ctx *VMContext) CreateActor(actorID types.Uint64, code cid.Cid, params []interface{}) address.Address {
-	if !isBuiltinActor(code) {
-		runtime.Abortf(exitcode.MethodAbort, "Can only create built-in actors.")
+	// normalize from addr
+	var ok bool
+	if from, ok = vm.normalizeAddress(from); !ok {
+		runtime.Abort(exitcode.SysErrSenderInvalid)
 	}
 
-	if isSingletonActor(code) {
-		runtime.Abortf(exitcode.MethodAbort, "Can only have one instance of singleton actors.")
+	// build internal message
+	imsg := internalMessage{
+		from:   from,
+		to:     to,
+		value:  value,
+		method: method,
+		params: params,
 	}
 
-	// create address for actor
-	var actorAddr address.Address
-	var err error
-	if types.AccountActorCodeCid.Equals(code) {
-		// address for account actor comes from first parameter
-		if len(params) < 1 {
-			runtime.Abortf(exitcode.MethodAbort, "Missing address parameter for account actor creation")
-		}
-		actorAddr, err = actorAddressFromParam(params[0])
-		if err != nil {
-			runtime.Abortf(exitcode.MethodAbort, "Parameter for account actor creation is not an address")
-		}
-	} else {
-		actorAddr, err = computeActorAddress(ctx.originMsg.From, uint64(ctx.originMsg.CallSeqNum))
-		if err != nil {
-			runtime.Abortf(exitcode.MethodAbort, "Could not create address for actor")
-		}
-	}
-
-	idAddr, err := address.NewIDAddress(uint64(actorID))
+	ret, err := vm.applyImplicitMessage(imsg, rnd)
 	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "Could not create IDAddress for actor")
+		return ret, err
 	}
 
-	// Check existing address. If nothing there, create empty actor.
-	//
-	// Note: we are storing the actors by ActorID *address*
-	newActor, _, err := ctx.state.GetOrCreateActor(context.TODO(), idAddr, func() (*actor.Actor, address.Address, error) {
-		return &actor.Actor{}, idAddr, nil
-	})
+	// commit
+	if _, err := vm.commit(); err != nil {
+		return nil, err
+	}
 
+	return ret, nil
+}
+
+func (vm *VM) rollback(root state.Root) error {
+	return vm.state.Rollback(vm.context, root)
+}
+
+func (vm *VM) checkpoint() (state.Root, error) {
+	root, err := vm.state.Commit(vm.context)
 	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "Could not get or create actor")
+		return cid.Undef, err
 	}
-
-	if !newActor.Empty() {
-		runtime.Abortf(exitcode.MethodAbort, "Actor address already exists")
-	}
-
-	// make this the right 'type' of actor
-	newActor.Code = code
-
-	// send message containing actor's initial balance to construct it with the given params
-	ctx.Send(idAddr, types.ConstructorMethodID, ctx.Message().ValueReceived(), params)
-
-	return actorAddr
+	return root, nil
 }
 
-// VerifySignature implemenets the ExtendedInvocationContext interface.
-func (*VMContext) VerifySignature(signer address.Address, signature types.Signature, msg []byte) bool {
-	return types.IsValidSignature(msg, signer, signature)
-}
+func (vm *VM) commit() (state.Root, error) {
+	// Note: the following assumes the state commits into the store,
+	//       unless the store is flushed, the state is not persisted.
 
-var _ runtime.LegacyInvocationContext = (*VMContext)(nil)
-
-// LegacyVerifier returns an interface to the proof verification code
-func (ctx *VMContext) LegacyVerifier() verification.Verifier {
-	return &verification.FFIBackedProofVerifier{}
-}
-
-// LegacyMessage retrieves the message associated with this context.
-func (ctx *VMContext) LegacyMessage() *types.UnsignedMessage {
-	return ctx.message
-}
-
-// LegacyAddressForNewActor creates computes the address for a new actor in the same way that ethereum does.
-//
-// Note: this will not work if we allow the
-// creation of multiple contracts in a given invocation (nonce will remain the
-// same, resulting in the same address back)
-func (ctx *VMContext) LegacyAddressForNewActor() (address.Address, error) {
-	return computeActorAddress(ctx.originMsg.From, uint64(ctx.originMsg.CallSeqNum))
-}
-
-func computeActorAddress(creator address.Address, nonce uint64) (address.Address, error) {
-	buf := new(bytes.Buffer)
-
-	if _, err := buf.Write(creator.Bytes()); err != nil {
-		return address.Undef, err
-	}
-
-	if err := binary.Write(buf, binary.BigEndian, nonce); err != nil {
-		return address.Undef, err
-	}
-
-	return address.NewActorAddress(buf.Bytes())
-}
-
-//
-// internal methods not exposed to actors
-//
-
-// AllowSideEffects determines wether or not the actor code is allowed to produce side-effects.
-//
-// At this time, any `Send` to the same or another actor is considered a side-effect.
-func (ctx *VMContext) AllowSideEffects(allow bool) {
-	ctx.allowSideEffects = allow
-}
-
-// ExtendedRuntime has a few extra methods on top of what is exposed to the actors.
-type ExtendedRuntime interface {
-	runtime.Runtime
-	LegacyMessage() *types.UnsignedMessage
-	From() *actor.Actor
-	To() *actor.Actor
-	Actors() ExecutableActorLookup
-}
-
-var _ ExtendedRuntime = (*VMContext)(nil)
-
-// Actors returns the executable actors lookup table.
-func (ctx *VMContext) Actors() ExecutableActorLookup {
-	return ctx.actors
-}
-
-// From returns the actor the message originated from.
-func (ctx *VMContext) From() *actor.Actor {
-	return ctx.from
-}
-
-// To returns the actor the message is intended for.
-func (ctx *VMContext) To() *actor.Actor {
-	return ctx.to
-}
-
-var _ ExportContext = (*VMContext)(nil)
-
-// Params implements ExportContext.
-func (ctx *VMContext) Params() []byte {
-	return ctx.message.Params
-}
-
-// Dependency injection setup.
-
-// makeDeps returns a VMContext's external dependencies with their standard values set.
-func makeDeps(st *state.CachedTree) *deps {
-	deps := deps{
-		EncodeValues: abi.EncodeValues,
-		LegacySend:   LegacySend,
-		ToValues:     abi.ToValues,
-		Apply:        apply,
-	}
-	if st != nil {
-		deps.GetActor = st.GetActor
-		deps.GetOrCreateActor = st.GetOrCreateActor
-	}
-	return &deps
-}
-
-type deps struct {
-	EncodeValues     func([]*abi.Value) ([]byte, error)
-	GetActor         func(context.Context, address.Address) (*actor.Actor, error)
-	GetOrCreateActor func(context.Context, address.Address, func() (*actor.Actor, address.Address, error)) (*actor.Actor, address.Address, error)
-	LegacySend       func(context.Context, *VMContext) ([][]byte, uint8, error)
-	Apply            func(*VMContext) interface{}
-	ToValues         func([]interface{}) ([]*abi.Value, error)
-}
-
-// LegacySend executes a message pass inside the VM. If error is set it
-// will always satisfy either ShouldRevert() or IsFault().
-func LegacySend(ctx context.Context, vmCtx *VMContext) (out [][]byte, code uint8, err error) {
-	return send(ctx, Transfer, vmCtx)
-}
-
-// TransferFn is the money transfer function.
-type TransferFn = func(*actor.Actor, *actor.Actor, types.AttoFIL) error
-
-// send executes a message pass inside the VM. It exists alongside Send so that we can inject its dependencies during test.
-func send(ctx context.Context, transfer TransferFn, vmCtx *VMContext) ([][]byte, uint8, error) {
-	msg := vmCtx.LegacyMessage()
-	if !msg.Value.Equal(types.ZeroAttoFIL) {
-		if err := transfer(vmCtx.From(), vmCtx.To(), msg.Value); err != nil {
-			if errors.ShouldRevert(err) {
-				return nil, err.(*errors.RevertError).Code(), err
-			}
-			return nil, 1, err
-		}
-	}
-
-	if msg.Method == types.SendMethodID {
-		// if only tokens are transferred there is no need for a method
-		// this means we can shortcircuit execution
-		return nil, 0, nil
-	}
-
-	if msg.Method == types.InvalidMethodID {
-		// your test should not be getting here..
-		// Note: this method is not materialized in production but could occur on tests
-		panic("trying to execute fake method on the actual VM, fix test")
-	}
-
-	if msg.Method == types.ConstructorMethodID && !vmCtx.From().Code.Equals(types.InitActorCodeCid) {
-		return nil, 1, errors.NewRevertError("can only construct actor from init actor")
-	}
-
-	// TODO: use chain height based protocol version here (#3360)
-	toExecutable, err := vmCtx.Actors().GetActorCode(vmCtx.To().Code, 0)
+	// commit the vm state
+	root, err := vm.state.Commit(vm.context)
 	if err != nil {
-		return nil, errors.ErrNoActorCode, errors.Errors[errors.ErrNoActorCode]
+		return cid.Undef, err
+	}
+	// flush all blocks out of the store
+	if err := vm.store.Flush(); err != nil {
+		return cid.Undef, err
 	}
 
-	exportedFn, ok := makeTypedExport(toExecutable, msg.Method)
-	if !ok {
-		return nil, 1, errors.Errors[errors.ErrMissingExport]
-	}
-
-	vals, code, err := exportedFn(vmCtx)
-	if vals != nil {
-		r, err := abi.ToEncodedValues(vals...)
-		if err != nil {
-			return nil, 1, errors.FaultErrorWrap(err, "failed to marshal output value")
-		}
-
-		if r != nil {
-			var rv [][]byte
-			err = encoding.Decode(r, &rv)
-			if err != nil {
-				return nil, 1, errors.NewRevertErrorf("method return doesn't decode as array: %s", err)
-			}
-			return rv, code, err
-		}
-	}
-	return nil, code, err
+	return root, nil
 }
 
-// Transfer transfers the given value between two actors.
-func Transfer(fromActor, toActor *actor.Actor, value types.AttoFIL) error {
-	if value.IsNegative() {
-		return errors.Errors[errors.ErrCannotTransferNegativeValue]
-	}
-
-	if fromActor.Balance.LessThan(value) {
-		return errors.Errors[errors.ErrInsufficientBalance]
-	}
-
-	fromActor.Balance = fromActor.Balance.Sub(value)
-	toActor.Balance = toActor.Balance.Add(value)
-
-	return nil
+// ContextStore provides access to specs-actors adt library.
+//
+// This type of store is used to access some internal actor state.
+func (vm *VM) ContextStore() adt.Store {
+	return &contextStore{context: vm.context, store: vm.store}
 }
 
-// GetOrCreateActor retrieves an actor by first resolving its address. If that fails it will initialize a new account actor
-func (ctx *VMContext) getOrCreateActor(c context.Context, st *state.CachedTree, addr address.Address) (*actor.Actor, address.Address, error) {
-	// resolve address before lookup
-	idAddr, err := ctx.resolveActorAddress(addr)
-	if err != nil {
-		return nil, address.Undef, err
-	}
-
-	if idAddr != address.Undef {
-		act, err := ctx.deps.GetActor(c, idAddr)
-		return act, idAddr, err
-	}
-
-	// this should never fail due to lack of gas since gas doesn't have meaning here
-	ctx.Send(address.InitAddress, initactor.ExecMethodID, types.ZeroAttoFIL, []interface{}{types.AccountActorCodeCid, []interface{}{addr}})
-	idAddrInt := ctx.Send(address.InitAddress, initactor.GetActorIDForAddressMethodID, types.ZeroAttoFIL, []interface{}{addr})
-
-	id, ok := idAddrInt.(*big.Int)
-	if !ok {
-		return nil, address.Undef, errors.NewFaultError("non-integer return from GetActorIDForAddress")
-	}
-
-	idAddr, err = address.NewIDAddress(id.Uint64())
-	if err != nil {
-		return nil, address.Undef, err
-	}
-
-	act, err := ctx.deps.GetActor(c, idAddr)
-	return act, idAddr, err
-}
-
-// resolveAddress looks up associated id address if actor address. Otherwise it returns the same address.
-func (ctx *VMContext) resolveActorAddress(addr address.Address) (address.Address, error) {
+func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
+	// short-circuit if the address is already an ID address
 	if addr.Protocol() == address.ID {
-		return addr, nil
+		return addr, true
 	}
 
-	init, err := ctx.deps.GetActor(context.TODO(), address.InitAddress)
+	// resolve the target address via the InitActor, and attempt to load state.
+	initActorEntry, found, err := vm.state.GetActor(vm.context, builtin.InitActorAddr)
 	if err != nil {
-		return address.Undef, err
+		panic(errors.Wrapf(err, "failed to load init actor"))
 	}
-
-	vmCtx := NewVMContext(NewContextParams{
-		State:      ctx.state,
-		StorageMap: ctx.storageMap,
-		ToAddr:     address.InitAddress,
-		To:         init,
-	})
-	id, found, err := initactor.LookupIDAddress(vmCtx, addr)
-	if err != nil {
-		return address.Undef, err
-	}
-
 	if !found {
-		return address.Undef, nil
+		panic(errors.Wrapf(err, "no init actor"))
 	}
 
-	idAddr, err := address.NewIDAddress(id)
-	if err != nil {
-		return address.Undef, err
+	// get a view into the actor state
+	var state init_.State
+	if _, err := vm.store.Get(vm.context, initActorEntry.Head.Cid, &state); err != nil {
+		panic(err)
 	}
 
-	return idAddr, nil
+	idAddr, err := state.ResolveAddress(vm.ContextStore(), addr)
+	if err == init_.ErrAddressNotFound {
+		return address.Undef, false
+	} else if err != nil {
+		panic(err)
+	}
+	return idAddr, true
 }
 
-func actorAddressFromParam(maybeAddress interface{}) (address.Address, error) {
-	addr, ok := maybeAddress.(address.Address)
-	if ok {
-		return addr, nil
-	}
+func (vm *VM) stateView() SyscallsStateView {
+	// The state tree's root is not committed until the end of a tipset, so we can't use the external state view
+	// type for this implementation.
+	// Maybe we could re-work it to use a root HAMT node rather than root CID.
+	return &syscallsStateView{vm}
+}
 
-	serialized, ok := maybeAddress.([]byte)
-	if ok {
-		addrInt, err := abi.Deserialize(serialized, abi.Address)
-		if err != nil {
-			return address.Undef, err
+// implement VMInterpreter for VM
+
+var _ interpreter.VMInterpreter = (*VM)(nil)
+
+// ApplyTipSetMessages implements interpreter.VMInterpreter
+func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head block.TipSetKey, epoch abi.ChainEpoch, rnd crypto.RandomnessSource) ([]message.Receipt, error) {
+	receipts := []message.Receipt{}
+
+	// update current tipset
+	vm.currentHead = head
+	vm.currentEpoch = epoch
+	vm.pricelist = gascost.PricelistByEpoch(epoch)
+
+	// create message tracker
+	// Note: the same message could have been included by more than one miner
+	seenMsgs := make(map[cid.Cid]struct{})
+
+	// process messages on each block
+	for _, blk := range blocks {
+		if blk.Miner.Protocol() != address.ID {
+			panic("precond failure: block miner address must be an IDAddress")
 		}
 
-		return addrInt.Val.(address.Address), nil
+		// initial miner penalty and gas rewards
+		// Note: certain msg execution failures can cause the miner to pay for the gas
+		minerPenaltyTotal := big.Zero()
+		minerGasRewardTotal := big.Zero()
+
+		// Process BLS messages from the block
+		for _, m := range blk.BLSMessages {
+			// do not recompute already seen messages
+			mcid := msgCID(m)
+			if _, found := seenMsgs[mcid]; found {
+				continue
+			}
+
+			// apply message
+			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(m, m.OnChainLen(), rnd)
+
+			// accumulate result
+			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)
+			minerGasRewardTotal = big.Add(minerGasRewardTotal, minerGasRewardCurr)
+			receipts = append(receipts, receipt)
+
+			// flag msg as seen
+			seenMsgs[mcid] = struct{}{}
+		}
+
+		// Process SECP messages from the block
+		for _, sm := range blk.SECPMessages {
+			// extract unsigned message part
+			m := sm.Message
+
+			// do not recompute already seen messages
+			mcid := msgCID(&m)
+			if _, found := seenMsgs[mcid]; found {
+				continue
+			}
+
+			// apply message
+			// Note: the on-chain size for SECP messages is different
+			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(&m, sm.OnChainLen(), rnd)
+
+			// accumulate result
+			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)
+			minerGasRewardTotal = big.Add(minerGasRewardTotal, minerGasRewardCurr)
+			receipts = append(receipts, receipt)
+
+			// flag msg as seen
+			seenMsgs[mcid] = struct{}{}
+		}
+
+		// Pay block reward.
+		// Dragons: missing final protocol design on if/how to determine the nominal power
+		rewardMessage := makeBlockRewardMessage(blk.Miner, minerPenaltyTotal, minerGasRewardTotal, 1)
+		if _, err := vm.applyImplicitMessage(rewardMessage, rnd); err != nil {
+			return nil, err
+		}
 	}
 
-	return address.Undef, errors.NewRevertError("address parameter is not an address")
+	// cron tick
+	cronMessage := makeCronTickMessage()
+	if _, err := vm.applyImplicitMessage(cronMessage, rnd); err != nil {
+		return nil, err
+	}
+
+	// commit state
+	if _, err := vm.commit(); err != nil {
+		return nil, err
+	}
+
+	return receipts, nil
 }
 
-// patternContext is a wrapper on a vmcontext to implement the PatternContext
-type patternContext struct {
-	vm *VMContext
+// applyImplicitMessage applies messages automatically generated by the vm itself.
+//
+// This messages do not consume client gas and must not fail.
+func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSource) (specsruntime.CBORMarshaler, error) {
+	// implicit messages gas is tracked separatly and not paid by the miner
+	gasTank := NewGasTracker(gas.SystemGasLimit)
+
+	// the execution of the implicit messages is simpler than full external/actor-actor messages
+	// execution:
+	// 1. load from actor
+	// 2. increment seqnumber (only for accounts)
+	// 3. build new context
+	// 4. invoke message
+
+	// 1. load from actor
+	fromActor, found, err := vm.state.GetActor(vm.context, imsg.from)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, fmt.Errorf("implicit message `from` field actor not found, addr: %s", imsg.from)
+	}
+	originatorIsAccount := fromActor.Code.Equals(builtin.AccountActorCodeID)
+
+	// Compute the originator address. Unlike real messages, implicit ones can be originated by
+	// singleton non-account actors. Singleton addresses are reorg-proof so ok to use here.
+	var originator address.Address
+	if originatorIsAccount {
+		// Load sender account state to obtain stable pubkey address.
+		var senderState account.State
+		_, err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
+		if err != nil {
+			panic(err)
+		}
+		originator = senderState.Address
+	} else if builtin.IsBuiltinActor(fromActor.Code.Cid) {
+		originator = imsg.from // Cannot resolve non-account actor to pubkey addresses.
+	} else {
+		panic(fmt.Sprintf("implicit message from non-account or -singleton actor code %s", fromActor.Code.Cid))
+	}
+
+	// 2. increment seq number (only for account actors).
+	// The account actor distinction only makes a difference for genesis state construction via messages, where
+	// some messages are sent from non-account actors (e.g. fund transfers from the reward actor).
+	if originatorIsAccount {
+		fromActor.IncrementSeqNum()
+		if err := vm.state.SetActor(vm.context, imsg.from, fromActor); err != nil {
+			return nil, err
+		}
+	}
+
+	// 3. build context
+	topLevel := topLevelContext{
+		originatorStableAddress: originator,
+		originatorCallSeq:       fromActor.CallSeqNum, // Implied CallSeqNum is that of the actor before incrementing.
+		newActorAddressCount:    0,
+	}
+
+	ctx := newInvocationContext(vm, &topLevel, imsg, fromActor, &gasTank, rnd)
+
+	// 4. invoke message
+	ret, code := ctx.invoke()
+	if code.IsError() {
+		return nil, fmt.Errorf("invalid exit code %d during implicit message execution: from %s, to %s, method %d, value %s, params %v",
+			code, imsg.from, imsg.to, imsg.method, imsg.value, imsg.params)
+	}
+	return ret.inner, nil
 }
 
-var _ runtime.PatternContext = patternContext{}
+// applyMessage applies the message to the current state.
+func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd crypto.RandomnessSource) (message.Receipt, minerPenaltyFIL, gasRewardFIL) {
+	// This method does not actually execute the message itself,
+	// but rather deals with the pre/post processing of a message.
+	// (see: `invocationContext.invoke()` for the dispatch and execution)
 
-func (ctx patternContext) Code() cid.Cid {
-	return ctx.vm.from.Code
+	// initiate gas tracking
+	gasTank := NewGasTracker(msg.GasLimit)
+
+	// pre-send
+	// 1. charge for message existence
+	// 2. load sender actor
+	// 3. check message seq number
+	// 4. check if _sender_ has enough funds
+	// 5. increment message seq number
+	// 6. withheld maximum gas from _sender_
+	// 7. checkpoint state
+
+	// 1. charge for bytes used in chain
+	msgGasCost := vm.pricelist.OnChainMessage(onChainMsgSize)
+	ok := gasTank.TryCharge(msgGasCost)
+	if !ok {
+		// Invalid message; insufficient gas limit to pay for the on-chain message size.
+		// Note: the miner needs to pay the full msg cost, not what might have been partially consumed
+		return message.Failure(exitcode.SysErrOutOfGas, gas.Zero), msgGasCost.ToTokens(msg.GasPrice), big.Zero()
+	}
+
+	// 2. load actor from global state
+	if msg.From, ok = vm.normalizeAddress(msg.From); !ok {
+		return message.Failure(exitcode.SysErrSenderInvalid, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
+	}
+
+	fromActor, found, err := vm.state.GetActor(vm.context, msg.From)
+	if err != nil {
+		panic(err)
+	}
+	if !found {
+		// Execution error; sender does not exist at time of message execution.
+		return message.Failure(exitcode.SysErrSenderInvalid, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
+	}
+
+	if !fromActor.Code.Equals(builtin.AccountActorCodeID) {
+		// Execution error; sender is not an account.
+		return message.Failure(exitcode.SysErrSenderInvalid, gas.Zero), gasTank.gasConsumed.ToTokens(msg.GasPrice), big.Zero()
+	}
+
+	// 3. make sure this is the right message order for fromActor
+	if msg.CallSeqNum != fromActor.CallSeqNum {
+		// Execution error; invalid seq number.
+		return message.Failure(exitcode.SysErrSenderStateInvalid, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
+	}
+
+	// 4. Check sender balance (gas + value being sent)
+	gasLimitCost := msg.GasLimit.ToTokens(msg.GasPrice)
+	totalCost := big.Add(msg.Value, gasLimitCost)
+	if fromActor.Balance.LessThan(totalCost) {
+		// Execution error; sender does not have sufficient funds to pay for the gas limit.
+		return message.Failure(exitcode.SysErrSenderStateInvalid, gas.Zero), gasTank.GasConsumed().ToTokens(msg.GasPrice), big.Zero()
+	}
+
+	// 5. Increment sender CallSeqNum
+	fromActor.IncrementSeqNum()
+	// update actor
+	if err := vm.state.SetActor(vm.context, msg.From, fromActor); err != nil {
+		panic(err)
+	}
+
+	// 6. Deduct gas limit funds from sender first
+	// Note: this should always succeed, due to the sender balance check above
+	// Note: after this point, we need to return this funds back before exiting
+	if !gasLimitCost.Nil() && !gasLimitCost.IsZero() {
+		vm.transfer(msg.From, builtin.RewardActorAddr, gasLimitCost)
+	}
+
+	// reload from actor
+	// Note: balance might have changed
+	fromActor, found, err = vm.state.GetActor(vm.context, msg.From)
+	if err != nil {
+		panic(err)
+	}
+	if !found {
+		panic("unreachable: actor cannot possibly not exist")
+	}
+
+	// Load sender account state to obtain stable pubkey address.
+	var senderState account.State
+	_, err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
+	if err != nil {
+		panic(err)
+	}
+
+	// 7. checkpoint state
+	// Even if the message fails, the following accumulated changes will be applied:
+	// - CallSeqNumber increment
+	// - sender balance withheld
+	priorRoot, err := vm.checkpoint()
+	if err != nil {
+		panic(err)
+	}
+
+	// send
+	// 1. build internal message
+	// 2. build invocation context
+	// 3. process the msg
+
+	topLevel := topLevelContext{
+		originatorStableAddress: senderState.Address,
+		originatorCallSeq:       msg.CallSeqNum,
+		newActorAddressCount:    0,
+	}
+
+	// 1. build internal msg
+	imsg := internalMessage{
+		from:   msg.From,
+		to:     msg.To,
+		value:  msg.Value,
+		method: msg.Method,
+		params: msg.Params,
+	}
+
+	// 2. build invocation context
+	ctx := newInvocationContext(vm, &topLevel, imsg, fromActor, &gasTank, rnd)
+
+	// 3. invoke
+	ret, code := ctx.invoke()
+
+	// build receipt
+	receipt := message.Receipt{
+		ExitCode: code,
+	}
+	// encode value
+	receipt.ReturnValue, err = ret.ToCbor()
+	if err != nil {
+		// failed to encode object returned by actor
+		receipt.ReturnValue = []byte{}
+		receipt.ExitCode = exitcode.SysErrorIllegalActor
+	}
+
+	// post-send
+	// 1. charge gas for putting the return value on the chain
+	// 2. settle gas money around (unused_gas -> sender)
+	// 3. success!
+
+	// 1. charge for the space used by the return value
+	// Note: the GasUsed in the message receipt does not
+	ok = gasTank.TryCharge(vm.pricelist.OnChainReturnValue(&receipt))
+	if !ok {
+		// Insufficient gas remaining to cover the on-chain return value; proceed as in the case
+		// of method execution failure.
+		receipt.ExitCode = exitcode.SysErrOutOfGas
+		receipt.ReturnValue = []byte{}
+	}
+
+	// Roll back all state if the receipt's exit code is not ok.
+	// This is required in addition to rollback within the invocation context since top level messages can fail for
+	// more reasons than internal ones. Invocation context still needs its own rollback so actors can recover and
+	// proceed from a nested call failure.
+	if receipt.ExitCode != exitcode.Ok {
+		if err := vm.rollback(priorRoot); err != nil {
+			panic(err)
+		}
+	}
+
+	// 2. settle gas money around (unused_gas -> sender)
+	receipt.GasUsed = gasTank.GasConsumed()
+	refundGas := msg.GasLimit - receipt.GasUsed
+	amount := refundGas.ToTokens(msg.GasPrice)
+	if !amount.Nil() && !amount.IsZero() {
+		vm.transfer(builtin.RewardActorAddr, msg.From, refundGas.ToTokens(msg.GasPrice))
+	}
+
+	// 3. Success!
+	return receipt, big.Zero(), gasTank.GasConsumed().ToTokens(msg.GasPrice)
+}
+
+// transfer debits money from one account and credits it to another.
+// avoid calling this method with a zero amount else it will perform unnecessary actor loading.
+//
+// WARNING: this method will panic if the the amount is negative, accounts dont exist, or have inssuficient funds.
+//
+// Note: this is not idiomatic, it follows the Spec expectations for this method.
+func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amount abi.TokenAmount) (*actor.Actor, *actor.Actor) {
+	// allow only for positive amounts
+	if amount.LessThan(abi.NewTokenAmount(0)) {
+		panic("unreachable: negative funds transfer not allowed")
+	}
+
+	ctx := context.Background()
+
+	// retrieve debit account
+	fromActor, found, err := vm.state.GetActor(ctx, debitFrom)
+	if err != nil {
+		panic(err)
+	}
+	if !found {
+		panic(fmt.Errorf("unreachable: debit account not found. %s", err))
+	}
+
+	// check that account has enough balance for transfer
+	if fromActor.Balance.LessThan(amount) {
+		panic("unreachable: insufficient balance on debit account")
+	}
+
+	// debit funds
+	fromActor.Balance = big.Sub(fromActor.Balance, amount)
+	if err := vm.state.SetActor(ctx, debitFrom, fromActor); err != nil {
+		panic(err)
+	}
+
+	// retrieve credit account
+	toActor, found, err := vm.state.GetActor(ctx, creditTo)
+	if err != nil {
+		panic(err)
+	}
+	if !found {
+		panic(fmt.Errorf("unreachable: credit account not found. %s", err))
+	}
+
+	// credit funds
+	toActor.Balance = big.Add(toActor.Balance, amount)
+	if err := vm.state.SetActor(ctx, creditTo, toActor); err != nil {
+		panic(err)
+	}
+	return toActor, fromActor
+}
+
+func (vm *VM) getActorImpl(code cid.Cid) dispatch.Dispatcher {
+	actorImpl, err := vm.actorImpls.GetActorImpl(code)
+	if err != nil {
+		runtime.Abort(exitcode.SysErrInvalidReceiver)
+	}
+	return actorImpl
+}
+
+//
+// implement runtime.Runtime for VM
+//
+
+var _ runtime.Runtime = (*VM)(nil)
+
+// CurrentEpoch implements runtime.Runtime.
+func (vm *VM) CurrentEpoch() abi.ChainEpoch {
+	return vm.currentEpoch
+}
+
+//
+// implement runtime.MessageInfo for internalMessage
+//
+
+var _ specsruntime.Message = (*internalMessage)(nil)
+
+// ValueReceived implements runtime.MessageInfo.
+func (msg internalMessage) ValueReceived() abi.TokenAmount {
+	return msg.value
+}
+
+// Caller implements runtime.MessageInfo.
+func (msg internalMessage) Caller() address.Address {
+	return msg.from
+}
+
+// Receiver implements runtime.MessageInfo.
+func (msg internalMessage) Receiver() address.Address {
+	return msg.to
+}
+
+//
+// implement syscalls state view
+//
+
+type syscallsStateView struct {
+	*VM
+}
+
+func (vm *syscallsStateView) AccountSignerAddress(ctx context.Context, accountAddr address.Address) (address.Address, error) {
+	// Short-circuit when given a pubkey address.
+	if accountAddr.Protocol() == address.SECP256K1 || accountAddr.Protocol() == address.BLS {
+		return accountAddr, nil
+	}
+	actor, found, err := vm.state.GetActor(vm.context, accountAddr)
+	if err != nil {
+		return address.Undef, errors.Wrapf(err, "signer resolution failed to find actor %s", accountAddr)
+	}
+	if !found {
+		return address.Undef, fmt.Errorf("signer resolution found no such actor %s", accountAddr)
+	}
+	var state account.State
+	if _, err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
+		// This error is internal, shouldn't propagate as on-chain failure
+		panic(fmt.Errorf("signer resolution failed to lost state for %s ", accountAddr))
+	}
+	return state.Address, nil
+}
+
+func (vm *syscallsStateView) MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error) {
+	actor, found, err := vm.state.GetActor(vm.context, maddr)
+	if err != nil {
+		return address.Undef, address.Undef, errors.Wrapf(err, "miner resolution failed to find actor %s", maddr)
+	}
+	if !found {
+		return address.Undef, address.Undef, fmt.Errorf("miner resolution found no such actor %s", maddr)
+	}
+	var state miner.State
+	if _, err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
+		// This error is internal, shouldn't propagate as on-chain failure
+		panic(fmt.Errorf("signer resolution failed to lost state for %s ", maddr))
+	}
+	return state.Info.Owner, state.Info.Worker, nil
+}
+
+//
+// utils
+//
+
+func msgCID(msg *types.UnsignedMessage) cid.Cid {
+	cid, err := msg.Cid()
+	if err != nil {
+		panic(fmt.Sprintf("failed to compute message CID: %v; %+v", err, msg))
+	}
+	return cid
+}
+
+func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount, gasReward abi.TokenAmount, ticketCount int64) internalMessage {
+	params := &reward.AwardBlockRewardParams{
+		Miner:       blockMiner,
+		Penalty:     penalty,
+		GasReward:   gasReward,
+		TicketCount: ticketCount,
+	}
+	encoded, err := encoding.Encode(params)
+	if err != nil {
+		panic(fmt.Errorf("failed to encode built-in block reward. %s", err))
+	}
+	return internalMessage{
+		from:   builtin.SystemActorAddr,
+		to:     builtin.RewardActorAddr,
+		value:  big.Zero(),
+		method: builtin.MethodsReward.AwardBlockReward,
+		params: encoded,
+	}
+}
+
+func makeCronTickMessage() internalMessage {
+	return internalMessage{
+		from:   builtin.SystemActorAddr,
+		to:     builtin.CronActorAddr,
+		value:  big.Zero(),
+		method: builtin.MethodsCron.EpochTick,
+		params: []byte{},
+	}
 }

@@ -11,25 +11,30 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-block-format"
+	"github.com/filecoin-project/go-address"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
-	"github.com/ipfs/go-graphsync/ipldbridge"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/ipfs/go-ipld-format"
+	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-ipld-prime"
-	"github.com/ipld/go-ipld-prime/impl/free"
-	"github.com/ipld/go-ipld-prime/linking/cid"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	basicnode "github.com/ipld/go-ipld-prime/node/basic"
+	"github.com/ipld/go-ipld-prime/traversal"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 // fakeRequest captures the parameters necessary to uniquely
@@ -58,6 +63,27 @@ type fakeResponse struct {
 	hangupAfter int
 }
 
+// String serializes the errs and blks field to a printable string for debug
+func (fr fakeResponse) String() string {
+	errStr := ""
+	for _, err := range fr.errs {
+		if err != nil {
+			errStr += err.Error()
+		} else {
+			errStr += fmt.Sprintf("<nil err>")
+		}
+	}
+	blkStr := ""
+	for _, blk := range fr.blks {
+		if blk == nil {
+			blkStr += fmt.Sprintf("<nil blk>")
+		} else {
+			blkStr += fmt.Sprintf("cid: %s, raw data: %x\n", blk.Cid(), blk.RawData())
+		}
+	}
+	return fmt.Sprintf("ipld nodes: %s\nerrs: %s\n\n", blkStr, errStr)
+}
+
 const noHangup = -1
 
 // request response just records a request and the respond to send when its
@@ -78,7 +104,7 @@ type hungRequest struct {
 // mockableGraphsync conforms to the graphsync exchange interface needed by
 // the graphsync fetcher but will only send stubbed responses
 type mockableGraphsync struct {
-	clock               th.FakeClock
+	clock               clock.Fake
 	hungRequests        []*hungRequest
 	incomingHungRequest chan *hungRequest
 	requestsToProcess   chan struct{}
@@ -90,7 +116,15 @@ type mockableGraphsync struct {
 	t                   *testing.T
 }
 
-func newMockableGraphsync(ctx context.Context, store bstore.Blockstore, clock th.FakeClock, t *testing.T) *mockableGraphsync {
+func (mgs *mockableGraphsync) stubString() string {
+	stubStr := ""
+	for _, reqResp := range mgs.stubs {
+		stubStr += reqResp.response.String()
+	}
+	return stubStr
+}
+
+func newMockableGraphsync(ctx context.Context, store bstore.Blockstore, clock clock.Fake, t *testing.T) *mockableGraphsync {
 	mgs := &mockableGraphsync{
 		ctx:                 ctx,
 		incomingHungRequest: make(chan *hungRequest),
@@ -207,7 +241,8 @@ func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s select
 		return bytes.NewBuffer(node.RawData()), nil
 	}
 	root := cidlink.Link{Cid: c}
-	node, err := root.Load(mgs.ctx, ipld.LinkContext{}, ipldfree.NodeBuilder(), linkLoader)
+	nb := basicnode.Style.Any.NewBuilder()
+	err := root.Load(mgs.ctx, ipld.LinkContext{}, nb, linkLoader)
 	if err != nil {
 		mgs.stubs = append(mgs.stubs, requestResponse{
 			fakeRequest{pid, root, s},
@@ -215,8 +250,9 @@ func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s select
 		})
 		return
 	}
+	node := nb.Build()
 	visited := 0
-	visitor := func(tp ipldbridge.TraversalProgress, n ipld.Node, tr ipldbridge.TraversalReason) error {
+	visitor := func(tp traversal.Progress, n ipld.Node, tr traversal.VisitReason) error {
 		if hangup != noHangup && visited >= hangup {
 			return errHangup
 		}
@@ -224,12 +260,15 @@ func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s select
 		responses = append(responses, graphsync.ResponseProgress{Node: n, Path: tp.Path, LastBlock: tp.LastBlock})
 		return nil
 	}
-	err = ipldbridge.TraversalProgress{
-		Cfg: &ipldbridge.TraversalConfig{
+	err = traversal.Progress{
+		Cfg: &traversal.Config{
 			Ctx:        mgs.ctx,
 			LinkLoader: linkLoader,
+			LinkTargetNodeStyleChooser: func(lnk ipld.Link, lnkCtx ipld.LinkContext) (ipld.NodeStyle, error) {
+				return basicnode.Style.Any, nil
+			},
 		},
-	}.TraverseInformatively(node, s, visitor)
+	}.WalkAdv(node, s, visitor)
 	if err == errHangup {
 		err = nil
 	}
@@ -278,7 +317,7 @@ func (mgs *mockableGraphsync) processResponse(ctx context.Context, mr fakeRespon
 	return responseChan, errChan
 }
 
-func (mgs *mockableGraphsync) Request(ctx context.Context, p peer.ID, root ipld.Link, selectorSpec ipld.Node) (<-chan graphsync.ResponseProgress, <-chan error) {
+func (mgs *mockableGraphsync) Request(ctx context.Context, p peer.ID, root ipld.Link, selectorSpec ipld.Node, extensions ...graphsync.ExtensionData) (<-chan graphsync.ResponseProgress, <-chan error) {
 	parsed, err := selector.ParseSelector(selectorSpec)
 	if err != nil {
 		return mgs.processResponse(ctx, fakeResponse{nil, []error{fmt.Errorf("invalid selector")}, nil, noHangup})
@@ -317,33 +356,34 @@ func requireBlockStorePut(t *testing.T, bs bstore.Blockstore, data format.Node) 
 }
 
 func simpleBlock() *block.Block {
-	meta := types.TxMeta{
-		SecpRoot: types.EmptyMessagesCID,
-		BLSRoot:  types.EmptyMessagesCID,
-	}
 	return &block.Block{
-		ParentWeight:    0,
+		ParentWeight:    fbig.Zero(),
 		Parents:         block.NewTipSetKey(),
 		Height:          0,
-		Messages:        meta,
-		MessageReceipts: types.EmptyReceiptsCID,
+		StateRoot:       e.NewCid(types.EmptyMessagesCID),
+		Messages:        e.NewCid(types.EmptyTxMetaCID),
+		MessageReceipts: e.NewCid(types.EmptyReceiptsCID),
+		BlockSig:        &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
+		BLSAggregateSig: &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 	}
 }
 
 func requireSimpleValidBlock(t *testing.T, nonce uint64, miner address.Address) *block.Block {
 	b := simpleBlock()
 	ticket := block.Ticket{}
-	ticket.VRFProof = block.VRFPi(make([]byte, binary.Size(nonce)))
+	ticket.VRFProof = make([]byte, binary.Size(nonce))
 	binary.BigEndian.PutUint64(ticket.VRFProof, nonce)
 	b.Ticket = ticket
 	bytes, err := cbor.DumpObject("null")
 	require.NoError(t, err)
-	b.StateRoot, _ = cid.Prefix{
+	rawRoot, err := cid.Prefix{
 		Version:  1,
 		Codec:    cid.DagCBOR,
-		MhType:   types.DefaultHashFunction,
+		MhType:   constants.DefaultHashFunction,
 		MhLength: -1,
 	}.Sum(bytes)
+	require.NoError(t, err)
+	b.StateRoot = e.NewCid(rawRoot)
 	b.Miner = miner
 	return b
 }
@@ -357,15 +397,15 @@ func (mv mockSyntaxValidator) ValidateSyntax(ctx context.Context, blk *block.Blo
 	return nil
 }
 
-func (mv mockSyntaxValidator) ValidateMessagesSyntax(ctx context.Context, messages []*types.SignedMessage) error {
+func (mv mockSyntaxValidator) ValidateSignedMessageSyntax(ctx context.Context, message *types.SignedMessage) error {
 	return mv.validateMessagesError
 }
 
-func (mv mockSyntaxValidator) ValidateUnsignedMessagesSyntax(ctx context.Context, messages []*types.UnsignedMessage) error {
+func (mv mockSyntaxValidator) ValidateUnsignedMessageSyntax(ctx context.Context, message *types.UnsignedMessage) error {
 	return nil
 }
 
-func (mv mockSyntaxValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []*types.MessageReceipt) error {
+func (mv mockSyntaxValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []vm.MessageReceipt) error {
 	return mv.validateReceiptsError
 }
 

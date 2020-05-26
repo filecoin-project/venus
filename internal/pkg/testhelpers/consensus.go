@@ -2,80 +2,49 @@ package testhelpers
 
 import (
 	"context"
-	"math/big"
 	"testing"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	cid "github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
+	bls "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // RequireSignedTestBlockFromTipSet creates a block with a valid signature by
 // the passed in miner work and a Miner field set to the minerAddr.
-func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, stateRootCid cid.Cid, receiptRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer types.Signer) *block.Block {
-	electionProof := consensus.MakeFakePoStForTest()
+func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, stateRootCid cid.Cid, receiptRootCid cid.Cid, height abi.ChainEpoch, minerAddr address.Address, minerWorker address.Address, signer types.Signer) *block.Block {
 	ticket := consensus.MakeFakeTicketForTest()
-	emptyBLSSig := (*bls.Aggregate([]bls.Signature{}))[:]
-	winner := block.NewEPoStCandidate(0, []byte{0xe}, 0)
-	postRandomness := []byte{0xff}
-	postInfo := block.NewEPoStInfo(electionProof, postRandomness, winner)
+	emptyBLSSig := crypto.Signature{
+		Type: crypto.SigTypeBLS,
+		Data: (*bls.Aggregate([]bls.Signature{}))[:],
+	}
 
 	b := &block.Block{
 		Miner:           minerAddr,
 		Ticket:          ticket,
 		Parents:         baseTipSet.Key(),
-		ParentWeight:    types.Uint64(10000 * height),
-		Height:          types.Uint64(height),
-		StateRoot:       stateRootCid,
-		MessageReceipts: receiptRootCid,
-		BLSAggregateSig: emptyBLSSig,
-		EPoStInfo:       postInfo,
+		ParentWeight:    types.Uint64ToBig(uint64(height * 10000)),
+		Height:          height,
+		StateRoot:       e.NewCid(stateRootCid),
+		MessageReceipts: e.NewCid(receiptRootCid),
+		BLSAggregateSig: &emptyBLSSig,
 	}
-	sig, err := signer.SignBytes(b.SignatureData(), minerWorker)
+	sig, err := signer.SignBytes(context.TODO(), b.SignatureData(), minerWorker)
 	require.NoError(t, err)
-	b.BlockSig = sig
+	b.BlockSig = &sig
 
 	return b
-}
-
-// MakeRandomPoStProofForTest creates a random proof.
-func MakeRandomPoStProofForTest() types.PoStProof {
-	proofSize := types.OnePoStProofPartition.ProofLen()
-	p := MakeRandomBytes(proofSize)
-	p[0] = 42
-	poStProof := make([]byte, proofSize)
-	for idx, elem := range p {
-		poStProof[idx] = elem
-	}
-	return poStProof
-}
-
-// FakeBlockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
-type FakeBlockRewarder struct{}
-
-var _ consensus.BlockRewarder = (*FakeBlockRewarder)(nil)
-
-// BlockReward is a noop
-func (tbr *FakeBlockRewarder) BlockReward(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address) error {
-	// do nothing to keep state root the same
-	return nil
-}
-
-// GasReward does nothing
-func (tbr *FakeBlockRewarder) GasReward(ctx context.Context, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error {
-	// do nothing to keep state root the same
-	return nil
 }
 
 // FakeBlockValidator passes everything as valid
@@ -86,8 +55,8 @@ func NewFakeBlockValidator() *FakeBlockValidator {
 	return &FakeBlockValidator{}
 }
 
-// ValidateSemantic does nothing.
-func (fbv *FakeBlockValidator) ValidateSemantic(ctx context.Context, child *block.Block, parents block.TipSet) error {
+// ValidateHeaderSemantic does nothing.
+func (fbv *FakeBlockValidator) ValidateHeaderSemantic(ctx context.Context, child *block.Block, parents block.TipSet) error {
 	return nil
 }
 
@@ -107,7 +76,7 @@ func (fbv *FakeBlockValidator) ValidateUnsignedMessagesSyntax(ctx context.Contex
 }
 
 // ValidateReceiptsSyntax does nothing
-func (fbv *FakeBlockValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []*types.MessageReceipt) error {
+func (fbv *FakeBlockValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []vm.MessageReceipt) error {
 	return nil
 }
 
@@ -126,7 +95,7 @@ func NewStubBlockValidator() *StubBlockValidator {
 	}
 }
 
-// ValidateSemantic returns nil or error for stubbed block `child`.
+// ValidateHeaderSemantic returns nil or error for stubbed block `child`.
 func (mbv *StubBlockValidator) ValidateSemantic(ctx context.Context, child *block.Block, parents *block.TipSet, _ uint64) error {
 	return mbv.semanticStubs[child.Cid()]
 }
@@ -142,7 +111,7 @@ func (mbv *StubBlockValidator) StubSyntaxValidationForBlock(blk *block.Block, er
 	mbv.syntaxStubs[blk.Cid()] = err
 }
 
-// StubSemanticValidationForBlock stubs an error when the ValidateSemantic is called
+// StubSemanticValidationForBlock stubs an error when the ValidateHeaderSemantic is called
 // on the with the given child block.
 func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *block.Block, err error) {
 	mbv.semanticStubs[child.Cid()] = err
@@ -150,94 +119,74 @@ func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *block.Block
 
 // NewFakeProcessor creates a processor with a test validator and test rewarder
 func NewFakeProcessor() *consensus.DefaultProcessor {
-	return consensus.NewConfiguredProcessor(&consensus.FakeMessageValidator{}, &FakeBlockRewarder{}, builtin.DefaultActors)
-}
-
-type testSigner struct{}
-
-func (ms testSigner) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
-	return types.Signature{}, nil
-}
-
-// RequireActorIDAddress looks up an actor address in the init actor and returns the associated id address
-func RequireActorIDAddress(ctx context.Context, t *testing.T, st state.Tree, store vm.StorageMap, addr address.Address) address.Address {
-	processor := consensus.NewConfiguredProcessor(&consensus.FakeMessageValidator{}, &FakeBlockRewarder{}, builtin.DefaultActors)
-	params, err := abi.ToEncodedValues(addr)
-	require.NoError(t, err)
-
-	result, _, err := processor.CallQueryMethod(ctx, st, store, address.InitAddress, initactor.GetActorIDForAddressMethodID, params, address.Undef, nil)
-	require.NoError(t, err)
-
-	idVal, err := abi.Deserialize(result[0], abi.Integer)
-	require.NoError(t, err)
-
-	idAddr, err := address.NewIDAddress(idVal.Val.(*big.Int).Uint64())
-	require.NoError(t, err)
-
-	return idAddr
+	return consensus.NewConfiguredProcessor(vm.DefaultActors, &vm.FakeSyscalls{}, &consensus.FakeChainRandomness{})
 }
 
 // ApplyTestMessage sends a message directly to the vm, bypassing message
 // validation
-func ApplyTestMessage(st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
-	return applyTestMessageWithAncestors(builtin.DefaultActors, st, store, msg, bh, nil)
+func ApplyTestMessage(st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch) (*consensus.ApplicationResult, error) {
+	return applyTestMessageWithAncestors(vm.DefaultActors, st, store, msg, bh, nil)
 }
 
 // ApplyTestMessageWithActors sends a message directly to the vm with a given set of builtin actors
-func ApplyTestMessageWithActors(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
+func ApplyTestMessageWithActors(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch) (*consensus.ApplicationResult, error) {
 	return applyTestMessageWithAncestors(actors, st, store, msg, bh, nil)
 }
 
 // ApplyTestMessageWithGas uses the FakeBlockRewarder but the default SignedMessageValidator
-func ApplyTestMessageWithGas(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight, minerOwner address.Address) (*consensus.ApplicationResult, error) {
-	applier := consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), consensus.NewDefaultBlockRewarder(), actors)
+func ApplyTestMessageWithGas(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch, minerOwner address.Address) (*consensus.ApplicationResult, error) {
+	applier := consensus.NewConfiguredProcessor(actors, &vm.FakeSyscalls{}, &consensus.FakeChainRandomness{})
 	return newMessageApplier(msg, applier, st, store, bh, minerOwner, nil)
 }
 
-func newMessageApplier(msg *types.UnsignedMessage, processor *consensus.DefaultProcessor, st state.Tree, storageMap vm.StorageMap,
-	bh *types.BlockHeight, minerOwner address.Address, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
-	amr, err := processor.ApplyMessagesAndPayRewards(context.Background(), st, storageMap, []*types.UnsignedMessage{msg}, minerOwner, bh, ancestors)
-	if err != nil {
-		return nil, err
-	}
+func newMessageApplier(msg *types.UnsignedMessage, processor *consensus.DefaultProcessor, st state.Tree, vms vm.Storage, bh abi.ChainEpoch, minerOwner address.Address, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
+	// Dragons: support for this feature no longer exists, delete or resurect
 
-	if err := storageMap.Flush(); err != nil {
-		return nil, err
-	}
+	// amr, err := processor.ApplyMessagesAndPayRewards(context.Background(), st, storageMap, []*types.UnsignedMessage{msg}, minerOwner, bh, ancestors)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	if len(amr) > 0 {
-		if amr[0].Failure != nil {
-			return nil, amr[0].Failure
-		}
-		return &amr[0].ApplicationResult, err
-	}
+	// if err := storageMap.Flush(); err != nil {
+	// 	return nil, err
+	// }
 
-	return nil, err
+	// if len(amr) > 0 {
+	// 	if amr[0].Failure != nil {
+	// 		return nil, amr[0].Failure
+	// 	}
+	// 	return &amr[0].ApplicationResult, err
+	// }
+
+	return nil, nil
 }
 
 // CreateAndApplyTestMessageFrom wraps the given parameters in a message and calls ApplyTestMessage.
-func CreateAndApplyTestMessageFrom(t *testing.T, st state.Tree, vms vm.StorageMap, from address.Address, to address.Address, val, bh uint64, method types.MethodID, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
+func CreateAndApplyTestMessageFrom(t *testing.T, st state.Tree, vms vm.Storage, from address.Address, to address.Address, val, bh uint64, method abi.MethodNum, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
 	t.Helper()
 
-	pdata := actor.MustConvertParams(params...)
+	pdata, err := encoding.Encode(params)
+	if err != nil {
+		panic(err)
+	}
 	msg := types.NewUnsignedMessage(from, to, 0, types.NewAttoFILFromFIL(val), method, pdata)
-	return applyTestMessageWithAncestors(builtin.DefaultActors, st, vms, msg, types.NewBlockHeight(bh), ancestors)
+	return applyTestMessageWithAncestors(vm.DefaultActors, st, vms, msg, abi.ChainEpoch(bh), ancestors)
 }
 
 // CreateAndApplyTestMessage wraps the given parameters in a message and calls
 // CreateAndApplyTestMessageFrom sending the message from address.TestAddress
-func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.StorageMap, to address.Address, val, bh uint64, method types.MethodID, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
+func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.Storage, to address.Address, val, bh uint64, method abi.MethodNum, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
 	return CreateAndApplyTestMessageFrom(t, st, vms, address.TestAddress, to, val, bh, method, ancestors, params...)
 }
 
-func applyTestMessageWithAncestors(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
+func applyTestMessageWithAncestors(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
 	msg.GasPrice = types.NewGasPrice(1)
-	msg.GasLimit = types.NewGasUnits(300)
+	msg.GasLimit = gas.NewGas(300)
 
 	ta := newTestApplier(actors)
 	return newMessageApplier(msg, ta, st, store, bh, address.Undef, ancestors)
 }
 
-func newTestApplier(actors builtin.Actors) *consensus.DefaultProcessor {
-	return consensus.NewConfiguredProcessor(&consensus.FakeMessageValidator{}, &FakeBlockRewarder{}, actors)
+func newTestApplier(actors vm.ActorCodeLoader) *consensus.DefaultProcessor {
+	return consensus.NewConfiguredProcessor(actors, &vm.FakeSyscalls{}, &consensus.FakeChainRandomness{})
 }

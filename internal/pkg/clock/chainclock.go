@@ -4,62 +4,78 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+
+	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 // DefaultEpochDuration is the default duration of epochs
-const DefaultEpochDuration = 15 * time.Second
+const DefaultEpochDuration = builtin.EpochDurationSeconds * time.Second
+
+// DefaultPropagationDelay is the default time to await for blocks to arrive before mining
+const DefaultPropagationDelay = 6 * time.Second
 
 // ChainEpochClock is an interface for a clock that represents epochs of the protocol.
 type ChainEpochClock interface {
-	EpochAtTime(t time.Time) *types.BlockHeight
-	EpochRangeAtTimestamp(t uint64) (*types.BlockHeight, *types.BlockHeight)
-	StartTimeOfEpoch(e *types.BlockHeight) time.Time
-	WaitNextEpoch(ctx context.Context) *types.BlockHeight
+	EpochDuration() time.Duration
+	EpochAtTime(t time.Time) abi.ChainEpoch
+	EpochRangeAtTimestamp(t uint64) (abi.ChainEpoch, abi.ChainEpoch)
+	StartTimeOfEpoch(e abi.ChainEpoch) time.Time
+	WaitForEpoch(ctx context.Context, e abi.ChainEpoch)
+	WaitForEpochPropDelay(ctx context.Context, e abi.ChainEpoch)
+	WaitNextEpoch(ctx context.Context) abi.ChainEpoch
 	Clock
 }
 
 // chainClock is a clock that represents epochs of the protocol.
 type chainClock struct {
-	// GenesisTime is the time of the first block. EpochClock counts
-	// up from there.
-	GenesisTime time.Time
-	// EpochDuration is the fixed time length of the epoch window
-	EpochDuration time.Duration
+	// The time of the first block. EpochClock counts up from there.
+	genesisTime time.Time
+	// The fixed time length of the epoch window
+	epochDuration time.Duration
+	// propDelay is the time between the start of the epoch and the start
+	// of mining for the subsequent epoch. This delay provides time for
+	// blocks from the previous epoch to arrive.
+	propDelay time.Duration
 
 	Clock
 }
 
 // NewChainClock returns a ChainEpochClock wrapping a default clock.Clock
-func NewChainClock(genesisTime uint64, blockTime time.Duration) ChainEpochClock {
-	return NewChainClockFromClock(genesisTime, blockTime, NewSystemClock())
+func NewChainClock(genesisTime uint64, blockTime time.Duration, propDelay time.Duration) ChainEpochClock {
+	return NewChainClockFromClock(genesisTime, blockTime, propDelay, NewSystemClock())
 }
 
 // NewChainClockFromClock returns a ChainEpochClock wrapping the provided
 // clock.Clock
-func NewChainClockFromClock(genesisSeconds uint64, blockTime time.Duration, c Clock) ChainEpochClock {
+func NewChainClockFromClock(genesisSeconds uint64, blockTime time.Duration, propDelay time.Duration, c Clock) ChainEpochClock {
 	gt := time.Unix(int64(genesisSeconds), 0)
 	return &chainClock{
-		GenesisTime:   gt,
-		EpochDuration: blockTime,
+		genesisTime:   gt,
+		epochDuration: blockTime,
+		propDelay:     propDelay,
 		Clock:         c,
 	}
 }
 
+func (cc *chainClock) EpochDuration() time.Duration {
+	return cc.epochDuration
+}
+
 // EpochAtTime returns the ChainEpoch corresponding to t.
-// It first subtracts GenesisTime, then divides by EpochDuration
+// It first subtracts genesisTime, then divides by epochDuration
 // and returns the resulting number of epochs.
-func (cc *chainClock) EpochAtTime(t time.Time) *types.BlockHeight {
-	difference := t.Sub(cc.GenesisTime)
-	epochs := difference / cc.EpochDuration
-	return types.NewBlockHeight(uint64(epochs))
+func (cc *chainClock) EpochAtTime(t time.Time) abi.ChainEpoch {
+	difference := t.Sub(cc.genesisTime)
+	epochs := difference / cc.epochDuration
+	return abi.ChainEpoch(epochs)
 }
 
 // EpochRangeAtTimestamp returns the possible epoch number range a given
 // unix second timestamp value can validly belong to.  This method can go
 // away once integration tests work well enough to not require subsecond
 // block times.
-func (cc *chainClock) EpochRangeAtTimestamp(seconds uint64) (*types.BlockHeight, *types.BlockHeight) {
+func (cc *chainClock) EpochRangeAtTimestamp(seconds uint64) (abi.ChainEpoch, abi.ChainEpoch) {
 	earliest := time.Unix(int64(seconds), 0)
 	first := cc.EpochAtTime(earliest)
 	latest := earliest.Add(time.Second)
@@ -68,24 +84,39 @@ func (cc *chainClock) EpochRangeAtTimestamp(seconds uint64) (*types.BlockHeight,
 }
 
 // StartTimeOfEpoch returns the start time of the given epoch.
-func (cc *chainClock) StartTimeOfEpoch(e *types.BlockHeight) time.Time {
-	bigE := e.AsBigInt()
-	addedTime := cc.GenesisTime.Add(cc.EpochDuration * time.Duration(bigE.Int64()))
+func (cc *chainClock) StartTimeOfEpoch(e abi.ChainEpoch) time.Time {
+	addedTime := cc.genesisTime.Add(cc.epochDuration * time.Duration(e))
 	return addedTime
 }
 
-// WaitNextEpoch returns after the next epoch occurs or ctx is done.
-func (cc *chainClock) WaitNextEpoch(ctx context.Context) *types.BlockHeight {
+// WaitNextEpoch returns after the next epoch occurs, or ctx is done.
+func (cc *chainClock) WaitNextEpoch(ctx context.Context) abi.ChainEpoch {
 	currEpoch := cc.EpochAtTime(cc.Now())
-	nextEpoch := currEpoch.Add(types.NewBlockHeight(uint64(1)))
-	nextEpochStart := cc.StartTimeOfEpoch(nextEpoch)
-	nowB4 := cc.Now()
-	waitDur := nextEpochStart.Sub(nowB4)
-	newEpochCh := cc.After(waitDur)
-	select {
-	case <-newEpochCh:
-	case <-ctx.Done():
-	}
-
+	nextEpoch := currEpoch + 1
+	cc.WaitForEpoch(ctx, nextEpoch)
 	return nextEpoch
+}
+
+// WaitForEpoch returns when an epoch is due to start, or ctx is done.
+func (cc *chainClock) WaitForEpoch(ctx context.Context, e abi.ChainEpoch) {
+	cc.waitForEpochOffset(ctx, e, 0)
+}
+
+// WaitForEpochPropDelay returns propDelay time after the start of the epoch, or when ctx is done.
+func (cc *chainClock) WaitForEpochPropDelay(ctx context.Context, e abi.ChainEpoch) {
+	cc.waitForEpochOffset(ctx, e, cc.propDelay)
+}
+
+// waitNextEpochOffset returns when time is offset past the start of the epoch, or ctx is done.
+func (cc *chainClock) waitForEpochOffset(ctx context.Context, e abi.ChainEpoch, offset time.Duration) {
+	targetTime := cc.StartTimeOfEpoch(e).Add(offset)
+	nowB4 := cc.Now()
+	waitDur := targetTime.Sub(nowB4)
+	if waitDur > 0 {
+		newEpochCh := cc.After(waitDur)
+		select {
+		case <-newEpochCh:
+		case <-ctx.Done():
+		}
+	}
 }

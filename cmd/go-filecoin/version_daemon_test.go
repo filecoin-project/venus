@@ -10,8 +10,8 @@ import (
 
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	manet "github.com/multiformats/go-multiaddr-net"
 
-	"github.com/multiformats/go-multiaddr-net"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +25,7 @@ func TestVersion(t *testing.T) {
 	require.NoError(t, err)
 
 	version := string(verOut)
-	assert.Exactly(t, version, fmt.Sprintf("commit: %s", commit))
+	assert.Exactly(t, fmt.Sprintf("{\n\t\"Commit\": \"%s\"\n}\n", commit), version)
 }
 
 func TestVersionOverHttp(t *testing.T) {
@@ -63,5 +63,5 @@ func getCodeCommit(t *testing.T) string {
 	if gitOut, err = exec.Command("git", gitArgs...).Output(); err != nil {
 		assert.NoError(t, err)
 	}
-	return string(gitOut)
+	return strings.TrimSpace(string(gitOut))
 }

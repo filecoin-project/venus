@@ -5,34 +5,22 @@ import (
 	"fmt"
 	"sort"
 
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
-	"github.com/polydawn/refmt/obj/atlas"
 )
 
-func init() {
-	// A TipSetKey serializes as a sorted array of CIDs.
-	// Deserialization will sort the CIDs, if they're not already.
-	encoding.RegisterIpldCborType(atlas.BuildEntry(TipSetKey{}).Transform().
-		TransformMarshal(atlas.MakeMarshalTransformFunc(
-			func(s TipSetKey) ([]cid.Cid, error) {
-				return s.cids, nil
-			})).
-		TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
-			func(cids []cid.Cid) (TipSetKey, error) {
-				return NewTipSetKeyFromUnique(cids...)
-			})).
-		Complete())
-}
-
 // TipSetKey is an immutable set of CIDs forming a unique key for a TipSet.
-// Equal keys will have equivalent iteration order, but note that the CIDs are *not* maintained in
+// Equal keys will have equivalent iteration order. CIDs are maintained in
 // the same order as the canonical iteration order of blocks in a tipset (which is by ticket).
+// This convention is maintained by the caller.  The order of input cids to the constructor
+// must be the same as this canonical order.  It is the caller's responsibility to not
+// construct a key with duplicate ids
 // TipSetKey is a lightweight value type; passing by pointer is usually unnecessary.
 type TipSetKey struct {
 	// The slice is wrapped in a struct to enforce immutability.
-	cids []cid.Cid
+	cids []e.Cid
 }
 
 // NewTipSetKey initialises a new TipSetKey.
@@ -44,15 +32,17 @@ func NewTipSetKey(ids ...cid.Cid) TipSetKey {
 		return TipSetKey{}
 	}
 
-	cids := make([]cid.Cid, len(ids))
-	copy(cids, ids)
-	return TipSetKey{uniq(cids)}
+	cids := make([]e.Cid, len(ids))
+	for i := 0; i < len(ids); i++ {
+		cids[i] = e.NewCid(ids[i])
+	}
+	return TipSetKey{cids}
 }
 
 // NewTipSetKeyFromUnique initialises a set with CIDs that are expected to be unique.
 func NewTipSetKeyFromUnique(ids ...cid.Cid) (TipSetKey, error) {
 	s := NewTipSetKey(ids...)
-	if s.Len() != len(ids) {
+	if s.Len() != len(AsSet(ids)) {
 		return TipSetKey{}, errors.Errorf("Duplicate CID in %s", ids)
 	}
 	return s, nil
@@ -67,9 +57,9 @@ func (s TipSetKey) Empty() bool {
 func (s TipSetKey) Has(id cid.Cid) bool {
 	// Find index of the first CID not less than id.
 	idx := sort.Search(len(s.cids), func(i int) bool {
-		return !cidLess(s.cids[i], id)
+		return !cidLess(s.cids[i].Cid, id)
 	})
-	return idx < len(s.cids) && s.cids[idx].Equals(id)
+	return idx < len(s.cids) && s.cids[idx].Cid.Equals(id)
 }
 
 // Len returns the number of items in the set.
@@ -79,15 +69,13 @@ func (s TipSetKey) Len() int {
 
 // ToSlice returns a slice listing the cids in the set.
 func (s TipSetKey) ToSlice() []cid.Cid {
-	out := make([]cid.Cid, len(s.cids))
-	copy(out, s.cids)
-	return out
+	return unwrap(s.cids)
 }
 
 // Iter returns an iterator that allows the caller to iterate the set in its sort order.
 func (s TipSetKey) Iter() TipSetKeyIterator {
 	return TipSetKeyIterator{
-		s: s.cids,
+		s: s.ToSlice(),
 		i: 0,
 	}
 }
@@ -98,7 +86,7 @@ func (s TipSetKey) Equals(other TipSetKey) bool {
 		return false
 	}
 	for i := 0; i < len(s.cids); i++ {
-		if !s.cids[i].Equals(other.cids[i]) {
+		if !s.cids[i].Cid.Equals(other.cids[i].Cid) {
 			return false
 		}
 	}
@@ -106,12 +94,16 @@ func (s TipSetKey) Equals(other TipSetKey) bool {
 }
 
 // ContainsAll checks if another set is a subset of this one.
+// We can assume that the relative order of members of one key is
+// maintained in the other since we assume that all ids are sorted
+// by corresponding block ticket value.
 func (s *TipSetKey) ContainsAll(other TipSetKey) bool {
-	// Since the slices are sorted we can perform one pass over this set, advancing
-	// the other index whenever the values match.
+	// Since we assume the ids must have the same relative sorting we can
+	// perform one pass over this set, advancing the other index whenever the
+	// values match.
 	otherIdx := 0
 	for i := 0; i < s.Len() && otherIdx < other.Len(); i++ {
-		if s.cids[i].Equals(other.cids[otherIdx]) {
+		if s.cids[i].Cid.Equals(other.cids[otherIdx].Cid) {
 			otherIdx++
 		}
 	}
@@ -146,6 +138,32 @@ func (s *TipSetKey) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	s.cids = k.cids
+	return nil
+}
+
+// MarshalCBOR marshals the tipset key as an array of cids
+func (s TipSetKey) MarshalCBOR() ([]byte, error) {
+	// encode the zero value as length zero slice instead of nil per spec
+	if s.cids == nil {
+		encodableZero := make([]e.Cid, 0)
+		return encoding.Encode(encodableZero)
+	}
+	return encoding.Encode(s.cids)
+}
+
+// UnmarshalCBOR unmarshals a cbor array of cids to a tipset key
+func (s *TipSetKey) UnmarshalCBOR(data []byte) error {
+	var sortedEncCids []e.Cid
+	err := encoding.Decode(data, &sortedEncCids)
+	if err != nil {
+		return err
+	}
+	sortedCids := unwrap(sortedEncCids)
+	tmp, err := NewTipSetKeyFromUnique(sortedCids...)
+	if err != nil {
+		return err
+	}
+	*s = tmp
 	return nil
 }
 
@@ -185,30 +203,23 @@ func (si TipSetKeyIterator) Value() cid.Cid {
 	}
 }
 
-// Destructively sorts and uniqifies a slice of CIDs.
-func uniq(cids []cid.Cid) []cid.Cid {
-	sort.Slice(cids, func(i, j int) bool {
-		return cidLess(cids[i], cids[j])
-	})
-
-	if len(cids) >= 2 {
-		// Uniq-ify the sorted array.
-		// You can imagine doing this by using a second slice and appending elements to it if
-		// they don't match the last-copied element. This is just the same, but using the
-		// source slice as the destination too.
-		this, next := 0, 1
-		for next < len(cids) {
-			if cids[next] != cids[this] {
-				this++
-				cids[this] = cids[next]
-			}
-			next++
-		}
-		return cids[:this+1]
-	}
-	return cids
-}
-
 func cidLess(c1, c2 cid.Cid) bool {
 	return c1.KeyString() < c2.KeyString()
+}
+
+// unwrap goes from a slice of encodable cids to a slice of cids
+func unwrap(eCids []e.Cid) []cid.Cid {
+	out := make([]cid.Cid, len(eCids))
+	for i := 0; i < len(eCids); i++ {
+		out[i] = eCids[i].Cid
+	}
+	return out
+}
+
+func AsSet(cids []cid.Cid) map[cid.Cid]struct{} {
+	set := make(map[cid.Cid]struct{})
+	for _, c := range cids {
+		set[c] = struct{}{}
+	}
+	return set
 }

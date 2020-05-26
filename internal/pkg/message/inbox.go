@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -29,7 +30,7 @@ type Inbox struct {
 
 // messageProvider provides message collections given their cid.
 type messageProvider interface {
-	LoadMessages(context.Context, types.TxMeta) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
+	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
 }
 
 // NewInbox constructs a new inbox.
@@ -77,7 +78,7 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []block.T
 	for _, tipset := range oldChain {
 		for i := 0; i < tipset.Len(); i++ {
 			block := tipset.At(i)
-			secpMsgs, _, err := ib.messageProvider.LoadMessages(ctx, block.Messages)
+			secpMsgs, _, err := ib.messageProvider.LoadMessages(ctx, block.Messages.Cid)
 			if err != nil {
 				return err
 			}
@@ -97,7 +98,7 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []block.T
 	var removeCids []cid.Cid
 	for _, tipset := range newChain {
 		for i := 0; i < tipset.Len(); i++ {
-			secpMsgs, _, err := ib.messageProvider.LoadMessages(ctx, tipset.At(i).Messages)
+			secpMsgs, _, err := ib.messageProvider.LoadMessages(ctx, tipset.At(i).Messages.Cid)
 			if err != nil {
 				return err
 			}
@@ -129,7 +130,7 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []block.T
 func timeoutMessages(ctx context.Context, pool *Pool, chains chain.TipSetProvider, head block.TipSet, maxAgeTipsets uint) error {
 	var err error
 
-	var minimumHeight uint64
+	var minimumHeight abi.ChainEpoch
 	itr := chain.IterAncestors(ctx, chains, head)
 
 	// Walk back maxAgeTipsets+1 tipsets to determine lowest block height to prune.

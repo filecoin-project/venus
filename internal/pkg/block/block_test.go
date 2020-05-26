@@ -3,19 +3,23 @@ package block_test
 import (
 	"bytes"
 	"encoding/json"
-	"math/rand"
 	"reflect"
 	"testing"
-	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	blk "github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestTriangleEncoding(t *testing.T) {
@@ -35,7 +39,7 @@ func TestTriangleEncoding(t *testing.T) {
 	// into a block (second half of the second case). I don't claim this is ideal,
 	// see: https://github.com/filecoin-project/go-filecoin/issues/599
 
-	newAddress := address.NewForTestGetter()
+	newAddress := vmaddr.NewForTestGetter()
 
 	testRoundTrip := func(t *testing.T, exp *blk.Block) {
 		jb, err := json.Marshal(exp)
@@ -44,16 +48,13 @@ func TestTriangleEncoding(t *testing.T) {
 		err = json.Unmarshal(jb, &jsonRoundTrip)
 		require.NoError(t, err)
 
-		ipldNodeOrig, err := encoding.Encode(exp)
+		ipldNodeOrig, err := encoding.Encode(jsonRoundTrip)
 		assert.NoError(t, err)
-		// NOTICE: skips the intermediate json steps from above.
 		var cborJSONRoundTrip blk.Block
 		err = encoding.Decode(ipldNodeOrig, &cborJSONRoundTrip)
 		assert.NoError(t, err)
-
-		types.AssertHaveSameCid(t, &jsonRoundTrip, &cborJSONRoundTrip)
+		types.AssertHaveSameCid(t, exp, &cborJSONRoundTrip)
 	}
-
 	t.Run("encoding block with zero fields works", func(t *testing.T) {
 		testRoundTrip(t, &blk.Block{})
 	})
@@ -61,22 +62,34 @@ func TestTriangleEncoding(t *testing.T) {
 	t.Run("encoding block with nonzero fields works", func(t *testing.T) {
 		// We should ensure that every field is set -- zero values might
 		// pass when non-zero values do not due to nil/null encoding.
-		candidate1 := blk.NewEPoStCandidate(5, []byte{0x05}, 52)
-		candidate2 := blk.NewEPoStCandidate(3, []byte{0x04}, 3000)
-		postInfo := blk.NewEPoStInfo([]byte{0x07}, []byte{0x02, 0x06}, candidate1, candidate2)
+		posts := []blk.PoStProof{blk.NewPoStProof(constants.DevRegisteredWinningPoStProof, []byte{0x07})}
 		b := &blk.Block{
-			Miner:           newAddress(),
-			Ticket:          blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-			Height:          types.Uint64(2),
-			Messages:        types.TxMeta{SecpRoot: types.CidFromString(t, "somecid"), BLSRoot: types.EmptyMessagesCID},
-			MessageReceipts: types.CidFromString(t, "somecid"),
+			Miner:         newAddress(),
+			Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
+			ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
+			Height:        2,
+			BeaconEntries: []*drand.Entry{
+				{
+					Round: drand.Round(1),
+					Data:  []byte{0x3},
+				},
+			},
+			Messages:        e.NewCid(types.CidFromString(t, "somecid")),
+			MessageReceipts: e.NewCid(types.CidFromString(t, "somecid")),
 			Parents:         blk.NewTipSetKey(types.CidFromString(t, "somecid")),
-			ParentWeight:    types.Uint64(1000),
-			StateRoot:       types.CidFromString(t, "somecid"),
-			Timestamp:       types.Uint64(1),
-			BlockSig:        []byte{0x3},
-			BLSAggregateSig: []byte{0x3},
-			EPoStInfo:       postInfo,
+			ParentWeight:    fbig.NewInt(1000),
+			StateRoot:       e.NewCid(types.CidFromString(t, "somecid")),
+			Timestamp:       1,
+			BlockSig: &crypto.Signature{
+				Type: crypto.SigTypeBLS,
+				Data: []byte{0x3},
+			},
+			BLSAggregateSig: &crypto.Signature{
+				Type: crypto.SigTypeBLS,
+				Data: []byte{0x3},
+			},
+			PoStProofs:    posts,
+			ForkSignaling: 6,
 		}
 		s := reflect.TypeOf(*b)
 		// This check is here to request that you add a non-zero value for new fields
@@ -84,7 +97,7 @@ func TestTriangleEncoding(t *testing.T) {
 		// Also please add non zero fields to "b" and "diff" in TestSignatureData
 		// and add a new check that different values of the new field result in
 		// different output data.
-		require.Equal(t, 15, s.NumField()) // Note: this also counts private fields
+		require.Equal(t, 18, s.NumField()) // Note: this also counts private fields
 		testRoundTrip(t, b)
 	})
 }
@@ -93,35 +106,17 @@ func TestBlockString(t *testing.T) {
 	tf.UnitTest(t)
 
 	var b blk.Block
-
 	cid := b.Cid()
 
 	got := b.String()
 	assert.Contains(t, got, cid.String())
 }
 
-func TestBlockScore(t *testing.T) {
-	tf.UnitTest(t)
-
-	source := rand.NewSource(time.Now().UnixNano())
-
-	t.Run("block score equals block height", func(t *testing.T) {
-		for i := 0; i < 100; i++ {
-			n := uint64(source.Int63())
-
-			var b blk.Block
-			b.Height = types.Uint64(n)
-
-			assert.Equal(t, uint64(b.Height), b.Score(), "block height: %d - block score %d", b.Height, b.Score())
-		}
-	})
-}
-
 func TestDecodeBlock(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("successfully decodes raw bytes to a Filecoin block", func(t *testing.T) {
-		addrGetter := address.NewForTestGetter()
+		addrGetter := vmaddr.NewForTestGetter()
 
 		c1 := types.CidFromString(t, "a")
 		c2 := types.CidFromString(t, "b")
@@ -133,13 +128,16 @@ func TestDecodeBlock(t *testing.T) {
 			Ticket:          blk.Ticket{VRFProof: []uint8{}},
 			Parents:         blk.NewTipSetKey(c1),
 			Height:          2,
-			Messages:        types.TxMeta{SecpRoot: cM, BLSRoot: types.EmptyMessagesCID},
-			StateRoot:       c2,
-			MessageReceipts: cR,
+			ParentWeight:    fbig.Zero(),
+			Messages:        e.NewCid(cM),
+			StateRoot:       e.NewCid(c2),
+			MessageReceipts: e.NewCid(cR),
+			BlockSig:        &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
+			BLSAggregateSig: &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 		}
 
 		after, err := blk.DecodeBlock(before.ToNode().RawData())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, after.Cid(), before.Cid())
 		assert.Equal(t, before, after)
 	})
@@ -147,7 +145,7 @@ func TestDecodeBlock(t *testing.T) {
 	t.Run("decode failure results in an error", func(t *testing.T) {
 		_, err := blk.DecodeBlock([]byte{1, 2, 3})
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "malformed stream")
+		assert.Contains(t, err.Error(), "cbor: cannot unmarshal")
 	})
 }
 
@@ -160,18 +158,18 @@ func TestEquals(t *testing.T) {
 	s1 := types.CidFromString(t, "state1")
 	s2 := types.CidFromString(t, "state2")
 
-	var h1 types.Uint64 = 1
-	var h2 types.Uint64 = 2
+	var h1 abi.ChainEpoch = 1
+	var h2 abi.ChainEpoch = 2
 
-	b1 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s1, Height: h1}
-	b2 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s1, Height: h1}
-	b3 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s2, Height: h1}
-	b4 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s1, Height: h1}
-	b5 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s1, Height: h2}
-	b6 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s1, Height: h2}
-	b7 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s2, Height: h2}
-	b8 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s2, Height: h1}
-	b9 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s2, Height: h2}
+	b1 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: e.NewCid(s1), Height: h1}
+	b2 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: e.NewCid(s1), Height: h1}
+	b3 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: e.NewCid(s2), Height: h1}
+	b4 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: e.NewCid(s1), Height: h1}
+	b5 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: e.NewCid(s1), Height: h2}
+	b6 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: e.NewCid(s1), Height: h2}
+	b7 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: e.NewCid(s2), Height: h2}
+	b8 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: e.NewCid(s2), Height: h1}
+	b9 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: e.NewCid(s2), Height: h2}
 	assert.True(t, b1.Equals(b1))
 	assert.True(t, b1.Equals(b2))
 	assert.False(t, b1.Equals(b3))
@@ -197,13 +195,14 @@ func TestBlockJsonMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
 	var parent, child blk.Block
-	child.Miner = address.NewForTestGetter()()
+	child.Miner = vmaddr.NewForTestGetter()()
 	child.Height = 1
+	child.ParentWeight = fbig.Zero()
 	child.Parents = blk.NewTipSetKey(parent.Cid())
-	child.StateRoot = parent.Cid()
+	child.StateRoot = e.NewCid(parent.Cid())
 
-	child.Messages = types.TxMeta{SecpRoot: types.CidFromString(t, "somecid"), BLSRoot: types.EmptyMessagesCID}
-	child.MessageReceipts = types.CidFromString(t, "somecid")
+	child.Messages = e.NewCid(types.CidFromString(t, "somecid"))
+	child.MessageReceipts = e.NewCid(types.CidFromString(t, "somecid"))
 
 	marshalled, e1 := json.Marshal(&child)
 	assert.NoError(t, e1)
@@ -211,7 +210,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 
 	assert.Contains(t, str, child.Miner.String())
 	assert.Contains(t, str, parent.Cid().String())
-	assert.Contains(t, str, child.Messages.SecpRoot.String())
+	assert.Contains(t, str, child.Messages.String())
 	assert.Contains(t, str, child.MessageReceipts.String())
 
 	// marshal/unmarshal symmetry
@@ -226,43 +225,59 @@ func TestBlockJsonMarshal(t *testing.T) {
 
 func TestSignatureData(t *testing.T) {
 	tf.UnitTest(t)
-	newAddress := address.NewForTestGetter()
-	candidate1 := blk.NewEPoStCandidate(5, []byte{0x05}, 52)
-	candidate2 := blk.NewEPoStCandidate(3, []byte{0x04}, 3000)
-	postInfo := blk.NewEPoStInfo([]byte{0x07}, []byte{0x02, 0x06}, candidate1, candidate2)
+	newAddress := vmaddr.NewForTestGetter()
+	posts := []blk.PoStProof{blk.NewPoStProof(constants.DevRegisteredWinningPoStProof, []byte{0x07})}
 
 	b := &blk.Block{
-		Miner:           newAddress(),
-		Ticket:          blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-		Height:          types.Uint64(2),
-		Messages:        types.TxMeta{SecpRoot: types.CidFromString(t, "somecid"), BLSRoot: types.EmptyMessagesCID},
-		MessageReceipts: types.CidFromString(t, "somecid"),
+		Miner:         newAddress(),
+		Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
+		ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
+		BeaconEntries: []*drand.Entry{
+			{
+				Round: drand.Round(5),
+				Data:  []byte{0x0c},
+			},
+		},
+		Height:          2,
+		Messages:        e.NewCid(types.CidFromString(t, "somecid")),
+		MessageReceipts: e.NewCid(types.CidFromString(t, "somecid")),
 		Parents:         blk.NewTipSetKey(types.CidFromString(t, "somecid")),
-		ParentWeight:    types.Uint64(1000),
-		ForkSignaling:   types.Uint64(3),
-		StateRoot:       types.CidFromString(t, "somecid"),
-		Timestamp:       types.Uint64(1),
-		EPoStInfo:       postInfo,
-		BlockSig:        []byte{0x3},
+		ParentWeight:    fbig.NewInt(1000),
+		ForkSignaling:   3,
+		StateRoot:       e.NewCid(types.CidFromString(t, "somecid")),
+		Timestamp:       1,
+		PoStProofs:      posts,
+		BlockSig: &crypto.Signature{
+			Type: crypto.SigTypeBLS,
+			Data: []byte{0x3},
+		},
 	}
 
-	diffCandidate1 := blk.NewEPoStCandidate(0, []byte{0x04}, 25)
-	diffCandidate2 := blk.NewEPoStCandidate(1, []byte{0x05}, 3001)
-	diffPoStInfo := blk.NewEPoStInfo([]byte{0x17}, []byte{0x12, 0x16}, diffCandidate1, diffCandidate2)
+	diffPoSts := []blk.PoStProof{blk.NewPoStProof(constants.DevRegisteredWinningPoStProof, []byte{0x17})}
 
 	diff := &blk.Block{
-		Miner:           newAddress(),
-		Ticket:          blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
-		Height:          types.Uint64(3),
-		Messages:        types.TxMeta{SecpRoot: types.CidFromString(t, "someothercid"), BLSRoot: types.EmptyMessagesCID},
-		MessageReceipts: types.CidFromString(t, "someothercid"),
+		Miner:         newAddress(),
+		Ticket:        blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
+		ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0c, 0x0d}},
+		BeaconEntries: []*drand.Entry{
+			{
+				Round: drand.Round(44),
+				Data:  []byte{0xc0},
+			},
+		},
+		Height:          3,
+		Messages:        e.NewCid(types.CidFromString(t, "someothercid")),
+		MessageReceipts: e.NewCid(types.CidFromString(t, "someothercid")),
 		Parents:         blk.NewTipSetKey(types.CidFromString(t, "someothercid")),
-		ParentWeight:    types.Uint64(1001),
-		ForkSignaling:   types.Uint64(2),
-		StateRoot:       types.CidFromString(t, "someothercid"),
-		Timestamp:       types.Uint64(4),
-		EPoStInfo:       diffPoStInfo,
-		BlockSig:        []byte{0x4},
+		ParentWeight:    fbig.NewInt(1001),
+		ForkSignaling:   2,
+		StateRoot:       e.NewCid(types.CidFromString(t, "someothercid")),
+		Timestamp:       4,
+		PoStProofs:      diffPoSts,
+		BlockSig: &crypto.Signature{
+			Type: crypto.SigTypeBLS,
+			Data: []byte{0x4},
+		},
 	}
 
 	// Changing BlockSig does not affect output
@@ -298,6 +313,17 @@ func TestSignatureData(t *testing.T) {
 		defer func() { b.Ticket = cpy }()
 
 		b.Ticket = diff.Ticket
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.ElectionProof
+		defer func() { b.ElectionProof = cpy }()
+
+		b.ElectionProof = diff.ElectionProof
 		after := b.SignatureData()
 		assert.False(t, bytes.Equal(before, after))
 	}()
@@ -393,70 +419,22 @@ func TestSignatureData(t *testing.T) {
 	func() {
 		before := b.SignatureData()
 
-		cpy := b.EPoStInfo.PoStRandomness
-		defer func() { b.EPoStInfo.PoStRandomness = cpy }()
+		cpy := b.PoStProofs
+		defer func() { b.PoStProofs = cpy }()
 
-		b.EPoStInfo.PoStRandomness = diff.EPoStInfo.PoStRandomness
+		b.PoStProofs = diff.PoStProofs
 		after := b.SignatureData()
 		assert.False(t, bytes.Equal(before, after))
 	}()
 
 	func() {
 		before := b.SignatureData()
-
-		cpy := b.EPoStInfo.PoStProof
-		defer func() { b.EPoStInfo.PoStProof = cpy }()
-
-		b.EPoStInfo.PoStProof = diff.EPoStInfo.PoStProof
-		after := b.SignatureData()
-		assert.False(t, bytes.Equal(before, after))
-	}()
-
-	func() {
-		before := b.SignatureData()
-
-		cpy0 := b.EPoStInfo.Winners[0].PartialTicket
-		cpy1 := b.EPoStInfo.Winners[1].PartialTicket
+		cpy := b.BeaconEntries
 		defer func() {
-			b.EPoStInfo.Winners[0].PartialTicket = cpy0
-			b.EPoStInfo.Winners[1].PartialTicket = cpy1
-
+			b.BeaconEntries = cpy
 		}()
 
-		b.EPoStInfo.Winners[0].PartialTicket = diff.EPoStInfo.Winners[0].PartialTicket
-		b.EPoStInfo.Winners[1].PartialTicket = diff.EPoStInfo.Winners[1].PartialTicket
-		after := b.SignatureData()
-		assert.False(t, bytes.Equal(before, after))
-	}()
-
-	func() {
-		before := b.SignatureData()
-		cpy0 := b.EPoStInfo.Winners[0].SectorID
-		cpy1 := b.EPoStInfo.Winners[1].SectorID
-		defer func() {
-			b.EPoStInfo.Winners[0].SectorID = cpy0
-			b.EPoStInfo.Winners[1].SectorID = cpy1
-		}()
-
-		b.EPoStInfo.Winners[0].SectorID = diff.EPoStInfo.Winners[0].SectorID
-		b.EPoStInfo.Winners[1].SectorID = diff.EPoStInfo.Winners[1].SectorID
-		after := b.SignatureData()
-
-		assert.False(t, bytes.Equal(before, after))
-	}()
-
-	func() {
-		before := b.SignatureData()
-		cpy0 := b.EPoStInfo.Winners[0].SectorChallengeIndex
-		cpy1 := b.EPoStInfo.Winners[1].SectorChallengeIndex
-		defer func() {
-			b.EPoStInfo.Winners[0].SectorChallengeIndex = cpy0
-			b.EPoStInfo.Winners[1].SectorChallengeIndex = cpy1
-
-		}()
-
-		b.EPoStInfo.Winners[0].SectorChallengeIndex = diff.EPoStInfo.Winners[0].SectorChallengeIndex
-		b.EPoStInfo.Winners[1].SectorChallengeIndex = diff.EPoStInfo.Winners[1].SectorChallengeIndex
+		b.BeaconEntries = diff.BeaconEntries
 		after := b.SignatureData()
 
 		assert.False(t, bytes.Equal(before, after))

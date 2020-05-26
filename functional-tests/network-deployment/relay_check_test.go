@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/fixtures/networks"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
@@ -303,12 +303,8 @@ func networkBootstrapPeers(network string) []string {
 	// Currently all bootstrap addresses are relay peers
 
 	switch network {
-	case "nightly":
-		return fixtures.DevnetNightlyBootstrapAddrs
-	case "staging":
-		return fixtures.DevnetStagingBootstrapAddrs
-	case "user":
-		return fixtures.DevnetUserBootstrapAddrs
+	case "interop":
+		return networks.Interop().Bootstrap.Addresses
 	}
 
 	return []string{}

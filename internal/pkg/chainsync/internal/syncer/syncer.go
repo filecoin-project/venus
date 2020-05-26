@@ -3,20 +3,24 @@ package syncer
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 // Syncer updates its chain.Store according to the methods of its
@@ -41,8 +45,8 @@ type Syncer struct {
 
 	// Evaluates tipset messages and stores the resulting states.
 	fullValidator FullBlockValidator
-	// Validates headers
-	headerValidator HeaderValidator
+	// Validates headers and message structure
+	blockValidator BlockValidator
 	// Selects the heaviest of two chains
 	chainSelector ChainSelector
 	// Provides and stores validated tipsets and their state roots.
@@ -82,14 +86,14 @@ type ChainReaderWriter interface {
 	HasTipSetAndState(ctx context.Context, tsKey block.TipSetKey) bool
 	PutTipSetMetadata(ctx context.Context, tsas *chain.TipSetMetadata) error
 	SetHead(ctx context.Context, ts block.TipSet) error
-	HasTipSetAndStatesWithParentsAndHeight(pTsKey block.TipSetKey, h uint64) bool
-	GetTipSetAndStatesByParentsAndHeight(pTsKey block.TipSetKey, h uint64) ([]*chain.TipSetMetadata, error)
+	HasTipSetAndStatesWithParentsAndHeight(pTsKey block.TipSetKey, h abi.ChainEpoch) bool
+	GetTipSetAndStatesByParentsAndHeight(pTsKey block.TipSetKey, h abi.ChainEpoch) ([]*chain.TipSetMetadata, error)
 }
 
 type messageStore interface {
-	LoadMessages(context.Context, types.TxMeta) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
-	LoadReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
-	StoreReceipts(context.Context, []*types.MessageReceipt) (cid.Cid, error)
+	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
+	LoadReceipts(context.Context, cid.Cid) ([]vm.MessageReceipt, error)
+	StoreReceipts(context.Context, []vm.MessageReceipt) (cid.Cid, error)
 }
 
 // ChainSelector chooses the heaviest between chains.
@@ -98,21 +102,23 @@ type ChainSelector interface {
 	// tipset b is heavier than tipset a.
 	IsHeavier(ctx context.Context, a, b block.TipSet, aStateID, bStateID cid.Cid) (bool, error)
 	// Weight returns the weight of a tipset after the upgrade to version 1
-	Weight(ctx context.Context, ts block.TipSet, stRoot cid.Cid) (uint64, error)
+	Weight(ctx context.Context, ts block.TipSet, stRoot cid.Cid) (fbig.Int, error)
 }
 
-// HeaderValidator does semanitc validation on headers
-type HeaderValidator interface {
-	// ValidateSemantic validates conditions on a block header that can be
+// BlockValidator does semanitc validation on headers
+type BlockValidator interface {
+	// ValidateHeaderSemantic validates conditions on a block header that can be
 	// checked with the parent header but not parent state.
-	ValidateSemantic(ctx context.Context, header *block.Block, parents block.TipSet) error
+	ValidateHeaderSemantic(ctx context.Context, header *block.Block, parents block.TipSet) error
+	// ValidateMessagesSemantic validates a block's messages against parent state without applying the messages
+	ValidateMessagesSemantic(ctx context.Context, child *block.Block, parents block.TipSetKey) error
 }
 
 // FullBlockValidator does semantic validation on fullblocks.
 type FullBlockValidator interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight uint64, stateID cid.Cid, receiptRoot cid.Cid) (cid.Cid, []*types.MessageReceipt, error)
+	RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, parentWeight fbig.Int, stateID cid.Cid, receiptRoot cid.Cid) (cid.Cid, []vm.MessageReceipt, error)
 }
 
 // faultDetector tracks data for detecting consensus faults and emits faults
@@ -146,14 +152,14 @@ var logSyncer = logging.Logger("chainsync.syncer")
 
 // NewSyncer constructs a Syncer ready for use.  The chain reader must have a
 // head tipset to initialize the staging field.
-func NewSyncer(fv FullBlockValidator, hv HeaderValidator, cs ChainSelector, s ChainReaderWriter, m messageStore, f Fetcher, sr status.Reporter, c clock.Clock, fd faultDetector) (*Syncer, error) {
+func NewSyncer(fv FullBlockValidator, hv BlockValidator, cs ChainSelector, s ChainReaderWriter, m messageStore, f Fetcher, sr status.Reporter, c clock.Clock, fd faultDetector) (*Syncer, error) {
 	return &Syncer{
 		fetcher: f,
 		badTipSets: &BadTipSetCache{
 			bad: make(map[string]struct{}),
 		},
 		fullValidator:   fv,
-		headerValidator: hv,
+		blockValidator:  hv,
 		chainSelector:   cs,
 		chainStore:      s,
 		messageProvider: m,
@@ -195,7 +201,7 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 		if err != nil {
 			return true, err
 		}
-		if h+consensus.FinalityEpochs < headHeight {
+		if h+miner.ChainFinalityish < headHeight {
 			return true, ErrNewChainTooLong
 		}
 
@@ -217,7 +223,7 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 	}
 	for i, ts := range headers {
 		for i := 0; i < ts.Len(); i++ {
-			err = syncer.headerValidator.ValidateSemantic(ctx, ts.At(i), parent)
+			err = syncer.blockValidator.ValidateHeaderSemantic(ctx, ts.At(i), parent)
 			if err != nil {
 				return nil, err
 			}
@@ -252,23 +258,12 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 		return err
 	}
 
-	// Gather ancestor chain needed to process state transition.
-	h, err := next.Height()
-	if err != nil {
-		return err
-	}
-	ancestorHeight := types.NewBlockHeight(h).Sub(types.NewBlockHeight(uint64(consensus.AncestorRoundsNeeded)))
-	ancestors, err := chain.GetRecentAncestors(ctx, parent, syncer.chainStore, ancestorHeight)
-	if err != nil {
-		return err
-	}
-
 	// Gather tipset messages
 	var nextSecpMessages [][]*types.SignedMessage
 	var nextBlsMessages [][]*types.UnsignedMessage
 	for i := 0; i < next.Len(); i++ {
 		blk := next.At(i)
-		secpMsgs, blsMsgs, err := syncer.messageProvider.LoadMessages(ctx, blk.Messages)
+		secpMsgs, blsMsgs, err := syncer.messageProvider.LoadMessages(ctx, blk.Messages.Cid)
 		if err != nil {
 			return errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", next.Key(), blk.Messages, blk.Cid())
 		}
@@ -290,7 +285,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 
 	// Run a state transition to validate the tipset and compute
 	// a new state to add to the store.
-	root, receipts, err := syncer.fullValidator.RunStateTransition(ctx, next, nextBlsMessages, nextSecpMessages, ancestors, parentWeight, stateRoot, parentReceiptRoot)
+	root, receipts, err := syncer.fullValidator.RunStateTransition(ctx, next, nextBlsMessages, nextSecpMessages, parentWeight, stateRoot, parentReceiptRoot)
 	if err != nil {
 		return err
 	}
@@ -323,15 +318,19 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 
 // TODO #3537 this should be stored the first time it is computed and retrieved
 // from disk just like aggregate state roots.
-func (syncer *Syncer) calculateParentWeight(ctx context.Context, parent, grandParent block.TipSet) (uint64, error) {
+func (syncer *Syncer) calculateParentWeight(ctx context.Context, parent, grandParent block.TipSet) (fbig.Int, error) {
+	var baseStRoot cid.Cid
+	var err error
 	if grandParent.Equals(block.UndefTipSet) {
-		return syncer.chainSelector.Weight(ctx, parent, cid.Undef)
+		// use genesis state as parent of genesis block
+		baseStRoot, err = syncer.chainStore.GetTipSetStateRoot(parent.Key())
+	} else {
+		baseStRoot, err = syncer.chainStore.GetTipSetStateRoot(grandParent.Key())
 	}
-	gpStRoot, err := syncer.chainStore.GetTipSetStateRoot(grandParent.Key())
 	if err != nil {
-		return 0, err
+		return fbig.Zero(), err
 	}
-	return syncer.chainSelector.Weight(ctx, parent, gpStRoot)
+	return syncer.chainSelector.Weight(ctx, parent, baseStRoot)
 }
 
 // ancestorsFromStore returns the parent and grandparent tipsets of `ts`
@@ -484,12 +483,12 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 
 	tipsets, err := syncer.fetchAndValidateHeaders(ctx, ci)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
 
 	// Once headers check out, fetch messages
 	_, err = syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Sender, func(t block.TipSet) (bool, error) {
-		parents, err := t.Parents()
+		parentsKey, err := t.Parents()
 		if err != nil {
 			return true, err
 		}
@@ -498,18 +497,23 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 			return false, err
 		}
 
+		// validate block message structure
+		for i := 0; i < t.Len(); i++ {
+			err := syncer.blockValidator.ValidateMessagesSemantic(ctx, t.At(i), parentsKey)
+			if err != nil {
+				return false, err
+			}
+		}
+
 		// update status with latest fetched head and height
 		syncer.reporter.UpdateStatus(status.FetchHead(t.Key()), status.FetchHeight(height))
-		return syncer.chainStore.HasTipSetAndState(ctx, parents), nil
+		return syncer.chainStore.HasTipSetAndState(ctx, parentsKey), nil
 	})
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failure fetching full blocks")
 	}
 
 	syncer.reporter.UpdateStatus(status.SyncFetchComplete(true))
-	if err != nil {
-		return err
-	}
 
 	parent, grandParent, err := syncer.ancestorsFromStore(tipsets[0])
 	if err != nil {
@@ -554,7 +558,7 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 				// there is no assumption that the running node's data is valid at all,
 				// so we don't really lose anything with this simplification.
 				syncer.badTipSets.AddChain(tipsets[i:])
-				return err
+				return errors.Wrapf(err, "failed to sync tipset %s, number %d of %d in chain", ts.Key(), i, len(tipsets))
 			}
 		}
 
@@ -583,15 +587,17 @@ func (syncer *Syncer) stageIfHeaviest(ctx context.Context, candidate block.TipSe
 	if err != nil {
 		return err
 	}
-	var stagedParentStateID cid.Cid
-	if !stagedParentKey.Empty() { // head is not genesis
-		stagedParentStateID, err = syncer.chainStore.GetTipSetStateRoot(stagedParentKey)
+	var stagedBaseStateID cid.Cid
+	if stagedParentKey.Empty() { // if staged is genesis base state is genesis state
+		stagedBaseStateID = syncer.staged.At(0).StateRoot.Cid
+	} else {
+		stagedBaseStateID, err = syncer.chainStore.GetTipSetStateRoot(stagedParentKey)
 		if err != nil {
 			return err
 		}
 	}
 
-	heavier, err := syncer.chainSelector.IsHeavier(ctx, candidate, syncer.staged, candidateParentStateID, stagedParentStateID)
+	heavier, err := syncer.chainSelector.IsHeavier(ctx, candidate, syncer.staged, candidateParentStateID, stagedBaseStateID)
 	if err != nil {
 		return err
 	}

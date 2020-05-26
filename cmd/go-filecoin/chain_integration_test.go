@@ -11,8 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -28,22 +27,16 @@ func TestChainHead(t *testing.T) {
 	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
-	node.FixtureChainSeed(t)
 	jsonResult := cmdClient.RunSuccess(ctx, "chain", "head", "--enc", "json").ReadStdoutTrimNewlines()
 	var cidsFromJSON []cid.Cid
 	err := json.Unmarshal([]byte(jsonResult), &cidsFromJSON)
 	assert.NoError(t, err)
-
-	textResult := cmdClient.RunSuccess(ctx, "chain", "ls", "--enc", "text").ReadStdoutTrimNewlines()
-	textCid, err := cid.Decode(textResult)
-	require.NoError(t, err)
-	assert.Equal(t, textCid, cidsFromJSON[0])
 }
 
 func TestChainLs(t *testing.T) {
 	tf.IntegrationTest(t)
-	ctx := context.Background()
 	t.Skip("DRAGONS: fake post for integration test")
+	ctx := context.Background()
 
 	t.Run("chain ls with json encoding returns the whole chain as json", func(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
@@ -125,7 +118,7 @@ func TestChainLs(t *testing.T) {
 		chainLsResult := cmdClient.RunSuccess(ctx, "chain", "ls", "--long").ReadStdoutTrimNewlines()
 
 		assert.Contains(t, chainLsResult, newBlockCid)
-		assert.Contains(t, chainLsResult, fixtures.TestMiners[0])
+		assert.Contains(t, chainLsResult, fortest.TestMiners[0])
 		assert.Contains(t, chainLsResult, "1")
 		assert.Contains(t, chainLsResult, "0")
 	})

@@ -2,117 +2,112 @@ package consensus_test
 
 import (
 	"context"
-	"math/big"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/ipfs/go-hamt-ipld"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 func TestWeight(t *testing.T) {
-	cst := hamt.NewCborStore()
+	cst := cbor.NewMemCborStore()
 	ctx := context.Background()
-	fakeTree := state.TreeFromString(t, "test-Weight-StateCid", cst)
-	fakeRoot, err := fakeTree.Flush(ctx)
+	fakeTree := state.NewFromString(t, "test-Weight-StateCid", cst)
+	fakeRoot, err := fakeTree.Commit(ctx)
 	require.NoError(t, err)
 	// We only care about total power for the weight function
-	// Total is 16, so bitlen is 5
-	as := consensus.NewFakeActorStateStore(types.NewBytesAmount(1), types.NewBytesAmount(16), make(map[address.Address]address.Address))
+	// Total is 16, so bitlen is 5, log2b is 4
+	viewer := makeStateViewer(fakeRoot, abi.NewStoragePower(16))
 	ticket := consensus.MakeFakeTicketForTest()
-	toWeigh := th.RequireNewTipSet(t, &block.Block{
-		ParentWeight: 0,
+	toWeigh := block.RequireNewTipSet(t, &block.Block{
+		ParentWeight: fbig.Zero(),
 		Ticket:       ticket,
 	})
-	sel := consensus.NewChainSelector(cst, as, types.CidFromString(t, "genesisCid"))
+	sel := consensus.NewChainSelector(cst, &viewer, types.CidFromString(t, "genesisCid"))
 
 	t.Run("basic happy path", func(t *testing.T) {
-		// 0 + 1[2*1 + 5] = 7
-		fixWeight, err := sel.Weight(ctx, toWeigh, fakeRoot)
+		// 0 + (4*256 + (4*1*1*256/5*2))
+		// 1024 + 102 = 1126
+		w, err := sel.Weight(ctx, toWeigh, fakeRoot)
 		assert.NoError(t, err)
-		assertEqualInt(t, 7, fixWeight)
+		assert.Equal(t, fbig.NewInt(1126), w)
 	})
 
 	t.Run("total power adjusts as expected", func(t *testing.T) {
-		asLowerX := consensus.NewFakeActorStateStore(types.NewBytesAmount(1), types.NewBytesAmount(15), make(map[address.Address]address.Address))
-		asSameX := consensus.NewFakeActorStateStore(types.NewBytesAmount(1), types.NewBytesAmount(31), make(map[address.Address]address.Address))
-		asHigherX := consensus.NewFakeActorStateStore(types.NewBytesAmount(1), types.NewBytesAmount(32), make(map[address.Address]address.Address))
+		asLowerX := makeStateViewer(fakeRoot, abi.NewStoragePower(15))
+		asSameX := makeStateViewer(fakeRoot, abi.NewStoragePower(31))
+		asHigherX := makeStateViewer(fakeRoot, abi.NewStoragePower(32))
 
-		// Weight is 1 lower than total = 16 with total = 15
-		selLower := consensus.NewChainSelector(cst, asLowerX, types.CidFromString(t, "genesisCid"))
+		// 0 + (3*256) + (3*1*1*256/2*5) = 844 (truncating not rounding division)
+		selLower := consensus.NewChainSelector(cst, &asLowerX, types.CidFromString(t, "genesisCid"))
 		fixWeight, err := selLower.Weight(ctx, toWeigh, fakeRoot)
 		assert.NoError(t, err)
-		assertEqualInt(t, 6, fixWeight)
+		assert.Equal(t, fbig.NewInt(844), fixWeight)
 
-		// Weight is same as total = 16 with total = 31
-		selSame := consensus.NewChainSelector(cst, asSameX, types.CidFromString(t, "genesisCid"))
+		// Weight is same when total bytes = 16 as when total bytes = 31
+		selSame := consensus.NewChainSelector(cst, &asSameX, types.CidFromString(t, "genesisCid"))
 		fixWeight, err = selSame.Weight(ctx, toWeigh, fakeRoot)
 		assert.NoError(t, err)
-		assertEqualInt(t, 7, fixWeight)
+		assert.Equal(t, fbig.NewInt(1126), fixWeight)
 
-		// Weight is 1 higher than total = 16 with total = 32
-		selHigher := consensus.NewChainSelector(cst, asHigherX, types.CidFromString(t, "genesisCid"))
+		// 0 + (5*256) + (5*1*1*256/2*5) = 1408
+		selHigher := consensus.NewChainSelector(cst, &asHigherX, types.CidFromString(t, "genesisCid"))
 		fixWeight, err = selHigher.Weight(ctx, toWeigh, fakeRoot)
 		assert.NoError(t, err)
-		assertEqualInt(t, 8, fixWeight)
+		assert.Equal(t, fbig.NewInt(1408), fixWeight)
 	})
 
 	t.Run("non-zero parent weight", func(t *testing.T) {
-		parentWeight, err := types.BigToFixed(new(big.Float).SetInt64(int64(49)))
-		require.NoError(t, err)
-		toWeighWithParent := th.RequireNewTipSet(t, &block.Block{
-			ParentWeight: types.Uint64(parentWeight),
+		parentWeight := fbig.NewInt(int64(49))
+		toWeighWithParent := block.RequireNewTipSet(t, &block.Block{
+			ParentWeight: parentWeight,
 			Ticket:       ticket,
 		})
 
-		// 49 + 1[2*1 + 5] = 56
-		fixWeight, err := sel.Weight(ctx, toWeighWithParent, fakeRoot)
+		// 49 + (4*256) + (4*1*1*256/2*5) = 1175
+		w, err := sel.Weight(ctx, toWeighWithParent, fakeRoot)
 		assert.NoError(t, err)
-		assertEqualInt(t, 56, fixWeight)
+		assert.Equal(t, fbig.NewInt(1175), w)
 	})
 
 	t.Run("many blocks", func(t *testing.T) {
-		toWeighThreeBlock := th.RequireNewTipSet(t,
+		toWeighThreeBlock := block.RequireNewTipSet(t,
 			&block.Block{
-				ParentWeight: 0,
+				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
-				Timestamp:    types.Uint64(0),
+				Timestamp:    0,
 			},
 			&block.Block{
-				ParentWeight: 0,
+				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
-				Timestamp:    types.Uint64(1),
+				Timestamp:    1,
 			},
 			&block.Block{
-				ParentWeight: 0,
+				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
-				Timestamp:    types.Uint64(2),
+				Timestamp:    2,
 			},
 		)
-		// 0 + 1[2*3 + 5] = 11
-		fixWeight, err := sel.Weight(ctx, toWeighThreeBlock, fakeRoot)
+		// 0 + (4*256) + (4*3*1*256/2*5) = 1331
+		w, err := sel.Weight(ctx, toWeighThreeBlock, fakeRoot)
 		assert.NoError(t, err)
-		assertEqualInt(t, 11, fixWeight)
+		assert.Equal(t, fbig.NewInt(1331), w)
 	})
 }
 
-// helper for turning fixed point reprs of int weights to ints
-func requireFixedToInt(t *testing.T, fixedX uint64) int {
-	floatX, err := types.FixedToBig(fixedX)
-	require.NoError(t, err)
-	intX, _ := floatX.Int64()
-	return int(intX)
-}
-
-// helper for asserting equality between int and fixed
-func assertEqualInt(t *testing.T, i int, fixed uint64) {
-	fixed2int := requireFixedToInt(t, fixed)
-	assert.Equal(t, i, fixed2int)
+func makeStateViewer(stateRoot cid.Cid, networkPower abi.StoragePower) consensus.FakeConsensusStateViewer {
+	return consensus.FakeConsensusStateViewer{
+		Views: map[cid.Cid]*appstate.FakeStateView{
+			stateRoot: appstate.NewFakeStateView(networkPower, networkPower, 0, 0),
+		},
+	}
 }

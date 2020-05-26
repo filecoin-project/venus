@@ -4,20 +4,20 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-storage-miner"
-
-	"github.com/stretchr/testify/assert"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
 func TestNewHeightThresholdListener(t *testing.T) {
+	tf.UnitTest(t)
 	builder := chain.NewBuilder(t, address.Undef)
 	genesis := builder.NewGenesis()
 
@@ -26,12 +26,8 @@ func TestNewHeightThresholdListener(t *testing.T) {
 	t.Run("does nothing until chain crosses threshold", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.TODO())
 
-		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(11, sc, ec, ic, dc)
-
-		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
-			return sampleHeight.Bytes(), nil
-		}
+		hc, ec, ic, dc := setupChannels()
+		listener := NewHeightThresholdListener(11, hc, ec, ic, dc)
 
 		// 6 + 3 = 9 which is less than 11
 		nextTS := builder.BuildManyOn(3, startHead, nil)
@@ -39,109 +35,91 @@ func TestNewHeightThresholdListener(t *testing.T) {
 		require.NoError(t, err)
 
 		go func() {
-			_, err := listener.Handle(ctx, newChain, sampler)
+			_, err := listener.Handle(newChain)
 			require.NoError(t, err)
 			cancel()
 		}()
 
-		expectCancelBeforeOutput(ctx, sc, ec, ic, dc)
+		expectCancelBeforeOutput(ctx, hc, ec, ic, dc)
 	})
 
-	t.Run("add tipset at target height sends seed", func(t *testing.T) {
-		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(7, sc, ec, ic, dc)
-
-		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
-			return sampleHeight.Bytes(), nil
-		}
+	t.Run("add tipset at target height sends key", func(t *testing.T) {
+		hc, ec, ic, dc := setupChannels()
+		listener := NewHeightThresholdListener(7, hc, ec, ic, dc)
 
 		nextTS := builder.Build(startHead, 1, nil)
 		go func() {
-			_, err := listener.Handle(context.TODO(), []block.TipSet{nextTS}, sampler)
+			_, err := listener.Handle([]block.TipSet{nextTS})
 			require.NoError(t, err)
 		}()
 
-		seed := waitForSeed(t, sc, ec, ic, dc)
-		assert.Equal(t, uint64(7), seed.BlockHeight)
-		assert.Equal(t, types.NewBlockHeight(7).Bytes(), seed.TicketBytes)
+		key := waitForKey(t, hc, ec, ic, dc)
+		assert.Equal(t, nextTS.Key(), key)
 	})
 
 	t.Run("invalidates when new fork head is lower than target", func(t *testing.T) {
-		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(8, sc, ec, ic, dc)
-
-		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
-			return sampleHeight.Bytes(), nil
-		}
+		hc, ec, ic, dc := setupChannels()
+		listener := NewHeightThresholdListener(8, hc, ec, ic, dc)
 
 		nextTS := builder.BuildManyOn(4, startHead, nil)
 		newChain, err := tipsetToSlice(nextTS, 4, builder)
 		require.NoError(t, err)
 
 		go func() {
-			_, err := listener.Handle(context.TODO(), newChain, sampler)
+			_, err := listener.Handle(newChain)
 			require.NoError(t, err)
 		}()
 
-		seed := waitForSeed(t, sc, ec, ic, dc)
-		assert.Equal(t, uint64(8), seed.BlockHeight)
+		key := waitForKey(t, hc, ec, ic, dc)
+		assert.Equal(t, newChain[2].Key(), key)
 
 		shorterFork := builder.BuildManyOn(1, startHead, nil)
 		go func() {
-			_, err := listener.Handle(context.TODO(), []block.TipSet{shorterFork}, sampler)
+			_, err := listener.Handle([]block.TipSet{shorterFork})
 			require.NoError(t, err)
 		}()
 
-		waitForInvalidation(t, sc, ec, ic, dc)
+		waitForInvalidation(t, hc, ec, ic, dc)
 	})
 
 	t.Run("invalidates and then sends new seed when new fork head is higher than target with a lower lca", func(t *testing.T) {
-		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(8, sc, ec, ic, dc)
-
-		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
-			return sampleHeight.Bytes(), nil
-		}
+		hc, ec, ic, dc := setupChannels()
+		listener := NewHeightThresholdListener(8, hc, ec, ic, dc)
 
 		nextTS := builder.BuildManyOn(4, startHead, nil)
 		newChain, err := tipsetToSlice(nextTS, 4, builder)
 		require.NoError(t, err)
 
 		go func() {
-			_, err := listener.Handle(context.TODO(), newChain, sampler)
+			_, err := listener.Handle(newChain)
 			require.NoError(t, err)
 		}()
 
-		seed := waitForSeed(t, sc, ec, ic, dc)
-		assert.Equal(t, uint64(8), seed.BlockHeight)
+		key := waitForKey(t, hc, ec, ic, dc)
+		assert.Equal(t, newChain[2].Key(), key)
 
 		fork := builder.BuildManyOn(3, startHead, nil)
 		forkSlice, err := tipsetToSlice(fork, 3, builder)
 		require.NoError(t, err)
 
 		go func() {
-			_, err := listener.Handle(context.TODO(), forkSlice, sampler)
+			_, err := listener.Handle(forkSlice)
 			require.NoError(t, err)
 		}()
 
 		// first invalidate
-		waitForInvalidation(t, sc, ec, ic, dc)
+		waitForInvalidation(t, hc, ec, ic, dc)
 
-		// then send new seed
-		seed = waitForSeed(t, sc, ec, ic, dc)
-		assert.Equal(t, uint64(8), seed.BlockHeight)
-		assert.Equal(t, types.NewBlockHeight(8).Bytes(), seed.TicketBytes)
+		// then send new key
+		key = waitForKey(t, hc, ec, ic, dc)
+		assert.Equal(t, forkSlice[1].Key(), key)
 	})
 
 	t.Run("does nothing if new chain is entirely above threshold", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.TODO())
 
-		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(8, sc, ec, ic, dc)
-
-		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
-			return sampleHeight.Bytes(), nil
-		}
+		hc, ec, ic, dc := setupChannels()
+		listener := NewHeightThresholdListener(8, hc, ec, ic, dc)
 
 		// cross the threshold (8) with 4 tipsets
 		nextTS := builder.BuildManyOn(4, startHead, nil)
@@ -149,12 +127,12 @@ func TestNewHeightThresholdListener(t *testing.T) {
 		require.NoError(t, err)
 
 		go func() {
-			_, err := listener.Handle(context.TODO(), newChain, sampler)
+			_, err := listener.Handle(newChain)
 			require.NoError(t, err)
 		}()
 
-		seed := waitForSeed(t, sc, ec, ic, dc)
-		assert.Equal(t, uint64(8), seed.BlockHeight)
+		key := waitForKey(t, hc, ec, ic, dc)
+		assert.Equal(t, newChain[2].Key(), key)
 
 		// add 3 more tipsets on existing highest head that do not cross threshold
 		nextTS = builder.BuildManyOn(3, nextTS, nil)
@@ -162,21 +140,17 @@ func TestNewHeightThresholdListener(t *testing.T) {
 		require.NoError(t, err)
 
 		go func() {
-			_, err := listener.Handle(ctx, newChain, sampler)
+			_, err := listener.Handle(newChain)
 			require.NoError(t, err)
 			cancel()
 		}()
 
-		expectCancelBeforeOutput(ctx, sc, ec, ic, dc)
+		expectCancelBeforeOutput(ctx, hc, ec, ic, dc)
 	})
 
 	t.Run("sends on done channel when finality is crossed", func(t *testing.T) {
-		sc, ec, ic, dc := setupChannels()
-		listener := NewHeightThresholdListener(8, sc, ec, ic, dc)
-
-		sampler := func(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
-			return sampleHeight.Bytes(), nil
-		}
+		hc, ec, ic, dc := setupChannels()
+		listener := NewHeightThresholdListener(8, hc, ec, ic, dc)
 
 		// cross the threshold (8) with 4 tipsets
 		nextTS := builder.BuildManyOn(4, startHead, nil)
@@ -184,23 +158,23 @@ func TestNewHeightThresholdListener(t *testing.T) {
 		require.NoError(t, err)
 
 		go func() {
-			_, err := listener.Handle(context.TODO(), newChain, sampler)
+			_, err := listener.Handle(newChain)
 			require.NoError(t, err)
 		}()
 
-		seed := waitForSeed(t, sc, ec, ic, dc)
-		assert.Equal(t, uint64(8), seed.BlockHeight)
+		key := waitForKey(t, hc, ec, ic, dc)
+		assert.Equal(t, newChain[2].Key(), key)
 
 		// add tipsets till finality
 		go func() {
-			for i := 0; i < consensus.FinalityEpochs; i++ {
+			for i := abi.ChainEpoch(0); i < miner.ChainFinalityish; i++ {
 				nextTS = builder.BuildOn(nextTS, 1, nil)
-				valid, err := listener.Handle(context.TODO(), []block.TipSet{nextTS}, sampler)
+				valid, err := listener.Handle([]block.TipSet{nextTS})
 				require.NoError(t, err)
 
 				h, err := nextTS.Height()
 				require.NoError(t, err)
-				if h >= 8+consensus.FinalityEpochs {
+				if h >= 8+miner.ChainFinalityish {
 					assert.False(t, valid)
 				} else {
 					assert.True(t, valid)
@@ -209,8 +183,8 @@ func TestNewHeightThresholdListener(t *testing.T) {
 		}()
 
 		select {
-		case <-sc:
-			panic("unexpected sample seed")
+		case <-hc:
+			panic("unexpected sample key")
 		case err := <-ec:
 			panic(err)
 		case <-ic:
@@ -221,27 +195,27 @@ func TestNewHeightThresholdListener(t *testing.T) {
 	})
 }
 
-func setupChannels() (chan storage.SealSeed, chan error, chan struct{}, chan struct{}) {
-	return make(chan storage.SealSeed), make(chan error), make(chan struct{}), make(chan struct{})
+func setupChannels() (chan block.TipSetKey, chan error, chan struct{}, chan struct{}) {
+	return make(chan block.TipSetKey), make(chan error), make(chan struct{}), make(chan struct{})
 }
 
-func waitForSeed(t *testing.T, sc chan storage.SealSeed, ec chan error, ic, dc chan struct{}) storage.SealSeed {
+func waitForKey(t *testing.T, hc chan block.TipSetKey, ec chan error, ic, dc chan struct{}) block.TipSetKey {
 	select {
-	case seed := <-sc:
-		return seed
+	case key := <-hc:
+		return key
 	case err := <-ec:
 		panic(err)
 	case <-ic:
 		panic("unexpected height invalidation")
 	case <-dc:
-		panic("listener completed before sending seed")
+		panic("listener completed before sending key")
 	}
 }
 
-func expectCancelBeforeOutput(ctx context.Context, sc chan storage.SealSeed, ec chan error, ic, dc chan struct{}) {
+func expectCancelBeforeOutput(ctx context.Context, hc chan block.TipSetKey, ec chan error, ic, dc chan struct{}) {
 	select {
-	case <-sc:
-		panic("unexpected sample seed")
+	case <-hc:
+		panic("unexpected target tip set")
 	case err := <-ec:
 		panic(err)
 	case <-ic:
@@ -253,16 +227,16 @@ func expectCancelBeforeOutput(ctx context.Context, sc chan storage.SealSeed, ec 
 	}
 }
 
-func waitForInvalidation(t *testing.T, sc chan storage.SealSeed, ec chan error, ic, dc chan struct{}) {
+func waitForInvalidation(t *testing.T, hc chan block.TipSetKey, ec chan error, ic, dc chan struct{}) {
 	select {
-	case <-sc:
-		panic("got seed when we expected invalidation")
+	case <-hc:
+		panic("got key when we expected invalidation")
 	case err := <-ec:
 		panic(err)
 	case <-ic:
 		return
 	case <-dc:
-		panic("listener completed before sending seed")
+		panic("listener completed before sending key")
 	}
 }
 

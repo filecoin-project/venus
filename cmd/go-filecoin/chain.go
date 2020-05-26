@@ -3,10 +3,7 @@ package commands
 
 import (
 	"fmt"
-	"io"
 	"os"
-	"strconv"
-	"strings"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
@@ -43,17 +40,6 @@ var storeHeadCmd = &cmds.Command{
 		return re.Emit(head.Key())
 	},
 	Type: []cid.Cid{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res []cid.Cid) error {
-			for _, r := range res {
-				_, err := fmt.Fprintln(w, r.String())
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		}),
-	},
 }
 
 var storeLsCmd = &cmds.Command{
@@ -83,37 +69,6 @@ var storeLsCmd = &cmds.Command{
 		return nil
 	},
 	Type: []block.Block{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *[]block.Block) error {
-			showAll, _ := req.Options["long"].(bool)
-			blocks := *res
-
-			for _, block := range blocks {
-				var output strings.Builder
-
-				if showAll {
-					output.WriteString(block.Cid().String())
-					output.WriteString("\t")
-					output.WriteString(block.Miner.String())
-					output.WriteString("\t")
-					output.WriteString(block.StateRoot.String())
-					output.WriteString("\t")
-					output.WriteString(strconv.FormatUint(uint64(block.Height), 10))
-					output.WriteString("\t")
-					output.WriteString(block.Messages.String())
-				} else {
-					output.WriteString(block.Cid().String())
-				}
-
-				_, err := fmt.Fprintln(w, output.String())
-				if err != nil {
-					return err
-				}
-			}
-
-			return nil
-		}),
-	},
 }
 
 var storeStatusCmd = &cmds.Command{
@@ -156,7 +111,7 @@ var storeSyncCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		syncPid, err := peer.IDB58Decode(req.Arguments[0])
+		syncPid, err := peer.Decode(req.Arguments[0])
 		if err != nil {
 			return err
 		}

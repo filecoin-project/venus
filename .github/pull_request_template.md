@@ -3,7 +3,7 @@
 
 ### Proposed changes
 
-Closes issue #
+Closes #
 
 <!-- Add the label "protocol breaking" if this PR alters protocol compatibility -->
 

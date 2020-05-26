@@ -3,11 +3,13 @@ package submodule
 import (
 	"context"
 
+	"github.com/pkg/errors"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/net/msgsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 )
 
@@ -23,7 +25,8 @@ type MessagingSubmodule struct {
 	MessageTopic *pubsub.Topic
 	MessageSub   pubsub.Subscription
 
-	MsgPool *message.Pool
+	MsgPool   *message.Pool
+	MsgSigVal *consensus.MessageSignatureValidator
 }
 
 type messagingConfig interface {
@@ -36,11 +39,18 @@ type messagingRepo interface {
 
 // NewMessagingSubmodule creates a new discovery submodule.
 func NewMessagingSubmodule(ctx context.Context, config messagingConfig, repo messagingRepo, network *NetworkSubmodule, chain *ChainSubmodule, wallet *WalletSubmodule) (MessagingSubmodule, error) {
-	msgPool := message.NewPool(repo.Config().Mpool, consensus.NewIngestionValidator(chain.State, repo.Config().Mpool))
+	msgSyntaxValidator := consensus.NewMessageSyntaxValidator()
+	msgSignatureValidator := consensus.NewMessageSignatureValidator(chain.State)
+	msgPool := message.NewPool(repo.Config().Mpool, msgSyntaxValidator)
 	inbox := message.NewInbox(msgPool, message.InboxMaxAgeTipsets, chain.ChainReader, chain.MessageStore)
 
 	// setup messaging topic.
-	topic, err := network.pubsub.Join(net.MessageTopic(network.NetworkName))
+	// register block validation on pubsub
+	mtv := msgsub.NewMessageTopicValidator(msgSyntaxValidator, msgSignatureValidator)
+	if err := network.pubsub.RegisterTopicValidator(mtv.Topic(network.NetworkName), mtv.Validator(), mtv.Opts()...); err != nil {
+		return MessagingSubmodule{}, errors.Wrap(err, "failed to register message validator")
+	}
+	topic, err := network.pubsub.Join(msgsub.Topic(network.NetworkName))
 	if err != nil {
 		return MessagingSubmodule{}, err
 	}
@@ -48,13 +58,14 @@ func NewMessagingSubmodule(ctx context.Context, config messagingConfig, repo mes
 	msgQueue := message.NewQueue()
 	outboxPolicy := message.NewMessageQueuePolicy(chain.MessageStore, message.OutboxMaxAgeRounds)
 	msgPublisher := message.NewDefaultPublisher(pubsub.NewTopic(topic), msgPool)
-	outbox := message.NewOutbox(wallet.Wallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chain.ChainReader, chain.State, config.Journal().Topic("outbox"))
+	outbox := message.NewOutbox(wallet.Signer, msgSyntaxValidator, msgQueue, msgPublisher, outboxPolicy, chain.ChainReader, chain.State, config.Journal().Topic("outbox"))
 
 	return MessagingSubmodule{
 		Inbox:        inbox,
 		Outbox:       outbox,
 		MessageTopic: pubsub.NewTopic(topic),
 		// MessageSub: nil,
-		MsgPool: msgPool,
+		MsgPool:   msgPool,
+		MsgSigVal: msgSignatureValidator,
 	}, nil
 }

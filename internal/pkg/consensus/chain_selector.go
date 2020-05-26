@@ -7,84 +7,67 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"math/big"
 	"strings"
+
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
-// Parameters used by the weighting funcion
-const (
-	// newECV is the constant V defined in the EC spec.
-	newECV uint64 = 2
+var (
+	wRatioNum  = fbig.NewInt(1)
+	wRatioDen  = fbig.NewInt(2)
+	wPrecision = fbig.NewInt(256)
 )
 
-// ChainSelector weighs and compares chains according to the deprecated v0
-// Storage Power Consensus Protocol
+// ChainSelector weighs and compares chains.
 type ChainSelector struct {
-	cstore     *hamt.CborIpldStore
-	actorState SnapshotGenerator
+	cstore     cbor.IpldStore
+	state      StateViewer
 	genesisCid cid.Cid
 }
 
 // NewChainSelector is the constructor for chain selection module.
-func NewChainSelector(cs *hamt.CborIpldStore, actorState SnapshotGenerator, gCid cid.Cid) *ChainSelector {
+func NewChainSelector(cs cbor.IpldStore, state StateViewer, gCid cid.Cid) *ChainSelector {
 	return &ChainSelector{
 		cstore:     cs,
-		actorState: actorState,
+		state:      state,
 		genesisCid: gCid,
 	}
 }
 
-// Weight returns the EC weight of this TipSet in uint64 encoded fixed point
-// representation.
-//
-// w(i) = w(i-1) + V * num_blks + X
-// X = log_2(total_storage(pSt))
-func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID cid.Cid) (uint64, error) {
-	if ts.Len() > 0 && ts.At(0).Cid().Equals(c.genesisCid) {
-		return uint64(0), nil
-	}
+func log2b(x fbig.Int) fbig.Int {
+	bits := x.BitLen()
+	return fbig.NewInt(int64(bits - 1))
+}
+
+// Weight returns the EC weight of this TipSet as a filecoin big int.
+func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID cid.Cid) (fbig.Int, error) {
 	// Retrieve parent weight.
-	parentW, err := ts.ParentWeight()
+	parentWeight, err := ts.ParentWeight()
 	if err != nil {
-		return uint64(0), err
+		return fbig.Zero(), err
 	}
-	w, err := types.FixedToBig(parentW)
-	if err != nil {
-		return uint64(0), err
-	}
-
-	// Each block adds ECV to the weight's inner term
-	innerTerm := new(big.Float)
-	floatECV := new(big.Float).SetInt64(int64(newECV))
-	floatNumBlocks := new(big.Float).SetInt64(int64(ts.Len()))
-	innerTerm.Mul(floatECV, floatNumBlocks)
-
-	// Add bitnum(total storage power) to the weight's inner term
 	if !pStateID.Defined() {
-		return uint64(0), errors.New("undefined state passed to chain selector new weight")
+		return fbig.Zero(), errors.New("undefined state passed to chain selector new weight")
 	}
-	pSt, err := c.loadStateTree(ctx, pStateID)
+	powerTableView := NewPowerTableView(c.state.PowerStateView(pStateID), c.state.FaultStateView(pStateID))
+	networkPower, err := powerTableView.NetworkTotalPower(ctx)
 	if err != nil {
-		return uint64(0), err
+		return fbig.Zero(), err
 	}
-	powerTableView := c.createPowerTableView(pSt)
-	totalBytes, err := powerTableView.Total(ctx)
-	if err != nil {
-		return uint64(0), err
-	}
-	roughLogTotalBytes := new(big.Float).SetInt64(int64(totalBytes.BigInt().BitLen()))
-	innerTerm.Add(innerTerm, roughLogTotalBytes)
+	powerMeasure := log2b(networkPower)
 
-	w.Add(w, innerTerm)
+	wPowerFactor := fbig.Mul(wPrecision, powerMeasure)
+	wBlocksFactorNum := fbig.Mul(wRatioNum, fbig.Mul(powerMeasure, fbig.NewInt(int64(ts.Len()))))
+	wBlocksFactorDen := fbig.Mul(wRatioDen, fbig.NewInt(int64(expectedLeadersPerEpoch)))
+	wBlocksFactor := fbig.Div(fbig.Mul(wBlocksFactorNum, wPrecision), wBlocksFactorDen)
+	deltaWeight := fbig.Add(wPowerFactor, wBlocksFactor)
 
-	return types.BigToFixed(w)
+	return fbig.Add(parentWeight, deltaWeight), nil
 }
 
 // IsHeavier returns true if tipset a is heavier than tipset b, and false
@@ -104,8 +87,8 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b block.TipSet, aState
 		return false, err
 	}
 	// Without ties pass along the comparison.
-	if aW != bW {
-		return aW > bW, nil
+	if !aW.Equals(bW) {
+		return aW.GreaterThan(bW), nil
 	}
 
 	// To break ties compare the min tickets.
@@ -135,11 +118,6 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b block.TipSet, aState
 	return cmp == 1, nil
 }
 
-func (c *ChainSelector) createPowerTableView(st state.Tree) PowerTableView {
-	snapshot := c.actorState.StateTreeSnapshot(st, nil)
-	return NewPowerTableView(snapshot)
-}
-
-func (c *ChainSelector) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, error) {
-	return state.NewTreeLoader().LoadStateTree(ctx, c.cstore, id)
+func (c *ChainSelector) loadStateTree(ctx context.Context, id cid.Cid) (*state.State, error) {
+	return state.LoadState(ctx, c.cstore, id)
 }

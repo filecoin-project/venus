@@ -5,37 +5,44 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	. "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-var testConfig = &GenesisCfg{
-	ProofsMode: types.TestProofsMode,
-	Keys:       4,
-	PreAlloc:   []string{"10", "50"},
-	Miners: []*CreateStorageMinerConfig{
-		{
-			Owner:               0,
-			NumCommittedSectors: 50,
-			SectorSize:          types.OneKiBSectorSize.Uint64(),
+func testConfig(t *testing.T) *GenesisCfg {
+	fiftyCommCfgs, err := MakeCommitCfgs(50)
+	require.NoError(t, err)
+	tenCommCfgs, err := MakeCommitCfgs(10)
+	require.NoError(t, err)
+
+	return &GenesisCfg{
+		KeysToGen:         4,
+		PreallocatedFunds: []string{"1000000", "500000"},
+		Miners: []*CreateStorageMinerConfig{
+			{
+				Owner:            0,
+				CommittedSectors: fiftyCommCfgs,
+				SealProofType:    constants.DevSealProofType,
+			},
+			{
+				Owner:            1,
+				CommittedSectors: tenCommCfgs,
+				SealProofType:    constants.DevSealProofType,
+			},
 		},
-		{
-			Owner:               1,
-			NumCommittedSectors: 10,
-			SectorSize:          types.OneKiBSectorSize.Uint64(),
-		},
-	},
-	Network: "go-filecoin-test",
-	Seed:    defaultSeed,
-	Time:    defaultTime,
+		Network: "gfctest",
+		Seed:    defaultSeed,
+		Time:    defaultTime,
+	}
 }
 
 const defaultSeed = 4
@@ -47,7 +54,7 @@ func TestGenGenLoading(t *testing.T) {
 	fi, err := ioutil.TempFile("", "gengentest")
 	assert.NoError(t, err)
 
-	_, err = GenGenesisCar(testConfig, fi)
+	_, err = GenGenesisCar(testConfig(t), fi)
 	assert.NoError(t, err)
 	assert.NoError(t, fi.Close())
 
@@ -57,20 +64,19 @@ func TestGenGenLoading(t *testing.T) {
 	o := td.Run("actor", "ls").AssertSuccess()
 
 	stdout := o.ReadStdout()
-	assert.Contains(t, stdout, `"MinerActor"`)
-	assert.Contains(t, stdout, `"StoragemarketActor"`)
-	assert.Contains(t, stdout, `"InitActor"`)
+	assert.Contains(t, stdout, builtin.StoragePowerActorCodeID.String())
+	assert.Contains(t, stdout, builtin.StorageMarketActorCodeID.String())
+	assert.Contains(t, stdout, builtin.InitActorCodeID.String())
 }
 
-func TestGenGenDeterministicBetweenBuilds(t *testing.T) {
-	tf.UnitTest(t)
+func TestGenGenDeterministic(t *testing.T) {
+	tf.IntegrationTest(t)
 
 	ctx := context.Background()
 	var info *RenderedGenInfo
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 5; i++ {
 		bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
-		cst := hamt.CSTFromBstore(bstore)
-		inf, err := GenGen(ctx, testConfig, cst, bstore)
+		inf, err := GenGen(ctx, testConfig(t), bstore)
 		assert.NoError(t, err)
 		if info == nil {
 			info = inf

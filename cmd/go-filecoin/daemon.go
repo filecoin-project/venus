@@ -13,7 +13,6 @@ import (
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
-	writer "github.com/ipfs/go-log/writer"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/pkg/errors"
@@ -36,13 +35,11 @@ var daemonCmd = &cmds.Command{
 		cmdkit.BoolOption(OfflineMode, "start the node without networking"),
 		cmdkit.BoolOption(ELStdout),
 		cmdkit.BoolOption(IsRelay, "advertise and allow filecoin network traffic to be relayed through this node"),
-		cmdkit.StringOption(BlockTime, "time a node waits before trying to mine the next block").WithDefault(clock.DefaultEpochDuration.String()),
+		cmdkit.StringOption(BlockTime, "period a node waits between mining successive blocks").WithDefault(clock.DefaultEpochDuration.String()),
+		cmdkit.StringOption(PropagationDelay, "time a node waits after the start of an epoch for blocks to arrive").WithDefault(clock.DefaultPropagationDelay.String()),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		return daemonRun(req, re)
-	},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.Encoders[cmds.Text],
 	},
 }
 
@@ -52,23 +49,24 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	if err != nil {
 		return err
 	}
+	config := rep.Config()
 
 	// second highest precedence is env vars.
 	if envAPI := os.Getenv("FIL_API"); envAPI != "" {
-		rep.Config().API.Address = envAPI
+		config.API.Address = envAPI
 	}
 
 	// highest precedence is cmd line flag.
 	if flagAPI, ok := req.Options[OptionAPI].(string); ok && flagAPI != "" {
-		rep.Config().API.Address = flagAPI
+		config.API.Address = flagAPI
 	}
 
 	if swarmAddress, ok := req.Options[SwarmAddress].(string); ok && swarmAddress != "" {
-		rep.Config().Swarm.Address = swarmAddress
+		config.Swarm.Address = swarmAddress
 	}
 
 	if publicRelayAddress, ok := req.Options[SwarmPublicRelayAddress].(string); ok && publicRelayAddress != "" {
-		rep.Config().Swarm.PublicRelayAddress = publicRelayAddress
+		config.Swarm.PublicRelayAddress = publicRelayAddress
 	}
 
 	opts, err := node.OptionsFromRepo(rep)
@@ -86,20 +84,32 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 
 	durStr, ok := req.Options[BlockTime].(string)
 	if !ok {
-		return errors.New("Bad block time passed")
+		return fmt.Errorf("invalid %s: %v", BlockTime, req.Options[BlockTime])
 	}
-
 	blockTime, err := time.ParseDuration(durStr)
 	if err != nil {
-		return errors.Wrap(err, "Bad block time passed")
+		return fmt.Errorf("invalid %s: %s", BlockTime, durStr)
 	}
 	opts = append(opts, node.BlockTime(blockTime))
+
+	delayStr, ok := req.Options[PropagationDelay].(string)
+	if !ok {
+		return fmt.Errorf("invalid %s: %v", PropagationDelay, req.Options[PropagationDelay])
+	}
+	propDelay, err := time.ParseDuration(delayStr)
+	if err != nil {
+		return fmt.Errorf("invalid %s: %s", PropagationDelay, delayStr)
+	}
+	opts = append(opts, node.PropagationDelay(propDelay))
 
 	journal, err := journal.NewZapJournal(rep.JournalPath())
 	if err != nil {
 		return err
 	}
 	opts = append(opts, node.JournalConfigOption(journal))
+
+	// Monkey-patch network parameters option will set package variables during node build
+	opts = append(opts, node.MonkeyPatchNetworkParamsOption(config.NetworkParams))
 
 	// Instantiate the node.
 	fcn, err := node.New(req.Context, opts...)
@@ -117,7 +127,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	}
 
 	if _, ok := req.Options[ELStdout].(bool); ok {
-		writer.WriterGroup.AddWriter(os.Stdout)
+		_ = re.Emit("--" + ELStdout + " option is deprecated\n")
 	}
 
 	// Start the node.
@@ -130,7 +140,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	ready := make(chan interface{}, 1)
 	go func() {
 		<-ready
-		_ = re.Emit(fmt.Sprintf("API server listening on %s\n", rep.Config().API.Address))
+		_ = re.Emit(fmt.Sprintf("API server listening on %s\n", config.API.Address))
 	}()
 
 	var terminate = make(chan os.Signal, 1)
@@ -140,7 +150,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	// The request is expected to remain open so the daemon uses the request context.
 	// Pass a new context here if the flow changes such that the command should exit while leaving
 	// a forked deamon running.
-	return RunAPIAndWait(req.Context, fcn, rep.Config().API, ready, terminate)
+	return RunAPIAndWait(req.Context, fcn, config.API, ready, terminate)
 }
 
 func getRepo(req *cmds.Request) (repo.Repo, error) {
@@ -157,14 +167,7 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 // saved to the node's repo.
 // A message sent to or closure of the `terminate` channel signals the server to stop.
 func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig, ready chan interface{}, terminate chan os.Signal) error {
-	servenv := &Env{
-		blockMiningAPI: nd.BlockMining.BlockMiningAPI,
-		ctx:            ctx,
-		inspectorAPI:   NewInspectorAPI(nd.Repo),
-		porcelainAPI:   nd.PorcelainAPI,
-		retrievalAPI:   nd.RetrievalProtocol.RetrievalAPI,
-		storageAPI:     nd.StorageProtocol.StorageAPI,
-	}
+	servenv := CreateServerEnv(ctx, nd)
 
 	cfg := cmdhttp.NewServerConfig()
 	cfg.APIPath = APIPrefix
@@ -221,4 +224,16 @@ func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig,
 	}
 
 	return nil
+}
+
+func CreateServerEnv(ctx context.Context, nd *node.Node) *Env {
+	return &Env{
+		blockMiningAPI: nd.BlockMining.BlockMiningAPI,
+		drandAPI:       nd.DrandAPI,
+		ctx:            ctx,
+		inspectorAPI:   NewInspectorAPI(nd.Repo),
+		porcelainAPI:   nd.PorcelainAPI,
+		retrievalAPI:   nd.RetrievalProtocol,
+		storageAPI:     nd.StorageAPI,
+	}
 }

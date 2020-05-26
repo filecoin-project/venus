@@ -5,9 +5,9 @@ import (
 	"errors"
 	"io"
 
-	logging "github.com/ipfs/go-log"
+	"github.com/filecoin-project/go-address"
+	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 

@@ -3,8 +3,9 @@ package dispatcher
 import (
 	"container/heap"
 	"context"
+	"runtime/debug"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/moresync"
@@ -51,14 +52,14 @@ func NewDispatcherWithSizes(syncer dispatchSyncer, trans Transitioner, workQueue
 		transitioner:  trans,
 		incoming:      make(chan Target, inQueueSize),
 		control:       make(chan interface{}, 1),
-		registeredCb:  func(t Target) {},
+		registeredCb:  func(t Target, err error) {},
 	}
 }
 
 // cbMessage registers a user callback to be fired following every successful
 // sync.
 type cbMessage struct {
-	cb func(Target)
+	cb func(Target, error)
 }
 
 // Dispatcher receives, sorts and dispatches targets to the catchupSyncer to control
@@ -90,7 +91,7 @@ type Dispatcher struct {
 
 	// registeredCb is a callback registered over the control channel.  It
 	// is called after every successful sync.
-	registeredCb func(Target)
+	registeredCb func(Target, error)
 	// control is a queue of control messages not yet processed.
 	control chan interface{}
 
@@ -99,13 +100,19 @@ type Dispatcher struct {
 }
 
 // SendHello handles chain information from bootstrap peers.
-func (d *Dispatcher) SendHello(ci *block.ChainInfo) error { return d.enqueue(ci) }
+func (d *Dispatcher) SendHello(ci *block.ChainInfo) error {
+	return d.enqueue(ci)
+}
 
 // SendOwnBlock handles chain info from a node's own mining system
-func (d *Dispatcher) SendOwnBlock(ci *block.ChainInfo) error { return d.enqueue(ci) }
+func (d *Dispatcher) SendOwnBlock(ci *block.ChainInfo) error {
+	return d.enqueue(ci)
+}
 
 // SendGossipBlock handles chain info from new blocks sent on pubsub
-func (d *Dispatcher) SendGossipBlock(ci *block.ChainInfo) error { return d.enqueue(ci) }
+func (d *Dispatcher) SendGossipBlock(ci *block.ChainInfo) error {
+	return d.enqueue(ci)
+}
 
 func (d *Dispatcher) enqueue(ci *block.ChainInfo) error {
 	d.incoming <- Target{ChainInfo: *ci}
@@ -115,11 +122,20 @@ func (d *Dispatcher) enqueue(ci *block.ChainInfo) error {
 // Start launches the business logic for the syncing subsystem.
 func (d *Dispatcher) Start(syncingCtx context.Context) {
 	go func() {
+		defer func() {
+			log.Errorf("exiting")
+			if r := recover(); r != nil {
+				log.Errorf("panic: %v", r)
+				debug.PrintStack()
+			}
+		}()
+
 		var last *Target
 		for {
 			// Handle shutdown
 			select {
 			case <-syncingCtx.Done():
+				log.Infof("context done")
 				return
 			default:
 			}
@@ -127,6 +143,7 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			// Handle control signals
 			select {
 			case ctrl := <-d.control:
+				log.Debugf("processing control: %v", ctrl)
 				d.processCtrl(ctrl)
 			default:
 			}
@@ -141,6 +158,7 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			case first := <-d.incoming:
 				ws = append(ws, first)
 				ws = append(ws, d.drainIncoming()...)
+				log.Debugf("received %d incoming targets: %v", len(ws), ws)
 			default:
 			}
 			catchup, err := d.transitioner.MaybeTransitionToCatchup(d.catchup, ws)
@@ -152,7 +170,7 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			for i, syncTarget := range ws {
 				// Drop targets we don't have room for
 				if d.workQueue.Len() >= d.workQueueSize {
-					log.Infof("not enough space for %d targets on dispatcher's work queue", len(ws)-i)
+					log.Infof("not enough space for %d targets on work queue", len(ws)-i)
 					break
 				}
 				// Sort new targets by putting on work queue.
@@ -160,25 +178,31 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			}
 
 			// Check for work to do
+			log.Debugf("processing work queue of %d", d.workQueue.Len())
 			syncTarget, popped := d.workQueue.Pop()
 			if popped {
+				log.Debugf("processing %v", syncTarget)
 				// Do work
 				err := d.syncer.HandleNewTipSet(syncingCtx, &syncTarget.ChainInfo, d.catchup)
+				log.Debugf("finished processing %v", syncTarget)
 				if err != nil {
-					log.Info("sync request could not complete: %s", err)
+					log.Infof("failed sync of %v (catchup=%t): %s", &syncTarget.ChainInfo, d.catchup, err)
 				}
 				d.syncTargetCount++
-				d.registeredCb(syncTarget)
+				d.registeredCb(syncTarget, err)
 				follow, err := d.transitioner.MaybeTransitionToFollow(syncingCtx, d.catchup, d.workQueue.Len())
 				if err != nil {
 					log.Errorf("state update error setting head %s", err)
 				} else {
 					d.catchup = !follow
+					log.Debugf("catchup state: %v", d.catchup)
 				}
 			} else {
 				// No work left, block until something shows up
+				log.Debugf("drained work queue, waiting")
 				select {
 				case extra := <-d.incoming:
+					log.Debugf("stopped waiting, received %v", extra)
 					last = &extra
 				}
 			}
@@ -202,21 +226,24 @@ func (d *Dispatcher) drainIncoming() []Target {
 
 // RegisterCallback registers a callback on the dispatcher that
 // will fire after every successful target sync.
-func (d *Dispatcher) RegisterCallback(cb func(Target)) {
+func (d *Dispatcher) RegisterCallback(cb func(Target, error)) {
 	d.control <- cbMessage{cb: cb}
 }
 
 // WaiterForTarget returns a function that will block until the dispatcher
-// processes the given target
-func (d *Dispatcher) WaiterForTarget(waitKey block.TipSetKey) func() {
+// processes the given target and returns the error produced by that targer
+func (d *Dispatcher) WaiterForTarget(waitKey block.TipSetKey) func() error {
 	processed := moresync.NewLatch(1)
-	d.RegisterCallback(func(t Target) {
+	var syncErr error
+	d.RegisterCallback(func(t Target, err error) {
 		if t.ChainInfo.Head.Equals(waitKey) {
+			syncErr = err
 			processed.Done()
 		}
 	})
-	return func() {
+	return func() error {
 		processed.Wait()
+		return syncErr
 	}
 }
 func (d *Dispatcher) processCtrl(ctrlMsg interface{}) {

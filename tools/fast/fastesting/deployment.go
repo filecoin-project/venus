@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
@@ -55,7 +54,7 @@ func NewDeploymentEnvironment(ctx context.Context, t *testing.T, network string,
 
 func makeLocal(ctx context.Context, t *testing.T, dir string, fastenvOpts fast.FilecoinOpts) (context.Context, *DeploymentEnvironment) {
 	// Create an environment to connect to the devnet
-	env, err := environment.NewMemoryGenesis(big.NewInt(1000000), dir, types.TestProofsMode)
+	env, err := environment.NewMemoryGenesis(big.NewInt(1000000), dir)
 	require.NoError(t, err)
 
 	defer func() {

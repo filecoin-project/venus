@@ -1,20 +1,20 @@
 package commands
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"strconv"
 
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
-	files "github.com/ipfs/go-ipfs-files"
-
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/pkg/errors"
+
+	"github.com/ipfs/go-cid"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
+	files "github.com/ipfs/go-ipfs-files"
+	p2pcore "github.com/libp2p/go-libp2p-core/peer"
 )
 
 var clientCmd = &cmds.Command{
@@ -24,11 +24,10 @@ var clientCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
 		"cat":                  clientCatCmd,
 		"import":               clientImportDataCmd,
-		"propose-storage-deal": clientProposeStorageDealCmd,
-		"query-storage-deal":   clientQueryStorageDealCmd,
+		"propose-storage-deal": ClientProposeStorageDealCmd,
+		"query-storage-deal":   ClientQueryStorageDealCmd,
 		"verify-storage-deal":  clientVerifyStorageDealCmd,
 		"list-asks":            clientListAsksCmd,
-		"payments":             paymentsCmd,
 	},
 }
 
@@ -90,26 +89,16 @@ See the go-filecoin client cat command for more details.
 		return re.Emit(out.Cid())
 	},
 	Type: cid.Cid{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
-			return PrintString(w, c)
-		}),
-	},
 }
 
-var clientProposeStorageDealCmd = &cmds.Command{
+var ClientProposeStorageDealCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline:          "Propose a storage deal with a storage miner",
 		ShortDescription: `Sends a storage deal proposal to a miner`,
 		LongDescription: `
-Send a storage deal proposal to a miner. IDs provided to this command should
-represent valid asks. Existing asks can be listed with the following command:
+Send a storage deal proposal to a miner.
 
-$ go-filecoin client list-asks
-
-See the miner command help text for more information on asks.
-
-Duration should be specified with the number of blocks for which to store the
+Start and end should be specified with the number of blocks for which to store the
 data. New blocks are generated about every 30 seconds, so the time given should
 be represented as a count of 30 second intervals. For example, 1 minute would
 be 2, 1 hour would be 120, and 1 day would be 2880.
@@ -118,54 +107,100 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("miner", true, false, "Address of miner to send storage proposal"),
 		cmdkit.StringArg("data", true, false, "CID of the data to be stored"),
-		cmdkit.StringArg("ask", true, false, "ID of ask for which to propose a deal"),
-		cmdkit.StringArg("duration", true, false, "Time in blocks (about 30 seconds per block) to store data"),
+		cmdkit.StringArg("start", true, false, "Chain epoch at which deal should start"),
+		cmdkit.StringArg("end", true, false, "Chain epoch at which deal should end"),
+		cmdkit.StringArg("price", true, false, "Storage price per epoch of all data in FIL (e.g. 0.01)"),
+		cmdkit.StringArg("collateral", true, false, "Collateral of deal in FIL (e.g. 0.01)"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.BoolOption("allow-duplicates", "Allows duplicate proposals to be created. Unless this flag is set, you will not be able to make more than one deal per piece per miner. This protection exists to prevent erroneous duplicate deals."),
+		cmdkit.StringOption("peerid", "Override miner's peer id stored on chain"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		allowDuplicates, _ := req.Options["allow-duplicates"].(bool)
-
-		miner, err := address.NewFromString(req.Arguments[0])
+		addr, err := GetPorcelainAPI(env).WalletDefaultAddress()
 		if err != nil {
 			return err
 		}
 
-		data, err := cid.Decode(req.Arguments[1])
+		maddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			return err
 		}
 
-		askid, err := strconv.ParseUint(req.Arguments[2], 10, 64)
+		chainHead := GetPorcelainAPI(env).ChainHeadKey()
+
+		dataCID, err := cid.Decode(req.Arguments[1])
+		if err != nil {
+			return errors.Wrap(err, "could not decode data cid")
+		}
+
+		data := &storagemarket.DataRef{
+			TransferType: "graphsync",
+			Root:         dataCID,
+		}
+
+		status, err := GetPorcelainAPI(env).MinerGetStatus(req.Context, maddr, chainHead)
 		if err != nil {
 			return err
 		}
 
-		duration, err := strconv.ParseUint(req.Arguments[3], 10, 64)
-		if err != nil {
-			return err
+		peerID := status.PeerID
+		peerIDStr, _ := req.Options["peerid"].(string)
+		if peerIDStr != "" {
+			peerID, err = p2pcore.Decode(peerIDStr)
+			if err != nil {
+				return err
+			}
 		}
 
-		resp, err := GetStorageAPI(env).ProposeStorageDeal(req.Context, data, miner, askid, duration, allowDuplicates)
+		providerInfo := &storagemarket.StorageProviderInfo{
+			Address:    maddr,
+			Owner:      status.OwnerAddress,
+			Worker:     status.WorkerAddress,
+			SectorSize: uint64(status.SectorConfiguration.SectorSize),
+			PeerID:     peerID,
+		}
+
+		start, err := strconv.ParseUint(req.Arguments[2], 10, 64)
+		if err != nil {
+			return errors.Wrap(err, "could not parse deal start")
+		}
+
+		end, err := strconv.ParseUint(req.Arguments[3], 10, 64)
+		if err != nil {
+			return errors.Wrap(err, "could not parse deal end")
+		}
+
+		price, valid := types.NewAttoFILFromFILString(req.Arguments[4])
+		if !valid {
+			return errors.Errorf("could not parse price %s", req.Arguments[5])
+		}
+
+		collateral, valid := types.NewAttoFILFromFILString(req.Arguments[5])
+		if !valid {
+			return errors.Errorf("could not parse collateral %s", req.Arguments[6])
+		}
+
+		resp, err := GetStorageAPI(env).ProposeStorageDeal(
+			req.Context,
+			addr,
+			providerInfo,
+			data,
+			abi.ChainEpoch(start),
+			abi.ChainEpoch(end),
+			price,
+			collateral,
+			status.MinerInfo.SealProofType,
+		)
 		if err != nil {
 			return err
 		}
 
 		return re.Emit(resp)
 	},
-	Type: storagedeal.Response{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storagedeal.Response) error {
-			fmt.Fprintf(w, "State:   %s\n", resp.State.String())       // nolint: errcheck
-			fmt.Fprintf(w, "Message: %s\n", resp.Message)              // nolint: errcheck
-			fmt.Fprintf(w, "DealID:  %s\n", resp.ProposalCid.String()) // nolint: errcheck
-			return nil
-		}),
-	},
+	Type: storagemarket.ProposeStorageDealResult{},
 }
 
-var clientQueryStorageDealCmd = &cmds.Command{
+var ClientQueryStorageDealCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Query a storage deal's status",
 		ShortDescription: `
@@ -178,62 +213,52 @@ format is specified with the --enc flag.
 		cmdkit.StringArg("id", true, false, "CID of deal to query"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		propcid, err := cid.Decode(req.Arguments[0])
+		dealCID, err := cid.Decode(req.Arguments[0])
+		if err != nil {
+			return errors.Wrap(err, "could not decode deal cid")
+		}
+
+		deal, err := GetStorageAPI(env).GetStorageDeal(req.Context, dealCID)
 		if err != nil {
 			return err
 		}
 
-		resp, err := GetStorageAPI(env).QueryStorageDeal(req.Context, propcid)
-		if err != nil {
-			return err
-		}
-
-		return re.Emit(resp)
+		return re.Emit(deal)
 	},
-	Type: storagedeal.SignedResponse{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storagedeal.SignedResponse) error {
-			fmt.Fprintf(w, "Status: %s\n", resp.State.String()) // nolint: errcheck
-			fmt.Fprintf(w, "Message: %s\n", resp.Message)       // nolint: errcheck
-			return nil
-		}),
-	},
+	Type: storagemarket.ClientDeal{},
 }
 
 // VerifyStorageDealResult wraps the success in an interface type
 type VerifyStorageDealResult struct {
-	validPip bool
 }
 
 var clientVerifyStorageDealCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Verify a storage deal",
 		ShortDescription: `
-Returns an error if the deal is not in the Complete state or the Piece Inclusion Proof
-is invalid.  Returns nil otherwise.
+Returns an error if the deal is not in the Complete state.  Returns nil otherwise.
 `,
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("id", true, false, "CID of deal to query"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		proposalCid, err := cid.Decode(req.Arguments[0])
+		dealCID, err := cid.Decode(req.Arguments[0])
+		if err != nil {
+			return errors.Wrap(err, "could not decode deal cid")
+		}
+
+		deal, err := GetStorageAPI(env).GetStorageDeal(req.Context, dealCID)
 		if err != nil {
 			return err
 		}
 
-		resp, err := GetStorageAPI(env).QueryStorageDeal(req.Context, proposalCid)
-		if err != nil {
-			return err
+		if deal.State != storagemarket.StorageDealActive {
+			return errors.New("storage deal not in Active state")
 		}
 
-		if resp.State != storagedeal.Complete {
-			return errors.New("storage deal not in Complete state")
-		}
-
-		validateError := GetPorcelainAPI(env).ClientValidateDeal(req.Context, proposalCid, resp.ProofInfo)
-
-		return re.Emit(VerifyStorageDealResult{validateError == nil})
+		// TODO: Check for slashes
+		return re.Emit(&VerifyStorageDealResult{})
 	},
 	Type: &VerifyStorageDealResult{},
 }
@@ -242,72 +267,21 @@ var clientListAsksCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "List all asks in the storage market",
 		ShortDescription: `
-Lists all asks in the storage market. This command takes no arguments. Results
-will be returned as a space separated table with miner, id, price and expiration
-respectively.
+Lists all asks in the storage market. This command takes no arguments.
 `,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		asksCh := GetPorcelainAPI(env).ClientListAsks(req.Context)
-
-		for a := range asksCh {
-			if a.Error != nil {
-				return a.Error
-			}
-			if err := re.Emit(a); err != nil {
-				return err
-			}
-		}
-		return nil
-	},
-	Type: porcelain.Ask{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ask *porcelain.Ask) error {
-			fmt.Fprintf(w, "%s %.3d %s %s\n", ask.Miner, ask.ID, ask.Price, ask.Expiry) // nolint: errcheck
-			return nil
-		}),
-	},
-}
-
-var paymentsCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
-		Tagline:          "List payments for a given deal",
-		ShortDescription: "List payments for a given deal",
-	},
-	Options: []cmdkit.Option{},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("dealCid", true, false, "Channel id from which to list vouchers"),
-	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		dealCid, err := cid.Decode(req.Arguments[0])
-		if err != nil {
-			return fmt.Errorf("invalid channel id")
-		}
-
-		vouchers, err := GetStorageAPI(env).Payments(req.Context, dealCid)
+		minerAddr, err := GetBlockAPI(env).MinerAddress()
 		if err != nil {
 			return err
 		}
 
-		return re.Emit(vouchers)
+		asks, err := GetStorageAPI(env).ListAsks(minerAddr)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(asks)
 	},
-	Type: []*types.PaymentVoucher{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, vouchers []*types.PaymentVoucher) error {
-			if _, err := fmt.Println("Channel\tAmount\tValidAt\tEncoded Voucher"); err != nil {
-				return err
-			}
-			for _, voucher := range vouchers {
-				encodedVoucher, err := voucher.EncodeBase58()
-				if err != nil {
-					return err
-				}
-				_, err = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", voucher.Channel.String(), voucher.Amount.String(), voucher.ValidAt.String(), encodedVoucher)
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		}),
-	},
+	Type: []*storagemarket.SignedStorageAsk{},
 }

@@ -4,9 +4,9 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/ipfs/go-ipfs-files"
+	"github.com/filecoin-project/go-address"
+	files "github.com/ipfs/go-ipfs-files"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 

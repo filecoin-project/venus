@@ -7,10 +7,14 @@ import (
 
 	"github.com/cskr/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	logging "github.com/ipfs/go-log"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
@@ -18,10 +22,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
-
-func init() {
-	encoding.RegisterIpldCborType(tsState{})
-}
 
 // NewHeadTopic is the topic used to publish new heads.
 const NewHeadTopic = "new-head"
@@ -34,25 +34,18 @@ var logStore = logging.Logger("chain.store")
 // HeadKey is the key at which the head tipset cid's are written in the datastore.
 var HeadKey = datastore.NewKey("/chain/heaviestTipSet")
 
-// ipldStore defines an interface for interacting with a hamt.CborIpldStore.
-// TODO #3078 use go-ipld-cbor export
-type ipldStore interface {
-	Put(ctx context.Context, v interface{}) (cid.Cid, error)
-	Get(ctx context.Context, c cid.Cid, out interface{}) error
-}
-
 type ipldSource struct {
 	// cst is a store allowing access
 	// (un)marshalling and interop with go-ipld-hamt.
-	cborStore ipldStore
+	cborStore cbor.IpldStore
 }
 
 type tsState struct {
-	StateRoot cid.Cid
-	Reciepts  cid.Cid
+	StateRoot e.Cid
+	Reciepts  e.Cid
 }
 
-func newSource(cst ipldStore) *ipldSource {
+func newSource(cst cbor.IpldStore) *ipldSource {
 	return &ipldSource{
 		cborStore: cst,
 	}
@@ -76,10 +69,6 @@ type Store struct {
 	// for reading filecoin block and state objects kept by the node.
 	stateAndBlockSource *ipldSource
 
-	// stateTreeeLoader is used for loading the state tree from a
-	// CborIPLDStore
-	stateTreeLoader state.TreeLoader
-
 	// ds is the datastore for the chain's private metadata which consists
 	// of the tipset key to state root cid mapping, and the heaviest tipset
 	// key.
@@ -98,6 +87,8 @@ type Store struct {
 	// Successive published tipsets may be supersets of previously published tipsets.
 	// TODO: rename to notifications.  Also, reconsider ordering assumption depending
 	// on decisions made around the FC node notification system.
+	// TODO: replace this with a synchronous event bus
+	// https://github.com/filecoin-project/go-filecoin/issues/2309
 	headEvents *pubsub.PubSub
 
 	// Tracks tipsets by height/parentset for use by expected consensus.
@@ -108,12 +99,11 @@ type Store struct {
 }
 
 // NewStore constructs a new default store.
-func NewStore(ds repo.Datastore, cst ipldStore, stl state.TreeLoader, sr Reporter, genesisCid cid.Cid) *Store {
+func NewStore(ds repo.Datastore, cst cbor.IpldStore, sr Reporter, genesisCid cid.Cid) *Store {
 	return &Store{
 		stateAndBlockSource: newSource(cst),
-		stateTreeLoader:     stl,
 		ds:                  ds,
-		headEvents:          pubsub.New(128),
+		headEvents:          pubsub.New(12),
 		tipIndex:            NewTipIndex(),
 		genesis:             genesisCid,
 		reporter:            sr,
@@ -154,7 +144,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	startHeight := headTs.At(0).Height
 	logStore.Infof("start loading chain at tipset: %s, height: %d", headTsKey.String(), startHeight)
 	// Ensure we only produce 10 log messages regardless of the chain height.
-	logStatusEvery := uint64(startHeight / 10)
+	logStatusEvery := startHeight / 10
 
 	var genesii block.TipSet
 	// Provide tipsets directly from the block store, not from the tipset index which is
@@ -236,7 +226,7 @@ func (store *Store) loadStateRootAndReceipts(ts block.TipSet) (cid.Cid, cid.Cid,
 		return cid.Undef, cid.Undef, errors.Wrapf(err, "failed to decode tip set metadata %s", ts.String())
 	}
 
-	return metadata.StateRoot, metadata.Reciepts, nil
+	return metadata.StateRoot.Cid, metadata.Reciepts.Cid, nil
 }
 
 // PutTipSetMetadata persists the blocks of a tipset and the tipset index.
@@ -265,7 +255,7 @@ func (store *Store) GetTipSetState(ctx context.Context, key block.TipSetKey) (st
 	if err != nil {
 		return nil, err
 	}
-	return store.stateTreeLoader.LoadStateTree(ctx, store.stateAndBlockSource.cborStore, stateCid)
+	return state.LoadState(ctx, store.stateAndBlockSource.cborStore, stateCid)
 }
 
 // GetGenesisState returns the state tree at genesis to retrieve initialization parameters.
@@ -277,7 +267,7 @@ func (store *Store) GetGenesisState(ctx context.Context) (state.Tree, error) {
 	}
 
 	// create state tree
-	return store.stateTreeLoader.LoadStateTree(ctx, store.stateAndBlockSource.cborStore, genesis.StateRoot)
+	return state.LoadState(ctx, store.stateAndBlockSource.cborStore, genesis.StateRoot.Cid)
 }
 
 // GetGenesisBlock returns the genesis block held by the chain store.
@@ -303,13 +293,13 @@ func (store *Store) HasTipSetAndState(ctx context.Context, key block.TipSetKey) 
 
 // GetTipSetAndStatesByParentsAndHeight returns the the tipsets and states tracked by
 // the default store's tipIndex that have parents identified by `parentKey`.
-func (store *Store) GetTipSetAndStatesByParentsAndHeight(parentKey block.TipSetKey, h uint64) ([]*TipSetMetadata, error) {
+func (store *Store) GetTipSetAndStatesByParentsAndHeight(parentKey block.TipSetKey, h abi.ChainEpoch) ([]*TipSetMetadata, error) {
 	return store.tipIndex.GetByParentsAndHeight(parentKey, h)
 }
 
 // HasTipSetAndStatesWithParentsAndHeight returns true if the default store's tipindex
 // contains any tipset identified by `parentKey`.
-func (store *Store) HasTipSetAndStatesWithParentsAndHeight(parentKey block.TipSetKey, h uint64) bool {
+func (store *Store) HasTipSetAndStatesWithParentsAndHeight(parentKey block.TipSetKey, h abi.ChainEpoch) bool {
 	return store.tipIndex.HasByParentsAndHeight(parentKey, h)
 }
 
@@ -325,7 +315,7 @@ func (store *Store) SetHead(ctx context.Context, ts block.TipSet) error {
 
 	// Add logging to debug sporadic test failure.
 	if !ts.Defined() {
-		logStore.Error("publishing empty tipset")
+		logStore.Errorf("publishing empty tipset")
 		logStore.Error(debug.Stack())
 	}
 
@@ -347,6 +337,11 @@ func (store *Store) SetHead(ctx context.Context, ts block.TipSet) error {
 	store.HeadEvents().Pub(ts, NewHeadTopic)
 
 	return nil
+}
+
+// ReadOnlyStateStore provides a read-only IPLD store for access to chain state.
+func (store *Store) ReadOnlyStateStore() cborutil.ReadOnlyIpldStore {
+	return cborutil.ReadOnlyIpldStore{IpldStore: store.stateAndBlockSource.cborStore}
 }
 
 func (store *Store) setHeadPersistent(ctx context.Context, ts block.TipSet) (bool, error) {
@@ -391,8 +386,8 @@ func (store *Store) writeTipSetMetadata(tsm *TipSetMetadata) error {
 	}
 
 	metadata := tsState{
-		StateRoot: tsm.TipSetStateRoot,
-		Reciepts:  tsm.TipSetReceipts,
+		StateRoot: e.NewCid(tsm.TipSetStateRoot),
+		Reciepts:  e.NewCid(tsm.TipSetReceipts),
 	}
 	val, err := encoding.Encode(metadata)
 	if err != nil {

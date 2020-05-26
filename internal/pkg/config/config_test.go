@@ -1,17 +1,18 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestDefaults(t *testing.T) {
@@ -36,76 +37,17 @@ func TestWriteFile(t *testing.T) {
 
 	cfg := NewDefaultConfig()
 
+	cfgJSON, err := json.MarshalIndent(*cfg, "", "\t")
+	require.NoError(t, err)
+	expected := string(cfgJSON)
+
+	SanityCheck(t, expected)
+
 	assert.NoError(t, cfg.WriteFile(filepath.Join(dir, "config.json")))
 	content, err := ioutil.ReadFile(filepath.Join(dir, "config.json"))
 	assert.NoError(t, err)
 
-	assert.Equal(t,
-		`{
-	"api": {
-		"address": "/ip4/127.0.0.1/tcp/3453",
-		"accessControlAllowOrigin": [
-			"http://localhost:8080",
-			"https://localhost:8080",
-			"http://127.0.0.1:8080",
-			"https://127.0.0.1:8080"
-		],
-		"accessControlAllowCredentials": false,
-		"accessControlAllowMethods": [
-			"GET",
-			"POST",
-			"PUT"
-		]
-	},
-	"bootstrap": {
-		"addresses": [],
-		"minPeerThreshold": 0,
-		"period": "1m"
-	},
-	"datastore": {
-		"type": "badgerds",
-		"path": "badger"
-	},
-	"heartbeat": {
-		"beatTarget": "",
-		"beatPeriod": "3s",
-		"reconnectPeriod": "10s",
-		"nickname": ""
-	},
-	"mining": {
-		"minerAddress": "empty",
-		"autoSealIntervalSeconds": 120,
-		"storagePrice": "0"
-	},
-	"mpool": {
-		"maxPoolSize": 10000,
-		"maxNonceGap": "100"
-	},
-	"observability": {
-		"metrics": {
-			"prometheusEnabled": false,
-			"reportInterval": "5s",
-			"prometheusEndpoint": "/ip4/0.0.0.0/tcp/9400"
-		},
-		"tracing": {
-			"jaegerTracingEnabled": false,
-			"probabilitySampler": 1,
-			"jaegerEndpoint": "http://localhost:14268/api/traces"
-		}
-	},
-	"sectorbase": {
-		"rootdir": ""
-	},
-	"swarm": {
-		"address": "/ip4/0.0.0.0/tcp/6000"
-	},
-	"wallet": {
-		"defaultAddress": "empty"
-	}
-}`,
-		string(content),
-	)
-
+	assert.Equal(t, expected, string(content))
 	assert.NoError(t, os.Remove(filepath.Join(dir, "config.json")))
 }
 

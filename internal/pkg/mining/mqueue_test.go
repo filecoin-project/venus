@@ -1,13 +1,16 @@
 package mining
 
 import (
+	"context"
+	"testing"
+
+	"github.com/filecoin-project/go-address"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 func TestMessageQueueOrder(t *testing.T) {
@@ -25,11 +28,11 @@ func TestMessageQueueOrder(t *testing.T) {
 		msg := types.UnsignedMessage{
 			From:       from,
 			To:         to,
-			CallSeqNum: types.Uint64(nonce),
+			CallSeqNum: nonce,
 			GasPrice:   types.NewGasPrice(price),
-			GasLimit:   types.NewGasUnits(units),
+			GasLimit:   gas.NewGas(int64(units)),
 		}
-		s, err := types.NewSignedMessage(msg, &mockSigner)
+		s, err := types.NewSignedMessage(context.TODO(), msg, &mockSigner)
 		require.NoError(t, err)
 		return s
 	}
@@ -67,9 +70,9 @@ func TestMessageQueueOrder(t *testing.T) {
 		for msg, more := q.Pop(); more == true; msg, more = q.Pop() {
 			last, seen := lastFromAddr[msg.Message.From]
 			if seen {
-				assert.True(t, last <= uint64(msg.Message.CallSeqNum))
+				assert.True(t, last <= msg.Message.CallSeqNum)
 			}
-			lastFromAddr[msg.Message.From] = uint64(msg.Message.CallSeqNum)
+			lastFromAddr[msg.Message.From] = msg.Message.CallSeqNum
 		}
 		assert.True(t, q.Empty())
 	})
@@ -82,7 +85,7 @@ func TestMessageQueueOrder(t *testing.T) {
 		}
 		q := NewMessageQueue(msgs)
 		expected := []*types.SignedMessage{msgs[1], msgs[0], msgs[2]}
-		actual := q.Drain()
+		actual := q.Drain(-1)
 		assert.Equal(t, expected, actual)
 		assert.True(t, q.Empty())
 	})
@@ -96,8 +99,21 @@ func TestMessageQueueOrder(t *testing.T) {
 		expected := []*types.SignedMessage{msgs[2], msgs[0], msgs[1]}
 
 		q := NewMessageQueue(msgs)
-		actual := q.Drain()
+		actual := q.Drain(-1)
 		assert.Equal(t, expected, actual)
 		assert.True(t, q.Empty())
+	})
+
+	t.Run("only take as many as specified", func(t *testing.T) {
+		msgs := []*types.SignedMessage{
+			sign(a0, to, 0, 0, 2),
+			sign(a1, to, 0, 0, 3),
+			sign(a2, to, 0, 0, 1),
+		}
+		q := NewMessageQueue(msgs)
+		expected := []*types.SignedMessage{msgs[1]}
+		actual := q.Drain(1)
+		assert.Equal(t, expected, actual)
+		assert.False(t, q.Empty())
 	})
 }

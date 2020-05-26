@@ -1,12 +1,10 @@
 package commands
 
 import (
-	"encoding/json"
-	"io"
 	"strings"
 
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
 var configCmd = &cmds.Command{
@@ -100,12 +98,5 @@ $ go-filecoin config bootstrap
 		}
 
 		return re.Emit(res)
-	},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeEncoder(func(req *cmds.Request, w io.Writer, res interface{}) error {
-			encoder := json.NewEncoder(w)
-			encoder.SetIndent("", "\t")
-			return encoder.Encode(res)
-		}),
 	},
 }

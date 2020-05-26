@@ -124,6 +124,12 @@ func (c *Client) RunJSON(ctx context.Context, command ...string) map[string]inte
 	return parsed
 }
 
+// RunMarshaledJSON runs a command, asserts success, and marshals the JSON response.
+func (c *Client) RunMarshaledJSON(ctx context.Context, result interface{}, command ...string) {
+	out := c.RunSuccess(ctx, command...)
+	require.NoError(c.tb, json.Unmarshal([]byte(out.ReadStdout()), &result))
+}
+
 // RunSuccessFirstLine executes the given command, asserts success and returns
 // the first line of stdout.
 func (c *Client) RunSuccessFirstLine(ctx context.Context, args ...string) string {

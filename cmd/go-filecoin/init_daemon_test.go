@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	manet "github.com/multiformats/go-multiaddr-net"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/build/project"

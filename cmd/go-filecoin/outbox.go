@@ -1,13 +1,11 @@
 package commands
 
 import (
-	"io"
-
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	"github.com/filecoin-project/go-address"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 var outboxCmd = &cmds.Command{
@@ -49,17 +47,6 @@ var outboxLsCmd = &cmds.Command{
 		return nil
 	},
 	Type: OutboxLsResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, queue *OutboxLsResult) error {
-			sw := NewSilentWriter(w)
-			sw.Println("From:", queue.Address.String())
-			for _, qm := range queue.Messages {
-				msg := qm.Msg
-				sw.Printf("%s, height: %d\n", msg.String(), qm.Stamp)
-			}
-			return sw.Error()
-		}),
-	},
 }
 
 var outboxClearCmd = &cmds.Command{
@@ -80,7 +67,6 @@ var outboxClearCmd = &cmds.Command{
 		}
 		return nil
 	},
-	Encoders: cmds.EncoderMap{},
 }
 
 // Reads an address from an argument, or lists addresses of all outbox queues if no arg is given.

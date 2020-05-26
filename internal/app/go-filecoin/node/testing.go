@@ -5,19 +5,19 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
@@ -25,7 +25,6 @@ import (
 // ChainSeed is a generalized struct for configuring node
 type ChainSeed struct {
 	info   *gengen.RenderedGenInfo
-	cst    *hamt.CborIpldStore
 	bstore blockstore.Blockstore
 }
 
@@ -36,20 +35,18 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 
 	mds := ds.NewMapDatastore()
 	bstore := blockstore.NewBlockstore(mds)
-	cst := hamt.CSTFromBstore(bstore)
 
-	info, err := gengen.GenGen(context.TODO(), cfg, cst, bstore)
+	info, err := gengen.GenGen(context.TODO(), cfg, bstore)
 	require.NoError(t, err)
 
 	return &ChainSeed{
 		info:   info,
-		cst:    cst,
 		bstore: bstore,
 	}
 }
 
 // GenesisInitFunc is a th.GenesisInitFunc using the chain seed
-func (cs *ChainSeed) GenesisInitFunc(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+func (cs *ChainSeed) GenesisInitFunc(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
 	keys, err := cs.bstore.AllKeysChan(context.TODO())
 	if err != nil {
 		return nil, err
@@ -139,7 +136,7 @@ func (cs *ChainSeed) KeyInitOpt(which int) InitOpt {
 
 // FixtureChainSeed returns the genesis function that
 func FixtureChainSeed(t *testing.T) *ChainSeed {
-	return MakeChainSeed(t, &fixtures.TestGenGenConfig)
+	return MakeChainSeed(t, &fortest.TestGenGenConfig)
 }
 
 // DefaultAddressConfigOpt is a node config option setting the default address
@@ -166,10 +163,7 @@ func ConnectNodes(t *testing.T, a, b *Node) {
 // FakeProofVerifierBuilderOpts returns default configuration for testing
 func FakeProofVerifierBuilderOpts() []BuilderOpt {
 	return []BuilderOpt{
-		VerifierConfigOption(&verification.FakeVerifier{
-			VerifyPoStValid: true,
-			VerifySealValid: true,
-		}),
+		VerifierConfigOption(&proofs.FakeVerifier{}),
 	}
 }
 
@@ -202,23 +196,28 @@ var PeerKeys = []crypto.PrivKey{
 	mustGenKey(102),
 }
 
-// TestGenCfg is a genesis configuration used for tests.
-var TestGenCfg = &gengen.GenesisCfg{
-	ProofsMode: types.TestProofsMode,
-	Keys:       2,
-	Miners: []*gengen.CreateStorageMinerConfig{
-		{
-			Owner:               0,
-			NumCommittedSectors: 100,
-			PeerID:              mustPeerID(PeerKeys[0]).Pretty(),
-			SectorSize:          types.OneKiBSectorSize.Uint64(),
+// MakeTestGenCfg returns a genesis configuration used for tests.
+// This config has one miner with numSectors sectors and two accounts,
+// the first is the miner's owner/worker and the accounts both have 10000 FIL
+func MakeTestGenCfg(t *testing.T, numSectors int) *gengen.GenesisCfg {
+	commCfgs, err := gengen.MakeCommitCfgs(numSectors)
+	require.NoError(t, err)
+	return &gengen.GenesisCfg{
+		KeysToGen: 2,
+		Miners: []*gengen.CreateStorageMinerConfig{
+			{
+				Owner:            0,
+				PeerID:           mustPeerID(PeerKeys[0]).Pretty(),
+				CommittedSectors: commCfgs,
+				SealProofType:    constants.DevSealProofType,
+			},
 		},
-	},
-	Network: "go-filecoin-test",
-	PreAlloc: []string{
-		"10000",
-		"10000",
-	},
+		Network: "gfctest",
+		PreallocatedFunds: []string{
+			"10000",
+			"10000",
+		},
+	}
 }
 
 func mustGenKey(seed int64) crypto.PrivKey {

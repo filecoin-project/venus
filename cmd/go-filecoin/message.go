@@ -4,23 +4,25 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"strconv"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 var msgCmd = &cmds.Command{
@@ -38,7 +40,7 @@ var msgCmd = &cmds.Command{
 // MessageSendResult is the return type for message send command
 type MessageSendResult struct {
 	Cid     cid.Cid
-	GasUsed types.GasUnits
+	GasUsed gas.Unit
 	Preview bool
 }
 
@@ -83,10 +85,10 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
-		methodID := types.SendMethodID
-		methodInput, ok := req.Options["method"].(uint)
+		methodID := builtin.MethodSend
+		methodInput, ok := req.Options["method"].(uint64)
 		if ok {
-			methodID = types.MethodID(methodInput)
+			methodID = abi.MethodNum(methodInput)
 		}
 
 		if preview {
@@ -114,6 +116,7 @@ var msgSendCmd = &cmds.Command{
 			gasPrice,
 			gasLimit,
 			methodID,
+			adt.Empty,
 		)
 		if err != nil {
 			return err
@@ -121,21 +124,11 @@ var msgSendCmd = &cmds.Command{
 
 		return re.Emit(&MessageSendResult{
 			Cid:     c,
-			GasUsed: types.NewGasUnits(0),
+			GasUsed: gas.NewGas(0),
 			Preview: false,
 		})
 	},
 	Type: &MessageSendResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MessageSendResult) error {
-			if res.Preview {
-				output := strconv.FormatUint(uint64(res.GasUsed), 10)
-				_, err := w.Write([]byte(output))
-				return err
-			}
-			return PrintString(w, res.Cid)
-		}),
-	},
 }
 
 var signedMsgSendCmd = &cmds.Command{
@@ -169,28 +162,18 @@ var signedMsgSendCmd = &cmds.Command{
 
 		return re.Emit(&MessageSendResult{
 			Cid:     c,
-			GasUsed: types.NewGasUnits(0),
+			GasUsed: gas.NewGas(0),
 			Preview: false,
 		})
 	},
 	Type: &MessageSendResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MessageSendResult) error {
-			if res.Preview {
-				output := strconv.FormatUint(uint64(res.GasUsed), 10)
-				_, err := w.Write([]byte(output))
-				return err
-			}
-			return PrintString(w, res.Cid)
-		}),
-	},
 }
 
 // WaitResult is the result of a message wait call.
 type WaitResult struct {
 	Message   *types.SignedMessage
-	Receipt   *types.MessageReceipt
-	Signature *vm.FunctionSignature
+	Receipt   *vm.MessageReceipt
+	Signature vm.ActorMethodSignature
 }
 
 var msgWaitCmd = &cmds.Command{
@@ -204,6 +187,7 @@ var msgWaitCmd = &cmds.Command{
 		cmdkit.BoolOption("message", "Print the whole message").WithDefault(true),
 		cmdkit.BoolOption("receipt", "Print the whole message receipt").WithDefault(true),
 		cmdkit.BoolOption("return", "Print the return value from the receipt").WithDefault(false),
+		cmdkit.Uint64Option("lookback", "Number of previous tipsets to be checked before waiting").WithDefault(msg.DefaultMessageWaitLookback),
 		cmdkit.StringOption("timeout", "Maximum time to wait for message. e.g., 300ms, 1.5h, 2h45m.").WithDefault("10m"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -221,10 +205,12 @@ var msgWaitCmd = &cmds.Command{
 			return errors.Wrap(err, "Invalid timeout string")
 		}
 
+		lookback, _ := req.Options["lookback"].(uint64)
+
 		ctx, cancel := context.WithTimeout(req.Context, timeoutDuration)
 		defer cancel()
 
-		err = GetPorcelainAPI(env).MessageWait(ctx, msgCid, func(blk *block.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
+		err = GetPorcelainAPI(env).MessageWait(ctx, msgCid, lookback, func(blk *block.Block, msg *types.SignedMessage, receipt *vm.MessageReceipt) error {
 			found = true
 			sig, err := GetPorcelainAPI(env).ActorGetSignature(req.Context, msg.Message.To, msg.Message.Method)
 			if err != nil && err != cst.ErrNoMethod && err != cst.ErrNoActorImpl {
@@ -248,41 +234,6 @@ var msgWaitCmd = &cmds.Command{
 		return nil
 	},
 	Type: WaitResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *WaitResult) error {
-			messageOpt, _ := req.Options["message"].(bool)
-			receiptOpt, _ := req.Options["receipt"].(bool)
-			returnOpt, _ := req.Options["return"].(bool)
-
-			marshaled := []byte{}
-			var err error
-			if messageOpt {
-				marshaled, err = appendJSON(res.Message, marshaled)
-				if err != nil {
-					return err
-				}
-			}
-
-			if receiptOpt {
-				marshaled, err = appendJSON(res.Receipt, marshaled)
-				if err != nil {
-					return err
-				}
-			}
-
-			if returnOpt && res.Receipt != nil && res.Signature != nil {
-				val, err := abi.Deserialize(res.Receipt.Return[0], res.Signature.Return[0])
-				if err != nil {
-					return errors.Wrap(err, "unable to deserialize return value")
-				}
-
-				marshaled = append(marshaled, []byte(val.Val.(fmt.Stringer).String())...)
-			}
-
-			_, err = w.Write(marshaled)
-			return err
-		}),
-	},
 }
 
 // MessageStatusResult is the status of a message on chain or in the message queue/pool
@@ -291,7 +242,6 @@ type MessageStatusResult struct {
 	PoolMsg   *types.SignedMessage
 	InOutbox  bool // Whether the message is found in the outbox
 	OutboxMsg *message.Queued
-	OnChain   bool // Whether the message is found on chain
 	ChainMsg  *msg.ChainMessage
 }
 
@@ -329,44 +279,7 @@ var msgStatusCmd = &cmds.Command{
 			}
 		}
 
-		// Look on chain
-		result.ChainMsg, result.OnChain, err = api.MessageFind(req.Context, msgCid)
-		if err != nil {
-			return err
-		}
 		return re.Emit(&result)
 	},
 	Type: &MessageStatusResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MessageStatusResult) error {
-			sw := NewSilentWriter(w)
-			var msg *types.SignedMessage
-			if res.InOutbox {
-				msg = res.OutboxMsg.Msg
-				sw.Printf("In outbox: %s, sent at height %d\n", res.OutboxMsg.Msg.Message.From, res.OutboxMsg.Stamp)
-			}
-			if res.InPool {
-				msg = res.PoolMsg
-				sw.Printf("In mpool\n")
-			}
-			if res.OnChain {
-				msg = res.ChainMsg.Message
-				sw.Printf("On chain at height %d, receipt %v\n", res.ChainMsg.Block.Height, res.ChainMsg.Receipt)
-			}
-			if msg != nil {
-				sw.Println(msg.String())
-			}
-			return sw.Error()
-		}),
-	},
-}
-
-func appendJSON(val interface{}, out []byte) ([]byte, error) {
-	m, err := json.MarshalIndent(val, "", "\t")
-	if err != nil {
-		return nil, err
-	}
-	out = append(out, m...)
-	out = append(out, byte('\n'))
-	return out, nil
 }

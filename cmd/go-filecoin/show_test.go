@@ -5,16 +5,17 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+
+	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestBlockDaemon(t *testing.T) {
@@ -142,7 +143,7 @@ func TestBlockDaemon(t *testing.T) {
 
 		emptyReceiptsLine := cmdClient.RunSuccessFirstLine(ctx, "show", "receipts", types.EmptyReceiptsCID.String(), "--enc", "json")
 
-		var receipts []*types.MessageReceipt
+		var receipts []vm.MessageReceipt
 		require.NoError(t, json.Unmarshal([]byte(emptyReceiptsLine), &receipts))
 
 		assert.Equal(t, 0, len(receipts))
@@ -150,8 +151,7 @@ func TestBlockDaemon(t *testing.T) {
 
 	t.Run("show messages", func(t *testing.T) {
 		cs := node.FixtureChainSeed(t)
-		defaultAddr, err := address.NewFromString(fixtures.TestAddresses[0])
-		require.NoError(t, err)
+		defaultAddr := fortest.TestAddresses[0]
 		ctx := context.Background()
 		builder := test.NewNodeBuilder(t)
 		builder.WithGenesisInit(cs.GenesisInitFunc)
@@ -163,7 +163,7 @@ func TestBlockDaemon(t *testing.T) {
 		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
-		_, err = n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
+		_, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
 		require.NoError(t, err)
 
 		from, err := n.PorcelainAPI.WalletDefaultAddress() // this should = fixtures.TestAddresses[0]
@@ -172,7 +172,7 @@ func TestBlockDaemon(t *testing.T) {
 			"--from", from.String(),
 			"--gas-price", "1",
 			"--gas-limit", "300",
-			fixtures.TestAddresses[3],
+			fortest.TestAddresses[3].String(),
 		)
 
 		cmdClient.RunSuccess(ctx, "message", "send",
@@ -180,7 +180,7 @@ func TestBlockDaemon(t *testing.T) {
 			"--gas-price", "1",
 			"--gas-limit", "300",
 			"--value", "10",
-			fixtures.TestAddresses[3],
+			fortest.TestAddresses[3].String(),
 		)
 
 		cmdClient.RunSuccess(ctx, "message", "send",
@@ -188,7 +188,7 @@ func TestBlockDaemon(t *testing.T) {
 			"--gas-price", "1",
 			"--gas-limit", "300",
 			"--value", "5.5",
-			fixtures.TestAddresses[3],
+			fortest.TestAddresses[3].String(),
 		)
 
 		blk, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
@@ -199,14 +199,14 @@ func TestBlockDaemon(t *testing.T) {
 		var blockGetBlock block.FullBlock
 		require.NoError(t, json.Unmarshal([]byte(blockGetLine), &blockGetBlock))
 
-		assert.Equal(t, 3, len(blockGetBlock.Messages))
+		assert.Equal(t, 3, len(blockGetBlock.SECPMessages))
 
-		assert.Equal(t, from, blockGetBlock.Messages[0].Message.From)
+		assert.Equal(t, from, blockGetBlock.SECPMessages[0].Message.From)
 
 		// Full block matches show messages
-		messagesGetLine := cmdClient.RunSuccessFirstLine(ctx, "show", "messages", blockGetBlock.Header.Messages.SecpRoot.String(), "--enc", "json")
+		messagesGetLine := cmdClient.RunSuccessFirstLine(ctx, "show", "messages", blockGetBlock.Header.Messages.String(), "--enc", "json")
 		var messages []*types.SignedMessage
 		require.NoError(t, json.Unmarshal([]byte(messagesGetLine), &messages))
-		assert.Equal(t, blockGetBlock.Messages, messages)
+		assert.Equal(t, blockGetBlock.SECPMessages, messages)
 	})
 }

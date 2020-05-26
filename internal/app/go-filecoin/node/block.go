@@ -3,16 +3,20 @@ package node
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/net/blocksub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 )
 
 // AddNewBlock receives a newly mined block and stores, validates and propagates it to the network.
-func (node *Node) AddNewBlock(ctx context.Context, b *block.Block) (err error) {
+func (node *Node) AddNewBlock(ctx context.Context, o mining.FullBlock) (err error) {
+	b := o.Header
 	ctx, span := trace.StartSpan(ctx, "Node.AddNewBlock")
 	span.AddAttributes(trace.StringAttribute("block", b.Cid().String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -25,38 +29,45 @@ func (node *Node) AddNewBlock(ctx context.Context, b *block.Block) (err error) {
 		return errors.Wrap(err, "could not add new block to online storage")
 	}
 
-	log.Debugf("syncing new block: %s", b.Cid().String())
+	// Publish blocksub message
+	log.Debugf("publishing new block: %s", b.Cid().String())
 	go func() {
-		err = node.syncer.BlockTopic.Publish(ctx, b.ToNode().RawData())
+		payload, err := blocksub.MakePayload(o.Header, o.BLSMessages, o.SECPMessages)
 		if err != nil {
-			log.Errorf("error publishing new block on block topic %s", err)
+			log.Errorf("failed to create blocksub payload: %s", err)
+		}
+		err = node.syncer.BlockTopic.Publish(ctx, payload)
+		if err != nil {
+			log.Errorf("failed to publish on blocksub: %s", err)
 		}
 	}()
-	ci := block.NewChainInfo(node.Host().ID(), node.Host().ID(), block.NewTipSetKey(blkCid), uint64(b.Height))
+
+	log.Debugf("syncing new block: %s", b.Cid().String())
+	ci := block.NewChainInfo(node.Host().ID(), node.Host().ID(), block.NewTipSetKey(blkCid), b.Height)
 	return node.syncer.ChainSyncManager.BlockProposer().SendOwnBlock(ci)
 }
 
-func (node *Node) processBlock(ctx context.Context, msg pubsub.Message) (err error) {
+func (node *Node) handleBlockSub(ctx context.Context, msg pubsub.Message) (err error) {
 	sender := msg.GetSender()
 	source := msg.GetSource()
-
 	// ignore messages from self
 	if sender == node.Host().ID() || source == node.Host().ID() {
 		return nil
 	}
 
-	ctx, span := trace.StartSpan(ctx, "Node.processBlock")
+	ctx, span := trace.StartSpan(ctx, "Node.handleBlockSub")
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	blk, err := block.DecodeBlock(msg.GetData())
+	var payload blocksub.Payload
+	err = encoding.Decode(msg.GetData(), &payload)
 	if err != nil {
-		return errors.Wrapf(err, "bad block data from source: %s, sender: %s", source, sender)
+		return errors.Wrapf(err, "failed to decode blocksub payload from source: %s, sender: %s", source, sender)
 	}
 
-	span.AddAttributes(trace.StringAttribute("block", blk.Cid().String()))
-
-	log.Infof("Received new block %s from peer %s", blk.Cid(), sender)
-	log.Debugf("Received new block sender: %s source: %s, %s", sender, source, blk)
+	header := &payload.Header
+	span.AddAttributes(trace.StringAttribute("block", header.Cid().String()))
+	log.Infof("Received new block %s from peer %s", header.Cid(), sender)
+	log.Debugf("Received new block sender: %s source: %s, %s", sender, source, header)
 
 	// The block we went to all that effort decoding is dropped on the floor!
 	// Don't be too quick to change that, though: the syncer re-fetching the block
@@ -64,9 +75,10 @@ func (node *Node) processBlock(ctx context.Context, msg pubsub.Message) (err err
 	// See https://github.com/filecoin-project/go-filecoin/issues/2962
 	// TODO Implement principled trusting of ChainInfo's
 	// to address in #2674
-	err = node.syncer.ChainSyncManager.BlockProposer().SendGossipBlock(block.NewChainInfo(source, sender, block.NewTipSetKey(blk.Cid()), uint64(blk.Height)))
+	chainInfo := block.NewChainInfo(source, sender, block.NewTipSetKey(header.Cid()), header.Height)
+	err = node.syncer.ChainSyncManager.BlockProposer().SendGossipBlock(chainInfo)
 	if err != nil {
-		return errors.Wrapf(err, "failed to notify syncer of new block, block: %s", blk.Cid())
+		return errors.Wrapf(err, "failed to notify syncer of new block, block: %s", header.Cid())
 	}
 
 	return nil

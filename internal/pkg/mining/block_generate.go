@@ -8,13 +8,16 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/pkg/errors"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // Generate returns a new block created from the messages in the pool.
@@ -22,32 +25,16 @@ func (w *DefaultWorker) Generate(
 	ctx context.Context,
 	baseTipSet block.TipSet,
 	ticket block.Ticket,
-	nullBlockCount uint64,
-	ePoStInfo block.EPoStInfo,
-) (*block.Block, error) {
+	electionProof crypto.VRFPi,
+	nullBlockCount abi.ChainEpoch,
+	posts []block.PoStProof,
+	drandEntries []*drand.Entry,
+) (*FullBlock, error) {
 
 	generateTimer := time.Now()
 	defer func() {
 		log.Infof("[TIMER] DefaultWorker.Generate baseTipset: %s - elapsed time: %s", baseTipSet.String(), time.Since(generateTimer).Round(time.Millisecond))
 	}()
-
-	stateTree, err := w.getStateTree(ctx, baseTipSet.Key())
-	if err != nil {
-		return nil, errors.Wrap(err, "get state tree")
-	}
-
-	powerTable, err := w.getPowerTable(ctx, baseTipSet.Key())
-	if err != nil {
-		return nil, errors.Wrap(err, "get power table")
-	}
-
-	hasPower, err := powerTable.HasPower(ctx, w.minerAddr)
-	if err != nil {
-		return nil, err
-	}
-	if !hasPower {
-		return nil, errors.Errorf("bad miner address, miner must store files before mining: %s", w.minerAddr)
-	}
 
 	weight, err := w.getWeight(ctx, baseTipSet)
 	if err != nil {
@@ -61,23 +48,14 @@ func (w *DefaultWorker) Generate(
 
 	blockHeight := baseHeight + nullBlockCount + 1
 
-	ancestors, err := w.getAncestors(ctx, baseTipSet, types.NewBlockHeight(blockHeight))
-	if err != nil {
-		return nil, errors.Wrap(err, "get base tip set ancestors")
-	}
-
 	// Construct list of message candidates for inclusion.
 	// These messages will be processed, and those that fail excluded from the block.
 	pending := w.messageSource.Pending()
 	mq := NewMessageQueue(pending)
-	candidateMsgs := orderMessageCandidates(mq.Drain())
-
-	// run state transition to learn which messages are valid
-	vms := vm.NewStorageMap(w.blockstore)
-	results, err := w.processor.ApplyMessagesAndPayRewards(ctx, stateTree, vms, types.UnwrapSigned(candidateMsgs),
-		w.minerOwnerAddr, types.NewBlockHeight(blockHeight), ancestors)
-	if err != nil {
-		return nil, errors.Wrap(err, "generate apply messages")
+	candidateMsgs := orderMessageCandidates(mq.Drain(block.BlockMessageLimit))
+	candidateMsgs = w.filterPenalizableMessages(ctx, candidateMsgs)
+	if len(candidateMsgs) > block.BlockMessageLimit {
+		return nil, errors.Errorf("too many messages returned from mq.Drain: %d", len(candidateMsgs))
 	}
 
 	var blsAccepted []*types.SignedMessage
@@ -85,28 +63,11 @@ func (w *DefaultWorker) Generate(
 
 	// Align the results with the candidate signed messages to accumulate the messages lists
 	// to include in the block, and handle failed messages.
-	for i, r := range results {
-		msg := candidateMsgs[i]
-		if r.Failure == nil {
-			if msg.Message.From.Protocol() == address.BLS {
-				blsAccepted = append(blsAccepted, msg)
-			} else {
-				secpAccepted = append(secpAccepted, msg)
-			}
-		} else if r.FailureIsPermanent {
-			// Remove message that can never succeed from the message pool now.
-			// There might be better places to do this, such as wherever successful messages are removed
-			// from the pool, or by posting the failure to an event bus to be handled async.
-			log.Infof("permanent ApplyMessage failure, [%s] (%s)", msg, r.Failure)
-			mc, err := msg.Cid()
-			if err == nil {
-				w.messageSource.Remove(mc)
-			} else {
-				log.Warnf("failed to get CID from message", err)
-			}
+	for _, msg := range candidateMsgs {
+		if msg.Message.From.Protocol() == address.BLS {
+			blsAccepted = append(blsAccepted, msg)
 		} else {
-			// This message might succeed in the future, so leave it in the pool for now.
-			log.Infof("temporary ApplyMessage failure, [%s] (%s)", msg, r.Failure)
+			secpAccepted = append(secpAccepted, msg)
 		}
 	}
 
@@ -117,7 +78,7 @@ func (w *DefaultWorker) Generate(
 	}
 
 	// Persist messages to ipld storage
-	txMeta, err := w.messageStore.StoreMessages(ctx, secpAccepted, unwrappedBLSMessages)
+	txMetaCid, err := w.messageStore.StoreMessages(ctx, secpAccepted, unwrappedBLSMessages)
 	if err != nil {
 		return nil, errors.Wrap(err, "error persisting messages")
 	}
@@ -133,51 +94,81 @@ func (w *DefaultWorker) Generate(
 		return nil, errors.Wrapf(err, "error retrieving receipt root for tipset %s", baseTipSet.Key().String())
 	}
 
-	now := w.clock.Now()
-	next := &block.Block{
-		Miner:           w.minerAddr,
-		Height:          types.Uint64(blockHeight),
-		Messages:        txMeta,
-		MessageReceipts: baseReceiptRoot,
-		Parents:         baseTipSet.Key(),
-		ParentWeight:    types.Uint64(weight),
-		EPoStInfo:       ePoStInfo,
-		StateRoot:       baseStateRoot,
-		Ticket:          ticket,
-		Timestamp:       types.Uint64(now.Unix()),
-		BLSAggregateSig: blsAggregateSig,
+	// Set the block timestamp to be exactly the start of the target epoch, regardless of the current time.
+	// The real time might actually be much later than this if catching up from a pause in chain progress.
+	epochStartTime := w.clock.StartTimeOfEpoch(blockHeight)
+
+	if drandEntries == nil {
+		drandEntries = []*drand.Entry{}
 	}
 
-	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr, baseTipSet.Key())
+	if posts == nil {
+		posts = []block.PoStProof{}
+	}
+
+	next := &block.Block{
+		Miner:           w.minerAddr,
+		Height:          blockHeight,
+		BeaconEntries:   drandEntries,
+		ElectionProof:   &crypto.ElectionProof{VRFProof: electionProof},
+		Messages:        e.NewCid(txMetaCid),
+		MessageReceipts: e.NewCid(baseReceiptRoot),
+		Parents:         baseTipSet.Key(),
+		ParentWeight:    weight,
+		PoStProofs:      posts,
+		StateRoot:       e.NewCid(baseStateRoot),
+		Ticket:          ticket,
+		Timestamp:       uint64(epochStartTime.Unix()),
+		BLSAggregateSig: &blsAggregateSig,
+	}
+
+	view, err := w.api.PowerStateView(baseTipSet.Key())
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to read state view")
+	}
+	_, workerAddr, err := view.MinerControlAddresses(ctx, w.minerAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read workerAddr during block generation")
 	}
-	next.BlockSig, err = w.workerSigner.SignBytes(next.SignatureData(), workerAddr)
+	workerSigningAddr, err := view.AccountSignerAddress(ctx, workerAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to convert worker address to signing address")
+	}
+	blockSig, err := w.workerSigner.SignBytes(ctx, next.SignatureData(), workerSigningAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to sign block")
 	}
+	next.BlockSig = &blockSig
 
-	return next, nil
+	return NewfullBlock(next, blsAccepted, secpAccepted), nil
 }
 
-func aggregateBLS(blsMessages []*types.SignedMessage) ([]*types.UnsignedMessage, types.Signature, error) {
-	sigs := []bls.Signature{}
-	unwrappedMsgs := []*types.UnsignedMessage{}
+// The resulting output is not empty: it has either a block or an error.
+
+func aggregateBLS(blsMessages []*types.SignedMessage) ([]*types.UnsignedMessage, crypto.Signature, error) {
+	var sigs []bls.Signature
+	var unwrappedMsgs []*types.UnsignedMessage
 	for _, msg := range blsMessages {
 		// unwrap messages
 		unwrappedMsgs = append(unwrappedMsgs, &msg.Message)
-		sig := msg.Signature
-
+		if msg.Signature.Type != crypto.SigTypeBLS {
+			return []*types.UnsignedMessage{}, crypto.Signature{}, errors.New("non-BLS message signature")
+		}
 		// store message signature as bls signature
 		blsSig := bls.Signature{}
-		copy(blsSig[:], sig)
+		copy(blsSig[:], msg.Signature.Data)
 		sigs = append(sigs, blsSig)
 	}
 	blsAggregateSig := bls.Aggregate(sigs)
 	if blsAggregateSig == nil {
-		return []*types.UnsignedMessage{}, types.Signature{}, errors.New("could not aggregate signatures")
+		return []*types.UnsignedMessage{}, crypto.Signature{}, errors.New("could not aggregate signatures")
 	}
-	return unwrappedMsgs, blsAggregateSig[:], nil
+
+	return unwrappedMsgs, crypto.Signature{
+		Type: crypto.SigTypeBLS,
+		Data: blsAggregateSig[:],
+	}, nil
+
 }
 
 // When a block is validated, BLS messages are processed first, so for simplicity all BLS
@@ -194,4 +185,18 @@ func orderMessageCandidates(messages []*types.SignedMessage) []*types.SignedMess
 		}
 	}
 	return append(blsMessages, secpMessages...)
+}
+
+func (w *DefaultWorker) filterPenalizableMessages(ctx context.Context, messages []*types.SignedMessage) []*types.SignedMessage {
+	var goodMessages []*types.SignedMessage
+	for _, msg := range messages {
+		err := w.penaltyChecker.PenaltyCheck(ctx, &msg.Message)
+		if err != nil {
+			mCid, _ := msg.Cid()
+			log.Debugf("Msg: %s excluded in block because penalized with err %s", mCid, err)
+			continue
+		}
+		goodMessages = append(goodMessages, msg)
+	}
+	return goodMessages
 }

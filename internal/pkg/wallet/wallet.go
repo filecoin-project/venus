@@ -7,15 +7,10 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-)
-
-var (
-	// ErrUnknownAddress is returned when the given address is not stored in this wallet.
-	ErrUnknownAddress = errors.New("unknown address")
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 )
 
 // Wallet manages the locally stored addresses.
@@ -62,7 +57,7 @@ func (w *Wallet) Find(addr address.Address) (Backend, error) {
 		}
 	}
 
-	return nil, ErrUnknownAddress
+	return nil, fmt.Errorf("wallet has no address %s", addr)
 }
 
 // Addresses retrieves all stored addresses.
@@ -97,11 +92,11 @@ func (w *Wallet) Backends(kind reflect.Type) []Backend {
 
 // SignBytes cryptographically signs `data` using the private key corresponding to
 // address `addr`
-func (w *Wallet) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
+func (w *Wallet) SignBytes(data []byte, addr address.Address) (crypto.Signature, error) {
 	// Check that we are storing the address to sign for.
 	backend, err := w.Find(addr)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not find address: %s", addr)
+		return crypto.Signature{}, errors.Wrapf(err, "could not find address: %s", addr)
 	}
 	return backend.SignBytes(data, addr)
 }
@@ -129,30 +124,30 @@ func (w *Wallet) GetPubKeyForAddress(addr address.Address) ([]byte, error) {
 }
 
 // NewKeyInfo creates a new KeyInfo struct in the wallet backend and returns it
-func (w *Wallet) NewKeyInfo() (*types.KeyInfo, error) {
+func (w *Wallet) NewKeyInfo() (*crypto.KeyInfo, error) {
 	newAddr, err := NewAddress(w, address.SECP256K1)
 	if err != nil {
-		return &types.KeyInfo{}, err
+		return &crypto.KeyInfo{}, err
 	}
 
 	return w.keyInfoForAddr(newAddr)
 }
 
-func (w *Wallet) keyInfoForAddr(addr address.Address) (*types.KeyInfo, error) {
+func (w *Wallet) keyInfoForAddr(addr address.Address) (*crypto.KeyInfo, error) {
 	backend, err := w.Find(addr)
 	if err != nil {
-		return &types.KeyInfo{}, err
+		return &crypto.KeyInfo{}, err
 	}
 
 	info, err := backend.GetKeyInfo(addr)
 	if err != nil {
-		return &types.KeyInfo{}, err
+		return &crypto.KeyInfo{}, err
 	}
 	return info, nil
 }
 
 // Import adds the given keyinfos to the wallet
-func (w *Wallet) Import(kinfos ...*types.KeyInfo) ([]address.Address, error) {
+func (w *Wallet) Import(kinfos ...*crypto.KeyInfo) ([]address.Address, error) {
 	dsb := w.Backends(DSBackendType)
 	if len(dsb) != 1 {
 		return nil, fmt.Errorf("expected exactly one datastore wallet backend")
@@ -179,8 +174,8 @@ func (w *Wallet) Import(kinfos ...*types.KeyInfo) ([]address.Address, error) {
 }
 
 // Export returns the KeyInfos for the given wallet addresses
-func (w *Wallet) Export(addrs []address.Address) ([]*types.KeyInfo, error) {
-	out := make([]*types.KeyInfo, len(addrs))
+func (w *Wallet) Export(addrs []address.Address) ([]*crypto.KeyInfo, error) {
+	out := make([]*crypto.KeyInfo, len(addrs))
 	for i, addr := range addrs {
 		bck, err := w.Find(addr)
 		if err != nil {

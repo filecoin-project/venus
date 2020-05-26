@@ -9,10 +9,11 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // Config is an in memory representation of the filecoin configuration file
@@ -20,9 +21,11 @@ type Config struct {
 	API           *APIConfig           `json:"api"`
 	Bootstrap     *BootstrapConfig     `json:"bootstrap"`
 	Datastore     *DatastoreConfig     `json:"datastore"`
+	Drand         *DrandConfig         `json:"drand"`
 	Heartbeat     *HeartbeatConfig     `json:"heartbeat"`
 	Mining        *MiningConfig        `json:"mining"`
 	Mpool         *MessagePoolConfig   `json:"mpool"`
+	NetworkParams *NetworkParamsConfig `json:"parameters"`
 	Observability *ObservabilityConfig `json:"observability"`
 	SectorBase    *SectorBaseConfig    `json:"sectorbase"`
 	Swarm         *SwarmConfig         `json:"swarm"`
@@ -127,6 +130,34 @@ func newDefaultWalletConfig() *WalletConfig {
 	}
 }
 
+// DrandConfig holds all configuration options related to pulling randomness from Drand servers
+type DrandConfig struct {
+	// Addresses are are drand server addresses in the format
+	Addresses []string `json:"addresses"`
+	// Secure is whether or not the drand address are secure (e.g. TLS)
+	Secure bool `json:"secure"`
+	// DistKey is the distributed public key of the server group expressed as hex encoded coefficients
+	DistKey       [][]byte `json:"distKey"`
+	StartTimeUnix int64    `json:"startTimeUnix"`
+	RoundSeconds  int      `json:"roundSeconds"`
+}
+
+func newDefaultDrandConfig() *DrandConfig {
+	return &DrandConfig{
+		Addresses: []string{
+			"localhost:8080",
+			"localhost:8081",
+			"localhost:8082",
+			"localhost:8083",
+			"localhost:8084",
+		},
+		Secure:        false,
+		DistKey:       [][]byte{},
+		StartTimeUnix: 0,
+		RoundSeconds:  30,
+	}
+}
+
 // HeartbeatConfig holds all configuration options related to node heartbeat.
 type HeartbeatConfig struct {
 	// BeatTarget represents the address the filecoin node will send heartbeats to.
@@ -205,27 +236,50 @@ type MessagePoolConfig struct {
 	// MaxPoolSize is the maximum number of pending messages will will allow in the message pool at any time
 	MaxPoolSize uint `json:"maxPoolSize"`
 	// MaxNonceGap is the maximum nonce of a message past the last received on chain
-	MaxNonceGap types.Uint64 `json:"maxNonceGap"`
+	MaxNonceGap uint64 `json:"maxNonceGap"`
 }
 
 func newDefaultMessagePoolConfig() *MessagePoolConfig {
 	return &MessagePoolConfig{
-		MaxPoolSize: 10000,
+		MaxPoolSize: 1000000,
 		MaxNonceGap: 100,
+	}
+}
+
+type NetworkParamsConfig struct {
+	ConsensusMinerMinPower uint64 // uint64 goes up to 18 EiB
+	ReplaceProofTypes      []int64
+}
+
+func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
+	return &NetworkParamsConfig{
+		ConsensusMinerMinPower: 0, // 0 means don't override the value
+		ReplaceProofTypes: []int64{
+			int64(abi.RegisteredProof_StackedDRG2KiBSeal),
+			int64(abi.RegisteredProof_StackedDRG512MiBSeal),
+			int64(abi.RegisteredProof_StackedDRG32GiBSeal),
+			int64(abi.RegisteredProof_StackedDRG64GiBSeal),
+		},
 	}
 }
 
 // SectorBaseConfig holds all configuration options related to the node's
 // sector storage.
 type SectorBaseConfig struct {
-	// RootDir is the path to the root directory holding sector data.
+	// RootDir is the absolute path to the root directory holding sector data.
 	// If empty the default of <homedir>/sectors is implied.
-	RootDir string `json:"rootdir"`
+	RootDirPath string `json:"rootdir"`
+
+	// PreSealedSectorsDir is the absolute path to the directory holding any
+	// pre-sealed sector files and corresponding metadata JSON.
+	// If empty, it is assumed that no pre-sealed sectors exist.
+	PreSealedSectorsDirPath string `json:"preSealedSectorsDir"`
 }
 
 func newDefaultSectorbaseConfig() *SectorBaseConfig {
 	return &SectorBaseConfig{
-		RootDir: "",
+		RootDirPath:             "",
+		PreSealedSectorsDirPath: "",
 	}
 }
 
@@ -236,13 +290,15 @@ func NewDefaultConfig() *Config {
 		API:           newDefaultAPIConfig(),
 		Bootstrap:     newDefaultBootstrapConfig(),
 		Datastore:     newDefaultDatastoreConfig(),
-		Swarm:         newDefaultSwarmConfig(),
-		Mining:        newDefaultMiningConfig(),
-		Wallet:        newDefaultWalletConfig(),
+		Drand:         newDefaultDrandConfig(),
 		Heartbeat:     newDefaultHeartbeatConfig(),
+		Mining:        newDefaultMiningConfig(),
 		Mpool:         newDefaultMessagePoolConfig(),
-		SectorBase:    newDefaultSectorbaseConfig(),
+		NetworkParams: newDefaultNetworkParamsConfig(),
 		Observability: newDefaultObservabilityConfig(),
+		SectorBase:    newDefaultSectorbaseConfig(),
+		Swarm:         newDefaultSwarmConfig(),
+		Wallet:        newDefaultWalletConfig(),
 	}
 }
 

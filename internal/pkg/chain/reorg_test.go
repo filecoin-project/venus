@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestIsReorgFork(t *testing.T) {
@@ -48,8 +48,8 @@ func TestReorgDiffFork(t *testing.T) {
 
 	dropped, added, err := chain.ReorgDiff(old, new, common)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(10), dropped)
-	assert.Equal(t, uint64(11), added)
+	assert.Equal(t, abi.ChainEpoch(10), dropped)
+	assert.Equal(t, abi.ChainEpoch(11), added)
 }
 
 func TestReorgDiffSubset(t *testing.T) {
@@ -60,8 +60,8 @@ func TestReorgDiffSubset(t *testing.T) {
 
 	dropped, added, err := chain.ReorgDiff(old, new, common)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(1), dropped)
-	assert.Equal(t, uint64(1), added)
+	assert.Equal(t, abi.ChainEpoch(1), dropped)
+	assert.Equal(t, abi.ChainEpoch(1), added)
 }
 
 // getForkOldNewCommon is a testing helper function that creates chain with the builder.
@@ -90,7 +90,7 @@ func getSubsetOldNewCommon(ctx context.Context, t *testing.T, builder *chain.Bui
 	block1 := builder.AppendBlockOnBlocks(commonHead)
 	block2 := builder.AppendBlockOnBlocks(commonHead)
 
-	oldHead := th.RequireNewTipSet(t, block1)
-	superset := th.RequireNewTipSet(t, block1, block2)
-	return oldHead, superset, th.RequireNewTipSet(t, commonHead)
+	oldHead := block.RequireNewTipSet(t, block1)
+	superset := block.RequireNewTipSet(t, block1, block2)
+	return oldHead, superset, block.RequireNewTipSet(t, commonHead)
 }

@@ -2,23 +2,26 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/url"
 	"os"
 	"syscall"
 
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-cmds/cli"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 const (
@@ -30,6 +33,12 @@ const (
 
 	// OptionSectorDir is the name of the option for specifying the directory into which staged and sealed sectors will be written.
 	OptionSectorDir = "sectordir"
+
+	// OptionPresealedSectorDir is the name of the option for specifying the directory from which presealed sectors should be pulled when initializing.
+	OptionPresealedSectorDir = "presealed-sectordir"
+
+	// OptionDrandConfigAddr is the init option for configuring drand to a given network address at init time
+	OptionDrandConfigAddr = "drand-config-addr"
 
 	// APIPrefix is the prefix for the http version of the api.
 	APIPrefix = "/api"
@@ -57,34 +66,45 @@ const (
 	// with testing as we won't be able to set blocktime in production.
 	BlockTime = "block-time"
 
+	// PropagationDelay is the duration the miner will wait for blocks to arrive before attempting to mine a new one
+	PropagationDelay = "prop-delay"
+
 	// PeerKeyFile is the path of file containing key to use for new nodes libp2p identity
 	PeerKeyFile = "peerkeyfile"
+
+	// WalletKeyFile is the path of file containing wallet keys that may be imported on initialization
+	WalletKeyFile = "wallet-keyfile"
 
 	// WithMiner when set, creates a custom genesis block with a pre generated miner account, requires to run the daemon using dev mode (--dev)
 	WithMiner = "with-miner"
 
-	// DefaultAddress when set, sets the daemons's default address to the provided address
-	DefaultAddress = "default-address"
+	// MinerActorAddress when set, sets the daemons's miner address to the provided address
+	MinerActorAddress = "miner-actor-address"
 
 	// GenesisFile is the path of file containing archive of genesis block DAG data
 	GenesisFile = "genesisfile"
 
-	// DevnetStaging populates config bootstrap addrs with the dns multiaddrs of the staging devnet and other staging devnet specific bootstrap parameters
-	DevnetStaging = "devnet-staging"
-
-	// DevnetNightly populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters
-	DevnetNightly = "devnet-nightly"
-
-	// DevnetUser populates config bootstrap addrs with the dns multiaddrs of the user devnet and other user devnet specific bootstrap parameters
-	DevnetUser = "devnet-user"
+	// Network populates config with network-specific parameters for a known network (e.g. testnet2)
+	Network = "network"
 
 	// IsRelay when set causes the the daemon to provide libp2p relay
 	// services allowing other filecoin nodes behind NATs to talk directly.
 	IsRelay = "is-relay"
 )
 
+func init() {
+	// add pretty json as an encoding type
+	cmds.Encoders["pretty-json"] = func(req *cmds.Request) func(io.Writer) cmds.Encoder {
+		return func(w io.Writer) cmds.Encoder {
+			enc := json.NewEncoder(w)
+			enc.SetIndent("", "\t")
+			return enc
+		}
+	}
+}
+
 // command object for the local cli
-var rootCmd = &cmds.Command{
+var RootCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "A decentralized storage network",
 		Subcommands: `
@@ -116,6 +136,8 @@ NETWORK COMMANDS
   go-filecoin ping <peer ID>...      - Send echo request packets to p2p network members
   go-filecoin swarm                  - Interact with the swarm
   go-filecoin stats                  - Monitor statistics on your network usage
+  go-filecion drand configure        - Configure drand server connection
+  go-filecoin drand random           - retrieve drand randomness
 
 ACTOR COMMANDS
   go-filecoin actor                  - Interact with actors. Actors are built-in smart contracts
@@ -137,7 +159,7 @@ TOOL COMMANDS
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(OptionAPI, "set the api port to use"),
 		cmdkit.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.filecoin/repo"),
-		cmds.OptionEncodingType,
+		cmdkit.StringOption(cmds.EncLong, cmds.EncShort, "The encoding type the output should be encoded with (pretty-json or json)").WithDefault("pretty-json"),
 		cmdkit.BoolOption("help", "Show the full command help text."),
 		cmdkit.BoolOption("h", "Show a short version of the command help text."),
 	},
@@ -165,6 +187,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"chain":            chainCmd,
 	"config":           configCmd,
 	"client":           clientCmd,
+	"drand":            drandCmd,
 	"dag":              dagCmd,
 	"deals":            dealsCmd,
 	"dht":              dhtCmd,
@@ -177,7 +200,6 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"mining":           miningCmd,
 	"mpool":            mpoolCmd,
 	"outbox":           outboxCmd,
-	"paych":            paymentChannelCmd,
 	"ping":             pingCmd,
 	"protocol":         protocolCmd,
 	"retrieval-client": retrievalClientCmd,
@@ -190,18 +212,18 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 
 func init() {
 	for k, v := range rootSubcmdsLocal {
-		rootCmd.Subcommands[k] = v
+		RootCmd.Subcommands[k] = v
 	}
 
 	for k, v := range rootSubcmdsDaemon {
-		rootCmd.Subcommands[k] = v
+		RootCmd.Subcommands[k] = v
 		rootCmdDaemon.Subcommands[k] = v
 	}
 }
 
 // Run processes the arguments and stdin
 func Run(ctx context.Context, args []string, stdin, stdout, stderr *os.File) (int, error) {
-	err := cli.Run(ctx, rootCmd, args, stdin, stdout, stderr, buildEnv, makeExecutor)
+	err := cli.Run(ctx, RootCmd, args, stdin, stdout, stderr, buildEnv, makeExecutor)
 	if err == nil {
 		return 0, nil
 	}
@@ -266,7 +288,7 @@ func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
 
 	return &executor{
 		api:  api,
-		exec: cmds.NewExecutor(rootCmd),
+		exec: cmds.NewExecutor(RootCmd),
 	}, nil
 }
 
@@ -337,32 +359,32 @@ func isConnectionRefused(err error) bool {
 }
 
 var priceOption = cmdkit.StringOption("gas-price", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
-var limitOption = cmdkit.Uint64Option("gas-limit", "Maximum GasUnits this message is allowed to consume")
+var limitOption = cmdkit.Int64Option("gas-limit", "Maximum GasUnits this message is allowed to consume")
 var previewOption = cmdkit.BoolOption("preview", "Preview the Gas cost of this command without actually executing it")
 
-func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.GasUnits, bool, error) {
+func parseGasOptions(req *cmds.Request) (types.AttoFIL, gas.Unit, bool, error) {
 	priceOption := req.Options["gas-price"]
 	if priceOption == nil {
-		return types.ZeroAttoFIL, types.NewGasUnits(0), false, errors.New("gas-price option is required")
+		return types.ZeroAttoFIL, gas.Zero, false, errors.New("gas-price option is required")
 	}
 
 	price, ok := types.NewAttoFILFromFILString(priceOption.(string))
 	if !ok {
-		return types.ZeroAttoFIL, types.NewGasUnits(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
+		return types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
 	}
 
 	limitOption := req.Options["gas-limit"]
 	if limitOption == nil {
-		return types.ZeroAttoFIL, types.NewGasUnits(0), false, errors.New("gas-limit option is required")
+		return types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("gas-limit option is required")
 	}
 
-	gasLimitInt, ok := limitOption.(uint64)
+	gasLimitInt, ok := limitOption.(int64)
 	if !ok {
 		msg := fmt.Sprintf("invalid gas limit: %s", limitOption)
-		return types.ZeroAttoFIL, types.NewGasUnits(0), false, errors.New(msg)
+		return types.ZeroAttoFIL, gas.NewGas(0), false, errors.New(msg)
 	}
 
 	preview, _ := req.Options["preview"].(bool)
 
-	return price, types.NewGasUnits(gasLimitInt), preview, nil
+	return price, gas.NewGas(gasLimitInt), preview, nil
 }

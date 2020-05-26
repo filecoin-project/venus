@@ -2,22 +2,20 @@ package commands
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
-	logging "github.com/ipfs/go-log"
-	writer "github.com/ipfs/go-log/writer"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 var loglogger = logging.Logger("commands/log")
 
 var logCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Interact with the daemon event log output.",
+		Tagline: "Interact with the daemon subsystems log output.",
 		ShortDescription: `
-'go-filecoin log' contains utility commands to affect the event logging
+'go-filecoin log' contains utility commands to affect the subsystems logging
 output of a running daemon.
 `,
 	},
@@ -31,20 +29,18 @@ output of a running daemon.
 
 var logTailCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Read the event log.",
+		Tagline: "Read subsystems log output.",
 		ShortDescription: `
-Outputs event log messages (not other log messages) as they are generated.
+Outputs subsystems log output as it is generated.
 `,
 	},
 
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		r, w := io.Pipe()
+		r := logging.NewPipeReader()
 		go func() {
-			defer w.Close() // nolint: errcheck
+			defer r.Close() // nolint: errcheck
 			<-req.Context.Done()
 		}()
-
-		writer.WriterGroup.AddWriter(w)
 
 		return re.Emit(r)
 	},
@@ -99,12 +95,6 @@ the event log.
 		return cmds.EmitOnce(res, s)
 	},
 	Type: string(""),
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, out string) error {
-			_, err := fmt.Fprint(w, out)
-			return err
-		}),
-	},
 }
 
 var logLsCmd = &cmds.Command{
@@ -119,12 +109,4 @@ subsystems of a running daemon.
 		return cmds.EmitOnce(res, logging.GetSubsystems())
 	},
 	Type: []string{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, list []string) error {
-			for _, s := range list {
-				fmt.Fprintln(w, s) // nolint: errcheck
-			}
-			return nil
-		}),
-	},
 }

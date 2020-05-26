@@ -1,16 +1,18 @@
 package vmcontext_test
 
 import (
-	"errors"
+	"fmt"
+	"io"
 	"testing"
+
+	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
-	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -21,27 +23,49 @@ type testActorStateHandleState struct {
 	FieldA string
 }
 
+func (t *testActorStateHandleState) MarshalCBOR(w io.Writer) error {
+	aux, err := encoding.Encode(t.FieldA)
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write(aux); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *testActorStateHandleState) UnmarshalCBOR(r io.Reader) error {
+	bs := make([]byte, 1024)
+	n, err := r.Read(bs)
+	if err != nil {
+		return err
+	}
+	if err := encoding.Decode(bs[:n], &t.FieldA); err != nil {
+		return err
+	}
+	return nil
+}
+
 func setup() testSetup {
 	initialstate := testActorStateHandleState{FieldA: "fakestate"}
 
-	storage := vm.NewTestLegacyStorage(initialstate)
+	store := vm.NewTestStorage(&initialstate)
+	initialhead := store.CidOf(&initialstate)
 	ctx := fakeActorStateHandleContext{
-		storage:          storage,
+		head:             initialhead,
+		store:            store,
 		allowSideEffects: true,
 	}
-	initialhead := ctx.storage.LegacyHead()
-	h := vmcontext.NewActorStateHandle(&ctx, initialhead)
+	h := vmcontext.NewActorStateHandle(&ctx)
 
 	cleanup := func() {
 		// the vmcontext is supposed to call validate after each actor method
 		implH := h.(extendedStateHandle)
-		implH.Validate()
+		implH.Validate(func(obj interface{}) cid.Cid { return store.CidOf(obj) })
 	}
 
 	return testSetup{
 		initialstate: initialstate,
-		ctx:          ctx,
-		initialhead:  initialhead,
 		h:            h,
 		cleanup:      cleanup,
 	}
@@ -96,11 +120,10 @@ func TestActorStateHandle(t *testing.T) {
 		var out testActorStateHandleState
 		ts.h.Readonly(&out)
 
-		_, err := ts.h.Transaction(&out, func() (interface{}, error) {
+		ts.h.Transaction(&out, func() interface{} {
 			out.FieldA = "changed!"
-			return nil, nil
+			return nil
 		})
-		assert.NoError(t, err)
 	})
 
 	t.Run("transaction", func(t *testing.T) {
@@ -110,14 +133,13 @@ func TestActorStateHandle(t *testing.T) {
 		var out testActorStateHandleState
 		expected := "new state"
 
-		_, err := ts.h.Transaction(&out, func() (interface{}, error) {
+		ts.h.Transaction(&out, func() interface{} {
 			// check state is not what we are going to use
 			assert.NotEqual(t, out.FieldA, expected)
 			out.FieldA = expected
 
-			return nil, nil
+			return nil
 		})
-		assert.NoError(t, err)
 		// check that it changed
 		assert.Equal(t, out.FieldA, expected)
 
@@ -133,30 +155,10 @@ func TestActorStateHandle(t *testing.T) {
 		var out testActorStateHandleState
 
 		// should work, mutating is not compulsory
-		_, err := ts.h.Transaction(&out, func() (interface{}, error) {
-			return nil, nil
+		ts.h.Transaction(&out, func() interface{} {
+			return nil
 		})
-		assert.NoError(t, err)
 
-		assert.Equal(t, out, ts.initialstate)
-	})
-
-	t.Run("transaction returning error", func(t *testing.T) {
-		ts := setup()
-		defer ts.cleanup()
-
-		var out testActorStateHandleState
-
-		_, err := ts.h.Transaction(&out, func() (interface{}, error) {
-			out.FieldA = "changed!"
-			return nil, errors.New("some error")
-		})
-		assert.Error(t, err)
-		// check that it did NOT change
-		assert.Equal(t, out, ts.initialstate)
-
-		ts.h.Readonly(&out)
-		// really check by loading it again
 		assert.Equal(t, out, ts.initialstate)
 	})
 
@@ -166,10 +168,9 @@ func TestActorStateHandle(t *testing.T) {
 
 		var out testActorStateHandleState
 
-		v, err := ts.h.Transaction(&out, func() (interface{}, error) {
-			return out.FieldA, nil
+		v := ts.h.Transaction(&out, func() interface{} {
+			return out.FieldA
 		})
-		assert.NoError(t, err)
 
 		assert.Equal(t, v, ts.initialstate.FieldA)
 	})
@@ -182,11 +183,10 @@ func TestActorStateHandle(t *testing.T) {
 
 		var out testActorStateHandleState
 
-		_, err := ts.h.Transaction(&out, func() (interface{}, error) {
+		ts.h.Transaction(&out, func() interface{} {
 			out.FieldA = "changed!"
-			return nil, nil
+			return nil
 		})
-		assert.NoError(t, err)
 
 		out.FieldA = "changed again!"
 	})
@@ -197,17 +197,15 @@ func TestActorStateHandle(t *testing.T) {
 
 		var out testActorStateHandleState
 
-		_, err := ts.h.Transaction(&out, func() (interface{}, error) {
+		ts.h.Transaction(&out, func() interface{} {
 			out.FieldA = "changed!"
-			return nil, nil
+			return nil
 		})
-		assert.NoError(t, err)
 
-		v, err := ts.h.Transaction(&out, func() (interface{}, error) {
+		v := ts.h.Transaction(&out, func() interface{} {
 			out.FieldA = "again!"
-			return out.FieldA, nil
+			return out.FieldA
 		})
-		assert.NoError(t, err)
 
 		ts.h.Readonly(&out)
 		// really check by loading it again
@@ -218,19 +216,19 @@ func TestActorStateHandle(t *testing.T) {
 func TestActorStateHandleNilState(t *testing.T) {
 	tf.UnitTest(t)
 
-	setup := func() (runtime.ActorStateHandle, func()) {
-		storage := vm.NewTestLegacyStorage(nil)
+	setup := func() (runtime.StateHandle, func()) {
+		store := vm.NewTestStorage(nil)
 		ctx := fakeActorStateHandleContext{
-			storage:          storage,
+			store:            store,
 			allowSideEffects: true,
 		}
-		initialhead := ctx.storage.LegacyHead()
-		h := vmcontext.NewActorStateHandle(&ctx, initialhead)
+
+		h := vmcontext.NewActorStateHandle(&ctx)
 
 		cleanup := func() {
 			// the vmcontext is supposed to call validate after each actor method
 			implH := h.(extendedStateHandle)
-			implH.Validate()
+			implH.Validate(func(obj interface{}) cid.Cid { return store.CidOf(obj) })
 		}
 
 		return h, cleanup
@@ -251,10 +249,9 @@ func TestActorStateHandleNilState(t *testing.T) {
 		defer cleanup()
 
 		var out testActorStateHandleState
-		_, err := h.Transaction(&out, func() (interface{}, error) {
-			return nil, nil
+		h.Transaction(&out, func() interface{} {
+			return nil
 		})
-		assert.NoError(t, err)
 	})
 
 	t.Run("state initialized after transaction", func(t *testing.T) {
@@ -262,10 +259,9 @@ func TestActorStateHandleNilState(t *testing.T) {
 		defer cleanup()
 
 		var out testActorStateHandleState
-		_, err := h.Transaction(&out, func() (interface{}, error) {
-			return nil, nil
+		h.Transaction(&out, func() interface{} {
+			return nil
 		})
-		assert.NoError(t, err)
 
 		h.Readonly(&out) // should not fail
 	})
@@ -285,35 +281,50 @@ func TestActorStateHandleNilState(t *testing.T) {
 		h, cleanup := setup()
 		defer cleanup()
 
-		_, err := h.Transaction(nil, func() (interface{}, error) {
-			return nil, nil
+		h.Transaction(nil, func() interface{} {
+			return nil
 		})
-		assert.NoError(t, err)
 	})
 }
 
 type extendedStateHandle interface {
-	Validate()
+	Validate(func(interface{}) cid.Cid)
 }
 
 type fakeActorStateHandleContext struct {
-	storage          runtime.LegacyStorage
+	store            runtime.Store
+	head             cid.Cid
 	allowSideEffects bool
-}
-
-func (ctx *fakeActorStateHandleContext) LegacyStorage() runtime.LegacyStorage {
-	return ctx.storage
 }
 
 func (ctx *fakeActorStateHandleContext) AllowSideEffects(allow bool) {
 	ctx.allowSideEffects = allow
 }
 
+func (ctx *fakeActorStateHandleContext) Create(obj runtime.CBORMarshaler) cid.Cid {
+	ctx.head = ctx.store.Put(obj)
+	return ctx.head
+}
+
+func (ctx *fakeActorStateHandleContext) Load(obj runtime.CBORUnmarshaler) cid.Cid {
+	found := ctx.store.Get(ctx.head, obj)
+	if !found {
+		panic("inconsistent state")
+	}
+	return ctx.head
+}
+
+func (ctx *fakeActorStateHandleContext) Replace(expected cid.Cid, obj runtime.CBORMarshaler) cid.Cid {
+	if !ctx.head.Equals(expected) {
+		panic(fmt.Errorf("unexpected prior state %s expected %s", ctx.head, expected))
+	}
+	ctx.head = ctx.store.Put(obj)
+	return ctx.head
+}
+
 type testSetup struct {
 	initialstate testActorStateHandleState
-	ctx          fakeActorStateHandleContext
-	initialhead  cid.Cid
-	h            runtime.ActorStateHandle
+	h            runtime.StateHandle
 	cleanup      func()
 }
 

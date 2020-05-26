@@ -2,11 +2,13 @@ package chain
 
 import (
 	"context"
+	"errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 )
 
 // TipSetProvider provides tipsets for traversal.
@@ -111,10 +113,118 @@ func CollectTipsToCommonAncestor(ctx context.Context, store TipSetProvider, oldH
 
 	// Add 1 to the height argument so that the common ancestor is not
 	// included in the outputs.
-	oldTips, err = CollectTipSetsOfHeightAtLeast(ctx, oldIter, types.NewBlockHeight(commonHeight+uint64(1)))
+	oldTips, err = CollectTipSetsOfHeightAtLeast(ctx, oldIter, commonHeight+1)
 	if err != nil {
 		return
 	}
-	newTips, err = CollectTipSetsOfHeightAtLeast(ctx, newIter, types.NewBlockHeight(commonHeight+uint64(1)))
+	newTips, err = CollectTipSetsOfHeightAtLeast(ctx, newIter, commonHeight+1)
 	return
+}
+
+// ErrNoCommonAncestor is returned when two chains assumed to have a common ancestor do not.
+var ErrNoCommonAncestor = errors.New("no common ancestor")
+
+// FindCommonAncestor returns the common ancestor of the two tipsets pointed to
+// by the input iterators.  If they share no common ancestor ErrNoCommonAncestor
+// will be returned.
+func FindCommonAncestor(leftIter, rightIter *TipsetIterator) (block.TipSet, error) {
+	for !rightIter.Complete() && !leftIter.Complete() {
+		left := leftIter.Value()
+		right := rightIter.Value()
+
+		leftHeight, err := left.Height()
+		if err != nil {
+			return block.UndefTipSet, err
+		}
+		rightHeight, err := right.Height()
+		if err != nil {
+			return block.UndefTipSet, err
+		}
+
+		// Found common ancestor.
+		if left.Equals(right) {
+			return left, nil
+		}
+
+		// Update the pointers.  Pointers move back one tipset if they
+		// point to a tipset at the same height or higher than the
+		// other pointer's tipset.
+		if rightHeight >= leftHeight {
+			if err := rightIter.Next(); err != nil {
+				return block.UndefTipSet, err
+			}
+		}
+
+		if leftHeight >= rightHeight {
+			if err := leftIter.Next(); err != nil {
+				return block.UndefTipSet, err
+			}
+		}
+	}
+	return block.UndefTipSet, ErrNoCommonAncestor
+}
+
+// CollectTipSetsOfHeightAtLeast collects all tipsets with a height greater
+// than or equal to minHeight from the input tipset.
+func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator, minHeight abi.ChainEpoch) ([]block.TipSet, error) {
+	var ret []block.TipSet
+	var err error
+	var h abi.ChainEpoch
+	for ; !iterator.Complete(); err = iterator.Next() {
+		if err != nil {
+			return nil, err
+		}
+		h, err = iterator.Value().Height()
+		if err != nil {
+			return nil, err
+		}
+		if h < minHeight {
+			return ret, nil
+		}
+		ret = append(ret, iterator.Value())
+	}
+	return ret, nil
+}
+
+// FindTipSetAtEpoch finds the highest tipset with height <= the input epoch
+// by traversing backwards from start
+func FindTipsetAtEpoch(ctx context.Context, start block.TipSet, epoch abi.ChainEpoch, reader TipSetProvider) (ts block.TipSet, err error) {
+	iterator := IterAncestors(ctx, reader, start)
+	var h abi.ChainEpoch
+	for ; !iterator.Complete(); err = iterator.Next() {
+		if err != nil {
+			return
+		}
+		ts = iterator.Value()
+		h, err = ts.Height()
+		if err != nil {
+			return
+		}
+		if h <= epoch {
+			break
+		}
+	}
+	// If the iterator completed, ts is the genesis tipset.
+	return
+}
+
+// FindLatestDRAND returns the latest DRAND entry in the chain beginning at start
+func FindLatestDRAND(ctx context.Context, start block.TipSet, reader TipSetProvider) (*drand.Entry, error) {
+	iterator := IterAncestors(ctx, reader, start)
+	var err error
+	for ; !iterator.Complete(); err = iterator.Next() {
+		if err != nil {
+			return nil, err
+		}
+		ts := iterator.Value()
+		// DRAND entries must be the same for all blocks on the tipset as
+		// an invariant of the tipset provider
+
+		entries := ts.At(0).BeaconEntries
+		if len(entries) > 0 {
+			return entries[len(entries)-1], nil
+		}
+		// No entries, simply move on to the next ancestor
+	}
+	return nil, errors.New("no DRAND entries in chain")
 }

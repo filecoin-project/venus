@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 )

@@ -4,8 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
-	"strings"
 
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -50,41 +48,6 @@ var idCmd = &cmds.Command{
 		return re.Emit(&details)
 	},
 	Type: IDDetails{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, val *IDDetails) error {
-			format, found := req.Options["format"].(string)
-			if found {
-				output := idFormatSubstitute(format, val)
-				_, err := fmt.Fprint(w, output)
-				return err
-			}
-
-			marshaled, err := json.MarshalIndent(val, "", "\t")
-			if err != nil {
-				return err
-			}
-			marshaled = append(marshaled, byte('\n'))
-
-			_, err = w.Write(marshaled)
-			return err
-		}),
-	},
-}
-
-func idFormatSubstitute(format string, val *IDDetails) string {
-	addrStrings := make([]string, len(val.Addresses))
-	for i, addr := range val.Addresses {
-		addrStrings[i] = addr.String()
-	}
-	output := format
-	output = strings.Replace(output, "<id>", val.ID.Pretty(), -1)
-	output = strings.Replace(output, "<aver>", val.AgentVersion, -1)
-	output = strings.Replace(output, "<pver>", val.ProtocolVersion, -1)
-	output = strings.Replace(output, "<pubkey>", base64.StdEncoding.EncodeToString(val.PublicKey), -1)
-	output = strings.Replace(output, "<addrs>", strings.Join(addrStrings, "\n"), -1)
-	output = strings.Replace(output, "\\n", "\n", -1)
-	output = strings.Replace(output, "\\t", "\t", -1)
-	return output
 }
 
 // MarshalJSON implements json.Marshaler
@@ -140,7 +103,7 @@ func (idd *IDDetails) UnmarshalJSON(data []byte) error {
 	if err := decode(v, "ID", &id); err != nil {
 		return err
 	}
-	if idd.ID, err = peer.IDB58Decode(id); err != nil {
+	if idd.ID, err = peer.Decode(id); err != nil {
 		return err
 	}
 

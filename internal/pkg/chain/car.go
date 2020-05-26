@@ -4,16 +4,17 @@ import (
 	"context"
 	"io"
 
-	"github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-car"
-	carutil "github.com/ipfs/go-car/util"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/ipld/go-car"
+	carutil "github.com/ipld/go-car/util"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 var logCar = logging.Logger("chain/car")
@@ -29,6 +30,13 @@ type carStateReader interface {
 	ChainStateTree(ctx context.Context, c cid.Cid) ([]format.Node, error)
 }
 
+// Fields need to stay lower case to match car's default refmt encoding as
+// refmt can't handle arbitrary casing.
+type carHeader struct {
+	Roots   block.TipSetKey `cbor:"roots"`
+	Version uint64          `cbor:"version"`
+}
+
 // Export will export a chain (all blocks and their messages) to the writer `out`.
 func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carMessageReader, sr carStateReader, out io.Writer) error {
 	// ensure we don't duplicate writes to the car file. // e.g. only write EmptyMessageCID once.
@@ -40,10 +48,11 @@ func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carM
 	}
 
 	// Write the car header
-	chb, err := encoding.Encode(car.CarHeader{
-		Roots:   headTS.Key().ToSlice(),
+	ch := carHeader{
+		Roots:   headTS.Key(),
 		Version: 1,
-	})
+	}
+	chb, err := encoding.Encode(ch)
 	if err != nil {
 		return err
 	}
@@ -72,44 +81,57 @@ func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carM
 				filter[hdr.Cid()] = true
 			}
 
-			secpMsgs, blsMsgs, err := mr.LoadMessages(ctx, hdr.Messages)
+			meta, err := mr.LoadTxMeta(ctx, hdr.Messages.Cid)
 			if err != nil {
 				return err
 			}
 
-			if !filter[hdr.Messages.SecpRoot] {
-				logCar.Debugf("writing message collection: %s", hdr.Messages)
+			if !filter[hdr.Messages.Cid] {
+				logCar.Debugf("writing txMeta: %s", hdr.Messages)
+				if err := exportTxMeta(ctx, out, meta); err != nil {
+					return err
+				}
+				filter[hdr.Messages.Cid] = true
+			}
+
+			secpMsgs, blsMsgs, err := mr.LoadMessages(ctx, hdr.Messages.Cid)
+			if err != nil {
+				return err
+			}
+
+			if !filter[meta.SecpRoot.Cid] {
+				logCar.Debugf("writing secp message collection: %s", hdr.Messages)
 				if err := exportAMTSignedMessages(ctx, out, secpMsgs); err != nil {
 					return err
 				}
-				filter[hdr.Messages.SecpRoot] = true
+				filter[meta.SecpRoot.Cid] = true
 			}
 
-			if !filter[hdr.Messages.BLSRoot] {
-				logCar.Debugf("writing message collection: %s", hdr.Messages)
+			if !filter[meta.BLSRoot.Cid] {
+				logCar.Debugf("writing bls message collection: %s", hdr.Messages)
 				if err := exportAMTUnsignedMessages(ctx, out, blsMsgs); err != nil {
 					return err
 				}
-				filter[hdr.Messages.BLSRoot] = true
+				filter[meta.BLSRoot.Cid] = true
 			}
 
 			// TODO(#3473) we can remove MessageReceipts from the exported file once addressed.
-			rect, err := mr.LoadReceipts(ctx, hdr.MessageReceipts)
+			rect, err := mr.LoadReceipts(ctx, hdr.MessageReceipts.Cid)
 			if err != nil {
 				return err
 			}
 
-			if !filter[hdr.MessageReceipts] {
+			if !filter[hdr.MessageReceipts.Cid] {
 				logCar.Debugf("writing message-receipt collection: %s", hdr.Messages)
 				if err := exportAMTReceipts(ctx, out, rect); err != nil {
 					return err
 				}
-				filter[hdr.MessageReceipts] = true
+				filter[hdr.MessageReceipts.Cid] = true
 			}
 
 			if hdr.Height == 0 {
 				logCar.Debugf("writing state tree: %s", hdr.StateRoot)
-				stateRoots, err := sr.ChainStateTree(ctx, hdr.StateRoot)
+				stateRoots, err := sr.ChainStateTree(ctx, hdr.StateRoot.Cid)
 				if err != nil {
 					return err
 				}
@@ -148,10 +170,16 @@ func exportAMTUnsignedMessages(ctx context.Context, out io.Writer, umsgs []*type
 	return err
 }
 
-func exportAMTReceipts(ctx context.Context, out io.Writer, receipts []*types.MessageReceipt) error {
+func exportAMTReceipts(ctx context.Context, out io.Writer, receipts []vm.MessageReceipt) error {
 	ms := carWritingMessageStore(out)
 
 	_, err := ms.StoreReceipts(ctx, receipts)
+	return err
+}
+
+func exportTxMeta(ctx context.Context, out io.Writer, meta types.TxMeta) error {
+	ms := carWritingMessageStore(out)
+	_, err := ms.StoreTxMeta(ctx, meta)
 	return err
 }
 

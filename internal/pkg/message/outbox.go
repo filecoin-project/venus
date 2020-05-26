@@ -4,17 +4,18 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 // Outbox validates and marshals messages for sending and maintains the outbound message queue.
@@ -27,7 +28,7 @@ type Outbox struct {
 	// Signs messages
 	signer types.Signer
 	// Validates messages before sending them.
-	validator consensus.MessageValidator
+	validator messageValidator
 	// Holds messages sent from this node but not yet mined.
 	queue *Queue
 	// Publishes a signed message to the network.
@@ -44,19 +45,24 @@ type Outbox struct {
 	journal journal.Writer
 }
 
+type messageValidator interface {
+	// Validate checks a message for validity.
+	ValidateSignedMessageSyntax(ctx context.Context, msg *types.SignedMessage) error
+}
+
 type actorProvider interface {
 	// GetActorAt returns the actor state defined by the chain up to some tipset
 	GetActorAt(ctx context.Context, tipset block.TipSetKey, addr address.Address) (*actor.Actor, error)
 }
 
 type publisher interface {
-	Publish(ctx context.Context, message *types.SignedMessage, height uint64, bcast bool) error
+	Publish(ctx context.Context, message *types.SignedMessage, height abi.ChainEpoch, bcast bool) error
 }
 
 var msgSendErrCt = metrics.NewInt64Counter("message_sender_error", "Number of errors encountered while sending a message")
 
 // NewOutbox creates a new outbox
-func NewOutbox(signer types.Signer, validator consensus.MessageValidator, queue *Queue,
+func NewOutbox(signer types.Signer, validator messageValidator, queue *Queue,
 	publisher publisher, policy QueuePolicy, chains chainProvider, actors actorProvider, jw journal.Writer) *Outbox {
 	return &Outbox{
 		signer:    signer,
@@ -78,20 +84,33 @@ func (ob *Outbox) Queue() *Queue {
 // Send marshals and sends a message, retaining it in the outbound message queue.
 // If bcast is true, the publisher broadcasts the message to the network at the current block height.
 func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value types.AttoFIL,
-	gasPrice types.AttoFIL, gasLimit types.GasUnits, bcast bool, method types.MethodID, params ...interface{}) (out cid.Cid, pubErrCh chan error, err error) {
+	gasPrice types.AttoFIL, gasLimit gas.Unit, bcast bool, method abi.MethodNum, params interface{}) (out cid.Cid, pubErrCh chan error, err error) {
+	encodedParams, err := encoding.Encode(params)
+	if err != nil {
+		return cid.Undef, nil, errors.Wrap(err, "invalid params")
+	}
+
+	return ob.SendEncoded(ctx, from, to, value, gasPrice, gasLimit, bcast, method, encodedParams)
+}
+
+// SendEncoded sends an encoded message, retaining it in the outbound message queue.
+// If bcast is true, the publisher broadcasts the message to the network at the current block height.
+func (ob *Outbox) SendEncoded(ctx context.Context, from, to address.Address, value types.AttoFIL,
+	gasPrice types.AttoFIL, gasLimit gas.Unit, bcast bool, method abi.MethodNum, encodedParams []byte) (out cid.Cid, pubErrCh chan error, err error) {
 	defer func() {
 		if err != nil {
 			msgSendErrCt.Inc(ctx, 1)
 		}
-		ob.journal.Write("Send",
-			"to", to.String(), "from", from.String(), "value", value.AsBigInt().Uint64(), "method", method,
-			"gasPrice", gasPrice.AsBigInt().Uint64(), "gasLimit", uint64(gasLimit), "bcast", bcast,
-			"params", params, "error", err, "cid", out.String())
+		ob.journal.Write("SendEncoded",
+			"to", to.String(), "from", from.String(), "value", value.Int.Uint64(), "method", method,
+			"gasPrice", gasPrice.Int.Uint64(), "gasLimit", uint64(gasLimit), "bcast", bcast,
+			"encodedParams", encodedParams, "error", err, "cid", out.String())
 	}()
 
-	encodedParams, err := abi.ToEncodedValues(params...)
-	if err != nil {
-		return cid.Undef, nil, errors.Wrap(err, "invalid params")
+	// The spec's message syntax validation rules restricts empty parameters
+	//  to be encoded as an empty byte string not cbor null
+	if encodedParams == nil {
+		encodedParams = []byte{}
 	}
 
 	// Lock to avoid a race inspecting the actor state and message queue to calculate next nonce.
@@ -111,7 +130,7 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 	}
 
 	rawMsg := types.NewMeteredMessage(from, to, nonce, value, method, encodedParams, gasPrice, gasLimit)
-	signed, err := types.NewSignedMessage(*rawMsg, ob.signer)
+	signed, err := types.NewSignedMessage(ctx, *rawMsg, ob.signer)
 
 	if err != nil {
 		return cid.Undef, nil, errors.Wrap(err, "failed to sign message")
@@ -119,7 +138,7 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 
 	// Slightly awkward: it would be better validate before signing but the MeteredMessage construction
 	// is hidden inside NewSignedMessage.
-	err = ob.validator.Validate(ctx, &signed.Message, fromActor)
+	err = ob.validator.ValidateSignedMessageSyntax(ctx, signed)
 	if err != nil {
 		return cid.Undef, nil, errors.Wrap(err, "invalid message")
 	}
@@ -149,11 +168,17 @@ func sendSignedMsg(ctx context.Context, ob *Outbox, signed *types.SignedMessage,
 	}
 
 	// Add to the local message queue/pool at the last possible moment before broadcasting to network.
-	if err := ob.queue.Enqueue(ctx, signed, height); err != nil {
+	if err := ob.queue.Enqueue(ctx, signed, uint64(height)); err != nil {
 		return cid.Undef, nil, errors.Wrap(err, "failed to add message to outbound queue")
 	}
 
-	c, err := signed.Cid()
+	var c cid.Cid
+	if signed.Message.From.Protocol() == address.BLS {
+		// drop signature before generating Cid to match cid of message retrieved from block.
+		c, err = signed.Message.Cid()
+	} else {
+		c, err = signed.Cid()
+	}
 	if err != nil {
 		return cid.Undef, nil, err
 	}
@@ -191,7 +216,7 @@ func nextNonce(act *actor.Actor, queue *Queue, address address.Address) (uint64,
 	return actorNonce, nil
 }
 
-func tipsetHeight(provider chainProvider, key block.TipSetKey) (uint64, error) {
+func tipsetHeight(provider chainProvider, key block.TipSetKey) (abi.ChainEpoch, error) {
 	head, err := provider.GetTipSet(key)
 	if err != nil {
 		return 0, err

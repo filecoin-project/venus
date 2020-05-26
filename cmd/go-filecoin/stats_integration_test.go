@@ -20,5 +20,5 @@ func TestStatsBandwidth(t *testing.T) {
 
 	stats := cmdClient.RunSuccess(ctx, "stats", "bandwidth").ReadStdoutTrimNewlines()
 
-	assert.Equal(t, "{\"TotalIn\":0,\"TotalOut\":0,\"RateIn\":0,\"RateOut\":0}", stats)
+	assert.Equal(t, "{\n\t\"TotalIn\": 0,\n\t\"TotalOut\": 0,\n\t\"RateIn\": 0,\n\t\"RateOut\": 0\n}", stats)
 }

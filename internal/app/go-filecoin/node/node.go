@@ -7,22 +7,20 @@ import (
 	"reflect"
 	"runtime"
 
-	a2 "github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/go-address"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	"github.com/ipfs/go-hamt-ipld"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/internal/submodule"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paymentchannel"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
@@ -32,14 +30,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/drand"
 	mining_protocol "github.com/filecoin-project/go-filecoin/internal/pkg/protocol/mining"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
-
-	// TODO: replace this with go-address module #3719
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	vmerr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 )
 
 var log = logging.Logger("node") // nolint: deadcode
@@ -63,6 +59,8 @@ type Node struct {
 	Repo repo.Repo
 
 	PorcelainAPI *porcelain.API
+	DrandAPI     *drand.API
+	StorageAPI   *storage.API
 
 	//
 	// Core services
@@ -96,8 +94,8 @@ type Node struct {
 	//
 
 	VersionTable      *version.ProtocolVersionTable
-	StorageProtocol   submodule.StorageProtocolSubmodule
-	RetrievalProtocol submodule.RetrievalProtocolSubmodule
+	StorageProtocol   *submodule.StorageProtocolSubmodule
+	RetrievalProtocol *submodule.RetrievalProtocolSubmodule
 }
 
 // Start boots up the node.
@@ -129,8 +127,6 @@ func (node *Node) Start(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to set up protocols:")
 	}
-	// DRAGONS: uncomment when we have retrieval market integration
-	//node.RetrievalProtocol.RetrievalMiner = retrieval.NewMiner()
 
 	var syncCtx context.Context
 	syncCtx, node.syncer.CancelChainSync = context.WithCancel(context.Background())
@@ -145,7 +141,7 @@ func (node *Node) Start(ctx context.Context) error {
 	if !node.OfflineMode {
 
 		// Subscribe to block pubsub topic to learn about new chain heads.
-		node.syncer.BlockSub, err = node.pubsubscribe(syncCtx, node.syncer.BlockTopic, node.processBlock)
+		node.syncer.BlockSub, err = node.pubsubscribe(syncCtx, node.syncer.BlockTopic, node.handleBlockSub)
 		if err != nil {
 			log.Error(err)
 		}
@@ -228,7 +224,7 @@ func (node *Node) setIsMining(isMining bool) {
 	node.BlockMining.Mining.IsMining = isMining
 }
 
-func (node *Node) handleNewMiningOutput(ctx context.Context, miningOutCh <-chan mining.Output) {
+func (node *Node) handleNewMiningOutput(ctx context.Context, miningOutCh <-chan mining.FullBlock) {
 	defer func() {
 		node.BlockMining.MiningDoneWg.Done()
 	}()
@@ -238,41 +234,54 @@ func (node *Node) handleNewMiningOutput(ctx context.Context, miningOutCh <-chan 
 			return
 		case output, ok := <-miningOutCh:
 			if !ok {
+				log.Errorf("scheduler stopped. stopping mining.")
+				node.StopMining(context.Background())
 				return
 			}
-			if output.Err != nil {
-				log.Errorf("stopping mining. error: %s", output.Err.Error())
-				node.StopMining(context.Background())
-			} else {
-				node.BlockMining.MiningDoneWg.Add(1)
-				go func() {
-					if node.IsMining() {
-						node.BlockMining.AddNewlyMinedBlock(ctx, output.NewBlock)
-					}
-					node.BlockMining.MiningDoneWg.Done()
-				}()
-			}
+
+			node.BlockMining.MiningDoneWg.Add(1)
+			go func() {
+				if node.IsMining() {
+					node.BlockMining.AddNewlyMinedBlock(ctx, output)
+				}
+				node.BlockMining.MiningDoneWg.Done()
+			}()
 		}
 	}
 
 }
 
-func (node *Node) handleNewChainHeads(ctx context.Context, prevHead block.TipSet) {
-	node.chain.HeaviestTipSetCh = node.chain.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
-	handler := message.NewHeadHandler(node.Messaging.Inbox, node.Messaging.Outbox, node.chain.ChainReader, prevHead)
+func (node *Node) handleNewChainHeads(ctx context.Context, firstHead block.TipSet) {
+	newHeadCh := node.chain.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
+	defer log.Infof("new head handler exited")
+	defer node.chain.ChainReader.HeadEvents().Unsub(newHeadCh)
+
+	handler := message.NewHeadHandler(node.Messaging.Inbox, node.Messaging.Outbox, node.chain.ChainReader, firstHead)
 
 	for {
+		log.Debugf("waiting for new head")
 		select {
-		case ts, ok := <-node.chain.HeaviestTipSetCh:
+		case ts, ok := <-newHeadCh:
 			if !ok {
+				log.Errorf("failed new head channel receive")
 				return
 			}
 			newHead, ok := ts.(block.TipSet)
 			if !ok {
-				log.Warn("non-tipset published on heaviest tipset channel")
+				log.Errorf("non-tipset published on heaviest tipset channel")
 				continue
 			}
+			height, _ := newHead.Height()
+			log.Debugf("received new head height %s, key %s", height, newHead.Key())
 
+			if node.StorageMining != nil {
+				log.Debugf("storage mining handling new head")
+				if err := node.StorageMining.HandleNewHead(ctx, newHead); err != nil {
+					log.Error(err)
+				}
+			}
+
+			log.Debugf("message pool handling new head")
 			if err := handler.HandleNewHead(ctx, newHead); err != nil {
 				log.Error(err)
 			}
@@ -300,7 +309,6 @@ func (node *Node) cancelSubscriptions() {
 
 // Stop initiates the shutdown of the node.
 func (node *Node) Stop(ctx context.Context) {
-	node.chain.ChainReader.HeadEvents().Unsub(node.chain.HeaviestTipSetCh)
 	node.StopMining(ctx)
 
 	node.cancelSubscriptions()
@@ -326,21 +334,21 @@ func (node *Node) Stop(ctx context.Context) {
 	fmt.Println("stopping filecoin :(")
 }
 
-func (node *Node) addNewlyMinedBlock(ctx context.Context, b *block.Block) {
-	log.Debugf("Got a newly mined block from the mining worker: %s", b)
-	if err := node.AddNewBlock(ctx, b); err != nil {
-		log.Warnf("error adding new mined block: %s. err: %s", b.Cid().String(), err.Error())
+func (node *Node) addNewlyMinedBlock(ctx context.Context, o mining.FullBlock) {
+	log.Debugf("Got a newly mined block from the mining worker: %s", o.Header)
+	if err := node.AddNewBlock(ctx, o); err != nil {
+		log.Warnf("error adding new mined block: %s. err: %s", o.Header.Cid().String(), err.Error())
 	}
 }
 
-func (node *Node) addMinedBlockSynchronous(ctx context.Context, b *block.Block) error {
-	wait := node.syncer.ChainSyncManager.BlockProposer().WaiterForTarget(block.NewTipSetKey(b.Cid()))
-	err := node.AddNewBlock(ctx, b)
+func (node *Node) addMinedBlockSynchronous(ctx context.Context, o mining.FullBlock) error {
+	wait := node.syncer.ChainSyncManager.BlockProposer().WaiterForTarget(block.NewTipSetKey(o.Header.Cid()))
+	err := node.AddNewBlock(ctx, o)
 	if err != nil {
 		return err
 	}
-	wait()
-	return nil
+	err = wait()
+	return err
 }
 
 // MiningAddress returns the address of the mining actor mining on behalf of
@@ -362,7 +370,12 @@ func (node *Node) SetupMining(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get mining address")
 	}
-	_, err = node.PorcelainAPI.ActorGetStable(ctx, minerAddr)
+	head := node.PorcelainAPI.ChainHeadKey()
+	view, err := node.PorcelainAPI.MinerStateView(head)
+	if err != nil {
+		return errors.Wrap(err, "failed to load state view")
+	}
+	_, _, err = view.MinerControlAddresses(ctx, minerAddr)
 	if err != nil {
 		return errors.Wrap(err, "failed to get miner actor")
 	}
@@ -374,11 +387,24 @@ func (node *Node) SetupMining(ctx context.Context) error {
 		}
 	}
 
+	if node.RetrievalProtocol == nil {
+		if err := node.setupRetrievalMining(ctx); err != nil {
+			return err
+		}
+	}
 	// ensure we have a mining worker
 	if node.BlockMining.MiningWorker == nil {
 		if node.BlockMining.MiningWorker, err = node.CreateMiningWorker(ctx); err != nil {
 			return err
 		}
+	}
+
+	if err := node.StorageMining.Start(ctx); err != nil {
+		fmt.Printf("error starting storage miner: %s\n", err)
+	}
+
+	if err := node.StorageProtocol.StorageProvider.Start(ctx); err != nil {
+		fmt.Printf("error starting storage provider: %s\n", err)
 	}
 
 	return nil
@@ -394,12 +420,8 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return err
 	}
 
-	sectorSize, err := node.PorcelainAPI.MinerGetSectorSize(ctx, minerAddr)
-	if err != nil {
-		return err
-	}
-
-	minerAddr2, err := a2.NewFromBytes(minerAddr.Bytes())
+	head := node.Chain().ChainReader.GetHead()
+	status, err := node.PorcelainAPI.MinerGetStatus(ctx, minerAddr, head)
 	if err != nil {
 		return err
 	}
@@ -409,35 +431,68 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return err
 	}
 
-	sectorDir, err := paths.GetSectorPath(node.Repo.Config().SectorBase.RootDir, repoPath)
+	sealProofType := status.SectorConfiguration.SealProofType
+
+	cborStore := node.Blockstore.CborStore
+
+	waiter := msg.NewWaiter(node.chain.ChainReader, node.chain.MessageStore, node.Blockstore.Blockstore, cborStore)
+
+	// TODO: rework these modules so they can be at least partially constructed during the building phase #3738
+	stateViewer := state.NewViewer(cborStore)
+
+	node.StorageMining, err = submodule.NewStorageMiningSubmodule(minerAddr, node.Repo.Datastore(), &node.chain, &node.Messaging, waiter, stateViewer, sealProofType, node.Repo, node.BlockMining.PoStGenerator)
 	if err != nil {
 		return err
 	}
 
-	sectorBuilder, err := sectorbuilder.New(&sectorbuilder.Config{
-		SectorSize:    sectorSize.Uint64(),
-		Miner:         minerAddr2,
-		WorkerThreads: 1,
-		Dir:           sectorDir,
-	}, namespace.Wrap(node.Repo.Datastore(), ds.NewKey("/sectorbuilder")))
-	if err != nil {
-		return err
-	}
+	return node.StorageProtocol.AddStorageProvider(
+		ctx,
+		minerAddr,
+		&node.chain,
+		&node.Messaging,
+		waiter,
+		node.StorageMining.PieceManager,
+		node.Wallet.Signer,
+		node.Host(),
+		node.Repo.Datastore(),
+		node.Blockstore.Blockstore,
+		node.network.GraphExchange,
+		repoPath,
+		sealProofType,
+		stateViewer,
+	)
+}
 
-	workerAddr, err := node.PorcelainAPI.MinerGetWorkerAddress(ctx, minerAddr, node.Chain().ChainReader.GetHead())
+func (node *Node) setupRetrievalMining(ctx context.Context) error {
+	providerAddr, err := node.MiningAddress()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to get mining address")
 	}
 
 	waiter := msg.NewWaiter(node.chain.ChainReader, node.chain.MessageStore, node.Blockstore.Blockstore, node.Blockstore.CborStore)
 
-	sub, err := submodule.NewStorageMiningSubmodule(minerAddr, workerAddr, node.Repo.Datastore(), sectorBuilder, &node.chain, &node.Messaging, waiter, &node.Wallet)
+	mgrStateViewer := paymentchannel.NewManagerStateViewer(node.Chain().ChainReader, node.Blockstore.CborStore)
+	paychMgr := paymentchannel.NewManager(
+		ctx,
+		node.Repo.Datastore(),
+		waiter,
+		node.Messaging.Outbox,
+		mgrStateViewer)
+
+	rp, err := submodule.NewRetrievalProtocolSubmodule(
+		node.Blockstore.Blockstore,
+		node.Repo.Datastore(),
+		node.chain.State,
+		node.Host(),
+		providerAddr,
+		node.Wallet.Signer,
+		paychMgr,
+		node.PieceManager(),
+	)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to build node.RetrievalProtocol")
 	}
-
-	node.StorageMining = &sub
-
+	node.RetrievalProtocol = rp
 	return nil
 }
 
@@ -487,6 +542,11 @@ func (node *Node) StartMining(ctx context.Context) error {
 		return fmt.Errorf("miner scheduler already started")
 	}
 
+	// The block mining scheduler Start() accepts a long-running context, and stopping is performed by cancellation of
+	// that context.
+	// The storage mining module and provider take the immediate context, hopefully don't run any goroutines that
+	// shut down when that context is done (which is ~immediately), and provide explicit Stop() methods instead.
+	// We should pick one consistent way of doing things.
 	var miningCtx context.Context
 	miningCtx, node.BlockMining.CancelMining = context.WithCancel(context.Background())
 
@@ -496,10 +556,6 @@ func (node *Node) StartMining(ctx context.Context) error {
 	node.BlockMining.AddNewlyMinedBlock = node.addNewlyMinedBlock
 	node.BlockMining.MiningDoneWg.Add(1)
 	go node.handleNewMiningOutput(miningCtx, outCh)
-
-	if err := node.StorageMining.Start(ctx); err != nil {
-		fmt.Printf("error starting storage miner: %s\n", err)
-	}
 
 	node.setIsMining(true)
 
@@ -518,7 +574,12 @@ func (node *Node) StopMining(ctx context.Context) {
 		node.BlockMining.MiningDoneWg.Wait()
 	}
 
-	// TODO: stop node.StorageProtocol.StorageMiner
+	if node.StorageMining != nil {
+		err := node.StorageMining.Stop(ctx)
+		if err != nil {
+			log.Warn("Error stopping storage miner", err)
+		}
+	}
 }
 
 func (node *Node) handleSubscription(ctx context.Context, sub pubsub.Subscription, handler pubSubHandler) {
@@ -533,9 +594,7 @@ func (node *Node) handleSubscription(ctx context.Context, sub pubsub.Subscriptio
 
 		if err := handler(ctx, received); err != nil {
 			handlerName := runtime.FuncForPC(reflect.ValueOf(handler).Pointer()).Name()
-			if vmerr.ShouldRevert(err) {
-				log.Infof("error in handler %s for topic %s: %s", handlerName, sub.Topic(), err)
-			} else if err != context.Canceled {
+			if err != context.Canceled {
 				log.Errorf("error in handler %s for topic %s: %s", handlerName, sub.Topic(), err)
 			}
 		}
@@ -558,17 +617,6 @@ func (node *Node) setupProtocols() error {
 	)
 
 	node.BlockMining.BlockMiningAPI = &blockMiningAPI
-
-	// set up retrieval client and api
-	// DRAGONS: uncomment when we have a real retrieval client implementation
-	//retapi := retrieval.NewAPI(retrieval.NewClient())
-	//node.RetrievalProtocol.RetrievalAPI = &retapi
-
-	// set up storage client and api
-	// DRAGONS: uncomment when we have a storage market
-	//smc := storage.NewClient()
-	//smcAPI := storage.NewAPI(smc)
-	//node.StorageProtocol.StorageAPI = &smcAPI
 	return nil
 }
 
@@ -583,63 +631,72 @@ func (node *Node) GetMiningWorker(ctx context.Context) (*mining.DefaultWorker, e
 // CreateMiningWorker creates a mining.Worker for the node using the configured
 // getStateTree, getWeight, and getAncestors functions for the node
 func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker, error) {
-	processor := consensus.NewDefaultProcessor()
-
 	minerAddr, err := node.MiningAddress()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get mining address")
 	}
 
-	minerOwnerAddr, err := node.PorcelainAPI.MinerGetOwnerAddress(ctx, minerAddr)
+	head := node.PorcelainAPI.ChainHeadKey()
+	view, err := node.PorcelainAPI.MinerStateView(head)
 	if err != nil {
-		log.Errorf("could not get owner address of miner actor")
+		return nil, errors.Wrapf(err, "failed to load miner state")
+	}
+	owner, _, err := view.MinerControlAddresses(ctx, minerAddr)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to read miner control addresses")
+	}
+
+	poster := node.BlockMining.PoStGenerator
+	if poster == nil {
+		poster = node.StorageMining.PoStGenerator
+	}
+	genBlk, err := node.Chain().ChainReader.GetGenesisBlock(ctx)
+	if err != nil {
 		return nil, err
 	}
+	sampler := chain.NewSampler(node.Chain().ChainReader, genBlk.Ticket)
 
 	return mining.NewDefaultWorker(mining.WorkerParameters{
 		API: node.PorcelainAPI,
 
 		MinerAddr:      minerAddr,
-		MinerOwnerAddr: minerOwnerAddr,
-		WorkerSigner:   node.Wallet.Wallet,
+		MinerOwnerAddr: owner,
+		WorkerSigner:   node.Wallet.Signer,
 
 		GetStateTree:   node.chain.ChainReader.GetTipSetState,
 		GetWeight:      node.getWeight,
-		GetAncestors:   node.getAncestors,
-		Election:       consensus.ElectionMachine{},
-		TicketGen:      consensus.TicketMachine{},
+		Election:       consensus.NewElectionMachine(node.PorcelainAPI),
+		TicketGen:      consensus.NewTicketMachine(sampler),
 		TipSetMetadata: node.chain.ChainReader,
 
-		MessageSource: node.Messaging.Inbox.Pool(),
-		MessageStore:  node.chain.MessageStore,
-		Processor:     processor,
-		Blockstore:    node.Blockstore.Blockstore,
-		Clock:         node.ChainClock,
-		Poster:        node.StorageMining.PoStGenerator,
+		MessageSource:    node.Messaging.Inbox.Pool(),
+		MessageStore:     node.chain.MessageStore,
+		MessageQualifier: consensus.NewMessagePenaltyChecker(node.Chain().State),
+		Blockstore:       node.Blockstore.Blockstore,
+		Clock:            node.ChainClock,
+		Poster:           poster,
+		ChainState:       node.chain.ChainReader,
+		Drand:            node.Syncer().Drand,
 	}), nil
 }
 
 // getWeight is the default GetWeight function for the mining worker.
-func (node *Node) getWeight(ctx context.Context, ts block.TipSet) (uint64, error) {
+func (node *Node) getWeight(ctx context.Context, ts block.TipSet) (fbig.Int, error) {
 	parent, err := ts.Parents()
 	if err != nil {
-		return uint64(0), err
+		return fbig.Zero(), err
 	}
-	// TODO handle genesis cid more gracefully
-	if parent.Len() == 0 {
-		return node.syncer.ChainSelector.Weight(ctx, ts, cid.Undef)
+	var baseStRoot cid.Cid
+	if parent.Empty() {
+		// use genesis state as parent state of genesis block
+		baseStRoot, err = node.chain.ChainReader.GetTipSetStateRoot(ts.Key())
+	} else {
+		baseStRoot, err = node.chain.ChainReader.GetTipSetStateRoot(parent)
 	}
-	root, err := node.chain.ChainReader.GetTipSetStateRoot(parent)
 	if err != nil {
-		return uint64(0), err
+		return fbig.Zero(), err
 	}
-	return node.syncer.ChainSelector.Weight(ctx, ts, root)
-}
-
-// getAncestors is the default GetAncestors function for the mining worker.
-func (node *Node) getAncestors(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
-	ancestorHeight := newBlockHeight.Sub(types.NewBlockHeight(uint64(consensus.AncestorRoundsNeeded)))
-	return chain.GetRecentAncestors(ctx, ts, node.chain.ChainReader, ancestorHeight)
+	return node.syncer.ChainSelector.Weight(ctx, ts, baseStRoot)
 }
 
 // -- Accessors
@@ -660,7 +717,7 @@ func (node *Node) BlockService() bserv.BlockService {
 }
 
 // CborStore returns the nodes cborStore.
-func (node *Node) CborStore() *hamt.CborIpldStore {
+func (node *Node) CborStore() *cborutil.IpldStore {
 	return node.Blockstore.CborStore
 }
 

@@ -1,8 +1,14 @@
 package types
 
-import "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+import (
+	"context"
 
-// Signer is an interface for SignBytes
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+)
+
+// Signer signs data with a private key obtained internally from a provided address.
 type Signer interface {
-	SignBytes(data []byte, addr address.Address) (Signature, error)
+	SignBytes(ctx context.Context, data []byte, addr address.Address) (crypto.Signature, error)
+	HasAddress(ctx context.Context, addr address.Address) (bool, error)
 }

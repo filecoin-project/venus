@@ -3,6 +3,8 @@ package piecemanager
 import (
 	"context"
 	"io"
+
+	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 // PieceManager is responsible for sealing pieces into sectors and progressing
@@ -16,13 +18,12 @@ type PieceManager interface {
 	// errors encountered during the pre-commit or commit flows (including
 	// message creation) are recorded in StorageMining metadata but not exposed
 	// through this API.
-	SealPieceIntoNewSector(ctx context.Context, dealID uint64, pieceSize uint64, pieceReader io.Reader) error
+	SealPieceIntoNewSector(ctx context.Context, dealID abi.DealID, dealStart, dealEnd abi.ChainEpoch, pieceSize abi.UnpaddedPieceSize, pieceReader io.Reader) error
 
 	// PledgeSector behaves similarly to SealPieceIntoNewSector, but differs in
 	// that it does not require a deal having been made on-chain beforehand. It
-	// provisions a new sector, fills it with self-deal junk, and seals. Like
-	// SealPieceIntoNewSector, this method is fire-and-forget.
-	PledgeSector() error
+	// provisions a new sector, fills it with self-deal junk, and seals.
+	PledgeSector(ctx context.Context) error
 
 	// UnsealSector produces a reader to the unsealed bytes associated with the
 	// provided sector id, or an error if no such sealed sector exists. The

@@ -2,67 +2,33 @@ package node_test
 
 import (
 	"context"
-	"sync"
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/filecoin-project/go-address"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
-func connect(t *testing.T, nd1, nd2 *Node) {
-	t.Helper()
-	pinfo := peer.AddrInfo{
-		ID:    nd2.Host().ID(),
-		Addrs: nd2.Host().Addrs(),
-	}
-
-	if err := nd1.Host().Connect(context.Background(), pinfo); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func requireMineOnce(ctx context.Context, t *testing.T, minerNode *Node) *block.Block {
-	headTipSet, err := minerNode.PorcelainAPI.ChainHead()
-	require.NoError(t, err)
-	baseTS := headTipSet
-	require.NotNil(t, baseTS)
-
-	worker, err := minerNode.CreateMiningWorker(ctx)
-	require.NoError(t, err)
-
-	// Miner should win first election as it has all the power so only
-	// mine once with 0 null blocks
-	out := make(chan mining.Output)
-	var wonElection bool
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		wonElection = worker.Mine(ctx, headTipSet, 0, out)
-		wg.Done()
-	}()
-	next := <-out
-	wg.Wait() // wait for wonElection to be set
-	assert.True(t, wonElection)
-	assert.NoError(t, next.Err)
-
-	return next.NewBlock
-}
-
 func TestBlockPropsManyNodes(t *testing.T) {
-	t.Skip("Skip pending storage market integration")
-	tf.UnitTest(t)
+	tf.IntegrationTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -75,17 +41,16 @@ func TestBlockPropsManyNodes(t *testing.T) {
 
 	minerNode := nodes[0]
 
-	connect(t, minerNode, nodes[1])
-	connect(t, nodes[1], nodes[2])
-	connect(t, nodes[2], nodes[3])
+	ConnectNodes(t, minerNode, nodes[1])
+	ConnectNodes(t, nodes[1], nodes[2])
+	ConnectNodes(t, nodes[2], nodes[3])
 
-	nextBlk := requireMineOnce(ctx, t, minerNode)
-	// Wait for network connection notifications to propagate
-	time.Sleep(time.Millisecond * 300)
 	// Advance node's time so that it is epoch 1
 	fakeClock.Advance(blockTime)
-
-	assert.NoError(t, minerNode.AddNewBlock(ctx, nextBlk))
+	nextBlk, err := minerNode.BlockMining.BlockMiningAPI.MiningOnce(ctx)
+	require.NoError(t, err)
+	// Wait for network connection notifications to propagate
+	time.Sleep(time.Millisecond * 100)
 
 	equal := false
 	for i := 0; i < 30; i++ {
@@ -103,9 +68,8 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	assert.True(t, equal, "failed to sync chains")
 }
 
-func TestChainSync(t *testing.T) {
-	t.Skip("Skip pending storage market integration #3731")
-	tf.UnitTest(t)
+func TestChainSyncA(t *testing.T) {
+	tf.IntegrationTest(t)
 
 	ctx := context.Background()
 	_, nodes, fakeClock, blockTime := makeNodesBlockPropTests(t, 2)
@@ -113,19 +77,17 @@ func TestChainSync(t *testing.T) {
 	StartNodes(t, nodes)
 	defer StopNodes(nodes)
 
-	connect(t, nodes[0], nodes[1])
+	ConnectNodes(t, nodes[0], nodes[1])
 
-	firstBlock := requireMineOnce(ctx, t, nodes[0])
-	secondBlock := requireMineOnce(ctx, t, nodes[0])
-	thirdBlock := requireMineOnce(ctx, t, nodes[0])
-
-	// Advance node's time so that it is epoch 1
 	fakeClock.Advance(blockTime)
-
-	assert.NoError(t, nodes[0].AddNewBlock(ctx, firstBlock))
-	assert.NoError(t, nodes[0].AddNewBlock(ctx, secondBlock))
-	assert.NoError(t, nodes[0].AddNewBlock(ctx, thirdBlock))
-
+	_, err := nodes[0].BlockMining.BlockMiningAPI.MiningOnce(ctx)
+	require.NoError(t, err)
+	fakeClock.Advance(blockTime)
+	_, err = nodes[0].BlockMining.BlockMiningAPI.MiningOnce(ctx)
+	require.NoError(t, err)
+	fakeClock.Advance(blockTime)
+	thirdBlock, err := nodes[0].BlockMining.BlockMiningAPI.MiningOnce(ctx)
+	require.NoError(t, err)
 	equal := false
 	for i := 0; i < 30; i++ {
 		otherHead := nodes[1].PorcelainAPI.ChainHeadKey()
@@ -134,28 +96,138 @@ func TestChainSync(t *testing.T) {
 		if equal {
 			break
 		}
-		time.Sleep(time.Millisecond * 20)
+		time.Sleep(time.Millisecond * 50)
 	}
 
 	assert.True(t, equal, "failed to sync chains")
 }
 
-// makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
-func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*Node, th.FakeClock, time.Duration) {
-	seed := MakeChainSeed(t, TestGenCfg)
+func TestChainSyncWithMessages(t *testing.T) {
+	tf.IntegrationTest(t)
 	ctx := context.Background()
-	fc := th.NewFakeClock(time.Unix(1234567890, 0))
-	blockTime := 100 * time.Millisecond
-	c := clock.NewChainClockFromClock(1234567890, 100*time.Millisecond, fc)
-	builder := test.NewNodeBuilder(t)
-	builder.WithGenesisInit(seed.GenesisInitFunc)
-	builder.WithBuilderOpt(ChainClockConfigOption(c))
-	builder.WithInitOpt(PeerKeyOpt(PeerKeys[0]))
+
+	/* setup */
+	// genesis has two accounts
+	genCfg := &gengen.GenesisCfg{}
+	require.NoError(t, gengen.MinerConfigs(MakeTestGenCfg(t, 1).Miners)(genCfg))
+	require.NoError(t, gengen.GenKeys(3, "1000000")(genCfg))
+	require.NoError(t, gengen.NetworkName(version.TEST)(genCfg))
+	cs := MakeChainSeed(t, genCfg)
+	genUnixSeconds := int64(1234567890)
+	genTime := time.Unix(genUnixSeconds, 0)
+	fakeClock := clock.NewFake(genTime)
+	blockTime := 30 * time.Second
+	propDelay := 6 * time.Second
+	c := clock.NewChainClockFromClock(uint64(genUnixSeconds), blockTime, propDelay, fakeClock)
+
+	// first node is the message sender.
+	builder1 := test.NewNodeBuilder(t).
+		WithBuilderOpt(ChainClockConfigOption(c)).
+		WithGenesisInit(cs.GenesisInitFunc).
+		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
+		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
+		WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
+	nodeSend := builder1.Build(ctx)
+	senderAddress := cs.GiveKey(t, nodeSend, 1)
+
+	// second node is receiver
+	builder2 := test.NewNodeBuilder(t).
+		WithBuilderOpt(ChainClockConfigOption(c)).
+		WithGenesisInit(cs.GenesisInitFunc).
+		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
+		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
+		WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
+	nodeReceive := builder2.Build(ctx)
+	receiverAddress := cs.GiveKey(t, nodeReceive, 2)
+
+	// third node is miner
+	builder3 := test.NewNodeBuilder(t).
+		WithBuilderOpt(ChainClockConfigOption(c)).
+		WithGenesisInit(cs.GenesisInitFunc).
+		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
+		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
+		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{})).
+		WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
+	nodeMine := builder3.Build(ctx)
+	cs.GiveKey(t, nodeMine, 0)
+	cs.GiveMiner(t, nodeMine, 0)
+
+	StartNodes(t, []*Node{nodeSend, nodeReceive, nodeMine})
+	ConnectNodes(t, nodeSend, nodeMine)
+	ConnectNodes(t, nodeMine, nodeSend)
+	ConnectNodes(t, nodeMine, nodeReceive)
+	ConnectNodes(t, nodeReceive, nodeMine)
+
+	/* collect initial balance values */
+	senderStart, err := nodeSend.PorcelainAPI.WalletBalance(ctx, senderAddress)
+	require.NoError(t, err)
+	receiverStart, err := nodeReceive.PorcelainAPI.WalletBalance(ctx, receiverAddress)
+	require.NoError(t, err)
+	gasPrice := types.NewGasPrice(1)
+	expGasCost := gas.NewGas(242).ToTokens(gasPrice) // DRAGONS -- this is brittle need a better way to predict this.
+
+	/* send message from SendNode */
+	sendVal := specsbig.NewInt(100)
+	_, _, err = nodeSend.PorcelainAPI.MessageSend(
+		ctx,
+		senderAddress,
+		receiverAddress,
+		sendVal,
+		gasPrice,
+		gas.NewGas(1000),
+		builtin.MethodSend,
+		adt.Empty,
+	)
+	require.NoError(t, err)
+	smsgs, err := nodeMine.PorcelainAPI.MessagePoolWait(ctx, 1)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(smsgs))
+	uCid, err := smsgs[0].Message.Cid() // Message waiter needs unsigned cid for bls
+	require.NoError(t, err)
+
+	/* mine block with message */
+	fakeClock.Advance(blockTime)
+	fmt.Printf("about to mining once\n")
+	_, err = nodeMine.BlockMining.BlockMiningAPI.MiningOnce(ctx)
+	require.NoError(t, err)
+	fmt.Printf("finished mining once\n")
+	/* verify new state */
+	_, err = nodeReceive.PorcelainAPI.MessageWaitDone(ctx, uCid)
+	require.NoError(t, err)
+	_, err = nodeSend.PorcelainAPI.MessageWaitDone(ctx, uCid)
+	require.NoError(t, err)
+
+	senderEnd, err := nodeSend.PorcelainAPI.WalletBalance(ctx, senderAddress)
+	require.NoError(t, err)
+	receiverEnd, err := nodeReceive.PorcelainAPI.WalletBalance(ctx, receiverAddress)
+	require.NoError(t, err)
+
+	assert.Equal(t, senderStart, specsbig.Add(specsbig.Add(senderEnd, sendVal), expGasCost))
+	assert.Equal(t, receiverEnd, specsbig.Add(receiverStart, sendVal))
+}
+
+// makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
+func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*Node, clock.Fake, time.Duration) {
+	seed := MakeChainSeed(t, MakeTestGenCfg(t, 3))
+	ctx := context.Background()
+	genUnixSeconds := int64(1234567890)
+	genTime := time.Unix(genUnixSeconds, 0)
+	fc := clock.NewFake(genTime)
+	blockTime := 30 * time.Second
+	propDelay := 6 * time.Second
+	c := clock.NewChainClockFromClock(1234567890, blockTime, propDelay, fc)
+
+	builder := test.NewNodeBuilder(t).
+		WithGenesisInit(seed.GenesisInitFunc).
+		WithBuilderOpt(ChainClockConfigOption(c)).
+		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
+		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{})).
+		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
+		WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime))).
+		WithInitOpt(PeerKeyOpt(PeerKeys[0]))
 	minerNode := builder.Build(ctx)
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, _ := seed.GiveMiner(t, minerNode, 0)
-	_, err := storage.NewMiner()
-	assert.NoError(t, err)
 
 	nodes := []*Node{minerNode}
 
@@ -163,9 +235,14 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 	if numNodes > 2 {
 		nodeLimit = numNodes
 	}
-	builder2 := test.NewNodeBuilder(t)
-	builder2.WithGenesisInit(seed.GenesisInitFunc)
-	builder2.WithBuilderOpt(ChainClockConfigOption(c))
+	builder2 := test.NewNodeBuilder(t).
+		WithGenesisInit(seed.GenesisInitFunc).
+		WithBuilderOpt(ChainClockConfigOption(c)).
+		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
+		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{})).
+		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
+		WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
+
 	for i := 0; i < nodeLimit; i++ {
 		nodes = append(nodes, builder2.Build(ctx))
 	}

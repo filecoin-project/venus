@@ -10,9 +10,9 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 func TestDagDaemon(t *testing.T) {
@@ -31,7 +31,7 @@ func TestDagDaemon(t *testing.T) {
 		op := cmdClient.RunSuccess(ctx, "dag", "get", c.String(), "--enc", "json")
 		result2 := op.ReadStdoutTrimNewlines()
 
-		ipldnode, err := cbor.FromJSON(bytes.NewReader([]byte(result2)), types.DefaultHashFunction, -1)
+		ipldnode, err := cbor.FromJSON(bytes.NewReader([]byte(result2)), constants.DefaultHashFunction, -1)
 		require.NoError(t, err)
 
 		// CBOR decode the IPLD node's raw data into a Filecoin block

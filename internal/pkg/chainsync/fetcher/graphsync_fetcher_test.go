@@ -9,18 +9,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-datastore"
 	dss "github.com/ipfs/go-datastore/sync"
 	"github.com/ipfs/go-graphsync"
-	"github.com/ipfs/go-graphsync/ipldbridge"
+	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-ipld-prime"
-	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	selectorbuilder "github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -33,19 +34,22 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/fetcher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 const visitsPerBlock = 18
 
 type notDecodable struct {
-	Num    int    `json:"num"`
-	Mesage string `json:"mesage"`
+	_       struct{} `cbor:",toarray"`
+	Num     int      `json:"num"`
+	Message string   `json:"message"`
 }
 
 func init() {
@@ -56,53 +60,53 @@ func TestGraphsyncFetcher(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	fc := th.NewFakeClock(time.Now())
-	genTime := uint64(1234567890)
-	blockTime := 5 * time.Second
-	chainClock := clock.NewChainClockFromClock(genTime, blockTime, fc)
-	bv := consensus.NewDefaultBlockValidator(chainClock)
+	fc, chainClock := clock.NewFakeChain(1234567890, 5*time.Second, time.Second, time.Now().Unix())
+	bv := consensus.NewDefaultBlockValidator(chainClock, nil, nil)
+	msgV := &consensus.FakeMessageValidator{}
+	syntax := consensus.WrappedSyntaxValidator{
+		BlockSyntaxValidator:   bv,
+		MessageSyntaxValidator: msgV,
+	}
+
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilderWithDeps(t, address.Undef, &chain.FakeStateBuilder{}, chain.NewClockTimestamper(chainClock))
 	keys := types.MustGenerateKeyInfo(2, 42)
-	mm := types.NewMessageMaker(t, keys)
-	notDecodableBlock, err := cbor.WrapObject(notDecodable{5, "applesauce"}, types.DefaultHashFunction, -1)
+	mm := vm.NewMessageMaker(t, keys)
+	notDecodableBytes, err := encoding.Encode(notDecodable{Num: 5, Message: "applesauce"})
+	require.NoError(t, err)
+	notDecodableBlock, err := cbor.Decode(notDecodableBytes, constants.DefaultHashFunction, -1)
 	require.NoError(t, err)
 
 	alice := mm.Addresses()[0]
 	bob := mm.Addresses()[1]
 
-	ssb := selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
+	ssb := selectorbuilder.NewSelectorSpecBuilder(basicnode.Style.Any)
 
 	amtSelector := ssb.ExploreIndex(2,
-		ssb.ExploreRecursive(10,
+		ssb.ExploreRecursive(selector.RecursionLimitDepth(10),
 			ssb.ExploreUnion(
 				ssb.ExploreIndex(1, ssb.ExploreAll(ssb.ExploreRecursiveEdge())),
 				ssb.ExploreIndex(2, ssb.ExploreAll(ssb.Matcher())))))
 
-	layer1Selector, err := ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-		efsb.Insert("messages", ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
-			messagesSelector.Insert("secpRoot", amtSelector)
-			messagesSelector.Insert("bLSRoot", amtSelector)
-		}))
-	}).Selector()
+	layer1Selector, err := ssb.ExploreIndex(block.IndexMessagesField,
+		ssb.ExploreRange(0, 2, amtSelector),
+	).Selector()
+
 	require.NoError(t, err)
+
 	recursiveSelector := func(levels int) selector.Selector {
-		s, err := ssb.ExploreRecursive(levels, ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-			efsb.Insert("parents", ssb.ExploreUnion(
+		s, err := ssb.ExploreRecursive(selector.RecursionLimitDepth(levels), ssb.ExploreIndex(block.IndexParentsField,
+			ssb.ExploreUnion(
 				ssb.ExploreAll(
-					ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-						efsb.Insert("messages", ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
-							messagesSelector.Insert("secpRoot", amtSelector)
-							messagesSelector.Insert("bLSRoot", amtSelector)
-						}))
-					}),
-				),
+					ssb.ExploreIndex(block.IndexMessagesField,
+						ssb.ExploreRange(0, 2, amtSelector),
+					)),
 				ssb.ExploreIndex(0, ssb.ExploreRecursiveEdge()),
-			))
-		})).Selector()
+			))).Selector()
 		require.NoError(t, err)
 		return s
 	}
+	msgStore := chain.NewMessageStore(bs)
 
 	pid1 := th.RequireIntPeerID(t, 1)
 	pid2 := th.RequireIntPeerID(t, 2)
@@ -130,12 +134,11 @@ func TestGraphsyncFetcher(t *testing.T) {
 			blk := ts.At(i)
 
 			// use fetcher blockstore to retrieve messages
-			msgStore := chain.NewMessageStore(bs)
-			secpMsgs, blsMsgs, err := msgStore.LoadMessages(ctx, blk.Messages)
+			secpMsgs, blsMsgs, err := msgStore.LoadMessages(ctx, blk.Messages.Cid)
 			require.NoError(t, err)
 
 			// get expected messages from builders block store
-			expectedSecpMessages, expectedBLSMsgs, err := builder.LoadMessages(ctx, blk.Messages)
+			expectedSecpMessages, expectedBLSMsgs, err := builder.LoadMessages(ctx, blk.Messages.Cid)
 			require.NoError(t, err)
 
 			require.True(t, reflect.DeepEqual(secpMsgs, expectedSecpMessages))
@@ -154,7 +157,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.stubResponseWithLoader(pid0, layer1Selector, loader, final.Key().ToSlice()...)
 		mgs.stubResponseWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
 
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, newFakePeerTracker(chain0))
+		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, newFakePeerTracker(chain0))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -183,7 +186,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid2, layer1Selector, loader, final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid2, recursiveSelector(1), loader, final.At(0).Cid())
 
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, pt)
+		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, pt)
 
 		done := doneAt(gen.Key())
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -210,7 +213,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid1, layer1Selector, errorLoader, final.At(1).Cid(), final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid2, layer1Selector, errorLoader, final.At(1).Cid(), final.At(2).Cid())
 
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, pt)
+		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, pt)
 
 		done := doneAt(gen.Key())
 
@@ -228,10 +231,12 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.NoError(t, err)
 		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
-		errorOnMessagesLoader := errorOnCidsLoader(loader, final.At(2).Messages.SecpRoot)
+		final2Meta, err := builder.LoadTxMeta(ctx, final.At(2).Messages.Cid)
+		require.NoError(t, err)
+		errorOnMessagesLoader := errorOnCidsLoader(loader, final2Meta.SecpRoot.Cid)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorOnMessagesLoader, final.Key().ToSlice()...)
 
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, newFakePeerTracker(chain0))
+		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, newFakePeerTracker(chain0))
 
 		done := doneAt(gen.Key())
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -240,6 +245,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.EqualError(t, err, fmt.Sprintf("fetching tipset: %s: Unable to find any untried peers", final.Key().String()))
 		require.Nil(t, ts)
 	})
+
 	t.Run("partial response fail during recursive fetch recovers at fail point", func(t *testing.T) {
 		gen := builder.NewGenesis()
 		final := builder.BuildManyOn(5, gen, withMessageBuilder)
@@ -266,7 +272,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(4), pid0Loader, blocks[0].Cid())
 		mgs.expectRequestToRespondWithLoader(pid1, recursiveSelector(4), loader, blocks[2].Cid())
 
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, pt)
+		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, pt)
 
 		done := func(ts block.TipSet) (bool, error) {
 			if ts.Key().Equals(gen.Key()) {
@@ -306,7 +312,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), errorInMultiBlockLoader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(4), errorInMultiBlockLoader, penultimate.At(0).Cid())
 
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, newFakePeerTracker(chain0))
+		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, newFakePeerTracker(chain0))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -335,7 +341,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(4), errorInMultiBlockLoader, penultimate.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid1, recursiveSelector(4), loader, withMultiParent.At(0).Cid())
 
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, newFakePeerTracker(chain0, chain1, chain2))
+		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, newFakePeerTracker(chain0, chain1, chain2))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -386,7 +392,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 				receivedRequestCount++
 			}
 
-			fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, newFakePeerTracker(chain0))
+			fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, newFakePeerTracker(chain0))
 			done := doneAt(tipset.Key())
 
 			ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -410,11 +416,12 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain0 := block.NewChainInfo(pid0, pid0, key, 0)
 		notDecodableLoader := simpleLoader([]format.Node{notDecodableBlock})
 		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, notDecodableBlock.Cid())
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, newFakePeerTracker(chain0))
+		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, newFakePeerTracker(chain0))
 
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) was not a block: unmarshal error: stream contains key \"num\", but there's no such field in structs of type block.Block", notDecodableBlock.Cid().String()))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), fmt.Sprintf("fetched data (cid %s) was not a block: cbor: cannot unmarshal", notDecodableBlock.Cid().String()))
 		require.Nil(t, ts)
 	})
 
@@ -422,33 +429,35 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
 		blk := simpleBlock()
 		blk.Height = 1
-		blk.Timestamp = types.Uint64(chainClock.StartTimeOfEpoch(types.NewBlockHeight(uint64(blk.Height))).Unix())
+		blk.Timestamp = uint64(chainClock.StartTimeOfEpoch(blk.Height).Unix())
 		key := block.NewTipSetKey(blk.Cid())
-		chain0 := block.NewChainInfo(pid0, pid0, key, uint64(blk.Height))
+		chain0 := block.NewChainInfo(pid0, pid0, key, blk.Height)
 		invalidSyntaxLoader := simpleLoader([]format.Node{blk.ToNode()})
 		mgs.stubResponseWithLoader(pid0, layer1Selector, invalidSyntaxLoader, blk.Cid())
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, newFakePeerTracker(chain0))
+		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, newFakePeerTracker(chain0))
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.EqualError(t, err, fmt.Sprintf("invalid block %s: block %s has nil StateRoot", blk.Cid().String(), blk.Cid().String()))
+		require.EqualError(t, err, fmt.Sprintf("invalid block %s: block %s has nil miner address", blk.Cid().String(), blk.Cid().String()))
 		require.Nil(t, ts)
 	})
 
 	t.Run("blocks present but messages don't decode", func(t *testing.T) {
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
 		blk := requireSimpleValidBlock(t, 3, address.Undef)
-		blk.Messages = types.TxMeta{SecpRoot: notDecodableBlock.Cid(), BLSRoot: types.EmptyMessagesCID}
+		metaCid, err := msgStore.StoreTxMeta(ctx, types.TxMeta{SecpRoot: e.NewCid(notDecodableBlock.Cid()), BLSRoot: e.NewCid(types.EmptyMessagesCID)})
+		require.NoError(t, err)
+		blk.Messages = e.NewCid(metaCid)
 		key := block.NewTipSetKey(blk.Cid())
-		chain0 := block.NewChainInfo(pid0, pid0, key, uint64(blk.Height))
+		chain0 := block.NewChainInfo(pid0, pid0, key, blk.Height)
 		nd, err := (&types.SignedMessage{}).ToNode()
 		require.NoError(t, err)
 		notDecodableLoader := simpleLoader([]format.Node{blk.ToNode(), notDecodableBlock, nd})
 		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, blk.Cid())
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, newFakePeerTracker(chain0))
+		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, newFakePeerTracker(chain0))
 
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) could not be decoded as an AMT: cbor input should be of type array", notDecodableBlock.Cid().String()))
+		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) could not be decoded as an AMT: cbor input had wrong number of fields", notDecodableBlock.Cid().String()))
 		require.Nil(t, ts)
 	})
 
@@ -490,7 +499,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid2, layer1Selector, loader, final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid2, recursiveSelector(1), loader, final.At(0).Cid())
 
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, pt)
+		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, pt)
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -517,7 +526,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithHangupAfter(pid1, layer1Selector, loader, 0, final.At(1).Cid(), final.At(2).Cid())
 		mgs.expectRequestToRespondWithHangupAfter(pid2, layer1Selector, loader, 0, final.At(1).Cid(), final.At(2).Cid())
 
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, pt)
+		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, pt)
 		done := doneAt(gen.Key())
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 
@@ -552,7 +561,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithHangupAfter(pid0, recursiveSelector(4), loader, 2*visitsPerBlock, blocks[0].Cid())
 		mgs.expectRequestToRespondWithLoader(pid1, recursiveSelector(4), loader, blocks[2].Cid())
 
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, pt)
+		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, pt)
 
 		done := func(ts block.TipSet) (bool, error) {
 			if ts.Key().Equals(gen.Key()) {
@@ -592,7 +601,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithHangupAfter(pid0, recursiveSelector(4), loader, 2*visitsPerBlock, penultimate.At(0).Cid())
 
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, newFakePeerTracker(chain0))
+		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, newFakePeerTracker(chain0))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -621,7 +630,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithHangupAfter(pid0, recursiveSelector(4), loader, 2*visitsPerBlock, penultimate.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid1, recursiveSelector(4), loader, withMultiParent.At(0).Cid())
 
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, newFakePeerTracker(chain0, chain1, chain2))
+		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, newFakePeerTracker(chain0, chain1, chain2))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -647,32 +656,36 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	fc := th.NewFakeClock(time.Now())
+	fc := clock.NewFake(time.Now())
 	genTime := uint64(1234567890)
-	chainClock := clock.NewChainClockFromClock(genTime, 5*time.Second, fc)
-	bv := consensus.NewDefaultBlockValidator(chainClock)
+	chainClock := clock.NewChainClockFromClock(genTime, 5*time.Second, time.Second, fc)
+	bv := consensus.NewDefaultBlockValidator(chainClock, nil, nil)
+	msgV := &consensus.FakeMessageValidator{}
+	syntax := consensus.WrappedSyntaxValidator{
+		BlockSyntaxValidator:   bv,
+		MessageSyntaxValidator: msgV,
+	}
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilderWithDeps(t, address.Undef, &chain.FakeStateBuilder{}, chain.NewClockTimestamper(chainClock))
 	keys := types.MustGenerateKeyInfo(1, 42)
-	mm := types.NewMessageMaker(t, keys)
-	notDecodableBlock, err := cbor.WrapObject(notDecodable{5, "applebutter"}, types.DefaultHashFunction, -1)
+	mm := vm.NewMessageMaker(t, keys)
+	notDecodableBlock, err := cbor.WrapObject(notDecodable{Num: 5, Message: "applebutter"}, constants.DefaultHashFunction, -1)
 	require.NoError(t, err)
 
 	alice := mm.Addresses()[0]
 
-	ssb := selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
+	ssb := selectorbuilder.NewSelectorSpecBuilder(basicnode.Style.Any)
 	layer1Selector, err := ssb.Matcher().Selector()
 	require.NoError(t, err)
 
 	recursiveSelector := func(levels int) selector.Selector {
-		s, err := ssb.ExploreRecursive(levels, ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-			efsb.Insert("parents", ssb.ExploreUnion(
+		s, err := ssb.ExploreRecursive(selector.RecursionLimitDepth(levels), ssb.ExploreIndex(block.IndexParentsField,
+			ssb.ExploreUnion(
 				ssb.ExploreAll(
 					ssb.Matcher(),
 				),
 				ssb.ExploreIndex(0, ssb.ExploreRecursiveEdge()),
-			))
-		})).Selector()
+			))).Selector()
 		require.NoError(t, err)
 		return s
 	}
@@ -698,7 +711,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	verifyNoMessages := func(t *testing.T, ts block.TipSet) {
 		for i := 0; i < ts.Len(); i++ {
 			blk := ts.At(i)
-			stored, err := bs.Has(blk.Messages.SecpRoot)
+			stored, err := bs.Has(blk.Messages.Cid)
 			require.NoError(t, err)
 			require.False(t, stored)
 		}
@@ -715,7 +728,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 		mgs.stubResponseWithLoader(pid0, layer1Selector, loader, final.Key().ToSlice()...)
 		mgs.stubResponseWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
 
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, newFakePeerTracker(chain0))
+		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, newFakePeerTracker(chain0))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSetHeaders(ctx, final.Key(), pid0, done)
@@ -731,14 +744,16 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	t.Run("fetch succeeds when messages don't decode", func(t *testing.T) {
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
 		blk := requireSimpleValidBlock(t, 3, address.Undef)
-		blk.Messages = types.TxMeta{SecpRoot: notDecodableBlock.Cid(), BLSRoot: types.EmptyMessagesCID}
+		metaCid, err := builder.StoreTxMeta(ctx, types.TxMeta{SecpRoot: e.NewCid(notDecodableBlock.Cid()), BLSRoot: e.NewCid(types.EmptyMessagesCID)})
+		require.NoError(t, err)
+		blk.Messages = e.NewCid(metaCid)
 		key := block.NewTipSetKey(blk.Cid())
-		chain0 := block.NewChainInfo(pid0, pid0, key, uint64(blk.Height))
+		chain0 := block.NewChainInfo(pid0, pid0, key, blk.Height)
 		nd, err := (&types.SignedMessage{}).ToNode()
 		require.NoError(t, err)
 		notDecodableLoader := simpleLoader([]format.Node{blk.ToNode(), notDecodableBlock, nd})
 		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, blk.Cid())
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, fc, newFakePeerTracker(chain0))
+		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, newFakePeerTracker(chain0))
 
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSetHeaders(ctx, key, pid0, done)
@@ -753,12 +768,10 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 	tf.IntegrationTest(t)
 	ctx := context.Background()
 	// setup a chain
-	fc := th.NewFakeClock(time.Now())
-	genTime := uint64(1234567890)
-	chainClock := clock.NewChainClockFromClock(genTime, 5*time.Second, fc)
+	fc, chainClock := clock.NewFakeChain(1234567890, 5*time.Second, time.Second, time.Now().Unix())
 	builder := chain.NewBuilderWithDeps(t, address.Undef, &chain.FakeStateBuilder{}, chain.NewClockTimestamper(chainClock))
 	keys := types.MustGenerateKeyInfo(2, 42)
-	mm := types.NewMessageMaker(t, keys)
+	mm := vm.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
 	bob := mm.Addresses()[1]
 	gen := builder.NewGenesis()
@@ -801,20 +814,22 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 
 	// setup a graphsync fetcher and a graphsync responder
 
-	bridge1 := ipldbridge.NewIPLDBridge()
-	bridge2 := ipldbridge.NewIPLDBridge()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 
-	bv := consensus.NewDefaultBlockValidator(chainClock)
+	bv := consensus.NewDefaultBlockValidator(chainClock, nil, nil)
+	msgV := &consensus.FakeMessageValidator{}
+	syntax := consensus.WrappedSyntaxValidator{BlockSyntaxValidator: bv,
+		MessageSyntaxValidator: msgV,
+	}
 	pt := discovery.NewPeerTracker(peer.ID(""))
 	pt.Track(block.NewChainInfo(host2.ID(), host2.ID(), block.TipSetKey{}, 0))
 
 	localLoader := gsstoreutil.LoaderForBlockstore(bs)
 	localStorer := gsstoreutil.StorerForBlockstore(bs)
 
-	localGraphsync := graphsync.New(ctx, gsnet1, bridge1, localLoader, localStorer)
+	localGraphsync := graphsyncimpl.New(ctx, gsnet1, localLoader, localStorer)
 
-	fetcher := fetcher.NewGraphSyncFetcher(ctx, localGraphsync, bs, bv, fc, pt)
+	fetcher := fetcher.NewGraphSyncFetcher(ctx, localGraphsync, bs, syntax, fc, pt)
 
 	remoteLoader := func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
 		cid := lnk.(cidlink.Link).Cid
@@ -824,7 +839,7 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 		}
 		return bytes.NewBuffer(b.RawData()), nil
 	}
-	graphsync.New(ctx, gsnet2, bridge2, remoteLoader, nil)
+	graphsyncimpl.New(ctx, gsnet2, remoteLoader, nil)
 
 	tipsets, err := fetcher.FetchTipSetHeaders(ctx, final.Key(), host2.ID(), func(ts block.TipSet) (bool, error) {
 		if ts.Key().Equals(gen.Key()) {
@@ -844,15 +859,11 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, stored)
 
-		stored, err = bs.Has(ts.At(0).Messages.SecpRoot)
+		stored, err = bs.Has(ts.At(0).Messages.Cid)
 		require.NoError(t, err)
 		assert.False(t, stored)
 
-		stored, err = bs.Has(ts.At(0).Messages.BLSRoot)
-		require.NoError(t, err)
-		assert.False(t, stored)
-
-		stored, err = bs.Has(ts.At(0).MessageReceipts)
+		stored, err = bs.Has(ts.At(0).MessageReceipts.Cid)
 		require.NoError(t, err)
 		assert.False(t, stored)
 	}
@@ -864,7 +875,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	// setup a chain
 	builder := chain.NewBuilder(t, address.Undef)
 	keys := types.MustGenerateKeyInfo(1, 42)
-	mm := types.NewMessageMaker(t, keys)
+	mm := vm.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
 	gen := builder.NewGenesis()
 	i := uint64(0)
@@ -899,20 +910,22 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 
 	// setup a graphsync fetcher and a graphsync responder
 
-	bridge1 := ipldbridge.NewIPLDBridge()
-	bridge2 := ipldbridge.NewIPLDBridge()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	bv := th.NewFakeBlockValidator()
-	fc := th.NewFakeClock(time.Now())
+	msgV := &consensus.FakeMessageValidator{}
+	syntax := consensus.WrappedSyntaxValidator{
+		BlockSyntaxValidator:   bv,
+		MessageSyntaxValidator: msgV,
+	}
+	fc := clock.NewFake(time.Now())
 	pt := discovery.NewPeerTracker(peer.ID(""))
 	pt.Track(block.NewChainInfo(host2.ID(), host2.ID(), block.TipSetKey{}, 0))
 
 	localLoader := gsstoreutil.LoaderForBlockstore(bs)
 	localStorer := gsstoreutil.StorerForBlockstore(bs)
 
-	localGraphsync := graphsync.New(ctx, gsnet1, bridge1, localLoader, localStorer)
-
-	fetcher := fetcher.NewGraphSyncFetcher(ctx, localGraphsync, bs, bv, fc, pt)
+	localGraphsync := graphsyncimpl.New(ctx, gsnet1, localLoader, localStorer)
+	gsFetcher := fetcher.NewGraphSyncFetcher(ctx, localGraphsync, bs, syntax, fc, pt)
 
 	remoteLoader := func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
 		cid := lnk.(cidlink.Link).Cid
@@ -922,9 +935,14 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 		}
 		return bytes.NewBuffer(node.RawData()), nil
 	}
-	graphsync.New(ctx, gsnet2, bridge2, remoteLoader, nil)
-
-	tipsets, err := fetcher.FetchTipSets(ctx, final.Key(), host2.ID(), func(ts block.TipSet) (bool, error) {
+	otherGraphsync := graphsyncimpl.New(ctx, gsnet2, remoteLoader, nil, graphsyncimpl.RejectAllRequestsByDefault())
+	otherGraphsync.RegisterIncomingRequestHook(func(p peer.ID, requestData graphsync.RequestData, hookActions graphsync.IncomingRequestHookActions) {
+		_, has := requestData.Extension(fetcher.ChainsyncProtocolExtension)
+		if has {
+			hookActions.ValidateRequest()
+		}
+	})
+	tipsets, err := gsFetcher.FetchTipSets(ctx, final.Key(), host2.ID(), func(ts block.TipSet) (bool, error) {
 		if ts.Key().Equals(gen.Key()) {
 			return true, nil
 		}
@@ -941,7 +959,13 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, stored)
 
-		stored, err = bs.Has(ts.At(0).Messages.SecpRoot)
+		rawMeta, err := bs.Get(ts.At(0).Messages.Cid)
+		require.NoError(t, err)
+		var meta types.TxMeta
+		err = encoding.Decode(rawMeta.RawData(), &meta)
+		require.NoError(t, err)
+
+		stored, err = bs.Has(meta.SecpRoot.Cid)
 		require.NoError(t, err)
 		assert.True(t, stored)
 	}

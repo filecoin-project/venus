@@ -125,9 +125,10 @@ func deps() {
 		panic(errors.Wrap(err, "failed to read contents of ./parameters.json"))
 	}
 
-	err = pf.GetParams(dat, 1024)
+	log.Println("Getting parameters...")
+	err = pf.GetParams(dat, 2048)
 	if err != nil {
-		panic(errors.Wrap(err, "failed to acquire Groth parameters for 1KiB sectors"))
+		panic(errors.Wrap(err, "failed to acquire Groth parameters for development sectors"))
 	}
 
 	runCmd(cmd("./scripts/install-filecoin-ffi.sh"))
@@ -141,7 +142,9 @@ func lint(packages ...string) {
 
 	log.Printf("Linting %s ...\n", strings.Join(packages, " "))
 
-	runCmd(cmd("go", "run", "github.com/golangci/golangci-lint/cmd/golangci-lint", "run"))
+	runCmd(cmd("go", "run", "github.com/golangci/golangci-lint/cmd/golangci-lint",
+		"--exclude", "(comment on exported (method|function|type|const|var)|should have( a package)? comment|comment should be of the form)",
+		"run"))
 }
 
 func build() {
@@ -238,7 +241,6 @@ func generateGenesis() {
 		"--out-car", filepath.Join(testFixtures, "genesis.car"),
 		"--out-json", filepath.Join(testFixtures, "gen.json"),
 		"--config", "./fixtures/setup.json",
-		"--test-proofs-mode",
 	}...))
 }
 

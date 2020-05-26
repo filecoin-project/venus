@@ -1,170 +1,98 @@
 package vmcontext
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/exitcode"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
 type actorStateHandle struct {
-	ctx  actorStateHandleContext
-	head cid.Cid
+	ctx actorStateHandleContext
 	// validations is a list of validations that the vm will execute after the actor code finishes.
 	//
 	// Any validation failure will result in the execution getting aborted.
 	validations []validateFn
-	// used_obj holds the pointer to the obj that has been used with this handle.
-	//
-	// any subsequent calls needs to be using the same variable.
-	usedObj interface{}
+	// used_objs holds the pointers to objs that have been used with this handle and their expected state cid.
+	usedObjs map[interface{}]cid.Cid
 }
 
 // validateFn returns True if it's valid.
 type validateFn = func() bool
 
 type actorStateHandleContext interface {
-	LegacyStorage() runtime.LegacyStorage
 	AllowSideEffects(bool)
+	Create(obj specsruntime.CBORMarshaler) cid.Cid
+	Load(obj specsruntime.CBORUnmarshaler) cid.Cid
+	Replace(expected cid.Cid, obj specsruntime.CBORMarshaler) cid.Cid
 }
-
-type readonlyContextWrapper struct {
-	store runtime.LegacyStorage
-}
-
-func (w readonlyContextWrapper) LegacyStorage() runtime.LegacyStorage {
-	return w.store
-}
-
-func (readonlyContextWrapper) AllowSideEffects(bool) {}
 
 // NewActorStateHandle returns a new `ActorStateHandle`
 //
 // Note: just visible for testing.
-func NewActorStateHandle(ctx actorStateHandleContext, head cid.Cid) runtime.ActorStateHandle {
-	aux := newActorStateHandle(ctx, head)
+func NewActorStateHandle(ctx actorStateHandleContext) specsruntime.StateHandle {
+	aux := newActorStateHandle(ctx)
 	return &aux
 }
 
-// NewReadonlyStateHandle returns a new `ReadonlyActorStateHandle`
-func NewReadonlyStateHandle(store runtime.LegacyStorage, head cid.Cid) runtime.ReadonlyActorStateHandle {
-	aux := newActorStateHandle(readonlyContextWrapper{store: store}, head)
-	return &aux
-}
-
-func newActorStateHandle(ctx actorStateHandleContext, head cid.Cid) actorStateHandle {
+func newActorStateHandle(ctx actorStateHandleContext) actorStateHandle {
 	return actorStateHandle{
 		ctx:         ctx,
-		head:        head,
 		validations: []validateFn{},
+		usedObjs:    map[interface{}]cid.Cid{},
 	}
 }
 
-var _ runtime.ActorStateHandle = (*actorStateHandle)(nil)
+var _ specsruntime.StateHandle = (*actorStateHandle)(nil)
+
+func (h *actorStateHandle) Create(obj specsruntime.CBORMarshaler) {
+	// Store the new state.
+	c := h.ctx.Create(obj)
+	// Store the expected CID of obj.
+	h.usedObjs[obj] = c
+}
 
 // Readonly is the implementation of the ActorStateHandle interface.
-func (h *actorStateHandle) Readonly(obj interface{}) {
-	// track the variable used by the caller
-	if h.usedObj == nil {
-		h.usedObj = obj
-	} else if h.usedObj != obj {
-		runtime.Abortf(exitcode.MethodAbort, "Must use the same state variable on repeated calls")
-	}
-
-	// Dragons: needed while we can get actor state modified directly by actor code
-	h.head = h.ctx.LegacyStorage().LegacyHead()
-
-	// load state from storage
-	// Note: we copy the head over to `readonlyHead` in case it gets modified afterwards via `Transaction()`.
-	readonlyHead := h.head
-
-	if readonlyHead == cid.Undef {
-		runtime.Abortf(exitcode.MethodAbort, "Nil state can not be accessed via Readonly(), use Transaction() instead")
-	}
-
-	h.get(readonlyHead, obj)
+func (h *actorStateHandle) Readonly(obj specsruntime.CBORUnmarshaler) {
+	// Load state to obj.
+	c := h.ctx.Load(obj)
+	// Track the state and expected CID used by the caller.
+	h.usedObjs[obj] = c
 }
 
-type transactionFn = func() (interface{}, error)
-
 // Transaction is the implementation of the ActorStateHandle interface.
-func (h *actorStateHandle) Transaction(obj interface{}, f transactionFn) (interface{}, error) {
+func (h *actorStateHandle) Transaction(obj specsruntime.CBORer, f func() interface{}) interface{} {
 	if obj == nil {
-		runtime.Abortf(exitcode.MethodAbort, "Must not pass nil to Transaction()")
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil to Transaction()")
 	}
 
-	// track the variable used by the caller
-	if h.usedObj == nil {
-		h.usedObj = obj
-	} else if h.usedObj != obj {
-		runtime.Abortf(exitcode.MethodAbort, "Must use the same state variable on repeated calls")
-	}
+	// Load state to obj.
+	prior := h.ctx.Load(obj)
 
-	// Dragons: needed while we can get actor state modified directly by actor code
-	h.head = h.ctx.LegacyStorage().LegacyHead()
-
-	// load state from storage
-	oldcid := h.head
-	h.get(oldcid, obj)
-
-	// call user code allowing mutation but not side-effects
+	// Call user code allowing mutation but not side-effects
 	h.ctx.AllowSideEffects(false)
-	out, err := f()
+	out := f()
 	h.ctx.AllowSideEffects(true)
 
-	// forward user error
-	if err != nil {
-		// re-load state from storage
-		// Note: this will throw away any changes done to the object and replace it with Readonly()
-		h.get(oldcid, obj)
+	// Store the new state
+	newCid := h.ctx.Replace(prior, obj)
 
-		return out, err
-	}
-
-	// store the new state
-	storage := h.ctx.LegacyStorage()
-	newcid, err := storage.Put(obj)
-	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "Storage put error")
-	}
-
-	// commit the new state
-	// Note: this is more of a commit into pending, not a real commit
-	err = storage.LegacyCommit(newcid, oldcid)
-	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "Storage commit error")
-	}
-
-	// update head
-	h.head = newcid
-
-	return out, nil
+	// Record the expected state of obj
+	h.usedObjs[obj] = newCid
+	return out
 }
 
 // Validate validates that the state was mutated properly.
 //
 // This method is not part of the public API,
 // it is expected to be called by the runtime after each actor method.
-func (h *actorStateHandle) Validate() {
-	if h.usedObj != nil {
+func (h *actorStateHandle) Validate(cidFn func(interface{}) cid.Cid) {
+	for obj, head := range h.usedObjs {
 		// verify the obj has not changed
-		usedCid, err := h.ctx.LegacyStorage().CidOf(h.usedObj)
-		if err != nil || usedCid != h.head {
-			runtime.Abortf(exitcode.MethodAbort, "State mutated outside of Transaction() scope")
+		usedCid := cidFn(obj)
+		if usedCid != head {
+			runtime.Abortf(exitcode.SysErrorIllegalActor, "State mutated outside of Transaction() scope")
 		}
-	}
-}
-
-// Dragons: cleanup after changing `storage.Get` to `Get(cid, interface{})`
-func (h *actorStateHandle) get(cid cid.Cid, obj interface{}) {
-	// load state from storage
-	storage := h.ctx.LegacyStorage()
-	rawstate, err := storage.Get(cid)
-	if err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "Storage get error")
-	}
-
-	if err := encoding.Decode(rawstate, obj); err != nil {
-		runtime.Abortf(exitcode.MethodAbort, "Could not deserialize state")
 	}
 }

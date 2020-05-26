@@ -1,9 +1,8 @@
 package hasher
 
 import (
+	"crypto/sha256"
 	"encoding/binary"
-
-	"golang.org/x/crypto/blake2b"
 )
 
 // Hasher takes in an ordered series of data and hashes it together
@@ -36,7 +35,7 @@ func (h *Hasher) Hash() []byte {
 	for _, s := range h.toHash {
 		accum = append(accum, s...)
 	}
-	hash := blake2b.Sum256(accum)
+	hash := sha256.Sum256(accum)
 
 	// clear the hasher for reuse
 	h.toHash = make([][]byte, 0)

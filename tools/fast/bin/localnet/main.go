@@ -11,7 +11,6 @@ import (
 	"crypto/rand"
 	flg "flag"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -23,12 +22,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ipfs/go-ipfs-files"
-	logging "github.com/ipfs/go-log"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
+	files "github.com/ipfs/go-ipfs-files"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
+	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
@@ -170,7 +170,7 @@ func main() {
 		return
 	}
 
-	env, err := environment.NewMemoryGenesis(&balance, workdir, getProofsMode(smallSectors))
+	env, err := environment.NewMemoryGenesis(&balance, workdir)
 	if err != nil {
 		exitcode = handleError(err)
 		return
@@ -252,7 +252,7 @@ func main() {
 	// WaitForDealState
 	// 9. Query deal till complete
 
-	var deals []*storagedeal.Response
+	var deals []*network.Response
 
 	for _, miner := range miners {
 		err = series.InitAndStart(ctx, miner)
@@ -293,7 +293,7 @@ func main() {
 		}
 
 		var data bytes.Buffer
-		dataReader := io.LimitReader(rand.Reader, int64(sinfo.MaxPieceSize.Uint64()))
+		dataReader := io.LimitReader(rand.Reader, int64(sinfo.MaxPieceSize))
 		dataReader = io.TeeReader(dataReader, &data)
 		_, deal, err := series.ImportAndStore(ctx, genesis, ask, files.NewReaderFile(dataReader))
 		if err != nil {
@@ -305,7 +305,7 @@ func main() {
 	}
 
 	for _, deal := range deals {
-		_, err = series.WaitForDealState(ctx, genesis, deal, storagedeal.Complete)
+		_, err = series.WaitForDealState(ctx, genesis, deal, storagemarket.StorageDealActive)
 		if err != nil {
 			exitcode = handleError(err, "failed series.WaitForDealState;")
 			return
@@ -408,13 +408,6 @@ func isEmpty(name string) (bool, error) {
 		return true, nil
 	}
 	return false, err // Either not empty or error, suits both cases
-}
-
-func getProofsMode(smallSectors bool) types.ProofsMode {
-	if smallSectors {
-		return types.TestProofsMode
-	}
-	return types.LiveProofsMode
 }
 
 func getFilecoinBinary() (string, error) {

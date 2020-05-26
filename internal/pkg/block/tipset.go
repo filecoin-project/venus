@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"sort"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 )
@@ -54,24 +56,25 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 			if !blk.Parents.Equals(parents) {
 				return UndefTipSet, errors.Errorf("Inconsistent block parents %s and %s", parents.String(), blk.Parents.String())
 			}
-			if blk.ParentWeight != weight {
+			if !blk.ParentWeight.Equals(weight) {
 				return UndefTipSet, errors.Errorf("Inconsistent block parent weights %d and %d", weight, blk.ParentWeight)
 			}
 		}
 		sorted[i] = blk
-		cids[i] = blk.Cid()
 	}
 
 	// Sort blocks by ticket
 	sort.Slice(sorted, func(i, j int) bool {
-		cmp := bytes.Compare(sorted[i].Ticket.SortKey(), sorted[j].Ticket.SortKey())
+		cmp := sorted[i].Ticket.Compare(&sorted[j].Ticket)
 		if cmp == 0 {
 			// Break ticket ties with the block CIDs, which are distinct.
 			cmp = bytes.Compare(sorted[i].Cid().Bytes(), sorted[j].Cid().Bytes())
 		}
 		return cmp < 0
 	})
-
+	for i, blk := range sorted {
+		cids[i] = blk.Cid()
+	}
 	// Duplicate blocks (CIDs) are rejected here, pass that error through.
 	key, err := NewTipSetKeyFromUnique(cids...)
 	if err != nil {
@@ -118,11 +121,11 @@ func (ts TipSet) MinTicket() (Ticket, error) {
 }
 
 // Height returns the height of a tipset.
-func (ts TipSet) Height() (uint64, error) {
+func (ts TipSet) Height() (abi.ChainEpoch, error) {
 	if len(ts.blocks) == 0 {
 		return 0, errUndefTipSet
 	}
-	return uint64(ts.blocks[0].Height), nil
+	return ts.blocks[0].Height, nil
 }
 
 // Parents returns the CIDs of the parents of the blocks in the tipset.
@@ -134,11 +137,11 @@ func (ts TipSet) Parents() (TipSetKey, error) {
 }
 
 // ParentWeight returns the tipset's ParentWeight in fixed point form.
-func (ts TipSet) ParentWeight() (uint64, error) {
+func (ts TipSet) ParentWeight() (fbig.Int, error) {
 	if len(ts.blocks) == 0 {
-		return 0, errUndefTipSet
+		return fbig.Zero(), errUndefTipSet
 	}
-	return uint64(ts.blocks[0].ParentWeight), nil
+	return ts.blocks[0].ParentWeight, nil
 }
 
 // Equals tests whether the tipset contains the same blocks as another.

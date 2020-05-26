@@ -8,11 +8,13 @@ import (
 	bsnet "github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-hamt-ipld"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
+	graphsync "github.com/ipfs/go-graphsync"
+	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
+	gsnet "github.com/ipfs/go-graphsync/network"
+	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	offroute "github.com/ipfs/go-ipfs-routing/offline"
-	cbornode "github.com/ipfs/go-ipld-cbor"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p"
 	autonatsvc "github.com/libp2p/go-libp2p-autonat-svc"
 	circuit "github.com/libp2p/go-libp2p-circuit"
@@ -31,8 +33,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 )
 
 // NetworkSubmodule enhances the `Node` with networking capabilities.
@@ -50,6 +51,8 @@ type NetworkSubmodule struct {
 	Bitswap exchange.Interface
 
 	Network *net.Network
+
+	GraphExchange graphsync.GraphExchange
 }
 
 type blankValidator struct{}
@@ -74,7 +77,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	bandwidthTracker := p2pmetrics.NewBandwidthCounter()
 	libP2pOpts := append(config.Libp2pOpts(), libp2p.BandwidthReporter(bandwidthTracker))
 
-	networkName, err := retrieveNetworkName(ctx, config.GenesisCid(), blockstore.Blockstore)
+	networkName, err := retrieveNetworkName(ctx, config.GenesisCid(), blockstore.CborStore)
 	if err != nil {
 		return NetworkSubmodule{}, err
 	}
@@ -83,6 +86,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	var peerHost host.Host
 	var router routing.Routing
 	validator := blankValidator{}
+	var pubsubMessageSigning bool
 	if !config.OfflineMode() {
 		makeDHT := func(h host.Host) (routing.Routing, error) {
 			r, err := dht.New(
@@ -104,9 +108,12 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 		if err != nil {
 			return NetworkSubmodule{}, err
 		}
+		// require message signing in online mode when we have priv key
+		pubsubMessageSigning = true
 	} else {
 		router = offroute.NewOfflineRouter(repo.Datastore(), validator)
 		peerHost = rhost.Wrap(noopLibP2PHost{}, router)
+		pubsubMessageSigning = false
 	}
 
 	// Set up libp2p network
@@ -114,9 +121,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	// to enable publishing on first connection.  The default of one
 	// second is not acceptable for tests.
 	libp2pps.GossipSubHeartbeatInterval = 100 * time.Millisecond
-	// TODO: PubSub requires strict message signing, disabled for now
-	// reference issue: #3124
-	gsub, err := libp2pps.NewGossipSub(ctx, peerHost, libp2pps.WithMessageSigning(false), libp2pps.WithDiscovery(&discovery.NoopDiscovery{}))
+	gsub, err := libp2pps.NewGossipSub(ctx, peerHost, libp2pps.WithMessageSigning(pubsubMessageSigning), libp2pps.WithDiscovery(&discovery.NoopDiscovery{}))
 	if err != nil {
 		return NetworkSubmodule{}, errors.Wrap(err, "failed to set up network")
 	}
@@ -129,54 +134,34 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	// set up pinger
 	pingService := ping.NewPingService(peerHost)
 
+	// set up graphsync
+	graphsyncNetwork := gsnet.NewFromLibp2pHost(peerHost)
+	loader := gsstoreutil.LoaderForBlockstore(blockstore.Blockstore)
+	storer := gsstoreutil.StorerForBlockstore(blockstore.Blockstore)
+	gsync := graphsyncimpl.New(ctx, graphsyncNetwork, loader, storer, graphsyncimpl.RejectAllRequestsByDefault())
+
 	// build network
 	network := net.New(peerHost, net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService))
-
 	// build the network submdule
 	return NetworkSubmodule{
-		NetworkName: networkName,
-		Host:        peerHost,
-		Router:      router,
-		pubsub:      gsub,
-		Bitswap:     bswap,
-		Network:     network,
+		NetworkName:   networkName,
+		Host:          peerHost,
+		Router:        router,
+		pubsub:        gsub,
+		Bitswap:       bswap,
+		GraphExchange: gsync,
+		Network:       network,
 	}, nil
 }
 
-func retrieveNetworkName(ctx context.Context, genCid cid.Cid, bs bstore.Blockstore) (string, error) {
-	cborStore := hamt.CSTFromBstore(bs)
+func retrieveNetworkName(ctx context.Context, genCid cid.Cid, cborStore cbor.IpldStore) (string, error) {
 	var genesis block.Block
-
 	err := cborStore.Get(ctx, genCid, &genesis)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get block %s", genCid.String())
 	}
 
-	tree, err := state.NewTreeLoader().LoadStateTree(ctx, cborStore, genesis.StateRoot)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to load node for %s", genesis.StateRoot)
-	}
-	initActor, err := tree.GetActor(ctx, address.InitAddress)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to load init actor at %s", address.InitAddress.String())
-	}
-
-	block, err := bs.Get(initActor.Head)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to load init actor state at %s", initActor.Head)
-	}
-
-	node, err := cbornode.DecodeBlock(block)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to decode init actor state")
-	}
-
-	networkName, _, err := node.Resolve([]string{"network"})
-	if err != nil || networkName == nil {
-		return "", errors.Wrapf(err, "failed to retrieve network name")
-	}
-
-	return networkName.(string), nil
+	return appstate.NewView(cborStore, genesis.StateRoot.Cid).InitNetworkName(ctx)
 }
 
 // buildHost determines if we are publically dialable.  If so use public

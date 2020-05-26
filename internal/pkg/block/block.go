@@ -4,25 +4,44 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/ipfs/go-cid"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	blocks "github.com/ipfs/go-block-format"
+	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	node "github.com/ipfs/go-ipld-format"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
+
+// BlockMessageLimit is the maximum number of messages in a block
+const BlockMessageLimit = 512
 
 // Block is a block in the blockchain.
 type Block struct {
+	// control field for encoding struct as an array
+	_ struct{} `cbor:",toarray"`
+
 	// Miner is the address of the miner actor that mined this block.
 	Miner address.Address `json:"miner"`
 
 	// Ticket is the ticket submitted with this block.
 	Ticket Ticket `json:"ticket"`
 
-	// EPoStInfo wraps all data for verifying this block's Election PoSt
-	EPoStInfo EPoStInfo `json:"ePoStInfo"`
+	// ElectionProof is the vrf proof giving this block's miner authoring rights
+	ElectionProof *crypto.ElectionProof
+
+	// BeaconEntries contain the verifiable oracle randomness used to elect
+	// this block's author leader
+	BeaconEntries []*drand.Entry
+
+	// PoStProofs are the winning post proofs
+	PoStProofs []PoStProof `json:"PoStProofs"`
 
 	// Parents is the set of parents this block was based on. Typically one,
 	// but can be several in the case where there were multiple winning ticket-
@@ -30,37 +49,44 @@ type Block struct {
 	Parents TipSetKey `json:"parents"`
 
 	// ParentWeight is the aggregate chain weight of the parent set.
-	ParentWeight types.Uint64 `json:"parentWeight"`
+	ParentWeight fbig.Int `json:"parentWeight"`
 
 	// Height is the chain height of this block.
-	Height types.Uint64 `json:"height"`
+	Height abi.ChainEpoch `json:"height"`
 
-	// StateRoot is a cid pointer to the state tree after application of the
-	// transactions state transitions.
-	StateRoot cid.Cid `json:"stateRoot,omitempty" refmt:",omitempty"`
+	// StateRoot is the CID of the root of the state tree after application of the messages in the parent tipset
+	// to the parent tipset's state root.
+	StateRoot e.Cid `json:"stateRoot,omitempty"`
 
-	// MessageReceipts is a set of receipts matching to the sending of the `Messages`.
-	MessageReceipts cid.Cid `json:"messageReceipts,omitempty" refmt:",omitempty"`
+	// MessageReceipts is a list of receipts corresponding to the application of the messages in the parent tipset
+	// to the parent tipset's state root (corresponding to this block's StateRoot).
+	MessageReceipts e.Cid `json:"messageReceipts,omitempty"`
 
 	// Messages is the set of messages included in this block
-	Messages types.TxMeta `json:"messages,omitempty" refmt:",omitempty"`
+	Messages e.Cid `json:"messages,omitempty"`
 
 	// The aggregate signature of all BLS signed messages in the block
-	BLSAggregateSig types.Signature `json:"blsAggregateSig"`
+	BLSAggregateSig *crypto.Signature `json:"blsAggregateSig"`
 
 	// The timestamp, in seconds since the Unix epoch, at which this block was created.
-	Timestamp types.Uint64 `json:"timestamp"`
+	Timestamp uint64 `json:"timestamp"`
 
 	// The signature of the miner's worker key over the block
-	BlockSig types.Signature `json:"blocksig"`
+	BlockSig *crypto.Signature `json:"blocksig"`
 
 	// ForkSignaling is extra data used by miners to communicate
-	ForkSignaling types.Uint64
+	ForkSignaling uint64
 
 	cachedCid cid.Cid
 
 	cachedBytes []byte
 }
+
+// IndexMessagesField is the message field position in the encoded block
+const IndexMessagesField = 10
+
+// IndexParentsField is the parents field position in the encoded block
+const IndexParentsField = 5
 
 // Cid returns the content id of this block.
 func (b *Block) Cid() cid.Cid {
@@ -72,12 +98,7 @@ func (b *Block) Cid() cid.Cid {
 			}
 			b.cachedBytes = bytes
 		}
-		c, err := cid.Prefix{
-			Version:  1,
-			Codec:    cid.DagCBOR,
-			MhType:   types.DefaultHashFunction,
-			MhLength: -1,
-		}.Sum(b.cachedBytes)
+		c, err := constants.DefaultCidBuilder.Sum(b.cachedBytes)
 		if err != nil {
 			panic(err)
 		}
@@ -90,13 +111,24 @@ func (b *Block) Cid() cid.Cid {
 
 // ToNode converts the Block to an IPLD node.
 func (b *Block) ToNode() node.Node {
-	// Use 32 byte / 256 bit digest. TODO pull this out into a constant?
-	obj, err := cbor.WrapObject(b, types.DefaultHashFunction, -1)
+	data, err := encoding.Encode(b)
+	if err != nil {
+		panic(err)
+	}
+	c, err := constants.DefaultCidBuilder.Sum(data)
 	if err != nil {
 		panic(err)
 	}
 
-	return obj
+	blk, err := blocks.NewBlockWithCid(data, c)
+	if err != nil {
+		panic(err)
+	}
+	node, err := cbor.DecodeBlock(blk)
+	if err != nil {
+		panic(err)
+	}
+	return node
 }
 
 func (b *Block) String() string {
@@ -121,32 +153,26 @@ func DecodeBlock(b []byte) (*Block, error) {
 	return &out, nil
 }
 
-// Score returns the score of this block. Naively this will just return the
-// height. But in the future this will return a more sophisticated metric to be
-// used in the fork choice rule
-// Choosing height as the score gives us the same consensus rules as bitcoin
-func (b *Block) Score() uint64 {
-	return uint64(b.Height)
-}
-
 // Equals returns true if the Block is equal to other.
 func (b *Block) Equals(other *Block) bool {
 	return b.Cid().Equals(other.Cid())
 }
 
-// SignatureData returns the block's bytes without the blocksig for signature
-// creating and verification
+// SignatureData returns the block's bytes with a null signature field for
+// signature creation and verification
 func (b *Block) SignatureData() []byte {
 	tmp := &Block{
 		Miner:           b.Miner,
-		Ticket:          b.Ticket,  // deep copy needed??
-		Parents:         b.Parents, // deep copy needed??
+		Ticket:          b.Ticket,
+		ElectionProof:   b.ElectionProof,
+		Parents:         b.Parents,
 		ParentWeight:    b.ParentWeight,
 		Height:          b.Height,
 		Messages:        b.Messages,
 		StateRoot:       b.StateRoot,
 		MessageReceipts: b.MessageReceipts,
-		EPoStInfo:       b.EPoStInfo,
+		PoStProofs:      b.PoStProofs,
+		BeaconEntries:   b.BeaconEntries,
 		Timestamp:       b.Timestamp,
 		BLSAggregateSig: b.BLSAggregateSig,
 		ForkSignaling:   b.ForkSignaling,

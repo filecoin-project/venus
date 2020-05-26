@@ -1,15 +1,19 @@
 package crypto
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/rand"
+	"fmt"
 	"io"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
 	secp256k1 "github.com/ipsn/go-secp256k1"
+
+	bls "github.com/filecoin-project/filecoin-ffi"
 )
+
+//
+// Abstract SECP and BLS crypto operations.
+//
 
 // PrivateKeyBytes is the size of a serialized private key.
 const PrivateKeyBytes = 32
@@ -17,8 +21,8 @@ const PrivateKeyBytes = 32
 // PublicKeyBytes is the size of a serialized public key.
 const PublicKeyBytes = 65
 
-// PublicKey returns the public key for this private key.
-func PublicKey(sk []byte) []byte {
+// PublicKeyForSecpSecretKey returns the public key for this private key.
+func PublicKeyForSecpSecretKey(sk []byte) []byte {
 	x, y := secp256k1.S256().ScalarBaseMult(sk)
 	return elliptic.Marshal(secp256k1.S256(), x, y)
 }
@@ -34,11 +38,6 @@ func SignBLS(sk, msg []byte) ([]byte, error) {
 	copy(privateKey[:], sk)
 	sig := bls.PrivateKeySign(privateKey, msg)
 	return sig[:], nil
-}
-
-// Equals compares two private key for equality and returns true if they are the same.
-func Equals(sk, other []byte) bool {
-	return bytes.Equal(sk, other)
 }
 
 // VerifySecp checks the given signature is a secp256k1 signature and returns true if it is valid.
@@ -72,19 +71,19 @@ func VerifyBLSAggregate(pubKeys, msgs [][]byte, signature []byte) bool {
 	for _, pubKey := range pubKeys {
 		var blsPubKey bls.PublicKey
 		copy(blsPubKey[:], pubKey)
+		keys = append(keys, blsPubKey)
 	}
 
 	var blsSig bls.Signature
 	copy(blsSig[:], signature)
-
 	return bls.Verify(&blsSig, digests, keys)
 }
 
-// GenerateKeyFromSeed generates a new key from the given reader.
-func GenerateKeyFromSeed(seed io.Reader) ([]byte, error) {
+// NewSecpKeyFromSeed generates a new key from the given reader.
+func NewSecpKeyFromSeed(seed io.Reader) (KeyInfo, error) {
 	key, err := ecdsa.GenerateKey(secp256k1.S256(), seed)
 	if err != nil {
-		return nil, err
+		return KeyInfo{}, err
 	}
 
 	privkey := make([]byte, PrivateKeyBytes)
@@ -93,12 +92,26 @@ func GenerateKeyFromSeed(seed io.Reader) ([]byte, error) {
 	// the length is guaranteed to be fixed, given the serialization rules for secp2561k curve points.
 	copy(privkey[PrivateKeyBytes-len(blob):], blob)
 
-	return privkey, nil
+	return KeyInfo{
+		PrivateKey: privkey,
+		SigType:    SigTypeSecp256k1,
+	}, nil
 }
 
-// GenerateKey creates a new key using secure randomness from crypto.rand.
-func GenerateKey() ([]byte, error) {
-	return GenerateKeyFromSeed(rand.Reader)
+func NewBLSKeyFromSeed(seed io.Reader) (KeyInfo, error) {
+	var seedBytes bls.PrivateKeyGenSeed
+	read, err := seed.Read(seedBytes[:])
+	if err != nil {
+		return KeyInfo{}, err
+	}
+	if read != len(seedBytes) {
+		return KeyInfo{}, fmt.Errorf("read only %d bytes of %d required from seed", read, len(seedBytes))
+	}
+	k := bls.PrivateKeyGenerateWithSeed(seedBytes)
+	return KeyInfo{
+		PrivateKey: k[:],
+		SigType:    SigTypeBLS,
+	}, nil
 }
 
 // EcRecover recovers the public key from a message, signature pair.

@@ -5,17 +5,18 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 func TestMessageStoreMessagesHappy(t *testing.T) {
 	ctx := context.Background()
 	keys := types.MustGenerateKeyInfo(2, 42)
-	mm := types.NewMessageMaker(t, keys)
+	mm := vm.NewMessageMaker(t, keys)
 
 	alice := mm.Addresses()[0]
 	bob := mm.Addresses()[1]
@@ -44,9 +45,9 @@ func TestMessageStoreMessagesHappy(t *testing.T) {
 
 func TestMessageStoreReceiptsHappy(t *testing.T) {
 	ctx := context.Background()
-	mr := types.NewReceiptMaker()
+	mr := vm.NewReceiptMaker()
 
-	receipts := []*types.MessageReceipt{
+	receipts := []vm.MessageReceipt{
 		mr.NewReceipt(),
 		mr.NewReceipt(),
 		mr.NewReceipt(),
@@ -59,6 +60,5 @@ func TestMessageStoreReceiptsHappy(t *testing.T) {
 
 	rtReceipts, err := ms.LoadReceipts(ctx, receiptCids)
 	assert.NoError(t, err)
-
 	assert.Equal(t, receipts, rtReceipts)
 }

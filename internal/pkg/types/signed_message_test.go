@@ -1,14 +1,17 @@
 package types
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 var mockSigner = NewMockSigner(MustGenerateKeyInfo(1, 42))
@@ -82,16 +85,16 @@ func makeMessage(t *testing.T, signer MockSigner, nonce uint64) *SignedMessage {
 		newAddr,
 		nonce,
 		NewAttoFILFromFIL(2),
-		MethodID(2352),
+		abi.MethodNum(2352),
 		[]byte("params"),
 		NewGasPrice(1000),
-		NewGasUnits(100))
-	smsg, err := NewSignedMessage(*msg, &signer)
+		gas.NewGas(100))
+	smsg, err := NewSignedMessage(context.TODO(), *msg, &signer)
 	require.NoError(t, err)
 
 	// This check requests that you add a non-zero value for new fields above,
 	// then update the field count below.
-	require.Equal(t, 2, reflect.TypeOf(*smsg).NumField())
+	require.Equal(t, 3, reflect.TypeOf(*smsg).NumField())
 
 	return smsg
 }

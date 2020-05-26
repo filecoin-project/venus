@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	mining_protocol "github.com/filecoin-project/go-filecoin/internal/pkg/protocol/mining"
 )
 
@@ -24,12 +24,15 @@ type BlockMiningSubmodule struct {
 		IsMining bool
 	}
 	MiningDoneWg *sync.WaitGroup
+
+	// Inject non-default post generator here or leave nil for default
+	PoStGenerator postgenerator.PoStGenerator
 }
 
-type newBlockFunc func(context.Context, *block.Block)
+type newBlockFunc func(context.Context, mining.FullBlock)
 
 // NewBlockMiningSubmodule creates a new block mining submodule.
-func NewBlockMiningSubmodule(ctx context.Context) (BlockMiningSubmodule, error) {
+func NewBlockMiningSubmodule(ctx context.Context, gen postgenerator.PoStGenerator) (BlockMiningSubmodule, error) {
 	return BlockMiningSubmodule{
 		// BlockMiningAPI:     nil,
 		// AddNewlyMinedBlock: nil,
@@ -39,5 +42,6 @@ func NewBlockMiningSubmodule(ctx context.Context) (BlockMiningSubmodule, error) 
 		// mining:       nil,
 		// miningDoneWg: nil,
 		// MessageSub:   nil,
+		PoStGenerator: gen,
 	}, nil
 }

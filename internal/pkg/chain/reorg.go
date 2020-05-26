@@ -2,6 +2,7 @@ package chain
 
 import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/pkg/errors"
 )
 
@@ -18,7 +19,7 @@ func IsReorg(old, new, commonAncestor block.TipSet) bool {
 
 // ReorgDiff returns the dropped and added block heights resulting from the
 // reorg given the old and new heads and their common ancestor.
-func ReorgDiff(old, new, commonAncestor block.TipSet) (uint64, uint64, error) {
+func ReorgDiff(old, new, commonAncestor block.TipSet) (abi.ChainEpoch, abi.ChainEpoch, error) {
 	hOld, err := old.Height()
 	if err != nil {
 		return 0, 0, err

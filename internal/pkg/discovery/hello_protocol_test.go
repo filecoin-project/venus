@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -16,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 type mockHelloCallback struct {
@@ -49,8 +50,8 @@ func TestHelloHandshake(t *testing.T) {
 
 	genesisA := &block.Block{}
 
-	heavy1 := th.RequireNewTipSet(t, &block.Block{Height: 2, Ticket: block.Ticket{VRFProof: []byte{0}}})
-	heavy2 := th.RequireNewTipSet(t, &block.Block{Height: 3, Ticket: block.Ticket{VRFProof: []byte{1}}})
+	heavy1 := block.RequireNewTipSet(t, &block.Block{Height: 2, Ticket: block.Ticket{VRFProof: []byte{0}}})
+	heavy2 := block.RequireNewTipSet(t, &block.Block{Height: 3, Ticket: block.Ticket{VRFProof: []byte{1}}})
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -58,8 +59,8 @@ func TestHelloHandshake(t *testing.T) {
 	discovery.NewHelloProtocolHandler(a, genesisA.Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
 	discovery.NewHelloProtocolHandler(b, genesisA.Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
 
-	msc1.On("HelloCallback", b.ID(), heavy2.Key(), uint64(3)).Return()
-	msc2.On("HelloCallback", a.ID(), heavy1.Key(), uint64(2)).Return()
+	msc1.On("HelloCallback", b.ID(), heavy2.Key(), abi.ChainEpoch(3)).Return()
+	msc2.On("HelloCallback", a.ID(), heavy1.Key(), abi.ChainEpoch(2)).Return()
 
 	require.NoError(t, mn.LinkAll())
 	require.NoError(t, mn.ConnectAllButSelf())
@@ -105,8 +106,8 @@ func TestHelloBadGenesis(t *testing.T) {
 	genesisA := builder.AppendBlockOn(block.UndefTipSet)
 	genesisB := builder.AppendBlockOn(block.UndefTipSet)
 
-	heavy1 := th.RequireNewTipSet(t, &block.Block{Height: 2, Ticket: block.Ticket{VRFProof: []byte{0}}})
-	heavy2 := th.RequireNewTipSet(t, &block.Block{Height: 3, Ticket: block.Ticket{VRFProof: []byte{1}}})
+	heavy1 := block.RequireNewTipSet(t, &block.Block{Height: 2, Ticket: block.Ticket{VRFProof: []byte{0}}})
+	heavy2 := block.RequireNewTipSet(t, &block.Block{Height: 3, Ticket: block.Ticket{VRFProof: []byte{1}}})
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -153,8 +154,8 @@ func TestHelloMultiBlock(t *testing.T) {
 	discovery.NewHelloProtocolHandler(a, genesisTipset.At(0).Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
 	discovery.NewHelloProtocolHandler(b, genesisTipset.At(0).Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
 
-	msc1.On("HelloCallback", b.ID(), heavy2.Key(), uint64(3)).Return()
-	msc2.On("HelloCallback", a.ID(), heavy1.Key(), uint64(2)).Return()
+	msc1.On("HelloCallback", b.ID(), heavy2.Key(), abi.ChainEpoch(3)).Return()
+	msc2.On("HelloCallback", a.ID(), heavy1.Key(), abi.ChainEpoch(2)).Return()
 
 	assert.NoError(t, mn.LinkAll())
 	assert.NoError(t, mn.ConnectAllButSelf())

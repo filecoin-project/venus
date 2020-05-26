@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -372,7 +373,7 @@ func loadTipSet(ctx context.Context, cidSet block.TipSetKey, chainStore *migrati
 	return headTs, nil
 }
 
-func makeKey(pKey string, h uint64) string {
+func makeKey(pKey string, h abi.ChainEpoch) string {
 	return fmt.Sprintf("p-%s h-%d", pKey, h)
 }
 

@@ -53,7 +53,7 @@ func WaitForChainMessage(ctx context.Context, node *fast.Filecoin, fn MsgSearchF
 
 func findMessageInBlockSlice(ctx context.Context, node *fast.Filecoin, blks []block.Block, fn MsgSearchFn) (*MsgInfo, error) {
 	for _, blk := range blks {
-		msgs, err := node.ShowMessages(ctx, blk.Messages.SecpRoot)
+		msgs, err := node.ShowMessages(ctx, blk.Messages.Cid)
 		if err != nil {
 			return nil, err
 		}

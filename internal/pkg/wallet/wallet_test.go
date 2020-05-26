@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"testing"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	bls "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -42,7 +43,7 @@ func TestWalletSimple(t *testing.T) {
 	assert.Equal(t, fs, backend)
 
 	t.Log("find unknown address")
-	randomAddr := address.NewForTestGetter()()
+	randomAddr := vmaddr.NewForTestGetter()()
 
 	assert.False(t, w.HasAddress(randomAddr))
 
@@ -88,23 +89,26 @@ func TestWalletBLSKeys(t *testing.T) {
 	t.Run("key uses BLS cryptography", func(t *testing.T) {
 		ki, err := wb.GetKeyInfo(addr)
 		require.NoError(t, err)
-		assert.Equal(t, types.BLS, ki.CryptSystem)
+		assert.Equal(t, crypto.SigTypeBLS, ki.SigType)
 	})
 
 	t.Run("valid signatures verify", func(t *testing.T) {
-		verified := types.IsValidSignature(data, addr, sig)
-		assert.True(t, verified)
+		err := crypto.ValidateSignature(data, addr, sig)
+		assert.NoError(t, err)
 	})
 
 	t.Run("invalid signatures do not verify", func(t *testing.T) {
 		notTheData := []byte("not the data")
-		verified := types.IsValidSignature(notTheData, addr, sig)
-		assert.False(t, verified)
+		err := crypto.ValidateSignature(notTheData, addr, sig)
+		assert.Error(t, err)
 
-		notTheSig := [bls.SignatureBytes]byte{}
-		copy(notTheSig[:], []byte("not the sig"))
-		verified = types.IsValidSignature(data, addr, notTheSig[:])
-		assert.False(t, verified)
+		notTheSig := crypto.Signature{
+			Type: crypto.SigTypeBLS,
+			Data: make([]byte, bls.SignatureBytes),
+		}
+		copy(notTheSig.Data[:], "not the sig")
+		err = crypto.ValidateSignature(data, addr, notTheSig)
+		assert.Error(t, err)
 	})
 }
 
@@ -141,14 +145,14 @@ func TestSimpleSignAndVerify(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Log("verify signed content")
-	valid := types.IsValidSignature(dataA, addr, sig)
-	assert.True(t, valid)
+	err = crypto.ValidateSignature(dataA, addr, sig)
+	assert.NoError(t, err)
 
 	// data that is unsigned
 	dataB := []byte("I AM UNSIGNED DATA!")
 	t.Log("verify fails for unsigned content")
-	secondValid := types.IsValidSignature(dataB, addr, sig)
-	assert.False(t, secondValid)
+	err = crypto.ValidateSignature(dataB, addr, sig)
+	assert.Error(t, err)
 }
 
 func TestSignErrorCases(t *testing.T) {
@@ -189,7 +193,6 @@ func TestSignErrorCases(t *testing.T) {
 	t.Log("find backend fails for unknown address")
 	_, err = w1.Find(addr2)
 	assert.Error(t, err)
-	assert.Contains(t, wallet.ErrUnknownAddress.Error(), err.Error())
 
 	// data to sign
 	dataA := []byte("Set tab width to '1' and make everyone happy")

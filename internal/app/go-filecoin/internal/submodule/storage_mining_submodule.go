@@ -2,78 +2,112 @@ package submodule
 
 import (
 	"context"
+	"sync"
 
-	storageminerconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/storage_miner_connector"
-
-	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/go-storage-miner"
+	"github.com/filecoin-project/go-address"
+	sectorstorage "github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/sector-storage/stores"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	fsm "github.com/filecoin-project/storage-fsm"
 	"github.com/ipfs/go-datastore"
 
+	fsmchain "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsm_chain"
+	fsmeventsconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsm_events"
+	fsmnodeconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsm_node"
+	fsmstorage "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/fsm_storage"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/sectors"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsampler"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/poster"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 )
 
 // StorageMiningSubmodule enhances the `Node` with storage mining capabilities.
 type StorageMiningSubmodule struct {
+	started   bool
+	startedLk sync.RWMutex
+
 	// StorageMining is used by the miner to fill and seal sectors.
 	PieceManager piecemanager.PieceManager
 
 	// PoStGenerator generates election PoSts
 	PoStGenerator postgenerator.PoStGenerator
 
-	started   bool
-	startFunc func(ctx context.Context) error
-	stopFunc  func(ctx context.Context) error
+	hs     *chainsampler.HeightThresholdScheduler
+	fsm    *fsm.Sealing
+	poster *poster.Poster
 }
 
 // NewStorageMiningSubmodule creates a new storage mining submodule.
-func NewStorageMiningSubmodule(minerAddr, workerAddr address.Address, ds datastore.Batching, s sectorbuilder.Interface, c *ChainSubmodule, m *MessagingSubmodule, mw *msg.Waiter, w *WalletSubmodule) (StorageMiningSubmodule, error) {
-	minerNode := storageminerconnector.NewStorageMinerNodeAdapter(minerAddr, workerAddr, c.ChainReader, c.State, m.Outbox, mw, w.Wallet)
-	storageMiner, err := storage.NewMiner(minerNode, ds, s)
+func NewStorageMiningSubmodule(
+	minerAddr address.Address,
+	ds datastore.Batching,
+	c *ChainSubmodule,
+	m *MessagingSubmodule,
+	mw *msg.Waiter,
+	stateViewer *appstate.Viewer,
+	sealProofType abi.RegisteredProof,
+	r repo.Repo,
+	postGeneratorOverride postgenerator.PoStGenerator,
+) (*StorageMiningSubmodule, error) {
+	chainThresholdScheduler := chainsampler.NewHeightThresholdScheduler(c.ChainReader)
+
+	ccn := fsmchain.NewChainConnector(c.ChainReader)
+
+	sdx := stores.NewIndex()
+
+	fcg := ffiwrapper.Config{
+		SealProofType: sealProofType,
+	}
+
+	scg := sectorstorage.SealerConfig{AllowPreCommit1: true, AllowPreCommit2: true, AllowCommit: true}
+
+	mgr, err := sectorstorage.New(context.TODO(), fsmstorage.NewRepoStorageConnector(r), sdx, &fcg, scg, []string{}, nil)
 	if err != nil {
-		return StorageMiningSubmodule{}, err
+		return nil, err
 	}
 
-	smbe := piecemanager.NewStorageMinerBackEnd(storageMiner, s)
-	sbbe := postgenerator.NewSectorBuilderBackEnd(s)
+	sid := sectors.NewPersistedSectorNumberCounter(ds)
 
-	modu := StorageMiningSubmodule{
-		PieceManager:  smbe,
-		PoStGenerator: sbbe,
+	// FSM requires id address to work correctly. Resolve it now and hope it's stable
+	//
+	minerAddrID, err := resolveMinerAddress(context.TODO(), c, minerAddr, stateViewer)
+	if err != nil {
+		return nil, err
 	}
 
-	modu.startFunc = func(ctx context.Context) error {
-		if !modu.started {
-			minerNode.StartHeightListener(ctx, c.HeaviestTipSetCh)
-			err := storageMiner.Start(ctx)
-			if err != nil {
-				return err
-			}
+	ncn := fsmnodeconnector.New(minerAddrID, mw, c.ChainReader, c.ActorState, m.Outbox, c.State)
 
-			modu.started = true
-
-			return nil
-		}
-
-		return nil
+	ppStart, err := getMinerProvingPeriod(c, minerAddr, stateViewer)
+	if err != nil {
+		return nil, err
 	}
 
-	modu.stopFunc = func(ctx context.Context) error {
-		if modu.started {
-			minerNode.StopHeightListener()
-			err := storageMiner.Stop(ctx)
-			if err != nil {
-				return err
-			}
+	pcp := fsm.NewBasicPreCommitPolicy(&ccn, abi.ChainEpoch(2*60*24), ppStart%miner.WPoStProvingPeriod)
 
-			modu.started = false
+	fsmConnector := fsmeventsconnector.New(chainThresholdScheduler, c.State)
+	fsm := fsm.New(ncn, fsmConnector, minerAddrID, ds, mgr, sid, ffiwrapper.ProofVerifier, &pcp)
 
-			return nil
-		}
+	bke := piecemanager.NewFiniteStateMachineBackEnd(fsm, sid)
 
-		return nil
+	modu := &StorageMiningSubmodule{
+		PieceManager: &bke,
+		hs:           chainThresholdScheduler,
+		fsm:          fsm,
+		poster:       poster.NewPoster(minerAddr, m.Outbox, mgr, c.State, stateViewer, mw),
+	}
+
+	// allow the caller to provide a thing which generates fake PoSts
+	if postGeneratorOverride == nil {
+		modu.PoStGenerator = mgr.Prover
+	} else {
+		modu.PoStGenerator = postGeneratorOverride
 	}
 
 	return modu, nil
@@ -81,10 +115,74 @@ func NewStorageMiningSubmodule(minerAddr, workerAddr address.Address, ds datasto
 
 // Start starts the StorageMiningSubmodule
 func (s *StorageMiningSubmodule) Start(ctx context.Context) error {
-	return s.startFunc(ctx)
+	s.startedLk.Lock()
+	defer s.startedLk.Unlock()
+
+	if s.started {
+		return nil
+	}
+
+	err := s.fsm.Run(ctx)
+	if err != nil {
+		return err
+	}
+
+	s.started = true
+	return nil
 }
 
 // Stop stops the StorageMiningSubmodule
 func (s *StorageMiningSubmodule) Stop(ctx context.Context) error {
-	return s.stopFunc(ctx)
+	s.startedLk.Lock()
+	defer s.startedLk.Unlock()
+
+	if !s.started {
+		return nil
+	}
+
+	err := s.fsm.Stop(ctx)
+	if err != nil {
+		return err
+	}
+
+	s.poster.StopPoSting()
+	s.started = false
+	return nil
+}
+
+// HandleNewHead submits a new chain head for possible fallback PoSt.
+func (s *StorageMiningSubmodule) HandleNewHead(ctx context.Context, newHead block.TipSet) error {
+	s.startedLk.RLock()
+	defer s.startedLk.RUnlock()
+
+	if !s.started {
+		return nil
+	}
+
+	err := s.hs.HandleNewTipSet(ctx, newHead)
+	if err != nil {
+		return err
+	}
+
+	return s.poster.HandleNewHead(ctx, newHead)
+}
+
+func getMinerProvingPeriod(c *ChainSubmodule, minerAddr address.Address, viewer *appstate.Viewer) (abi.ChainEpoch, error) {
+	tsk := c.ChainReader.GetHead()
+	root, err := c.ChainReader.GetTipSetStateRoot(tsk)
+	if err != nil {
+		return 0, err
+	}
+	view := viewer.StateView(root)
+	return view.MinerProvingPeriodStart(context.Background(), minerAddr)
+}
+
+func resolveMinerAddress(ctx context.Context, c *ChainSubmodule, minerAddr address.Address, viewer *appstate.Viewer) (address.Address, error) {
+	tsk := c.ChainReader.GetHead()
+	root, err := c.ChainReader.GetTipSetStateRoot(tsk)
+	if err != nil {
+		return address.Undef, err
+	}
+	view := viewer.StateView(root)
+	return view.InitResolveAddress(ctx, minerAddr)
 }

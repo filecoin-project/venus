@@ -3,14 +3,16 @@ package submodule
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
 )
 
 // ChainSubmodule enhances the `Node` with chain capabilities.
@@ -18,11 +20,9 @@ type ChainSubmodule struct {
 	ChainReader  *chain.Store
 	MessageStore *chain.MessageStore
 	State        *cst.ChainStateReadWriter
-	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
-	// https://github.com/filecoin-project/go-filecoin/issues/2309
-	HeaviestTipSetCh chan interface{}
 
-	ActorState *consensus.ActorStateStore
+	Sampler    *chain.Sampler
+	ActorState *appstate.TipSetStateViewer
 	Processor  *consensus.DefaultProcessor
 
 	StatusReporter *chain.StatusReporter
@@ -47,30 +47,24 @@ type chainRepo interface {
 
 type chainConfig interface {
 	GenesisCid() cid.Cid
-	Rewarder() consensus.BlockRewarder
 }
 
 // NewChainSubmodule creates a new chain submodule.
-func NewChainSubmodule(ctx context.Context, config chainConfig, repo chainRepo, blockstore *BlockstoreSubmodule) (ChainSubmodule, error) {
+func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *BlockstoreSubmodule, verifier *ProofVerificationSubmodule) (ChainSubmodule, error) {
 	// initialize chain store
 	chainStatusReporter := chain.NewStatusReporter()
-	chainStore := chain.NewStore(repo.ChainDatastore(), blockstore.CborStore, state.NewTreeLoader(), chainStatusReporter, config.GenesisCid())
+	chainStore := chain.NewStore(repo.ChainDatastore(), blockstore.CborStore, chainStatusReporter, config.GenesisCid())
 
-	// set up processor
-	var processor *consensus.DefaultProcessor
-	if config.Rewarder() == nil {
-		processor = consensus.NewDefaultProcessor()
-	} else {
-		processor = consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), config.Rewarder(), builtin.DefaultActors)
-	}
-	actorState := consensus.NewActorStateStore(chainStore, blockstore.CborStore, blockstore.Blockstore, processor)
+	actorState := appstate.NewTipSetStateViewer(chainStore, blockstore.CborStore)
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, builtin.DefaultActors)
+	faultChecker := slashing.NewFaultChecker(chainState)
+	syscalls := vmsupport.NewSyscalls(faultChecker, verifier.ProofVerifier)
+	processor := consensus.NewDefaultProcessor(syscalls, chainState)
 
 	return ChainSubmodule{
-		ChainReader:  chainStore,
-		MessageStore: messageStore,
-		// HeaviestTipSetCh nil
+		ChainReader:    chainStore,
+		MessageStore:   messageStore,
 		ActorState:     actorState,
 		State:          chainState,
 		Processor:      processor,

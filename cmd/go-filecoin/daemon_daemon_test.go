@@ -8,11 +8,12 @@ import (
 	"testing"
 
 	manet "github.com/multiformats/go-multiaddr-net"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDaemonStartupMessage(t *testing.T) {
@@ -22,8 +23,8 @@ func TestDaemonStartupMessage(t *testing.T) {
 	daemon.ShutdownSuccess()
 
 	out := daemon.ReadStdout()
-	assert.Regexp(t, "^My peer ID is [a-zA-Z0-9]*", out)
-	assert.Regexp(t, "\\nSwarm listening on.*", out)
+	assert.Regexp(t, "^\"My peer ID is [a-zA-Z0-9]*", out)
+	assert.Regexp(t, "\\n\"Swarm listening on.*", out)
 }
 
 func TestDaemonApiFile(t *testing.T) {

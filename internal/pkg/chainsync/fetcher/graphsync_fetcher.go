@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-amt-ipld"
+	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
 	blocks "github.com/ipfs/go-block-format"
@@ -14,10 +14,11 @@ import (
 	"github.com/ipfs/go-graphsync"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipld/go-ipld-prime"
-	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	basicnode "github.com/ipld/go-ipld-prime/node/basic"
+	ipldselector "github.com/ipld/go-ipld-prime/traversal/selector"
 	selectorbuilder "github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -50,13 +52,16 @@ const (
 	amtNodeValuesFieldIndex = 2
 )
 
+// ChainsyncProtocolExtension is the extension name to indicate graphsync requests are to sync the chain
+const ChainsyncProtocolExtension = graphsync.ExtensionName("chainsync")
+
 // interface conformance check
 var _ syncer.Fetcher = (*GraphSyncFetcher)(nil)
 
 // GraphExchange is an interface wrapper to Graphsync so it can be stubbed in
 // unit testing
 type GraphExchange interface {
-	Request(ctx context.Context, p peer.ID, root ipld.Link, selector ipld.Node) (<-chan graphsync.ResponseProgress, <-chan error)
+	Request(ctx context.Context, p peer.ID, root ipld.Link, selector ipld.Node, extensions ...graphsync.ExtensionData) (<-chan graphsync.ResponseProgress, <-chan error)
 }
 
 type graphsyncFallbackPeerTracker interface {
@@ -78,12 +83,12 @@ type GraphSyncFetcher struct {
 // NewGraphSyncFetcher returns a GraphsyncFetcher wired up to the input Graphsync exchange and
 // attached local blockservice for reloading blocks in memory once they are returned
 func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore bstore.Blockstore,
-	bv consensus.SyntaxValidator, systemClock clock.Clock, pt graphsyncFallbackPeerTracker) *GraphSyncFetcher {
+	v consensus.SyntaxValidator, systemClock clock.Clock, pt graphsyncFallbackPeerTracker) *GraphSyncFetcher {
 	gsf := &GraphSyncFetcher{
 		store:       blockstore,
-		validator:   bv,
+		validator:   v,
 		exchange:    exchange,
-		ssb:         selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder()),
+		ssb:         selectorbuilder.NewSelectorSpecBuilder(basicnode.Style.Any),
 		peerTracker: pt,
 		systemClock: systemClock,
 	}
@@ -242,12 +247,10 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 
 // fullBlockSel is a function that generates a selector for a block and its messages.
 func (gsf *GraphSyncFetcher) fullBlockSel() ipld.Node {
-	selector := gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-		efsb.Insert("messages", gsf.ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
-			messagesSelector.Insert("secpRoot", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
-			messagesSelector.Insert("bLSRoot", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
-		}))
-	}).Node()
+	selector := gsf.ssb.ExploreIndex(block.IndexMessagesField,
+		gsf.ssb.ExploreRange(0, 2, gsf.fetchThroughAMTSelector(amtRecurstionDepth)),
+	).Node()
+
 	return selector
 }
 
@@ -268,7 +271,7 @@ func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, selGen func() ipld
 	for _, c := range cids {
 		requestCtx, requestCancel := context.WithCancel(ctx)
 		defer requestCancel()
-		requestChan, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: c}, selector)
+		requestChan, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: c}, selector, graphsync.ExtensionData{Name: ChainsyncProtocolExtension})
 		wg.Add(1)
 		go func(requestChan <-chan graphsync.ResponseProgress, errChan <-chan error, cancelFunc func()) {
 			defer wg.Done()
@@ -286,7 +289,7 @@ func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, selGen func() ipld
 
 func (gsf *GraphSyncFetcher) fetchThroughAMTSelector(recursionDepth uint32) selectorbuilder.SelectorSpec {
 	return gsf.ssb.ExploreIndex(amtHeadNodeFieldIndex,
-		gsf.ssb.ExploreRecursive(int(recursionDepth),
+		gsf.ssb.ExploreRecursive(ipldselector.RecursionLimitDepth(int(recursionDepth)),
 			gsf.ssb.ExploreUnion(
 				gsf.ssb.ExploreIndex(amtNodeLinksFieldIndex, gsf.ssb.ExploreAll(gsf.ssb.ExploreRecursiveEdge())),
 				gsf.ssb.ExploreIndex(amtNodeValuesFieldIndex, gsf.ssb.ExploreAll(gsf.ssb.Matcher())))))
@@ -323,32 +326,26 @@ func (gsf *GraphSyncFetcher) recFullBlockSel(recursionDepth int) ipld.Node {
 	//   - fetch all parent blocks, with messages
 	//   - with exactly the first parent block, repeat again for its parents
 	//   - continue up to recursion depth
-	selector := gsf.ssb.ExploreRecursive(recursionDepth, gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-		efsb.Insert("parents", gsf.ssb.ExploreUnion(
+	selector := gsf.ssb.ExploreRecursive(ipldselector.RecursionLimitDepth(recursionDepth), gsf.ssb.ExploreIndex(block.IndexParentsField,
+		gsf.ssb.ExploreUnion(
 			gsf.ssb.ExploreAll(
-				gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-					efsb.Insert("messages", gsf.ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
-						messagesSelector.Insert("secpRoot", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
-						messagesSelector.Insert("bLSRoot", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
-					}))
-				}),
-			),
+				gsf.ssb.ExploreIndex(block.IndexMessagesField,
+					gsf.ssb.ExploreRange(0, 2, gsf.fetchThroughAMTSelector(amtRecurstionDepth)),
+				)),
 			gsf.ssb.ExploreIndex(0, gsf.ssb.ExploreRecursiveEdge()),
-		))
-	})).Node()
+		))).Node()
 	return selector
 }
 
 // recHeaderSel generates a selector for a chain of only block headers.
 func (gsf *GraphSyncFetcher) recHeaderSel(recursionDepth int) ipld.Node {
-	selector := gsf.ssb.ExploreRecursive(recursionDepth, gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-		efsb.Insert("parents", gsf.ssb.ExploreUnion(
+	selector := gsf.ssb.ExploreRecursive(ipldselector.RecursionLimitDepth(recursionDepth), gsf.ssb.ExploreIndex(block.IndexParentsField,
+		gsf.ssb.ExploreUnion(
 			gsf.ssb.ExploreAll(
 				gsf.ssb.Matcher(),
 			),
 			gsf.ssb.ExploreIndex(0, gsf.ssb.ExploreRecursiveEdge()),
-		))
-	})).Node()
+		))).Node()
 	return selector
 }
 
@@ -359,7 +356,7 @@ func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, recSelG
 	defer requestCancel()
 	selector := recSelGen(recursionDepth)
 
-	requestChan, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: baseCid}, selector)
+	requestChan, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: baseCid}, selector, graphsync.ExtensionData{Name: ChainsyncProtocolExtension})
 	return gsf.consumeResponse(requestChan, errChan, requestCancel)
 }
 
@@ -396,13 +393,19 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 	}
 
 	err = gsf.loadAndVerifySubComponents(ctx, tip, incomplete,
-		func(blk *block.Block) cid.Cid { return blk.Messages.SecpRoot }, func(rawBlock blocks.Block) error {
+		func(meta types.TxMeta) cid.Cid {
+			return meta.SecpRoot.Cid
+		},
+		func(rawBlock blocks.Block) error {
 			messages := []*types.SignedMessage{}
 
 			err := gsf.loadAndProcessAMTData(ctx, rawBlock.Cid(), func(msgBlock blocks.Block) error {
 				var message types.SignedMessage
-				if err := cbor.DecodeInto(msgBlock.RawData(), &message); err != nil {
+				if err := encoding.Decode(msgBlock.RawData(), &message); err != nil {
 					return errors.Wrapf(err, "could not decode secp message (cid %s)", msgBlock.Cid())
+				}
+				if err := gsf.validator.ValidateSignedMessageSyntax(ctx, &message); err != nil {
+					return errors.Wrapf(err, "invalid syntax for secp message (cid %s)", msgBlock.Cid())
 				}
 				messages = append(messages, &message)
 				return nil
@@ -411,9 +414,6 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 				return err
 			}
 
-			if err := gsf.validator.ValidateMessagesSyntax(ctx, messages); err != nil {
-				return errors.Wrapf(err, "invalid messages for for message collection (cid %s)", rawBlock.Cid())
-			}
 			return nil
 		})
 	if err != nil {
@@ -421,14 +421,21 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 	}
 
 	err = gsf.loadAndVerifySubComponents(ctx, tip, incomplete,
-		func(blk *block.Block) cid.Cid { return blk.Messages.BLSRoot }, func(rawBlock blocks.Block) error {
+		func(meta types.TxMeta) cid.Cid {
+			return meta.BLSRoot.Cid
+		},
+		func(rawBlock blocks.Block) error {
 			messages := []*types.UnsignedMessage{}
 
 			err := gsf.loadAndProcessAMTData(ctx, rawBlock.Cid(), func(msgBlock blocks.Block) error {
 				var message types.UnsignedMessage
-				if err := cbor.DecodeInto(msgBlock.RawData(), &message); err != nil {
+				if err := encoding.Decode(msgBlock.RawData(), &message); err != nil {
 					return errors.Wrapf(err, "could not decode bls message (cid %s)", msgBlock.Cid())
 				}
+				if err := gsf.validator.ValidateUnsignedMessageSyntax(ctx, &message); err != nil {
+					return errors.Wrapf(err, "invalid syntax for bls message (cid %s)", msgBlock.Cid())
+				}
+
 				messages = append(messages, &message)
 				return nil
 			})
@@ -436,11 +443,10 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 				return err
 			}
 
-			if err := gsf.validator.ValidateUnsignedMessagesSyntax(ctx, messages); err != nil {
-				return errors.Wrapf(err, "invalid messages for for message collection (cid %s)", rawBlock.Cid())
-			}
 			return nil
 		})
+
+	// TODO #3312 we should validate these messages in the same way we validate blocks
 	if err != nil {
 		return block.UndefTipSet, nil, err
 	}
@@ -458,9 +464,9 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 
 // loadAndProcessAMTData processes data loaded from an AMT that is stored in the fetcher's datastore.
 func (gsf *GraphSyncFetcher) loadAndProcessAMTData(ctx context.Context, c cid.Cid, processFn func(b blocks.Block) error) error {
-	as := amt.WrapBlockstore(gsf.store)
+	as := cbor.NewCborStore(gsf.store)
 
-	a, err := amt.LoadAMT(as, c)
+	a, err := amt.LoadAMT(ctx, as, c)
 	if err != nil {
 		if err == bstore.ErrNotFound {
 			return err
@@ -468,7 +474,7 @@ func (gsf *GraphSyncFetcher) loadAndProcessAMTData(ctx context.Context, c cid.Ci
 		return errors.Wrapf(err, "fetched data (cid %s) could not be decoded as an AMT", c.String())
 	}
 
-	return a.ForEach(func(index uint64, deferred *typegen.Deferred) error {
+	return a.ForEach(ctx, func(index uint64, deferred *typegen.Deferred) error {
 		var c cid.Cid
 		if err := cbor.DecodeInto(deferred.Raw, &c); err != nil {
 			return errors.Wrapf(err, "cid from amt could not be decoded as a Cid (index %d)", index)
@@ -494,6 +500,19 @@ func (gsf *GraphSyncFetcher) loadAndProcessAMTData(ctx context.Context, c cid.Ci
 
 		return nil
 	})
+}
+
+func (gsf *GraphSyncFetcher) loadTxMeta(c cid.Cid) (types.TxMeta, error) {
+	rawMetaBlock, err := gsf.store.Get(c)
+	if err != nil {
+		return types.TxMeta{}, err
+	}
+	var ret types.TxMeta
+	err = encoding.Decode(rawMetaBlock.RawData(), &ret)
+	if err != nil {
+		return types.TxMeta{}, err
+	}
+	return ret, nil
 }
 
 // Loads and validates the block headers for a tipset. Returns the tipset if complete,
@@ -525,7 +544,7 @@ func (gsf *GraphSyncFetcher) loadTipHeaders(ctx context.Context, key block.TipSe
 	return tip, err
 }
 
-type getBlockComponentFn func(*block.Block) cid.Cid
+type getMetaComponentFn func(types.TxMeta) cid.Cid
 type verifyComponentFn func(blocks.Block) error
 
 // Loads and validates the block messages for a tipset. Returns the tipset if complete,
@@ -533,14 +552,25 @@ type verifyComponentFn func(blocks.Block) error
 func (gsf *GraphSyncFetcher) loadAndVerifySubComponents(ctx context.Context,
 	tip block.TipSet,
 	incomplete map[cid.Cid]struct{},
-	getBlockComponent getBlockComponentFn,
+	getMetaComponent getMetaComponentFn,
 	verifyComponent verifyComponentFn) error {
 	subComponents := make([]blocks.Block, 0, tip.Len())
 
 	// Check that nested structures are also stored, recording any that are missing as incomplete.
 	for i := 0; i < tip.Len(); i++ {
 		blk := tip.At(i)
-		link := getBlockComponent(blk)
+
+		meta, err := gsf.loadTxMeta(blk.Messages.Cid)
+		if err == bstore.ErrNotFound {
+			// exit early as we can't load anything else without txmeta
+			incomplete[blk.Cid()] = struct{}{}
+			continue
+		}
+		if err != nil {
+			return err
+		}
+
+		link := getMetaComponent(meta)
 		ok, err := gsf.store.Has(link)
 		if err != nil {
 			return err

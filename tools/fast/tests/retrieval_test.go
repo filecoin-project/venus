@@ -10,15 +10,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-ipfs-files"
-	logging "github.com/ipfs/go-log"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	files "github.com/ipfs/go-ipfs-files"
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
@@ -48,7 +47,7 @@ func TestRetrievalLocalNetwork(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create an environment that includes a genesis block with 1MM FIL
-	env, err := environment.NewMemoryGenesis(big.NewInt(1000000), dir, types.TestProofsMode)
+	env, err := environment.NewMemoryGenesis(big.NewInt(1000000), dir)
 	require.NoError(t, err)
 
 	// Teardown will shutdown all running processes the environment knows about
@@ -213,20 +212,20 @@ func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Fil
 	// Store some data with the miner with the given ask, returns the cid for
 	// the imported data, and the deal which was created
 	var data bytes.Buffer
-	dataReader := io.LimitReader(rand.Reader, int64(sinfo.MaxPieceSize.Uint64()))
+	dataReader := io.LimitReader(rand.Reader, int64(sinfo.MaxPieceSize))
 	dataReader = io.TeeReader(dataReader, &data)
 	dcid, deal, err := series.ImportAndStore(ctx, client, ask, files.NewReaderFile(dataReader))
 	require.NoError(t, err)
 
 	// Wait for the deal to be complete
-	proposalResponse, err := series.WaitForDealState(ctx, client, deal, storagedeal.Complete)
+	proposalResponse, err := series.WaitForDealState(ctx, client, deal, storagemarket.StorageDealActive)
 	require.NoError(t, err)
 
-	_, err = client.MessageWait(ctx, proposalResponse.ProofInfo.CommitmentMessage)
+	_, err = client.MessageWait(ctx, *proposalResponse.PublishMessage)
 	require.NoError(t, err)
 
 	// Verify PIP
-	_, err = client.ClientVerifyStorageDeal(ctx, deal.ProposalCid)
+	_, err = client.ClientVerifyStorageDeal(ctx, deal.Proposal)
 	require.NoError(t, err)
 
 	// Retrieve the stored piece of data

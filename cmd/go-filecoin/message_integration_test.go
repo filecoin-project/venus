@@ -6,15 +6,16 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
+	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestMessageSend(t *testing.T) {
@@ -22,8 +23,7 @@ func TestMessageSend(t *testing.T) {
 	tf.IntegrationTest(t)
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
-	defaultAddr, err := address.NewFromString(fixtures.TestAddresses[0])
-	require.NoError(t, err)
+	defaultAddr := fortest.TestAddresses[0]
 
 	cs := node.FixtureChainSeed(t)
 	builder.WithGenesisInit(cs.GenesisInitFunc)
@@ -35,7 +35,7 @@ func TestMessageSend(t *testing.T) {
 	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
-	_, err = n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
+	_, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
 	require.NoError(t, err)
 
 	from, err := n.PorcelainAPI.WalletDefaultAddress() // this should = fixtures.TestAddresses[0]
@@ -58,7 +58,7 @@ func TestMessageSend(t *testing.T) {
 		"--from", from.String(),
 		"--gas-price", "1",
 		"--gas-limit", "300",
-		fixtures.TestAddresses[3],
+		fortest.TestAddresses[3].String(),
 	)
 
 	t.Log("[success] with from and int value")
@@ -69,7 +69,7 @@ func TestMessageSend(t *testing.T) {
 		"--gas-price", "1",
 		"--gas-limit", "300",
 		"--value", "10",
-		fixtures.TestAddresses[3],
+		fortest.TestAddresses[3].String(),
 	)
 
 	t.Log("[success] with from and decimal value")
@@ -80,28 +80,27 @@ func TestMessageSend(t *testing.T) {
 		"--gas-price", "1",
 		"--gas-limit", "300",
 		"--value", "5.5",
-		fixtures.TestAddresses[3],
+		fortest.TestAddresses[3].String(),
 	)
 }
 
 func TestMessageWait(t *testing.T) {
-	t.Skip("Dragons: fake proofs")
 	tf.IntegrationTest(t)
 	ctx := context.Background()
-	builder := test.NewNodeBuilder(t)
 
-	buildWithMiner(t, builder)
-	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
-	defer done()
+	seed, genCfg, fakeClock, chainClock := test.CreateBootstrapSetup(t)
+	node := test.CreateBootstrapMiner(ctx, t, seed, chainClock, genCfg)
+
+	cmdClient, clientStop := test.RunNodeAPI(ctx, node, t)
+	defer clientStop()
 
 	t.Run("[success] transfer only", func(t *testing.T) {
-		msg := cmdClient.RunSuccess(ctx, "message", "send",
-			"--from", fixtures.TestAddresses[0],
+		var sendResult commands.MessageSendResult
+		cmdClient.RunMarshaledJSON(ctx, &sendResult, "message", "send",
 			"--gas-price", "1",
 			"--gas-limit", "300",
-			fixtures.TestAddresses[1],
+			fortest.TestAddresses[1].String(),
 		)
-		msgcid := msg.ReadStdoutTrimNewlines()
 
 		// Fail with timeout before the message has been mined
 		cmdClient.RunFail(
@@ -112,22 +111,64 @@ func TestMessageWait(t *testing.T) {
 			"--receipt=false",
 			"--timeout=100ms",
 			"--return",
-			msgcid,
+			sendResult.Cid.String(),
 		)
 
-		_, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-		require.NoError(t, err)
+		test.RequireMineOnce(ctx, t, fakeClock, node)
 
-		wait := cmdClient.RunSuccess(
+		var waitResult commands.WaitResult
+		cmdClient.RunMarshaledJSON(
 			ctx,
+			&waitResult,
 			"message", "wait",
 			"--message=false",
 			"--receipt=false",
 			"--timeout=1m",
 			"--return",
-			msgcid,
+			sendResult.Cid.String(),
 		)
-		assert.Equal(t, "", wait.ReadStdout())
+		assert.Equal(t, fortest.TestAddresses[1], waitResult.Message.Message.To)
+	})
+
+	t.Run("[success] lookback", func(t *testing.T) {
+		var sendResult commands.MessageSendResult
+		cmdClient.RunMarshaledJSON(ctx, &sendResult, "message", "send",
+			"--from", fortest.TestAddresses[0].String(),
+			"--gas-price", "1",
+			"--gas-limit", "300",
+			fortest.TestAddresses[1].String(),
+		)
+
+		// mine 4 times so message is on the chain a few tipsets back
+		for i := 0; i < 4; i++ {
+			test.RequireMineOnce(ctx, t, fakeClock, node)
+		}
+
+		// Fail with timeout because the message is too early for the default lookback (2)
+		cmdClient.RunFail(
+			ctx,
+			"deadline exceeded",
+			"message", "wait",
+			"--message=false",
+			"--receipt=false",
+			"--timeout=1s",
+			"--return",
+			sendResult.Cid.String(),
+		)
+
+		// succeed by specifying a higher lookback
+		var waitResult commands.WaitResult
+		cmdClient.RunMarshaledJSON(
+			ctx,
+			&waitResult,
+			"message", "wait",
+			"--message=false",
+			"--receipt=false",
+			"--lookback=10",
+			"--timeout=1m",
+			"--return",
+			sendResult.Cid.String(),
+		)
 	})
 }
 
@@ -137,8 +178,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
-	defaultAddr, err := address.NewFromString(fixtures.TestAddresses[0])
-	require.NoError(t, err)
+	defaultAddr := fortest.TestAddresses[0]
 
 	buildWithMiner(t, builder)
 	builder.WithConfig(node.DefaultAddressConfigOpt(defaultAddr))
@@ -155,7 +195,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 			"block gas limit",
 			"message", "send",
 			"--gas-price", "1", "--gas-limit", doubleTheBlockGasLimit,
-			"--value=10", fixtures.TestAddresses[1],
+			"--value=10", fortest.TestAddresses[1].String(),
 		)
 	})
 
@@ -164,7 +204,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 			ctx,
 			"message", "send",
 			"--gas-price", "1", "--gas-limit", halfTheBlockGasLimit,
-			"--value=10", fixtures.TestAddresses[1],
+			"--value=10", fortest.TestAddresses[1].String(),
 		)
 
 		blk, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
@@ -193,10 +233,10 @@ func TestMessageStatus(t *testing.T) {
 		msg := cmdClient.RunSuccess(
 			ctx,
 			"message", "send",
-			"--from", fixtures.TestAddresses[0],
+			"--from", fortest.TestAddresses[0].String(),
 			"--gas-price", "1", "--gas-limit", "300",
 			"--value=1234",
-			fixtures.TestAddresses[1],
+			fortest.TestAddresses[1].String(),
 		)
 
 		msgcid := msg.ReadStdoutTrimNewlines()

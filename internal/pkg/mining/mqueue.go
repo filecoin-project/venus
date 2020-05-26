@@ -5,8 +5,10 @@ import (
 	"container/heap"
 	"sort"
 
+	"github.com/filecoin-project/go-address"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // MessageQueue is a priority queue of messages from different actors. Messages are ordered
@@ -71,10 +73,14 @@ func (mq *MessageQueue) Pop() (*types.SignedMessage, bool) {
 	return msg, true
 }
 
-// Drain removes and returns all messages in a slice.
-func (mq *MessageQueue) Drain() []*types.SignedMessage {
+// Drain removes and returns all messages in a slice.  If max is < 0 returns all
+func (mq *MessageQueue) Drain(nToPop int) []*types.SignedMessage {
 	var out []*types.SignedMessage
 	for msg, hasMore := mq.Pop(); hasMore; msg, hasMore = mq.Pop() {
+		if nToPop == 0 {
+			break
+		}
+		nToPop--
 		out = append(out, msg)
 	}
 	return out
@@ -93,8 +99,8 @@ func (pq queueHeap) Len() int { return len(pq) }
 
 // Less implements Heap.Interface.Less to compare items on gas price and sender address.
 func (pq queueHeap) Less(i, j int) bool {
-	delta := pq[i][0].Message.GasPrice.Sub(pq[j][0].Message.GasPrice)
-	if !delta.Equal(types.ZeroAttoFIL) {
+	delta := specsbig.Sub(pq[i][0].Message.GasPrice, pq[j][0].Message.GasPrice)
+	if !delta.IsZero() {
 		// We want Pop to give us the highest gas price, so use GreaterThan.
 		return delta.GreaterThan(types.ZeroAttoFIL)
 	}

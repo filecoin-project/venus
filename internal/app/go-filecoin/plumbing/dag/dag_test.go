@@ -5,18 +5,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-exchange-offline"
-	"github.com/ipfs/go-ipld-format"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestDAGGet(t *testing.T) {
@@ -33,7 +33,7 @@ func TestDAGGet(t *testing.T) {
 		dag := NewDAG(dserv)
 
 		_, err := dag.GetNode(ctx, "awful")
-		assert.EqualError(t, err, "invalid 'ipfs ref' path")
+		assert.EqualError(t, err, "invalid path \"awful\": selected encoding not supported")
 	})
 
 	t.Run("ILPD node not found results in error", func(t *testing.T) {

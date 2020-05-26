@@ -5,6 +5,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -13,7 +14,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
@@ -63,9 +64,10 @@ func TestMessagePoolValidate(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("message pool rejects messages after it reaches its limit", func(t *testing.T) {
-		// pull the default size from the default config value
+		// alter the config to have a max size that can be quickly tested
 		mpoolCfg := config.NewDefaultConfig().Mpool
-		maxMessagePoolSize := mpoolCfg.MaxPoolSize
+		maxMessagePoolSize := uint(100)
+		mpoolCfg.MaxPoolSize = maxMessagePoolSize
 		ctx := context.Background()
 		pool := message.NewPool(mpoolCfg, th.NewMockMessagePoolValidator())
 
@@ -167,7 +169,7 @@ func TestLargestNonce(t *testing.T) {
 		m := types.NewSignedMsgs(2, mockSigner)
 		reqAdd(t, p, 0, m[0], m[1])
 
-		_, found := p.LargestNonce(address.NewForTestGetter()())
+		_, found := p.LargestNonce(vmaddr.NewForTestGetter()())
 		assert.False(t, found)
 	})
 
@@ -206,7 +208,7 @@ func TestLargestNonce(t *testing.T) {
 	})
 }
 
-func mustSetNonce(signer types.Signer, message *types.SignedMessage, nonce types.Uint64) *types.SignedMessage {
+func mustSetNonce(signer types.Signer, message *types.SignedMessage, nonce uint64) *types.SignedMessage {
 	return mustResignMessage(signer, message, func(m *types.UnsignedMessage) {
 		m.CallSeqNum = nonce
 	})
@@ -224,10 +226,10 @@ func mustResignMessage(signer types.Signer, message *types.SignedMessage, f func
 }
 
 func signMessage(signer types.Signer, message types.UnsignedMessage) (*types.SignedMessage, error) {
-	return types.NewSignedMessage(message, signer)
+	return types.NewSignedMessage(context.TODO(), message, signer)
 }
 
-func reqAdd(t *testing.T, p *message.Pool, height uint64, msgs ...*types.SignedMessage) {
+func reqAdd(t *testing.T, p *message.Pool, height abi.ChainEpoch, msgs ...*types.SignedMessage) {
 	ctx := context.Background()
 	for _, m := range msgs {
 		_, err := p.Add(ctx, m, height)

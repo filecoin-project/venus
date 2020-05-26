@@ -4,35 +4,33 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 func TestMessageMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
-	addrGetter := address.NewForTestGetter()
-
-	// TODO: allow more types than just strings for the params
-	// currently []interface{} results in type information getting lost when doing
-	// a roundtrip with the default cbor encoder.
+	addrGetter := vmaddr.NewForTestGetter()
 	msg := NewMeteredMessage(
 		addrGetter(),
 		addrGetter(),
 		42,
 		NewAttoFILFromFIL(17777),
-		SendMethodID,
+		builtin.MethodSend,
 		[]byte("foobar"),
 		NewAttoFILFromFIL(3),
-		NewGasUnits(4),
+		gas.NewGas(4),
 	)
 
 	// This check requests that you add a non-zero value for new fields above,
 	// then update the field count below.
-	require.Equal(t, 8, reflect.TypeOf(*msg).NumField())
+	require.Equal(t, 10, reflect.TypeOf(*msg).NumField())
 
 	marshalled, err := msg.Marshal()
 	assert.NoError(t, err)
@@ -43,6 +41,7 @@ func TestMessageMarshal(t *testing.T) {
 	err = msgBack.Unmarshal(marshalled)
 	assert.NoError(t, err)
 
+	assert.Equal(t, msg.Version, msgBack.Version)
 	assert.Equal(t, msg.To, msgBack.To)
 	assert.Equal(t, msg.From, msgBack.From)
 	assert.Equal(t, msg.Value, msgBack.Value)
@@ -56,14 +55,14 @@ func TestMessageMarshal(t *testing.T) {
 func TestMessageCid(t *testing.T) {
 	tf.UnitTest(t)
 
-	addrGetter := address.NewForTestGetter()
+	addrGetter := vmaddr.NewForTestGetter()
 
 	msg1 := NewUnsignedMessage(
 		addrGetter(),
 		addrGetter(),
 		0,
 		NewAttoFILFromFIL(999),
-		SendMethodID,
+		builtin.MethodSend,
 		nil,
 	)
 
@@ -72,7 +71,7 @@ func TestMessageCid(t *testing.T) {
 		addrGetter(),
 		0,
 		NewAttoFILFromFIL(4004),
-		SendMethodID,
+		builtin.MethodSend,
 		nil,
 	)
 
@@ -87,14 +86,14 @@ func TestMessageCid(t *testing.T) {
 func TestMessageString(t *testing.T) {
 	tf.UnitTest(t)
 
-	addrGetter := address.NewForTestGetter()
+	addrGetter := vmaddr.NewForTestGetter()
 
 	msg := NewUnsignedMessage(
 		addrGetter(),
 		addrGetter(),
 		0,
 		NewAttoFILFromFIL(999),
-		SendMethodID,
+		builtin.MethodSend,
 		nil,
 	)
 

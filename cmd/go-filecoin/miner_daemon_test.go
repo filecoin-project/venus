@@ -2,7 +2,6 @@ package commands_test
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,22 +12,22 @@ import (
 	"testing"
 	"time"
 
+	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/fixtures"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
-	"github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
 func TestMinerHelp(t *testing.T) {
@@ -104,7 +103,7 @@ func runHelpSuccess(t *testing.T, args ...string) string {
 		t.Fatal(err)
 	}
 
-	if _, err = gengen.GenGenesisCar(testConfig, fi); err != nil {
+	if _, err = gengen.GenGenesisCar(minerDaemonTestConfig(t), fi); err != nil {
 		t.Fatal(err)
 	}
 
@@ -120,9 +119,7 @@ func TestMinerCreate(t *testing.T) {
 	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 
-	testAddr, err := address.NewFromString(fixtures.TestAddresses[2])
-	require.NoError(t, err)
-
+	testAddr := fortest.TestAddresses[2]
 	t.Run("success", func(t *testing.T) {
 
 		var err error
@@ -132,7 +129,7 @@ func TestMinerCreate(t *testing.T) {
 			d1 := makeTestDaemonWithMinerAndStart(t)
 			defer d1.ShutdownSuccess()
 
-			d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+			d := th.NewDaemon(t, th.KeyFile(fortest.KeyFilePaths()[2])).Start()
 			defer d.ShutdownSuccess()
 
 			d1.ConnectSuccess(d)
@@ -143,7 +140,7 @@ func TestMinerCreate(t *testing.T) {
 				args = append(args, "--peerid", pid.Pretty())
 			}
 
-			collateral := miner.MinimumCollateralPerSector.CalculatePrice(types.NewBytesAmount(1000000 * types.OneKiBSectorSize.Uint64()))
+			collateral := specsbig.Mul(specsbig.NewInt(int64(1000000*constants.DevSectorSize)), abi.NewTokenAmount(10))
 			args = append(args, collateral.String())
 
 			var wg sync.WaitGroup
@@ -215,15 +212,15 @@ func TestMinerSetPrice(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	d1 := th.NewDaemon(t,
-		th.WithMiner(fixtures.TestMiners[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.DefaultAddress(fixtures.TestAddresses[0])).Start()
+		th.WithMiner(fortest.TestMiners[0]),
+		th.KeyFile(fortest.KeyFilePaths()[0]),
+		th.DefaultAddress(fortest.TestAddresses[0])).Start()
 	defer d1.ShutdownSuccess()
 
 	d1.RunSuccess("mining", "start")
 
 	setPrice := d1.RunSuccess("miner", "set-price", "62", "6", "--gas-price", "1", "--gas-limit", "300")
-	assert.Contains(t, setPrice.ReadStdoutTrimNewlines(), fmt.Sprintf("Set price for miner %s to 62.", fixtures.TestMiners[0]))
+	assert.Contains(t, setPrice.ReadStdoutTrimNewlines(), fmt.Sprintf("Set price for miner %s to 62.", fortest.TestMiners[0]))
 
 	configuredPrice := d1.RunSuccess("config", "mining.storagePrice")
 
@@ -263,56 +260,56 @@ func requireMinerCreate(ctx context.Context, t *testing.T, env *fastesting.TestE
 func TestMinerCreateChargesGas(t *testing.T) {
 	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
+	t.Skip("new runtime")
 
-	miningMinerOwnerAddr, err := address.NewFromString(fixtures.TestAddresses[0])
-	require.NoError(t, err)
+	// miningMinerOwnerAddr := fixtures.TestAddresses[0]
 
-	d1 := makeTestDaemonWithMinerAndStart(t)
-	defer d1.ShutdownSuccess()
-	d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
-	defer d.ShutdownSuccess()
-	d1.ConnectSuccess(d)
-	var wg sync.WaitGroup
+	// d1 := makeTestDaemonWithMinerAndStart(t)
+	// defer d1.ShutdownSuccess()
+	// d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+	// defer d.ShutdownSuccess()
+	// d1.ConnectSuccess(d)
+	// var wg sync.WaitGroup
 
-	// make sure the FIL shows up in the MinerOwnerAccount
-	startingBalance := queryBalance(t, d, miningMinerOwnerAddr)
+	// // make sure the FIL shows up in the MinerOwnerAccount
+	// startingBalance := queryBalance(t, d, miningMinerOwnerAddr)
 
-	wg.Add(1)
-	go func() {
-		testMiner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "333", "--gas-limit", "100", "200")
-		addr, err := address.NewFromString(strings.Trim(testMiner.ReadStdout(), "\n"))
-		assert.NoError(t, err)
-		assert.NotEqual(t, addr, address.Undef)
-		wg.Done()
-	}()
-	// ensure mining runs after the command in our goroutine
-	d1.MineAndPropagate(time.Second, d)
-	wg.Wait()
+	// wg.Add(1)
+	// go func() {
+	// 	testMiner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "333", "--gas-limit", "100", "200")
+	// 	addr, err := address.NewFromString(strings.Trim(testMiner.ReadStdout(), "\n"))
+	// 	assert.NoError(t, err)
+	// 	assert.NotEqual(t, addr, address.Undef)
+	// 	wg.Done()
+	// }()
+	// // ensure mining runs after the command in our goroutine
+	// d1.MineAndPropagate(time.Second, d)
+	// wg.Wait()
 
-	expectedBlockReward := consensus.NewDefaultBlockRewarder().BlockRewardAmount()
-	expectedPrice := types.NewAttoFILFromFIL(333)
-	expectedGasCost := big.NewInt(100)
-	expectedBalance := expectedBlockReward.Add(expectedPrice.MulBigInt(expectedGasCost))
-	newBalance := queryBalance(t, d, miningMinerOwnerAddr)
-	assert.Equal(t, expectedBalance.String(), newBalance.Sub(startingBalance).String())
+	// expectedBlockReward := consensus.NewDefaultBlockRewarder().BlockRewardAmount()
+	// expectedPrice := types.NewAttoFILFromFIL(333)
+	// expectedGasCost := big.NewInt(100)
+	// expectedBalance := expectedBlockReward.Add(expectedPrice.MulBigInt(expectedGasCost))
+	// newBalance := queryBalance(t, d, miningMinerOwnerAddr)
+	// assert.Equal(t, expectedBalance.String(), newBalance.Sub(startingBalance).String())
 }
 
-func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) types.AttoFIL {
-	output := d.RunSuccess("actor", "ls", "--enc", "json")
-	result := output.ReadStdoutTrimNewlines()
-	for _, line := range bytes.Split([]byte(result), []byte{'\n'}) {
-		var a commands.ActorView
-		err := json.Unmarshal(line, &a)
-		require.NoError(t, err)
-		if a.Address == actorAddr.String() {
-			return a.Balance
-		}
-	}
-	t.Fail()
-	return types.ZeroAttoFIL
-}
+// func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) types.AttoFIL {
+// 	output := d.RunSuccess("actor", "ls", "--enc", "json")
+// 	result := output.ReadStdoutTrimNewlines()
+// 	for _, line := range bytes.Split([]byte(result), []byte{'\n'}) {
+// 		var a commands.ActorView
+// 		err := json.Unmarshal(line, &a)
+// 		require.NoError(t, err)
+// 		if a.Address == actorAddr.String() {
+// 			return a.Balance
+// 		}
+// 	}
+// 	t.Fail()
+// 	return types.ZeroAttoFIL
+// }
 
-func TestMinerOwner(t *testing.T) {
+func TestMinerStatus(t *testing.T) {
 	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 
@@ -321,7 +318,7 @@ func TestMinerOwner(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err = gengen.GenGenesisCar(testConfig, fi); err != nil {
+	if _, err = gengen.GenGenesisCar(minerDaemonTestConfig(t), fi); err != nil {
 		t.Fatal(err)
 	}
 
@@ -344,46 +341,7 @@ func TestMinerOwner(t *testing.T) {
 		}
 	}
 
-	ownerOutput := d.RunSuccess("miner", "owner", addressStruct.Address)
-
-	_, err = address.NewFromString(ownerOutput.ReadStdoutTrimNewlines())
-
-	assert.NoError(t, err)
-}
-
-func TestMinerPower(t *testing.T) {
-	t.Skip("Long term solution: #3642")
-	tf.IntegrationTest(t)
-
-	fi, err := ioutil.TempFile("", "gengentest")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if _, err = gengen.GenGenesisCar(testConfig, fi); err != nil {
-		t.Fatal(err)
-	}
-
-	_ = fi.Close()
-
-	d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
-	defer d.ShutdownSuccess()
-
-	actorLsOutput := d.RunSuccess("actor", "ls")
-
-	scanner := bufio.NewScanner(strings.NewReader(actorLsOutput.ReadStdout()))
-	var addressStruct struct{ Address string }
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.Contains(line, "MinerActor") {
-			err = json.Unmarshal([]byte(line), &addressStruct)
-			assert.NoError(t, err)
-			break
-		}
-	}
-
-	powerOutput := d.RunSuccess("miner", "power", addressStruct.Address)
+	powerOutput := d.RunSuccess("miner", "status", addressStruct.Address)
 
 	power := powerOutput.ReadStdoutTrimNewlines()
 
@@ -391,103 +349,34 @@ func TestMinerPower(t *testing.T) {
 	assert.Equal(t, "3072 / 6144", power)
 }
 
-func TestMinerActiveCollateral(t *testing.T) {
-	t.Skip("Long term solution: #3642")
-	tf.IntegrationTest(t)
+func minerDaemonTestConfig(t *testing.T) *gengen.GenesisCfg {
 
-	fi, err := ioutil.TempFile("", "gengentest")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if _, err = gengen.GenGenesisCar(testConfig, fi); err != nil {
-		t.Fatal(err)
-	}
-
-	_ = fi.Close()
-
-	d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
-	defer d.ShutdownSuccess()
-
-	actorLsOutput := d.RunSuccess("actor", "ls")
-
-	scanner := bufio.NewScanner(strings.NewReader(actorLsOutput.ReadStdout()))
-	var addressStruct struct{ Address string }
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.Contains(line, "MinerActor") {
-			err = json.Unmarshal([]byte(line), &addressStruct)
-			assert.NoError(t, err)
-			break
-		}
-	}
-
-	collateralOutput := d.RunSuccess("miner", "collateral", addressStruct.Address)
-	collateral, ok := types.NewAttoFILFromFILString(collateralOutput.ReadStdoutTrimNewlines())
-	require.True(t, ok)
-
-	expectedCollateral := miner.MinimumCollateralPerSector.MulBigInt(big.NewInt(3))
-	assert.Equal(t, expectedCollateral, collateral)
-}
-
-var testConfig = &gengen.GenesisCfg{
-	Seed:       0,
-	ProofsMode: types.TestProofsMode,
-	Keys:       4,
-	PreAlloc: []string{
-		"10",
-		"50",
-	},
-	Miners: []*gengen.CreateStorageMinerConfig{
-		{
-			Owner:               0,
-			NumCommittedSectors: 3,
-			SectorSize:          types.OneKiBSectorSize.Uint64(),
+	commCfgs, err := gengen.MakeCommitCfgs(3)
+	require.NoError(t, err)
+	return &gengen.GenesisCfg{
+		Seed:      0,
+		KeysToGen: 4,
+		PreallocatedFunds: []string{
+			"0",
+			"0",
+			"10",
+			"50",
 		},
-		{
-			Owner:               1,
-			NumCommittedSectors: 3,
-			SectorSize:          types.OneKiBSectorSize.Uint64(),
+		Miners: []*gengen.CreateStorageMinerConfig{
+			{
+				Owner:            0,
+				CommittedSectors: commCfgs,
+				SealProofType:    constants.DevSealProofType,
+			},
+			{
+				Owner:            1,
+				CommittedSectors: commCfgs,
+				SealProofType:    constants.DevSealProofType,
+			},
 		},
-	},
-	Network: "go-filecoin-test",
-	Time:    123456789,
-}
-
-func TestMinerWorker(t *testing.T) {
-	t.Skip("Long term solution: #3642")
-	tf.IntegrationTest(t)
-
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
-	defer func() {
-		require.NoError(t, env.Teardown(ctx))
-	}()
-
-	minerNode := env.RequireNewNodeWithFunds(1000)
-
-	t.Run("if there is no miner worker, returns error and outputs nothing", func(t *testing.T) {
-		res, err := minerNode.MinerWorker(ctx)
-		require.NotNil(t, err)
-		lastErr, err := minerNode.LastCmdStdErrStr()
-		require.NoError(t, err)
-		require.Contains(t, lastErr, "problem getting worker address")
-		require.Contains(t, lastErr, "actor not found")
-		assert.Equal(t, address.Undef, res.WorkerAddress)
-	})
-
-	t.Run("if there is a miner, shows the correct worker address", func(t *testing.T) {
-		series.CtxMiningNext(ctx, 1)
-		minerAddr := requireMinerCreate(ctx, t, env, minerNode)
-
-		workerAddr, err := minerNode.MinerOwner(ctx, minerAddr)
-		require.NoError(t, err)
-
-		res, err := minerNode.MinerWorker(ctx)
-		fmt.Println(minerNode.LastCmdStdErrStr())
-		require.NoError(t, err)
-		assert.Equal(t, workerAddr.String(), res.WorkerAddress.String())
-	})
+		Network: "gfctest",
+		Time:    123456789,
+	}
 }
 
 func TestMinerSetWorker(t *testing.T) {
@@ -500,7 +389,7 @@ func TestMinerSetWorker(t *testing.T) {
 	}()
 
 	minerNode := env.RequireNewNodeWithFunds(1000)
-	newAddr := address.NewForTestGetter()()
+	newAddr := vmaddr.NewForTestGetter()()
 
 	t.Run("fails if there is no miner worker", func(t *testing.T) {
 		_, err := minerNode.MinerSetWorker(ctx, newAddr, fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
@@ -515,7 +404,7 @@ func TestMinerSetWorker(t *testing.T) {
 
 	t.Run("succceeds if there is a miner", func(t *testing.T) {
 		series.CtxMiningNext(ctx, 1)
-		_ = requireMinerCreate(ctx, t, env, minerNode)
+		minerAddr := requireMinerCreate(ctx, t, env, minerNode)
 
 		msgCid, err := minerNode.MinerSetWorker(ctx, newAddr, fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
 		require.NoError(t, err)
@@ -526,9 +415,9 @@ func TestMinerSetWorker(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 0, int(resp.Receipt.ExitCode))
 
-		res2, err := minerNode.MinerWorker(ctx)
+		res2, err := minerNode.MinerStatus(ctx, minerAddr)
 		require.NoError(t, err)
 
-		assert.Equal(t, newAddr.String(), res2.WorkerAddress.String())
+		assert.Equal(t, newAddr, res2.WorkerAddress)
 	})
 }

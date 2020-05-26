@@ -2,12 +2,12 @@ package commands
 
 import (
 	"fmt"
-	"io"
 	"time"
 
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	peer "github.com/libp2p/go-libp2p-core/peer"
+
 	//"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"github.com/pkg/errors"
 )
@@ -39,7 +39,7 @@ trip latency information.
 		cmdkit.UintOption("count", "c", "Number of ping messages to send").WithDefault(0),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		peerID, err := peer.IDB58Decode(req.Arguments[0])
+		peerID, err := peer.Decode(req.Arguments[0])
 		if err != nil {
 			return fmt.Errorf("failed to parse peer address '%s': %s", req.Arguments[0], err)
 		}
@@ -69,13 +69,6 @@ trip latency information.
 		}
 
 		return nil
-	},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, result *PingResult) error {
-			milliseconds := result.RTT.Seconds() * 1000
-			fmt.Fprintf(w, "Pong received: seq=%d time=%.2f ms\n", result.Count, milliseconds) // nolint: errcheck
-			return nil
-		}),
 	},
 	Type: PingResult{},
 }

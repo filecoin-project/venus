@@ -2,20 +2,15 @@ package plumbing
 
 import (
 	"context"
-	"fmt"
 	"io"
-	"strings"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore/query"
 	ipld "github.com/ipfs/go-ipld-format"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
@@ -25,15 +20,20 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/strgdls"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -52,23 +52,19 @@ type API struct {
 	expected     consensus.Protocol
 	msgPool      *message.Pool
 	msgPreviewer *msg.Previewer
-	actorState   *consensus.ActorStateStore
 	msgWaiter    *msg.Waiter
 	network      *net.Network
 	outbox       *message.Outbox
 	pieceManager func() piecemanager.PieceManager
-	storagedeals *strgdls.Store
 	wallet       *wallet.Wallet
 }
 
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
 	Chain        *cst.ChainStateReadWriter
-	ActState     *consensus.ActorStateStore
 	Sync         *cst.ChainSyncProvider
 	Config       *cfg.Config
 	DAG          *dag.DAG
-	Deals        *strgdls.Store
 	Expected     consensus.Protocol
 	MsgPool      *message.Pool
 	MsgPreviewer *msg.Previewer
@@ -84,7 +80,6 @@ func New(deps *APIDeps) *API {
 	return &API{
 		logger:       logging.Logger("porcelain"),
 		chain:        deps.Chain,
-		actorState:   deps.ActState,
 		syncer:       deps.Sync,
 		config:       deps.Config,
 		dag:          deps.DAG,
@@ -95,7 +90,6 @@ func New(deps *APIDeps) *API {
 		network:      deps.Network,
 		outbox:       deps.Outbox,
 		pieceManager: deps.PieceManager,
-		storagedeals: deps.Deals,
 		wallet:       deps.Wallet,
 	}
 }
@@ -108,7 +102,7 @@ func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Acto
 // ActorGetSignature returns the signature of the given actor's given method.
 // The function signature is typically used to enable a caller to decode the
 // output of an actor method call (message).
-func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ *vm.FunctionSignature, err error) {
+func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address, method abi.MethodNum) (_ vm.ActorMethodSignature, err error) {
 	return api.chain.GetActorSignature(ctx, actorAddr, method)
 }
 
@@ -144,12 +138,12 @@ func (api *API) ChainGetBlock(ctx context.Context, id cid.Cid) (*block.Block, er
 }
 
 // ChainGetMessages gets a message collection by CID
-func (api *API) ChainGetMessages(ctx context.Context, meta types.TxMeta) ([]*types.SignedMessage, error) {
-	return api.chain.GetMessages(ctx, meta)
+func (api *API) ChainGetMessages(ctx context.Context, metaCid cid.Cid) ([]*types.UnsignedMessage, []*types.SignedMessage, error) {
+	return api.chain.GetMessages(ctx, metaCid)
 }
 
 // ChainGetReceipts gets a receipt collection by CID
-func (api *API) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]*types.MessageReceipt, error) {
+func (api *API) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]vm.MessageReceipt, error) {
 	return api.chain.GetReceipts(ctx, id)
 }
 
@@ -173,11 +167,9 @@ func (api *API) ChainLs(ctx context.Context) (*chain.TipsetIterator, error) {
 	return api.chain.Ls(ctx)
 }
 
-// ChainSampleRandomness produces a slice of random bytes sampled from a TipSet
-// in the blockchain at a given height, useful for things like PoSt challenge seed
-// generation.
-func (api *API) ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
-	return api.chain.SampleRandomness(ctx, sampleHeight)
+func (api *API) SampleChainRandomness(ctx context.Context, head block.TipSetKey, tag acrypto.DomainSeparationTag,
+	epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return api.chain.SampleChainRandomness(ctx, head, tag, epoch, entropy)
 }
 
 // SyncerStatus returns the current status of the active or last active chain sync operation.
@@ -198,16 +190,6 @@ func (api *API) ChainExport(ctx context.Context, head block.TipSetKey, out io.Wr
 // ChainImport imports a chain from `in`.
 func (api *API) ChainImport(ctx context.Context, in io.Reader) (block.TipSetKey, error) {
 	return api.chain.ChainImport(ctx, in)
-}
-
-// DealsIterator returns an iterator to access all deals
-func (api *API) DealsIterator() (*query.Results, error) {
-	return api.storagedeals.Iterator()
-}
-
-// DealPut puts a given deal in the datastore
-func (api *API) DealPut(storageDeal *storagedeal.Deal) error {
-	return api.storagedeals.Put(storageDeal)
 }
 
 // OutboxQueues lists addresses with non-empty outbox queues (in no particular order).
@@ -242,24 +224,13 @@ func (api *API) MessagePoolRemove(cid cid.Cid) {
 
 // MessagePreview previews the Gas cost of a message by running it locally on the client and
 // recording the amount of Gas used.
-func (api *API) MessagePreview(ctx context.Context, from, to address.Address, method types.MethodID, params ...interface{}) (types.GasUnits, error) {
+func (api *API) MessagePreview(ctx context.Context, from, to address.Address, method abi.MethodNum, params ...interface{}) (gas.Unit, error) {
 	return api.msgPreviewer.Preview(ctx, from, to, method, params...)
 }
 
-// MessageQuery calls an actor's method using the most recent chain state. It is read-only,
-// it does not change any state. It is use to interrogate actor state. The from address
-// is optional; if not provided, an address will be chosen from the node's wallet.
-func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error) {
-	snapshot, err := api.actorState.Snapshot(ctx, baseKey)
-	if err != nil {
-		return [][]byte{}, err
-	}
-	return snapshot.Query(ctx, optFrom, to, method, params...)
-}
-
-// Snapshot returns a interface to the chain state a a particular tipset
-func (api *API) Snapshot(ctx context.Context, baseKey block.TipSetKey) (consensus.ActorStateSnapshot, error) {
-	return api.actorState.Snapshot(ctx, baseKey)
+// StateView loads the state view for a tipset, i.e. the state *after* the application of the tipset's messages.
+func (api *API) StateView(baseKey block.TipSetKey) (*appstate.View, error) {
+	return api.chain.StateView(baseKey)
 }
 
 // MessageSend sends a message. It uses the default from address if none is given and signs the
@@ -268,8 +239,8 @@ func (api *API) Snapshot(ctx context.Context, baseKey block.TipSetKey) (consensu
 // message to go on chain. Note that no default from address is provided.  The error
 // channel returned receives either nil or an error and is immediately closed after
 // the message is published to the network to signal that the publish is complete.
-func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error) {
-	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, true, method, params...)
+func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
+	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, true, method, params)
 }
 
 //SignedMessageSend sends a siged message.
@@ -277,18 +248,13 @@ func (api *API) SignedMessageSend(ctx context.Context, smsg *types.SignedMessage
 	return api.outbox.SignedSend(ctx, smsg, true)
 }
 
-// MessageFind returns a message and receipt from the blockchain, if it exists.
-func (api *API) MessageFind(ctx context.Context, msgCid cid.Cid) (*msg.ChainMessage, bool, error) {
-	return api.msgWaiter.Find(ctx, msgCid)
-}
-
 // MessageWait invokes the callback when a message with the given cid appears on chain.
 // It will find the message in both the case that it is already on chain and
 // the case that it appears in a newly mined block. An error is returned if one is
 // encountered or if the context is canceled. Otherwise, it waits forever for the message
 // to appear on chain.
-func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
-	return api.msgWaiter.Wait(ctx, msgCid, cb)
+func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+	return api.msgWaiter.Wait(ctx, msgCid, lookback, cb)
 }
 
 // NetworkGetBandwidthStats gets stats on the current bandwidth usage of the network
@@ -336,45 +302,23 @@ func (api *API) NetworkPeers(ctx context.Context, verbose, latency, streams bool
 	return api.network.Peers(ctx, verbose, latency, streams)
 }
 
-// SignBytes uses private key information associated with the given address to sign the given bytes.
-func (api *API) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
-	return api.wallet.SignBytes(data, addr)
-}
-
 // WalletAddresses gets addresses from the wallet
 func (api *API) WalletAddresses() []address.Address {
 	return api.wallet.Addresses()
 }
 
-// WalletFind finds addresses on the wallet
-func (api *API) WalletFind(address address.Address) (wallet.Backend, error) {
-	return api.wallet.Find(address)
-}
-
-// WalletGetPubKeyForAddress returns the public key for a given address
-func (api *API) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) {
-	return api.wallet.GetPubKeyForAddress(addr)
-}
-
 // WalletNewAddress generates a new wallet address
-func (api *API) WalletNewAddress(addressType string) (address.Address, error) {
-	switch strings.ToLower(addressType) { //this assumes that any additions to types/helpers.go will be lowercase
-	case types.BLS:
-		return wallet.NewAddress(api.wallet, address.BLS)
-	case types.SECP256K1:
-		return wallet.NewAddress(api.wallet, address.SECP256K1)
-	default:
-		return address.Undef, fmt.Errorf("invalid address type: %s", addressType)
-	}
+func (api *API) WalletNewAddress(protocol address.Protocol) (address.Address, error) {
+	return wallet.NewAddress(api.wallet, protocol)
 }
 
 // WalletImport adds a given set of KeyInfos to the wallet
-func (api *API) WalletImport(kinfos ...*types.KeyInfo) ([]address.Address, error) {
+func (api *API) WalletImport(kinfos ...*crypto.KeyInfo) ([]address.Address, error) {
 	return api.wallet.Import(kinfos...)
 }
 
 // WalletExport returns the KeyInfos for the given wallet addresses
-func (api *API) WalletExport(addrs []address.Address) ([]*types.KeyInfo, error) {
+func (api *API) WalletExport(addrs []address.Address) ([]*crypto.KeyInfo, error) {
 	return api.wallet.Export(addrs)
 }
 

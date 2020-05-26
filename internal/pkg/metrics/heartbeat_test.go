@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
+	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -18,12 +20,14 @@ import (
 	net "github.com/libp2p/go-libp2p-core/network"
 	ma "github.com/multiformats/go-multiaddr"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 var testCid cid.Cid
@@ -138,7 +142,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 	filecoin := newEndpoint(t, 0)
 
 	// create a tipset, we will assert on it in the SetStreamHandler method
-	expHeight := types.Uint64(444)
+	expHeight := abi.ChainEpoch(444)
 	expTs := mustMakeTipset(t, expHeight)
 
 	addr, err := address.NewSecp256k1Address([]byte("miner address"))
@@ -155,7 +159,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 		require.NoError(t, dec.Decode(&hb))
 
 		assert.Equal(t, expTs.String(), hb.Head)
-		assert.Equal(t, uint64(444), hb.Height)
+		assert.Equal(t, abi.ChainEpoch(444), hb.Height)
 		assert.Equal(t, "BobHoblaw", hb.Nickname)
 		assert.Equal(t, addr, hb.MinerAddress)
 		cancel()
@@ -184,15 +188,15 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 	assert.Error(t, runCtx.Err(), context.Canceled.Error())
 }
 
-func mustMakeTipset(t *testing.T, height types.Uint64) block.TipSet {
+func mustMakeTipset(t *testing.T, height abi.ChainEpoch) block.TipSet {
 	ts, err := block.NewTipSet(&block.Block{
-		Miner:           address.NewForTestGetter()(),
+		Miner:           vmaddr.NewForTestGetter()(),
 		Ticket:          block.Ticket{VRFProof: []byte{0}},
 		Parents:         block.TipSetKey{},
-		ParentWeight:    0,
+		ParentWeight:    fbig.Zero(),
 		Height:          height,
-		MessageReceipts: types.EmptyMessagesCID,
-		Messages:        types.TxMeta{SecpRoot: types.EmptyReceiptsCID, BLSRoot: types.EmptyMessagesCID},
+		MessageReceipts: e.NewCid(types.EmptyMessagesCID),
+		Messages:        e.NewCid(types.EmptyTxMetaCID),
 	})
 	if err != nil {
 		t.Fatal(err)

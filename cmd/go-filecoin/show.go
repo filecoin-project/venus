@@ -1,16 +1,13 @@
 package commands
 
 import (
-	"fmt"
-	"io"
-	"strconv"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+
+	"github.com/ipfs/go-cid"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
 var showCmd = &cmds.Command{
@@ -52,37 +49,6 @@ all other block properties will be included as well.`,
 		return re.Emit(block)
 	},
 	Type: block.FullBlock{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, block *block.FullBlock) error {
-			wStr, err := types.FixedStr(uint64(block.Header.ParentWeight))
-			if err != nil {
-				return err
-			}
-
-			_, err = fmt.Fprintf(w, `Block Details
-Miner:  %s
-Weight: %s
-Height: %s
-Messages:  %s
-Timestamp:  %s
-`,
-				block.Header.Miner,
-				wStr,
-				strconv.FormatUint(uint64(block.Header.Height), 10),
-				block.Header.Messages.String(),
-				strconv.FormatUint(uint64(block.Header.Timestamp), 10),
-			)
-			if err != nil {
-				return err
-			}
-
-			showMessages, _ := req.Options["messages"].(bool)
-			if showMessages == true {
-				_, err = fmt.Fprintf(w, `Messages:  %s`+"\n", block.Messages)
-			}
-			return err
-		}),
-	},
 }
 
 var showHeaderCmd = &cmds.Command{
@@ -109,34 +75,18 @@ all other block properties will be included as well.`,
 		return re.Emit(block)
 	},
 	Type: block.Block{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, block *block.Block) error {
-			wStr, err := types.FixedStr(uint64(block.ParentWeight))
-			if err != nil {
-				return err
-			}
+}
 
-			_, err = fmt.Fprintf(w, `Block Details
-Miner:  %s
-Weight: %s
-Height: %s
-Timestamp:  %s
-`,
-				block.Miner,
-				wStr,
-				strconv.FormatUint(uint64(block.Height), 10),
-				strconv.FormatUint(uint64(block.Timestamp), 10),
-			)
-			return err
-		}),
-	},
+type allMessages struct {
+	BLS  []*types.UnsignedMessage
+	SECP []*types.SignedMessage
 }
 
 var showMessagesCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Show a filecoin message collection by its CID",
+		Tagline: "Show a filecoin message collection by txmeta CID",
 		ShortDescription: `Prints info for all messages in a collection,
-at the given CID.  Message collection CIDs are found in the "Messages" field of 
+at the given CID.  This CID is found in the "Messages" field of
 the filecoin block header.`,
 	},
 	Arguments: []cmdkit.Argument{
@@ -148,27 +98,14 @@ the filecoin block header.`,
 			return err
 		}
 
-		messages, err := GetPorcelainAPI(env).ChainGetMessages(
-			req.Context,
-			types.TxMeta{SecpRoot: cid, BLSRoot: types.EmptyMessagesCID},
-		)
+		bls, secp, err := GetPorcelainAPI(env).ChainGetMessages(req.Context, cid)
 		if err != nil {
 			return err
 		}
 
-		return re.Emit(messages)
+		return re.Emit(&allMessages{BLS: bls, SECP: secp})
 	},
-	Type: []*types.SignedMessage{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, messages []*types.SignedMessage) error {
-			outStr := "Messages Details\n"
-			for _, msg := range messages {
-				outStr += msg.String() + "\n"
-			}
-			_, err := fmt.Fprint(w, outStr)
-			return err
-		}),
-	},
+	Type: &allMessages{},
 }
 
 var showReceiptsCmd = &cmds.Command{
@@ -194,15 +131,5 @@ field of the filecoin block header.`,
 
 		return re.Emit(receipts)
 	},
-	Type: []*types.MessageReceipt{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, receipts []*types.MessageReceipt) error {
-			outStr := "Receipt Details\n"
-			for _, r := range receipts {
-				outStr += r.String() + "\n"
-			}
-			_, err := fmt.Fprint(w, outStr)
-			return err
-		}),
-	},
+	Type: []vm.MessageReceipt{},
 }

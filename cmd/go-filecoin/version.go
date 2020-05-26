@@ -1,9 +1,6 @@
 package commands
 
 import (
-	"fmt"
-	"io"
-
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
@@ -25,10 +22,4 @@ var versionCmd = &cmds.Command{
 		})
 	},
 	Type: versionInfo{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, vo *versionInfo) error {
-			_, err := fmt.Fprintf(w, "commit: %s\n", vo.Commit)
-			return err
-		}),
-	},
 }

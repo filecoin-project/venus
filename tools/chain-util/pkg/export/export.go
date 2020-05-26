@@ -7,11 +7,11 @@ import (
 
 	bserv "github.com/ipfs/go-blockservice"
 	cid "github.com/ipfs/go-cid"
-	badgerds "github.com/ipfs/go-ds-badger"
+	badgerds "github.com/ipfs/go-ds-badger2"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	format "github.com/ipfs/go-ipld-format"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	dag "github.com/ipfs/go-merkledag"
 	errors "github.com/pkg/errors"
 

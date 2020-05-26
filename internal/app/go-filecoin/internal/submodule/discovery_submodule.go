@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/moresync"
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 )
 

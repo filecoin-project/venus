@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 // Tests for the outbound message queue policy.
@@ -24,7 +25,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 	ctx := context.Background()
 
 	keys := types.MustGenerateKeyInfo(2, 42)
-	mm := types.NewMessageMaker(t, keys)
+	mm := vm.NewMessageMaker(t, keys)
 
 	alice := mm.Addresses()[0]
 	bob := mm.Addresses()[1]

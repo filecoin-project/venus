@@ -5,7 +5,8 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	logging "github.com/ipfs/go-log"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 // Reporter defines an interface to updating and reporting the status of the blockchain.
@@ -19,7 +20,7 @@ type Status struct {
 	// They head of the chain currently being fetched/validated, or undef if none.
 	SyncingHead block.TipSetKey
 	// The height of SyncingHead.
-	SyncingHeight uint64
+	SyncingHeight abi.ChainEpoch
 	// Whether SyncingTip is trusted as a head far away from the validated head.
 	SyncingTrusted bool
 	// Unix time at which syncing of chain at SyncingHead began, zero if valdation hasn't started.
@@ -32,7 +33,7 @@ type Status struct {
 	// The key of the tipset currently being fetched
 	FetchingHead block.TipSetKey
 	// The height of FetchingHead
-	FetchingHeight uint64
+	FetchingHeight abi.ChainEpoch
 }
 
 type reporter struct {
@@ -101,7 +102,7 @@ func SyncHead(u block.TipSetKey) UpdateFn {
 }
 
 // SyncHeight updates the head.
-func SyncHeight(u uint64) UpdateFn {
+func SyncHeight(u abi.ChainEpoch) UpdateFn {
 	return func(s *Status) {
 		s.SyncingHeight = u
 	}
@@ -147,7 +148,7 @@ func FetchHead(u block.TipSetKey) UpdateFn {
 }
 
 // FetchHeight gets the height.
-func FetchHeight(u uint64) UpdateFn {
+func FetchHeight(u abi.ChainEpoch) UpdateFn {
 	return func(s *Status) {
 		s.FetchingHeight = u
 	}

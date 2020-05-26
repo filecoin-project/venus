@@ -19,6 +19,12 @@ func (node *Node) processMessage(ctx context.Context, pubSubMsg pubsub.Message) 
 	if err := unmarshaled.Unmarshal(pubSubMsg.GetData()); err != nil {
 		return err
 	}
+	// TODO #3566 This is redundant with pubsub repeater validation.
+	// We should do this in one call, maybe by waiting on pool add in repeater?
+	err = node.Messaging.MsgSigVal.Validate(ctx, unmarshaled)
+	if err != nil {
+		return err
+	}
 
 	log.Debugf("Received new message %s from peer %s", unmarshaled, pubSubMsg.GetSender())
 

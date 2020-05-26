@@ -1,14 +1,17 @@
 package iptbtester
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io/ioutil"
 	"reflect"
 	"testing"
 
-	logging "github.com/ipfs/go-log"
-	"github.com/ipfs/iptb/testbed/interfaces"
+	"github.com/stretchr/testify/require"
+
+	logging "github.com/ipfs/go-log/v2"
+	testbedi "github.com/ipfs/iptb/testbed/interfaces"
 
 	iptb "github.com/ipfs/iptb/testbed"
 
@@ -114,10 +117,25 @@ func (tn *TestNode) MustInit(ctx context.Context, args ...string) *TestNode {
 	out, err := tn.Init(ctx, args...)
 	// Did IPTB fail to function correctly?
 	if err != nil {
+		stdout := new(bytes.Buffer)
+		_, err := stdout.ReadFrom(out.Stdout())
+		require.NoError(tn.T, err)
+		tn.T.Logf("STDOUT:\n%s\n\n", stdout.String())
+		stderr := new(bytes.Buffer)
+		_, err = stderr.ReadFrom(out.Stderr())
+		require.NoError(tn.T, err)
+		tn.T.Logf("STDERR:\n%s\n\n", stderr.String())
 		tn.T.Fatalf("IPTB init function failed: %s", err)
 	}
 	// did the command exit with nonstandard exit code?
 	if out.ExitCode() > 0 {
+		stdout := new(bytes.Buffer)
+		_, err := stdout.ReadFrom(out.Stdout())
+		require.NoError(tn.T, err)
+		tn.T.Logf("STDOUT:\n%s\n\n", stdout.String())
+		stderr := new(bytes.Buffer)
+		_, err = stderr.ReadFrom(out.Stderr())
+		require.NoError(tn.T, err)
 		tn.T.Fatalf("TestNode command: %s, exited with non-zero exitcode: %d", out.Args(), out.ExitCode())
 	}
 	return tn

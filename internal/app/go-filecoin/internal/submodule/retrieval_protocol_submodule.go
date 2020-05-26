@@ -1,23 +1,68 @@
 package submodule
 
 import (
-	"context"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
+	iface "github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
+	impl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
+	"github.com/filecoin-project/go-storedcounter"
+	"github.com/ipfs/go-datastore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/libp2p/go-libp2p-core/host"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/retrieval"
+	retmkt "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/retrieval_market"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 )
 
-// RetrievalProtocolSubmodule enhances the `Node` with "Retrieval" protocol capabilities.
+// RetrievalProtocolSubmodule enhances the node with retrieval protocol
+// capabilities.
 type RetrievalProtocolSubmodule struct {
-	RetrievalAPI *retrieval.API
-
-	// Retrieval Interfaces
-	RetrievalMiner *retrieval.Miner
+	client   iface.RetrievalClient
+	provider iface.RetrievalProvider
 }
 
 // NewRetrievalProtocolSubmodule creates a new retrieval protocol submodule.
-func NewRetrievalProtocolSubmodule(ctx context.Context) (RetrievalProtocolSubmodule, error) {
-	return RetrievalProtocolSubmodule{
-		// RetrievalAPI: nil,
-		// RetrievalMiner: nil,
-	}, nil
+func NewRetrievalProtocolSubmodule(
+	bs blockstore.Blockstore,
+	ds datastore.Batching,
+	cr *cst.ChainStateReadWriter,
+	host host.Host,
+	providerAddr address.Address,
+	signer retmkt.RetrievalSigner,
+	pchMgrAPI retmkt.PaychMgrAPI,
+	pieceManager piecemanager.PieceManager,
+) (*RetrievalProtocolSubmodule, error) {
+
+	retrievalDealPieceStore := piecestore.NewPieceStore(ds)
+
+	netwk := network.NewFromLibp2pHost(host)
+	pnode := retmkt.NewRetrievalProviderConnector(netwk, pieceManager, bs, pchMgrAPI, nil)
+
+	// TODO: use latest go-fil-markets with persisted deal store
+	marketProvider, err := impl.NewProvider(providerAddr, pnode, netwk, retrievalDealPieceStore, bs, ds)
+	if err != nil {
+		return nil, err
+	}
+
+	cnode := retmkt.NewRetrievalClientConnector(bs, cr, signer, pchMgrAPI)
+	dsKey := datastore.NewKey("retrievalmarket/client/counter")
+	counter := storedcounter.New(ds, dsKey)
+	resolver := discovery.Multi(discovery.NewLocal(ds))
+	marketClient, err := impl.NewClient(netwk, bs, cnode, resolver, ds, counter)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RetrievalProtocolSubmodule{marketClient, marketProvider}, nil
+}
+
+func (rps *RetrievalProtocolSubmodule) Client() iface.RetrievalClient {
+	return rps.client
+}
+
+func (rps *RetrievalProtocolSubmodule) Provider() iface.RetrievalProvider {
+	return rps.provider
 }

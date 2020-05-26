@@ -4,20 +4,21 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 var mpSize = metrics.NewInt64Gauge("message_pool_size", "The size of the message pool")
 
 // PoolValidator defines a validator that ensures a message can go through the pool.
 type PoolValidator interface {
-	Validate(ctx context.Context, msg *types.SignedMessage) error
+	ValidateSignedMessageSyntax(ctx context.Context, msg *types.SignedMessage) error
 }
 
 // Pool keeps an unordered, de-duplicated set of Messages and supports removal by CID.
@@ -38,7 +39,7 @@ type Pool struct {
 
 type timedmessage struct {
 	message *types.SignedMessage
-	addedAt uint64
+	addedAt abi.ChainEpoch
 }
 
 type addressNonce struct {
@@ -47,7 +48,7 @@ type addressNonce struct {
 }
 
 func newAddressNonce(msg *types.SignedMessage) addressNonce {
-	return addressNonce{addr: msg.Message.From, nonce: uint64(msg.Message.CallSeqNum)}
+	return addressNonce{addr: msg.Message.From, nonce: msg.Message.CallSeqNum}
 }
 
 // NewPool constructs a new Pool.
@@ -62,7 +63,7 @@ func NewPool(cfg *config.MessagePoolConfig, validator PoolValidator) *Pool {
 
 // Add adds a message to the pool, tagged with the block height at which it was received.
 // Does nothing if the message is already in the pool.
-func (pool *Pool) Add(ctx context.Context, msg *types.SignedMessage, height uint64) (cid.Cid, error) {
+func (pool *Pool) Add(ctx context.Context, msg *types.SignedMessage, height abi.ChainEpoch) (cid.Cid, error) {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
 
@@ -132,8 +133,8 @@ func (pool *Pool) LargestNonce(address address.Address) (largest uint64, found b
 	for _, m := range pool.Pending() {
 		if m.Message.From == address {
 			found = true
-			if uint64(m.Message.CallSeqNum) > largest {
-				largest = uint64(m.Message.CallSeqNum)
+			if m.Message.CallSeqNum > largest {
+				largest = m.Message.CallSeqNum
 			}
 		}
 	}
@@ -141,7 +142,7 @@ func (pool *Pool) LargestNonce(address address.Address) (largest uint64, found b
 }
 
 // PendingBefore returns the CIDs of messages added with height less than `minimumHeight`.
-func (pool *Pool) PendingBefore(minimumHeight uint64) []cid.Cid {
+func (pool *Pool) PendingBefore(minimumHeight abi.ChainEpoch) []cid.Cid {
 	pool.lk.RLock()
 	defer pool.lk.RUnlock()
 
@@ -168,5 +169,5 @@ func (pool *Pool) validateMessage(ctx context.Context, message *types.SignedMess
 	}
 
 	// check that the message is likely to succeed in processing
-	return pool.validator.Validate(ctx, message)
+	return pool.validator.ValidateSignedMessageSyntax(ctx, message)
 }

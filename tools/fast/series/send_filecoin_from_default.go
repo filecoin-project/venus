@@ -4,10 +4,10 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 
@@ -22,7 +22,7 @@ func SendFilecoinFromDefault(ctx context.Context, node *fast.Filecoin, addr addr
 		return cid.Undef, err
 	}
 
-	mcid, err := node.MessageSend(ctx, addr, types.SendMethodID, fast.AOValue(value), fast.AOFromAddr(walletAddr), fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
+	mcid, err := node.MessageSend(ctx, addr, builtin.MethodSend, fast.AOValue(value), fast.AOFromAddr(walletAddr), fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
 	if err != nil {
 		return cid.Undef, err
 	}

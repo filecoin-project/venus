@@ -5,25 +5,31 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 // TestNewHeadHandlerIntegration tests inbox and outbox policy consistency.
 func TestNewHeadHandlerIntegration(t *testing.T) {
 	tf.UnitTest(t)
 	signer, _ := types.NewMockSignersAndKeyInfo(2)
-	objournal := journal.NewInMemoryJournal(t, th.NewFakeClock(time.Unix(1234567890, 0))).Topic("outbox")
+	objournal := journal.NewInMemoryJournal(t, clock.NewFake(time.Unix(1234567890, 0))).Topic("outbox")
 	sender := signer.Addresses[0]
 	dest := signer.Addresses[1]
 	ctx := context.Background()
@@ -33,7 +39,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 	// accepted.
 	maxAge := uint(10)
 	gasPrice := types.NewGasPrice(1)
-	gasUnits := types.NewGasUnits(1000)
+	gasUnits := gas.NewGas(1000)
 
 	makeHandler := func(provider *message.FakeProvider, root block.TipSet) *message.HeadHandler {
 		mpool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
@@ -50,7 +56,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 	t.Run("test send after reverted message", func(t *testing.T) {
 		provider := message.NewFakeProvider(t)
 		root := provider.NewGenesis()
-		actr, _ := account.NewActor(types.ZeroAttoFIL)
+		actr := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
 		actr.CallSeqNum = 42
 		provider.SetHeadAndActor(t, root.Key(), sender, actr)
 
@@ -59,7 +65,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		inbox := handler.Inbox
 
 		// First, send a message and expect to find it in the message queue and pool.
-		mid1, donePub1, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasUnits, true, types.MethodID(9000001))
+		mid1, donePub1, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasUnits, true, abi.MethodNum(9000001), adt.Empty)
 		require.NoError(t, err)
 		require.NotNil(t, donePub1)
 		require.Equal(t, 1, len(outbox.Queue().List(sender))) // Message is in the queue.
@@ -89,7 +95,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 
 		// Send another message from the same account.
 		// First, send a message and expect to find it in the message queue and pool.
-		mid2, donePub2, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasUnits, true, types.MethodID(9000002))
+		mid2, donePub2, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasUnits, true, abi.MethodNum(9000002), adt.Empty)
 		// This case causes the nonce to be wrongly calculated, since the first, now-unmined message
 		// is not in the outbox, and actor state has not updated, but the message pool already has
 		// a message with the same nonce.

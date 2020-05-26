@@ -1,14 +1,11 @@
 package commands
 
 import (
-	"encoding/base64"
 	"fmt"
-	"io"
-	"strconv"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -43,18 +40,6 @@ var mpoolLsCmd = &cmds.Command{
 		return re.Emit(pending)
 	},
 	Type: []*types.SignedMessage{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, msgs *[]*types.SignedMessage) error {
-			for _, msg := range *msgs {
-				c, err := msg.Cid()
-				if err != nil {
-					return err
-				}
-				_ = PrintString(w, c)
-			}
-			return nil
-		}),
-	},
 }
 
 var mpoolShowCmd = &cmds.Command{
@@ -77,33 +62,6 @@ var mpoolShowCmd = &cmds.Command{
 		return re.Emit(msg)
 	},
 	Type: &types.SignedMessage{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, smsg *types.SignedMessage) error {
-			msg := smsg.Message
-			_, err := fmt.Fprintf(w, `Message Details
-To:        %s
-From:      %s
-CallSeqNum:     %s
-Value:     %s
-Method:    %s
-Params:    %s
-Gas price: %s
-Gas limit: %s
-Signature: %s
-`,
-				msg.To,
-				msg.From,
-				strconv.FormatUint(uint64(msg.CallSeqNum), 10),
-				msg.Value,
-				msg.Method,
-				base64.StdEncoding.EncodeToString(msg.Params),
-				msg.GasPrice.String(),
-				strconv.FormatUint(uint64(msg.GasLimit), 10),
-				base64.StdEncoding.EncodeToString(smsg.Signature),
-			)
-			return err
-		}),
-	},
 }
 
 var mpoolRemoveCmd = &cmds.Command{

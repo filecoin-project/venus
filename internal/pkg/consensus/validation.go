@@ -2,96 +2,110 @@ package consensus
 
 import (
 	"context"
-	"math/big"
+	"fmt"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
-var errNegativeValueCt *metrics.Int64Counter
-var errGasAboveBlockLimitCt *metrics.Int64Counter
-var errInsufficientGasCt *metrics.Int64Counter
-var errNonceTooLowCt *metrics.Int64Counter
-var errNonceTooHighCt *metrics.Int64Counter
+var dropNonAccountCt *metrics.Int64Counter
+var dropInsufficientGasCt *metrics.Int64Counter
+var dropNonceTooLowCt *metrics.Int64Counter
+var dropNonceTooHighCt *metrics.Int64Counter
+
+var invReceiverUndefCt *metrics.Int64Counter
+var invSenderUndefCt *metrics.Int64Counter
+var invValueAboveMaxCt *metrics.Int64Counter
+var invParamsNilCt *metrics.Int64Counter
+var invGasPriceNegativeCt *metrics.Int64Counter
+var invGasBelowMinimumCt *metrics.Int64Counter
+var invNegativeValueCt *metrics.Int64Counter
+var invGasAboveBlockLimitCt *metrics.Int64Counter
+
+// The maximum allowed message value.
+var msgMaxValue = types.NewAttoFILFromFIL(2e9)
+
+// These gas cost values must match those in vm/internal/gascost.
+// TODO: Look up gas costs from the same place the VM gets them, keyed by epoch. https://github.com/filecoin-project/go-filecoin/issues/3955
+const onChainMessageBase = gas.Unit(0)
+const onChainMessagePerByte = gas.Unit(2)
 
 func init() {
-	errNegativeValueCt = metrics.NewInt64Counter("consensus/msg_negative_value_err", "Number of negative valuedmessage")
-	errGasAboveBlockLimitCt = metrics.NewInt64Counter("consensus/msg_gas_above_blk_limit_err", "Number of messages with gas above block limit")
-	errInsufficientGasCt = metrics.NewInt64Counter("consensus/msg_insufficient_gas_err", "Number of messages with insufficient gas")
-	errNonceTooLowCt = metrics.NewInt64Counter("consensus/msg_nonce_low_err", "Number of messages with nonce too low")
-	errNonceTooHighCt = metrics.NewInt64Counter("consensus/msg_nonce_high_err", "Number of messages with nonce too high")
+	dropNonAccountCt = metrics.NewInt64Counter("consensus/msg_non_account_sender", "Count of dropped messages with non-account sender")
+	dropInsufficientGasCt = metrics.NewInt64Counter("consensus/msg_insufficient_gas_err", "Count of dropped messages with insufficient gas")
+	dropNonceTooLowCt = metrics.NewInt64Counter("consensus/msg_nonce_low_err", "Count of dropped  messages with nonce too low")
+	dropNonceTooHighCt = metrics.NewInt64Counter("consensus/msg_nonce_high_err", "Count of dropped  messages with nonce too high")
+
+	invReceiverUndefCt = metrics.NewInt64Counter("consensus/msg_undef_receiver", "Count of")
+	invSenderUndefCt = metrics.NewInt64Counter("consensus/msg_undef_sender", "Count of")
+	invValueAboveMaxCt = metrics.NewInt64Counter("consensus/msg_value_max", "Count of")
+	invParamsNilCt = metrics.NewInt64Counter("consensus/msg_params_nil", "Count of")
+	invGasPriceNegativeCt = metrics.NewInt64Counter("consensus/msg_gasprice_negative", "Count of")
+	invGasBelowMinimumCt = metrics.NewInt64Counter("consensus/msg_gaslimit_min", "Count of")
+	invNegativeValueCt = metrics.NewInt64Counter("consensus/msg_value_negative", "Count of invalid negative messages with negative value")
+	invGasAboveBlockLimitCt = metrics.NewInt64Counter("consensus/msg_gaslimit_max", "Count of invalid messages with gas above block limit")
 }
 
-// DefaultMessageValidator validates incoming signed messages.
-type DefaultMessageValidator struct {
-	allowHighNonce bool
+// MessageSelectionChecker checks for miner penalties on signed messages
+type MessagePenaltyChecker struct {
+	api penaltyCheckerAPI
 }
 
-// NewDefaultMessageValidator creates a new default validator.
-// A default validator checks for both permanent semantic problems (e.g. invalid signature)
-// as well as temporary conditions which may change (e.g. actor can't cover gas limit).
-func NewDefaultMessageValidator() *DefaultMessageValidator {
-	return &DefaultMessageValidator{}
+// penaltyCheckerAPI allows the validator to access latest state
+type penaltyCheckerAPI interface {
+	Head() block.TipSetKey
+	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*actor.Actor, error)
 }
 
-// NewOutboundMessageValidator creates a new default validator for outbound messages. This
-// validator matches the default behaviour but allows nonces higher than the actor's current nonce
-// (allowing multiple messages to enter the mpool at once).
-func NewOutboundMessageValidator() *DefaultMessageValidator {
-	return &DefaultMessageValidator{allowHighNonce: true}
+func NewMessagePenaltyChecker(api penaltyCheckerAPI) *MessagePenaltyChecker {
+	return &MessagePenaltyChecker{
+		api: api,
+	}
 }
 
-// Validate checks that a message is semantically valid for processing, returning any
-// invalidity as an error.
-func (v *DefaultMessageValidator) Validate(ctx context.Context, msg *types.UnsignedMessage, fromActor *actor.Actor) error {
-	if msg.From == msg.To {
-		return errSelfSend
+// PenaltyCheck checks that a message is semantically valid for processing without
+// causing miner penality.  It treats any miner penalty condition as an error.
+func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.UnsignedMessage) error {
+	fromActor, err := v.api.GetActorAt(ctx, v.api.Head(), msg.From)
+	if err != nil {
+		return err
+	}
+	// Sender should not be an empty actor
+	if fromActor == nil || fromActor.Empty() {
+		return fmt.Errorf("sender %s is missing/empty: %s", msg.From, msg)
 	}
 
-	if msg.GasPrice.LessEqual(types.ZeroAttoFIL) {
-		return errGasPriceZero
-	}
-
-	// Sender must be an account actor, or an empty actor which will be upgraded to an account actor
-	// when the message is processed.
-	if !(fromActor.Empty() || types.AccountActorCodeCid.Equals(fromActor.Code)) {
-		return errNonAccountActor
-	}
-
-	if msg.Value.IsNegative() {
-		log.Debugf("Cannot transfer negative value: %s from actor: %s", msg.Value.String(), msg.From.String())
-		errNegativeValueCt.Inc(ctx, 1)
-		return errNegativeValue
-	}
-
-	if msg.GasLimit > types.BlockGasLimit {
-		log.Debugf("Message: %s gas limit from actor: %s above block limit: %s", msg.String(), msg.From.String(), string(types.BlockGasLimit))
-		errGasAboveBlockLimitCt.Inc(ctx, 1)
-		return errGasAboveBlockLimit
+	// Sender must be an account actor.
+	if !(builtin.AccountActorCodeID.Equals(fromActor.Code.Cid)) {
+		dropNonAccountCt.Inc(ctx, 1)
+		return fmt.Errorf("sender %s is non-account actor with code %s: %s", msg.From, fromActor.Code.Cid, msg)
 	}
 
 	// Avoid processing messages for actors that cannot pay.
 	if !canCoverGasLimit(msg, fromActor) {
-		log.Debugf("Insufficient funds for message: %s to cover gas limit from actor: %s", msg.String(), msg.From.String())
-		errInsufficientGasCt.Inc(ctx, 1)
-		return errInsufficientGas
+		dropInsufficientGasCt.Inc(ctx, 1)
+		return fmt.Errorf("insufficient funds from sender %s to cover value and gas cost: %s ", msg.From, msg)
 	}
 
 	if msg.CallSeqNum < fromActor.CallSeqNum {
-		log.Debugf("Message: %s nonce lower than actor nonce: %s from actor: %s", msg.String(), fromActor.CallSeqNum, msg.From.String())
-		errNonceTooLowCt.Inc(ctx, 1)
-		return errNonceTooLow
+		dropNonceTooLowCt.Inc(ctx, 1)
+		return fmt.Errorf("nonce %d lower than expected %d: %s", msg.CallSeqNum, fromActor.CallSeqNum, msg)
 	}
 
-	if !v.allowHighNonce && msg.CallSeqNum > fromActor.CallSeqNum {
-		log.Debugf("Message: %s nonce greater than actor nonce: %s from actor: %s", msg.String(), fromActor.CallSeqNum, msg.From.String())
-		errNonceTooHighCt.Inc(ctx, 1)
-		return errNonceTooHigh
+	if msg.CallSeqNum > fromActor.CallSeqNum {
+		dropNonceTooHighCt.Inc(ctx, 1)
+		return fmt.Errorf("nonce %d greater than expected: %d: %s", msg.CallSeqNum, fromActor.CallSeqNum, msg)
 	}
 
 	return nil
@@ -101,54 +115,133 @@ func (v *DefaultMessageValidator) Validate(ctx context.Context, msg *types.Unsig
 // Note that this is an imperfect test, since nested messages invoked by this one may transfer
 // more value from the actor's balance.
 func canCoverGasLimit(msg *types.UnsignedMessage, actor *actor.Actor) bool {
-	maximumGasCharge := msg.GasPrice.MulBigInt(big.NewInt(int64(msg.GasLimit)))
-	return maximumGasCharge.LessEqual(actor.Balance.Sub(msg.Value))
+	// balance >= (gasprice*gasLimit + value)
+	gascost := big.Mul(abi.NewTokenAmount(msg.GasPrice.Int.Int64()), abi.NewTokenAmount(int64(msg.GasLimit)))
+	expense := big.Add(gascost, abi.NewTokenAmount(msg.Value.Int.Int64()))
+	return actor.Balance.GreaterThanEqual(expense)
 }
 
-// IngestionValidatorAPI allows the validator to access latest state
-type ingestionValidatorAPI interface {
-	GetActor(context.Context, address.Address) (*actor.Actor, error)
+// DefaultMessageSyntaxValidator checks basic conditions independent of current state
+type DefaultMessageSyntaxValidator struct{}
+
+func NewMessageSyntaxValidator() *DefaultMessageSyntaxValidator {
+	return &DefaultMessageSyntaxValidator{}
 }
 
-// IngestionValidator can access latest state and runs additional checks to mitigate DoS attacks
-type IngestionValidator struct {
-	api       ingestionValidatorAPI
-	cfg       *config.MessagePoolConfig
-	validator *DefaultMessageValidator
-}
-
-// NewIngestionValidator creates a new validator with an api
-func NewIngestionValidator(api ingestionValidatorAPI, cfg *config.MessagePoolConfig) *IngestionValidator {
-	return &IngestionValidator{
-		api:       api,
-		cfg:       cfg,
-		validator: &DefaultMessageValidator{allowHighNonce: true},
-	}
-}
-
-// Validate validates the signed message.
-// Errors probably mean the validation failed, but possibly indicate a failure to retrieve state
-func (v *IngestionValidator) Validate(ctx context.Context, smsg *types.SignedMessage) error {
-	// ensure message is properly signed
-	if !smsg.VerifySignature() {
-		return errInvalidSignature
-	}
-
-	// retrieve from actor
-	msg := smsg.Message
-	fromActor, err := v.api.GetActor(ctx, msg.From)
-	if err != nil {
-		if state.IsActorNotFoundError(err) {
-			fromActor = &actor.Actor{}
-		} else {
-			return err
+// ValidateSignedMessageSyntax validates signed message syntax and state-independent invariants.
+// Used for incoming messages over pubsub and secp messages included in blocks.
+func (v *DefaultMessageSyntaxValidator) ValidateSignedMessageSyntax(ctx context.Context, smsg *types.SignedMessage) error {
+	msg := &smsg.Message
+	var msgLen int
+	if smsg.Signature.Type == crypto.SigTypeBLS {
+		enc, err := smsg.Message.Marshal()
+		if err != nil {
+			return errors.Wrapf(err, "failed to calculate message size")
 		}
+		msgLen = len(enc)
+	} else {
+		enc, err := smsg.Marshal()
+		if err != nil {
+			return errors.Wrapf(err, "failed to calculate message size")
+		}
+		msgLen = len(enc)
+	}
+	return v.validateMessageSyntaxShared(ctx, msg, msgLen)
+}
+
+// ValidateUnsignedMessageSyntax validates unisigned message syntax and state-independent invariants.
+// Used for bls messages included in blocks.
+func (v *DefaultMessageSyntaxValidator) ValidateUnsignedMessageSyntax(ctx context.Context, msg *types.UnsignedMessage) error {
+	enc, err := msg.Marshal()
+	if err != nil {
+		return errors.Wrapf(err, "failed to calculate message size")
+	}
+	msgLen := len(enc)
+	return v.validateMessageSyntaxShared(ctx, msg, msgLen)
+}
+
+func (v *DefaultMessageSyntaxValidator) validateMessageSyntaxShared(ctx context.Context, msg *types.UnsignedMessage, msgLen int) error {
+	if msg.Version != types.MessageVersion {
+		return fmt.Errorf("version %d, expected %d", msg.Version, types.MessageVersion)
 	}
 
-	// check that message nonce is not too high
-	if msg.CallSeqNum > fromActor.CallSeqNum && msg.CallSeqNum-fromActor.CallSeqNum > v.cfg.MaxNonceGap {
-		return errors.NewRevertErrorf("message nonce (%d) is too much greater than actor nonce (%d)", msg.CallSeqNum, fromActor.CallSeqNum)
+	if msg.To.Empty() {
+		invReceiverUndefCt.Inc(ctx, 1)
+		return fmt.Errorf("empty receiver: %s", msg)
+	}
+	if msg.From.Empty() {
+		invSenderUndefCt.Inc(ctx, 1)
+		return fmt.Errorf("empty sender: %s", msg)
+	}
+	// The spec calls for validating a non-negative call sequence num, but by
+	// the time it's decoded into a uint64 the check is already passed
+
+	if msg.Value.LessThan(big.Zero()) {
+		invNegativeValueCt.Inc(ctx, 1)
+		return fmt.Errorf("negative value %s: %s", msg.Value, msg)
+	}
+	if msg.Value.GreaterThan(msgMaxValue) {
+		invValueAboveMaxCt.Inc(ctx, 1)
+		return fmt.Errorf("value %s exceeds max %s: %s", msg.Value, msgMaxValue, msg)
+	}
+	// The spec calls for validating a non-negative method num, but by the
+	// time it's decoded into a uint64 the check is already passed
+
+	if msg.Params == nil {
+		invParamsNilCt.Inc(ctx, 1)
+		return fmt.Errorf("nil params (should be empty-array): %s", msg)
+	}
+	if msg.GasPrice.LessThan(types.ZeroAttoFIL) {
+		invGasPriceNegativeCt.Inc(ctx, 1)
+		return fmt.Errorf("negative gas price %s: %s", msg.GasPrice, msg)
+	}
+	// The minimum gas limit ensures the sender has enough balance to pay for inclusion of the message in the chain
+	// *at all*. Without this, a message could hit out-of-gas but the sender pay nothing.
+	// NOTE(anorth): this check has been moved to execution time, and the miner is penalized for including
+	// such a message. We can probably remove this.
+	minMsgGas := onChainMessageBase + onChainMessagePerByte*gas.Unit(msgLen)
+	if msg.GasLimit < minMsgGas {
+		invGasBelowMinimumCt.Inc(ctx, 1)
+		return fmt.Errorf("gas limit %d below minimum %d to cover message size: %s", msg.GasLimit, minMsgGas, msg)
+	}
+	if msg.GasLimit > types.BlockGasLimit {
+		invGasAboveBlockLimitCt.Inc(ctx, 1)
+		return fmt.Errorf("gas limit %d exceeds block limit %d: %s", msg.GasLimit, types.BlockGasLimit, msg)
+	}
+	return nil
+}
+
+// MessageSignatureValidator validates message signatures
+type MessageSignatureValidator struct {
+	api signatureValidatorAPI
+}
+
+// signatureValidatorAPI allows the validator to access state needed for signature checking
+type signatureValidatorAPI interface {
+	Head() block.TipSetKey
+	AccountStateView(baseKey block.TipSetKey) (state.AccountStateView, error)
+}
+
+func NewMessageSignatureValidator(api signatureValidatorAPI) *MessageSignatureValidator {
+	return &MessageSignatureValidator{
+		api: api,
+	}
+}
+
+// Validate validates the signed message signature. Errors probably mean the
+//  validation failed, but possibly indicate a failure to retrieve state.
+func (v *MessageSignatureValidator) Validate(ctx context.Context, smsg *types.SignedMessage) error {
+	head := v.api.Head()
+	view, err := v.api.AccountStateView(head)
+	if err != nil {
+		return errors.Wrapf(err, "failed to load state at %v", head)
 	}
 
-	return v.validator.Validate(ctx, &msg, fromActor)
+	sigValidator := state.NewSignatureValidator(view)
+
+	// ensure message is properly signed
+	if err := sigValidator.ValidateMessageSignature(ctx, smsg); err != nil {
+		return errors.Wrap(err, fmt.Errorf("invalid signature by sender over message data").Error())
+	}
+	return nil
 }

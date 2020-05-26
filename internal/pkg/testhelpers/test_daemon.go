@@ -19,16 +19,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/build/project"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/build/project"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -60,9 +60,10 @@ type TestDaemon struct {
 	containerDir     string // Path to directory containing repo and sectors
 	genesisFile      string
 	keyFiles         []string
-	withMiner        string
+	withMiner        address.Address
 	autoSealInterval string
 	isRelay          bool
+	initArgs         []string
 
 	firstRun bool
 	init     bool
@@ -75,7 +76,7 @@ type TestDaemon struct {
 	process        *exec.Cmd
 	test           *testing.T
 	cmdTimeout     time.Duration
-	defaultAddress string
+	defaultAddress address.Address
 	daemonArgs     []string
 }
 
@@ -407,12 +408,12 @@ func (td *TestDaemon) WaitForAPI() error {
 // and returns the address of the new miner
 // equivalent to:
 //     `go-filecoin miner create --from $TEST_ACCOUNT 20`
-func (td *TestDaemon) CreateStorageMinerAddr(peer *TestDaemon, fromAddr string) address.Address {
+func (td *TestDaemon) CreateStorageMinerAddr(peer *TestDaemon, fromAddr address.Address) address.Address {
 	var wg sync.WaitGroup
 	var minerAddr address.Address
 	wg.Add(1)
 	go func() {
-		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "--gas-price", "1", "--gas-limit", "100", "20")
+		miner := td.RunSuccess("miner", "create", "--from", fromAddr.String(), "--gas-price", "1", "--gas-limit", "100", "20")
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		require.NoError(td.test, err)
 		require.NotEqual(td.test, addr, address.Undef)
@@ -426,10 +427,10 @@ func (td *TestDaemon) CreateStorageMinerAddr(peer *TestDaemon, fromAddr string) 
 
 // MinerSetPrice creates an ask for a CURRENTLY MINING test daemon and waits for it to appears on chain. It returns the
 // cid of the AddAsk message so other daemons can `message wait` for it.
-func (td *TestDaemon) MinerSetPrice(minerAddr string, fromAddr string, price string, expiry string) cid.Cid {
+func (td *TestDaemon) MinerSetPrice(minerAddr address.Address, fromAddr address.Address, price string, expiry string) cid.Cid {
 	setPriceReturn := td.RunSuccess("miner", "set-price",
-		"--from", fromAddr,
-		"--miner", minerAddr,
+		"--from", fromAddr.String(),
+		"--miner", minerAddr.String(),
 		"--gas-price", "1",
 		"--gas-limit", "300",
 		"--enc", "json",
@@ -463,10 +464,10 @@ func (td *TestDaemon) UpdatePeerID() {
 
 // WaitForMessageRequireSuccess accepts a message cid and blocks until a message with matching cid is included in a
 // block. The receipt is then inspected to ensure that the corresponding message receipt had a 0 exit code.
-func (td *TestDaemon) WaitForMessageRequireSuccess(msgCid cid.Cid) *types.MessageReceipt {
+func (td *TestDaemon) WaitForMessageRequireSuccess(msgCid cid.Cid) *vm.MessageReceipt {
 	args := []string{"message", "wait", msgCid.String(), "--receipt=true", "--message=false"}
 	trim := strings.Trim(td.RunSuccess(args...).ReadStdout(), "\n")
-	rcpt := &types.MessageReceipt{}
+	rcpt := &vm.MessageReceipt{}
 	require.NoError(td.test, json.Unmarshal([]byte(trim), rcpt))
 	require.Equal(td.test, 0, int(rcpt.ExitCode))
 	return rcpt
@@ -639,7 +640,7 @@ func KeyFile(kf string) func(*TestDaemon) {
 }
 
 // DefaultAddress specifies a key file for this daemon to add to their wallet during init
-func DefaultAddress(defaultAddr string) func(*TestDaemon) {
+func DefaultAddress(defaultAddr address.Address) func(*TestDaemon) {
 	return func(td *TestDaemon) {
 		td.defaultAddress = defaultAddr
 	}
@@ -659,8 +660,15 @@ func GenesisFile(a string) func(*TestDaemon) {
 	}
 }
 
+// InitArgs allows setting additional arguments to repo initialization
+func InitArgs(a ...string) func(*TestDaemon) {
+	return func(td *TestDaemon) {
+		td.initArgs = a
+	}
+}
+
 // WithMiner allows setting the --with-miner flag on init.
-func WithMiner(m string) func(*TestDaemon) {
+func WithMiner(m address.Address) func(*TestDaemon) {
 	return func(td *TestDaemon) {
 		td.withMiner = m
 	}
@@ -709,16 +717,16 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		initopts = append(initopts, fmt.Sprintf("--genesisfile=%s", td.genesisFile))
 	}
 
-	if td.withMiner != "" {
+	if td.withMiner != address.Undef {
 		initopts = append(initopts, fmt.Sprintf("--with-miner=%s", td.withMiner))
-	}
-
-	if td.defaultAddress != "" {
-		initopts = append(initopts, fmt.Sprintf("--default-address=%s", td.defaultAddress))
 	}
 
 	if td.autoSealInterval != "" {
 		initopts = append(initopts, fmt.Sprintf("--auto-seal-interval-seconds=%s", td.autoSealInterval))
+	}
+
+	for _, arg := range td.initArgs {
+		initopts = append(initopts, arg)
 	}
 
 	if td.init {

@@ -9,8 +9,9 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
 // NodeBuilder creates and configures Filecoin nodes for in-process testing.
@@ -21,7 +22,7 @@ import (
 // injection. This builder avoids exposing the latter directly.
 type NodeBuilder struct {
 	// Initialisation function for the genesis block and state.
-	gif consensus.GenesisInitFunc
+	gif genesis.InitFunc
 	// Options to the repo initialisation.
 	initOpts []node.InitOpt
 	// Mutations to be applied to node config after initialisation.
@@ -35,7 +36,7 @@ type NodeBuilder struct {
 // NewNodeBuilder creates a new node builder.
 func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 	return &NodeBuilder{
-		gif:      consensus.MakeGenesisFunc(consensus.NetworkName("go-filecoin-test")),
+		gif:      gengen.MakeGenesisFunc(gengen.NetworkName("gfctest")),
 		initOpts: []node.InitOpt{},
 		configMutations: []node.ConfigOpt{
 			// Default configurations that make sense for integration tests.
@@ -52,7 +53,7 @@ func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 }
 
 // WithGenesisInit sets the built nodes' genesis function.
-func (b *NodeBuilder) WithGenesisInit(gif consensus.GenesisInitFunc) *NodeBuilder {
+func (b *NodeBuilder) WithGenesisInit(gif genesis.InitFunc) *NodeBuilder {
 	b.gif = gif
 	return b
 }
@@ -80,15 +81,16 @@ func (b *NodeBuilder) WithConfig(cm node.ConfigOpt) *NodeBuilder {
 func (b *NodeBuilder) Build(ctx context.Context) *node.Node {
 	// Initialise repo.
 	repo := repo.NewInMemoryRepo()
-	b.requireNoError(node.Init(ctx, repo, b.gif, b.initOpts...))
 
 	// Apply configuration changes (must happen before node.OptionsFromRepo()).
 	sectorDir, err := ioutil.TempDir("", "go-fil-test-sectors")
 	b.requireNoError(err)
-	repo.Config().SectorBase.RootDir = sectorDir
+	repo.Config().SectorBase.RootDirPath = sectorDir
 	for _, m := range b.configMutations {
 		m(repo.Config())
 	}
+
+	b.requireNoError(node.Init(ctx, repo, b.gif, b.initOpts...))
 
 	// Initialize the node.
 	repoConfigOpts, err := node.OptionsFromRepo(repo)

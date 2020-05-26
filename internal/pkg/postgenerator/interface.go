@@ -1,11 +1,12 @@
 package postgenerator
 
 import (
-	ffi "github.com/filecoin-project/filecoin-ffi"
+	"context"
+
+	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 // PoStGenerator defines a method set used to generate PoSts
 type PoStGenerator interface {
-	GenerateEPostCandidates(sectorInfo ffi.SortedPublicSectorInfo, challengeSeed [ffi.CommitmentBytesLen]byte, faults []uint64) ([]ffi.Candidate, error)
-	ComputeElectionPoSt(sectorInfo ffi.SortedPublicSectorInfo, challengeSeed []byte, winners []ffi.Candidate) ([]byte, error)
+	GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []abi.SectorInfo, randomness abi.PoStRandomness) ([]abi.PoStProof, error)
 }

@@ -11,21 +11,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	node "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
 func TestNodeConstruct(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
-	builder.WithGenesisInit(th.DefaultGenesis)
+	builder.WithGenesisInit(gengen.DefaultGenesis)
 	builder.WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...)
 	nd := builder.Build(ctx)
 	assert.NotNil(t, nd.Host)
@@ -38,7 +37,7 @@ func TestNodeNetworking(t *testing.T) {
 
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
-	builder.WithGenesisInit(th.DefaultGenesis)
+	builder.WithGenesisInit(gengen.DefaultGenesis)
 	builder.WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...)
 	nds := builder.BuildMany(ctx, 2)
 	nd1, nd2 := nds[0], nds[1]
@@ -64,7 +63,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		r := repo.NewInMemoryRepo()
 		r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 
-		require.NoError(t, node.Init(ctx, r, th.DefaultGenesis))
+		require.NoError(t, node.Init(ctx, r, gengen.DefaultGenesis))
 		r.Config().Bootstrap.Addresses = []string{}
 		opts, err := node.OptionsFromRepo(r)
 		require.NoError(t, err)
@@ -80,7 +79,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 
 		// These are two bootstrap nodes we'll connect to.
 		builder := test.NewNodeBuilder(t)
-		builder.WithGenesisInit(th.DefaultGenesis)
+		builder.WithGenesisInit(gengen.DefaultGenesis)
 		builder.WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...)
 		nds := builder.BuildMany(ctx, 2)
 		node.StartNodes(t, nds)
@@ -94,7 +93,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		r := repo.NewInMemoryRepo()
 		r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 
-		require.NoError(t, node.Init(ctx, r, th.DefaultGenesis))
+		require.NoError(t, node.Init(ctx, r, gengen.DefaultGenesis))
 		r.Config().Bootstrap.Addresses = []string{peer1, peer2}
 
 		opts, err := node.OptionsFromRepo(r)
@@ -129,7 +128,7 @@ func TestNodeInit(t *testing.T) {
 
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
-	builder.WithGenesisInit(th.DefaultGenesis)
+	builder.WithGenesisInit(gengen.DefaultGenesis)
 	builder.WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...)
 	builder.WithBuilderOpt(node.OfflineMode(true))
 
@@ -147,7 +146,7 @@ func TestNodeStartMining(t *testing.T) {
 
 	ctx := context.Background()
 
-	seed := node.MakeChainSeed(t, node.TestGenCfg)
+	seed := node.MakeChainSeed(t, node.MakeTestGenCfg(t, 100))
 	builder := test.NewNodeBuilder(t)
 	builder.WithInitOpt(node.PeerKeyOpt(node.PeerKeys[0]))
 	builder.WithGenesisInit(seed.GenesisInitFunc)
@@ -157,8 +156,6 @@ func TestNodeStartMining(t *testing.T) {
 	seed.GiveMiner(t, minerNode, 0) // TODO: update to accommodate new go-fil-markets integration
 	// Start mining give error for fail to get miner actor from the heaviest tipset stateroot
 	assert.Contains(t, minerNode.StartMining(ctx).Error(), "failed to setup mining")
-	_, err := storage.NewMiner()
-	assert.NoError(t, err)
 
 	assert.NoError(t, minerNode.Start(ctx))
 
@@ -185,7 +182,7 @@ func TestOptionWithError(t *testing.T) {
 
 	ctx := context.Background()
 	r := repo.NewInMemoryRepo()
-	assert.NoError(t, node.Init(ctx, r, th.DefaultGenesis))
+	assert.NoError(t, node.Init(ctx, r, gengen.DefaultGenesis))
 
 	opts, err := node.OptionsFromRepo(r)
 	assert.NoError(t, err)
@@ -208,21 +205,21 @@ func TestNodeConfig(t *testing.T) {
 	defaultCfg := config.NewDefaultConfig()
 
 	// fake mining
-	verifier := &verification.FakeVerifier{
-		VerifyPoStValid: true,
-	}
+	verifier := &proofs.FakeVerifier{}
 
 	configBlockTime := 99
+	configPropagationDelay := 20
 
 	builderOptions := []node.BuilderOpt{
 		node.VerifierConfigOption(verifier),
 		node.BlockTime(time.Duration(configBlockTime)),
+		node.PropagationDelay(time.Duration(configPropagationDelay)),
 	}
 
 	initOpts := []node.InitOpt{}
 
 	builder := test.NewNodeBuilder(t)
-	builder.WithGenesisInit(th.DefaultGenesis)
+	builder.WithGenesisInit(gengen.DefaultGenesis)
 	builder.WithInitOpt(initOpts...)
 	builder.WithBuilderOpt(builderOptions...)
 	builder.WithBuilderOpt(node.OfflineMode(true))

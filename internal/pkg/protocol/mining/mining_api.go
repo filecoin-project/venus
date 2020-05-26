@@ -3,10 +3,11 @@ package mining
 import (
 	"context"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/pkg/errors"
 )
 
@@ -18,7 +19,7 @@ type miningChainReader interface {
 // API provides an interface to the block mining protocol.
 type API struct {
 	minerAddress    func() (address.Address, error)
-	addNewBlockFunc func(context.Context, *block.Block) (err error)
+	addNewBlockFunc func(context.Context, mining.FullBlock) (err error)
 	chainReader     miningChainReader
 	isMiningFunc    func() bool
 	setupMiningFunc func(context.Context) error
@@ -31,7 +32,7 @@ type API struct {
 // New creates a new API instance with the provided deps
 func New(
 	minerAddr func() (address.Address, error),
-	addNewBlockFunc func(context.Context, *block.Block) (err error),
+	addNewBlockFunc func(context.Context, mining.FullBlock) (err error),
 	chainReader miningChainReader,
 	isMiningFunc func() bool,
 	setupMiningFunc func(ctx context.Context) error,
@@ -64,7 +65,8 @@ func (a *API) MiningIsActive() bool {
 	return a.isMiningFunc()
 }
 
-// MiningOnce mines a single block in the given context, and returns the new block.
+// MiningOnce mines and returns a single block based on the current chain head.
+// It tries each epoch in turn until it finds a winner.
 func (a *API) MiningOnce(ctx context.Context) (*block.Block, error) {
 	if a.isMiningFunc() {
 		return nil, errors.New("Node is already mining")
@@ -80,19 +82,16 @@ func (a *API) MiningOnce(ctx context.Context) (*block.Block, error) {
 		return nil, err
 	}
 
-	res, err := mining.MineOnce(ctx, *miningWorker, ts, a.chainClock)
+	res, err := mining.MineOnce(ctx, *miningWorker, ts)
 	if err != nil {
 		return nil, err
 	}
-	if res.Err != nil {
-		return nil, res.Err
-	}
 
-	if err := a.addNewBlockFunc(ctx, res.NewBlock); err != nil {
+	if err := a.addNewBlockFunc(ctx, *res); err != nil {
 		return nil, err
 	}
 
-	return res.NewBlock, nil
+	return res.Header, nil
 }
 
 // MiningSetup sets up a storage miner without running repeated tasks like mining

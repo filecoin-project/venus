@@ -4,14 +4,17 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // FakeProvider is a chain and actor provider for testing.
@@ -21,16 +24,18 @@ type FakeProvider struct {
 	*chain.Builder
 	t *testing.T
 
-	head  block.TipSetKey // Provided by GetHead and expected by others
-	addr  address.Address // Expected by GetActorAt
-	actor *actor.Actor    // Provided by GetActorAt(head, tipKey, addr)
+	head   block.TipSetKey // Provided by GetHead and expected by others
+	actors map[address.Address]*actor.Actor
 }
 
 // NewFakeProvider creates a new builder and wraps with a provider.
 // The builder may be accessed by `provider.Builder`.
 func NewFakeProvider(t *testing.T) *FakeProvider {
 	builder := chain.NewBuilder(t, address.Address{})
-	return &FakeProvider{Builder: builder, t: t}
+	return &FakeProvider{
+		Builder: builder,
+		t:       t,
+		actors:  make(map[address.Address]*actor.Actor)}
 }
 
 // GetHead returns the head tipset key.
@@ -38,15 +43,21 @@ func (p *FakeProvider) GetHead() block.TipSetKey {
 	return p.head
 }
 
+// Head fulfills the ChainReaderAPI interface
+func (p *FakeProvider) Head() block.TipSetKey {
+	return p.GetHead()
+}
+
 // GetActorAt returns the actor corresponding to (key, addr) if they match those last set.
 func (p *FakeProvider) GetActorAt(ctx context.Context, key block.TipSetKey, addr address.Address) (*actor.Actor, error) {
 	if !key.Equals(p.head) {
 		return nil, errors.Errorf("No such tipset %s, expected %s", key, p.head)
 	}
-	if addr != p.addr {
-		return nil, errors.Errorf("No such address %s, expected %s", addr, p.addr)
+	a, ok := p.actors[addr]
+	if !ok {
+		return nil, xerrors.Errorf("No such address %s", addr.String())
 	}
-	return p.actor, nil
+	return a, nil
 }
 
 // SetHead sets the head tipset
@@ -56,23 +67,27 @@ func (p *FakeProvider) SetHead(head block.TipSetKey) {
 	p.head = head
 }
 
+// SetActor sets an actor to be mocked on chain
+func (p *FakeProvider) SetActor(addr address.Address, act *actor.Actor) {
+	p.actors[addr] = act
+}
+
 // SetHeadAndActor sets the head tipset, along with the from address and actor to be provided.
 func (p *FakeProvider) SetHeadAndActor(t *testing.T, head block.TipSetKey, addr address.Address, actor *actor.Actor) {
 	p.SetHead(head)
-	p.addr = addr
-	p.actor = actor
+	p.SetActor(addr, actor)
 }
 
 // MockPublisher is a publisher which just stores the last message published.
 type MockPublisher struct {
 	ReturnError error                // Error to be returned by Publish()
 	Message     *types.SignedMessage // Message received by Publish()
-	Height      uint64               // Height received by Publish()
+	Height      abi.ChainEpoch       // Height received by Publish()
 	Bcast       bool                 // was this broadcast?
 }
 
 // Publish records the message etc for subsequent inspection.
-func (p *MockPublisher) Publish(ctx context.Context, message *types.SignedMessage, height uint64, bcast bool) error {
+func (p *MockPublisher) Publish(ctx context.Context, message *types.SignedMessage, height abi.ChainEpoch, bcast bool) error {
 	p.Message = message
 	p.Height = height
 	p.Bcast = bcast
@@ -85,7 +100,7 @@ type FakeValidator struct {
 }
 
 // Validate returns an error only if `RejectMessages` is true.
-func (v FakeValidator) Validate(ctx context.Context, msg *types.UnsignedMessage, fromActor *actor.Actor) error {
+func (v FakeValidator) ValidateSignedMessageSyntax(ctx context.Context, msg *types.SignedMessage) error {
 	if v.RejectMessages {
 		return errors.New("rejected for testing")
 	}

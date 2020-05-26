@@ -11,17 +11,16 @@ package wallet
 import (
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-datastore"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
-/* Test types.IsValidSignature */
+/* Test types.ValidateSignature */
 
 func requireSignerAddr(t *testing.T) (*DSBackend, address.Address) {
 	ds := datastore.NewMapDatastore()
@@ -44,7 +43,7 @@ func TestSignatureOk(t *testing.T) {
 	sig, err := fs.SignBytes(data, addr)
 	require.NoError(t, err)
 
-	assert.True(t, types.IsValidSignature(data, addr, sig))
+	assert.NoError(t, crypto.ValidateSignature(data, addr, sig))
 }
 
 // Signature is nil.
@@ -54,7 +53,7 @@ func TestNilSignature(t *testing.T) {
 	_, addr := requireSignerAddr(t)
 
 	data := []byte("THESE BYTES NEED A SIGNATURE")
-	assert.False(t, types.IsValidSignature(data, addr, nil))
+	assert.Error(t, crypto.ValidateSignature(data, addr, crypto.Signature{}))
 }
 
 // Signature is over different data.
@@ -69,7 +68,7 @@ func TestDataCorrupted(t *testing.T) {
 
 	corruptData := []byte("THESE BYTEZ ARE SIGNED")
 
-	assert.False(t, types.IsValidSignature(corruptData, addr, sig))
+	assert.Error(t, crypto.ValidateSignature(corruptData, addr, sig))
 }
 
 // Signature is valid for data but was signed by a different address.
@@ -85,7 +84,7 @@ func TestInvalidAddress(t *testing.T) {
 	badAddr, err := fs.NewAddress(address.SECP256K1)
 	require.NoError(t, err)
 
-	assert.False(t, types.IsValidSignature(data, badAddr, sig))
+	assert.Error(t, crypto.ValidateSignature(data, badAddr, sig))
 }
 
 // Signature is corrupted.
@@ -97,71 +96,7 @@ func TestSignatureCorrupted(t *testing.T) {
 	data := []byte("THESE BYTES ARE SIGNED")
 	sig, err := fs.SignBytes(data, addr)
 	require.NoError(t, err)
-	sig[0] = sig[0] ^ 0xFF // This operation ensures sig is modified
+	sig.Data[0] = sig.Data[0] ^ 0xFF // This operation ensures sig is modified
 
-	assert.False(t, types.IsValidSignature(data, addr, sig))
-}
-
-/* Test types.SignedMessage */
-
-// Valid SignedMessage verifies correctly.
-func TestSignMessageOk(t *testing.T) {
-	tf.UnitTest(t)
-
-	fs, addr := requireSignerAddr(t)
-
-	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, types.InvalidMethodID, nil, types.NewGasPrice(0), types.NewGasUnits(0))
-	smsg, err := types.NewSignedMessage(*msg, fs)
-	require.NoError(t, err)
-
-	assert.True(t, smsg.VerifySignature())
-}
-
-// Signature is valid but signer does not match From Address.
-func TestBadFrom(t *testing.T) {
-	tf.UnitTest(t)
-
-	fs, addr := requireSignerAddr(t)
-	addr2, err := fs.NewAddress(address.SECP256K1)
-	require.NoError(t, err)
-
-	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, types.InvalidMethodID, nil, types.NewGasPrice(0), types.NewGasUnits(0))
-	// Can't use NewSignedMessage constructor as it always signs with msg.From.
-	bmsg, err := msg.Marshal()
-	require.NoError(t, err)
-	sig, err := fs.SignBytes(bmsg, addr2) // sign with addr != msg.From
-	require.NoError(t, err)
-	smsg := &types.SignedMessage{
-		Message:   *msg,
-		Signature: sig,
-	}
-
-	assert.False(t, smsg.VerifySignature())
-}
-
-// Signature corrupted.
-func TestSignedMessageBadSignature(t *testing.T) {
-	tf.UnitTest(t)
-
-	fs, addr := requireSignerAddr(t)
-	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, types.InvalidMethodID, nil, types.NewGasPrice(0), types.NewGasUnits(0))
-	smsg, err := types.NewSignedMessage(*msg, fs)
-	require.NoError(t, err)
-
-	smsg.Signature[0] = smsg.Signature[0] ^ 0xFF
-	assert.False(t, smsg.VerifySignature())
-}
-
-// Message corrupted.
-func TestSignedMessageCorrupted(t *testing.T) {
-	tf.UnitTest(t)
-
-	fs, addr := requireSignerAddr(t)
-
-	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, types.InvalidMethodID, nil, types.NewGasPrice(0), types.NewGasUnits(0))
-	smsg, err := types.NewSignedMessage(*msg, fs)
-	require.NoError(t, err)
-
-	smsg.Message.CallSeqNum = types.Uint64(uint64(42))
-	assert.False(t, smsg.VerifySignature())
+	assert.Error(t, crypto.ValidateSignature(data, addr, sig))
 }

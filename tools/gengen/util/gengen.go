@@ -4,37 +4,23 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/big"
-	mrand "math/rand"
-	"strconv"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-amt-ipld"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-
+	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	bserv "github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-car"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	format "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
-	"github.com/libp2p/go-libp2p-core/peer"
-	mh "github.com/multiformats/go-multihash"
-	typegen "github.com/whyrusleeping/cbor-gen"
+	car "github.com/ipld/go-car"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // CreateStorageMinerConfig holds configuration options used to create a storage
@@ -49,36 +35,63 @@ type CreateStorageMinerConfig struct {
 	// PeerID is the peer ID to set as the miners owner
 	PeerID string
 
-	// NumCommittedSectors is the number of sectors that this miner has
-	// committed to the network.
-	NumCommittedSectors uint64
+	// CommittedSectors is the list of sector commitments in this miner's proving set
+	CommittedSectors []*CommitConfig
 
-	// SectorSize is the size of the sectors that this miner commits, in bytes.
-	SectorSize uint64
+	// SealProofType is the proof configuration used by this miner
+	// (which implies sector size and window post partition size)
+	SealProofType abi.RegisteredProof
+
+	// ProvingPeriodStart is next chain epoch at which a miner will need to submit a windowed post
+	// If unset, it will be set to the proving period.
+	ProvingPeriodStart *abi.ChainEpoch
 }
 
-// GenesisCfg is the top level configuration struct used to create a genesis
-// block.
+// CommitConfig carries all information needed to get a sector commitment in the
+// genesis state.
+type CommitConfig struct {
+	CommR     cid.Cid
+	CommD     cid.Cid
+	SectorNum abi.SectorNumber
+	DealCfg   *DealConfig
+	ProofType abi.RegisteredProof
+}
+
+// DealConfig carries the information needed to specify a self-deal committing
+// power to the market while initializing genesis miners
+type DealConfig struct {
+	CommP     cid.Cid
+	PieceSize uint64
+	Verified  bool
+	// Client and Provider are miner worker and miner address
+
+	// StartEpoch is 0
+	EndEpoch int64
+	// StoragePricePerEpoch is 0
+
+	// Collateral values are 0 for now (might need to change to some minimum)
+}
+
+// GenesisCfg is the top level configuration struct used to create a genesis block.
 type GenesisCfg struct {
 	// Seed is used to sample randomness for generating keys
 	Seed int64
 
-	// Keys is an array of names of keys. A random key will be generated
-	// for each name here.
-	Keys int
+	// KeysToGen is the number of random keys to generate and return
+	KeysToGen int
 
-	// PreAlloc is a mapping from key names to string values of whole filecoin
+	// Import keys are pre-generated keys to be imported. These keys will be appended to the generated keys.
+	ImportKeys []*crypto.KeyInfo
+
+	// PreallocatedFunds is a mapping from generated key index to string values of whole filecoin
 	// that will be preallocated to each account
-	PreAlloc []string
+	PreallocatedFunds []string
 
 	// Miners is a list of miners that should be set up at the start of the network
 	Miners []*CreateStorageMinerConfig
 
 	// Network is the name of the network
 	Network string
-
-	// ProofsMode affects sealing, sector packing, PoSt, etc. in the proofs library
-	ProofsMode types.ProofsMode
 
 	// Time is the genesis block time in unix seconds
 	Time uint64
@@ -87,10 +100,10 @@ type GenesisCfg struct {
 // RenderedGenInfo contains information about a genesis block creation
 type RenderedGenInfo struct {
 	// Keys is the set of keys generated
-	Keys []*types.KeyInfo
+	Keys []*crypto.KeyInfo
 
 	// Miners is the list of addresses of miners created
-	Miners []RenderedMinerInfo
+	Miners []*RenderedMinerInfo
 
 	// GenesisCid is the cid of the created genesis block
 	GenesisCid cid.Cid
@@ -104,8 +117,103 @@ type RenderedMinerInfo struct {
 	// Address is the address generated on-chain for the miner
 	Address address.Address
 
-	// Power is the amount of storage power this miner was created with
-	Power *types.BytesAmount
+	// The amount of storage power this miner was created with
+	RawPower abi.StoragePower
+	QAPower  abi.StoragePower
+}
+
+// GenOption is a configuration option.
+type GenOption func(*GenesisCfg) error
+
+// GenTime returns a config option setting the genesis time stamp
+func GenTime(t uint64) GenOption {
+	return func(gc *GenesisCfg) error {
+		gc.Time = t
+		return nil
+	}
+}
+
+// GenKeys returns a config option that sets the number of keys to generate
+func GenKeys(n int, prealloc string) GenOption {
+	return func(gc *GenesisCfg) error {
+		if gc.KeysToGen > 0 {
+			return fmt.Errorf("repeated genkeys not supported")
+		}
+		gc.KeysToGen = n
+		for i := 0; i < n; i++ {
+			gc.PreallocatedFunds = append(gc.PreallocatedFunds, prealloc)
+		}
+		return nil
+	}
+}
+
+// ImportKeys returns a config option that imports keys and pre-allocates to them
+func ImportKeys(kis []crypto.KeyInfo, prealloc string) GenOption {
+	return func(gc *GenesisCfg) error {
+		for _, ki := range kis {
+			gc.ImportKeys = append(gc.ImportKeys, &ki)
+			gc.PreallocatedFunds = append(gc.PreallocatedFunds, prealloc)
+		}
+		return nil
+	}
+}
+
+// Prealloc returns a config option that sets up an actor account.
+func Prealloc(idx int, amt string) GenOption {
+	return func(gc *GenesisCfg) error {
+		if len(gc.PreallocatedFunds)-1 < idx {
+			return fmt.Errorf("bad actor account idx %d for only %d pre alloc gen keys", idx, len(gc.PreallocatedFunds))
+		}
+		gc.PreallocatedFunds[idx] = amt
+		return nil
+	}
+}
+
+// NetworkName returns a config option that sets the network name.
+func NetworkName(name string) GenOption {
+	return func(gc *GenesisCfg) error {
+		gc.Network = name
+		return nil
+	}
+}
+
+func MinerConfigs(minerCfgs []*CreateStorageMinerConfig) GenOption {
+	return func(gc *GenesisCfg) error {
+		gc.Miners = minerCfgs
+		return nil
+	}
+}
+
+var defaultGenTimeOpt = GenTime(123456789)
+
+// MakeGenesisFunc returns a genesis function configured by a set of options.
+func MakeGenesisFunc(opts ...GenOption) genesis.InitFunc {
+	// Dragons: GenesisInitFunc should take in only a blockstore to remove the hidden
+	// assumption that cst and bs are backed by the same storage.
+	return func(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+		ctx := context.Background()
+		genCfg := &GenesisCfg{}
+		err := defaultGenTimeOpt(genCfg)
+		if err != nil {
+			return nil, err
+		}
+		for _, opt := range opts {
+			if err := opt(genCfg); err != nil {
+				return nil, err
+			}
+		}
+		ri, err := GenGen(ctx, genCfg, bs)
+		if err != nil {
+			return nil, err
+		}
+
+		var b block.Block
+		err = cst.Get(ctx, ri.GenesisCid, &b)
+		if err != nil {
+			return nil, err
+		}
+		return &b, nil
+	}
 }
 
 // GenGen takes the genesis configuration and creates a genesis block that
@@ -113,207 +221,35 @@ type RenderedMinerInfo struct {
 // the final genesis block.
 //
 // WARNING: Do not use maps in this code, they will make this code non deterministic.
-func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*RenderedGenInfo, error) {
-	pnrg := mrand.New(mrand.NewSource(cfg.Seed))
-	keys, err := genKeys(cfg.Keys, pnrg)
+func GenGen(ctx context.Context, cfg *GenesisCfg, bs blockstore.Blockstore) (*RenderedGenInfo, error) {
+	generator := NewGenesisGenerator(bs)
+	err := generator.Init(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	st := state.NewTree(cst)
-	storageMap := vm.NewStorageMap(bs)
-
-	if err := actor.InitBuiltinActorCodeObjs(cst); err != nil {
-		return nil, err
-	}
-
-	if err := consensus.SetupDefaultActors(ctx, st, storageMap, cfg.ProofsMode, cfg.Network); err != nil {
-		return nil, err
-	}
-
-	if err := setupPrealloc(ctx, st, storageMap, keys, cfg.PreAlloc); err != nil {
-		return nil, err
-	}
-
-	miners, err := setupMiners(st, storageMap, keys, cfg.Miners, pnrg)
+	err = generator.setupBuiltInActors(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	stateRoot, err := st.Flush(ctx)
+	err = generator.setupPrealloc()
 	if err != nil {
 		return nil, err
 	}
-
-	err = storageMap.Flush()
+	minerInfos, err := generator.setupMiners(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	// define empty cid and ensure empty components exist in blockstore
-	emptyAMTCid, err := amt.FromArray(amt.WrapBlockstore(bs), []typegen.CBORMarshaler{})
-	if err != nil {
-		return nil, err
-	}
-
-	emptyBLSSignature := bls.Aggregate([]bls.Signature{})
-
-	geneblk := &block.Block{
-		StateRoot:       stateRoot,
-		Messages:        types.TxMeta{SecpRoot: emptyAMTCid, BLSRoot: emptyAMTCid},
-		MessageReceipts: emptyAMTCid,
-		BLSAggregateSig: emptyBLSSignature[:],
-		Ticket:          block.Ticket{VRFProof: []byte{0xec}},
-		Timestamp:       types.Uint64(cfg.Time),
-	}
-
-	c, err := cst.Put(ctx, geneblk)
+	genCid, err := generator.genBlock(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	return &RenderedGenInfo{
-		Keys:       keys,
-		GenesisCid: c,
-		Miners:     miners,
+		Keys:       generator.keys,
+		GenesisCid: genCid,
+		Miners:     minerInfos,
 	}, nil
-}
-
-func genKeys(cfgkeys int, pnrg io.Reader) ([]*types.KeyInfo, error) {
-	keys := make([]*types.KeyInfo, cfgkeys)
-	for i := 0; i < cfgkeys; i++ {
-		sk, err := crypto.GenerateKeyFromSeed(pnrg) // TODO: GenerateKey should return a KeyInfo
-		if err != nil {
-			return nil, err
-		}
-
-		ki := &types.KeyInfo{
-			PrivateKey:  sk,
-			CryptSystem: types.SECP256K1,
-		}
-
-		keys[i] = ki
-	}
-
-	return keys, nil
-}
-
-func setupPrealloc(ctx context.Context, st state.Tree, storageMap vm.StorageMap, keys []*types.KeyInfo, prealloc []string) error {
-
-	if len(keys) < len(prealloc) {
-		return fmt.Errorf("keys do not match prealloc")
-	}
-
-	netact, err := account.NewActor(types.NewAttoFILFromFIL(1000000000000))
-	if err != nil {
-		return err
-	}
-	err = st.SetActor(context.Background(), address.LegacyNetworkAddress, netact)
-	if err != nil {
-		return err
-	}
-
-	for i, v := range prealloc {
-		ki := keys[i]
-
-		addr, err := ki.Address()
-		if err != nil {
-			return err
-		}
-
-		valint, err := strconv.ParseUint(v, 10, 64)
-		if err != nil {
-			return err
-		}
-
-		_, err = consensus.ApplyMessageDirect(ctx, st, storageMap, address.LegacyNetworkAddress, address.InitAddress, uint64(i), types.NewAttoFILFromFIL(valint),
-			initactor.ExecMethodID, types.AccountActorCodeCid, []interface{}{addr})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners []*CreateStorageMinerConfig, pnrg io.Reader) ([]RenderedMinerInfo, error) {
-	var minfos []RenderedMinerInfo
-	ctx := context.Background()
-
-	for i, m := range miners {
-		addr, err := keys[m.Owner].Address()
-		if err != nil {
-			return nil, err
-		}
-
-		var pid peer.ID
-		if m.PeerID != "" {
-			p, err := peer.IDB58Decode(m.PeerID)
-			if err != nil {
-				return nil, err
-			}
-			pid = p
-		} else {
-			// this is just deterministically deriving from the owner
-			h, err := mh.Sum(addr.Bytes(), mh.SHA2_256, -1)
-			if err != nil {
-				return nil, err
-			}
-			pid = peer.ID(h)
-		}
-
-		// give collateral to account actor
-		_, err = consensus.ApplyMessageDirect(ctx, st, sm, address.LegacyNetworkAddress, addr, 0, types.NewAttoFILFromFIL(100000), types.SendMethodID)
-		if err != nil {
-			return nil, err
-		}
-
-		ret, err := consensus.ApplyMessageDirect(ctx, st, sm, addr, address.StoragePowerAddress, uint64(i), types.NewAttoFILFromFIL(100000), power.CreateStorageMiner, addr, addr, pid, types.NewBytesAmount(m.SectorSize))
-		if err != nil {
-			return nil, err
-		}
-
-		// get miner actor address
-		val, err := abi.Deserialize(ret, abi.Address)
-		if err != nil {
-			return nil, err
-		}
-		maddr := val.Val.(address.Address)
-
-		// lookup id address for actor address
-		ret, err = consensus.ApplyMessageDirect(ctx, st, sm, addr, address.InitAddress, 0, types.ZeroAttoFIL, initactor.GetActorIDForAddressMethodID, maddr)
-		if err != nil {
-			return nil, err
-		}
-
-		val, err = abi.Deserialize(ret, abi.Integer)
-		if err != nil {
-			return nil, err
-		}
-		mID := val.Val.(*big.Int)
-
-		mIDAddr, err := address.NewIDAddress(mID.Uint64())
-		if err != nil {
-			return nil, err
-		}
-
-		minfos = append(minfos, RenderedMinerInfo{
-			Address: mIDAddr,
-			Owner:   m.Owner,
-			Power:   types.NewBytesAmount(m.SectorSize * m.NumCommittedSectors),
-		})
-
-		// add power directly to power table
-		for i := uint64(0); i < m.NumCommittedSectors; i++ {
-			powerReport := types.NewPowerReport(m.SectorSize*m.NumCommittedSectors, 0)
-
-			_, err := consensus.ApplyMessageDirect(ctx, st, sm, addr, address.StoragePowerAddress, i, types.NewAttoFILFromFIL(0), power.ProcessPowerReport, powerReport, mIDAddr)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return minfos, nil
 }
 
 // GenGenesisCar generates a car for the given genesis configuration
@@ -321,15 +257,38 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (*RenderedGenInfo, error) {
 	ctx := context.Background()
 
 	bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
-	cst := hamt.CSTFromBstore(bstore)
+	bstore = blockstore.NewIdStore(bstore)
 	dserv := dag.NewDAGService(bserv.New(bstore, offline.Exchange(bstore)))
 
-	info, err := GenGen(ctx, cfg, cst, bstore)
+	info, err := GenGen(ctx, cfg, bstore)
 	if err != nil {
 		return nil, err
 	}
+	// Ignore cids that make it on chain but that should not be read through
+	// and therefore don't have corresponding blocks in store
+	ignore := cid.NewSet()
+	for _, m := range cfg.Miners {
+		for _, comm := range m.CommittedSectors {
+			ignore.Add(comm.CommR)
+			ignore.Add(comm.CommD)
+			ignore.Add(comm.DealCfg.CommP)
+		}
+	}
 
-	return info, car.WriteCar(ctx, dserv, []cid.Cid{info.GenesisCid}, out)
+	ignoreWalkFunc := func(nd format.Node) (out []*format.Link, err error) {
+		links := nd.Links()
+		var filteredLinks []*format.Link
+		for _, l := range links {
+			if ignore.Has(l.Cid) {
+				continue
+			}
+			filteredLinks = append(filteredLinks, l)
+		}
+
+		return filteredLinks, nil
+	}
+
+	return info, car.WriteCarWithWalker(ctx, dserv, []cid.Cid{info.GenesisCid}, out, ignoreWalkFunc)
 }
 
 // signer doesn't actually sign because it's not actually validated
@@ -337,30 +296,10 @@ type signer struct{}
 
 var _ types.Signer = (*signer)(nil)
 
-func (ggs *signer) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
-	return nil, nil
+func (ggs *signer) SignBytes(_ context.Context, data []byte, addr address.Address) (crypto.Signature, error) {
+	return crypto.Signature{}, nil
 }
 
-// ApplyProofsModeDefaults mutates the given genesis configuration, setting the
-// appropriate proofs mode and corresponding storage miner sector size. If
-// force is true, proofs mode and sector size-values will be overridden with the
-// appropriate defaults for the selected proofs mode.
-func ApplyProofsModeDefaults(cfg *GenesisCfg, useLiveProofsMode bool, force bool) {
-	mode := types.TestProofsMode
-	sectorSize := types.OneKiBSectorSize
-
-	if useLiveProofsMode {
-		mode = types.LiveProofsMode
-		sectorSize = types.TwoHundredFiftySixMiBSectorSize
-	}
-
-	if cfg.ProofsMode == types.UnsetProofsMode || force {
-		cfg.ProofsMode = mode
-	}
-
-	for _, m := range cfg.Miners {
-		if m.SectorSize == 0 || force {
-			m.SectorSize = sectorSize.Uint64()
-		}
-	}
+func (ggs *signer) HasAddress(_ context.Context, addr address.Address) (bool, error) {
+	return true, nil
 }

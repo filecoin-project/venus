@@ -7,13 +7,18 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
+
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -22,11 +27,11 @@ var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
 
 var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
 
-func testWaitHelp(wg *sync.WaitGroup, t *testing.T, waiter *Waiter, expectMsg *types.SignedMessage, expectError bool, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) {
+func testWaitHelp(wg *sync.WaitGroup, t *testing.T, waiter *Waiter, expectMsg *types.SignedMessage, expectError bool, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) {
 	expectCid, err := expectMsg.Cid()
 	if cb == nil {
 		cb = func(b *block.Block, msg *types.SignedMessage,
-			rcp *types.MessageReceipt) error {
+			rcp *vm.MessageReceipt) error {
 			assert.True(t, types.SmsgCidsEqual(expectMsg, msg))
 			if wg != nil {
 				wg.Done()
@@ -37,15 +42,15 @@ func testWaitHelp(wg *sync.WaitGroup, t *testing.T, waiter *Waiter, expectMsg *t
 	}
 	assert.NoError(t, err)
 
-	err = waiter.Wait(context.Background(), expectCid, cb)
+	err = waiter.Wait(context.Background(), expectCid, DefaultMessageWaitLookback, cb)
 	assert.Equal(t, expectError, err != nil)
 }
 
 type smsgs []*types.SignedMessage
 type smsgsSet [][]*types.SignedMessage
 
-func setupTest(t *testing.T) (*hamt.CborIpldStore, *chain.Store, *chain.MessageStore, *Waiter) {
-	d := requiredCommonDeps(t, th.DefaultGenesis)
+func setupTest(t *testing.T) (cbor.IpldStore, *chain.Store, *chain.MessageStore, *Waiter) {
+	d := requiredCommonDeps(t, gengen.DefaultGenesis)
 	return d.cst, d.chainStore, d.messages, NewWaiter(d.chainStore, d.messages, d.blockstore, d.cst)
 }
 
@@ -59,7 +64,7 @@ func TestWait(t *testing.T) {
 	testWaitNew(ctx, t, cst, chainStore, msgStore, waiter)
 }
 
-func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
+func testWaitExisting(ctx context.Context, t *testing.T, cst cbor.IpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
 	m1, m2 := newSignedMessage(), newSignedMessage()
 	head := chainStore.GetHead()
 	headTipSet, err := chainStore.GetTipSet(head)
@@ -69,8 +74,8 @@ func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore
 	require.Equal(t, 1, ts.Len())
 	require.NoError(t, chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
-		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
-		TipSetReceipts:  ts.ToSlice()[0].MessageReceipts,
+		TipSetStateRoot: ts.ToSlice()[0].StateRoot.Cid,
+		TipSetReceipts:  ts.ToSlice()[0].MessageReceipts.Cid,
 	}))
 	require.NoError(t, chainStore.SetHead(ctx, ts))
 
@@ -78,7 +83,7 @@ func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore
 	testWaitHelp(nil, t, waiter, m2, false, nil)
 }
 
-func testWaitNew(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
+func testWaitNew(ctx context.Context, t *testing.T, cst cbor.IpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
 	var wg sync.WaitGroup
 
 	_, _ = newSignedMessage(), newSignedMessage() // flush out so we get distinct messages from testWaitExisting
@@ -97,8 +102,8 @@ func testWaitNew(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, cha
 	require.Equal(t, 1, ts.Len())
 	require.NoError(t, chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
-		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
-		TipSetReceipts:  ts.ToSlice()[0].MessageReceipts,
+		TipSetStateRoot: ts.ToSlice()[0].StateRoot.Cid,
+		TipSetReceipts:  ts.ToSlice()[0].MessageReceipts.Cid,
 	}))
 	require.NoError(t, chainStore.SetHead(ctx, ts))
 
@@ -114,7 +119,7 @@ func TestWaitError(t *testing.T) {
 	testWaitError(ctx, t, cst, chainStore, msgStore, waiter)
 }
 
-func testWaitError(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
+func testWaitError(ctx context.Context, t *testing.T, cst cbor.IpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
 	m1, m2, m3, m4 := newSignedMessage(), newSignedMessage(), newSignedMessage(), newSignedMessage()
 	head := chainStore.GetHead()
 	headTipSet, err := chainStore.GetTipSet(head)
@@ -134,7 +139,7 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 	_, _, _, waiter := setupTest(t)
 
 	failIfCalledCb := func(b *block.Block, msg *types.SignedMessage,
-		rcp *types.MessageReceipt) error {
+		rcp *vm.MessageReceipt) error {
 		assert.Fail(t, "Should not be called -- message doesnt exist")
 		return nil
 	}
@@ -143,7 +148,7 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 	doneCh := make(chan struct{})
 	go func() {
 		defer close(doneCh)
-		err = waiter.Wait(ctx, types.CidFromString(t, "somecid"), failIfCalledCb)
+		err = waiter.Wait(ctx, types.CidFromString(t, "somecid"), DefaultMessageWaitLookback, failIfCalledCb)
 	}()
 
 	cancel()
@@ -160,10 +165,10 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 // and stores them in the given store.  Note the msg arguments are slices of
 // slices of messages -- each slice of slices goes into a successive tipset,
 // and each slice within this slice goes into a block of that tipset
-func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStore, root block.TipSet, msgSets ...[][]*types.SignedMessage) []block.TipSet {
+func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, root block.TipSet, msgSets ...[][]*types.SignedMessage) []block.TipSet {
 	var tipSets []block.TipSet
 	parents := root
-	height := uint64(0)
+	height := abi.ChainEpoch(0)
 	stateRootCidGetter := types.NewCidForTestGetter()
 
 	// only add root to the chain if it is not the zero-valued-tipset
@@ -179,22 +184,22 @@ func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStor
 	if err != nil {
 		panic(err)
 	}
-	emptyReceiptsCid, err := msgStore.StoreReceipts(context.Background(), []*types.MessageReceipt{})
+	emptyReceiptsCid, err := msgStore.StoreReceipts(context.Background(), []vm.MessageReceipt{})
 	if err != nil {
 		panic(err)
 	}
 
 	for _, tsMsgs := range msgSets {
 		var blocks []*block.Block
-		receipts := []*types.MessageReceipt{}
+		receipts := []vm.MessageReceipt{}
 		// If a message set does not contain a slice of messages then
 		// add a tipset with no messages and a single block to the chain
 		if len(tsMsgs) == 0 {
 			child := &block.Block{
-				Height:          types.Uint64(height),
+				Height:          height,
 				Parents:         parents.Key(),
-				Messages:        emptyTxMeta,
-				MessageReceipts: emptyReceiptsCid,
+				Messages:        e.NewCid(emptyTxMeta),
+				MessageReceipts: e.NewCid(emptyReceiptsCid),
 			}
 			mustPut(store, child)
 			blocks = append(blocks, child)
@@ -205,7 +210,7 @@ func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStor
 				if err != nil {
 					panic(err)
 				}
-				receipts = append(receipts, &types.MessageReceipt{ExitCode: 0, Return: [][]byte{c.Bytes()}, GasAttoFIL: types.ZeroAttoFIL})
+				receipts = append(receipts, vm.MessageReceipt{ExitCode: 0, ReturnValue: c.Bytes(), GasUsed: gas.Zero})
 			}
 			txMeta, err := msgStore.StoreMessages(context.Background(), msgs, []*types.UnsignedMessage{})
 			if err != nil {
@@ -213,10 +218,10 @@ func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStor
 			}
 
 			child := &block.Block{
-				Messages:  txMeta,
+				Messages:  e.NewCid(txMeta),
 				Parents:   parents.Key(),
-				Height:    types.Uint64(height),
-				StateRoot: stateRootCidGetter(), // Differentiate all blocks
+				Height:    height,
+				StateRoot: e.NewCid(stateRootCidGetter()), // Differentiate all blocks
 			}
 			blocks = append(blocks, child)
 		}
@@ -226,7 +231,7 @@ func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStor
 		}
 
 		for _, blk := range blocks {
-			blk.MessageReceipts = receiptCid
+			blk.MessageReceipts = e.NewCid(receiptCid)
 			mustPut(store, blk)
 		}
 
@@ -243,7 +248,7 @@ func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStor
 }
 
 // mustPut stores the thingy in the store or panics if it cannot.
-func mustPut(store *hamt.CborIpldStore, thingy interface{}) cid.Cid {
+func mustPut(store cbor.IpldStore, thingy interface{}) cid.Cid {
 	cid, err := store.Put(context.Background(), thingy)
 	if err != nil {
 		panic(err)
