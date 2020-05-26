@@ -180,6 +180,31 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "out of order")
 	})
+
+	t.Run("rejects secp message < bls messages", func(t *testing.T) {
+		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{
+			secpMessages: []*types.SignedMessage{{Message: *msg1}},
+			blsMessages:  []*types.UnsignedMessage{msg2},
+		}, &fakeChainState{
+			actor: newActor(t, 0, 2),
+		})
+
+		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "out of order")
+	})
+
+	t.Run("accepts bls message < secp messages", func(t *testing.T) {
+		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{
+			blsMessages:  []*types.UnsignedMessage{msg1},
+			secpMessages: []*types.SignedMessage{{Message: *msg2}},
+		}, &fakeChainState{
+			actor: newActor(t, 0, 2),
+		})
+
+		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		require.NoError(t, err)
+	})
 }
 
 func TestMismatchedTime(t *testing.T) {
