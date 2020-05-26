@@ -156,7 +156,7 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 			Address:    maddr,
 			Owner:      status.OwnerAddress,
 			Worker:     status.WorkerAddress,
-			SectorSize: uint64(status.SectorConfiguration.SectorSize),
+			SectorSize: uint64(status.SectorSize),
 			PeerID:     peerID,
 		}
 
@@ -189,7 +189,7 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 			abi.ChainEpoch(end),
 			price,
 			collateral,
-			status.MinerInfo.SealProofType,
+			status.SealProofType,
 		)
 		if err != nil {
 			return err
