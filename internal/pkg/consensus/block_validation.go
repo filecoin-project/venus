@@ -194,7 +194,7 @@ func (dv *DefaultBlockValidator) validateMessage(msg *types.UnsignedMessage, exp
 
 	// ensure message is in the correct order
 	if callSeq != msg.CallSeqNum {
-		return fmt.Errorf("callseqnum (%d) out of order (expected %d)", msg.CallSeqNum, callSeq)
+		return fmt.Errorf("callseqnum (%d) out of order (expected %d) from %s", msg.CallSeqNum, callSeq, msg.From)
 	}
 
 	expectedCallSeqNum[msg.From] = callSeq + 1
