@@ -9,7 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-swarm"
+	swarm "github.com/libp2p/go-libp2p-swarm"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 )
@@ -147,7 +147,9 @@ func (network *Network) Peers(ctx context.Context, verbose, latency, streams boo
 
 	conns := network.host.Network().Conns()
 
-	var out SwarmConnInfos
+	out := SwarmConnInfos{
+		Peers: []SwarmConnInfo{},
+	}
 	for _, c := range conns {
 		pid := c.RemotePeer()
 		addr := c.RemoteMultiaddr()
