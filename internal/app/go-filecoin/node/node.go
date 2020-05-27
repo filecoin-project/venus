@@ -431,7 +431,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		return err
 	}
 
-	sealProofType := status.SectorConfiguration.SealProofType
+	sealProofType := status.SealProofType
 
 	cborStore := node.Blockstore.CborStore
 
