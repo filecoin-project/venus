@@ -181,24 +181,21 @@ type MinerProvingWindow struct {
 
 // MinerStatus contains a miners power and the total power of the network
 type MinerStatus struct {
-	ActorAddress        address.Address
-	OwnerAddress        address.Address
-	WorkerAddress       address.Address
-	PeerID              peer.ID
-	SectorConfiguration *state.MinerSectorConfiguration
-	SectorCount         uint64
+	ActorAddress  address.Address
+	OwnerAddress  address.Address
+	WorkerAddress address.Address
+	PeerID        peer.ID
 
-	RawPower             abi.StoragePower
-	QualityAdjustedPower abi.StoragePower
-	PledgeRequirement    abi.TokenAmount
-	PledgeBalance        abi.TokenAmount
+	SealProofType              abi.RegisteredProof
+	SectorSize                 abi.SectorSize
+	WindowPoStPartitionSectors uint64
+	SectorCount                uint64
+	PoStFailureCount           int
 
-	Deadlines *miner.Deadlines
-	MinerInfo miner.MinerInfo
-
-	PoStFailureCount            int
+	RawPower                    abi.StoragePower
 	NetworkRawPower             abi.StoragePower
 	NetworkQualityAdjustedPower abi.StoragePower
+	QualityAdjustedPower        abi.StoragePower
 }
 
 // MinerGetStatus queries the power of a given miner.
@@ -207,23 +204,7 @@ func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr
 	if err != nil {
 		return MinerStatus{}, err
 	}
-	owner, worker, err := view.MinerControlAddresses(ctx, minerAddr)
-	if err != nil {
-		return MinerStatus{}, err
-	}
-	peerID, err := view.MinerPeerID(ctx, minerAddr)
-	if err != nil {
-		return MinerStatus{}, err
-	}
-	sectorConfig, err := view.MinerSectorConfiguration(ctx, minerAddr)
-	if err != nil {
-		return MinerStatus{}, err
-	}
 	sectorCount, err := view.MinerSectorCount(ctx, minerAddr)
-	if err != nil {
-		return MinerStatus{}, err
-	}
-	deadlines, err := view.MinerDeadlines(ctx, minerAddr)
 	if err != nil {
 		return MinerStatus{}, err
 	}
@@ -241,18 +222,18 @@ func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr
 	}
 
 	return MinerStatus{
-		ActorAddress:        minerAddr,
-		OwnerAddress:        owner,
-		WorkerAddress:       worker,
-		PeerID:              peerID,
-		SectorConfiguration: sectorConfig,
-		SectorCount:         sectorCount,
+		ActorAddress:  minerAddr,
+		OwnerAddress:  minerInfo.Owner,
+		WorkerAddress: minerInfo.Worker,
+		PeerID:        minerInfo.PeerId,
 
-		RawPower:             rawPower,
-		QualityAdjustedPower: qaPower,
+		SealProofType:              minerInfo.SealProofType,
+		SectorSize:                 minerInfo.SectorSize,
+		WindowPoStPartitionSectors: minerInfo.WindowPoStPartitionSectors,
+		SectorCount:                sectorCount,
 
-		Deadlines:                   deadlines,
-		MinerInfo:                   minerInfo,
+		RawPower:                    rawPower,
+		QualityAdjustedPower:        qaPower,
 		NetworkRawPower:             totalPower.RawBytePower,
 		NetworkQualityAdjustedPower: totalPower.QualityAdjustedPower,
 	}, nil
