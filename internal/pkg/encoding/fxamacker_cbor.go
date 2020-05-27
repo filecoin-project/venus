@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"io"
 
-	cbor "github.com/fxamacker/cbor"
+	cbor "github.com/fxamacker/cbor/v2"
 )
 
 // FxamackerCborEncoder is an object encoder that encodes objects based on the CBOR standard.
@@ -123,7 +123,7 @@ func (encoder *FxamackerCborEncoder) encodeCbor(obj interface{}) error {
 	}
 
 	// get cbor encoded bytes
-	raw, err := cbor.Marshal(obj, cbor.EncOptions{})
+	raw, err := cbor.Marshal(obj)
 	if err != nil {
 		return err
 	}

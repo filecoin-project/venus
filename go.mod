@@ -30,7 +30,8 @@ require (
 	github.com/filecoin-project/sector-storage v0.0.0-20200508203401-a74812ba12f3
 	github.com/filecoin-project/specs-actors v0.5.3
 	github.com/filecoin-project/storage-fsm v0.0.0-20200508212339-4980cb4c92b1
-	github.com/fxamacker/cbor v1.5.0
+	github.com/fxamacker/cbor/v2 v2.2.0
+	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golangci/golangci-lint v1.21.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-querystring v1.0.0 // indirect
