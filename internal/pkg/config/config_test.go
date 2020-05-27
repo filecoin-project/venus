@@ -51,20 +51,6 @@ func TestWriteFile(t *testing.T) {
 	assert.NoError(t, os.Remove(filepath.Join(dir, "config.json")))
 }
 
-func TestSetRejectsInvalidNicks(t *testing.T) {
-	tf.UnitTest(t)
-
-	cfg := NewDefaultConfig()
-
-	// sic: json includes the quotes in the value
-	err := cfg.Set("heartbeat.nickname", "\"goodnick\"")
-	assert.NoError(t, err)
-	err = cfg.Set("heartbeat.nickname", "bad nick<p>")
-	assert.Error(t, err)
-	err = cfg.Set("heartbeat", `{"heartbeat": "bad nick"}`)
-	assert.Error(t, err)
-}
-
 func TestConfigRoundtrip(t *testing.T) {
 	tf.UnitTest(t)
 

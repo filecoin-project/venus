@@ -22,7 +22,6 @@ type Config struct {
 	Bootstrap     *BootstrapConfig     `json:"bootstrap"`
 	Datastore     *DatastoreConfig     `json:"datastore"`
 	Drand         *DrandConfig         `json:"drand"`
-	Heartbeat     *HeartbeatConfig     `json:"heartbeat"`
 	Mining        *MiningConfig        `json:"mining"`
 	Mpool         *MessagePoolConfig   `json:"mpool"`
 	NetworkParams *NetworkParamsConfig `json:"parameters"`
@@ -172,15 +171,6 @@ type HeartbeatConfig struct {
 	Nickname string `json:"nickname"`
 }
 
-func newDefaultHeartbeatConfig() *HeartbeatConfig {
-	return &HeartbeatConfig{
-		BeatTarget:      "",
-		BeatPeriod:      "3s",
-		ReconnectPeriod: "10s",
-		Nickname:        "",
-	}
-}
-
 // ObservabilityConfig is a container for configuration related to observables.
 type ObservabilityConfig struct {
 	Metrics *MetricsConfig `json:"metrics"`
@@ -291,7 +281,6 @@ func NewDefaultConfig() *Config {
 		Bootstrap:     newDefaultBootstrapConfig(),
 		Datastore:     newDefaultDatastoreConfig(),
 		Drand:         newDefaultDrandConfig(),
-		Heartbeat:     newDefaultHeartbeatConfig(),
 		Mining:        newDefaultMiningConfig(),
 		Mpool:         newDefaultMessagePoolConfig(),
 		NetworkParams: newDefaultNetworkParamsConfig(),

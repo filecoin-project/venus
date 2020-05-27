@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"runtime"
 
@@ -23,7 +22,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
@@ -156,10 +154,6 @@ func (node *Node) Start(ctx context.Context) error {
 			return err
 		}
 
-		if err := node.setupHeartbeatServices(ctx); err != nil {
-			return errors.Wrap(err, "failed to start heartbeat services")
-		}
-
 		// Start node discovery
 		if err := node.Discovery.Start(node); err != nil {
 			return err
@@ -184,38 +178,6 @@ func (node *Node) pubsubscribe(ctx context.Context, topic *pubsub.Topic, handler
 	}
 	go node.handleSubscription(ctx, sub, handler)
 	return sub, nil
-}
-
-func (node *Node) setupHeartbeatServices(ctx context.Context) error {
-	mag := func() address.Address {
-		addr, err := node.MiningAddress()
-		// the only error MiningAddress() returns is ErrNoMinerAddress.
-		// if there is no configured miner address, simply send a zero
-		// address across the wire.
-		if err != nil {
-			return address.Undef
-		}
-		return addr
-	}
-
-	// start the primary heartbeat service
-	if len(node.Repo.Config().Heartbeat.BeatTarget) > 0 {
-		hbs := metrics.NewHeartbeatService(node.Host(), node.chain.ChainReader.GenesisCid(), node.Repo.Config().Heartbeat, node.PorcelainAPI.ChainHead, metrics.WithMinerAddressGetter(mag))
-		go hbs.Start(ctx)
-	}
-
-	// check if we want to connect to an alert service. An alerting service is a heartbeat
-	// service that can trigger alerts based on the contents of heatbeats.
-	if alertTarget := os.Getenv("FIL_HEARTBEAT_ALERTS"); len(alertTarget) > 0 {
-		ahbs := metrics.NewHeartbeatService(node.Host(), node.chain.ChainReader.GenesisCid(), &config.HeartbeatConfig{
-			BeatTarget:      alertTarget,
-			BeatPeriod:      "10s",
-			ReconnectPeriod: "10s",
-			Nickname:        node.Repo.Config().Heartbeat.Nickname,
-		}, node.PorcelainAPI.ChainHead, metrics.WithMinerAddressGetter(mag))
-		go ahbs.Start(ctx)
-	}
-	return nil
 }
 
 func (node *Node) setIsMining(isMining bool) {
