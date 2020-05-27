@@ -120,7 +120,7 @@ func TestDealsList(t *testing.T) {
 
 		// Miner sees no client deals, but does not error
 		minerOutput := minerAPI.RunSuccessFirstLine(ctx, "deals", "list", "--client")
-		require.Equal(t, minerOutput, "null")
+		require.Equal(t, "[]", minerOutput)
 	})
 
 	t.Run("with --help", func(t *testing.T) {

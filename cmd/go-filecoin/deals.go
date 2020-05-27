@@ -69,7 +69,7 @@ deals, active deals, finished deals and cancelled deals.
 				return fmt.Errorf("error reading miner deals: %w", err)
 			}
 		}
-		var formattedDeals []DealsListResult
+		formattedDeals := []DealsListResult{}
 		for _, deal := range clientDeals {
 			formattedDeals = append(formattedDeals, DealsListResult{
 				Miner:       deal.Proposal.Provider,
