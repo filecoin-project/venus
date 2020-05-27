@@ -287,8 +287,6 @@ func setTree(ctx context.Context, t *testing.T, kis []crypto.KeyInfo, cstore cbo
 	for i, ki := range kis {
 		workerAddr, err := ki.Address()
 		require.NoError(t, err)
-		th.RequireInitAccountActor(ctx, t, tree, vms, workerAddr, types.ZeroAttoFIL)
-
 		_, minerAddr := th.RequireNewMinerActor(ctx, t, tree, vms, workerAddr, 10000, th.RequireRandomPeerID(t), types.ZeroAttoFIL)
 		miners[i] = minerAddr
 		m2w[minerAddr] = workerAddr

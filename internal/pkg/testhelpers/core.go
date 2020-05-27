@@ -7,8 +7,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
@@ -41,69 +39,12 @@ func RequireMakeStateTree(t *testing.T, cst cbor.IpldStore, acts map[address.Add
 func RequireNewMinerActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.Storage, owner address.Address, pledge uint64, pid peer.ID, coll types.AttoFIL) (*actor.Actor, address.Address) {
 	// Dragons: re-write using the new actor states structures directly
 
-	// cachedTree := state.NewCachedTree(st)
-	// initActor, _, err := cachedTree.GetOrCreateActor(ctx, builtin.InitActorAddr, func() (*actor.Actor, address.Address, error) {
-	// 	return RequireNewInitActor(t, vms), builtin.InitActorAddr, nil
-	// })
-	// require.NoError(t, err)
-
-	// gt := vm.NewLegacyGasTracker()
-	// gt.MsgGasLimit = gas.Unit(10000)
-	// // we are required to have a message in the context even though it will not be used.
-	// dummyMessage := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, types.SendMethodID, []byte{})
-	// vmctx := vm.NewVMContext(vm.NewContextParams{
-	// 	Message:    dummyMessage,
-	// 	OriginMsg:  dummyMessage,
-	// 	State:      cachedTree,
-	// 	StorageMap: vms,
-	// 	To:         initActor,
-	// 	ToAddr:     builtin.InitActorAddr,
-	// 	GasTracker: gt,
-	// 	Actors:     builtin.DefaultActors,
-	// })
-
-	// actorAddr, _, err := (&initactor.Impl{}).Exec(vmctx, builtin.StorageMinerActorCodeID, []interface{}{owner, owner, pid, types.OneKiBSectorSize})
-	// require.NoError(t, err)
-
-	// require.NoError(t, cachedTree.Commit(ctx))
-	// require.NoError(t, vms.Flush())
-
-	// return RequireLookupActor(ctx, t, st, vms, actorAddr)
-
 	return nil, address.Undef
 }
 
 // RequireLookupActor converts the given address to an id address before looking up the actor in the state tree
 func RequireLookupActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.Storage, actorAddr address.Address) (*actor.Actor, address.Address) {
 	// Dragons: delete, nothing outside the vm should be concerned about actor id indexes
-
-	// if actorAddr.Protocol() == address.ID {
-	// 	return state.MustGetActor(st, actorAddr), actorAddr
-	// }
-
-	// cachedTree := state.NewCachedTree(st)
-	// initActor, _, err := cachedTree.GetOrCreateActor(ctx, builtin.InitActorAddr, func() (*actor.Actor, address.Address, error) {
-	// 	return RequireNewInitActor(t, vms), builtin.InitActorAddr, nil
-	// })
-	// require.NoError(t, err)
-
-	// vmctx := vm.NewVMContext(vm.NewContextParams{
-	// 	State:      cachedTree,
-	// 	StorageMap: vms,
-	// 	To:         initActor,
-	// 	ToAddr:     builtin.InitActorAddr,
-	// })
-	// id, found, err := initactor.LookupIDAddress(vmctx, actorAddr)
-	// require.NoError(t, err)
-	// require.True(t, found)
-
-	// idAddr, err := address.NewIDAddress(id)
-	// require.NoError(t, err)
-
-	// act, err := cachedTree.GetActor(ctx, idAddr)
-	// require.NoError(t, err)
-
-	// return act, idAddr
 
 	return nil, address.Undef
 }
@@ -117,25 +58,13 @@ func RequireNewFakeActor(t *testing.T, vms vm.Storage, addr address.Address, cod
 // RequireNewFakeActorWithTokens instantiates and returns a new fake actor and requires
 // that its steps succeed.
 func RequireNewFakeActorWithTokens(t *testing.T, vms vm.Storage, addr address.Address, codeCid cid.Cid, amt types.AttoFIL) *actor.Actor {
-	// act := actor.NewActor(codeCid, amt)
-	// var err error
-	// rawHead, err := (&actor.FakeActor{}).InitializeState(vms, &actor.FakeActorStorage{})
-	// require.NoError(t, err)
-	// act.Head = e.NewCid(rawHead)
-	// require.NoError(t, vms.Flush())
-	// return act
+
 	return nil
 }
 
 // RequireNewInitActor instantiates and returns a new init actor
 func RequireNewInitActor(t *testing.T, vms vm.Storage) *actor.Actor {
-	// Dragons: why do we need this? remove
-	// act := actor.NewActor(types.InitActorCodeCid, types.ZeroAttoFIL)
-	// store := vms.NewStorage(builtin.InitActorAddr, act)
-	// err := (&initactor.Actor{}).InitializeState(store, "test")
-	// require.NoError(t, err)
-	// require.NoError(t, vms.Flush())
-	// return act
+
 	return nil
 }
 
@@ -162,52 +91,4 @@ func (v *MockMessagePoolValidator) ValidateSignedMessageSyntax(ctx context.Conte
 		return nil
 	}
 	return errors.New("mock validation error")
-}
-
-// VMStorage creates a new storage object backed by an in memory datastore
-func VMStorage() vm.Storage {
-	return vm.NewStorage(blockstore.NewBlockstore(datastore.NewMapDatastore()))
-}
-
-// RequireInitAccountActor initializes an account actor
-func RequireInitAccountActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.Storage, addr address.Address, balance types.AttoFIL) (*actor.Actor, address.Address) {
-	// Dragons: how do you NOT have an init actor on the state? Delete this method
-
-	// cachedTree := state.NewCachedTree(st)
-
-	// // ensure network actor
-	// network, _, err := cachedTree.GetOrCreateActor(ctx, address.LegacyNetworkAddress, func() (*actor.Actor, address.Address, error) {
-	// 	act, err := account.NewActor(types.NewAttoFILFromFIL(100000000))
-	// 	return act, address.LegacyNetworkAddress, err
-	// })
-	// require.NoError(t, err)
-
-	// // ensure init actor
-	// _, _, err = cachedTree.GetOrCreateActor(ctx, builtin.InitActorAddr, func() (*actor.Actor, address.Address, error) {
-	// 	return RequireNewInitActor(t, vms), builtin.InitActorAddr, nil
-	// })
-	// require.NoError(t, err)
-
-	// // create actor
-	// vmctx := vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, State: cachedTree, StorageMap: vms, To: network, ToAddr: address.LegacyNetworkAddress})
-	// vmctx.Send(builtin.InitActorAddr, initactor.ExecMethodID, balance, []interface{}{builtin.AccountActorCodeID, []interface{}{addr}})
-
-	// // fetch id address for actor from init actor
-	// gt := vm.NewLegacyGasTracker()
-	// gt.MsgGasLimit = 10000
-	// vmctx = vm.NewVMContext(vm.NewContextParams{Actors: builtin.DefaultActors, State: cachedTree, StorageMap: vms, To: network, ToAddr: address.LegacyNetworkAddress, GasTracker: gt})
-	// idAddrInt := vmctx.Send(builtin.InitActorAddr, initactor.GetActorIDForAddressMethodID, types.ZeroAttoFIL, []interface{}{addr})
-
-	// idAddr, err := address.NewIDAddress(idAddrInt.(*big.Int).Uint64())
-	// require.NoError(t, err)
-
-	// act, err := cachedTree.GetActor(ctx, idAddr)
-	// require.NoError(t, err)
-
-	// require.NoError(t, cachedTree.Commit(ctx))
-	// require.NoError(t, vms.Flush())
-
-	// return act, idAddr
-
-	return nil, address.Undef
 }

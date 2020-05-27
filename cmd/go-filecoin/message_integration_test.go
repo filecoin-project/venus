@@ -19,7 +19,7 @@ import (
 )
 
 func TestMessageSend(t *testing.T) {
-	t.Skip("DRAGONS: fake proofs")
+	t.Skip("This can be unskipped with fake proofs")
 	tf.IntegrationTest(t)
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
@@ -174,7 +174,7 @@ func TestMessageWait(t *testing.T) {
 
 func TestMessageSendBlockGasLimit(t *testing.T) {
 	tf.IntegrationTest(t)
-	t.Skip("Dragons: fake proofs")
+	t.Skip("Unskip using fake proofs")
 
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)
@@ -220,7 +220,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 
 func TestMessageStatus(t *testing.T) {
 	tf.IntegrationTest(t)
-	t.Skip("Dragons: fake proofs")
+	t.Skip("Unskip with fake proofs")
 
 	ctx := context.Background()
 	builder := test.NewNodeBuilder(t)

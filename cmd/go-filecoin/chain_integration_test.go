@@ -35,7 +35,7 @@ func TestChainHead(t *testing.T) {
 
 func TestChainLs(t *testing.T) {
 	tf.IntegrationTest(t)
-	t.Skip("DRAGONS: fake post for integration test")
+	t.Skip("This can readily be unskipped fy using fake proofs")
 	ctx := context.Background()
 
 	t.Run("chain ls with json encoding returns the whole chain as json", func(t *testing.T) {
