@@ -86,10 +86,6 @@ func TestConfigSet(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, testSwarmAddr, cfg.Swarm.Address)
 
-		err = cfgAPI.Set("heartbeat.nickname", "Nickleless")
-		require.NoError(t, err)
-		assert.Equal(t, "Nickleless", cfg.Heartbeat.Nickname)
-
 		err = cfgAPI.Set("datastore.path", "/dev/null")
 		require.NoError(t, err)
 		assert.Equal(t, "/dev/null", cfg.Datastore.Path)
@@ -122,12 +118,4 @@ func TestConfigSet(t *testing.T) {
 		assert.EqualError(t, err, address.ErrUnknownProtocol.Error())
 	})
 
-	t.Run("validates the node nickname", func(t *testing.T) {
-		repo := repo.NewInMemoryRepo()
-		cfgAPI := NewConfig(repo)
-
-		err := cfgAPI.Set("heartbeat.nickname", "Bad Nickname")
-
-		assert.EqualError(t, err, `"heartbeat.nickname" must only contain letters`)
-	})
 }
