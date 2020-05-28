@@ -231,7 +231,7 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 		// Ensure core.NetworkAddress exists to prevent mining reward failures.
 		builtin.RewardActorAddr: actor.NewActor(builtin.RewardActorCodeID, abi.NewTokenAmount(1000000), cid.Undef),
 	})
-	
+
 	_, addr4 := th.RequireNewMinerActor(ctx, t, st, vms, addr5, 10, th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
 	return st, pool, []address.Address{addr1, addr2, addr3, addr4, addr5}, bs
 }
