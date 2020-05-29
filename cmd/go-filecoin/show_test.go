@@ -20,7 +20,7 @@ import (
 
 func TestBlockDaemon(t *testing.T) {
 	tf.IntegrationTest(t)
-	t.Skip("Dragons: fake proofs")
+	t.Skip("Unskip with fake proofs")
 
 	t.Run("show block <cid-of-genesis-block> returns human readable output for the filecoin block", func(t *testing.T) {
 		ctx := context.Background()

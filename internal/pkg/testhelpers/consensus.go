@@ -140,24 +140,6 @@ func ApplyTestMessageWithGas(actors vm.ActorCodeLoader, st state.Tree, store vm.
 }
 
 func newMessageApplier(msg *types.UnsignedMessage, processor *consensus.DefaultProcessor, st state.Tree, vms vm.Storage, bh abi.ChainEpoch, minerOwner address.Address, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
-	// Dragons: support for this feature no longer exists, delete or resurect
-
-	// amr, err := processor.ApplyMessagesAndPayRewards(context.Background(), st, storageMap, []*types.UnsignedMessage{msg}, minerOwner, bh, ancestors)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// if err := storageMap.Flush(); err != nil {
-	// 	return nil, err
-	// }
-
-	// if len(amr) > 0 {
-	// 	if amr[0].Failure != nil {
-	// 		return nil, amr[0].Failure
-	// 	}
-	// 	return &amr[0].ApplicationResult, err
-	// }
-
 	return nil, nil
 }
 

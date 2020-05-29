@@ -38,9 +38,6 @@ func main() {
 	logging.SetLogLevel("pubsub", "error")       // nolint: errcheck
 	logging.SetLogLevel("relay", "error")        // nolint: errcheck
 
-	// TODO implement help text like so:
-	// https://github.com/ipfs/go-ipfs/blob/master/core/commands/root.go#L91
-	// TODO don't panic if run without a command.
 	code, _ := commands.Run(context.Background(), os.Args, os.Stdin, os.Stdout, os.Stderr)
 	os.Exit(code)
 }
