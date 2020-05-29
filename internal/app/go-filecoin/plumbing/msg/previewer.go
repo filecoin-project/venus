@@ -43,5 +43,5 @@ func NewPreviewer(chainReader previewerChainReader, cst cbor.IpldStore, bs bstor
 
 // Preview sends a read-only message to an actor.
 func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, method abi.MethodNum, params ...interface{}) (gas.Unit, error) {
-	return gas.NewGas(0), nil
+	panic("unimplemented")
 }
