@@ -6,22 +6,20 @@ import (
 	"os"
 	"testing"
 
-	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
-func TestAddrsNewAndList(t *testing.T) {
+func TestAddressNewAndList(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	ctx := context.Background()
@@ -45,7 +43,6 @@ func TestAddrsNewAndList(t *testing.T) {
 
 func TestWalletBalance(t *testing.T) {
 	tf.IntegrationTest(t)
-	t.Skip("not working")
 	ctx := context.Background()
 
 	builder := test.NewNodeBuilder(t)
@@ -58,83 +55,29 @@ func TestWalletBalance(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Log("[success] not found, zero")
-	balance := cmdClient.RunSuccess(ctx, "wallet", "balance", addr.String())
-	assert.Equal(t, "0", balance.ReadStdoutTrimNewlines())
+	var balance abi.TokenAmount
+	cmdClient.RunMarshaledJSON(ctx, &balance, "wallet", "balance", addr.String())
+	assert.Equal(t, "0", balance.String())
 
-	t.Log("[success] balance 9999900000")
-	balance = cmdClient.RunSuccess(ctx, "wallet", "balance", builtin.RewardActorAddr.String())
-	assert.Equal(t, "949999900000", balance.ReadStdoutTrimNewlines())
+	t.Log("[success] balance 1394000000000000000000000000")
+	cmdClient.RunMarshaledJSON(ctx, &balance, "wallet", "balance", builtin.RewardActorAddr.String())
+	assert.Equal(t, "1394000000000000000000000000", balance.String())
 
 	t.Log("[success] newly generated one")
-	addrNew := cmdClient.RunSuccess(ctx, "address", "new")
-	balance = cmdClient.RunSuccess(ctx, "wallet", "balance", addrNew.ReadStdoutTrimNewlines())
-	assert.Equal(t, "0", balance.ReadStdoutTrimNewlines())
+	var addrNew commands.AddressResult
+	cmdClient.RunMarshaledJSON(ctx, &addrNew, "address", "new")
+	cmdClient.RunMarshaledJSON(ctx, &balance, "wallet", "balance", addrNew.Address.String())
+	assert.Equal(t, "0", balance.String())
 }
 
-func TestAddrLookupAndUpdate(t *testing.T) {
-	t.Skip("Long term solution: #3642")
+func TestWalletLoadFromFile(t *testing.T) {
 	tf.IntegrationTest(t)
 	ctx := context.Background()
 
 	builder := test.NewNodeBuilder(t)
 	cs := node.FixtureChainSeed(t)
-
 	builder.WithGenesisInit(cs.GenesisInitFunc)
-	n1, cmdClient, done := builder.BuildAndStartAPI(ctx)
-	defer done()
 
-	builder2 := test.NewNodeBuilder(t)
-	builder2.WithConfig(cs.MinerConfigOpt(0))
-	builder2.WithInitOpt(cs.KeyInitOpt(0))
-	builder2.WithInitOpt(cs.KeyInitOpt(1))
-
-	n2 := builder2.BuildAndStart(ctx)
-	defer n2.Stop(ctx)
-
-	node.ConnectNodes(t, n1, n2)
-
-	addr := fortest.TestAddresses[0]
-	minerAddr := fortest.TestMiners[0]
-	minerPidForUpdate := th.RequireRandomPeerID(t)
-
-	// capture original, pre-update miner pid
-	lookupOutA := cmdClient.RunSuccessFirstLine(ctx, "address", "lookup", minerAddr.String())
-
-	// Not a miner address, should fail.
-	cmdClient.RunFail(ctx, "failed to find", "address", "lookup", addr.String())
-
-	// update the miner's peer ID
-	updateMsg := cmdClient.RunSuccessFirstLine(ctx,
-		"miner", "update-peerid",
-		"--from", addr.String(),
-		"--gas-price", "1",
-		"--gas-limit", "300",
-		minerAddr.String(),
-		minerPidForUpdate.Pretty(),
-	)
-
-	// ensure mining happens after update message gets included in mempool
-	_, err := n2.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-	require.NoError(t, err)
-
-	// wait for message to be included in a block
-	_, err = n1.PorcelainAPI.MessageWaitDone(ctx, mustDecodeCid(updateMsg))
-	require.NoError(t, err)
-
-	// use the address lookup command to ensure update happened
-	lookupOutB := cmdClient.RunSuccessFirstLine(ctx, "address", "lookup", minerAddr.String())
-	assert.Equal(t, minerPidForUpdate.Pretty(), lookupOutB)
-	assert.NotEqual(t, lookupOutA, lookupOutB)
-}
-
-func TestWalletLoadFromFile(t *testing.T) {
-	tf.IntegrationTest(t)
-	t.Skip("not working")
-	ctx := context.Background()
-
-	builder := test.NewNodeBuilder(t)
-
-	buildWithMiner(t, builder)
 	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
@@ -142,16 +85,18 @@ func TestWalletLoadFromFile(t *testing.T) {
 		cmdClient.RunSuccess(ctx, "wallet", "import", p)
 	}
 
-	dw := cmdClient.RunSuccess(ctx, "address", "ls").ReadStdoutTrimNewlines()
+	var addrs commands.AddressLsResult
+	cmdClient.RunMarshaledJSON(ctx, &addrs, "address", "ls")
 
 	for _, addr := range fortest.TestAddresses {
 		// assert we loaded the test address from the file
-		assert.Contains(t, dw, addr)
+		assert.Contains(t, addrs.Addresses, addr)
 	}
 
 	// assert default amount of funds were allocated to address during genesis
-	wb := cmdClient.RunSuccess(ctx, "wallet", "balance", fortest.TestAddresses[0].String()).ReadStdoutTrimNewlines()
-	assert.Contains(t, wb, "10000")
+	var balance abi.TokenAmount
+	cmdClient.RunMarshaledJSON(ctx, &balance, "wallet", "balance", fortest.TestAddresses[0].String())
+	assert.Equal(t, "1000000000000000000000000", balance.String())
 }
 
 func TestWalletExportImportRoundTrip(t *testing.T) {
@@ -186,14 +131,4 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	cmdClient.RunMarshaledJSON(ctx, &importResult, "wallet", "import", wf.Name())
 	assert.Len(t, importResult.Addresses, 1)
 	assert.Equal(t, lsResult.Addresses[0], importResult.Addresses[0])
-}
-
-// MustDecodeCid decodes a string to a Cid pointer, panicking on error
-func mustDecodeCid(cidStr string) cid.Cid {
-	decode, err := cid.Decode(cidStr)
-	if err != nil {
-		panic(err)
-	}
-
-	return decode
 }

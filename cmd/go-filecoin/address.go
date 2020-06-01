@@ -35,7 +35,7 @@ var addrsCmd = &cmds.Command{
 	},
 }
 
-type addressResult struct {
+type AddressResult struct {
 	Address address.Address
 }
 
@@ -60,12 +60,12 @@ var addrsNewCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		return re.Emit(&addressResult{addr})
+		return re.Emit(&AddressResult{addr})
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("type", "The type of address to create: bls or secp256k1 (default)").WithDefault("secp256k1"),
 	},
-	Type: &addressResult{},
+	Type: &AddressResult{},
 }
 
 var addrsLsCmd = &cmds.Command{
@@ -89,9 +89,9 @@ var defaultAddressCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(&addressResult{addr})
+		return re.Emit(&AddressResult{addr})
 	},
-	Type: &addressResult{},
+	Type: &AddressResult{},
 }
 
 var balanceCmd = &cmds.Command{
