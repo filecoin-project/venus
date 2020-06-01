@@ -25,7 +25,7 @@ func TestDealsList(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	ctx := context.Background()
-	minerAPI, clientAPI, done, deal1Cid, deal2Cid := createDeal(t, ctx)
+	minerAPI, clientAPI, done, deal1Cid, deal2Cid := createDeal(ctx, t)
 	defer done()
 
 	var dealResults []commands.DealsListResult
@@ -81,7 +81,7 @@ func TestDealShow(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	ctx := context.Background()
-	_, clientAPI, done, deal1Cid, _ := createDeal(t, ctx)
+	_, clientAPI, done, deal1Cid, _ := createDeal(ctx, t)
 	defer done()
 
 	var res storagemarket.ClientDeal
@@ -101,7 +101,7 @@ func TestDealShow(t *testing.T) {
 	})
 }
 
-func createDeal(t *testing.T, ctx context.Context) (*test.Client, *test.Client, func(), cid.Cid, cid.Cid) {
+func createDeal(ctx context.Context, t *testing.T) (*test.Client, *test.Client, func(), cid.Cid, cid.Cid) {
 	nodes, cancel := test.MustCreateNodesWithBootstrap(ctx, t, 1)
 
 	miner := nodes[0]
