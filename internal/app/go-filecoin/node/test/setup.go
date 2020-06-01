@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/build/project"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
@@ -76,17 +77,19 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	return nodes, cancel
 }
 
-func RequireMineOnce(ctx context.Context, t *testing.T, fakeClock clock.Fake, node *node.Node) {
+func RequireMineOnce(ctx context.Context, t *testing.T, fakeClock clock.Fake, node *node.Node) *block.Block {
 	fakeClock.Advance(blockTime)
-	_, err := node.BlockMining.BlockMiningAPI.MiningOnce(ctx)
+	blk, err := node.BlockMining.BlockMiningAPI.MiningOnce(ctx)
 
 	// fail only if ctx not done
 	select {
 	case <-ctx.Done():
-		return
+		return nil
 	default:
 		require.NoError(t, err)
 	}
+
+	return blk
 }
 
 func CreateBootstrapSetup(t *testing.T) (*node.ChainSeed, *gengen.GenesisCfg, clock.Fake, clock.ChainEpochClock) {

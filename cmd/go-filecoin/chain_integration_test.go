@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -35,18 +34,16 @@ func TestChainHead(t *testing.T) {
 
 func TestChainLs(t *testing.T) {
 	tf.IntegrationTest(t)
-	t.Skip("This can readily be unskipped fy using fake proofs")
 	ctx := context.Background()
 
 	t.Run("chain ls with json encoding returns the whole chain as json", func(t *testing.T) {
-		builder := test.NewNodeBuilder(t)
-		buildWithMiner(t, builder)
+		seed, cfg, fakeClk, chainClk := test.CreateBootstrapSetup(t)
+		n := test.CreateBootstrapMiner(ctx, t, seed, chainClk, cfg)
 
-		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
-		defer done()
+		cmdClient, apiDone := test.RunNodeAPI(ctx, n, t)
+		defer apiDone()
 
-		blk, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-		require.NoError(t, err)
+		blk := test.RequireMineOnce(ctx, t, fakeClk, n)
 		c := blk.Cid()
 
 		result2 := cmdClient.RunSuccess(ctx, "chain", "ls", "--enc", "json").ReadStdoutTrimNewlines()
@@ -80,61 +77,33 @@ func TestChainLs(t *testing.T) {
 		assert.True(t, b[0].Parents.Empty())
 	})
 
-	t.Run("chain ls with text encoding returns only CIDs", func(t *testing.T) {
-		builder := test.NewNodeBuilder(t)
-		buildWithMiner(t, builder)
-
-		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
-		defer done()
-
-		var blocks []block.Block
-		blockJSON := cmdClient.RunSuccess(ctx, "chain", "ls", "--enc", "json").ReadStdoutTrimNewlines()
-		err := json.Unmarshal([]byte(blockJSON), &blocks)
-		genesisBlockCid := blocks[0].Cid().String()
-		require.NoError(t, err)
-
-		blk, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-		require.NoError(t, err)
-		newBlockCid := blk.Cid()
-
-		expectedOutput := fmt.Sprintf("%s\n%s", newBlockCid, genesisBlockCid)
-
-		chainLsResult := cmdClient.RunSuccess(ctx, "chain", "ls").ReadStdoutTrimNewlines()
-
-		assert.Equal(t, chainLsResult, expectedOutput)
-	})
-
 	t.Run("chain ls --long returns CIDs, Miner, block height and message count", func(t *testing.T) {
-		builder := test.NewNodeBuilder(t)
-		buildWithMiner(t, builder)
+		seed, cfg, fakeClk, chainClk := test.CreateBootstrapSetup(t)
+		n := test.CreateBootstrapMiner(ctx, t, seed, chainClk, cfg)
 
-		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
-		defer done()
+		cmdClient, apiDone := test.RunNodeAPI(ctx, n, t)
+		defer apiDone()
 
-		blk, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-		require.NoError(t, err)
-		newBlockCid := blk.Cid().String()
+		test.RequireMineOnce(ctx, t, fakeClk, n)
 
 		chainLsResult := cmdClient.RunSuccess(ctx, "chain", "ls", "--long").ReadStdoutTrimNewlines()
 
-		assert.Contains(t, chainLsResult, newBlockCid)
-		assert.Contains(t, chainLsResult, fortest.TestMiners[0])
+		assert.Contains(t, chainLsResult, fortest.TestMiners[0].String())
 		assert.Contains(t, chainLsResult, "1")
 		assert.Contains(t, chainLsResult, "0")
 	})
 
 	t.Run("chain ls --long with JSON encoding returns integer string block height", func(t *testing.T) {
-		builder := test.NewNodeBuilder(t)
-		buildWithMiner(t, builder)
+		seed, cfg, fakeClk, chainClk := test.CreateBootstrapSetup(t)
+		n := test.CreateBootstrapMiner(ctx, t, seed, chainClk, cfg)
 
-		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
-		defer done()
+		cmdClient, apiDone := test.RunNodeAPI(ctx, n, t)
+		defer apiDone()
 
-		_, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-		require.NoError(t, err)
+		test.RequireMineOnce(ctx, t, fakeClk, n)
 
 		chainLsResult := cmdClient.RunSuccess(ctx, "chain", "ls", "--long", "--enc", "json").ReadStdoutTrimNewlines()
-		assert.Contains(t, chainLsResult, `"height":"0"`)
-		assert.Contains(t, chainLsResult, `"height":"1"`)
+		assert.Contains(t, chainLsResult, `"height":0`)
+		assert.Contains(t, chainLsResult, `"height":1`)
 	})
 }
