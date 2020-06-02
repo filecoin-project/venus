@@ -27,5 +27,5 @@ func buildWithMiner(t *testing.T, builder *test.NodeBuilder) {
 	cs := node.FixtureChainSeed(t)
 	builder.WithGenesisInit(cs.GenesisInitFunc)
 	builder.WithConfig(cs.MinerConfigOpt(0))
-	builder.WithInitOpt(cs.KeyInitOpt(0))
+	builder.WithInitOpt(cs.MinerInitOpt(0))
 }

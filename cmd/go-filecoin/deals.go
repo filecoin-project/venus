@@ -3,15 +3,13 @@ package commands
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 const (
@@ -95,16 +93,6 @@ deals, active deals, finished deals and cancelled deals.
 	Type: []DealsListResult{},
 }
 
-// DealsShowResult contains Deal output with Payment Vouchers.
-type DealsShowResult struct {
-	DealCID    cid.Cid          `json:"deal_cid"`
-	State      market.State     `json:"state"`
-	Miner      *address.Address `json:"miner_address"`
-	Duration   uint64           `json:"duration_blocks"`
-	Size       big.Int          `json:"deal_size"`
-	TotalPrice *types.AttoFIL   `json:"total_price"`
-}
-
 var dealsShowCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Show deal details for CID <cid>",
@@ -113,7 +101,16 @@ var dealsShowCmd = &cmds.Command{
 		cmdkit.StringArg("cid", true, false, "CID of deal to query"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		panic("implement me in terms of the storage market module")
+		dealCid, err := cid.Parse(req.Arguments[0])
+		if err != nil {
+			return errors.Wrap(err, "invalid cid "+req.Arguments[0])
+		}
+
+		deal, err := GetStorageAPI(env).GetStorageDeal(req.Context, dealCid)
+		if err != nil {
+			return err
+		}
+		return re.Emit(deal)
 	},
-	Type: DealsShowResult{},
+	Type: storagemarket.ClientDeal{},
 }

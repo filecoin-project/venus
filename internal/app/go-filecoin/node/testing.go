@@ -127,6 +127,13 @@ func (cs *ChainSeed) MinerConfigOpt(which int) ConfigOpt {
 	}
 }
 
+// MinerInitOpt is a node init option that imports the key for the miner's owner
+func (cs *ChainSeed) MinerInitOpt(which int) InitOpt {
+	kwhich := cs.info.Miners[which].Owner
+	kinfo := cs.info.Keys[kwhich]
+	return ImportKeyOpt(kinfo)
+}
+
 // KeyInitOpt is a node init option that imports one of the chain seed's
 // keys to a node's wallet
 func (cs *ChainSeed) KeyInitOpt(which int) InitOpt {
