@@ -3,6 +3,7 @@ package commands_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/multiformats/go-multihash"
@@ -95,9 +96,10 @@ func TestDealShow(t *testing.T) {
 		assert.Equal(t, abi.NewTokenAmount(100000), res.ClientDealProposal.Proposal.StoragePricePerEpoch)
 	})
 
-	t.Run("When deal does not exist says deal not found", func(t *testing.T) {
+	t.Run("When deal does not exist errors with useful message", func(t *testing.T) {
 		nonDealCid := requireTestCID(t, []byte("anything"))
-		clientAPI.RunFail(ctx, "deal not found", "deals", "show", nonDealCid.String())
+		expectedErr := fmt.Sprintf("No state for /%s", nonDealCid.String())
+		clientAPI.RunFail(ctx, expectedErr, "deals", "show", nonDealCid.String())
 	})
 }
 
