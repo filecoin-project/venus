@@ -51,8 +51,6 @@ func NewRetrievalProtocolSubmodule(
 	netwk := network.NewFromLibp2pHost(host)
 	pnode := retmkt.NewRetrievalProviderConnector(netwk, pieceManager, bs, pchMgrAPI, nil)
 
-	// TODO: use latest go-fil-markets with persisted deal store\
-
 	marketProvider, err := impl.NewProvider(providerAddr, pnode, netwk, retrievalDealPieceStore, bs, namespace.Wrap(ds, datastore.NewKey(RetrievalProviderDSPrefix)))
 	if err != nil {
 		return nil, err
