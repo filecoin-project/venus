@@ -40,7 +40,6 @@ var initCmd = &cmds.Command{
 		cmdkit.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
 		cmdkit.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
 		cmdkit.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
-		cmdkit.StringOption(WithMiner, "when set, creates a custom genesis block  a pre generated miner account, requires running the daemon using dev mode (--dev)"),
 		cmdkit.StringOption(OptionSectorDir, "path of directory into which staged and sealed sectors will be written"),
 		cmdkit.StringOption(MinerActorAddress, "when set, sets the daemons's miner actor address to the provided address"),
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
@@ -112,12 +111,6 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 		cfg.SectorBase.RootDirPath = dir
 	}
 
-	if m, ok := options[WithMiner].(string); ok {
-		if cfg.Mining.MinerAddress, err = address.NewFromString(m); err != nil {
-			return err
-		}
-	}
-
 	if autoSealIntervalSeconds, ok := options[AutoSealIntervalSeconds]; ok {
 		cfg.Mining.AutoSealIntervalSeconds = autoSealIntervalSeconds.(uint)
 	}
@@ -130,7 +123,7 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 
 	if dir, ok := options[OptionPresealedSectorDir].(string); ok {
 		if cfg.Mining.MinerAddress == address.Undef {
-			return fmt.Errorf("if --%s is provided, --%s or --%s must also be provided", OptionPresealedSectorDir, MinerActorAddress, WithMiner)
+			return fmt.Errorf("if --%s is provided, --%s must also be provided", OptionPresealedSectorDir, MinerActorAddress)
 		}
 
 		cfg.SectorBase.PreSealedSectorsDirPath = dir
