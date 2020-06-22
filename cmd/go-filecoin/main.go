@@ -75,9 +75,6 @@ const (
 	// WalletKeyFile is the path of file containing wallet keys that may be imported on initialization
 	WalletKeyFile = "wallet-keyfile"
 
-	// WithMiner when set, creates a custom genesis block with a pre generated miner account, requires to run the daemon using dev mode (--dev)
-	WithMiner = "with-miner"
-
 	// MinerActorAddress when set, sets the daemons's miner address to the provided address
 	MinerActorAddress = "miner-actor-address"
 
