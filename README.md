@@ -61,6 +61,7 @@ A mining node requires significant RAM and GPU resources, depending on the secto
 ```sh
 curl -fsSL https://raw.githubusercontent.com/filecoin-project/go-filecoin/master/scripts/build/mac-build.sh | bash
 ```
+Note: macOS users may need to update their git config with `git config --global core.autocrlf input`
 
 ### Install from Source
 
