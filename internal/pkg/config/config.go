@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -245,10 +245,10 @@ func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 	return &NetworkParamsConfig{
 		ConsensusMinerMinPower: 0, // 0 means don't override the value
 		ReplaceProofTypes: []int64{
-			int64(abi.RegisteredProof_StackedDRG2KiBSeal),
-			int64(abi.RegisteredProof_StackedDRG512MiBSeal),
-			int64(abi.RegisteredProof_StackedDRG32GiBSeal),
-			int64(abi.RegisteredProof_StackedDRG64GiBSeal),
+			int64(abi.RegisteredSealProof_StackedDrg2KiBV1),
+			int64(abi.RegisteredSealProof_StackedDrg512MiBV1),
+			int64(abi.RegisteredSealProof_StackedDrg32GiBV1),
+			int64(abi.RegisteredSealProof_StackedDrg64GiBV1),
 		},
 	}
 }

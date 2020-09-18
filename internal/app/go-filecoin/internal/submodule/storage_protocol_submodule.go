@@ -2,6 +2,8 @@ package submodule
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/repo"
 	"os"
 
 	"github.com/filecoin-project/go-statestore"
@@ -9,7 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
-	graphsyncimpl "github.com/filecoin-project/go-data-transfer/impl/graphsync"
+	graphsyncimpl "github.com/filecoin-project/go-data-transfer/impl"
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
@@ -18,7 +20,7 @@ import (
 	smvalid "github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnetwork "github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-graphsync"
@@ -77,16 +79,20 @@ func NewStorageProtocolSubmodule(
 	gsync graphsync.GraphExchange,
 	stateViewer *appstate.Viewer,
 ) (*StorageProtocolSubmodule, error) {
-	cnode := storagemarketconnector.NewStorageClientNodeConnector(cborutil.NewIpldStore(bs), c.State, mw, s, m.Outbox, clientAddr, stateViewer)
-	dtStoredCounter := storedcounter.New(ds, datastore.NewKey(DTCounterDSKey))
-	dt := graphsyncimpl.NewGraphSyncDataTransfer(h, gsync, dtStoredCounter)
-	clientDs := namespace.Wrap(ds, datastore.NewKey(ClientDSPrefix))
-	validator := smvalid.NewUnifiedRequestValidator(nil, statestore.New(clientDs))
-	err := dt.RegisterVoucherType(&smvalid.StorageDataTransferVoucher{}, validator)
-	if err != nil {
-		return nil, err
-	}
 
+    h host.Host,
+	ibs dtypes.ClientBlockstore,
+	mds dtypes.ClientMultiDstore,
+	r repo.LockedRepo,
+	dataTransfer dtypes.ClientDataTransfer,
+	discovery *discovery.Local,
+	deals dtypes.ClientDatastore,
+	scn storagemarket.StorageClientNode,
+	dealFunds ClientDealFunds
+
+
+	cnode := storagemarketconnector.NewStorageClientNodeConnector(cborutil.NewIpldStore(bs), c.State, mw, s, m.Outbox, clientAddr, stateViewer)
+	clientDs := namespace.Wrap(ds, datastore.NewKey(ClientDSPrefix))
 	local := discovery.NewLocal(namespace.Wrap(ds, datastore.NewKey(DiscoveryDSPrefix)))
 	client, err := impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, dt, local, clientDs, cnode)
 	if err != nil {
@@ -115,7 +121,7 @@ func (sm *StorageProtocolSubmodule) AddStorageProvider(
 	bs blockstore.Blockstore,
 	gsync graphsync.GraphExchange,
 	repoPath string,
-	sealProofType abi.RegisteredProof,
+	sealProofType abi.RegisteredSealProof,
 	stateViewer *appstate.Viewer,
 ) error {
 	sm.pieceManager = pm

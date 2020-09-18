@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -32,7 +32,7 @@ func TestMinerCreateIntegration(t *testing.T) {
 	defaultAddr := newMiner.Repo.Config().Wallet.DefaultAddress
 	peer := newMiner.Network().Network.GetPeerID()
 
-	minerAddr, err := porcelainAPI.MinerCreate(ctx, defaultAddr, types.NewAttoFILFromFIL(1), 10000, abi.RegisteredProof_StackedDRG2KiBSeal, peer, types.NewAttoFILFromFIL(1))
+	minerAddr, err := porcelainAPI.MinerCreate(ctx, defaultAddr, types.NewAttoFILFromFIL(1), 10000, abi.RegisteredSealProof_StackedDRG2KiBSeal, peer, types.NewAttoFILFromFIL(1))
 	require.NoError(t, err)
 
 	// inspect results on chain

@@ -1,8 +1,8 @@
 package constants
 
-import "github.com/filecoin-project/specs-actors/actors/abi"
+import "github.com/filecoin-project/go-state-types/abi"
 
-var DevRegisteredSealProof = abi.RegisteredProof_StackedDRG2KiBSeal
+var DevRegisteredSealProof = abi.RegisteredSealProof_StackedDrg2KiBV1
 
-var DevRegisteredWinningPoStProof = abi.RegisteredProof_StackedDRG2KiBWinningPoSt
-var DevRegisteredWindowPoStProof = abi.RegisteredProof_StackedDRG2KiBWindowPoSt
+var DevRegisteredWinningPoStProof = abi.RegisteredPoStProof_StackedDrgWinning2KiBV1
+var DevRegisteredWindowPoStProof = abi.RegisteredPoStProof_StackedDrgWindow2KiBV1

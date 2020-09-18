@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
-	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	fbig "github.com/filecoin-project/go-state-types/big"
+	specsbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

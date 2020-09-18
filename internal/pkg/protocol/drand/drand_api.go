@@ -2,10 +2,6 @@ package drand
 
 import (
 	"context"
-	"encoding/json"
-
-	"github.com/pkg/errors"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 )
 
@@ -35,63 +31,6 @@ func New(drand drand.IFace, config Config) *API {
 // This method assumes all drand nodes are secure or that all of them are not. This
 // mis-models the drand config, but is unlikely to be false in practice.
 func (api *API) Configure(addrs []string, secure bool, overrideGroupAddrs bool) error {
-	groupAddrs, keyCoeffs, genesisTime, roundSeconds, err := api.drand.FetchGroupConfig(addrs, secure, overrideGroupAddrs)
-	if err != nil {
-		return errors.Wrapf(err, "Could not retrieve drand group from %+v", addrs)
-	}
-
-	jsonCoeffs, err := json.Marshal(keyCoeffs)
-	if err != nil {
-		return errors.New("Could not convert coefficients to json")
-	}
-
-	err = api.config.ConfigSet("drand.distKey", string(jsonCoeffs))
-	if err != nil {
-		return errors.Wrap(err, "Could not set dist key in config")
-	}
-
-	if overrideGroupAddrs {
-		groupAddrs = addrs
-	}
-
-	jsonAddrs, err := json.Marshal(groupAddrs)
-	if err != nil {
-		return errors.New("Could not convert addresses to json")
-	}
-
-	err = api.config.ConfigSet("drand.addresses", string(jsonAddrs))
-	if err != nil {
-		return errors.Wrap(err, "Could not set drand addresses in config")
-	}
-
-	jsonSecure, err := json.Marshal(secure)
-	if err != nil {
-		return errors.New("Could not convert secure to json")
-	}
-
-	err = api.config.ConfigSet("drand.secure", string(jsonSecure))
-	if err != nil {
-		return errors.Wrap(err, "Could not set drand secure in config")
-	}
-
-	jsonStart, err := json.Marshal(genesisTime)
-	if err != nil {
-		return errors.Wrap(err, "Could not convert startTimeUnix to json")
-	}
-	err = api.config.ConfigSet("drand.startTimeUnix", string(jsonStart))
-	if err != nil {
-		return errors.Wrap(err, "Could not set drand start time unix in config")
-	}
-
-	jsonRoundSeconds, err := json.Marshal(roundSeconds)
-	if err != nil {
-		return errors.Wrap(err, "Could not convert roundSeconds to json")
-	}
-	err = api.config.ConfigSet("drand.roundSeconds", string(jsonRoundSeconds))
-	if err != nil {
-		return errors.Wrap(err, "Could not set drand round seconds in config")
-	}
-
 	return nil
 }
 

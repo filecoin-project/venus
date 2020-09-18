@@ -1,9 +1,11 @@
 package vmcontext
 
 import (
+	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
@@ -23,9 +25,9 @@ type validateFn = func() bool
 
 type actorStateHandleContext interface {
 	AllowSideEffects(bool)
-	Create(obj specsruntime.CBORMarshaler) cid.Cid
-	Load(obj specsruntime.CBORUnmarshaler) cid.Cid
-	Replace(expected cid.Cid, obj specsruntime.CBORMarshaler) cid.Cid
+	Create(obj cbg.CBORMarshaler) cid.Cid
+	Load(obj cbg.CBORUnmarshaler) cid.Cid
+	Replace(expected cid.Cid, obj cbg.CBORMarshaler) cid.Cid
 }
 
 // NewActorStateHandle returns a new `ActorStateHandle`
@@ -46,7 +48,7 @@ func newActorStateHandle(ctx actorStateHandleContext) actorStateHandle {
 
 var _ specsruntime.StateHandle = (*actorStateHandle)(nil)
 
-func (h *actorStateHandle) Create(obj specsruntime.CBORMarshaler) {
+func (h *actorStateHandle) StateCreate(obj cbor.Marshaler) {
 	// Store the new state.
 	c := h.ctx.Create(obj)
 	// Store the expected CID of obj.
@@ -54,7 +56,7 @@ func (h *actorStateHandle) Create(obj specsruntime.CBORMarshaler) {
 }
 
 // Readonly is the implementation of the ActorStateHandle interface.
-func (h *actorStateHandle) Readonly(obj specsruntime.CBORUnmarshaler) {
+func (h *actorStateHandle) StateReadonly(obj cbor.Unmarshaler) {
 	// Load state to obj.
 	c := h.ctx.Load(obj)
 	// Track the state and expected CID used by the caller.
@@ -62,7 +64,7 @@ func (h *actorStateHandle) Readonly(obj specsruntime.CBORUnmarshaler) {
 }
 
 // Transaction is the implementation of the ActorStateHandle interface.
-func (h *actorStateHandle) Transaction(obj specsruntime.CBORer, f func() interface{}) interface{} {
+func (h *actorStateHandle) StateTransaction(obj cbor.Er, f func()) {
 	if obj == nil {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil to Transaction()")
 	}
@@ -72,7 +74,7 @@ func (h *actorStateHandle) Transaction(obj specsruntime.CBORer, f func() interfa
 
 	// Call user code allowing mutation but not side-effects
 	h.ctx.AllowSideEffects(false)
-	out := f()
+	f()
 	h.ctx.AllowSideEffects(true)
 
 	// Store the new state
@@ -80,7 +82,6 @@ func (h *actorStateHandle) Transaction(obj specsruntime.CBORer, f func() interfa
 
 	// Record the expected state of obj
 	h.usedObjs[obj] = newCid
-	return out
 }
 
 // Validate validates that the state was mutated properly.

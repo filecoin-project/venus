@@ -2,10 +2,11 @@ package state
 
 import (
 	"context"
+	"github.com/filecoin-project/go-bitfield"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -42,7 +43,7 @@ type FakeMinerState struct {
 	ProvingPeriodEnd    abi.ChainEpoch
 	PoStFailures        int
 	Sectors             []miner.SectorOnChainInfo
-	Deadlines           []*abi.BitField
+	Deadlines           []*bitfield.BitField
 	ClaimedRawPower     abi.StoragePower
 	ClaimedQAPower      abi.StoragePower
 	PledgeRequirement   abi.TokenAmount
@@ -85,9 +86,9 @@ func (v *FakeStateView) MinerSectorStates(_ context.Context, maddr address.Addre
 	}
 	return &MinerSectorStates{
 		Deadlines:  m.Deadlines,
-		Faults:     abi.NewBitField(),
-		Recoveries: abi.NewBitField(),
-		NewSectors: abi.NewBitField(),
+		Faults:     NewBitField(),
+		Recoveries: NewBitField(),
+		NewSectors: NewBitField(),
 	}, nil
 }
 
@@ -97,7 +98,7 @@ func (v *FakeStateView) MinerGetSector(_ context.Context, maddr address.Address,
 		return nil, false, errors.Errorf("no miner %s", maddr)
 	}
 	for _, s := range m.Sectors {
-		if s.Info.SectorNumber == sectorNum {
+		if s.SectorNumber == sectorNum {
 			return &s, true, nil
 		}
 	}
@@ -169,6 +170,11 @@ func (v *FakeStateView) MinerInfo(ctx context.Context, maddr address.Address) (m
 	return miner.MinerInfo{
 		Owner:  m.Owner,
 		Worker: m.Worker,
-		PeerId: m.PeerID,
+		PeerId: []byte(m.PeerID),
 	}, nil
+}
+
+func NewBitField() *bitfield.BitField {
+	bit := bitfield.New()
+	return &bit
 }

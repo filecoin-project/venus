@@ -3,9 +3,9 @@ package sectors
 import (
 	"sync"
 
+	fsm "github.com/filecoin-project/go-filecoin/vendors/storage-sealing"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-storedcounter"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	fsm "github.com/filecoin-project/storage-fsm"
 	"github.com/ipfs/go-datastore"
 )
 

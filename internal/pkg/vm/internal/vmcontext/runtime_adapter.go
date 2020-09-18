@@ -2,12 +2,19 @@ package vmcontext
 
 import (
 	"context"
+	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/types"
+	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/go-state-types/rt"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
@@ -16,6 +23,95 @@ import (
 
 type runtimeAdapter struct {
 	ctx *invocationContext
+}
+
+func (a *runtimeAdapter) Caller() address.Address {
+	return a.ctx.Message().Caller()
+}
+
+func (a *runtimeAdapter) Receiver() address.Address {
+	return a.ctx.Message().Receiver()
+}
+
+func (a *runtimeAdapter) ValueReceived() abi.TokenAmount {
+	return a.ctx.Message().ValueReceived()
+}
+
+func (a *runtimeAdapter) StateCreate(obj cbor.Marshaler) {
+	c := a.StorePut(obj)
+	a.ctx.rt.state.Commit()
+	err := a.(EmptyObjectCid, c)
+	if err != nil {
+		panic(fmt.Errorf("failed to commit state after creating object: %w", err))
+	}
+}
+
+func (a *runtimeAdapter) StateReadonly(obj cbor.Unmarshaler) {
+	panic("implement me")
+}
+
+func (a *runtimeAdapter) StateTransaction(obj cbor.Er, f func()) {
+	panic("implement me")
+}
+
+func (a *runtimeAdapter) StoreGet(c cid.Cid, o cbor.Unmarshaler) bool {
+	panic("implement me")
+}
+
+func (a *runtimeAdapter) StorePut(x cbor.Marshaler) cid.Cid {
+	panic("implement me")
+}
+
+func (a *runtimeAdapter) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) error {
+	panic("implement me")
+}
+
+func (a *runtimeAdapter) HashBlake2b(data []byte) [32]byte {
+	panic("implement me")
+}
+
+func (a *runtimeAdapter) ComputeUnsealedSectorCID(reg abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+	panic("implement me")
+}
+
+func (a *runtimeAdapter) VerifySeal(vi proof.SealVerifyInfo) error {
+	panic("implement me")
+}
+
+func (a *runtimeAdapter) BatchVerifySeals(vis map[address.Address][]proof.SealVerifyInfo) (map[address.Address][]bool, error) {
+	panic("implement me")
+}
+
+func (a *runtimeAdapter) VerifyPoSt(vi proof.WindowPoStVerifyInfo) error {
+	panic("implement me")
+}
+
+func (a *runtimeAdapter) VerifyConsensusFault(h1, h2, extra []byte) (*specsruntime.ConsensusFault, error) {
+	panic("implement me")
+}
+
+func (a *runtimeAdapter) NetworkVersion() network.Version {
+	panic("implement me")
+}
+
+func (a *runtimeAdapter) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
+	panic("implement me")
+}
+
+func (a *runtimeAdapter) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
+	panic("implement me")
+}
+
+func (a *runtimeAdapter) Send(toAddr address.Address, methodNum abi.MethodNum, params cbor.Marshaler, value abi.TokenAmount, out cbor.Er) exitcode.ExitCode {
+	panic("implement me")
+}
+
+func (a *runtimeAdapter) ChargeGas(name string, gas int64, virtual int64) {
+	panic("implement me")
+}
+
+func (a *runtimeAdapter) Log(level rt.LogLevel, msg string, args ...interface{}) {
+	panic("implement me")
 }
 
 var _ specsruntime.Runtime = (*runtimeAdapter)(nil)
@@ -92,7 +188,7 @@ func (a *runtimeAdapter) Store() specsruntime.Store {
 }
 
 // Send implements Runtime.
-func (a *runtimeAdapter) Send(toAddr address.Address, methodNum abi.MethodNum, params specsruntime.CBORMarshaler, value abi.TokenAmount) (ret specsruntime.SendReturn, errcode exitcode.ExitCode) {
+func (a *runtimeAdapter) Send(toAddr address.Address, methodNum abi.MethodNum, params cbg.CBORMarshaler, value abi.TokenAmount) (ret types.SendReturn, errcode exitcode.ExitCode) {
 	return a.ctx.Send(toAddr, methodNum, params, value)
 }
 
@@ -138,12 +234,9 @@ func (a *runtimeAdapter) Context() context.Context {
 	return a.ctx.rt.context
 }
 
-type nullTraceSpan struct{}
-
-func (*nullTraceSpan) End() {}
-
+var  nullTraceSpan = func(){}
 // StartSpan implements Runtime.
-func (a *runtimeAdapter) StartSpan(name string) specsruntime.TraceSpan {
+func (a *runtimeAdapter) StartSpan(name string) func() {
 	// Dragons: leeave empty for now, add TODO to add this into gfc
-	return &nullTraceSpan{}
+	return nullTraceSpan
 }

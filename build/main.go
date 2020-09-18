@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -126,7 +127,7 @@ func deps() {
 	}
 
 	log.Println("Getting parameters...")
-	err = pf.GetParams(dat, 2048)
+	err = pf.GetParams(context.Background(), dat, 2048) // todo by force
 	if err != nil {
 		panic(errors.Wrap(err, "failed to acquire Groth parameters for development sectors"))
 	}

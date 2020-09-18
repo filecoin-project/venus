@@ -2,9 +2,10 @@ package vmcontext
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 	"github.com/minio/blake2b-simd"
@@ -25,19 +26,19 @@ func (f FakeSyscalls) HashBlake2b(data []byte) [32]byte {
 	return blake2b.Sum256(data)
 }
 
-func (f FakeSyscalls) ComputeUnsealedSectorCID(ctx context.Context, proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+func (f FakeSyscalls) ComputeUnsealedSectorCID(ctx context.Context, proof abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	panic("implement me")
 }
 
-func (f FakeSyscalls) VerifySeal(ctx context.Context, info abi.SealVerifyInfo) error {
+func (f FakeSyscalls) VerifySeal(ctx context.Context, info proof.SealVerifyInfo) error {
 	panic("implement me")
 }
 
-func (f FakeSyscalls) VerifyWinningPoSt(ctx context.Context, info abi.WinningPoStVerifyInfo) error {
+func (f FakeSyscalls) VerifyWinningPoSt(ctx context.Context, info proof.WinningPoStVerifyInfo) error {
 	panic("implement me")
 }
 
-func (f FakeSyscalls) VerifyPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) error {
+func (f FakeSyscalls) VerifyPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) error {
 	panic("implement me")
 }
 

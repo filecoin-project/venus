@@ -6,23 +6,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/util/moresync"
 	logging "github.com/ipfs/go-log/v2"
 	host "github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/util/moresync"
 )
 
 var logBootstrap = logging.Logger("net.bootstrap")
-var filecoinDHTBootstrapConfig = dht.BootstrapConfig{
-	// Recommended initial options from issu #1947
-	Queries: 2,
-	Period:  5 * time.Minute,
-	Timeout: time.Minute,
-}
 
 // Bootstrapper attempts to keep the p2p host connected to the filecoin network
 // by keeping a minimum threshold of connections. If the threshold isn't met it
@@ -50,11 +42,10 @@ type Bootstrapper struct {
 	Bootstrap func([]peer.ID)
 
 	// Bookkeeping
-	ticker         *time.Ticker
-	ctx            context.Context
-	cancel         context.CancelFunc
-	dhtBootStarted bool
-	filecoinPeers  *moresync.Latch
+	ticker        *time.Ticker
+	ctx           context.Context
+	cancel        context.CancelFunc
+	filecoinPeers *moresync.Latch
 }
 
 // NewBootstrapper returns a new Bootstrapper that will attempt to keep connected
@@ -117,13 +108,6 @@ func (b *Bootstrapper) bootstrap(currentPeers []peer.ID) {
 		wg.Wait()
 		// After connecting to bootstrap peers, bootstrap the DHT.
 		// DHT Bootstrap is a persistent process so only do this once.
-		if !b.dhtBootStarted {
-			b.dhtBootStarted = true
-			err := b.bootstrapIpfsRouting()
-			if err != nil {
-				logBootstrap.Warnf("got error trying to bootstrap Routing: %s. Peer discovery may suffer.", err.Error())
-			}
-		}
 		cancel()
 	}()
 
@@ -157,14 +141,4 @@ func hasPID(pids []peer.ID, pid peer.ID) bool {
 		}
 	}
 	return false
-}
-
-func (b *Bootstrapper) bootstrapIpfsRouting() error {
-	dht, ok := b.r.(*dht.IpfsDHT)
-	if !ok {
-		// No bootstrapping to do exit quietly.
-		return nil
-	}
-
-	return dht.BootstrapWithConfig(b.ctx, filecoinDHTBootstrapConfig)
 }

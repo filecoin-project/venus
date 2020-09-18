@@ -1,5 +1,6 @@
 package vmcontext
 
+/*
 import (
 	"context"
 	"fmt"
@@ -14,22 +15,22 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/system"
 	"github.com/filecoin-project/specs-actors/actors/puppet"
+
+	//"github.com/filecoin-project/specs-actors/actors/puppet"
 	"math/rand"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	vtypes "github.com/filecoin-project/chain-validation/chain/types"
-	vdriver "github.com/filecoin-project/chain-validation/drivers"
-	vstate "github.com/filecoin-project/chain-validation/state"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-crypto"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
@@ -47,11 +48,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
-var _ vstate.Factories = &Factories{}
-var _ vstate.VMWrapper = (*ValidationVMWrapper)(nil)
-var _ vstate.Applier = (*ValidationApplier)(nil)
-var _ vstate.KeyManager = (*KeyManager)(nil)
-
 var ChainvalActors = dispatch.NewBuilder().
 	Add(builtin.InitActorCodeID, &init_.Actor{}).
 	Add(builtin.AccountActorCodeID, &account.Actor{}).
@@ -63,8 +59,6 @@ var ChainvalActors = dispatch.NewBuilder().
 	Add(builtin.SystemActorCodeID, &system.Actor{}).
 	Add(builtin.RewardActorCodeID, &reward.Actor{}).
 	Add(builtin.CronActorCodeID, &cron.Actor{}).
-	// add the puppet actor
-	Add(puppet.PuppetActorCodeID, &puppet.Actor{}).
 	Build()
 
 type Factories struct {
@@ -564,3 +558,4 @@ func (a *actorWrapper) CallSeqNum() uint64 {
 func (a *actorWrapper) Balance() abi.TokenAmount {
 	return a.Actor.Balance
 }
+*/

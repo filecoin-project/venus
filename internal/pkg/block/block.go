@@ -3,10 +3,11 @@ package block
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	fbig "github.com/filecoin-project/go-state-types/big"
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -41,7 +42,7 @@ type Block struct {
 	BeaconEntries []*drand.Entry
 
 	// PoStProofs are the winning post proofs
-	PoStProofs []PoStProof `json:"PoStProofs"`
+	WinPoStProof []proof.PoStProof `json:"PoStProofs"`
 
 	// Parents is the set of parents this block was based on. Typically one,
 	// but can be several in the case where there were multiple winning ticket-
@@ -171,7 +172,7 @@ func (b *Block) SignatureData() []byte {
 		Messages:        b.Messages,
 		StateRoot:       b.StateRoot,
 		MessageReceipts: b.MessageReceipts,
-		PoStProofs:      b.PoStProofs,
+		WinPoStProof:    b.WinPoStProof,
 		BeaconEntries:   b.BeaconEntries,
 		Timestamp:       b.Timestamp,
 		BLSAggregateSig: b.BLSAggregateSig,

@@ -2,9 +2,10 @@ package proofs
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 // FakeVerifier is a simple mock Verifier for testing.
@@ -13,18 +14,18 @@ type FakeVerifier struct {
 
 var _ ffiwrapper.Verifier = (*FakeVerifier)(nil)
 
-func (f *FakeVerifier) VerifySeal(abi.SealVerifyInfo) (bool, error) {
+func (f *FakeVerifier) VerifySeal(proof.SealVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (f *FakeVerifier) VerifyWinningPoSt(context.Context, abi.WinningPoStVerifyInfo) (bool, error) {
+func (f *FakeVerifier) VerifyWinningPoSt(context.Context, proof.WinningPoStVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (f *FakeVerifier) VerifyWindowPoSt(context.Context, abi.WindowPoStVerifyInfo) (bool, error) {
+func (f *FakeVerifier) VerifyWindowPoSt(context.Context, proof.WindowPoStVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (f *FakeVerifier) GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error) {
+func (f *FakeVerifier) GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredPoStProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error) {
 	return []uint64{}, nil
 }

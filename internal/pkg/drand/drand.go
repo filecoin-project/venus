@@ -2,17 +2,16 @@ package drand
 
 import (
 	"context"
-	"time"
 )
 
 // IFace is the standard inferface for interacting with the drand network
 type IFace interface {
 	ReadEntry(ctx context.Context, drandRound Round) (*Entry, error)
 	VerifyEntry(parent, child *Entry) (bool, error)
-	FetchGroupConfig(addresses []string, secure bool, overrideGroupAddrs bool) ([]string, [][]byte, uint64, int, error)
+	/*FetchGroupConfig(addresses []string, secure bool, overrideGroupAddrs bool) ([]string, [][]byte, uint64, int, error)
 	StartTimeOfRound(round Round) time.Time
 	RoundsInInterval(startTime, endTime time.Time) []Round
-	FirstFilecoinRound() Round
+	FirstFilecoinRound() Round*/
 }
 
 // Round is a type for recording drand round indexes

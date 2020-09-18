@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/sector-storage/stores"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	fsm "github.com/filecoin-project/storage-fsm"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/stores"
+	fsm "github.com/filecoin-project/go-filecoin/vendors/storage-sealing"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"

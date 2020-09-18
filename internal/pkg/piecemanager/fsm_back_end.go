@@ -6,8 +6,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	fsm "github.com/filecoin-project/storage-fsm"
+	fsm "github.com/filecoin-project/go-filecoin/vendors/storage-sealing"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 var _ PieceManager = new(FiniteStateMachineBackEnd)
@@ -25,18 +25,14 @@ func NewFiniteStateMachineBackEnd(fsm *fsm.Sealing, idc fsm.SectorIDCounter) Fin
 }
 
 func (f *FiniteStateMachineBackEnd) SealPieceIntoNewSector(ctx context.Context, dealID abi.DealID, dealStart, dealEnd abi.ChainEpoch, pieceSize abi.UnpaddedPieceSize, pieceReader io.Reader) error {
-	sectorNumber, err := f.idc.Next()
-	if err != nil {
-		return err
-	}
-
-	return f.fsm.SealPiece(ctx, pieceSize, pieceReader, sectorNumber, fsm.DealInfo{
+	_, _, err := f.fsm.AddPieceToAnySector(ctx, pieceSize, pieceReader, fsm.DealInfo{
 		DealID: dealID,
 		DealSchedule: fsm.DealSchedule{
 			StartEpoch: dealStart,
 			EndEpoch:   dealEnd,
 		},
 	})
+	return err
 }
 
 func (f *FiniteStateMachineBackEnd) PledgeSector(ctx context.Context) error {

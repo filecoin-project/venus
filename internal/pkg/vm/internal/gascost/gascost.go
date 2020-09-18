@@ -2,70 +2,126 @@ package gascost
 
 import (
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 )
+
+const (
+	GasStorageMulti = 1000
+	GasComputeMulti = 1
+)
+
+type GasCharge struct {
+	Name  string
+	Extra interface{}
+
+	ComputeGas int64
+	StorageGas int64
+
+	VirtualCompute int64
+	VirtualStorage int64
+}
+
+func (g GasCharge) Total() int64 {
+	return g.ComputeGas*GasComputeMulti + g.StorageGas*GasStorageMulti
+}
+func (g GasCharge) WithVirtual(compute, storage int64) GasCharge {
+	out := g
+	out.VirtualCompute = compute
+	out.VirtualStorage = storage
+	return out
+}
+
+func (g GasCharge) WithExtra(extra interface{}) GasCharge {
+	out := g
+	out.Extra = extra
+	return out
+}
+
+func newGasCharge(name string, computeGas int64, storageGas int64) GasCharge {
+	return GasCharge{
+		Name:       name,
+		ComputeGas: computeGas,
+		StorageGas: storageGas,
+	}
+}
 
 // Pricelist provides prices for operations in the VM.
 //
 // Note: this interface should be APPEND ONLY since last chain checkpoint
 type Pricelist interface {
 	// OnChainMessage returns the gas used for storing a message of a given size in the chain.
-	OnChainMessage(msgSize int) gas.Unit
+	OnChainMessage(msgSize int) GasCharge
 	// OnChainReturnValue returns the gas used for storing the response of a message in the chain.
-	OnChainReturnValue(receipt *message.Receipt) gas.Unit
+	OnChainReturnValue(dataSize int) GasCharge
 
 	// OnMethodInvocation returns the gas used when invoking a method.
-	OnMethodInvocation(value abi.TokenAmount, methodNum abi.MethodNum) gas.Unit
+	OnMethodInvocation(value abi.TokenAmount, methodNum abi.MethodNum) GasCharge
 
 	// OnIpldGet returns the gas used for storing an object
-	OnIpldGet(dataSize int) gas.Unit
+	OnIpldGet() GasCharge
 	// OnIpldPut returns the gas used for storing an object
-	OnIpldPut(dataSize int) gas.Unit
+	OnIpldPut(dataSize int) GasCharge
 
 	// OnCreateActor returns the gas used for creating an actor
-	OnCreateActor() gas.Unit
+	OnCreateActor() GasCharge
 	// OnDeleteActor returns the gas used for deleting an actor
-	OnDeleteActor() gas.Unit
+	OnDeleteActor() GasCharge
 
-	OnVerifySignature(sigType crypto.SigType, planTextSize int) (gas.Unit, error)
-	OnHashing(dataSize int) gas.Unit
-	OnComputeUnsealedSectorCid(proofType abi.RegisteredProof, pieces *[]abi.PieceInfo) gas.Unit
-	OnVerifySeal(info abi.SealVerifyInfo) gas.Unit
-	OnVerifyPoSt(info abi.WindowPoStVerifyInfo) gas.Unit
-	OnVerifyConsensusFault() gas.Unit
+	OnVerifySignature(sigType crypto.SigType, planTextSize int) (GasCharge, error)
+	OnHashing(dataSize int) GasCharge
+	OnComputeUnsealedSectorCid(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) GasCharge
+	OnVerifySeal(info proof.SealVerifyInfo) GasCharge
+	OnVerifyPost(info proof.WindowPoStVerifyInfo) GasCharge
+	OnVerifyConsensusFault() GasCharge
 }
 
 var prices = map[abi.ChainEpoch]Pricelist{
 	abi.ChainEpoch(0): &pricelistV0{
-		// These message base/byte values must match those in message validation.
-		onChainMessageBase:        gas.Zero,
-		onChainMessagePerByte:     gas.NewGas(2),
-		onChainReturnValuePerByte: gas.NewGas(8),
-		sendBase:                  gas.NewGas(5),
-		sendTransferFunds:         gas.NewGas(5),
-		sendInvokeMethod:          gas.NewGas(10),
-		ipldGetBase:               gas.NewGas(10),
-		ipldGetPerByte:            gas.NewGas(1),
-		ipldPutBase:               gas.NewGas(20),
-		ipldPutPerByte:            gas.NewGas(2),
-		createActorBase:           gas.NewGas(40), // IPLD put + 20
-		createActorExtra:          gas.NewGas(500),
-		deleteActor:               gas.NewGas(-500), // -createActorExtra
-		// Dragons: this cost is not persistable, create a LinearCost{a,b} struct that has a `.Cost(x) -> ax + b`
-		verifySignature: map[crypto.SigType]func(gas.Unit) gas.Unit{
-			crypto.SigTypeBLS:       func(x gas.Unit) gas.Unit { return gas.NewGas(3)*x + gas.NewGas(2) },
-			crypto.SigTypeSecp256k1: func(x gas.Unit) gas.Unit { return gas.NewGas(3)*x + gas.NewGas(2) },
+		onChainMessageComputeBase:    38863,
+		onChainMessageStorageBase:    36,
+		onChainMessageStoragePerByte: 1,
+
+		onChainReturnValuePerByte: 1,
+
+		sendBase:                29233,
+		sendTransferFunds:       27500,
+		sendTransferOnlyPremium: 159672,
+		sendInvokeMethod:        -5377,
+
+		ipldGetBase:    75242,
+		ipldPutBase:    84070,
+		ipldPutPerByte: 1,
+
+		createActorCompute: 1108454,
+		createActorStorage: 36 + 40,
+		deleteActor:        -(36 + 40), // -createActorStorage
+
+		verifySignature: map[crypto.SigType]int64{
+			crypto.SigTypeBLS:       16598605,
+			crypto.SigTypeSecp256k1: 1637292,
 		},
-		hashingBase:                  gas.NewGas(5),
-		hashingPerByte:               gas.NewGas(2),
-		computeUnsealedSectorCidBase: gas.NewGas(100),
-		verifySealBase:               gas.NewGas(2000),
-		verifyPostBase:               gas.NewGas(700),
-		verifyConsensusFault:         gas.NewGas(10),
+
+		hashingBase:                  31355,
+		computeUnsealedSectorCidBase: 98647,
+		verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
+		verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
+			abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
+				flat:  123861062,
+				scale: 9226981,
+			},
+			abi.RegisteredPoStProof_StackedDrgWindow32GiBV1: {
+				flat:  748593537,
+				scale: 85639,
+			},
+			abi.RegisteredPoStProof_StackedDrgWindow64GiBV1: {
+				flat:  748593537,
+				scale: 85639,
+			},
+		},
+		verifyConsensusFault: 495422,
 	},
 }
 

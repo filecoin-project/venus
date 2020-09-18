@@ -9,7 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -71,11 +71,13 @@ type UnsignedMessage struct {
 
 	Value AttoFIL `json:"value"`
 
-	GasPrice AttoFIL  `json:"gasPrice"`
-	GasLimit gas.Unit `json:"gasLimit"`
+	GasLimit   gas.Unit `json:"gasLimit"`
+	GasFeeCap  AttoFIL  `json:"gasFeeCap"`
+	GasPremium AttoFIL  `json:"gasPremium"`
 
 	Method abi.MethodNum `json:"method"`
 	Params []byte        `json:"params"`
+
 	// Pay attention to Equals() if updating this struct.
 }
 
@@ -93,14 +95,15 @@ func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, m
 }
 
 // NewMeteredMessage adds gas price and gas limit to the message
-func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte, price AttoFIL, limit gas.Unit) *UnsignedMessage {
+func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte, gasFeeCap, gasPremium AttoFIL, limit gas.Unit) *UnsignedMessage {
 	return &UnsignedMessage{
 		Version:    MessageVersion,
 		To:         to,
 		From:       from,
 		CallSeqNum: nonce,
 		Value:      value,
-		GasPrice:   price,
+		GasFeeCap:  gasFeeCap,
+		GasPremium: gasPremium,
 		GasLimit:   limit,
 		Method:     method,
 		Params:     params,
@@ -180,7 +183,8 @@ func (msg *UnsignedMessage) Equals(other *UnsignedMessage) bool {
 		msg.CallSeqNum == other.CallSeqNum &&
 		msg.Value.Equals(other.Value) &&
 		msg.Method == other.Method &&
-		msg.GasPrice.Equals(other.GasPrice) &&
+		msg.GasPremium.Equals(other.GasPremium) &&
+		msg.GasFeeCap.Equals(other.GasFeeCap) &&
 		msg.GasLimit == other.GasLimit &&
 		bytes.Equal(msg.Params, other.Params)
 }

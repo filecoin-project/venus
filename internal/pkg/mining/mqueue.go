@@ -6,7 +6,7 @@ import (
 	"sort"
 
 	"github.com/filecoin-project/go-address"
-	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	specsbig "github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )

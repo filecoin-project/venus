@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 type storage interface {
@@ -38,13 +38,13 @@ func (api *API) PledgeSector(ctx context.Context) error {
 }
 
 // AddAsk stores a new price for storage
-func (api *API) AddAsk(price abi.TokenAmount, duration abi.ChainEpoch) error {
+func (api *API) AddAsk(price abi.TokenAmount, duration abi.ChainEpoch, verifiedPrice abi.TokenAmount) error {
 	provider, err := api.storage.Provider()
 	if err != nil {
 		return err
 	}
 
-	return provider.AddAsk(price, duration)
+	return provider.SetAsk(price, verifiedPrice, duration) // storagemarket.MaxPieceSize(abi.PaddedPieceSize(api.SectorSize))) //todo add by force
 }
 
 // ListAsks lists all asks for the miner
@@ -54,7 +54,7 @@ func (api *API) ListAsks(maddr address.Address) ([]*storagemarket.SignedStorageA
 		return nil, err
 	}
 
-	return provider.ListAsks(maddr), nil
+	return []*storagemarket.SignedStorageAsk{provider.GetAsk()}, nil
 }
 
 // ProposeStorageDeal proposes a storage deal
@@ -67,9 +67,22 @@ func (api *API) ProposeStorageDeal(
 	endEpoch abi.ChainEpoch,
 	price abi.TokenAmount,
 	collateral abi.TokenAmount,
-	rt abi.RegisteredProof,
+	rt abi.RegisteredSealProof,
 ) (*storagemarket.ProposeStorageDealResult, error) {
-	return api.storage.Client().ProposeStorageDeal(ctx, addr, info, data, startEpoch, endEpoch, price, collateral, rt)
+	//todo add by force
+	params := storagemarket.ProposeStorageDealParams{
+		Addr:          addr,
+		Info:          info,
+		Data:          data,
+		StartEpoch:    startEpoch,
+		EndEpoch:      endEpoch,
+		Price:         price,
+		Collateral:    collateral,
+		Rt:            rt,
+		FastRetrieval: true,
+		VerifiedDeal:  false,
+	}
+	return api.storage.Client().ProposeStorageDeal(ctx, params)
 }
 
 // GetStorageDeal retrieves information about an in-progress deal

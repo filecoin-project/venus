@@ -3,13 +3,14 @@ package state
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
 
 	addr "github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	notinit "github.com/filecoin-project/specs-actors/actors/builtin/init"
@@ -82,7 +83,11 @@ func (v *View) InitResolveAddress(ctx context.Context, a addr.Address) (addr.Add
 	state := &notinit.State{
 		AddressMap: initState.AddressMap,
 	}
-	return state.ResolveAddress(v.adtStore(ctx), a)
+	rAddr, _, err := state.ResolveAddress(v.adtStore(ctx), a) //todo add by force bool?
+	if err != nil {
+		return addr.Undef, err
+	}
+	return rAddr, nil
 }
 
 // Returns public key address if id address is given
@@ -101,38 +106,46 @@ func (v *View) AccountSignerAddress(ctx context.Context, a addr.Address) (addr.A
 
 // MinerControlAddresses returns the owner and worker addresses for a miner actor
 func (v *View) MinerControlAddresses(ctx context.Context, maddr addr.Address) (owner, worker addr.Address, err error) {
-	minerState, err := v.loadMinerActor(ctx, maddr)
+	minerInfo, err := v.MinerInfo(ctx, maddr)
 	if err != nil {
 		return addr.Undef, addr.Undef, err
 	}
-	return minerState.Info.Owner, minerState.Info.Worker, nil
+	return minerInfo.Owner, minerInfo.Worker, nil
+}
+
+func (v *View) MinerInfo(ctx context.Context, maddr addr.Address) (*miner.MinerInfo, error) {
+	minerState, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return nil, err
+	}
+	return minerState.GetInfo(v.adtStore(ctx))
 }
 
 // MinerPeerID returns the PeerID for a miner actor
 func (v *View) MinerPeerID(ctx context.Context, maddr addr.Address) (peer.ID, error) {
-	minerState, err := v.loadMinerActor(ctx, maddr)
+	minerInfo, err := v.MinerInfo(ctx, maddr)
 	if err != nil {
 		return "", err
 	}
-	return minerState.Info.PeerId, nil
+	return peer.ID(minerInfo.PeerId), nil
 }
 
 type MinerSectorConfiguration struct {
-	SealProofType              abi.RegisteredProof
+	SealProofType              abi.RegisteredSealProof
 	SectorSize                 abi.SectorSize
 	WindowPoStPartitionSectors uint64
 }
 
 // MinerSectorConfiguration returns the sector size for a miner actor
 func (v *View) MinerSectorConfiguration(ctx context.Context, maddr addr.Address) (*MinerSectorConfiguration, error) {
-	minerState, err := v.loadMinerActor(ctx, maddr)
+	minerInfo, err := v.MinerInfo(ctx, maddr)
 	if err != nil {
 		return nil, err
 	}
 	return &MinerSectorConfiguration{
-		SealProofType:              minerState.Info.SealProofType,
-		SectorSize:                 minerState.Info.SectorSize,
-		WindowPoStPartitionSectors: minerState.Info.WindowPoStPartitionSectors,
+		SealProofType:              minerInfo.SealProofType,
+		SectorSize:                 minerInfo.SectorSize,
+		WindowPoStPartitionSectors: minerInfo.WindowPoStPartitionSectors,
 	}, nil
 }
 
@@ -172,18 +185,28 @@ func (v *View) MinerDeadlineInfo(ctx context.Context, maddr addr.Address, epoch 
 
 // MinerPartitionIndexesForDeadline returns all partitions that need to be proven in the proving period deadline for the given epoch
 func (v *View) MinerPartitionIndicesForDeadline(ctx context.Context, maddr addr.Address, deadlineIndex uint64) ([]uint64, error) {
-	minerState, err := v.loadMinerActor(ctx, maddr)
+	panic("MinerPartitionIndicesForDeadline not impl") //todo 这个函数可能需要重写
+	/*minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
 		return nil, err
 	}
-
+	minerInfo, err :=  minerState.GetInfo(v.adtStore(ctx))
+	if err != nil {
+		return nil, err
+	}
 	deadlines, err := minerState.LoadDeadlines(v.adtStore(ctx))
 	if err != nil {
 		return nil, err
 	}
 
 	// compute first partition index
-	partitionSize := minerState.Info.WindowPoStPartitionSectors
+	partitionSize := minerInfo.WindowPoStPartitionSectors
+	deadLines, err := minerState.LoadDeadlines(v.adtStore(ctx))
+	dealLine, err := deadLines.LoadDeadline(v.adtStore(ctx), deadlineIndex)
+
+
+	start := dealLine.
+
 	start, sectorCount, err := miner.PartitionsForDeadline(deadlines, partitionSize, deadlineIndex)
 	if err != nil {
 		return nil, err
@@ -205,15 +228,21 @@ func (v *View) MinerPartitionIndicesForDeadline(ctx context.Context, maddr addr.
 		partitions[i] = start + i
 	}
 
-	return partitions, err
+	return partitions, err*/
 }
 
 // MinerSectorInfoForPartitions retrieves sector info for sectors needed to be proven over for the given proving window partitions.
 // NOTE: exposes on-chain structures directly because specs-storage requires it.
-func (v *View) MinerSectorInfoForDeadline(ctx context.Context, maddr addr.Address, deadlineIndex uint64, partitions []uint64) ([]abi.SectorInfo, error) {
-	minerState, err := v.loadMinerActor(ctx, maddr)
+func (v *View) MinerSectorInfoForDeadline(ctx context.Context, maddr addr.Address, deadlineIndex uint64, partitions []uint64) ([]proof.SectorInfo, error) {
+	panic("MinerPartitionIndicesForDeadline not impl") //todo 这个函数可能需要重写
+	/*minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
 		return nil, err
+	}
+
+	minerInfo, err := v.StateMinerInfo(ctx, maddr)
+	if err != nil {
+		return "", err
 	}
 
 	deadlines, err := minerState.LoadDeadlines(v.adtStore(ctx))
@@ -222,13 +251,13 @@ func (v *View) MinerSectorInfoForDeadline(ctx context.Context, maddr addr.Addres
 	}
 
 	// This is copied from miner.Actor SubmitWindowedPoSt. It should be logic in miner.State.
-	partitionSize := minerState.Info.WindowPoStPartitionSectors
+	partitionSize := minerInfo.WindowPoStPartitionSectors
 	partitionsSectors, err := miner.ComputePartitionsSectors(deadlines, partitionSize, deadlineIndex, partitions)
 	if err != nil {
 		return nil, err
 	}
 
-	provenSectors, err := abi.BitFieldUnion(partitionsSectors...)
+	provenSectors, err := bitfield.BitFieldUnion(partitionsSectors...)
 	if err != nil {
 		return nil, err
 	}
@@ -275,12 +304,12 @@ func (v *View) MinerSectorInfoForDeadline(ctx context.Context, maddr addr.Addres
 		return nil, err
 	}
 
-	out := make([]abi.SectorInfo, len(sectors))
+	out := make([]proof.SectorInfo, len(sectors))
 	for i, sector := range sectors {
 		out[i] = sector.AsSectorInfo()
 	}
 
-	return out, nil
+	return out, nil*/
 }
 
 // MinerSuccessfulPoSts counts how many successful window PoSts have been made this proving period so far.
@@ -290,14 +319,32 @@ func (v *View) MinerSuccessfulPoSts(ctx context.Context, maddr addr.Address) (ui
 		return 0, err
 	}
 
-	return minerState.PostSubmissions.Count()
+	deadlines, err := minerState.LoadDeadlines(v.adtStore(ctx))
+	if err != nil {
+		return 0, err
+	}
+
+	count := uint64(0)
+	err = deadlines.ForEach(v.adtStore(ctx), func(dlIdx uint64, dl *miner.Deadline) error {
+		dCount, err := dl.PostSubmissions.Count()
+		if err != nil {
+			return err
+		}
+		count += dCount
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }
 
 // MinerDeadlines returns a bitfield of sectors in a proving period
 // NOTE: exposes on-chain structures directly because it's referenced directly by the storage-fsm module.
 // This is in conflict with the general goal of the state view of hiding the chain state representations from
 // consumers in order to support versioning that representation through protocol upgrades.
-// See https://github.com/filecoin-project/storage-fsm/issues/13
+// See https://github.com/filecoin-project/go-filecoin/vendors/storage-sealing/issues/13
 func (v *View) MinerDeadlines(ctx context.Context, maddr addr.Address) (*miner.Deadlines, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
@@ -308,39 +355,15 @@ func (v *View) MinerDeadlines(ctx context.Context, maddr addr.Address) (*miner.D
 }
 
 type MinerSectorStates struct {
-	Deadlines  []*abi.BitField
-	Faults     *abi.BitField
-	Recoveries *abi.BitField
-	NewSectors *abi.BitField
+	Deadlines  []*bitfield.BitField
+	Faults     *bitfield.BitField
+	Recoveries *bitfield.BitField
+	NewSectors *bitfield.BitField
 }
 
 func (v *View) MinerSectorStates(ctx context.Context, maddr addr.Address) (*MinerSectorStates, error) {
-	minerState, err := v.loadMinerActor(ctx, maddr)
-	if err != nil {
-		return nil, err
-	}
-
-	deadlines, err := minerState.LoadDeadlines(v.adtStore(ctx))
-	if err != nil {
-		return nil, err
-	}
-	return &MinerSectorStates{
-		Deadlines:  deadlines.Due[:],
-		Faults:     minerState.Faults,
-		Recoveries: minerState.Recoveries,
-		NewSectors: minerState.NewSectors,
-	}, nil
-}
-
-// MinerInfo returns information about the next proving period
-// NOTE: exposes on-chain structures directly (but not necessary to)
-func (v *View) MinerInfo(ctx context.Context, maddr addr.Address) (miner.MinerInfo, error) {
-	minerState, err := v.loadMinerActor(ctx, maddr)
-	if err != nil {
-		return miner.MinerInfo{}, err
-	}
-
-	return minerState.Info, err
+	panic("DEPRECATED MinerSectorStates")
+	return nil, nil
 }
 
 func (v *View) MinerProvingPeriodStart(ctx context.Context, maddr addr.Address) (abi.ChainEpoch, error) {
@@ -353,7 +376,7 @@ func (v *View) MinerProvingPeriodStart(ctx context.Context, maddr addr.Address) 
 
 // MinerSectorsForEach Iterates over the sectors in a miner's proving set.
 func (v *View) MinerSectorsForEach(ctx context.Context, maddr addr.Address,
-	f func(abi.SectorNumber, cid.Cid, abi.RegisteredProof, []abi.DealID) error) error {
+	f func(abi.SectorNumber, cid.Cid, abi.RegisteredSealProof, []abi.DealID) error) error {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
 		return err
@@ -368,7 +391,7 @@ func (v *View) MinerSectorsForEach(ctx context.Context, maddr addr.Address,
 	var sector miner.SectorOnChainInfo
 	return sectors.ForEach(&sector, func(secnum int64) error {
 		// Add more fields here as required by new callers.
-		return f(sector.Info.SectorNumber, sector.Info.SealedCID, sector.Info.RegisteredProof, sector.Info.DealIDs)
+		return f(sector.SectorNumber, sector.SealedCID, sector.SealProof, sector.DealIDs)
 	})
 }
 
@@ -390,8 +413,29 @@ func (v *View) MinerFaults(ctx context.Context, maddr addr.Address) ([]uint64, e
 	if err != nil {
 		return nil, err
 	}
+	out := bitfield.New()
 
-	return minerState.Faults.All(miner.SectorsMax)
+	deallines, err := minerState.LoadDeadlines(v.adtStore(ctx))
+	err = deallines.ForEach(v.adtStore(ctx), func(dlIdx uint64, dl *miner.Deadline) error {
+		partitions, err := dl.PartitionsArray(v.adtStore(ctx))
+		if err != nil {
+			return err
+		}
+
+		var partition miner.Partition
+		return partitions.ForEach(&partition, func(i int64) error {
+			out, err = bitfield.MergeBitFields(out, partition.Faults)
+			return err
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	maxSectorNum, err := out.All(miner.SectorsMax)
+	if err != nil {
+		return nil, err
+	}
+	return maxSectorNum, nil
 }
 
 // MinerGetPrecommittedSector Looks up info for a miners precommitted sector.
@@ -418,12 +462,12 @@ func (v *View) MarketEscrowBalance(ctx context.Context, addr addr.Address) (foun
 	}
 
 	var value abi.TokenAmount
-	found, err = escrow.Get(adt.AddrKey(addr), &value)
+	found, err = escrow.Get(abi.AddrKey(addr), &value)
 	return
 }
 
 // MarketComputeDataCommitment takes deal ids and uses associated commPs to compute commD for a sector that contains the deals
-func (v *View) MarketComputeDataCommitment(ctx context.Context, registeredProof abi.RegisteredProof, dealIDs []abi.DealID) (cid.Cid, error) {
+func (v *View) MarketComputeDataCommitment(ctx context.Context, registeredProof abi.RegisteredSealProof, dealIDs []abi.DealID) (cid.Cid, error) {
 	marketState, err := v.loadMarketActor(ctx)
 	if err != nil {
 		return cid.Undef, err
@@ -524,11 +568,12 @@ func (v *View) PowerNetworkTotal(ctx context.Context) (*NetworkPower, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &NetworkPower{
 		RawBytePower:         st.TotalRawBytePower,
 		QualityAdjustedPower: st.TotalQualityAdjPower,
 		MinerCount:           st.MinerCount,
-		MinPowerMinerCount:   st.NumMinersMeetingMinPower,
+		MinPowerMinerCount:   st.MinerAboveMinPowerCount,
 	}, nil
 }
 
@@ -570,7 +615,7 @@ func (v *View) loadPowerClaim(ctx context.Context, powerState *power.State, mine
 	}
 
 	var claim power.Claim
-	found, err := claims.Get(adt.AddrKey(miner), &claim)
+	found, err := claims.Get(abi.AddrKey(miner), &claim)
 	if err != nil {
 		return nil, err
 	}
@@ -645,7 +690,7 @@ func (v *View) loadActor(ctx context.Context, address addr.Address) (*actor.Acto
 	}
 
 	var actr actor.Actor
-	found, err := tree.Get(adt.AddrKey(address), &actr)
+	found, err := tree.Get(abi.AddrKey(address), &actr)
 	if !found {
 		return nil, types.ErrNotFound
 	}

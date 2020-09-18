@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -174,6 +174,7 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 			builtin.MethodSend,
 			[]byte("params"),
 			ZeroAttoFIL,
+			ZeroAttoFIL,
 			gas.Zero,
 		)
 		smsg, err := NewSignedMessage(context.TODO(), *msg, &ms)
@@ -260,7 +261,8 @@ func NewSignedMsgs(n uint, ms MockSigner) []*SignedMessage {
 		msg := newMsg()
 		msg.From = ms.Addresses[0]
 		msg.CallSeqNum = uint64(i)
-		msg.GasPrice = ZeroAttoFIL // NewGasPrice(1)
+		msg.GasFeeCap = ZeroAttoFIL
+		msg.GasPremium = ZeroAttoFIL
 		msg.GasLimit = gas.NewGas(0)
 		smsgs[i], err = NewSignedMessage(context.TODO(), *msg, ms)
 		if err != nil {

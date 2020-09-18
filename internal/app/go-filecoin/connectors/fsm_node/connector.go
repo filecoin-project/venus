@@ -6,12 +6,12 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	fsm "github.com/filecoin-project/go-filecoin/vendors/storage-sealing"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
-	fsm "github.com/filecoin-project/storage-fsm"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
@@ -85,7 +85,7 @@ func (f *FiniteStateMachineNodeConnector) StateWaitMsg(ctx context.Context, mcid
 	return lookup, err
 }
 
-func (f *FiniteStateMachineNodeConnector) StateComputeDataCommitment(ctx context.Context, _ address.Address, sectorType abi.RegisteredProof, deals []abi.DealID, tok fsm.TipSetToken) (cid.Cid, error) {
+func (f *FiniteStateMachineNodeConnector) StateComputeDataCommitment(ctx context.Context, _ address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tok fsm.TipSetToken) (cid.Cid, error) {
 	view, err := f.stateViewForToken(tok)
 	if err != nil {
 		return cid.Undef, err
@@ -152,7 +152,7 @@ func (f *FiniteStateMachineNodeConnector) StateMarketStorageDeal(ctx context.Con
 	} else if !found {
 		// The FSM actually ignores this value because it calls this before the sector is committed.
 		// But it can't tolerate returning an error here for not found.
-		// See https://github.com/filecoin-project/storage-fsm/issues/18
+		// See https://github.com/filecoin-project/go-filecoin/vendors/storage-sealing/issues/18
 		state = &market.DealState{
 			SectorStartEpoch: -1,
 			LastUpdatedEpoch: -1,

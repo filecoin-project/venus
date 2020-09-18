@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 // PieceManager is responsible for sealing pieces into sectors and progressing

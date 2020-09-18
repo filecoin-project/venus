@@ -3,10 +3,11 @@ package vmcontext
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/cbor"
 	"reflect"
 
+	"github.com/filecoin-project/go-state-types/exitcode"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
@@ -49,7 +50,7 @@ var _ specsruntime.Store = (*ActorStorage)(nil)
 // actor, rather than system-level, error code.
 const serializationErr = exitcode.ErrSerialization
 
-func (s *ActorStorage) Put(obj specsruntime.CBORMarshaler) cid.Cid {
+func (s *ActorStorage) StorePut(obj cbor.Marshaler) cid.Cid {
 	cid, ln, err := s.inner.Put(s.context, obj)
 	if err != nil {
 		msg := fmt.Sprintf("failed to put object %s in store: %s", reflect.TypeOf(obj), err)
@@ -63,7 +64,7 @@ func (s *ActorStorage) Put(obj specsruntime.CBORMarshaler) cid.Cid {
 	return cid
 }
 
-func (s *ActorStorage) Get(cid cid.Cid, obj specsruntime.CBORUnmarshaler) bool {
+func (s *ActorStorage) StoreGet(cid cid.Cid, obj cbor.Unmarshaler) bool {
 	ln, err := s.inner.Get(s.context, cid, obj)
 	if err == storage.ErrNotFound {
 		return false
@@ -76,6 +77,6 @@ func (s *ActorStorage) Get(cid cid.Cid, obj specsruntime.CBORUnmarshaler) bool {
 			panic(msg)
 		}
 	}
-	s.gasTank.Charge(s.pricelist.OnIpldGet(ln), "storage get %s %d bytes into %v", cid, ln, obj)
+	s.gasTank.Charge(s.pricelist.OnIpldGet(), "storage get %s %d bytes into %v", cid, ln, obj)
 	return true
 }

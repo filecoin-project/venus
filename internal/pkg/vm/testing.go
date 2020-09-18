@@ -30,7 +30,7 @@ func NewTestStorage(state interface{}) *TestStorage {
 var _ specsruntime.Store = (*TestStorage)(nil)
 
 // Put implements runtime.Store.
-func (ts *TestStorage) Put(v specsruntime.CBORMarshaler) cid.Cid {
+func (ts *TestStorage) Put(v cbg.CBORMarshaler) cid.Cid {
 	ts.state = v
 	if cm, ok := v.(cbg.CBORMarshaler); ok {
 		buf := new(bytes.Buffer)
@@ -47,7 +47,7 @@ func (ts *TestStorage) Put(v specsruntime.CBORMarshaler) cid.Cid {
 }
 
 // Get implements runtime.Store.
-func (ts *TestStorage) Get(cid cid.Cid, obj specsruntime.CBORUnmarshaler) bool {
+func (ts *TestStorage) Get(cid cid.Cid, obj cbg.CBORUnmarshaler) bool {
 	node, err := cbor.WrapObject(ts.state, constants.DefaultHashFunction, -1)
 	if err != nil {
 		return false

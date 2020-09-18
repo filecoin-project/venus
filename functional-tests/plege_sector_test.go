@@ -6,7 +6,7 @@ import (
 	"time"
 
 	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
@@ -67,7 +67,7 @@ func TestMiningPledgeSector(t *testing.T) {
 	porcelainAPI := commands.GetPorcelainAPI(env)
 	peer := newMiner.Network().Network.GetPeerID()
 
-	_, err = porcelainAPI.MinerCreate(ctx, seed.Addr(t, 1), types.NewAttoFILFromFIL(1), 10000, abi.RegisteredProof_StackedDRG2KiBSeal, peer, types.NewAttoFILFromFIL(5))
+	_, err = porcelainAPI.MinerCreate(ctx, seed.Addr(t, 1), types.NewAttoFILFromFIL(1), 10000, abi.RegisteredSealProof_StackedDRG2KiBSeal, peer, types.NewAttoFILFromFIL(5))
 	require.NoError(t, err)
 
 	// setup mining with new miner address and start mining

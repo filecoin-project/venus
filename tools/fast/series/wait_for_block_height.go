@@ -3,7 +3,7 @@ package series
 import (
 	"context"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )

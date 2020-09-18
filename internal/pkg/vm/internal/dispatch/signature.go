@@ -2,10 +2,10 @@ package dispatch
 
 import (
 	"bytes"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"reflect"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/pkg/errors"
 )
 
@@ -38,12 +38,12 @@ func (ms *methodSignature) ArgInterface(argBytes []byte) (interface{}, error) {
 
 	// This would be better fixed in then encoding library.
 	obj := v.Elem().Interface()
-	if _, ok := obj.(runtime.CBORUnmarshaler); ok {
+	if _, ok := obj.(cbg.CBORUnmarshaler); ok {
 		buf := bytes.NewBuffer(argBytes)
 		auxv := reflect.New(t.Elem())
 		obj = auxv.Interface()
 
-		unmarsh := obj.(runtime.CBORUnmarshaler)
+		unmarsh := obj.(cbg.CBORUnmarshaler)
 		if err := unmarsh.UnmarshalCBOR(buf); err != nil {
 			return nil, err
 		}

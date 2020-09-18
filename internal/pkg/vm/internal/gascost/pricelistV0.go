@@ -3,13 +3,18 @@ package gascost
 import (
 	"fmt"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 )
+
+type scalingCost struct {
+	flat  int64
+	scale int64
+}
 
 type pricelistV0 struct {
 	///////////////////////////////////////////////////////////////////////////
@@ -22,36 +27,39 @@ type pricelistV0 struct {
 	// Together, these account for the cost of message propagation and validation,
 	// up to but excluding any actual processing by the VM.
 	// This is the cost a block producer burns when including an invalid message.
-	onChainMessageBase    gas.Unit
-	onChainMessagePerByte gas.Unit
+	onChainMessageComputeBase    int64
+	onChainMessageStorageBase    int64
+	onChainMessageStoragePerByte int64
 
 	// Gas cost charged to the originator of a non-nil return value produced
 	// by an on-chain message is given by:
 	//   len(return value)*OnChainReturnValuePerByte
-	onChainReturnValuePerByte gas.Unit
+	onChainReturnValuePerByte int64
 
 	// Gas cost for any message send execution(including the top-level one
 	// initiated by an on-chain message).
 	// This accounts for the cost of loading sender and receiver actors and
 	// (for top-level messages) incrementing the sender's sequence number.
 	// Load and store of actor sub-state is charged separately.
-	sendBase gas.Unit
+	sendBase int64
 
 	// Gas cost charged, in addition to SendBase, if a message send
 	// is accompanied by any nonzero currency amount.
 	// Accounts for writing receiver's new balance (the sender's state is
 	// already accounted for).
-	sendTransferFunds gas.Unit
+	sendTransferFunds int64
+
+	// Gsa cost charged, in addition to SendBase, if message only transfers funds.
+	sendTransferOnlyPremium int64
 
 	// Gas cost charged, in addition to SendBase, if a message invokes
 	// a method on the receiver.
 	// Accounts for the cost of loading receiver code and method dispatch.
-	sendInvokeMethod gas.Unit
+	sendInvokeMethod int64
 
-	// Gas cost (Base + len*PerByte) for any Get operation to the IPLD store
+	// Gas cost for any Get operation to the IPLD store
 	// in the runtime VM context.
-	ipldGetBase    gas.Unit
-	ipldGetPerByte gas.Unit
+	ipldGetBase int64
 
 	// Gas cost (Base + len*PerByte) for any Put operation to the IPLD store
 	// in the runtime VM context.
@@ -59,115 +67,149 @@ type pricelistV0 struct {
 	// Note: these costs should be significantly higher than the costs for Get
 	// operations, since they reflect not only serialization/deserialization
 	// but also persistent storage of chain data.
-	ipldPutBase    gas.Unit
-	ipldPutPerByte gas.Unit
+	ipldPutBase    int64
+	ipldPutPerByte int64
 
 	// Gas cost for creating a new actor (via InitActor's Exec method).
 	//
 	// Note: this costs assume that the extra will be partially or totally refunded while
 	// the base is covering for the put.
-	createActorBase  gas.Unit
-	createActorExtra gas.Unit
+	createActorCompute int64
+	createActorStorage int64
 
 	// Gas cost for deleting an actor.
 	//
 	// Note: this partially refunds the create cost to incentivise the deletion of the actors.
-	deleteActor gas.Unit
+	deleteActor int64
 
-	verifySignature map[crypto.SigType]func(gas.Unit) gas.Unit
+	verifySignature map[crypto.SigType]int64
 
-	hashingBase    gas.Unit
-	hashingPerByte gas.Unit
+	hashingBase int64
 
-	computeUnsealedSectorCidBase gas.Unit
-	verifySealBase               gas.Unit
-	verifyPostBase               gas.Unit
-	verifyConsensusFault         gas.Unit
+	computeUnsealedSectorCidBase int64
+	verifySealBase               int64
+	verifyPostLookup             map[abi.RegisteredPoStProof]scalingCost
+	verifyConsensusFault         int64
 }
 
 var _ Pricelist = (*pricelistV0)(nil)
 
 // OnChainMessage returns the gas used for storing a message of a given size in the chain.
-func (pl *pricelistV0) OnChainMessage(msgSize int) gas.Unit {
-	return pl.onChainMessageBase + pl.onChainMessagePerByte*gas.Unit(msgSize)
+func (pl *pricelistV0) OnChainMessage(msgSize int) GasCharge {
+	return newGasCharge("OnChainMessage", pl.onChainMessageComputeBase,
+		pl.onChainMessageStorageBase+pl.onChainMessageStoragePerByte*int64(msgSize))
 }
 
 // OnChainReturnValue returns the gas used for storing the response of a message in the chain.
-func (pl *pricelistV0) OnChainReturnValue(receipt *message.Receipt) gas.Unit {
-	return gas.Unit(len(receipt.ReturnValue)) * pl.onChainReturnValuePerByte
+func (pl *pricelistV0) OnChainReturnValue(dataSize int) GasCharge {
+	return newGasCharge("OnChainReturnValue", 0, int64(dataSize)*pl.onChainReturnValuePerByte)
 }
 
 // OnMethodInvocation returns the gas used when invoking a method.
-func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.MethodNum) gas.Unit {
+func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.MethodNum) GasCharge {
 	ret := pl.sendBase
-	if value != abi.NewTokenAmount(0) {
+	extra := ""
+
+	if big.Cmp(value, abi.NewTokenAmount(0)) != 0 {
 		ret += pl.sendTransferFunds
+		if methodNum == builtin.MethodSend {
+			// transfer only
+			ret += pl.sendTransferOnlyPremium
+		}
+		extra += "t"
 	}
+
 	if methodNum != builtin.MethodSend {
+		extra += "i"
+		// running actors is cheaper becase we hand over to actors
 		ret += pl.sendInvokeMethod
 	}
-	return ret
+	return newGasCharge("OnMethodInvocation", ret, 0).WithExtra(extra)
 }
 
 // OnIpldGet returns the gas used for storing an object
-func (pl *pricelistV0) OnIpldGet(dataSize int) gas.Unit {
-	return pl.ipldGetBase + gas.Unit(dataSize)*pl.ipldGetPerByte
+func (pl *pricelistV0) OnIpldGet() GasCharge {
+	return newGasCharge("OnIpldGet", pl.ipldGetBase, 0)
 }
 
 // OnIpldPut returns the gas used for storing an object
-func (pl *pricelistV0) OnIpldPut(dataSize int) gas.Unit {
-	return pl.ipldPutBase + gas.Unit(dataSize)*pl.ipldPutPerByte
+func (pl *pricelistV0) OnIpldPut(dataSize int) GasCharge {
+	return newGasCharge("OnIpldPut", pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte).
+		WithExtra(dataSize)
 }
 
 // OnCreateActor returns the gas used for creating an actor
-func (pl *pricelistV0) OnCreateActor() gas.Unit {
-	return pl.createActorBase + pl.createActorExtra
+func (pl *pricelistV0) OnCreateActor() GasCharge {
+	return newGasCharge("OnCreateActor", pl.createActorCompute, pl.createActorStorage)
 }
 
 // OnDeleteActor returns the gas used for deleting an actor
-func (pl *pricelistV0) OnDeleteActor() gas.Unit {
-	return pl.deleteActor
+func (pl *pricelistV0) OnDeleteActor() GasCharge {
+	return newGasCharge("OnDeleteActor", 0, pl.deleteActor)
 }
 
 // OnVerifySignature
-func (pl *pricelistV0) OnVerifySignature(sigType crypto.SigType, planTextSize int) (gas.Unit, error) {
-	costFn, ok := pl.verifySignature[sigType]
+
+func (pl *pricelistV0) OnVerifySignature(sigType crypto.SigType, planTextSize int) (GasCharge, error) {
+	cost, ok := pl.verifySignature[sigType]
 	if !ok {
-		return 0, fmt.Errorf("cost function for signature type %d not supported", sigType)
+		return GasCharge{}, fmt.Errorf("cost function for signature type %d not supported", sigType)
 	}
-	return costFn(gas.Unit(planTextSize)), nil
+
+	sigName, _ := sigType.Name()
+	return newGasCharge("OnVerifySignature", cost, 0).
+		WithExtra(map[string]interface{}{
+			"type": sigName,
+			"size": planTextSize,
+		}), nil
 }
 
 // OnHashing
-func (pl *pricelistV0) OnHashing(dataSize int) gas.Unit {
-	return pl.hashingBase + gas.Unit(dataSize)*pl.hashingPerByte
+func (pl *pricelistV0) OnHashing(dataSize int) GasCharge {
+	return newGasCharge("OnHashing", pl.hashingBase, 0).WithExtra(dataSize)
 }
 
 // OnComputeUnsealedSectorCid
-func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredProof, pieces *[]abi.PieceInfo) gas.Unit {
-	// TODO: this needs more cost tunning, check with @lotus
-	return pl.computeUnsealedSectorCidBase
+func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) GasCharge {
+	return newGasCharge("OnComputeUnsealedSectorCid", pl.computeUnsealedSectorCidBase, 0)
 }
 
 // OnVerifySeal
-func (pl *pricelistV0) OnVerifySeal(info abi.SealVerifyInfo) gas.Unit {
+func (pl *pricelistV0) OnVerifySeal(info proof.SealVerifyInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
-	return pl.verifySealBase
+	// this is not used
+	return newGasCharge("OnVerifySeal", pl.verifySealBase, 0)
 }
 
-// OnVerifyWinningPoSt
-func (pl *pricelistV0) OnVerifyWinningPoSt(info abi.WinningPoStVerifyInfo) gas.Unit {
-	// TODO: this needs more cost tunning, check with @lotus
-	return pl.verifyPostBase
-}
+// OnVerifyPost
+func (pl *pricelistV0) OnVerifyPost(info proof.WindowPoStVerifyInfo) GasCharge {
+	sectorSize := "unknown"
+	var proofType abi.RegisteredPoStProof
 
-// OnVerifyPoSt
-func (pl *pricelistV0) OnVerifyPoSt(info abi.WindowPoStVerifyInfo) gas.Unit {
-	// TODO: this needs more cost tunning, check with @lotus
-	return pl.verifyPostBase
+	if len(info.Proofs) != 0 {
+		proofType = info.Proofs[0].PoStProof
+		ss, err := info.Proofs[0].PoStProof.SectorSize()
+		if err == nil {
+			sectorSize = ss.ShortString()
+		}
+	}
+
+	cost, ok := pl.verifyPostLookup[proofType]
+	if !ok {
+		cost = pl.verifyPostLookup[abi.RegisteredPoStProof_StackedDrgWindow512MiBV1]
+	}
+
+	gasUsed := cost.flat + int64(len(info.ChallengedSectors))*cost.scale
+	gasUsed /= 2 // XXX: this is an artificial discount
+
+	return newGasCharge("OnVerifyPost", gasUsed, 0).
+		WithExtra(map[string]interface{}{
+			"type": sectorSize,
+			"size": len(info.ChallengedSectors),
+		})
 }
 
 // OnVerifyConsensusFault
-func (pl *pricelistV0) OnVerifyConsensusFault() gas.Unit {
-	return pl.verifyConsensusFault
+func (pl *pricelistV0) OnVerifyConsensusFault() GasCharge {
+	return newGasCharge("OnVerifyConsensusFault", pl.verifyConsensusFault, 0)
 }

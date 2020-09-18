@@ -3,6 +3,7 @@ package poster
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/go-bitfield"
 	"sync"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -13,15 +14,15 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-address"
-	sectorstorage "github.com/filecoin-project/sector-storage"
+	sectorstorage "github.com/filecoin-project/go-filecoin/vendors/sector-storage"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/abi"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
 )
 
 var log = logging.Logger("poster")
@@ -183,7 +184,7 @@ func (p *Poster) sendPoSt(ctx context.Context, workerAddr address.Address, index
 		Deadline:   index,
 		Partitions: partitions,
 		Proofs:     proofs,
-		Skipped:    abi.BitField{},
+		Skipped:    bitfield.BitField{},
 	}
 
 	mcid, errCh, err := p.outbox.Send(

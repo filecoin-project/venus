@@ -3,7 +3,7 @@ package networks
 import (
 	"encoding/base64"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 )
@@ -77,8 +77,8 @@ func Testnet() *NetworkConf {
 		Network: config.NetworkParamsConfig{
 			ConsensusMinerMinPower: 1024 << 30,
 			ReplaceProofTypes: []int64{
-				int64(abi.RegisteredProof_StackedDRG32GiBSeal),
-				int64(abi.RegisteredProof_StackedDRG64GiBSeal),
+				int64(abi.RegisteredSealProof_StackedDrg32GiBV1),
+				int64(abi.RegisteredSealProof_StackedDrg64GiBV1),
 			},
 		},
 	}

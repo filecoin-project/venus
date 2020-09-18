@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 	"github.com/libp2p/go-libp2p-core/peer"

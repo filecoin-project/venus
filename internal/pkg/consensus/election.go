@@ -6,11 +6,11 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 
@@ -198,32 +198,33 @@ func computeWinningPoStSectorChallenges(ctx context.Context, sectors SectorsStat
 }
 
 // Computes the set of sectors that may be challenged by Winning PoSt for a miner.
-func computeProvingSet(ctx context.Context, sectors SectorsStateView, maddr address.Address) (*abi.BitField, error) {
-	sectorStates, err := sectors.MinerSectorStates(ctx, maddr)
-	if err != nil {
-		return nil, err
-	}
+func computeProvingSet(ctx context.Context, sectors SectorsStateView, maddr address.Address) (*bitfield.BitField, error) {
+	//todo add by force  proving set
+	/*	sectorStates, err := sectors.MinerSectorStates(ctx, maddr)
+		if err != nil {
+			return nil, err
+		}
 
-	pset, err := abi.BitFieldUnion(sectorStates.Deadlines...)
-	if err != nil {
-		return nil, err
-	}
+		pset, err := bitfield.BitFieldUnion(sectorStates.Deadlines...)
+		if err != nil {
+			return nil, err
+		}
 
-	// Exclude sectors declared faulty.
-	// Recoveries are a subset of faults, so not needed explicitly here.
-	pset, err = bitfield.SubtractBitField(pset, sectorStates.Faults)
-	if err != nil {
-		return nil, err
-	}
+		// Exclude sectors declared faulty.
+		// Recoveries are a subset of faults, so not needed explicitly here.
+		pset, err = bitfield.SubtractBitField(pset, sectorStates.Faults)
+		if err != nil {
+			return nil, err
+		}
 
-	// Include new sectors.
-	// This is to replicate existing incorrect behaviour in Lotus.
-	// https://github.com/filecoin-project/go-filecoin/issues/4141
-	pset, err = bitfield.MergeBitFields(pset, sectorStates.NewSectors)
-	return pset, err
+		// Include new sectors.
+		// This is to replicate existing incorrect behaviour in Lotus.
+		// https://github.com/filecoin-project/go-filecoin/issues/4141
+		pset, err = bitfield.MergeBitFields(pset, sectorStates.NewSectors)*/
+	panic("computeProvingSet not impl")
 }
 
-func loadChallengedSectors(ctx context.Context, sectors SectorsStateView, maddr address.Address, provingSet *abi.BitField, challengeIndexes []uint64) ([]abi.SectorInfo, error) {
+func loadChallengedSectors(ctx context.Context, sectors SectorsStateView, maddr address.Address, provingSet *bitfield.BitField, challengeIndexes []uint64) ([]abi.SectorInfo, error) {
 	challengedSectorInfos := make([]abi.SectorInfo, len(challengeIndexes))
 	for i, ci := range challengeIndexes {
 		// TODO: replace Slice()+First() with provingSet.Get(ci) when it exists.
