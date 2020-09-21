@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
@@ -50,11 +51,11 @@ func (s *Syscalls) HashBlake2b(data []byte) [32]byte {
 	return blake2b.Sum256(data)
 }
 
-func (s *Syscalls) ComputeUnsealedSectorCID(_ context.Context, proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+func (s *Syscalls) ComputeUnsealedSectorCID(_ context.Context, proof abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	return ffiwrapper.GenerateUnsealedCID(proof, pieces)
 }
 
-func (s *Syscalls) VerifySeal(_ context.Context, info abi.SealVerifyInfo) error {
+func (s *Syscalls) VerifySeal(_ context.Context, info proof.SealVerifyInfo) error {
 	ok, err := s.verifier.VerifySeal(info)
 	if err != nil {
 		return err
@@ -64,7 +65,7 @@ func (s *Syscalls) VerifySeal(_ context.Context, info abi.SealVerifyInfo) error 
 	return nil
 }
 
-func (s *Syscalls) VerifyPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) error {
+func (s *Syscalls) VerifyPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) error {
 	ok, err := s.verifier.VerifyWindowPoSt(ctx, info)
 	if err != nil {
 		return err

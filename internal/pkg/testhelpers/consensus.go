@@ -162,7 +162,8 @@ func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.Storage, to a
 }
 
 func applyTestMessageWithAncestors(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
-	msg.GasPrice = types.NewGasPrice(1)
+	msg.GasFeeCap = types.NewGasFeeCap(1)
+	msg.GasPremium = types.NewGasPremium(1)
 	msg.GasLimit = gas.NewGas(300)
 
 	ta := newTestApplier(actors)

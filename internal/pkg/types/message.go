@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/big"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -18,6 +16,7 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	errPkg "github.com/pkg/errors"
 	typegen "github.com/whyrusleeping/cbor-gen"
+	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
@@ -182,15 +181,23 @@ func (msg *UnsignedMessage) Equals(other *UnsignedMessage) bool {
 		msg.From == other.From &&
 		msg.CallSeqNum == other.CallSeqNum &&
 		msg.Value.Equals(other.Value) &&
-		msg.Method == other.Method &&
 		msg.GasPremium.Equals(other.GasPremium) &&
 		msg.GasFeeCap.Equals(other.GasFeeCap) &&
 		msg.GasLimit == other.GasLimit &&
+		msg.Method == other.Method &&
 		bytes.Equal(msg.Params, other.Params)
 }
 
 // NewGasPrice constructs a gas price (in AttoFIL) from the given number.
-func NewGasPrice(price int64) AttoFIL {
+/*func NewGasPrice(price int64) AttoFIL {  //todo  add by force use basefee and gasPremium
+	return NewAttoFIL(big.NewInt(price))
+}*/
+
+func NewGasFeeCap(price int64) AttoFIL {
+	return NewAttoFIL(big.NewInt(price))
+}
+
+func NewGasPremium(price int64) AttoFIL {
 	return NewAttoFIL(big.NewInt(price))
 }
 
