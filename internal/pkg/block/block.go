@@ -3,6 +3,7 @@ package block
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-address"
@@ -77,6 +78,8 @@ type Block struct {
 
 	// ForkSignaling is extra data used by miners to communicate
 	ForkSignaling uint64
+
+	ParentBaseFee abi.TokenAmount
 
 	cachedCid cid.Cid
 
