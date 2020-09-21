@@ -201,7 +201,7 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 		if err != nil {
 			return true, err
 		}
-		if h+miner.ChainFinalityish < headHeight {
+		if h+miner.ChainFinality < headHeight {
 			return true, ErrNewChainTooLong
 		}
 
