@@ -3,6 +3,7 @@ package block
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
@@ -20,6 +21,9 @@ import (
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
+
+// Blocks (e)
+var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
 
 // BlockMessageLimit is the maximum number of messages in a block
 const BlockMessageLimit = 512

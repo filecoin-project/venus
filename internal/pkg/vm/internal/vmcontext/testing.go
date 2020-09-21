@@ -14,9 +14,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/system"
-	"github.com/filecoin-project/specs-actors/actors/puppet"
+	// "github.com/filecoin-project/specs-actors/actors/puppet"
 
-	//"github.com/filecoin-project/specs-actors/actors/puppet"
 	"math/rand"
 
 	"github.com/ipfs/go-cid"
