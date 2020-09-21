@@ -26,9 +26,9 @@ func NewFromString(t *testing.T, s string, store cbor.IpldStore) *State {
 	return tree
 }
 
-// MustCommit flushes the StateTree or panics if it can't.
+// MustCommit flushes the State or panics if it can't.
 func MustCommit(st State) cid.Cid {
-	cid, err := st.Commit(context.Background())
+	cid, err := st.Flush(context.Background())
 	if err != nil {
 		panic(err)
 	}

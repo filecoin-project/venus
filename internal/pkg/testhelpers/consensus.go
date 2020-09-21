@@ -124,27 +124,27 @@ func NewFakeProcessor() *consensus.DefaultProcessor {
 
 // ApplyTestMessage sends a message directly to the vm, bypassing message
 // validation
-func ApplyTestMessage(st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch) (*consensus.ApplicationResult, error) {
+func ApplyTestMessage(st state.State, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch) (*consensus.ApplicationResult, error) {
 	return applyTestMessageWithAncestors(vm.DefaultActors, st, store, msg, bh, nil)
 }
 
 // ApplyTestMessageWithActors sends a message directly to the vm with a given set of builtin actors
-func ApplyTestMessageWithActors(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch) (*consensus.ApplicationResult, error) {
+func ApplyTestMessageWithActors(actors vm.ActorCodeLoader, st state.State, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch) (*consensus.ApplicationResult, error) {
 	return applyTestMessageWithAncestors(actors, st, store, msg, bh, nil)
 }
 
 // ApplyTestMessageWithGas uses the FakeBlockRewarder but the default SignedMessageValidator
-func ApplyTestMessageWithGas(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch, minerOwner address.Address) (*consensus.ApplicationResult, error) {
+func ApplyTestMessageWithGas(actors vm.ActorCodeLoader, st state.State, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch, minerOwner address.Address) (*consensus.ApplicationResult, error) {
 	applier := consensus.NewConfiguredProcessor(actors, &vm.FakeSyscalls{}, &consensus.FakeChainRandomness{})
 	return newMessageApplier(msg, applier, st, store, bh, minerOwner, nil)
 }
 
-func newMessageApplier(msg *types.UnsignedMessage, processor *consensus.DefaultProcessor, st state.Tree, vms vm.Storage, bh abi.ChainEpoch, minerOwner address.Address, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
+func newMessageApplier(msg *types.UnsignedMessage, processor *consensus.DefaultProcessor, st state.State, vms vm.Storage, bh abi.ChainEpoch, minerOwner address.Address, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
 	return nil, nil
 }
 
 // CreateAndApplyTestMessageFrom wraps the given parameters in a message and calls ApplyTestMessage.
-func CreateAndApplyTestMessageFrom(t *testing.T, st state.Tree, vms vm.Storage, from address.Address, to address.Address, val, bh uint64, method abi.MethodNum, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
+func CreateAndApplyTestMessageFrom(t *testing.T, st state.State, vms vm.Storage, from address.Address, to address.Address, val, bh uint64, method abi.MethodNum, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
 	t.Helper()
 
 	pdata, err := encoding.Encode(params)
@@ -157,11 +157,11 @@ func CreateAndApplyTestMessageFrom(t *testing.T, st state.Tree, vms vm.Storage, 
 
 // CreateAndApplyTestMessage wraps the given parameters in a message and calls
 // CreateAndApplyTestMessageFrom sending the message from address.TestAddress
-func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.Storage, to address.Address, val, bh uint64, method abi.MethodNum, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
+func CreateAndApplyTestMessage(t *testing.T, st state.State, vms vm.Storage, to address.Address, val, bh uint64, method abi.MethodNum, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
 	return CreateAndApplyTestMessageFrom(t, st, vms, address.TestAddress, to, val, bh, method, ancestors, params...)
 }
 
-func applyTestMessageWithAncestors(actors vm.ActorCodeLoader, st state.Tree, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
+func applyTestMessageWithAncestors(actors vm.ActorCodeLoader, st state.State, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
 	msg.GasFeeCap = types.NewGasFeeCap(1)
 	msg.GasPremium = types.NewGasPremium(1)
 	msg.GasLimit = gas.NewGas(300)

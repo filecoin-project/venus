@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"github.com/filecoin-project/go-state-types/abi"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
@@ -30,8 +31,8 @@ type BlockMessagesInfo = interpreter.BlockMessagesInfo
 type MessageReceipt = message.Receipt
 
 // NewVM creates a new VM interpreter.
-func NewVM(st state.Tree, store *storage.VMStorage, syscalls SyscallsImpl) Interpreter {
-	vm := vmcontext.NewVM(builtin.DefaultActors, store, st, syscalls)
+func NewVM(st state.State, store *storage.VMStorage, syscalls SyscallsImpl, chainInfo vmcontext.ChainInfo, baseFee abi.TokenAmount) Interpreter {
+	vm := vmcontext.NewVM(builtin.DefaultActors, chainInfo, baseFee, store, st, syscalls)
 	return &vm
 }
 

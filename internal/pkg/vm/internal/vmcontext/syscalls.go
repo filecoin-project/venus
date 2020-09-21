@@ -2,6 +2,7 @@ package vmcontext
 
 import (
 	"context"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-address"
@@ -13,11 +14,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
+	vmState "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 type SyscallsStateView interface {
 	state.AccountStateView
 	MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error)
+	TotalFilCircSupply(height abi.ChainEpoch, st vmState.Tree) abi.TokenAmount
+	GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version
 }
 
 // Syscall implementation interface.

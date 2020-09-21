@@ -2,6 +2,7 @@ package vmcontext_test
 
 import (
 	"fmt"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"io"
 	"testing"
 
@@ -85,7 +86,7 @@ func TestActorStateHandle(t *testing.T) {
 		defer ts.cleanup()
 
 		var out testActorStateHandleState
-		ts.h.Readonly(&out)
+		ts.h.StateReadonly(&out)
 
 		assert.Equal(t, out, ts.initialstate)
 	})
@@ -97,7 +98,7 @@ func TestActorStateHandle(t *testing.T) {
 		defer ts.cleanup()
 
 		var out testActorStateHandleState
-		ts.h.Readonly(&out)
+		ts.h.StateReadonly(&out)
 
 		out.FieldA = "changed!"
 	})
@@ -107,8 +108,8 @@ func TestActorStateHandle(t *testing.T) {
 		defer ts.cleanup()
 
 		var out testActorStateHandleState
-		ts.h.Readonly(&out)
-		ts.h.Readonly(&out)
+		ts.h.StateReadonly(&out)
+		ts.h.StateReadonly(&out)
 
 		assert.Equal(t, out, ts.initialstate)
 	})
@@ -118,11 +119,10 @@ func TestActorStateHandle(t *testing.T) {
 		defer ts.cleanup()
 
 		var out testActorStateHandleState
-		ts.h.Readonly(&out)
+		ts.h.StateReadonly(&out)
 
-		ts.h.Transaction(&out, func() interface{} {
+		ts.h.StateTransaction(&out, func() {
 			out.FieldA = "changed!"
-			return nil
 		})
 	})
 
@@ -133,17 +133,15 @@ func TestActorStateHandle(t *testing.T) {
 		var out testActorStateHandleState
 		expected := "new state"
 
-		ts.h.Transaction(&out, func() interface{} {
+		ts.h.StateTransaction(&out, func() {
 			// check state is not what we are going to use
 			assert.NotEqual(t, out.FieldA, expected)
 			out.FieldA = expected
-
-			return nil
 		})
 		// check that it changed
 		assert.Equal(t, out.FieldA, expected)
 
-		ts.h.Readonly(&out)
+		ts.h.StateReadonly(&out)
 		// really check by loading it again
 		assert.Equal(t, out.FieldA, expected)
 	})
@@ -155,9 +153,7 @@ func TestActorStateHandle(t *testing.T) {
 		var out testActorStateHandleState
 
 		// should work, mutating is not compulsory
-		ts.h.Transaction(&out, func() interface{} {
-			return nil
-		})
+		ts.h.StateTransaction(&out, func() {})
 
 		assert.Equal(t, out, ts.initialstate)
 	})
@@ -168,11 +164,12 @@ func TestActorStateHandle(t *testing.T) {
 
 		var out testActorStateHandleState
 
-		v := ts.h.Transaction(&out, func() interface{} {
-			return out.FieldA
+		lastResult := ""
+		ts.h.StateTransaction(&out, func() {
+			lastResult = out.FieldA
 		})
 
-		assert.Equal(t, v, ts.initialstate.FieldA)
+		assert.Equal(t, lastResult, ts.initialstate.FieldA)
 	})
 
 	t.Run("mutated after the transaction", func(t *testing.T) {
@@ -183,9 +180,10 @@ func TestActorStateHandle(t *testing.T) {
 
 		var out testActorStateHandleState
 
-		ts.h.Transaction(&out, func() interface{} {
-			out.FieldA = "changed!"
-			return nil
+		lastResult := ""
+		ts.h.StateTransaction(&out, func() {
+			lastResult = "changed!"
+			out.FieldA = lastResult
 		})
 
 		out.FieldA = "changed again!"
@@ -197,19 +195,20 @@ func TestActorStateHandle(t *testing.T) {
 
 		var out testActorStateHandleState
 
-		ts.h.Transaction(&out, func() interface{} {
-			out.FieldA = "changed!"
-			return nil
+		lastResult := ""
+		ts.h.StateTransaction(&out, func() {
+			lastResult = "changed!"
+			out.FieldA = lastResult
 		})
 
-		v := ts.h.Transaction(&out, func() interface{} {
-			out.FieldA = "again!"
-			return out.FieldA
+		ts.h.StateTransaction(&out, func() {
+			lastResult = "again!"
+			out.FieldA = lastResult
 		})
 
-		ts.h.Readonly(&out)
+		ts.h.StateReadonly(&out)
 		// really check by loading it again
-		assert.Equal(t, out.FieldA, v)
+		assert.Equal(t, out.FieldA, lastResult)
 	})
 }
 
@@ -241,7 +240,7 @@ func TestActorStateHandleNilState(t *testing.T) {
 		defer cleanup()
 
 		var out testActorStateHandleState
-		h.Readonly(&out)
+		h.StateReadonly(&out)
 	})
 
 	t.Run("transaction on nil state", func(t *testing.T) {
@@ -249,9 +248,7 @@ func TestActorStateHandleNilState(t *testing.T) {
 		defer cleanup()
 
 		var out testActorStateHandleState
-		h.Transaction(&out, func() interface{} {
-			return nil
-		})
+		h.StateTransaction(&out, func() {})
 	})
 
 	t.Run("state initialized after transaction", func(t *testing.T) {
@@ -259,11 +256,9 @@ func TestActorStateHandleNilState(t *testing.T) {
 		defer cleanup()
 
 		var out testActorStateHandleState
-		h.Transaction(&out, func() interface{} {
-			return nil
-		})
+		h.StateTransaction(&out, func() {})
 
-		h.Readonly(&out) // should not fail
+		h.StateReadonly(&out) // should not fail
 	})
 
 	t.Run("readonly nil pointer to state", func(t *testing.T) {
@@ -272,7 +267,7 @@ func TestActorStateHandleNilState(t *testing.T) {
 		h, cleanup := setup()
 		defer cleanup()
 
-		h.Readonly(nil)
+		h.StateReadonly(nil)
 	})
 
 	t.Run("transaction nil pointer to state", func(t *testing.T) {
@@ -281,9 +276,7 @@ func TestActorStateHandleNilState(t *testing.T) {
 		h, cleanup := setup()
 		defer cleanup()
 
-		h.Transaction(nil, func() interface{} {
-			return nil
-		})
+		h.StateTransaction(nil, func() {})
 	})
 }
 
@@ -301,24 +294,24 @@ func (ctx *fakeActorStateHandleContext) AllowSideEffects(allow bool) {
 	ctx.allowSideEffects = allow
 }
 
-func (ctx *fakeActorStateHandleContext) Create(obj runtime.CBORMarshaler) cid.Cid {
-	ctx.head = ctx.store.Put(obj)
+func (ctx *fakeActorStateHandleContext) Create(obj cbg.CBORMarshaler) cid.Cid {
+	ctx.head = ctx.store.StorePut(obj)
 	return ctx.head
 }
 
-func (ctx *fakeActorStateHandleContext) Load(obj runtime.CBORUnmarshaler) cid.Cid {
-	found := ctx.store.Get(ctx.head, obj)
+func (ctx *fakeActorStateHandleContext) Load(obj cbg.CBORUnmarshaler) cid.Cid {
+	found := ctx.store.StoreGet(ctx.head, obj)
 	if !found {
 		panic("inconsistent state")
 	}
 	return ctx.head
 }
 
-func (ctx *fakeActorStateHandleContext) Replace(expected cid.Cid, obj runtime.CBORMarshaler) cid.Cid {
+func (ctx *fakeActorStateHandleContext) Replace(expected cid.Cid, obj cbg.CBORMarshaler) cid.Cid {
 	if !ctx.head.Equals(expected) {
 		panic(fmt.Errorf("unexpected prior state %s expected %s", ctx.head, expected))
 	}
-	ctx.head = ctx.store.Put(obj)
+	ctx.head = ctx.store.StorePut(obj)
 	return ctx.head
 }
 

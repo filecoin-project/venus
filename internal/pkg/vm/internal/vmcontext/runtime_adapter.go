@@ -3,26 +3,53 @@ package vmcontext
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/types"
-	"github.com/filecoin-project/go-state-types/cbor"
-	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/go-state-types/rt"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
-	cbg "github.com/whyrusleeping/cbor-gen"
-
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/crypto"
-	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/ipfs/go-cid"
-
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	vmErrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/go-state-types/rt"
+	rtt "github.com/filecoin-project/go-state-types/rt"
+	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/ipfs/go-cid"
+	cbor2 "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log/v2"
 )
+
+var EmptyObjectCid cid.Cid
+
+func init() {
+	cst := cbor2.NewMemCborStore()
+	emptyobject, err := cst.Put(context.TODO(), []struct{}{})
+	if err != nil {
+		panic(err)
+	}
+
+	EmptyObjectCid = emptyobject
+}
+
+var actorLog = logging.Logger("actors")
 
 type runtimeAdapter struct {
 	ctx *invocationContext
+	syscalls
+}
+
+func newRuntimeAdapter(ctx *invocationContext) *runtimeAdapter {
+	return &runtimeAdapter{ctx: ctx, syscalls: syscalls{
+		impl:      ctx.rt.syscalls,
+		ctx:       ctx.rt.context,
+		gasTank:   ctx.gasTank,
+		pricelist: ctx.rt.pricelist,
+		head:      ctx.rt.currentHead,
+		state:     ctx.rt.stateView(),
+	}}
 }
 
 func (a *runtimeAdapter) Caller() address.Address {
@@ -39,79 +66,115 @@ func (a *runtimeAdapter) ValueReceived() abi.TokenAmount {
 
 func (a *runtimeAdapter) StateCreate(obj cbor.Marshaler) {
 	c := a.StorePut(obj)
-	a.ctx.rt.state.Commit()
-	err := a.(EmptyObjectCid, c)
+	err := a.stateCommit(EmptyObjectCid, c)
 	if err != nil {
 		panic(fmt.Errorf("failed to commit state after creating object: %w", err))
 	}
 }
 
+func (a *runtimeAdapter) stateCommit(oldh, newh cid.Cid) vmErrors.ActorError {
+
+	// TODO: we can make this more efficient in the future...
+	act, found, err := a.ctx.rt.state.GetActor(a.Context(), a.Receiver())
+	if !found || err != nil {
+		return vmErrors.Escalate(err, "failed to get actor to commit state")
+	}
+
+	if act.Head.Cid != oldh {
+		return vmErrors.Fatal("failed to update, inconsistent base reference")
+	}
+
+	act.Head = e.NewCid(newh)
+
+	if err := a.ctx.rt.state.SetActor(a.Context(), a.Receiver(), act); err != nil {
+		return vmErrors.Fatalf("failed to set actor in commit state: %s", err)
+	}
+
+	return nil
+}
+
 func (a *runtimeAdapter) StateReadonly(obj cbor.Unmarshaler) {
-	panic("implement me")
+	act, found, err := a.ctx.rt.state.GetActor(a.Context(), a.Receiver())
+	if !found || err != nil {
+		a.Abortf(exitcode.SysErrorIllegalArgument, "failed to get actor for Readonly state: %s", err)
+	}
+	a.StoreGet(act.Head.Cid, obj)
 }
 
 func (a *runtimeAdapter) StateTransaction(obj cbor.Er, f func()) {
-	panic("implement me")
+	if obj == nil {
+		a.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil to Transaction()")
+	}
+
+	act, found, err := a.ctx.rt.state.GetActor(a.Context(), a.Receiver())
+	if !found || err != nil {
+		a.Abortf(exitcode.SysErrorIllegalActor, "failed to get actor for Transaction: %s", err)
+	}
+	baseState := act.Head
+	a.StoreGet(baseState.Cid, obj)
+
+	a.ctx.allowSideEffects = false
+	f()
+	a.ctx.allowSideEffects = true
+
+	c := a.StorePut(obj)
+
+	err = a.stateCommit(baseState.Cid, c)
+	if err != nil {
+		panic(fmt.Errorf("failed to commit state after transaction: %w", err))
+	}
 }
 
 func (a *runtimeAdapter) StoreGet(c cid.Cid, o cbor.Unmarshaler) bool {
-	panic("implement me")
+	return a.ctx.Store().StoreGet(c, o)
 }
 
 func (a *runtimeAdapter) StorePut(x cbor.Marshaler) cid.Cid {
-	panic("implement me")
-}
-
-func (a *runtimeAdapter) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) error {
-	panic("implement me")
-}
-
-func (a *runtimeAdapter) HashBlake2b(data []byte) [32]byte {
-	panic("implement me")
-}
-
-func (a *runtimeAdapter) ComputeUnsealedSectorCID(reg abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
-	panic("implement me")
-}
-
-func (a *runtimeAdapter) VerifySeal(vi proof.SealVerifyInfo) error {
-	panic("implement me")
-}
-
-func (a *runtimeAdapter) BatchVerifySeals(vis map[address.Address][]proof.SealVerifyInfo) (map[address.Address][]bool, error) {
-	panic("implement me")
-}
-
-func (a *runtimeAdapter) VerifyPoSt(vi proof.WindowPoStVerifyInfo) error {
-	panic("implement me")
-}
-
-func (a *runtimeAdapter) VerifyConsensusFault(h1, h2, extra []byte) (*specsruntime.ConsensusFault, error) {
-	panic("implement me")
+	return a.ctx.Store().StorePut(x)
 }
 
 func (a *runtimeAdapter) NetworkVersion() network.Version {
-	panic("implement me")
+	return a.state.GetNtwkVersion(a.Context(), a.CurrEpoch())
 }
 
 func (a *runtimeAdapter) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	panic("implement me")
+	res, err := a.ctx.randSource.GetRandomnessFromBeacon(a.Context(), personalization, randEpoch, entropy)
+	if err != nil {
+		panic(vmErrors.Fatalf("could not get randomness: %s", err))
+	}
+	return res
 }
 
 func (a *runtimeAdapter) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	panic("implement me")
+	res, err := a.ctx.randSource.Randomness(a.Context(), personalization, randEpoch, entropy)
+	if err != nil {
+		panic(vmErrors.Fatalf("could not get randomness: %s", err))
+	}
+	return res
 }
 
 func (a *runtimeAdapter) Send(toAddr address.Address, methodNum abi.MethodNum, params cbor.Marshaler, value abi.TokenAmount, out cbor.Er) exitcode.ExitCode {
-	panic("implement me")
+	return a.ctx.Send(toAddr, methodNum, params, value, out)
 }
 
-func (a *runtimeAdapter) ChargeGas(name string, gas int64, virtual int64) {
-	panic("implement me")
+func (a *runtimeAdapter) ChargeGas(name string, compute int64, virtual int64) {
+	err := a.gasTank.Charge(gascost.NewGasCharge(name, compute, 0).WithVirtual(virtual, 0), "runtimeAdapter charge gas")
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (a *runtimeAdapter) Log(level rt.LogLevel, msg string, args ...interface{}) {
-	panic("implement me")
+	switch level {
+	case rtt.DEBUG:
+		actorLog.Debugf(msg, args...)
+	case rtt.INFO:
+		actorLog.Infof(msg, args...)
+	case rtt.WARN:
+		actorLog.Warnf(msg, args...)
+	case rtt.ERROR:
+		actorLog.Errorf(msg, args...)
+	}
 }
 
 var _ specsruntime.Runtime = (*runtimeAdapter)(nil)
@@ -158,38 +221,16 @@ func (a *runtimeAdapter) ResolveAddress(addr address.Address) (address.Address, 
 
 // GetActorCodeCID implements Runtime.
 func (a *runtimeAdapter) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) {
-	entry, found, err := a.ctx.rt.state.GetActor(context.Background(), addr)
+	entry, found, err := a.ctx.rt.state.GetActor(a.Context(), addr)
+	if err != nil {
+		panic(vmErrors.Fatalf("failed to get actor: %s", err))
+	}
+
 	if !found {
 		return cid.Undef, false
 	}
-	if err != nil {
-		panic(err)
-	}
+
 	return entry.Code.Cid, true
-}
-
-// GetRandomness implements Runtime.
-func (a *runtimeAdapter) GetRandomness(tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	randomness, err := a.ctx.randSource.Randomness(a.Context(), tag, epoch, entropy)
-	if err != nil {
-		panic(err)
-	}
-	return randomness
-}
-
-// State implements Runtime.
-func (a *runtimeAdapter) State() specsruntime.StateHandle {
-	return a.ctx.State()
-}
-
-// Store implements Runtime.
-func (a *runtimeAdapter) Store() specsruntime.Store {
-	return a.ctx.Store()
-}
-
-// Send implements Runtime.
-func (a *runtimeAdapter) Send(toAddr address.Address, methodNum abi.MethodNum, params cbg.CBORMarshaler, value abi.TokenAmount) (ret types.SendReturn, errcode exitcode.ExitCode) {
-	return a.ctx.Send(toAddr, methodNum, params, value)
 }
 
 // Abortf implements Runtime.
@@ -212,20 +253,8 @@ func (a *runtimeAdapter) DeleteActor(beneficiary address.Address) {
 	a.ctx.DeleteActor(beneficiary)
 }
 
-// SyscallsImpl implements Runtime.
-func (a *runtimeAdapter) Syscalls() specsruntime.Syscalls {
-	return &syscalls{
-		impl:      a.ctx.rt.syscalls,
-		ctx:       a.ctx.rt.context,
-		gasTank:   a.ctx.gasTank,
-		pricelist: a.ctx.rt.pricelist,
-		head:      a.ctx.rt.currentHead,
-		state:     a.ctx.rt.stateView(),
-	}
-}
-
 func (a *runtimeAdapter) TotalFilCircSupply() abi.TokenAmount {
-	return a.ctx.TotalFilCircSupply()
+	return a.state.TotalFilCircSupply(a.CurrEpoch(), a.ctx.rt.state)
 }
 
 // Context implements Runtime.
@@ -234,9 +263,14 @@ func (a *runtimeAdapter) Context() context.Context {
 	return a.ctx.rt.context
 }
 
-var  nullTraceSpan = func(){}
+var nullTraceSpan = func() {}
+
 // StartSpan implements Runtime.
 func (a *runtimeAdapter) StartSpan(name string) func() {
 	// Dragons: leeave empty for now, add TODO to add this into gfc
 	return nullTraceSpan
+}
+
+func (a *runtimeAdapter) AbortStateMsg(msg string) {
+	panic(vmErrors.NewfSkip(3, 101, msg))
 }

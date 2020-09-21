@@ -13,7 +13,7 @@ type Unit int64
 var Zero = NewGas(0)
 
 // SystemGasLimit is the maximum gas for implicit system messages.
-var SystemGasLimit = NewGas(1000000000000000000) // 10^18
+var SystemGasLimit = NewGas(10_000_000_000) // 10^18
 
 // NewGas creates a gas value object.
 func NewGas(value int64) Unit {

@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/types"
+	vmErrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-state-types/cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"runtime/debug"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 
@@ -115,14 +115,14 @@ func (shc *stateHandleContext) store() specsruntime.Store {
 }
 
 func (shc *stateHandleContext) loadActor() *actor.Actor {
-	actr, found, err := shc.rt.state.GetActor(shc.rt.context, shc.msg.to)
+	entry, found, err := shc.rt.state.GetActor(shc.rt.context, shc.msg.to)
 	if err != nil {
-		panic(err)
+		panic(vmErrors.Fatalf("failed to get actor: %s", err))
 	}
 	if !found {
 		panic(fmt.Errorf("failed to find actor %s for state", shc.msg.to))
 	}
-	return actr
+	return entry
 }
 
 func (shc *stateHandleContext) storeActor(actr *actor.Actor) {
@@ -134,9 +134,9 @@ func (shc *stateHandleContext) storeActor(actr *actor.Actor) {
 
 // runtime aborts are trapped by invoke, it will always return an exit code.
 func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.ExitCode) {
-	// Checkpoint state, for restoration on rollback
+	// Checkpoint state, for restoration on revert
 	// Note that changes prior to invocation (sequence number bump and gas prepayment) persist even if invocation fails.
-	priorRoot, err := ctx.rt.checkpoint()
+	err := ctx.rt.snapshot()
 	if err != nil {
 		panic(err)
 	}
@@ -145,7 +145,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 	// This is the only path by which a non-OK exit code may be returned.
 	defer func() {
 		if r := recover(); r != nil {
-			if err := ctx.rt.rollback(priorRoot); err != nil {
+			if err := ctx.rt.revert(); err != nil {
 				panic(err)
 			}
 			switch r.(type) {
@@ -215,7 +215,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 	ctx.stateHandle = &stateHandle
 
 	// dispatch
-	adapter := runtimeAdapter{ctx: ctx}
+	adapter := newRuntimeAdapter(ctx) //runtimeAdapter{ctx: ctx}
 	out, err := actorImpl.Dispatch(ctx.msg.method, &adapter, ctx.msg.params)
 	if err != nil {
 		// Dragons: this could be a params deserialization error too
@@ -343,9 +343,11 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 	if err != nil {
 		panic(err)
 	}
+
 	if !found && created {
 		panic(fmt.Errorf("unreachable: actor is supposed to exist but it does not. addr: %s, idAddr: %s", target, targetIDAddr))
 	}
+
 	if !found {
 		runtime.Abort(exitcode.SysErrInvalidReceiver)
 	}
@@ -424,20 +426,20 @@ func (r returnWrapper) Into(o cbg.CBORUnmarshaler) error {
 }
 
 // Send implements runtime.InvocationContext.
-func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodNum, params cbg.CBORMarshaler, value abi.TokenAmount) (ret types.SendReturn, errcode exitcode.ExitCode) {
+func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodNum, params cbg.CBORMarshaler, value abi.TokenAmount, out cbor.Er) exitcode.ExitCode {
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Calling Send() is not allowed during side-effect lock")
 	}
 	// prepare
 	// 1. alias fromActor
-	// 2. build internal message
+	// 2. build vmErrors message
 
 	// 1. fromActor = executing toActor
 	from := ctx.msg.to
 	fromActor := ctx.toActor
 
-	// 2. build internal message
+	// 2. build vmErrors message
 	newMsg := internalMessage{
 		from:   from,
 		to:     toAddr,
@@ -455,11 +457,8 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 
 	// 2. invoke
 	result, code := newCtx.invoke()
-	cborBytes, _ := result.ToCbor()
-	return types.SendReturn{ //todo add by force 待优化
-		Return: cborBytes,
-		Code:   code,
-	}, code
+	_ = result.Into(out) //todo add by force how to return receipt
+	return code
 }
 
 /// Balance implements runtime.InvocationContext.
@@ -545,9 +544,11 @@ func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 	if err != nil {
 		panic(err)
 	}
+
 	if !found {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "delete non-existent actor %s", receiverActor)
 	}
+
 	ctx.gasTank.Charge(ctx.rt.pricelist.OnDeleteActor(), "DeleteActor %s", receiver)
 
 	// Transfer any remaining balance to the beneficiary.
@@ -560,46 +561,6 @@ func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 	if err := ctx.rt.state.DeleteActor(ctx.rt.context, receiver); err != nil {
 		panic(err)
 	}
-}
-
-func (ctx *invocationContext) TotalFilCircSupply() abi.TokenAmount {
-	rewardActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.RewardActorAddr)
-	if !found || err != nil {
-		panic(fmt.Sprintf("failed to get rewardActor actor for computing total supply: %s", err))
-	}
-
-	burntActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.BurntFundsActorAddr)
-	if !found || err != nil {
-		panic(fmt.Sprintf("failed to get burntActor funds actor for computing total supply: %s", err))
-	}
-
-	marketActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.StorageMarketActorAddr)
-	if !found || err != nil {
-		panic(fmt.Sprintf("failed to get storage marketActor actor for computing total supply: %s", err))
-	}
-
-	// TODO: remove this, https://github.com/filecoin-project/go-filecoin/issues/4017
-	powerActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.StoragePowerActorAddr)
-	if !found || err != nil {
-		panic(fmt.Sprintf("failed to get storage powerActor actor for computing total supply: %s", err))
-	}
-
-	// TODO: this 2 billion is coded for temporary compatibility with the Lotus implementation of this function,
-	// but including it here is brittle. Instead, this should inspect the reward actor's state which records
-	// exactly how much has actually been distributed in block rewards to this point, robust to various
-	// network initial conditions.
-	// https://github.com/filecoin-project/go-filecoin/issues/4017
-	total := big.NewInt(2e9)
-	total = big.Sub(total, rewardActor.Balance)
-	total = big.Sub(total, burntActor.Balance)
-	total = big.Sub(total, marketActor.Balance)
-
-	var st power.State
-	if found = ctx.Store().StoreGet(powerActor.Head.Cid, &st); !found {
-		panic("failed to get storage powerActor state")
-	}
-
-	return big.Sub(total, st.TotalPledgeCollateral)
 }
 
 // patternContext implements the PatternContext

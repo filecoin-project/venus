@@ -96,13 +96,13 @@ var _ Pricelist = (*pricelistV0)(nil)
 
 // OnChainMessage returns the gas used for storing a message of a given size in the chain.
 func (pl *pricelistV0) OnChainMessage(msgSize int) GasCharge {
-	return newGasCharge("OnChainMessage", pl.onChainMessageComputeBase,
+	return NewGasCharge("OnChainMessage", pl.onChainMessageComputeBase,
 		pl.onChainMessageStorageBase+pl.onChainMessageStoragePerByte*int64(msgSize))
 }
 
 // OnChainReturnValue returns the gas used for storing the response of a message in the chain.
 func (pl *pricelistV0) OnChainReturnValue(dataSize int) GasCharge {
-	return newGasCharge("OnChainReturnValue", 0, int64(dataSize)*pl.onChainReturnValuePerByte)
+	return NewGasCharge("OnChainReturnValue", 0, int64(dataSize)*pl.onChainReturnValuePerByte)
 }
 
 // OnMethodInvocation returns the gas used when invoking a method.
@@ -124,28 +124,28 @@ func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.M
 		// running actors is cheaper becase we hand over to actors
 		ret += pl.sendInvokeMethod
 	}
-	return newGasCharge("OnMethodInvocation", ret, 0).WithExtra(extra)
+	return NewGasCharge("OnMethodInvocation", ret, 0).WithExtra(extra)
 }
 
 // OnIpldGet returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldGet() GasCharge {
-	return newGasCharge("OnIpldGet", pl.ipldGetBase, 0)
+	return NewGasCharge("OnIpldGet", pl.ipldGetBase, 0)
 }
 
 // OnIpldPut returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldPut(dataSize int) GasCharge {
-	return newGasCharge("OnIpldPut", pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte).
+	return NewGasCharge("OnIpldPut", pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte).
 		WithExtra(dataSize)
 }
 
 // OnCreateActor returns the gas used for creating an actor
 func (pl *pricelistV0) OnCreateActor() GasCharge {
-	return newGasCharge("OnCreateActor", pl.createActorCompute, pl.createActorStorage)
+	return NewGasCharge("OnCreateActor", pl.createActorCompute, pl.createActorStorage)
 }
 
 // OnDeleteActor returns the gas used for deleting an actor
 func (pl *pricelistV0) OnDeleteActor() GasCharge {
-	return newGasCharge("OnDeleteActor", 0, pl.deleteActor)
+	return NewGasCharge("OnDeleteActor", 0, pl.deleteActor)
 }
 
 // OnVerifySignature
@@ -157,7 +157,7 @@ func (pl *pricelistV0) OnVerifySignature(sigType crypto.SigType, planTextSize in
 	}
 
 	sigName, _ := sigType.Name()
-	return newGasCharge("OnVerifySignature", cost, 0).
+	return NewGasCharge("OnVerifySignature", cost, 0).
 		WithExtra(map[string]interface{}{
 			"type": sigName,
 			"size": planTextSize,
@@ -166,19 +166,19 @@ func (pl *pricelistV0) OnVerifySignature(sigType crypto.SigType, planTextSize in
 
 // OnHashing
 func (pl *pricelistV0) OnHashing(dataSize int) GasCharge {
-	return newGasCharge("OnHashing", pl.hashingBase, 0).WithExtra(dataSize)
+	return NewGasCharge("OnHashing", pl.hashingBase, 0).WithExtra(dataSize)
 }
 
 // OnComputeUnsealedSectorCid
 func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) GasCharge {
-	return newGasCharge("OnComputeUnsealedSectorCid", pl.computeUnsealedSectorCidBase, 0)
+	return NewGasCharge("OnComputeUnsealedSectorCid", pl.computeUnsealedSectorCidBase, 0)
 }
 
 // OnVerifySeal
 func (pl *pricelistV0) OnVerifySeal(info proof.SealVerifyInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
 	// this is not used
-	return newGasCharge("OnVerifySeal", pl.verifySealBase, 0)
+	return NewGasCharge("OnVerifySeal", pl.verifySealBase, 0)
 }
 
 // OnVerifyPost
@@ -202,7 +202,7 @@ func (pl *pricelistV0) OnVerifyPost(info proof.WindowPoStVerifyInfo) GasCharge {
 	gasUsed := cost.flat + int64(len(info.ChallengedSectors))*cost.scale
 	gasUsed /= 2 // XXX: this is an artificial discount
 
-	return newGasCharge("OnVerifyPost", gasUsed, 0).
+	return NewGasCharge("OnVerifyPost", gasUsed, 0).
 		WithExtra(map[string]interface{}{
 			"type": sectorSize,
 			"size": len(info.ChallengedSectors),
@@ -211,5 +211,5 @@ func (pl *pricelistV0) OnVerifyPost(info proof.WindowPoStVerifyInfo) GasCharge {
 
 // OnVerifyConsensusFault
 func (pl *pricelistV0) OnVerifyConsensusFault() GasCharge {
-	return newGasCharge("OnVerifyConsensusFault", pl.verifyConsensusFault, 0)
+	return NewGasCharge("OnVerifyConsensusFault", pl.verifyConsensusFault, 0)
 }

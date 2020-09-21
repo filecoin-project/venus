@@ -17,6 +17,8 @@ import (
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 )
 
+var ErrActorNotFound = errors.New("actor not found")
+
 // DefaultGasCost is default gas cost for the actor calls.
 const DefaultGasCost = 100
 

@@ -27,6 +27,7 @@ type GasCharge struct {
 func (g GasCharge) Total() int64 {
 	return g.ComputeGas*GasComputeMulti + g.StorageGas*GasStorageMulti
 }
+
 func (g GasCharge) WithVirtual(compute, storage int64) GasCharge {
 	out := g
 	out.VirtualCompute = compute
@@ -40,7 +41,7 @@ func (g GasCharge) WithExtra(extra interface{}) GasCharge {
 	return out
 }
 
-func newGasCharge(name string, computeGas int64, storageGas int64) GasCharge {
+func NewGasCharge(name string, computeGas int64, storageGas int64) GasCharge {
 	return GasCharge{
 		Name:       name,
 		ComputeGas: computeGas,

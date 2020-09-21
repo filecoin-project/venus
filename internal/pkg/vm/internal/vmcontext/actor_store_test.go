@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -19,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	vmr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
+	cbor2 "github.com/filecoin-project/go-state-types/cbor"
 )
 
 func TestActorStore(t *testing.T) {
@@ -70,19 +70,19 @@ func TestActorStore(t *testing.T) {
 	})
 }
 
-func tryPut(s *vmcontext.ActorStorage, v runtime.CBORMarshaler) (c cid.Cid, thrown interface{}) {
+func tryPut(s *vmcontext.ActorStorage, v cbor2.Marshaler) (c cid.Cid, thrown interface{}) {
 	defer func() {
 		thrown = recover()
 	}()
-	c = s.Put(v)
+	c = s.StorePut(v)
 	return
 }
 
-func tryGet(s *vmcontext.ActorStorage, c cid.Cid, v runtime.CBORUnmarshaler) (thrown interface{}) {
+func tryGet(s *vmcontext.ActorStorage, c cid.Cid, v cbor2.Unmarshaler) (thrown interface{}) {
 	defer func() {
 		thrown = recover()
 	}()
-	s.Get(c, v)
+	s.StoreGet(c, v)
 	return
 }
 

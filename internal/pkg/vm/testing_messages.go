@@ -16,8 +16,9 @@ import (
 
 // MessageMaker creates unique, signed messages for use in tests.
 type MessageMaker struct {
-	DefaultGasPrice types.AttoFIL
-	DefaultGasUnits gas.Unit
+	DefaultGasFeeCap  types.AttoFIL
+	DefaultGasPremium types.AttoFIL
+	DefaultGasUnits   gas.Unit
 
 	signer *types.MockSigner
 	seq    uint
@@ -34,7 +35,7 @@ func NewMessageMaker(t *testing.T, keys []crypto.KeyInfo) *MessageMaker {
 		addresses[i] = addr
 	}
 
-	return &MessageMaker{types.ZeroAttoFIL, gas.Unit(0), &signer, 0, t}
+	return &MessageMaker{types.ZeroAttoFIL, types.ZeroAttoFIL, gas.Unit(0), &signer, 0, t}
 }
 
 // Addresses returns the addresses for which this maker can sign messages.
@@ -60,7 +61,8 @@ func (mm *MessageMaker) NewUnsignedMessage(from address.Address, nonce uint64) *
 		types.ZeroAttoFIL,
 		abi.MethodNum(9000+seq),
 		[]byte("params"),
-		mm.DefaultGasPrice,
+		mm.DefaultGasFeeCap,
+		mm.DefaultGasPremium,
 		mm.DefaultGasUnits)
 }
 
