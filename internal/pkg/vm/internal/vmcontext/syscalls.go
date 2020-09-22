@@ -20,7 +20,7 @@ import (
 type SyscallsStateView interface {
 	state.AccountStateView
 	MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error)
-	TotalFilCircSupply(height abi.ChainEpoch, st vmState.Tree) abi.TokenAmount
+	TotalFilCircSupply(height abi.ChainEpoch, st vmState.Tree) (abi.TokenAmount, error)
 	GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version
 }
 

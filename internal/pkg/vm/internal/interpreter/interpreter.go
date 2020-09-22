@@ -15,7 +15,7 @@ type VMInterpreter interface {
 	// ApplyTipSetMessages applies all the messages in a tipset.
 	//
 	// Note: any message processing error will be present as an `ExitCode` in the `MessageReceipt`.
-	ApplyTipSetMessages(blocks []BlockMessagesInfo, head block.TipSetKey, epoch abi.ChainEpoch, rnd crypto.RandomnessSource) ([]message.Receipt, error)
+	ApplyTipSetMessages(blocks []BlockMessagesInfo, head block.TipSetKey, parentEpoch abi.ChainEpoch, epoch abi.ChainEpoch, rnd crypto.RandomnessSource) ([]message.Receipt, error)
 }
 
 // BlockMessagesInfo contains messages for one block in a tipset.

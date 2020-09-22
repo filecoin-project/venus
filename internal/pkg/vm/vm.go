@@ -31,8 +31,8 @@ type BlockMessagesInfo = interpreter.BlockMessagesInfo
 type MessageReceipt = message.Receipt
 
 // NewVM creates a new VM interpreter.
-func NewVM(st state.State, store *storage.VMStorage, syscalls SyscallsImpl, chainInfo vmcontext.ChainInfo, baseFee abi.TokenAmount) Interpreter {
-	vm := vmcontext.NewVM(builtin.DefaultActors, chainInfo, baseFee, store, st, syscalls)
+func NewVM(st state.Tree, store *storage.VMStorage, syscalls SyscallsImpl, baseFee abi.TokenAmount) Interpreter {
+	vm := vmcontext.NewVM(builtin.DefaultActors, baseFee, store, st, syscalls)
 	return &vm
 }
 

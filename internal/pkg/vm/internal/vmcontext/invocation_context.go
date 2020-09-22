@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	vmErrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-state-types/cbor"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
@@ -24,6 +23,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
+
+var gasOnActorExec = gascost.NewGasCharge("OnActorExec", 0, 0)
 
 // Context for a top-level invocation sequence.
 type topLevelContext struct {
@@ -73,7 +74,7 @@ func (shc *stateHandleContext) AllowSideEffects(allow bool) {
 	shc.allowSideEffects = allow
 }
 
-func (shc *stateHandleContext) Create(obj cbg.CBORMarshaler) cid.Cid {
+func (shc *stateHandleContext) Create(obj cbor.Marshaler) cid.Cid {
 	actr := shc.loadActor()
 	if actr.Head.Cid.Defined() {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to construct actor state: already initialized")
@@ -84,7 +85,7 @@ func (shc *stateHandleContext) Create(obj cbg.CBORMarshaler) cid.Cid {
 	return c
 }
 
-func (shc *stateHandleContext) Load(obj cbg.CBORUnmarshaler) cid.Cid {
+func (shc *stateHandleContext) Load(obj cbor.Unmarshaler) cid.Cid {
 	// The actor must be loaded from store every time since the state may have changed via a different state handle
 	// (e.g. in a recursive call).
 	actr := shc.loadActor()
@@ -99,7 +100,7 @@ func (shc *stateHandleContext) Load(obj cbg.CBORUnmarshaler) cid.Cid {
 	return c
 }
 
-func (shc *stateHandleContext) Replace(expected cid.Cid, obj cbg.CBORMarshaler) cid.Cid {
+func (shc *stateHandleContext) Replace(expected cid.Cid, obj cbor.Marshaler) cid.Cid {
 	actr := shc.loadActor()
 	if !actr.Head.Cid.Equals(expected) {
 		panic(fmt.Errorf("unexpected prior state %s for actor %s, expected %s", actr.Head, shc.msg.to, expected))
@@ -117,7 +118,7 @@ func (shc *stateHandleContext) store() specsruntime.Store {
 func (shc *stateHandleContext) loadActor() *actor.Actor {
 	entry, found, err := shc.rt.state.GetActor(shc.rt.context, shc.msg.to)
 	if err != nil {
-		panic(vmErrors.Fatalf("failed to get actor: %s", err))
+		panic(err)
 	}
 	if !found {
 		panic(fmt.Errorf("failed to find actor %s for state", shc.msg.to))
@@ -223,10 +224,10 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 	}
 
 	// assert output implements expected interface
-	var marsh cbg.CBORMarshaler = abi.Empty
+	var marsh cbor.Marshaler = abi.Empty
 	if out != nil {
 		var ok bool
-		marsh, ok = out.(cbg.CBORMarshaler)
+		marsh, ok = out.(cbor.Marshaler)
 		if !ok {
 			runtime.Abortf(exitcode.SysErrorIllegalActor, "Returned value is not a CBORMarshaler")
 		}
@@ -393,7 +394,7 @@ func (ctx *invocationContext) State() specsruntime.StateHandle {
 }
 
 type returnWrapper struct {
-	inner cbg.CBORMarshaler
+	inner cbor.Marshaler
 }
 
 func (r returnWrapper) ToCbor() (out []byte, err error) {
@@ -413,7 +414,7 @@ func (r returnWrapper) ToCbor() (out []byte, err error) {
 	return
 }
 
-func (r returnWrapper) Into(o cbg.CBORUnmarshaler) error {
+func (r returnWrapper) Into(o cbor.Unmarshaler) error {
 	// TODO: if inner is also a cbg.CBORUnmarshaler, overwrite o with inner.
 	if r.inner == nil {
 		return fmt.Errorf("failed to unmarshal nil return (did you mean adt.Empty?)")
@@ -426,20 +427,20 @@ func (r returnWrapper) Into(o cbg.CBORUnmarshaler) error {
 }
 
 // Send implements runtime.InvocationContext.
-func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodNum, params cbg.CBORMarshaler, value abi.TokenAmount, out cbor.Er) exitcode.ExitCode {
+func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodNum, params cbor.Marshaler, value abi.TokenAmount, out cbor.Er) exitcode.ExitCode {
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Calling Send() is not allowed during side-effect lock")
 	}
 	// prepare
 	// 1. alias fromActor
-	// 2. build vmErrors message
+	// 2. build internal message
 
 	// 1. fromActor = executing toActor
 	from := ctx.msg.to
 	fromActor := ctx.toActor
 
-	// 2. build vmErrors message
+	// 2. build internal message
 	newMsg := internalMessage{
 		from:   from,
 		to:     toAddr,
@@ -456,8 +457,9 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 	newCtx := newInvocationContext(ctx.rt, ctx.topLevel, newMsg, fromActor, ctx.gasTank, ctx.randSource)
 
 	// 2. invoke
-	result, code := newCtx.invoke()
-	_ = result.Into(out) //todo add by force how to return receipt
+	ret, code := newCtx.invoke()
+	_ = ctx.gasTank.TryCharge(gasOnActorExec)
+	ret.Into(out)
 	return code
 }
 
@@ -525,7 +527,7 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 	}
 
 	// Charge gas now that easy checks are done
-	ctx.gasTank.Charge(ctx.rt.pricelist.OnCreateActor(), "CreateActor code %s, address %s", codeID, addr)
+	ctx.gasTank.Charge(gascost.PricelistByEpoch(ctx.rt.CurrentEpoch()).OnCreateActor(), "CreateActor code %s, address %s", codeID, addr)
 
 	newActor := &actor.Actor{
 		// make this the right 'type' of actor
@@ -535,6 +537,8 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 	if err := ctx.rt.state.SetActor(ctx.rt.context, addr, newActor); err != nil {
 		panic(err)
 	}
+
+	_ = ctx.gasTank.TryCharge(gasOnActorExec)
 }
 
 // DeleteActor implements runtime.ExtendedInvocationContext.
@@ -561,6 +565,8 @@ func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 	if err := ctx.rt.state.DeleteActor(ctx.rt.context, receiver); err != nil {
 		panic(err)
 	}
+
+	_ = ctx.gasTank.TryCharge(gasOnActorExec)
 }
 
 // patternContext implements the PatternContext

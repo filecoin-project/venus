@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/filecoin-project/go-address"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	vmErrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
@@ -20,6 +19,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor2 "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
+	xerrors "github.com/pkg/errors"
 )
 
 var EmptyObjectCid cid.Cid
@@ -35,6 +35,8 @@ func init() {
 }
 
 var actorLog = logging.Logger("actors")
+
+var _ specsruntime.Runtime = (*runtimeAdapter)(nil)
 
 type runtimeAdapter struct {
 	ctx *invocationContext
@@ -72,22 +74,21 @@ func (a *runtimeAdapter) StateCreate(obj cbor.Marshaler) {
 	}
 }
 
-func (a *runtimeAdapter) stateCommit(oldh, newh cid.Cid) vmErrors.ActorError {
+func (a *runtimeAdapter) stateCommit(oldh, newh cid.Cid) error {
 
 	// TODO: we can make this more efficient in the future...
 	act, found, err := a.ctx.rt.state.GetActor(a.Context(), a.Receiver())
 	if !found || err != nil {
-		return vmErrors.Escalate(err, "failed to get actor to commit state")
+		return xerrors.Errorf("failed to get actor to commit state, %s", err)
 	}
 
 	if act.Head.Cid != oldh {
-		return vmErrors.Fatal("failed to update, inconsistent base reference")
+		return xerrors.Errorf("failed to update, inconsistent base reference, %s", err)
 	}
 
 	act.Head = e.NewCid(newh)
-
 	if err := a.ctx.rt.state.SetActor(a.Context(), a.Receiver(), act); err != nil {
-		return vmErrors.Fatalf("failed to set actor in commit state: %s", err)
+		return xerrors.Errorf("failed to set actor in commit state, %s", err)
 	}
 
 	return nil
@@ -140,7 +141,7 @@ func (a *runtimeAdapter) NetworkVersion() network.Version {
 func (a *runtimeAdapter) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
 	res, err := a.ctx.randSource.GetRandomnessFromBeacon(a.Context(), personalization, randEpoch, entropy)
 	if err != nil {
-		panic(vmErrors.Fatalf("could not get randomness: %s", err))
+		panic(xerrors.Errorf("could not get randomness: %s", err))
 	}
 	return res
 }
@@ -148,7 +149,7 @@ func (a *runtimeAdapter) GetRandomnessFromBeacon(personalization crypto.DomainSe
 func (a *runtimeAdapter) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
 	res, err := a.ctx.randSource.Randomness(a.Context(), personalization, randEpoch, entropy)
 	if err != nil {
-		panic(vmErrors.Fatalf("could not get randomness: %s", err))
+		panic(xerrors.Errorf("could not get randomness: %s", err))
 	}
 	return res
 }
@@ -158,10 +159,7 @@ func (a *runtimeAdapter) Send(toAddr address.Address, methodNum abi.MethodNum, p
 }
 
 func (a *runtimeAdapter) ChargeGas(name string, compute int64, virtual int64) {
-	err := a.gasTank.Charge(gascost.NewGasCharge(name, compute, 0).WithVirtual(virtual, 0), "runtimeAdapter charge gas")
-	if err != nil {
-		panic(err)
-	}
+	a.gasTank.Charge(gascost.NewGasCharge(name, compute, 0).WithVirtual(virtual, 0), "runtimeAdapter charge gas")
 }
 
 func (a *runtimeAdapter) Log(level rt.LogLevel, msg string, args ...interface{}) {
@@ -176,8 +174,6 @@ func (a *runtimeAdapter) Log(level rt.LogLevel, msg string, args ...interface{})
 		actorLog.Errorf(msg, args...)
 	}
 }
-
-var _ specsruntime.Runtime = (*runtimeAdapter)(nil)
 
 // Message implements Runtime.
 func (a *runtimeAdapter) Message() specsruntime.Message {
@@ -222,14 +218,12 @@ func (a *runtimeAdapter) ResolveAddress(addr address.Address) (address.Address, 
 // GetActorCodeCID implements Runtime.
 func (a *runtimeAdapter) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) {
 	entry, found, err := a.ctx.rt.state.GetActor(a.Context(), addr)
-	if err != nil {
-		panic(vmErrors.Fatalf("failed to get actor: %s", err))
-	}
-
 	if !found {
 		return cid.Undef, false
 	}
-
+	if err != nil {
+		panic(err)
+	}
 	return entry.Code.Cid, true
 }
 
@@ -254,7 +248,11 @@ func (a *runtimeAdapter) DeleteActor(beneficiary address.Address) {
 }
 
 func (a *runtimeAdapter) TotalFilCircSupply() abi.TokenAmount {
-	return a.state.TotalFilCircSupply(a.CurrEpoch(), a.ctx.rt.state)
+	circSupply, err := a.state.TotalFilCircSupply(a.CurrEpoch(), a.ctx.rt.state)
+	if err != nil {
+		runtime.Abortf(exitcode.ErrIllegalState, "failed to get total circ supply: %s", err)
+	}
+	return circSupply
 }
 
 // Context implements Runtime.
@@ -272,5 +270,5 @@ func (a *runtimeAdapter) StartSpan(name string) func() {
 }
 
 func (a *runtimeAdapter) AbortStateMsg(msg string) {
-	panic(vmErrors.NewfSkip(3, 101, msg))
+	runtime.Abortf(101, msg)
 }

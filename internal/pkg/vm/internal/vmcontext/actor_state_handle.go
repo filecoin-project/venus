@@ -1,13 +1,11 @@
 package vmcontext
 
 import (
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
-	cbg "github.com/whyrusleeping/cbor-gen"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
 type actorStateHandle struct {
@@ -25,9 +23,9 @@ type validateFn = func() bool
 
 type actorStateHandleContext interface {
 	AllowSideEffects(bool)
-	Create(obj cbg.CBORMarshaler) cid.Cid
-	Load(obj cbg.CBORUnmarshaler) cid.Cid
-	Replace(expected cid.Cid, obj cbg.CBORMarshaler) cid.Cid
+	Create(obj cbor.Marshaler) cid.Cid
+	Load(obj cbor.Unmarshaler) cid.Cid
+	Replace(expected cid.Cid, obj cbor.Marshaler) cid.Cid
 }
 
 // NewActorStateHandle returns a new `ActorStateHandle`

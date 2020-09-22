@@ -2,10 +2,9 @@ package vmcontext
 
 import (
 	"fmt"
-	vmErrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/types"
-	"github.com/prometheus/common/log"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -40,13 +39,11 @@ func NewGasTracker(limit gas.Unit) GasTracker {
 // Charge will add the gas charge to the current method gas context.
 //
 // WARNING: this method will panic if there is no sufficient gas left.
-func (t *GasTracker) Charge(gas gascost.GasCharge, msg string, args ...interface{}) vmErrors.ActorError {
+func (t *GasTracker) Charge(gas gascost.GasCharge, msg string, args ...interface{}) {
 	if ok := t.TryCharge(gas); !ok {
-		log.Debug(fmt.Sprintf(msg, args...))
-		return vmErrors.Newf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d",
-			t.gasUsed, t.gasAvailable)
+		fmsg := fmt.Sprintf(msg, args...)
+		runtime.Abortf(exitcode.SysErrOutOfGas, "gas limit %d exceeded with charge of %d: %s", t.gasLimit, gas.Total(), fmsg)
 	}
-	return nil
 }
 
 // TryCharge charges `amount` or `RemainingGas()``, whichever is smaller.

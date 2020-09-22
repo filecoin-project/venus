@@ -29,7 +29,7 @@ func Value(obj interface{}, gasUsed gas.Unit) Receipt {
 		var err error
 		aux, err = encoding.Encode(obj)
 		if err != nil {
-			code = exitcode.ErrIllegalArgument //todo add by force
+			code = exitcode.ErrSerialization
 		}
 	}
 

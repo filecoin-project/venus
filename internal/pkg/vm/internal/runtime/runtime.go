@@ -2,10 +2,8 @@ package runtime
 
 import (
 	"fmt"
-	"github.com/filecoin-project/go-state-types/cbor"
-	cbg "github.com/whyrusleeping/cbor-gen"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -36,7 +34,7 @@ type InvocationContext interface {
 	// StateHandle handles access to the actor state.
 	State() specsruntime.StateHandle
 	// Send allows actors to invoke methods on other actors
-	Send(toAddr address.Address, methodNum abi.MethodNum, params cbg.CBORMarshaler, value abi.TokenAmount, out cbor.Er) exitcode.ExitCode
+	Send(toAddr address.Address, methodNum abi.MethodNum, params cbor.Marshaler, value abi.TokenAmount, out cbor.Er) exitcode.ExitCode
 	// Balance is the current balance on the current actors account.
 	//
 	// Note: the value received for this invocation is already reflected on the balance.
