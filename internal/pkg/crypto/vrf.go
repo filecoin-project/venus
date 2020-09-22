@@ -3,10 +3,9 @@ package crypto
 import (
 	"math/big"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/minio/blake2b-simd"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -30,7 +29,10 @@ type ElectionProof struct {
 
 const precision = 256
 
-var blocksPerEpoch = types.NewInt(block.BlocksPerEpoch)
+// Blocks (e)
+var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
+
+var blocksPerEpoch = types.NewInt(BlocksPerEpoch)
 
 var (
 	expNumCoef  []*big.Int
@@ -123,7 +125,7 @@ func lambda(power, totalPower *big.Int) *big.Int {
 	return lam
 }
 
-var MaxWinCount = 3 * int64(build.BlocksPerEpoch)
+var MaxWinCount = 3 * int64(BlocksPerEpoch)
 
 type poiss struct {
 	lam  *big.Int
