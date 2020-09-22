@@ -8,8 +8,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
 
-// MaxMessageSize is the maximum message size to read
-const MaxMessageSize = 256 << 10
 
 // ErrMessageTooLarge is returned when reading too big of a message
 var ErrMessageTooLarge = fmt.Errorf("attempted to read a message larger than the limit")

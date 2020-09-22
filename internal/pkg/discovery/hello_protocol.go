@@ -164,7 +164,7 @@ func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 	}
 
 	return &HelloMessage{
-		GenesisHash:          e.NewCid(h.genesis),
+		GenesisHash:          h.genesis,
 		HeaviestTipSetCids:   heaviest.Key(),
 		HeaviestTipSetHeight: height,
 		HeaviestTipSetWeight: weight,
@@ -212,6 +212,7 @@ func (h *HelloProtocolHandler) sendHello(s net.Stream) error {
 	return nil
 }
 
+// responding to latency
 func (h *HelloProtocolHandler) sendLatency(msg *LatencyMessage, s net.Stream) error {
 	msgRaw, err := encoding.Encode(msg)
 	if err != nil {

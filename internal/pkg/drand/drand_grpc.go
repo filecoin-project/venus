@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/abi"
 	"time"
 
 	dchain "github.com/drand/drand/chain"
@@ -35,6 +36,7 @@ func NewAddress(a string, secure bool) Address {
 // GRPC is a drand client that can fetch and verify from a public drand network
 type GRPC struct {
 	client dclient.Client
+
 	pubkey kyber.Point
 
 	// seconds
@@ -43,6 +45,7 @@ type GRPC struct {
 	drandGenTime uint64
 	filGenTime   uint64
 	filRoundTime uint64
+
 	// internal state
 	latestEntry *Entry
 	cache       map[Round]*Entry
@@ -58,6 +61,7 @@ func NewGRPC(filecoinGenTime time.Time, rd time.Duration, config DrandConfig) (*
 	if err != nil {
 		return nil, fmt.Errorf("unable to unmarshal drand chain info: %w", err)
 	}
+
 	var clients []dclient.Client
 	for _, url := range config.Servers {
 		hc, err := hclient.NewWithInfo(url, drandChain, nil)
@@ -65,7 +69,6 @@ func NewGRPC(filecoinGenTime time.Time, rd time.Duration, config DrandConfig) (*
 			return nil, fmt.Errorf("could not create http drand client: %w", err)
 		}
 		clients = append(clients, hc)
-
 	}
 
 	opts := []dclient.Option{
@@ -74,12 +77,6 @@ func NewGRPC(filecoinGenTime time.Time, rd time.Duration, config DrandConfig) (*
 		dclient.WithAutoWatch(),
 	}
 
-	/*	if ps != nil {
-			opts = append(opts, gclient.WithPubsub(ps))
-		} else {
-			log.Info("drand beacon without pubsub")
-		}*/
-
 	client, err := dclient.Wrap(clients, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("creating drand client")
@@ -87,6 +84,7 @@ func NewGRPC(filecoinGenTime time.Time, rd time.Duration, config DrandConfig) (*
 
 	return &GRPC{
 		client:       client,
+		cache:        make(map[Round]*Entry),
 		pubkey:       drandChain.PublicKey,
 		interval:     drandChain.Period,
 		drandGenTime: uint64(drandChain.GenesisTime),
@@ -136,6 +134,13 @@ func (d *GRPC) VerifyEntry(prev, curr *Entry) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func (d *GRPC) MaxBeaconRoundForEpoch(filEpoch abi.ChainEpoch) Round {
+	// TODO: sometimes the genesis time for filecoin is zero and this goes negative
+	latestTs := ((uint64(filEpoch) * d.filRoundTime) + d.filGenTime) - d.filRoundTime
+	dround := (latestTs - d.drandGenTime) / uint64(d.interval.Seconds())
+	return Round(dround)
 }
 
 func roundsInInterval(startTime, endTime time.Time, startTimeOfRound func(Round) time.Time, roundDuration time.Duration) []Round {
