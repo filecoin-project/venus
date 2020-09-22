@@ -17,7 +17,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 )
@@ -36,7 +35,7 @@ type HelloMessage struct {
 	HeaviestTipSetCids   block.TipSetKey
 	HeaviestTipSetHeight abi.ChainEpoch
 	HeaviestTipSetWeight fbig.Int
-	GenesisHash          e.Cid
+	GenesisHash          cid.Cid
 }
 
 // LatencyMessage is written in response to a hello message for measuring peer
@@ -165,7 +164,7 @@ func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 	}
 
 	return &HelloMessage{
-		GenesisHash:          e.NewCid(h.genesis),
+		GenesisHash:          h.genesis,
 		HeaviestTipSetCids:   heaviest.Key(),
 		HeaviestTipSetHeight: height,
 		HeaviestTipSetWeight: weight,
@@ -213,6 +212,7 @@ func (h *HelloProtocolHandler) sendHello(s net.Stream) error {
 	return nil
 }
 
+// responding to latency
 func (h *HelloProtocolHandler) sendLatency(msg *LatencyMessage, s net.Stream) error {
 	msgRaw, err := encoding.Encode(msg)
 	if err != nil {

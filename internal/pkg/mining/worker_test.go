@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
@@ -106,7 +105,7 @@ func Test_Mine(t *testing.T) {
 
 	newCid := types.NewCidForTestGetter()
 	stateRoot := newCid()
-	baseBlock := &block.Block{Height: 0, StateRoot: e.NewCid(stateRoot), Ticket: block.Ticket{VRFProof: []byte{0}}}
+	baseBlock := &block.Block{Height: 0, StateRoot: stateRoot, Ticket: block.Ticket{VRFProof: []byte{0}}}
 	tipSet := block.RequireNewTipSet(t, baseBlock)
 
 	st, pool, addrs, bs := sharedSetup(t, mockSignerVal)
@@ -261,7 +260,7 @@ func TestApplyBLSMessages(t *testing.T) {
 
 	newCid := types.NewCidForTestGetter()
 	stateRoot := newCid()
-	baseBlock := &block.Block{Height: 0, StateRoot: e.NewCid(stateRoot), Ticket: block.Ticket{VRFProof: []byte{0}}}
+	baseBlock := &block.Block{Height: 0, StateRoot: stateRoot, Ticket: block.Ticket{VRFProof: []byte{0}}}
 	tipSet := block.RequireNewTipSet(t, baseBlock)
 
 	st, pool, addrs, bs := sharedSetup(t, mockSigner)
@@ -514,7 +513,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	baseBlock := block.Block{
 		Parents:   block.NewTipSetKey(newCid()),
 		Height:    100,
-		StateRoot: e.NewCid(stateRoot),
+		StateRoot: stateRoot,
 	}
 
 	blk, err := worker.Generate(ctx, block.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)
@@ -577,7 +576,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	baseBlock := block.Block{
 		Height:       h,
 		ParentWeight: w,
-		StateRoot:    e.NewCid(newCid()),
+		StateRoot:    newCid(),
 	}
 	baseTipSet := block.RequireNewTipSet(t, &baseBlock)
 	ticket := mining.NthTicket(7)
@@ -635,7 +634,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	baseBlock := block.Block{
 		Parents:   block.NewTipSetKey(newCid()),
 		Height:    100,
-		StateRoot: e.NewCid(newCid()),
+		StateRoot: newCid(),
 	}
 	blk, err := worker.Generate(ctx, block.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)
 	assert.NoError(t, err)
@@ -695,7 +694,7 @@ func TestGenerateError(t *testing.T) {
 	baseBlock := block.Block{
 		Parents:   block.NewTipSetKey(newCid()),
 		Height:    100,
-		StateRoot: e.NewCid(newCid()),
+		StateRoot: newCid(),
 	}
 	baseTipSet := block.RequireNewTipSet(t, &baseBlock)
 	blk, err := worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeVRFProofForTest(), 0, consensus.MakeFakePoStsForTest(), nil)

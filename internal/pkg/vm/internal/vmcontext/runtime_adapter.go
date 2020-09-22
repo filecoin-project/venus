@@ -3,8 +3,10 @@ package vmcontext
 import (
 	"context"
 	"fmt"
+
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-address"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
@@ -16,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-state-types/rt"
 	rtt "github.com/filecoin-project/go-state-types/rt"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/ipfs/go-cid"
 	cbor2 "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	xerrors "github.com/pkg/errors"
@@ -82,11 +83,11 @@ func (a *runtimeAdapter) stateCommit(oldh, newh cid.Cid) error {
 		return xerrors.Errorf("failed to get actor to commit state, %s", err)
 	}
 
-	if act.Head.Cid != oldh {
+	if act.Head != oldh {
 		return xerrors.Errorf("failed to update, inconsistent base reference, %s", err)
 	}
 
-	act.Head = e.NewCid(newh)
+	act.Head = newh
 	if err := a.ctx.rt.state.SetActor(a.Context(), a.Receiver(), act); err != nil {
 		return xerrors.Errorf("failed to set actor in commit state, %s", err)
 	}
@@ -99,7 +100,7 @@ func (a *runtimeAdapter) StateReadonly(obj cbor.Unmarshaler) {
 	if !found || err != nil {
 		a.Abortf(exitcode.SysErrorIllegalArgument, "failed to get actor for Readonly state: %s", err)
 	}
-	a.StoreGet(act.Head.Cid, obj)
+	a.StoreGet(act.Head, obj)
 }
 
 func (a *runtimeAdapter) StateTransaction(obj cbor.Er, f func()) {
@@ -112,7 +113,7 @@ func (a *runtimeAdapter) StateTransaction(obj cbor.Er, f func()) {
 		a.Abortf(exitcode.SysErrorIllegalActor, "failed to get actor for Transaction: %s", err)
 	}
 	baseState := act.Head
-	a.StoreGet(baseState.Cid, obj)
+	a.StoreGet(baseState, obj)
 
 	a.ctx.allowSideEffects = false
 	f()
@@ -120,7 +121,7 @@ func (a *runtimeAdapter) StateTransaction(obj cbor.Er, f func()) {
 
 	c := a.StorePut(obj)
 
-	err = a.stateCommit(baseState.Cid, c)
+	err = a.stateCommit(baseState, c)
 	if err != nil {
 		panic(fmt.Errorf("failed to commit state after transaction: %w", err))
 	}
@@ -224,7 +225,7 @@ func (a *runtimeAdapter) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok 
 	if err != nil {
 		panic(err)
 	}
-	return entry.Code.Cid, true
+	return entry.Code, true
 }
 
 // Abortf implements Runtime.

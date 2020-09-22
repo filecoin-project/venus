@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/mining"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -160,7 +159,7 @@ func TestSkips(t *testing.T) {
 // Helper functions
 
 func testHead(t *testing.T) block.TipSet {
-	baseBlock := &block.Block{StateRoot: e.NewCid(types.CidFromString(t, "somecid"))}
+	baseBlock := &block.Block{StateRoot: types.CidFromString(t, "somecid")}
 	ts, err := block.NewTipSet(baseBlock)
 	require.NoError(t, err)
 	return ts

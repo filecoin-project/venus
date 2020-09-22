@@ -31,7 +31,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
@@ -115,7 +114,7 @@ func (g *GenesisGenerator) flush(ctx context.Context) (cid.Cid, error) {
 	if err != nil {
 		return cid.Undef, err
 	}
-	return g.stateTree.Commit(ctx)
+	return g.stateTree.Flush(ctx)
 }
 
 func (g *GenesisGenerator) createSingletonActor(ctx context.Context, addr address.Address, codeCid cid.Cid, balance abi.TokenAmount, stateFn func() (interface{}, error)) (*actor.Actor, error) {
@@ -132,10 +131,10 @@ func (g *GenesisGenerator) createSingletonActor(ctx context.Context, addr addres
 	}
 
 	a := actor.Actor{
-		Code:       e.NewCid(codeCid),
+		Code:       codeCid,
 		CallSeqNum: 0,
 		Balance:    balance,
-		Head:       e.NewCid(headCid),
+		Head:       headCid,
 	}
 	if err := g.stateTree.SetActor(ctx, addr, &a); err != nil {
 		return nil, fmt.Errorf("failed to create actor during genesis block creation")
@@ -268,7 +267,7 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	meta := types.TxMeta{SecpRoot: e.NewCid(emptyAMTCid), BLSRoot: e.NewCid(emptyAMTCid)}
+	meta := types.TxMeta{SecpRoot: emptyAMTCid, BLSRoot: emptyAMTCid}
 	metaCid, err := g.cst.Put(ctx, meta)
 	if err != nil {
 		return cid.Undef, err
@@ -282,9 +281,9 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 		Parents:         block.NewTipSetKey(),
 		ParentWeight:    big.Zero(),
 		Height:          0,
-		StateRoot:       e.NewCid(stateRoot),
-		MessageReceipts: e.NewCid(emptyAMTCid),
-		Messages:        e.NewCid(metaCid),
+		StateRoot:       stateRoot,
+		MessageReceipts: emptyAMTCid,
+		Messages:        metaCid,
 		Timestamp:       g.cfg.Time,
 		ForkSignaling:   0,
 	}
@@ -564,7 +563,7 @@ func (g *GenesisGenerator) updatePower(ctx context.Context, miner address.Addres
 		return big.Zero(), fmt.Errorf("state tree could not find power actor")
 	}
 	var powerState power.State
-	_, err = g.store.Get(ctx, powAct.Head.Cid, &powerState)
+	_, err = g.store.Get(ctx, powAct.Head, &powerState)
 	if err != nil {
 		return big.Zero(), err
 	}
@@ -586,7 +585,7 @@ func (g *GenesisGenerator) updatePower(ctx context.Context, miner address.Addres
 	if err != nil {
 		return big.Zero(), err
 	}
-	powAct.Head = e.NewCid(newPowCid)
+	powAct.Head = newPowCid
 	err = g.stateTree.SetActor(ctx, builtin.StoragePowerActorAddr, powAct)
 	if err != nil {
 		return big.Zero(), err
@@ -605,7 +604,7 @@ func (g *GenesisGenerator) putSector(ctx context.Context, sector *sectorCommitIn
 		return fmt.Errorf("mState tree could not find miner actor %s", sector.miner)
 	}
 	var mState miner.State
-	_, err = g.store.Get(ctx, mAct.Head.Cid, &mState)
+	_, err = g.store.Get(ctx, mAct.Head, &mState)
 	if err != nil {
 		return err
 	}
@@ -638,7 +637,7 @@ func (g *GenesisGenerator) putSector(ctx context.Context, sector *sectorCommitIn
 	if err != nil {
 		return err
 	}
-	mAct.Head = e.NewCid(newMinerCid)
+	mAct.Head = newMinerCid
 	err = g.stateTree.SetActor(ctx, sector.miner, mAct)
 	return err
 }

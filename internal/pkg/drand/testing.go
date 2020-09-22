@@ -3,6 +3,7 @@ package drand
 import (
 	"context"
 	"encoding/binary"
+	"github.com/filecoin-project/go-state-types/abi"
 	"time"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -43,6 +44,10 @@ func (d *Fake) ReadEntry(_ context.Context, drandRound Round) (*Entry, error) {
 // VerifyEntry always returns true without error
 func (d *Fake) VerifyEntry(parent, child *Entry) (bool, error) {
 	return true, nil
+}
+
+func (d *Fake) MaxBeaconRoundForEpoch(filEpoch abi.ChainEpoch) Round {
+	return Round(filEpoch)
 }
 
 func (d *Fake) StartTimeOfRound(round Round) time.Time {

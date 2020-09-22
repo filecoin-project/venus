@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -111,12 +110,12 @@ func (w *DefaultWorker) Generate(
 		Height:          blockHeight,
 		BeaconEntries:   drandEntries,
 		ElectionProof:   &crypto.ElectionProof{VRFProof: electionProof},
-		Messages:        e.NewCid(txMetaCid),
-		MessageReceipts: e.NewCid(baseReceiptRoot),
+		Messages:        txMetaCid,
+		MessageReceipts: baseReceiptRoot,
 		Parents:         baseTipSet.Key(),
 		ParentWeight:    weight,
 		PoStProofs:      posts,
-		StateRoot:       e.NewCid(baseStateRoot),
+		StateRoot:       baseStateRoot,
 		Ticket:          ticket,
 		Timestamp:       uint64(epochStartTime.Unix()),
 		BLSAggregateSig: &blsAggregateSig,

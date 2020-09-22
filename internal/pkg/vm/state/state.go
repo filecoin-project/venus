@@ -3,7 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -187,7 +187,7 @@ func (st *State) LookupID(addr actorKey) (address.Address, error) {
 	}
 
 	var ias init_.State
-	if err := st.Store.Get(context.TODO(), act.Head.Cid, &ias); err != nil {
+	if err := st.Store.Get(context.TODO(), act.Head, &ias); err != nil {
 		return address.Undef, xerrors.Errorf("loading init actor state: %w", err)
 	}
 
@@ -309,7 +309,7 @@ func (st *State) RegisterNewAddress(addr actorKey) (address.Address, error) {
 	var out address.Address
 	err := st.MutateActor(builtin.InitActorAddr, func(initact *actor.Actor) error {
 		var ias init_.State
-		if err := st.Store.Get(context.TODO(), initact.Head.Cid, &ias); err != nil {
+		if err := st.Store.Get(context.TODO(), initact.Head, &ias); err != nil {
 			return err
 		}
 
@@ -324,7 +324,7 @@ func (st *State) RegisterNewAddress(addr actorKey) (address.Address, error) {
 			return err
 		}
 
-		initact.Head = e.NewCid(ncid)
+		initact.Head = ncid
 		return nil
 	})
 	if err != nil {

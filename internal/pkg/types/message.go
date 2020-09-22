@@ -20,7 +20,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
@@ -47,7 +46,7 @@ func init() {
 	}
 	EmptyMessagesCID = emptyAMTCid
 	EmptyReceiptsCID = emptyAMTCid
-	EmptyTxMetaCID, err = tmpCst.Put(context.Background(), TxMeta{SecpRoot: e.NewCid(EmptyMessagesCID), BLSRoot: e.NewCid(EmptyMessagesCID)})
+	EmptyTxMetaCID, err = tmpCst.Put(context.Background(), TxMeta{SecpRoot: EmptyMessagesCID, BLSRoot: EmptyMessagesCID})
 	if err != nil {
 		panic("could not create CID for empty TxMeta")
 	}
@@ -204,8 +203,8 @@ func NewGasPremium(price int64) AttoFIL {
 // TxMeta tracks the merkleroots of both secp and bls messages separately
 type TxMeta struct {
 	_        struct{} `cbor:",toarray"`
-	BLSRoot  e.Cid    `json:"blsRoot"`
-	SecpRoot e.Cid    `json:"secpRoot"`
+	BLSRoot  cid.Cid  `json:"blsRoot"`
+	SecpRoot cid.Cid  `json:"secpRoot"`
 }
 
 // String returns a readable printing string of TxMeta

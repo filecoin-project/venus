@@ -14,7 +14,6 @@ import (
 	blk "github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -73,11 +72,11 @@ func TestTriangleEncoding(t *testing.T) {
 					Data:  []byte{0x3},
 				},
 			},
-			Messages:        e.NewCid(types.CidFromString(t, "somecid")),
-			MessageReceipts: e.NewCid(types.CidFromString(t, "somecid")),
+			Messages:        types.CidFromString(t, "somecid"),
+			MessageReceipts: types.CidFromString(t, "somecid"),
 			Parents:         blk.NewTipSetKey(types.CidFromString(t, "somecid")),
 			ParentWeight:    fbig.NewInt(1000),
-			StateRoot:       e.NewCid(types.CidFromString(t, "somecid")),
+			StateRoot:       types.CidFromString(t, "somecid"),
 			Timestamp:       1,
 			BlockSig: &crypto.Signature{
 				Type: crypto.SigTypeBLS,
@@ -128,9 +127,9 @@ func TestDecodeBlock(t *testing.T) {
 			Parents:         blk.NewTipSetKey(c1),
 			Height:          2,
 			ParentWeight:    fbig.Zero(),
-			Messages:        e.NewCid(cM),
-			StateRoot:       e.NewCid(c2),
-			MessageReceipts: e.NewCid(cR),
+			Messages:        cM,
+			StateRoot:       c2,
+			MessageReceipts: cR,
 			BlockSig:        &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
 			BLSAggregateSig: &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 		}
@@ -160,15 +159,15 @@ func TestEquals(t *testing.T) {
 	var h1 abi.ChainEpoch = 1
 	var h2 abi.ChainEpoch = 2
 
-	b1 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: e.NewCid(s1), Height: h1}
-	b2 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: e.NewCid(s1), Height: h1}
-	b3 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: e.NewCid(s2), Height: h1}
-	b4 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: e.NewCid(s1), Height: h1}
-	b5 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: e.NewCid(s1), Height: h2}
-	b6 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: e.NewCid(s1), Height: h2}
-	b7 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: e.NewCid(s2), Height: h2}
-	b8 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: e.NewCid(s2), Height: h1}
-	b9 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: e.NewCid(s2), Height: h2}
+	b1 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s1, Height: h1}
+	b2 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s1, Height: h1}
+	b3 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s2, Height: h1}
+	b4 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s1, Height: h1}
+	b5 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s1, Height: h2}
+	b6 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s1, Height: h2}
+	b7 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s2, Height: h2}
+	b8 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s2, Height: h1}
+	b9 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s2, Height: h2}
 	assert.True(t, b1.Equals(b1))
 	assert.True(t, b1.Equals(b2))
 	assert.False(t, b1.Equals(b3))
@@ -198,10 +197,10 @@ func TestBlockJsonMarshal(t *testing.T) {
 	child.Height = 1
 	child.ParentWeight = fbig.Zero()
 	child.Parents = blk.NewTipSetKey(parent.Cid())
-	child.StateRoot = e.NewCid(parent.Cid())
+	child.StateRoot = parent.Cid()
 
-	child.Messages = e.NewCid(types.CidFromString(t, "somecid"))
-	child.MessageReceipts = e.NewCid(types.CidFromString(t, "somecid"))
+	child.Messages = types.CidFromString(t, "somecid")
+	child.MessageReceipts = types.CidFromString(t, "somecid")
 
 	marshalled, e1 := json.Marshal(&child)
 	assert.NoError(t, e1)
@@ -238,12 +237,12 @@ func TestSignatureData(t *testing.T) {
 			},
 		},
 		Height:          2,
-		Messages:        e.NewCid(types.CidFromString(t, "somecid")),
-		MessageReceipts: e.NewCid(types.CidFromString(t, "somecid")),
+		Messages:        types.CidFromString(t, "somecid"),
+		MessageReceipts: types.CidFromString(t, "somecid"),
 		Parents:         blk.NewTipSetKey(types.CidFromString(t, "somecid")),
 		ParentWeight:    fbig.NewInt(1000),
 		ForkSignaling:   3,
-		StateRoot:       e.NewCid(types.CidFromString(t, "somecid")),
+		StateRoot:       types.CidFromString(t, "somecid"),
 		Timestamp:       1,
 		// PoStProofs:      posts,
 		BlockSig: &crypto.Signature{
@@ -265,12 +264,12 @@ func TestSignatureData(t *testing.T) {
 			},
 		},
 		Height:          3,
-		Messages:        e.NewCid(types.CidFromString(t, "someothercid")),
-		MessageReceipts: e.NewCid(types.CidFromString(t, "someothercid")),
+		Messages:        types.CidFromString(t, "someothercid"),
+		MessageReceipts: types.CidFromString(t, "someothercid"),
 		Parents:         blk.NewTipSetKey(types.CidFromString(t, "someothercid")),
 		ParentWeight:    fbig.NewInt(1001),
 		ForkSignaling:   2,
-		StateRoot:       e.NewCid(types.CidFromString(t, "someothercid")),
+		StateRoot:       types.CidFromString(t, "someothercid"),
 		Timestamp:       4,
 		// PoStProofs:      diffPoSts,
 		BlockSig: &crypto.Signature{

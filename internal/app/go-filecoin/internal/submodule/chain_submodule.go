@@ -33,7 +33,7 @@ type ChainSubmodule struct {
 	GenesisCid() cid.Cid
 	GetHead() block.TipSetKey
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
-	GetTipSetState(ctx context.Context, tsKey block.TipSetKey) (state.Tree, error)
+	GetTipSetState(ctx context.Context, tsKey block.TipSetKey) (state.State, error)
 	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
 	GetTipSetReceiptsRoot(tsKey block.TipSetKey) (cid.Cid, error)
 	HeadEvents() *ps.PubSub

@@ -134,7 +134,7 @@ func testSetup2(ctx context.Context, t *testing.T) (*chain.Builder, bstore.Block
 	return builder, bs, genTs
 }
 
-func requireNewEmptyChainStore(ctx context.Context, t *testing.T) (cid.Cid, *chain.Builder, block.TipSet, *chain.Store, state.Tree) {
+func requireNewEmptyChainStore(ctx context.Context, t *testing.T) (cid.Cid, *chain.Builder, block.TipSet, *chain.Store, state.State) {
 	store := cbor.NewMemCborStore()
 
 	// Cribbed from chain/store_test

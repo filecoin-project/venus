@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	blk "github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	fbig "github.com/filecoin-project/go-state-types/big"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -40,9 +39,9 @@ func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWei
 		Parents:         blk.NewTipSetKey(parentCid),
 		ParentWeight:    fbig.NewInt(int64(parentWeight)),
 		Height:          42 + abi.ChainEpoch(height),
-		Messages:        e.NewCid(cidGetter()),
-		StateRoot:       e.NewCid(cidGetter()),
-		MessageReceipts: e.NewCid(cidGetter()),
+		Messages:        cidGetter(),
+		StateRoot:       cidGetter(),
+		MessageReceipts: cidGetter(),
 		Timestamp:       timestamp,
 	}
 }

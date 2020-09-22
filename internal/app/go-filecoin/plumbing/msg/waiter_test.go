@@ -18,9 +18,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/ipfs/go-cid"
 )
 
 var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
@@ -198,8 +198,8 @@ func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, ro
 			child := &block.Block{
 				Height:          height,
 				Parents:         parents.Key(),
-				Messages:        e.NewCid(emptyTxMeta),
-				MessageReceipts: e.NewCid(emptyReceiptsCid),
+				Messages:        emptyTxMeta,
+				MessageReceipts: emptyReceiptsCid,
 			}
 			mustPut(store, child)
 			blocks = append(blocks, child)
@@ -218,10 +218,10 @@ func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, ro
 			}
 
 			child := &block.Block{
-				Messages:  e.NewCid(txMeta),
+				Messages:  txMeta,
 				Parents:   parents.Key(),
 				Height:    height,
-				StateRoot: e.NewCid(stateRootCidGetter()), // Differentiate all blocks
+				StateRoot: stateRootCidGetter(), // Differentiate all blocks
 			}
 			blocks = append(blocks, child)
 		}
@@ -231,7 +231,7 @@ func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, ro
 		}
 
 		for _, blk := range blocks {
-			blk.MessageReceipts = e.NewCid(receiptCid)
+			blk.MessageReceipts = receiptCid
 			mustPut(store, blk)
 		}
 

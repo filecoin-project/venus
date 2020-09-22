@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -36,8 +35,8 @@ func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, sta
 		Parents:         baseTipSet.Key(),
 		ParentWeight:    types.Uint64ToBig(uint64(height * 10000)),
 		Height:          height,
-		StateRoot:       e.NewCid(stateRootCid),
-		MessageReceipts: e.NewCid(receiptRootCid),
+		StateRoot:       stateRootCid,
+		MessageReceipts: receiptRootCid,
 		BLSAggregateSig: &emptyBLSSig,
 	}
 	sig, err := signer.SignBytes(context.TODO(), b.SignatureData(), minerWorker)

@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -45,6 +47,20 @@ func MakeRandomSeed(rawVRFProof VRFPi) (RandomSeed, error) {
 // RandomnessSource provides randomness to actors.
 type RandomnessSource interface {
 	Randomness(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+}
+
+type genesisInfo struct {
+	genesisMsigs []multisig.State
+	// info about the Accounts in the genesis state
+	genesisActors      []genesisActor
+	genesisPledge      abi.TokenAmount
+	genesisMarketFunds abi.TokenAmount
+}
+
+type genesisActor struct {
+	addr    address.Address
+	initBal abi.TokenAmount
 }
 
 // A randomness source that seeds computations with a sample drawn from a chain epoch.

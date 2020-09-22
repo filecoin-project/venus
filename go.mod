@@ -12,6 +12,7 @@ require (
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v0.7.3-0.20190315170154-87d593639c77
 	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/docker/go-units v0.4.0
 	github.com/drand/drand v1.1.2-0.20200905144319-79c957281b32
 	github.com/drand/kyber v1.1.2
 	github.com/elastic/go-sysinfo v1.4.0

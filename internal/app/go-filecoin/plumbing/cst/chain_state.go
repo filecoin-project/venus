@@ -40,7 +40,7 @@ type chainReadWriter interface {
 	GetHead() block.TipSetKey
 	GetGenesisBlock(ctx context.Context) (*block.Block, error)
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
-	GetTipSetState(context.Context, block.TipSetKey) (vmstate.Tree, error)
+	GetTipSetState(context.Context, block.TipSetKey) (vmstate.State, error)
 	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
 	SetHead(context.Context, block.TipSet) error
 	ReadOnlyStateStore() cborutil.ReadOnlyIpldStore

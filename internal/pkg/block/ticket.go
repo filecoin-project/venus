@@ -3,8 +3,12 @@ package block
 import (
 	"bytes"
 	"fmt"
+	"math/big"
+
+	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // A Ticket is a marker of a tick of the blockchain's clock.  It is the source
@@ -25,4 +29,14 @@ func (t *Ticket) Compare(o *Ticket) int {
 	tDigest := t.VRFProof.Digest()
 	oDigest := o.VRFProof.Digest()
 	return bytes.Compare(tDigest[:], oDigest[:])
+}
+
+func (t *Ticket) Quality() float64 {
+	ticketHash := blake2b.Sum256(t.VRFProof)
+	ticketNum := types.BigFromBytes(ticketHash[:]).Int
+	ticketDenu := big.NewInt(1)
+	ticketDenu.Lsh(ticketDenu, 256)
+	tv, _ := new(big.Rat).SetFrac(ticketNum, ticketDenu).Float64()
+	tq := 1 - tv
+	return tq
 }

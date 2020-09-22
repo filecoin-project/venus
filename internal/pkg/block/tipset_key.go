@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"sort"
 
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/pkg/errors"
 )
 
@@ -20,7 +20,7 @@ import (
 // TipSetKey is a lightweight value type; passing by pointer is usually unnecessary.
 type TipSetKey struct {
 	// The slice is wrapped in a struct to enforce immutability.
-	cids []e.Cid
+	cids []cid.Cid
 }
 
 // NewTipSetKey initialises a new TipSetKey.
@@ -32,9 +32,9 @@ func NewTipSetKey(ids ...cid.Cid) TipSetKey {
 		return TipSetKey{}
 	}
 
-	cids := make([]e.Cid, len(ids))
+	cids := make([]cid.Cid, len(ids))
 	for i := 0; i < len(ids); i++ {
-		cids[i] = e.NewCid(ids[i])
+		cids[i] = ids[i]
 	}
 	return TipSetKey{cids}
 }
@@ -57,9 +57,9 @@ func (s TipSetKey) Empty() bool {
 func (s TipSetKey) Has(id cid.Cid) bool {
 	// Find index of the first CID not less than id.
 	idx := sort.Search(len(s.cids), func(i int) bool {
-		return !cidLess(s.cids[i].Cid, id)
+		return !cidLess(s.cids[i], id)
 	})
-	return idx < len(s.cids) && s.cids[idx].Cid.Equals(id)
+	return idx < len(s.cids) && s.cids[idx].Equals(id)
 }
 
 // Len returns the number of items in the set.
@@ -86,7 +86,7 @@ func (s TipSetKey) Equals(other TipSetKey) bool {
 		return false
 	}
 	for i := 0; i < len(s.cids); i++ {
-		if !s.cids[i].Cid.Equals(other.cids[i].Cid) {
+		if !s.cids[i].Equals(other.cids[i]) {
 			return false
 		}
 	}
@@ -103,7 +103,7 @@ func (s *TipSetKey) ContainsAll(other TipSetKey) bool {
 	// values match.
 	otherIdx := 0
 	for i := 0; i < s.Len() && otherIdx < other.Len(); i++ {
-		if s.cids[i].Cid.Equals(other.cids[otherIdx].Cid) {
+		if s.cids[i].Equals(other.cids[otherIdx]) {
 			otherIdx++
 		}
 	}
@@ -145,7 +145,7 @@ func (s *TipSetKey) UnmarshalJSON(b []byte) error {
 func (s TipSetKey) MarshalCBOR() ([]byte, error) {
 	// encode the zero value as length zero slice instead of nil per spec
 	if s.cids == nil {
-		encodableZero := make([]e.Cid, 0)
+		encodableZero := make([]cid.Cid, 0)
 		return encoding.Encode(encodableZero)
 	}
 	return encoding.Encode(s.cids)
@@ -153,7 +153,7 @@ func (s TipSetKey) MarshalCBOR() ([]byte, error) {
 
 // UnmarshalCBOR unmarshals a cbor array of cids to a tipset key
 func (s *TipSetKey) UnmarshalCBOR(data []byte) error {
-	var sortedEncCids []e.Cid
+	var sortedEncCids []cid.Cid
 	err := encoding.Decode(data, &sortedEncCids)
 	if err != nil {
 		return err
@@ -208,10 +208,10 @@ func cidLess(c1, c2 cid.Cid) bool {
 }
 
 // unwrap goes from a slice of encodable cids to a slice of cids
-func unwrap(eCids []e.Cid) []cid.Cid {
+func unwrap(eCids []cid.Cid) []cid.Cid {
 	out := make([]cid.Cid, len(eCids))
 	for i := 0; i < len(eCids); i++ {
-		out[i] = eCids[i].Cid
+		out[i] = eCids[i]
 	}
 	return out
 }

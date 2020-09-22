@@ -3,22 +3,20 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	blocks "github.com/ipfs/go-block-format"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	node "github.com/ipfs/go-ipld-format"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
 
@@ -26,7 +24,7 @@ import (
 var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
 
 // BlockMessageLimit is the maximum number of messages in a block
-const BlockMessageLimit = 512
+const BlockMessageLimit = 10000
 
 // Block is a block in the blockchain.
 type Block struct {
@@ -62,14 +60,14 @@ type Block struct {
 
 	// StateRoot is the CID of the root of the state tree after application of the messages in the parent tipset
 	// to the parent tipset's state root.
-	StateRoot e.Cid `json:"stateRoot,omitempty"`
+	StateRoot cid.Cid `json:"stateRoot,omitempty"`
 
 	// MessageReceipts is a list of receipts corresponding to the application of the messages in the parent tipset
 	// to the parent tipset's state root (corresponding to this block's StateRoot).
-	MessageReceipts e.Cid `json:"messageReceipts,omitempty"`
+	MessageReceipts cid.Cid `json:"messageReceipts,omitempty"`
 
 	// Messages is the set of messages included in this block
-	Messages e.Cid `json:"messages,omitempty"`
+	Messages cid.Cid `json:"messages,omitempty"`
 
 	// The aggregate signature of all BLS signed messages in the block
 	BLSAggregateSig *crypto.Signature `json:"blsAggregateSig"`

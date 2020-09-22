@@ -26,7 +26,7 @@ var DefaultMessageWaitLookback uint64 = 2 // in most cases, this should be enoug
 type waiterChainReader interface {
 	GetHead() block.TipSetKey
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
-	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
+	GetTipSetState(context.Context, block.TipSetKey) (state.State, error)
 	GetTipSetReceiptsRoot(block.TipSetKey) (cid.Cid, error)
 	HeadEvents() *pubsub.PubSub
 }

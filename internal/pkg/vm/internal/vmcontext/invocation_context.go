@@ -18,7 +18,6 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
@@ -80,7 +79,7 @@ func (shc *stateHandleContext) Create(obj cbor.Marshaler) cid.Cid {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to construct actor state: already initialized")
 	}
 	c := shc.store().StorePut(obj)
-	actr.Head = e.NewCid(c)
+	actr.Head = c
 	shc.storeActor(actr)
 	return c
 }
@@ -89,7 +88,7 @@ func (shc *stateHandleContext) Load(obj cbor.Unmarshaler) cid.Cid {
 	// The actor must be loaded from store every time since the state may have changed via a different state handle
 	// (e.g. in a recursive call).
 	actr := shc.loadActor()
-	c := actr.Head.Cid
+	c := actr.Head
 	if !c.Defined() {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to load undefined state, must construct first")
 	}
@@ -102,11 +101,11 @@ func (shc *stateHandleContext) Load(obj cbor.Unmarshaler) cid.Cid {
 
 func (shc *stateHandleContext) Replace(expected cid.Cid, obj cbor.Marshaler) cid.Cid {
 	actr := shc.loadActor()
-	if !actr.Head.Cid.Equals(expected) {
+	if !actr.Head.Equals(expected) {
 		panic(fmt.Errorf("unexpected prior state %s for actor %s, expected %s", actr.Head, shc.msg.to, expected))
 	}
 	c := shc.store().StorePut(obj)
-	actr.Head = e.NewCid(c)
+	actr.Head = c
 	shc.storeActor(actr)
 	return c
 }
@@ -210,7 +209,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 	}
 
 	// 5. load target actor code
-	actorImpl := ctx.rt.getActorImpl(ctx.toActor.Code.Cid)
+	actorImpl := ctx.rt.getActorImpl(ctx.toActor.Code)
 	// 6. create target state handle
 	stateHandle := newActorStateHandle((*stateHandleContext)(ctx))
 	ctx.stateHandle = &stateHandle
@@ -309,7 +308,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 			panic(err)
 		}
 		// update init actor
-		initActorEntry.Head = e.NewCid(initHead)
+		initActorEntry.Head = initHead
 		if err := ctx.rt.state.SetActor(ctx.rt.context, builtin.InitActorAddr, initActorEntry); err != nil {
 			panic(err)
 		}
@@ -531,7 +530,7 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 
 	newActor := &actor.Actor{
 		// make this the right 'type' of actor
-		Code:    e.NewCid(codeID),
+		Code:    codeID,
 		Balance: abi.NewTokenAmount(0),
 	}
 	if err := ctx.rt.state.SetActor(ctx.rt.context, addr, newActor); err != nil {
@@ -575,7 +574,7 @@ type patternContext2 invocationContext
 var _ runtime.PatternContext = (*patternContext2)(nil)
 
 func (ctx *patternContext2) CallerCode() cid.Cid {
-	return ctx.fromActor.Code.Cid
+	return ctx.fromActor.Code
 }
 
 func (ctx *patternContext2) CallerAddr() address.Address {
