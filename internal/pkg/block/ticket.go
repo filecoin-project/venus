@@ -8,7 +8,6 @@ import (
 	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // A Ticket is a marker of a tick of the blockchain's clock.  It is the source
@@ -33,7 +32,7 @@ func (t *Ticket) Compare(o *Ticket) int {
 
 func (t *Ticket) Quality() float64 {
 	ticketHash := blake2b.Sum256(t.VRFProof)
-	ticketNum := types.BigFromBytes(ticketHash[:]).Int
+	ticketNum := crypto.BigFromBytes(ticketHash[:]).Int
 	ticketDenu := big.NewInt(1)
 	ticketDenu.Lsh(ticketDenu, 256)
 	tv, _ := new(big.Rat).SetFrac(ticketNum, ticketDenu).Float64()
