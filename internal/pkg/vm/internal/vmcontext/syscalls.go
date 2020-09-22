@@ -2,13 +2,14 @@ package vmcontext
 
 import (
 	"context"
-	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"github.com/ipfs/go-cid"
+	goruntime "runtime"
+	"sync"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
@@ -80,6 +81,36 @@ func (sys syscalls) VerifyConsensusFault(h1, h2, extra []byte) (*specsruntime.Co
 	return sys.impl.VerifyConsensusFault(sys.ctx, h1, h2, extra, sys.head, sys.state)
 }
 
+var BatchSealVerifyParallelism = goruntime.NumCPU()
+
 func (sys syscalls) BatchVerifySeals(vis map[address.Address][]proof.SealVerifyInfo) (map[address.Address][]bool, error) {
-	panic("BatchVerifySeals not impl")
+	out := make(map[address.Address][]bool)
+
+	sema := make(chan struct{}, BatchSealVerifyParallelism)
+
+	var wg sync.WaitGroup
+	for addr, seals := range vis {
+		results := make([]bool, len(seals))
+		out[addr] = results
+
+		for i, s := range seals {
+			wg.Add(1)
+			go func(ma address.Address, ix int, svi proof.SealVerifyInfo, res []bool) {
+				defer wg.Done()
+				sema <- struct{}{}
+
+				if err := sys.VerifySeal(svi); err != nil {
+					vmlog.Warnw("seal verify in batch failed", "miner", ma, "index", ix, "err", err)
+					res[ix] = false
+				} else {
+					res[ix] = true
+				}
+
+				<-sema
+			}(addr, i, s, results)
+		}
+	}
+	wg.Wait()
+
+	return out, nil
 }
