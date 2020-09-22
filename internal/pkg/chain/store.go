@@ -8,7 +8,6 @@ import (
 	"github.com/cskr/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
@@ -41,8 +40,8 @@ type ipldSource struct {
 }
 
 type tsState struct {
-	StateRoot e.Cid
-	Reciepts  e.Cid
+	StateRoot cid.Cid
+	Reciepts  cid.Cid
 }
 
 func newSource(cst cbor.IpldStore) *ipldSource {
@@ -226,7 +225,7 @@ func (store *Store) loadStateRootAndReceipts(ts block.TipSet) (cid.Cid, cid.Cid,
 		return cid.Undef, cid.Undef, errors.Wrapf(err, "failed to decode tip set metadata %s", ts.String())
 	}
 
-	return metadata.StateRoot.Cid, metadata.Reciepts.Cid, nil
+	return metadata.StateRoot, metadata.Reciepts, nil
 }
 
 // PutTipSetMetadata persists the blocks of a tipset and the tipset index.

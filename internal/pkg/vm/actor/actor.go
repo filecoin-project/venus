@@ -13,8 +13,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 )
 
 var ErrActorNotFound = errors.New("actor not found")
@@ -42,9 +40,9 @@ type Actor struct {
 	_ struct{} `cbor:",toarray"`
 	// Code is a CID of the VM code for this actor's implementation (or a constant for actors implemented in Go code).
 	// Code may be nil for an uninitialized actor (which exists because it has received a balance).
-	Code e.Cid
+	Code cid.Cid
 	// Head is the CID of the root of the actor's state tree.
-	Head e.Cid
+	Head cid.Cid
 	// CallSeqNum is the number expected on the next message from this actor.
 	// Messages are processed in strict, contiguous order.
 	CallSeqNum uint64
@@ -55,10 +53,10 @@ type Actor struct {
 // NewActor constructs a new actor.
 func NewActor(code cid.Cid, balance abi.TokenAmount, head cid.Cid) *Actor {
 	return &Actor{
-		Code:       e.NewCid(code),
+		Code:       code,
 		CallSeqNum: 0,
 		Balance:    balance,
-		Head:       e.NewCid(head),
+		Head:       head,
 	}
 }
 
@@ -93,7 +91,7 @@ func (a *Actor) MarshalCBOR(w io.Writer) error {
 
 // Format implements fmt.Formatter.
 func (a *Actor) Format(f fmt.State, c rune) {
-	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", builtin.ActorNameByCode(a.Code.Cid), a, a.Balance, a.CallSeqNum))) // nolint: errcheck
+	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", builtin.ActorNameByCode(a.Code), a, a.Balance, a.CallSeqNum))) // nolint: errcheck
 }
 
 // NextNonce returns the nonce value for an account actor, which is the nonce expected on the

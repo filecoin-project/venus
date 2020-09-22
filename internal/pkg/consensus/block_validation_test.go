@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -86,7 +85,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 		actor := newActor(t, 0, 2)
 
 		// set invalid code
-		actor.Code = e.NewCid(builtin.RewardActorCodeID)
+		actor.Code = builtin.RewardActorCodeID
 
 		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{
 			blsMessages: []*types.UnsignedMessage{msg1},
@@ -258,7 +257,7 @@ func TestBlockValidSyntax(t *testing.T) {
 	validator := consensus.NewDefaultBlockValidator(chainClock, nil, nil)
 
 	validTs := uint64(mclock.Now().Unix())
-	validSt := e.NewCid(types.NewCidForTestGetter()())
+	validSt := types.NewCidForTestGetter()()
 	validAd := vmaddr.NewForTestGetter()()
 	validTi := block.Ticket{VRFProof: []byte{1}}
 	// create a valid block
@@ -286,7 +285,7 @@ func TestBlockValidSyntax(t *testing.T) {
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
 	// invalidate stateroot
-	blk.StateRoot = e.NewCid(cid.Undef)
+	blk.StateRoot = cid.Undef
 	require.Error(t, validator.ValidateSyntax(ctx, blk))
 	blk.StateRoot = validSt
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))

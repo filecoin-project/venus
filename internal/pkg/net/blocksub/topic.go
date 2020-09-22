@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/ipfs/go-cid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -19,26 +19,26 @@ func Topic(networkName string) string {
 type Payload struct {
 	_           struct{} `cbor:",toarray"`
 	Header      block.Block
-	BLSMsgCids  []e.Cid
-	SECPMsgCids []e.Cid
+	BLSMsgCids  []cid.Cid
+	SECPMsgCids []cid.Cid
 }
 
 func MakePayload(header *block.Block, BLSMessages, SECPMessages []*types.SignedMessage) ([]byte, error) {
-	blsCIDs := make([]e.Cid, len(BLSMessages))
+	blsCIDs := make([]cid.Cid, len(BLSMessages))
 	for i, m := range BLSMessages {
 		c, err := m.Message.Cid() // CID of the unsigned message
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to create blocksub payload for BLS msg %s", m)
 		}
-		blsCIDs[i] = e.NewCid(c)
+		blsCIDs[i] = c
 	}
-	secpCIDs := make([]e.Cid, len(SECPMessages))
+	secpCIDs := make([]cid.Cid, len(SECPMessages))
 	for i, m := range SECPMessages {
 		c, err := m.Cid() // CID of the signed message
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to create blocksub payload for SECP msg %s", m)
 		}
-		secpCIDs[i] = e.NewCid(c)
+		secpCIDs[i] = c
 	}
 	payload := Payload{
 		Header:      *header,

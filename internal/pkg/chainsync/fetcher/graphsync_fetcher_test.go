@@ -36,7 +36,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -444,9 +443,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 	t.Run("blocks present but messages don't decode", func(t *testing.T) {
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
 		blk := requireSimpleValidBlock(t, 3, address.Undef)
-		metaCid, err := msgStore.StoreTxMeta(ctx, types.TxMeta{SecpRoot: e.NewCid(notDecodableBlock.Cid()), BLSRoot: e.NewCid(types.EmptyMessagesCID)})
+		metaCid, err := msgStore.StoreTxMeta(ctx, types.TxMeta{SecpRoot: notDecodableBlock.Cid(), BLSRoot: types.EmptyMessagesCID})
 		require.NoError(t, err)
-		blk.Messages = e.NewCid(metaCid)
+		blk.Messages = metaCid
 		key := block.NewTipSetKey(blk.Cid())
 		chain0 := block.NewChainInfo(pid0, pid0, key, blk.Height)
 		nd, err := (&types.SignedMessage{}).ToNode()
@@ -744,9 +743,9 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	t.Run("fetch succeeds when messages don't decode", func(t *testing.T) {
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
 		blk := requireSimpleValidBlock(t, 3, address.Undef)
-		metaCid, err := builder.StoreTxMeta(ctx, types.TxMeta{SecpRoot: e.NewCid(notDecodableBlock.Cid()), BLSRoot: e.NewCid(types.EmptyMessagesCID)})
+		metaCid, err := builder.StoreTxMeta(ctx, types.TxMeta{SecpRoot: notDecodableBlock.Cid(), BLSRoot: types.EmptyMessagesCID})
 		require.NoError(t, err)
-		blk.Messages = e.NewCid(metaCid)
+		blk.Messages = metaCid
 		key := block.NewTipSetKey(blk.Cid())
 		chain0 := block.NewChainInfo(pid0, pid0, key, blk.Height)
 		nd, err := (&types.SignedMessage{}).ToNode()

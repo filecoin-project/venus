@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -207,8 +206,8 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 			ParentWeight:    parentWeight,
 			Parents:         parent.Key(),
 			Height:          height,
-			Messages:        e.NewCid(types.EmptyTxMetaCID),
-			MessageReceipts: e.NewCid(types.EmptyReceiptsCID),
+			Messages:        types.EmptyTxMetaCID,
+			MessageReceipts: types.EmptyReceiptsCID,
 			BLSAggregateSig: &emptyBLSSig,
 			// Omitted fields below
 			//StateRoot:       stateRoot,
@@ -229,7 +228,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 		require.NoError(f.t, err)
 		stateRootRaw, _, err := f.stateBuilder.ComputeState(prevState, [][]*types.UnsignedMessage{umsgs}, [][]*types.SignedMessage{smsgs})
 		require.NoError(f.t, err)
-		b.StateRoot = e.NewCid(stateRootRaw)
+		b.StateRoot = stateRootRaw
 
 		// add block to cstore
 		_, err = f.cstore.Put(ctx, b)
@@ -325,12 +324,12 @@ func (bb *BlockBuilder) AddMessages(secpmsgs []*types.SignedMessage, blsMsgs []*
 	meta, err := bb.messages.StoreMessages(ctx, secpmsgs, blsMsgs)
 	require.NoError(bb.t, err)
 
-	bb.block.Messages = e.NewCid(meta)
+	bb.block.Messages = meta
 }
 
 // SetStateRoot sets the block's state root.
 func (bb *BlockBuilder) SetStateRoot(root cid.Cid) {
-	bb.block.StateRoot = e.NewCid(root)
+	bb.block.StateRoot = root
 }
 
 ///// State builder /////

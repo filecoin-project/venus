@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -195,8 +194,8 @@ func mustMakeTipset(t *testing.T, height abi.ChainEpoch) block.TipSet {
 		Parents:         block.TipSetKey{},
 		ParentWeight:    fbig.Zero(),
 		Height:          height,
-		MessageReceipts: e.NewCid(types.EmptyMessagesCID),
-		Messages:        e.NewCid(types.EmptyTxMetaCID),
+		MessageReceipts: types.EmptyMessagesCID,
+		Messages:        types.EmptyTxMetaCID,
 	})
 	if err != nil {
 		t.Fatal(err)

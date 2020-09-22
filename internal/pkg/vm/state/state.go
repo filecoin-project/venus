@@ -3,7 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -324,7 +324,7 @@ func (st *State) RegisterNewAddress(addr actorKey) (address.Address, error) {
 			return err
 		}
 
-		initact.Head = e.NewCid(ncid)
+		initact.Head = ncid
 		return nil
 	})
 	if err != nil {
