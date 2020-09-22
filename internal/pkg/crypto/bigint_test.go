@@ -1,4 +1,4 @@
-package types
+package crypto
 
 import (
 	"bytes"

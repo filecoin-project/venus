@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -19,9 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
-
-// Blocks (e)
-var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
 
 // BlockMessageLimit is the maximum number of messages in a block
 const BlockMessageLimit = 10000

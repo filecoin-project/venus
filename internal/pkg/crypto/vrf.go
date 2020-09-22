@@ -3,11 +3,8 @@ package crypto
 import (
 	"math/big"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/minio/blake2b-simd"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // VRFPi is the proof output from running a VRF.
@@ -30,7 +27,10 @@ type ElectionProof struct {
 
 const precision = 256
 
-var blocksPerEpoch = types.NewInt(block.BlocksPerEpoch)
+// Blocks (e)
+var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
+
+var blocksPerEpoch = NewInt(BlocksPerEpoch)
 
 var (
 	expNumCoef  []*big.Int
@@ -123,7 +123,7 @@ func lambda(power, totalPower *big.Int) *big.Int {
 	return lam
 }
 
-var MaxWinCount = 3 * int64(build.BlocksPerEpoch)
+var MaxWinCount = 3 * int64(BlocksPerEpoch)
 
 type poiss struct {
 	lam  *big.Int
@@ -193,10 +193,10 @@ func (p *poiss) next() *big.Int {
 // ComputeWinCount uses VRFProof to compute number of wins
 // The algorithm is based on Algorand's Sortition with Binomial distribution
 // replaced by Poisson distribution.
-func (ep *ElectionProof) ComputeWinCount(power types.BigInt, totalPower types.BigInt) int64 {
+func (ep *ElectionProof) ComputeWinCount(power BigInt, totalPower BigInt) int64 {
 	h := blake2b.Sum256(ep.VRFProof)
 
-	lhs := types.BigFromBytes(h[:]).Int // 256bits, assume Q.256 so [0, 1)
+	lhs := BigFromBytes(h[:]).Int // 256bits, assume Q.256 so [0, 1)
 
 	// We are calculating upside-down CDF of Poisson distribution with
 	// rate λ=power*E/totalPower
