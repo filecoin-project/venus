@@ -46,7 +46,7 @@ func loadGenesisConfig(t *testing.T, path string) *gengen.GenesisCfg {
 	return &cfg
 }
 
-func makeNode(ctx context.Context, t *testing.T, seed *node.ChainSeed, chainClock clock.ChainEpochClock, drand drand.IFace) *node.Node {
+func makeNode(ctx context.Context, t *testing.T, seed *node.ChainSeed, chainClock clock.ChainEpochClock, drand drand.Schedule) *node.Node {
 	builder := test.NewNodeBuilder(t).
 		WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
 		WithGenesisInit(seed.GenesisInitFunc).

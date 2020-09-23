@@ -113,7 +113,7 @@ type Expected struct {
 	proofVerifier ProofVerifier
 
 	clock clock.ChainEpochClock
-	drand drand.IFace
+	drand drand.Schedule
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
@@ -121,7 +121,7 @@ var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
 func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processor, state StateViewer, bt time.Duration,
-	ev ElectionValidator, tv TicketValidator, pv ProofVerifier, chainState chainReader, clock clock.ChainEpochClock, drand drand.IFace) *Expected {
+	ev ElectionValidator, tv TicketValidator, pv ProofVerifier, chainState chainReader, clock clock.ChainEpochClock, drand drand.Schedule) *Expected {
 	return &Expected{
 		cstore:            cs,
 		blockTime:         bt,

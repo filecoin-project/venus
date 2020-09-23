@@ -46,7 +46,7 @@ type Builder struct {
 	isRelay     bool
 	chainClock  clock.ChainEpochClock
 	genCid      cid.Cid
-	drand       drand.IFace
+	drand       drand.Schedule
 }
 
 // BuilderOpt is an option for building a filecoin node.
@@ -122,7 +122,7 @@ func ChainClockConfigOption(clk clock.ChainEpochClock) BuilderOpt {
 }
 
 // DrandConfigOption returns a function that sets the node's drand interface
-func DrandConfigOption(d drand.IFace) BuilderOpt {
+func DrandConfigOption(d drand.Schedule) BuilderOpt {
 	return func(c *Builder) error {
 		c.drand = d
 		return nil
@@ -254,7 +254,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		b.drand = dGRPC.BeaconForEpoch(0)
+		b.drand = dGRPC
 	}
 
 	if b.chainClock == nil {
@@ -373,7 +373,7 @@ func (b builder) OfflineMode() bool {
 	return b.offlineMode
 }
 
-func (b builder) Drand() drand.IFace {
+func (b builder) Drand() drand.Schedule {
 	return b.drand
 }
 

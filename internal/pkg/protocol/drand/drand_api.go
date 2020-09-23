@@ -3,6 +3,7 @@ package drand
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 type Config interface {
@@ -10,12 +11,12 @@ type Config interface {
 }
 
 type API struct {
-	drand  drand.IFace
+	drand  drand.Schedule
 	config Config
 }
 
 // New creates a new API
-func New(drand drand.IFace, config Config) *API {
+func New(drand drand.Schedule, config Config) *API {
 	return &API{
 		drand:  drand,
 		config: config,
@@ -35,11 +36,11 @@ func (api *API) Configure(addrs []string, secure bool, overrideGroupAddrs bool) 
 }
 
 // GetEntry retrieves an entry from the drand server
-func (api *API) GetEntry(ctx context.Context, round drand.Round) (*drand.Entry, error) {
-	return api.drand.ReadEntry(ctx, round)
+func (api *API) GetEntry(ctx context.Context, height abi.ChainEpoch, round drand.Round) (*drand.Entry, error) {
+	return api.drand.BeaconForEpoch(height).ReadEntry(ctx, round)
 }
 
 // VerifyEntry verifies that child is a valid entry if its parent is.
-func (api *API) VerifyEntry(parent, child *drand.Entry) (bool, error) {
-	return api.drand.VerifyEntry(parent, child)
+func (api *API) VerifyEntry(parent, child *drand.Entry, height abi.ChainEpoch,) (bool, error) {
+	return api.drand.BeaconForEpoch(height).VerifyEntry(parent, child)
 }
