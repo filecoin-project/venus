@@ -2,7 +2,9 @@ package consensus
 
 import (
 	"context"
-	"golang.org/x/xerrors"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
+	// "golang.org/x/xerrors"
 
 	//"fmt"
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -13,17 +15,17 @@ import (
 	//"github.com/filecoin-project/go-bitfield"
 	//"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/minio/blake2b-simd"
-	"github.com/pkg/errors"
+	//"github.com/filecoin-project/go-state-types/big"
+	//acrypto "github.com/filecoin-project/go-state-types/crypto"
+	//"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	//"github.com/minio/blake2b-simd"
+	//"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
+	//"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	//"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	//"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+	//"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	//"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	// "github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )

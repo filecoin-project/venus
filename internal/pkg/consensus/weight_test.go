@@ -22,7 +22,7 @@ func TestWeight(t *testing.T) {
 	cst := cbor.NewMemCborStore()
 	ctx := context.Background()
 	fakeTree := state.NewFromString(t, "test-Weight-StateCid", cst)
-	fakeRoot, err := fakeTree.Commit(ctx)
+	fakeRoot, err := fakeTree.Flush(ctx)
 	require.NoError(t, err)
 	// We only care about total power for the weight function
 	// Total is 16, so bitlen is 5, log2b is 4

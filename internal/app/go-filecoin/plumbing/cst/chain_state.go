@@ -3,6 +3,7 @@ package cst
 import (
 	"context"
 	"fmt"
+	"golang.org/x/xerrors"
 	"io"
 
 	"github.com/filecoin-project/go-address"
@@ -169,6 +170,15 @@ func (chn *ChainStateReadWriter) SampleChainRandomness(ctx context.Context, head
 	}
 	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewRandomnessSamplerAtHead(chn.readWriter, genBlk.Ticket, head)}
 	return rnd.Randomness(ctx, tag, epoch, entropy)
+}
+
+func (chn *ChainStateReadWriter) ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	panic("not impl") //todo add by force
+	/*	pts, err := chn.GetTipSet(tsk)
+		if err != nil {
+			return nil, xerrors.Errorf("loading tipset key: %w", err)
+		}
+		return mca.sm.ChainStore().GetBeaconRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)*/
 }
 
 // GetActor returns an actor from the latest state on the chain

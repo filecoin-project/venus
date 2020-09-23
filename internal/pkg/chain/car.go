@@ -81,57 +81,57 @@ func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carM
 				filter[hdr.Cid()] = true
 			}
 
-			meta, err := mr.LoadTxMeta(ctx, hdr.Messages.Cid)
+			meta, err := mr.LoadTxMeta(ctx, hdr.Messages)
 			if err != nil {
 				return err
 			}
 
-			if !filter[hdr.Messages.Cid] {
+			if !filter[hdr.Messages] {
 				logCar.Debugf("writing txMeta: %s", hdr.Messages)
 				if err := exportTxMeta(ctx, out, meta); err != nil {
 					return err
 				}
-				filter[hdr.Messages.Cid] = true
+				filter[hdr.Messages] = true
 			}
 
-			secpMsgs, blsMsgs, err := mr.LoadMessages(ctx, hdr.Messages.Cid)
+			secpMsgs, blsMsgs, err := mr.LoadMessages(ctx, hdr.Messages)
 			if err != nil {
 				return err
 			}
 
-			if !filter[meta.SecpRoot.Cid] {
+			if !filter[meta.SecpRoot] {
 				logCar.Debugf("writing secp message collection: %s", hdr.Messages)
 				if err := exportAMTSignedMessages(ctx, out, secpMsgs); err != nil {
 					return err
 				}
-				filter[meta.SecpRoot.Cid] = true
+				filter[meta.SecpRoot] = true
 			}
 
-			if !filter[meta.BLSRoot.Cid] {
+			if !filter[meta.BLSRoot] {
 				logCar.Debugf("writing bls message collection: %s", hdr.Messages)
 				if err := exportAMTUnsignedMessages(ctx, out, blsMsgs); err != nil {
 					return err
 				}
-				filter[meta.BLSRoot.Cid] = true
+				filter[meta.BLSRoot] = true
 			}
 
 			// TODO(#3473) we can remove MessageReceipts from the exported file once addressed.
-			rect, err := mr.LoadReceipts(ctx, hdr.MessageReceipts.Cid)
+			rect, err := mr.LoadReceipts(ctx, hdr.MessageReceipts)
 			if err != nil {
 				return err
 			}
 
-			if !filter[hdr.MessageReceipts.Cid] {
+			if !filter[hdr.MessageReceipts] {
 				logCar.Debugf("writing message-receipt collection: %s", hdr.Messages)
 				if err := exportAMTReceipts(ctx, out, rect); err != nil {
 					return err
 				}
-				filter[hdr.MessageReceipts.Cid] = true
+				filter[hdr.MessageReceipts] = true
 			}
 
 			if hdr.Height == 0 {
 				logCar.Debugf("writing state tree: %s", hdr.StateRoot)
-				stateRoots, err := sr.ChainStateTree(ctx, hdr.StateRoot.Cid)
+				stateRoots, err := sr.ChainStateTree(ctx, hdr.StateRoot)
 				if err != nil {
 					return err
 				}

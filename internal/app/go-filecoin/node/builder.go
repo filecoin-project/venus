@@ -46,7 +46,7 @@ type Builder struct {
 	isRelay     bool
 	chainClock  clock.ChainEpochClock
 	genCid      cid.Cid
-	drand       drand.IFace
+	drand       drand.Schedule
 }
 
 // BuilderOpt is an option for building a filecoin node.
@@ -122,7 +122,7 @@ func ChainClockConfigOption(clk clock.ChainEpochClock) BuilderOpt {
 }
 
 // DrandConfigOption returns a function that sets the node's drand interface
-func DrandConfigOption(d drand.IFace) BuilderOpt {
+func DrandConfigOption(d drand.Schedule) BuilderOpt {
 	return func(c *Builder) error {
 		c.drand = d
 		return nil
@@ -145,9 +145,9 @@ func MonkeyPatchNetworkParamsOption(params *config.NetworkParamsConfig) BuilderO
 			power.ConsensusMinerMinPower = big.NewIntUnsigned(params.ConsensusMinerMinPower)
 		}
 		if len(params.ReplaceProofTypes) > 0 {
-			newSupportedTypes := make(map[abi.RegisteredProof]struct{})
+			newSupportedTypes := make(map[abi.RegisteredSealProof]struct{})
 			for _, proofType := range params.ReplaceProofTypes {
-				newSupportedTypes[abi.RegisteredProof(proofType)] = struct{}{}
+				newSupportedTypes[abi.RegisteredSealProof(proofType)] = struct{}{}
 			}
 			// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
 			miner.SupportedProofTypes = newSupportedTypes
@@ -158,10 +158,10 @@ func MonkeyPatchNetworkParamsOption(params *config.NetworkParamsConfig) BuilderO
 
 // MonkeyPatchSetProofTypeOption returns a function that sets package variable
 // SuppurtedProofTypes to be only the given registered proof type
-func MonkeyPatchSetProofTypeOption(proofType abi.RegisteredProof) BuilderOpt {
+func MonkeyPatchSetProofTypeOption(proofType abi.RegisteredSealProof) BuilderOpt {
 	return func(c *Builder) error {
 		// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
-		miner.SupportedProofTypes = map[abi.RegisteredProof]struct{}{proofType: {}}
+		miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{proofType: {}}
 		return nil
 	}
 }
@@ -373,16 +373,10 @@ func (b builder) OfflineMode() bool {
 	return b.offlineMode
 }
 
-func (b builder) Drand() drand.IFace {
+func (b builder) Drand() drand.Schedule {
 	return b.drand
 }
 
-func DefaultDrandIfaceFromConfig(cfg *config.Config, fcGenTS uint64) (drand.IFace, error) {
-	drandConfig := cfg.Drand
-	addrs := make([]drand.Address, len(drandConfig.Addresses))
-	for i, a := range drandConfig.Addresses {
-		addrs[i] = drand.NewAddress(a, drandConfig.Secure)
-	}
-	return drand.NewGRPC(addrs, drandConfig.DistKey, time.Unix(drandConfig.StartTimeUnix, 0),
-		time.Unix(int64(fcGenTS), 0), time.Duration(drandConfig.RoundSeconds)*time.Second)
+func DefaultDrandIfaceFromConfig(cfg *config.Config, fcGenTS uint64) (drand.Schedule, error) {
+	return drand.RandomSchedule(time.Unix(0, 0))
 }

@@ -16,7 +16,7 @@ import (
 // Abstracts over a store of blockchain state.
 type previewerChainReader interface {
 	GetHead() block.TipSetKey
-	GetTipSetState(context.Context, block.TipSetKey) (state.State, error)
+	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
 }
 

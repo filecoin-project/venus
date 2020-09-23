@@ -2,15 +2,11 @@ package consensus
 
 import (
 	"context"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/crypto"
-	"go.opencensus.io/trace"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 )
 
 // ApplicationResult contains the result of successfully applying one message.
@@ -57,29 +53,30 @@ func NewConfiguredProcessor(actors vm.ActorCodeLoader, syscalls vm.SyscallsImpl,
 
 // ProcessTipSet computes the state transition specified by the messages in all blocks in a TipSet.
 func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.Storage, ts block.TipSet, msgs []vm.BlockMessagesInfo) (results []vm.MessageReceipt, err error) {
-	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
-	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
-	defer tracing.AddErrorEndSpan(ctx, span, &err)
+	//ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
+	//span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
+	//defer tracing.AddErrorEndSpan(ctx, span, &err)
+	//
+	//epoch, err := ts.Height()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//parent, err := ts.Parents()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//// Note: since the parent tipset key is now passed explicitly to ApplyTipSetMessages we can refactor to skip
+	//// currying it in to the randomness call here.
+	//rnd := headRandomness{
+	//	chain: p.rnd,
+	//	head:  parent,
+	//}
+	//v := vm.NewVM(st, &vms, p.syscalls, abi.NewTokenAmount(0))
 
-	epoch, err := ts.Height()
-	if err != nil {
-		return nil, err
-	}
-
-	parent, err := ts.Parents()
-	if err != nil {
-		return nil, err
-	}
-
-	// Note: since the parent tipset key is now passed explicitly to ApplyTipSetMessages we can refactor to skip
-	// currying it in to the randomness call here.
-	rnd := headRandomness{
-		chain: p.rnd,
-		head:  parent,
-	}
-	v := vm.NewVM(st, &vms, p.syscalls)
-
-	return v.ApplyTipSetMessages(msgs, parent, epoch, &rnd)
+	// return v.ApplyTipSetMessages(msgs, parent, epoch, &rnd)
+	return nil, nil
 }
 
 // A chain randomness source with a fixed head tipset key.

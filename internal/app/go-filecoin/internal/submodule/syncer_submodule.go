@@ -31,7 +31,7 @@ type SyncerSubmodule struct {
 	Consensus        consensus.Protocol
 	FaultDetector    slashing.ConsensusFaultDetector
 	ChainSyncManager *chainsync.Manager
-	Drand            drand.IFace
+	Drand            drand.Schedule
 
 	// cancelChainSync cancels the context for chain sync subscriptions and handlers.
 	CancelChainSync context.CancelFunc
@@ -43,7 +43,7 @@ type syncerConfig interface {
 	GenesisCid() cid.Cid
 	BlockTime() time.Duration
 	ChainClock() clock.ChainEpochClock
-	Drand() drand.IFace
+	Drand() drand.Schedule
 }
 
 type nodeChainSelector interface {

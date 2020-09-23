@@ -105,7 +105,7 @@ type DefaultWorker struct {
 	clock          clock.ChainEpochClock
 	poster         postgenerator.PoStGenerator
 	chainState     chain.TipSetProvider
-	drand          drand.IFace
+	drand          drand.Schedule
 }
 
 // WorkerParameters use for NewDefaultWorker parameters
@@ -123,7 +123,7 @@ type WorkerParameters struct {
 	GetWeight        GetWeight
 	Election         electionUtil
 	TicketGen        ticketGenerator
-	Drand            drand.IFace
+	Drand            drand.Schedule
 
 	// core filecoin things
 	MessageSource MessageSource

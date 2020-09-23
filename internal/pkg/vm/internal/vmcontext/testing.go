@@ -136,7 +136,7 @@ func (s specialSyscallWrapper) HashBlake2b(data []byte) [32]byte {
 	return s.internal.HashBlake2b(data)
 }
 
-func (s specialSyscallWrapper) ComputeUnsealedSectorCID(_ context.Context, proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+func (s specialSyscallWrapper) ComputeUnsealedSectorCID(_ context.Context, proof abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	return s.internal.ComputeUnsealedSectorCID(proof, pieces)
 }
 

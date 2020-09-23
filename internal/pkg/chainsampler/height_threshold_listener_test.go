@@ -167,14 +167,14 @@ func TestNewHeightThresholdListener(t *testing.T) {
 
 		// add tipsets till finality
 		go func() {
-			for i := abi.ChainEpoch(0); i < miner.ChainFinalityish; i++ {
+			for i := abi.ChainEpoch(0); i < miner.ChainFinality; i++ {
 				nextTS = builder.BuildOn(nextTS, 1, nil)
 				valid, err := listener.Handle([]block.TipSet{nextTS})
 				require.NoError(t, err)
 
 				h, err := nextTS.Height()
 				require.NoError(t, err)
-				if h >= 8+miner.ChainFinalityish {
+				if h >= 8+miner.ChainFinality {
 					assert.False(t, valid)
 				} else {
 					assert.True(t, valid)

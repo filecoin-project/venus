@@ -41,23 +41,6 @@ func TestBigIntSerializationRoundTrip(t *testing.T) {
 	}
 }
 
-func TestFilRoundTrip(t *testing.T) {
-	testValues := []string{
-		"0 FIL", "1 FIL", "1.001 FIL", "100.10001 FIL", "101100 FIL", "5000.01 FIL", "5000 FIL",
-	}
-
-	for _, v := range testValues {
-		fval, err := ParseFIL(v)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if fval.String() != v {
-			t.Fatal("mismatch in values!", v, fval.String())
-		}
-	}
-}
-
 func TestSizeStr(t *testing.T) {
 	cases := []struct {
 		in  uint64

@@ -133,11 +133,11 @@ func TestGraphsyncFetcher(t *testing.T) {
 			blk := ts.At(i)
 
 			// use fetcher blockstore to retrieve messages
-			secpMsgs, blsMsgs, err := msgStore.LoadMessages(ctx, blk.Messages.Cid)
+			secpMsgs, blsMsgs, err := msgStore.LoadMessages(ctx, blk.Messages)
 			require.NoError(t, err)
 
 			// get expected messages from builders block store
-			expectedSecpMessages, expectedBLSMsgs, err := builder.LoadMessages(ctx, blk.Messages.Cid)
+			expectedSecpMessages, expectedBLSMsgs, err := builder.LoadMessages(ctx, blk.Messages)
 			require.NoError(t, err)
 
 			require.True(t, reflect.DeepEqual(secpMsgs, expectedSecpMessages))
@@ -230,9 +230,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.NoError(t, err)
 		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
-		final2Meta, err := builder.LoadTxMeta(ctx, final.At(2).Messages.Cid)
+		final2Meta, err := builder.LoadTxMeta(ctx, final.At(2).Messages)
 		require.NoError(t, err)
-		errorOnMessagesLoader := errorOnCidsLoader(loader, final2Meta.SecpRoot.Cid)
+		errorOnMessagesLoader := errorOnCidsLoader(loader, final2Meta.SecpRoot)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorOnMessagesLoader, final.Key().ToSlice()...)
 
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, newFakePeerTracker(chain0))
@@ -710,7 +710,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	verifyNoMessages := func(t *testing.T, ts block.TipSet) {
 		for i := 0; i < ts.Len(); i++ {
 			blk := ts.At(i)
-			stored, err := bs.Has(blk.Messages.Cid)
+			stored, err := bs.Has(blk.Messages)
 			require.NoError(t, err)
 			require.False(t, stored)
 		}
@@ -858,11 +858,11 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, stored)
 
-		stored, err = bs.Has(ts.At(0).Messages.Cid)
+		stored, err = bs.Has(ts.At(0).Messages)
 		require.NoError(t, err)
 		assert.False(t, stored)
 
-		stored, err = bs.Has(ts.At(0).MessageReceipts.Cid)
+		stored, err = bs.Has(ts.At(0).MessageReceipts)
 		require.NoError(t, err)
 		assert.False(t, stored)
 	}
@@ -958,13 +958,13 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, stored)
 
-		rawMeta, err := bs.Get(ts.At(0).Messages.Cid)
+		rawMeta, err := bs.Get(ts.At(0).Messages)
 		require.NoError(t, err)
 		var meta types.TxMeta
 		err = encoding.Decode(rawMeta.RawData(), &meta)
 		require.NoError(t, err)
 
-		stored, err = bs.Has(meta.SecpRoot.Cid)
+		stored, err = bs.Has(meta.SecpRoot)
 		require.NoError(t, err)
 		assert.True(t, stored)
 	}
