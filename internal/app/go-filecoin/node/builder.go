@@ -254,7 +254,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		b.drand = dGRPC
+		b.drand = dGRPC.BeaconForEpoch(0)
 	}
 
 	if b.chainClock == nil {
