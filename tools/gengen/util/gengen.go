@@ -38,9 +38,9 @@ type CreateStorageMinerConfig struct {
 	// CommittedSectors is the list of sector commitments in this miner's proving set
 	CommittedSectors []*CommitConfig
 
-	// SealProofType is the proof configuration used by this miner
+	// RegisteredSealProof is the proof configuration used by this miner
 	// (which implies sector size and window post partition size)
-	SealProofType abi.RegisteredProof
+	SealProofType abi.RegisteredSealProof
 
 	// ProvingPeriodStart is next chain epoch at which a miner will need to submit a windowed post
 	// If unset, it will be set to the proving period.
@@ -54,7 +54,7 @@ type CommitConfig struct {
 	CommD     cid.Cid
 	SectorNum abi.SectorNumber
 	DealCfg   *DealConfig
-	ProofType abi.RegisteredProof
+	ProofType abi.RegisteredSealProof
 }
 
 // DealConfig carries the information needed to specify a self-deal committing
