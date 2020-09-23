@@ -202,7 +202,6 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 			Ticket:          ticket,
 			Miner:           f.minerAddress,
 			BeaconEntries:   []*drand.Entry{},
-			PoStProofs:      []block.PoStProof{},
 			ParentWeight:    parentWeight,
 			Parents:         parent.Key(),
 			Height:          height,
@@ -224,7 +223,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 		// Compute state root for this block.
 		ctx := context.Background()
 		prevState := f.StateForKey(parent.Key())
-		smsgs, umsgs, err := f.messages.LoadMessages(ctx, b.Messages.Cid)
+		smsgs, umsgs, err := f.messages.LoadMessages(ctx, b.Messages)
 		require.NoError(f.t, err)
 		stateRootRaw, _, err := f.stateBuilder.ComputeState(prevState, [][]*types.UnsignedMessage{umsgs}, [][]*types.SignedMessage{smsgs})
 		require.NoError(f.t, err)
@@ -277,7 +276,7 @@ func (f *Builder) tipMessages(tip block.TipSet) [][]*types.SignedMessage {
 	ctx := context.Background()
 	var msgs [][]*types.SignedMessage
 	for i := 0; i < tip.Len(); i++ {
-		smsgs, _, err := f.messages.LoadMessages(ctx, tip.At(i).Messages.Cid)
+		smsgs, _, err := f.messages.LoadMessages(ctx, tip.At(i).Messages)
 		require.NoError(f.t, err)
 		msgs = append(msgs, smsgs)
 	}

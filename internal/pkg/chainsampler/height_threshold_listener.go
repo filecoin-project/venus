@@ -47,7 +47,7 @@ func (l *HeightThresholdListener) Handle(chain []block.TipSet) (bool, error) {
 	}
 
 	// check if we've hit finality and should stop listening
-	if h >= l.target+miner.ChainFinalityish {
+	if h >= l.target+miner.ChainFinality {
 		l.DoneCh <- struct{}{}
 		return false, nil
 	}

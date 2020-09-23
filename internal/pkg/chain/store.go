@@ -266,7 +266,7 @@ func (store *Store) GetGenesisState(ctx context.Context) (state.Tree, error) {
 	}
 
 	// create state tree
-	return state.LoadState(ctx, store.stateAndBlockSource.cborStore, genesis.StateRoot.Cid)
+	return state.LoadState(ctx, store.stateAndBlockSource.cborStore, genesis.StateRoot)
 }
 
 // GetGenesisBlock returns the genesis block held by the chain store.
@@ -385,8 +385,8 @@ func (store *Store) writeTipSetMetadata(tsm *TipSetMetadata) error {
 	}
 
 	metadata := tsState{
-		StateRoot: e.NewCid(tsm.TipSetStateRoot),
-		Reciepts:  e.NewCid(tsm.TipSetReceipts),
+		StateRoot: tsm.TipSetStateRoot,
+		Reciepts:  tsm.TipSetReceipts,
 	}
 	val, err := encoding.Encode(metadata)
 	if err != nil {

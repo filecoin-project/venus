@@ -3,19 +3,15 @@ package consensus
 import (
 	"context"
 	"fmt"
-	"testing"
-
-	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -66,12 +62,12 @@ func (fem *FakeElectionMachine) GenerateElectionProof(_ context.Context, _ *dran
 }
 
 // GenerateEPoSt returns a fake post proof
-func (fem *FakeElectionMachine) GenerateWinningPoSt(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address, sectors SectorsStateView) ([]block.PoStProof, error) {
-	return []block.PoStProof{{
-		RegisteredProof: constants.DevRegisteredWinningPoStProof,
-		ProofBytes:      []byte{0xe},
-	}}, nil
-}
+//func (fem *FakeElectionMachine) GenerateWinningPoSt(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address, sectors SectorsStateView) ([]block., error) {
+//	return []block.PoStProof{{
+//		RegisteredProof: constants.DevRegisteredWinningPoStProof,
+//		ProofBytes:      []byte{0xe},
+//	}}, nil
+//}
 
 func (fem *FakeElectionMachine) IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool {
 	return true
@@ -81,9 +77,9 @@ func (fem *FakeElectionMachine) VerifyElectionProof(_ context.Context, _ *drand.
 	return nil
 }
 
-func (fem *FakeElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error) {
-	return true, nil
-}
+//func (fem *FakeElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error) {
+//	return true, nil
+//}
 
 // FakeTicketMachine generates fake tickets and verifies all tickets
 type FakeTicketMachine struct{}
@@ -121,9 +117,9 @@ func (fev *FailingElectionValidator) VerifyElectionProof(_ context.Context, _ *d
 	return nil
 }
 
-func (fev *FailingElectionValidator) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error) {
-	return true, nil
-}
+//func (fev *FailingElectionValidator) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error) {
+//	return true, nil
+//}
 
 // MakeFakeTicketForTest creates a fake ticket
 func MakeFakeTicketForTest() block.Ticket {
@@ -142,26 +138,26 @@ func MakeFakeVRFProofForTest() []byte {
 }
 
 // MakeFakePoStForTest creates a fake post
-func MakeFakePoStsForTest() []block.PoStProof {
-	return []block.PoStProof{{
-		RegisteredProof: constants.DevRegisteredWinningPoStProof,
-		ProofBytes:      []byte{0xe},
-	}}
-}
-
-// NFakeSectorInfos returns numSectors fake sector infos
-func RequireFakeSectorInfos(t *testing.T, numSectors uint64) []abi.SectorInfo {
-	var infos []abi.SectorInfo
-	for i := uint64(0); i < numSectors; i++ {
-		infos = append(infos, abi.SectorInfo{
-			RegisteredProof: constants.DevRegisteredSealProof,
-			SectorNumber:    abi.SectorNumber(i),
-			SealedCID:       types.CidFromString(t, fmt.Sprintf("fake-sector-%d", i)),
-		})
-	}
-
-	return infos
-}
+//func MakeFakePoStsForTest() []block.PoStProof {
+//	return []block.PoStProof{{
+//		RegisteredProof: constants.DevRegisteredWinningPoStProof,
+//		ProofBytes:      []byte{0xe},
+//	}}
+//}
+//
+//// NFakeSectorInfos returns numSectors fake sector infos
+//func RequireFakeSectorInfos(t *testing.T, numSectors uint64) []abi.SectorInfo {
+//	var infos []abi.SectorInfo
+//	for i := uint64(0); i < numSectors; i++ {
+//		infos = append(infos, abi.SectorInfo{
+//			RegisteredProof: constants.DevRegisteredSealProof,
+//			SectorNumber:    abi.SectorNumber(i),
+//			SealedCID:       types.CidFromString(t, fmt.Sprintf("fake-sector-%d", i)),
+//		})
+//	}
+//
+//	return infos
+//}
 
 ///// Sampler /////
 

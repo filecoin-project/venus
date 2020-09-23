@@ -68,7 +68,7 @@ type TicketValidator interface {
 type ElectionValidator interface {
 	IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool
 	VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error
-	VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error)
+	// VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error)
 }
 
 // StateViewer provides views into the chain state.
@@ -110,7 +110,7 @@ type Expected struct {
 	blockTime time.Duration
 
 	// postVerifier verifies PoSt proofs and associated data
-	postVerifier EPoStVerifier
+	proofVerifier ProofVerifier
 
 	clock clock.ChainEpochClock
 	drand drand.IFace
@@ -121,7 +121,7 @@ var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
 func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processor, state StateViewer, bt time.Duration,
-	ev ElectionValidator, tv TicketValidator, pv EPoStVerifier, chainState chainReader, clock clock.ChainEpochClock, drand drand.IFace) *Expected {
+	ev ElectionValidator, tv TicketValidator, pv ProofVerifier, chainState chainReader, clock clock.ChainEpochClock, drand drand.IFace) *Expected {
 	return &Expected{
 		cstore:            cs,
 		blockTime:         bt,
@@ -130,7 +130,7 @@ func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processo
 		state:             state,
 		ElectionValidator: ev,
 		TicketValidator:   tv,
-		postVerifier:      pv,
+		proofVerifier:      pv,
 		chainState:        chainState,
 		clock:             clock,
 		drand:             drand,
@@ -170,7 +170,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsM
 		return cid.Undef, []vm.MessageReceipt{}, err
 	}
 
-	root, err = newState.Commit(ctx)
+	root, err = newState.Flush(ctx)
 	if err != nil {
 		return cid.Undef, []vm.MessageReceipt{}, err
 	}
@@ -197,15 +197,15 @@ func (c *Expected) validateMining(ctx context.Context,
 		return errors.Wrap(err, "could not get new tipset's height")
 	}
 
-	sectorSetAncestor, err := chain.FindTipsetAtEpoch(ctx, ts, tsHeight-WinningPoStSectorSetLookback, c.chainState)
-	if err != nil {
-		return errors.Wrap(err, "failed to find sector set lookback ancestor")
-	}
-	sectorSetStateRoot, err := c.chainState.GetTipSetStateRoot(sectorSetAncestor.Key())
-	if err != nil {
-		return errors.Wrap(err, "failed to get state root for sectorSet ancestor")
-	}
-	sectorSetStateView := c.state.PowerStateView(sectorSetStateRoot)
+	//sectorSetAncestor, err := chain.FindTipsetAtEpoch(ctx, ts, tsHeight-WinningPoStSectorSetLookback, c.chainState)
+	//if err != nil {
+	//	return errors.Wrap(err, "failed to find sector set lookback ancestor")
+	//}
+	//sectorSetStateRoot, err := c.chainState.GetTipSetStateRoot(sectorSetAncestor.Key())
+	//if err != nil {
+	//	return errors.Wrap(err, "failed to get state root for sectorSet ancestor")
+	//}
+	// sectorSetStateView := c.state.PowerStateView(sectorSetStateRoot)
 
 	electionPowerAncestor, err := chain.FindTipsetAtEpoch(ctx, ts, tsHeight-ElectionPowerTableLookback, c.chainState)
 	if err != nil {
@@ -222,12 +222,12 @@ func (c *Expected) validateMining(ctx context.Context,
 		blk := ts.At(i)
 
 		// confirm block state root matches parent state root
-		if !parentStateRoot.Equals(blk.StateRoot.Cid) {
+		if !parentStateRoot.Equals(blk.StateRoot) {
 			return ErrStateRootMismatch
 		}
 
 		// confirm block receipts match parent receipts
-		if !parentReceiptRoot.Equals(blk.MessageReceipts.Cid) {
+		if !parentReceiptRoot.Equals(blk.MessageReceipts) {
 			return ErrReceiptRootMismatch
 		}
 
@@ -262,11 +262,6 @@ func (c *Expected) validateMining(ctx context.Context,
 			}
 		}
 
-		err = c.validateDRANDEntries(ctx, blk)
-		if err != nil {
-			return errors.Wrapf(err, "invalid DRAND entries")
-		}
-
 		electionEntry, err := c.electionEntry(ctx, blk)
 		if err != nil {
 			return errors.Wrapf(err, "failed to get election entry")
@@ -292,13 +287,13 @@ func (c *Expected) validateMining(ctx context.Context,
 			return errors.Errorf("Block did not win election")
 		}
 
-		valid, err := c.VerifyWinningPoSt(ctx, c.postVerifier, electionEntry, blk.Height, blk.PoStProofs, blk.Miner, sectorSetStateView)
-		if err != nil {
-			return errors.Wrapf(err, "failed verifying winning post")
-		}
-		if !valid {
-			return errors.Errorf("Invalid winning post")
-		}
+		//valid, err := c.VerifyElectionProof(ctx, c.drand, electionEntry, blk.Height, blk.PoStProofs, blk.Miner, sectorSetStateView)
+		//if err != nil {
+		//	return errors.Wrapf(err, "failed verifying winning post")
+		//}
+		//if !valid {
+		//	return errors.Errorf("Invalid winning post")
+		//}
 
 		// Ticket was correctly generated by miner
 		sampleEpoch := blk.Height - miner.ElectionLookback
@@ -308,68 +303,6 @@ func (c *Expected) validateMining(ctx context.Context,
 		}
 	}
 	return nil
-}
-
-func (c *Expected) validateDRANDEntries(ctx context.Context, blk *block.Block) error {
-	targetEpoch := blk.Height - DRANDEpochLookback
-	parent, err := c.chainState.GetTipSet(blk.Parents)
-	if err != nil {
-		return err
-	}
-
-	numEntries := len(blk.BeaconEntries)
-	// Note we don't check for genesis condition because first block must include > 0 drand entries
-	if numEntries == 0 {
-		prevEntry, err := chain.FindLatestDRAND(ctx, parent, c.chainState)
-		if err != nil {
-			return err
-		}
-		nextDRANDTime := c.drand.StartTimeOfRound(prevEntry.Round + drand.Round(1))
-		if c.clock.EpochAtTime(nextDRANDTime) > targetEpoch {
-			return nil
-		}
-		return errors.New("Block missing required DRAND entry")
-	}
-
-	lastRound := blk.BeaconEntries[numEntries-1].Round
-	nextDRANDTime := c.drand.StartTimeOfRound(lastRound + 1)
-
-	if !(c.clock.EpochAtTime(nextDRANDTime) > targetEpoch) {
-		return errors.New("Block does not include all drand entries required")
-	}
-
-	// Validate that DRAND entries link up
-	// Detect case where we have just mined with genesis block as parent
-	parentHeight, err := parent.Height()
-	if err != nil {
-		return err
-	}
-	// No prevEntry in first block so this is skipped first time around
-	if parentHeight != abi.ChainEpoch(0) {
-		prevEntry, err := chain.FindLatestDRAND(ctx, parent, c.chainState)
-		if err != nil {
-			return err
-		}
-		valid, err := c.drand.VerifyEntry(prevEntry, blk.BeaconEntries[0])
-		if err != nil {
-			return err
-		}
-		if !valid {
-			return errors.Errorf("invalid DRAND link rounds %d and %d", prevEntry.Round, blk.BeaconEntries[0].Round)
-		}
-	}
-	for i := 0; i < numEntries-1; i++ {
-		valid, err := c.drand.VerifyEntry(blk.BeaconEntries[i], blk.BeaconEntries[i+1])
-		if err != nil {
-			return err
-		}
-		if !valid {
-			return errors.Errorf("invalid DRAND link rounds %d and %d", blk.BeaconEntries[i].Round, blk.BeaconEntries[i+1].Round)
-		}
-	}
-
-	return nil
-
 }
 
 func (c *Expected) electionEntry(ctx context.Context, blk *block.Block) (*drand.Entry, error) {

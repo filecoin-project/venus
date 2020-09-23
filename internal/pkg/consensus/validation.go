@@ -87,9 +87,9 @@ func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.Uns
 	}
 
 	// Sender must be an account actor.
-	if !(builtin.AccountActorCodeID.Equals(fromActor.Code.Cid)) {
+	if !(builtin.AccountActorCodeID.Equals(fromActor.Code)) {
 		dropNonAccountCt.Inc(ctx, 1)
-		return fmt.Errorf("sender %s is non-account actor with code %s: %s", msg.From, fromActor.Code.Cid, msg)
+		return fmt.Errorf("sender %s is non-account actor with code %s: %s", msg.From, fromActor.Code, msg)
 	}
 
 	// Avoid processing messages for actors that cannot pay.
@@ -116,7 +116,7 @@ func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.Uns
 // more value from the actor's balance.
 func canCoverGasLimit(msg *types.UnsignedMessage, actor *actor.Actor) bool {
 	// balance >= (gasprice*gasLimit + value)
-	gascost := big.Mul(abi.NewTokenAmount(msg.GasPrice.Int.Int64()), abi.NewTokenAmount(int64(msg.GasLimit)))
+	gascost := big.Mul(abi.NewTokenAmount(msg.GasFeeCap.Int.Int64()), abi.NewTokenAmount(int64(msg.GasLimit)))
 	expense := big.Add(gascost, abi.NewTokenAmount(msg.Value.Int.Int64()))
 	return actor.Balance.GreaterThanEqual(expense)
 }
@@ -191,9 +191,9 @@ func (v *DefaultMessageSyntaxValidator) validateMessageSyntaxShared(ctx context.
 		invParamsNilCt.Inc(ctx, 1)
 		return fmt.Errorf("nil params (should be empty-array): %s", msg)
 	}
-	if msg.GasPrice.LessThan(types.ZeroAttoFIL) {
+	if msg.GasFeeCap.LessThan(types.ZeroAttoFIL) {
 		invGasPriceNegativeCt.Inc(ctx, 1)
-		return fmt.Errorf("negative gas price %s: %s", msg.GasPrice, msg)
+		return fmt.Errorf("negative gas price %s: %s", msg.GasFeeCap, msg)
 	}
 	// The minimum gas limit ensures the sender has enough balance to pay for inclusion of the message in the chain
 	// *at all*. Without this, a message could hit out-of-gas but the sender pay nothing.

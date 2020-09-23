@@ -263,7 +263,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 	var nextBlsMessages [][]*types.UnsignedMessage
 	for i := 0; i < next.Len(); i++ {
 		blk := next.At(i)
-		secpMsgs, blsMsgs, err := syncer.messageProvider.LoadMessages(ctx, blk.Messages.Cid)
+		secpMsgs, blsMsgs, err := syncer.messageProvider.LoadMessages(ctx, blk.Messages)
 		if err != nil {
 			return errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", next.Key(), blk.Messages, blk.Cid())
 		}
@@ -589,7 +589,7 @@ func (syncer *Syncer) stageIfHeaviest(ctx context.Context, candidate block.TipSe
 	}
 	var stagedBaseStateID cid.Cid
 	if stagedParentKey.Empty() { // if staged is genesis base state is genesis state
-		stagedBaseStateID = syncer.staged.At(0).StateRoot.Cid
+		stagedBaseStateID = syncer.staged.At(0).StateRoot
 	} else {
 		stagedBaseStateID, err = syncer.chainStore.GetTipSetStateRoot(stagedParentKey)
 		if err != nil {

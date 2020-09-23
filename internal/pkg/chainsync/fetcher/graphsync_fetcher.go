@@ -394,7 +394,7 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 
 	err = gsf.loadAndVerifySubComponents(ctx, tip, incomplete,
 		func(meta types.TxMeta) cid.Cid {
-			return meta.SecpRoot.Cid
+			return meta.SecpRoot
 		},
 		func(rawBlock blocks.Block) error {
 			messages := []*types.SignedMessage{}
@@ -422,7 +422,7 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 
 	err = gsf.loadAndVerifySubComponents(ctx, tip, incomplete,
 		func(meta types.TxMeta) cid.Cid {
-			return meta.BLSRoot.Cid
+			return meta.BLSRoot
 		},
 		func(rawBlock blocks.Block) error {
 			messages := []*types.UnsignedMessage{}
@@ -560,7 +560,7 @@ func (gsf *GraphSyncFetcher) loadAndVerifySubComponents(ctx context.Context,
 	for i := 0; i < tip.Len(); i++ {
 		blk := tip.At(i)
 
-		meta, err := gsf.loadTxMeta(blk.Messages.Cid)
+		meta, err := gsf.loadTxMeta(blk.Messages)
 		if err == bstore.ErrNotFound {
 			// exit early as we can't load anything else without txmeta
 			incomplete[blk.Cid()] = struct{}{}
