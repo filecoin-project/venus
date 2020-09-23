@@ -99,7 +99,7 @@ func (pq queueHeap) Len() int { return len(pq) }
 
 // Less implements Heap.Interface.Less to compare items on gas price and sender address.
 func (pq queueHeap) Less(i, j int) bool {
-	delta := specsbig.Sub(pq[i][0].Message.GasPrice, pq[j][0].Message.GasPrice)
+	delta := specsbig.Sub(pq[i][0].Message.GasFeeCap, pq[j][0].Message.GasFeeCap)
 	if !delta.IsZero() {
 		// We want Pop to give us the highest gas price, so use GreaterThan.
 		return delta.GreaterThan(types.ZeroAttoFIL)

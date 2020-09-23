@@ -24,12 +24,13 @@ func TestMessageQueueOrder(t *testing.T) {
 	a2 := mockSigner.Addresses[3]
 	to := mockSigner.Addresses[9]
 
-	sign := func(from address.Address, to address.Address, nonce uint64, units uint64, price int64) *types.SignedMessage {
+	sign := func(from address.Address, to address.Address, nonce uint64, units uint64, gasFeeCap int64, gasPremium int64) *types.SignedMessage {
 		msg := types.UnsignedMessage{
 			From:       from,
 			To:         to,
 			CallSeqNum: nonce,
-			GasPrice:   types.NewGasPrice(price),
+			GasFeeCap:  types.NewGasFeeCap(gasFeeCap),
+			GasPremium: types.NewGasFeeCap(gasPremium),
 			GasLimit:   gas.NewGas(int64(units)),
 		}
 		s, err := types.NewSignedMessage(context.TODO(), msg, &mockSigner)
@@ -51,17 +52,17 @@ func TestMessageQueueOrder(t *testing.T) {
 			// Msgs from a1 are in decreasing order.
 			// Msgs from a2 are out of order.
 			// Messages from different signers are interleaved.
-			sign(a0, to, 0, 0, 0),
-			sign(a1, to, 15, 0, 0),
-			sign(a2, to, 5, 0, 0),
+			sign(a0, to, 0, 0, 0, 0),
+			sign(a1, to, 15, 0, 0, 0),
+			sign(a2, to, 5, 0, 0, 0),
 
-			sign(a0, to, 1, 0, 0),
-			sign(a1, to, 2, 0, 0),
-			sign(a2, to, 7, 0, 0),
+			sign(a0, to, 1, 0, 0, 0),
+			sign(a1, to, 2, 0, 0, 0),
+			sign(a2, to, 7, 0, 0, 0),
 
-			sign(a0, to, 20, 0, 0),
-			sign(a1, to, 1, 0, 0),
-			sign(a2, to, 1, 0, 0),
+			sign(a0, to, 20, 0, 0, 0),
+			sign(a1, to, 1, 0, 0, 0),
+			sign(a2, to, 1, 0, 0, 0),
 		}
 
 		q := NewMessageQueue(msgs)
@@ -79,9 +80,9 @@ func TestMessageQueueOrder(t *testing.T) {
 
 	t.Run("orders by gas price", func(t *testing.T) {
 		msgs := []*types.SignedMessage{
-			sign(a0, to, 0, 0, 2),
-			sign(a1, to, 0, 0, 3),
-			sign(a2, to, 0, 0, 1),
+			sign(a0, to, 0, 0, 2, 2),
+			sign(a1, to, 0, 0, 3, 2),
+			sign(a2, to, 0, 0, 1, 2),
 		}
 		q := NewMessageQueue(msgs)
 		expected := []*types.SignedMessage{msgs[1], msgs[0], msgs[2]}
@@ -92,9 +93,9 @@ func TestMessageQueueOrder(t *testing.T) {
 
 	t.Run("nonce overrides gas price", func(t *testing.T) {
 		msgs := []*types.SignedMessage{
-			sign(a0, to, 0, 0, 1),
-			sign(a0, to, 1, 0, 3), // More valuable but must come after previous message from a0
-			sign(a2, to, 0, 0, 2),
+			sign(a0, to, 0, 0, 1, 1),
+			sign(a0, to, 1, 0, 3, 3), // More valuable but must come after previous message from a0
+			sign(a2, to, 0, 0, 2, 2),
 		}
 		expected := []*types.SignedMessage{msgs[2], msgs[0], msgs[1]}
 
@@ -106,9 +107,9 @@ func TestMessageQueueOrder(t *testing.T) {
 
 	t.Run("only take as many as specified", func(t *testing.T) {
 		msgs := []*types.SignedMessage{
-			sign(a0, to, 0, 0, 2),
-			sign(a1, to, 0, 0, 3),
-			sign(a2, to, 0, 0, 1),
+			sign(a0, to, 0, 0, 2, 2),
+			sign(a1, to, 0, 0, 3, 3),
+			sign(a2, to, 0, 0, 1, 1),
 		}
 		q := NewMessageQueue(msgs)
 		expected := []*types.SignedMessage{msgs[1]}

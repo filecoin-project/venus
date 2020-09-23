@@ -6,6 +6,7 @@ package mining
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
@@ -67,7 +68,7 @@ type workerPorcelainAPI interface {
 type electionUtil interface {
 	GenerateElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error)
 	IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool
-	GenerateWinningPoSt(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address, sectors consensus.SectorsStateView) ([]block.PoStProof, error)
+	GenerateWinningPoSt(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address, sectors consensus.SectorsStateView) ([]proof.PoStProof, error)
 }
 
 // ticketGenerator creates tickets.

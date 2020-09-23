@@ -42,7 +42,7 @@ type syscalls struct {
 	gasTank   *GasTracker
 	pricelist gascost.Pricelist
 	head      block.TipSetKey
-	state     SyscallsStateView
+	stateView SyscallsStateView
 }
 
 var _ specsruntime.Syscalls = (*syscalls)(nil)
@@ -53,7 +53,7 @@ func (sys syscalls) VerifySignature(signature crypto.Signature, signer address.A
 		return err
 	}
 	sys.gasTank.Charge(charge, "VerifySignature")
-	return sys.impl.VerifySignature(sys.ctx, sys.state, signature, signer, plaintext)
+	return sys.impl.VerifySignature(sys.ctx, sys.stateView, signature, signer, plaintext)
 }
 
 func (sys syscalls) HashBlake2b(data []byte) [32]byte {
@@ -78,7 +78,7 @@ func (sys syscalls) VerifyPoSt(info proof.WindowPoStVerifyInfo) error {
 
 func (sys syscalls) VerifyConsensusFault(h1, h2, extra []byte) (*specsruntime.ConsensusFault, error) {
 	sys.gasTank.Charge(sys.pricelist.OnVerifyConsensusFault(), "VerifyConsensusFault")
-	return sys.impl.VerifyConsensusFault(sys.ctx, h1, h2, extra, sys.head, sys.state)
+	return sys.impl.VerifyConsensusFault(sys.ctx, h1, h2, extra, sys.head, sys.stateView)
 }
 
 var BatchSealVerifyParallelism = goruntime.NumCPU()

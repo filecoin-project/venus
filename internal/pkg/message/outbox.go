@@ -84,26 +84,26 @@ func (ob *Outbox) Queue() *Queue {
 // Send marshals and sends a message, retaining it in the outbound message queue.
 // If bcast is true, the publisher broadcasts the message to the network at the current block height.
 func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value types.AttoFIL,
-	gasPrice types.AttoFIL, gasLimit gas.Unit, bcast bool, method abi.MethodNum, params interface{}) (out cid.Cid, pubErrCh chan error, err error) {
+	baseFee types.AttoFIL, gasPremium types.AttoFIL, gasLimit gas.Unit, bcast bool, method abi.MethodNum, params interface{}) (out cid.Cid, pubErrCh chan error, err error) {
 	encodedParams, err := encoding.Encode(params)
 	if err != nil {
 		return cid.Undef, nil, errors.Wrap(err, "invalid params")
 	}
 
-	return ob.SendEncoded(ctx, from, to, value, gasPrice, gasLimit, bcast, method, encodedParams)
+	return ob.SendEncoded(ctx, from, to, value, baseFee, gasPremium, gasLimit, bcast, method, encodedParams)
 }
 
 // SendEncoded sends an encoded message, retaining it in the outbound message queue.
 // If bcast is true, the publisher broadcasts the message to the network at the current block height.
 func (ob *Outbox) SendEncoded(ctx context.Context, from, to address.Address, value types.AttoFIL,
-	gasPrice types.AttoFIL, gasLimit gas.Unit, bcast bool, method abi.MethodNum, encodedParams []byte) (out cid.Cid, pubErrCh chan error, err error) {
+	baseFee types.AttoFIL, gasPremium types.AttoFIL, gasLimit gas.Unit, bcast bool, method abi.MethodNum, encodedParams []byte) (out cid.Cid, pubErrCh chan error, err error) {
 	defer func() {
 		if err != nil {
 			msgSendErrCt.Inc(ctx, 1)
 		}
 		ob.journal.Write("SendEncoded",
 			"to", to.String(), "from", from.String(), "value", value.Int.Uint64(), "method", method,
-			"gasPrice", gasPrice.Int.Uint64(), "gasLimit", uint64(gasLimit), "bcast", bcast,
+			"baseFee", baseFee.Int.Uint64(), "gasPremium", gasPremium.Int.Uint64(), "gasLimit", uint64(gasLimit), "bcast", bcast,
 			"encodedParams", encodedParams, "error", err, "cid", out.String())
 	}()
 
@@ -129,7 +129,7 @@ func (ob *Outbox) SendEncoded(ctx context.Context, from, to address.Address, val
 		return cid.Undef, nil, errors.Wrapf(err, "failed calculating nonce for actor at %s", from)
 	}
 
-	rawMsg := types.NewMeteredMessage(from, to, nonce, value, method, encodedParams, gasPrice, gasLimit)
+	rawMsg := types.NewMeteredMessage(from, to, nonce, value, method, encodedParams, baseFee, gasPremium, gasLimit)
 	signed, err := types.NewSignedMessage(ctx, *rawMsg, ob.signer)
 
 	if err != nil {
@@ -144,6 +144,41 @@ func (ob *Outbox) SendEncoded(ctx context.Context, from, to address.Address, val
 	}
 
 	return sendSignedMsg(ctx, ob, signed, bcast)
+}
+
+// Send marshals and sends a message, retaining it in the outbound message queue.
+// If bcast is true, the publisher broadcasts the message to the network at the current block height.
+func (ob *Outbox) UnSignedSend(ctx context.Context, message types.UnsignedMessage) (out cid.Cid, pubErrCh chan error, err error) {
+	ob.nonceLock.Lock()
+	defer ob.nonceLock.Unlock()
+
+	head := ob.chains.GetHead()
+
+	fromActor, err := ob.actors.GetActorAt(ctx, head, message.From)
+	if err != nil {
+		return cid.Undef, nil, errors.Wrapf(err, "no actor at address %s", message.From)
+	}
+
+	nonce, err := nextNonce(fromActor, ob.queue, message.From)
+	if err != nil {
+		return cid.Undef, nil, errors.Wrapf(err, "failed calculating nonce for actor at %s", message.From)
+	}
+	message.CallSeqNum = nonce
+
+	signed, err := types.NewSignedMessage(ctx, message, ob.signer)
+
+	if err != nil {
+		return cid.Undef, nil, errors.Wrap(err, "failed to sign message")
+	}
+
+	// Slightly awkward: it would be better validate before signing but the MeteredMessage construction
+	// is hidden inside NewSignedMessage.
+	err = ob.validator.ValidateSignedMessageSyntax(ctx, signed)
+	if err != nil {
+		return cid.Undef, nil, errors.Wrap(err, "invalid message")
+	}
+
+	return sendSignedMsg(ctx, ob, signed, true)
 }
 
 // SignedSend send a signed message, retaining it in the outbound message queue.

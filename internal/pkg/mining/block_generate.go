@@ -6,6 +6,7 @@ package mining
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -24,9 +25,9 @@ func (w *DefaultWorker) Generate(
 	ctx context.Context,
 	baseTipSet block.TipSet,
 	ticket block.Ticket,
-	electionProof crypto.VRFPi,
+	electionProof *crypto.ElectionProof,
 	nullBlockCount abi.ChainEpoch,
-	posts []block.PoStProof,
+	posts []proof.PoStProof,
 	drandEntries []*drand.Entry,
 ) (*FullBlock, error) {
 
@@ -102,19 +103,19 @@ func (w *DefaultWorker) Generate(
 	}
 
 	if posts == nil {
-		posts = []block.PoStProof{}
+		posts = []proof.PoStProof{}
 	}
 
 	next := &block.Block{
 		Miner:           w.minerAddr,
 		Height:          blockHeight,
 		BeaconEntries:   drandEntries,
-		ElectionProof:   &crypto.ElectionProof{VRFProof: electionProof},
+		ElectionProof:   electionProof,
 		Messages:        txMetaCid,
 		MessageReceipts: baseReceiptRoot,
 		Parents:         baseTipSet.Key(),
 		ParentWeight:    weight,
-		PoStProofs:      posts,
+		WinPoStProof:    posts,
 		StateRoot:       baseStateRoot,
 		Ticket:          ticket,
 		Timestamp:       uint64(epochStartTime.Unix()),

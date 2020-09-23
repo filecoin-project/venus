@@ -75,7 +75,7 @@ func setup() testSetup {
 func TestActorStateHandle(t *testing.T) {
 	tf.UnitTest(t)
 
-	// this test case verifies that the `Validate` works when nothing was done with the state
+	// this test case verifies that the `Validate` works when nothing was done with the stateView
 	t.Run("noop", func(t *testing.T) {
 		ts := setup()
 		defer ts.cleanup()
@@ -131,10 +131,10 @@ func TestActorStateHandle(t *testing.T) {
 		defer ts.cleanup()
 
 		var out testActorStateHandleState
-		expected := "new state"
+		expected := "new stateView"
 
 		ts.h.StateTransaction(&out, func() {
-			// check state is not what we are going to use
+			// check stateView is not what we are going to use
 			assert.NotEqual(t, out.FieldA, expected)
 			out.FieldA = expected
 		})
@@ -233,7 +233,7 @@ func TestActorStateHandleNilState(t *testing.T) {
 		return h, cleanup
 	}
 
-	t.Run("readonly on nil state is not allowed", func(t *testing.T) {
+	t.Run("readonly on nil stateView is not allowed", func(t *testing.T) {
 		defer mustPanic(t)
 
 		h, cleanup := setup()
@@ -243,7 +243,7 @@ func TestActorStateHandleNilState(t *testing.T) {
 		h.StateReadonly(&out)
 	})
 
-	t.Run("transaction on nil state", func(t *testing.T) {
+	t.Run("transaction on nil stateView", func(t *testing.T) {
 		h, cleanup := setup()
 		defer cleanup()
 
@@ -251,7 +251,7 @@ func TestActorStateHandleNilState(t *testing.T) {
 		h.StateTransaction(&out, func() {})
 	})
 
-	t.Run("state initialized after transaction", func(t *testing.T) {
+	t.Run("stateView initialized after transaction", func(t *testing.T) {
 		h, cleanup := setup()
 		defer cleanup()
 
@@ -261,7 +261,7 @@ func TestActorStateHandleNilState(t *testing.T) {
 		h.StateReadonly(&out) // should not fail
 	})
 
-	t.Run("readonly nil pointer to state", func(t *testing.T) {
+	t.Run("readonly nil pointer to stateView", func(t *testing.T) {
 		defer mustPanic(t)
 
 		h, cleanup := setup()
@@ -270,7 +270,7 @@ func TestActorStateHandleNilState(t *testing.T) {
 		h.StateReadonly(nil)
 	})
 
-	t.Run("transaction nil pointer to state", func(t *testing.T) {
+	t.Run("transaction nil pointer to stateView", func(t *testing.T) {
 		defer mustPanic(t)
 
 		h, cleanup := setup()
@@ -302,14 +302,14 @@ func (ctx *fakeActorStateHandleContext) Create(obj cbg.CBORMarshaler) cid.Cid {
 func (ctx *fakeActorStateHandleContext) Load(obj cbg.CBORUnmarshaler) cid.Cid {
 	found := ctx.store.StoreGet(ctx.head, obj)
 	if !found {
-		panic("inconsistent state")
+		panic("inconsistent stateView")
 	}
 	return ctx.head
 }
 
 func (ctx *fakeActorStateHandleContext) Replace(expected cid.Cid, obj cbg.CBORMarshaler) cid.Cid {
 	if !ctx.head.Equals(expected) {
-		panic(fmt.Errorf("unexpected prior state %s expected %s", ctx.head, expected))
+		panic(fmt.Errorf("unexpected prior stateView %s expected %s", ctx.head, expected))
 	}
 	ctx.head = ctx.store.StorePut(obj)
 	return ctx.head

@@ -3,7 +3,12 @@ package state
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	xerrors "github.com/pkg/errors"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
@@ -601,7 +606,7 @@ func (v *View) PaychActorParties(ctx context.Context, paychAddr addr.Address) (f
 		return addr.Undef, addr.Undef, err
 	}
 	var state paychActor.State
-	err = v.ipldStore.Get(ctx, a.Head.Cid, &state)
+	err = v.ipldStore.Get(ctx, a.Head, &state)
 	if err != nil {
 		return addr.Undef, addr.Undef, err
 	}
@@ -631,7 +636,7 @@ func (v *View) loadInitActor(ctx context.Context) (*notinit.State, error) {
 		return nil, err
 	}
 	var state notinit.State
-	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
+	err = v.ipldStore.Get(ctx, actr.Head, &state)
 	return &state, err
 }
 
@@ -645,7 +650,7 @@ func (v *View) loadMinerActor(ctx context.Context, address addr.Address) (*miner
 		return nil, err
 	}
 	var state miner.State
-	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
+	err = v.ipldStore.Get(ctx, actr.Head, &state)
 	return &state, err
 }
 
@@ -655,7 +660,7 @@ func (v *View) loadPowerActor(ctx context.Context) (*power.State, error) {
 		return nil, err
 	}
 	var state power.State
-	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
+	err = v.ipldStore.Get(ctx, actr.Head, &state)
 	return &state, err
 }
 
@@ -665,7 +670,7 @@ func (v *View) loadMarketActor(ctx context.Context) (*market.State, error) {
 		return nil, err
 	}
 	var state market.State
-	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
+	err = v.ipldStore.Get(ctx, actr.Head, &state)
 	return &state, err
 }
 
@@ -679,7 +684,7 @@ func (v *View) loadAccountActor(ctx context.Context, a addr.Address) (*account.S
 		return nil, err
 	}
 	var state account.State
-	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
+	err = v.ipldStore.Get(ctx, actr.Head, &state)
 	return &state, err
 }
 
@@ -716,6 +721,90 @@ func (v *View) asDealStateArray(ctx context.Context, root cid.Cid) (*market.Deal
 
 func (v *View) asBalanceTable(ctx context.Context, root cid.Cid) (*adt.BalanceTable, error) {
 	return adt.AsBalanceTable(v.adtStore(ctx), root)
+}
+
+func (v *View) StateMinerProvingDeadline(ctx context.Context, addr addr.Address, ts block.TipSet) (*dline.Info, error) {
+	mas, err := v.loadMinerActor(ctx, addr)
+	if err != nil {
+		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
+	}
+	height, _ := ts.Height()
+	return mas.DeadlineInfo(height).NextNotElapsed(), nil
+}
+
+func (v *View) StateMinerPartitions(ctx context.Context, addr addr.Address, dlIdx uint64, key block.TipSetKey) ([]*miner.Partition, error) {
+	mas, err := v.loadMinerActor(ctx, addr)
+	if err != nil {
+		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
+	}
+
+	adtStore := v.adtStore(ctx)
+	dealLines, err := mas.LoadDeadlines(adtStore)
+	if err != nil {
+		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
+	}
+	dealLine, err := dealLines.LoadDeadline(adtStore, dlIdx)
+	if err != nil {
+		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
+	}
+	partitionsArr, err := dealLine.PartitionsArray(adtStore)
+	if err != nil {
+		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
+	}
+	var partitions []*miner.Partition
+	var partition miner.Partition
+	err = partitionsArr.ForEach(&partition, func(i int64) error {
+		partitionCopy := partition
+		partitions = append(partitions, &partitionCopy)
+		return nil
+	})
+	if err != nil {
+		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
+	}
+	return partitions, nil
+}
+
+func (v *View) StateMinerSectors(ctx context.Context, addr addr.Address, filter *bitfield.BitField, filterOut bool, key block.TipSetKey) ([]*api.ChainSectorInfo, error) {
+	mas, err := v.loadMinerActor(ctx, addr)
+	if err != nil {
+		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
+	}
+	return LoadSectorsFromSet(v.adtStore(ctx), mas.Sectors, filter, filterOut)
+}
+
+func LoadSectorsFromSet(adtStore adt.Store, ssc cid.Cid, filter *bitfield.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {
+	a, err := adt.AsArray(adtStore, ssc)
+	if err != nil {
+		return nil, err
+	}
+
+	var sset []*api.ChainSectorInfo
+	var v cbg.Deferred
+	if err := a.ForEach(&v, func(i int64) error {
+		if filter != nil {
+			set, err := filter.IsSet(uint64(i))
+			if err != nil {
+				return xerrors.Errorf("filter check error: %w", err)
+			}
+			if set == filterOut {
+				return nil
+			}
+		}
+
+		var oci miner.SectorOnChainInfo
+		if err := cbor.DecodeInto(v.Raw, &oci); err != nil {
+			return err
+		}
+		sset = append(sset, &api.ChainSectorInfo{
+			Info: oci,
+			ID:   abi.SectorNumber(i),
+		})
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return sset, nil
 }
 
 // StoreFromCbor wraps a cbor ipldStore for ADT access.

@@ -14,7 +14,7 @@ type actorStateHandle struct {
 	//
 	// Any validation failure will result in the execution getting aborted.
 	validations []validateFn
-	// used_objs holds the pointers to objs that have been used with this handle and their expected state cid.
+	// used_objs holds the pointers to objs that have been used with this handle and their expected stateView cid.
 	usedObjs map[interface{}]cid.Cid
 }
 
@@ -47,7 +47,7 @@ func newActorStateHandle(ctx actorStateHandleContext) actorStateHandle {
 var _ specsruntime.StateHandle = (*actorStateHandle)(nil)
 
 func (h *actorStateHandle) StateCreate(obj cbor.Marshaler) {
-	// Store the new state.
+	// Store the new stateView.
 	c := h.ctx.Create(obj)
 	// Store the expected CID of obj.
 	h.usedObjs[obj] = c
@@ -55,9 +55,9 @@ func (h *actorStateHandle) StateCreate(obj cbor.Marshaler) {
 
 // Readonly is the implementation of the ActorStateHandle interface.
 func (h *actorStateHandle) StateReadonly(obj cbor.Unmarshaler) {
-	// Load state to obj.
+	// Load stateView to obj.
 	c := h.ctx.Load(obj)
-	// Track the state and expected CID used by the caller.
+	// Track the stateView and expected CID used by the caller.
 	h.usedObjs[obj] = c
 }
 
@@ -67,7 +67,7 @@ func (h *actorStateHandle) StateTransaction(obj cbor.Er, f func()) {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil to Transaction()")
 	}
 
-	// Load state to obj.
+	// Load stateView to obj.
 	prior := h.ctx.Load(obj)
 
 	// Call user code allowing mutation but not side-effects
@@ -75,14 +75,14 @@ func (h *actorStateHandle) StateTransaction(obj cbor.Er, f func()) {
 	f()
 	h.ctx.AllowSideEffects(true)
 
-	// Store the new state
+	// Store the new stateView
 	newCid := h.ctx.Replace(prior, obj)
 
-	// Record the expected state of obj
+	// Record the expected stateView of obj
 	h.usedObjs[obj] = newCid
 }
 
-// Validate validates that the state was mutated properly.
+// Validate validates that the stateView was mutated properly.
 //
 // This method is not part of the public API,
 // it is expected to be called by the runtime after each actor method.

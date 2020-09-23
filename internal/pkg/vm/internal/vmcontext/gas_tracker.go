@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
-// GasTracker maintains the state of gas usage throughout the execution of a message.
+// GasTracker maintains the stateView of gas usage throughout the execution of a message.
 type GasTracker struct {
 	gasLimit    gas.Unit
 	gasConsumed gas.Unit

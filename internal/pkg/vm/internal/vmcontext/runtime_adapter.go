@@ -51,7 +51,7 @@ func newRuntimeAdapter(ctx *invocationContext) *runtimeAdapter {
 		gasTank:   ctx.gasTank,
 		pricelist: ctx.rt.pricelist,
 		head:      ctx.rt.currentHead,
-		state:     ctx.rt.stateView(),
+		stateView: ctx.rt.stateView(),
 	}}
 }
 
@@ -71,7 +71,7 @@ func (a *runtimeAdapter) StateCreate(obj cbor.Marshaler) {
 	c := a.StorePut(obj)
 	err := a.stateCommit(EmptyObjectCid, c)
 	if err != nil {
-		panic(fmt.Errorf("failed to commit state after creating object: %w", err))
+		panic(fmt.Errorf("failed to commit stateView after creating object: %w", err))
 	}
 }
 
@@ -80,7 +80,7 @@ func (a *runtimeAdapter) stateCommit(oldh, newh cid.Cid) error {
 	// TODO: we can make this more efficient in the future...
 	act, found, err := a.ctx.rt.state.GetActor(a.Context(), a.Receiver())
 	if !found || err != nil {
-		return xerrors.Errorf("failed to get actor to commit state, %s", err)
+		return xerrors.Errorf("failed to get actor to commit stateView, %s", err)
 	}
 
 	if act.Head != oldh {
@@ -89,7 +89,7 @@ func (a *runtimeAdapter) stateCommit(oldh, newh cid.Cid) error {
 
 	act.Head = newh
 	if err := a.ctx.rt.state.SetActor(a.Context(), a.Receiver(), act); err != nil {
-		return xerrors.Errorf("failed to set actor in commit state, %s", err)
+		return xerrors.Errorf("failed to set actor in commit stateView, %s", err)
 	}
 
 	return nil
@@ -98,7 +98,7 @@ func (a *runtimeAdapter) stateCommit(oldh, newh cid.Cid) error {
 func (a *runtimeAdapter) StateReadonly(obj cbor.Unmarshaler) {
 	act, found, err := a.ctx.rt.state.GetActor(a.Context(), a.Receiver())
 	if !found || err != nil {
-		a.Abortf(exitcode.SysErrorIllegalArgument, "failed to get actor for Readonly state: %s", err)
+		a.Abortf(exitcode.SysErrorIllegalArgument, "failed to get actor for Readonly stateView: %s", err)
 	}
 	a.StoreGet(act.Head, obj)
 }
@@ -123,7 +123,7 @@ func (a *runtimeAdapter) StateTransaction(obj cbor.Er, f func()) {
 
 	err = a.stateCommit(baseState, c)
 	if err != nil {
-		panic(fmt.Errorf("failed to commit state after transaction: %w", err))
+		panic(fmt.Errorf("failed to commit stateView after transaction: %w", err))
 	}
 }
 
@@ -136,7 +136,7 @@ func (a *runtimeAdapter) StorePut(x cbor.Marshaler) cid.Cid {
 }
 
 func (a *runtimeAdapter) NetworkVersion() network.Version {
-	return a.state.GetNtwkVersion(a.Context(), a.CurrEpoch())
+	return a.stateView.GetNtwkVersion(a.Context(), a.CurrEpoch())
 }
 
 func (a *runtimeAdapter) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
@@ -249,7 +249,7 @@ func (a *runtimeAdapter) DeleteActor(beneficiary address.Address) {
 }
 
 func (a *runtimeAdapter) TotalFilCircSupply() abi.TokenAmount {
-	circSupply, err := a.state.TotalFilCircSupply(a.CurrEpoch(), a.ctx.rt.state)
+	circSupply, err := a.stateView.TotalFilCircSupply(a.CurrEpoch(), a.ctx.rt.state)
 	if err != nil {
 		runtime.Abortf(exitcode.ErrIllegalState, "failed to get total circ supply: %s", err)
 	}

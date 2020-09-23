@@ -75,8 +75,8 @@ func (shc *stateHandleContext) AllowSideEffects(allow bool) {
 
 func (shc *stateHandleContext) Create(obj cbor.Marshaler) cid.Cid {
 	actr := shc.loadActor()
-	if actr.Head.Cid.Defined() {
-		runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to construct actor state: already initialized")
+	if actr.Head.Defined() {
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to construct actor stateView: already initialized")
 	}
 	c := shc.store().StorePut(obj)
 	actr.Head = c
@@ -85,16 +85,16 @@ func (shc *stateHandleContext) Create(obj cbor.Marshaler) cid.Cid {
 }
 
 func (shc *stateHandleContext) Load(obj cbor.Unmarshaler) cid.Cid {
-	// The actor must be loaded from store every time since the state may have changed via a different state handle
+	// The actor must be loaded from store every time since the stateView may have changed via a different stateView handle
 	// (e.g. in a recursive call).
 	actr := shc.loadActor()
 	c := actr.Head
 	if !c.Defined() {
-		runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to load undefined state, must construct first")
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to load undefined stateView, must construct first")
 	}
 	found := shc.store().StoreGet(c, obj)
 	if !found {
-		panic(fmt.Errorf("failed to load state for actor %s, CID %s", shc.msg.to, c))
+		panic(fmt.Errorf("failed to load stateView for actor %s, CID %s", shc.msg.to, c))
 	}
 	return c
 }
@@ -102,7 +102,7 @@ func (shc *stateHandleContext) Load(obj cbor.Unmarshaler) cid.Cid {
 func (shc *stateHandleContext) Replace(expected cid.Cid, obj cbor.Marshaler) cid.Cid {
 	actr := shc.loadActor()
 	if !actr.Head.Equals(expected) {
-		panic(fmt.Errorf("unexpected prior state %s for actor %s, expected %s", actr.Head, shc.msg.to, expected))
+		panic(fmt.Errorf("unexpected prior stateView %s for actor %s, expected %s", actr.Head, shc.msg.to, expected))
 	}
 	c := shc.store().StorePut(obj)
 	actr.Head = c
@@ -120,7 +120,7 @@ func (shc *stateHandleContext) loadActor() *actor.Actor {
 		panic(err)
 	}
 	if !found {
-		panic(fmt.Errorf("failed to find actor %s for state", shc.msg.to))
+		panic(fmt.Errorf("failed to find actor %s for stateView", shc.msg.to))
 	}
 	return entry
 }
@@ -134,14 +134,14 @@ func (shc *stateHandleContext) storeActor(actr *actor.Actor) {
 
 // runtime aborts are trapped by invoke, it will always return an exit code.
 func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.ExitCode) {
-	// Checkpoint state, for restoration on revert
+	// Checkpoint stateView, for restoration on revert
 	// Note that changes prior to invocation (sequence number bump and gas prepayment) persist even if invocation fails.
 	err := ctx.rt.snapshot()
 	if err != nil {
 		panic(err)
 	}
 
-	// Install handler for abort, which rolls back all state changes from this and any nested invocations.
+	// Install handler for abort, which rolls back all stateView changes from this and any nested invocations.
 	// This is the only path by which a non-OK exit code may be returned.
 	defer func() {
 		if r := recover(); r != nil {
@@ -177,7 +177,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 	// 3. transfer optional funds
 	// 4. short-circuit _Send_ method
 	// 5. load target actor code
-	// 6. create target state handle
+	// 6. create target stateView handle
 	// assert from address is an ID address.
 	if ctx.msg.from.Protocol() != address.ID {
 		panic("bad code: sender address MUST be an ID address at invocation time")
@@ -210,7 +210,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 
 	// 5. load target actor code
 	actorImpl := ctx.rt.getActorImpl(ctx.toActor.Code)
-	// 6. create target state handle
+	// 6. create target stateView handle
 	stateHandle := newActorStateHandle((*stateHandleContext)(ctx))
 	ctx.stateHandle = &stateHandle
 
@@ -235,7 +235,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 
 	// post-dispatch
 	// 1. check caller was validated
-	// 2. check state manipulation was valid
+	// 2. check stateView manipulation was valid
 	// 4. success!
 
 	// 1. check caller was validated
@@ -243,7 +243,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Caller MUST be validated during method execution")
 	}
 
-	// 2. validate state access
+	// 2. validate stateView access
 	ctx.stateHandle.Validate(func(obj interface{}) cid.Cid {
 		id, err := ctx.rt.store.CidOf(obj)
 		if err != nil {
@@ -252,7 +252,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 		return id
 	})
 
-	// Reset to pre-invocation state
+	// Reset to pre-invocation stateView
 	ctx.toActor = nil
 	ctx.stateHandle = nil
 
@@ -266,7 +266,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 // a new account actor will be created.
 // Otherwise, this method will abort execution.
 func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Actor, address.Address) {
-	// resolve the target address via the InitActor, and attempt to load state.
+	// resolve the target address via the InitActor, and attempt to load stateView.
 	initActorEntry, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.InitActorAddr)
 	if err != nil {
 		panic(err)
@@ -279,7 +279,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 		return initActorEntry, target
 	}
 
-	// get a view into the actor state
+	// get a view into the actor stateView
 	var state init_.State
 	if _, err := ctx.rt.store.Get(ctx.rt.context, initActorEntry.Head.Cid, &state); err != nil {
 		panic(err)
@@ -302,7 +302,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 		if err != nil {
 			panic(err)
 		}
-		// store new state
+		// store new stateView
 		initHead, _, err := ctx.rt.store.Put(ctx.rt.context, &state)
 		if err != nil {
 			panic(err)

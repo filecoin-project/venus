@@ -37,7 +37,10 @@ import (
 
 var vmlog = logging.Logger("vm.context")
 
-// VM holds the state and executes messages over the state.
+type CircSupplyCalculator func(context.Context, abi.ChainEpoch, state.Tree) (abi.TokenAmount, error)
+type NtwkVersionGetter func(context.Context, abi.ChainEpoch) network.Version
+
+// VM holds the stateView and executes messages over the stateView.
 type VM struct {
 	context      context.Context
 	actorImpls   ActorImplLookup
@@ -47,7 +50,11 @@ type VM struct {
 	currentHead  block.TipSetKey
 	currentEpoch abi.ChainEpoch
 	pricelist    gascost.Pricelist
-	baseFee      abi.TokenAmount
+
+	circSupplyCalc CircSupplyCalculator
+	ntwkVersion    NtwkVersionGetter
+	rnd            crypto.RandomnessSource
+	baseFee        abi.TokenAmount
 }
 
 // ActorImplLookup provides access to upgradeable actor code.
@@ -69,14 +76,25 @@ type internalMessage struct {
 
 // NewVM creates a new runtime for executing messages.
 // Dragons: change to take a root and the store, build the tree internally
-func NewVM(actorImpls ActorImplLookup, baseFee abi.TokenAmount, store *storage.VMStorage, st state.Tree, syscalls SyscallsImpl) VM {
+func NewVM(actorImpls ActorImplLookup,
+	store *storage.VMStorage,
+	st state.Tree,
+	syscalls SyscallsImpl,
+	baseFee abi.TokenAmount,
+	ntwkVersion NtwkVersionGetter,
+	circSupplyCalc CircSupplyCalculator,
+	rnd crypto.RandomnessSource,
+) VM {
 	return VM{
-		context:    context.Background(),
-		actorImpls: actorImpls,
-		store:      store,
-		state:      st,
-		syscalls:   syscalls,
-		baseFee:    baseFee,
+		context:        context.Background(),
+		actorImpls:     actorImpls,
+		store:          store,
+		state:          st,
+		syscalls:       syscalls,
+		baseFee:        baseFee,
+		ntwkVersion:    ntwkVersion,
+		circSupplyCalc: circSupplyCalc,
+		rnd:            rnd,
 		// loaded during execution
 		// currentEpoch: ..,
 	}
@@ -85,7 +103,7 @@ func NewVM(actorImpls ActorImplLookup, baseFee abi.TokenAmount, store *storage.V
 // ApplyGenesisMessage forces the execution of a message in the vm actor.
 //
 // This method is intended to be used in the generation of the genesis block only.
-func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}, rnd crypto.RandomnessSource) (interface{}, error) {
+func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}, rnd crypto.RandomnessSource) (cbor.Marshaler, error) {
 	vm.pricelist = gascost.PricelistByEpoch(vm.currentEpoch)
 
 	// normalize from addr
@@ -103,7 +121,7 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 		params: params,
 	}
 
-	ret, err := vm.applyImplicitMessage(imsg, rnd)
+	ret, err := vm.applyImplicitMessage(imsg)
 	if err != nil {
 		return ret, err
 	}
@@ -143,7 +161,7 @@ func (vm *VM) commit() (state.Root, error) {
 
 // ContextStore provides access to specs-actors adt library.
 //
-// This type of store is used to access some internal actor state.
+// This type of store is used to access some internal actor stateView.
 func (vm *VM) ContextStore() adt.Store {
 	return &contextStore{context: vm.context, store: vm.store}
 }
@@ -154,7 +172,7 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 		return addr, true
 	}
 
-	// resolve the target address via the InitActor, and attempt to load state.
+	// resolve the target address via the InitActor, and attempt to load stateView.
 	initActorEntry, found, err := vm.state.GetActor(vm.context, builtin.InitActorAddr)
 	if err != nil {
 		panic(errors.Wrapf(err, "failed to load init actor"))
@@ -163,9 +181,9 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 		panic(errors.Wrapf(err, "no init actor"))
 	}
 
-	// get a view into the actor state
+	// get a view into the actor stateView
 	var state init_.State
-	if _, err := vm.store.Get(vm.context, initActorEntry.Head.Cid, &state); err != nil {
+	if _, err := vm.store.Get(vm.context, initActorEntry.Head, &state); err != nil {
 		panic(err)
 	}
 
@@ -180,7 +198,7 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 }
 
 func (vm *VM) stateView() SyscallsStateView {
-	// The state tree's root is not committed until the end of a tipset, so we can't use the external state view
+	// The stateView tree's root is not committed until the end of a tipset, so we can't use the external stateView view
 	// type for this implementation.
 	// Maybe we could re-work it to use a root HAMT node rather than root CID.
 	return &syscallsStateView{vm}
@@ -200,16 +218,16 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 	vm.pricelist = gascost.PricelistByEpoch(epoch)
 
 	for i := parentEpoch; i < epoch; i++ {
-		// handle state forks    todo add by force fork
+		// handle stateView forks    todo add by force fork
 		/*		err = sm.handleStateForks(ctx, vmi.StateTree(), i, ts)
 				if err != nil {
-					return cid.Undef, cid.Undef, xerrors.Errorf("error handling state forks: %w", err)
+					return cid.Undef, cid.Undef, xerrors.Errorf("error handling stateView forks: %w", err)
 				}*/
 
 		if i > parentEpoch {
 			// run cron for null rounds if any
 			cronMessage := makeCronTickMessage()
-			if _, err := vm.applyImplicitMessage(cronMessage, rnd); err != nil {
+			if _, err := vm.applyImplicitMessage(cronMessage); err != nil {
 				return nil, err
 			}
 		}
@@ -240,7 +258,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 			}
 
 			// apply message
-			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(m, m.OnChainLen(), rnd)
+			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(m, m.OnChainLen())
 
 			// accumulate result
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)
@@ -264,7 +282,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 
 			// apply message
 			// Note: the on-chain size for SECP messages is different
-			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(&m, sm.OnChainLen(), rnd)
+			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(&m, sm.OnChainLen())
 
 			// accumulate result
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)
@@ -278,18 +296,18 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 		// Pay block reward.
 		// Dragons: missing final protocol design on if/how to determine the nominal power
 		rewardMessage := makeBlockRewardMessage(blk.Miner, minerPenaltyTotal, minerGasRewardTotal, 1)
-		if _, err := vm.applyImplicitMessage(rewardMessage, rnd); err != nil {
+		if _, err := vm.applyImplicitMessage(rewardMessage); err != nil {
 			return nil, err
 		}
 	}
 
 	// cron tick
 	cronMessage := makeCronTickMessage()
-	if _, err := vm.applyImplicitMessage(cronMessage, rnd); err != nil {
+	if _, err := vm.applyImplicitMessage(cronMessage); err != nil {
 		return nil, err
 	}
 
-	// commit state
+	// commit stateView
 	if _, err := vm.commit(); err != nil {
 		return nil, err
 	}
@@ -300,7 +318,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 // applyImplicitMessage applies messages automatically generated by the vm itself.
 //
 // This messages do not consume client gas and must not fail.
-func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSource) (cbor.Marshaler, error) {
+func (vm *VM) applyImplicitMessage(imsg internalMessage) (cbor.Marshaler, error) {
 	// implicit messages gas is tracked separatly and not paid by the miner
 	gasTank := NewGasTracker(gas.SystemGasLimit)
 
@@ -325,21 +343,21 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 	// singleton non-account actors. Singleton addresses are reorg-proof so ok to use here.
 	var originator address.Address
 	if originatorIsAccount {
-		// Load sender account state to obtain stable pubkey address.
+		// Load sender account stateView to obtain stable pubkey address.
 		var senderState account.State
-		_, err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
+		_, err = vm.store.Get(vm.context, fromActor.Head, &senderState)
 		if err != nil {
 			panic(err)
 		}
 		originator = senderState.Address
-	} else if builtin.IsBuiltinActor(fromActor.Code.Cid) {
+	} else if builtin.IsBuiltinActor(fromActor.Code) {
 		originator = imsg.from // Cannot resolve non-account actor to pubkey addresses.
 	} else {
-		panic(fmt.Sprintf("implicit message from non-account or -singleton actor code %s", fromActor.Code.Cid))
+		panic(fmt.Sprintf("implicit message from non-account or -singleton actor code %s", fromActor.Code))
 	}
 
 	// 2. increment seq number (only for account actors).
-	// The account actor distinction only makes a difference for genesis state construction via messages, where
+	// The account actor distinction only makes a difference for genesis stateView construction via messages, where
 	// some messages are sent from non-account actors (e.g. fund transfers from the reward actor).
 	if originatorIsAccount {
 		fromActor.IncrementSeqNum()
@@ -355,7 +373,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 		newActorAddressCount:    0,
 	}
 
-	ctx := newInvocationContext(vm, &topLevel, imsg, fromActor, &gasTank, rnd)
+	ctx := newInvocationContext(vm, &topLevel, imsg, fromActor, &gasTank, vm.rnd)
 
 	// 4. invoke message
 	ret, code := ctx.invoke()
@@ -366,8 +384,8 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage, rnd crypto.RandomnessSo
 	return ret.inner, nil
 }
 
-// applyMessage applies the message to the current state.
-func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd crypto.RandomnessSource) (message.Receipt, minerPenaltyFIL, gasRewardFIL) {
+// applyMessage applies the message to the current stateView.
+func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (message.Receipt, minerPenaltyFIL, gasRewardFIL) {
 	// This method does not actually execute the message itself,
 	// but rather deals with the pre/post processing of a message.
 	// (see: `invocationContext.invoke()` for the dispatch and execution)
@@ -382,7 +400,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 	// 4. check if _sender_ has enough funds
 	// 5. increment message seq number
 	// 6. withheld maximum gas from _sender_
-	// 7. snapshot state
+	// 7. snapshot stateView
 
 	// 1. charge for bytes used in chain
 	msgGasCost := vm.pricelist.OnChainMessage(onChainMsgSize) //todo get price list by height
@@ -394,7 +412,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 		return message.Failure(exitcode.SysErrOutOfGas, gas.Zero), minerPenaltyAmount, big.Zero()
 	}
 	minerPenaltyAmount := big.Mul(vm.baseFee, msg.GasLimit.AsBigInt())
-	// 2. load actor from global state
+	// 2. load actor from global stateView
 	if msg.From, ok = vm.normalizeAddress(msg.From); !ok {
 		return message.Failure(exitcode.SysErrSenderInvalid, gas.Zero), minerPenaltyAmount, big.Zero()
 	}
@@ -448,14 +466,14 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 		panic("unreachable: actor cannot possibly not exist")
 	}
 
-	// Load sender account state to obtain stable pubkey address.
+	// Load sender account stateView to obtain stable pubkey address.
 	var senderState account.State
-	_, err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
+	_, err = vm.store.Get(vm.context, fromActor.Head, &senderState)
 	if err != nil {
 		panic(err)
 	}
 
-	// 7. snapshot state
+	// 7. snapshot stateView
 	// Even if the message fails, the following accumulated changes will be applied:
 	// - CallSeqNumber increment
 	// - sender balance withheld
@@ -486,7 +504,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 	}
 
 	// 2. build invocation context
-	ctx := newInvocationContext(vm, &topLevel, imsg, fromActor, &gasTank, rnd)
+	ctx := newInvocationContext(vm, &topLevel, imsg, fromActor, &gasTank, vm.rnd)
 
 	// 3. invoke
 	ret, code := ctx.invoke()
@@ -518,7 +536,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int, rnd c
 		receipt.ReturnValue = []byte{}
 	}
 
-	// Roll back all state if the receipt's exit code is not ok.
+	// Roll back all stateView if the receipt's exit code is not ok.
 	// This is required in addition to revert within the invocation context since top level messages can fail for
 	// more reasons than internal ones. Invocation context still needs its own revert so actors can recover and
 	// proceed from a nested call failure.
@@ -702,7 +720,7 @@ func (msg internalMessage) Receiver() address.Address {
 }
 
 //
-// implement syscalls state view
+// implement syscalls stateView view
 //
 
 type syscallsStateView struct {
@@ -722,9 +740,9 @@ func (vm *syscallsStateView) AccountSignerAddress(ctx context.Context, accountAd
 		return address.Undef, fmt.Errorf("signer resolution found no such actor %s", accountAddr)
 	}
 	var state account.State
-	if _, err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
+	if _, err := vm.store.Get(vm.context, actor.Head, &state); err != nil {
 		// This error is internal, shouldn't propagate as on-chain failure
-		panic(fmt.Errorf("signer resolution failed to lost state for %s ", accountAddr))
+		panic(fmt.Errorf("signer resolution failed to lost stateView for %s ", accountAddr))
 	}
 	return state.Address, nil
 }
@@ -738,9 +756,9 @@ func (vm *syscallsStateView) MinerControlAddresses(ctx context.Context, maddr ad
 		return address.Undef, address.Undef, fmt.Errorf("miner resolution found no such actor %s", maddr)
 	}
 	var state miner.State
-	if _, err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
+	if _, err := vm.store.Get(vm.context, actor.Head, &state); err != nil {
 		// This error is internal, shouldn't propagate as on-chain failure
-		panic(fmt.Errorf("signer resolution failed to lost state for %s ", maddr))
+		panic(fmt.Errorf("signer resolution failed to lost stateView for %s ", maddr))
 	}
 	minerInfo, err := state.GetInfo(vm.ContextStore())
 	if err != nil {
@@ -755,7 +773,7 @@ func (vm *syscallsStateView) GetNtwkVersion(ctx context.Context, ce abi.ChainEpo
 }
 
 func (vm *syscallsStateView) TotalFilCircSupply(height abi.ChainEpoch, st state.Tree) (abi.TokenAmount, error) {
-	return abi.TokenAmount{} //todo add by force
+	return abi.TokenAmount{}, nil //todo add by force
 }
 
 //
