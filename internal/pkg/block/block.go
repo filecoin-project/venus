@@ -178,6 +178,7 @@ func (b *Block) SignatureData() []byte {
 		Timestamp:       b.Timestamp,
 		BLSAggregateSig: b.BLSAggregateSig,
 		ForkSignaling:   b.ForkSignaling,
+		ParentBaseFee:   b.ParentBaseFee,
 		// BlockSig omitted
 	}
 
