@@ -14,12 +14,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 )
 
-type DrandConfig struct {
-	Servers       []string
-	Relays        []string
-	ChainInfoJSON string
-}
-
 var log = logging.Logger("drand")
 
 // Address points to a drand server

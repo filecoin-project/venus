@@ -12,7 +12,7 @@ type TestElectionPoster struct{}
 //}
 //
 //// GenerateWinningPoStSectorChallenge determines the challenges used to create a winning PoSt.
-//func (ep *TestElectionPoster) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
+//func (ep *TestElectionPoster) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredSealProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
 //	return nil, nil
 //}
 //

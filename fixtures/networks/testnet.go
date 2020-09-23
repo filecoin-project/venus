@@ -2,6 +2,7 @@ package networks
 
 import (
 	"encoding/base64"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -59,7 +60,7 @@ func Testnet() *NetworkConf {
 			MinPeerThreshold: 1,
 			Period:           "10s",
 		},
-		Drand: config.DrandConfig{
+		Drand: drand.DrandConfig{
 			Addresses: []string{
 				"gabbi.drand.fil-test.net:443",
 				"linus.drand.fil-test.net:443",

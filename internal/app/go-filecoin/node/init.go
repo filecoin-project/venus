@@ -293,7 +293,7 @@ func createGenesisFSMState(ctx context.Context, rep repo.Repo, genesisBlock *blo
 	// sector and deal metadata.
 	var out []fsm.SectorInfo
 
-	err = view.MinerSectorsForEach(ctx, maddr, func(sectorNumber abi.SectorNumber, sealedCID cid.Cid, proofType abi.RegisteredProof, dealIDs []abi.DealID) error {
+	err = view.MinerSectorsForEach(ctx, maddr, func(sectorNumber abi.SectorNumber, sealedCID cid.Cid, proofType abi.RegisteredSealProof, dealIDs []abi.DealID) error {
 		pieces := make([]fsm.Piece, len(dealIDs))
 		for idx := range dealIDs {
 			deal, err := view.MarketDealProposal(ctx, dealIDs[idx])

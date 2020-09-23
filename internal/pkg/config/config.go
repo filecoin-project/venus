@@ -21,7 +21,6 @@ type Config struct {
 	API           *APIConfig           `json:"api"`
 	Bootstrap     *BootstrapConfig     `json:"bootstrap"`
 	Datastore     *DatastoreConfig     `json:"datastore"`
-	Drand         *DrandConfig         `json:"drand"`
 	Mining        *MiningConfig        `json:"mining"`
 	Mpool         *MessagePoolConfig   `json:"mpool"`
 	NetworkParams *NetworkParamsConfig `json:"parameters"`
@@ -131,30 +130,8 @@ func newDefaultWalletConfig() *WalletConfig {
 
 // DrandConfig holds all configuration options related to pulling randomness from Drand servers
 type DrandConfig struct {
-	// Addresses are are drand server addresses in the format
-	Addresses []string `json:"addresses"`
-	// Secure is whether or not the drand address are secure (e.g. TLS)
-	Secure bool `json:"secure"`
-	// DistKey is the distributed public key of the server group expressed as hex encoded coefficients
-	DistKey       [][]byte `json:"distKey"`
 	StartTimeUnix int64    `json:"startTimeUnix"`
 	RoundSeconds  int      `json:"roundSeconds"`
-}
-
-func newDefaultDrandConfig() *DrandConfig {
-	return &DrandConfig{
-		Addresses: []string{
-			"localhost:8080",
-			"localhost:8081",
-			"localhost:8082",
-			"localhost:8083",
-			"localhost:8084",
-		},
-		Secure:        false,
-		DistKey:       [][]byte{},
-		StartTimeUnix: 0,
-		RoundSeconds:  30,
-	}
 }
 
 // HeartbeatConfig holds all configuration options related to node heartbeat.
@@ -280,7 +257,6 @@ func NewDefaultConfig() *Config {
 		API:           newDefaultAPIConfig(),
 		Bootstrap:     newDefaultBootstrapConfig(),
 		Datastore:     newDefaultDatastoreConfig(),
-		Drand:         newDefaultDrandConfig(),
 		Mining:        newDefaultMiningConfig(),
 		Mpool:         newDefaultMessagePoolConfig(),
 		NetworkParams: newDefaultNetworkParamsConfig(),

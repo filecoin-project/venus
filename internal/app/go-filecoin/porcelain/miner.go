@@ -55,7 +55,7 @@ func MinerCreate(
 	minerOwnerAddr address.Address,
 	gasPrice types.AttoFIL,
 	gasLimit gas.Unit,
-	sealProofType abi.RegisteredProof,
+	sealProofType abi.RegisteredSealProof,
 	pid peer.ID,
 	collateral types.AttoFIL,
 ) (_ address.Address, err error) {
@@ -186,7 +186,7 @@ type MinerStatus struct {
 	WorkerAddress address.Address
 	PeerID        peer.ID
 
-	SealProofType              abi.RegisteredProof
+	SealProofType              abi.RegisteredSealProof
 	SectorSize                 abi.SectorSize
 	WindowPoStPartitionSectors uint64
 	SectorCount                uint64

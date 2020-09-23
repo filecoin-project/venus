@@ -68,7 +68,7 @@ func (a *API) MinerCreate(
 	accountAddr address.Address,
 	gasPrice types.AttoFIL,
 	gasLimit gas.Unit,
-	sealProofType abi.RegisteredProof,
+	sealProofType abi.RegisteredSealProof,
 	pid peer.ID,
 	collateral types.AttoFIL,
 ) (_ address.Address, err error) {
