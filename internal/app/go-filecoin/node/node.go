@@ -3,6 +3,13 @@ package node
 import (
 	"context"
 	"fmt"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	retmkt "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/retrieval_market"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-multistore"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-datastore"
 	"reflect"
 	"runtime"
 
@@ -417,8 +424,7 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 		node.Wallet.Signer,
 		node.Host(),
 		node.Repo.Datastore(),
-		node.Blockstore.Blockstore,
-		node.network.GraphExchange,
+		node.Repo.MultiStore(),
 		repoPath,
 		sealProofType,
 		stateViewer,
@@ -444,12 +450,14 @@ func (node *Node) setupRetrievalMining(ctx context.Context) error {
 	rp, err := submodule.NewRetrievalProtocolSubmodule(
 		node.Blockstore.Blockstore,
 		node.Repo.Datastore(),
+		node.Repo.MultiStore(),
 		node.chain.State,
 		node.Host(),
 		providerAddr,
 		node.Wallet.Signer,
 		paychMgr,
 		node.PieceManager(),
+		node.network.DataTransfer,
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed to build node.RetrievalProtocol")

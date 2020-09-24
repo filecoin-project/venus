@@ -319,7 +319,8 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.Host(),
 		nd.Repo.Datastore(),
 		nd.Blockstore.Blockstore,
-		nd.network.GraphExchange,
+		nd.Repo.MultiStore(),
+		nd.network.DataTransfer,
 		state.NewViewer(nd.Blockstore.CborStore),
 	)
 	if err != nil {
