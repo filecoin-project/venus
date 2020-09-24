@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	specsbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -18,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+	// "github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -125,8 +124,8 @@ func TestChainSyncWithMessages(t *testing.T) {
 		WithBuilderOpt(ChainClockConfigOption(c)).
 		WithGenesisInit(cs.GenesisInitFunc).
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
-		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
-		WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
+		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof))
+		//WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
 	nodeSend := builder1.Build(ctx)
 	senderAddress := cs.GiveKey(t, nodeSend, 1)
 
@@ -135,8 +134,8 @@ func TestChainSyncWithMessages(t *testing.T) {
 		WithBuilderOpt(ChainClockConfigOption(c)).
 		WithGenesisInit(cs.GenesisInitFunc).
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
-		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
-		WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
+		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof))
+		//WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
 	nodeReceive := builder2.Build(ctx)
 	receiverAddress := cs.GiveKey(t, nodeReceive, 2)
 
@@ -146,8 +145,8 @@ func TestChainSyncWithMessages(t *testing.T) {
 		WithGenesisInit(cs.GenesisInitFunc).
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
 		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
-		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{})).
-		WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
+		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{}))
+		//WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
 	nodeMine := builder3.Build(ctx)
 	cs.GiveKey(t, nodeMine, 0)
 	cs.GiveMiner(t, nodeMine, 0)
@@ -163,8 +162,11 @@ func TestChainSyncWithMessages(t *testing.T) {
 	require.NoError(t, err)
 	receiverStart, err := nodeReceive.PorcelainAPI.WalletBalance(ctx, receiverAddress)
 	require.NoError(t, err)
-	gasPrice := types.NewGasPrice(1)
-	expGasCost := gas.NewGas(242).ToTokens(gasPrice) // DRAGONS -- this is brittle need a better way to predict this.
+	gasCap := types.NewGasFeeCap(1)
+	gasPremium := types.NewGasPremium(1)
+	// ToDo
+	// expGasCost := gas.NewGas(242).ToTokens(gasPrice) // DRAGONS -- this is brittle need a better way to predict this.
+	expGasCost := gas.NewGas(242).AsBigInt()
 
 	/* send message from SendNode */
 	sendVal := specsbig.NewInt(100)
@@ -173,10 +175,11 @@ func TestChainSyncWithMessages(t *testing.T) {
 		senderAddress,
 		receiverAddress,
 		sendVal,
-		gasPrice,
+		gasCap,
+		gasPremium,
 		gas.NewGas(1000),
 		builtin.MethodSend,
-		adt.Empty,
+		[]byte{},
 	)
 	require.NoError(t, err)
 	smsgs, err := nodeMine.PorcelainAPI.MessagePoolWait(ctx, 1)
@@ -223,7 +226,7 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
 		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{})).
 		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
-		WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime))).
+		//WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime))).
 		WithInitOpt(PeerKeyOpt(PeerKeys[0]))
 	minerNode := builder.Build(ctx)
 	seed.GiveKey(t, minerNode, 0)
@@ -240,8 +243,8 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 		WithBuilderOpt(ChainClockConfigOption(c)).
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
 		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{})).
-		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
-		WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
+		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof))
+		//WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
 
 	for i := 0; i < nodeLimit; i++ {
 		nodes = append(nodes, builder2.Build(ctx))

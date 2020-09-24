@@ -65,7 +65,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		inbox := handler.Inbox
 
 		// First, send a message and expect to find it in the message queue and pool.
-		mid1, donePub1, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasUnits, true, abi.MethodNum(9000001), adt.Empty)
+		mid1, donePub1, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasUnits, true, abi.MethodNum(9000001), []byte{})
 		require.NoError(t, err)
 		require.NotNil(t, donePub1)
 		require.Equal(t, 1, len(outbox.Queue().List(sender))) // Message is in the queue.
@@ -95,7 +95,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 
 		// Send another message from the same account.
 		// First, send a message and expect to find it in the message queue and pool.
-		mid2, donePub2, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasUnits, true, abi.MethodNum(9000002), adt.Empty)
+		mid2, donePub2, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasUnits, true, abi.MethodNum(9000002), []byte{})
 		// This case causes the nonce to be wrongly calculated, since the first, now-unmined message
 		// is not in the outbox, and actor state has not updated, but the message pool already has
 		// a message with the same nonce.

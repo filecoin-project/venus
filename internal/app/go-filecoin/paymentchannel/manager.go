@@ -55,9 +55,11 @@ type MsgWaiter interface {
 type MsgSender interface {
 	// Send posts a message to the chain
 	Send(ctx context.Context,
-		from, to address.Address,
+		from,
+		to address.Address,
 		value types.AttoFIL,
-		gasPrice types.AttoFIL,
+		baseFee types.AttoFIL,
+		gasPremium types.AttoFIL,
 		gasLimit gas.Unit,
 		bcast bool,
 		method abi.MethodNum,
@@ -146,6 +148,7 @@ func (pm *Manager) CreatePaymentChannel(client, miner address.Address, amt abi.T
 		builtin.InitActorAddr,
 		types.NewAttoFIL(amt.Int),
 		defaultGasPrice,
+		types.NewGasPremium(100),
 		defaultGasLimit,
 		true,
 		builtin.MethodsInit.Exec,
@@ -256,7 +259,7 @@ func (pm *Manager) AddFundsToChannel(paychAddr address.Address, amt abi.TokenAmo
 		return cid.Undef, err
 	}
 
-	mcid, _, err := pm.sender.Send(context.TODO(), chinfo.From, paychAddr, amt, defaultGasPrice, defaultGasLimit, true, builtin.MethodSend, nil)
+	mcid, _, err := pm.sender.Send(context.TODO(), chinfo.From, paychAddr, amt, defaultGasPrice,  types.NewGasPremium(100),defaultGasLimit, true, builtin.MethodSend, nil)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -395,6 +398,15 @@ func (pm *Manager) GetPaychWaitReady(ctx context.Context, mcid cid.Cid) (address
 }
 
 func (pm *Manager) AvailableFunds(ch address.Address) (*ChannelAvailableFunds, error) {
+	storedState := pm.paymentChannels.Get(ch)
+	if storedState == nil {
+		return nil, xerrors.New("no stored state")
+	}
+	var chinfo ChannelInfo
+	if err := storedState.Get(&chinfo); err != nil {
+		return nil, err
+	}
+
 	panic("not impl")
 }
 
