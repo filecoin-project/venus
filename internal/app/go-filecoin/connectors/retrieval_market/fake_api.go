@@ -2,6 +2,7 @@ package retrievalmarketconnector
 
 import (
 	"context"
+	"github.com/filecoin-project/go-state-types/abi"
 	"io"
 	"math/rand"
 	"os"
@@ -78,17 +79,17 @@ func (rmFake *RetrievalMarketClientFakeAPI) SignBytes(_ context.Context, _ []byt
 
 // UnsealSector mocks unsealing.  Assign a filename to ExpectedSectorIDs[sectorID] to
 // test
-func (rmFake *RetrievalMarketClientFakeAPI) UnsealSector(_ context.Context, sectorID uint64) (io.ReadCloser, error) {
+func (rmFake *RetrievalMarketClientFakeAPI) UnsealSector(_ context.Context, sectorID abi.SectorNumber) (io.ReadCloser, error) {
 	if rmFake.UnsealErr != nil {
 		return nil, rmFake.UnsealErr
 	}
-	name, ok := rmFake.ExpectedSectorIDs[sectorID]
+	name, ok := rmFake.ExpectedSectorIDs[uint64(sectorID)]
 	if !ok {
 		return nil, xerrors.New("RetrievalMarketClientFakeAPI: sectorID does not exist")
 	}
 	rc, err := os.OpenFile(name, os.O_RDONLY, 0500)
 	require.NoError(rmFake.t, err)
-	rmFake.ActualSectorIDs[sectorID] = true
+	rmFake.ActualSectorIDs[uint64(sectorID)] = true
 	return rc, nil
 }
 

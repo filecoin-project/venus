@@ -80,10 +80,10 @@ func TestRetrievalProviderConnector_UnsealSector(t *testing.T) {
 
 			if tc.expectedErr != "" {
 				rmp.UnsealErr = tc.unsealErr
-				_, err := rpc.UnsealSector(ctx, sectorID, tc.offset, tc.length)
+				_, err := rpc.UnsealSector(ctx, abi.SectorNumber(sectorID), abi.UnpaddedPieceSize(tc.offset), abi.UnpaddedPieceSize(tc.length))
 				assert.EqualError(t, err, tc.expectedErr)
 			} else {
-				res, err := rpc.UnsealSector(ctx, sectorID, tc.offset, tc.length)
+				res, err := rpc.UnsealSector(ctx, abi.SectorNumber(sectorID), abi.UnpaddedPieceSize(tc.offset), abi.UnpaddedPieceSize(tc.length))
 				require.NoError(t, err)
 				readBytes := make([]byte, tc.length+1)
 				readlen, err := res.Read(readBytes)

@@ -11,6 +11,7 @@ import (
 	paychActor "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	ma "github.com/multiformats/go-multiaddr"
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors"
@@ -75,9 +76,14 @@ func (r *RetrievalClientConnector) GetOrCreatePaymentChannel(ctx context.Context
 	return chinfo.UniqueAddr, mcid, err
 }
 
+// ToDo
+func (r *RetrievalClientConnector) CheckAvailableFunds(ctx context.Context, paymentChannel address.Address) (retrievalmarket.ChannelAvailableFunds, error) {
+	panic("implement me")
+}
+
 // AllocateLane creates a new lane for this paymentChannel with 0 FIL in the lane
 // Assumes AllocateLane is called after GetOrCreatePaymentChannel
-func (r *RetrievalClientConnector) AllocateLane(paymentChannel address.Address) (lane uint64, err error) {
+func (r *RetrievalClientConnector) AllocateLane(ctx context.Context, paymentChannel address.Address) (lane uint64, err error) {
 	return r.paychMgr.AllocateLane(paymentChannel)
 }
 
@@ -129,6 +135,11 @@ func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, pay
 	return &v, nil
 }
 
+// ToDo review
+func (r *RetrievalClientConnector) WaitForPaymentChannelReady(ctx context.Context, waitSentinel cid.Cid) (address.Address, error) {
+	return r.paychMgr.WaitForCreatePaychMessage(ctx, waitSentinel)
+}
+
 func (r *RetrievalClientConnector) WaitForPaymentChannelAddFunds(messageCID cid.Cid) error {
 	return r.paychMgr.WaitForAddFundsMessage(context.Background(), messageCID)
 }
@@ -170,4 +181,20 @@ func (r *RetrievalClientConnector) getTipSet(tok shared.TipSetToken) (block.TipS
 	}
 
 	return r.cs.GetTipSet(tsk)
+}
+
+// ToDo implement
+func (r *RetrievalClientConnector) GetKnownAddresses(ctx context.Context, p retrievalmarket.RetrievalPeer, tok shared.TipSetToken) ([]ma.Multiaddr, error) {
+	// get miner actor info
+
+	//multiaddrs := make([]ma.Multiaddr, 0, len(mi.Multiaddrs))
+	//for _, a := range mi.Multiaddrs {
+	//	maddr, err := ma.NewMultiaddrBytes(a)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	multiaddrs = append(multiaddrs, maddr)
+	//}
+
+	return []ma.Multiaddr{}, nil
 }

@@ -130,7 +130,7 @@ func TestRetrievalClientConnector_AllocateLane(t *testing.T) {
 
 		addr, err := address.NewIDAddress(12345)
 		require.NoError(t, err)
-		res, err := rcnc.AllocateLane(addr)
+		res, err := rcnc.AllocateLane(context.Background(), addr)
 		assert.EqualError(t, err, "No state for /t012345")
 		assert.Zero(t, res)
 	})
@@ -140,7 +140,7 @@ func TestRetrievalClientConnector_AllocateLane(t *testing.T) {
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
 		requireCreatePaymentChannel(ctx, t, fakePaychAPI, pchMgr, channelAmt, client, miner, paych)
 
-		lane, err := rcnc.AllocateLane(paych)
+		lane, err := rcnc.AllocateLane(context.Background(), paych)
 		require.NoError(t, err)
 
 		chinfo, err := pchMgr.GetPaymentChannelInfo(paych)
@@ -174,7 +174,7 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
 		requireCreatePaymentChannel(ctx, t, fakePaychAPI, pchMgr, channelAmt, client, miner, paych)
 
-		lane, err := rcnc.AllocateLane(paych)
+		lane, err := rcnc.AllocateLane(context.Background(), paych)
 		require.NoError(t, err)
 		assert.Equal(t, uint64(0), lane)
 
@@ -208,7 +208,7 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 
 		expectedNonce := uint64(10) // 3 lanes + 3*2 vouchers + 1
 		for i := 0; i <= 2; i++ {
-			lane, err := rcnc.AllocateLane(paych)
+			lane, err := rcnc.AllocateLane(context.Background(), paych)
 			require.NoError(t, err)
 			for j := 0; j <= 1; j++ {
 				amt := int64(i + j + 1)
@@ -268,7 +268,7 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 		requireCreatePaymentChannel(ctx, t, fakePaychAPI, pchMgr, channelAmt, client, miner, paych)
 
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
-		lane, err := rcnc.AllocateLane(paych)
+		lane, err := rcnc.AllocateLane(context.Background(), paych)
 		require.NoError(t, err)
 
 		tooMuch := abi.NewTokenAmount(channelAmt.Int64() + 1)
@@ -293,7 +293,7 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 		assert.EqualError(t, err, "lane does not exist 0")
 		require.Nil(t, voucher)
 
-		lane, err := rcnc.AllocateLane(paych)
+		lane, err := rcnc.AllocateLane(context.Background(), paych)
 		require.NoError(t, err)
 
 		// check when there is a lane allocated
@@ -313,7 +313,7 @@ func TestRetrievalClientConnector_CreatePaymentVoucher(t *testing.T) {
 		rcnc := NewRetrievalClientConnector(bs, cs, rmc, pchMgr)
 		requireCreatePaymentChannel(ctx, t, fakePaychAPI, pchMgr, channelAmt, client, miner, paych)
 
-		lane, err := rcnc.AllocateLane(paych)
+		lane, err := rcnc.AllocateLane(context.Background(), paych)
 		require.NoError(t, err)
 
 		voucher, err := rcnc.CreatePaymentVoucher(ctx, paych, big.NewInt(1), lane, tok)
@@ -327,7 +327,7 @@ func testSetup(ctx context.Context, t *testing.T, bal abi.TokenAmount) (bstore.B
 	rootBlk := builder.AppendBlockOnBlocks()
 	block.RequireNewTipSet(t, rootBlk)
 	require.NoError(t, chainStore.SetHead(ctx, genTs))
-	root, err := st1.Commit(ctx)
+	root, err := st1.Flush(ctx)
 	require.NoError(t, err)
 
 	// add tipset and state to chainstore
@@ -368,7 +368,7 @@ func requireNewEmptyChainStore(ctx context.Context, t *testing.T) (cid.Cid, *cha
 
 	// Cribbed from chain/store_test
 	st1 := state.NewState(store)
-	root, err := st1.Commit(ctx)
+	root, err := st1.Flush(ctx)
 	require.NoError(t, err)
 
 	// link testing state to test block
@@ -379,7 +379,7 @@ func requireNewEmptyChainStore(ctx context.Context, t *testing.T) (cid.Cid, *cha
 	// setup chain store
 	ds := r.Datastore()
 	cs := chain.NewStore(ds, store, chain.NewStatusReporter(), genTS.At(0).Cid())
-	return root, builder, genTS, cs, st1
+	return root, builder, genTS, cs, *st1
 }
 
 func makePaychMgr(ctx context.Context, t *testing.T, client, miner, paych address.Address) (*pch.Manager, *paychtest.FakePaymentChannelAPI) {

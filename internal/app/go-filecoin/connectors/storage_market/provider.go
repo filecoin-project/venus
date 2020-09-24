@@ -2,7 +2,10 @@ package storagemarketconnector
 
 import (
 	"context"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"io"
+	"strconv"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
@@ -106,7 +109,8 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 		workerAddr,
 		builtin.StorageMarketActorAddr,
 		types.ZeroAttoFIL,
-		types.NewGasPrice(1),
+		types.NewGasFeeCap(1),
+		types.NewGasPremium(1),
 		gas.NewGas(10000),
 		true,
 		builtin.MethodsMarket.PublishStorageDeals,
@@ -165,11 +169,8 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 
 	var sectorInfo spaminer.SectorPreCommitOnChainInfo
 	err = precommitted.ForEach(&sectorInfo, func(key string) error {
-		k, err := adt.ParseIntKey(key)
-		if err != nil {
-			return err
-		}
-		sectorNumber = uint64(k)
+		log.Infof("key: %s", key)                        // // ToDo To be verified
+		k,_ := strconv.ParseUint(key,10,64)
 
 		for _, deal := range sectorInfo.Info.DealIDs {
 			if deal == dealID {
@@ -185,7 +186,7 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 					}
 
 					if did == dealID {
-						sectorNumber = uint64(k)
+						sectorNumber = k
 						length = uint64(proposal.PieceSize)
 						return nil // Found!
 					}
@@ -196,6 +197,22 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 		return errors.New("Deal not found")
 	})
 	return
+}
+
+func (s *StorageProviderNodeConnector) WaitForMessage(ctx context.Context, mcid cid.Cid, onCompletion func(exitcode.ExitCode, []byte, cid.Cid, error) error) error {
+	panic("implement me")
+}
+
+func (s *StorageProviderNodeConnector) DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
+	panic("implement me")
+}
+
+func (s *StorageProviderNodeConnector) OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error {
+	panic("implement me")
+}
+
+func (s *StorageProviderNodeConnector) GetDataCap(ctx context.Context, addr address.Address, tok shared.TipSetToken) (*verifreg.DataCap, error) {
+	panic("implement me")
 }
 
 // EventLogger logs new events on the storage provider

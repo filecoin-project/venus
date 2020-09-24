@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -69,7 +68,8 @@ func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address
 		fromAddr,
 		builtin.StorageMarketActorAddr,
 		types.NewAttoFIL(amount.Int),
-		types.NewGasPrice(1),
+		types.NewGasFeeCap(1),
+		types.NewGasPremium(1),
 		gas.NewGas(5000),
 		true,
 		builtin.MethodsMarket.AddBalance,
@@ -183,6 +183,7 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 	return err
 }
 
+// ToDo review
 func (c *connectorCommon) getBalance(ctx context.Context, root cid.Cid, addr address.Address) (abi.TokenAmount, error) {
 	// These should be replaced with methods on the state view
 	table, err := adt.AsBalanceTable(state.StoreFromCbor(ctx, c.chainStore), root)
@@ -190,18 +191,7 @@ func (c *connectorCommon) getBalance(ctx context.Context, root cid.Cid, addr add
 		return abi.TokenAmount{}, err
 	}
 
-	hasBalance, err := table.Has(addr)
-	if err != nil {
-		return big.Zero(), err
-	}
-	balance := abi.NewTokenAmount(0)
-	if hasBalance {
-		balance, err = table.Get(addr)
-		if err != nil {
-			return big.Zero(), err
-		}
-	}
-	return balance, nil
+	return table.Get(addr)
 }
 
 func (c *connectorCommon) listDeals(ctx context.Context, tok shared.TipSetToken, predicate func(proposal *spasm.DealProposal, dealState *spasm.DealState) bool) ([]storagemarket.StorageDeal, error) {
