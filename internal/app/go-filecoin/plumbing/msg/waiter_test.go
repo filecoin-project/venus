@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/ipfs/go-cid"
 )
 
 var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
@@ -74,8 +73,8 @@ func testWaitExisting(ctx context.Context, t *testing.T, cst cbor.IpldStore, cha
 	require.Equal(t, 1, ts.Len())
 	require.NoError(t, chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
-		TipSetStateRoot: ts.ToSlice()[0].StateRoot.Cid,
-		TipSetReceipts:  ts.ToSlice()[0].MessageReceipts.Cid,
+		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
+		TipSetReceipts:  ts.ToSlice()[0].MessageReceipts,
 	}))
 	require.NoError(t, chainStore.SetHead(ctx, ts))
 
@@ -102,8 +101,8 @@ func testWaitNew(ctx context.Context, t *testing.T, cst cbor.IpldStore, chainSto
 	require.Equal(t, 1, ts.Len())
 	require.NoError(t, chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
-		TipSetStateRoot: ts.ToSlice()[0].StateRoot.Cid,
-		TipSetReceipts:  ts.ToSlice()[0].MessageReceipts.Cid,
+		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
+		TipSetReceipts:  ts.ToSlice()[0].MessageReceipts,
 	}))
 	require.NoError(t, chainStore.SetHead(ctx, ts))
 

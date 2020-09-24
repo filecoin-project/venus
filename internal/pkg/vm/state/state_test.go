@@ -103,7 +103,7 @@ func TestGetAllActors(t *testing.T) {
 	_, err = tree.Flush(ctx)
 	require.NoError(t, err)
 
-	err = tree.ForEach(func(key actorKey, result *actor.Actor) error {
+	err = tree.ForEach(func(key ActorKey, result *actor.Actor) error {
 		assert.Equal(t, addr, key)
 		assert.Equal(t, newActor.Code, result.Code)
 		assert.Equal(t, newActor.CallSeqNum, result.CallSeqNum)

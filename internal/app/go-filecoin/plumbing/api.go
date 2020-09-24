@@ -33,7 +33,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -107,7 +106,7 @@ func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address
 }
 
 // ActorLs returns a channel with actors from the latest state on the chain
-func (api *API) ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
+func (api *API) ActorLs(ctx context.Context) (map[address.Address]*actor.Actor, error) {
 	return api.chain.LsActors(ctx)
 }
 
@@ -239,8 +238,8 @@ func (api *API) StateView(baseKey block.TipSetKey) (*appstate.View, error) {
 // message to go on chain. Note that no default from address is provided.  The error
 // channel returned receives either nil or an error and is immediately closed after
 // the message is published to the network to signal that the publish is complete.
-func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
-	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, true, method, params)
+func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, baseFee types.AttoFIL, gasPremium types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
+	return api.outbox.Send(ctx, from, to, value, baseFee, gasPremium, gasLimit, true, method, params)
 }
 
 //SignedMessageSend sends a siged message.

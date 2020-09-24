@@ -66,13 +66,13 @@ func (a *API) MessagePoolWait(ctx context.Context, messageCount uint) ([]*types.
 func (a *API) MinerCreate(
 	ctx context.Context,
 	accountAddr address.Address,
-	gasPrice types.AttoFIL,
+	gasBaseFee, gasPremium types.AttoFIL,
 	gasLimit gas.Unit,
 	sealProofType abi.RegisteredSealProof,
 	pid peer.ID,
 	collateral types.AttoFIL,
 ) (_ address.Address, err error) {
-	return MinerCreate(ctx, a, accountAddr, gasPrice, gasLimit, sealProofType, pid, collateral)
+	return MinerCreate(ctx, a, accountAddr, gasBaseFee, gasPremium, gasLimit, sealProofType, pid, collateral)
 }
 
 // MinerPreviewCreate previews the Gas cost of creating a miner
@@ -122,8 +122,8 @@ func (a *API) PingMinerWithTimeout(
 }
 
 // MinerSetWorkerAddress sets the miner worker address to the provided address
-func (a *API) MinerSetWorkerAddress(ctx context.Context, toAddr address.Address, gasPrice types.AttoFIL, gasLimit gas.Unit) (cid.Cid, error) {
-	return MinerSetWorkerAddress(ctx, a, toAddr, gasPrice, gasLimit)
+func (a *API) MinerSetWorkerAddress(ctx context.Context, toAddr address.Address, gasBaseFee, gasPremium types.AttoFIL, gasLimit gas.Unit) (cid.Cid, error) {
+	return MinerSetWorkerAddress(ctx, a, toAddr, gasBaseFee, gasPremium, gasLimit)
 }
 
 // MessageWaitDone blocks until the message is on chain

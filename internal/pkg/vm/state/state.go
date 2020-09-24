@@ -19,25 +19,25 @@ import (
 	"github.com/filecoin-project/go-address"
 )
 
-type actorKey = address.Address
+type ActorKey = address.Address
 
 type Root = cid.Cid
 
 // Review: can we get rid of this?
 type Tree interface {
-	GetActor(ctx context.Context, addr actorKey) (*actor.Actor, bool, error)
-	SetActor(ctx context.Context, addr actorKey, act *actor.Actor) error
-	DeleteActor(ctx context.Context, addr actorKey) error
+	GetActor(ctx context.Context, addr ActorKey) (*actor.Actor, bool, error)
+	SetActor(ctx context.Context, addr ActorKey, act *actor.Actor) error
+	DeleteActor(ctx context.Context, addr ActorKey) error
 
 	Flush(ctx context.Context) (cid.Cid, error)
 	Snapshot(ctx context.Context) error
 	ClearSnapshot()
 	Revert() error
 
-	RegisterNewAddress(addr actorKey) (address.Address, error)
+	RegisterNewAddress(addr ActorKey) (address.Address, error)
 
-	MutateActor(addr actorKey, f func(*actor.Actor) error) error
-	ForEach(f func(actorKey, *actor.Actor) error) error
+	MutateActor(addr ActorKey, f func(*actor.Actor) error) error
+	ForEach(f func(ActorKey, *actor.Actor) error) error
 }
 
 var log = logging.Logger("statetree")
@@ -159,7 +159,7 @@ func LoadState(ctx context.Context, cst cbor.IpldStore, c cid.Cid) (*State, erro
 	}, nil
 }
 
-func (st *State) SetActor(ctx context.Context, addr actorKey, act *actor.Actor) error {
+func (st *State) SetActor(ctx context.Context, addr ActorKey, act *actor.Actor) error {
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
 		return xerrors.Errorf("ID lookup failed: %w", err)
@@ -171,7 +171,7 @@ func (st *State) SetActor(ctx context.Context, addr actorKey, act *actor.Actor) 
 }
 
 // LookupID gets the ID address of this actor's `addr` stored in the `InitActor`.
-func (st *State) LookupID(addr actorKey) (address.Address, error) {
+func (st *State) LookupID(addr ActorKey) (address.Address, error) {
 	if addr.Protocol() == address.ID {
 		return addr, nil
 	}
@@ -205,7 +205,7 @@ func (st *State) LookupID(addr actorKey) (address.Address, error) {
 }
 
 // GetActor returns the actor from any type of `addr` provided.
-func (st *State) GetActor(ctx context.Context, addr actorKey) (*actor.Actor, bool, error) {
+func (st *State) GetActor(ctx context.Context, addr ActorKey) (*actor.Actor, bool, error) {
 	if addr == address.Undef {
 		return nil, false, fmt.Errorf("GetActor called on undefined address")
 	}
@@ -242,7 +242,7 @@ func (st *State) GetActor(ctx context.Context, addr actorKey) (*actor.Actor, boo
 	return &act, true, nil
 }
 
-func (st *State) DeleteActor(ctx context.Context, addr actorKey) error {
+func (st *State) DeleteActor(ctx context.Context, addr ActorKey) error {
 	if addr == address.Undef {
 		return xerrors.Errorf("DeleteActor called on undefined address")
 	}
@@ -305,7 +305,7 @@ func (st *State) ClearSnapshot() {
 	st.snaps.mergeLastLayer()
 }
 
-func (st *State) RegisterNewAddress(addr actorKey) (address.Address, error) {
+func (st *State) RegisterNewAddress(addr ActorKey) (address.Address, error) {
 	var out address.Address
 	err := st.MutateActor(builtin.InitActorAddr, func(initact *actor.Actor) error {
 		var ias init_.State
@@ -349,7 +349,7 @@ func (st *State) Revert() error {
 	return nil
 }
 
-func (st *State) MutateActor(addr actorKey, f func(*actor.Actor) error) error {
+func (st *State) MutateActor(addr ActorKey, f func(*actor.Actor) error) error {
 	act, found, err := st.GetActor(context.Background(), addr)
 	if !found || err != nil {
 		return err
@@ -362,7 +362,7 @@ func (st *State) MutateActor(addr actorKey, f func(*actor.Actor) error) error {
 	return st.SetActor(context.Background(), addr, act)
 }
 
-func (st *State) ForEach(f func(actorKey, *actor.Actor) error) error {
+func (st *State) ForEach(f func(ActorKey, *actor.Actor) error) error {
 	var act actor.Actor
 	return st.root.ForEach(&act, func(k string) error {
 		addr, err := address.NewFromBytes([]byte(k))

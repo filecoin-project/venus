@@ -220,7 +220,7 @@ func (chn *ChainStateReadWriter) GetActorStateAt(ctx context.Context, tipKey blo
 		return err
 	}
 
-	blk, err := chn.bstore.Get(act.Head.Cid)
+	blk, err := chn.bstore.Get(act.Head)
 	if err != nil {
 		return err
 	}
@@ -243,7 +243,7 @@ func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, tipKey bl
 		return address.Undef, errors.Wrapf(err, "no actor at address %s", addr)
 	}
 
-	blk, err := chn.bstore.Get(init.Head.Cid)
+	blk, err := chn.bstore.Get(init.Head)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -254,16 +254,30 @@ func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, tipKey bl
 		return address.Undef, err
 	}
 
-	return state.ResolveAddress(&actorStore{ctx, chn.ReadOnlyIpldStore}, addr)
+	idAddress, found, err := state.ResolveAddress(&actorStore{ctx, chn.ReadOnlyIpldStore}, addr)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	if !found {
+		return address.Undef, xerrors.Errorf("not found address")
+	}
+	return idAddress, nil
 }
 
 // LsActors returns a channel with actors from the latest state on the chain
-func (chn *ChainStateReadWriter) LsActors(ctx context.Context) (<-chan vmstate.GetAllActorsResult, error) {
+func (chn *ChainStateReadWriter) LsActors(ctx context.Context) (map[address.Address]*actor.Actor, error) {
 	st, err := chn.readWriter.GetTipSetState(ctx, chn.readWriter.GetHead())
 	if err != nil {
 		return nil, err
 	}
-	return st.GetAllActors(ctx), nil
+
+	result := make(map[address.Address]*actor.Actor)
+	err = st.ForEach(func(key vmstate.ActorKey, a *actor.Actor) error {
+		result[key] = a
+		return nil
+	})
+	return result, nil
 }
 
 // GetActorSignature returns the signature of the given actor's given method.
@@ -282,7 +296,7 @@ func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAdd
 	}
 
 	// Dragons: this is broken, we need to ask the VM for the impl, it might need to apply migrations based on epoch
-	executable, err := chn.actors.GetActorImpl(actor.Code.Cid)
+	executable, err := chn.actors.GetActorImpl(actor.Code)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load actor code")
 	}

@@ -162,12 +162,12 @@ func (v *FakeStateView) MinerDeadlines(ctx context.Context, maddr address.Addres
 	return nil, nil
 }
 
-func (v *FakeStateView) MinerInfo(ctx context.Context, maddr address.Address) (miner.MinerInfo, error) {
+func (v *FakeStateView) MinerInfo(ctx context.Context, maddr address.Address) (*miner.MinerInfo, error) {
 	m, ok := v.Miners[maddr]
 	if !ok {
-		return miner.MinerInfo{}, errors.Errorf("no miner %s", maddr)
+		return nil, errors.Errorf("no miner %s", maddr)
 	}
-	return miner.MinerInfo{
+	return &miner.MinerInfo{
 		Owner:  m.Owner,
 		Worker: m.Worker,
 		PeerId: []byte(m.PeerID),
