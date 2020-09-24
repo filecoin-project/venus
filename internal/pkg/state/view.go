@@ -427,6 +427,10 @@ func (v *View) MinerFaults(ctx context.Context, maddr addr.Address) ([]uint64, e
 	out := bitfield.New()
 
 	deallines, err := minerState.LoadDeadlines(v.adtStore(ctx))
+	if err != nil {
+		return nil, err
+	}
+
 	err = deallines.ForEach(v.adtStore(ctx), func(dlIdx uint64, dl *miner.Deadline) error {
 		partitions, err := dl.PartitionsArray(v.adtStore(ctx))
 		if err != nil {
@@ -439,9 +443,7 @@ func (v *View) MinerFaults(ctx context.Context, maddr addr.Address) ([]uint64, e
 			return err
 		})
 	})
-	if err != nil {
-		return nil, err
-	}
+
 	maxSectorNum, err := out.All(miner.SectorsMax)
 	if err != nil {
 		return nil, err

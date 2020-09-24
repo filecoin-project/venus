@@ -44,7 +44,7 @@ func (f *FiniteStateMachineBackEnd) PledgeSector(ctx context.Context) error {
 	return f.fsm.PledgeSector()
 }
 
-func (f *FiniteStateMachineBackEnd) UnsealSector(ctx context.Context, sectorID uint64) (io.ReadCloser, error) {
+func (f *FiniteStateMachineBackEnd) UnsealSector(ctx context.Context, sectorID abi.SectorNumber) (io.ReadCloser, error) {
 	panic("implement me")
 }
 
