@@ -2,6 +2,8 @@ package storagemarketconnector
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	peer "github.com/libp2p/go-libp2p-peer"
 	"reflect"
 	"time"
 
@@ -118,13 +120,20 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context, t
 			return err
 		}
 
-		info := mState.Info
+		viewer, err := s.chainStore.StateView(tsk)
+		if err != nil {
+			return err
+		}
+		info, err := viewer.MinerInfo(ctx, minerAddr)
+		if err != nil {
+			return err
+		}
 		infos = append(infos, &storagemarket.StorageProviderInfo{
 			Address:    minerAddr,
 			Owner:      info.Owner,
 			Worker:     info.Worker,
 			SectorSize: uint64(info.SectorSize),
-			PeerID:     info.PeerId,
+			PeerID:     peer.ID(info.PeerId),
 		})
 		return nil
 	})

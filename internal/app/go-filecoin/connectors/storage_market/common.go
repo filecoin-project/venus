@@ -2,12 +2,12 @@ package storagemarketconnector
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -45,7 +45,7 @@ type chainReader interface {
 type WorkerGetter func(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error)
 
 type connectorCommon struct {
-	chainStore  chainReader
+	chainStore  *cst.ChainStateReadWriter
 	stateViewer *appstate.Viewer
 	waiter      *msg.Waiter
 	signer      types.Signer
@@ -69,7 +69,8 @@ func (c *connectorCommon) addFunds(ctx context.Context, fromAddr address.Address
 		fromAddr,
 		builtin.StorageMarketActorAddr,
 		types.NewAttoFIL(amount.Int),
-		types.NewGasPrice(1),
+		types.NewGasFeeCap(0),
+		types.NewGasPremium(0),
 		gas.NewGas(5000),
 		true,
 		builtin.MethodsMarket.AddBalance,
@@ -190,18 +191,7 @@ func (c *connectorCommon) getBalance(ctx context.Context, root cid.Cid, addr add
 		return abi.TokenAmount{}, err
 	}
 
-	hasBalance, err := table.Has(addr)
-	if err != nil {
-		return big.Zero(), err
-	}
-	balance := abi.NewTokenAmount(0)
-	if hasBalance {
-		balance, err = table.Get(addr)
-		if err != nil {
-			return big.Zero(), err
-		}
-	}
-	return balance, nil
+	return table.Get(addr)
 }
 
 func (c *connectorCommon) listDeals(ctx context.Context, tok shared.TipSetToken, predicate func(proposal *spasm.DealProposal, dealState *spasm.DealState) bool) ([]storagemarket.StorageDeal, error) {

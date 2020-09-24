@@ -3,6 +3,8 @@ package retrievalmarketconnector
 import (
 	"bytes"
 	"context"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -28,6 +30,7 @@ type RetrievalClientConnector struct {
 	paychMgr PaychMgrAPI
 	signer   RetrievalSigner
 	cs       ChainReaderAPI
+	viewer   *appstate.TipSetStateViewer
 }
 
 var _ retrievalmarket.RetrievalClientNode = new(RetrievalClientConnector)
@@ -38,12 +41,14 @@ func NewRetrievalClientConnector(
 	cs ChainReaderAPI,
 	signer RetrievalSigner,
 	paychMgr PaychMgrAPI,
+	viewer *appstate.TipSetStateViewer,
 ) *RetrievalClientConnector {
 	return &RetrievalClientConnector{
 		bs:       bs,
 		cs:       cs,
 		paychMgr: paychMgr,
 		signer:   signer,
+		viewer:   viewer,
 	}
 }
 
@@ -77,7 +82,7 @@ func (r *RetrievalClientConnector) GetOrCreatePaymentChannel(ctx context.Context
 
 // AllocateLane creates a new lane for this paymentChannel with 0 FIL in the lane
 // Assumes AllocateLane is called after GetOrCreatePaymentChannel
-func (r *RetrievalClientConnector) AllocateLane(paymentChannel address.Address) (lane uint64, err error) {
+func (r *RetrievalClientConnector) AllocateLane(ctx context.Context, paymentChannel address.Address) (lane uint64, err error) {
 	return r.paychMgr.AllocateLane(paymentChannel)
 }
 
@@ -129,12 +134,46 @@ func (r *RetrievalClientConnector) CreatePaymentVoucher(ctx context.Context, pay
 	return &v, nil
 }
 
-func (r *RetrievalClientConnector) WaitForPaymentChannelAddFunds(messageCID cid.Cid) error {
-	return r.paychMgr.WaitForAddFundsMessage(context.Background(), messageCID)
+func (r *RetrievalClientConnector) CheckAvailableFunds(ctx context.Context, paymentChannel address.Address) (retrievalmarket.ChannelAvailableFunds, error) {
+	channelAvailableFunds, err := r.paychMgr.AvailableFunds(paymentChannel)
+	if err != nil {
+		return retrievalmarket.ChannelAvailableFunds{}, err
+	}
+	return retrievalmarket.ChannelAvailableFunds{
+		ConfirmedAmt:        abi.TokenAmount{&channelAvailableFunds.ConfirmedAmt},
+		PendingAmt:          abi.TokenAmount{&channelAvailableFunds.PendingAmt},
+		PendingWaitSentinel: channelAvailableFunds.PendingWaitSentinel,
+		QueuedAmt:           abi.TokenAmount{&channelAvailableFunds.QueuedAmt},
+		VoucherReedeemedAmt: abi.TokenAmount{&channelAvailableFunds.VoucherReedeemedAmt},
+	}, nil
 }
 
-func (r *RetrievalClientConnector) WaitForPaymentChannelCreation(messageCID cid.Cid) (address.Address, error) {
-	return r.paychMgr.WaitForCreatePaychMessage(context.Background(), messageCID)
+func (r *RetrievalClientConnector) WaitForPaymentChannelReady(ctx context.Context, waitSentinel cid.Cid) (address.Address, error) {
+	return r.paychMgr.GetPaychWaitReady(ctx, waitSentinel)
+}
+
+func (r *RetrievalClientConnector) GetKnownAddresses(ctx context.Context, p retrievalmarket.RetrievalPeer, tok shared.TipSetToken) ([]ma.Multiaddr, error) {
+	tsk, err := r.getTipSet(tok)
+	if err != nil {
+		return nil, err
+	}
+
+	view, err := r.viewer.StateView(tsk.Key())
+	if err != nil {
+		return nil, err
+	}
+
+	minerInfo, err := view.MinerInfo(ctx, p.Address)
+	multiaddrs := make([]ma.Multiaddr, 0, len(minerInfo.Multiaddrs))
+	for _, a := range minerInfo.Multiaddrs {
+		maddr, err := ma.NewMultiaddrBytes(a)
+		if err != nil {
+			return nil, err
+		}
+		multiaddrs = append(multiaddrs, maddr)
+	}
+
+	return multiaddrs, nil
 }
 
 func (r *RetrievalClientConnector) getBlockHeight(tok shared.TipSetToken) (abi.ChainEpoch, error) {

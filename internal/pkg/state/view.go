@@ -5,9 +5,15 @@ import (
 	"fmt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	xerrors "github.com/pkg/errors"
+	"github.com/prometheus/common/log"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-bitfield"
@@ -560,6 +566,92 @@ func (v *View) MarketDealStatesForEach(ctx context.Context, f func(id abi.DealID
 	})
 }
 
+var dealProviderCollateralNum = big.NewInt(110)
+var dealProviderCollateralDen = big.NewInt(100)
+
+// StateDealProviderCollateralBounds returns the min and max collateral a storage provider
+// can issue. It takes the deal size and verified status as parameters.
+func (v *View) MarketDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk block.TipSetKey) (api.DealCollateralBounds, error) {
+	powerState, err := v.loadPowerActor(ctx)
+	if err != nil {
+		return api.DealCollateralBounds{}, xerrors.Errorf("getting power state: %w", err)
+	}
+	rewardState, err := v.loadRewardActor(ctx)
+	if err != nil {
+		return api.DealCollateralBounds{}, xerrors.Errorf("getting reward state: %w", err)
+	}
+
+	circ, err := v.StateCirculatingSupply(ctx, tsk)
+	if err != nil {
+		return api.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w", err)
+	}
+
+	ts, err := v.loadTipSet(ctx, tsk)
+	if err != nil {
+		return api.DealCollateralBounds{}, xerrors.Errorf("failed to load tipset: %w", err)
+	}
+	height, _ := ts.Height()
+	min, max := market.DealProviderCollateralBounds(size,
+		verified,
+		powerState.TotalRawBytePower,
+		powerState.ThisEpochQualityAdjPower,
+		rewardState.ThisEpochBaselinePower,
+		circ.FilCirculating,
+		v.GetNtwkVersion(ctx, height))
+	return api.DealCollateralBounds{
+		Min: big.Div(big.Mul(min, dealProviderCollateralNum), dealProviderCollateralDen),
+		Max: max,
+	}, nil
+}
+
+func (v *View) StateVerifiedClientStatus(ctx context.Context, addr addr.Address) (*verifreg.DataCap, error) {
+	aid, err := v.StateLookupID(ctx, addr)
+	if err != nil {
+		log.Warnf("lookup failure %v", err)
+		return nil, err
+	}
+
+	st, err := v.loadVerifyActor(ctx)
+
+	vh, err := adt.AsMap(v.adtStore(ctx), st.VerifiedClients)
+	if err != nil {
+		return nil, err
+	}
+
+	var dcap verifreg.DataCap
+	if found, err := vh.Get(abi.AddrKey(aid), &dcap); err != nil {
+		return nil, err
+	} else if !found {
+		return nil, nil
+	}
+
+	return &dcap, nil
+}
+
+func (v *View) loadTipSet(ctx context.Context, tsk block.TipSetKey) (block.TipSet, error) {
+	panic("not impl")
+}
+
+func (v *View) StateCirculatingSupply(ctx context.Context, tsk block.TipSetKey) (api.CirculatingSupply, error) {
+	panic("not impl")
+}
+
+func (v *View) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
+	if build.UseNewestNetwork() {
+		return build.NewestNetworkVersion
+	}
+
+	if height <= build.UpgradeBreezeHeight {
+		return network.Version0
+	}
+
+	if height <= build.UpgradeSmokeHeight {
+		return network.Version1
+	}
+
+	return build.NewestNetworkVersion
+}
+
 type NetworkPower struct {
 	RawBytePower         abi.StoragePower
 	QualityAdjustedPower abi.StoragePower
@@ -660,6 +752,26 @@ func (v *View) loadPowerActor(ctx context.Context) (*power.State, error) {
 		return nil, err
 	}
 	var state power.State
+	err = v.ipldStore.Get(ctx, actr.Head, &state)
+	return &state, err
+}
+
+func (v *View) loadVerifyActor(ctx context.Context) (*verifreg.State, error) {
+	actr, err := v.loadActor(ctx, builtin.VerifiedRegistryActorAddr)
+	if err != nil {
+		return nil, err
+	}
+	var state verifreg.State
+	err = v.ipldStore.Get(ctx, actr.Head, &state)
+	return &state, err
+}
+
+func (v *View) loadRewardActor(ctx context.Context) (*reward.State, error) {
+	actr, err := v.loadActor(ctx, builtin.RewardActorAddr)
+	if err != nil {
+		return nil, err
+	}
+	var state reward.State
 	err = v.ipldStore.Get(ctx, actr.Head, &state)
 	return &state, err
 }
@@ -770,6 +882,14 @@ func (v *View) StateMinerSectors(ctx context.Context, addr addr.Address, filter 
 		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
 	}
 	return LoadSectorsFromSet(v.adtStore(ctx), mas.Sectors, filter, filterOut)
+}
+
+func (v *View) StateLookupID(ctx context.Context, address addr.Address) (addr.Address, error) {
+	tree, err := state.LoadStateTree(v.ipldStore, v.root)
+	if err != nil {
+		return addr.Undef, err
+	}
+	return tree.LookupID(address)
 }
 
 func LoadSectorsFromSet(adtStore adt.Store, ssc cid.Cid, filter *bitfield.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {

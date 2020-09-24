@@ -2,6 +2,10 @@ package storagemarketconnector
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"io"
 
 	"github.com/filecoin-project/go-address"
@@ -42,7 +46,7 @@ var _ storagemarket.StorageProviderNode = &StorageProviderNodeConnector{}
 
 // NewStorageProviderNodeConnector creates a new connector
 func NewStorageProviderNodeConnector(ma address.Address,
-	cs chainReader,
+	cs *cst.ChainStateReadWriter,
 	ob *message.Outbox,
 	w *msg.Waiter,
 	pm piecemanager.PieceManager,
@@ -56,6 +60,45 @@ func NewStorageProviderNodeConnector(ma address.Address,
 		outbox:          ob,
 		pieceManager:    pm,
 	}
+}
+
+func (s *StorageProviderNodeConnector) WaitForMessage(ctx context.Context, mcid cid.Cid, onCompletion func(exitcode.ExitCode, []byte, cid.Cid, error) error) error {
+	return s.waiter.Wait(ctx, mcid, msg.DefaultMessageWaitLookback, func(block *block.Block, msg *types.SignedMessage, recepit *vm.MessageReceipt) error {
+		return onCompletion(recepit.ExitCode, recepit.ReturnValue, mcid, nil)
+	})
+}
+
+func (s *StorageProviderNodeConnector) DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
+	head := s.chainStore.Head()
+	ts, err := s.chainStore.GetTipSet(head)
+	if err != nil {
+		return abi.TokenAmount{}, abi.TokenAmount{}, err
+	}
+
+	view := s.stateViewer.StateView(ts.At(0).StateRoot)
+	bounds, err := view.MarketDealProviderCollateralBounds(ctx, size, isVerified, head)
+	if err != nil {
+		return abi.TokenAmount{}, abi.TokenAmount{}, err
+	}
+	return bounds.Min, bounds.Max, nil
+}
+
+func (s *StorageProviderNodeConnector) OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error {
+	panic("implement me")
+}
+
+func (s *StorageProviderNodeConnector) GetDataCap(ctx context.Context, addr address.Address, tok shared.TipSetToken) (*verifreg.DataCap, error) {
+	var tsk block.TipSetKey
+	if err := encoding.Decode(tok, &tsk); err != nil {
+		return nil, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
+	}
+	ts, err := s.chainStore.GetTipSet(tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	view := s.stateViewer.StateView(ts.At(0).StateRoot)
+	return view.StateVerifiedClientStatus(ctx, addr)
 }
 
 // AddFunds adds storage market funds for a storage provider
@@ -106,7 +149,8 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 		workerAddr,
 		builtin.StorageMarketActorAddr,
 		types.ZeroAttoFIL,
-		types.NewGasPrice(1),
+		types.NewGasFeeCap(0),
+		types.NewGasPremium(0),
 		gas.NewGas(10000),
 		true,
 		builtin.MethodsMarket.PublishStorageDeals,
@@ -128,13 +172,13 @@ func (s *StorageProviderNodeConnector) ListProviderDeals(ctx context.Context, ad
 }
 
 // OnDealComplete adds the piece to the storage provider
-func (s *StorageProviderNodeConnector) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceReader io.Reader) error {
+func (s *StorageProviderNodeConnector) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceReader io.Reader) (*storagemarket.PackingResult, error) {
 	// TODO: callback.
 	return s.pieceManager.SealPieceIntoNewSector(ctx, deal.DealID, deal.Proposal.StartEpoch, deal.Proposal.EndEpoch, pieceSize, pieceReader)
 }
 
 // LocatePieceForDealWithinSector finds the sector, offset and length of a piece associated with the given deal id
-func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, tok shared.TipSetToken) (sectorNumber uint64, offset uint64, length uint64, err error) {
+func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, tok shared.TipSetToken) (sectorNumber abi.SectorNumber, offset abi.PaddedPieceSize, length abi.PaddedPieceSize, err error) {
 	var tsk block.TipSetKey
 	if err := encoding.Decode(tok, &tsk); err != nil {
 		return 0, 0, 0, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
@@ -165,15 +209,15 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 
 	var sectorInfo spaminer.SectorPreCommitOnChainInfo
 	err = precommitted.ForEach(&sectorInfo, func(key string) error {
-		k, err := adt.ParseIntKey(key)
+		k, err := abi.ParseIntKey(key)
 		if err != nil {
 			return err
 		}
-		sectorNumber = uint64(k)
+		sectorNumber = abi.SectorNumber(k)
 
 		for _, deal := range sectorInfo.Info.DealIDs {
 			if deal == dealID {
-				offset = uint64(0)
+				offset = abi.PaddedPieceSize(0)
 				for _, did := range sectorInfo.Info.DealIDs {
 					var proposal market.DealProposal
 					found, err := proposals.Get(uint64(did), &proposal)
@@ -185,11 +229,11 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 					}
 
 					if did == dealID {
-						sectorNumber = uint64(k)
-						length = uint64(proposal.PieceSize)
+						sectorNumber = abi.SectorNumber(k)
+						length = abi.PaddedPieceSize(proposal.PieceSize)
 						return nil // Found!
 					}
-					offset += uint64(proposal.PieceSize)
+					offset += abi.PaddedPieceSize(proposal.PieceSize)
 				}
 			}
 		}

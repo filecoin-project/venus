@@ -1,6 +1,8 @@
 package paymentchannel
 
 import (
+	"github.com/ipfs/go-cid"
+	"math/big"
 	"reflect"
 
 	"github.com/filecoin-project/go-address"
@@ -53,4 +55,26 @@ func (ci *ChannelInfo) LargestVoucherAmount() abi.TokenAmount {
 type VoucherInfo struct {
 	Voucher *paych.SignedVoucher
 	Proof   []byte
+}
+
+type ChannelAvailableFunds struct {
+	// Channel is the address of the channel
+	Channel *address.Address
+	// From is the from address of the channel (channel creator)
+	From address.Address
+	// To is the to address of the channel
+	To address.Address
+	// ConfirmedAmt is the amount of funds that have been confirmed on-chain
+	// for the channel
+	ConfirmedAmt big.Int
+	// PendingAmt is the amount of funds that are pending confirmation on-chain
+	PendingAmt big.Int
+	// PendingWaitSentinel can be used with PaychGetWaitReady to wait for
+	// confirmation of pending funds
+	PendingWaitSentinel *cid.Cid
+	// QueuedAmt is the amount that is queued up behind a pending request
+	QueuedAmt big.Int
+	// VoucherRedeemedAmt is the amount that is redeemed by vouchers on-chain
+	// and in the local datastore
+	VoucherReedeemedAmt big.Int
 }

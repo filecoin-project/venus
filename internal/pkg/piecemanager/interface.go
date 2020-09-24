@@ -2,6 +2,7 @@ package piecemanager
 
 import (
 	"context"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"io"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -18,7 +19,7 @@ type PieceManager interface {
 	// errors encountered during the pre-commit or commit flows (including
 	// message creation) are recorded in StorageMining metadata but not exposed
 	// through this API.
-	SealPieceIntoNewSector(ctx context.Context, dealID abi.DealID, dealStart, dealEnd abi.ChainEpoch, pieceSize abi.UnpaddedPieceSize, pieceReader io.Reader) error
+	SealPieceIntoNewSector(ctx context.Context, dealID abi.DealID, dealStart, dealEnd abi.ChainEpoch, pieceSize abi.UnpaddedPieceSize, pieceReader io.Reader) (*storagemarket.PackingResult, error)
 
 	// PledgeSector behaves similarly to SealPieceIntoNewSector, but differs in
 	// that it does not require a deal having been made on-chain beforehand. It

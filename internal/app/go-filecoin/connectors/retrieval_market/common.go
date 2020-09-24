@@ -2,7 +2,6 @@ package retrievalmarketconnector
 
 import (
 	"context"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -42,4 +41,7 @@ type PaychMgrAPI interface {
 	AddVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte, expected big.Int, tok shared.TipSetToken) (abi.TokenAmount, error)
 	WaitForCreatePaychMessage(ctx context.Context, mcid cid.Cid) (address.Address, error)
 	WaitForAddFundsMessage(ctx context.Context, mcid cid.Cid) error
+
+	AvailableFunds(ch address.Address) (*paymentchannel.ChannelAvailableFunds, error)
+	GetPaychWaitReady(ctx context.Context, mcid cid.Cid) (address.Address, error)
 }

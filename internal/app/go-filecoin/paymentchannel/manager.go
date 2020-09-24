@@ -369,6 +369,35 @@ func (pm *Manager) saveNewVoucher(paychAddr address.Address, voucher *paychActor
 	return nil
 }
 
+// GetPaychWaitReady waits until the create channel / add funds message with the
+// given message CID arrives.
+// The returned channel address can safely be used against the Manager methods.
+func (pm *Manager) GetPaychWaitReady(ctx context.Context, mcid cid.Cid) (address.Address, error) {
+	panic("not impl")
+	/*// Find the channel associated with the message CID
+	pm.lk.Lock()
+	ci, err := pm.store.ByMessageCid(mcid)
+	pm.lk.Unlock()
+
+	if err != nil {
+		if err == datastore.ErrNotFound {
+			return address.Undef, xerrors.Errorf("Could not find wait msg cid %s", mcid)
+		}
+		return address.Undef, err
+	}
+
+	chanAccessor, err := pm.accessorByFromTo(ci.Control, ci.Target)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return chanAccessor.getPaychWaitReady(ctx, mcid)*/
+}
+
+func (pm *Manager) AvailableFunds(ch address.Address) (*ChannelAvailableFunds, error) {
+	panic("not impl")
+}
+
 //  paychStore is a thin threadsafe wrapper for StateStore
 type paychStore struct {
 	storeLk sync.RWMutex
