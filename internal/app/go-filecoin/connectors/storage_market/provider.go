@@ -76,7 +76,7 @@ func (s *StorageProviderNodeConnector) DealProviderCollateralBounds(ctx context.
 	}
 
 	view := s.stateViewer.StateView(ts.At(0).StateRoot)
-	bounds, err := view.MarketDealProviderCollateralBounds(ctx, size, isVerified, head)
+	bounds, err := view.MarketDealProviderCollateralBounds(ctx, size, isVerified, ts.At(0).Height)
 	if err != nil {
 		return abi.TokenAmount{}, abi.TokenAmount{}, err
 	}
@@ -85,6 +85,100 @@ func (s *StorageProviderNodeConnector) DealProviderCollateralBounds(ctx context.
 
 func (s *StorageProviderNodeConnector) OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error {
 	panic("implement me")
+	/*head := s.chainStore.Head()
+	ts, err := s.chainStore.GetTipSet(head)
+	if err != nil {
+		return err
+	}
+
+	view := s.stateViewer.StateView(ts.At(0).StateRoot)
+	sd, err := view.StateMarketStorageDeal(ctx, dealID)
+	if err != nil {
+		return xerrors.Errorf("client: failed to look up deal %d on chain: %w", dealID, err)
+	}
+
+	// Called immediately to check if the deal has already expired or been slashed
+	checkFunc := func(ts *block.TipSet) (done bool, more bool, err error) {
+		if ts == nil {
+			// keep listening for events
+			return false, true, nil
+		}
+
+		// Check if the deal has already expired
+		if sd.Proposal.EndEpoch <= ts.Height() {
+			onDealExpired(nil)
+			return true, false, nil
+		}
+
+		// If there is no deal assume it's already been slashed
+		if sd.State.SectorStartEpoch < 0 {
+			onDealSlashed(ts.Height(), nil)
+			return true, false, nil
+		}
+
+		// No events have occurred yet, so return
+		// done: false, more: true (keep listening for events)
+		return false, true, nil
+	}
+
+	// Called when there was a match against the state change we're looking for
+	// and the chain has advanced to the confidence height
+	stateChanged := func(ts *types.TipSet, ts2 *types.TipSet, states events.StateChange, h abi.ChainEpoch) (more bool, err error) {
+		// Check if the deal has already expired
+		if sd.Proposal.EndEpoch <= ts2.Height() {
+			onDealExpired(nil)
+			return false, nil
+		}
+
+		// Timeout waiting for state change
+		if states == nil {
+			log.Error("timed out waiting for deal expiry")
+			return false, nil
+		}
+
+		changedDeals, ok := states.(state.ChangedDeals)
+		if !ok {
+			panic("Expected state.ChangedDeals")
+		}
+
+		deal, ok := changedDeals[dealID]
+		if !ok {
+			// No change to deal
+			return true, nil
+		}
+
+		// Deal was slashed
+		if deal.To == nil {
+			onDealSlashed(ts2.Height(), nil)
+			return false, nil
+		}
+
+		return true, nil
+	}
+
+	// Called when there was a chain reorg and the state change was reverted
+	revert := func(ctx context.Context, ts *types.TipSet) error {
+		// TODO: Is it ok to just ignore this?
+		log.Warn("deal state reverted; TODO: actually handle this!")
+		return nil
+	}
+
+	// Watch for state changes to the deal
+	preds := state.NewStatePredicates(n)
+	dealDiff := preds.OnStorageMarketActorChanged(
+		preds.OnDealStateChanged(
+			preds.DealStateChangedForIDs([]abi.DealID{dealID})))
+	match := func(oldTs, newTs *block.TipSet) (bool, events.StateChange, error) {
+		return dealDiff(ctx, oldTs.Key(), newTs.Key())
+	}
+
+	// Wait until after the end epoch for the deal and then timeout
+	timeout := (sd.Proposal.EndEpoch - head.Height()) + 1
+	if err := n.ev.StateChanged(checkFunc, stateChanged, revert, int(build.MessageConfidence)+1, timeout, match); err != nil {
+		return xerrors.Errorf("failed to set up state changed handler: %w", err)
+	}
+
+	return nil*/
 }
 
 func (s *StorageProviderNodeConnector) GetDataCap(ctx context.Context, addr address.Address, tok shared.TipSetToken) (*verifreg.DataCap, error) {

@@ -2,8 +2,10 @@ package storagemarketconnector
 
 import (
 	"context"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	peer "github.com/libp2p/go-libp2p-peer"
+	ma "github.com/multiformats/go-multiaddr"
 	"reflect"
 	"time"
 
@@ -38,6 +40,70 @@ type StorageClientNodeConnector struct {
 	cborStore  cbor.IpldStore
 }
 
+func (s *StorageClientNodeConnector) WaitForMessage(ctx context.Context, mcid cid.Cid, onCompletion func(exitcode.ExitCode, []byte, cid.Cid, error) error) error {
+	return s.waiter.Wait(ctx, mcid, msg.DefaultMessageWaitLookback, func(block *block.Block, msg *types.SignedMessage, recepit *vm.MessageReceipt) error {
+		return onCompletion(recepit.ExitCode, recepit.ReturnValue, mcid, nil)
+	})
+}
+
+func (s *StorageClientNodeConnector) DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
+	head := s.chainStore.Head()
+	ts, err := s.chainStore.GetTipSet(head)
+	if err != nil {
+		return abi.TokenAmount{}, abi.TokenAmount{}, err
+	}
+
+	view := s.stateViewer.StateView(ts.At(0).StateRoot)
+	bounds, err := view.MarketDealProviderCollateralBounds(ctx, size, isVerified, ts.At(0).Height)
+	if err != nil {
+		return abi.TokenAmount{}, abi.TokenAmount{}, err
+	}
+	return bounds.Min, bounds.Max, nil
+}
+
+func (s *StorageClientNodeConnector) OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error {
+	panic("implement me")
+}
+
+func (s *StorageClientNodeConnector) GetMinerInfo(ctx context.Context, maddr address.Address, tok shared.TipSetToken) (*storagemarket.StorageProviderInfo, error) {
+	tsk, err := s.getTipSet(tok)
+	if err != nil {
+		return nil, err
+	}
+
+	view := s.stateViewer.StateView(tsk.At(0).StateRoot)
+
+	minerInfo, err := view.MinerInfo(ctx, maddr)
+	if err != nil {
+		return nil, err
+	}
+	multiaddrs := make([]ma.Multiaddr, 0, len(minerInfo.Multiaddrs))
+	for _, a := range minerInfo.Multiaddrs {
+		maddr, err := ma.NewMultiaddrBytes(a)
+		if err != nil {
+			return nil, err
+		}
+		multiaddrs = append(multiaddrs, maddr)
+	}
+	return &storagemarket.StorageProviderInfo{
+		Address:    maddr,
+		Owner:      minerInfo.Owner,
+		Worker:     minerInfo.Worker,
+		SectorSize: uint64(minerInfo.SectorSize),
+		PeerID:     peer.ID(minerInfo.PeerId),
+		Addrs:      multiaddrs,
+	}, nil
+}
+
+func (s *StorageClientNodeConnector) getTipSet(tok shared.TipSetToken) (block.TipSet, error) {
+	var tsk block.TipSetKey
+	if err := encoding.Decode(tok, &tsk); err != nil {
+		return block.TipSet{}, xerrors.Wrapf(err, "failed to marshal TipSetToken into a TipSetKey")
+	}
+
+	return s.chainStore.GetTipSet(tsk)
+}
+
 type ClientAddressGetter func() (address.Address, error)
 
 var _ storagemarket.StorageClientNode = &StorageClientNodeConnector{}
@@ -45,7 +111,7 @@ var _ storagemarket.StorageClientNode = &StorageClientNodeConnector{}
 // NewStorageClientNodeConnector creates a new connector
 func NewStorageClientNodeConnector(
 	cbor cbor.IpldStore,
-	cs chainReader,
+	cs *cst.ChainStateReadWriter,
 	w *msg.Waiter,
 	s types.Signer,
 	ob *message.Outbox,

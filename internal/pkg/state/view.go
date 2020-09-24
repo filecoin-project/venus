@@ -6,15 +6,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	xerrors "github.com/pkg/errors"
 	"github.com/prometheus/common/log"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"sync"
 
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
@@ -36,7 +36,11 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	vmstate "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
+
+var dealProviderCollateralNum = big.NewInt(110)
+var dealProviderCollateralDen = big.NewInt(100)
 
 // Viewer builds state views from state root CIDs.
 type Viewer struct {
@@ -53,6 +57,19 @@ func (c *Viewer) StateView(root cid.Cid) *View {
 	return NewView(c.ipldStore, root)
 }
 
+type genesisInfo struct {
+	genesisMsigs []multisig.State
+	// info about the Accounts in the genesis state
+	genesisActors      []genesisActor
+	genesisPledge      abi.TokenAmount
+	genesisMarketFunds abi.TokenAmount
+}
+
+type genesisActor struct {
+	addr    addr.Address
+	initBal abi.TokenAmount
+}
+
 // View is a read-only interface to a snapshot of application-level actor state.
 // This object interprets the actor state, abstracting the concrete on-chain structures so as to
 // hide the complications of protocol versions.
@@ -61,6 +78,10 @@ func (c *Viewer) StateView(root cid.Cid) *View {
 type View struct {
 	ipldStore cbor.IpldStore
 	root      cid.Cid
+
+	genInfo       *genesisInfo
+	genesisMsigLk sync.Mutex
+	genesisRoot   cid.Cid
 }
 
 // NewView creates a new state view
@@ -194,135 +215,6 @@ func (v *View) MinerDeadlineInfo(ctx context.Context, maddr addr.Address, epoch 
 	return deadlineInfo.Index, deadlineInfo.Open, deadlineInfo.Close, deadlineInfo.Challenge, nil
 }
 
-// MinerPartitionIndexesForDeadline returns all partitions that need to be proven in the proving period deadline for the given epoch
-func (v *View) MinerPartitionIndicesForDeadline(ctx context.Context, maddr addr.Address, deadlineIndex uint64) ([]uint64, error) {
-	panic("MinerPartitionIndicesForDeadline not impl") //todo 这个函数可能需要重写
-	/*minerState, err := v.loadMinerActor(ctx, maddr)
-	if err != nil {
-		return nil, err
-	}
-	minerInfo, err :=  minerState.GetInfo(v.adtStore(ctx))
-	if err != nil {
-		return nil, err
-	}
-	deadlines, err := minerState.LoadDeadlines(v.adtStore(ctx))
-	if err != nil {
-		return nil, err
-	}
-
-	// compute first partition index
-	partitionSize := minerInfo.WindowPoStPartitionSectors
-	deadLines, err := minerState.LoadDeadlines(v.adtStore(ctx))
-	dealLine, err := deadLines.LoadDeadline(v.adtStore(ctx), deadlineIndex)
-
-
-	start := dealLine.
-
-	start, sectorCount, err := miner.PartitionsForDeadline(deadlines, partitionSize, deadlineIndex)
-	if err != nil {
-		return nil, err
-	}
-
-	// if deadline contains no sectors, return no partitions
-	if sectorCount == 0 {
-		return nil, nil
-	}
-
-	// compute number of partitions
-	partitionCount, _, err := miner.DeadlineCount(deadlines, partitionSize, deadlineIndex)
-	if err != nil {
-		return nil, err
-	}
-
-	partitions := make([]uint64, partitionCount)
-	for i := uint64(0); i < partitionCount; i++ {
-		partitions[i] = start + i
-	}
-
-	return partitions, err*/
-}
-
-// MinerSectorInfoForPartitions retrieves sector info for sectors needed to be proven over for the given proving window partitions.
-// NOTE: exposes on-chain structures directly because specs-storage requires it.
-func (v *View) MinerSectorInfoForDeadline(ctx context.Context, maddr addr.Address, deadlineIndex uint64, partitions []uint64) ([]proof.SectorInfo, error) {
-	panic("MinerPartitionIndicesForDeadline not impl") //todo 这个函数可能需要重写
-	/*minerState, err := v.loadMinerActor(ctx, maddr)
-	if err != nil {
-		return nil, err
-	}
-
-	minerInfo, err := v.StateMinerInfo(ctx, maddr)
-	if err != nil {
-		return "", err
-	}
-
-	deadlines, err := minerState.LoadDeadlines(v.adtStore(ctx))
-	if err != nil {
-		return nil, err
-	}
-
-	// This is copied from miner.Actor SubmitWindowedPoSt. It should be logic in miner.State.
-	partitionSize := minerInfo.WindowPoStPartitionSectors
-	partitionsSectors, err := miner.ComputePartitionsSectors(deadlines, partitionSize, deadlineIndex, partitions)
-	if err != nil {
-		return nil, err
-	}
-
-	provenSectors, err := bitfield.BitFieldUnion(partitionsSectors...)
-	if err != nil {
-		return nil, err
-	}
-
-	// Extract a fault set relevant to the sectors being submitted, for expansion into a map.
-	declaredFaults, err := bitfield.IntersectBitField(provenSectors, minerState.Faults)
-	if err != nil {
-		return nil, err
-	}
-
-	declaredRecoveries, err := bitfield.IntersectBitField(declaredFaults, minerState.Recoveries)
-	if err != nil {
-		return nil, err
-	}
-
-	expectedFaults, err := bitfield.SubtractBitField(declaredFaults, declaredRecoveries)
-	if err != nil {
-		return nil, err
-	}
-
-	nonFaults, err := bitfield.SubtractBitField(provenSectors, expectedFaults)
-	if err != nil {
-		return nil, err
-	}
-
-	empty, err := nonFaults.IsEmpty()
-	if err != nil {
-		return nil, err
-	}
-
-	if empty {
-		return nil, fmt.Errorf("no non-faulty sectors in partitions %+v", partitions)
-	}
-
-	// Select a non-faulty sector as a substitute for faulty ones.
-	goodSectorNo, err := nonFaults.First()
-	if err != nil {
-		return nil, err
-	}
-
-	// Load sector infos for proof
-	sectors, err := minerState.LoadSectorInfosWithFaultMask(v.adtStore(ctx), provenSectors, expectedFaults, abi.SectorNumber(goodSectorNo))
-	if err != nil {
-		return nil, err
-	}
-
-	out := make([]proof.SectorInfo, len(sectors))
-	for i, sector := range sectors {
-		out[i] = sector.AsSectorInfo()
-	}
-
-	return out, nil*/
-}
-
 // MinerSuccessfulPoSts counts how many successful window PoSts have been made this proving period so far.
 func (v *View) MinerSuccessfulPoSts(ctx context.Context, maddr addr.Address) (uint64, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
@@ -363,18 +255,6 @@ func (v *View) MinerDeadlines(ctx context.Context, maddr addr.Address) (*miner.D
 	}
 
 	return minerState.LoadDeadlines(v.adtStore(ctx))
-}
-
-type MinerSectorStates struct {
-	Deadlines  []*bitfield.BitField
-	Faults     *bitfield.BitField
-	Recoveries *bitfield.BitField
-	NewSectors *bitfield.BitField
-}
-
-func (v *View) MinerSectorStates(ctx context.Context, maddr addr.Address) (*MinerSectorStates, error) {
-	panic("DEPRECATED MinerSectorStates")
-	return nil, nil
 }
 
 func (v *View) MinerProvingPeriodStart(ctx context.Context, maddr addr.Address) (abi.ChainEpoch, error) {
@@ -568,31 +448,28 @@ func (v *View) MarketDealStatesForEach(ctx context.Context, f func(id abi.DealID
 	})
 }
 
-var dealProviderCollateralNum = big.NewInt(110)
-var dealProviderCollateralDen = big.NewInt(100)
-
 // StateDealProviderCollateralBounds returns the min and max collateral a storage provider
 // can issue. It takes the deal size and verified status as parameters.
-func (v *View) MarketDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk block.TipSetKey) (api.DealCollateralBounds, error) {
+func (v *View) MarketDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, height abi.ChainEpoch) (DealCollateralBounds, error) {
 	powerState, err := v.loadPowerActor(ctx)
 	if err != nil {
-		return api.DealCollateralBounds{}, xerrors.Errorf("getting power state: %w", err)
+		return DealCollateralBounds{}, xerrors.Errorf("getting power state: %w", err)
 	}
 	rewardState, err := v.loadRewardActor(ctx)
 	if err != nil {
-		return api.DealCollateralBounds{}, xerrors.Errorf("getting reward state: %w", err)
+		return DealCollateralBounds{}, xerrors.Errorf("getting reward state: %w", err)
 	}
 
-	circ, err := v.StateCirculatingSupply(ctx, tsk)
+	tree, err := vmstate.LoadState(ctx, v.ipldStore, v.root)
 	if err != nil {
-		return api.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w", err)
+		return DealCollateralBounds{}, xerrors.Errorf("failed to get tree: %w", err)
 	}
 
-	ts, err := v.loadTipSet(ctx, tsk)
+	circ, err := v.GetCirculatingSupplyDetailed(ctx, height, tree)
 	if err != nil {
-		return api.DealCollateralBounds{}, xerrors.Errorf("failed to load tipset: %w", err)
+		return DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w", err)
 	}
-	height, _ := ts.Height()
+
 	min, max := market.DealProviderCollateralBounds(size,
 		verified,
 		powerState.TotalRawBytePower,
@@ -600,7 +477,7 @@ func (v *View) MarketDealProviderCollateralBounds(ctx context.Context, size abi.
 		rewardState.ThisEpochBaselinePower,
 		circ.FilCirculating,
 		v.GetNtwkVersion(ctx, height))
-	return api.DealCollateralBounds{
+	return DealCollateralBounds{
 		Min: big.Div(big.Mul(min, dealProviderCollateralNum), dealProviderCollateralDen),
 		Max: max,
 	}, nil
@@ -630,12 +507,190 @@ func (v *View) StateVerifiedClientStatus(ctx context.Context, addr addr.Address)
 	return &dcap, nil
 }
 
-func (v *View) loadTipSet(ctx context.Context, tsk block.TipSetKey) (block.TipSet, error) {
-	panic("not impl")
+func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*MarketDeal, error) {
+	state, err := v.loadMarketActor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	store := v.adtStore(ctx)
+
+	da, err := adt.AsArray(store, state.Proposals)
+	if err != nil {
+		return nil, err
+	}
+
+	var dp market.DealProposal
+	if found, err := da.Get(uint64(dealID), &dp); err != nil {
+		return nil, err
+	} else if !found {
+		return nil, xerrors.Errorf("deal %d not found", dealID)
+	}
+
+	sa, err := market.AsDealStateArray(store, state.States)
+	if err != nil {
+		return nil, err
+	}
+
+	st, found, err := sa.Get(dealID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !found {
+		st = &market.DealState{
+			SectorStartEpoch: -1,
+			LastUpdatedEpoch: -1,
+			SlashEpoch:       -1,
+		}
+	}
+
+	return &MarketDeal{
+		Proposal: dp,
+		State:    *st,
+	}, nil
 }
 
-func (v *View) StateCirculatingSupply(ctx context.Context, tsk block.TipSetKey) (api.CirculatingSupply, error) {
-	panic("not impl")
+func (v *View) GetCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st vmstate.Tree) (abi.TokenAmount, error) {
+	csi, err := v.GetCirculatingSupplyDetailed(ctx, height, st)
+	if err != nil {
+		return big.Zero(), err
+	}
+
+	return csi.FilCirculating, nil
+}
+
+func (v *View) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st vmstate.Tree) (CirculatingSupply, error) {
+	v.genesisMsigLk.Lock()
+	defer v.genesisMsigLk.Unlock()
+	if v.genInfo == nil {
+		err := v.setupGenesisActorsTestnet(ctx)
+		if err != nil {
+			return CirculatingSupply{}, xerrors.Errorf("failed to setup genesis information: %w", err)
+		}
+	}
+
+	filVested, err := v.GetFilVested(ctx, height, st)
+	if err != nil {
+		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %w", err)
+	}
+
+	rewardState, err := v.loadRewardActor(ctx)
+	if err != nil {
+		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filMined: %w", err)
+	}
+
+	filBurnt, err := v.loadActor(ctx, builtin.BurntFundsActorAddr)
+	if err != nil {
+		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %w", err)
+	}
+
+	filLocked, err := v.GetFilLocked(ctx, st)
+	if err != nil {
+		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %w", err)
+	}
+
+	ret := big.Add(filVested, rewardState.TotalMined)
+	ret = big.Sub(ret, filBurnt.Balance)
+	ret = big.Sub(ret, filLocked)
+
+	if ret.LessThan(big.Zero()) {
+		ret = big.Zero()
+	}
+
+	return CirculatingSupply{
+		FilVested:      filVested,
+		FilMined:       rewardState.TotalMined,
+		FilBurnt:       filBurnt.Balance,
+		FilLocked:      filLocked,
+		FilCirculating: ret,
+	}, nil
+}
+
+func (v *View) GetFilVested(ctx context.Context, height abi.ChainEpoch, st vmstate.Tree) (abi.TokenAmount, error) {
+	vf := big.Zero()
+	for _, v := range v.genInfo.genesisMsigs {
+		au := big.Sub(v.InitialBalance, v.AmountLocked(height))
+		vf = big.Add(vf, au)
+	}
+
+	// there should not be any such accounts in testnet (and also none in mainnet?)
+	for _, v := range v.genInfo.genesisActors {
+		act, found, err := st.GetActor(ctx, v.addr)
+		if !found || err != nil {
+			return big.Zero(), xerrors.Errorf("failed to get actor: %w", err)
+		}
+
+		diff := big.Sub(v.initBal, act.Balance)
+		if diff.GreaterThan(big.Zero()) {
+			vf = big.Add(vf, diff)
+		}
+	}
+
+	vf = big.Add(vf, v.genInfo.genesisPledge)
+	vf = big.Add(vf, v.genInfo.genesisMarketFunds)
+
+	return vf, nil
+}
+
+// sets up information about the actors in the genesis state
+// For testnet we use a hardcoded set of multisig states, instead of what's actually in the genesis multisigs
+// We also do not consider ANY account actors (including the faucet)
+func (v *View) setupGenesisActorsTestnet(ctx context.Context) error {
+
+	gi := genesisInfo{}
+
+	sTree, err := vmstate.LoadState(ctx, v.ipldStore, v.genesisRoot)
+	if err != nil {
+		return xerrors.Errorf("loading state tree: %w", err)
+	}
+
+	gi.genesisMarketFunds, err = getFilMarketLocked(ctx, v.ipldStore, sTree)
+	if err != nil {
+		return xerrors.Errorf("setting up genesis market funds: %w", err)
+	}
+
+	gi.genesisPledge, err = getFilPowerLocked(ctx, v.ipldStore, sTree)
+	if err != nil {
+		return xerrors.Errorf("setting up genesis pledge: %w", err)
+	}
+
+	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
+
+	// 6 months
+	sixMonths := abi.ChainEpoch(183 * builtin.EpochsInDay)
+	totalsByEpoch[sixMonths] = big.NewInt(49_929_341)
+	totalsByEpoch[sixMonths] = big.Add(totalsByEpoch[sixMonths], big.NewInt(32_787_700))
+
+	// 1 year
+	oneYear := abi.ChainEpoch(365 * builtin.EpochsInDay)
+	totalsByEpoch[oneYear] = big.NewInt(22_421_712)
+
+	// 2 years
+	twoYears := abi.ChainEpoch(2 * 365 * builtin.EpochsInDay)
+	totalsByEpoch[twoYears] = big.NewInt(7_223_364)
+
+	// 3 years
+	threeYears := abi.ChainEpoch(3 * 365 * builtin.EpochsInDay)
+	totalsByEpoch[threeYears] = big.NewInt(87_637_883)
+
+	// 6 years
+	sixYears := abi.ChainEpoch(6 * 365 * builtin.EpochsInDay)
+	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
+	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
+
+	gi.genesisMsigs = make([]multisig.State, 0, len(totalsByEpoch))
+	for k, v := range totalsByEpoch {
+		ns := multisig.State{
+			InitialBalance: v,
+			UnlockDuration: k,
+			PendingTxns:    cid.Undef,
+		}
+		gi.genesisMsigs = append(gi.genesisMsigs, ns)
+	}
+
+	v.genInfo = &gi
+
+	return nil
 }
 
 func (v *View) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
@@ -652,13 +707,6 @@ func (v *View) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) networ
 	}
 
 	return build.NewestNetworkVersion
-}
-
-type NetworkPower struct {
-	RawBytePower         abi.StoragePower
-	QualityAdjustedPower abi.StoragePower
-	MinerCount           int64
-	MinPowerMinerCount   int64
 }
 
 // Returns the storage power actor's values for network total power.
@@ -706,6 +754,79 @@ func (v *View) PaychActorParties(ctx context.Context, paychAddr addr.Address) (f
 	}
 	return state.From, state.To, nil
 }
+
+func (v *View) StateMinerProvingDeadline(ctx context.Context, addr addr.Address, ts block.TipSet) (*dline.Info, error) {
+	mas, err := v.loadMinerActor(ctx, addr)
+	if err != nil {
+		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
+	}
+	height, _ := ts.Height()
+	return mas.DeadlineInfo(height).NextNotElapsed(), nil
+}
+
+func (v *View) StateMinerPartitions(ctx context.Context, addr addr.Address, dlIdx uint64, key block.TipSetKey) ([]*miner.Partition, error) {
+	mas, err := v.loadMinerActor(ctx, addr)
+	if err != nil {
+		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
+	}
+
+	adtStore := v.adtStore(ctx)
+	dealLines, err := mas.LoadDeadlines(adtStore)
+	if err != nil {
+		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
+	}
+	dealLine, err := dealLines.LoadDeadline(adtStore, dlIdx)
+	if err != nil {
+		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
+	}
+	partitionsArr, err := dealLine.PartitionsArray(adtStore)
+	if err != nil {
+		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
+	}
+	var partitions []*miner.Partition
+	var partition miner.Partition
+	err = partitionsArr.ForEach(&partition, func(i int64) error {
+		partitionCopy := partition
+		partitions = append(partitions, &partitionCopy)
+		return nil
+	})
+	if err != nil {
+		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
+	}
+	return partitions, nil
+}
+
+func (v *View) StateMinerSectors(ctx context.Context, addr addr.Address, filter *bitfield.BitField, filterOut bool, key block.TipSetKey) ([]*ChainSectorInfo, error) {
+	mas, err := v.loadMinerActor(ctx, addr)
+	if err != nil {
+		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
+	}
+	return loadSectorsFromSet(v.adtStore(ctx), mas.Sectors, filter, filterOut)
+}
+
+func (v *View) StateLookupID(ctx context.Context, address addr.Address) (addr.Address, error) {
+	tree, err := vmstate.LoadState(ctx, v.ipldStore, v.root)
+	if err != nil {
+		return addr.Undef, err
+	}
+	return tree.LookupID(address)
+}
+
+func (v *View) GetFilLocked(ctx context.Context, st vmstate.Tree) (abi.TokenAmount, error) {
+	filMarketLocked, err := getFilMarketLocked(ctx, v.ipldStore, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %w", err)
+	}
+
+	pwrState, err := v.loadPowerActor(ctx)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to get filPowerLocked: %w", err)
+	}
+
+	return big.Add(filMarketLocked, pwrState.TotalPledgeCollateral), nil
+}
+
+///// utils
 
 func (v *View) loadPowerClaim(ctx context.Context, powerState *power.State, miner addr.Address) (*power.Claim, error) {
 	claims, err := v.asMap(ctx, powerState.Claims)
@@ -837,70 +958,26 @@ func (v *View) asBalanceTable(ctx context.Context, root cid.Cid) (*adt.BalanceTa
 	return adt.AsBalanceTable(v.adtStore(ctx), root)
 }
 
-func (v *View) StateMinerProvingDeadline(ctx context.Context, addr addr.Address, ts block.TipSet) (*dline.Info, error) {
-	mas, err := v.loadMinerActor(ctx, addr)
-	if err != nil {
-		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
+func getFilPowerLocked(ctx context.Context, ipldStore cbor.IpldStore, st vmstate.Tree) (abi.TokenAmount, error) {
+	pactor, found, err := st.GetActor(ctx, builtin.StoragePowerActorAddr)
+	if !found || err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load power actor: %w", err)
 	}
-	height, _ := ts.Height()
-	return mas.DeadlineInfo(height).NextNotElapsed(), nil
+
+	var pst power.State
+	if err := ipldStore.Get(ctx, pactor.Head, &pst); err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load power state: %w", err)
+	}
+	return pst.TotalPledgeCollateral, nil
 }
 
-func (v *View) StateMinerPartitions(ctx context.Context, addr addr.Address, dlIdx uint64, key block.TipSetKey) ([]*miner.Partition, error) {
-	mas, err := v.loadMinerActor(ctx, addr)
-	if err != nil {
-		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
-	}
-
-	adtStore := v.adtStore(ctx)
-	dealLines, err := mas.LoadDeadlines(adtStore)
-	if err != nil {
-		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
-	}
-	dealLine, err := dealLines.LoadDeadline(adtStore, dlIdx)
-	if err != nil {
-		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
-	}
-	partitionsArr, err := dealLine.PartitionsArray(adtStore)
-	if err != nil {
-		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
-	}
-	var partitions []*miner.Partition
-	var partition miner.Partition
-	err = partitionsArr.ForEach(&partition, func(i int64) error {
-		partitionCopy := partition
-		partitions = append(partitions, &partitionCopy)
-		return nil
-	})
-	if err != nil {
-		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
-	}
-	return partitions, nil
-}
-
-func (v *View) StateMinerSectors(ctx context.Context, addr addr.Address, filter *bitfield.BitField, filterOut bool, key block.TipSetKey) ([]*api.ChainSectorInfo, error) {
-	mas, err := v.loadMinerActor(ctx, addr)
-	if err != nil {
-		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
-	}
-	return LoadSectorsFromSet(v.adtStore(ctx), mas.Sectors, filter, filterOut)
-}
-
-func (v *View) StateLookupID(ctx context.Context, address addr.Address) (addr.Address, error) {
-	tree, err := state.LoadStateTree(v.ipldStore, v.root)
-	if err != nil {
-		return addr.Undef, err
-	}
-	return tree.LookupID(address)
-}
-
-func LoadSectorsFromSet(adtStore adt.Store, ssc cid.Cid, filter *bitfield.BitField, filterOut bool) ([]*api.ChainSectorInfo, error) {
+func loadSectorsFromSet(adtStore adt.Store, ssc cid.Cid, filter *bitfield.BitField, filterOut bool) ([]*ChainSectorInfo, error) {
 	a, err := adt.AsArray(adtStore, ssc)
 	if err != nil {
 		return nil, err
 	}
 
-	var sset []*api.ChainSectorInfo
+	var sset []*ChainSectorInfo
 	var v cbg.Deferred
 	if err := a.ForEach(&v, func(i int64) error {
 		if filter != nil {
@@ -917,7 +994,7 @@ func LoadSectorsFromSet(adtStore adt.Store, ssc cid.Cid, filter *bitfield.BitFie
 		if err := cbor.DecodeInto(v.Raw, &oci); err != nil {
 			return err
 		}
-		sset = append(sset, &api.ChainSectorInfo{
+		sset = append(sset, &ChainSectorInfo{
 			Info: oci,
 			ID:   abi.SectorNumber(i),
 		})
@@ -927,6 +1004,22 @@ func LoadSectorsFromSet(adtStore adt.Store, ssc cid.Cid, filter *bitfield.BitFie
 	}
 
 	return sset, nil
+}
+
+func getFilMarketLocked(ctx context.Context, ipldStore cbor.IpldStore, st vmstate.Tree) (abi.TokenAmount, error) {
+	mactor, found, err := st.GetActor(ctx, builtin.StorageMarketActorAddr)
+	if !found || err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load market actor: %w", err)
+	}
+
+	var mst market.State
+	if err := ipldStore.Get(ctx, mactor.Head, &mst); err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load market state: %w", err)
+	}
+
+	fml := big.Add(mst.TotalClientLockedCollateral, mst.TotalProviderLockedCollateral)
+	fml = big.Add(fml, mst.TotalClientStorageFee)
+	return fml, nil
 }
 
 // StoreFromCbor wraps a cbor ipldStore for ADT access.
