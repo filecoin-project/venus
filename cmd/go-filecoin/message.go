@@ -116,7 +116,7 @@ var msgSendCmd = &cmds.Command{
 			gasPrice,
 			gasLimit,
 			methodID,
-			adt.Empty,
+			[]byte{},
 		)
 		if err != nil {
 			return err

@@ -38,6 +38,7 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	nodes[0] = CreateBootstrapMiner(ctx, t, seed, chainClock, genCfg)
 
 	// create additional nodes
+	dr, _ := drand.RandomSchedule(time.Unix(0, 0))
 	for i := uint(0); i < additionalNodes; i++ {
 		node := NewNodeBuilder(t).
 			WithGenesisInit(seed.GenesisInitFunc).
@@ -45,7 +46,7 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 			WithBuilderOpt(node.PoStGeneratorOption(&consensus.TestElectionPoster{})).
 			WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...).
 			WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
-			WithBuilderOpt(node.DrandConfigOption(drand.NewFake(chainClock.StartTimeOfEpoch(0)))).
+			WithBuilderOpt(node.DrandConfigOption(dr)).
 			Build(ctx)
 		addr := seed.GiveKey(t, node, int(i+1))
 		err := node.PorcelainAPI.ConfigSet("wallet.defaultAddress", addr.String())
@@ -118,12 +119,13 @@ func CreateBootstrapMiner(ctx context.Context, t *testing.T, seed *node.ChainSee
 	require.NoError(t, err)
 
 	// create bootstrap miner
+	dr, _ := drand.RandomSchedule(time.Unix(0, 0))
 	bootstrapMiner := NewNodeBuilder(t).
 		WithGenesisInit(seed.GenesisInitFunc).
 		WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...).
 		WithBuilderOpt(node.PoStGeneratorOption(&consensus.TestElectionPoster{})).
 		WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
-		WithBuilderOpt(node.DrandConfigOption(drand.NewFake(chainClock.StartTimeOfEpoch(0)))).
+		WithBuilderOpt(node.DrandConfigOption(dr)).
 		WithBuilderOpt(node.MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
 		WithConfig(func(c *config.Config) {
 			c.SectorBase.PreSealedSectorsDirPath = presealPath

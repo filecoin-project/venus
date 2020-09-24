@@ -3,13 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	retmkt "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/retrieval_market"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-multistore"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/ipfs/go-datastore"
 	"reflect"
 	"runtime"
 
@@ -635,7 +628,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 
 		GetStateTree:   node.chain.ChainReader.GetTipSetState,
 		GetWeight:      node.getWeight,
-		Election:       consensus.NewElectionMachine(node.PorcelainAPI),
+		// Election:       consensus.NewElectionMachine(node.PorcelainAPI), // ToDo ??
 		TicketGen:      consensus.NewTicketMachine(sampler),
 		TipSetMetadata: node.chain.ChainReader,
 

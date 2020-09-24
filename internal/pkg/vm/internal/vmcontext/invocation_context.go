@@ -398,7 +398,7 @@ type returnWrapper struct {
 
 func (r returnWrapper) ToCbor() (out []byte, err error) {
 	if r.inner == nil {
-		return nil, fmt.Errorf("failed to unmarshal nil return (did you mean adt.Empty?)")
+		return nil, fmt.Errorf("failed to unmarshal nil return (did you mean []byte{}?)")
 	}
 	b := bytes.Buffer{}
 	if err = r.inner.MarshalCBOR(&b); err != nil {
@@ -416,7 +416,7 @@ func (r returnWrapper) ToCbor() (out []byte, err error) {
 func (r returnWrapper) Into(o cbor.Unmarshaler) error {
 	// TODO: if inner is also a cbg.CBORUnmarshaler, overwrite o with inner.
 	if r.inner == nil {
-		return fmt.Errorf("failed to unmarshal nil return (did you mean adt.Empty?)")
+		return fmt.Errorf("failed to unmarshal nil return (did you mean []byte{}?)")
 	}
 	b := bytes.Buffer{}
 	if err := r.inner.MarshalCBOR(&b); err != nil {

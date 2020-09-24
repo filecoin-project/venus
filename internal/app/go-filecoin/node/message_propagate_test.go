@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -79,10 +78,11 @@ func TestMessagePropagation(t *testing.T) {
 			senderAddress,
 			builtin.InitActorAddr,
 			specsbig.NewInt(100),
-			types.NewGasPrice(1),
+			types.NewGasFeeCap(1),
+			types.NewGasPremium(1),
 			gas.Unit(5000),
 			fooMethod,
-			adt.Empty,
+			[]byte{},
 		)
 		require.NoError(t, err)
 
