@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/fr32"
 )
 
 func padFFI(buf []byte) []byte {

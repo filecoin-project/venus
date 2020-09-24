@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/storiface"
 )
 
 // merge gaps between ranges which are close to each other

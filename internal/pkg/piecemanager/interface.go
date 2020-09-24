@@ -28,7 +28,7 @@ type PieceManager interface {
 	// UnsealSector produces a reader to the unsealed bytes associated with the
 	// provided sector id, or an error if no such sealed sector exists. The
 	// bytes produced by the Reader will not include any bit-padding.
-	UnsealSector(ctx context.Context, sectorID uint64) (io.ReadCloser, error)
+	UnsealSector(ctx context.Context, sectorID abi.SectorNumber) (io.ReadCloser, error)
 
 	// LocatePieceForDealWithinSector produces information about the location of
 	// a deal's piece within a sealed sector, or an error if that piece does not

@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/zerocomm"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/zerocomm"
 )
 
 const minRetryTime = 1 * time.Minute

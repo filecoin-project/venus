@@ -2,11 +2,13 @@ package submodule
 
 import (
 	"github.com/filecoin-project/go-address"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	iface "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	impl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
+	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -38,12 +40,14 @@ type RetrievalProtocolSubmodule struct {
 func NewRetrievalProtocolSubmodule(
 	bs blockstore.Blockstore,
 	ds datastore.Batching,
+	mds *multistore.MultiStore,
 	cr *cst.ChainStateReadWriter,
 	host host.Host,
 	providerAddr address.Address,
 	signer retmkt.RetrievalSigner,
 	pchMgrAPI retmkt.PaychMgrAPI,
 	pieceManager piecemanager.PieceManager,
+	dtTransfer datatransfer.Manager,
 ) (*RetrievalProtocolSubmodule, error) {
 
 	retrievalDealPieceStore := piecestore.NewPieceStore(namespace.Wrap(ds, datastore.NewKey(PieceStoreDSPrefix)))
@@ -51,7 +55,7 @@ func NewRetrievalProtocolSubmodule(
 	netwk := network.NewFromLibp2pHost(host)
 	pnode := retmkt.NewRetrievalProviderConnector(netwk, pieceManager, bs, pchMgrAPI, nil)
 
-	marketProvider, err := impl.NewProvider(providerAddr, pnode, netwk, retrievalDealPieceStore, bs, namespace.Wrap(ds, datastore.NewKey(RetrievalProviderDSPrefix)))
+	marketProvider, err := impl.NewProvider(providerAddr, pnode, netwk, retrievalDealPieceStore, mds, dtTransfer, namespace.Wrap(ds, datastore.NewKey(RetrievalProviderDSPrefix)))
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +64,7 @@ func NewRetrievalProtocolSubmodule(
 	counter := storedcounter.New(ds, datastore.NewKey(RetrievalCounterDSKey))
 
 	resolver := discovery.Multi(discovery.NewLocal(namespace.Wrap(ds, datastore.NewKey(DiscoveryDSPrefix))))
-	marketClient, err := impl.NewClient(netwk, bs, cnode, resolver, namespace.Wrap(ds, datastore.NewKey(RetrievalClientDSPrefix)), counter)
+	marketClient, err := impl.NewClient(netwk, mds, dtTransfer, cnode, resolver, namespace.Wrap(ds, datastore.NewKey(RetrievalClientDSPrefix)), counter)
 	if err != nil {
 		return nil, err
 	}

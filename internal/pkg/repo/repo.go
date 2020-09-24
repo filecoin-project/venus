@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"github.com/filecoin-project/go-multistore"
 	"github.com/ipfs/go-datastore"
 	ds "github.com/ipfs/go-datastore"
 	keystore "github.com/ipfs/go-ipfs-keystore"
@@ -27,6 +28,7 @@ type Repo interface {
 
 	// Datastore is a general storage solution for things like blocks.
 	Datastore() ds.Batching
+	MultiStore() *multistore.MultiStore
 	Keystore() keystore.Keystore
 
 	// WalletDatastore is a specific storage solution, only used to store sensitive wallet information.

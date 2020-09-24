@@ -2,6 +2,7 @@ package repo
 
 import (
 	"fmt"
+	"github.com/filecoin-project/go-multistore"
 	"io"
 	"io/ioutil"
 	"os"
@@ -49,6 +50,7 @@ type FSRepo struct {
 	cfg *config.Config
 
 	ds       Datastore
+	mds      *multistore.MultiStore
 	keystore keystore.Keystore
 	walletDs Datastore
 	chainDs  Datastore
@@ -228,6 +230,11 @@ func (r *FSRepo) loadFromDisk() error {
 	if err := r.openDealsDatastore(); err != nil {
 		return errors.Wrap(err, "failed to open deals datastore")
 	}
+
+	if err := r.openMultiStore(); err != nil {
+		return errors.Wrap(err, "failed to open staging datastore")
+	}
+
 	return nil
 }
 
@@ -292,6 +299,11 @@ func (r *FSRepo) ChainDatastore() Datastore {
 // DealsDatastore returns the deals datastore.
 func (r *FSRepo) DealsDatastore() Datastore {
 	return r.dealsDs
+}
+
+// DealsDatastore returns the deals datastore.
+func (r *FSRepo) MultiStore() *multistore.MultiStore {
+	return r.mds
 }
 
 // Version returns the version of the repo
@@ -442,6 +454,20 @@ func (r *FSRepo) openDealsDatastore() error {
 
 	r.dealsDs = ds
 
+	return nil
+}
+
+func (r *FSRepo) openMultiStore() error {
+	ds, err := badgerds.NewDatastore(filepath.Join(r.path, "/staging"), badgerOptions())
+	if err != nil {
+		return err
+	}
+
+	mds, err := multistore.NewMultiDstore(ds)
+	if err != nil {
+		return err
+	}
+	r.mds = mds
 	return nil
 }
 

@@ -34,7 +34,7 @@ var _ retmkt.RetrievalProviderNode = &RetrievalProviderConnector{}
 
 // UnsealerAPI is the API required for unsealing a sectorgi
 type UnsealerAPI interface {
-	UnsealSector(ctx context.Context, sectorID uint64) (io.ReadCloser, error)
+	UnsealSector(ctx context.Context, sectorID abi.SectorNumber) (io.ReadCloser, error)
 }
 
 // NewRetrievalProviderConnector creates a new RetrievalProviderConnector
@@ -53,11 +53,11 @@ func NewRetrievalProviderConnector(net rmnet.RetrievalMarketNetwork, us Unsealer
 // It rejects offsets > int size and length > int64 size; the interface wants
 // uint64s. This would return a bufio overflow error anyway, but the check
 // is provided as a debugging convenience for the consumer of this function.
-func (r *RetrievalProviderConnector) UnsealSector(ctx context.Context, sectorID uint64,
-	offset uint64, length uint64) (io.ReadCloser, error) {
+func (r *RetrievalProviderConnector) UnsealSector(ctx context.Context, sectorID abi.SectorNumber,
+	offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
 	// reject anything that's a real uint64 rather than trying to get cute
 	// and offset that much or copy into a buf that large
-	if offset >= uint64(MaxInt) {
+	if uint64(offset) >= uint64(MaxInt) {
 		return nil, xerrors.New("offset overflows int")
 	}
 	if length >= math.MaxInt64 {
@@ -76,7 +76,7 @@ type limitedOffsetReadCloser struct {
 	limitedReader io.Reader
 }
 
-func newWrappedReadCloser(originalRc io.ReadCloser, offset, length uint64) (io.ReadCloser, error) {
+func newWrappedReadCloser(originalRc io.ReadCloser, offset, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
 	bufr := bufio.NewReader(originalRc)
 	_, err := bufr.Discard(int(offset))
 	if err != nil {

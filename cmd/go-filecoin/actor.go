@@ -38,12 +38,8 @@ var actorLsCmd = &cmds.Command{
 			return err
 		}
 
-		for result := range results {
-			if result.Error != nil {
-				return result.Error
-			}
-
-			output := makeActorView(result.Actor, result.Key)
+		for addr, actor := range results {
+			output := makeActorView(actor, addr)
 			if err := re.Emit(output); err != nil {
 				return err
 			}

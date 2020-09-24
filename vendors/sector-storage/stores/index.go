@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/fsutil"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"

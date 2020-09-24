@@ -7,8 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/fr32"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 

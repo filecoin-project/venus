@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/stores"
 )
 
 type readonlyProvider struct {

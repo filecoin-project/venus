@@ -15,13 +15,13 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	sectorstorage "github.com/filecoin-project/go-filecoin/vendors/sector-storage"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
 	padreader "github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	statemachine "github.com/filecoin-project/go-statemachine"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )

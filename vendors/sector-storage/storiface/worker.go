@@ -3,8 +3,8 @@ package storiface
 import (
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/sealtasks"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 )
 
 type WorkerInfo struct {

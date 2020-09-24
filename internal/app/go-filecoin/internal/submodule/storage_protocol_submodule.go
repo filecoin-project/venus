@@ -2,24 +2,17 @@ package submodule
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/node/repo"
-	"os"
-
-	"github.com/filecoin-project/go-statestore"
-	"github.com/filecoin-project/go-storedcounter"
-
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
-	graphsyncimpl "github.com/filecoin-project/go-data-transfer/impl"
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	iface "github.com/filecoin-project/go-fil-markets/storagemarket"
 	impl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
-	smvalid "github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/funds"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnetwork "github.com/filecoin-project/go-fil-markets/storagemarket/network"
+	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -27,6 +20,7 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
+	"os"
 
 	storagemarketconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/storage_market"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
@@ -58,11 +52,10 @@ const AskDSKey = "/deals/latest-ask"
 // StorageProtocolSubmodule enhances the node with storage protocol
 // capabilities.
 type StorageProtocolSubmodule struct {
-	StorageClient    iface.StorageClient
-	StorageProvider  iface.StorageProvider
-	dataTransfer     datatransfer.Manager
-	requestValidator *smvalid.UnifiedRequestValidator
-	pieceManager     piecemanager.PieceManager
+	StorageClient   iface.StorageClient
+	StorageProvider iface.StorageProvider
+	dataTransfer    datatransfer.Manager
+	pieceManager    piecemanager.PieceManager
 }
 
 // NewStorageProtocolSubmodule creates a new storage protocol submodule.
@@ -76,33 +69,23 @@ func NewStorageProtocolSubmodule(
 	h host.Host,
 	ds datastore.Batching,
 	bs blockstore.Blockstore,
-	gsync graphsync.GraphExchange,
+	mds *multistore.MultiStore,
+	dtTransfer datatransfer.Manager,
 	stateViewer *appstate.Viewer,
 ) (*StorageProtocolSubmodule, error) {
 
-    h host.Host,
-	ibs dtypes.ClientBlockstore,
-	mds dtypes.ClientMultiDstore,
-	r repo.LockedRepo,
-	dataTransfer dtypes.ClientDataTransfer,
-	discovery *discovery.Local,
-	deals dtypes.ClientDatastore,
-	scn storagemarket.StorageClientNode,
-	dealFunds ClientDealFunds
-
-
 	cnode := storagemarketconnector.NewStorageClientNodeConnector(cborutil.NewIpldStore(bs), c.State, mw, s, m.Outbox, clientAddr, stateViewer)
 	clientDs := namespace.Wrap(ds, datastore.NewKey(ClientDSPrefix))
-	local := discovery.NewLocal(namespace.Wrap(ds, datastore.NewKey(DiscoveryDSPrefix)))
-	client, err := impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, dt, local, clientDs, cnode)
+	dealFunds, _ := funds.NewDealFunds(ds, datastore.NewKey("/marketfunds/client"))
+	localDiscovery := discovery.NewLocal(namespace.Wrap(ds, datastore.NewKey(DiscoveryDSPrefix)))
+	client, err := impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, mds, dtTransfer, localDiscovery, clientDs, cnode, dealFunds)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating storage client")
 	}
 
 	sm := &StorageProtocolSubmodule{
-		StorageClient:    client,
-		dataTransfer:     dt,
-		requestValidator: validator,
+		StorageClient: client,
+		dataTransfer:  dtTransfer,
 	}
 	sm.StorageClient.SubscribeToEvents(cnode.EventLogger)
 	return sm, nil
@@ -118,8 +101,7 @@ func (sm *StorageProtocolSubmodule) AddStorageProvider(
 	s types.Signer,
 	h host.Host,
 	ds datastore.Batching,
-	bs blockstore.Blockstore,
-	gsync graphsync.GraphExchange,
+	mds *multistore.MultiStore,
 	repoPath string,
 	sealProofType abi.RegisteredSealProof,
 	stateViewer *appstate.Viewer,
@@ -144,14 +126,18 @@ func (sm *StorageProtocolSubmodule) AddStorageProvider(
 		return err
 	}
 
-	providerDs := namespace.Wrap(ds, datastore.NewKey(ProviderDSPrefix))
-	sm.requestValidator.SetPushDeals(statestore.New(providerDs))
+	dealsDs := namespace.Wrap(ds, datastore.NewKey(ProviderDSPrefix))
 	ps := piecestore.NewPieceStore(namespace.Wrap(ds, datastore.NewKey(PieceStoreDSPrefix)))
 	storedAsk, err := storedask.NewStoredAsk(ds, datastore.NewKey(AskDSKey), pnode, minerAddr)
 	if err != nil {
 		return err
 	}
-	sm.StorageProvider, err = impl.NewProvider(smnetwork.NewFromLibp2pHost(h), providerDs, bs, fs, ps, sm.dataTransfer, pnode, minerAddr, sealProofType, storedAsk)
+	providerMarketFunds, err := funds.NewDealFunds(ds, datastore.NewKey("/marketfunds/provider"))
+	if err != nil {
+		return err
+	}
+
+	sm.StorageProvider, err = impl.NewProvider(smnetwork.NewFromLibp2pHost(h), dealsDs, fs, mds, ps, sm.dataTransfer, pnode, minerAddr, sealProofType, storedAsk, providerMarketFunds)
 	if err == nil {
 		sm.StorageProvider.SubscribeToEvents(pnode.EventLogger)
 	}

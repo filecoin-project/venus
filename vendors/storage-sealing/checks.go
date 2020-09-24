@@ -9,10 +9,10 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/zerocomm"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 

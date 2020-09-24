@@ -11,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/fsutil"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/sealtasks"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/stores"
 
 	"github.com/filecoin-project/go-state-types/abi"
 

@@ -2,6 +2,12 @@ package submodule
 
 import (
 	"context"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	dtnet "github.com/filecoin-project/go-data-transfer/network"
+	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
+	"github.com/filecoin-project/go-storedcounter"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	"time"
 
 	"github.com/ipfs/go-bitswap"
@@ -29,6 +35,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
+	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
@@ -53,6 +60,10 @@ type NetworkSubmodule struct {
 	Network *net.Network
 
 	GraphExchange graphsync.GraphExchange
+
+	//data transfer
+	DataTransfer     datatransfer.Manager
+	DataTransferHost dtnet.DataTransferNetwork
 }
 
 type blankValidator struct{}
@@ -89,13 +100,19 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	var pubsubMessageSigning bool
 	if !config.OfflineMode() {
 		makeDHT := func(h host.Host) (routing.Routing, error) {
-			r, err := dht.New(
-				ctx,
-				h,
+			mode := dht.ModeServer
+			opts := []dht.Option{dht.Mode(mode),
 				dhtopts.Datastore(repo.Datastore()),
 				dhtopts.NamespacedValidator("v", validator),
-				dhtopts.Protocols(net.FilecoinDHT(networkName)),
+				dht.ProtocolPrefix(net.FilecoinDHT(networkName)),
+				dht.QueryFilter(dht.PublicQueryFilter),
+				dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
+				dht.DisableProviders(),
+				dht.DisableValues()}
+			r, err := dht.New(
+				ctx, h, opts...,
 			)
+
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to setup routing")
 			}
@@ -140,17 +157,28 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	storer := gsstoreutil.StorerForBlockstore(blockstore.Blockstore)
 	gsync := graphsyncimpl.New(ctx, graphsyncNetwork, loader, storer, graphsyncimpl.RejectAllRequestsByDefault())
 
+	//dataTransger
+	sc := storedcounter.New(repo.Datastore(), datastore.NewKey("/datatransfer/client/counter"))
+	dtNet := dtnet.NewFromLibp2pHost(peerHost)
+	dtDs := namespace.Wrap(repo.Datastore(), datastore.NewKey("/datatransfer/client/transfers"))
+	transport := dtgstransport.NewTransport(peerHost.ID(), gsync)
+	dt, err := dtimpl.NewDataTransfer(dtDs, dtNet, transport, sc)
+	if err != nil {
+		return NetworkSubmodule{}, err
+	}
 	// build network
 	network := net.New(peerHost, net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService))
 	// build the network submdule
 	return NetworkSubmodule{
-		NetworkName:   networkName,
-		Host:          peerHost,
-		Router:        router,
-		pubsub:        gsub,
-		Bitswap:       bswap,
-		GraphExchange: gsync,
-		Network:       network,
+		NetworkName:      networkName,
+		Host:             peerHost,
+		Router:           router,
+		pubsub:           gsub,
+		Bitswap:          bswap,
+		GraphExchange:    gsync,
+		Network:          network,
+		DataTransfer:     dt,
+		DataTransferHost: dtNet,
 	}, nil
 }
 
@@ -161,7 +189,7 @@ func retrieveNetworkName(ctx context.Context, genCid cid.Cid, cborStore cbor.Ipl
 		return "", errors.Wrapf(err, "failed to get block %s", genCid.String())
 	}
 
-	return appstate.NewView(cborStore, genesis.StateRoot.Cid).InitNetworkName(ctx)
+	return appstate.NewView(cborStore, genesis.StateRoot).InitNetworkName(ctx)
 }
 
 // buildHost determines if we are publically dialable.  If so use public
@@ -201,7 +229,7 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 			return nil, err
 		}
 		// Set up autoNATService as a streamhandler on the host.
-		_, err = autonatsvc.NewAutoNATService(ctx, relayHost)
+		_, err = autonatsvc.NewAutoNATService(ctx, relayHost, true)
 		if err != nil {
 			return nil, err
 		}
