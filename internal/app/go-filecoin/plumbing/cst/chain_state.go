@@ -2,7 +2,10 @@ package cst
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
 	"io"
 
@@ -44,6 +47,8 @@ type chainReadWriter interface {
 	GetTipSetState(context.Context, block.TipSetKey) (vmstate.Tree, error)
 	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
 	SetHead(context.Context, block.TipSet) error
+	GetTipSetByHeight(parentKey block.TipSetKey, h abi.ChainEpoch, prev bool) (*block.TipSet, error)
+	GetLatestBeaconEntry(ts *block.TipSet) (*drand.Entry, error)
 	ReadOnlyStateStore() cborutil.ReadOnlyIpldStore
 }
 
@@ -52,6 +57,7 @@ type chainReadWriter interface {
 // ChainWriter providing write access to the chain head.
 type ChainStateReadWriter struct {
 	readWriter      chainReadWriter
+	drand           drand.Schedule
 	bstore          blockstore.Blockstore // Provides chain blocks.
 	messageProvider chain.MessageProvider
 	actors          vm.ActorCodeLoader
@@ -100,12 +106,13 @@ var (
 )
 
 // NewChainStateReadWriter returns a new ChainStateReadWriter.
-func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider, bs blockstore.Blockstore, ba vm.ActorCodeLoader) *ChainStateReadWriter {
+func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider, bs blockstore.Blockstore, ba vm.ActorCodeLoader, drand drand.Schedule) *ChainStateReadWriter {
 	return &ChainStateReadWriter{
 		readWriter:        crw,
 		bstore:            bs,
 		messageProvider:   messages,
 		actors:            ba,
+		drand:             drand,
 		ReadOnlyIpldStore: crw.ReadOnlyStateStore(),
 	}
 }
@@ -173,12 +180,33 @@ func (chn *ChainStateReadWriter) SampleChainRandomness(ctx context.Context, head
 }
 
 func (chn *ChainStateReadWriter) ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	panic("not impl") //todo add by force
-	/*	pts, err := chn.GetTipSet(tsk)
-		if err != nil {
-			return nil, xerrors.Errorf("loading tipset key: %w", err)
-		}
-		return mca.sm.ChainStore().GetBeaconRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)*/
+	ts, err := chn.GetTipSet(tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	if randEpoch > ts.EnsureHeight() {
+		return nil, xerrors.Errorf("cannot draw randomness from the future")
+	}
+
+	searchHeight := randEpoch
+	if searchHeight < 0 {
+		searchHeight = 0
+	}
+
+	randTs, err := chn.readWriter.GetTipSetByHeight(ts.Key(), searchHeight, true)
+	if err != nil {
+		return nil, err
+	}
+
+	be, err := chn.readWriter.GetLatestBeaconEntry(randTs)
+	if err != nil {
+		return nil, err
+	}
+
+	// if at (or just past -- for null epochs) appropriate epoch
+	// or at genesis (works for negative epochs)
+	return DrawRandomness(be.Data, personalization, randEpoch, entropy)
 }
 
 // GetActor returns an actor from the latest state on the chain
@@ -370,4 +398,25 @@ func (chn *ChainStateReadWriter) AccountStateView(key block.TipSetKey) (state.Ac
 
 func (chn *ChainStateReadWriter) FaultStateView(key block.TipSetKey) (slashing.FaultStateView, error) {
 	return chn.StateView(key)
+}
+
+func DrawRandomness(rbase []byte, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	h := blake2b.New256()
+	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
+		return nil, xerrors.Errorf("deriving randomness: %w", err)
+	}
+	VRFDigest := blake2b.Sum256(rbase)
+	_, err := h.Write(VRFDigest[:])
+	if err != nil {
+		return nil, xerrors.Errorf("hashing VRFDigest: %w", err)
+	}
+	if err := binary.Write(h, binary.BigEndian, round); err != nil {
+		return nil, xerrors.Errorf("deriving randomness: %w", err)
+	}
+	_, err = h.Write(entropy)
+	if err != nil {
+		return nil, xerrors.Errorf("hashing entropy: %w", err)
+	}
+
+	return h.Sum(nil), nil
 }

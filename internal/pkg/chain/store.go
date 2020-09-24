@@ -2,6 +2,9 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+	"golang.org/x/xerrors"
+	"os"
 	"runtime/debug"
 	"sync"
 
@@ -288,6 +291,93 @@ func (store *Store) GetTipSetReceiptsRoot(key block.TipSetKey) (cid.Cid, error) 
 // the tipset identified by `key`.
 func (store *Store) HasTipSetAndState(ctx context.Context, key block.TipSetKey) bool {
 	return store.tipIndex.Has(key)
+}
+
+// GetTipSetAndStatesByParentsAndHeight returns the the tipsets and states tracked by
+// the default store's tipIndex that have parents identified by `parentKey`.
+func (store *Store) GetTipSetByHeight(parentKey block.TipSetKey, h abi.ChainEpoch, prev bool) (*block.TipSet, error) {
+	pts, err := store.GetTipSet(parentKey)
+	if err != nil {
+		return nil, err
+	}
+	if h > pts.EnsureHeight() {
+		return nil, xerrors.Errorf("looking for tipset with height greater than start point")
+	}
+
+	if h == pts.EnsureHeight() {
+		return &pts, nil
+	}
+	lbts, err := store.walkBack(&pts, h)
+	if err != nil {
+		return nil, err
+	}
+	if lbts.EnsureHeight() == h || !prev {
+		return lbts, nil
+	}
+
+	pts, err = store.GetTipSet(lbts.EnsureParents())
+	if err != nil {
+		return nil, err
+	}
+	return &pts, nil
+}
+
+func (store *Store) GetLatestBeaconEntry(ts *block.TipSet) (*drand.Entry, error) {
+	cur := ts
+	for i := 0; i < 20; i++ {
+		cbe := cur.At(0).BeaconEntries
+		if len(cbe) > 0 {
+			return cbe[len(cbe)-1], nil
+		}
+
+		if cur.EnsureHeight() == 0 {
+			return nil, xerrors.Errorf("made it back to genesis block without finding beacon entry")
+		}
+
+		next, err := store.GetTipSet(cur.EnsureParents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
+		}
+		cur = &next
+	}
+
+	if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
+		return &drand.Entry{
+			Data: []byte{9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
+		}, nil
+	}
+
+	return nil, xerrors.Errorf("found NO beacon entries in the 20 blocks prior to given tipset")
+}
+
+func (store *Store) walkBack(from *block.TipSet, to abi.ChainEpoch) (*block.TipSet, error) {
+	if to > from.EnsureHeight() {
+		return nil, xerrors.Errorf("looking for tipset with height greater than start point")
+	}
+
+	if to == from.EnsureHeight() {
+		return from, nil
+	}
+
+	ts := from
+
+	for {
+		pts, err := store.GetTipSet(ts.EnsureParents())
+		if err != nil {
+			return nil, err
+		}
+
+		if to > pts.EnsureHeight() {
+			// in case pts is lower than the epoch we're looking for (null blocks)
+			// return a tipset above that height
+			return ts, nil
+		}
+		if to == pts.EnsureHeight() {
+			return &pts, nil
+		}
+
+		ts = &pts
+	}
 }
 
 // GetTipSetAndStatesByParentsAndHeight returns the the tipsets and states tracked by

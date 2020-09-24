@@ -241,7 +241,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	nd.ProofVerification = submodule.NewProofVerificationSubmodule(b.verifier)
 
-	nd.chain, err = submodule.NewChainSubmodule((*builder)(b), b.repo, &nd.Blockstore, &nd.ProofVerification)
+	nd.chain, err = submodule.NewChainSubmodule((*builder)(b), b.repo, &nd.Blockstore, &nd.ProofVerification, b.drand)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}
