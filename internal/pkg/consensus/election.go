@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	// "golang.org/x/xerrors"
@@ -113,20 +114,20 @@ func (ElectionMachine) GenerateWinningPoStSectorChallenge(ctx context.Context, p
 //	return crypto.ValidateBlsSignature(randomness, workerSigner, vrfProof)
 //}
 
-//// IsWinner returns true if the input challengeTicket wins the election
-//func (em ElectionMachine) IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool {
-//	// (ChallengeTicket / MaxChallengeTicket) < ExpectedLeadersPerEpoch * (MinerPower / NetworkPower)
-//	// ->
-//	// ChallengeTicket * NetworkPower < ExpectedLeadersPerEpoch * MinerPower * MaxChallengeTicket
-//
-//	lhs := big.PositiveFromUnsignedBytes(challengeTicket[:])
-//	lhs = big.Mul(lhs, networkPower)
-//
-//	rhs := big.Lsh(minerPower, challengeBits)
-//	rhs = big.Mul(rhs, big.NewInt(expectedLeadersPerEpoch))
-//
-//	return big.Cmp(lhs, rhs) < 0
-//}
+// IsWinner returns true if the input challengeTicket wins the election
+func (em ElectionMachine) IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool {
+	// (ChallengeTicket / MaxChallengeTicket) < ExpectedLeadersPerEpoch * (MinerPower / NetworkPower)
+	// ->
+	// ChallengeTicket * NetworkPower < ExpectedLeadersPerEpoch * MinerPower * MaxChallengeTicket
+
+	lhs := big.PositiveFromUnsignedBytes(challengeTicket[:])
+	lhs = big.Mul(lhs, networkPower)
+
+	rhs := big.Lsh(minerPower, challengeBits)
+	rhs = big.Mul(rhs, big.NewInt(expectedLeadersPerEpoch))
+
+	return big.Cmp(lhs, rhs) < 0
+}
 
 //// Loads infos for sectors challenged by a Winning PoSt.
 //func computeWinningPoStSectorChallenges(ctx context.Context, sectors SectorsStateView, mIDAddr address.Address, poStRandomness abi.PoStRandomness) ([]abi.SectorInfo, error) {
