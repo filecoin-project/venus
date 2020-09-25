@@ -40,7 +40,6 @@ type ProofVerifier interface {
 
 type SectorsStateView interface {
 	MinerSectorConfiguration(ctx context.Context, maddr address.Address) (*state.MinerSectorConfiguration, error)
-	MinerSectorStates(ctx context.Context, maddr address.Address) (*state.MinerSectorStates, error)
 	MinerGetSector(ctx context.Context, maddr address.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, bool, error)
 }
 

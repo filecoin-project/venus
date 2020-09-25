@@ -193,13 +193,14 @@ func (chn *ChainStateReadWriter) ChainGetRandomnessFromBeacon(ctx context.Contex
 	if searchHeight < 0 {
 		searchHeight = 0
 	}
+	chain.FindTipsetAtEpoch(ctx, ts, searchHeight, chn.readWriter)
 
-	randTs, err := chn.readWriter.GetTipSetByHeight(ts.Key(), searchHeight, true)
+	randTs, err := chain.FindTipsetAtEpoch(ctx, ts, searchHeight, chn.readWriter)
 	if err != nil {
 		return nil, err
 	}
 
-	be, err := chn.readWriter.GetLatestBeaconEntry(randTs)
+	be, err := chain.FindLatestDRAND(ctx, randTs, chn.readWriter)
 	if err != nil {
 		return nil, err
 	}

@@ -207,7 +207,7 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, di *dline
 
 	rand, err := p.chain.ChainGetRandomnessFromBeacon(ctx, newHead.Key(), acrypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes())
 	if err != nil {
-		log.Errorf("failed to get chain randomness for window post (ts=%d; deadline=%d): %w", newHead.Height(), di, err)
+		log.Errorf("failed to get chain randomness for window post (ts=%d; deadline=%d): %w", newHead.EnsureHeight(), di, err)
 		return
 	}
 
@@ -375,7 +375,7 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, di *dline
 	commEpoch := di.Open
 	commRand, err := p.chain.SampleChainRandomness(ctx, newHead.Key(), acrypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil)
 	if err != nil {
-		log.Errorf("failed to get chain randomness for window post (ts=%d; deadline=%d): %w", newHead.Height(), commEpoch, err)
+		log.Errorf("failed to get chain randomness for window post (ts=%d; deadline=%d): %w", newHead.EnsureHeight(), commEpoch, err)
 		return
 	}
 

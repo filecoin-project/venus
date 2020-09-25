@@ -89,3 +89,7 @@ type headRandomness struct {
 func (h *headRandomness) Randomness(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	return h.chain.SampleChainRandomness(ctx, h.head, tag, epoch, entropy)
 }
+
+func (h *headRandomness) ChainGetRandomnessFromBeacon(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return h.chain.ChainGetRandomnessFromBeacon(ctx, h.head, tag, epoch, entropy)
+}

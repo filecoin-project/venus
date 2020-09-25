@@ -2,8 +2,11 @@ package chain
 
 import (
 	"context"
-
+	"encoding/binary"
 	"github.com/filecoin-project/go-state-types/abi"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/minio/blake2b-simd"
+	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
@@ -63,6 +66,59 @@ func (s *Sampler) SampleTicket(ctx context.Context, head block.TipSetKey, epoch 
 	return ticket, nil
 }
 
+func (s *Sampler) SampleRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	ts, err := s.reader.GetTipSet(tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	if randEpoch > ts.EnsureHeight() {
+		return nil, xerrors.Errorf("cannot draw randomness from the future")
+	}
+
+	searchHeight := randEpoch
+	if searchHeight < 0 {
+		searchHeight = 0
+	}
+
+	FindTipsetAtEpoch(ctx, ts, searchHeight, s.reader)
+
+	randTs, err := FindTipsetAtEpoch(ctx, ts, searchHeight, s.reader)
+	if err != nil {
+		return nil, err
+	}
+
+	be, err := FindLatestDRAND(ctx, randTs, s.reader)
+	if err != nil {
+		return nil, err
+	}
+
+	// if at (or just past -- for null epochs) appropriate epoch
+	// or at genesis (works for negative epochs)
+	return DrawRandomness(be.Data, personalization, randEpoch, entropy)
+}
+
+func DrawRandomness(rbase []byte, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	h := blake2b.New256()
+	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
+		return nil, xerrors.Errorf("deriving randomness: %w", err)
+	}
+	VRFDigest := blake2b.Sum256(rbase)
+	_, err := h.Write(VRFDigest[:])
+	if err != nil {
+		return nil, xerrors.Errorf("hashing VRFDigest: %w", err)
+	}
+	if err := binary.Write(h, binary.BigEndian, round); err != nil {
+		return nil, xerrors.Errorf("deriving randomness: %w", err)
+	}
+	_, err = h.Write(entropy)
+	if err != nil {
+		return nil, xerrors.Errorf("hashing entropy: %w", err)
+	}
+
+	return h.Sum(nil), nil
+}
+
 ///// A chain sampler with a specific head tipset key. /////
 
 type RandomnessSamplerAtHead struct {
@@ -76,4 +132,8 @@ func (s *RandomnessSamplerAtHead) Sample(ctx context.Context, epoch abi.ChainEpo
 		return nil, err
 	}
 	return crypto.MakeRandomSeed(ticket.VRFProof)
+}
+
+func (s *RandomnessSamplerAtHead) GetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return s.sampler.SampleRandomnessFromBeacon(ctx, s.head, personalization, randEpoch, entropy)
 }

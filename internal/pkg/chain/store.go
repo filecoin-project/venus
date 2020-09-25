@@ -293,35 +293,6 @@ func (store *Store) HasTipSetAndState(ctx context.Context, key block.TipSetKey) 
 	return store.tipIndex.Has(key)
 }
 
-// GetTipSetAndStatesByParentsAndHeight returns the the tipsets and states tracked by
-// the default store's tipIndex that have parents identified by `parentKey`.
-func (store *Store) GetTipSetByHeight(parentKey block.TipSetKey, h abi.ChainEpoch, prev bool) (*block.TipSet, error) {
-	pts, err := store.GetTipSet(parentKey)
-	if err != nil {
-		return nil, err
-	}
-	if h > pts.EnsureHeight() {
-		return nil, xerrors.Errorf("looking for tipset with height greater than start point")
-	}
-
-	if h == pts.EnsureHeight() {
-		return &pts, nil
-	}
-	lbts, err := store.walkBack(&pts, h)
-	if err != nil {
-		return nil, err
-	}
-	if lbts.EnsureHeight() == h || !prev {
-		return lbts, nil
-	}
-
-	pts, err = store.GetTipSet(lbts.EnsureParents())
-	if err != nil {
-		return nil, err
-	}
-	return &pts, nil
-}
-
 func (store *Store) GetLatestBeaconEntry(ts *block.TipSet) (*drand.Entry, error) {
 	cur := ts
 	for i := 0; i < 20; i++ {
