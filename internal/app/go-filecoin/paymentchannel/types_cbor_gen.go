@@ -6,21 +6,25 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	paych "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
 
 var _ = xerrors.Errorf
 
+var lengthBufChannelInfo = []byte{138}
+
 func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{134}); err != nil {
+	if _, err := w.Write(lengthBufChannelInfo); err != nil {
 		return err
 	}
+
+	scratch := make([]byte, 9)
 
 	// t.UniqueAddr (address.Address) (struct)
 	if err := t.UniqueAddr.MarshalCBOR(w); err != nil {
@@ -38,21 +42,57 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.NextLane (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.NextLane))); err != nil {
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.NextLane)); err != nil {
 		return err
 	}
 
 	// t.NextNonce (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.NextNonce))); err != nil {
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.NextNonce)); err != nil {
 		return err
 	}
 
-	// t.Vouchers ([]*paymentchannel.VoucherInfo) (slice)
+	// t.Amount (big.Int) (struct)
+	if err := t.Amount.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.PendingAmount (big.Int) (struct)
+	if err := t.PendingAmount.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.CreateMsg (cid.Cid) (struct)
+
+	if t.CreateMsg == nil {
+		if _, err := w.Write(cbg.CborNull); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteCidBuf(scratch, w, *t.CreateMsg); err != nil {
+			return xerrors.Errorf("failed to write cid field t.CreateMsg: %w", err)
+		}
+	}
+
+	// t.AddFundsMsg (cid.Cid) (struct)
+
+	if t.AddFundsMsg == nil {
+		if _, err := w.Write(cbg.CborNull); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteCidBuf(scratch, w, *t.AddFundsMsg); err != nil {
+			return xerrors.Errorf("failed to write cid field t.AddFundsMsg: %w", err)
+		}
+	}
+
+	// t.Vouchers ([]*types.VoucherInfo) (slice)
 	if len(t.Vouchers) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.Vouchers was too long")
 	}
 
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Vouchers)))); err != nil {
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajArray, uint64(len(t.Vouchers))); err != nil {
 		return err
 	}
 	for _, v := range t.Vouchers {
@@ -64,9 +104,12 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
-	br := cbg.GetPeeker(r)
+	*t = ChannelInfo{}
 
-	maj, extra, err := cbg.CborReadHeader(br)
+	br := cbg.GetPeeker(r)
+	scratch := make([]byte, 8)
+
+	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
 		return err
 	}
@@ -74,7 +117,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 6 {
+	if extra != 10 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -83,7 +126,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.UniqueAddr.UnmarshalCBOR(br); err != nil {
-			return err
+			return xerrors.Errorf("unmarshaling t.UniqueAddr: %w", err)
 		}
 
 	}
@@ -92,7 +135,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.From.UnmarshalCBOR(br); err != nil {
-			return err
+			return xerrors.Errorf("unmarshaling t.From: %w", err)
 		}
 
 	}
@@ -101,33 +144,103 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.To.UnmarshalCBOR(br); err != nil {
-			return err
+			return xerrors.Errorf("unmarshaling t.To: %w", err)
 		}
 
 	}
 	// t.NextLane (uint64) (uint64)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
+	{
+
+		maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.NextLane = uint64(extra)
+
 	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.NextLane = uint64(extra)
 	// t.NextNonce (uint64) (uint64)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.NextNonce = uint64(extra)
-	// t.Vouchers ([]*paymentchannel.VoucherInfo) (slice)
+	{
 
-	maj, extra, err = cbg.CborReadHeader(br)
+		maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.NextNonce = uint64(extra)
+
+	}
+	// t.Amount (big.Int) (struct)
+
+	{
+
+		if err := t.Amount.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.Amount: %w", err)
+		}
+
+	}
+	// t.PendingAmount (big.Int) (struct)
+
+	{
+
+		if err := t.PendingAmount.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.PendingAmount: %w", err)
+		}
+
+	}
+	// t.CreateMsg (cid.Cid) (struct)
+
+	{
+
+		b, err := br.ReadByte()
+		if err != nil {
+			return err
+		}
+		if b != cbg.CborNull[0] {
+			if err := br.UnreadByte(); err != nil {
+				return err
+			}
+
+			c, err := cbg.ReadCid(br)
+			if err != nil {
+				return xerrors.Errorf("failed to read cid field t.CreateMsg: %w", err)
+			}
+
+			t.CreateMsg = &c
+		}
+
+	}
+	// t.AddFundsMsg (cid.Cid) (struct)
+
+	{
+
+		b, err := br.ReadByte()
+		if err != nil {
+			return err
+		}
+		if b != cbg.CborNull[0] {
+			if err := br.UnreadByte(); err != nil {
+				return err
+			}
+
+			c, err := cbg.ReadCid(br)
+			if err != nil {
+				return xerrors.Errorf("failed to read cid field t.AddFundsMsg: %w", err)
+			}
+
+			t.AddFundsMsg = &c
+		}
+
+	}
+	// t.Vouchers ([]*types.VoucherInfo) (slice)
+
+	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
 		return err
 	}
@@ -139,9 +252,11 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajArray {
 		return fmt.Errorf("expected cbor array")
 	}
+
 	if extra > 0 {
 		t.Vouchers = make([]*VoucherInfo, extra)
 	}
+
 	for i := 0; i < int(extra); i++ {
 
 		var v VoucherInfo
@@ -155,14 +270,18 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
+var lengthBufVoucherInfo = []byte{130}
+
 func (t *VoucherInfo) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{130}); err != nil {
+	if _, err := w.Write(lengthBufVoucherInfo); err != nil {
 		return err
 	}
+
+	scratch := make([]byte, 9)
 
 	// t.Voucher (paych.SignedVoucher) (struct)
 	if err := t.Voucher.MarshalCBOR(w); err != nil {
@@ -174,19 +293,23 @@ func (t *VoucherInfo) MarshalCBOR(w io.Writer) error {
 		return xerrors.Errorf("Byte array in field t.Proof was too long")
 	}
 
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Proof)))); err != nil {
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajByteString, uint64(len(t.Proof))); err != nil {
 		return err
 	}
-	if _, err := w.Write(t.Proof); err != nil {
+
+	if _, err := w.Write(t.Proof[:]); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) error {
-	br := cbg.GetPeeker(r)
+	*t = VoucherInfo{}
 
-	maj, extra, err := cbg.CborReadHeader(br)
+	br := cbg.GetPeeker(r)
+	scratch := make([]byte, 8)
+
+	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
 		return err
 	}
@@ -202,26 +325,24 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) error {
 
 	{
 
-		pb, err := br.PeekByte()
+		b, err := br.ReadByte()
 		if err != nil {
 			return err
 		}
-		if pb == cbg.CborNull[0] {
-			var nbuf [1]byte
-			if _, err := br.Read(nbuf[:]); err != nil {
+		if b != cbg.CborNull[0] {
+			if err := br.UnreadByte(); err != nil {
 				return err
 			}
-		} else {
 			t.Voucher = new(paych.SignedVoucher)
 			if err := t.Voucher.UnmarshalCBOR(br); err != nil {
-				return err
+				return xerrors.Errorf("unmarshaling t.Voucher pointer: %w", err)
 			}
 		}
 
 	}
 	// t.Proof ([]uint8) (slice)
 
-	maj, extra, err = cbg.CborReadHeader(br)
+	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
 		return err
 	}
@@ -232,8 +353,12 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")
 	}
-	t.Proof = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.Proof); err != nil {
+
+	if extra > 0 {
+		t.Proof = make([]uint8, extra)
+	}
+
+	if _, err := io.ReadFull(br, t.Proof[:]); err != nil {
 		return err
 	}
 	return nil
