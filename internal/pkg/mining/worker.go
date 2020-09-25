@@ -270,7 +270,11 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		return nil, err
 	}
 
-	return w.Generate(ctx, base, nextTicket, electionVRFProof, abi.ChainEpoch(nullBlkCount), posts, drandEntries)
+	elecProof := &crypto.ElectionProof{
+		WinCount: 0, //todo add wincount
+		VRFProof: electionVRFDigest[:],
+	}
+	return w.Generate(ctx, base, nextTicket, elecProof, abi.ChainEpoch(nullBlkCount), posts, drandEntries)
 }
 
 func (w *DefaultWorker) getPowerTable(powerKey, faultsKey block.TipSetKey) (consensus.PowerTableView, error) {
