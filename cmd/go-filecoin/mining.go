@@ -3,12 +3,11 @@ package commands
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
 var miningCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Manage all mining operations for a node",
 	},
 	Subcommands: map[string]*cmds.Command{
@@ -23,7 +22,7 @@ var miningCmd = &cmds.Command{
 }
 
 var miningAddrCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Retrieve address of miner actor associated with this node",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -37,7 +36,7 @@ var miningAddrCmd = &cmds.Command{
 }
 
 var miningOnceCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Mine a single block",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -51,7 +50,7 @@ var miningOnceCmd = &cmds.Command{
 }
 
 var miningSetupCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Prepare node to receive storage deals without starting the mining scheduler",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -64,7 +63,7 @@ var miningSetupCmd = &cmds.Command{
 }
 
 var miningStartCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Start mining blocks and other mining related operations",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -83,7 +82,7 @@ type MiningStatusResult struct {
 }
 
 var miningStatusCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Report on mining status",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -104,7 +103,7 @@ var miningStatusCmd = &cmds.Command{
 }
 
 var miningStopCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Stop block mining",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -114,7 +113,7 @@ var miningStopCmd = &cmds.Command{
 }
 
 var miningPledgeSectorCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Pledge an empty sector immediately",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {

@@ -9,9 +9,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
 
@@ -26,7 +24,7 @@ import (
 )
 
 var msgCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Send and monitor messages",
 	},
 	Subcommands: map[string]*cmds.Command{
@@ -45,17 +43,18 @@ type MessageSendResult struct {
 }
 
 var msgSendCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Send a message", // This feels too generic...
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("target", true, false, "Address of the actor to send the message to"),
-		cmdkit.StringArg("method", false, false, "The method to invoke on the target actor"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("target", true, false, "Address of the actor to send the message to"),
+		cmds.StringArg("method", false, false, "The method to invoke on the target actor"),
 	},
-	Options: []cmdkit.Option{
-		cmdkit.StringOption("value", "Value to send with message in FIL"),
-		cmdkit.StringOption("from", "Address to send message from"),
-		priceOption,
+	Options: []cmds.Option{
+		cmds.StringOption("value", "Value to send with message in FIL"),
+		cmds.StringOption("from", "Address to send message from"),
+		feecapOption,
+		premiumOption,
 		limitOption,
 		previewOption,
 		// TODO: (per dignifiedquire) add an option to set the nonce and method explicitly
@@ -80,7 +79,7 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
-		gasPrice, gasLimit, preview, err := parseGasOptions(req)
+		feecap, premium, gasLimit, preview, err := parseGasOptions(req)
 		if err != nil {
 			return err
 		}
@@ -113,7 +112,8 @@ var msgSendCmd = &cmds.Command{
 			fromAddr,
 			target,
 			val,
-			gasPrice,
+			feecap,
+			premium,
 			gasLimit,
 			methodID,
 			[]byte{},
@@ -132,13 +132,13 @@ var msgSendCmd = &cmds.Command{
 }
 
 var signedMsgSendCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Send a signed message",
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("message", true, false, "Signed Json message"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("message", true, false, "Signed Json message"),
 	},
-	Options: []cmdkit.Option{},
+	Options: []cmds.Option{},
 
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		msg := req.Arguments[0]
@@ -177,18 +177,18 @@ type WaitResult struct {
 }
 
 var msgWaitCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Wait for a message to appear in a mined block",
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("cid", true, false, "CID of the message to wait for"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cid", true, false, "CID of the message to wait for"),
 	},
-	Options: []cmdkit.Option{
-		cmdkit.BoolOption("message", "Print the whole message").WithDefault(true),
-		cmdkit.BoolOption("receipt", "Print the whole message receipt").WithDefault(true),
-		cmdkit.BoolOption("return", "Print the return value from the receipt").WithDefault(false),
-		cmdkit.Uint64Option("lookback", "Number of previous tipsets to be checked before waiting").WithDefault(msg.DefaultMessageWaitLookback),
-		cmdkit.StringOption("timeout", "Maximum time to wait for message. e.g., 300ms, 1.5h, 2h45m.").WithDefault("10m"),
+	Options: []cmds.Option{
+		cmds.BoolOption("message", "Print the whole message").WithDefault(true),
+		cmds.BoolOption("receipt", "Print the whole message receipt").WithDefault(true),
+		cmds.BoolOption("return", "Print the return value from the receipt").WithDefault(false),
+		cmds.Uint64Option("lookback", "Number of previous tipsets to be checked before waiting").WithDefault(msg.DefaultMessageWaitLookback),
+		cmds.StringOption("timeout", "Maximum time to wait for message. e.g., 300ms, 1.5h, 2h45m.").WithDefault("10m"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		msgCid, err := cid.Parse(req.Arguments[0])
@@ -246,13 +246,13 @@ type MessageStatusResult struct {
 }
 
 var msgStatusCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Show status of a message",
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("cid", true, false, "CID of the message to inspect"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cid", true, false, "CID of the message to inspect"),
 	},
-	Options: []cmdkit.Option{},
+	Options: []cmds.Option{},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		msgCid, err := cid.Parse(req.Arguments[0])
 		if err != nil {

@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	impl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/ipfs/go-datastore"
@@ -48,6 +49,7 @@ func NewRetrievalProtocolSubmodule(
 	pchMgrAPI retmkt.PaychMgrAPI,
 	pieceManager piecemanager.PieceManager,
 	dtTransfer datatransfer.Manager,
+	viewer *appstate.TipSetStateViewer,
 ) (*RetrievalProtocolSubmodule, error) {
 
 	retrievalDealPieceStore := piecestore.NewPieceStore(namespace.Wrap(ds, datastore.NewKey(PieceStoreDSPrefix)))
@@ -60,7 +62,7 @@ func NewRetrievalProtocolSubmodule(
 		return nil, err
 	}
 
-	cnode := retmkt.NewRetrievalClientConnector(bs, cr, signer, pchMgrAPI)
+	cnode := retmkt.NewRetrievalClientConnector(bs, cr, signer, pchMgrAPI, viewer)
 	counter := storedcounter.New(ds, datastore.NewKey(RetrievalCounterDSKey))
 
 	resolver := discovery.Multi(discovery.NewLocal(namespace.Wrap(ds, datastore.NewKey(DiscoveryDSPrefix))))

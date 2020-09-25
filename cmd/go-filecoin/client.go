@@ -11,14 +11,13 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ipfs/go-cid"
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	files "github.com/ipfs/go-ipfs-files"
 	p2pcore "github.com/libp2p/go-libp2p-core/peer"
 )
 
 var clientCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Make deals, store data, retrieve data",
 	},
 	Subcommands: map[string]*cmds.Command{
@@ -32,7 +31,7 @@ var clientCmd = &cmds.Command{
 }
 
 var clientCatCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Read out data stored on the network",
 		ShortDescription: `
 Prints data from the storage market specified with a given CID to stdout. The
@@ -40,8 +39,8 @@ only argument should be the CID to return. The data will be returned in whatever
 format was provided with the data initially.
 `,
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("cid", true, false, "CID of data to read"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cid", true, false, "CID of data to read"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		c, err := cid.Decode(req.Arguments[0])
@@ -59,7 +58,7 @@ format was provided with the data initially.
 }
 
 var clientImportDataCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Import data into the local node",
 		ShortDescription: `
 Imports data previously exported with the client cat command into the storage
@@ -67,8 +66,8 @@ market. This command takes only one argument, the path of the file to import.
 See the go-filecoin client cat command for more details.
 `,
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.FileArg("file", true, false, "Path to file to import").EnableStdin(),
+	Arguments: []cmds.Argument{
+		cmds.FileArg("file", true, false, "Path to file to import").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		iter := req.Files.Entries()
@@ -92,7 +91,7 @@ See the go-filecoin client cat command for more details.
 }
 
 var ClientProposeStorageDealCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline:          "Propose a storage deal with a storage miner",
 		ShortDescription: `Sends a storage deal proposal to a miner`,
 		LongDescription: `
@@ -104,16 +103,16 @@ be represented as a count of 30 second intervals. For example, 1 minute would
 be 2, 1 hour would be 120, and 1 day would be 2880.
 `,
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("miner", true, false, "Address of miner to send storage proposal"),
-		cmdkit.StringArg("data", true, false, "CID of the data to be stored"),
-		cmdkit.StringArg("start", true, false, "Chain epoch at which deal should start"),
-		cmdkit.StringArg("end", true, false, "Chain epoch at which deal should end"),
-		cmdkit.StringArg("price", true, false, "Storage price per epoch of all data in FIL (e.g. 0.01)"),
-		cmdkit.StringArg("collateral", true, false, "Collateral of deal in FIL (e.g. 0.01)"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("miner", true, false, "Address of miner to send storage proposal"),
+		cmds.StringArg("data", true, false, "CID of the data to be stored"),
+		cmds.StringArg("start", true, false, "Chain epoch at which deal should start"),
+		cmds.StringArg("end", true, false, "Chain epoch at which deal should end"),
+		cmds.StringArg("price", true, false, "Storage price per epoch of all data in FIL (e.g. 0.01)"),
+		cmds.StringArg("collateral", true, false, "Collateral of deal in FIL (e.g. 0.01)"),
 	},
-	Options: []cmdkit.Option{
-		cmdkit.StringOption("peerid", "Override miner's peer id stored on chain"),
+	Options: []cmds.Option{
+		cmds.StringOption("peerid", "Override miner's peer id stored on chain"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addr, err := GetPorcelainAPI(env).WalletDefaultAddress()
@@ -201,7 +200,7 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 }
 
 var ClientQueryStorageDealCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Query a storage deal's status",
 		ShortDescription: `
 Checks the status of the storage deal proposal specified by the id. The deal
@@ -209,8 +208,8 @@ status and deal message will be returned as a formatted string unless another
 format is specified with the --enc flag.
 `,
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("id", true, false, "CID of deal to query"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("id", true, false, "CID of deal to query"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		dealCID, err := cid.Decode(req.Arguments[0])
@@ -233,14 +232,14 @@ type VerifyStorageDealResult struct {
 }
 
 var clientVerifyStorageDealCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Verify a storage deal",
 		ShortDescription: `
 Returns an error if the deal is not in the Complete state.  Returns nil otherwise.
 `,
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("id", true, false, "CID of deal to query"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("id", true, false, "CID of deal to query"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		dealCID, err := cid.Decode(req.Arguments[0])
@@ -264,7 +263,7 @@ Returns an error if the deal is not in the Complete state.  Returns nil otherwis
 }
 
 var clientListAsksCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "List all asks in the storage market",
 		ShortDescription: `
 Lists all asks in the storage market. This command takes no arguments.

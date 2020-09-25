@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
@@ -20,7 +19,7 @@ const (
 // Note, most of this is copied directly from go-ipfs (https://github.com/ipfs/go-ipfs/blob/master/core/commands/dht.go).
 // A few simple modifications have been adapted for filecoin.
 var dhtCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline:          "Explore and manipulate the libp2p DHT.",
 		ShortDescription: ``,
 	},
@@ -33,16 +32,16 @@ var dhtCmd = &cmds.Command{
 }
 
 var queryDhtCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline:          "Find the closest Peer IDs to a given Peer ID by querying the DHT.",
 		ShortDescription: "Outputs a list of newline-delimited Peer IDs.",
 	},
 
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("peerID", true, false, "The peerID to run the query against."),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("peerID", true, false, "The peerID to run the query against."),
 	},
-	Options: []cmdkit.Option{
-		cmdkit.BoolOption(dhtVerboseOptionName, "v", "Print extra information."),
+	Options: []cmds.Option{
+		cmds.BoolOption(dhtVerboseOptionName, "v", "Print extra information."),
 	},
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 
@@ -82,16 +81,16 @@ var queryDhtCmd = &cmds.Command{
 }
 
 var findProvidersDhtCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline:          "Find peers that can provide a given key's value.",
 		ShortDescription: "Outputs a list of newline-delimited provider Peer IDs for a given key.",
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("key", true, false, "The key whose provider Peer IDs are output.").EnableStdin(),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("key", true, false, "The key whose provider Peer IDs are output.").EnableStdin(),
 	},
-	Options: []cmdkit.Option{
-		cmdkit.BoolOption(dhtVerboseOptionName, "v", "Print extra information."),
-		cmdkit.IntOption(numProvidersOptionName, "n", "The max number of providers to find.").WithDefault(20),
+	Options: []cmds.Option{
+		cmds.BoolOption(dhtVerboseOptionName, "v", "Print extra information."),
+		cmds.IntOption(numProvidersOptionName, "n", "The max number of providers to find.").WithDefault(20),
 	},
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 		numProviders, _ := req.Options[numProvidersOptionName].(int)
@@ -137,12 +136,12 @@ var findProvidersDhtCmd = &cmds.Command{
 }
 
 var findPeerDhtCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline:          "Find the multiaddresses associated with a Peer ID.",
 		ShortDescription: "Outputs a list of newline-delimited multiaddresses.",
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("peerID", true, false, "The ID of the peer to search for."),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("peerID", true, false, "The ID of the peer to search for."),
 	},
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 		peerID, err := peer.Decode(req.Arguments[0])

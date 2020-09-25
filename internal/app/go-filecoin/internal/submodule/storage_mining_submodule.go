@@ -92,15 +92,22 @@ func NewStorageMiningSubmodule(
 	pcp := fsm.NewBasicPreCommitPolicy(&ccn, abi.ChainEpoch(2*60*24), ppStart%miner.WPoStProvingPeriod)
 
 	fsmConnector := fsmeventsconnector.New(chainThresholdScheduler, c.State)
-	fsm := fsm.New(ncn, fsmConnector, minerAddrID, ds, mgr, sid, ffiwrapper.ProofVerifier, &pcp)
+	fsm := fsm.New(ncn, fsm.FeeConfig{
+		MaxPreCommitGasFee: abi.NewTokenAmount(1_0000_0000),
+		MaxCommitGasFee:    abi.NewTokenAmount(1_0000_0000), //todo impl fee config
+	}, fsmConnector, minerAddrID, ds, mgr, sid, ffiwrapper.ProofVerifier, &pcp, nil, nil) //todo impl defficult to impl SectorStateNotifee
 
 	bke := piecemanager.NewFiniteStateMachineBackEnd(fsm, sid)
 
+	postProof, err := sealProofType.RegisteredWinningPoStProof()
+	if err != nil {
+		return nil, err
+	}
 	modu := &StorageMiningSubmodule{
 		PieceManager: &bke,
 		hs:           chainThresholdScheduler,
 		fsm:          fsm,
-		poster:       poster.NewPoster(minerAddr, m.Outbox, mgr, c.State, stateViewer, mw),
+		poster:       poster.NewPoster(minerAddr, m.Outbox, mgr, c.State, stateViewer, postProof, nil, mw), //todo impl fault tracker
 	}
 
 	// allow the caller to provide a thing which generates fake PoSts

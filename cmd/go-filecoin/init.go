@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -33,19 +32,19 @@ import (
 var logInit = logging.Logger("commands/init")
 
 var initCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Initialize a filecoin repo",
 	},
-	Options: []cmdkit.Option{
-		cmdkit.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
-		cmdkit.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
-		cmdkit.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
-		cmdkit.StringOption(OptionSectorDir, "path of directory into which staged and sealed sectors will be written"),
-		cmdkit.StringOption(MinerActorAddress, "when set, sets the daemons's miner actor address to the provided address"),
-		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
-		cmdkit.StringOption(Network, "when set, populates config with network specific parameters"),
-		cmdkit.StringOption(OptionPresealedSectorDir, "when set to the path of a directory, imports pre-sealed sector data from that directory"),
-		cmdkit.StringOption(OptionDrandConfigAddr, "configure drand with given address, uses secure contact protocol and no override.  If you need different settings use daemon drand command"),
+	Options: []cmds.Option{
+		cmds.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
+		cmds.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
+		cmds.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
+		cmds.StringOption(OptionSectorDir, "path of directory into which staged and sealed sectors will be written"),
+		cmds.StringOption(MinerActorAddress, "when set, sets the daemons's miner actor address to the provided address"),
+		cmds.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
+		cmds.StringOption(Network, "when set, populates config with network specific parameters"),
+		cmds.StringOption(OptionPresealedSectorDir, "when set to the path of a directory, imports pre-sealed sector data from that directory"),
+		cmds.StringOption(OptionDrandConfigAddr, "configure drand with given address, uses secure contact protocol and no override.  If you need different settings use daemon drand command"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
@@ -105,7 +104,7 @@ var initCmd = &cmds.Command{
 	},
 }
 
-func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
+func setConfigFromOptions(cfg *config.Config, options cmds.OptMap) error {
 	var err error
 	if dir, ok := options[OptionSectorDir].(string); ok {
 		cfg.SectorBase.RootDirPath = dir
@@ -141,7 +140,6 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 	}
 	if netcfg != nil {
 		cfg.Bootstrap = &netcfg.Bootstrap
-		cfg.Drand = &netcfg.Drand
 		cfg.NetworkParams = &netcfg.Network
 	}
 
@@ -157,7 +155,7 @@ func (w *setWrapper) ConfigSet(dottedKey string, jsonString string) error {
 	return w.cfg.Set(dottedKey, jsonString)
 }
 
-func setDrandConfig(repo repo.Repo, options cmdkit.OptMap) error {
+func setDrandConfig(repo repo.Repo, options cmds.OptMap) error {
 	drandAddrStr, ok := options[OptionDrandConfigAddr].(string)
 	if !ok {
 		// skip configuring drand during init

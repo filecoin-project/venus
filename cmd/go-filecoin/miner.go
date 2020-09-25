@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	cid "github.com/ipfs/go-cid"
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
@@ -22,7 +21,7 @@ import (
 )
 
 var minerCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Manage a single miner actor",
 	},
 	Subcommands: map[string]*cmds.Command{
@@ -42,7 +41,7 @@ type MinerCreateResult struct {
 }
 
 var minerCreateCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Create a new file miner with <collateral> FIL",
 		ShortDescription: `Issues a new message to the network to create the miner, then waits for the
 message to be mined as this is required to return the address of the new miner.
@@ -50,14 +49,15 @@ Collateral will be committed at the rate of 0.001FIL per sector. When the
 miner's collateral drops below 0.001FIL, the miner will not be able to commit
 additional sectors.`,
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("collateral", true, false, "The amount of collateral, in FIL."),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("collateral", true, false, "The amount of collateral, in FIL."),
 	},
-	Options: []cmdkit.Option{
-		cmdkit.StringOption("sectorsize", "size of the sectors which this miner will commit, in bytes"),
-		cmdkit.StringOption("from", "address to send from"),
-		cmdkit.StringOption("peerid", "Base58-encoded libp2p peer ID that the miner will operate"),
-		priceOption,
+	Options: []cmds.Option{
+		cmds.StringOption("sectorsize", "size of the sectors which this miner will commit, in bytes"),
+		cmds.StringOption("from", "address to send from"),
+		cmds.StringOption("peerid", "Base58-encoded libp2p peer ID that the miner will operate"),
+		feecapOption,
+		premiumOption,
 		limitOption,
 		previewOption,
 	},
@@ -96,7 +96,7 @@ additional sectors.`,
 			return ErrInvalidCollateral
 		}
 
-		gasPrice, gasLimit, preview, err := parseGasOptions(req)
+		feecap, premium, gasLimit, preview, err := parseGasOptions(req)
 		if err != nil {
 			return err
 		}
@@ -121,7 +121,8 @@ additional sectors.`,
 		addr, err := GetPorcelainAPI(env).MinerCreate(
 			req.Context,
 			fromAddr,
-			gasPrice,
+			feecap,
+			premium,
 			gasLimit,
 			sealProofType,
 			pid,
@@ -147,17 +148,22 @@ type MinerSetPriceResult struct {
 }
 
 var minerSetPriceCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Set the minimum price for storage",
 		ShortDescription: `Sets the mining.minimumPrice in config and creates a new ask for the given price.
 This command waits for the ask to be mined.`,
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("storageprice", true, false, "The new price of storage in FIL per byte per block"),
-		cmdkit.StringArg("duration", true, false, "How long this ask is valid for in epochs"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("storageprice", true, false, "The new price of storage in FIL per byte per block"),
+		cmds.StringArg("duration", true, false, "How long this ask is valid for in epochs"),
+		cmds.StringArg("verified-price", true, false, "verify price"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		price, ok := types.NewAttoFILFromFILString(req.Arguments[0])
+		if !ok {
+			return ErrInvalidPrice
+		}
+		verifiedPrice, ok := types.NewAttoFILFromFILString(req.Arguments[0])
 		if !ok {
 			return ErrInvalidPrice
 		}
@@ -167,7 +173,7 @@ This command waits for the ask to be mined.`,
 			return fmt.Errorf("expiry must be a valid integer")
 		}
 
-		err := GetStorageAPI(env).AddAsk(price, abi.ChainEpoch(expiry.Uint64()))
+		err := GetStorageAPI(env).AddAsk(price, abi.ChainEpoch(expiry.Uint64()), verifiedPrice)
 		if err != nil {
 			return err
 		}
@@ -190,17 +196,18 @@ type MinerUpdatePeerIDResult struct {
 }
 
 var minerUpdatePeerIDCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline:          "Change the libp2p identity that a miner is operating",
 		ShortDescription: `Issues a new message to the network to update the miner's libp2p identity.`,
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("address", true, false, "Miner address to update peer ID for"),
-		cmdkit.StringArg("peerid", true, false, "Base58-encoded libp2p peer ID that the miner will operate"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("address", true, false, "Miner address to update peer ID for"),
+		cmds.StringArg("peerid", true, false, "Base58-encoded libp2p peer ID that the miner will operate"),
 	},
-	Options: []cmdkit.Option{
-		cmdkit.StringOption("from", "Address to send from"),
-		priceOption,
+	Options: []cmds.Option{
+		cmds.StringOption("from", "Address to send from"),
+		feecapOption,
+		premiumOption,
 		limitOption,
 		previewOption,
 	},
@@ -220,7 +227,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			return err
 		}
 
-		gasPrice, gasLimit, preview, err := parseGasOptions(req)
+		feecap, premium, gasLimit, preview, err := parseGasOptions(req)
 		if err != nil {
 			return err
 		}
@@ -244,14 +251,15 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			})
 		}
 
-		params := miner.ChangePeerIDParams{NewID: newPid}
+		params := miner.ChangePeerIDParams{NewID: abi.PeerID(newPid)}
 
 		c, _, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
 			minerAddr,
 			types.ZeroAttoFIL,
-			gasPrice,
+			feecap,
+			premium,
 			gasLimit,
 			builtin.MethodsMiner.ChangePeerID,
 			&params,
@@ -270,7 +278,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 }
 
 var minerStatusCommand = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Get the status of a miner",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -287,21 +295,22 @@ var minerStatusCommand = &cmds.Command{
 		return re.Emit(status)
 	},
 	Type: porcelain.MinerStatus{},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("miner", true, false, "A miner actor address"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("miner", true, false, "A miner actor address"),
 	},
 }
 
 var minerSetWorkerAddressCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline:          "Set the address of the miner worker. Returns a message CID",
 		ShortDescription: "Set the address of the miner worker to the provided address. When a miner is created, this address defaults to the miner owner. Use this command to change the default. Returns a message CID to wait for the message to appear on chain.",
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("new-address", true, false, "The address of the new miner worker."),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("new-address", true, false, "The address of the new miner worker."),
 	},
-	Options: []cmdkit.Option{
-		priceOption,
+	Options: []cmds.Option{
+		feecapOption,
+		premiumOption,
 		limitOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -310,12 +319,12 @@ var minerSetWorkerAddressCmd = &cmds.Command{
 			return err
 		}
 
-		gasPrice, gasLimit, _, err := parseGasOptions(req)
+		feecap, premium, gasLimit, _, err := parseGasOptions(req)
 		if err != nil {
 			return err
 		}
 
-		msgCid, err := GetPorcelainAPI(env).MinerSetWorkerAddress(req.Context, newWorker, gasPrice, gasLimit)
+		msgCid, err := GetPorcelainAPI(env).MinerSetWorkerAddress(req.Context, newWorker, feecap, premium, gasLimit)
 		if err != nil {
 			return err
 		}

@@ -171,6 +171,10 @@ func (api *API) SampleChainRandomness(ctx context.Context, head block.TipSetKey,
 	return api.chain.SampleChainRandomness(ctx, head, tag, epoch, entropy)
 }
 
+func (api *API) ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return api.chain.ChainGetRandomnessFromBeacon(ctx, tsk, personalization, randEpoch, entropy)
+}
+
 // SyncerStatus returns the current status of the active or last active chain sync operation.
 func (api *API) SyncerStatus() status.Status {
 	return api.syncer.Status()

@@ -47,7 +47,6 @@ type chainReadWriter interface {
 	GetTipSetState(context.Context, block.TipSetKey) (vmstate.Tree, error)
 	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
 	SetHead(context.Context, block.TipSet) error
-	GetTipSetByHeight(parentKey block.TipSetKey, h abi.ChainEpoch, prev bool) (*block.TipSet, error)
 	GetLatestBeaconEntry(ts *block.TipSet) (*drand.Entry, error)
 	ReadOnlyStateStore() cborutil.ReadOnlyIpldStore
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 
@@ -24,7 +23,7 @@ type PingResult struct {
 }
 
 var pingCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Send echo request packets to p2p network members",
 		ShortDescription: `
 'ping' is a tool to test sending data to other nodes. It finds nodes
@@ -32,11 +31,11 @@ via the routing system, sends pings, waits for pongs, and prints out round-
 trip latency information.
 		`,
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("peer ID", true, false, "ID of peer to be pinged").EnableStdin(),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("peer ID", true, false, "ID of peer to be pinged").EnableStdin(),
 	},
-	Options: []cmdkit.Option{
-		cmdkit.UintOption("count", "c", "Number of ping messages to send").WithDefault(0),
+	Options: []cmds.Option{
+		cmds.UintOption("count", "c", "Number of ping messages to send").WithDefault(0),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		peerID, err := peer.Decode(req.Arguments[0])

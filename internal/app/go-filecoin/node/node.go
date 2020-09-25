@@ -396,7 +396,6 @@ func (node *Node) setupStorageMining(ctx context.Context) error {
 	sealProofType := status.SealProofType
 
 	cborStore := node.Blockstore.CborStore
-
 	waiter := msg.NewWaiter(node.chain.ChainReader, node.chain.MessageStore, node.Blockstore.Blockstore, cborStore)
 
 	// TODO: rework these modules so they can be at least partially constructed during the building phase #3738
@@ -451,6 +450,7 @@ func (node *Node) setupRetrievalMining(ctx context.Context) error {
 		paychMgr,
 		node.PieceManager(),
 		node.network.DataTransfer,
+		node.chain.ActorState,
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed to build node.RetrievalProtocol")
@@ -626,8 +626,8 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 		MinerOwnerAddr: owner,
 		WorkerSigner:   node.Wallet.Signer,
 
-		GetStateTree:   node.chain.ChainReader.GetTipSetState,
-		GetWeight:      node.getWeight,
+		GetStateTree: node.chain.ChainReader.GetTipSetState,
+		GetWeight:    node.getWeight,
 		// Election:       consensus.NewElectionMachine(node.PorcelainAPI), // ToDo ??
 		TicketGen:      consensus.NewTicketMachine(sampler),
 		TipSetMetadata: node.chain.ChainReader,

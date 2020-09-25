@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/ipfs/go-cid"
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
@@ -18,7 +17,7 @@ const (
 )
 
 var dealsCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Manage and inspect deals made by or with this node",
 	},
 	Subcommands: map[string]*cmds.Command{
@@ -38,16 +37,16 @@ type DealsListResult struct {
 }
 
 var dealsListCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "List all deals",
 		ShortDescription: `
 Lists all recorded deals made by or with this node. This may include pending
 deals, active deals, finished deals and cancelled deals.
 `,
 	},
-	Options: []cmdkit.Option{
-		cmdkit.BoolOption(clientOnly, "c", "only return deals made as a client"),
-		cmdkit.BoolOption(minerOnly, "m", "only return deals made as a miner"),
+	Options: []cmds.Option{
+		cmds.BoolOption(clientOnly, "c", "only return deals made as a client"),
+		cmds.BoolOption(minerOnly, "m", "only return deals made as a miner"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		isClientOnly, _ := req.Options[clientOnly].(bool)
@@ -94,11 +93,11 @@ deals, active deals, finished deals and cancelled deals.
 }
 
 var dealsShowCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Show deal details for CID <cid>",
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("cid", true, false, "CID of deal to query"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cid", true, false, "CID of deal to query"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		dealCid, err := cid.Parse(req.Arguments[0])

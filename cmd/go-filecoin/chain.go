@@ -7,14 +7,13 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 var chainCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Inspect the filecoin blockchain",
 	},
 	Subcommands: map[string]*cmds.Command{
@@ -29,7 +28,7 @@ var chainCmd = &cmds.Command{
 }
 
 var storeHeadCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Get heaviest tipset CIDs",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -43,12 +42,12 @@ var storeHeadCmd = &cmds.Command{
 }
 
 var storeLsCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline:          "List blocks in the blockchain",
 		ShortDescription: `Provides a list of blocks in order from head to genesis. By default, only CIDs are returned for each block.`,
 	},
-	Options: []cmdkit.Option{
-		cmdkit.BoolOption("long", "l", "List blocks in long format, including CID, Miner, StateRoot, block height and message count respectively"),
+	Options: []cmds.Option{
+		cmds.BoolOption("long", "l", "List blocks in long format, including CID, Miner, StateRoot, block height and message count respectively"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		iter, err := GetPorcelainAPI(env).ChainLs(req.Context)
@@ -72,7 +71,7 @@ var storeLsCmd = &cmds.Command{
 }
 
 var storeStatusCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Show status of chain sync operation.",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -85,11 +84,11 @@ var storeStatusCmd = &cmds.Command{
 }
 
 var storeSetHeadCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Set the chain head to a specific tipset key.",
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("cids", true, true, "CID's of the blocks of the tipset to set the chain head to."),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cids", true, true, "CID's of the blocks of the tipset to set the chain head to."),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		headCids, err := cidsFromSlice(req.Arguments)
@@ -102,14 +101,14 @@ var storeSetHeadCmd = &cmds.Command{
 }
 
 var storeSyncCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Instruct the chain syncer to sync a specific chain head, going to network if required.",
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("peerid", true, false, "Base58-encoded libp2p peer ID to sync from"),
-		cmdkit.StringArg("cids", true, true, "CID's of the blocks of the tipset to sync."),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("peerid", true, false, "Base58-encoded libp2p peer ID to sync from"),
+		cmds.StringArg("cids", true, true, "CID's of the blocks of the tipset to sync."),
 	},
-	Options: []cmdkit.Option{},
+	Options: []cmds.Option{},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		syncPid, err := peer.Decode(req.Arguments[0])
 		if err != nil {
@@ -133,12 +132,12 @@ var storeSyncCmd = &cmds.Command{
 }
 
 var storeExportCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Export the chain store to a car file.",
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("file", true, false, "File to export chain data to."),
-		cmdkit.StringArg("cids", true, true, "CID's of the blocks of the tipset to export from."),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("file", true, false, "File to export chain data to."),
+		cmds.StringArg("cids", true, true, "CID's of the blocks of the tipset to export from."),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		f, err := os.Create(req.Arguments[0])
@@ -161,11 +160,11 @@ var storeExportCmd = &cmds.Command{
 }
 
 var storeImportCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Import the chain from a car file.",
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.FileArg("file", true, false, "File to import chain data from.").EnableStdin(),
+	Arguments: []cmds.Argument{
+		cmds.FileArg("file", true, false, "File to import chain data from.").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		iter := req.Files.Entries()

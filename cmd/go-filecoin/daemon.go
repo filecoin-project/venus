@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
 	ma "github.com/multiformats/go-multiaddr"
@@ -26,17 +25,17 @@ import (
 )
 
 var daemonCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Start a long-running daemon process",
 	},
-	Options: []cmdkit.Option{
-		cmdkit.StringOption(SwarmAddress, "multiaddress to listen on for filecoin network connections"),
-		cmdkit.StringOption(SwarmPublicRelayAddress, "public multiaddress for routing circuit relay traffic.  Necessary for relay nodes to provide this if they are not publically dialable"),
-		cmdkit.BoolOption(OfflineMode, "start the node without networking"),
-		cmdkit.BoolOption(ELStdout),
-		cmdkit.BoolOption(IsRelay, "advertise and allow filecoin network traffic to be relayed through this node"),
-		cmdkit.StringOption(BlockTime, "period a node waits between mining successive blocks").WithDefault(clock.DefaultEpochDuration.String()),
-		cmdkit.StringOption(PropagationDelay, "time a node waits after the start of an epoch for blocks to arrive").WithDefault(clock.DefaultPropagationDelay.String()),
+	Options: []cmds.Option{
+		cmds.StringOption(SwarmAddress, "multiaddress to listen on for filecoin network connections"),
+		cmds.StringOption(SwarmPublicRelayAddress, "public multiaddress for routing circuit relay traffic.  Necessary for relay nodes to provide this if they are not publically dialable"),
+		cmds.BoolOption(OfflineMode, "start the node without networking"),
+		cmds.BoolOption(ELStdout),
+		cmds.BoolOption(IsRelay, "advertise and allow filecoin network traffic to be relayed through this node"),
+		cmds.StringOption(BlockTime, "period a node waits between mining successive blocks").WithDefault(clock.DefaultEpochDuration.String()),
+		cmds.StringOption(PropagationDelay, "time a node waits after the start of an epoch for blocks to arrive").WithDefault(clock.DefaultPropagationDelay.String()),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		return daemonRun(req, re)

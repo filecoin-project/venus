@@ -1,7 +1,6 @@
 package commands
 
 import (
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
@@ -11,7 +10,7 @@ type BootstrapLsResult struct {
 }
 
 var bootstrapCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Interact with bootstrap addresses",
 	},
 	Subcommands: map[string]*cmds.Command{

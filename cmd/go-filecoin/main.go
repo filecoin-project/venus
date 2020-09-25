@@ -10,7 +10,6 @@ import (
 	"os"
 	"syscall"
 
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-cmds/cli"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
@@ -102,7 +101,7 @@ func init() {
 
 // command object for the local cli
 var RootCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "A decentralized storage network",
 		Subcommands: `
 START RUNNING FILECOIN
@@ -153,12 +152,12 @@ TOOL COMMANDS
   go-filecoin version                - Show go-filecoin version information
 `,
 	},
-	Options: []cmdkit.Option{
-		cmdkit.StringOption(OptionAPI, "set the api port to use"),
-		cmdkit.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.filecoin/repo"),
-		cmdkit.StringOption(cmds.EncLong, cmds.EncShort, "The encoding type the output should be encoded with (pretty-json or json)").WithDefault("pretty-json"),
-		cmdkit.BoolOption("help", "Show the full command help text."),
-		cmdkit.BoolOption("h", "Show a short version of the command help text."),
+	Options: []cmds.Option{
+		cmds.StringOption(OptionAPI, "set the api port to use"),
+		cmds.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.filecoin/repo"),
+		cmds.StringOption(cmds.EncLong, cmds.EncShort, "The encoding type the output should be encoded with (pretty-json or json)").WithDefault("pretty-json"),
+		cmds.BoolOption("help", "Show the full command help text."),
+		cmds.BoolOption("h", "Show a short version of the command help text."),
 	},
 	Subcommands: make(map[string]*cmds.Command),
 }
@@ -246,26 +245,7 @@ func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.
 
 	client := cmdhttp.NewClient(e.api, cmdhttp.ClientWithAPIPrefix(APIPrefix))
 
-	res, err := client.Send(req)
-	if err != nil {
-		if isConnectionRefused(err) {
-			return cmdkit.Errorf(cmdkit.ErrFatal, "Connection Refused. Is the daemon running?")
-		}
-		if cmdKitErr, ok := err.(*cmdkit.Error); ok && cmdKitErr.Code == cmdkit.ErrNormal {
-			return re.CloseWithError(err)
-		}
-		if urlErr, ok := err.(*url.Error); ok && urlErr.Timeout() {
-			return re.CloseWithError(err)
-		}
-		return cmdkit.Errorf(cmdkit.ErrFatal, err.Error())
-	}
-
-	// copy received result into cli emitter
-	err = cmds.Copy(re, res)
-	if err != nil {
-		return cmdkit.Errorf(cmdkit.ErrFatal|cmdkit.ErrNormal, err.Error())
-	}
-	return nil
+	return client.Execute(req, re, env)
 }
 
 func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
@@ -355,33 +335,43 @@ func isConnectionRefused(err error) bool {
 	return syscallErr.Err == syscall.ECONNREFUSED
 }
 
-var priceOption = cmdkit.StringOption("gas-price", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
-var limitOption = cmdkit.Int64Option("gas-limit", "Maximum GasUnits this message is allowed to consume")
-var previewOption = cmdkit.BoolOption("preview", "Preview the Gas cost of this command without actually executing it")
+var feecapOption = cmds.StringOption("gas-feecap", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
+var premiumOption = cmds.StringOption("gas-premium", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
+var limitOption = cmds.Int64Option("gas-limit", "Maximum GasUnits this message is allowed to consume")
+var previewOption = cmds.BoolOption("preview", "Preview the Gas cost of this command without actually executing it")
 
-func parseGasOptions(req *cmds.Request) (types.AttoFIL, gas.Unit, bool, error) {
-	priceOption := req.Options["gas-price"]
-	if priceOption == nil {
-		return types.ZeroAttoFIL, gas.Zero, false, errors.New("gas-price option is required")
+func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.AttoFIL, gas.Unit, bool, error) {
+	feecapOption := req.Options["gas-feecap"]
+	if feecapOption == nil {
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.Zero, false, errors.New("gas-feecap option is required")
 	}
 
-	price, ok := types.NewAttoFILFromFILString(priceOption.(string))
+	premiumOption := req.Options["gas-premium"]
+	if feecapOption == nil {
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.Zero, false, errors.New("gas-premium option is required")
+	}
+
+	feecap, ok := types.NewAttoFILFromFILString(feecapOption.(string))
 	if !ok {
-		return types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
+	}
+	premium, ok := types.NewAttoFILFromFILString(premiumOption.(string))
+	if !ok {
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
 	}
 
 	limitOption := req.Options["gas-limit"]
 	if limitOption == nil {
-		return types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("gas-limit option is required")
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("gas-limit option is required")
 	}
 
 	gasLimitInt, ok := limitOption.(int64)
 	if !ok {
 		msg := fmt.Sprintf("invalid gas limit: %s", limitOption)
-		return types.ZeroAttoFIL, gas.NewGas(0), false, errors.New(msg)
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.NewGas(0), false, errors.New(msg)
 	}
 
 	preview, _ := req.Options["preview"].(bool)
 
-	return price, gas.NewGas(gasLimitInt), preview, nil
+	return feecap, premium, gas.NewGas(gasLimitInt), preview, nil
 }

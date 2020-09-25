@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/ipfs/go-cid"
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
 
@@ -12,7 +11,7 @@ import (
 )
 
 var mpoolCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Manage the message pool",
 	},
 	Subcommands: map[string]*cmds.Command{
@@ -23,11 +22,11 @@ var mpoolCmd = &cmds.Command{
 }
 
 var mpoolLsCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "View the pool of outstanding messages",
 	},
-	Options: []cmdkit.Option{
-		cmdkit.UintOption("wait-for-count", "Block until this number of messages are in the pool").WithDefault(0),
+	Options: []cmds.Option{
+		cmds.UintOption("wait-for-count", "Block until this number of messages are in the pool").WithDefault(0),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		messageCount, _ := req.Options["wait-for-count"].(uint)
@@ -43,11 +42,11 @@ var mpoolLsCmd = &cmds.Command{
 }
 
 var mpoolShowCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Show content of an outstanding message",
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("cid", true, false, "The CID of the message to show"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cid", true, false, "The CID of the message to show"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		msgCid, err := cid.Parse(req.Arguments[0])
@@ -65,11 +64,11 @@ var mpoolShowCmd = &cmds.Command{
 }
 
 var mpoolRemoveCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Delete a message from the message pool",
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("cid", true, false, "The CID of the message to delete"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cid", true, false, "The CID of the message to delete"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		msgCid, err := cid.Parse(req.Arguments[0])

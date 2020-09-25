@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	logging "github.com/ipfs/go-log/v2"
 )
@@ -12,7 +11,7 @@ import (
 var loglogger = logging.Logger("commands/log")
 
 var logCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Interact with the daemon subsystems log output.",
 		ShortDescription: `
 'go-filecoin log' contains utility commands to affect the subsystems logging
@@ -28,7 +27,7 @@ output of a running daemon.
 }
 
 var logTailCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Read subsystems log output.",
 		ShortDescription: `
 Outputs subsystems log output as it is generated.
@@ -47,7 +46,7 @@ Outputs subsystems log output as it is generated.
 }
 
 var logLevelCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Change the logging level.",
 		ShortDescription: `
 Change the verbosity of one or all subsystems log output. This does not affect
@@ -55,15 +54,15 @@ the event log.
 `,
 	},
 
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("level", true, false, `The log level, with 'debug' the most verbose and 'panic' the least verbose.
+	Arguments: []cmds.Argument{
+		cmds.StringArg("level", true, false, `The log level, with 'debug' the most verbose and 'panic' the least verbose.
 			One of: debug, info, warning, error, fatal, panic.
 		`),
 	},
 
-	Options: []cmdkit.Option{
-		cmdkit.StringOption("subsystem", "The subsystem logging identifier"),
-		cmdkit.StringOption("expression", "Subsystem identifier by regular expression"),
+	Options: []cmds.Option{
+		cmds.StringOption("subsystem", "The subsystem logging identifier"),
+		cmds.StringOption("expression", "Subsystem identifier by regular expression"),
 	},
 
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
@@ -98,7 +97,7 @@ the event log.
 }
 
 var logLsCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "List the logging subsystems.",
 		ShortDescription: `
 'go-filecoin log ls' is a utility command used to list the logging
