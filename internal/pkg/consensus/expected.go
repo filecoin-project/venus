@@ -67,7 +67,7 @@ type TicketValidator interface {
 // ElectionValidator validates that an election fairly produced a winner.
 type ElectionValidator interface {
 	IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool
-	VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error
+	// VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error
 	// VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error)
 }
 
@@ -266,10 +266,10 @@ func (c *Expected) validateMining(ctx context.Context,
 		if err != nil {
 			return errors.Wrapf(err, "failed to get election entry")
 		}
-		err = c.VerifyElectionProof(ctx, electionEntry, blk.Height, blk.Miner, workerSignerAddr, blk.ElectionProof.VRFProof)
-		if err != nil {
-			return errors.Wrapf(err, "failed to verify election proof")
-		}
+		// err = c.VerifyElectionProof(ctx, electionEntry, blk.Height, blk.Miner, workerSignerAddr, blk.ElectionProof.VRFProof)
+		// if err != nil {
+		// 	return errors.Wrapf(err, "failed to verify election proof")
+		// }
 		// TODO this is not using nominal power, which must take into account undeclared faults
 		// TODO the nominal power must be tested against the minimum (power.minerNominalPowerMeetsConsensusMinimum)
 		// See https://github.com/filecoin-project/go-filecoin/issues/3958
