@@ -56,7 +56,7 @@ const DRANDEpochLookback = 2
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
-	ProcessTipSet(context.Context, state.Tree, vm.Storage, block.TipSet, []vm.BlockMessagesInfo) ([]vm.MessageReceipt, error)
+	ProcessTipSet(context.Context, state.Tree, vm.Storage, block.TipSet, block.TipSet, []vm.BlockMessagesInfo) ([]vm.MessageReceipt, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
@@ -67,7 +67,7 @@ type TicketValidator interface {
 // ElectionValidator validates that an election fairly produced a winner.
 type ElectionValidator interface {
 	IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool
-	VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error
+	// VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error
 	// VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error)
 }
 
@@ -266,10 +266,10 @@ func (c *Expected) validateMining(ctx context.Context,
 		if err != nil {
 			return errors.Wrapf(err, "failed to get election entry")
 		}
-		err = c.VerifyElectionProof(ctx, electionEntry, blk.Height, blk.Miner, workerSignerAddr, blk.ElectionProof.VRFProof)
-		if err != nil {
-			return errors.Wrapf(err, "failed to verify election proof")
-		}
+		// err = c.VerifyElectionProof(ctx, electionEntry, blk.Height, blk.Miner, workerSignerAddr, blk.ElectionProof.VRFProof)
+		// if err != nil {
+		// 	return errors.Wrapf(err, "failed to verify election proof")
+		// }
 		// TODO this is not using nominal power, which must take into account undeclared faults
 		// TODO the nominal power must be tested against the minimum (power.minerNominalPowerMeetsConsensusMinimum)
 		// See https://github.com/filecoin-project/go-filecoin/issues/3958
@@ -346,7 +346,15 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 	}
 
 	// process tipset
-	receipts, err := c.processor.ProcessTipSet(ctx, st, vms, ts, msgs)
+	parent, err := ts.Parents()
+	if err != nil {
+		return nil, nil, err
+	}
+	pts,err := c.chainState.GetTipSet(parent)
+	if err != nil {
+		return nil, nil, err
+	}
+	receipts, err := c.processor.ProcessTipSet(ctx, st, vms, pts, ts, msgs)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error validating tipset")
 	}

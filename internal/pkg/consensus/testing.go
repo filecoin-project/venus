@@ -73,9 +73,9 @@ func (fem *FakeElectionMachine) IsWinner(challengeTicket []byte, minerPower, net
 	return true
 }
 
-func (fem *FakeElectionMachine) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.Address, _ address.Address, _ crypto.VRFPi) error {
-	return nil
-}
+// func (fem *FakeElectionMachine) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.Address, _ address.Address, _ crypto.VRFPi) error {
+// 	return nil
+// }
 
 //func (fem *FakeElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error) {
 //	return true, nil
@@ -113,9 +113,9 @@ func (fev *FailingElectionValidator) IsWinner(challengeTicket []byte, minerPower
 	return false
 }
 
-func (fev *FailingElectionValidator) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.Address, _ address.Address, _ crypto.VRFPi) error {
-	return nil
-}
+// func (fev *FailingElectionValidator) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.Address, _ address.Address, _ crypto.VRFPi) error {
+// 	return nil
+// }
 
 //func (fev *FailingElectionValidator) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error) {
 //	return true, nil
