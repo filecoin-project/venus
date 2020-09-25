@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	big2 "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 )
 
@@ -19,9 +20,20 @@ import (
 // Duplicated in data due to need to check for existing payment channel since you can't
 // iterate over key/value pairs in statestore at present
 type ChannelInfo struct {
-	UniqueAddr, From, To address.Address
-	NextLane, NextNonce  uint64
-	Vouchers             []*VoucherInfo // All vouchers submitted for this channel
+	UniqueAddr    address.Address
+	From          address.Address
+	To            address.Address
+	NextLane      uint64
+	NextNonce     uint64
+	// Amount added to the channel.
+	// Note: This amount is only used by GetPaych to keep track of how much
+	// has locally been added to the channel. It should reflect the channel's
+	// Balance on chain as long as all operations occur on the same datastore.
+	Amount        big2.Int
+	PendingAmount big2.Int // PendingAmount is the amount that we're awaiting confirmation of
+	CreateMsg     *cid.Cid // CreateMsg is the CID of a pending create message (while waiting for confirmation)
+	AddFundsMsg   *cid.Cid // AddFundsMsg is the CID of a pending add funds message (while waiting for confirmation)
+	Vouchers      []*VoucherInfo // All vouchers submitted for this channel
 }
 
 // IsZero returns whether it is a zeroed/blank ChannelInfo

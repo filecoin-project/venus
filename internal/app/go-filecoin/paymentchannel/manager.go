@@ -3,6 +3,7 @@ package paymentchannel
 import (
 	"bytes"
 	"context"
+	"math/big"
 	"sync"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
@@ -10,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
+	big2 "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -158,7 +159,7 @@ func (pm *Manager) CreatePaymentChannel(client, miner address.Address, amt abi.T
 		pm.paymentChannels.storeLk.Unlock()
 		return address.Undef, cid.Undef, err
 	}
-	go pm.handlePaychCreateResult(pm.ctx, mcid, client, miner)
+	go pm.handlePaychCreateResult(pm.ctx, mcid, client, miner, amt)
 	return address.Undef, mcid, nil
 }
 
@@ -173,7 +174,7 @@ func (pm *Manager) AddVoucherToChannel(paychAddr address.Address, voucher *paych
 // If payment channel record does not exist in store, it will be created.
 // Each new voucher amount must be > the last largest voucher by at least `expected`
 // Called by retrieval provider connector
-func (pm *Manager) AddVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte, expected big.Int, tok shared.TipSetToken) (abi.TokenAmount, error) {
+func (pm *Manager) AddVoucher(paychAddr address.Address, voucher *paychActor.SignedVoucher, proof []byte, expected big2.Int, tok shared.TipSetToken) (abi.TokenAmount, error) {
 	has, err := pm.ChannelExists(paychAddr)
 	if err != nil {
 		return zeroAmt, err
@@ -241,6 +242,24 @@ func (pm *Manager) WaitForCreatePaychMessage(ctx context.Context, mcid cid.Cid) 
 			return err
 		}
 
+		chinfo, err := pm.GetPaymentChannelInfo(res.RobustAddress)
+		if err != nil {
+			return err
+		}
+
+		if !mcid.Equals(*chinfo.CreateMsg){
+			return xerrors.New("create paych cid do not match")
+		}
+
+		err = pm.paymentChannels.Mutate(res.RobustAddress, func(info *ChannelInfo) error {
+			info.Amount = chinfo.PendingAmount
+			info.PendingAmount = big2.NewInt(0)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
 		newPaychAddr = res.RobustAddress
 		return nil
 	}
@@ -263,7 +282,18 @@ func (pm *Manager) AddFundsToChannel(paychAddr address.Address, amt abi.TokenAmo
 	if err != nil {
 		return cid.Undef, err
 	}
+
+	err = pm.paymentChannels.Mutate(chinfo.UniqueAddr, func(info *ChannelInfo) error {
+		info.AddFundsMsg = &mcid
+		info.PendingAmount = types.NewAttoFIL(amt.Int)
+		return nil
+	})
+	if err != nil {
+		return cid.Undef, err
+	}
+
 	// TODO: track amts in paych store by lane: https://github.com/filecoin-project/go-filecoin/issues/4046
+
 	return mcid, nil
 }
 
@@ -272,6 +302,27 @@ func (pm *Manager) WaitForAddFundsMessage(ctx context.Context, mcid cid.Cid) err
 		if mr.ExitCode != exitcode.Ok {
 			return xerrors.Errorf("Add funds failed with exitcode %d", mr.ExitCode)
 		}
+
+		var chinfos []ChannelInfo
+		if err := pm.paymentChannels.List(&chinfos); err != nil {
+			log.Errorf("get paych list error: %s", err)
+		}else{
+			for _, chinfo := range chinfos {
+				if chinfo.AddFundsMsg.Equals(mcid) {
+					err = pm.paymentChannels.Mutate(chinfo.UniqueAddr, func(info *ChannelInfo) error {
+						info.Amount =  big2.Add(chinfo.Amount,chinfo.PendingAmount)
+						info.AddFundsMsg = nil
+						info.PendingAmount = big2.NewInt(0)
+						return nil
+					})
+					if err != nil {
+						return err
+					}
+					break
+				}
+			}
+		}
+
 		return nil
 	}
 	return pm.waiter.Wait(pm.ctx, mcid, msg.DefaultMessageWaitLookback, handleResult)
@@ -281,7 +332,7 @@ func (pm *Manager) WaitForAddFundsMessage(ctx context.Context, mcid cid.Cid) err
 // created payment channel
 // TODO: set up channel tracking before knowing paych addr: https://github.com/filecoin-project/go-filecoin/issues/4045
 //
-func (pm *Manager) handlePaychCreateResult(ctx context.Context, mcid cid.Cid, client, miner address.Address) {
+func (pm *Manager) handlePaychCreateResult(ctx context.Context, mcid cid.Cid, client, miner address.Address, amt abi.TokenAmount) {
 	defer pm.paymentChannels.storeLk.Unlock()
 	var paychAddr address.Address
 
@@ -310,6 +361,9 @@ func (pm *Manager) handlePaychCreateResult(ctx context.Context, mcid cid.Cid, cl
 		NextLane:   0,
 		NextNonce:  1,
 		UniqueAddr: paychAddr,
+		CreateMsg:  &mcid,
+		Amount:     types.NewAttoFIL(amt.Int),
+		PendingAmount: big2.NewInt(0),
 	}
 	if err := pm.paymentChannels.Begin(paychAddr, &chinfo); err != nil {
 		log.Error(err)
@@ -376,38 +430,58 @@ func (pm *Manager) saveNewVoucher(paychAddr address.Address, voucher *paychActor
 // given message CID arrives.
 // The returned channel address can safely be used against the Manager methods.
 func (pm *Manager) GetPaychWaitReady(ctx context.Context, mcid cid.Cid) (address.Address, error) {
-	panic("not impl")
-	/*// Find the channel associated with the message CID
-	pm.lk.Lock()
-	ci, err := pm.store.ByMessageCid(mcid)
-	pm.lk.Unlock()
+	var paychAddr address.Address
 
-	if err != nil {
-		if err == datastore.ErrNotFound {
-			return address.Undef, xerrors.Errorf("Could not find wait msg cid %s", mcid)
+	handleResult := func(b *block.Block, sm *types.SignedMessage, mr *vm.MessageReceipt) error {
+		if mr.ExitCode != exitcode.Ok {
+			return xerrors.Errorf("create channel / add funds message failed with exit code %d", mr.ExitCode)
 		}
-		return address.Undef, err
+
+		var res initActor.ExecReturn
+		if err := encoding.Decode(mr.ReturnValue, &res); err != nil {
+			log.Infof("message receipt: %s", mr.ReturnValue)
+			return err
+		}
+
+		paychAddr = res.RobustAddress
+		return nil
 	}
 
-	chanAccessor, err := pm.accessorByFromTo(ci.Control, ci.Target)
+	err := pm.waiter.Wait(pm.ctx, mcid, msg.DefaultMessageWaitLookback, handleResult)
 	if err != nil {
 		return address.Undef, err
 	}
 
-	return chanAccessor.getPaychWaitReady(ctx, mcid)*/
+	return paychAddr, nil
 }
 
 func (pm *Manager) AvailableFunds(ch address.Address) (*ChannelAvailableFunds, error) {
-	storedState := pm.paymentChannels.Get(ch)
-	if storedState == nil {
-		return nil, xerrors.New("no stored state")
-	}
-	var chinfo ChannelInfo
-	if err := storedState.Get(&chinfo); err != nil {
-		return nil, err
+	chinfo, err := pm.GetPaymentChannelInfo(ch)
+	if err != nil {
+		return nil,err
 	}
 
-	panic("not impl")
+	// The channel may have a pending create or add funds message
+	waitSentinel := chinfo.CreateMsg
+	if waitSentinel == nil {
+		waitSentinel = chinfo.AddFundsMsg
+	}
+
+	// Get the total amount redeemed by vouchers.
+	// This includes vouchers that have been submitted, and vouchers that are
+	// in the datastore but haven't yet been submitted.
+	totalRedeemed := big2.NewInt(0) // ToDo ???
+
+	return &ChannelAvailableFunds{
+		Channel:             &chinfo.UniqueAddr,
+		From:                chinfo.From,
+		To:                  chinfo.To,
+		ConfirmedAmt:        *chinfo.Amount.Int,
+		PendingAmt:          *chinfo.PendingAmount.Int,
+		PendingWaitSentinel: waitSentinel,
+		QueuedAmt:           *big.NewInt(0), // 这里要新增queueFunds机制 ???
+		VoucherReedeemedAmt: *totalRedeemed.Int,
+	}, nil
 }
 
 //  paychStore is a thin threadsafe wrapper for StateStore
