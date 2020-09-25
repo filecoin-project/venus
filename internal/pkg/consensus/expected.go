@@ -56,7 +56,7 @@ const DRANDEpochLookback = 2
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
-	ProcessTipSet(context.Context, state.Tree, vm.Storage, block.TipSet, []vm.BlockMessagesInfo) ([]vm.MessageReceipt, error)
+	ProcessTipSet(context.Context, state.Tree, vm.Storage, block.TipSet, block.TipSet, []vm.BlockMessagesInfo) ([]vm.MessageReceipt, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
@@ -346,7 +346,15 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 	}
 
 	// process tipset
-	receipts, err := c.processor.ProcessTipSet(ctx, st, vms, ts, msgs)
+	parent, err := ts.Parents()
+	if err != nil {
+		return nil, nil, err
+	}
+	pts,err := c.chainState.GetTipSet(parent)
+	if err != nil {
+		return nil, nil, err
+	}
+	receipts, err := c.processor.ProcessTipSet(ctx, st, vms, pts, ts, msgs)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error validating tipset")
 	}
