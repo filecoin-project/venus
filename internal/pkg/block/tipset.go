@@ -128,12 +128,21 @@ func (ts TipSet) Height() (abi.ChainEpoch, error) {
 	return ts.blocks[0].Height, nil
 }
 
+// Height returns the height of a tipset.
+func (ts TipSet) EnsureHeight() abi.ChainEpoch {
+	return ts.blocks[0].Height
+}
+
 // Parents returns the CIDs of the parents of the blocks in the tipset.
 func (ts TipSet) Parents() (TipSetKey, error) {
 	if len(ts.blocks) == 0 {
 		return TipSetKey{}, errUndefTipSet
 	}
 	return ts.blocks[0].Parents, nil
+}
+
+func (ts TipSet) EnsureParents() TipSetKey {
+	return ts.blocks[0].Parents
 }
 
 // ParentWeight returns the tipset's ParentWeight in fixed point form.

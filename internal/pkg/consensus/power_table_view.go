@@ -18,7 +18,6 @@ type PowerStateView interface {
 	state.AccountStateView
 	MinerSectorConfiguration(ctx context.Context, maddr addr.Address) (*state.MinerSectorConfiguration, error)
 	MinerControlAddresses(ctx context.Context, maddr addr.Address) (owner, worker addr.Address, err error)
-	MinerSectorStates(ctx context.Context, maddr addr.Address) (*state.MinerSectorStates, error)
 	MinerGetSector(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, bool, error)
 	PowerNetworkTotal(ctx context.Context) (*state.NetworkPower, error)
 	MinerClaimedPower(ctx context.Context, miner addr.Address) (raw, qa abi.StoragePower, err error)

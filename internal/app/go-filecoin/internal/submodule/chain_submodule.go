@@ -2,6 +2,7 @@ package submodule
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 
 	"github.com/ipfs/go-cid"
 
@@ -50,14 +51,14 @@ type chainConfig interface {
 }
 
 // NewChainSubmodule creates a new chain submodule.
-func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *BlockstoreSubmodule, verifier *ProofVerificationSubmodule) (ChainSubmodule, error) {
+func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *BlockstoreSubmodule, verifier *ProofVerificationSubmodule, drand drand.Schedule) (ChainSubmodule, error) {
 	// initialize chain store
 	chainStatusReporter := chain.NewStatusReporter()
 	chainStore := chain.NewStore(repo.ChainDatastore(), blockstore.CborStore, chainStatusReporter, config.GenesisCid())
 
 	actorState := appstate.NewTipSetStateViewer(chainStore, blockstore.CborStore)
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)
-	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, builtin.DefaultActors)
+	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, builtin.DefaultActors, drand)
 	faultChecker := slashing.NewFaultChecker(chainState)
 	syscalls := vmsupport.NewSyscalls(faultChecker, verifier.ProofVerifier)
 	processor := consensus.NewDefaultProcessor(syscalls, chainState)

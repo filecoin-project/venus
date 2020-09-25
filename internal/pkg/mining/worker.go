@@ -6,7 +6,9 @@ package mining
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	"golang.org/x/xerrors"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
@@ -268,7 +270,11 @@ func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCoun
 		return nil, err
 	}
 
-	return w.Generate(ctx, base, nextTicket, electionVRFProof, abi.ChainEpoch(nullBlkCount), posts, drandEntries)
+	elecProof := &crypto.ElectionProof{
+		WinCount: 0, //todo add wincount
+		VRFProof: electionVRFDigest[:],
+	}
+	return w.Generate(ctx, base, nextTicket, elecProof, abi.ChainEpoch(nullBlkCount), posts, drandEntries)
 }
 
 func (w *DefaultWorker) getPowerTable(powerKey, faultsKey block.TipSetKey) (consensus.PowerTableView, error) {
@@ -296,10 +302,69 @@ func (w *DefaultWorker) lookbackTipset(ctx context.Context, base block.TipSet, n
 	return chain.FindTipsetAtEpoch(ctx, base, targetEpoch, w.chainState)
 }
 
+func BeaconEntriesForBlock(ctx context.Context, bSchedule drand.Schedule, epoch abi.ChainEpoch, parentEpoch abi.ChainEpoch, prev drand.Entry) ([]*drand.Entry, error) {
+	{
+		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
+		currBeacon := bSchedule.BeaconForEpoch(epoch)
+		if parentBeacon != currBeacon {
+			// Fork logic
+			round := currBeacon.MaxBeaconRoundForEpoch(epoch)
+			out := make([]*drand.Entry, 2)
+			entry, err := currBeacon.ReadEntry(ctx, round-1)
+			if err != nil {
+				return nil, xerrors.Errorf("getting entry %d returned error: %w", round-1, err)
+			}
+			out[0] = entry
+			entry, err = currBeacon.ReadEntry(ctx, round)
+			if err != nil {
+				return nil, xerrors.Errorf("getting entry %d returned error: %w", round, err)
+			}
+			out[1] = entry
+			return out, nil
+		}
+	}
+
+	beacon := bSchedule.BeaconForEpoch(epoch)
+
+	start := build.Clock.Now()
+
+	maxRound := beacon.MaxBeaconRoundForEpoch(epoch)
+	if maxRound == prev.Round {
+		return nil, nil
+	}
+
+	// TODO: this is a sketchy way to handle the genesis block not having a beacon entry
+	if prev.Round == 0 {
+		prev.Round = maxRound - 1
+	}
+
+	cur := maxRound
+	var out []*drand.Entry
+	for cur > prev.Round {
+		entry, err := beacon.ReadEntry(ctx, cur)
+		if err != nil {
+			return nil, xerrors.Errorf("beacon entry request returned error: %w", err)
+		}
+		out = append(out, entry)
+		cur = entry.Round - 1
+	}
+
+	log.Debugw("fetching beacon entries", "took", build.Clock.Since(start), "numEntries", len(out))
+	reverse(out)
+	return out, nil
+}
+
+func reverse(arr []*drand.Entry) {
+	for i := 0; i < len(arr)/2; i++ {
+		arr[i], arr[len(arr)-(1+i)] = arr[len(arr)-(1+i)], arr[i]
+	}
+}
+
 // drandEntriesForEpoch returns the array of drand entries that should be
 // included in the next block.  The return value maay be nil.
 func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.TipSet, nullBlkCount uint64) ([]*drand.Entry, error) {
-	baseHeight, err := base.Height()
+	panic("use BeaconEntriesForBlock instead")
+	/*baseHeight, err := base.Height()
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +401,7 @@ func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.Tip
 			return nil, err
 		}
 	}
-	return entries, nil
+	return entries, nil*/
 }
 
 func (w *DefaultWorker) electionEntry(ctx context.Context, base block.TipSet, drandEntriesInBlock []*drand.Entry) (*drand.Entry, error) {

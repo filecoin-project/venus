@@ -281,7 +281,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 
 	// get a view into the actor stateView
 	var state init_.State
-	if _, err := ctx.rt.store.Get(ctx.rt.context, initActorEntry.Head.Cid, &state); err != nil {
+	if _, err := ctx.rt.store.Get(ctx.rt.context, initActorEntry.Head, &state); err != nil {
 		panic(err)
 	}
 

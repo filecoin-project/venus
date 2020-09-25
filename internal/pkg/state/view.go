@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	xerrors "github.com/pkg/errors"
 	"github.com/prometheus/common/log"
 	cbg "github.com/whyrusleeping/cbor-gen"

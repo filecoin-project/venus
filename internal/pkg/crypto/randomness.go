@@ -17,6 +17,7 @@ type RandomSeed []byte
 
 type ChainSampler interface {
 	Sample(ctx context.Context, epoch abi.ChainEpoch) (RandomSeed, error)
+	GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 }
 
 // A sampler for use when computing genesis state (the state that the genesis block points to as parent state).
@@ -30,6 +31,10 @@ func (g *GenesisSampler) Sample(_ context.Context, epoch abi.ChainEpoch) (Random
 		return nil, fmt.Errorf("invalid use of genesis sampler for epoch %d", epoch)
 	}
 	return MakeRandomSeed(g.VRFProof)
+}
+
+func (g *GenesisSampler) GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	panic("not impl")
 }
 
 // Computes a random seed from raw ticket bytes.
@@ -58,6 +63,10 @@ func (c *ChainRandomnessSource) Randomness(ctx context.Context, tag crypto.Domai
 		return nil, errors.Wrap(err, "failed to sample chain for randomness")
 	}
 	return BlendEntropy(tag, seed, epoch, entropy)
+}
+
+func (c *ChainRandomnessSource) GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return c.Sampler.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy)
 }
 
 func BlendEntropy(tag crypto.DomainSeparationTag, seed RandomSeed, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {

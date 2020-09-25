@@ -2,8 +2,6 @@ package networks
 
 import (
 	"encoding/base64"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
-
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
@@ -11,7 +9,6 @@ import (
 
 type NetworkConf struct {
 	Bootstrap config.BootstrapConfig
-	Drand     drand.DrandConfig
 	Network   config.NetworkParamsConfig
 }
 
@@ -53,21 +50,6 @@ func Interop() *NetworkConf {
 			},
 			MinPeerThreshold: 1,
 			Period:           "10s",
-		},
-		Drand: drand.DrandConfig{
-			Addresses: []string{
-				"gabbi.drand.fil-test.net:443",
-				"linus.drand.fil-test.net:443",
-				"nicolas.drand.fil-test.net:443",
-				"mathilde.drand.fil-test.net:443",
-				"jeff.drand.fil-test.net:443",
-				"philipp.drand.fil-test.net:443",
-				"ludovic.drand.fil-test.net:443",
-			},
-			Secure:        true,
-			DistKey:       distKey,
-			StartTimeUnix: 1588221360,
-			RoundSeconds:  30,
 		},
 		Network: config.NetworkParamsConfig{
 			ConsensusMinerMinPower: 2 << 30,

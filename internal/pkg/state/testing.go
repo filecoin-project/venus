@@ -79,19 +79,6 @@ func (v *FakeStateView) MinerSectorCount(ctx context.Context, maddr address.Addr
 	return uint64(len(m.Sectors)), nil
 }
 
-func (v *FakeStateView) MinerSectorStates(_ context.Context, maddr address.Address) (*MinerSectorStates, error) {
-	m, ok := v.Miners[maddr]
-	if !ok {
-		return nil, errors.Errorf("no miner %s", maddr)
-	}
-	return &MinerSectorStates{
-		Deadlines:  m.Deadlines,
-		Faults:     NewBitField(),
-		Recoveries: NewBitField(),
-		NewSectors: NewBitField(),
-	}, nil
-}
-
 func (v *FakeStateView) MinerGetSector(_ context.Context, maddr address.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, bool, error) {
 	m, ok := v.Miners[maddr]
 	if !ok {
