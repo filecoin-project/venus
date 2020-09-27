@@ -367,11 +367,13 @@ func minerDaemonTestConfig(t *testing.T) *gengen.GenesisCfg {
 				Owner:            0,
 				CommittedSectors: commCfgs,
 				SealProofType:    constants.DevSealProofType,
+				MarketBalance:    abi.NewTokenAmount(0),
 			},
 			{
 				Owner:            1,
 				CommittedSectors: commCfgs,
 				SealProofType:    constants.DevSealProofType,
+				MarketBalance:    abi.NewTokenAmount(0),
 			},
 		},
 		Network: "gfctest",

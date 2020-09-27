@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
+	"math/rand"
 )
 
 type RandomSeed []byte
@@ -34,7 +35,10 @@ func (g *GenesisSampler) Sample(_ context.Context, epoch abi.ChainEpoch) (Random
 }
 
 func (g *GenesisSampler) GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	panic("not impl")
+	//use trust beacon value todo
+	out := make([]byte, 32)
+	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
+	return out, nil
 }
 
 // Computes a random seed from raw ticket bytes.

@@ -111,6 +111,7 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 			Owner:            i,
 			CommittedSectors: commCfgs,
 			SealProofType:    constants.DevSealProofType,
+			MarketBalance:    abi.NewTokenAmount(0),
 		}
 	}
 

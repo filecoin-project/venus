@@ -60,7 +60,7 @@ func NewConfiguredProcessor(actors vm.ActorCodeLoader, syscalls vm.SyscallsImpl,
 }
 
 // ProcessTipSet computes the state transition specified by the messages in all blocks in a TipSet.
-func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.Storage, parent, ts block.TipSet, msgs []vm.BlockMessagesInfo, ) (results []vm.MessageReceipt, err error) {
+func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.Storage, parent, ts block.TipSet, msgs []vm.BlockMessagesInfo) (results []vm.MessageReceipt, err error) {
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -94,9 +94,9 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 	csc := func(context.Context, abi.ChainEpoch, state.Tree) (abi.TokenAmount, error) {
 		return big.Zero(), nil
 	}
-	v := vm.NewVM(st, &vms, p.syscalls, abi.NewTokenAmount(0),  nwv, csc, &rnd)
+	v := vm.NewVM(st, &vms, p.syscalls, abi.NewTokenAmount(0), nwv, csc, &rnd)
 
-	return v.ApplyTipSetMessages(msgs, parent.Key(), parentEpoch, epoch, &rnd)
+	return v.ApplyTipSetMessages(msgs, parent.Key(), parentEpoch, epoch)
 }
 
 // A chain randomness source with a fixed head tipset key.

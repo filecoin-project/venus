@@ -159,15 +159,23 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 					"receiver", ctx.msg.to,
 					"methodNum", ctx.msg.method,
 					"value", ctx.msg.value,
-					"gasLimit", ctx.gasTank.gasLimit)
+					"gasLimit", ctx.gasTank.gasAvailable)
 				ret = returnWrapper{abi.Empty} // The Empty here should never be used, but slightly safer than zero value.
 				errcode = p.Code()
+				debug.PrintStack()
 				return
 			default:
+				if err, ok := r.(error); ok {
+					fmt.Println(err.Error())
+				} else {
+					fmt.Println(r)
+				}
 				// do not trap unknown panics
 				debug.PrintStack()
 				panic(r)
 			}
+		} else {
+			defer ctx.rt.clearSnapshot()
 		}
 	}()
 
@@ -216,7 +224,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 
 	// dispatch
 	adapter := newRuntimeAdapter(ctx) //runtimeAdapter{ctx: ctx}
-	out, err := actorImpl.Dispatch(ctx.msg.method, &adapter, ctx.msg.params)
+	out, err := actorImpl.Dispatch(ctx.msg.method, adapter, ctx.msg.params)
 	if err != nil {
 		// Dragons: this could be a params deserialization error too
 		runtime.Abort(exitcode.SysErrInvalidMethod)
@@ -519,6 +527,7 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 	// Note: we are storing the actors by ActorID *address*
 	_, found, err := ctx.rt.state.GetActor(ctx.rt.context, addr)
 	if err != nil {
+		fmt.Println(err)
 		panic(err)
 	}
 	if found {
@@ -530,8 +539,10 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 
 	newActor := &actor.Actor{
 		// make this the right 'type' of actor
-		Code:    codeID,
-		Balance: abi.NewTokenAmount(0),
+		Code:       codeID,
+		Balance:    abi.NewTokenAmount(0),
+		Head:       EmptyObjectCid,
+		CallSeqNum: 0,
 	}
 	if err := ctx.rt.state.SetActor(ctx.rt.context, addr, newActor); err != nil {
 		panic(err)

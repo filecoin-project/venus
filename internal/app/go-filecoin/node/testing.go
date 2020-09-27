@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"github.com/filecoin-project/go-state-types/abi"
 	"math/rand"
 	"testing"
 
@@ -217,6 +218,7 @@ func MakeTestGenCfg(t *testing.T, numSectors int) *gengen.GenesisCfg {
 				PeerID:           mustPeerID(PeerKeys[0]).Pretty(),
 				CommittedSectors: commCfgs,
 				SealProofType:    constants.DevSealProofType,
+				MarketBalance:    abi.NewTokenAmount(0),
 			},
 		},
 		Network: "gfctest",

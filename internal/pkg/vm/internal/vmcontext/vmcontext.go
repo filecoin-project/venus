@@ -103,7 +103,7 @@ func NewVM(actorImpls ActorImplLookup,
 // ApplyGenesisMessage forces the execution of a message in the vm actor.
 //
 // This method is intended to be used in the generation of the genesis block only.
-func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}, rnd crypto.RandomnessSource) (cbor.Marshaler, error) {
+func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (cbor.Marshaler, error) {
 	vm.pricelist = gascost.PricelistByEpoch(vm.currentEpoch)
 
 	// normalize from addr
@@ -127,7 +127,7 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 	}
 
 	// commit
-	if _, err := vm.commit(); err != nil {
+	if _, err := vm.flush(); err != nil {
 		return nil, err
 	}
 
@@ -150,7 +150,7 @@ func (vm *VM) clearSnapshot() {
 	vm.state.ClearSnapshot()
 }
 
-func (vm *VM) commit() (state.Root, error) {
+func (vm *VM) flush() (state.Root, error) {
 	// flush all blocks out of the store
 	if root, err := vm.state.Flush(vm.context); err != nil {
 		return cid.Undef, err
@@ -209,7 +209,7 @@ func (vm *VM) stateView() SyscallsStateView {
 var _ interpreter.VMInterpreter = (*VM)(nil)
 
 // ApplyTipSetMessages implements interpreter.VMInterpreter
-func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head block.TipSetKey, parentEpoch abi.ChainEpoch, epoch abi.ChainEpoch, rnd crypto.RandomnessSource) ([]message.Receipt, error) {
+func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head block.TipSetKey, parentEpoch abi.ChainEpoch, epoch abi.ChainEpoch) ([]message.Receipt, error) {
 	receipts := []message.Receipt{}
 
 	// update current tipset
@@ -308,7 +308,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 	}
 
 	// commit stateView
-	if _, err := vm.commit(); err != nil {
+	if _, err := vm.flush(); err != nil {
 		return nil, err
 	}
 
@@ -685,6 +685,10 @@ func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *actor.Actor
 	})
 }
 
+func (vm *VM) TotalFilCircSupply(height abi.ChainEpoch, stateTree state.Tree) (abi.TokenAmount, error) {
+	return vm.circSupplyCalc(vm.context, height, stateTree)
+}
+
 func deductFunds(act *actor.Actor, amt abi.TokenAmount) error {
 	if act.Balance.LessThan(amt) {
 		return fmt.Errorf("not enough funds")
@@ -773,7 +777,7 @@ func (vm *syscallsStateView) GetNtwkVersion(ctx context.Context, ce abi.ChainEpo
 }
 
 func (vm *syscallsStateView) TotalFilCircSupply(height abi.ChainEpoch, st state.Tree) (abi.TokenAmount, error) {
-	return abi.TokenAmount{}, nil //todo add by force
+	return vm.circSupplyCalc(context.TODO(), height, st)
 }
 
 //

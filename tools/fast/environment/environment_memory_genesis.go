@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/abi"
 	"io"
 	"math/big"
 	"net"
@@ -240,6 +241,7 @@ func (e *MemoryGenesis) buildGenesis(funds *big.Int) error {
 				Owner:            0,
 				SealProofType:    constants.DevSealProofType,
 				CommittedSectors: commCfgs,
+				MarketBalance:    abi.NewTokenAmount(0),
 			},
 		},
 		Network: "gfctest",

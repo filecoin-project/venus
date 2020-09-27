@@ -214,8 +214,7 @@ func (st *State) GetActor(ctx context.Context, addr ActorKey) (*actor.Actor, boo
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
 		if xerrors.Is(err, actor.ErrActorNotFound) {
-			//return nil, xerrors.Errorf("resolution lookup failed (%s): %w", addr, err)
-			return nil, false, nil
+			return nil, false, xerrors.Errorf("resolution lookup failed (%s): %w", addr, err)
 		}
 		return nil, false, xerrors.Errorf("address resolution: %w", err)
 	}
@@ -234,7 +233,7 @@ func (st *State) GetActor(ctx context.Context, addr ActorKey) (*actor.Actor, boo
 	if found, err := st.root.Get(abi.AddrKey(addr), &act); err != nil {
 		return nil, false, xerrors.Errorf("hamt find failed: %w", err)
 	} else if !found {
-		return nil, false, actor.ErrActorNotFound
+		return nil, false, nil
 	}
 
 	st.snaps.setActor(addr, &act)
