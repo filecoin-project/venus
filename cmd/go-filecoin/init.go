@@ -125,9 +125,7 @@ func setConfigFromOptions(cfg *config.Config, options cmds.OptMap) error {
 	// Setup devnet specific config options.
 	netName, _ := options[Network].(string)
 	var netcfg *networks.NetworkConf
-	if netName == "interop" {
-		netcfg = networks.Interop()
-	} else if netName == "testnet" {
+	if netName == "testnetnet" {
 		netcfg = networks.Testnet()
 	} else if netName != "" {
 		return fmt.Errorf("unknown network name %s", netName)
