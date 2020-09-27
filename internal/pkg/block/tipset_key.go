@@ -3,6 +3,7 @@ package block
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"sort"
 
 	"github.com/ipfs/go-cid"
@@ -20,7 +21,7 @@ import (
 // TipSetKey is a lightweight value type; passing by pointer is usually unnecessary.
 type TipSetKey struct {
 	// The slice is wrapped in a struct to enforce immutability.
-	cids []cid.Cid
+	cids []enccid.Cid
 }
 
 // NewTipSetKey initialises a new TipSetKey.
@@ -32,9 +33,9 @@ func NewTipSetKey(ids ...cid.Cid) TipSetKey {
 		return TipSetKey{}
 	}
 
-	cids := make([]cid.Cid, len(ids))
+	cids := make([]enccid.Cid, len(ids))
 	for i := 0; i < len(ids); i++ {
-		cids[i] = ids[i]
+		cids[i] = enccid.NewCid(ids[i])
 	}
 	return TipSetKey{cids}
 }
@@ -57,7 +58,7 @@ func (s TipSetKey) Empty() bool {
 func (s TipSetKey) Has(id cid.Cid) bool {
 	// Find index of the first CID not less than id.
 	idx := sort.Search(len(s.cids), func(i int) bool {
-		return !cidLess(s.cids[i], id)
+		return !cidLess(s.cids[i].Cid, id)
 	})
 	return idx < len(s.cids) && s.cids[idx].Equals(id)
 }
@@ -86,7 +87,7 @@ func (s TipSetKey) Equals(other TipSetKey) bool {
 		return false
 	}
 	for i := 0; i < len(s.cids); i++ {
-		if !s.cids[i].Equals(other.cids[i]) {
+		if !s.cids[i].Equals(other.cids[i].Cid) {
 			return false
 		}
 	}
@@ -103,7 +104,7 @@ func (s *TipSetKey) ContainsAll(other TipSetKey) bool {
 	// values match.
 	otherIdx := 0
 	for i := 0; i < s.Len() && otherIdx < other.Len(); i++ {
-		if s.cids[i].Equals(other.cids[otherIdx]) {
+		if s.cids[i].Equals(other.cids[otherIdx].Cid) {
 			otherIdx++
 		}
 	}
@@ -153,7 +154,7 @@ func (s TipSetKey) MarshalCBOR() ([]byte, error) {
 
 // UnmarshalCBOR unmarshals a cbor array of cids to a tipset key
 func (s *TipSetKey) UnmarshalCBOR(data []byte) error {
-	var sortedEncCids []cid.Cid
+	var sortedEncCids []enccid.Cid
 	err := encoding.Decode(data, &sortedEncCids)
 	if err != nil {
 		return err
@@ -208,10 +209,10 @@ func cidLess(c1, c2 cid.Cid) bool {
 }
 
 // unwrap goes from a slice of encodable cids to a slice of cids
-func unwrap(eCids []cid.Cid) []cid.Cid {
+func unwrap(eCids []enccid.Cid) []cid.Cid {
 	out := make([]cid.Cid, len(eCids))
 	for i := 0; i < len(eCids); i++ {
-		out[i] = eCids[i]
+		out[i] = eCids[i].Cid
 	}
 	return out
 }

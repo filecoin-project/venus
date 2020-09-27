@@ -80,6 +80,7 @@ func (s *VMStorage) Get(ctx context.Context, cid cid.Cid, obj interface{}) (int,
 	}
 	err = encoding.Decode(raw, obj)
 	if err != nil {
+		encoding.Decode(raw, obj)
 		return 0, SerializationError{err}
 	}
 	return len(raw), nil

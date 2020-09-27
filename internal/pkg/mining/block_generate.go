@@ -6,6 +6,7 @@ package mining
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"time"
 
@@ -111,12 +112,12 @@ func (w *DefaultWorker) Generate(
 		Height:          blockHeight,
 		BeaconEntries:   drandEntries,
 		ElectionProof:   electionProof,
-		Messages:        txMetaCid,
-		MessageReceipts: baseReceiptRoot,
+		Messages:        enccid.NewCid(txMetaCid),
+		MessageReceipts: enccid.NewCid(baseReceiptRoot),
 		Parents:         baseTipSet.Key(),
 		ParentWeight:    weight,
-		WinPoStProof:    posts,
-		StateRoot:       baseStateRoot,
+		WinPoStProof:    block.FromAbiProofArr(posts),
+		StateRoot:       enccid.NewCid(baseStateRoot),
 		Ticket:          ticket,
 		Timestamp:       uint64(epochStartTime.Unix()),
 		BLSAggregateSig: &blsAggregateSig,

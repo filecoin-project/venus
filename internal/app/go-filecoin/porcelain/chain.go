@@ -34,7 +34,7 @@ func GetFullBlock(ctx context.Context, plumbing fullBlockPlumbing, id cid.Cid) (
 		return nil, err
 	}
 
-	out.BLSMessages, out.SECPMessages, err = plumbing.ChainGetMessages(ctx, out.Header.Messages)
+	out.BLSMessages, out.SECPMessages, err = plumbing.ChainGetMessages(ctx, out.Header.Messages.Cid)
 	if err != nil {
 		return nil, err
 	}

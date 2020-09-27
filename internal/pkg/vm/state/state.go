@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -187,7 +188,7 @@ func (st *State) LookupID(addr ActorKey) (address.Address, error) {
 	}
 
 	var ias init_.State
-	if err := st.Store.Get(context.TODO(), act.Head, &ias); err != nil {
+	if err := st.Store.Get(context.TODO(), act.Head.Cid, &ias); err != nil {
 		return address.Undef, xerrors.Errorf("loading init actor state: %w", err)
 	}
 
@@ -214,8 +215,7 @@ func (st *State) GetActor(ctx context.Context, addr ActorKey) (*actor.Actor, boo
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
 		if xerrors.Is(err, actor.ErrActorNotFound) {
-			//return nil, xerrors.Errorf("resolution lookup failed (%s): %w", addr, err)
-			return nil, false, nil
+			return nil, false, xerrors.Errorf("resolution lookup failed (%s): %w", addr, err)
 		}
 		return nil, false, xerrors.Errorf("address resolution: %w", err)
 	}
@@ -234,7 +234,7 @@ func (st *State) GetActor(ctx context.Context, addr ActorKey) (*actor.Actor, boo
 	if found, err := st.root.Get(abi.AddrKey(addr), &act); err != nil {
 		return nil, false, xerrors.Errorf("hamt find failed: %w", err)
 	} else if !found {
-		return nil, false, actor.ErrActorNotFound
+		return nil, false, nil
 	}
 
 	st.snaps.setActor(addr, &act)
@@ -309,7 +309,7 @@ func (st *State) RegisterNewAddress(addr ActorKey) (address.Address, error) {
 	var out address.Address
 	err := st.MutateActor(builtin.InitActorAddr, func(initact *actor.Actor) error {
 		var ias init_.State
-		if err := st.Store.Get(context.TODO(), initact.Head, &ias); err != nil {
+		if err := st.Store.Get(context.TODO(), initact.Head.Cid, &ias); err != nil {
 			return err
 		}
 
@@ -324,7 +324,7 @@ func (st *State) RegisterNewAddress(addr ActorKey) (address.Address, error) {
 			return err
 		}
 
-		initact.Head = ncid
+		initact.Head = enccid.NewCid(ncid)
 		return nil
 	})
 	if err != nil {

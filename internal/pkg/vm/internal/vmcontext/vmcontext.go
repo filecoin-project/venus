@@ -3,6 +3,12 @@ package vmcontext
 import (
 	"context"
 	"fmt"
+
+	. "github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
+	
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
@@ -28,10 +34,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
+
 )
 
 var vmlog = logging.Logger("vm.context")
@@ -58,7 +61,7 @@ type VM struct {
 
 // ActorImplLookup provides access to upgradeable actor code.
 type ActorImplLookup interface {
-	GetActorImpl(code cid.Cid) (dispatch.Dispatcher, error)
+	GetActorImpl(code Cid) (dispatch.Dispatcher, error)
 }
 
 type minerPenaltyFIL = abi.TokenAmount
@@ -102,7 +105,7 @@ func NewVM(actorImpls ActorImplLookup,
 // ApplyGenesisMessage forces the execution of a message in the vm actor.
 //
 // This method is intended to be used in the generation of the genesis block only.
-func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}, rnd crypto.RandomnessSource) (cbor.Marshaler, error) {
+func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (cbor.Marshaler, error) {
 	vm.pricelist = gas.PricelistByEpoch(vm.currentEpoch)
 
 	// normalize from addr
@@ -126,7 +129,7 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 	}
 
 	// commit
-	if _, err := vm.commit(); err != nil {
+	if _, err := vm.flush(); err != nil {
 		return nil, err
 	}
 
@@ -149,10 +152,10 @@ func (vm *VM) clearSnapshot() {
 	vm.state.ClearSnapshot()
 }
 
-func (vm *VM) commit() (state.Root, error) {
+func (vm *VM) flush() (state.Root, error) {
 	// flush all blocks out of the store
 	if root, err := vm.state.Flush(vm.context); err != nil {
-		return cid.Undef, err
+		return Undef, err
 	} else {
 		return root, nil
 	}
@@ -182,7 +185,7 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 
 	// get a view into the actor stateView
 	var state init_.State
-	if _, err := vm.store.Get(vm.context, initActorEntry.Head, &state); err != nil {
+	if _, err := vm.store.Get(vm.context, initActorEntry.Head.Cid, &state); err != nil {
 		panic(err)
 	}
 
@@ -208,7 +211,7 @@ func (vm *VM) stateView() SyscallsStateView {
 var _ interpreter.VMInterpreter = (*VM)(nil)
 
 // ApplyTipSetMessages implements interpreter.VMInterpreter
-func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head block.TipSetKey, parentEpoch abi.ChainEpoch, epoch abi.ChainEpoch, rnd crypto.RandomnessSource) ([]message.Receipt, error) {
+func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head block.TipSetKey, parentEpoch abi.ChainEpoch, epoch abi.ChainEpoch) ([]message.Receipt, error) {
 	receipts := []message.Receipt{}
 
 	// update current tipset
@@ -235,7 +238,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 
 	// create message tracker
 	// Note: the same message could have been included by more than one miner
-	seenMsgs := make(map[cid.Cid]struct{})
+	seenMsgs := make(map[Cid]struct{})
 
 	// process messages on each block
 	for _, blk := range blocks {
@@ -307,7 +310,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 	}
 
 	// commit stateView
-	if _, err := vm.commit(); err != nil {
+	if _, err := vm.flush(); err != nil {
 		return nil, err
 	}
 
@@ -344,12 +347,12 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) (cbor.Marshaler, error)
 	if originatorIsAccount {
 		// Load sender account stateView to obtain stable pubkey address.
 		var senderState account.State
-		_, err = vm.store.Get(vm.context, fromActor.Head, &senderState)
+		_, err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
 		if err != nil {
 			panic(err)
 		}
 		originator = senderState.Address
-	} else if builtin.IsBuiltinActor(fromActor.Code) {
+	} else if builtin.IsBuiltinActor(fromActor.Code.Cid) {
 		originator = imsg.from // Cannot resolve non-account actor to pubkey addresses.
 	} else {
 		panic(fmt.Sprintf("implicit message from non-account or -singleton actor code %s", fromActor.Code))
@@ -467,7 +470,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (mess
 
 	// Load sender account stateView to obtain stable pubkey address.
 	var senderState account.State
-	_, err = vm.store.Get(vm.context, fromActor.Head, &senderState)
+	_, err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
 	if err != nil {
 		panic(err)
 	}
@@ -628,7 +631,7 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 	return toActor, fromActor
 }
 
-func (vm *VM) getActorImpl(code cid.Cid) dispatch.Dispatcher {
+func (vm *VM) getActorImpl(code Cid) dispatch.Dispatcher {
 	actorImpl, err := vm.actorImpls.GetActorImpl(code)
 	if err != nil {
 		runtime.Abort(exitcode.SysErrInvalidReceiver)
@@ -682,6 +685,10 @@ func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *actor.Actor
 		depositFunds(a, amt)
 		return nil
 	})
+}
+
+func (vm *VM) TotalFilCircSupply(height abi.ChainEpoch, stateTree state.Tree) (abi.TokenAmount, error) {
+	return vm.circSupplyCalc(vm.context, height, stateTree)
 }
 
 func deductFunds(act *actor.Actor, amt abi.TokenAmount) error {
@@ -739,7 +746,7 @@ func (vm *syscallsStateView) AccountSignerAddress(ctx context.Context, accountAd
 		return address.Undef, fmt.Errorf("signer resolution found no such actor %s", accountAddr)
 	}
 	var state account.State
-	if _, err := vm.store.Get(vm.context, actor.Head, &state); err != nil {
+	if _, err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
 		// This error is internal, shouldn't propagate as on-chain failure
 		panic(fmt.Errorf("signer resolution failed to lost stateView for %s ", accountAddr))
 	}
@@ -755,7 +762,7 @@ func (vm *syscallsStateView) MinerControlAddresses(ctx context.Context, maddr ad
 		return address.Undef, address.Undef, fmt.Errorf("miner resolution found no such actor %s", maddr)
 	}
 	var state miner.State
-	if _, err := vm.store.Get(vm.context, actor.Head, &state); err != nil {
+	if _, err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
 		// This error is internal, shouldn't propagate as on-chain failure
 		panic(fmt.Errorf("signer resolution failed to lost stateView for %s ", maddr))
 	}
@@ -772,14 +779,14 @@ func (vm *syscallsStateView) GetNtwkVersion(ctx context.Context, ce abi.ChainEpo
 }
 
 func (vm *syscallsStateView) TotalFilCircSupply(height abi.ChainEpoch, st state.Tree) (abi.TokenAmount, error) {
-	return abi.TokenAmount{}, nil //todo add by force
+	return vm.circSupplyCalc(context.TODO(), height, st)
 }
 
 //
 // utils
 //
 
-func msgCID(msg *types.UnsignedMessage) cid.Cid {
+func msgCID(msg *types.UnsignedMessage) Cid {
 	cid, err := msg.Cid()
 	if err != nil {
 		panic(fmt.Sprintf("failed to compute message CID: %v; %+v", err, msg))

@@ -747,7 +747,7 @@ func (v *View) PaychActorParties(ctx context.Context, paychAddr addr.Address) (f
 		return addr.Undef, addr.Undef, err
 	}
 	var state paychActor.State
-	err = v.ipldStore.Get(ctx, a.Head, &state)
+	err = v.ipldStore.Get(ctx, a.Head.Cid, &state)
 	if err != nil {
 		return addr.Undef, addr.Undef, err
 	}
@@ -850,7 +850,7 @@ func (v *View) loadInitActor(ctx context.Context) (*notinit.State, error) {
 		return nil, err
 	}
 	var state notinit.State
-	err = v.ipldStore.Get(ctx, actr.Head, &state)
+	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
 	return &state, err
 }
 
@@ -864,7 +864,7 @@ func (v *View) loadMinerActor(ctx context.Context, address addr.Address) (*miner
 		return nil, err
 	}
 	var state miner.State
-	err = v.ipldStore.Get(ctx, actr.Head, &state)
+	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
 	return &state, err
 }
 
@@ -874,7 +874,7 @@ func (v *View) loadPowerActor(ctx context.Context) (*power.State, error) {
 		return nil, err
 	}
 	var state power.State
-	err = v.ipldStore.Get(ctx, actr.Head, &state)
+	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
 	return &state, err
 }
 
@@ -884,7 +884,7 @@ func (v *View) loadVerifyActor(ctx context.Context) (*verifreg.State, error) {
 		return nil, err
 	}
 	var state verifreg.State
-	err = v.ipldStore.Get(ctx, actr.Head, &state)
+	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
 	return &state, err
 }
 
@@ -894,7 +894,7 @@ func (v *View) loadRewardActor(ctx context.Context) (*reward.State, error) {
 		return nil, err
 	}
 	var state reward.State
-	err = v.ipldStore.Get(ctx, actr.Head, &state)
+	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
 	return &state, err
 }
 
@@ -904,7 +904,7 @@ func (v *View) loadMarketActor(ctx context.Context) (*market.State, error) {
 		return nil, err
 	}
 	var state market.State
-	err = v.ipldStore.Get(ctx, actr.Head, &state)
+	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
 	return &state, err
 }
 
@@ -918,7 +918,7 @@ func (v *View) loadAccountActor(ctx context.Context, a addr.Address) (*account.S
 		return nil, err
 	}
 	var state account.State
-	err = v.ipldStore.Get(ctx, actr.Head, &state)
+	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
 	return &state, err
 }
 
@@ -964,7 +964,7 @@ func getFilPowerLocked(ctx context.Context, ipldStore cbor.IpldStore, st vmstate
 	}
 
 	var pst power.State
-	if err := ipldStore.Get(ctx, pactor.Head, &pst); err != nil {
+	if err := ipldStore.Get(ctx, pactor.Head.Cid, &pst); err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load power state: %w", err)
 	}
 	return pst.TotalPledgeCollateral, nil
@@ -1012,7 +1012,7 @@ func getFilMarketLocked(ctx context.Context, ipldStore cbor.IpldStore, st vmstat
 	}
 
 	var mst market.State
-	if err := ipldStore.Get(ctx, mactor.Head, &mst); err != nil {
+	if err := ipldStore.Get(ctx, mactor.Head.Cid, &mst); err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load market state: %w", err)
 	}
 

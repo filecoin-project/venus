@@ -13,9 +13,6 @@ import (
 
 // GasTracker maintains the stateView of gas usage throughout the execution of a message.
 type GasTracker struct {
-	gasLimit    gas.Unit
-	gasConsumed gas.Unit
-
 	gasAvailable int64
 	gasUsed      int64
 
@@ -30,8 +27,8 @@ type GasTracker struct {
 // NewGasTracker initializes a new empty gas tracker
 func NewGasTracker(limit gas.Unit) GasTracker {
 	return GasTracker{
-		gasLimit:    limit,
-		gasConsumed: gas.Zero,
+		gasUsed:      0,
+		gasAvailable: int64(limit),
 	}
 }
 
@@ -41,7 +38,7 @@ func NewGasTracker(limit gas.Unit) GasTracker {
 func (t *GasTracker) Charge(gas gas.GasCharge, msg string, args ...interface{}) {
 	if ok := t.TryCharge(gas); !ok {
 		fmsg := fmt.Sprintf(msg, args...)
-		runtime.Abortf(exitcode.SysErrOutOfGas, "gas limit %d exceeded with charge of %d: %s", t.gasLimit, gas.Total(), fmsg)
+		runtime.Abortf(exitcode.SysErrOutOfGas, "gas limit %d exceeded with charge of %d: %s", t.gasAvailable, gas.Total(), fmsg)
 	}
 }
 
@@ -84,14 +81,4 @@ func (t *GasTracker) TryCharge(gas gas.GasCharge) bool {
 	}
 	t.gasUsed += toUse
 	return true
-}
-
-// GasConsumed returns the gas consumed.
-func (t *GasTracker) GasConsumed() gas.Unit {
-	return t.gasConsumed
-}
-
-// RemainingGas returns the gas remaining.
-func (t *GasTracker) RemainingGas() gas.Unit {
-	return t.gasLimit - t.gasConsumed
 }

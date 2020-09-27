@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/abi"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -55,6 +56,7 @@ func RequireGenerateGenesis(t *testing.T, funds int64, dir string, genesisTime t
 				Owner:            0,
 				CommittedSectors: commCfgs,
 				SealProofType:    constants.DevSealProofType,
+				MarketBalance:    abi.NewTokenAmount(0),
 			},
 		},
 		Network: "gfctest",

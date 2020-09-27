@@ -2,6 +2,7 @@ package gengen_test
 
 import (
 	"context"
+	"github.com/filecoin-project/go-state-types/abi"
 	"io/ioutil"
 	"testing"
 
@@ -32,11 +33,13 @@ func testConfig(t *testing.T) *GenesisCfg {
 				Owner:            0,
 				CommittedSectors: fiftyCommCfgs,
 				SealProofType:    constants.DevSealProofType,
+				MarketBalance:    abi.NewTokenAmount(0),
 			},
 			{
 				Owner:            1,
 				CommittedSectors: tenCommCfgs,
 				SealProofType:    constants.DevSealProofType,
+				MarketBalance:    abi.NewTokenAmount(0),
 			},
 		},
 		Network: "gfctest",

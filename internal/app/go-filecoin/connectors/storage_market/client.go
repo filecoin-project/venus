@@ -53,7 +53,7 @@ func (s *StorageClientNodeConnector) DealProviderCollateralBounds(ctx context.Co
 		return abi.TokenAmount{}, abi.TokenAmount{}, err
 	}
 
-	view := s.stateViewer.StateView(ts.At(0).StateRoot)
+	view := s.stateViewer.StateView(ts.At(0).StateRoot.Cid)
 	bounds, err := view.MarketDealProviderCollateralBounds(ctx, size, isVerified, ts.At(0).Height)
 	if err != nil {
 		return abi.TokenAmount{}, abi.TokenAmount{}, err
@@ -71,7 +71,7 @@ func (s *StorageClientNodeConnector) GetMinerInfo(ctx context.Context, maddr add
 		return nil, err
 	}
 
-	view := s.stateViewer.StateView(tsk.At(0).StateRoot)
+	view := s.stateViewer.StateView(tsk.At(0).StateRoot.Cid)
 
 	minerInfo, err := view.MinerInfo(ctx, maddr)
 	if err != nil {

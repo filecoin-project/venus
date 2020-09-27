@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	blocks "github.com/ipfs/go-block-format"
@@ -52,7 +53,7 @@ func (ms *MessageStore) LoadMessages(ctx context.Context, metaCid cid.Cid) ([]*t
 		return nil, nil, err
 	}
 
-	secpCids, err := ms.loadAMTCids(ctx, meta.SecpRoot)
+	secpCids, err := ms.loadAMTCids(ctx, meta.SecpRoot.Cid)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -72,7 +73,7 @@ func (ms *MessageStore) LoadMessages(ctx context.Context, metaCid cid.Cid) ([]*t
 		secpMsgs[i] = message
 	}
 
-	blsCids, err := ms.loadAMTCids(ctx, meta.BLSRoot)
+	blsCids, err := ms.loadAMTCids(ctx, meta.BLSRoot.Cid)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -111,7 +112,7 @@ func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "could not store secp cids as AMT")
 	}
-	ret.SecpRoot = secpRaw
+	ret.SecpRoot = enccid.NewCid(secpRaw)
 
 	// store bls messages
 	blsCids, err := ms.storeUnsignedMessages(blsMessages)
@@ -122,7 +123,7 @@ func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "could not store bls cids as AMT")
 	}
-	ret.BLSRoot = blsRaw
+	ret.BLSRoot = enccid.NewCid(blsRaw)
 
 	return ms.StoreTxMeta(ctx, ret)
 }

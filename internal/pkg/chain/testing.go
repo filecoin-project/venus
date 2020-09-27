@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
@@ -205,8 +206,8 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 			ParentWeight:    parentWeight,
 			Parents:         parent.Key(),
 			Height:          height,
-			Messages:        types.EmptyTxMetaCID,
-			MessageReceipts: types.EmptyReceiptsCID,
+			Messages:        enccid.NewCid(types.EmptyTxMetaCID),
+			MessageReceipts: enccid.NewCid(types.EmptyReceiptsCID),
 			BLSAggregateSig: &emptyBLSSig,
 			// Omitted fields below
 			//StateRoot:       stateRoot,
@@ -223,11 +224,11 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 		// Compute state root for this block.
 		ctx := context.Background()
 		prevState := f.StateForKey(parent.Key())
-		smsgs, umsgs, err := f.messages.LoadMessages(ctx, b.Messages)
+		smsgs, umsgs, err := f.messages.LoadMessages(ctx, b.Messages.Cid)
 		require.NoError(f.t, err)
 		stateRootRaw, _, err := f.stateBuilder.ComputeState(prevState, [][]*types.UnsignedMessage{umsgs}, [][]*types.SignedMessage{smsgs})
 		require.NoError(f.t, err)
-		b.StateRoot = stateRootRaw
+		b.StateRoot = enccid.NewCid(stateRootRaw)
 
 		// add block to cstore
 		_, err = f.cstore.Put(ctx, b)
@@ -276,7 +277,7 @@ func (f *Builder) tipMessages(tip block.TipSet) [][]*types.SignedMessage {
 	ctx := context.Background()
 	var msgs [][]*types.SignedMessage
 	for i := 0; i < tip.Len(); i++ {
-		smsgs, _, err := f.messages.LoadMessages(ctx, tip.At(i).Messages)
+		smsgs, _, err := f.messages.LoadMessages(ctx, tip.At(i).Messages.Cid)
 		require.NoError(f.t, err)
 		msgs = append(msgs, smsgs)
 	}
@@ -323,12 +324,12 @@ func (bb *BlockBuilder) AddMessages(secpmsgs []*types.SignedMessage, blsMsgs []*
 	meta, err := bb.messages.StoreMessages(ctx, secpmsgs, blsMsgs)
 	require.NoError(bb.t, err)
 
-	bb.block.Messages = meta
+	bb.block.Messages = enccid.NewCid(meta)
 }
 
 // SetStateRoot sets the block's state root.
 func (bb *BlockBuilder) SetStateRoot(root cid.Cid) {
-	bb.block.StateRoot = root
+	bb.block.StateRoot = enccid.NewCid(root)
 }
 
 ///// State builder /////

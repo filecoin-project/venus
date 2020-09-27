@@ -45,6 +45,8 @@ type CreateStorageMinerConfig struct {
 	// ProvingPeriodStart is next chain epoch at which a miner will need to submit a windowed post
 	// If unset, it will be set to the proving period.
 	ProvingPeriodStart *abi.ChainEpoch
+
+	MarketBalance abi.TokenAmount
 }
 
 // CommitConfig carries all information needed to get a sector commitment in the
