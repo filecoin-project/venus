@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
+	"github.com/filecoin-project/go-state-types/abi"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -121,3 +121,36 @@ func (smsg *SignedMessage) Equals(other *SignedMessage) bool {
 	return smsg.Message.Equals(&other.Message) &&
 		smsg.Signature.Equals(&other.Signature)
 }
+
+// ToDo add by force
+func (m *SignedMessage) ChainLength() int {
+	ser, err := m.Marshal()
+	if err != nil {
+		panic(err)
+	}
+	return len(ser)
+}
+
+func (sm *SignedMessage) ToStorageBlock() (blocks.Block, error) {
+	if sm.Signature.Type == crypto.SigTypeBLS {
+		return sm.Message.ToStorageBlock()
+	}
+
+	data, err := sm.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := abi.CidBuilder.Sum(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return blocks.NewBlockWithCid(data, c)
+}
+
+func (sm *SignedMessage) VMMessage() *UnsignedMessage {
+	return &sm.Message
+}
+
+var _ ChainMsg = &SignedMessage{}

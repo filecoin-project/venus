@@ -35,6 +35,8 @@ var (
 	ErrReceiptRootMismatch = errors.New("blocks receipt root does not match parent tip set")
 )
 
+const AllowableClockDriftSecs = uint64(1)
+
 // challengeBits is the number of bits in the challenge ticket's domain
 const challengeBits = 256
 

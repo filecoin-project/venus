@@ -206,44 +206,6 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 	})
 }
 
-func TestMismatchedTime(t *testing.T) {
-	tf.UnitTest(t)
-
-	blockTime := clock.DefaultEpochDuration
-	genTime := time.Unix(1234567890, 1234567890%int64(time.Second))
-	fc := clock.NewFake(genTime)
-	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, clock.DefaultPropagationDelay, fc)
-	validator := consensus.NewDefaultBlockValidator(mclock, nil, nil)
-
-	fc.Advance(blockTime)
-
-	// Passes with correct timestamp
-	c := &block.Block{Height: 1, Timestamp: uint64(fc.Now().Unix())}
-	require.NoError(t, validator.TimeMatchesEpoch(c))
-
-	// fails with invalid timestamp
-	c = &block.Block{Height: 1, Timestamp: uint64(genTime.Unix())}
-	err := validator.TimeMatchesEpoch(c)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "wrong epoch")
-}
-
-func TestFutureEpoch(t *testing.T) {
-	tf.UnitTest(t)
-
-	blockTime := clock.DefaultEpochDuration
-	genTime := time.Unix(1234567890, 1234567890%int64(time.Second))
-	fc := clock.NewFake(genTime)
-	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, clock.DefaultPropagationDelay, fc)
-	validator := consensus.NewDefaultBlockValidator(mclock, nil, nil)
-
-	// Fails in future epoch
-	c := &block.Block{Height: 1, Timestamp: uint64(genTime.Add(blockTime).Unix())}
-	err := validator.NotFutureBlock(c)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "future epoch")
-}
-
 func TestBlockValidSyntax(t *testing.T) {
 	tf.UnitTest(t)
 

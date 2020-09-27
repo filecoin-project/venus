@@ -2,7 +2,6 @@ package vmcontext
 
 import (
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/types"
 	"time"
@@ -39,7 +38,7 @@ func NewGasTracker(limit gas.Unit) GasTracker {
 // Charge will add the gas charge to the current method gas context.
 //
 // WARNING: this method will panic if there is no sufficient gas left.
-func (t *GasTracker) Charge(gas gascost.GasCharge, msg string, args ...interface{}) {
+func (t *GasTracker) Charge(gas gas.GasCharge, msg string, args ...interface{}) {
 	if ok := t.TryCharge(gas); !ok {
 		fmsg := fmt.Sprintf(msg, args...)
 		runtime.Abortf(exitcode.SysErrOutOfGas, "gas limit %d exceeded with charge of %d: %s", t.gasLimit, gas.Total(), fmsg)
@@ -49,7 +48,7 @@ func (t *GasTracker) Charge(gas gascost.GasCharge, msg string, args ...interface
 // TryCharge charges `amount` or `RemainingGas()``, whichever is smaller.
 //
 // Returns `True` if the there was enough gas to pay for `amount`.
-func (t *GasTracker) TryCharge(gas gascost.GasCharge) bool {
+func (t *GasTracker) TryCharge(gas gas.GasCharge) bool {
 	toUse := gas.Total()
 	//var callers [10]uintptr
 	//cout := gruntime.Callers(2+skip, callers[:])
@@ -67,7 +66,7 @@ func (t *GasTracker) TryCharge(gas gascost.GasCharge) bool {
 		ComputeGas: gas.ComputeGas,
 		StorageGas: gas.StorageGas,
 
-		TotalVirtualGas:   gas.VirtualCompute*gascost.GasComputeMulti + gas.VirtualStorage*gascost.GasStorageMulti,
+		TotalVirtualGas:   gas.VirtualCompute*gas.GasComputeMulti + gas.VirtualStorage*gas.GasStorageMulti,
 		VirtualComputeGas: gas.VirtualCompute,
 		VirtualStorageGas: gas.VirtualStorage,
 

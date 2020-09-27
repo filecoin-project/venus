@@ -365,7 +365,7 @@ func (a *ValidationApplier) preApplyMessage(epoch abi.ChainEpoch, msg *vtypes.Me
 	// set epoch
 	// Note: this would have normally happened during `ApplyTipset()`
 	a.stateView.vm.currentEpoch = epoch
-	a.stateView.vm.pricelist = gascost.PricelistByEpoch(epoch)
+	a.stateView.vm.pricelist = PricelistByEpoch(epoch)
 
 	// map message
 	return toOurMessage(msg)

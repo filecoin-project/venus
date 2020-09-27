@@ -3,6 +3,7 @@ package vmcontext
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"reflect"
 
@@ -10,7 +11,6 @@ import (
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 )
@@ -24,11 +24,11 @@ type vmStorage interface {
 type ActorStorage struct {
 	context   context.Context
 	inner     vmStorage
-	pricelist gascost.Pricelist
+	pricelist gas.Pricelist
 	gasTank   *GasTracker
 }
 
-func NewActorStorage(ctx context.Context, inner vmStorage, gasTank *GasTracker, pricelist gascost.Pricelist) *ActorStorage {
+func NewActorStorage(ctx context.Context, inner vmStorage, gasTank *GasTracker, pricelist gas.Pricelist) *ActorStorage {
 	return &ActorStorage{
 		context:   ctx,
 		inner:     inner,

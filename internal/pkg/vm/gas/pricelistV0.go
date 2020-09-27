@@ -1,8 +1,7 @@
-package gascost
+package gas
 
 import (
 	"fmt"
-
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-state-types/abi"

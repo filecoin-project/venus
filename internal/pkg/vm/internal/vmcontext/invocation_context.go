@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"runtime/debug"
 
@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
-var gasOnActorExec = gascost.NewGasCharge("OnActorExec", 0, 0)
+var gasOnActorExec = gas.NewGasCharge("OnActorExec", 0, 0)
 
 // Context for a top-level invocation sequence.
 type topLevelContext struct {
@@ -526,7 +526,7 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 	}
 
 	// Charge gas now that easy checks are done
-	ctx.gasTank.Charge(gascost.PricelistByEpoch(ctx.rt.CurrentEpoch()).OnCreateActor(), "CreateActor code %s, address %s", codeID, addr)
+	ctx.gasTank.Charge(gas.PricelistByEpoch(ctx.rt.CurrentEpoch()).OnCreateActor(), "CreateActor code %s, address %s", codeID, addr)
 
 	newActor := &actor.Actor{
 		// make this the right 'type' of actor

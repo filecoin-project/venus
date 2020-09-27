@@ -1,4 +1,4 @@
-package gascost
+package gas
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"

@@ -3,6 +3,7 @@ package vmcontext
 import (
 	"context"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
@@ -14,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	vmState "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -40,7 +40,7 @@ type syscalls struct {
 	impl      SyscallsImpl
 	ctx       context.Context
 	gasTank   *GasTracker
-	pricelist gascost.Pricelist
+	pricelist gas.Pricelist
 	head      block.TipSetKey
 	stateView SyscallsStateView
 }

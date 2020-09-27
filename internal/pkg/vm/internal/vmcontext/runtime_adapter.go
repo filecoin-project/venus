@@ -3,11 +3,11 @@ package vmcontext
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/pattern"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -160,7 +160,7 @@ func (a *runtimeAdapter) Send(toAddr address.Address, methodNum abi.MethodNum, p
 }
 
 func (a *runtimeAdapter) ChargeGas(name string, compute int64, virtual int64) {
-	a.gasTank.Charge(gascost.NewGasCharge(name, compute, 0).WithVirtual(virtual, 0), "runtimeAdapter charge gas")
+	a.gasTank.Charge(gas.NewGasCharge(name, compute, 0).WithVirtual(virtual, 0), "runtimeAdapter charge gas")
 }
 
 func (a *runtimeAdapter) Log(level rt.LogLevel, msg string, args ...interface{}) {

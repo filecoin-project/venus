@@ -6,6 +6,7 @@ require (
 	contrib.go.opencensus.io/exporter/jaeger v0.1.0
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
+	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/cskr/pubsub v1.0.2
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
@@ -79,6 +80,7 @@ require (
 	github.com/libp2p/go-libp2p-circuit v0.3.1
 	github.com/libp2p/go-libp2p-core v0.6.1
 	github.com/libp2p/go-libp2p-kad-dht v0.8.3
+	github.com/libp2p/go-libp2p-peer v0.2.0
 	github.com/libp2p/go-libp2p-peerstore v0.2.6
 	github.com/libp2p/go-libp2p-pubsub v0.3.6-0.20200910093904-f7f33e10cc18
 	github.com/libp2p/go-libp2p-swarm v0.2.8
@@ -97,6 +99,7 @@ require (
 	github.com/prometheus/client_golang v1.6.0
 	github.com/prometheus/common v0.10.0
 	github.com/stretchr/testify v1.6.1
+	github.com/supranational/blst v0.1.1
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200814224545-656e08ce49ee
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
@@ -110,3 +113,5 @@ require (
 )
 
 replace github.com/filecoin-project/filecoin-ffi => ./vendors/filecoin-ffi
+
+replace github.com/supranational/blst => ./vendors/fil-blst/blst

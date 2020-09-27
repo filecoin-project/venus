@@ -166,3 +166,17 @@ func (ts TipSet) Equals(ts2 TipSet) bool {
 func (ts TipSet) String() string {
 	return ts.Key().String()
 }
+
+func (ts *TipSet) Blocks() []*Block {
+	return ts.blocks
+}
+
+func (ts *TipSet) MinTimestamp() uint64 {
+	minTs := ts.blocks[0].Timestamp
+	for _, bh := range ts.Blocks()[1:] {
+		if bh.Timestamp < minTs {
+			minTs = bh.Timestamp
+		}
+	}
+	return minTs
+}

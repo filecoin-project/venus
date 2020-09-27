@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
@@ -49,7 +48,7 @@ type VM struct {
 	syscalls     SyscallsImpl
 	currentHead  block.TipSetKey
 	currentEpoch abi.ChainEpoch
-	pricelist    gascost.Pricelist
+	pricelist    gas.Pricelist
 
 	circSupplyCalc CircSupplyCalculator
 	ntwkVersion    NtwkVersionGetter
@@ -104,7 +103,7 @@ func NewVM(actorImpls ActorImplLookup,
 //
 // This method is intended to be used in the generation of the genesis block only.
 func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}, rnd crypto.RandomnessSource) (cbor.Marshaler, error) {
-	vm.pricelist = gascost.PricelistByEpoch(vm.currentEpoch)
+	vm.pricelist = gas.PricelistByEpoch(vm.currentEpoch)
 
 	// normalize from addr
 	var ok bool
@@ -215,7 +214,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 	// update current tipset
 	vm.currentHead = head
 	vm.currentEpoch = epoch
-	vm.pricelist = gascost.PricelistByEpoch(epoch)
+	vm.pricelist = gas.PricelistByEpoch(epoch)
 
 	for i := parentEpoch; i < epoch; i++ {
 		// handle stateView forks    todo add by force fork
@@ -551,7 +550,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (mess
 	if gasUsed < 0 {
 		gasUsed = 0
 	}
-	gasOutputs := gascost.ComputeGasOutputs(gasUsed, int64(msg.GasLimit), vm.baseFee, msg.GasFeeCap, msg.GasPremium)
+	gasOutputs := gas.ComputeGasOutputs(gasUsed, int64(msg.GasLimit), vm.baseFee, msg.GasFeeCap, msg.GasPremium)
 
 	if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder,
 		gasOutputs.BaseFeeBurn); err != nil {
@@ -650,7 +649,7 @@ func (vm *VM) CurrentEpoch() abi.ChainEpoch {
 
 func (vm *VM) SetCurrentEpoch(current abi.ChainEpoch) {
 	vm.currentEpoch = current
-	vm.pricelist = gascost.PricelistByEpoch(current)
+	vm.pricelist = gas.PricelistByEpoch(current)
 }
 
 func (vm *VM) transferToGasHolder(addr address.Address, gasHolder *actor.Actor, amt abi.TokenAmount) error {
