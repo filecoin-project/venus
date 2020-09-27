@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"io/ioutil"
 	"time"
 
@@ -35,7 +36,7 @@ type HelloMessage struct {
 	HeaviestTipSetCids   block.TipSetKey
 	HeaviestTipSetHeight abi.ChainEpoch
 	HeaviestTipSetWeight fbig.Int
-	GenesisHash          cid.Cid
+	GenesisHash          enccid.Cid
 }
 
 // LatencyMessage is written in response to a hello message for measuring peer
@@ -164,7 +165,7 @@ func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 	}
 
 	return &HelloMessage{
-		GenesisHash:          h.genesis,
+		GenesisHash:          enccid.NewCid(h.genesis),
 		HeaviestTipSetCids:   heaviest.Key(),
 		HeaviestTipSetHeight: height,
 		HeaviestTipSetWeight: weight,

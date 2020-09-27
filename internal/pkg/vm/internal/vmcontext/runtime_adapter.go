@@ -3,6 +3,7 @@ package vmcontext
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 
 	"github.com/ipfs/go-cid"
 
@@ -83,11 +84,11 @@ func (a *runtimeAdapter) stateCommit(oldh, newh cid.Cid) error {
 		return xerrors.Errorf("failed to get actor to commit stateView, %s", err)
 	}
 
-	if act.Head != oldh {
+	if act.Head.Cid != oldh {
 		return xerrors.Errorf("failed to update, inconsistent base reference, %s", err)
 	}
 
-	act.Head = newh
+	act.Head = enccid.NewCid(newh)
 	if err := a.ctx.rt.state.SetActor(a.Context(), a.Receiver(), act); err != nil {
 		return xerrors.Errorf("failed to set actor in commit stateView, %s", err)
 	}
@@ -100,7 +101,7 @@ func (a *runtimeAdapter) StateReadonly(obj cbor.Unmarshaler) {
 	if !found || err != nil {
 		a.Abortf(exitcode.SysErrorIllegalArgument, "failed to get actor for Readonly stateView: %s", err)
 	}
-	a.StoreGet(act.Head, obj)
+	a.StoreGet(act.Head.Cid, obj)
 }
 
 func (a *runtimeAdapter) StateTransaction(obj cbor.Er, f func()) {
@@ -112,7 +113,7 @@ func (a *runtimeAdapter) StateTransaction(obj cbor.Er, f func()) {
 	if !found || err != nil {
 		a.Abortf(exitcode.SysErrorIllegalActor, "failed to get actor for Transaction: %s", err)
 	}
-	baseState := act.Head
+	baseState := act.Head.Cid
 	a.StoreGet(baseState, obj)
 
 	a.ctx.allowSideEffects = false
@@ -225,7 +226,7 @@ func (a *runtimeAdapter) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok 
 	if err != nil {
 		panic(err)
 	}
-	return entry.Code, true
+	return entry.Code.Cid, true
 }
 
 // Abortf implements Runtime.

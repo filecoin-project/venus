@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"runtime/debug"
@@ -79,7 +80,7 @@ func (shc *stateHandleContext) Create(obj cbor.Marshaler) cid.Cid {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to construct actor stateView: already initialized")
 	}
 	c := shc.store().StorePut(obj)
-	actr.Head = c
+	actr.Head = enccid.NewCid(c)
 	shc.storeActor(actr)
 	return c
 }
@@ -88,7 +89,7 @@ func (shc *stateHandleContext) Load(obj cbor.Unmarshaler) cid.Cid {
 	// The actor must be loaded from store every time since the stateView may have changed via a different stateView handle
 	// (e.g. in a recursive call).
 	actr := shc.loadActor()
-	c := actr.Head
+	c := actr.Head.Cid
 	if !c.Defined() {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to load undefined stateView, must construct first")
 	}
@@ -105,7 +106,7 @@ func (shc *stateHandleContext) Replace(expected cid.Cid, obj cbor.Marshaler) cid
 		panic(fmt.Errorf("unexpected prior stateView %s for actor %s, expected %s", actr.Head, shc.msg.to, expected))
 	}
 	c := shc.store().StorePut(obj)
-	actr.Head = c
+	actr.Head = enccid.NewCid(c)
 	shc.storeActor(actr)
 	return c
 }
@@ -217,7 +218,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 	}
 
 	// 5. load target actor code
-	actorImpl := ctx.rt.getActorImpl(ctx.toActor.Code)
+	actorImpl := ctx.rt.getActorImpl(ctx.toActor.Code.Cid)
 	// 6. create target stateView handle
 	stateHandle := newActorStateHandle((*stateHandleContext)(ctx))
 	ctx.stateHandle = &stateHandle
@@ -289,7 +290,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 
 	// get a view into the actor stateView
 	var state init_.State
-	if _, err := ctx.rt.store.Get(ctx.rt.context, initActorEntry.Head, &state); err != nil {
+	if _, err := ctx.rt.store.Get(ctx.rt.context, initActorEntry.Head.Cid, &state); err != nil {
 		panic(err)
 	}
 
@@ -316,7 +317,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 			panic(err)
 		}
 		// update init actor
-		initActorEntry.Head = initHead
+		initActorEntry.Head = enccid.NewCid(initHead)
 		if err := ctx.rt.state.SetActor(ctx.rt.context, builtin.InitActorAddr, initActorEntry); err != nil {
 			panic(err)
 		}
@@ -539,9 +540,9 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 
 	newActor := &actor.Actor{
 		// make this the right 'type' of actor
-		Code:       codeID,
+		Code:       enccid.NewCid(codeID),
 		Balance:    abi.NewTokenAmount(0),
-		Head:       EmptyObjectCid,
+		Head:       enccid.NewCid(EmptyObjectCid),
 		CallSeqNum: 0,
 	}
 	if err := ctx.rt.state.SetActor(ctx.rt.context, addr, newActor); err != nil {
@@ -585,7 +586,7 @@ type patternContext2 invocationContext
 var _ runtime.PatternContext = (*patternContext2)(nil)
 
 func (ctx *patternContext2) CallerCode() cid.Cid {
-	return ctx.fromActor.Code
+	return ctx.fromActor.Code.Cid
 }
 
 func (ctx *patternContext2) CallerAddr() address.Address {

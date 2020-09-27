@@ -87,7 +87,7 @@ func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.Uns
 	}
 
 	// Sender must be an account actor.
-	if !(builtin.AccountActorCodeID.Equals(fromActor.Code)) {
+	if !(builtin.AccountActorCodeID.Equals(fromActor.Code.Cid)) {
 		dropNonAccountCt.Inc(ctx, 1)
 		return fmt.Errorf("sender %s is non-account actor with code %s: %s", msg.From, fromActor.Code, msg)
 	}

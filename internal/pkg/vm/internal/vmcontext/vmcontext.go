@@ -183,7 +183,7 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 
 	// get a view into the actor stateView
 	var state init_.State
-	if _, err := vm.store.Get(vm.context, initActorEntry.Head, &state); err != nil {
+	if _, err := vm.store.Get(vm.context, initActorEntry.Head.Cid, &state); err != nil {
 		panic(err)
 	}
 
@@ -345,12 +345,12 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) (cbor.Marshaler, error)
 	if originatorIsAccount {
 		// Load sender account stateView to obtain stable pubkey address.
 		var senderState account.State
-		_, err = vm.store.Get(vm.context, fromActor.Head, &senderState)
+		_, err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
 		if err != nil {
 			panic(err)
 		}
 		originator = senderState.Address
-	} else if builtin.IsBuiltinActor(fromActor.Code) {
+	} else if builtin.IsBuiltinActor(fromActor.Code.Cid) {
 		originator = imsg.from // Cannot resolve non-account actor to pubkey addresses.
 	} else {
 		panic(fmt.Sprintf("implicit message from non-account or -singleton actor code %s", fromActor.Code))
@@ -468,7 +468,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (mess
 
 	// Load sender account stateView to obtain stable pubkey address.
 	var senderState account.State
-	_, err = vm.store.Get(vm.context, fromActor.Head, &senderState)
+	_, err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
 	if err != nil {
 		panic(err)
 	}
@@ -744,7 +744,7 @@ func (vm *syscallsStateView) AccountSignerAddress(ctx context.Context, accountAd
 		return address.Undef, fmt.Errorf("signer resolution found no such actor %s", accountAddr)
 	}
 	var state account.State
-	if _, err := vm.store.Get(vm.context, actor.Head, &state); err != nil {
+	if _, err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
 		// This error is internal, shouldn't propagate as on-chain failure
 		panic(fmt.Errorf("signer resolution failed to lost stateView for %s ", accountAddr))
 	}
@@ -760,7 +760,7 @@ func (vm *syscallsStateView) MinerControlAddresses(ctx context.Context, maddr ad
 		return address.Undef, address.Undef, fmt.Errorf("miner resolution found no such actor %s", maddr)
 	}
 	var state miner.State
-	if _, err := vm.store.Get(vm.context, actor.Head, &state); err != nil {
+	if _, err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
 		// This error is internal, shouldn't propagate as on-chain failure
 		panic(fmt.Errorf("signer resolution failed to lost stateView for %s ", maddr))
 	}

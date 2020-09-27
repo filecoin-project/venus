@@ -222,12 +222,12 @@ func (c *Expected) validateMining(ctx context.Context,
 		blk := ts.At(i)
 
 		// confirm block state root matches parent state root
-		if !parentStateRoot.Equals(blk.StateRoot) {
+		if !parentStateRoot.Equals(blk.StateRoot.Cid) {
 			return ErrStateRootMismatch
 		}
 
 		// confirm block receipts match parent receipts
-		if !parentReceiptRoot.Equals(blk.MessageReceipts) {
+		if !parentReceiptRoot.Equals(blk.MessageReceipts.Cid) {
 			return ErrReceiptRootMismatch
 		}
 
@@ -350,7 +350,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 	if err != nil {
 		return nil, nil, err
 	}
-	pts,err := c.chainState.GetTipSet(parent)
+	pts, err := c.chainState.GetTipSet(parent)
 	if err != nil {
 		return nil, nil, err
 	}

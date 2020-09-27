@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-state-types/abi"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -46,7 +47,7 @@ func init() {
 	}
 	EmptyMessagesCID = emptyAMTCid
 	EmptyReceiptsCID = emptyAMTCid
-	EmptyTxMetaCID, err = tmpCst.Put(context.Background(), TxMeta{SecpRoot: EmptyMessagesCID, BLSRoot: EmptyMessagesCID})
+	EmptyTxMetaCID, err = tmpCst.Put(context.Background(), TxMeta{SecpRoot: enccid.NewCid(EmptyMessagesCID), BLSRoot: enccid.NewCid(EmptyMessagesCID)})
 	if err != nil {
 		panic("could not create CID for empty TxMeta")
 	}
@@ -202,9 +203,9 @@ func NewGasPremium(price int64) AttoFIL {
 
 // TxMeta tracks the merkleroots of both secp and bls messages separately
 type TxMeta struct {
-	_        struct{} `cbor:",toarray"`
-	BLSRoot  cid.Cid  `json:"blsRoot"`
-	SecpRoot cid.Cid  `json:"secpRoot"`
+	_        struct{}   `cbor:",toarray"`
+	BLSRoot  enccid.Cid `json:"blsRoot"`
+	SecpRoot enccid.Cid `json:"secpRoot"`
 }
 
 // String returns a readable printing string of TxMeta

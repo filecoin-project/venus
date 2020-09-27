@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
-	drandapi "github.com/filecoin-project/go-filecoin/internal/pkg/protocol/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
@@ -44,7 +43,6 @@ var initCmd = &cmds.Command{
 		cmds.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
 		cmds.StringOption(Network, "when set, populates config with network specific parameters"),
 		cmds.StringOption(OptionPresealedSectorDir, "when set to the path of a directory, imports pre-sealed sector data from that directory"),
-		cmds.StringOption(OptionDrandConfigAddr, "configure drand with given address, uses secure contact protocol and no override.  If you need different settings use daemon drand command"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
@@ -85,10 +83,6 @@ var initCmd = &cmds.Command{
 			return err
 		}
 
-		if err := setDrandConfig(rep, req.Options); err != nil {
-			logInit.Error("Error configuring drand config %s", err)
-			return err
-		}
 		if err := rep.ReplaceConfig(cfg); err != nil {
 			logInit.Errorf("Error replacing config %s", err)
 			return err
@@ -153,23 +147,6 @@ type setWrapper struct {
 
 func (w *setWrapper) ConfigSet(dottedKey string, jsonString string) error {
 	return w.cfg.Set(dottedKey, jsonString)
-}
-
-func setDrandConfig(repo repo.Repo, options cmds.OptMap) error {
-	drandAddrStr, ok := options[OptionDrandConfigAddr].(string)
-	if !ok {
-		// skip configuring drand during init
-		return nil
-	}
-
-	// Arbitrary filecoin genesis time, it will be set correctly when daemon runs
-	// It is not needed to set config properly
-	dGRPC, err := node.DefaultDrandIfaceFromConfig(repo.Config(), 0)
-	if err != nil {
-		return err
-	}
-	d := drandapi.New(dGRPC, &setWrapper{repo.Config()})
-	return d.Configure([]string{drandAddrStr}, true, false)
 }
 
 func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (genesis.InitFunc, error) {
@@ -276,26 +253,27 @@ func extractGenesisBlock(source io.ReadCloser, rep repo.Repo) (*block.Block, err
 		return nil, err
 	}
 
+	//parent also have parents
 	// the root block of the car file has parents, this file must contain a chain.
-	var gensisBlk *block.Block
-	if !cur.Parents.Equals(block.UndefTipSet.Key()) {
-		// walk back up the chain until we hit a block with no parents, the genesis block.
-		for !cur.Parents.Equals(block.UndefTipSet.Key()) {
-			bsBlk, err := bs.Get(cur.Parents.ToSlice()[0])
-			if err != nil {
-				return nil, err
+	/*	var gensisBlk *block.Block
+		if !cur.Parents.Equals(block.UndefTipSet.Key()) {
+			// walk back up the chain until we hit a block with no parents, the genesis block.
+			for !cur.Parents.Equals(block.UndefTipSet.Key()) {
+				bsBlk, err := bs.Get(cur.Parents.ToSlice()[0])
+				if err != nil {
+					return nil, err
+				}
+				cur, err = block.DecodeBlock(bsBlk.RawData())
+				if err != nil {
+					return nil, err
+				}
 			}
-			cur, err = block.DecodeBlock(bsBlk.RawData())
-			if err != nil {
-				return nil, err
-			}
-		}
 
-		gensisBlk = cur
+			gensisBlk = cur
 
-		logInit.Infow("initialized go-filecoin with genesis file containing partial chain", "genesisCID", gensisBlk.Cid().String(), "headCIDs", ch.Roots)
-	} else {
-		gensisBlk = cur
-	}
-	return gensisBlk, nil
+			logInit.Infow("initialized go-filecoin with genesis file containing partial chain", "genesisCID", gensisBlk.Cid().String(), "headCIDs", ch.Roots)
+		} else {
+			gensisBlk = cur
+		}*/
+	return cur, nil
 }

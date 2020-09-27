@@ -189,7 +189,7 @@ func retrieveNetworkName(ctx context.Context, genCid cid.Cid, cborStore cbor.Ipl
 		return "", errors.Wrapf(err, "failed to get block %s", genCid.String())
 	}
 
-	return appstate.NewView(cborStore, genesis.StateRoot).InitNetworkName(ctx)
+	return appstate.NewView(cborStore, genesis.StateRoot.Cid).InitNetworkName(ctx)
 }
 
 // buildHost determines if we are publically dialable.  If so use public

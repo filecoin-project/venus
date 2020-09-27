@@ -248,7 +248,7 @@ func (chn *ChainStateReadWriter) GetActorStateAt(ctx context.Context, tipKey blo
 		return err
 	}
 
-	blk, err := chn.bstore.Get(act.Head)
+	blk, err := chn.bstore.Get(act.Head.Cid)
 	if err != nil {
 		return err
 	}
@@ -271,7 +271,7 @@ func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, tipKey bl
 		return address.Undef, errors.Wrapf(err, "no actor at address %s", addr)
 	}
 
-	blk, err := chn.bstore.Get(init.Head)
+	blk, err := chn.bstore.Get(init.Head.Cid)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -324,7 +324,7 @@ func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAdd
 	}
 
 	// Dragons: this is broken, we need to ask the VM for the impl, it might need to apply migrations based on epoch
-	executable, err := chn.actors.GetActorImpl(actor.Code)
+	executable, err := chn.actors.GetActorImpl(actor.Code.Cid)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load actor code")
 	}

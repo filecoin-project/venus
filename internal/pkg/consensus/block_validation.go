@@ -132,7 +132,7 @@ func (dv *DefaultBlockValidator) ValidateHeaderSemantic(ctx context.Context, chi
 // ValidateFullSemantic checks validation conditions on a block's messages that don't require message execution.
 func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, child *block.Block, parents block.TipSetKey) error {
 	// validate call sequence numbers
-	secpMsgs, blsMsgs, err := dv.ms.LoadMessages(ctx, child.Messages)
+	secpMsgs, blsMsgs, err := dv.ms.LoadMessages(ctx, child.Messages.Cid)
 	if err != nil {
 		return errors.Wrapf(err, "block validation failed loading message list %s for block %s", child.Messages, child.Cid())
 	}

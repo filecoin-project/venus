@@ -75,7 +75,7 @@ func (s *StorageProviderNodeConnector) DealProviderCollateralBounds(ctx context.
 		return abi.TokenAmount{}, abi.TokenAmount{}, err
 	}
 
-	view := s.stateViewer.StateView(ts.At(0).StateRoot)
+	view := s.stateViewer.StateView(ts.At(0).StateRoot.Cid)
 	bounds, err := view.MarketDealProviderCollateralBounds(ctx, size, isVerified, ts.At(0).Height)
 	if err != nil {
 		return abi.TokenAmount{}, abi.TokenAmount{}, err
@@ -191,7 +191,7 @@ func (s *StorageProviderNodeConnector) GetDataCap(ctx context.Context, addr addr
 		return nil, err
 	}
 
-	view := s.stateViewer.StateView(ts.At(0).StateRoot)
+	view := s.stateViewer.StateView(ts.At(0).StateRoot.Cid)
 	return view.StateVerifiedClientStatus(ctx, addr)
 }
 
