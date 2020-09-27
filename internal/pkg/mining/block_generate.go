@@ -116,7 +116,7 @@ func (w *DefaultWorker) Generate(
 		MessageReceipts: enccid.NewCid(baseReceiptRoot),
 		Parents:         baseTipSet.Key(),
 		ParentWeight:    weight,
-		WinPoStProof:    posts,
+		WinPoStProof:    block.FromAbiProofArr(posts),
 		StateRoot:       enccid.NewCid(baseStateRoot),
 		Ticket:          ticket,
 		Timestamp:       uint64(epochStartTime.Unix()),
