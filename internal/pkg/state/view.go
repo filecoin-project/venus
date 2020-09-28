@@ -844,6 +844,32 @@ func (v *View) loadPowerClaim(ctx context.Context, powerState *power.State, mine
 	return &claim, nil
 }
 
+func (v *View) LoadActor(ctx context.Context, address addr.Address) (*actor.Actor, error) {
+	return v.loadActor(ctx, address)
+}
+
+func (v *View) ResolveToKeyAddr(ctx context.Context, address addr.Address) (addr.Address, error) {
+	if address.Protocol() == addr.BLS || address.Protocol() == addr.SECP256K1 {
+		return address, nil
+	}
+
+	act, err := v.LoadActor(context.TODO(), address)
+	if err != nil {
+		return addr.Undef, xerrors.Errorf("failed to find actor: %s", address)
+	}
+
+	if act.Code.Cid != builtin.AccountActorCodeID {
+		return addr.Undef, xerrors.Errorf("address %s was not for an account actor", address)
+	}
+
+	var aast account.State
+	if err := v.ipldStore.Get(context.TODO(), act.Head.Cid, &aast); err != nil {
+		return addr.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", address, err)
+	}
+
+	return aast.Address, nil
+}
+
 func (v *View) loadInitActor(ctx context.Context) (*notinit.State, error) {
 	actr, err := v.loadActor(ctx, builtin.InitActorAddr)
 	if err != nil {
@@ -852,6 +878,10 @@ func (v *View) loadInitActor(ctx context.Context) (*notinit.State, error) {
 	var state notinit.State
 	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
 	return &state, err
+}
+
+func (v *View) LoadMinerActor(ctx context.Context, address addr.Address) (*miner.State, error) {
+	return v.loadMinerActor(ctx, address)
 }
 
 func (v *View) loadMinerActor(ctx context.Context, address addr.Address) (*miner.State, error) {
@@ -866,6 +896,10 @@ func (v *View) loadMinerActor(ctx context.Context, address addr.Address) (*miner
 	var state miner.State
 	err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
 	return &state, err
+}
+
+func (v *View) LoadPowerActor(ctx context.Context) (*power.State, error) {
+	return v.loadPowerActor(ctx)
 }
 
 func (v *View) loadPowerActor(ctx context.Context) (*power.State, error) {

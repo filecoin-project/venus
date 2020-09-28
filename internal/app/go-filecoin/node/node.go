@@ -628,7 +628,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 
 		GetStateTree: node.chain.ChainReader.GetTipSetState,
 		GetWeight:    node.getWeight,
-		// Election:       consensus.NewElectionMachine(node.PorcelainAPI), // ToDo ??
+		//Election:       consensus.NewElectionMachine(node.PorcelainAPI), // ToDo ??
 		TicketGen:      consensus.NewTicketMachine(sampler),
 		TipSetMetadata: node.chain.ChainReader,
 

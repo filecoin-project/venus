@@ -63,6 +63,7 @@ type workerPorcelainAPI interface {
 	BlockTime() time.Duration
 	PowerStateView(baseKey block.TipSetKey) (consensus.PowerStateView, error)
 	FaultsStateView(baseKey block.TipSetKey) (consensus.FaultStateView, error)
+	MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv consensus.ElectionMachine) (*MiningBaseInfo, error)
 }
 
 type electionUtil interface {
@@ -351,4 +352,15 @@ func (w *DefaultWorker) electionEntry(ctx context.Context, base block.TipSet, dr
 	}
 
 	return chain.FindLatestDRAND(ctx, base, w.chainState)
+}
+
+type MiningBaseInfo struct {
+	MinerPower      abi.StoragePower
+	NetworkPower    abi.StoragePower
+	Sectors         []proof.SectorInfo
+	WorkerKey       address.Address
+	SectorSize      abi.SectorSize
+	PrevBeaconEntry block.BeaconEntry
+	BeaconEntries   []block.BeaconEntry
+	HasMinPower     bool
 }
