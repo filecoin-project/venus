@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	blocks "github.com/ipfs/go-block-format"
@@ -10,12 +9,25 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+)
+
+// ToDo
+var (
+	UpgradeSmokeHeight       = abi.ChainEpoch(-1)
+	UpgradeBreezeHeight      = abi.ChainEpoch(0)
+	BreezeGasTampingDuration = abi.ChainEpoch(0)
+	UpgradeIgnitionHeight    = abi.ChainEpoch(0)
 )
 
 // MessageProvider is an interface exposing the load methods of the
@@ -302,4 +314,88 @@ func (ms *MessageStore) storeAMTCids(ctx context.Context, cids []cid.Cid) (cid.C
 		cidMarshallers[i] = &cidMarshaller
 	}
 	return amt.FromArray(ctx, as, cidMarshallers)
+}
+
+// ToDo review add by force
+func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch)  abi.TokenAmount {
+	// deta := gasLimitUsed/noOfBlocks - build.BlockGasTarget
+	// change := baseFee * deta / BlockGasTarget
+	// nextBaseFee = baseFee + change
+	// nextBaseFee = max(nextBaseFee, build.MinimumBaseFee)
+
+	var delta int64
+	if epoch > UpgradeSmokeHeight {
+		delta = gasLimitUsed / int64(noOfBlocks)
+		delta -= types.BlockGasTarget
+	} else {
+		delta = types.PackingEfficiencyDenom * gasLimitUsed / (int64(noOfBlocks) * types.PackingEfficiencyNum)
+		delta -= types.BlockGasTarget
+	}
+
+	// cap change at 12.5% (BaseFeeMaxChangeDenom) by capping delta
+	if delta > types.BlockGasTarget {
+		delta = types.BlockGasTarget
+	}
+	if delta < -types.BlockGasTarget {
+		delta = -types.BlockGasTarget
+	}
+
+
+	change := big.Mul(baseFee,big.NewInt(delta))
+	change = big.Div(change, big.NewInt(types.BlockGasTarget))
+	change = big.Div(change, big.NewInt(types.BaseFeeMaxChangeDenom))
+
+	nextBaseFee := big.Add(baseFee, change)
+	if big.Cmp(nextBaseFee, big.NewInt(types.MinimumBaseFee)) < 0 {
+		nextBaseFee = big.NewInt(types.MinimumBaseFee)
+	}
+	return nextBaseFee
+}
+
+func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet) (abi.TokenAmount, error) {
+	zero := abi.NewTokenAmount(0)
+	baseHeight , err := ts.Height()
+	if err != nil {
+		return zero,err
+	}
+	if baseHeight > UpgradeBreezeHeight && baseHeight < UpgradeBreezeHeight + BreezeGasTampingDuration {
+		return abi.NewTokenAmount(100), nil
+	}
+
+	// totalLimit is sum of GasLimits of unique messages in a tipset
+	totalLimit := int64(0)
+
+	seen := make(map[cid.Cid]struct{})
+
+	for _, b := range ts.Blocks() {
+		secpMsgs, blsMsgs, err := ms.LoadMessages(ctx, b.Messages.Cid)
+		if err != nil {
+			return zero, xerrors.Errorf("error getting messages for: %s: %w", b.Cid(), err)
+		}
+
+		for _, m := range blsMsgs {
+			c,err := m.Cid()
+			if err != nil {
+				return zero, xerrors.Errorf("error getting cid for message: %v: %w", m, err)
+			}
+			if _, ok := seen[c]; !ok {
+				totalLimit += int64(m.GasLimit)
+				seen[c] = struct{}{}
+			}
+		}
+		for _, m := range secpMsgs {
+			c,err := m.Cid()
+			if err != nil {
+				return zero, xerrors.Errorf("error getting cid for signed message: %v: %w", m, err)
+			}
+			if _, ok := seen[c]; !ok {
+				totalLimit += int64(m.Message.GasLimit)
+				seen[c] = struct{}{}
+			}
+		}
+	}
+
+	parentBaseFee := ts.Blocks()[0].ParentBaseFee
+
+	return ComputeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks()), baseHeight), nil
 }

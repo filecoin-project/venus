@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"golang.org/x/xerrors"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
@@ -43,6 +44,8 @@ const challengeBits = 256
 // expectedLeadersPerEpoch is the mean number of leaders per epoch
 const expectedLeadersPerEpoch = 5
 
+const TicketRandomnessLookback = abi.ChainEpoch(1)
+
 // WinningPoStSectorSetLookback is the past epoch offset for reading the
 // winning post sector set
 const WinningPoStSectorSetLookback = 10
@@ -66,12 +69,7 @@ type TicketValidator interface {
 	IsValidTicket(ctx context.Context, base block.TipSetKey, entry *block.BeaconEntry, newPeriod bool, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket block.Ticket) error
 }
 
-// ElectionValidator validates that an election fairly produced a winner.
-type ElectionValidator interface {
-	IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool
-	// VerifyElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, vrfProof crypto.VRFPi) error
-	// VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error)
-}
+
 
 // StateViewer provides views into the chain state.
 type StateViewer interface {
@@ -86,9 +84,6 @@ type chainReader interface {
 
 // Expected implements expected consensus.
 type Expected struct {
-	// ElectionValidator validates election proofs.
-	ElectionValidator
-
 	// TicketValidator validates ticket generation
 	TicketValidator
 
@@ -268,26 +263,15 @@ func (c *Expected) validateMining(ctx context.Context,
 		if err != nil {
 			return errors.Wrapf(err, "failed to get election entry")
 		}
-		// err = c.VerifyElectionProof(ctx, electionEntry, blk.Height, blk.Miner, workerSignerAddr, blk.ElectionProof.VRFProof)
-		// if err != nil {
-		// 	return errors.Wrapf(err, "failed to verify election proof")
-		// }
-		// TODO this is not using nominal power, which must take into account undeclared faults
-		// TODO the nominal power must be tested against the minimum (power.minerNominalPowerMeetsConsensusMinimum)
-		// See https://github.com/filecoin-project/go-filecoin/issues/3958
-		minerPower, err := electionPowerTable.MinerClaimedPower(ctx, blk.Miner)
-		if err != nil {
-			return errors.Wrap(err, "failed to read miner claim from power table")
-		}
-		networkPower, err := electionPowerTable.NetworkTotalPower(ctx)
-		if err != nil {
-			return errors.Wrap(err, "failed to read power table")
-		}
-		electionVRFDigest := blk.ElectionProof.VRFProof.Digest()
-		wins := c.IsWinner(electionVRFDigest[:], minerPower, networkPower)
-		if !wins {
-			return errors.Errorf("Block did not win election")
-		}
+
+		//round := tsHeight + base.NullRounds + 1
+		//winner, err := IsRoundWinner(ctx, ts, round, blk.Miner, rbase, mbi, m.api)
+		//if err != nil {
+		//	return xerrors.Errorf("failed to check if we win next round: %w", err)
+		//}
+		//if winner == nil {
+		//	return errors.Errorf("Block did not win election")
+		//}
 
 		//valid, err := c.VerifyElectionProof(ctx, c.drand, electionEntry, blk.Height, blk.PoStProofs, blk.Miner, sectorSetStateView)
 		//if err != nil {

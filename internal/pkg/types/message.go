@@ -33,17 +33,11 @@ const MessageVersion = 0
 // ToDo add by force
 // BlockGasLimit is the maximum amount of gas that can be used to execute messages in a single block.
 const BlockGasLimit = 10_000_000_000
-
 const BlockGasTarget = BlockGasLimit / 2
-
 const BaseFeeMaxChangeDenom = 8 // 12.5%
-
 const InitialBaseFee = 100e6
-
 const MinimumBaseFee = 100
-
 const PackingEfficiencyNum = 4
-
 const PackingEfficiencyDenom = 5
 
 // var BlockGasLimit = gas.NewGas(100e6)

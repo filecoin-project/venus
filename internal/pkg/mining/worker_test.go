@@ -78,7 +78,6 @@ func TestLookbackElection(t *testing.T) {
 			TipSetMetadata: fakeTSMetadata{},
 			GetStateTree:   getStateTree,
 			GetWeight:      getWeightTest,
-			Election:       consensus.NewElectionMachine(rnd),
 			TicketGen:      consensus.NewTicketMachine(samp),
 
 			MessageSource:    pool,
@@ -133,7 +132,6 @@ func Test_Mine(t *testing.T) {
 			TipSetMetadata: fakeTSMetadata{},
 			GetStateTree:   getStateTree,
 			GetWeight:      getWeightTest,
-			Election:       consensus.NewElectionMachine(rnd),
 			TicketGen:      consensus.NewTicketMachine(samp),
 
 			MessageSource:    pool,
@@ -163,7 +161,6 @@ func Test_Mine(t *testing.T) {
 			TipSetMetadata: fakeTSMetadata{shouldError: true},
 			GetStateTree:   getStateTree,
 			GetWeight:      getWeightTest,
-			Election:       consensus.NewElectionMachine(rnd),
 			TicketGen:      consensus.NewTicketMachine(samp),
 
 			MessageSource:    pool,
@@ -191,7 +188,6 @@ func Test_Mine(t *testing.T) {
 			TipSetMetadata: fakeTSMetadata{},
 			GetStateTree:   getStateTree,
 			GetWeight:      getWeightTest,
-			Election:       consensus.NewElectionMachine(rnd),
 			TicketGen:      consensus.NewTicketMachine(samp),
 
 			MessageSource:    pool,
@@ -300,7 +296,6 @@ func TestApplyBLSMessages(t *testing.T) {
 		TipSetMetadata: fakeTSMetadata{},
 		GetStateTree:   getStateTree,
 		GetWeight:      getWeightTest,
-		Election:       &consensus.FakeElectionMachine{},
 		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource:    pool,
@@ -395,7 +390,6 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		TipSetMetadata: meta,
 		GetStateTree:   getStateTree,
 		GetWeight:      getWeightTest,
-		Election:       &consensus.FakeElectionMachine{},
 		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource:    pool,
@@ -458,7 +452,6 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		TipSetMetadata: fakeTSMetadata{},
 		GetStateTree:   getStateTree,
 		GetWeight:      getWeightTest,
-		Election:       &consensus.FakeElectionMachine{},
 		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource:    pool,
@@ -561,7 +554,6 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		TipSetMetadata: fakeTSMetadata{},
 		GetStateTree:   getStateTree,
 		GetWeight:      getWeightTest,
-		Election:       &consensus.FakeElectionMachine{},
 		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource:    pool,
@@ -620,7 +612,6 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		TipSetMetadata: fakeTSMetadata{},
 		GetStateTree:   getStateTree,
 		GetWeight:      getWeightTest,
-		Election:       &consensus.FakeElectionMachine{},
 		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource:    pool,
@@ -673,7 +664,6 @@ func TestGenerateError(t *testing.T) {
 		TipSetMetadata: fakeTSMetadata{shouldError: true},
 		GetStateTree:   getStateTree,
 		GetWeight:      getWeightTest,
-		Election:       &consensus.FakeElectionMachine{},
 		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource:    pool,

@@ -4,16 +4,17 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
-	"github.com/minio/blake2b-simd"
-	"golang.org/x/xerrors"
 	"io"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	initactor "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -22,7 +23,9 @@ import (
 	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	merkdag "github.com/ipfs/go-merkledag"
+	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -39,6 +42,11 @@ import (
 )
 
 var logStore = logging.Logger("plumbing/chain_store")
+
+// constants for Weight calculation
+// The ratio of weight contributed by short-term vs long-term factors in a given round
+const WRatioNum = int64(1)
+const WRatioDen = uint64(2)
 
 type chainReadWriter interface {
 	GetHead() block.TipSetKey
@@ -114,6 +122,10 @@ func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider
 		drand:             drand,
 		ReadOnlyIpldStore: crw.ReadOnlyStateStore(),
 	}
+}
+
+func (chn *ChainStateReadWriter) BeaconSchedule() beacon.Schedule {
+	return chn.drand
 }
 
 // Head returns the head tipset
@@ -400,6 +412,66 @@ func (chn *ChainStateReadWriter) FaultStateView(key block.TipSetKey) (slashing.F
 	return chn.StateView(key)
 }
 
+// ToDo review
+func (cs *ChainStateReadWriter) Weight(ctx context.Context, ts *block.TipSet) (abi.TokenAmount, error) {
+	zero := abi.NewTokenAmount(0)
+
+	if ts == nil {
+		return zero, nil
+	}
+	// >>> w[r] <<< + wFunction(totalPowerAtTipset(ts)) * 2^8 + (wFunction(totalPowerAtTipset(ts)) * sum(ts.blocks[].ElectionProof.WinCount) * wRatio_num * 2^8) / (e * wRatio_den)
+
+	ph, err := ts.ParentWeight()
+	if err != nil {
+		return zero, err
+	}
+	var out = big.NewInt(ph.Int64())
+
+	// >>> wFunction(totalPowerAtTipset(ts)) * 2^8 <<< + (wFunction(totalPowerAtTipset(ts)) * sum(ts.blocks[].ElectionProof.WinCount) * wRatio_num * 2^8) / (e * wRatio_den)
+
+	tpow := big.Zero()
+	{
+		view, err := cs.StateView(ts.Key())
+		if err != nil {
+			return zero, err
+		}
+
+		totalPower, err := view.PowerNetworkTotal(ctx)
+		if err != nil {
+			return zero, err
+		}
+		tpow = totalPower.QualityAdjustedPower // TODO: REVIEW: Is this correct?
+	}
+
+	log2P := int64(0)
+	if tpow.GreaterThan(zero) {
+		log2P = int64(tpow.BitLen() - 1)
+	} else {
+		// Not really expect to be here ...
+		return zero, xerrors.Errorf("All power in the net is gone. You network might be disconnected, or the net is dead!")
+	}
+
+	out.Add(out.Int, big.NewInt(log2P<<8).Int)
+
+	// (wFunction(totalPowerAtTipset(ts)) * sum(ts.blocks[].ElectionProof.WinCount) * wRatio_num * 2^8) / (e * wRatio_den)
+
+	totalJ := int64(0)
+	for _, b := range ts.Blocks() {
+		totalJ += b.ElectionProof.WinCount
+	}
+
+	eWeight := big.NewInt((log2P * WRatioNum))
+	eWeight = big.Lsh(eWeight,8)
+	eWeight = big.Mul(eWeight, big.NewInt(totalJ))
+	eWeight = big.Div(eWeight, big.NewInt(int64(uint64(builtin.ExpectedLeadersPerEpoch) * WRatioDen)))
+
+	out = big.Add(out, eWeight)
+
+	return out, nil
+}
+
+
+
 func DrawRandomness(rbase []byte, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	h := blake2b.New256()
 	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
@@ -419,4 +491,102 @@ func DrawRandomness(rbase []byte, pers acrypto.DomainSeparationTag, round abi.Ch
 	}
 
 	return h.Sum(nil), nil
+}
+
+// ToDo 完善sector接口后再做
+func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]proof.SectorInfo, error) {
+	//act, err := sm.LoadActorRaw(ctx, maddr, st)
+	//if err != nil {
+	//	return nil, xerrors.Errorf("failed to load miner actor: %w", err)
+	//}
+	//
+	//mas, err := miner.Load(sm.cs.Store(ctx), act)
+	//if err != nil {
+	//	return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
+	//}
+	//
+	//// TODO (!!): Actor Update: Make this active sectors
+	//
+	//allSectors, err := miner.AllPartSectors(mas, miner.Partition.AllSectors)
+	//if err != nil {
+	//	return nil, xerrors.Errorf("get all sectors: %w", err)
+	//}
+	//
+	//faultySectors, err := miner.AllPartSectors(mas, miner.Partition.FaultySectors)
+	//if err != nil {
+	//	return nil, xerrors.Errorf("get faulty sectors: %w", err)
+	//}
+	//
+	//provingSectors, err := bitfield.SubtractBitField(allSectors, faultySectors) // TODO: This is wrong, as it can contain faaults, change to just ActiveSectors in an upgrade
+	//if err != nil {
+	//	return nil, xerrors.Errorf("calc proving sectors: %w", err)
+	//}
+	//
+	//numProvSect, err := provingSectors.Count()
+	//if err != nil {
+	//	return nil, xerrors.Errorf("failed to count bits: %w", err)
+	//}
+	//
+	//// TODO(review): is this right? feels fishy to me
+	//if numProvSect == 0 {
+	//	return nil, nil
+	//}
+	//
+	//info, err := mas.Info()
+	//if err != nil {
+	//	return nil, xerrors.Errorf("getting miner info: %w", err)
+	//}
+	//
+	//spt, err := ffiwrapper.SealProofTypeFromSectorSize(info.SectorSize)
+	//if err != nil {
+	//	return nil, xerrors.Errorf("getting seal proof type: %w", err)
+	//}
+	//
+	//wpt, err := spt.RegisteredWinningPoStProof()
+	//if err != nil {
+	//	return nil, xerrors.Errorf("getting window proof type: %w", err)
+	//}
+	//
+	//mid, err := address.IDFromAddress(maddr)
+	//if err != nil {
+	//	return nil, xerrors.Errorf("getting miner ID: %w", err)
+	//}
+	//
+	//ids, err := pv.GenerateWinningPoStSectorChallenge(ctx, wpt, abi.ActorID(mid), rand, numProvSect)
+	//if err != nil {
+	//	return nil, xerrors.Errorf("generating winning post challenges: %w", err)
+	//}
+	//
+	//iter, err := provingSectors.BitIterator()
+	//if err != nil {
+	//	return nil, xerrors.Errorf("iterating over proving sectors: %w", err)
+	//}
+	//
+	//// Select winning sectors by _index_ in the all-sectors bitfield.
+	//selectedSectors := bitfield.New()
+	//prev := uint64(0)
+	//for _, n := range ids {
+	//	sno, err := iter.Nth(n - prev)
+	//	if err != nil {
+	//		return nil, xerrors.Errorf("iterating over proving sectors: %w", err)
+	//	}
+	//	selectedSectors.Set(sno)
+	//	prev = n
+	//}
+	//
+	//sectors, err := mas.LoadSectors(&selectedSectors)
+	//if err != nil {
+	//	return nil, xerrors.Errorf("loading proving sectors: %w", err)
+	//}
+	//
+	out := make([]proof.SectorInfo, 0)
+	//for i, sinfo := range sectors {
+	//	out[i] = proof0.SectorInfo{
+	//		SealProof:    spt,
+	//		SectorNumber: sinfo.SectorNumber,
+	//		SealedCID:    sinfo.SealedCID,
+	//	}
+	//}
+	//
+	return out, nil
 }

@@ -103,23 +103,6 @@ func (ftv *FailingTicketValidator) IsValidTicket(ctx context.Context, base block
 	return fmt.Errorf("invalid ticket")
 }
 
-// FailingElectionValidator marks all election candidates as invalid
-type FailingElectionValidator struct{}
-
-var _ ElectionValidator = new(FailingElectionValidator)
-
-func (fev *FailingElectionValidator) IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool {
-	return false
-}
-
-// func (fev *FailingElectionValidator) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.Address, _ address.Address, _ crypto.VRFPi) error {
-// 	return nil
-// }
-
-//func (fev *FailingElectionValidator) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error) {
-//	return true, nil
-//}
-
 // MakeFakeTicketForTest creates a fake ticket
 func MakeFakeTicketForTest() block.Ticket {
 	val := make([]byte, 65)

@@ -1,18 +1,23 @@
 package consensus
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/Gurpartap/async"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
-	"strings"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -20,6 +25,8 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -31,13 +38,18 @@ var log = logging.Logger("consensus")
 type messageStore interface {
 	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
 	LoadReceipts(context.Context, cid.Cid) ([]vm.MessageReceipt, error)
+	ComputeBaseFee(context.Context, *block.TipSet) (abi.TokenAmount, error)
 }
 
 type chainState interface {
 	GetActorAt(context.Context, block.TipSetKey, address.Address) (*actor.Actor, error)
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
 	GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error)
+	StateView(block.TipSetKey) (*state.View, error)
 	AccountStateView(block.TipSetKey) (state.AccountStateView, error)
+	Weight(context.Context, *block.TipSet) (abi.TokenAmount, error)
+	GetBlock(context.Context, cid.Cid) (*block.Block, error)
+	BeaconSchedule() beacon.Schedule
 }
 
 // BlockValidator defines an interface used to validate a blocks syntax and
@@ -346,6 +358,67 @@ func (dv *DefaultBlockValidator) checkBlockMessages(ctx context.Context, b *bloc
 	return nil
 }
 
+func (dv *DefaultBlockValidator) VerifyWinningPoStProof(ctx context.Context, b *block.Block, prevBeacon block.BeaconEntry, lbst cid.Cid, waddr address.Address) error {
+	if InsecurePoStValidation {
+		if len(b.WinPoStProof) == 0 {
+			return xerrors.Errorf("[INSECURE-POST-VALIDATION] No winning post proof given")
+		}
+
+		if string(b.WinPoStProof[0].ProofBytes) == "valid proof" {
+			return nil
+		}
+		return xerrors.Errorf("[INSECURE-POST-VALIDATION] winning post was invalid")
+	}
+
+	buf := new(bytes.Buffer)
+	if err := b.Miner.MarshalCBOR(buf); err != nil {
+		return xerrors.Errorf("failed to marshal miner address: %w", err)
+	}
+
+	// ToDo 完善sector接口后再做
+	//rbase := prevBeacon
+	//if len(b.BeaconEntries) > 0 {
+	//	rbase = *b.BeaconEntries[len(b.BeaconEntries)-1]
+	//}
+
+	//rand, err := cst.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, b.Height, buf.Bytes())
+	//if err != nil {
+	//	return xerrors.Errorf("failed to get randomness for verifying winning post proof: %w", err)
+	//}
+	//
+	//mid, err := address.IDFromAddress(b.Miner)
+	//if err != nil {
+	//	return xerrors.Errorf("failed to get ID from miner address %s: %w", b.Miner, err)
+	//}
+
+	//sectors, err := cst.GetSectorsForWinningPoSt(ctx, DefaultProofVerifier(), lbst, b.Miner, rand)
+	//if err != nil {
+	//	return xerrors.Errorf("getting winning post sector set: %w", err)
+	//}
+	//
+	//proofs := make([]proof.PoStProof,len(b.WinPoStProof))
+	//for i, proof := range b.WinPoStProof{
+	//	proofs[i].ProofBytes=proof.ProofBytes[:]
+	//	proofs[i].PoStProof=proof.PoStProof
+	//}
+	//ok, err := DefaultProofVerifier().VerifyWinningPoSt(ctx, proof.WinningPoStVerifyInfo{
+	//	Randomness:        rand,
+	//	Proofs:            proofs,
+	//	ChallengedSectors: sectors,
+	//	Prover:            abi.ActorID(mid),
+	//})
+	//if err != nil {
+	//	return xerrors.Errorf("failed to verify election post: %w", err)
+	//}
+	//
+	//if !ok {
+	//	log.Errorf("invalid winning post (block: %s, %x; %v)", b.Cid(), rand, sectors)
+	//	return xerrors.Errorf("winning post was invalid")
+	//}
+
+	return nil
+}
+
 // ValidateSyntax validates a single block is correctly formed.
 // ToDo review
 func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.Block) (err error) {
@@ -370,12 +443,12 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 		return xerrors.Errorf("failed to get lookback tipset for block: %w", err)
 	}
 
-	_, err = dv.cs.GetTipSetStateRoot(ctx, lbts.Key()) // lbst
+	lbst, err := dv.cs.GetTipSetStateRoot(ctx, lbts.Key())
 	if err != nil {
 		return xerrors.Errorf("failed to compute lookback tipset state: %w", err)
 	}
 
-	_, err = chain.FindLatestDRAND(ctx, baseTs, dv.cs) // prevBeacon
+	prevBeacon, err := chain.FindLatestDRAND(ctx, baseTs, dv.cs) // prevBeacon
 	if err != nil {
 		return xerrors.Errorf("failed to get latest beacon entry: %w", err)
 	}
@@ -395,7 +468,7 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, blk.Timestamp, ErrTemporal)
 	}
 	if blk.Timestamp > now {
-		log.Warn("Got block from the future, but within threshold", blk.Timestamp, build.Clock.Now().Unix())
+		log.Warn("Got block from the future, but within threshold", blk.Timestamp, dv.Now().Unix())
 	}
 
 	msgsCheck := async.Err(func() error {
@@ -411,173 +484,194 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 	//	}
 	//	return nil
 	//})
-	//
-	//baseFeeCheck := async.Err(func() error {
-	//	baseFee, err := syncer.store.ComputeBaseFee(ctx, baseTs)
-	//	if err != nil {
-	//		return xerrors.Errorf("computing base fee: %w", err)
-	//	}
-	//	if types.BigCmp(baseFee, b.Header.ParentBaseFee) != 0 {
-	//		return xerrors.Errorf("base fee doesn't match: %s (header) != %s (computed)",
-	//			b.Header.ParentBaseFee, baseFee)
-	//	}
-	//	return nil
-	//})
-	//pweight, err := syncer.store.Weight(ctx, baseTs)
-	//if err != nil {
-	//	return xerrors.Errorf("getting parent weight: %w", err)
-	//}
-	//
-	//if types.BigCmp(pweight, b.Header.ParentWeight) != 0 {
-	//	return xerrors.Errorf("parrent weight different: %s (header) != %s (computed)",
-	//		b.Header.ParentWeight, pweight)
-	//}
-	//
-	//// Stuff that needs stateroot / worker address
-	//stateroot, precp, err := syncer.sm.TipSetState(ctx, baseTs)
-	//if err != nil {
-	//	return xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", h.Height, h.Parents, err)
-	//}
-	//
-	//if stateroot != h.ParentStateRoot {
-	//	msgs, err := syncer.store.MessagesForTipset(baseTs)
-	//	if err != nil {
-	//		log.Error("failed to load messages for tipset during tipset state mismatch error: ", err)
-	//	} else {
-	//		log.Warn("Messages for tipset with mismatching state:")
-	//		for i, m := range msgs {
-	//			mm := m.VMMessage()
-	//			log.Warnf("Message[%d]: from=%s to=%s method=%d params=%x", i, mm.From, mm.To, mm.Method, mm.Params)
-	//		}
-	//	}
-	//
-	//	return xerrors.Errorf("parent state root did not match computed state (%s != %s)", stateroot, h.ParentStateRoot)
-	//}
-	//
-	//if precp != h.ParentMessageReceipts {
-	//	return xerrors.Errorf("parent receipts root did not match computed value (%s != %s)", precp, h.ParentMessageReceipts)
-	//}
-	//
-	//waddr, err := stmgr.GetMinerWorkerRaw(ctx, syncer.sm, lbst, h.Miner)
-	//if err != nil {
-	//	return xerrors.Errorf("GetMinerWorkerRaw failed: %w", err)
-	//}
-	//
-	//winnerCheck := async.Err(func() error {
-	//	if h.ElectionProof.WinCount < 1 {
-	//		return xerrors.Errorf("block is not claiming to be a winner")
-	//	}
-	//
-	//	hp, err := stmgr.MinerHasMinPower(ctx, syncer.sm, h.Miner, lbts)
-	//	if err != nil {
-	//		return xerrors.Errorf("determining if miner has min power failed: %w", err)
-	//	}
-	//
-	//	if !hp {
-	//		return xerrors.New("block's miner does not meet minimum power threshold")
-	//	}
-	//
-	//	rBeacon := *prevBeacon
-	//	if len(h.BeaconEntries) != 0 {
-	//		rBeacon = h.BeaconEntries[len(h.BeaconEntries)-1]
-	//	}
-	//	buf := new(bytes.Buffer)
-	//	if err := h.Miner.MarshalCBOR(buf); err != nil {
-	//		return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
-	//	}
-	//
-	//	vrfBase, err := store.DrawRandomness(rBeacon.Data, crypto.DomainSeparationTag_ElectionProofProduction, h.Height, buf.Bytes())
-	//	if err != nil {
-	//		return xerrors.Errorf("could not draw randomness: %w", err)
-	//	}
-	//
-	//	if err := VerifyElectionPoStVRF(ctx, waddr, vrfBase, h.ElectionProof.VRFProof); err != nil {
-	//		return xerrors.Errorf("validating block election proof failed: %w", err)
-	//	}
-	//
-	//	slashed, err := stmgr.GetMinerSlashed(ctx, syncer.sm, baseTs, h.Miner)
-	//	if err != nil {
-	//		return xerrors.Errorf("failed to check if block miner was slashed: %w", err)
-	//	}
-	//
-	//	if slashed {
-	//		return xerrors.Errorf("received block was from slashed or invalid miner")
-	//	}
-	//
-	//	mpow, tpow, _, err := stmgr.GetPowerRaw(ctx, syncer.sm, lbst, h.Miner)
-	//	if err != nil {
-	//		return xerrors.Errorf("failed getting power: %w", err)
-	//	}
-	//
-	//	j := h.ElectionProof.ComputeWinCount(mpow.QualityAdjPower, tpow.QualityAdjPower)
-	//	if h.ElectionProof.WinCount != j {
-	//		return xerrors.Errorf("miner claims wrong number of wins: miner: %d, computed: %d", h.ElectionProof.WinCount, j)
-	//	}
-	//
-	//	return nil
-	//})
-	//
+
+	baseFeeCheck := async.Err(func() error {
+		baseFee, err := dv.ms.ComputeBaseFee(ctx, &baseTs)
+		if err != nil {
+			return xerrors.Errorf("computing base fee: %w", err)
+		}
+
+		if big.Cmp(baseFee, blk.ParentBaseFee) != 0 {
+			return xerrors.Errorf("base fee doesn't match: %s (header) != %s (computed)",
+				blk.ParentBaseFee, baseFee)
+		}
+		return nil
+	})
+
+	pweight, err := dv.cs.Weight(ctx, &baseTs)
+	if err != nil {
+		return xerrors.Errorf("getting parent weight: %w", err)
+	}
+
+	if big.Cmp(pweight, blk.ParentWeight) != 0 {
+		return xerrors.Errorf("parrent weight different: %s (header) != %s (computed)",
+			blk.ParentWeight, pweight)
+	}
+
+	if lbst != blk.StateRoot.Cid {
+		b, err := dv.cs.GetBlock(ctx, blk.StateRoot.Cid)
+		if err != nil {
+			log.Error("failed to load messages for tipset during tipset state mismatch error: ", err)
+		}else{
+			secpMsgs, blsMsgs, err := dv.ms.LoadMessages(ctx, b.Messages.Cid)
+			if err != nil {
+				log.Error("failed to load messages for tipset during tipset state mismatch error: ", err)
+			}else{
+				for _, blsm := range blsMsgs {
+					mm := blsm.VMMessage()
+					log.Warnf("Message: from=%s to=%s method=%d params=%x", mm.From, mm.To, mm.Method, mm.Params)
+				}
+
+				for _, secm := range secpMsgs {
+					mm := secm.VMMessage()
+					log.Warnf("Message: from=%s to=%s method=%d params=%x", mm.From, mm.To, mm.Method, mm.Params)
+				}
+			}
+		}
+
+		return xerrors.Errorf("parent state root did not match computed state (%s != %s)", lbst, blk.StateRoot)
+	}
+
+	view, err := dv.cs.StateView(blk.Parents)
+	if err != nil {
+		return errors.Wrapf(err, "failed to load state at %v", blk.Parents)
+	}
+
+	mi, err := view.MinerInfo(ctx,blk.Miner)
+	if err != nil {
+		return xerrors.Errorf("Get MinerInfo failed: %w", err)
+	}
+	waddr := mi.Worker
+
+	winnerCheck := async.Err(func() error {
+		if blk.ElectionProof.WinCount < 1 {
+			return xerrors.Errorf("block is not claiming to be a winner")
+		}
+
+		view, err := dv.cs.StateView(blk.Parents)
+		if err != nil {
+			return xerrors.Errorf("get state view failed: %w", err)
+		}
+
+		hp, err := view.MinerHasMinPower(ctx, blk.Miner)
+		if err != nil {
+			return xerrors.Errorf("determining if miner has min power failed: %w", err)
+		}
+
+		if !hp {
+			return xerrors.New("block's miner does not meet minimum power threshold")
+		}
+
+		rBeacon := prevBeacon
+		if len(blk.BeaconEntries) != 0 {
+			rBeacon = blk.BeaconEntries[len(blk.BeaconEntries)-1]
+		}
+		buf := new(bytes.Buffer)
+		if err := blk.Miner.MarshalCBOR(buf); err != nil {
+			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
+		}
+
+		vrfBase, err := cst.DrawRandomness(rBeacon.Data, crypto.DomainSeparationTag_ElectionProofProduction, blk.Height, buf.Bytes())
+		if err != nil {
+			return xerrors.Errorf("could not draw randomness: %w", err)
+		}
+
+		if err := VerifyElectionPoStVRF(ctx, waddr, vrfBase, blk.ElectionProof.VRFProof); err != nil {
+			return xerrors.Errorf("validating block election proof failed: %w", err)
+		}
+
+		//slashed, err := stmgr.GetMinerSlashed(ctx, syncer.sm, baseTs, h.Miner)
+		//if err != nil {
+		//	return xerrors.Errorf("failed to check if block miner was slashed: %w", err)
+		//}
+		//
+		//if slashed {
+		//	return xerrors.Errorf("received block was from slashed or invalid miner")
+		//}
+
+		_, qaPower, err := view.MinerClaimedPower(ctx, blk.Miner)
+		if err != nil {
+			return xerrors.Errorf("get miner power failed: %w", err)
+		}
+
+		totalPower, err := view.PowerNetworkTotal(ctx)
+		if err != nil {
+			return xerrors.Errorf("get miner power failed: %w", err)
+		}
+
+		j := blk.ElectionProof.ComputeWinCount(qaPower, totalPower.QualityAdjustedPower)
+		if blk.ElectionProof.WinCount != j {
+			return xerrors.Errorf("miner claims wrong number of wins: miner: %d, computed: %d", blk.ElectionProof.WinCount, j)
+		}
+
+		return nil
+	})
+
 	//blockSigCheck := async.Err(func() error {
-	//	if err := sigs.CheckBlockSignature(ctx, h, waddr); err != nil {
+	//	if err := sigs.CheckBlockSignature(ctx, blk, waddr); err != nil {
 	//		return xerrors.Errorf("check block signature failed: %w", err)
 	//	}
 	//	return nil
 	//})
-	//
-	//beaconValuesCheck := async.Err(func() error {
-	//	if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
-	//		return nil
-	//	}
-	//
-	//	if err := beacon.ValidateBlockValues(syncer.beacon, h, baseTs.Height(), *prevBeacon); err != nil {
-	//		return xerrors.Errorf("failed to validate blocks random beacon values: %w", err)
-	//	}
-	//	return nil
-	//})
-	//
-	//tktsCheck := async.Err(func() error {
-	//	buf := new(bytes.Buffer)
-	//	if err := h.Miner.MarshalCBOR(buf); err != nil {
-	//		return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
-	//	}
-	//
-	//	if h.Height > build.UpgradeSmokeHeight {
-	//		buf.Write(baseTs.MinTicket().VRFProof)
-	//	}
-	//
-	//	beaconBase := *prevBeacon
-	//	if len(h.BeaconEntries) != 0 {
-	//		beaconBase = h.BeaconEntries[len(h.BeaconEntries)-1]
-	//	}
-	//
-	//	vrfBase, err := store.DrawRandomness(beaconBase.Data, crypto.DomainSeparationTag_TicketProduction, h.Height-build.TicketRandomnessLookback, buf.Bytes())
-	//	if err != nil {
-	//		return xerrors.Errorf("failed to compute vrf base for ticket: %w", err)
-	//	}
-	//
-	//	err = VerifyElectionPoStVRF(ctx, waddr, vrfBase, h.Ticket.VRFProof)
-	//	if err != nil {
-	//		return xerrors.Errorf("validating block tickets failed: %w", err)
-	//	}
-	//	return nil
-	//})
-	//
-	//wproofCheck := async.Err(func() error {
-	//	if err := syncer.VerifyWinningPoStProof(ctx, h, *prevBeacon, lbst, waddr); err != nil {
-	//		return xerrors.Errorf("invalid election post: %w", err)
-	//	}
-	//	return nil
-	//})
+
+	beaconValuesCheck := async.Err(func() error {
+		if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
+			return nil
+		}
+
+		if err := beacon.ValidateBlockValues(dv.cs.BeaconSchedule(), blk, baseHight, prevBeacon); err != nil {
+			return xerrors.Errorf("failed to validate blocks random beacon values: %w", err)
+		}
+		return nil
+	})
+
+	tktsCheck := async.Err(func() error {
+		buf := new(bytes.Buffer)
+		if err := blk.Miner.MarshalCBOR(buf); err != nil {
+			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
+		}
+
+		if blk.Height > beacon.UpgradeSmokeHeight {
+			ticket, err := baseTs.MinTicket()
+			if err != nil {
+				return xerrors.Errorf("failed to get base ticket: %w", err)
+			}
+			buf.Write(ticket.VRFProof)
+		}
+
+		beaconBase := prevBeacon
+		if len(blk.BeaconEntries) != 0 {
+			beaconBase = blk.BeaconEntries[len(blk.BeaconEntries)-1]
+		}
+
+		vrfBase, err := cst.DrawRandomness(beaconBase.Data, crypto.DomainSeparationTag_TicketProduction, blk.Height-TicketRandomnessLookback, buf.Bytes())
+		if err != nil {
+			return xerrors.Errorf("failed to compute vrf base for ticket: %w", err)
+		}
+
+		err = VerifyElectionPoStVRF(ctx, waddr, vrfBase, blk.Ticket.VRFProof)
+		if err != nil {
+			return xerrors.Errorf("validating block tickets failed: %w", err)
+		}
+		return nil
+	})
+
+	wproofCheck := async.Err(func() error {
+		if err := dv.VerifyWinningPoStProof(ctx, blk, *prevBeacon, lbst, waddr); err != nil {
+			return xerrors.Errorf("invalid election post: %w", err)
+		}
+		return nil
+	})
 
 	await := []async.ErrorFuture{
-		//minerCheck,
-		//tktsCheck,
+		// minerCheck,
+		tktsCheck,
 		//blockSigCheck,
-		//beaconValuesCheck,
-		//wproofCheck,
-		//winnerCheck,
+		beaconValuesCheck,
+		wproofCheck,
+		winnerCheck,
 		msgsCheck,
-		//baseFeeCheck,
+		baseFeeCheck,
 	}
 
 	var merr error

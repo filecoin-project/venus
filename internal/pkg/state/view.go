@@ -32,6 +32,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -955,6 +956,11 @@ func (v *View) asDealStateArray(ctx context.Context, root cid.Cid) (*market.Deal
 
 func (v *View) asBalanceTable(ctx context.Context, root cid.Cid) (*adt.BalanceTable, error) {
 	return adt.AsBalanceTable(v.adtStore(ctx), root)
+}
+
+func (v *View) MinerHasMinPower(ctx context.Context, addr addr.Address) (bool, error) {
+	st := power0.State{}
+	return st.MinerNominalPowerMeetsConsensusMinimum(v.adtStore(ctx), addr)
 }
 
 func getFilPowerLocked(ctx context.Context, ipldStore cbor.IpldStore, st vmstate.Tree) (abi.TokenAmount, error) {
