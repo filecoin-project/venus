@@ -67,7 +67,7 @@ func (a *Actor) Empty() bool {
 }
 
 func (a *Actor) IsAccountActor() bool {
-	return a.Code == builtin.AccountActorCodeID
+	return a.Code.Cid == builtin.AccountActorCodeID
 }
 
 // IncrementSeqNum increments the seq number.

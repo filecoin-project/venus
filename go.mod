@@ -99,7 +99,6 @@ require (
 	github.com/prometheus/client_golang v1.6.0
 	github.com/prometheus/common v0.10.0
 	github.com/stretchr/testify v1.6.1
-	github.com/supranational/blst v0.1.1
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200814224545-656e08ce49ee
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
@@ -113,5 +112,3 @@ require (
 )
 
 replace github.com/filecoin-project/filecoin-ffi => ./vendors/filecoin-ffi
-
-replace github.com/supranational/blst => ./vendors/fil-blst/blst

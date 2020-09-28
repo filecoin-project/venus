@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
@@ -37,9 +36,9 @@ type messageStore interface {
 
 type chainState interface {
 	GetActorAt(context.Context, block.TipSetKey, address.Address) (*actor.Actor, error)
-    GetTipSet(block.TipSetKey) (block.TipSet, error)
-    GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error)
-    AccountStateView(block.TipSetKey) (state.AccountStateView, error)
+	GetTipSet(block.TipSetKey) (block.TipSet, error)
+	GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error)
+	AccountStateView(block.TipSetKey) (state.AccountStateView, error)
 }
 
 // BlockValidator defines an interface used to validate a blocks syntax and
@@ -196,7 +195,7 @@ func (dv *DefaultBlockValidator) blockSanityChecks(h *block.Block) error {
 		return xerrors.Errorf("block cannot have nil election proof")
 	}
 
-	if len(h.Ticket.VRFProof) <=0 {
+	if len(h.Ticket.VRFProof) <= 0 {
 		return xerrors.Errorf("block cannot have nil ticket")
 	}
 
@@ -229,7 +228,7 @@ func GetLookbackTipSetForRound(ctx context.Context, ch chainState, ts *block.Tip
 	//
 	targetTipset, err := chain.FindTipsetAtEpoch(ctx, *ts, lbr, ch)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 
 	return &targetTipset, nil
@@ -262,7 +261,7 @@ func (dv *DefaultBlockValidator) checkBlockMessages(ctx context.Context, b *bloc
 
 	sigValidator := state.NewSignatureValidator(view)
 
-	secpMsgs, blsMsgs, err := dv.ms.LoadMessages(ctx, b.Messages)
+	secpMsgs, blsMsgs, err := dv.ms.LoadMessages(ctx, b.Messages.Cid)
 	if err != nil {
 		return errors.Wrapf(err, "block validation failed loading message list %s for block %s", b.Messages, b.Cid())
 	}
@@ -367,7 +366,7 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 		return xerrors.Errorf("load parent tipset failed (%s): %w", blk.Parents, err)
 	}
 
-	lbts, err := GetLookbackTipSetForRound(ctx,dv.cs, &baseTs, blk.Height)
+	lbts, err := GetLookbackTipSetForRound(ctx, dv.cs, &baseTs, blk.Height)
 	if err != nil {
 		return xerrors.Errorf("failed to get lookback tipset for block: %w", err)
 	}
@@ -377,7 +376,7 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 		return xerrors.Errorf("failed to compute lookback tipset state: %w", err)
 	}
 
-	_, err = chain.FindLatestDRAND(ctx, baseTs, dv.cs)  // prevBeacon
+	_, err = chain.FindLatestDRAND(ctx, baseTs, dv.cs) // prevBeacon
 	if err != nil {
 		return xerrors.Errorf("failed to get latest beacon entry: %w", err)
 	}

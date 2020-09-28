@@ -45,8 +45,8 @@ func (t *GasTracker) Charge(gas gas.GasCharge, msg string, args ...interface{}) 
 // TryCharge charges `amount` or `RemainingGas()``, whichever is smaller.
 //
 // Returns `True` if the there was enough gas to pay for `amount`.
-func (t *GasTracker) TryCharge(gas gas.GasCharge) bool {
-	toUse := gas.Total()
+func (t *GasTracker) TryCharge(gasCharge gas.GasCharge) bool {
+	toUse := gasCharge.Total()
 	//var callers [10]uintptr
 	//cout := gruntime.Callers(2+skip, callers[:])
 
@@ -56,16 +56,16 @@ func (t *GasTracker) TryCharge(gas gas.GasCharge) bool {
 	}
 
 	gasTrace := types.GasTrace{
-		Name:  gas.Name,
-		Extra: gas.Extra,
+		Name:  gasCharge.Name,
+		Extra: gasCharge.Extra,
 
 		TotalGas:   toUse,
-		ComputeGas: gas.ComputeGas,
-		StorageGas: gas.StorageGas,
+		ComputeGas: gasCharge.ComputeGas,
+		StorageGas: gasCharge.StorageGas,
 
-		TotalVirtualGas:   gas.VirtualCompute*gas.GasComputeMulti + gas.VirtualStorage*gas.GasStorageMulti,
-		VirtualComputeGas: gas.VirtualCompute,
-		VirtualStorageGas: gas.VirtualStorage,
+		TotalVirtualGas:   gasCharge.VirtualCompute*gas.GasComputeMulti + gasCharge.VirtualStorage*gas.GasStorageMulti,
+		VirtualComputeGas: gasCharge.VirtualCompute,
+		VirtualStorageGas: gasCharge.VirtualStorage,
 
 		//Callers: callers[:cout],
 	}
@@ -76,7 +76,7 @@ func (t *GasTracker) TryCharge(gas gas.GasCharge) bool {
 	// overflow safe
 	if t.gasUsed > t.gasAvailable-toUse {
 		t.gasUsed = t.gasAvailable
-		//return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gas: used=%d, available=%d", t.gasUsed, t.gasAvailable)
+		//return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gasCharge: used=%d, available=%d", t.gasUsed, t.gasAvailable)
 		return false
 	}
 	t.gasUsed += toUse
