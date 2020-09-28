@@ -62,7 +62,6 @@ func init() {
 
 // IPTBCoreExt is an extended interface of the iptb.Core. It defines additional requirement.
 type IPTBCoreExt interface {
-	testbedi.Core
 	testbedi.Config
 
 	// StderrReader is require to gather daemon logs during action execution

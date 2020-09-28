@@ -429,10 +429,6 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 		}
 	}()
 
-	if err := dv.blockSanityChecks(blk); err != nil {
-		return xerrors.Errorf("incoming header failed basic sanity checks: %w", err)
-	}
-
 	baseTs, err := dv.cs.GetTipSet(blk.Parents)
 	if err != nil {
 		return xerrors.Errorf("load parent tipset failed (%s): %w", blk.Parents, err)

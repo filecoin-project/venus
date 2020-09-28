@@ -1,7 +1,18 @@
 package plumbing
 
 import (
+	"bytes"
 	"context"
+	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	xerrors "github.com/pkg/errors"
 	"io"
 	"time"
 
@@ -56,6 +67,7 @@ type API struct {
 	outbox       *message.Outbox
 	pieceManager func() piecemanager.PieceManager
 	wallet       *wallet.Wallet
+	drand        beacon.Schedule
 }
 
 // APIDeps contains all the API's dependencies
@@ -72,6 +84,7 @@ type APIDeps struct {
 	Outbox       *message.Outbox
 	PieceManager func() piecemanager.PieceManager
 	Wallet       *wallet.Wallet
+	Drand        beacon.Schedule
 }
 
 // New constructs a new instance of the API.
@@ -90,6 +103,7 @@ func New(deps *APIDeps) *API {
 		outbox:       deps.Outbox,
 		pieceManager: deps.PieceManager,
 		wallet:       deps.Wallet,
+		drand:        deps.Drand,
 	}
 }
 
@@ -351,4 +365,272 @@ func (api *API) DAGImportData(ctx context.Context, data io.Reader) (ipld.Node, e
 // PieceManager returns the piece manager
 func (api *API) PieceManager() piecemanager.PieceManager {
 	return api.pieceManager()
+}
+
+func (a *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv consensus.ElectionMachine) (*mining.MiningBaseInfo, error) {
+	ts, err := a.ChainTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load tipset for mining base: %w", err)
+	}
+
+	prev, err := chain.FindLatestDRAND(ctx, ts, a.chain)
+	if err != nil {
+		return nil, err
+	}
+
+	height, err := ts.Height()
+	if err != nil {
+		return nil, err
+	}
+
+	entries, err := beacon.BeaconEntriesForBlock(ctx, a.drand, round, height, *prev)
+	if err != nil {
+		return nil, err
+	}
+
+	rbase := *prev
+	if len(entries) > 0 {
+		rbase = entries[len(entries)-1]
+	}
+
+	lbts, err := a.GetLookbackTipSetForRound(ctx, ts, round)
+	if err != nil {
+		return nil, xerrors.Errorf("getting lookback miner actor state: %w", err)
+	}
+
+	lbst, err := a.chain.GetTipSetStateRoot(ctx, lbts.Key())
+	if err != nil {
+		return nil, err
+	}
+
+	viewer := appstate.NewView(a.chain.IpldStore, lbst)
+	mas, err := viewer.LoadMinerActor(ctx, maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	buf := new(bytes.Buffer)
+	if err := maddr.MarshalCBOR(buf); err != nil {
+		return nil, xerrors.Errorf("failed to marshal miner address: %w", err)
+	}
+
+	prand, err := chain.DrawRandomness(rbase.Data, acrypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get randomness for winning post: %w", err)
+	}
+
+	sectors, err := a.GetSectorsForWinningPoSt(ctx, pv, lbst, maddr, prand)
+	if err != nil {
+		return nil, xerrors.Errorf("getting winning post proving set: %w", err)
+	}
+
+	if len(sectors) == 0 {
+		return nil, nil
+	}
+
+	mpow, tpow, err := a.GetPowerRaw(ctx, lbst, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get power: %w", err)
+	}
+
+	store := adt.WrapStore(ctx, a.chain.IpldStore)
+	info, err := mas.GetInfo(store)
+	if err != nil {
+		return nil, err
+	}
+
+	worker, err := a.ResolveToKeyAddr(ctx, info.Worker, &ts)
+	if err != nil {
+		return nil, xerrors.Errorf("resolving worker address: %w", err)
+	}
+
+	hmp, err := a.MinerHasMinPower(ctx, maddr, lbts)
+	if err != nil {
+		return nil, xerrors.Errorf("determining if miner has min power failed: %w", err)
+	}
+
+	return &mining.MiningBaseInfo{
+		MinerPower:      mpow.QualityAdjPower,
+		NetworkPower:    tpow.QualityAdjPower,
+		Sectors:         sectors,
+		WorkerKey:       worker,
+		SectorSize:      info.SectorSize,
+		PrevBeaconEntry: *prev,
+		BeaconEntries:   entries,
+		HasMinPower:     hmp,
+	}, nil
+}
+
+func (a *API) GetLookbackTipSetForRound(ctx context.Context, ts block.TipSet, round abi.ChainEpoch) (*block.TipSet, error) {
+	var lbr abi.ChainEpoch
+	if round > build.WinningPoStSectorSetLookback {
+		lbr = round - build.WinningPoStSectorSetLookback
+	}
+
+	// more null blocks than our lookback
+	if lbr > ts.EnsureHeight() {
+		return &ts, nil
+	}
+
+	lbts, err := chain.FindTipsetAtEpoch(ctx, ts, lbr, a.chain)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get lookback tipset: %w", err)
+	}
+
+	return &lbts, nil
+}
+
+func (a *API) GetSectorsForWinningPoSt(ctx context.Context, pv consensus.ElectionMachine, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]proof.SectorInfo, error) {
+	var partsProving []bitfield.BitField
+	var mas *miner.State
+	var info *miner.MinerInfo
+
+	viewer := appstate.NewView(a.chain.IpldStore, st)
+	mas, err := viewer.LoadMinerActor(ctx, maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	store := adt.WrapStore(ctx, a.chain.IpldStore)
+	info, err = mas.GetInfo(store)
+	if err != nil {
+		return nil, xerrors.Errorf("getting miner info: %w", err)
+	}
+
+	deadlines, err := mas.LoadDeadlines(store)
+	if err != nil {
+		return nil, xerrors.Errorf("loading deadlines: %w", err)
+	}
+
+	err = deadlines.ForEach(store, func(dlIdx uint64, deadline *miner.Deadline) error {
+		partitions, err := deadline.PartitionsArray(store)
+		if err != nil {
+			return xerrors.Errorf("getting partition array: %w", err)
+		}
+
+		var partition miner.Partition
+		return partitions.ForEach(&partition, func(partIdx int64) error {
+			p, err := bitfield.SubtractBitField(partition.Sectors, partition.Faults)
+			if err != nil {
+				return xerrors.Errorf("subtract faults from partition sectors: %w", err)
+			}
+
+			partsProving = append(partsProving, p)
+
+			return nil
+		})
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	provingSectors, err := bitfield.MultiMerge(partsProving...)
+	if err != nil {
+		return nil, xerrors.Errorf("merge partition proving sets: %w", err)
+	}
+
+	numProvSect, err := provingSectors.Count()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to count bits: %w", err)
+	}
+
+	// TODO(review): is this right? feels fishy to me
+	if numProvSect == 0 {
+		return nil, nil
+	}
+
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(info.SectorSize)
+	if err != nil {
+		return nil, xerrors.Errorf("getting seal proof type: %w", err)
+	}
+
+	wpt, err := spt.RegisteredWinningPoStProof()
+	if err != nil {
+		return nil, xerrors.Errorf("getting window proof type: %w", err)
+	}
+
+	mid, err := address.IDFromAddress(maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("getting miner ID: %w", err)
+	}
+
+	ids, err := pv.GenerateWinningPoStSectorChallenge(ctx, wpt, abi.ActorID(mid), rand, numProvSect)
+	if err != nil {
+		return nil, xerrors.Errorf("generating winning post challenges: %w", err)
+	}
+
+	sectors, err := provingSectors.All(miner.SectorsMax)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to enumerate all sector IDs: %w", err)
+	}
+
+	sectorAmt, err := adt.AsArray(store, mas.Sectors)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load sectors amt: %w", err)
+	}
+
+	out := make([]proof.SectorInfo, len(ids))
+	for i, n := range ids {
+		sid := sectors[n]
+
+		var sinfo miner.SectorOnChainInfo
+		if found, err := sectorAmt.Get(sid, &sinfo); err != nil {
+			return nil, xerrors.Errorf("failed to get sector %d: %w", sid, err)
+		} else if !found {
+			return nil, xerrors.Errorf("failed to find sector %d", sid)
+		}
+
+		out[i] = proof.SectorInfo{
+			SealProof:    spt,
+			SectorNumber: sinfo.SectorNumber,
+			SealedCID:    sinfo.SealedCID,
+		}
+	}
+
+	return out, nil
+}
+
+func (a *API) GetPowerRaw(ctx context.Context, st cid.Cid, maddr address.Address) (power.Claim, power.Claim, error) {
+	viewer := appstate.NewView(a.chain.IpldStore, st)
+	ps, err := viewer.LoadPowerActor(ctx)
+	if err != nil {
+		return power.Claim{}, power.Claim{}, xerrors.Errorf("(get sset) failed to load power actor state: %w", err)
+	}
+
+	var mpow power.Claim
+	if maddr != address.Undef {
+		store := adt.WrapStore(ctx, a.chain.IpldStore)
+		cm, err := adt.AsMap(store, ps.Claims)
+		if err != nil {
+			return power.Claim{}, power.Claim{}, err
+		}
+
+		var claim power.Claim
+		if _, err := cm.Get(abi.AddrKey(maddr), &claim); err != nil {
+			return power.Claim{}, power.Claim{}, err
+		}
+
+		mpow = claim
+	}
+
+	return mpow, power.Claim{
+		RawBytePower:    ps.TotalRawBytePower,
+		QualityAdjPower: ps.TotalQualityAdjPower,
+	}, nil
+}
+
+func (a *API) MinerHasMinPower(ctx context.Context, addr address.Address, ts *block.TipSet) (bool, error) {
+	viewer := appstate.NewView(a.chain.IpldStore, ts.At(0).StateRoot.Cid)
+	ps, err := viewer.LoadPowerActor(ctx)
+	if err != nil {
+		return false, xerrors.Errorf("loading power actor state: %w", err)
+	}
+
+	return ps.MinerNominalPowerMeetsConsensusMinimum(adt.WrapStore(ctx, a.chain.IpldStore), addr)
+}
+
+func (a *API) ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *block.TipSet) (address.Address, error) {
+	viewer := appstate.NewView(a.chain.IpldStore, ts.At(0).StateRoot.Cid)
+	return viewer.ResolveToKeyAddr(ctx, addr)
 }
