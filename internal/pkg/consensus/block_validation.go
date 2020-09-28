@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
 
