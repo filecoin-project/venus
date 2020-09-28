@@ -199,9 +199,9 @@ Looking for even more? See the full rundown at [filecoin-project/community](http
 
 ## Maintenance
 
-Venus (go-filecoin) is now maintained by [IPFS-Force Community](https://github.com/ipfs-force-community)
+Venus (previously called `go-filecoin`) is now maintained by [IPFS-Force Community](https://github.com/ipfs-force-community)
 
-Maintenaners: @steven004, @diwufeiwen, @hunjixin, @felix00000
+Maintainers: @steven004, @diwufeiwen, @hunjixin, @felix00000
 
 This repo is open for anyone to submit issues and PRs.
 
