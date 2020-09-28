@@ -14,11 +14,11 @@ import (
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -63,7 +63,7 @@ type Processor interface {
 
 // TicketValidator validates that an input ticket is valid.
 type TicketValidator interface {
-	IsValidTicket(ctx context.Context, base block.TipSetKey, entry *drand.Entry, newPeriod bool, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket block.Ticket) error
+	IsValidTicket(ctx context.Context, base block.TipSetKey, entry *block.BeaconEntry, newPeriod bool, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket block.Ticket) error
 }
 
 // ElectionValidator validates that an election fairly produced a winner.
@@ -115,7 +115,7 @@ type Expected struct {
 	proofVerifier ProofVerifier
 
 	clock clock.ChainEpochClock
-	drand drand.Schedule
+	drand beacon.Schedule
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
@@ -123,7 +123,7 @@ var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
 func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processor, state StateViewer, bt time.Duration,
-	ev ElectionValidator, tv TicketValidator, pv ProofVerifier, chainState chainReader, clock clock.ChainEpochClock, drand drand.Schedule) *Expected {
+	ev ElectionValidator, tv TicketValidator, pv ProofVerifier, chainState chainReader, clock clock.ChainEpochClock, drand beacon.Schedule) *Expected {
 	return &Expected{
 		cstore:            cs,
 		blockTime:         bt,
@@ -307,7 +307,7 @@ func (c *Expected) validateMining(ctx context.Context,
 	return nil
 }
 
-func (c *Expected) electionEntry(ctx context.Context, blk *block.Block) (*drand.Entry, error) {
+func (c *Expected) electionEntry(ctx context.Context, blk *block.Block) (*block.BeaconEntry, error) {
 	if len(blk.BeaconEntries) > 0 {
 		return blk.BeaconEntries[len(blk.BeaconEntries)-1], nil
 	}

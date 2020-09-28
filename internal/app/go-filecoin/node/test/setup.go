@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/lotus/node/modules"
 	"os"
 	"testing"
 	"time"
@@ -18,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
@@ -38,7 +38,7 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	nodes[0] = CreateBootstrapMiner(ctx, t, seed, chainClock, genCfg)
 
 	// create additional nodes
-	dr, _ := drand.RandomSchedule(time.Unix(0, 0))
+	dr, _ := beacon.RandomSchedule(time.Unix(0, 0))
 	for i := uint(0); i < additionalNodes; i++ {
 		node := NewNodeBuilder(t).
 			WithGenesisInit(seed.GenesisInitFunc).

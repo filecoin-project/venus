@@ -35,7 +35,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
@@ -333,7 +332,7 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 	geneblk := &block.Block{
 		Miner:           builtin.SystemActorAddr,
 		Ticket:          genesis.Ticket,
-		BeaconEntries:   []*drand.Entry{{Data: []byte{0xca, 0xfe, 0xfa, 0xce}}},
+		BeaconEntries:   []*block.BeaconEntry{{Data: []byte{0xca, 0xfe, 0xfa, 0xce}}},
 		ElectionProof:   new(crypto.ElectionProof),
 		Parents:         block.NewTipSetKey(),
 		ParentWeight:    big.Zero(),

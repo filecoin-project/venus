@@ -17,7 +17,6 @@ import (
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -29,7 +28,7 @@ func (w *DefaultWorker) Generate(
 	electionProof *crypto.ElectionProof,
 	nullBlockCount abi.ChainEpoch,
 	posts []proof.PoStProof,
-	drandEntries []*drand.Entry,
+	drandEntries []*block.BeaconEntry,
 ) (*FullBlock, error) {
 
 	generateTimer := time.Now()
@@ -100,7 +99,7 @@ func (w *DefaultWorker) Generate(
 	epochStartTime := w.clock.StartTimeOfEpoch(blockHeight)
 
 	if drandEntries == nil {
-		drandEntries = []*drand.Entry{}
+		drandEntries = []*block.BeaconEntry{}
 	}
 
 	if posts == nil {

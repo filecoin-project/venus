@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"golang.org/x/xerrors"
 	"os"
@@ -294,7 +293,7 @@ func (store *Store) HasTipSetAndState(ctx context.Context, key block.TipSetKey) 
 	return store.tipIndex.Has(key)
 }
 
-func (store *Store) GetLatestBeaconEntry(ts *block.TipSet) (*drand.Entry, error) {
+func (store *Store) GetLatestBeaconEntry(ts *block.TipSet) (*block.BeaconEntry, error) {
 	cur := ts
 	for i := 0; i < 20; i++ {
 		cbe := cur.At(0).BeaconEntries
@@ -314,7 +313,7 @@ func (store *Store) GetLatestBeaconEntry(ts *block.TipSet) (*drand.Entry, error)
 	}
 
 	if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
-		return &drand.Entry{
+		return &block.BeaconEntry{
 			Data: []byte{9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
 		}, nil
 	}

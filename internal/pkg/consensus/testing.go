@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -56,7 +55,7 @@ type FakeElectionMachine struct{}
 var _ ElectionValidator = new(FakeElectionMachine)
 
 // GenerateElectionProof returns a fake randomness
-func (fem *FakeElectionMachine) GenerateElectionProof(_ context.Context, _ *drand.Entry,
+func (fem *FakeElectionMachine) GenerateElectionProof(_ context.Context, _ *block.BeaconEntry,
 	_ abi.ChainEpoch, _ address.Address, _ address.Address, _ types.Signer) (crypto.VRFPi, error) {
 	return MakeFakeVRFProofForTest(), nil
 }
@@ -85,12 +84,12 @@ func (fem *FakeElectionMachine) IsWinner(challengeTicket []byte, minerPower, net
 type FakeTicketMachine struct{}
 
 // MakeTicket returns a fake ticket
-func (ftm *FakeTicketMachine) MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, entry *drand.Entry, newPeriod bool, worker address.Address, signer types.Signer) (block.Ticket, error) {
+func (ftm *FakeTicketMachine) MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, entry *block.BeaconEntry, newPeriod bool, worker address.Address, signer types.Signer) (block.Ticket, error) {
 	return MakeFakeTicketForTest(), nil
 }
 
 // IsValidTicket always returns true
-func (ftm *FakeTicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey, entry *drand.Entry, newPeriod bool,
+func (ftm *FakeTicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey, entry *block.BeaconEntry, newPeriod bool,
 	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket block.Ticket) error {
 	return nil
 }
@@ -99,7 +98,7 @@ func (ftm *FakeTicketMachine) IsValidTicket(ctx context.Context, base block.TipS
 type FailingTicketValidator struct{}
 
 // IsValidTicket always returns false
-func (ftv *FailingTicketValidator) IsValidTicket(ctx context.Context, base block.TipSetKey, entry *drand.Entry, newPeriod bool,
+func (ftv *FailingTicketValidator) IsValidTicket(ctx context.Context, base block.TipSetKey, entry *block.BeaconEntry, newPeriod bool,
 	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket block.Ticket) error {
 	return fmt.Errorf("invalid ticket")
 }

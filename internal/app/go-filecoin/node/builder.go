@@ -21,9 +21,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	drandapi "github.com/filecoin-project/go-filecoin/internal/pkg/protocol/drand"
@@ -46,7 +46,7 @@ type Builder struct {
 	isRelay     bool
 	chainClock  clock.ChainEpochClock
 	genCid      cid.Cid
-	drand       drand.Schedule
+	drand       beacon.Schedule
 }
 
 // BuilderOpt is an option for building a filecoin node.
@@ -122,7 +122,7 @@ func ChainClockConfigOption(clk clock.ChainEpochClock) BuilderOpt {
 }
 
 // DrandConfigOption returns a function that sets the node's drand interface
-func DrandConfigOption(d drand.Schedule) BuilderOpt {
+func DrandConfigOption(d beacon.Schedule) BuilderOpt {
 	return func(c *Builder) error {
 		c.drand = d
 		return nil
@@ -374,10 +374,10 @@ func (b builder) OfflineMode() bool {
 	return b.offlineMode
 }
 
-func (b builder) Drand() drand.Schedule {
+func (b builder) Drand() beacon.Schedule {
 	return b.drand
 }
 
-func DefaultDrandIfaceFromConfig(cfg *config.Config, fcGenTS uint64) (drand.Schedule, error) {
-	return drand.RandomSchedule(time.Unix(0, 0))
+func DefaultDrandIfaceFromConfig(cfg *config.Config, fcGenTS uint64) (beacon.Schedule, error) {
+	return beacon.DrandConfigSchedule(fcGenTS, uint64(clock.DefaultEpochDuration.Seconds()))
 }

@@ -22,7 +22,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
@@ -610,52 +609,6 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 	//if err := syncer.store.MarkBlockAsValidated(ctx, b.Cid()); err != nil {
 	//	return xerrors.Errorf("caching block validation %s: %w", b.Cid(), err)
 	//}
-
-	return nil
-}
-
-func ValidateBlockValues(bSchedule drand.Schedule, h *block.Block, parentEpoch abi.ChainEpoch, prevEntry drand.Entry) error {
-	{
-		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
-		currBeacon := bSchedule.BeaconForEpoch(h.Height)
-		if parentBeacon != currBeacon {
-			if len(h.BeaconEntries) != 2 {
-				return xerrors.Errorf("expected two beacon entries at beacon fork, got %d", len(h.BeaconEntries))
-			}
-			_, err := currBeacon.VerifyEntry(h.BeaconEntries[1], h.BeaconEntries[0])
-			if err != nil {
-				return xerrors.Errorf("beacon at fork point invalid: (%v, %v): %w",
-					h.BeaconEntries[1], h.BeaconEntries[0], err)
-			}
-			return nil
-		}
-	}
-
-	// TODO: fork logic
-	b := bSchedule.BeaconForEpoch(h.Height)
-	maxRound := b.MaxBeaconRoundForEpoch(h.Height)
-	if maxRound == prevEntry.Round {
-		if len(h.BeaconEntries) != 0 {
-			return xerrors.Errorf("expected not to have any beacon entries in this block, got %d", len(h.BeaconEntries))
-		}
-		return nil
-	}
-
-	if len(h.BeaconEntries) == 0 {
-		return xerrors.Errorf("expected to have beacon entries in this block, but didn't find any")
-	}
-
-	last := h.BeaconEntries[len(h.BeaconEntries)-1]
-	if last.Round != maxRound {
-		return xerrors.Errorf("expected final beacon entry in block to be at round %d, got %d", maxRound, last.Round)
-	}
-
-	for i, e := range h.BeaconEntries {
-		if _, err := b.VerifyEntry(e, &prevEntry); err != nil {
-			return xerrors.Errorf("beacon entry %d (%d - %x (%d)) was invalid: %w", i, e.Round, e.Data, len(e.Data), err)
-		}
-		prevEntry = *e
-	}
 
 	return nil
 }

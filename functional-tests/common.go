@@ -3,6 +3,7 @@ package functional
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
@@ -46,7 +46,7 @@ func loadGenesisConfig(t *testing.T, path string) *gengen.GenesisCfg {
 	return &cfg
 }
 
-func makeNode(ctx context.Context, t *testing.T, seed *node.ChainSeed, chainClock clock.ChainEpochClock, drand drand.Schedule) *node.Node {
+func makeNode(ctx context.Context, t *testing.T, seed *node.ChainSeed, chainClock clock.ChainEpochClock, drand beacon.Schedule) *node.Node {
 	builder := test.NewNodeBuilder(t).
 		WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
 		WithGenesisInit(seed.GenesisInitFunc).

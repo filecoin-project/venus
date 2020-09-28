@@ -10,13 +10,13 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/fetcher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/blocksub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
@@ -31,7 +31,7 @@ type SyncerSubmodule struct {
 	Consensus        consensus.Protocol
 	FaultDetector    slashing.ConsensusFaultDetector
 	ChainSyncManager *chainsync.Manager
-	Drand            drand.Schedule
+	Drand            beacon.Schedule
 
 	// cancelChainSync cancels the context for chain sync subscriptions and handlers.
 	CancelChainSync context.CancelFunc
@@ -43,7 +43,7 @@ type syncerConfig interface {
 	GenesisCid() cid.Cid
 	BlockTime() time.Duration
 	ChainClock() clock.ChainEpochClock
-	Drand() drand.Schedule
+	Drand() beacon.Schedule
 }
 
 type nodeChainSelector interface {

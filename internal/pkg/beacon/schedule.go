@@ -1,17 +1,50 @@
-package drand
+package beacon
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
+	xerrors "github.com/pkg/errors"
+	"sort"
 )
 
-var (
-	UpgradeSmokeHeight = abi.ChainEpoch(-1)
+type Schedule []BeaconPoint
 
-	DrandSchedules = map[abi.ChainEpoch]DrandEnum{
-		0:                  DrandIncentinet,
-		UpgradeSmokeHeight: DrandMainnet,
+func (bs Schedule) BeaconForEpoch(e abi.ChainEpoch) RandomBeacon {
+	for i := len(bs) - 1; i >= 0; i-- {
+		bp := bs[i]
+		if e >= bp.Start {
+			return bp.Beacon
+		}
 	}
-)
+	return bs[0].Beacon
+}
+
+type DrandEnum int
+
+func DrandConfigSchedule(genTimeStamp uint64, blockDelay uint64) (Schedule, error) {
+	out := Schedule{}
+	shd := Schedule{}
+	for start, config := range DrandScheduleFork {
+		bc, err := NewDrandBeacon(genTimeStamp, blockDelay, DrandConfigs[config])
+		if err != nil {
+			return nil, xerrors.Errorf("creating drand beacon: %w", err)
+		}
+		shd = append(shd, BeaconPoint{Start: start, Beacon: bc})
+	}
+
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Start < out[j].Start
+	})
+
+	return out, nil
+}
+
+//todo how to fork
+const UpgradeSmokeHeight = 51000
+
+var DrandScheduleFork = map[abi.ChainEpoch]DrandEnum{
+	0:                  DrandIncentinet,
+	UpgradeSmokeHeight: DrandMainnet,
+}
 
 const (
 	DrandMainnet DrandEnum = iota + 1

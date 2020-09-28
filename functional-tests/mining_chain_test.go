@@ -2,6 +2,7 @@ package functional
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"testing"
 	"time"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -38,10 +38,7 @@ func TestSingleMiner(t *testing.T) {
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), defaultBlockTime, defaultPropDelay, fakeClock)
 
-	drandImpl := &drand.Fake{
-		GenesisTime:   time.Unix(genTime, 0).Add(-1 * defaultBlockTime),
-		FirstFilecoin: 0,
-	}
+	drandImpl := beacon.NewMockSchedule(defaultBlockTime)
 
 	nd := makeNode(ctx, t, seed, chainClock, drandImpl)
 	minerAddr, _, err := initNodeGenesisMiner(ctx, t, nd, seed, genCfg.Miners[0].Owner, fixturePresealPath())
@@ -87,10 +84,7 @@ func TestSyncFromSingleMiner(t *testing.T) {
 	genTime := int64(1000000000)
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
 
-	drandImpl := &drand.Fake{
-		GenesisTime:   time.Unix(genTime, 0).Add(-1 * defaultBlockTime),
-		FirstFilecoin: 0,
-	}
+	drandImpl := beacon.NewMockSchedule(defaultBlockTime)
 
 	genCfg := loadGenesisConfig(t, fixtureGenCfg())
 	seed := node.MakeChainSeed(t, genCfg)
@@ -153,10 +147,7 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 	miner := test.NewNodeBuilder(t).
 		WithBuilderOpt(node.ChainClockConfigOption(clock.NewChainClockFromClock(uint64(genTime), defaultBlockTime, defaultPropDelay, fakeClock))).
 		WithGenesisInit(seed.GenesisInitFunc).
-		WithBuilderOpt(node.DrandConfigOption(&drand.Fake{
-			GenesisTime:   time.Unix(genTime, 0).Add(-1 * defaultBlockTime),
-			FirstFilecoin: 0,
-		})).
+		WithBuilderOpt(node.DrandConfigOption(beacon.NewMockSchedule(defaultBlockTime))).
 		WithBuilderOpt(node.VerifierConfigOption(&proofs.FakeVerifier{})).
 		WithBuilderOpt(node.PoStGeneratorOption(&consensus.TestElectionPoster{})).
 		Build(ctx)

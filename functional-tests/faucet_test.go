@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -22,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -45,10 +45,7 @@ func TestFaucetSendFunds(t *testing.T) {
 	genCfg := loadGenesisConfig(t, fixtureGenCfg())
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, propDelay, fakeClock)
-	drandImpl := &drand.Fake{
-		GenesisTime:   time.Unix(genTime, 0).Add(-1 * blockTime),
-		FirstFilecoin: 0,
-	}
+	drandImpl := beacon.NewMockSchedule(blockTime)
 
 	nd := makeNode(ctx, t, seed, chainClock, drandImpl)
 	api, stopAPI := test.RunNodeAPI(ctx, nd, t)

@@ -8,7 +8,6 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 )
 
 // TipSetProvider provides tipsets for traversal.
@@ -209,7 +208,7 @@ func FindTipsetAtEpoch(ctx context.Context, start block.TipSet, epoch abi.ChainE
 }
 
 // FindLatestDRAND returns the latest DRAND entry in the chain beginning at start
-func FindLatestDRAND(ctx context.Context, start block.TipSet, reader TipSetProvider) (*drand.Entry, error) {
+func FindLatestDRAND(ctx context.Context, start block.TipSet, reader TipSetProvider) (*block.BeaconEntry, error) {
 	iterator := IterAncestors(ctx, reader, start)
 	var err error
 	for ; !iterator.Complete(); err = iterator.Next() {

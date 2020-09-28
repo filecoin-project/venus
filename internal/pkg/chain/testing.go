@@ -7,8 +7,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
@@ -202,7 +200,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 		b := &block.Block{
 			Ticket:          ticket,
 			Miner:           f.minerAddress,
-			BeaconEntries:   []*drand.Entry{},
+			BeaconEntries:   []*block.BeaconEntry{},
 			ParentWeight:    parentWeight,
 			Parents:         parent.Key(),
 			Height:          height,

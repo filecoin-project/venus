@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-state-types/abi"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
@@ -55,7 +54,7 @@ var drandRandom = &cmds.Command{
 		round, _ := req.Options["round"].(uint64)
 		height, _ := req.Options["height"].(uint64)
 
-		entry, err := GetDrandAPI(env).GetEntry(req.Context, abi.ChainEpoch(height), drand.Round(round))
+		entry, err := GetDrandAPI(env).GetEntry(req.Context, abi.ChainEpoch(height), round)
 		if err != nil {
 			return err
 		}

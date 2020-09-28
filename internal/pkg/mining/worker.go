@@ -6,9 +6,7 @@ package mining
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
-	"golang.org/x/xerrors"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
@@ -20,12 +18,12 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -68,14 +66,14 @@ type workerPorcelainAPI interface {
 }
 
 type electionUtil interface {
-	GenerateElectionProof(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error)
+	GenerateElectionProof(ctx context.Context, entry *block.BeaconEntry, epoch abi.ChainEpoch, miner address.Address, worker address.Address, signer types.Signer) (crypto.VRFPi, error)
 	IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool
-	GenerateWinningPoSt(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address, sectors consensus.SectorsStateView) ([]proof.PoStProof, error)
+	GenerateWinningPoSt(ctx context.Context, entry *block.BeaconEntry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address, sectors consensus.SectorsStateView) ([]proof.PoStProof, error)
 }
 
 // ticketGenerator creates tickets.
 type ticketGenerator interface {
-	MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, entry *drand.Entry, newPeriod bool, worker address.Address, signer types.Signer) (block.Ticket, error)
+	MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, entry *block.BeaconEntry, newPeriod bool, worker address.Address, signer types.Signer) (block.Ticket, error)
 }
 
 type tipSetMetadata interface {
@@ -107,7 +105,7 @@ type DefaultWorker struct {
 	clock          clock.ChainEpochClock
 	poster         postgenerator.PoStGenerator
 	chainState     chain.TipSetProvider
-	drand          drand.Schedule
+	drand          beacon.Schedule
 }
 
 // WorkerParameters use for NewDefaultWorker parameters
@@ -125,7 +123,7 @@ type WorkerParameters struct {
 	GetWeight        GetWeight
 	Election         electionUtil
 	TicketGen        ticketGenerator
-	Drand            drand.Schedule
+	Drand            beacon.Schedule
 
 	// core filecoin things
 	MessageSource MessageSource
@@ -302,67 +300,9 @@ func (w *DefaultWorker) lookbackTipset(ctx context.Context, base block.TipSet, n
 	return chain.FindTipsetAtEpoch(ctx, base, targetEpoch, w.chainState)
 }
 
-func BeaconEntriesForBlock(ctx context.Context, bSchedule drand.Schedule, epoch abi.ChainEpoch, parentEpoch abi.ChainEpoch, prev drand.Entry) ([]*drand.Entry, error) {
-	{
-		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
-		currBeacon := bSchedule.BeaconForEpoch(epoch)
-		if parentBeacon != currBeacon {
-			// Fork logic
-			round := currBeacon.MaxBeaconRoundForEpoch(epoch)
-			out := make([]*drand.Entry, 2)
-			entry, err := currBeacon.ReadEntry(ctx, round-1)
-			if err != nil {
-				return nil, xerrors.Errorf("getting entry %d returned error: %w", round-1, err)
-			}
-			out[0] = entry
-			entry, err = currBeacon.ReadEntry(ctx, round)
-			if err != nil {
-				return nil, xerrors.Errorf("getting entry %d returned error: %w", round, err)
-			}
-			out[1] = entry
-			return out, nil
-		}
-	}
-
-	beacon := bSchedule.BeaconForEpoch(epoch)
-
-	start := build.Clock.Now()
-
-	maxRound := beacon.MaxBeaconRoundForEpoch(epoch)
-	if maxRound == prev.Round {
-		return nil, nil
-	}
-
-	// TODO: this is a sketchy way to handle the genesis block not having a beacon entry
-	if prev.Round == 0 {
-		prev.Round = maxRound - 1
-	}
-
-	cur := maxRound
-	var out []*drand.Entry
-	for cur > prev.Round {
-		entry, err := beacon.ReadEntry(ctx, cur)
-		if err != nil {
-			return nil, xerrors.Errorf("beacon entry request returned error: %w", err)
-		}
-		out = append(out, entry)
-		cur = entry.Round - 1
-	}
-
-	log.Debugw("fetching beacon entries", "took", build.Clock.Since(start), "numEntries", len(out))
-	reverse(out)
-	return out, nil
-}
-
-func reverse(arr []*drand.Entry) {
-	for i := 0; i < len(arr)/2; i++ {
-		arr[i], arr[len(arr)-(1+i)] = arr[len(arr)-(1+i)], arr[i]
-	}
-}
-
 // drandEntriesForEpoch returns the array of drand entries that should be
 // included in the next block.  The return value maay be nil.
-func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.TipSet, nullBlkCount uint64) ([]*drand.Entry, error) {
+func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.TipSet, nullBlkCount uint64) ([]*block.BeaconEntry, error) {
 	panic("use BeaconEntriesForBlock instead")
 	/*baseHeight, err := base.Height()
 	if err != nil {
@@ -404,7 +344,7 @@ func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.Tip
 	return entries, nil*/
 }
 
-func (w *DefaultWorker) electionEntry(ctx context.Context, base block.TipSet, drandEntriesInBlock []*drand.Entry) (*drand.Entry, error) {
+func (w *DefaultWorker) electionEntry(ctx context.Context, base block.TipSet, drandEntriesInBlock []*block.BeaconEntry) (*block.BeaconEntry, error) {
 	numEntries := len(drandEntriesInBlock)
 	if numEntries > 0 {
 		return drandEntriesInBlock[numEntries-1], nil

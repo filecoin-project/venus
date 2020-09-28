@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
 	"io"
@@ -47,7 +47,7 @@ type chainReadWriter interface {
 	GetTipSetState(context.Context, block.TipSetKey) (vmstate.Tree, error)
 	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
 	SetHead(context.Context, block.TipSet) error
-	GetLatestBeaconEntry(ts *block.TipSet) (*drand.Entry, error)
+	GetLatestBeaconEntry(ts *block.TipSet) (*block.BeaconEntry, error)
 	ReadOnlyStateStore() cborutil.ReadOnlyIpldStore
 }
 
@@ -56,7 +56,7 @@ type chainReadWriter interface {
 // ChainWriter providing write access to the chain head.
 type ChainStateReadWriter struct {
 	readWriter      chainReadWriter
-	drand           drand.Schedule
+	drand           beacon.Schedule
 	bstore          blockstore.Blockstore // Provides chain blocks.
 	messageProvider chain.MessageProvider
 	actors          vm.ActorCodeLoader
@@ -105,7 +105,7 @@ var (
 )
 
 // NewChainStateReadWriter returns a new ChainStateReadWriter.
-func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider, bs blockstore.Blockstore, ba vm.ActorCodeLoader, drand drand.Schedule) *ChainStateReadWriter {
+func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider, bs blockstore.Blockstore, ba vm.ActorCodeLoader, drand beacon.Schedule) *ChainStateReadWriter {
 	return &ChainStateReadWriter{
 		readWriter:        crw,
 		bstore:            bs,

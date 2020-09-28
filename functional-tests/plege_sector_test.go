@@ -2,6 +2,7 @@ package functional
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"testing"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
@@ -38,10 +38,7 @@ func TestMiningPledgeSector(t *testing.T) {
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, propDelay, fakeClock)
 
-	drandImpl := &drand.Fake{
-		GenesisTime:   time.Unix(genTime, 0).Add(-1 * blockTime),
-		FirstFilecoin: 0,
-	}
+	drandImpl := beacon.NewMockSchedule(blockTime)
 
 	bootstrapMiner := makeNode(ctx, t, seed, chainClock, drandImpl)
 	_, _, err := initNodeGenesisMiner(ctx, t, bootstrapMiner, seed, genCfg.Miners[0].Owner, fixturePresealPath())
@@ -67,7 +64,7 @@ func TestMiningPledgeSector(t *testing.T) {
 	porcelainAPI := commands.GetPorcelainAPI(env)
 	peer := newMiner.Network().Network.GetPeerID()
 
-	_, err = porcelainAPI.MinerCreate(ctx, seed.Addr(t, 1), types.NewAttoFILFromFIL(1), 10000, abi.RegisteredSealProof_StackedDRG2KiBSeal, peer, types.NewAttoFILFromFIL(5))
+	_, err = porcelainAPI.MinerCreate(ctx, seed.Addr(t, 1), types.NewAttoFILFromFIL(1), 10000, abi.RegisteredSealProof_StackedDrg32GiBV1, peer, types.NewAttoFILFromFIL(5))
 	require.NoError(t, err)
 
 	// setup mining with new miner address and start mining

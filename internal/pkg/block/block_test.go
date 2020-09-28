@@ -3,6 +3,7 @@ package block_test
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"reflect"
 	"testing"
 
@@ -14,7 +15,6 @@ import (
 
 	blk "github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -72,17 +72,17 @@ func TestTriangleEncoding(t *testing.T) {
 			Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
 			ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
 			Height:        2,
-			BeaconEntries: []*drand.Entry{
+			BeaconEntries: []*blk.BeaconEntry{
 				{
-					Round: drand.Round(1),
+					Round: 1,
 					Data:  []byte{0x3},
 				},
 			},
-			Messages:        types.CidFromString(t, "somecid"),
-			MessageReceipts: types.CidFromString(t, "somecid"),
+			Messages:        enccid.NewCid(types.CidFromString(t, "somecid")),
+			MessageReceipts: enccid.NewCid(types.CidFromString(t, "somecid")),
 			Parents:         blk.NewTipSetKey(types.CidFromString(t, "somecid")),
 			ParentWeight:    fbig.NewInt(1000),
-			StateRoot:       types.CidFromString(t, "somecid"),
+			StateRoot:       enccid.NewCid(types.CidFromString(t, "somecid")),
 			Timestamp:       1,
 			BlockSig: &crypto.Signature{
 				Type: crypto.SigTypeBLS,
@@ -133,9 +133,9 @@ func TestDecodeBlock(t *testing.T) {
 			Parents:         blk.NewTipSetKey(c1),
 			Height:          2,
 			ParentWeight:    fbig.Zero(),
-			Messages:        cM,
-			StateRoot:       c2,
-			MessageReceipts: cR,
+			Messages:        enccid.NewCid(cM),
+			StateRoot:       enccid.NewCid(c2),
+			MessageReceipts: enccid.NewCid(cR),
 			BlockSig:        &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
 			BLSAggregateSig: &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 			ParentBaseFee:   abi.NewTokenAmount(1),
@@ -166,15 +166,15 @@ func TestEquals(t *testing.T) {
 	var h1 abi.ChainEpoch = 1
 	var h2 abi.ChainEpoch = 2
 
-	b1 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s1, Height: h1}
-	b2 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s1, Height: h1}
-	b3 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s2, Height: h1}
-	b4 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s1, Height: h1}
-	b5 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s1, Height: h2}
-	b6 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s1, Height: h2}
-	b7 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s2, Height: h2}
-	b8 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s2, Height: h1}
-	b9 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s2, Height: h2}
+	b1 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: enccid.NewCid(s1), Height: h1}
+	b2 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: enccid.NewCid(s1), Height: h1}
+	b3 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: enccid.NewCid(s2), Height: h1}
+	b4 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: enccid.NewCid(s1), Height: h1}
+	b5 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: enccid.NewCid(s1), Height: h2}
+	b6 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: enccid.NewCid(s1), Height: h2}
+	b7 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: enccid.NewCid(s2), Height: h2}
+	b8 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: enccid.NewCid(s2), Height: h1}
+	b9 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: enccid.NewCid(s2), Height: h2}
 	assert.True(t, b1.Equals(b1))
 	assert.True(t, b1.Equals(b2))
 	assert.False(t, b1.Equals(b3))
@@ -204,10 +204,10 @@ func TestBlockJsonMarshal(t *testing.T) {
 	child.Height = 1
 	child.ParentWeight = fbig.Zero()
 	child.Parents = blk.NewTipSetKey(parent.Cid())
-	child.StateRoot = parent.Cid()
+	child.StateRoot = enccid.NewCid(parent.Cid())
 
-	child.Messages = types.CidFromString(t, "somecid")
-	child.MessageReceipts = types.CidFromString(t, "somecid")
+	child.Messages = enccid.NewCid(types.CidFromString(t, "somecid"))
+	child.MessageReceipts = enccid.NewCid(types.CidFromString(t, "somecid"))
 
 	child.ParentBaseFee = abi.NewTokenAmount(1)
 
@@ -239,22 +239,22 @@ func TestSignatureData(t *testing.T) {
 		Miner:         newAddress(),
 		Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
 		ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
-		BeaconEntries: []*drand.Entry{
+		BeaconEntries: []*blk.BeaconEntry{
 			{
-				Round: drand.Round(5),
+				Round: 5,
 				Data:  []byte{0x0c},
 			},
 		},
 		Height:          2,
-		Messages:        types.CidFromString(t, "somecid"),
-		MessageReceipts: types.CidFromString(t, "somecid"),
+		Messages:        enccid.NewCid(types.CidFromString(t, "somecid")),
+		MessageReceipts: enccid.NewCid(types.CidFromString(t, "somecid")),
 		Parents:         blk.NewTipSetKey(types.CidFromString(t, "somecid")),
 		ParentWeight:    fbig.NewInt(1000),
 		ForkSignaling:   3,
-		StateRoot:       types.CidFromString(t, "somecid"),
+		StateRoot:       enccid.NewCid(types.CidFromString(t, "somecid")),
 		Timestamp:       1,
 		ParentBaseFee:   abi.NewTokenAmount(10),
-		WinPoStProof:    posts,
+		WinPoStProof:    blk.FromAbiProofArr(posts),
 		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x3},
@@ -267,22 +267,22 @@ func TestSignatureData(t *testing.T) {
 		Miner:         newAddress(),
 		Ticket:        blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
 		ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0c, 0x0d}},
-		BeaconEntries: []*drand.Entry{
+		BeaconEntries: []*blk.BeaconEntry{
 			{
-				Round: drand.Round(44),
+				Round: 44,
 				Data:  []byte{0xc0},
 			},
 		},
 		Height:          3,
-		Messages:        types.CidFromString(t, "someothercid"),
-		MessageReceipts: types.CidFromString(t, "someothercid"),
+		Messages:        enccid.NewCid(types.CidFromString(t, "someothercid")),
+		MessageReceipts: enccid.NewCid(types.CidFromString(t, "someothercid")),
 		Parents:         blk.NewTipSetKey(types.CidFromString(t, "someothercid")),
 		ParentWeight:    fbig.NewInt(1001),
 		ForkSignaling:   2,
-		StateRoot:       types.CidFromString(t, "someothercid"),
+		StateRoot:       enccid.NewCid(types.CidFromString(t, "someothercid")),
 		Timestamp:       4,
 		ParentBaseFee:   abi.NewTokenAmount(20),
-		WinPoStProof:    diffposts,
+		WinPoStProof:    blk.FromAbiProofArr(diffposts),
 		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x4},

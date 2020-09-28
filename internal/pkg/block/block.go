@@ -15,7 +15,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
 
@@ -38,7 +37,7 @@ type Block struct {
 
 	// BeaconEntries contain the verifiable oracle randomness used to elect
 	// this block's author leader
-	BeaconEntries []*drand.Entry
+	BeaconEntries []*BeaconEntry
 
 	// WinPoStProof are the winning post proofs
 	WinPoStProof []PoStProof `json:"WinPoStProof"`
