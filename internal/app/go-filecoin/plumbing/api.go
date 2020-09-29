@@ -6,7 +6,6 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
@@ -45,6 +44,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 )
 
 // API is the plumbing implementation, the irreducible set of calls required
@@ -367,7 +367,7 @@ func (api *API) PieceManager() piecemanager.PieceManager {
 	return api.pieceManager()
 }
 
-func (a *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv consensus.ElectionMachine) (*mining.MiningBaseInfo, error) {
+func (a *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*mining.MiningBaseInfo, error) {
 	ts, err := a.ChainTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset for mining base: %w", err)
@@ -480,7 +480,7 @@ func (a *API) GetLookbackTipSetForRound(ctx context.Context, ts block.TipSet, ro
 	return &lbts, nil
 }
 
-func (a *API) GetSectorsForWinningPoSt(ctx context.Context, pv consensus.ElectionMachine, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]proof.SectorInfo, error) {
+func (a *API) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]proof.SectorInfo, error) {
 	var partsProving []bitfield.BitField
 	var mas *miner.State
 	var info *miner.MinerInfo

@@ -50,15 +50,15 @@ func (mv *FakeMessageValidator) ValidateUnsignedMessageSyntax(ctx context.Contex
 }
 
 // FakeElectionMachine generates fake election proofs and verifies all proofs
-type FakeElectionMachine struct{}
+//type FakeElectionMachine struct{}
 
-var _ ElectionValidator = new(FakeElectionMachine)
+// var _ ElectionValidator = new(FakeElectionMachine)
 
 // GenerateElectionProof returns a fake randomness
-func (fem *FakeElectionMachine) GenerateElectionProof(_ context.Context, _ *block.BeaconEntry,
-	_ abi.ChainEpoch, _ address.Address, _ address.Address, _ types.Signer) (crypto.VRFPi, error) {
-	return MakeFakeVRFProofForTest(), nil
-}
+// func (fem *FakeElectionMachine) GenerateElectionProof(_ context.Context, _ *block.BeaconEntry,
+// 	_ abi.ChainEpoch, _ address.Address, _ address.Address, _ types.Signer) (crypto.VRFPi, error) {
+// 	return MakeFakeVRFProofForTest(), nil
+// }
 
 // GenerateEPoSt returns a fake post proof
 //func (fem *FakeElectionMachine) GenerateWinningPoSt(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address, sectors SectorsStateView) ([]block., error) {
@@ -68,9 +68,9 @@ func (fem *FakeElectionMachine) GenerateElectionProof(_ context.Context, _ *bloc
 //	}}, nil
 //}
 
-func (fem *FakeElectionMachine) IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool {
-	return true
-}
+// func (fem *FakeElectionMachine) IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool {
+// 	return true
+// }
 
 // func (fem *FakeElectionMachine) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.Address, _ address.Address, _ crypto.VRFPi) error {
 // 	return nil

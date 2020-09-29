@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 )
 
 var log = logging.Logger("mining")
@@ -63,7 +64,7 @@ type workerPorcelainAPI interface {
 	BlockTime() time.Duration
 	PowerStateView(baseKey block.TipSetKey) (consensus.PowerStateView, error)
 	FaultsStateView(baseKey block.TipSetKey) (consensus.FaultStateView, error)
-	MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv consensus.ElectionMachine) (*MiningBaseInfo, error)
+	MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*MiningBaseInfo, error)
 }
 
 type electionUtil interface {
