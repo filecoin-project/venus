@@ -4,18 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
-	"strings"
-
-	"github.com/Gurpartap/async"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -24,7 +17,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
@@ -106,6 +98,25 @@ func NewDefaultBlockValidator(c clock.ChainEpochClock, m messageStore, cs chainS
 		ms:              m,
 		cs:              cs,
 	}
+}
+
+// NotFutureBlock errors if the block belongs to a future epoch according to
+// the chain clock.
+func (dv *DefaultBlockValidator) NotFutureBlock(b *block.Block) error {
+	//currentEpoch := dv.EpochAtTime(dv.Now())
+	//if b.Height > currentEpoch {
+	//	return fmt.Errorf("block %s with timestamp %d generate in future epoch %d", b.Cid().String(), b.Timestamp, b.Height)
+	//}
+
+	now := uint64(dv.Now().Unix())
+	if b.Timestamp > now+AllowableClockDriftSecs {
+		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, b.Timestamp, ErrTemporal)
+	}
+	if b.Timestamp > now {
+		log.Warn("Got block from the future, but within threshold", b.Timestamp, dv.Now().Unix())
+	}
+
+	return nil
 }
 
 // ValidateHeaderSemantic checks validation conditions on a header that can be
@@ -428,50 +439,67 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 		}
 	}()
 
-	baseTs, err := dv.cs.GetTipSet(blk.Parents)
-	if err != nil {
-		return xerrors.Errorf("load parent tipset failed (%s): %w", blk.Parents, err)
+	if blk.Height == 0 {
+		return nil
 	}
 
-	lbts, err := GetLookbackTipSetForRound(ctx, dv.cs, &baseTs, blk.Height)
+	err = dv.NotFutureBlock(blk)
 	if err != nil {
-		return xerrors.Errorf("failed to get lookback tipset for block: %w", err)
+		return err
 	}
 
-	lbst, err := dv.cs.GetTipSetStateRoot(ctx, lbts.Key())
-	if err != nil {
-		return xerrors.Errorf("failed to compute lookback tipset state: %w", err)
+	if !blk.StateRoot.Defined() {
+		return fmt.Errorf("block %s has nil StateRoot", blk.Cid())
 	}
 
-	prevBeacon, err := chain.FindLatestDRAND(ctx, baseTs, dv.cs) // prevBeacon
-	if err != nil {
-		return xerrors.Errorf("failed to get latest beacon entry: %w", err)
+	if blk.Miner.Empty() {
+		return fmt.Errorf("block %s has nil miner address", blk.Cid())
 	}
+
+	if len(blk.Ticket.VRFProof) == 0 {
+		return fmt.Errorf("block %s has nil ticket", blk.Cid())
+	}
+
+	if blk.BlockSig == nil {
+		return fmt.Errorf("block %s has nil signature", blk.Cid())
+	}
+
+	//baseTs, err := dv.cs.GetTipSet(blk.Parents)
+	//if err != nil {
+	//	return xerrors.Errorf("load parent tipset failed (%s): %w", blk.Parents, err)
+	//}
+	//
+	//lbts, err := GetLookbackTipSetForRound(ctx, dv.cs, &baseTs, blk.Height)
+	//if err != nil {
+	//	return xerrors.Errorf("failed to get lookback tipset for block: %w", err)
+	//}
+	//
+	//lbst, err := dv.cs.GetTipSetStateRoot(ctx, lbts.Key())
+	//if err != nil {
+	//	return xerrors.Errorf("failed to compute lookback tipset state: %w", err)
+	//}
+	//
+	//prevBeacon, err := chain.FindLatestDRAND(ctx, baseTs, dv.cs) // prevBeacon
+	//if err != nil {
+	//	return xerrors.Errorf("failed to get latest beacon entry: %w", err)
+	//}
 
 	// fast checks first
-	baseHight, err := baseTs.Height()
-	if err != nil {
-		return xerrors.Errorf("failed to get base tipset height: %w", err)
-	}
-	nulls := blk.Height - (baseHight + 1)
-	if tgtTs := baseTs.MinTimestamp() + builtin.EpochDurationSeconds*uint64(nulls+1); blk.Timestamp != tgtTs {
-		return xerrors.Errorf("block has wrong timestamp: %d != %d", blk.Timestamp, tgtTs)
-	}
+	//baseHight, err := baseTs.Height()
+	//if err != nil {
+	//	return xerrors.Errorf("failed to get base tipset height: %w", err)
+	//}
+	//nulls := blk.Height - (baseHight + 1)
+	//if tgtTs := baseTs.MinTimestamp() + builtin.EpochDurationSeconds*uint64(nulls+1); blk.Timestamp != tgtTs {
+	//	return xerrors.Errorf("block has wrong timestamp: %d != %d", blk.Timestamp, tgtTs)
+	//}
 
-	now := uint64(dv.Now().Unix())
-	if blk.Timestamp > now+AllowableClockDriftSecs {
-		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, blk.Timestamp, ErrTemporal)
-	}
-	if blk.Timestamp > now {
-		log.Warn("Got block from the future, but within threshold", blk.Timestamp, dv.Now().Unix())
-	}
-
-	msgsCheck := async.Err(func() error {
-		if err := dv.checkBlockMessages(ctx, blk, &baseTs); err != nil {
-			return xerrors.Errorf("block had invalid messages: %w", err)
-		}
-		return nil
-	})
+	//msgsCheck := async.Err(func() error {
+	//	if err := dv.checkBlockMessages(ctx, blk, &baseTs); err != nil {
+	//		return xerrors.Errorf("block had invalid messages: %w", err)
+	//	}
+	//	return nil
+	//})
 
 	//minerCheck := async.Err(func() error {
 	//	if err := syncer.minerIsValid(ctx, h.Miner, baseTs); err != nil {
@@ -480,100 +508,100 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 	//	return nil
 	//})
 
-	baseFeeCheck := async.Err(func() error {
-		baseFee, err := dv.ms.ComputeBaseFee(ctx, &baseTs)
-		if err != nil {
-			return xerrors.Errorf("computing base fee: %w", err)
-		}
+	//baseFeeCheck := async.Err(func() error {
+	//	baseFee, err := dv.ms.ComputeBaseFee(ctx, &baseTs)
+	//	if err != nil {
+	//		return xerrors.Errorf("computing base fee: %w", err)
+	//	}
+	//
+	//	if big.Cmp(baseFee, blk.ParentBaseFee) != 0 {
+	//		return xerrors.Errorf("base fee doesn't match: %s (header) != %s (computed)",
+	//			blk.ParentBaseFee, baseFee)
+	//	}
+	//	return nil
+	//})
+	//
+	//pweight, err := dv.cs.Weight(ctx, &baseTs)
+	//if err != nil {
+	//	return xerrors.Errorf("getting parent weight: %w", err)
+	//}
 
-		if big.Cmp(baseFee, blk.ParentBaseFee) != 0 {
-			return xerrors.Errorf("base fee doesn't match: %s (header) != %s (computed)",
-				blk.ParentBaseFee, baseFee)
-		}
-		return nil
-	})
+	//if big.Cmp(pweight, blk.ParentWeight) != 0 {
+	//	return xerrors.Errorf("parrent weight different: %s (header) != %s (computed)",
+	//		blk.ParentWeight, pweight)
+	//}
 
-	pweight, err := dv.cs.Weight(ctx, &baseTs)
-	if err != nil {
-		return xerrors.Errorf("getting parent weight: %w", err)
-	}
+	//if lbst != blk.StateRoot.Cid {
+	//	b, err := dv.cs.GetBlock(ctx, blk.StateRoot.Cid)
+	//	if err != nil {
+	//		log.Error("failed to load messages for tipset during tipset state mismatch error: ", err)
+	//	}else{
+	//		secpMsgs, blsMsgs, err := dv.ms.LoadMessages(ctx, b.Messages.Cid)
+	//		if err != nil {
+	//			log.Error("failed to load messages for tipset during tipset state mismatch error: ", err)
+	//		}else{
+	//			for _, blsm := range blsMsgs {
+	//				mm := blsm.VMMessage()
+	//				log.Warnf("Message: from=%s to=%s method=%d params=%x", mm.From, mm.To, mm.Method, mm.Params)
+	//			}
+	//
+	//			for _, secm := range secpMsgs {
+	//				mm := secm.VMMessage()
+	//				log.Warnf("Message: from=%s to=%s method=%d params=%x", mm.From, mm.To, mm.Method, mm.Params)
+	//			}
+	//		}
+	//	}
+	//
+	//	return xerrors.Errorf("parent state root did not match computed state (%s != %s)", lbst, blk.StateRoot)
+	//}
 
-	if big.Cmp(pweight, blk.ParentWeight) != 0 {
-		return xerrors.Errorf("parrent weight different: %s (header) != %s (computed)",
-			blk.ParentWeight, pweight)
-	}
+	//view, err := dv.cs.StateView(blk.Parents)
+	//if err != nil {
+	//	return errors.Wrapf(err, "failed to load state at %v", blk.Parents)
+	//}
 
-	if lbst != blk.StateRoot.Cid {
-		b, err := dv.cs.GetBlock(ctx, blk.StateRoot.Cid)
-		if err != nil {
-			log.Error("failed to load messages for tipset during tipset state mismatch error: ", err)
-		}else{
-			secpMsgs, blsMsgs, err := dv.ms.LoadMessages(ctx, b.Messages.Cid)
-			if err != nil {
-				log.Error("failed to load messages for tipset during tipset state mismatch error: ", err)
-			}else{
-				for _, blsm := range blsMsgs {
-					mm := blsm.VMMessage()
-					log.Warnf("Message: from=%s to=%s method=%d params=%x", mm.From, mm.To, mm.Method, mm.Params)
-				}
+	//mi, err := view.MinerInfo(ctx,blk.Miner)
+	//if err != nil {
+	//	return xerrors.Errorf("Get MinerInfo failed: %w", err)
+	//}
+	//waddr := mi.Worker
 
-				for _, secm := range secpMsgs {
-					mm := secm.VMMessage()
-					log.Warnf("Message: from=%s to=%s method=%d params=%x", mm.From, mm.To, mm.Method, mm.Params)
-				}
-			}
-		}
+	//winnerCheck := async.Err(func() error {
+	//	if blk.ElectionProof.WinCount < 1 {
+	//		return xerrors.Errorf("block is not claiming to be a winner")
+	//	}
+	//
+	//	view, err := dv.cs.StateView(blk.Parents)
+	//	if err != nil {
+	//		return xerrors.Errorf("get state view failed: %w", err)
+	//	}
+	//
+	//	hp, err := view.MinerHasMinPower(ctx, blk.Miner)
+	//	if err != nil {
+	//		return xerrors.Errorf("determining if miner has min power failed: %w", err)
+	//	}
+	//
+	//	if !hp {
+	//		return xerrors.New("block's miner does not meet minimum power threshold")
+	//	}
 
-		return xerrors.Errorf("parent state root did not match computed state (%s != %s)", lbst, blk.StateRoot)
-	}
-
-	view, err := dv.cs.StateView(blk.Parents)
-	if err != nil {
-		return errors.Wrapf(err, "failed to load state at %v", blk.Parents)
-	}
-
-	mi, err := view.MinerInfo(ctx,blk.Miner)
-	if err != nil {
-		return xerrors.Errorf("Get MinerInfo failed: %w", err)
-	}
-	waddr := mi.Worker
-
-	winnerCheck := async.Err(func() error {
-		if blk.ElectionProof.WinCount < 1 {
-			return xerrors.Errorf("block is not claiming to be a winner")
-		}
-
-		view, err := dv.cs.StateView(blk.Parents)
-		if err != nil {
-			return xerrors.Errorf("get state view failed: %w", err)
-		}
-
-		hp, err := view.MinerHasMinPower(ctx, blk.Miner)
-		if err != nil {
-			return xerrors.Errorf("determining if miner has min power failed: %w", err)
-		}
-
-		if !hp {
-			return xerrors.New("block's miner does not meet minimum power threshold")
-		}
-
-		rBeacon := prevBeacon
-		if len(blk.BeaconEntries) != 0 {
-			rBeacon = blk.BeaconEntries[len(blk.BeaconEntries)-1]
-		}
-		buf := new(bytes.Buffer)
-		if err := blk.Miner.MarshalCBOR(buf); err != nil {
-			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
-		}
-
-		vrfBase, err := cst.DrawRandomness(rBeacon.Data, crypto.DomainSeparationTag_ElectionProofProduction, blk.Height, buf.Bytes())
-		if err != nil {
-			return xerrors.Errorf("could not draw randomness: %w", err)
-		}
-
-		if err := VerifyElectionPoStVRF(ctx, waddr, vrfBase, blk.ElectionProof.VRFProof); err != nil {
-			return xerrors.Errorf("validating block election proof failed: %w", err)
-		}
+		//rBeacon := prevBeacon
+		//if len(blk.BeaconEntries) != 0 {
+		//	rBeacon = blk.BeaconEntries[len(blk.BeaconEntries)-1]
+		//}
+		//buf := new(bytes.Buffer)
+		//if err := blk.Miner.MarshalCBOR(buf); err != nil {
+		//	return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
+		//}
+		//
+		//vrfBase, err := cst.DrawRandomness(rBeacon.Data, crypto.DomainSeparationTag_ElectionProofProduction, blk.Height, buf.Bytes())
+		//if err != nil {
+		//	return xerrors.Errorf("could not draw randomness: %w", err)
+		//}
+		//
+		//if err := VerifyElectionPoStVRF(ctx, waddr, vrfBase, blk.ElectionProof.VRFProof); err != nil {
+		//	return xerrors.Errorf("validating block election proof failed: %w", err)
+		//}
 
 		//slashed, err := stmgr.GetMinerSlashed(ctx, syncer.sm, baseTs, h.Miner)
 		//if err != nil {
@@ -584,23 +612,23 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 		//	return xerrors.Errorf("received block was from slashed or invalid miner")
 		//}
 
-		_, qaPower, err := view.MinerClaimedPower(ctx, blk.Miner)
-		if err != nil {
-			return xerrors.Errorf("get miner power failed: %w", err)
-		}
-
-		totalPower, err := view.PowerNetworkTotal(ctx)
-		if err != nil {
-			return xerrors.Errorf("get miner power failed: %w", err)
-		}
-
-		j := blk.ElectionProof.ComputeWinCount(qaPower, totalPower.QualityAdjustedPower)
-		if blk.ElectionProof.WinCount != j {
-			return xerrors.Errorf("miner claims wrong number of wins: miner: %d, computed: %d", blk.ElectionProof.WinCount, j)
-		}
-
-		return nil
-	})
+	//	_, qaPower, err := view.MinerClaimedPower(ctx, blk.Miner)
+	//	if err != nil {
+	//		return xerrors.Errorf("get miner power failed: %w", err)
+	//	}
+	//
+	//	totalPower, err := view.PowerNetworkTotal(ctx)
+	//	if err != nil {
+	//		return xerrors.Errorf("get miner power failed: %w", err)
+	//	}
+	//
+	//	j := blk.ElectionProof.ComputeWinCount(qaPower, totalPower.QualityAdjustedPower)
+	//	if blk.ElectionProof.WinCount != j {
+	//		return xerrors.Errorf("miner claims wrong number of wins: miner: %d, computed: %d", blk.ElectionProof.WinCount, j)
+	//	}
+	//
+	//	return nil
+	//})
 
 	//blockSigCheck := async.Err(func() error {
 	//	if err := sigs.CheckBlockSignature(ctx, blk, waddr); err != nil {
@@ -609,90 +637,90 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 	//	return nil
 	//})
 
-	beaconValuesCheck := async.Err(func() error {
-		if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
-			return nil
-		}
+	//beaconValuesCheck := async.Err(func() error {
+	//	if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
+	//		return nil
+	//	}
+	//
+	//	if err := beacon.ValidateBlockValues(dv.cs.BeaconSchedule(), blk, baseHight, prevBeacon); err != nil {
+	//		return xerrors.Errorf("failed to validate blocks random beacon values: %w", err)
+	//	}
+	//	return nil
+	//})
+	//
+	//tktsCheck := async.Err(func() error {
+	//	buf := new(bytes.Buffer)
+	//	if err := blk.Miner.MarshalCBOR(buf); err != nil {
+	//		return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
+	//	}
+	//
+	//	if blk.Height > beacon.UpgradeSmokeHeight {
+	//		ticket, err := baseTs.MinTicket()
+	//		if err != nil {
+	//			return xerrors.Errorf("failed to get base ticket: %w", err)
+	//		}
+	//		buf.Write(ticket.VRFProof)
+	//	}
+	//
+	//	beaconBase := prevBeacon
+	//	if len(blk.BeaconEntries) != 0 {
+	//		beaconBase = blk.BeaconEntries[len(blk.BeaconEntries)-1]
+	//	}
+	//
+	//	vrfBase, err := cst.DrawRandomness(beaconBase.Data, crypto.DomainSeparationTag_TicketProduction, blk.Height-TicketRandomnessLookback, buf.Bytes())
+	//	if err != nil {
+	//		return xerrors.Errorf("failed to compute vrf base for ticket: %w", err)
+	//	}
+	//
+	//	err = VerifyElectionPoStVRF(ctx, waddr, vrfBase, blk.Ticket.VRFProof)
+	//	if err != nil {
+	//		return xerrors.Errorf("validating block tickets failed: %w", err)
+	//	}
+	//	return nil
+	//})
+	//
+	//wproofCheck := async.Err(func() error {
+	//	if err := dv.VerifyWinningPoStProof(ctx, blk, *prevBeacon, lbst, waddr); err != nil {
+	//		return xerrors.Errorf("invalid election post: %w", err)
+	//	}
+	//	return nil
+	//})
 
-		if err := beacon.ValidateBlockValues(dv.cs.BeaconSchedule(), blk, baseHight, prevBeacon); err != nil {
-			return xerrors.Errorf("failed to validate blocks random beacon values: %w", err)
-		}
-		return nil
-	})
-
-	tktsCheck := async.Err(func() error {
-		buf := new(bytes.Buffer)
-		if err := blk.Miner.MarshalCBOR(buf); err != nil {
-			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
-		}
-
-		if blk.Height > beacon.UpgradeSmokeHeight {
-			ticket, err := baseTs.MinTicket()
-			if err != nil {
-				return xerrors.Errorf("failed to get base ticket: %w", err)
-			}
-			buf.Write(ticket.VRFProof)
-		}
-
-		beaconBase := prevBeacon
-		if len(blk.BeaconEntries) != 0 {
-			beaconBase = blk.BeaconEntries[len(blk.BeaconEntries)-1]
-		}
-
-		vrfBase, err := cst.DrawRandomness(beaconBase.Data, crypto.DomainSeparationTag_TicketProduction, blk.Height-TicketRandomnessLookback, buf.Bytes())
-		if err != nil {
-			return xerrors.Errorf("failed to compute vrf base for ticket: %w", err)
-		}
-
-		err = VerifyElectionPoStVRF(ctx, waddr, vrfBase, blk.Ticket.VRFProof)
-		if err != nil {
-			return xerrors.Errorf("validating block tickets failed: %w", err)
-		}
-		return nil
-	})
-
-	wproofCheck := async.Err(func() error {
-		if err := dv.VerifyWinningPoStProof(ctx, blk, *prevBeacon, lbst, waddr); err != nil {
-			return xerrors.Errorf("invalid election post: %w", err)
-		}
-		return nil
-	})
-
-	await := []async.ErrorFuture{
+	//await := []async.ErrorFuture{
 		// minerCheck,
-		tktsCheck,
+		//tktsCheck,
 		//blockSigCheck,
-		beaconValuesCheck,
-		wproofCheck,
-		winnerCheck,
-		msgsCheck,
-		baseFeeCheck,
-	}
+		//beaconValuesCheck,
+		//wproofCheck,
+		//winnerCheck,
+		//msgsCheck,
+		//baseFeeCheck,
+	//}
 
-	var merr error
-	for _, fut := range await {
-		if err := fut.AwaitContext(ctx); err != nil {
-			merr = multierror.Append(merr, err)
-		}
-	}
-	if merr != nil {
-		mulErr := merr.(*multierror.Error)
-		mulErr.ErrorFormat = func(es []error) string {
-			if len(es) == 1 {
-				return fmt.Sprintf("1 error occurred:\n\t* %+v\n\n", es[0])
-			}
-
-			points := make([]string, len(es))
-			for i, err := range es {
-				points[i] = fmt.Sprintf("* %+v", err)
-			}
-
-			return fmt.Sprintf(
-				"%d errors occurred:\n\t%s\n\n",
-				len(es), strings.Join(points, "\n\t"))
-		}
-		return mulErr
-	}
+	//var merr error
+	//for _, fut := range await {
+	//	if err := fut.AwaitContext(ctx); err != nil {
+	//		merr = multierror.Append(merr, err)
+	//	}
+	//}
+	//if merr != nil {
+	//	mulErr := merr.(*multierror.Error)
+	//	mulErr.ErrorFormat = func(es []error) string {
+	//		if len(es) == 1 {
+	//			return fmt.Sprintf("1 error occurred:\n\t* %+v\n\n", es[0])
+	//		}
+	//
+	//		points := make([]string, len(es))
+	//		for i, err := range es {
+	//			points[i] = fmt.Sprintf("* %+v", err)
+	//		}
+	//
+	//		return fmt.Sprintf(
+	//			"%d errors occurred:\n\t%s\n\n",
+	//			len(es), strings.Join(points, "\n\t"))
+	//	}
+	//	return mulErr
+	//}
 
 	//
 	//if err := syncer.store.MarkBlockAsValidated(ctx, b.Cid()); err != nil {

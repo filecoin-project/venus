@@ -463,10 +463,10 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, 
 	return syncer.SetStagedHead(ctx)
 }
 
+// handleNewTipSet extends the Syncer's chain store with the given tipset if
+// the chain is a valid extension.  It stages new heaviest tipsets for later
+// setting the chain head
 func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) (err error) {
-	// handleNewTipSet extends the Syncer's chain store with the given tipset if
-	// the chain is a valid extension.  It stages new heaviest tipsets for later
-	// setting the chain head
 	logSyncer.Debugf("Begin fetch and sync of chain with head %v", ci.Head)
 	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ci.Head.String()))

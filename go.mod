@@ -22,6 +22,7 @@ require (
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.0
 	github.com/filecoin-project/go-bitfield v0.2.0
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
+	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.6.4
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f
 	github.com/filecoin-project/go-fil-markets v0.6.1
@@ -100,6 +101,7 @@ require (
 	github.com/prometheus/client_golang v1.6.0
 	github.com/prometheus/common v0.10.0
 	github.com/stretchr/testify v1.6.1
+	github.com/supranational/blst v0.1.1
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200814224545-656e08ce49ee
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
