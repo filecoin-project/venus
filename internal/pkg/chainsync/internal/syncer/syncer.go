@@ -343,11 +343,17 @@ func (syncer *Syncer) ancestorsFromStore(ts block.TipSet) (block.TipSet, block.T
 	if err != nil {
 		return block.UndefTipSet, block.UndefTipSet, err
 	}
+
+	if parent.EnsureHeight() == 0 {
+		// parent == genesis ==>
+		return parent, block.UndefTipSet, nil
+	}
+
 	grandParentCids, err := parent.Parents()
 	if err != nil {
 		return block.UndefTipSet, block.UndefTipSet, err
 	}
-	if grandParentCids.Empty() {
+	if grandParentCids.Empty() { //todo genesis have parents ?
 		// parent == genesis ==> grandParent undef
 		return parent, block.UndefTipSet, nil
 	}
