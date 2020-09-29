@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"context"
-	"golang.org/x/xerrors"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
@@ -118,14 +117,13 @@ var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
 func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processor, state StateViewer, bt time.Duration,
-	ev ElectionValidator, tv TicketValidator, pv ProofVerifier, chainState chainReader, clock clock.ChainEpochClock, drand beacon.Schedule) *Expected {
+	tv TicketValidator, pv ProofVerifier, chainState chainReader, clock clock.ChainEpochClock, drand beacon.Schedule) *Expected {
 	return &Expected{
 		cstore:            cs,
 		blockTime:         bt,
 		bstore:            bs,
 		processor:         processor,
 		state:             state,
-		ElectionValidator: ev,
 		TicketValidator:   tv,
 		proofVerifier:     pv,
 		chainState:        chainState,
@@ -189,10 +187,10 @@ func (c *Expected) validateMining(ctx context.Context,
 	faultsStateView := c.state.FaultStateView(parentStateRoot)
 	keyPowerTable := NewPowerTableView(keyStateView, faultsStateView)
 
-	tsHeight, err := ts.Height()
-	if err != nil {
-		return errors.Wrap(err, "could not get new tipset's height")
-	}
+	//tsHeight, err := ts.Height()
+	//if err != nil {
+	//	return errors.Wrap(err, "could not get new tipset's height")
+	//}
 
 	//sectorSetAncestor, err := chain.FindTipsetAtEpoch(ctx, ts, tsHeight-WinningPoStSectorSetLookback, c.chainState)
 	//if err != nil {
@@ -204,16 +202,16 @@ func (c *Expected) validateMining(ctx context.Context,
 	//}
 	// sectorSetStateView := c.state.PowerStateView(sectorSetStateRoot)
 
-	electionPowerAncestor, err := chain.FindTipsetAtEpoch(ctx, ts, tsHeight-ElectionPowerTableLookback, c.chainState)
-	if err != nil {
-		return errors.Wrap(err, "failed to find election power lookback ancestor")
-	}
-	electionPowerStateRoot, err := c.chainState.GetTipSetStateRoot(electionPowerAncestor.Key())
-	if err != nil {
-		return errors.Wrap(err, "failed to get state root for election power ancestor")
-	}
-	electionPowerStateView := c.state.PowerStateView(electionPowerStateRoot)
-	electionPowerTable := NewPowerTableView(electionPowerStateView, faultsStateView)
+	//electionPowerAncestor, err := chain.FindTipsetAtEpoch(ctx, ts, tsHeight-ElectionPowerTableLookback, c.chainState)
+	//if err != nil {
+	//	return errors.Wrap(err, "failed to find election power lookback ancestor")
+	//}
+	//electionPowerStateRoot, err := c.chainState.GetTipSetStateRoot(electionPowerAncestor.Key())
+	//if err != nil {
+	//	return errors.Wrap(err, "failed to get state root for election power ancestor")
+	//}
+	//electionPowerStateView := c.state.PowerStateView(electionPowerStateRoot)
+	//electionPowerTable := NewPowerTableView(electionPowerStateView, faultsStateView)
 
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
