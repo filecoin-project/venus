@@ -2,8 +2,6 @@ package message
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"math"
 	"math/rand"
 	"sort"
@@ -12,11 +10,11 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/lotus/api"
 )
 
 const MinGasPremium = 100e3
@@ -213,7 +211,26 @@ func (ob *Outbox) GasEstimateGasLimit(ctx context.Context, msgIn *types.Unsigned
 	return 0, nil
 }
 
-func (ob *Outbox) GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *api.MessageSendSpec, _ block.TipSetKey) (*types.UnsignedMessage, error) {
+const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
+
+type MessageSendSpec struct {
+	MaxFee abi.TokenAmount
+}
+
+var DefaultMessageSendSpec = MessageSendSpec{
+	// MaxFee of 0.1FIL
+	MaxFee: abi.NewTokenAmount(int64(FilecoinPrecision) / 10),
+}
+
+func (ms *MessageSendSpec) Get() MessageSendSpec {
+	if ms == nil {
+		return DefaultMessageSendSpec
+	}
+
+	return *ms
+}
+
+func (ob *Outbox) GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *MessageSendSpec, _ block.TipSetKey) (*types.UnsignedMessage, error) {
 	if msg.GasLimit == 0 {
 		gasLimit, err := ob.GasEstimateGasLimit(ctx, msg, block.TipSetKey{})
 		if err != nil {
