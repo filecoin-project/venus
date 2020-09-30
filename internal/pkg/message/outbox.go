@@ -2,6 +2,7 @@ package message
 
 import (
 	"context"
+	"golang.org/x/xerrors"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
@@ -130,6 +131,15 @@ func (ob *Outbox) SendEncoded(ctx context.Context, from, to address.Address, val
 	}
 
 	rawMsg := types.NewMeteredMessage(from, to, nonce, value, method, encodedParams, baseFee, gasPremium, gasLimit)
+	msg, err := ob.GasEstimateMessageGas(ctx, rawMsg, nil, block.TipSetKey{})
+	if err != nil {
+		return cid.Undef, nil, xerrors.Errorf("GasEstimateMessageGas error: %w", err)
+	}
+
+	if msg.GasPremium.GreaterThan(msg.GasFeeCap) {
+		return cid.Undef, nil, xerrors.Errorf("After estimation, GasPremium is greater than GasFeeCap")
+	}
+
 	signed, err := types.NewSignedMessage(ctx, *rawMsg, ob.signer)
 
 	if err != nil {
