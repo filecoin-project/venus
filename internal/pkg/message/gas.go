@@ -211,26 +211,7 @@ func (ob *Outbox) GasEstimateGasLimit(ctx context.Context, msgIn *types.Unsigned
 	return 0, nil
 }
 
-const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
-
-type MessageSendSpec struct {
-	MaxFee abi.TokenAmount
-}
-
-var DefaultMessageSendSpec = MessageSendSpec{
-	// MaxFee of 0.1FIL
-	MaxFee: abi.NewTokenAmount(int64(FilecoinPrecision) / 10),
-}
-
-func (ms *MessageSendSpec) Get() MessageSendSpec {
-	if ms == nil {
-		return DefaultMessageSendSpec
-	}
-
-	return *ms
-}
-
-func (ob *Outbox) GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *MessageSendSpec, _ block.TipSetKey) (*types.UnsignedMessage, error) {
+func (ob *Outbox) GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec, _ block.TipSetKey) (*types.UnsignedMessage, error) {
 	if msg.GasLimit == 0 {
 		gasLimit, err := ob.GasEstimateGasLimit(ctx, msg, block.TipSetKey{})
 		if err != nil {

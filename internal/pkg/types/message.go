@@ -5,10 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-state-types/abi"
+	specsbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/build"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -19,14 +22,31 @@ import (
 	errPkg "github.com/pkg/errors"
 	typegen "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
-	specsbig "github.com/filecoin-project/go-state-types/big"
-	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
+
+const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
+
+type MessageSendSpec struct {
+	MaxFee abi.TokenAmount
+}
+
+var DefaultMessageSendSpec = MessageSendSpec{
+	// MaxFee of 0.1FIL
+	MaxFee: abi.NewTokenAmount(int64(FilecoinPrecision) / 10),
+}
+
+func (ms *MessageSendSpec) Get() MessageSendSpec {
+	if ms == nil {
+		return DefaultMessageSendSpec
+	}
+
+	return *ms
+}
 
 const MessageVersion = 0
 
@@ -50,6 +70,14 @@ var EmptyReceiptsCID cid.Cid
 
 // EmptyTxMetaCID is the cid of a TxMeta wrapping empty cids
 var EmptyTxMetaCID cid.Cid
+
+const FilBase = uint64(2_000_000_000)
+
+func FromFil(i uint64) AttoFIL {
+	return specsbig.Mul(specsbig.NewInt(int64(i)), specsbig.NewInt(int64(FilecoinPrecision)))
+}
+
+var TotalFilecoinInt = FromFil(FilBase)
 
 func init() {
 	tmpCst := cborutil.NewIpldStore(blockstore.NewBlockstore(datastore.NewMapDatastore()))
@@ -236,8 +264,6 @@ func (m *UnsignedMessage) ToStorageBlock() (blocks.Block, error) {
 
 	return blocks.NewBlockWithCid(data, c)
 }
-
-const FilBase = uint64(2_000_000_000)
 
 func (m *UnsignedMessage) ValidForBlockInclusion(minGas int64) error {
 	if m.Version != 0 {

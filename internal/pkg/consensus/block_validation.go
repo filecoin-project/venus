@@ -159,7 +159,7 @@ func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, c
 
 	pl := gas.PricelistByEpoch(child.Height)
 	var sumGasLimit int64
-	callSeqNums := make(map[address.Address]uint64)
+	//callSeqNums := make(map[address.Address]uint64)
 	checkMsg := func(msg types.ChainMsg) error {
 		m := msg.VMMessage()
 
@@ -169,8 +169,6 @@ func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, c
 			return err
 		}
 
-		// ValidForBlockInclusion checks if any single message does not exceed BlockGasLimit
-		// So below is overflow safe
 		sumGasLimit += int64(m.GasLimit)
 		if sumGasLimit > types.BlockGasLimit {
 			return xerrors.Errorf("block gas limit exceeded")
@@ -178,24 +176,24 @@ func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, c
 
 		// Phase 2: (Partial) semantic validation:
 		// the sender exists and is an account actor, and the nonces make sense
-		if _, ok := callSeqNums[m.From]; !ok {
-			// `GetActor` does not validate that this is an account actor.
-			act, err := dv.getAndValidateFromActor(ctx, m, parents)
-			if err != nil {
-				log.Warnf("failed to get actor for %s of parents %s, err: %s", m.From, parents, err.Error())
-				return nil
-			}
-
-			if !act.IsAccountActor() {
-				return xerrors.New("Sender must be an account actor")
-			}
-			callSeqNums[m.From] = act.CallSeqNum
-		}
-
-		if callSeqNums[m.From] != m.CallSeqNum {
-			return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", callSeqNums[m.From], m.CallSeqNum)
-		}
-		callSeqNums[m.From]++
+		//if _, ok := callSeqNums[m.From]; !ok {
+		//	// `GetActor` does not validate that this is an account actor.
+		//	act, err := dv.getAndValidateFromActor(ctx, m, parents)
+		//	if err != nil {
+		//		log.Warnf("failed to get actor for %s of parents %s, err: %s", m.From, parents, err.Error())
+		//		return nil
+		//	}
+		//
+		//	if !act.IsAccountActor() {
+		//		return xerrors.New("Sender must be an account actor")
+		//	}
+		//	callSeqNums[m.From] = act.CallSeqNum
+		//}
+		//
+		//if callSeqNums[m.From] != m.CallSeqNum {
+		//	return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", callSeqNums[m.From], m.CallSeqNum)
+		//}
+		//callSeqNums[m.From]++
 
 		return nil
 	}
