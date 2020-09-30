@@ -196,6 +196,8 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 	if err != nil {
 		return nil, err
 	}
+
+
 	headers, err := syncer.fetcher.FetchTipSetHeaders(ctx, ci.Head, ci.Sender, func(t block.TipSet) (bool, error) {
 		h, err := t.Height()
 		if err != nil {
@@ -209,7 +211,8 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 		if err != nil {
 			return true, err
 		}
-		return syncer.chainStore.HasTipSetAndState(ctx, parents), nil
+
+		return syncer.chainStore.HasTipSetAndState(ctx, parents), nil // 这里没有存储到chainStore中,HasTipSetAndState->false
 	})
 	if err != nil {
 		return nil, err
@@ -221,6 +224,7 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 	if err != nil {
 		return nil, err
 	}
+
 	for i, ts := range headers {
 		for i := 0; i < ts.Len(); i++ {
 			err = syncer.blockValidator.ValidateHeaderSemantic(ctx, ts.At(i), parent)
@@ -230,6 +234,7 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 		}
 		parent = headers[i]
 	}
+
 	return headers, nil
 }
 
@@ -242,6 +247,7 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 // Precondition: the caller of syncOne must hold the syncer's lock (syncer.mu) to
 // ensure head is not modified by another goroutine during run.
 func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next block.TipSet) error {
+	logSyncer.Infof("Start updated store with %s", next.String())
 	priorHeadKey := syncer.chainStore.GetHead()
 
 	// if tipset is already priorHeadKey, we've been here before. do nothing.
@@ -312,7 +318,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 	if err != nil {
 		return err
 	}
-	logSyncer.Debugf("Successfully updated store with %s", next.String())
+	logSyncer.Infof("Successfully updated store with %s", next.String())
 	return nil
 }
 
@@ -473,7 +479,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, 
 // the chain is a valid extension.  It stages new heaviest tipsets for later
 // setting the chain head
 func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) (err error) {
-	logSyncer.Debugf("Begin fetch and sync of chain with head %v", ci.Head)
+	logSyncer.Infof("Begin fetch and sync of chain with head %v from %s", ci.Head, ci.Sender.String())
 	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ci.Head.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -491,6 +497,11 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
+	h, err := tipsets[0].Height()
+	if err != nil {
+		logSyncer.Warnf("get height err: %s", err.Error())
+	}
+	logSyncer.Infof("fetchAndValidateHeaders success, head:%v,%v", h, tipsets[0].String())
 
 	// Once headers check out, fetch messages
 	_, err = syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Sender, func(t block.TipSet) (bool, error) {
@@ -519,12 +530,16 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 		return errors.Wrapf(err, "failure fetching full blocks")
 	}
 
+	logSyncer.Infof("fetch messages success ...")
 	syncer.reporter.UpdateStatus(status.SyncFetchComplete(true))
 
 	parent, grandParent, err := syncer.ancestorsFromStore(tipsets[0])
 	if err != nil {
 		return err
 	}
+	ph,_ := parent.Height()
+	gh,_ := grandParent.Height()
+	logSyncer.Infof("parent:%v,%v grandParent:%v %v", ph, parent.Key(), gh, grandParent.Key())
 
 	// Try adding the tipsets of the chain to the store, checking for new
 	// heaviest tipsets.
@@ -538,7 +553,7 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 				return err
 			}
 			if wts.Defined() {
-				logSyncer.Debug("attempt to sync after widen")
+				logSyncer.Info("attempt to sync after widen")
 				err = syncer.syncOne(ctx, grandParent, parent, wts)
 				if err != nil {
 					return err

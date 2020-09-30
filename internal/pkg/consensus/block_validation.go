@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"golang.org/x/xerrors"
@@ -21,7 +22,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 var log = logging.Logger("consensus")
@@ -157,38 +157,71 @@ func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, c
 		return errors.Wrapf(err, "block validation failed loading message list %s for block %s", child.Messages, child.Cid())
 	}
 
-	expectedCallSeqNum := map[address.Address]uint64{}
-	for _, msg := range blsMsgs {
-		msgCid, err := msg.Cid()
-		if err != nil {
+	pl := gas.PricelistByEpoch(child.Height)
+	var sumGasLimit int64
+	callSeqNums := make(map[address.Address]uint64)
+	checkMsg := func(msg types.ChainMsg) error {
+		m := msg.VMMessage()
+
+		// Phase 1: syntactic validation, as defined in the spec
+		minGas := pl.OnChainMessage(msg.ChainLength())
+		if err := m.ValidForBlockInclusion(minGas.Total()); err != nil {
 			return err
 		}
 
-		from, err := dv.getAndValidateFromActor(ctx, msg, parents)
-		if err != nil {
-			return errors.Wrapf(err, "from actor %s for message %s of block %s invalid", msg.From, msgCid, child.Cid())
+		// ValidForBlockInclusion checks if any single message does not exceed BlockGasLimit
+		// So below is overflow safe
+		sumGasLimit += int64(m.GasLimit)
+		if sumGasLimit > types.BlockGasLimit {
+			return xerrors.Errorf("block gas limit exceeded")
 		}
 
-		err = dv.validateMessage(msg, expectedCallSeqNum, from)
-		if err != nil {
-			return errors.Wrapf(err, "message %s of block %s invalid", msgCid, child.Cid())
+		// Phase 2: (Partial) semantic validation:
+		// the sender exists and is an account actor, and the nonces make sense
+		if _, ok := callSeqNums[m.From]; !ok {
+			// `GetActor` does not validate that this is an account actor.
+			act, err := dv.getAndValidateFromActor(ctx, m, parents)
+			if err != nil {
+				log.Warnf("failed to get actor for %s of parents %s, err: %s", m.From, parents, err.Error())
+				return nil
+			}
+
+			if !act.IsAccountActor() {
+				return xerrors.New("Sender must be an account actor")
+			}
+			callSeqNums[m.From] = act.CallSeqNum
+		}
+
+		if callSeqNums[m.From] != m.CallSeqNum {
+			return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", callSeqNums[m.From], m.CallSeqNum)
+		}
+		callSeqNums[m.From]++
+
+		return nil
+	}
+
+	for i, m := range blsMsgs {
+		if err := checkMsg(m); err != nil {
+			return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
 		}
 	}
 
-	for _, msg := range secpMsgs {
-		msgCid, err := msg.Cid()
-		if err != nil {
-			return err
+	for i, m := range secpMsgs {
+		if err := checkMsg(m); err != nil {
+			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 		}
 
-		from, err := dv.getAndValidateFromActor(ctx, &msg.Message, parents)
+		// `From` being an account actor is only validated inside the `vm.ResolveToKeyAddr` call
+		// in `StateManager.ResolveToKeyAddress` here (and not in `checkMsg`).
+		view, err := dv.cs.AccountStateView(parents)
 		if err != nil {
-			return errors.Wrapf(err, "from actor %s for message %s of block %s invalid", msg.Message.From, msgCid, child.Cid())
+			return errors.Wrapf(err, "failed to load state at %v", parents)
 		}
 
-		err = dv.validateMessage(&msg.Message, expectedCallSeqNum, from)
-		if err != nil {
-			return errors.Wrapf(err, "message %s of block %s invalid", msgCid, child.Cid())
+		sigValidator := state.NewSignatureValidator(view)
+
+		if err := sigValidator.ValidateMessageSignature(ctx, m); err != nil {
+			return errors.Wrap(err, fmt.Errorf("invalid signature by sender over message data").Error())
 		}
 	}
 
@@ -209,27 +242,8 @@ func (dv *DefaultBlockValidator) getAndValidateFromActor(ctx context.Context, ms
 	return actor, nil
 }
 
+// -------------------------------------------------------------------------------------------------------------------------------
 var ErrTemporal = errors.New("temporal error")
-
-func (dv *DefaultBlockValidator) blockSanityChecks(h *block.Block) error {
-	if h.ElectionProof == nil {
-		return xerrors.Errorf("block cannot have nil election proof")
-	}
-
-	if len(h.Ticket.VRFProof) <= 0 {
-		return xerrors.Errorf("block cannot have nil ticket")
-	}
-
-	if h.BlockSig == nil {
-		return xerrors.Errorf("block had nil signature")
-	}
-
-	if h.BLSAggregateSig == nil {
-		return xerrors.Errorf("block had nil bls aggregate signature")
-	}
-
-	return nil
-}
 
 func GetLookbackTipSetForRound(ctx context.Context, ch chainState, ts *block.TipSet, round abi.ChainEpoch) (*block.TipSet, error) {
 	var lbr abi.ChainEpoch
@@ -273,100 +287,6 @@ func GetLookbackTipSetForRound(ctx context.Context, ch chainState, ts *block.Tip
 //	return nil
 //}
 
-func (dv *DefaultBlockValidator) checkBlockMessages(ctx context.Context, b *block.Block, baseTs *block.TipSet) error {
-	// ToDo review: block sig
-	view, err := dv.cs.AccountStateView(b.Parents)
-	if err != nil {
-		return errors.Wrapf(err, "failed to load state at %v", b.Parents)
-	}
-
-	sigValidator := state.NewSignatureValidator(view)
-
-	secpMsgs, blsMsgs, err := dv.ms.LoadMessages(ctx, b.Messages.Cid)
-	if err != nil {
-		return errors.Wrapf(err, "block validation failed loading message list %s for block %s", b.Messages, b.Cid())
-	}
-
-	// ensure message is properly signed
-	if err := sigValidator.ValidateBLSMessageAggregate(ctx, blsMsgs, b.BLSAggregateSig); err != nil {
-		return errors.Wrap(err, fmt.Errorf("invalid signature by sender over message data").Error())
-	}
-
-	// ToDo nonce check
-	callSeqNums := make(map[address.Address]uint64)
-	baseHeight, err := baseTs.Height()
-	if err != nil {
-		return err
-	}
-	pl := gas.PricelistByEpoch(baseHeight)
-	var sumGasLimit int64
-	checkMsg := func(msg types.ChainMsg) error {
-		m := msg.VMMessage()
-
-		// Phase 1: syntactic validation, as defined in the spec
-		minGas := pl.OnChainMessage(msg.ChainLength())
-		if err := m.ValidForBlockInclusion(minGas.Total()); err != nil {
-			return err
-		}
-
-		// ValidForBlockInclusion checks if any single message does not exceed BlockGasLimit
-		// So below is overflow safe
-		sumGasLimit += int64(m.GasLimit)
-		if sumGasLimit > types.BlockGasLimit {
-			return xerrors.Errorf("block gas limit exceeded")
-		}
-
-		// Phase 2: (Partial) semantic validation:
-		// the sender exists and is an account actor, and the nonces make sense
-		if _, ok := callSeqNums[m.From]; !ok {
-			// `GetActor` does not validate that this is an account actor.
-			act, err := dv.cs.GetActorAt(ctx, baseTs.Key(), m.From)
-			if err != nil {
-				return xerrors.Errorf("failed to get actor: %w", err)
-			}
-
-			if !act.IsAccountActor() {
-				return xerrors.New("Sender must be an account actor")
-			}
-			callSeqNums[m.From] = act.CallSeqNum
-		}
-
-		if callSeqNums[m.From] != m.CallSeqNum {
-			return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", callSeqNums[m.From], m.CallSeqNum)
-		}
-		callSeqNums[m.From]++
-
-		return nil
-	}
-
-	// ToDo lotus中存储到adt的逻辑没有引入
-	for i, m := range blsMsgs {
-		if err := checkMsg(m); err != nil {
-			return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
-		}
-	}
-
-	for i, m := range secpMsgs {
-		if err := checkMsg(m); err != nil {
-			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
-		}
-
-		// `From` being an account actor is only validated inside the `vm.ResolveToKeyAddr` call
-		// in `StateManager.ResolveToKeyAddress` here (and not in `checkMsg`).
-		view, err := dv.cs.AccountStateView(b.Parents)
-		if err != nil {
-			return errors.Wrapf(err, "failed to load state at %v", b.Parents)
-		}
-
-		sigValidator := state.NewSignatureValidator(view)
-
-		if err := sigValidator.ValidateMessageSignature(ctx, m); err != nil {
-			return errors.Wrap(err, fmt.Errorf("invalid signature by sender over message data").Error())
-		}
-	}
-
-	return nil
-}
 
 func (dv *DefaultBlockValidator) VerifyWinningPoStProof(ctx context.Context, b *block.Block, prevBeacon block.BeaconEntry, lbst cid.Cid, waddr address.Address) error {
 	if InsecurePoStValidation {
@@ -493,13 +413,6 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 	//if tgtTs := baseTs.MinTimestamp() + builtin.EpochDurationSeconds*uint64(nulls+1); blk.Timestamp != tgtTs {
 	//	return xerrors.Errorf("block has wrong timestamp: %d != %d", blk.Timestamp, tgtTs)
 	//}
-
-	//msgsCheck := async.Err(func() error {
-	//	if err := dv.checkBlockMessages(ctx, blk, &baseTs); err != nil {
-	//		return xerrors.Errorf("block had invalid messages: %w", err)
-	//	}
-	//	return nil
-	//})
 
 	//minerCheck := async.Err(func() error {
 	//	if err := syncer.minerIsValid(ctx, h.Miner, baseTs); err != nil {
@@ -693,7 +606,6 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 		//beaconValuesCheck,
 		//wproofCheck,
 		//winnerCheck,
-		//msgsCheck,
 		//baseFeeCheck,
 	//}
 
