@@ -14,6 +14,7 @@ type FullBlock struct {
 	SECPMessages []*types.SignedMessage
 }
 
+// Cid returns the FullBlock's header's Cid
 func (fb *FullBlock) Cid() cid.Cid {
 	return fb.Header.Cid()
 }
