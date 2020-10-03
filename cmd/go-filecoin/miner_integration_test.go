@@ -32,7 +32,8 @@ func TestMinerCreateIntegration(t *testing.T) {
 	defaultAddr := newMiner.Repo.Config().Wallet.DefaultAddress
 	peer := newMiner.Network().Network.GetPeerID()
 
-	minerAddr, err := porcelainAPI.MinerCreate(ctx, defaultAddr, types.NewAttoFILFromFIL(1), 10000, abi.RegisteredSealProof_StackedDRG2KiBSeal, peer, types.NewAttoFILFromFIL(1))
+	minerAddr, err := porcelainAPI.MinerCreate(ctx, defaultAddr, types.NewAttoFILFromFIL(1),
+		types.NewAttoFILFromFIL(10), 10000, abi.RegisteredSealProof_StackedDrg2KiBV1, peer, types.NewAttoFILFromFIL(1))
 	require.NoError(t, err)
 
 	// inspect results on chain
@@ -59,7 +60,7 @@ func TestSetPrice(t *testing.T) {
 
 	env := commands.CreateServerEnv(ctx, nodes[0])
 
-	err := commands.GetStorageAPI(env).AddAsk(abi.NewTokenAmount(1000), abi.ChainEpoch(400))
+	err := commands.GetStorageAPI(env).AddAsk(abi.NewTokenAmount(1000), abi.ChainEpoch(400), abi.NewTokenAmount(100))
 	require.NoError(t, err)
 
 	minerAddr, err := commands.GetBlockAPI(env).MinerAddress()

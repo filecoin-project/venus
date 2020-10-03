@@ -18,7 +18,7 @@ import (
 	pr "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/multiformats/go-multiaddr-dns"
+	madns "github.com/multiformats/go-multiaddr-dns"
 )
 
 // TestRelayCheck is a two part test
@@ -304,7 +304,7 @@ func networkBootstrapPeers(network string) []string {
 
 	switch network {
 	case "interop":
-		return networks.Interop().Bootstrap.Addresses
+		return networks.Testnet().Bootstrap.Addresses
 	}
 
 	return []string{}
