@@ -3,9 +3,10 @@ package block_test
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"reflect"
 	"testing"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
@@ -39,9 +40,9 @@ func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWei
 		Parents:         blk.NewTipSetKey(parentCid),
 		ParentWeight:    fbig.NewInt(int64(parentWeight)),
 		Height:          42 + abi.ChainEpoch(height),
-		Messages:        cidGetter(),
-		StateRoot:       cidGetter(),
-		MessageReceipts: cidGetter(),
+		Messages:        enccid.NewCid(cidGetter()),
+		StateRoot:       enccid.NewCid(cidGetter()),
+		MessageReceipts: enccid.NewCid(cidGetter()),
 		Timestamp:       timestamp,
 	}
 }

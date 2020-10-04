@@ -2,9 +2,10 @@ package functional
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 
 	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -64,7 +65,8 @@ func TestMiningPledgeSector(t *testing.T) {
 	porcelainAPI := commands.GetPorcelainAPI(env)
 	peer := newMiner.Network().Network.GetPeerID()
 
-	_, err = porcelainAPI.MinerCreate(ctx, seed.Addr(t, 1), types.NewAttoFILFromFIL(1), 10000, abi.RegisteredSealProof_StackedDrg32GiBV1, peer, types.NewAttoFILFromFIL(5))
+	_, err = porcelainAPI.MinerCreate(ctx, seed.Addr(t, 1), types.NewAttoFILFromFIL(1), types.NewAttoFILFromFIL(50),
+		10000, abi.RegisteredSealProof_StackedDrg32GiBV1, peer, types.NewAttoFILFromFIL(5))
 	require.NoError(t, err)
 
 	// setup mining with new miner address and start mining
