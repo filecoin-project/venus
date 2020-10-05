@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -27,7 +28,6 @@ var log = logging.Logger("consensus")
 type messageStore interface {
 	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
 	LoadReceipts(context.Context, cid.Cid) ([]vm.MessageReceipt, error)
-	ComputeBaseFee(context.Context, *block.TipSet) (abi.TokenAmount, error)
 }
 
 type chainState interface {
@@ -149,13 +149,96 @@ func (dv *DefaultBlockValidator) validateMessage(msg *types.UnsignedMessage, exp
 
 // ValidateFullSemantic checks validation conditions on a block's messages that don't require message execution.
 func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, child *block.Block, parents block.TipSetKey) error {
-	// ToDo 同步时存储落后于验证,TipSetMetadata尚未被存储?
 	// validate call sequence numbers
 	//secpMsgs, blsMsgs, err := dv.ms.LoadMessages(ctx, child.Messages.Cid)
 	//if err != nil {
 	//	return errors.Wrapf(err, "block validation failed loading message list %s for block %s", child.Messages, child.Cid())
 	//}
 	//
+	//expectedCallSeqNum := map[address.Address]uint64{}
+	//for _, msg := range blsMsgs {
+	//	msgCid, err := msg.Cid()
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	from, err := dv.getAndValidateFromActor(ctx, msg, parents)
+	//	if err != nil {
+	//		return errors.Wrapf(err, "from actor %s for message %s of block %s invalid", msg.From, msgCid, child.Cid())
+	//	}
+	//
+	//	err = dv.validateMessage(msg, expectedCallSeqNum, from)
+	//	if err != nil {
+	//		return errors.Wrapf(err, "message %s of block %s invalid", msgCid, child.Cid())
+	//	}
+	//}
+	//
+	//for _, msg := range secpMsgs {
+	//	msgCid, err := msg.Cid()
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	from, err := dv.getAndValidateFromActor(ctx, &msg.Message, parents)
+	//	if err != nil {
+	//		return errors.Wrapf(err, "from actor %s for message %s of block %s invalid", msg.Message.From, msgCid, child.Cid())
+	//	}
+	//
+	//	err = dv.validateMessage(&msg.Message, expectedCallSeqNum, from)
+	//	if err != nil {
+	//		return errors.Wrapf(err, "message %s of block %s invalid", msgCid, child.Cid())
+	//	}
+	//}
+
+	// ToDo 同步时存储落后于验证,TipSetMetadata尚未被存储?
+	secpMsgs, blsMsgs, err := dv.ms.LoadMessages(ctx, child.Messages.Cid)
+	if err != nil {
+		return errors.Wrapf(err, "block validation failed loading message list %s for block %s", child.Messages, child.Cid())
+	}
+
+	pl := gas.PricelistByEpoch(child.Height)
+	var sumGasLimit int64
+	checkMsg := func(msg types.ChainMsg) error {
+		m := msg.VMMessage()
+
+		if m.ChainLength() > 32*1024 {
+			log.Warnf("message is too large! (%dB)", m.ChainLength())
+			return xerrors.Errorf("message is too large! (%dB)", m.ChainLength())
+		}
+
+		if m.To == address.Undef {
+			return xerrors.Errorf("local message has invalid destination address")
+		}
+
+		//if !m.Value.LessThan(types.TotalFilecoinInt) {
+		//	return xerrors.Errorf("value-too-high")
+		//}
+
+		minGas := pl.OnChainMessage(msg.ChainLength())
+		if err := m.ValidForBlockInclusion(minGas.Total()); err != nil {
+			return err
+		}
+
+		sumGasLimit += int64(m.GasLimit)
+		if sumGasLimit > types.BlockGasLimit {
+			return xerrors.Errorf("block gas limit exceeded")
+		}
+
+		return nil
+	}
+
+	for i, m := range blsMsgs {
+		if err := checkMsg(m); err != nil {
+			return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
+		}
+	}
+
+	for i, m := range secpMsgs {
+		if err := checkMsg(m); err != nil {
+			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
+		}
+	}
+
 	//callSeqNums := make(map[address.Address]uint64)
 	//checkMsg := func(msg types.ChainMsg) error {
 	//	m := msg.VMMessage()
@@ -256,7 +339,7 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 	// ToDo 同步时存储落后于验证,消息并没有被存储?
 	//secpMsgs, blsMsgs, err := dv.ms.LoadMessages(ctx, blk.Messages.Cid)
 	//if err != nil {
-	//	return errors.Wrapf(err, "block validation failed loading message list %s for block %s", blk.Messages, blk.Cid())
+	//	return errors.Wrapf(err, "loading message failed for block %s", blk.Cid())
 	//}
 	//
 	//pl := gas.PricelistByEpoch(blk.Height)

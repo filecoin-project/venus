@@ -286,9 +286,9 @@ func (m *UnsignedMessage) ValidForBlockInclusion(minGas int64) error {
 		return xerrors.New("'Value' field cannot be negative")
 	}
 
-	if m.Value.GreaterThan(specsbig.NewInt(int64(FilBase))) {
-		return xerrors.New("'Value' field cannot be greater than total filecoin supply")
-	}
+	//if m.Value.GreaterThan(specsbig.NewInt(int64(FilBase))) {
+	//	return xerrors.New("'Value' field cannot be greater than total filecoin supply")
+	//}
 
 	if m.GasFeeCap.Int == nil {
 		return xerrors.New("'GasFeeCap' cannot be nil")

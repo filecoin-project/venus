@@ -2,6 +2,9 @@ package message
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/build"
 	"math"
 	"math/rand"
 	"sort"
@@ -12,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -168,46 +172,9 @@ func (ob *Outbox) GasEstimateGasLimit(ctx context.Context, msgIn *types.Unsigned
 		return -1, xerrors.Errorf("sender %s is missing/empty", msg.From)
 	}
 
-	// todo 从Queue中查询出from所有未上链的消息 ???
-	//pending, ts := a.Mpool.PendingFor(fromA)
-	//priorMsgs := make([]types.ChainMsg, 0, len(pending))
-	//for _, m := range pending {
-	//	priorMsgs = append(priorMsgs, m)
-	//}
-	//
-	//res, err := ob.Stmgr.CallWithGas(ctx, &msg, priorMsgs, ts)
-	//if err != nil {
-	//	return -1, xerrors.Errorf("CallWithGas failed: %w", err)
-	//}
-	//if res.MsgRct.ExitCode != exitcode.Ok {
-	//	return -1, xerrors.Errorf("message execution failed: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
-	//}
-	//
-	//// Special case for PaymentChannel collect, which is deleting actor
-	//st, err := ob.Stmgr.ParentState(ts)
-	//if err != nil {
-	//	_ = err
-	//	// somewhat ignore it as it can happen and we just want to detect
-	//	// an existing PaymentChannel actor
-	//	return res.MsgRct.GasUsed, nil
-	//}
-	//act, err := st.GetActor(msg.To)
-	//if err != nil {
-	//	_ = err
-	//	// somewhat ignore it as it can happen and we just want to detect
-	//	// an existing PaymentChannel actor
-	//	return res.MsgRct.GasUsed, nil
-	//}
-	//
-	//if !act.IsPaymentChannelActor() {
-	//	return res.MsgRct.GasUsed, nil
-	//}
-	//if msgIn.Method != builtin0.MethodsPaych.Collect {
-	//	return res.MsgRct.GasUsed, nil
-	//}
-	//
-	//// return GasUsed without the refund for DestoryActor
-	//return res.MsgRct.GasUsed + 76e3, nil
+	// todo 需要调用vm applyMessage计算 ???
+
+
 	return 0, nil
 }
 
