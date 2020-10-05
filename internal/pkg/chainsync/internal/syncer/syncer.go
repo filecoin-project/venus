@@ -290,6 +290,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 			return err
 		}
 	}
+
 	receiptCid, err := syncer.messageProvider.StoreReceipts(ctx, receipts)
 	if err != nil {
 		return errors.Wrapf(err, "could not store message rerceipts for tip set %s", next.String())
@@ -451,6 +452,7 @@ func (syncer *Syncer) widen(ctx context.Context, ts block.TipSet) (block.TipSet,
 // HandleNewTipSet validates and syncs the chain rooted at the provided tipset
 // to a chain store.  Iff catchup is false then the syncer will set the head.
 func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, catchup bool) error {
+	logSyncer.Infof("HandleNewTipSet height: %v, catchup: %v", ci.Height, catchup)
 	err := syncer.handleNewTipSet(ctx, ci)
 	if err != nil {
 		return err
@@ -483,12 +485,6 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
-
-	h, err := tipsets[0].Height()
-	if err != nil {
-		logSyncer.Warnf("get height err: %s", err.Error())
-	}
-	logSyncer.Infof("fetchAndValidateHeaders success, head:%v,%v", h, tipsets[0].String())
 
 	//tipsets = tipsets[0:2004]
 	//ci.Head = tipsets[2003].Key()
