@@ -236,6 +236,7 @@ func (store *Store) loadStateRootAndReceipts(ts block.TipSet) (cid.Cid, cid.Cid,
 // PutTipSetMetadata persists the blocks of a tipset and the tipset index.
 func (store *Store) PutTipSetMetadata(ctx context.Context, tsm *TipSetMetadata) error {
 	// Update tipindex.
+	logStore.Infof("tsm: %v", *tsm)
 	err := store.tipIndex.Put(tsm)
 	if err != nil {
 		return err
