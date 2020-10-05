@@ -108,7 +108,7 @@ func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore
 //
 // The constants below determine the maximum number of tipsets fetched at once
 // (maxRecursionDepth) and how fast the ramp up is (recursionMultipler)
-const maxRecursionDepth = 64
+const maxRecursionDepth = 4
 const recursionMultiplier = 4
 
 // FetchTipSets gets Tipsets starting from the given tipset key and continuing until
@@ -126,16 +126,16 @@ const recursionMultiplier = 4
 //
 // See: https://github.com/filecoin-project/go-filecoin/issues/3175
 func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey block.TipSetKey, originatingPeer peer.ID, done func(block.TipSet) (bool, error)) ([]block.TipSet, error) {
-	return gsf.fetchTipSetsCommon(ctx, tsKey, originatingPeer, done, gsf.loadAndVerifyFullBlock, gsf.fullBlockSel, gsf.recFullBlockSel)
+	return gsf.fetchTipSetsCommon(ctx, 8, tsKey, originatingPeer, done, gsf.loadAndVerifyFullBlock, gsf.fullBlockSel, gsf.recFullBlockSel)
 }
 
 // FetchTipSetHeaders behaves as FetchTipSets but it only fetches and
 // syntactically validates a chain of headers, not full blocks.
 func (gsf *GraphSyncFetcher) FetchTipSetHeaders(ctx context.Context, tsKey block.TipSetKey, originatingPeer peer.ID, done func(block.TipSet) (bool, error)) ([]block.TipSet, error) {
-	return gsf.fetchTipSetsCommon(ctx, tsKey, originatingPeer, done, gsf.loadAndVerifyHeader, gsf.headerSel, gsf.recHeaderSel)
+	return gsf.fetchTipSetsCommon(ctx, 4096, tsKey, originatingPeer, done, gsf.loadAndVerifyHeader, gsf.headerSel, gsf.recHeaderSel)
 }
 
-func (gsf *GraphSyncFetcher) fetchTipSetsCommon(ctx context.Context, tsKey block.TipSetKey, originatingPeer peer.ID, done func(block.TipSet) (bool, error), loadAndVerify func(context.Context, block.TipSetKey) (block.TipSet, []cid.Cid, error), selGen func() ipld.Node, recSelGen func(int) ipld.Node) ([]block.TipSet, error) {
+func (gsf *GraphSyncFetcher) fetchTipSetsCommon(ctx context.Context, max int, tsKey block.TipSetKey, originatingPeer peer.ID, done func(block.TipSet) (bool, error), loadAndVerify func(context.Context, block.TipSetKey) (block.TipSet, []cid.Cid, error), selGen func() ipld.Node, recSelGen func(int) ipld.Node) ([]block.TipSet, error) {
 	// We can run into issues if we fetch from an originatingPeer that we
 	// are not already connected to so we usually ignore this value.
 	// However if the originator is our own peer ID (i.e. this node mined
@@ -153,7 +153,7 @@ func (gsf *GraphSyncFetcher) fetchTipSetsCommon(ctx context.Context, tsKey block
 	}
 
 	// fetch remaining tipsets recursively
-	return gsf.fetchRemainingTipsets(ctx, startingTipset, done, loadAndVerify, recSelGen, rpf)
+	return gsf.fetchRemainingTipsets(ctx, max, startingTipset, done, loadAndVerify, recSelGen, rpf)
 }
 
 func (gsf *GraphSyncFetcher) fetchFirstTipset(ctx context.Context, tsKey block.TipSetKey, loadAndVerify func(context.Context, block.TipSetKey) (block.TipSet, []cid.Cid, error), selGen func() ipld.Node, rpf *requestPeerFinder) (block.TipSet, error) {
@@ -187,7 +187,7 @@ func (gsf *GraphSyncFetcher) fetchFirstTipset(ctx context.Context, tsKey block.T
 	}
 }
 
-func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, startingTipset block.TipSet, done func(block.TipSet) (bool, error), loadAndVerify func(context.Context, block.TipSetKey) (block.TipSet, []cid.Cid, error), recSelGen func(int) ipld.Node, rpf *requestPeerFinder) ([]block.TipSet, error) {
+func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, max int, startingTipset block.TipSet, done func(block.TipSet) (bool, error), loadAndVerify func(context.Context, block.TipSetKey) (block.TipSet, []cid.Cid, error), recSelGen func(int) ipld.Node, rpf *requestPeerFinder) ([]block.TipSet, error) {
 	out := []block.TipSet{startingTipset}
 	isDone, err := done(startingTipset)
 	if err != nil {
@@ -198,6 +198,7 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 	recursionDepth := 1
 	anchor := startingTipset // The tipset above the one we actually want to fetch.
 	for !isDone {
+
 		// Because a graphsync query always starts from a single CID,
 		// we fetch tipsets anchored from any block in the last (i.e. highest) tipset and
 		// recursively fetching sets of parents.
@@ -238,7 +239,7 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 				break // Stop verifying, make another fetch
 			}
 		}
-		if len(incomplete) == 0 && recursionDepth < maxRecursionDepth {
+		if len(incomplete) == 0 && recursionDepth < max {
 			recursionDepth *= recursionMultiplier
 		}
 	}

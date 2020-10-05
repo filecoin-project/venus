@@ -27,7 +27,7 @@ func Testnet() *NetworkConf {
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
-			ConsensusMinerMinPower: 1024 << 30,
+			ConsensusMinerMinPower: 10 << 40,
 			ReplaceProofTypes: []int64{
 				int64(abi.RegisteredSealProof_StackedDrg32GiBV1),
 				int64(abi.RegisteredSealProof_StackedDrg64GiBV1),

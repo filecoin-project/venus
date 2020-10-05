@@ -190,6 +190,11 @@ func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator
 func FindTipsetAtEpoch(ctx context.Context, start block.TipSet, epoch abi.ChainEpoch, reader TipSetProvider) (ts block.TipSet, err error) {
 	iterator := IterAncestors(ctx, reader, start)
 	var h abi.ChainEpoch
+	searchHeight := epoch
+	if searchHeight < 0 {
+		searchHeight = 0
+	}
+
 	for ; !iterator.Complete(); err = iterator.Next() {
 		if err != nil {
 			return
@@ -199,7 +204,7 @@ func FindTipsetAtEpoch(ctx context.Context, start block.TipSet, epoch abi.ChainE
 		if err != nil {
 			return
 		}
-		if h <= epoch {
+		if h <= searchHeight {
 			break
 		}
 	}

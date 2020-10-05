@@ -6,7 +6,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/exitcode"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
@@ -17,27 +16,6 @@ type Receipt struct {
 	ExitCode    exitcode.ExitCode `json:"exitCode"`
 	ReturnValue []byte            `json:"return"`
 	GasUsed     gas.Unit          `json:"gasUsed"`
-}
-
-// Value returns a successful code with the value encoded.
-//
-// Callers do NOT need to encode the value before calling this method.
-func Value(obj interface{}, gasUsed gas.Unit) Receipt {
-	code := exitcode.Ok
-	var aux []byte
-	if obj != nil {
-		var err error
-		aux, err = encoding.Encode(obj)
-		if err != nil {
-			code = exitcode.ErrSerialization
-		}
-	}
-
-	return Receipt{
-		ExitCode:    code,
-		ReturnValue: aux,
-		GasUsed:     gasUsed,
-	}
 }
 
 // Failure returns with a non-zero exit code.

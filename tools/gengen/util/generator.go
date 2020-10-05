@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/build"
 	xerrors "github.com/pkg/errors"
 	"io"
 	mrand "math/rand"
@@ -27,13 +26,11 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cid "github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mh "github.com/multiformats/go-multihash"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
@@ -64,7 +61,7 @@ var (
 type GenesisGenerator struct {
 	// actor state
 	stateTree state.Tree
-	store     vm.Storage
+	store     *vm.Storage
 	cst       cbor.IpldStore
 	vm        genesis.VM
 
@@ -75,23 +72,28 @@ type GenesisGenerator struct {
 	cfg       *GenesisCfg
 }
 
-func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
+func NewGenesisGenerator(vmStorage *vm.Storage) *GenesisGenerator {
 	csc := func(context.Context, abi.ChainEpoch, state.Tree) (abi.TokenAmount, error) {
 		return big.Zero(), nil
 	}
 
 	nwv := func(context.Context, abi.ChainEpoch) network.Version {
-		return build.NewestNetworkVersion
+		return network.Version0
 	}
 
-	cst := cborutil.NewIpldStore(bs)
 	g := GenesisGenerator{}
-	g.stateTree = state.NewState(cst)
-	g.store = vm.NewStorage(bs)
+	g.stateTree = state.NewState(vmStorage)
+	g.store = vmStorage
+	g.cst = vmStorage
 
 	g.chainRand = crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}}
-	g.vm = vm.NewVM(g.stateTree, &g.store, vmsupport.NewSyscalls(&vmsupport.NilFaultChecker{}, &proofs.FakeVerifier{}), abi.NewTokenAmount(InitialBaseFee), nwv, csc, &g.chainRand).(genesis.VM)
-	g.cst = cst
+	vmOption := vm.VmOption{
+		CircSupplyCalculator: csc,
+		NtwkVersionGetter:    nwv,
+		Rnd:                  &crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}},
+		BaseFee:              abi.NewTokenAmount(InitialBaseFee),
+	}
+	g.vm = vm.NewVM(g.stateTree, vmStorage, vmsupport.NewSyscalls(&vmsupport.NilFaultChecker{}, &proofs.FakeVerifier{}), vmOption).(genesis.VM)
 
 	return &g
 }
@@ -140,7 +142,7 @@ func (g *GenesisGenerator) createSingletonActor(ctx context.Context, addr addres
 	if err != nil {
 		return nil, fmt.Errorf("failed to create state")
 	}
-	headCid, _, err := g.store.Put(context.Background(), state)
+	headCid, err := g.store.Put(context.Background(), state)
 	if err != nil {
 		return nil, fmt.Errorf("failed to store state")
 	}
@@ -171,7 +173,7 @@ func (g *GenesisGenerator) updateSingletonActor(ctx context.Context, addr addres
 	if err != nil {
 		return nil, fmt.Errorf("failed to create state")
 	}
-	headCid, _, err := g.store.Put(context.Background(), state)
+	headCid, err := g.store.Put(context.Background(), state)
 	if err != nil {
 		return nil, fmt.Errorf("failed to store state")
 	}
@@ -455,7 +457,7 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 
 	g.updateSingletonActor(ctx, builtin.StoragePowerActorAddr, func(actor *actor.Actor) (interface{}, error) {
 		var mState power.State
-		_, err := g.store.Get(ctx, actor.Head.Cid, &mState)
+		err := g.store.Get(ctx, actor.Head.Cid, &mState)
 		if err != nil {
 			return nil, err
 		}
@@ -496,7 +498,7 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		// we've added fake power for this sector above, remove it now
 		_, err = g.updateSingletonActor(ctx, builtin.StoragePowerActorAddr, func(actor *actor.Actor) (interface{}, error) {
 			var mState power.State
-			_, err = g.store.Get(ctx, actor.Head.Cid, &mState)
+			err = g.store.Get(ctx, actor.Head.Cid, &mState)
 			if err != nil {
 				return nil, err
 			}
@@ -565,7 +567,7 @@ func (g *GenesisGenerator) loadMinerState(ctx context.Context, actorAddr address
 		return nil, fmt.Errorf("no such miner actor %s", actorAddr)
 	}
 	var mState miner.State
-	_, err = g.store.Get(ctx, mAct.Head.Cid, &mState)
+	err = g.store.Get(ctx, mAct.Head.Cid, &mState)
 	if err != nil {
 		return nil, err
 	}
@@ -700,7 +702,7 @@ func (g *GenesisGenerator) updatePower(ctx context.Context, minerAddr address.Ad
 		return big.Zero(), fmt.Errorf("state tree could not find power actor")
 	}
 	var powerState power.State
-	_, err = g.store.Get(ctx, powAct.Head.Cid, &powerState)
+	err = g.store.Get(ctx, powAct.Head.Cid, &powerState)
 	if err != nil {
 		return big.Zero(), err
 	}
@@ -718,7 +720,7 @@ func (g *GenesisGenerator) updatePower(ctx context.Context, minerAddr address.Ad
 	powerState.TotalQualityAdjPower = big.Add(powerState.TotalQualityAdjPower, qaPower)
 
 	// Persist new state.
-	newPowCid, _, err := g.store.Put(ctx, &powerState)
+	newPowCid, err := g.store.Put(ctx, &powerState)
 	if err != nil {
 		return big.Zero(), err
 	}
@@ -743,7 +745,7 @@ func (g *GenesisGenerator) putSector(ctx context.Context, sector *sectorCommitIn
 		return fmt.Errorf("mState tree could not find miner actor %s", sector.miner)
 	}
 	var mState miner.State
-	_, err = g.store.Get(ctx, mAct.Head.Cid, &mState)
+	err = g.store.Get(ctx, mAct.Head.Cid, &mState)
 	if err != nil {
 		return err
 	}
@@ -767,7 +769,7 @@ func (g *GenesisGenerator) putSector(ctx context.Context, sector *sectorCommitIn
 	}
 
 	// Persist new state.
-	newMinerCid, _, err := g.store.Put(ctx, &mState)
+	newMinerCid, err := g.store.Put(ctx, &mState)
 	if err != nil {
 		return err
 	}

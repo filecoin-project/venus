@@ -3,7 +3,6 @@ package vmcontext
 import (
 	"context"
 	"fmt"
-
 	. "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
@@ -20,8 +19,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -34,7 +33,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
-
 )
 
 var vmlog = logging.Logger("vm.context")
@@ -42,31 +40,38 @@ var vmlog = logging.Logger("vm.context")
 type CircSupplyCalculator func(context.Context, abi.ChainEpoch, state.Tree) (abi.TokenAmount, error)
 type NtwkVersionGetter func(context.Context, abi.ChainEpoch) network.Version
 
+type VmOption struct {
+	CircSupplyCalculator CircSupplyCalculator
+	NtwkVersionGetter    NtwkVersionGetter
+	Rnd                  crypto.RandomnessSource
+	BaseFee              abi.TokenAmount
+}
+
 // VM holds the stateView and executes messages over the stateView.
 type VM struct {
-	context      context.Context
-	actorImpls   ActorImplLookup
-	store        *storage.VMStorage
-	state        state.Tree
+	context    context.Context
+	actorImpls ActorImplLookup
+	store      *storage.VMStorage
+	state      state.Tree
+
 	syscalls     SyscallsImpl
 	currentHead  block.TipSetKey
 	currentEpoch abi.ChainEpoch
 	pricelist    gas.Pricelist
 
-	circSupplyCalc CircSupplyCalculator
-	ntwkVersion    NtwkVersionGetter
-	rnd            crypto.RandomnessSource
-	baseFee        abi.TokenAmount
+	vmOption VmOption
+}
+
+type Ret struct {
+	GasTracker GasTracker
+	OutPuts    gas.GasOutputs
+	Receipt    message.Receipt
 }
 
 // ActorImplLookup provides access to upgradeable actor code.
 type ActorImplLookup interface {
 	GetActorImpl(code Cid) (dispatch.Dispatcher, error)
 }
-
-type minerPenaltyFIL = abi.TokenAmount
-
-type gasRewardFIL = abi.TokenAmount
 
 type internalMessage struct {
 	from   address.Address
@@ -82,21 +87,15 @@ func NewVM(actorImpls ActorImplLookup,
 	store *storage.VMStorage,
 	st state.Tree,
 	syscalls SyscallsImpl,
-	baseFee abi.TokenAmount,
-	ntwkVersion NtwkVersionGetter,
-	circSupplyCalc CircSupplyCalculator,
-	rnd crypto.RandomnessSource,
+	VmOption VmOption,
 ) VM {
 	return VM{
-		context:        context.Background(),
-		actorImpls:     actorImpls,
-		store:          store,
-		state:          st,
-		syscalls:       syscalls,
-		baseFee:        baseFee,
-		ntwkVersion:    ntwkVersion,
-		circSupplyCalc: circSupplyCalc,
-		rnd:            rnd,
+		context:    context.Background(),
+		actorImpls: actorImpls,
+		store:      store,
+		state:      st,
+		syscalls:   syscalls,
+		vmOption:   VmOption,
 		// loaded during execution
 		// currentEpoch: ..,
 	}
@@ -157,6 +156,10 @@ func (vm *VM) flush() (state.Root, error) {
 	if root, err := vm.state.Flush(vm.context); err != nil {
 		return Undef, err
 	} else {
+		/*		// flush all blocks out of the store
+				if err := vm.store.Flush(); err != nil {
+					return Undef, err
+				}*/
 		return root, nil
 	}
 }
@@ -185,7 +188,7 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 
 	// get a view into the actor stateView
 	var state init_.State
-	if _, err := vm.store.Get(vm.context, initActorEntry.Head.Cid, &state); err != nil {
+	if err := vm.store.Get(vm.context, initActorEntry.Head.Cid, &state); err != nil {
 		panic(err)
 	}
 
@@ -241,7 +244,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 	seenMsgs := make(map[Cid]struct{})
 
 	// process messages on each block
-	for _, blk := range blocks {
+	for index, blk := range blocks {
 		if blk.Miner.Protocol() != address.ID {
 			panic("precond failure: block miner address must be an IDAddress")
 		}
@@ -259,56 +262,98 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 				continue
 			}
 
+			fmt.Println("start to process bls message ", mcid)
 			// apply message
-			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(m, m.OnChainLen())
+			ret := vm.applyMessage(m, m.OnChainLen())
 
 			// accumulate result
-			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)
-			minerGasRewardTotal = big.Add(minerGasRewardTotal, minerGasRewardCurr)
-			receipts = append(receipts, receipt)
+			minerPenaltyTotal = big.Add(minerPenaltyTotal, ret.OutPuts.MinerPenalty)
+			minerGasRewardTotal = big.Add(minerGasRewardTotal, ret.OutPuts.MinerTip)
+			receipts = append(receipts, ret.Receipt)
 
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
+			iii, _ := vm.flush()
+			fmt.Printf("message: %s  root: %s\n", mcid, iii)
+
+			/*dddd, _ := json.MarshalIndent(ret.OutPuts,"","\t")
+			fmt.Println(string(dddd))
+			xxxx := []*types2.GasTrace{}
+			for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
+				xxx.Location = nil
+				if xxx.TotalGas >0 {
+					xxxx = append(xxxx, xxx)
+				}
+			}
+			dddd, _ = json.MarshalIndent(xxxx,"","\t")
+			fmt.Println(string(dddd))*/
+
+			fmt.Println()
 		}
 
 		// Process SECP messages from the block
 		for _, sm := range blk.SECPMessages {
-			// extract unsigned message part
-			m := sm.Message
-
 			// do not recompute already seen messages
-			mcid := msgCID(&m)
+			mcid, _ := sm.Cid()
 			if _, found := seenMsgs[mcid]; found {
 				continue
 			}
 
+			fmt.Println("start to process secp message ", mcid)
+			m := sm.Message
 			// apply message
 			// Note: the on-chain size for SECP messages is different
-			receipt, minerPenaltyCurr, minerGasRewardCurr := vm.applyMessage(&m, sm.OnChainLen())
+			ret := vm.applyMessage(&m, sm.OnChainLen())
 
 			// accumulate result
-			minerPenaltyTotal = big.Add(minerPenaltyTotal, minerPenaltyCurr)
-			minerGasRewardTotal = big.Add(minerGasRewardTotal, minerGasRewardCurr)
-			receipts = append(receipts, receipt)
+			minerPenaltyTotal = big.Add(minerPenaltyTotal, ret.OutPuts.MinerPenalty)
+			minerGasRewardTotal = big.Add(minerGasRewardTotal, ret.OutPuts.MinerTip)
+			receipts = append(receipts, ret.Receipt)
 
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
+
+			iii, _ := vm.flush()
+			fmt.Printf("message: %s  root: %s\n", mcid, iii)
+			/*		dddd, _ := json.MarshalIndent(ret.OutPuts,"","\t")
+					fmt.Println(string(dddd))
+					xxxx := []*types2.GasTrace{}
+					for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
+						xxx.Location = nil
+						if xxx.TotalGas >0 {
+							xxxx = append(xxxx, xxx)
+						}
+					}
+					dddd, _ = json.MarshalIndent(xxxx,"","\t")
+					fmt.Println(string(dddd))*/
+			fmt.Println()
 		}
+
+		root, _ := vm.state.Flush(context.TODO())
+		fmt.Println("before reward: %d  root: %s", index, root)
 
 		// Pay block reward.
 		// Dragons: missing final protocol design on if/how to determine the nominal power
-		rewardMessage := makeBlockRewardMessage(blk.Miner, minerPenaltyTotal, minerGasRewardTotal, 1)
+		rewardMessage := makeBlockRewardMessage(blk.Miner, minerPenaltyTotal, minerGasRewardTotal, blk.WinCount)
 		if _, err := vm.applyImplicitMessage(rewardMessage); err != nil {
 			return nil, err
 		}
+		root, _ = vm.state.Flush(context.TODO())
+		fmt.Println("reward: %d  root: %s", index, root)
+		fmt.Print()
 	}
 
+	root, _ := vm.state.Flush(context.TODO())
+	fmt.Println("before cron root: %s", root)
+	fmt.Println("xxxx")
 	// cron tick
 	cronMessage := makeCronTickMessage()
 	if _, err := vm.applyImplicitMessage(cronMessage); err != nil {
 		return nil, err
 	}
-
+	root, _ = vm.state.Flush(context.TODO())
+	fmt.Println("after cron root: %s", root)
+	fmt.Print()
 	// commit stateView
 	if _, err := vm.flush(); err != nil {
 		return nil, err
@@ -347,7 +392,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) (cbor.Marshaler, error)
 	if originatorIsAccount {
 		// Load sender account stateView to obtain stable pubkey address.
 		var senderState account.State
-		_, err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
+		err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
 		if err != nil {
 			panic(err)
 		}
@@ -369,17 +414,19 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) (cbor.Marshaler, error)
 	}
 
 	// 3. build context
+	fmt.Println("Origin address:", originator)
 	topLevel := topLevelContext{
 		originatorStableAddress: originator,
 		originatorCallSeq:       fromActor.CallSeqNum, // Implied CallSeqNum is that of the actor before incrementing.
 		newActorAddressCount:    0,
 	}
 
-	ctx := newInvocationContext(vm, &topLevel, imsg, fromActor, &gasTank, vm.rnd)
+	ctx := newInvocationContext(vm, &topLevel, imsg, fromActor, &gasTank, vm.vmOption.Rnd)
 
 	// 4. invoke message
 	ret, code := ctx.invoke()
 	if code.IsError() {
+
 		return nil, fmt.Errorf("invalid exit code %d during implicit message execution: from %s, to %s, method %d, value %s, params %v",
 			code, imsg.from, imsg.to, imsg.method, imsg.value, imsg.params)
 	}
@@ -387,7 +434,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) (cbor.Marshaler, error)
 }
 
 // applyMessage applies the message to the current stateView.
-func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (message.Receipt, minerPenaltyFIL, gasRewardFIL) {
+func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) Ret {
 	// This method does not actually execute the message itself,
 	// but rather deals with the pre/post processing of a message.
 	// (see: `invocationContext.invoke()` for the dispatch and execution)
@@ -408,55 +455,83 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (mess
 	msgGasCost := vm.pricelist.OnChainMessage(onChainMsgSize) //todo get price list by height
 	ok := gasTank.TryCharge(msgGasCost)
 	if !ok {
-		minerPenaltyAmount := big.Mul(vm.baseFee, big.NewInt(gasTank.gasUsed))
+		gasOutputs := gas.ZeroGasOutputs()
+		gasOutputs.MinerPenalty = big.Mul(vm.vmOption.BaseFee, big.NewInt(msgGasCost.Total()))
 		// Invalid message; insufficient gas limit to pay for the on-chain message size.
 		// Note: the miner needs to pay the full msg cost, not what might have been partially consumed
-		return message.Failure(exitcode.SysErrOutOfGas, gas.Zero), minerPenaltyAmount, big.Zero()
+		return Ret{
+			GasTracker: gasTank,
+			OutPuts:    gasOutputs,
+			Receipt:    message.Failure(exitcode.SysErrOutOfGas, gas.Zero),
+		}
 	}
-	minerPenaltyAmount := big.Mul(vm.baseFee, msg.GasLimit.AsBigInt())
-	// 2. load actor from global stateView
-	if msg.From, ok = vm.normalizeAddress(msg.From); !ok {
-		return message.Failure(exitcode.SysErrSenderInvalid, gas.Zero), minerPenaltyAmount, big.Zero()
-	}
+
+	minerPenaltyAmount := big.Mul(vm.vmOption.BaseFee, msg.GasLimit.AsBigInt())
 
 	fromActor, found, err := vm.state.GetActor(vm.context, msg.From)
 	if err != nil {
+		fmt.Println(msg.From.String())
+		vm.state.GetActor(vm.context, msg.From)
 		panic(err)
 	}
 	if !found {
 		// Execution error; sender does not exist at time of message execution.
-		return message.Failure(exitcode.SysErrSenderInvalid, gas.Zero), minerPenaltyAmount, big.Zero()
+		gasOutputs := gas.ZeroGasOutputs()
+		gasOutputs.MinerPenalty = minerPenaltyAmount
+		return Ret{
+			GasTracker: gasTank,
+			OutPuts:    gasOutputs,
+			Receipt:    message.Failure(exitcode.SysErrSenderInvalid, gas.Zero),
+		}
 	}
 
 	if !fromActor.Code.Equals(builtin.AccountActorCodeID) {
 		// Execution error; sender is not an account.
-		return message.Failure(exitcode.SysErrSenderInvalid, gas.Zero), minerPenaltyAmount, big.Zero()
+		gasOutputs := gas.ZeroGasOutputs()
+		gasOutputs.MinerPenalty = minerPenaltyAmount
+		return Ret{
+			GasTracker: gasTank,
+			OutPuts:    gasOutputs,
+			Receipt:    message.Failure(exitcode.SysErrSenderInvalid, gas.Zero),
+		}
 	}
 
 	// 3. make sure this is the right message order for fromActor
 	if msg.CallSeqNum != fromActor.CallSeqNum {
 		// Execution error; invalid seq number.
-		return message.Failure(exitcode.SysErrSenderStateInvalid, gas.Zero), minerPenaltyAmount, big.Zero()
+		gasOutputs := gas.ZeroGasOutputs()
+		gasOutputs.MinerPenalty = minerPenaltyAmount
+		return Ret{
+			GasTracker: gasTank,
+			OutPuts:    gasOutputs,
+			Receipt:    message.Failure(exitcode.SysErrSenderStateInvalid, gas.Zero),
+		}
 	}
 
 	// 4. Check sender balance (gas + value being sent)
 	gasLimitCost := big.Mul(big.NewIntUnsigned(uint64(msg.GasLimit)), msg.GasFeeCap)
-	totalCost := big.Add(msg.Value, gasLimitCost)
-	if fromActor.Balance.LessThan(totalCost) {
+	//totalCost := big.Add(msg.Value, gasLimitCost) todo no value check?
+	if fromActor.Balance.LessThan(gasLimitCost) {
 		// Execution error; sender does not have sufficient funds to pay for the gas limit.
-		return message.Failure(exitcode.SysErrSenderStateInvalid, gas.Zero), minerPenaltyAmount, big.Zero()
+		gasOutputs := gas.ZeroGasOutputs()
+		gasOutputs.MinerPenalty = minerPenaltyAmount
+		return Ret{
+			GasTracker: gasTank,
+			OutPuts:    gasOutputs,
+			Receipt:    message.Failure(exitcode.SysErrSenderStateInvalid, gas.Zero),
+		}
 	}
 
 	gasHolder := &actor.Actor{Balance: big.NewInt(0)}
-	if err := vm.transferToGasHolder(msg.From, gasHolder, totalCost); err != nil {
+	if err := vm.transferToGasHolder(msg.From, gasHolder, gasLimitCost); err != nil {
 		panic(xerrors.Errorf("failed to withdraw gas funds: %w", err))
 	}
+
 	// 5. Increment sender CallSeqNum
-	fromActor.IncrementSeqNum()
-	// update actor
-	if err := vm.state.SetActor(vm.context, msg.From, fromActor); err != nil {
-		panic(err)
-	}
+	vm.state.MutateActor(msg.From, func(msgFromActor *actor.Actor) error {
+		msgFromActor.IncrementSeqNum()
+		return nil
+	})
 
 	// reload from actor
 	// Note: balance might have changed
@@ -470,7 +545,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (mess
 
 	// Load sender account stateView to obtain stable pubkey address.
 	var senderState account.State
-	_, err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
+	err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
 	if err != nil {
 		panic(err)
 	}
@@ -496,9 +571,15 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (mess
 		newActorAddressCount:    0,
 	}
 
+	// 2. load actor from global stateView
+	from, ok := vm.normalizeAddress(msg.From)
+	if !ok {
+		//todo abort address
+		runtime.Abortf(exitcode.SysErrInvalidReceiver, "resolve msg.From address failed")
+	}
 	// 1. build internal msg
 	imsg := internalMessage{
-		from:   msg.From,
+		from:   from,
 		to:     msg.To,
 		value:  msg.Value,
 		method: msg.Method,
@@ -506,21 +587,16 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (mess
 	}
 
 	// 2. build invocation context
-	ctx := newInvocationContext(vm, &topLevel, imsg, fromActor, &gasTank, vm.rnd)
+	ctx := newInvocationContext(vm, &topLevel, imsg, fromActor, &gasTank, vm.vmOption.Rnd)
 
 	// 3. invoke
 	ret, code := ctx.invoke()
-
-	// build receipt
-	receipt := message.Receipt{
-		ExitCode: code,
-	}
 	// encode value
-	receipt.ReturnValue, err = ret.ToCbor()
+	returnValue, err := ret.ToCbor()
 	if err != nil {
 		// failed to encode object returned by actor
-		receipt.ReturnValue = []byte{}
-		receipt.ExitCode = exitcode.SysErrorIllegalActor
+		returnValue = []byte{}
+		code = exitcode.SysErrorIllegalActor
 	}
 
 	// post-send
@@ -530,19 +606,19 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (mess
 
 	// 1. charge for the space used by the return value
 	// Note: the GasUsed in the message receipt does not
-	ok = gasTank.TryCharge(vm.pricelist.OnChainReturnValue(len(receipt.ReturnValue)))
+	ok = gasTank.TryCharge(vm.pricelist.OnChainReturnValue(len(returnValue)))
 	if !ok {
 		// Insufficient gas remaining to cover the on-chain return value; proceed as in the case
 		// of method execution failure.
-		receipt.ExitCode = exitcode.SysErrOutOfGas
-		receipt.ReturnValue = []byte{}
+		code = exitcode.SysErrOutOfGas
+		returnValue = []byte{}
 	}
 
 	// Roll back all stateView if the receipt's exit code is not ok.
 	// This is required in addition to revert within the invocation context since top level messages can fail for
 	// more reasons than internal ones. Invocation context still needs its own revert so actors can recover and
 	// proceed from a nested call failure.
-	if receipt.ExitCode != exitcode.Ok {
+	if code != exitcode.Ok {
 		if err := vm.revert(); err != nil {
 			panic(err)
 		}
@@ -553,10 +629,9 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (mess
 	if gasUsed < 0 {
 		gasUsed = 0
 	}
-	gasOutputs := gas.ComputeGasOutputs(gasUsed, int64(msg.GasLimit), vm.baseFee, msg.GasFeeCap, msg.GasPremium)
+	gasOutputs := gas.ComputeGasOutputs(gasUsed, int64(msg.GasLimit), vm.vmOption.BaseFee, msg.GasFeeCap, msg.GasPremium)
 
-	if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder,
-		gasOutputs.BaseFeeBurn); err != nil {
+	if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder, gasOutputs.BaseFeeBurn); err != nil {
 		panic(xerrors.Errorf("failed to burn base fee: %w", err))
 	}
 
@@ -564,8 +639,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (mess
 		panic(xerrors.Errorf("failed to give miner gas reward: %w", err))
 	}
 
-	if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder,
-		gasOutputs.OverEstimationBurn); err != nil {
+	if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder, gasOutputs.OverEstimationBurn); err != nil {
 		panic(xerrors.Errorf("failed to burn overestimation fee: %w", err))
 	}
 
@@ -579,7 +653,15 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (mess
 	}
 
 	// 3. Success!
-	return receipt, gasOutputs.MinerPenalty, gasOutputs.MinerTip
+	return Ret{
+		GasTracker: gasTank,
+		OutPuts:    gasOutputs,
+		Receipt: message.Receipt{
+			ExitCode:    code,
+			ReturnValue: returnValue,
+			GasUsed:     gas.NewGas(gasUsed),
+		},
+	}
 }
 
 // transfer debits money from one account and credits it to another.
@@ -659,7 +741,7 @@ func (vm *VM) transferToGasHolder(addr address.Address, gasHolder *actor.Actor, 
 	if amt.LessThan(big.NewInt(0)) {
 		return xerrors.Errorf("attempted to transfer negative value to gas holder")
 	}
-
+	fmt.Println(fmt.Sprintf("transfer %s to holder", amt.String()))
 	return vm.state.MutateActor(addr, func(a *actor.Actor) error {
 		if err := deductFunds(a, amt); err != nil {
 			return err
@@ -677,6 +759,7 @@ func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *actor.Actor
 	if amt.Equals(big.NewInt(0)) {
 		return nil
 	}
+	fmt.Println(fmt.Sprintf("transfer %s from holder", amt.String()))
 
 	return vm.state.MutateActor(addr, func(a *actor.Actor) error {
 		if err := deductFunds(gasHolder, amt); err != nil {
@@ -688,7 +771,7 @@ func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *actor.Actor
 }
 
 func (vm *VM) TotalFilCircSupply(height abi.ChainEpoch, stateTree state.Tree) (abi.TokenAmount, error) {
-	return vm.circSupplyCalc(vm.context, height, stateTree)
+	return vm.vmOption.CircSupplyCalculator(vm.context, height, stateTree)
 }
 
 func deductFunds(act *actor.Actor, amt abi.TokenAmount) error {
@@ -746,7 +829,7 @@ func (vm *syscallsStateView) AccountSignerAddress(ctx context.Context, accountAd
 		return address.Undef, fmt.Errorf("signer resolution found no such actor %s", accountAddr)
 	}
 	var state account.State
-	if _, err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
+	if err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
 		// This error is internal, shouldn't propagate as on-chain failure
 		panic(fmt.Errorf("signer resolution failed to lost stateView for %s ", accountAddr))
 	}
@@ -762,7 +845,7 @@ func (vm *syscallsStateView) MinerControlAddresses(ctx context.Context, maddr ad
 		return address.Undef, address.Undef, fmt.Errorf("miner resolution found no such actor %s", maddr)
 	}
 	var state miner.State
-	if _, err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
+	if err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
 		// This error is internal, shouldn't propagate as on-chain failure
 		panic(fmt.Errorf("signer resolution failed to lost stateView for %s ", maddr))
 	}
@@ -779,7 +862,7 @@ func (vm *syscallsStateView) GetNtwkVersion(ctx context.Context, ce abi.ChainEpo
 }
 
 func (vm *syscallsStateView) TotalFilCircSupply(height abi.ChainEpoch, st state.Tree) (abi.TokenAmount, error) {
-	return vm.circSupplyCalc(context.TODO(), height, st)
+	return vm.vmOption.CircSupplyCalculator(context.TODO(), height, st)
 }
 
 //

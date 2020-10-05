@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"math/rand"
 	"testing"
@@ -36,10 +37,10 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 
 	mds := ds.NewMapDatastore()
 	bstore := blockstore.NewBlockstore(mds)
-
-	info, err := gengen.GenGen(context.TODO(), cfg, bstore)
+	vmStorage := vm.NewStorage(bstore)
+	info, err := gengen.GenGen(context.TODO(), cfg, vmStorage)
 	require.NoError(t, err)
-
+	vmStorage.Flush()
 	return &ChainSeed{
 		info:   info,
 		bstore: bstore,

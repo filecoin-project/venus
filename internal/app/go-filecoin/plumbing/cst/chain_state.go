@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/network"
 	"io"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -43,12 +43,9 @@ import (
 
 var logStore = logging.Logger("plumbing/chain_store")
 
-// constants for Weight calculation
-// The ratio of weight contributed by short-term vs long-term factors in a given round
-const WRatioNum = int64(1)
-const WRatioDen = uint64(2)
-
 type chainReadWriter interface {
+	GenesisRootCid() cid.Cid
+	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
 	GetHead() block.TipSetKey
 	GetGenesisBlock(ctx context.Context) (*block.Block, error)
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
@@ -180,45 +177,26 @@ func (chn *ChainStateReadWriter) GetReceipts(ctx context.Context, id cid.Cid) ([
 }
 
 // SampleChainRandomness computes randomness seeded by a ticket from the chain `head` at `sampleHeight`.
-func (chn *ChainStateReadWriter) SampleChainRandomness(ctx context.Context, head block.TipSetKey, tag acrypto.DomainSeparationTag,
+func (chn *ChainStateReadWriter) SampleChainRandomness(ctx context.Context, tsk block.TipSetKey, tag acrypto.DomainSeparationTag,
 	epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	genBlk, err := chn.readWriter.GetGenesisBlock(ctx)
 	if err != nil {
 		return nil, err
 	}
-	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewRandomnessSamplerAtHead(chn.readWriter, genBlk.Ticket, head)}
+
+	tipsetProvider := chain.TipSetProviderFromBlocks(ctx, chn)
+	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewRandomnessSamplerAtTipSet(tipsetProvider, genBlk.Ticket, tsk)}
 	return rnd.Randomness(ctx, tag, epoch, entropy)
 }
 
 func (chn *ChainStateReadWriter) ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	ts, err := chn.GetTipSet(tsk)
+	genBlk, err := chn.readWriter.GetGenesisBlock(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	if randEpoch > ts.EnsureHeight() {
-		return nil, xerrors.Errorf("cannot draw randomness from the future")
-	}
-
-	searchHeight := randEpoch
-	if searchHeight < 0 {
-		searchHeight = 0
-	}
-	chain.FindTipsetAtEpoch(ctx, ts, searchHeight, chn.readWriter)
-
-	randTs, err := chain.FindTipsetAtEpoch(ctx, ts, searchHeight, chn.readWriter)
-	if err != nil {
-		return nil, err
-	}
-
-	be, err := chain.FindLatestDRAND(ctx, randTs, chn.readWriter)
-	if err != nil {
-		return nil, err
-	}
-
-	// if at (or just past -- for null epochs) appropriate epoch
-	// or at genesis (works for negative epochs)
-	return DrawRandomness(be.Data, personalization, randEpoch, entropy)
+	tipsetProvider := chain.TipSetProviderFromBlocks(ctx, chn)
+	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewRandomnessSamplerAtTipSet(tipsetProvider, genBlk.Ticket, tsk)}
+	return rnd.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy)
 }
 
 // GetActor returns an actor from the latest state on the chain
@@ -411,66 +389,6 @@ func (chn *ChainStateReadWriter) AccountStateView(key block.TipSetKey) (state.Ac
 func (chn *ChainStateReadWriter) FaultStateView(key block.TipSetKey) (slashing.FaultStateView, error) {
 	return chn.StateView(key)
 }
-
-// ToDo review
-func (cs *ChainStateReadWriter) Weight(ctx context.Context, ts *block.TipSet) (abi.TokenAmount, error) {
-	zero := abi.NewTokenAmount(0)
-
-	if ts == nil {
-		return zero, nil
-	}
-	// >>> w[r] <<< + wFunction(totalPowerAtTipset(ts)) * 2^8 + (wFunction(totalPowerAtTipset(ts)) * sum(ts.blocks[].ElectionProof.WinCount) * wRatio_num * 2^8) / (e * wRatio_den)
-
-	ph, err := ts.ParentWeight()
-	if err != nil {
-		return zero, err
-	}
-	var out = big.NewInt(ph.Int64())
-
-	// >>> wFunction(totalPowerAtTipset(ts)) * 2^8 <<< + (wFunction(totalPowerAtTipset(ts)) * sum(ts.blocks[].ElectionProof.WinCount) * wRatio_num * 2^8) / (e * wRatio_den)
-
-	tpow := big.Zero()
-	{
-		view, err := cs.StateView(ts.Key())
-		if err != nil {
-			return zero, err
-		}
-
-		totalPower, err := view.PowerNetworkTotal(ctx)
-		if err != nil {
-			return zero, err
-		}
-		tpow = totalPower.QualityAdjustedPower // TODO: REVIEW: Is this correct?
-	}
-
-	log2P := int64(0)
-	if tpow.GreaterThan(zero) {
-		log2P = int64(tpow.BitLen() - 1)
-	} else {
-		// Not really expect to be here ...
-		return zero, xerrors.Errorf("All power in the net is gone. You network might be disconnected, or the net is dead!")
-	}
-
-	out.Add(out.Int, big.NewInt(log2P<<8).Int)
-
-	// (wFunction(totalPowerAtTipset(ts)) * sum(ts.blocks[].ElectionProof.WinCount) * wRatio_num * 2^8) / (e * wRatio_den)
-
-	totalJ := int64(0)
-	for _, b := range ts.Blocks() {
-		totalJ += b.ElectionProof.WinCount
-	}
-
-	eWeight := big.NewInt((log2P * WRatioNum))
-	eWeight = big.Lsh(eWeight,8)
-	eWeight = big.Mul(eWeight, big.NewInt(totalJ))
-	eWeight = big.Div(eWeight, big.NewInt(int64(uint64(builtin.ExpectedLeadersPerEpoch) * WRatioDen)))
-
-	out = big.Add(out, eWeight)
-
-	return out, nil
-}
-
-
 
 func DrawRandomness(rbase []byte, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	h := blake2b.New256()

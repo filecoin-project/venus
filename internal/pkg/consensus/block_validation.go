@@ -38,7 +38,6 @@ type chainState interface {
 	GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error)
 	StateView(block.TipSetKey) (*state.View, error)
 	AccountStateView(block.TipSetKey) (state.AccountStateView, error)
-	Weight(context.Context, *block.TipSet) (abi.TokenAmount, error)
 	GetBlock(context.Context, cid.Cid) (*block.Block, error)
 	BeaconSchedule() beacon.Schedule
 }
@@ -285,7 +284,6 @@ func GetLookbackTipSetForRound(ctx context.Context, ch chainState, ts *block.Tip
 //	return nil
 //}
 
-
 func (dv *DefaultBlockValidator) VerifyWinningPoStProof(ctx context.Context, b *block.Block, prevBeacon block.BeaconEntry, lbst cid.Cid, waddr address.Address) error {
 	if InsecurePoStValidation {
 		if len(b.WinPoStProof) == 0 {
@@ -496,32 +494,32 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 	//		return xerrors.New("block's miner does not meet minimum power threshold")
 	//	}
 
-		//rBeacon := prevBeacon
-		//if len(blk.BeaconEntries) != 0 {
-		//	rBeacon = blk.BeaconEntries[len(blk.BeaconEntries)-1]
-		//}
-		//buf := new(bytes.Buffer)
-		//if err := blk.Miner.MarshalCBOR(buf); err != nil {
-		//	return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
-		//}
-		//
-		//vrfBase, err := cst.DrawRandomness(rBeacon.Data, crypto.DomainSeparationTag_ElectionProofProduction, blk.Height, buf.Bytes())
-		//if err != nil {
-		//	return xerrors.Errorf("could not draw randomness: %w", err)
-		//}
-		//
-		//if err := VerifyElectionPoStVRF(ctx, waddr, vrfBase, blk.ElectionProof.VRFProof); err != nil {
-		//	return xerrors.Errorf("validating block election proof failed: %w", err)
-		//}
+	//rBeacon := prevBeacon
+	//if len(blk.BeaconEntries) != 0 {
+	//	rBeacon = blk.BeaconEntries[len(blk.BeaconEntries)-1]
+	//}
+	//buf := new(bytes.Buffer)
+	//if err := blk.Miner.MarshalCBOR(buf); err != nil {
+	//	return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
+	//}
+	//
+	//vrfBase, err := cst.DrawRandomness(rBeacon.Data, crypto.DomainSeparationTag_ElectionProofProduction, blk.Height, buf.Bytes())
+	//if err != nil {
+	//	return xerrors.Errorf("could not draw randomness: %w", err)
+	//}
+	//
+	//if err := VerifyElectionPoStVRF(ctx, waddr, vrfBase, blk.ElectionProof.VRFProof); err != nil {
+	//	return xerrors.Errorf("validating block election proof failed: %w", err)
+	//}
 
-		//slashed, err := stmgr.GetMinerSlashed(ctx, syncer.sm, baseTs, h.Miner)
-		//if err != nil {
-		//	return xerrors.Errorf("failed to check if block miner was slashed: %w", err)
-		//}
-		//
-		//if slashed {
-		//	return xerrors.Errorf("received block was from slashed or invalid miner")
-		//}
+	//slashed, err := stmgr.GetMinerSlashed(ctx, syncer.sm, baseTs, h.Miner)
+	//if err != nil {
+	//	return xerrors.Errorf("failed to check if block miner was slashed: %w", err)
+	//}
+	//
+	//if slashed {
+	//	return xerrors.Errorf("received block was from slashed or invalid miner")
+	//}
 
 	//	_, qaPower, err := view.MinerClaimedPower(ctx, blk.Miner)
 	//	if err != nil {
@@ -598,13 +596,13 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 	//})
 
 	//await := []async.ErrorFuture{
-		// minerCheck,
-		//tktsCheck,
-		//blockSigCheck,
-		//beaconValuesCheck,
-		//wproofCheck,
-		//winnerCheck,
-		//baseFeeCheck,
+	// minerCheck,
+	//tktsCheck,
+	//blockSigCheck,
+	//beaconValuesCheck,
+	//wproofCheck,
+	//winnerCheck,
+	//baseFeeCheck,
 	//}
 
 	//var merr error

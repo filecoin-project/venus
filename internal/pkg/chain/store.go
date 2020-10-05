@@ -3,6 +3,8 @@ package chain
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/build"
 	"golang.org/x/xerrors"
 	"os"
 	"runtime/debug"
@@ -480,6 +482,30 @@ func (store *Store) GenesisCid() cid.Cid {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	return store.genesis
+}
+
+func (store *Store) GenesisRootCid() cid.Cid {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	genesis, _ := store.stateAndBlockSource.GetBlock(context.TODO(), store.GenesisCid())
+	return genesis.StateRoot.Cid
+}
+
+// GenesisCid returns the genesis cid of the chain tracked by the default store.
+func (store *Store) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
+	if build.UseNewestNetwork() {
+		return build.NewestNetworkVersion
+	}
+
+	if height <= build.UpgradeBreezeHeight {
+		return network.Version0
+	}
+
+	if height <= build.UpgradeSmokeHeight {
+		return network.Version1
+	}
+
+	return build.NewestNetworkVersion
 }
 
 // Stop stops all activities and cleans up.

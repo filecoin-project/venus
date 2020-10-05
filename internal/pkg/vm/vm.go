@@ -1,20 +1,20 @@
 package vm
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-state-types/abi"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
 )
 
 // Re-exports
+
+type VmOption = vmcontext.VmOption
 
 // Interpreter is the VM.
 type Interpreter = interpreter.VMInterpreter
@@ -32,13 +32,13 @@ type BlockMessagesInfo = interpreter.BlockMessagesInfo
 type MessageReceipt = message.Receipt
 
 // NewVM creates a new VM interpreter.
-func NewVM(st state.Tree, store *storage.VMStorage, syscalls SyscallsImpl, baseFee abi.TokenAmount, ntwkVersion vmcontext.NtwkVersionGetter, circSupplyCalc vmcontext.CircSupplyCalculator, rnd crypto.RandomnessSource) Interpreter {
-	vm := vmcontext.NewVM(builtin.DefaultActors, store, st, syscalls, baseFee, ntwkVersion, circSupplyCalc, rnd)
+func NewVM(st state.Tree, store *storage.VMStorage, syscalls SyscallsImpl, option VmOption) Interpreter {
+	vm := vmcontext.NewVM(builtin.DefaultActors, store, st, syscalls, option)
 	return &vm
 }
 
 // NewStorage creates a new Storage for the VM.
-func NewStorage(bs blockstore.Blockstore) Storage {
+func NewStorage(bs blockstore.Blockstore) *Storage {
 	return storage.NewStorage(bs)
 }
 

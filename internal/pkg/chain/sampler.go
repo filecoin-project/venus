@@ -13,8 +13,8 @@ import (
 )
 
 // Creates a new sampler for the chain identified by `head`.
-func NewRandomnessSamplerAtHead(reader TipSetProvider, genesisTicket block.Ticket, head block.TipSetKey) *RandomnessSamplerAtHead {
-	return &RandomnessSamplerAtHead{
+func NewRandomnessSamplerAtTipSet(reader TipSetProvider, genesisTicket block.Ticket, head block.TipSetKey) *RandomnessSamplerAtTipSet {
+	return &RandomnessSamplerAtTipSet{
 		sampler: NewSampler(reader, genesisTicket),
 		head:    head,
 	}
@@ -46,6 +46,7 @@ func (s *Sampler) SampleTicket(ctx context.Context, head block.TipSetKey, epoch 
 		if err != nil {
 			return block.Ticket{}, err
 		}
+
 		// Note: it is not an error to have epoch > start.Height(); in the case of a run of null blocks the
 		// sought-after height may be after the base (last non-empty) tipset.
 		// It's also not an error for the requested epoch to be negative.
@@ -121,12 +122,12 @@ func DrawRandomness(rbase []byte, pers acrypto.DomainSeparationTag, round abi.Ch
 
 ///// A chain sampler with a specific head tipset key. /////
 
-type RandomnessSamplerAtHead struct {
+type RandomnessSamplerAtTipSet struct {
 	sampler *Sampler
 	head    block.TipSetKey
 }
 
-func (s *RandomnessSamplerAtHead) Sample(ctx context.Context, epoch abi.ChainEpoch) (crypto.RandomSeed, error) {
+func (s *RandomnessSamplerAtTipSet) Sample(ctx context.Context, epoch abi.ChainEpoch) (crypto.RandomSeed, error) {
 	ticket, err := s.sampler.SampleTicket(ctx, s.head, epoch)
 	if err != nil {
 		return nil, err
@@ -134,6 +135,7 @@ func (s *RandomnessSamplerAtHead) Sample(ctx context.Context, epoch abi.ChainEpo
 	return crypto.MakeRandomSeed(ticket.VRFProof)
 }
 
-func (s *RandomnessSamplerAtHead) GetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (s *RandomnessSamplerAtTipSet) GetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+
 	return s.sampler.SampleRandomnessFromBeacon(ctx, s.head, personalization, randEpoch, entropy)
 }

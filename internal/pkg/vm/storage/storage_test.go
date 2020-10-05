@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
 )
 
 func TestBatchSize(t *testing.T) {
@@ -36,7 +36,7 @@ func TestBatchSize(t *testing.T) {
 
 	data := bytes.Repeat([]byte("badger"), 100)
 	for i := int64(0); i < iterCount; i++ {
-		_, _, err = store.Put(ctx, fmt.Sprintf("%s%d", data, i))
+		_, _, err = store.PutWithLen(ctx, fmt.Sprintf("%s%d", data, i))
 		require.NoError(t, err)
 	}
 	err = store.Flush()

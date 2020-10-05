@@ -3,6 +3,8 @@ package paymentchannel
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
@@ -30,6 +32,8 @@ type ManagerStateView interface {
 // ChainReader is the subset of the ChainReadWriter API that the Manager uses
 type chainReader interface {
 	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
+	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
+	GenesisRootCid() cid.Cid
 }
 
 // NewManagerStateViewer initializes a new ManagerStateViewer

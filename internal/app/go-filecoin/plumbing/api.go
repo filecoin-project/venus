@@ -398,12 +398,11 @@ func (a *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round a
 		return nil, xerrors.Errorf("getting lookback miner actor state: %w", err)
 	}
 
-	lbst, err := a.chain.GetTipSetStateRoot(ctx, lbts.Key())
+	viewer, err := a.chain.StateView(lbts.Key())
 	if err != nil {
 		return nil, err
 	}
 
-	viewer := appstate.NewView(a.chain.IpldStore, lbst)
 	mas, err := viewer.LoadMinerActor(ctx, maddr)
 	if err != nil {
 		return nil, err
@@ -419,7 +418,7 @@ func (a *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round a
 		return nil, xerrors.Errorf("failed to get randomness for winning post: %w", err)
 	}
 
-	sectors, err := a.GetSectorsForWinningPoSt(ctx, pv, lbst, maddr, prand)
+	sectors, err := a.GetSectorsForWinningPoSt(ctx, pv, lbts, maddr, prand)
 	if err != nil {
 		return nil, xerrors.Errorf("getting winning post proving set: %w", err)
 	}
@@ -428,7 +427,7 @@ func (a *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round a
 		return nil, nil
 	}
 
-	mpow, tpow, err := a.GetPowerRaw(ctx, lbst, maddr)
+	mpow, tpow, err := a.GetPowerRaw(ctx, lbts, maddr)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get power: %w", err)
 	}
@@ -480,13 +479,17 @@ func (a *API) GetLookbackTipSetForRound(ctx context.Context, ts block.TipSet, ro
 	return &lbts, nil
 }
 
-func (a *API) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]proof.SectorInfo, error) {
+func (a *API) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, ts *block.TipSet, maddr address.Address, rand abi.PoStRandomness) ([]proof.SectorInfo, error) {
 	var partsProving []bitfield.BitField
 	var mas *miner.State
 	var info *miner.MinerInfo
 
-	viewer := appstate.NewView(a.chain.IpldStore, st)
-	mas, err := viewer.LoadMinerActor(ctx, maddr)
+	viewer, err := a.StateView(ts.Key())
+	if err != nil {
+		return nil, err
+	}
+
+	mas, err = viewer.LoadMinerActor(ctx, maddr)
 	if err != nil {
 		return nil, err
 	}
@@ -591,8 +594,11 @@ func (a *API) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifi
 	return out, nil
 }
 
-func (a *API) GetPowerRaw(ctx context.Context, st cid.Cid, maddr address.Address) (power.Claim, power.Claim, error) {
-	viewer := appstate.NewView(a.chain.IpldStore, st)
+func (a *API) GetPowerRaw(ctx context.Context, ts *block.TipSet, maddr address.Address) (power.Claim, power.Claim, error) {
+	viewer, err := a.chain.StateView(ts.Key())
+	if err != nil {
+		return power.Claim{}, power.Claim{}, err
+	}
 	ps, err := viewer.LoadPowerActor(ctx)
 	if err != nil {
 		return power.Claim{}, power.Claim{}, xerrors.Errorf("(get sset) failed to load power actor state: %w", err)
@@ -621,7 +627,10 @@ func (a *API) GetPowerRaw(ctx context.Context, st cid.Cid, maddr address.Address
 }
 
 func (a *API) MinerHasMinPower(ctx context.Context, addr address.Address, ts *block.TipSet) (bool, error) {
-	viewer := appstate.NewView(a.chain.IpldStore, ts.At(0).StateRoot.Cid)
+	viewer, err := a.chain.StateView(ts.Key())
+	if err != nil {
+		return false, err
+	}
 	ps, err := viewer.LoadPowerActor(ctx)
 	if err != nil {
 		return false, xerrors.Errorf("loading power actor state: %w", err)
@@ -631,6 +640,9 @@ func (a *API) MinerHasMinPower(ctx context.Context, addr address.Address, ts *bl
 }
 
 func (a *API) ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *block.TipSet) (address.Address, error) {
-	viewer := appstate.NewView(a.chain.IpldStore, ts.At(0).StateRoot.Cid)
+	viewer, err := a.chain.StateView(ts.Key())
+	if err != nil {
+		return address.Undef, err
+	}
 	return viewer.ResolveToKeyAddr(ctx, addr)
 }

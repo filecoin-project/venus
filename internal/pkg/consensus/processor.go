@@ -9,10 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	//"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/build"
 	"go.opencensus.io/trace"
 )
 
@@ -60,7 +57,7 @@ func NewConfiguredProcessor(actors vm.ActorCodeLoader, syscalls vm.SyscallsImpl,
 }
 
 // ProcessTipSet computes the state transition specified by the messages in all blocks in a TipSet.
-func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.Storage, parent, ts block.TipSet, msgs []vm.BlockMessagesInfo) (results []vm.MessageReceipt, err error) {
+func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms *vm.Storage, parent, ts block.TipSet, msgs []vm.BlockMessagesInfo, vmOption vm.VmOption) (results []vm.MessageReceipt, err error) {
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -70,45 +67,15 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 		return nil, err
 	}
 
-	parentEpoch, err := ts.Height()
-	if err != nil {
-		return nil, err
+	var parentEpoch abi.ChainEpoch
+	if parent.Defined() {
+		parentEpoch, err = parent.Height()
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	//parent, err := ts.Parents()
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	// Note: since the parent tipset key is now passed explicitly to ApplyTipSetMessages we can refactor to skip
-	// currying it in to the randomness call here.
-	rnd := headRandomness{
-		chain: p.rnd,
-		head:  parent.Key(),
-	}
-
-	nwv := func(context.Context, abi.ChainEpoch) network.Version {
-		return build.NewestNetworkVersion
-	}
-
-	csc := func(context.Context, abi.ChainEpoch, state.Tree) (abi.TokenAmount, error) {
-		return big.Zero(), nil
-	}
-	v := vm.NewVM(st, &vms, p.syscalls, abi.NewTokenAmount(0), nwv, csc, &rnd)
+	v := vm.NewVM(st, vms, p.syscalls, vmOption)
 
 	return v.ApplyTipSetMessages(msgs, parent.Key(), parentEpoch, epoch)
-}
-
-// A chain randomness source with a fixed head tipset key.
-type headRandomness struct {
-	chain ChainRandomness
-	head  block.TipSetKey
-}
-
-func (h *headRandomness) Randomness(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return h.chain.SampleChainRandomness(ctx, h.head, tag, epoch, entropy)
-}
-
-func (h *headRandomness) GetRandomnessFromBeacon(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return h.chain.ChainGetRandomnessFromBeacon(ctx, h.head, tag, epoch, entropy)
 }

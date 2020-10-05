@@ -152,6 +152,12 @@ func MonkeyPatchNetworkParamsOption(params *config.NetworkParamsConfig) BuilderO
 			// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
 			miner.SupportedProofTypes = newSupportedTypes
 		}
+
+		/*policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
+		policy.SetSupportedProofTypes(
+			abi.RegisteredSealProof_StackedDrg32GiBV1,
+			abi.RegisteredSealProof_StackedDrg64GiBV1,
+		)*/
 		return nil
 	}
 }

@@ -3,6 +3,8 @@ package vmcontext
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/ipfs/go-cid"
 
@@ -241,7 +243,43 @@ func (a *runtimeAdapter) NewActorAddress() address.Address {
 
 // CreateActor implements Runtime.
 func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
-	a.ctx.CreateActor(codeID, addr)
+	if !builtin.IsBuiltinActor(codeID) {
+		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
+	}
+
+	if builtin.IsSingletonActor(codeID) {
+		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Can only have one instance of singleton actors.")
+	}
+
+	vmlog.Debugf("creating actor, friendly-name: %s, code: %s, addr: %s\n", builtin.ActorNameByCode(codeID), codeID, addr)
+
+	// Check existing address. If nothing there, create empty actor.
+	//
+	// Note: we are storing the actors by ActorID *address*
+	_, found, err := a.ctx.rt.state.GetActor(a.ctx.rt.context, addr)
+	if err != nil {
+		fmt.Println(err)
+		panic(err)
+	}
+	if found {
+		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Actor address already exists")
+	}
+
+	// Charge gas now that easy checks are done
+	a.ctx.gasTank.Charge(gas.PricelistByEpoch(a.ctx.rt.CurrentEpoch()).OnCreateActor(), "CreateActor code %s, address %s", codeID, addr)
+
+	newActor := &actor.Actor{
+		// make this the right 'type' of actor
+		Code:       enccid.NewCid(codeID),
+		Balance:    abi.NewTokenAmount(0),
+		Head:       enccid.NewCid(EmptyObjectCid),
+		CallSeqNum: 0,
+	}
+	if err := a.ctx.rt.state.SetActor(a.ctx.rt.context, addr, newActor); err != nil {
+		panic(err)
+	}
+
+	_ = a.ctx.gasTank.TryCharge(gasOnActorExec)
 }
 
 // DeleteActor implements Runtime.

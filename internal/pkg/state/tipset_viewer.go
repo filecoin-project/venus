@@ -1,6 +1,9 @@
 package state
 
 import (
+	"context"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
@@ -11,6 +14,8 @@ import (
 // Abstracts over a store of blockchain state.
 type chainStateChainReader interface {
 	GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error)
+	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
+	GenesisRootCid() cid.Cid
 }
 
 // TipSetStateViewer loads state views for tipsets.

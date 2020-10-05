@@ -141,11 +141,13 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 	if err != nil {
 		panic(err)
 	}
+	defer ctx.rt.clearSnapshot()
 
 	// Install handler for abort, which rolls back all stateView changes from this and any nested invocations.
 	// This is the only path by which a non-OK exit code may be returned.
 	defer func() {
 		if r := recover(); r != nil {
+
 			if err := ctx.rt.revert(); err != nil {
 				panic(err)
 			}
@@ -161,10 +163,16 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 					"methodNum", ctx.msg.method,
 					"value", ctx.msg.value,
 					"gasLimit", ctx.gasTank.gasAvailable)
+				fmt.Println("revert during actor execution.",
+					"errorMessage", p,
+					"exitCode", p.Code(),
+					"sender", ctx.msg.from,
+					"receiver", ctx.msg.to,
+					"methodNum", ctx.msg.method,
+					"value", ctx.msg.value,
+					"gasLimit", ctx.gasTank.gasAvailable) //todo for test remove
 				ret = returnWrapper{abi.Empty} // The Empty here should never be used, but slightly safer than zero value.
 				errcode = p.Code()
-				debug.PrintStack()
-				return
 			default:
 				if err, ok := r.(error); ok {
 					fmt.Println(err.Error())
@@ -175,9 +183,8 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 				debug.PrintStack()
 				panic(r)
 			}
-		} else {
-			defer ctx.rt.clearSnapshot()
 		}
+
 	}()
 
 	// pre-dispatch
@@ -192,12 +199,12 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 		panic("bad code: sender address MUST be an ID address at invocation time")
 	}
 
-	// 1. charge gas for msg
-	ctx.gasTank.Charge(ctx.rt.pricelist.OnMethodInvocation(ctx.msg.value, ctx.msg.method), "method invocation")
-
-	// 2. load target actor
+	// 1. load target actor
 	// Note: we replace the "to" address with the normalized version
 	ctx.toActor, ctx.msg.to = ctx.resolveTarget(ctx.msg.to)
+
+	// 2. charge gas for msg
+	ctx.gasTank.Charge(ctx.rt.pricelist.OnMethodInvocation(ctx.msg.value, ctx.msg.method), "method invocation")
 
 	// 3. transfer funds carried by the msg
 	if !ctx.msg.value.Nil() && !ctx.msg.value.IsZero() {
@@ -230,7 +237,6 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 		// Dragons: this could be a params deserialization error too
 		runtime.Abort(exitcode.SysErrInvalidMethod)
 	}
-
 	// assert output implements expected interface
 	var marsh cbor.Marshaler = abi.Empty
 	if out != nil {
@@ -290,36 +296,31 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 
 	// get a view into the actor stateView
 	var state init_.State
-	if _, err := ctx.rt.store.Get(ctx.rt.context, initActorEntry.Head.Cid, &state); err != nil {
+	if err := ctx.rt.store.Get(ctx.rt.context, initActorEntry.Head.Cid, &state); err != nil {
 		panic(err)
 	}
 
 	// lookup the ActorID based on the address
-	targetIDAddr, found, err := state.ResolveAddress(ctx.rt.ContextStore(), target)
-	created := false
+
+	targetActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, target)
+	if err != nil {
+		panic(err)
+	}
 	if !found {
+		// Charge gas now that easy checks are done
+		ctx.gasTank.Charge(gas.PricelistByEpoch(ctx.rt.CurrentEpoch()).OnCreateActor(), "CreateActor  address %s", target)
 		// actor does not exist, create an account actor
 		// - precond: address must be a pub-key
 		// - sent init actor a msg to create the new account
+		targetIDAddr, err := ctx.rt.state.RegisterNewAddress(target)
+		if err != nil {
+			ctx.rt.state.RegisterNewAddress(target)
+			panic(err)
+		}
 
 		if target.Protocol() != address.SECP256K1 && target.Protocol() != address.BLS {
 			// Don't implicitly create an account actor for an address without an associated key.
 			runtime.Abort(exitcode.SysErrInvalidReceiver)
-		}
-
-		targetIDAddr, err = state.MapAddressToNewID(ctx.rt.ContextStore(), target)
-		if err != nil {
-			panic(err)
-		}
-		// store new stateView
-		initHead, _, err := ctx.rt.store.Put(ctx.rt.context, &state)
-		if err != nil {
-			panic(err)
-		}
-		// update init actor
-		initActorEntry.Head = enccid.NewCid(initHead)
-		if err := ctx.rt.state.SetActor(ctx.rt.context, builtin.InitActorAddr, initActorEntry); err != nil {
-			panic(err)
 		}
 
 		ctx.CreateActor(builtin.AccountActorCodeID, targetIDAddr)
@@ -342,26 +343,36 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 			runtime.Abort(code)
 		}
 
-		created = true
-	} else if err != nil {
-		panic(err)
-	}
+		// load actor
+		fmt.Println("create account  ", target)
+		targetActor, _, err := ctx.rt.state.GetActor(ctx.rt.context, target)
+		if err != nil {
+			panic(err)
+		}
+		return targetActor, targetIDAddr
+	} else {
+		//load id address
+		targetIDAddr, found, err := state.ResolveAddress(ctx.rt.ContextStore(), target)
+		if err != nil {
+			panic(err)
+		}
 
-	// load actor
-	targetActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, targetIDAddr)
-	if err != nil {
-		panic(err)
-	}
+		if !found {
+			panic(fmt.Errorf("unreachable: actor is supposed to exist but it does not. addr: %s, idAddr: %s", target, targetIDAddr))
+		}
 
-	if !found && created {
-		panic(fmt.Errorf("unreachable: actor is supposed to exist but it does not. addr: %s, idAddr: %s", target, targetIDAddr))
-	}
+		// load actor
+		targetActor, found, err = ctx.rt.state.GetActor(ctx.rt.context, targetIDAddr)
+		if err != nil {
+			panic(err)
+		}
 
-	if !found {
-		runtime.Abort(exitcode.SysErrInvalidReceiver)
-	}
+		if !found {
+			runtime.Abort(exitcode.SysErrInvalidReceiver)
+		}
 
-	return targetActor, targetIDAddr
+		return targetActor, targetIDAddr
+	}
 }
 
 //
@@ -512,6 +523,9 @@ func (ctx *invocationContext) NewActorAddress() address.Address {
 }
 
 // CreateActor implements runtime.ExtendedInvocationContext.
+// Creating an account is divided into two situations:
+//       case1: create based on message receive , the gas fee is deducted first.
+//       case2: create from spec actors, check first, and deduct gas fee
 func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) {
 	if !builtin.IsBuiltinActor(codeID) {
 		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
@@ -534,9 +548,6 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 	if found {
 		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Actor address already exists")
 	}
-
-	// Charge gas now that easy checks are done
-	ctx.gasTank.Charge(gas.PricelistByEpoch(ctx.rt.CurrentEpoch()).OnCreateActor(), "CreateActor code %s, address %s", codeID, addr)
 
 	newActor := &actor.Actor{
 		// make this the right 'type' of actor

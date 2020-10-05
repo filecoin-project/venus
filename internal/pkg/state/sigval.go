@@ -49,6 +49,11 @@ func (v *SignatureValidator) ValidateBLSMessageAggregate(ctx context.Context, ms
 		}
 		return nil
 	}
+
+	if len(msgs) == 0 {
+		return nil
+	}
+
 	pubKeys := [][]byte{}
 	encodedMsgCids := [][]byte{}
 	for _, msg := range msgs {

@@ -88,7 +88,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 	tickets := consensus.NewTicketMachine(sampler)
 	stateViewer := consensus.AsDefaultStateViewer(state.NewViewer(blockstore.CborStore))
 	nodeConsensus := consensus.NewExpected(blockstore.CborStore, blockstore.Blockstore, chn.Processor, &stateViewer,
-		config.BlockTime(), tickets, postVerifier, chn.ChainReader, config.ChainClock(), d)
+		config.BlockTime(), tickets, postVerifier, chn.ChainReader, config.ChainClock(), d, chn.State, chn.MessageStore)
 	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, &stateViewer, config.GenesisCid())
 
 	// setup fecher

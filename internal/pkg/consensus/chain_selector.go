@@ -7,6 +7,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
+	xerrors "github.com/pkg/errors"
+	"math/big"
 	"strings"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
@@ -44,13 +48,13 @@ func log2b(x fbig.Int) fbig.Int {
 	return fbig.NewInt(int64(bits - 1))
 }
 
+//todo gather const variable
+const WRatioNum = int64(1)
+const WRatioDen = uint64(2)
+
 // Weight returns the EC weight of this TipSet as a filecoin big int.
 func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID cid.Cid) (fbig.Int, error) {
 	// Retrieve parent weight.
-	parentWeight, err := ts.ParentWeight()
-	if err != nil {
-		return fbig.Zero(), err
-	}
 	if !pStateID.Defined() {
 		return fbig.Zero(), errors.New("undefined state passed to chain selector new weight")
 	}
@@ -59,15 +63,34 @@ func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID ci
 	if err != nil {
 		return fbig.Zero(), err
 	}
-	powerMeasure := log2b(networkPower)
 
-	wPowerFactor := fbig.Mul(wPrecision, powerMeasure)
-	wBlocksFactorNum := fbig.Mul(wRatioNum, fbig.Mul(powerMeasure, fbig.NewInt(int64(ts.Len()))))
-	wBlocksFactorDen := fbig.Mul(wRatioDen, fbig.NewInt(int64(expectedLeadersPerEpoch)))
-	wBlocksFactor := fbig.Div(fbig.Mul(wBlocksFactorNum, wPrecision), wBlocksFactorDen)
-	deltaWeight := fbig.Add(wPowerFactor, wBlocksFactor)
+	log2P := int64(0)
+	if networkPower.GreaterThan(fbig.NewInt(0)) {
+		log2P = int64(networkPower.BitLen() - 1)
+	} else {
+		// Not really expect to be here ...
+		return types.EmptyInt, xerrors.Errorf("All power in the net is gone. You network might be disconnected, or the net is dead!")
+	}
 
-	return fbig.Add(parentWeight, deltaWeight), nil
+	weight, err := ts.ParentWeight()
+	var out = new(big.Int).Set(weight.Int)
+	out.Add(out, big.NewInt(log2P<<8))
+
+	// (wFunction(totalPowerAtTipset(ts)) * sum(ts.blocks[].ElectionProof.WinCount) * wRatio_num * 2^8) / (e * wRatio_den)
+
+	totalJ := int64(0)
+	for _, b := range ts.Blocks() {
+		totalJ += b.ElectionProof.WinCount
+	}
+
+	eWeight := big.NewInt((log2P * WRatioNum))
+	eWeight = eWeight.Lsh(eWeight, 8)
+	eWeight = eWeight.Mul(eWeight, new(big.Int).SetInt64(totalJ))
+	eWeight = eWeight.Div(eWeight, big.NewInt(int64(build.BlocksPerEpoch*WRatioDen)))
+
+	out = out.Add(out, eWeight)
+
+	return types.BigInt{Int: out}, nil
 }
 
 // IsHeavier returns true if tipset a is heavier than tipset b, and false

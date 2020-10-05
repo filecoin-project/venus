@@ -12,12 +12,12 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
 )
 
 type vmStorage interface {
-	Get(ctx context.Context, cid cid.Cid, obj interface{}) (int, error)
-	Put(ctx context.Context, obj interface{}) (cid.Cid, int, error)
+	GetWithLen(ctx context.Context, cid cid.Cid, obj interface{}) (int, error)
+	PutWithLen(ctx context.Context, obj interface{}) (cid.Cid, int, error)
 }
 
 // ActorStorage hides the storage methods from the actors and turns the errors into runtime panics.
@@ -51,7 +51,7 @@ var _ specsruntime.Store = (*ActorStorage)(nil)
 const serializationErr = exitcode.ErrSerialization
 
 func (s *ActorStorage) StorePut(obj cbor.Marshaler) cid.Cid {
-	cid, ln, err := s.inner.Put(s.context, obj)
+	cid, ln, err := s.inner.PutWithLen(s.context, obj)
 	if err != nil {
 		msg := fmt.Sprintf("failed to put object %s in store: %s", reflect.TypeOf(obj), err)
 		if _, ok := err.(storage.SerializationError); ok {
@@ -60,15 +60,17 @@ func (s *ActorStorage) StorePut(obj cbor.Marshaler) cid.Cid {
 			panic(msg)
 		}
 	}
+	//fmt.Println("gas storage put ", cid.String())
 	s.gasTank.Charge(s.pricelist.OnIpldPut(ln), "storage put %s %d bytes into %v", cid, ln, obj)
 	return cid
 }
 
 func (s *ActorStorage) StoreGet(cid cid.Cid, obj cbor.Unmarshaler) bool {
-	ln, err := s.inner.Get(s.context, cid, obj)
+	ln, err := s.inner.GetWithLen(s.context, cid, obj)
 	if err == storage.ErrNotFound {
 		return false
 	}
+	//fmt.Println("gas storage get ", cid.String())
 	if err != nil {
 		msg := fmt.Sprintf("failed to get object %s %s from store: %s", reflect.TypeOf(obj), cid, err)
 		if _, ok := err.(storage.SerializationError); ok {

@@ -39,6 +39,7 @@ type Tree interface {
 
 	MutateActor(addr ActorKey, f func(*actor.Actor) error) error
 	ForEach(f func(ActorKey, *actor.Actor) error) error
+	GetStore() cbor.IpldStore
 }
 
 var log = logging.Logger("statetree")
@@ -161,12 +162,12 @@ func LoadState(ctx context.Context, cst cbor.IpldStore, c cid.Cid) (*State, erro
 }
 
 func (st *State) SetActor(ctx context.Context, addr ActorKey, act *actor.Actor) error {
+	//fmt.Println("set actor addr:", addr.String(), " Balance:", act.Balance.String(), " Head:", act.Head, " Nonce:", act.CallSeqNum)
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
 		return xerrors.Errorf("ID lookup failed: %w", err)
 	}
 	addr = iaddr
-
 	st.snaps.setActor(addr, act)
 	return nil
 }
@@ -215,8 +216,9 @@ func (st *State) GetActor(ctx context.Context, addr ActorKey) (*actor.Actor, boo
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
 		if xerrors.Is(err, actor.ErrActorNotFound) {
-			return nil, false, xerrors.Errorf("resolution lookup failed (%s): %w", addr, err)
+			return nil, false, nil
 		}
+		st.LookupID(addr)
 		return nil, false, xerrors.Errorf("address resolution: %w", err)
 	}
 	addr = iaddr
@@ -243,6 +245,7 @@ func (st *State) GetActor(ctx context.Context, addr ActorKey) (*actor.Actor, boo
 }
 
 func (st *State) DeleteActor(ctx context.Context, addr ActorKey) error {
+	//fmt.Println("Delete Actor ", addr)
 	if addr == address.Undef {
 		return xerrors.Errorf("DeleteActor called on undefined address")
 	}
@@ -372,4 +375,8 @@ func (st *State) ForEach(f func(ActorKey, *actor.Actor) error) error {
 
 		return f(addr, &act)
 	})
+}
+
+func (st *State) GetStore() cbor.IpldStore {
+	return st.Store
 }

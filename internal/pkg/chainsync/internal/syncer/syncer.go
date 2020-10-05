@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -118,7 +119,7 @@ type BlockValidator interface {
 type FullBlockValidator interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, parentWeight fbig.Int, stateID cid.Cid, receiptRoot cid.Cid) (cid.Cid, []vm.MessageReceipt, error)
+	RunStateTransition(ctx context.Context, ts block.TipSet, parentWeight fbig.Int, stateID cid.Cid, receiptRoot cid.Cid) (cid.Cid, []vm.MessageReceipt, error)
 }
 
 // faultDetector tracks data for detecting consensus faults and emits faults
@@ -197,7 +198,6 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 		return nil, err
 	}
 
-
 	headers, err := syncer.fetcher.FetchTipSetHeaders(ctx, ci.Head, ci.Sender, func(t block.TipSet) (bool, error) {
 		h, err := t.Height()
 		if err != nil {
@@ -264,20 +264,6 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 		return err
 	}
 
-	// Gather tipset messages
-	var nextSecpMessages [][]*types.SignedMessage
-	var nextBlsMessages [][]*types.UnsignedMessage
-	for i := 0; i < next.Len(); i++ {
-		blk := next.At(i)
-		secpMsgs, blsMsgs, err := syncer.messageProvider.LoadMessages(ctx, blk.Messages.Cid)
-		if err != nil {
-			return errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", next.Key(), blk.Messages, blk.Cid())
-		}
-
-		nextBlsMessages = append(nextBlsMessages, blsMsgs)
-		nextSecpMessages = append(nextSecpMessages, secpMsgs)
-	}
-
 	// Gather validated parent weight
 	parentWeight, err := syncer.calculateParentWeight(ctx, parent, grandParent)
 	if err != nil {
@@ -291,7 +277,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 
 	// Run a state transition to validate the tipset and compute
 	// a new state to add to the store.
-	root, receipts, err := syncer.fullValidator.RunStateTransition(ctx, next, nextBlsMessages, nextSecpMessages, parentWeight, stateRoot, parentReceiptRoot)
+	root, receipts, err := syncer.fullValidator.RunStateTransition(ctx, next, parentWeight, stateRoot, parentReceiptRoot)
 	if err != nil {
 		return err
 	}
@@ -304,12 +290,12 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 			return err
 		}
 	}
-
 	receiptCid, err := syncer.messageProvider.StoreReceipts(ctx, receipts)
 	if err != nil {
 		return errors.Wrapf(err, "could not store message rerceipts for tip set %s", next.String())
 	}
 
+	fmt.Println("Height:", next.EnsureHeight(), " Root:", root, " receiptcid ", receiptCid)
 	err = syncer.chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          next,
 		TipSetStateRoot: root,
@@ -497,12 +483,15 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
+
 	h, err := tipsets[0].Height()
 	if err != nil {
 		logSyncer.Warnf("get height err: %s", err.Error())
 	}
 	logSyncer.Infof("fetchAndValidateHeaders success, head:%v,%v", h, tipsets[0].String())
 
+	//tipsets = tipsets[0:2004]
+	//ci.Head = tipsets[2003].Key()
 	// Once headers check out, fetch messages
 	_, err = syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Sender, func(t block.TipSet) (bool, error) {
 		parentsKey, err := t.Parents()
@@ -515,13 +504,13 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 		}
 
 		// validate block message structure
-		for i := 0; i < t.Len(); i++ {
+		/*	for i := 0; i < t.Len(); i++ {  todo validate message
 			err := syncer.blockValidator.ValidateMessagesSemantic(ctx, t.At(i), parentsKey)
 			if err != nil {
 				return false, err
 			}
-		}
-
+		}*/
+		fmt.Println("get message ", height)
 		// update status with latest fetched head and height
 		syncer.reporter.UpdateStatus(status.FetchHead(t.Key()), status.FetchHeight(height))
 		return syncer.chainStore.HasTipSetAndState(ctx, parentsKey), nil
@@ -537,8 +526,8 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 	if err != nil {
 		return err
 	}
-	ph,_ := parent.Height()
-	gh,_ := grandParent.Height()
+	ph, _ := parent.Height()
+	gh, _ := grandParent.Height()
 	logSyncer.Infof("parent:%v,%v grandParent:%v %v", ph, parent.Key(), gh, grandParent.Key())
 
 	// Try adding the tipsets of the chain to the store, checking for new
@@ -581,6 +570,14 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 				syncer.badTipSets.AddChain(tipsets[i:])
 				return errors.Wrapf(err, "failed to sync tipset %s, number %d of %d in chain", ts.Key(), i, len(tipsets))
 			}
+			if ts.EnsureHeight()%100 == 0 || ts.EnsureHeight() == 1300 || ts.EnsureHeight() == 1200 {
+				err = syncer.stageIfHeaviest(ctx, ts)
+				if err != nil {
+					return err
+				}
+				syncer.SetStagedHead(ctx)
+				//todo for test
+			}
 		}
 
 		if i%500 == 0 {
@@ -609,7 +606,7 @@ func (syncer *Syncer) stageIfHeaviest(ctx context.Context, candidate block.TipSe
 		return err
 	}
 	var stagedBaseStateID cid.Cid
-	if stagedParentKey.Empty() { // if staged is genesis base state is genesis state
+	if syncer.staged.EnsureHeight() == 0 { // if staged is genesis base state is genesis state
 		stagedBaseStateID = syncer.staged.At(0).StateRoot.Cid
 	} else {
 		stagedBaseStateID, err = syncer.chainStore.GetTipSetStateRoot(stagedParentKey)

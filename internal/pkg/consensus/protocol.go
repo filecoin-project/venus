@@ -17,8 +17,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // Protocol is an interface defining a blockchain consensus protocol.  The
@@ -29,7 +27,7 @@ import (
 type Protocol interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateID`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts block.TipSet, blsMsgs [][]*types.UnsignedMessage, secpMsgs [][]*types.SignedMessage, parentWeight fbig.Int, parentStateRoot cid.Cid, parentReceiptRoot cid.Cid) (cid.Cid, []vm.MessageReceipt, error)
+	RunStateTransition(ctx context.Context, ts block.TipSet, parentWeight fbig.Int, parentStateRoot cid.Cid, parentReceiptRoot cid.Cid) (cid.Cid, []vm.MessageReceipt, error)
 
 	// BlockTime returns the block time used by the consensus protocol.
 	BlockTime() time.Duration

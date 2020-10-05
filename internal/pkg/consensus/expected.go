@@ -2,6 +2,10 @@ package consensus
 
 import (
 	"context"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
+	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"sync"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
@@ -60,15 +64,13 @@ const DRANDEpochLookback = 2
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
-	ProcessTipSet(context.Context, state.Tree, vm.Storage, block.TipSet, block.TipSet, []vm.BlockMessagesInfo) ([]vm.MessageReceipt, error)
+	ProcessTipSet(context.Context, state.Tree, *vm.Storage, block.TipSet, block.TipSet, []vm.BlockMessagesInfo, vm.VmOption) ([]vm.MessageReceipt, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
 type TicketValidator interface {
 	IsValidTicket(ctx context.Context, base block.TipSetKey, entry *block.BeaconEntry, newPeriod bool, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket block.Ticket) error
 }
-
-
 
 // StateViewer provides views into the chain state.
 type StateViewer interface {
@@ -79,6 +81,13 @@ type StateViewer interface {
 type chainReader interface {
 	GetTipSet(tsKey block.TipSetKey) (block.TipSet, error)
 	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
+	GetGenesisBlock(ctx context.Context) (*block.Block, error)
+	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
+}
+
+type Randness interface {
+	SampleChainRandomness(ctx context.Context, head block.TipSetKey, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 }
 
 // Expected implements expected consensus.
@@ -108,8 +117,18 @@ type Expected struct {
 	// postVerifier verifies PoSt proofs and associated data
 	proofVerifier ProofVerifier
 
+	messageStore *chain.MessageStore
+
+	rnd Randness
+
 	clock clock.ChainEpochClock
 	drand beacon.Schedule
+
+	genesisMsigs []msig0.State
+	// info about the Accounts in the genesis state
+	preIgnitionGenInfos  *genesisInfo
+	postIgnitionGenInfos *genesisInfo
+	genesisMsigLk        sync.Mutex
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
@@ -117,19 +136,22 @@ var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
 func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processor, state StateViewer, bt time.Duration,
-	tv TicketValidator, pv ProofVerifier, chainState chainReader, clock clock.ChainEpochClock, drand beacon.Schedule) *Expected {
-	return &Expected{
-		cstore:            cs,
-		blockTime:         bt,
-		bstore:            bs,
-		processor:         processor,
-		state:             state,
-		TicketValidator:   tv,
-		proofVerifier:     pv,
-		chainState:        chainState,
-		clock:             clock,
-		drand:             drand,
+	tv TicketValidator, pv ProofVerifier, chainState chainReader, clock clock.ChainEpochClock, drand beacon.Schedule, rnd Randness, messageStore *chain.MessageStore) *Expected {
+	c := &Expected{
+		cstore:          cs,
+		blockTime:       bt,
+		bstore:          bs,
+		processor:       processor,
+		state:           state,
+		TicketValidator: tv,
+		proofVerifier:   pv,
+		chainState:      chainState,
+		clock:           clock,
+		drand:           drand,
+		messageStore:    messageStore,
+		rnd:             rnd,
 	}
+	return c
 }
 
 // BlockTime returns the block time used by the consensus protocol.
@@ -140,21 +162,35 @@ func (c *Expected) BlockTime() time.Duration {
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage,
-	parentWeight big.Int, parentStateRoot cid.Cid, parentReceiptRoot cid.Cid) (root cid.Cid, receipts []vm.MessageReceipt, err error) {
+func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, parentWeight big.Int, parentStateRoot cid.Cid, parentReceiptRoot cid.Cid) (root cid.Cid, receipts []vm.MessageReceipt, err error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
+
+	// Gather tipset messages
+	var secpMessages [][]*types.SignedMessage
+	var blsMessages [][]*types.UnsignedMessage
+	for i := 0; i < ts.Len(); i++ {
+		blk := ts.At(i)
+		secpMsgs, blsMsgs, err := c.messageStore.LoadMessages(ctx, blk.Messages.Cid)
+		if err != nil {
+			return cid.Undef, []vm.MessageReceipt{}, errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
+		}
+
+		blsMessages = append(blsMessages, blsMsgs)
+		secpMessages = append(secpMessages, secpMsgs)
+	}
 
 	if err := c.validateMining(ctx, ts, parentStateRoot, blsMessages, secpMessages, parentWeight, parentReceiptRoot); err != nil {
 		return cid.Undef, []vm.MessageReceipt{}, err
 	}
 
-	priorState, err := c.loadStateTree(ctx, parentStateRoot)
+	vms := vm.NewStorage(c.bstore)
+	priorState, err := state.LoadState(ctx, vms, parentStateRoot)
 	if err != nil {
 		return cid.Undef, []vm.MessageReceipt{}, err
 	}
-	vms := vm.NewStorage(c.bstore)
+
 	var newState state.Tree
 	newState, receipts, err = c.runMessages(ctx, priorState, vms, ts, blsMessages, secpMessages)
 	if err != nil {
@@ -307,7 +343,7 @@ func (c *Expected) electionEntry(ctx context.Context, blk *block.Block) (*block.
 // for the entire tipset. The output state must be flushed after calling to
 // guarantee that the state transitions propagate.
 // Messages that fail to apply are dropped on the floor (and no receipt is emitted).
-func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storage, ts block.TipSet,
+func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms *vm.Storage, ts block.TipSet,
 	blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (state.Tree, []vm.MessageReceipt, error) {
 	msgs := []vm.BlockMessagesInfo{}
 
@@ -324,30 +360,50 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 			BLSMessages:  blsMessages[i],
 			SECPMessages: secpMessages[i],
 			Miner:        blk.Miner,
+			WinCount:     blk.ElectionProof.WinCount,
 		}
 
 		msgs = append(msgs, msgInfo)
 	}
 
 	// process tipset
-	parent, err := ts.Parents()
-	if err != nil {
-		return nil, nil, err
+	var pts block.TipSet
+	if ts.EnsureHeight() > 0 {
+		parent, err := ts.Parents()
+		if err != nil {
+			return nil, nil, err
+		}
+		pts, err = c.chainState.GetTipSet(parent)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		return st, []vm.MessageReceipt{}, nil
 	}
-	pts, err := c.chainState.GetTipSet(parent)
-	if err != nil {
-		return nil, nil, err
+
+	rnd := headRandomness{
+		chain: c.rnd,
+		head:  ts.Key(),
 	}
-	receipts, err := c.processor.ProcessTipSet(ctx, st, vms, pts, ts, msgs)
+
+	vmOption := vm.VmOption{
+		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
+			dertail, err := c.GetCirculatingSupplyDetailed(ctx, epoch, tree)
+			if err != nil {
+				return abi.TokenAmount{}, err
+			}
+			return dertail.FilCirculating, nil
+		},
+		NtwkVersionGetter: c.chainState.GetNtwkVersion,
+		Rnd:               &rnd,
+		BaseFee:           ts.At(0).ParentBaseFee,
+	}
+	receipts, err := c.processor.ProcessTipSet(ctx, st, vms, pts, ts, msgs, vmOption)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error validating tipset")
 	}
 
 	return st, receipts, nil
-}
-
-func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (*state.State, error) {
-	return state.LoadState(ctx, c.cstore, id)
 }
 
 // DefaultStateViewer a state viewer to the power state view interface.
@@ -368,4 +424,18 @@ func (v *DefaultStateViewer) PowerStateView(root cid.Cid) PowerStateView {
 // FaultStateView returns a fault state view for a state root.
 func (v *DefaultStateViewer) FaultStateView(root cid.Cid) FaultStateView {
 	return v.Viewer.StateView(root)
+}
+
+// A chain randomness source with a fixed head tipset key.
+type headRandomness struct {
+	chain ChainRandomness
+	head  block.TipSetKey
+}
+
+func (h *headRandomness) Randomness(ctx context.Context, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return h.chain.SampleChainRandomness(ctx, h.head, tag, epoch, entropy)
+}
+
+func (h *headRandomness) GetRandomnessFromBeacon(ctx context.Context, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return h.chain.ChainGetRandomnessFromBeacon(ctx, h.head, tag, epoch, entropy)
 }

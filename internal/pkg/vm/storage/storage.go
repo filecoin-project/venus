@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"errors"
-
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -26,6 +25,8 @@ type VMStorage struct {
 	readCacheEnabled bool
 }
 
+var _ = cbor.IpldStore((*VMStorage)(nil))
+
 // ErrNotFound is returned by storage when no object matches a requested Cid.
 var ErrNotFound = errors.New("object not found")
 
@@ -35,8 +36,8 @@ type SerializationError struct {
 }
 
 // NewStorage creates a new VMStorage.
-func NewStorage(bs blockstore.Blockstore) VMStorage {
-	return VMStorage{
+func NewStorage(bs blockstore.Blockstore) *VMStorage {
+	return &VMStorage{
 		blockstore:       bs,
 		writeBuffer:      map[cid.Cid]ipld.Node{},
 		readCache:        map[cid.Cid]blocks.Block{},
@@ -49,8 +50,39 @@ func (s *VMStorage) SetReadCache(enabled bool) {
 	s.readCacheEnabled = enabled
 }
 
+//**********ipld interface impl**************//
+func (s *VMStorage) Get(ctx context.Context, c cid.Cid, obj interface{}) error {
+	//fmt.Println("storage get ", c.String(), " ", unsafe.Pointer(s))
+	raw, err := s.GetRaw(ctx, c)
+	if err != nil {
+		return err
+	}
+
+	err = encoding.Decode(raw, obj)
+	if err != nil {
+		encoding.Decode(raw, obj)
+		return SerializationError{err}
+	}
+	return nil
+}
+
+func (s *VMStorage) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
+	nd, err := s.toNode(v)
+	if err != nil {
+		return cid.Undef, SerializationError{err}
+	}
+
+	// append the object to the buffer
+	cid := nd.Cid()
+	s.writeBuffer[cid] = nd
+	//fmt.Println("storage put ", cid.String())
+	return cid, nil
+}
+
+//**********ipld interface impl end**************//
+
 // Put stores object and returns it's content-addressable ID.
-func (s *VMStorage) Put(ctx context.Context, obj interface{}) (cid.Cid, int, error) {
+func (s *VMStorage) PutWithLen(ctx context.Context, obj interface{}) (cid.Cid, int, error) {
 	nd, err := s.toNode(obj)
 	if err != nil {
 		return cid.Undef, 0, SerializationError{err}
@@ -59,7 +91,7 @@ func (s *VMStorage) Put(ctx context.Context, obj interface{}) (cid.Cid, int, err
 	// append the object to the buffer
 	cid := nd.Cid()
 	s.writeBuffer[cid] = nd
-
+	//fmt.Println("storage put with len ", cid.String())
 	return cid, len(nd.RawData()), nil
 }
 
@@ -73,11 +105,12 @@ func (s *VMStorage) CidOf(obj interface{}) (cid.Cid, error) {
 }
 
 // Get loads the object based on its content-addressable ID.
-func (s *VMStorage) Get(ctx context.Context, cid cid.Cid, obj interface{}) (int, error) {
+func (s *VMStorage) GetWithLen(ctx context.Context, cid cid.Cid, obj interface{}) (int, error) {
 	raw, err := s.GetRaw(ctx, cid)
 	if err != nil {
 		return 0, err
 	}
+	//fmt.Println("storage get with len ", cid.String())
 	err = encoding.Decode(raw, obj)
 	if err != nil {
 		encoding.Decode(raw, obj)
@@ -130,6 +163,7 @@ func (s *VMStorage) Flush() error {
 	// extract list of blocks for the underlying store from our internal map
 	blks := make([]blocks.Block, 0, len(s.writeBuffer))
 	for _, nd := range s.writeBuffer {
+		//fmt.Println("storage flush buffer ", nd.Cid())
 		blks = append(blks, nd)
 	}
 
@@ -137,7 +171,7 @@ func (s *VMStorage) Flush() error {
 	// Default badger.DefaultOptions.MaxTableSize is 64Mib
 	// Pushing this hard would require measuring the size of each block and also accounting for badger object overheads.
 	// 1024 would give us very generous room for 64Kib per object.
-	maxBatchSize := 4 * 1024
+	maxBatchSize := 2 * 1024
 
 	// Write at most maxBatchSize objects to store at a time
 	remaining := blks

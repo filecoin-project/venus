@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-state-types/dline"
-	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
@@ -28,11 +26,11 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	paychActor "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
-	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -451,36 +449,7 @@ func (v *View) MarketDealStatesForEach(ctx context.Context, f func(id abi.DealID
 // StateDealProviderCollateralBounds returns the min and max collateral a storage provider
 // can issue. It takes the deal size and verified status as parameters.
 func (v *View) MarketDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, height abi.ChainEpoch) (DealCollateralBounds, error) {
-	powerState, err := v.loadPowerActor(ctx)
-	if err != nil {
-		return DealCollateralBounds{}, xerrors.Errorf("getting power state: %w", err)
-	}
-	rewardState, err := v.loadRewardActor(ctx)
-	if err != nil {
-		return DealCollateralBounds{}, xerrors.Errorf("getting reward state: %w", err)
-	}
-
-	tree, err := vmstate.LoadState(ctx, v.ipldStore, v.root)
-	if err != nil {
-		return DealCollateralBounds{}, xerrors.Errorf("failed to get tree: %w", err)
-	}
-
-	circ, err := v.GetCirculatingSupplyDetailed(ctx, height, tree)
-	if err != nil {
-		return DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w", err)
-	}
-
-	min, max := market.DealProviderCollateralBounds(size,
-		verified,
-		powerState.TotalRawBytePower,
-		powerState.ThisEpochQualityAdjPower,
-		rewardState.ThisEpochBaselinePower,
-		circ.FilCirculating,
-		v.GetNtwkVersion(ctx, height))
-	return DealCollateralBounds{
-		Min: big.Div(big.Mul(min, dealProviderCollateralNum), dealProviderCollateralDen),
-		Max: max,
-	}, nil
+	panic("not impl")
 }
 
 func (v *View) StateVerifiedClientStatus(ctx context.Context, addr addr.Address) (*verifreg.DataCap, error) {
@@ -548,165 +517,6 @@ func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*
 		Proposal: dp,
 		State:    *st,
 	}, nil
-}
-
-func (v *View) GetCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st vmstate.Tree) (abi.TokenAmount, error) {
-	csi, err := v.GetCirculatingSupplyDetailed(ctx, height, st)
-	if err != nil {
-		return big.Zero(), err
-	}
-
-	return csi.FilCirculating, nil
-}
-
-func (v *View) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st vmstate.Tree) (CirculatingSupply, error) {
-	v.genesisMsigLk.Lock()
-	defer v.genesisMsigLk.Unlock()
-	if v.genInfo == nil {
-		err := v.setupGenesisActorsTestnet(ctx)
-		if err != nil {
-			return CirculatingSupply{}, xerrors.Errorf("failed to setup genesis information: %w", err)
-		}
-	}
-
-	filVested, err := v.GetFilVested(ctx, height, st)
-	if err != nil {
-		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %w", err)
-	}
-
-	rewardState, err := v.loadRewardActor(ctx)
-	if err != nil {
-		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filMined: %w", err)
-	}
-
-	filBurnt, err := v.loadActor(ctx, builtin.BurntFundsActorAddr)
-	if err != nil {
-		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %w", err)
-	}
-
-	filLocked, err := v.GetFilLocked(ctx, st)
-	if err != nil {
-		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %w", err)
-	}
-
-	ret := big.Add(filVested, rewardState.TotalMined)
-	ret = big.Sub(ret, filBurnt.Balance)
-	ret = big.Sub(ret, filLocked)
-
-	if ret.LessThan(big.Zero()) {
-		ret = big.Zero()
-	}
-
-	return CirculatingSupply{
-		FilVested:      filVested,
-		FilMined:       rewardState.TotalMined,
-		FilBurnt:       filBurnt.Balance,
-		FilLocked:      filLocked,
-		FilCirculating: ret,
-	}, nil
-}
-
-func (v *View) GetFilVested(ctx context.Context, height abi.ChainEpoch, st vmstate.Tree) (abi.TokenAmount, error) {
-	vf := big.Zero()
-	for _, v := range v.genInfo.genesisMsigs {
-		au := big.Sub(v.InitialBalance, v.AmountLocked(height))
-		vf = big.Add(vf, au)
-	}
-
-	// there should not be any such accounts in testnet (and also none in mainnet?)
-	for _, v := range v.genInfo.genesisActors {
-		act, found, err := st.GetActor(ctx, v.addr)
-		if !found || err != nil {
-			return big.Zero(), xerrors.Errorf("failed to get actor: %w", err)
-		}
-
-		diff := big.Sub(v.initBal, act.Balance)
-		if diff.GreaterThan(big.Zero()) {
-			vf = big.Add(vf, diff)
-		}
-	}
-
-	vf = big.Add(vf, v.genInfo.genesisPledge)
-	vf = big.Add(vf, v.genInfo.genesisMarketFunds)
-
-	return vf, nil
-}
-
-// sets up information about the actors in the genesis state
-// For testnet we use a hardcoded set of multisig states, instead of what's actually in the genesis multisigs
-// We also do not consider ANY account actors (including the faucet)
-func (v *View) setupGenesisActorsTestnet(ctx context.Context) error {
-
-	gi := genesisInfo{}
-
-	sTree, err := vmstate.LoadState(ctx, v.ipldStore, v.genesisRoot)
-	if err != nil {
-		return xerrors.Errorf("loading state tree: %w", err)
-	}
-
-	gi.genesisMarketFunds, err = getFilMarketLocked(ctx, v.ipldStore, sTree)
-	if err != nil {
-		return xerrors.Errorf("setting up genesis market funds: %w", err)
-	}
-
-	gi.genesisPledge, err = getFilPowerLocked(ctx, v.ipldStore, sTree)
-	if err != nil {
-		return xerrors.Errorf("setting up genesis pledge: %w", err)
-	}
-
-	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
-
-	// 6 months
-	sixMonths := abi.ChainEpoch(183 * builtin.EpochsInDay)
-	totalsByEpoch[sixMonths] = big.NewInt(49_929_341)
-	totalsByEpoch[sixMonths] = big.Add(totalsByEpoch[sixMonths], big.NewInt(32_787_700))
-
-	// 1 year
-	oneYear := abi.ChainEpoch(365 * builtin.EpochsInDay)
-	totalsByEpoch[oneYear] = big.NewInt(22_421_712)
-
-	// 2 years
-	twoYears := abi.ChainEpoch(2 * 365 * builtin.EpochsInDay)
-	totalsByEpoch[twoYears] = big.NewInt(7_223_364)
-
-	// 3 years
-	threeYears := abi.ChainEpoch(3 * 365 * builtin.EpochsInDay)
-	totalsByEpoch[threeYears] = big.NewInt(87_637_883)
-
-	// 6 years
-	sixYears := abi.ChainEpoch(6 * 365 * builtin.EpochsInDay)
-	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
-	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
-
-	gi.genesisMsigs = make([]multisig.State, 0, len(totalsByEpoch))
-	for k, v := range totalsByEpoch {
-		ns := multisig.State{
-			InitialBalance: v,
-			UnlockDuration: k,
-			PendingTxns:    cid.Undef,
-		}
-		gi.genesisMsigs = append(gi.genesisMsigs, ns)
-	}
-
-	v.genInfo = &gi
-
-	return nil
-}
-
-func (v *View) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
-	if build.UseNewestNetwork() {
-		return build.NewestNetworkVersion
-	}
-
-	if height <= build.UpgradeBreezeHeight {
-		return network.Version0
-	}
-
-	if height <= build.UpgradeSmokeHeight {
-		return network.Version1
-	}
-
-	return build.NewestNetworkVersion
 }
 
 // Returns the storage power actor's values for network total power.
