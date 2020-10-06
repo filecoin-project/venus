@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -85,7 +86,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 		actor := newActor(t, 0, 2)
 
 		// set invalid code
-		actor.Code = builtin.RewardActorCodeID
+		actor.Code = e.NewCid(builtin.RewardActorCodeID)
 
 		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{
 			blsMessages: []*types.UnsignedMessage{msg1},
@@ -206,6 +207,44 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 	})
 }
 
+func TestMismatchedTime(t *testing.T) {
+	tf.UnitTest(t)
+
+	blockTime := clock.DefaultEpochDuration
+	genTime := time.Unix(1234567890, 1234567890%int64(time.Second))
+	fc := clock.NewFake(genTime)
+	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, clock.DefaultPropagationDelay, fc)
+	validator := consensus.NewDefaultBlockValidator(mclock, nil, nil)
+
+	fc.Advance(blockTime)
+
+	// Passes with correct timestamp
+	c := &block.Block{Height: 1, Timestamp: uint64(fc.Now().Unix())}
+	require.NoError(t, validator.NotFutureBlock(c))
+
+	// fails with invalid timestamp
+	c = &block.Block{Height: 1, Timestamp: uint64(genTime.Unix())}
+	err := validator.NotFutureBlock(c)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "wrong epoch")
+}
+
+func TestFutureEpoch(t *testing.T) {
+	tf.UnitTest(t)
+
+	blockTime := clock.DefaultEpochDuration
+	genTime := time.Unix(1234567890, 1234567890%int64(time.Second))
+	fc := clock.NewFake(genTime)
+	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, clock.DefaultPropagationDelay, fc)
+	validator := consensus.NewDefaultBlockValidator(mclock, nil, nil)
+
+	// Fails in future epoch
+	c := &block.Block{Height: 1, Timestamp: uint64(genTime.Add(blockTime).Unix())}
+	err := validator.NotFutureBlock(c)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "future epoch")
+}
+
 func TestBlockValidSyntax(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -219,7 +258,7 @@ func TestBlockValidSyntax(t *testing.T) {
 	validator := consensus.NewDefaultBlockValidator(chainClock, nil, nil)
 
 	validTs := uint64(mclock.Now().Unix())
-	validSt := types.NewCidForTestGetter()()
+	validSt := e.NewCid(types.NewCidForTestGetter()())
 	validAd := vmaddr.NewForTestGetter()()
 	validTi := block.Ticket{VRFProof: []byte{1}}
 	// create a valid block
@@ -247,7 +286,7 @@ func TestBlockValidSyntax(t *testing.T) {
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
 	// invalidate stateroot
-	blk.StateRoot = cid.Undef
+	blk.StateRoot = e.NewCid(cid.Undef)
 	require.Error(t, validator.ValidateSyntax(ctx, blk))
 	blk.StateRoot = validSt
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))

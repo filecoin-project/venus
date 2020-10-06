@@ -12,14 +12,11 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	//"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
@@ -32,12 +29,7 @@ type messageStore interface {
 
 type chainState interface {
 	GetActorAt(context.Context, block.TipSetKey, address.Address) (*actor.Actor, error)
-	GetTipSet(block.TipSetKey) (block.TipSet, error)
-	GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error)
-	StateView(block.TipSetKey) (*state.View, error)
-	AccountStateView(block.TipSetKey) (state.AccountStateView, error)
-	GetBlock(context.Context, cid.Cid) (*block.Block, error)
-	BeaconSchedule() beacon.Schedule
+	// AccountStateView(block.TipSetKey) (state.AccountStateView, error)
 }
 
 // BlockValidator defines an interface used to validate a blocks syntax and
