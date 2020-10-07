@@ -1,8 +1,6 @@
 package version
 
 import (
-	"fmt"
-
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
