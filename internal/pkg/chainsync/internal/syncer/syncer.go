@@ -557,9 +557,6 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 	if err != nil {
 		return err
 	}
-	ph, _ := parent.Height()
-	gh, _ := grandParent.Height()
-	logSyncer.Infof("parent:%v,%v grandParent:%v %v", ph, parent.Key(), gh, grandParent.Key())
 
 	// Try adding the tipsets of the chain to the store, checking for new
 	// heaviest tipsets.

@@ -6,7 +6,6 @@ require (
 	contrib.go.opencensus.io/exporter/jaeger v0.1.0
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
-	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/cskr/pubsub v1.0.2
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
@@ -46,6 +45,7 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/go-multierror v1.1.0
+	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ipfs/go-bitswap v0.2.20
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.4-0.20200624145336-a978cec6e834
