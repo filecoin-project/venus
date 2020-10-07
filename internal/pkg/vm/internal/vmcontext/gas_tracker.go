@@ -2,8 +2,8 @@ package vmcontext
 
 import (
 	"fmt"
+	types2 "github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/types"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -16,12 +16,12 @@ type GasTracker struct {
 	gasAvailable int64
 	gasUsed      int64
 
-	executionTrace    types.ExecutionTrace
+	executionTrace    types2.ExecutionTrace
 	numActorsCreated  uint64
 	allowInternal     bool
 	callerValidated   bool
 	lastGasChargeTime time.Time
-	lastGasCharge     *types.GasTrace
+	lastGasCharge     *types2.GasTrace
 }
 
 // NewGasTracker initializes a new empty gas tracker
@@ -55,7 +55,7 @@ func (t *GasTracker) TryCharge(gasCharge gas.GasCharge) bool {
 		t.lastGasCharge.TimeTaken = now.Sub(t.lastGasChargeTime)
 	}
 
-	gasTrace := types.GasTrace{
+	gasTrace := types2.GasTrace{
 		Name:  gasCharge.Name,
 		Extra: gasCharge.Extra,
 

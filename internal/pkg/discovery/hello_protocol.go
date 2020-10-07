@@ -70,7 +70,7 @@ type HelloProtocolHandler struct {
 
 type peerDiscoveredCallback func(ci *block.ChainInfo)
 
-type getTipSetFunc func() (block.TipSet, error)
+type getTipSetFunc func() (*block.TipSet, error)
 
 // NewHelloProtocolHandler creates a new instance of the hello protocol `Handler` and registers it to
 // the given `host.Host`.

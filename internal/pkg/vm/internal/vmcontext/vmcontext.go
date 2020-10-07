@@ -2,7 +2,9 @@ package vmcontext
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	. "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
@@ -17,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
@@ -45,6 +46,7 @@ type VmOption struct {
 	NtwkVersionGetter    NtwkVersionGetter
 	Rnd                  crypto.RandomnessSource
 	BaseFee              abi.TokenAmount
+	Fork                 fork.IFork
 }
 
 // VM holds the stateView and executes messages over the stateView.
@@ -65,7 +67,7 @@ type VM struct {
 type Ret struct {
 	GasTracker GasTracker
 	OutPuts    gas.GasOutputs
-	Receipt    message.Receipt
+	Receipt    types.MessageReceipt
 }
 
 // ActorImplLookup provides access to upgradeable actor code.
@@ -214,28 +216,31 @@ func (vm *VM) stateView() SyscallsStateView {
 var _ interpreter.VMInterpreter = (*VM)(nil)
 
 // ApplyTipSetMessages implements interpreter.VMInterpreter
-func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head block.TipSetKey, parentEpoch abi.ChainEpoch, epoch abi.ChainEpoch) ([]message.Receipt, error) {
-	receipts := []message.Receipt{}
-
-	// update current tipset
-	vm.currentHead = head
+func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *block.TipSet, parentEpoch abi.ChainEpoch, epoch abi.ChainEpoch) ([]types.MessageReceipt, error) {
+	receipts := []types.MessageReceipt{}
 	vm.currentEpoch = epoch
 	vm.pricelist = gas.PricelistByEpoch(epoch)
-
+	pstate, _ := vm.state.Flush(vm.context)
 	for i := parentEpoch; i < epoch; i++ {
-		// handle stateView forks    todo add by force fork
-		/*		err = sm.handleStateForks(ctx, vmi.StateTree(), i, ts)
-				if err != nil {
-					return cid.Undef, cid.Undef, xerrors.Errorf("error handling stateView forks: %w", err)
-				}*/
-
 		if i > parentEpoch {
 			// run cron for null rounds if any
 			cronMessage := makeCronTickMessage()
 			if _, err := vm.applyImplicitMessage(cronMessage); err != nil {
 				return nil, err
 			}
+			var err error
+			pstate, err = vm.flush()
+			if err != nil {
+				return nil, xerrors.Errorf("can not flush vm state to db", err)
+			}
 		}
+		// handle state forks
+		// XXX: The state tree
+		_, err := vm.vmOption.Fork.HandleStateForks(vm.context, pstate, i, ts)
+		if err != nil {
+			return nil, xerrors.Errorf("hand fork error", err)
+		}
+
 		vm.SetCurrentEpoch(i + 1)
 	}
 
@@ -262,7 +267,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 				continue
 			}
 
-			fmt.Println("start to process bls message ", mcid)
+			//fmt.Println("start to process bls message ", mcid)
 			// apply message
 			ret := vm.applyMessage(m, m.OnChainLen())
 
@@ -274,11 +279,11 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
 			iii, _ := vm.flush()
-			fmt.Printf("message: %s  root: %s\n", mcid, iii)
+			fmt.Println("message: %s  root: %s\n", mcid, iii)
 
-			/*dddd, _ := json.MarshalIndent(ret.OutPuts,"","\t")
+			dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
 			fmt.Println(string(dddd))
-			xxxx := []*types2.GasTrace{}
+			/*xxxx := []*types.GasTrace{}
 			for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
 				xxx.Location = nil
 				if xxx.TotalGas >0 {
@@ -315,17 +320,19 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 
 			iii, _ := vm.flush()
 			fmt.Printf("message: %s  root: %s\n", mcid, iii)
-			/*		dddd, _ := json.MarshalIndent(ret.OutPuts,"","\t")
-					fmt.Println(string(dddd))
-					xxxx := []*types2.GasTrace{}
-					for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
-						xxx.Location = nil
-						if xxx.TotalGas >0 {
-							xxxx = append(xxxx, xxx)
-						}
+
+			dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
+			fmt.Println(string(dddd))
+
+			/*	xxxx := []*types.GasTrace{}
+				for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
+					xxx.Location = nil
+					if xxx.TotalGas >0 {
+						xxxx = append(xxxx, xxx)
 					}
-					dddd, _ = json.MarshalIndent(xxxx,"","\t")
-					fmt.Println(string(dddd))*/
+				}
+				dddd, _ = json.MarshalIndent(xxxx,"","\t")
+				fmt.Println(string(dddd))*/
 			fmt.Println()
 		}
 
@@ -338,6 +345,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 		if _, err := vm.applyImplicitMessage(rewardMessage); err != nil {
 			return nil, err
 		}
+
 		root, _ = vm.state.Flush(context.TODO())
 		fmt.Println("reward: %d  root: %s", index, root)
 		fmt.Print()
@@ -346,11 +354,13 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, head b
 	root, _ := vm.state.Flush(context.TODO())
 	fmt.Println("before cron root: %s", root)
 	fmt.Println("xxxx")
+
 	// cron tick
 	cronMessage := makeCronTickMessage()
 	if _, err := vm.applyImplicitMessage(cronMessage); err != nil {
 		return nil, err
 	}
+
 	root, _ = vm.state.Flush(context.TODO())
 	fmt.Println("after cron root: %s", root)
 	fmt.Print()
@@ -414,7 +424,6 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) (cbor.Marshaler, error)
 	}
 
 	// 3. build context
-	fmt.Println("Origin address:", originator)
 	topLevel := topLevelContext{
 		originatorStableAddress: originator,
 		originatorCallSeq:       fromActor.CallSeqNum, // Implied CallSeqNum is that of the actor before incrementing.
@@ -434,7 +443,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) (cbor.Marshaler, error)
 }
 
 // todo 预测消息的gasLimit
-func (vm *VM) ApplyMessage(msg *types.UnsignedMessage) message.Receipt {
+func (vm *VM) ApplyMessage(msg *types.UnsignedMessage) types.MessageReceipt {
 	ret := vm.applyMessage(msg, msg.OnChainLen())
 	return ret.Receipt
 }
@@ -468,7 +477,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) Ret {
 		return Ret{
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
-			Receipt:    message.Failure(exitcode.SysErrOutOfGas, gas.Zero),
+			Receipt:    types.Failure(exitcode.SysErrOutOfGas, gas.Zero),
 		}
 	}
 
@@ -487,7 +496,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) Ret {
 		return Ret{
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
-			Receipt:    message.Failure(exitcode.SysErrSenderInvalid, gas.Zero),
+			Receipt:    types.Failure(exitcode.SysErrSenderInvalid, gas.Zero),
 		}
 	}
 
@@ -498,7 +507,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) Ret {
 		return Ret{
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
-			Receipt:    message.Failure(exitcode.SysErrSenderInvalid, gas.Zero),
+			Receipt:    types.Failure(exitcode.SysErrSenderInvalid, gas.Zero),
 		}
 	}
 
@@ -510,7 +519,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) Ret {
 		return Ret{
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
-			Receipt:    message.Failure(exitcode.SysErrSenderStateInvalid, gas.Zero),
+			Receipt:    types.Failure(exitcode.SysErrSenderStateInvalid, gas.Zero),
 		}
 	}
 
@@ -524,7 +533,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) Ret {
 		return Ret{
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
-			Receipt:    message.Failure(exitcode.SysErrSenderStateInvalid, gas.Zero),
+			Receipt:    types.Failure(exitcode.SysErrSenderStateInvalid, gas.Zero),
 		}
 	}
 
@@ -662,7 +671,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) Ret {
 	return Ret{
 		GasTracker: gasTank,
 		OutPuts:    gasOutputs,
-		Receipt: message.Receipt{
+		Receipt: types.MessageReceipt{
 			ExitCode:    code,
 			ReturnValue: returnValue,
 			GasUsed:     gas.NewGas(gasUsed),
@@ -747,7 +756,7 @@ func (vm *VM) transferToGasHolder(addr address.Address, gasHolder *actor.Actor, 
 	if amt.LessThan(big.NewInt(0)) {
 		return xerrors.Errorf("attempted to transfer negative value to gas holder")
 	}
-	fmt.Println(fmt.Sprintf("transfer %s to holder", amt.String()))
+	//fmt.Println(fmt.Sprintf("transfer %s to holder", amt.String()))
 	return vm.state.MutateActor(addr, func(a *actor.Actor) error {
 		if err := deductFunds(a, amt); err != nil {
 			return err
@@ -765,7 +774,7 @@ func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *actor.Actor
 	if amt.Equals(big.NewInt(0)) {
 		return nil
 	}
-	fmt.Println(fmt.Sprintf("transfer %s from holder", amt.String()))
+	//fmt.Println(fmt.Sprintf("transfer %s from holder", amt.String()))
 
 	return vm.state.MutateActor(addr, func(a *actor.Actor) error {
 		if err := deductFunds(gasHolder, amt); err != nil {

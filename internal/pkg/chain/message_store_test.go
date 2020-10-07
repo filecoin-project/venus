@@ -10,13 +10,12 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 func TestMessageStoreMessagesHappy(t *testing.T) {
 	ctx := context.Background()
 	keys := types.MustGenerateKeyInfo(2, 42)
-	mm := vm.NewMessageMaker(t, keys)
+	mm := types.NewMessageMaker(t, keys)
 
 	alice := mm.Addresses()[0]
 	bob := mm.Addresses()[1]
@@ -45,9 +44,9 @@ func TestMessageStoreMessagesHappy(t *testing.T) {
 
 func TestMessageStoreReceiptsHappy(t *testing.T) {
 	ctx := context.Background()
-	mr := vm.NewReceiptMaker()
+	mr := types.NewReceiptMaker()
 
-	receipts := []vm.MessageReceipt{
+	receipts := []types.MessageReceipt{
 		mr.NewReceipt(),
 		mr.NewReceipt(),
 		mr.NewReceipt(),

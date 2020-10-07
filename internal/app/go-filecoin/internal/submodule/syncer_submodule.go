@@ -47,8 +47,8 @@ type syncerConfig interface {
 }
 
 type nodeChainSelector interface {
-	Weight(context.Context, block.TipSet, cid.Cid) (fbig.Int, error)
-	IsHeavier(ctx context.Context, a, b block.TipSet, aStateID, bStateID cid.Cid) (bool, error)
+	Weight(context.Context, *block.TipSet, cid.Cid) (fbig.Int, error)
+	IsHeavier(ctx context.Context, a, b *block.TipSet, aStateID, bStateID cid.Cid) (bool, error)
 }
 
 // NewSyncerSubmodule creates a new chain submodule.
@@ -83,12 +83,12 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 	d := config.Drand()
 
 	// set up consensus
-	//	elections := consensus.NewElectionMachine(chn.State)
+	//	elections := consensus.NewElectionMachine(chn.state)
 	sampler := chain.NewSampler(chn.ChainReader, genBlk.Ticket)
 	tickets := consensus.NewTicketMachine(sampler)
 	stateViewer := consensus.AsDefaultStateViewer(state.NewViewer(blockstore.CborStore))
 	nodeConsensus := consensus.NewExpected(blockstore.CborStore, blockstore.Blockstore, chn.Processor, &stateViewer,
-		config.BlockTime(), tickets, postVerifier, chn.ChainReader, config.ChainClock(), d, chn.State, chn.MessageStore)
+		config.BlockTime(), tickets, postVerifier, chn.ChainReader, config.ChainClock(), d, chn.State, chn.MessageStore, chn.Fork)
 	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, &stateViewer, config.GenesisCid())
 
 	// setup fecher
@@ -104,7 +104,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 	faultCh := make(chan slashing.ConsensusFault)
 	faultDetector := slashing.NewConsensusFaultDetector(faultCh)
 
-	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, fetcher, config.ChainClock(), faultDetector)
+	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, fetcher, config.ChainClock(), faultDetector, chn.Fork)
 	if err != nil {
 		return SyncerSubmodule{}, err
 	}

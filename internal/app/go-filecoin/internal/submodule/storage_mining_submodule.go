@@ -158,7 +158,7 @@ func (s *StorageMiningSubmodule) Stop(ctx context.Context) error {
 }
 
 // HandleNewHead submits a new chain head for possible fallback PoSt.
-func (s *StorageMiningSubmodule) HandleNewHead(ctx context.Context, newHead block.TipSet) error {
+func (s *StorageMiningSubmodule) HandleNewHead(ctx context.Context, newHead *block.TipSet) error {
 	s.startedLk.RLock()
 	defer s.startedLk.RUnlock()
 

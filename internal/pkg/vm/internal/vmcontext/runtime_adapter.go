@@ -53,7 +53,6 @@ func newRuntimeAdapter(ctx *invocationContext) *runtimeAdapter {
 		ctx:       ctx.rt.context,
 		gasTank:   ctx.gasTank,
 		pricelist: ctx.rt.pricelist,
-		head:      ctx.rt.currentHead,
 		stateView: ctx.rt.stateView(),
 	}}
 }

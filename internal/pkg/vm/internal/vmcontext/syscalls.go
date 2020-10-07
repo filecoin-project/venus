@@ -33,7 +33,7 @@ type SyscallsImpl interface {
 	ComputeUnsealedSectorCID(ctx context.Context, proof abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error)
 	VerifySeal(ctx context.Context, info proof.SealVerifyInfo) error
 	VerifyPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) error
-	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view SyscallsStateView) (*specsruntime.ConsensusFault, error)
+	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view SyscallsStateView) (*specsruntime.ConsensusFault, error)
 }
 
 type syscalls struct {
@@ -78,7 +78,7 @@ func (sys syscalls) VerifyPoSt(info proof.WindowPoStVerifyInfo) error {
 
 func (sys syscalls) VerifyConsensusFault(h1, h2, extra []byte) (*specsruntime.ConsensusFault, error) {
 	sys.gasTank.Charge(sys.pricelist.OnVerifyConsensusFault(), "VerifyConsensusFault")
-	return sys.impl.VerifyConsensusFault(sys.ctx, h1, h2, extra, sys.head, sys.stateView)
+	return sys.impl.VerifyConsensusFault(sys.ctx, h1, h2, extra, sys.stateView)
 }
 
 var BatchSealVerifyParallelism = goruntime.NumCPU()

@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	"golang.org/x/xerrors"
 	"sync"
 	"time"
@@ -17,7 +18,6 @@ import (
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -67,10 +67,9 @@ const DRANDEpochLookback = 2
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
-	ProcessTipSet(context.Context, state.Tree, *vm.Storage, block.TipSet, block.TipSet, []vm.BlockMessagesInfo, vm.VmOption) ([]vm.MessageReceipt, error)
-
+	ProcessTipSet(context.Context, state.Tree, *vm.Storage, *block.TipSet, *block.TipSet, []vm.BlockMessagesInfo, vm.VmOption) ([]types.MessageReceipt, error)
 	// Todo add by force
-	ProcessUnsignedMessage(context.Context,*types.UnsignedMessage, state.Tree, *vm.Storage, vm.VmOption) (int64, error)
+	ProcessUnsignedMessage(context.Context, *types.UnsignedMessage, state.Tree, *vm.Storage, vm.VmOption) (int64, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
@@ -85,8 +84,8 @@ type StateViewer interface {
 }
 
 type chainReader interface {
+	GetTipSet(tsKey block.TipSetKey) (*block.TipSet, error)
 	GetHead() block.TipSetKey
-	GetTipSet(tsKey block.TipSetKey) (block.TipSet, error)
 	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
 	GetGenesisBlock(ctx context.Context) (*block.Block, error)
 	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
@@ -130,6 +129,7 @@ type Expected struct {
 
 	clock clock.ChainEpochClock
 	drand beacon.Schedule
+	fork  fork.IFork
 
 	genesisMsigs []msig0.State
 	// info about the Accounts in the genesis state
@@ -142,8 +142,20 @@ type Expected struct {
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processor, state StateViewer, bt time.Duration,
-	tv TicketValidator, pv ProofVerifier, chainState chainReader, clock clock.ChainEpochClock, drand beacon.Schedule, rnd Randness, messageStore *chain.MessageStore) *Expected {
+func NewExpected(cs cbor.IpldStore,
+	bs blockstore.Blockstore,
+	processor Processor,
+	state StateViewer,
+	bt time.Duration,
+	tv TicketValidator,
+	pv ProofVerifier,
+	chainState chainReader,
+	clock clock.ChainEpochClock,
+	drand beacon.Schedule,
+	rnd Randness,
+	messageStore *chain.MessageStore,
+	fork fork.IFork,
+) *Expected {
 	c := &Expected{
 		cstore:          cs,
 		blockTime:       bt,
@@ -157,6 +169,7 @@ func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processo
 		drand:           drand,
 		messageStore:    messageStore,
 		rnd:             rnd,
+		fork:            fork,
 	}
 	return c
 }
@@ -173,7 +186,7 @@ func (c *Expected) PredictUnsignedMessageGas(ctx context.Context, msg *types.Uns
 		return 0, err
 	}
 
-	ts,err := c.chainState.GetTipSet(c.chainState.GetHead())
+	ts, err := c.chainState.GetTipSet(c.chainState.GetHead())
 	if err != nil {
 		return 0, err
 	}
@@ -207,48 +220,87 @@ func (c *Expected) PredictUnsignedMessageGas(ctx context.Context, msg *types.Uns
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, parentWeight big.Int, parentStateRoot cid.Cid, parentReceiptRoot cid.Cid) (root cid.Cid, receipts []vm.MessageReceipt, err error) {
+func (c *Expected) RunStateTransition(ctx context.Context, ts *block.TipSet, parentWeight big.Int, parentStateRoot cid.Cid, parentReceiptRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	// Gather tipset messages
+	// Gather tipset messages todo should be a function
 	var secpMessages [][]*types.SignedMessage
 	var blsMessages [][]*types.UnsignedMessage
+
+	applied := make(map[address.Address]uint64)
+	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
+		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
+		if _, ok := applied[m.From]; !ok {
+			applied[m.From] = m.CallSeqNum
+		}
+
+		if applied[m.From] != m.CallSeqNum {
+			return false, nil
+		}
+
+		applied[m.From]++
+
+		return true, nil
+	}
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
 		secpMsgs, blsMsgs, err := c.messageStore.LoadMessages(ctx, blk.Messages.Cid)
 		if err != nil {
-			return cid.Undef, []vm.MessageReceipt{}, errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
+			return cid.Undef, []types.MessageReceipt{}, errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
 		}
 
-		blsMessages = append(blsMessages, blsMsgs)
-		secpMessages = append(secpMessages, secpMsgs)
+		var blksecpMessages []*types.SignedMessage
+		var blkblsMessages []*types.UnsignedMessage
+
+		for _, msg := range blsMsgs {
+			b, err := selectMsg(msg)
+			if err != nil {
+				return cid.Undef, []types.MessageReceipt{}, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
+			}
+			if b {
+				blkblsMessages = append(blkblsMessages, msg)
+			}
+		}
+
+		for _, msg := range secpMsgs {
+			b, err := selectMsg(&msg.Message)
+			if err != nil {
+				return cid.Undef, []types.MessageReceipt{}, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
+			}
+			if b {
+				blksecpMessages = append(blksecpMessages, msg)
+			}
+		}
+
+		blsMessages = append(blsMessages, blkblsMessages)
+		secpMessages = append(secpMessages, blksecpMessages)
 	}
 
-	if err := c.validateMining(ctx, ts, parentStateRoot, blsMessages, secpMessages, parentWeight, parentReceiptRoot); err != nil {
-		return cid.Undef, []vm.MessageReceipt{}, err
+	if err := c.validateMining(ctx, ts, parentStateRoot, parentWeight, parentReceiptRoot); err != nil {
+		return cid.Undef, []types.MessageReceipt{}, err
 	}
 
 	vms := vm.NewStorage(c.bstore)
 	priorState, err := state.LoadState(ctx, vms, parentStateRoot)
 	if err != nil {
-		return cid.Undef, []vm.MessageReceipt{}, err
+		return cid.Undef, []types.MessageReceipt{}, err
 	}
 
 	var newState state.Tree
 	newState, receipts, err = c.runMessages(ctx, priorState, vms, ts, blsMessages, secpMessages)
 	if err != nil {
-		return cid.Undef, []vm.MessageReceipt{}, err
+		return cid.Undef, []types.MessageReceipt{}, err
 	}
 	err = vms.Flush()
 	if err != nil {
-		return cid.Undef, []vm.MessageReceipt{}, err
+		return cid.Undef, []types.MessageReceipt{}, err
 	}
 
 	root, err = newState.Flush(ctx)
 	if err != nil {
-		return cid.Undef, []vm.MessageReceipt{}, err
+		return cid.Undef, []types.MessageReceipt{}, err
 	}
 	return root, receipts, err
 }
@@ -256,12 +308,23 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, pare
 // validateMining checks validity of the ticket, proof, signature and miner
 // address of every block in the tipset.
 func (c *Expected) validateMining(ctx context.Context,
-	ts block.TipSet,
+	ts *block.TipSet,
 	parentStateRoot cid.Cid,
-	blsMsgs [][]*types.UnsignedMessage,
-	secpMsgs [][]*types.SignedMessage,
 	parentWeight big.Int,
 	parentReceiptRoot cid.Cid) error {
+
+	var secpMsgs [][]*types.SignedMessage
+	var blsMsgs [][]*types.UnsignedMessage
+	for i := 0; i < ts.Len(); i++ {
+		blk := ts.At(i)
+		blksecpMsgs, blkblsMsgs, err := c.messageStore.LoadMessages(ctx, blk.Messages.Cid)
+		if err != nil {
+			return errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
+		}
+
+		blsMsgs = append(blsMsgs, blkblsMsgs)
+		secpMsgs = append(secpMsgs, blksecpMsgs)
+	}
 
 	keyStateView := c.state.PowerStateView(parentStateRoot)
 	sigValidator := appstate.NewSignatureValidator(keyStateView)
@@ -399,12 +462,12 @@ func (c *Expected) ValidateBlockWinner(ctx context.Context, blk *block.Block, st
 		return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
 	}
 
-	vrfBase, err := cst.DrawRandomness(rBeacon.Data, acrypto.DomainSeparationTag_ElectionProofProduction, blk.Height, buf.Bytes())
+	vrfBase, err := chain.DrawRandomness(rBeacon.Data, acrypto.DomainSeparationTag_ElectionProofProduction, blk.Height, buf.Bytes())
 	if err != nil {
 		return xerrors.Errorf("could not draw randomness: %w", err)
 	}
 
-	_, waddr, err := view.MinerControlAddresses(ctx,blk.Miner)
+	_, waddr, err := view.MinerControlAddresses(ctx, blk.Miner)
 	if err != nil {
 		return xerrors.Errorf("query worker address failed: %w", err)
 	}
@@ -444,8 +507,8 @@ func (c *Expected) electionEntry(ctx context.Context, blk *block.Block) (*block.
 // for the entire tipset. The output state must be flushed after calling to
 // guarantee that the state transitions propagate.
 // Messages that fail to apply are dropped on the floor (and no receipt is emitted).
-func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms *vm.Storage, ts block.TipSet,
-	blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (state.Tree, []vm.MessageReceipt, error) {
+func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms *vm.Storage, ts *block.TipSet,
+	blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (state.Tree, []types.MessageReceipt, error) {
 	msgs := []vm.BlockMessagesInfo{}
 
 	// build message information per block
@@ -468,7 +531,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms *vm.Stora
 	}
 
 	// process tipset
-	var pts block.TipSet
+	var pts *block.TipSet
 	if ts.EnsureHeight() > 0 {
 		parent, err := ts.Parents()
 		if err != nil {
@@ -479,7 +542,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms *vm.Stora
 			return nil, nil, err
 		}
 	} else {
-		return st, []vm.MessageReceipt{}, nil
+		return st, []types.MessageReceipt{}, nil
 	}
 
 	rnd := headRandomness{
@@ -498,6 +561,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms *vm.Stora
 		NtwkVersionGetter: c.chainState.GetNtwkVersion,
 		Rnd:               &rnd,
 		BaseFee:           ts.At(0).ParentBaseFee,
+		Fork:              c.fork,
 	}
 	receipts, err := c.processor.ProcessTipSet(ctx, st, vms, pts, ts, msgs, vmOption)
 	if err != nil {

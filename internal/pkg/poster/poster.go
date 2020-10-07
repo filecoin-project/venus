@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -83,7 +82,7 @@ func NewPoster(
 }
 
 // HandleNewHead submits a new chain head for possible fallback PoSt.
-func (p *Poster) HandleNewHead(ctx context.Context, newHead block.TipSet) error {
+func (p *Poster) HandleNewHead(ctx context.Context, newHead *block.TipSet) error {
 	return p.startPoStIfNeeded(ctx, newHead)
 }
 
@@ -100,7 +99,7 @@ func (p *Poster) StopPoSting() {
 	}
 }
 
-func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) error {
+func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead *block.TipSet) error {
 	p.postMutex.Lock()
 	defer p.postMutex.Unlock()
 
@@ -152,7 +151,7 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead block.TipSet) er
 	return nil
 }
 
-func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, di *dline.Info, newHead block.TipSet) {
+func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, di *dline.Info, newHead *block.TipSet) {
 	defer p.safeCancelPoSt()
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
@@ -413,7 +412,7 @@ func (p *Poster) sendPoSt(ctx context.Context, proofs []miner.SubmitWindowedPoSt
 		}
 
 		// wait until we see the post on chain at least once
-		err = p.waiter.Wait(ctx, mcid, msg.DefaultMessageWaitLookback, func(_ *block.Block, _ *types.SignedMessage, recp *vm.MessageReceipt) error {
+		err = p.waiter.Wait(ctx, mcid, msg.DefaultMessageWaitLookback, func(_ *block.Block, _ *types.SignedMessage, recp *types.MessageReceipt) error {
 			return nil
 		})
 		if err != nil {
@@ -423,7 +422,7 @@ func (p *Poster) sendPoSt(ctx context.Context, proofs []miner.SubmitWindowedPoSt
 	return nil
 }
 
-func (p *Poster) sectorsForProof(ctx context.Context, stateViewer *appstate.View, goodSectors, allSectors bitfield.BitField, ts block.TipSet) ([]proof.SectorInfo, error) {
+func (p *Poster) sectorsForProof(ctx context.Context, stateViewer *appstate.View, goodSectors, allSectors bitfield.BitField, ts *block.TipSet) ([]proof.SectorInfo, error) {
 	sset, err := stateViewer.StateMinerSectors(ctx, p.minerAddr, &goodSectors, false, ts.Key())
 	if err != nil {
 		return nil, err
@@ -580,7 +579,7 @@ func (p *Poster) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitio
 
 	log.Warnw("declare faults recovered Message CID", "cid", mcid)
 
-	err = p.waiter.Wait(context.TODO(), mcid, build.MessageConfidence, func(b *block.Block, signedMessage *types.SignedMessage, receipt *vm.MessageReceipt) error {
+	err = p.waiter.Wait(context.TODO(), mcid, build.MessageConfidence, func(b *block.Block, signedMessage *types.SignedMessage, receipt *types.MessageReceipt) error {
 		if receipt.ExitCode != 0 {
 			return xerrors.Errorf("declare faults recovered wait non-0 exit code: %d", receipt.ExitCode)
 		}
@@ -665,7 +664,7 @@ func (p *Poster) checkNextFaults(ctx context.Context, dlIdx uint64, partitions [
 
 	log.Warnw("declare faults Message CID", "cid", mcid)
 
-	err = p.waiter.Wait(context.TODO(), mcid, build.MessageConfidence, func(b *block.Block, signedMessage *types.SignedMessage, receipt *vm.MessageReceipt) error {
+	err = p.waiter.Wait(context.TODO(), mcid, build.MessageConfidence, func(b *block.Block, signedMessage *types.SignedMessage, receipt *types.MessageReceipt) error {
 		if receipt.ExitCode != 0 {
 			return xerrors.Errorf("declare faults wait non-0 exit code: %d", receipt.ExitCode)
 		}

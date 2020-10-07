@@ -3,7 +3,6 @@ package commands
 import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -111,7 +110,7 @@ var showReceiptsCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Show a filecoin receipt collection by its CID",
 		ShortDescription: `Prints info for all receipts in a collection,
-at the given CID.  Receipt collection CIDs are found in the "MessageReceipts"
+at the given CID.  MessageReceipt collection CIDs are found in the "MessageReceipts"
 field of the filecoin block header.`,
 	},
 	Arguments: []cmds.Argument{
@@ -130,5 +129,5 @@ field of the filecoin block header.`,
 
 		return re.Emit(receipts)
 	},
-	Type: []vm.MessageReceipt{},
+	Type: []types.MessageReceipt{},
 }

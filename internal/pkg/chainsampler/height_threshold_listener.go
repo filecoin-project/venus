@@ -36,7 +36,7 @@ func NewHeightThresholdListener(target abi.ChainEpoch, hitCh chan block.TipSetKe
 // all the common ancestors of the new tipset to the greatest common ancestor.
 // The tipsets must be ordered from newest (highest block height) to oldest.
 // Returns false if this handler is no longer valid.
-func (l *HeightThresholdListener) Handle(chain []block.TipSet) (bool, error) {
+func (l *HeightThresholdListener) Handle(chain []*block.TipSet) (bool, error) {
 	if len(chain) < 1 {
 		return true, nil
 	}
@@ -85,7 +85,7 @@ func (l *HeightThresholdListener) Handle(chain []block.TipSet) (bool, error) {
 	return true, nil
 }
 
-func (l *HeightThresholdListener) sendHit(chain []block.TipSet) error {
+func (l *HeightThresholdListener) sendHit(chain []*block.TipSet) error {
 	// assume chainStore not empty and first tipset height greater than target
 	firstTargetTipset := chain[0]
 	for _, ts := range chain {

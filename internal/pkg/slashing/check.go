@@ -21,7 +21,7 @@ type FaultStateView interface {
 
 // Chain state required for checking consensus fault reports.
 type chainReader interface {
-	GetTipSet(block.TipSetKey) (block.TipSet, error)
+	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 }
 
 // Checks the validity of reported consensus faults.
@@ -35,7 +35,7 @@ func NewFaultChecker(chain chainReader) *ConsensusFaultChecker {
 
 // Checks the validity of a consensus fault reported by serialized block headers h1, h2, and optional
 // common-ancestor witness h3.
-func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view FaultStateView) (*runtime.ConsensusFault, error) {
+func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view FaultStateView) (*runtime.ConsensusFault, error) {
 	if bytes.Equal(h1, h2) {
 		return nil, fmt.Errorf("no consensus fault: blocks identical")
 	}

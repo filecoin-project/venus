@@ -19,7 +19,7 @@ import (
 type ChainReaderAPI interface {
 	// GetBalance gets the balance in AttoFIL for a given address
 	Head() block.TipSetKey
-	GetTipSet(key block.TipSetKey) (block.TipSet, error)
+	GetTipSet(key block.TipSetKey) (*block.TipSet, error)
 	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*actor.Actor, error)
 }
 

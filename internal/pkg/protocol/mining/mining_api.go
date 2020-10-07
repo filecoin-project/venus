@@ -13,7 +13,7 @@ import (
 
 type miningChainReader interface {
 	GetHead() block.TipSetKey
-	GetTipSet(tsKey block.TipSetKey) (block.TipSet, error)
+	GetTipSet(tsKey block.TipSetKey) (*block.TipSet, error)
 }
 
 // API provides an interface to the block mining protocol.

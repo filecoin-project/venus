@@ -213,7 +213,7 @@ func (node *Node) handleNewMiningOutput(ctx context.Context, miningOutCh <-chan 
 
 }
 
-func (node *Node) handleNewChainHeads(ctx context.Context, firstHead block.TipSet) {
+func (node *Node) handleNewChainHeads(ctx context.Context, firstHead *block.TipSet) {
 	newHeadCh := node.chain.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
 	defer log.Infof("new head handler exited")
 	defer node.chain.ChainReader.HeadEvents().Unsub(newHeadCh)
@@ -228,7 +228,7 @@ func (node *Node) handleNewChainHeads(ctx context.Context, firstHead block.TipSe
 				log.Errorf("failed new head channel receive")
 				return
 			}
-			newHead, ok := ts.(block.TipSet)
+			newHead, ok := ts.(*block.TipSet)
 			if !ok {
 				log.Errorf("non-tipset published on heaviest tipset channel")
 				continue
@@ -644,7 +644,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (*mining.DefaultWorker
 }
 
 // getWeight is the default GetWeight function for the mining worker.
-func (node *Node) getWeight(ctx context.Context, ts block.TipSet) (fbig.Int, error) {
+func (node *Node) getWeight(ctx context.Context, ts *block.TipSet) (fbig.Int, error) {
 	parent, err := ts.Parents()
 	if err != nil {
 		return fbig.Zero(), err

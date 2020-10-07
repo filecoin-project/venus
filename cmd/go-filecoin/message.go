@@ -172,7 +172,7 @@ var signedMsgSendCmd = &cmds.Command{
 // WaitResult is the result of a message wait call.
 type WaitResult struct {
 	Message   *types.SignedMessage
-	Receipt   *vm.MessageReceipt
+	Receipt   *types.MessageReceipt
 	Signature vm.ActorMethodSignature
 }
 
@@ -210,7 +210,7 @@ var msgWaitCmd = &cmds.Command{
 		ctx, cancel := context.WithTimeout(req.Context, timeoutDuration)
 		defer cancel()
 
-		err = GetPorcelainAPI(env).MessageWait(ctx, msgCid, lookback, func(blk *block.Block, msg *types.SignedMessage, receipt *vm.MessageReceipt) error {
+		err = GetPorcelainAPI(env).MessageWait(ctx, msgCid, lookback, func(blk *block.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
 			found = true
 			sig, err := GetPorcelainAPI(env).ActorGetSignature(req.Context, msg.Message.To, msg.Message.Method)
 			if err != nil && err != cst.ErrNoMethod && err != cst.ErrNoActorImpl {

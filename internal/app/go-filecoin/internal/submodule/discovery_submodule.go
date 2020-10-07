@@ -90,7 +90,7 @@ func (m *DiscoverySubmodule) Start(node discoveryNode) error {
 	}
 
 	// chain head callback
-	chainHeadCallback := func() (block.TipSet, error) {
+	chainHeadCallback := func() (*block.TipSet, error) {
 		return node.Chain().State.GetTipSet(node.Chain().State.Head())
 	}
 

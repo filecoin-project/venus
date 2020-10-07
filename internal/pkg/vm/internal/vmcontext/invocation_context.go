@@ -407,7 +407,7 @@ func (ctx *invocationContext) ValidateCaller(pattern runtime.CallerPattern) {
 	ctx.isCallerValidated = true
 }
 
-// State implements runtime.InvocationContext.
+// state implements runtime.InvocationContext.
 func (ctx *invocationContext) State() specsruntime.StateHandle {
 	return ctx.stateHandle
 }

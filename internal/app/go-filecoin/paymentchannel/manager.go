@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
@@ -49,7 +48,7 @@ var PaymentChannelStorePrefix = "/retrievaldeals/paymentchannel"
 
 // MsgWaiter is an interface for waiting for a message to appear on chain
 type MsgWaiter interface {
-	Wait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error
+	Wait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 }
 
 // MsgSender is an interface for something that can post messages on chain
@@ -236,7 +235,7 @@ func (pm *Manager) GetMinerWorkerAddress(ctx context.Context, miner address.Addr
 func (pm *Manager) WaitForCreatePaychMessage(ctx context.Context, mcid cid.Cid) (address.Address, error) {
 	var newPaychAddr address.Address
 
-	handleResult := func(b *block.Block, sm *types.SignedMessage, mr *vm.MessageReceipt) error {
+	handleResult := func(b *block.Block, sm *types.SignedMessage, mr *types.MessageReceipt) error {
 		var res initActor.ExecReturn
 		if err := encoding.Decode(mr.ReturnValue, &res); err != nil {
 			return err
@@ -247,7 +246,7 @@ func (pm *Manager) WaitForCreatePaychMessage(ctx context.Context, mcid cid.Cid) 
 			return err
 		}
 
-		if !mcid.Equals(*chinfo.CreateMsg){
+		if !mcid.Equals(*chinfo.CreateMsg) {
 			return xerrors.New("create paych cid do not match")
 		}
 
@@ -278,7 +277,7 @@ func (pm *Manager) AddFundsToChannel(paychAddr address.Address, amt abi.TokenAmo
 		return cid.Undef, err
 	}
 
-	mcid, _, err := pm.sender.Send(context.TODO(), chinfo.From, paychAddr, amt, defaultGasPrice,  types.NewGasPremium(100),defaultGasLimit, true, builtin.MethodSend, nil)
+	mcid, _, err := pm.sender.Send(context.TODO(), chinfo.From, paychAddr, amt, defaultGasPrice, types.NewGasPremium(100), defaultGasLimit, true, builtin.MethodSend, nil)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -298,7 +297,7 @@ func (pm *Manager) AddFundsToChannel(paychAddr address.Address, amt abi.TokenAmo
 }
 
 func (pm *Manager) WaitForAddFundsMessage(ctx context.Context, mcid cid.Cid) error {
-	handleResult := func(b *block.Block, sm *types.SignedMessage, mr *vm.MessageReceipt) error {
+	handleResult := func(b *block.Block, sm *types.SignedMessage, mr *types.MessageReceipt) error {
 		if mr.ExitCode != exitcode.Ok {
 			return xerrors.Errorf("Add funds failed with exitcode %d", mr.ExitCode)
 		}
@@ -306,11 +305,11 @@ func (pm *Manager) WaitForAddFundsMessage(ctx context.Context, mcid cid.Cid) err
 		var chinfos []ChannelInfo
 		if err := pm.paymentChannels.List(&chinfos); err != nil {
 			log.Errorf("get paych list error: %s", err)
-		}else{
+		} else {
 			for _, chinfo := range chinfos {
 				if chinfo.AddFundsMsg.Equals(mcid) {
 					err = pm.paymentChannels.Mutate(chinfo.UniqueAddr, func(info *ChannelInfo) error {
-						info.Amount =  big2.Add(chinfo.Amount,chinfo.PendingAmount)
+						info.Amount = big2.Add(chinfo.Amount, chinfo.PendingAmount)
 						info.AddFundsMsg = nil
 						info.PendingAmount = big2.NewInt(0)
 						return nil
@@ -336,7 +335,7 @@ func (pm *Manager) handlePaychCreateResult(ctx context.Context, mcid cid.Cid, cl
 	defer pm.paymentChannels.storeLk.Unlock()
 	var paychAddr address.Address
 
-	handleResult := func(_ *block.Block, _ *types.SignedMessage, mr *vm.MessageReceipt) error {
+	handleResult := func(_ *block.Block, _ *types.SignedMessage, mr *types.MessageReceipt) error {
 		if mr.ExitCode != exitcode.Ok {
 			return xerrors.Errorf("create message failed with exit code %d", mr.ExitCode)
 		}
@@ -356,13 +355,13 @@ func (pm *Manager) handlePaychCreateResult(ctx context.Context, mcid cid.Cid, cl
 
 	// TODO check again to make sure a payment channel has not been created for this From/To
 	chinfo := ChannelInfo{
-		From:       client,
-		To:         miner,
-		NextLane:   0,
-		NextNonce:  1,
-		UniqueAddr: paychAddr,
-		CreateMsg:  &mcid,
-		Amount:     types.NewAttoFIL(amt.Int),
+		From:          client,
+		To:            miner,
+		NextLane:      0,
+		NextNonce:     1,
+		UniqueAddr:    paychAddr,
+		CreateMsg:     &mcid,
+		Amount:        types.NewAttoFIL(amt.Int),
 		PendingAmount: big2.NewInt(0),
 	}
 	if err := pm.paymentChannels.Begin(paychAddr, &chinfo); err != nil {
@@ -432,7 +431,7 @@ func (pm *Manager) saveNewVoucher(paychAddr address.Address, voucher *paychActor
 func (pm *Manager) GetPaychWaitReady(ctx context.Context, mcid cid.Cid) (address.Address, error) {
 	var paychAddr address.Address
 
-	handleResult := func(b *block.Block, sm *types.SignedMessage, mr *vm.MessageReceipt) error {
+	handleResult := func(b *block.Block, sm *types.SignedMessage, mr *types.MessageReceipt) error {
 		if mr.ExitCode != exitcode.Ok {
 			return xerrors.Errorf("create channel / add funds message failed with exit code %d", mr.ExitCode)
 		}
@@ -458,7 +457,7 @@ func (pm *Manager) GetPaychWaitReady(ctx context.Context, mcid cid.Cid) (address
 func (pm *Manager) AvailableFunds(ch address.Address) (*ChannelAvailableFunds, error) {
 	chinfo, err := pm.GetPaymentChannelInfo(ch)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 
 	// The channel may have a pending create or add funds message

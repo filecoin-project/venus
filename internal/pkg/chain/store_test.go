@@ -256,7 +256,7 @@ func TestGetMultipleByParent(t *testing.T) {
 	}
 }
 
-/* Head and its State is set and notified properly. */
+/* Head and its state is set and notified properly. */
 
 // The constructor call sets the genesis cid for the chain store.
 func TestSetGenesis(t *testing.T) {

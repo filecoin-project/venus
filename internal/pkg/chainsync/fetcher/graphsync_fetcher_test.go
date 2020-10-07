@@ -40,7 +40,6 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 const visitsPerBlock = 18
@@ -70,7 +69,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilderWithDeps(t, address.Undef, &chain.FakeStateBuilder{}, chain.NewClockTimestamper(chainClock))
 	keys := types.MustGenerateKeyInfo(2, 42)
-	mm := vm.NewMessageMaker(t, keys)
+	mm := types.NewMessageMaker(t, keys)
 	notDecodableBytes, err := encoding.Encode(notDecodable{Num: 5, Message: "applesauce"})
 	require.NoError(t, err)
 	notDecodableBlock, err := cbor.Decode(notDecodableBytes, constants.DefaultHashFunction, -1)
@@ -667,7 +666,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilderWithDeps(t, address.Undef, &chain.FakeStateBuilder{}, chain.NewClockTimestamper(chainClock))
 	keys := types.MustGenerateKeyInfo(1, 42)
-	mm := vm.NewMessageMaker(t, keys)
+	mm := types.NewMessageMaker(t, keys)
 	notDecodableBlock, err := cbor.WrapObject(notDecodable{Num: 5, Message: "applebutter"}, constants.DefaultHashFunction, -1)
 	require.NoError(t, err)
 
@@ -770,7 +769,7 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 	fc, chainClock := clock.NewFakeChain(1234567890, 5*time.Second, time.Second, time.Now().Unix())
 	builder := chain.NewBuilderWithDeps(t, address.Undef, &chain.FakeStateBuilder{}, chain.NewClockTimestamper(chainClock))
 	keys := types.MustGenerateKeyInfo(2, 42)
-	mm := vm.NewMessageMaker(t, keys)
+	mm := types.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
 	bob := mm.Addresses()[1]
 	gen := builder.NewGenesis()
@@ -874,7 +873,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	// setup a chain
 	builder := chain.NewBuilder(t, address.Undef)
 	keys := types.MustGenerateKeyInfo(1, 42)
-	mm := vm.NewMessageMaker(t, keys)
+	mm := types.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
 	gen := builder.NewGenesis()
 	i := uint64(0)

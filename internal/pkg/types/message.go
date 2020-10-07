@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
@@ -92,6 +93,7 @@ func init() {
 		panic("could not create CID for empty TxMeta")
 	}
 }
+
 //
 type ChainMsg interface {
 	Cid() (cid.Cid, error)
@@ -345,4 +347,32 @@ type TxMeta struct {
 // String returns a readable printing string of TxMeta
 func (m TxMeta) String() string {
 	return fmt.Sprintf("secp: %s, bls: %s", m.SecpRoot.String(), m.BLSRoot.String())
+}
+
+// MessageReceipt is what is returned by executing a message on the vm.
+type MessageReceipt struct {
+	// control field for encoding struct as an array
+	_           struct{}          `cbor:",toarray"`
+	ExitCode    exitcode.ExitCode `json:"exitCode"`
+	ReturnValue []byte            `json:"return"`
+	GasUsed     gas.Unit          `json:"gasUsed"`
+}
+
+// Failure returns with a non-zero exit code.
+func Failure(exitCode exitcode.ExitCode, gasAmount gas.Unit) MessageReceipt {
+	return MessageReceipt{
+		ExitCode:    exitCode,
+		ReturnValue: []byte{},
+		GasUsed:     gasAmount,
+	}
+}
+
+func (r *MessageReceipt) String() string {
+	errStr := "(error encoding MessageReceipt)"
+
+	js, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		return errStr
+	}
+	return fmt.Sprintf("MessageReceipt: %s", string(js))
 }

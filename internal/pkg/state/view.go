@@ -565,7 +565,7 @@ func (v *View) PaychActorParties(ctx context.Context, paychAddr addr.Address) (f
 	return state.From, state.To, nil
 }
 
-func (v *View) StateMinerProvingDeadline(ctx context.Context, addr addr.Address, ts block.TipSet) (*dline.Info, error) {
+func (v *View) StateMinerProvingDeadline(ctx context.Context, addr addr.Address, ts *block.TipSet) (*dline.Info, error) {
 	mas, err := v.loadMinerActor(ctx, addr)
 	if err != nil {
 		return nil, xerrors.WithMessage(err, "failed to get proving dealline")

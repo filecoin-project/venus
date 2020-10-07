@@ -101,14 +101,14 @@ func (sm *Expected) GetCirculatingSupplyDetailed(ctx context.Context, height abi
 	}, nil
 }
 
-func (c *Expected) processBlock(ctx context.Context, ts block.TipSet) (cid.Cid, []vm.MessageReceipt, error) {
+func (c *Expected) processBlock(ctx context.Context, ts *block.TipSet) (cid.Cid, []types.MessageReceipt, error) {
 	var secpMessages [][]*types.SignedMessage
 	var blsMessages [][]*types.UnsignedMessage
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
 		secpMsgs, blsMsgs, err := c.messageStore.LoadMessages(ctx, blk.Messages.Cid)
 		if err != nil {
-			return cid.Undef, []vm.MessageReceipt{}, xerrors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
+			return cid.Undef, []types.MessageReceipt{}, xerrors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
 		}
 
 		blsMessages = append(blsMessages, blsMsgs)
@@ -118,22 +118,22 @@ func (c *Expected) processBlock(ctx context.Context, ts block.TipSet) (cid.Cid, 
 	vms := vm.NewStorage(c.bstore)
 	priorState, err := state.LoadState(ctx, vms, ts.At(0).StateRoot.Cid)
 	if err != nil {
-		return cid.Undef, []vm.MessageReceipt{}, err
+		return cid.Undef, []types.MessageReceipt{}, err
 	}
 
 	var newState state.Tree
 	newState, receipts, err := c.runMessages(ctx, priorState, vms, ts, blsMessages, secpMessages)
 	if err != nil {
-		return cid.Undef, []vm.MessageReceipt{}, err
+		return cid.Undef, []types.MessageReceipt{}, err
 	}
 	err = vms.Flush()
 	if err != nil {
-		return cid.Undef, []vm.MessageReceipt{}, err
+		return cid.Undef, []types.MessageReceipt{}, err
 	}
 
 	root, err := newState.Flush(ctx)
 	if err != nil {
-		return cid.Undef, []vm.MessageReceipt{}, err
+		return cid.Undef, []types.MessageReceipt{}, err
 	}
 	return root, receipts, err
 }

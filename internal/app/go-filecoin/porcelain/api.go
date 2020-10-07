@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
@@ -48,7 +47,7 @@ func New(plumbing *plumbing.API) *API {
 }
 
 // ChainHead returns the current head tipset
-func (a *API) ChainHead() (block.TipSet, error) {
+func (a *API) ChainHead() (*block.TipSet, error) {
 	return ChainHead(a)
 }
 
@@ -128,7 +127,7 @@ func (a *API) MinerSetWorkerAddress(ctx context.Context, toAddr address.Address,
 }
 
 // MessageWaitDone blocks until the message is on chain
-func (a *API) MessageWaitDone(ctx context.Context, msgCid cid.Cid) (*vm.MessageReceipt, error) {
+func (a *API) MessageWaitDone(ctx context.Context, msgCid cid.Cid) (*types.MessageReceipt, error) {
 	return MessageWaitDone(ctx, a, msgCid)
 }
 

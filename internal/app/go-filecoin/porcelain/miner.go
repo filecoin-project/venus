@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
@@ -30,7 +29,7 @@ type mcAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedPath string, paramJSON string) error
 	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasBaseFee, gasPremium types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error)
-	MessageWait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error
+	MessageWait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	WalletDefaultAddress() (address.Address, error)
 }
 
@@ -98,7 +97,7 @@ func MinerCreate(
 	}
 
 	var result power.CreateMinerReturn
-	err = plumbing.MessageWait(ctx, smsgCid, msg.DefaultMessageWaitLookback, func(blk *block.Block, smsg *types.SignedMessage, receipt *vm.MessageReceipt) (err error) {
+	err = plumbing.MessageWait(ctx, smsgCid, msg.DefaultMessageWaitLookback, func(blk *block.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) (err error) {
 		if receipt.ExitCode != exitcode.Ok {
 			// Dragons: do we want to have this back?
 			return fmt.Errorf("Error executing actor code (exitcode: %d)", receipt.ExitCode)
@@ -170,7 +169,7 @@ type MinerSetPriceResponse struct {
 
 type minerStatusPlumbing interface {
 	MinerStateView(baseKey block.TipSetKey) (MinerStateView, error)
-	ChainTipSet(key block.TipSetKey) (block.TipSet, error)
+	ChainTipSet(key block.TipSetKey) (*block.TipSet, error)
 }
 
 // MinerProvingWindow contains a miners proving period start and end as well

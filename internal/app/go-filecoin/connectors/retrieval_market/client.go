@@ -202,10 +202,10 @@ func (r *RetrievalClientConnector) GetChainHead(ctx context.Context) (shared.Tip
 	return connectors.GetChainHead(r.cs)
 }
 
-func (r *RetrievalClientConnector) getTipSet(tok shared.TipSetToken) (block.TipSet, error) {
+func (r *RetrievalClientConnector) getTipSet(tok shared.TipSetToken) (*block.TipSet, error) {
 	var tsk block.TipSetKey
 	if err := encoding.Decode(tok, &tsk); err != nil {
-		return block.TipSet{}, xerrors.Wrapf(err, "failed to marshal TipSetToken into a TipSetKey")
+		return nil, xerrors.Wrapf(err, "failed to marshal TipSetToken into a TipSetKey")
 	}
 
 	return r.cs.GetTipSet(tsk)

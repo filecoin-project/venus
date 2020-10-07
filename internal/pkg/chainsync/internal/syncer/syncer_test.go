@@ -447,7 +447,7 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 
 	// Build a chain with messages that will fail semantic header validation
 	kis := types.MustGenerateKeyInfo(1, 42)
-	mm := vm.NewMessageMaker(t, kis)
+	mm := types.NewMessageMaker(t, kis)
 	alice := mm.Addresses()[0]
 	m1 := mm.NewSignedMessage(alice, 0)
 	m2 := mm.NewSignedMessage(alice, 1)
@@ -526,7 +526,7 @@ func TestStoresMessageReceipts(t *testing.T) {
 	genesis := builder.RequireTipSet(store.GetHead())
 
 	keys := types.MustGenerateKeyInfo(1, 42)
-	mm := vm.NewMessageMaker(t, keys)
+	mm := types.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
 	t1 := builder.Build(genesis, 4, func(b *chain.BlockBuilder, i int) {
 		b.AddMessages([]*types.SignedMessage{}, []*types.UnsignedMessage{mm.NewUnsignedMessage(alice, uint64(i))})

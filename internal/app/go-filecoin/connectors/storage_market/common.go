@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
@@ -34,7 +33,7 @@ var log = logging.Logger("storage-protocol")
 
 type chainReader interface {
 	Head() block.TipSetKey
-	GetTipSet(block.TipSetKey) (block.TipSet, error)
+	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 	GetTipSetStateRoot(ctx context.Context, tipKey block.TipSetKey) (cid.Cid, error)
 	GetActorStateAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address, out interface{}) error
 	StateView(key block.TipSetKey) (*state.View, error)
@@ -58,7 +57,7 @@ func (c *connectorCommon) GetChainHead(_ context.Context) (shared.TipSetToken, a
 }
 
 func (c *connectorCommon) WaitForMessage(ctx context.Context, mcid cid.Cid, onCompletion func(exitcode.ExitCode, []byte, error) error) error {
-	return c.waiter.Wait(ctx, mcid, msg.DefaultMessageWaitLookback, func(b *block.Block, message *types.SignedMessage, r *vm.MessageReceipt) error {
+	return c.waiter.Wait(ctx, mcid, msg.DefaultMessageWaitLookback, func(b *block.Block, message *types.SignedMessage, r *types.MessageReceipt) error {
 		return onCompletion(r.ExitCode, r.ReturnValue, nil)
 	})
 }
@@ -176,7 +175,7 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 		}
 
 		return found
-	}, func(b *block.Block, signedMessage *types.SignedMessage, receipt *vm.MessageReceipt) error {
+	}, func(b *block.Block, signedMessage *types.SignedMessage, receipt *types.MessageReceipt) error {
 		return nil
 	})
 

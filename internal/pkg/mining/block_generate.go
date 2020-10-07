@@ -23,7 +23,7 @@ import (
 // Generate returns a new block created from the messages in the pool.
 func (w *DefaultWorker) Generate(
 	ctx context.Context,
-	baseTipSet block.TipSet,
+	baseTipSet *block.TipSet,
 	ticket block.Ticket,
 	electionProof *crypto.ElectionProof,
 	nullBlockCount abi.ChainEpoch,

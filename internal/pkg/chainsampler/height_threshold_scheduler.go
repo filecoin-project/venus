@@ -19,7 +19,7 @@ type HeightThresholdScheduler struct {
 	mtx             sync.Mutex
 	heightListeners []*HeightThresholdListener
 	chainStore      *chain.Store
-	prevHead        block.TipSet
+	prevHead        *block.TipSet
 }
 
 // NewHeightThresholdScheduler creates a new scheduler
@@ -58,9 +58,9 @@ func (hts *HeightThresholdScheduler) CancelListener(cancelledListener *HeightThr
 }
 
 // HandleNewTipSet must be called when the chain head changes.
-func (hts *HeightThresholdScheduler) HandleNewTipSet(ctx context.Context, newHead block.TipSet) error {
+func (hts *HeightThresholdScheduler) HandleNewTipSet(ctx context.Context, newHead *block.TipSet) error {
 	var err error
-	var newTips []block.TipSet
+	var newTips []*block.TipSet
 
 	hts.mtx.Lock()
 	defer hts.mtx.Unlock()
@@ -70,7 +70,7 @@ func (hts *HeightThresholdScheduler) HandleNewTipSet(ctx context.Context, newHea
 			return errors.Wrapf(err, "failed to collect tips between %s and %s", hts.prevHead, newHead)
 		}
 	} else {
-		newTips = []block.TipSet{newHead}
+		newTips = []*block.TipSet{newHead}
 	}
 	hts.prevHead = newHead
 

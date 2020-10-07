@@ -264,7 +264,7 @@ package consensus_test
 //	return blocks
 //}
 //
-//func minerToWorkerFromAddrs(ctx context.Context, t *testing.T, tree state.State, vms vm.Storage, kis []crypto.KeyInfo) ([]address.Address, map[address.Address]address.Address) {
+//func minerToWorkerFromAddrs(ctx context.Context, t *testing.T, tree state.state, vms vm.Storage, kis []crypto.KeyInfo) ([]address.Address, map[address.Address]address.Address) {
 //	minerAddrs := make([]address.Address, len(kis))
 //	require.Equal(t, len(kis), len(minerAddrs))
 //	minerToWorker := make(map[address.Address]address.Address, len(kis))

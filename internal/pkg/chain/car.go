@@ -14,13 +14,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 var logCar = logging.Logger("chain/car")
 
 type carChainReader interface {
-	GetTipSet(block.TipSetKey) (block.TipSet, error)
+	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 }
 type carMessageReader interface {
 	MessageProvider
@@ -38,7 +37,7 @@ type carHeader struct {
 }
 
 // Export will export a chain (all blocks and their messages) to the writer `out`.
-func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carMessageReader, sr carStateReader, out io.Writer) error {
+func Export(ctx context.Context, headTS *block.TipSet, cr carChainReader, mr carMessageReader, sr carStateReader, out io.Writer) error {
 	// ensure we don't duplicate writes to the car file. // e.g. only write EmptyMessageCID once.
 	filter := make(map[cid.Cid]bool)
 
@@ -170,7 +169,7 @@ func exportAMTUnsignedMessages(ctx context.Context, out io.Writer, umsgs []*type
 	return err
 }
 
-func exportAMTReceipts(ctx context.Context, out io.Writer, receipts []vm.MessageReceipt) error {
+func exportAMTReceipts(ctx context.Context, out io.Writer, receipts []types.MessageReceipt) error {
 	ms := carWritingMessageStore(out)
 
 	_, err := ms.StoreReceipts(ctx, receipts)
@@ -195,7 +194,7 @@ type carStore interface {
 func Import(ctx context.Context, cs carStore, in io.Reader) (block.TipSetKey, error) {
 	header, err := car.LoadCar(cs, in)
 	if err != nil {
-		return block.UndefTipSet.Key(), err
+		return block.TipSetKey{}, err
 	}
 	headKey := block.NewTipSetKey(header.Roots...)
 	return headKey, nil

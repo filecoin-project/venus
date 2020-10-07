@@ -2,6 +2,7 @@ package chainsync
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -28,8 +29,8 @@ type Manager struct {
 }
 
 // NewManager creates a new chain sync manager.
-func NewManager(fv syncer.FullBlockValidator, hv syncer.BlockValidator, cs syncer.ChainSelector, s syncer.ChainReaderWriter, m *chain.MessageStore, f syncer.Fetcher, c clock.Clock, detector *slashing.ConsensusFaultDetector) (Manager, error) {
-	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, f, status.NewReporter(), c, detector)
+func NewManager(fv syncer.FullBlockValidator, hv syncer.BlockValidator, cs syncer.ChainSelector, s syncer.ChainReaderWriter, m *chain.MessageStore, f syncer.Fetcher, c clock.Clock, detector *slashing.ConsensusFaultDetector, fork fork.IFork) (Manager, error) {
+	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, f, status.NewReporter(), c, detector, fork)
 	if err != nil {
 		return Manager{}, err
 	}

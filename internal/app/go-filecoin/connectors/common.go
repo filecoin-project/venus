@@ -9,7 +9,7 @@ import (
 )
 
 type chainState interface {
-	GetTipSet(key block.TipSetKey) (block.TipSet, error)
+	GetTipSet(key block.TipSetKey) (*block.TipSet, error)
 	Head() block.TipSetKey
 }
 

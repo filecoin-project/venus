@@ -91,7 +91,7 @@ func (h *actorStateHandle) Validate(cidFn func(interface{}) cid.Cid) {
 		// verify the obj has not changed
 		usedCid := cidFn(obj)
 		if usedCid != head {
-			runtime.Abortf(exitcode.SysErrorIllegalActor, "State mutated outside of Transaction() scope")
+			runtime.Abortf(exitcode.SysErrorIllegalActor, "state mutated outside of Transaction() scope")
 		}
 	}
 }

@@ -37,7 +37,7 @@ type Scheduler interface {
 
 // NewScheduler returns a new timingScheduler to schedule mining work on the
 // input worker.
-func NewScheduler(w Worker, f func() (block.TipSet, error), c clock.ChainEpochClock) Scheduler {
+func NewScheduler(w Worker, f func() (*block.TipSet, error), c clock.ChainEpochClock) Scheduler {
 	return &timingScheduler{
 		worker:       w,
 		pollHeadFunc: f,
@@ -50,7 +50,7 @@ type timingScheduler struct {
 	worker Worker
 	// pollHeadFunc is the function the scheduler uses to poll for the
 	// current heaviest tipset
-	pollHeadFunc func() (block.TipSet, error)
+	pollHeadFunc func() (*block.TipSet, error)
 	// chainClock measures time and tracks the epoch-time relationship
 	chainClock clock.ChainEpochClock
 
@@ -189,7 +189,7 @@ func (s *timingScheduler) isDone(ctx context.Context) bool {
 }
 
 // MineOnce mines on a given base until it finds a winner or errors out.
-func MineOnce(ctx context.Context, w DefaultWorker, ts block.TipSet) (*FullBlock, error) {
+func MineOnce(ctx context.Context, w DefaultWorker, ts *block.TipSet) (*FullBlock, error) {
 	var nullCount uint64
 	for {
 		blk, err := MineOneEpoch(ctx, w, ts, nullCount)
@@ -207,6 +207,6 @@ func MineOnce(ctx context.Context, w DefaultWorker, ts block.TipSet) (*FullBlock
 
 // MineOneEpoch attempts to mine a block in an epoch and returns the mined block,
 // or nil if no block could be mined
-func MineOneEpoch(ctx context.Context, w DefaultWorker, ts block.TipSet, nullCount uint64) (*FullBlock, error) {
+func MineOneEpoch(ctx context.Context, w DefaultWorker, ts *block.TipSet, nullCount uint64) (*FullBlock, error) {
 	return w.Mine(ctx, ts, nullCount)
 }

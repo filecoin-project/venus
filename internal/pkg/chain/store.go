@@ -5,6 +5,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/prometheus/common/log"
 	"golang.org/x/xerrors"
 	"os"
 	"runtime/debug"
@@ -81,7 +82,7 @@ type Store struct {
 	// genesis is the CID of the genesis block.
 	genesis cid.Cid
 	// head is the tipset at the head of the best known chain.
-	head block.TipSet
+	head *block.TipSet
 	// Protects head and genesisCid.
 	mu sync.RWMutex
 
@@ -100,17 +101,22 @@ type Store struct {
 
 	// Reporter is used by the store to update the current status of the chain.
 	reporter Reporter
+
+	chainIndex *ChainIndex
 }
 
 // NewStore constructs a new default store.
 func NewStore(ds repo.Datastore, cst cbor.IpldStore, sr Reporter, genesisCid cid.Cid) *Store {
+	ipldSource := newSource(cst)
+	tipsetProvider := TipSetProviderFromBlocks(context.TODO(), ipldSource)
 	return &Store{
-		stateAndBlockSource: newSource(cst),
+		stateAndBlockSource: ipldSource,
 		ds:                  ds,
 		headEvents:          pubsub.New(12),
 		tipIndex:            NewTipIndex(),
 		genesis:             genesisCid,
 		reporter:            sr,
+		chainIndex:          NewChainIndex(tipsetProvider.GetTipSet),
 	}
 }
 
@@ -145,12 +151,13 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	if err != nil {
 		return errors.Wrap(err, "error loading head tipset")
 	}
+
 	startHeight := headTs.At(0).Height
 	logStore.Infof("start loading chain at tipset: %s, height: %d", headTsKey.String(), startHeight)
 	// Ensure we only produce 10 log messages regardless of the chain height.
 	logStatusEvery := startHeight / 10
 
-	var genesii block.TipSet
+	var genesii *block.TipSet
 	// Provide tipsets directly from the block store, not from the tipset index which is
 	// being rebuilt by this traversal.
 	tipsetProvider := TipSetProviderFromBlocks(ctx, store.stateAndBlockSource)
@@ -192,6 +199,12 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	}
 
 	logStore.Infof("finished loading %d tipsets from %s", startHeight, headTs.String())
+
+	//todo just for test should remove if ok
+	if headTs.EnsureHeight() > 0 {
+		p, _ := headTs.Parents()
+		headTs, _ = store.GetTipSet(p)
+	}
 	// Set actual head.
 	return store.SetHead(ctx, headTs)
 }
@@ -213,7 +226,7 @@ func (store *Store) loadHead() (block.TipSetKey, error) {
 	return cids, nil
 }
 
-func (store *Store) loadStateRootAndReceipts(ts block.TipSet) (cid.Cid, cid.Cid, error) {
+func (store *Store) loadStateRootAndReceipts(ts *block.TipSet) (cid.Cid, cid.Cid, error) {
 	h, err := ts.Height()
 	if err != nil {
 		return cid.Undef, cid.Undef, err
@@ -250,8 +263,55 @@ func (store *Store) PutTipSetMetadata(ctx context.Context, tsm *TipSetMetadata) 
 }
 
 // GetTipSet returns the tipset identified by `key`.
-func (store *Store) GetTipSet(key block.TipSetKey) (block.TipSet, error) {
-	return store.tipIndex.GetTipSet(key)
+func (store *Store) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
+	blks := []*block.Block{}
+
+	for _, id := range key.ToSlice() {
+		blk, err := store.stateAndBlockSource.GetBlock(context.TODO(), id)
+
+		if err != nil {
+			return nil, err
+		}
+		blks = append(blks, blk)
+	}
+	ts, err := block.NewTipSet(blks...)
+	if err != nil {
+		return nil, err
+	}
+	return ts, nil
+}
+
+func (store *Store) GetTipSetByHeight(ctx context.Context, ts *block.TipSet, h abi.ChainEpoch, prev bool) (*block.TipSet, error) {
+	if ts == nil {
+		ts = store.head
+	}
+
+	if h > ts.EnsureHeight() {
+		return nil, xerrors.Errorf("looking for tipset with height greater than start point")
+	}
+
+	if h == ts.EnsureHeight() {
+		return ts, nil
+	}
+
+	lbts, err := store.chainIndex.GetTipsetByHeight(ctx, ts, h)
+	if err != nil {
+		return nil, err
+	}
+
+	if lbts.EnsureHeight() < h {
+		log.Warnf("chain index returned the wrong tipset at height %d, using slow retrieval", h)
+		lbts, err = store.chainIndex.GetTipsetByHeightWithoutCache(ts, h)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if lbts.EnsureHeight() == h || !prev {
+		return lbts, nil
+	}
+
+	return store.GetTipSet(lbts.EnsureParents())
 }
 
 // GetTipSetState returns the aggregate state of the tipset identified by `key`.
@@ -312,7 +372,7 @@ func (store *Store) GetLatestBeaconEntry(ts *block.TipSet) (*block.BeaconEntry, 
 		if err != nil {
 			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
 		}
-		cur = &next
+		cur = next
 	}
 
 	if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
@@ -347,10 +407,10 @@ func (store *Store) walkBack(from *block.TipSet, to abi.ChainEpoch) (*block.TipS
 			return ts, nil
 		}
 		if to == pts.EnsureHeight() {
-			return &pts, nil
+			return pts, nil
 		}
 
-		ts = &pts
+		ts = pts
 	}
 }
 
@@ -373,7 +433,7 @@ func (store *Store) HeadEvents() *pubsub.PubSub {
 }
 
 // SetHead sets the passed in tipset as the new head of this chain.
-func (store *Store) SetHead(ctx context.Context, ts block.TipSet) error {
+func (store *Store) SetHead(ctx context.Context, ts *block.TipSet) error {
 	logStore.Debugf("SetHead %s", ts.String())
 
 	// Add logging to debug sporadic test failure.
@@ -407,7 +467,7 @@ func (store *Store) ReadOnlyStateStore() cborutil.ReadOnlyIpldStore {
 	return cborutil.ReadOnlyIpldStore{IpldStore: store.stateAndBlockSource.cborStore}
 }
 
-func (store *Store) setHeadPersistent(ctx context.Context, ts block.TipSet) (bool, error) {
+func (store *Store) setHeadPersistent(ctx context.Context, ts *block.TipSet) (bool, error) {
 	// setHeaadPersistent sets the head in memory and on disk if the head is not
 	// already set to ts.  If it is already set to ts it skips this and returns true
 	store.mu.Lock()

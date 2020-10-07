@@ -156,7 +156,7 @@ func (api *API) ChainGetMessages(ctx context.Context, metaCid cid.Cid) ([]*types
 }
 
 // ChainGetReceipts gets a receipt collection by CID
-func (api *API) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]vm.MessageReceipt, error) {
+func (api *API) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error) {
 	return api.chain.GetReceipts(ctx, id)
 }
 
@@ -171,7 +171,7 @@ func (api *API) ChainSetHead(ctx context.Context, key block.TipSetKey) error {
 }
 
 // ChainTipSet returns the tipset at the given key
-func (api *API) ChainTipSet(key block.TipSetKey) (block.TipSet, error) {
+func (api *API) ChainTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	return api.chain.GetTipSet(key)
 }
 
@@ -270,7 +270,7 @@ func (api *API) SignedMessageSend(ctx context.Context, smsg *types.SignedMessage
 // the case that it appears in a newly mined block. An error is returned if one is
 // encountered or if the context is canceled. Otherwise, it waits forever for the message
 // to appear on chain.
-func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	return api.msgWaiter.Wait(ctx, msgCid, lookback, cb)
 }
 
@@ -438,7 +438,7 @@ func (a *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round a
 		return nil, err
 	}
 
-	worker, err := a.ResolveToKeyAddr(ctx, info.Worker, &ts)
+	worker, err := a.ResolveToKeyAddr(ctx, info.Worker, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("resolving worker address: %w", err)
 	}
@@ -460,7 +460,7 @@ func (a *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round a
 	}, nil
 }
 
-func (a *API) GetLookbackTipSetForRound(ctx context.Context, ts block.TipSet, round abi.ChainEpoch) (*block.TipSet, error) {
+func (a *API) GetLookbackTipSetForRound(ctx context.Context, ts *block.TipSet, round abi.ChainEpoch) (*block.TipSet, error) {
 	var lbr abi.ChainEpoch
 	if round > build.WinningPoStSectorSetLookback {
 		lbr = round - build.WinningPoStSectorSetLookback
@@ -468,7 +468,7 @@ func (a *API) GetLookbackTipSetForRound(ctx context.Context, ts block.TipSet, ro
 
 	// more null blocks than our lookback
 	if lbr > ts.EnsureHeight() {
-		return &ts, nil
+		return ts, nil
 	}
 
 	lbts, err := chain.FindTipsetAtEpoch(ctx, ts, lbr, a.chain)
@@ -476,7 +476,7 @@ func (a *API) GetLookbackTipSetForRound(ctx context.Context, ts block.TipSet, ro
 		return nil, xerrors.Errorf("failed to get lookback tipset: %w", err)
 	}
 
-	return &lbts, nil
+	return lbts, nil
 }
 
 func (a *API) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, ts *block.TipSet, maddr address.Address, rand abi.PoStRandomness) ([]proof.SectorInfo, error) {

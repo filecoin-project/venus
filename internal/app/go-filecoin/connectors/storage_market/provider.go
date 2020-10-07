@@ -3,7 +3,6 @@ package storagemarketconnector
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"io"
@@ -63,7 +62,7 @@ func NewStorageProviderNodeConnector(ma address.Address,
 }
 
 func (s *StorageProviderNodeConnector) WaitForMessage(ctx context.Context, mcid cid.Cid, onCompletion func(exitcode.ExitCode, []byte, cid.Cid, error) error) error {
-	return s.waiter.Wait(ctx, mcid, msg.DefaultMessageWaitLookback, func(block *block.Block, msg *types.SignedMessage, recepit *vm.MessageReceipt) error {
+	return s.waiter.Wait(ctx, mcid, msg.DefaultMessageWaitLookback, func(block *block.Block, msg *types.SignedMessage, recepit *types.MessageReceipt) error {
 		return onCompletion(recepit.ExitCode, recepit.ReturnValue, mcid, nil)
 	})
 }
@@ -111,7 +110,7 @@ func (s *StorageProviderNodeConnector) OnDealExpiredOrSlashed(ctx context.Contex
 		}
 
 		// If there is no deal assume it's already been slashed
-		if sd.State.SectorStartEpoch < 0 {
+		if sd.state.SectorStartEpoch < 0 {
 			onDealSlashed(ts.Height(), nil)
 			return true, false, nil
 		}
@@ -338,5 +337,5 @@ func (s *StorageProviderNodeConnector) LocatePieceForDealWithinSector(ctx contex
 
 // EventLogger logs new events on the storage provider
 func (s *StorageProviderNodeConnector) EventLogger(event storagemarket.ProviderEvent, deal storagemarket.MinerDeal) {
-	log.Infof("Event: %s, Proposal CID: %s, State: %s, Message: %s", storagemarket.ProviderEvents[event], deal.ProposalCid, storagemarket.DealStates[deal.State], deal.Message)
+	log.Infof("Event: %s, Proposal CID: %s, state: %s, Message: %s", storagemarket.ProviderEvents[event], deal.ProposalCid, storagemarket.DealStates[deal.State], deal.Message)
 }

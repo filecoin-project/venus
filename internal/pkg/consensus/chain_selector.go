@@ -53,7 +53,7 @@ const WRatioNum = int64(1)
 const WRatioDen = uint64(2)
 
 // Weight returns the EC weight of this TipSet as a filecoin big int.
-func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID cid.Cid) (fbig.Int, error) {
+func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet, pStateID cid.Cid) (fbig.Int, error) {
 	// Retrieve parent weight.
 	if !pStateID.Defined() {
 		return fbig.Zero(), errors.New("undefined state passed to chain selector new weight")
@@ -100,7 +100,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID ci
 // concatenation of block cids in the tipset.
 // TODO BLOCK CID CONCAT TIE BREAKER IS NOT IN THE SPEC AND SHOULD BE
 // EVALUATED BEFORE GETTING TO PRODUCTION.
-func (c *ChainSelector) IsHeavier(ctx context.Context, a, b block.TipSet, aStateID, bStateID cid.Cid) (bool, error) {
+func (c *ChainSelector) IsHeavier(ctx context.Context, a, b *block.TipSet, aStateID, bStateID cid.Cid) (bool, error) {
 	aW, err := c.Weight(ctx, a, aStateID)
 	if err != nil {
 		return false, err

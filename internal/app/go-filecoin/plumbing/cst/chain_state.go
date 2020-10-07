@@ -2,7 +2,6 @@ package cst
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"github.com/filecoin-project/go-state-types/network"
 	"io"
@@ -23,7 +22,6 @@ import (
 	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	merkdag "github.com/ipfs/go-merkledag"
-	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
@@ -48,12 +46,13 @@ type chainReadWriter interface {
 	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
 	GetHead() block.TipSetKey
 	GetGenesisBlock(ctx context.Context) (*block.Block, error)
-	GetTipSet(block.TipSetKey) (block.TipSet, error)
+	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 	GetTipSetState(context.Context, block.TipSetKey) (vmstate.Tree, error)
 	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
-	SetHead(context.Context, block.TipSet) error
+	SetHead(context.Context, *block.TipSet) error
 	GetLatestBeaconEntry(ts *block.TipSet) (*block.BeaconEntry, error)
 	ReadOnlyStateStore() cborutil.ReadOnlyIpldStore
+	GetTipSetByHeight(ctx context.Context, ts *block.TipSet, h abi.ChainEpoch, prev bool) (*block.TipSet, error)
 }
 
 // ChainStateReadWriter composes a:
@@ -131,7 +130,7 @@ func (chn *ChainStateReadWriter) Head() block.TipSetKey {
 }
 
 // GetTipSet returns the tipset at the given key
-func (chn *ChainStateReadWriter) GetTipSet(key block.TipSetKey) (block.TipSet, error) {
+func (chn *ChainStateReadWriter) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	return chn.readWriter.GetTipSet(key)
 }
 
@@ -172,7 +171,7 @@ func (chn *ChainStateReadWriter) GetMessages(ctx context.Context, metaCid cid.Ci
 }
 
 // GetReceipts gets a receipt collection by CID.
-func (chn *ChainStateReadWriter) GetReceipts(ctx context.Context, id cid.Cid) ([]vm.MessageReceipt, error) {
+func (chn *ChainStateReadWriter) GetReceipts(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error) {
 	return chn.messageProvider.LoadReceipts(ctx, id)
 }
 
@@ -184,8 +183,7 @@ func (chn *ChainStateReadWriter) SampleChainRandomness(ctx context.Context, tsk 
 		return nil, err
 	}
 
-	tipsetProvider := chain.TipSetProviderFromBlocks(ctx, chn)
-	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewRandomnessSamplerAtTipSet(tipsetProvider, genBlk.Ticket, tsk)}
+	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewRandomnessSamplerAtTipSet(chn.readWriter, genBlk.Ticket, tsk)}
 	return rnd.Randomness(ctx, tag, epoch, entropy)
 }
 
@@ -194,8 +192,7 @@ func (chn *ChainStateReadWriter) ChainGetRandomnessFromBeacon(ctx context.Contex
 	if err != nil {
 		return nil, err
 	}
-	tipsetProvider := chain.TipSetProviderFromBlocks(ctx, chn)
-	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewRandomnessSamplerAtTipSet(tipsetProvider, genBlk.Ticket, tsk)}
+	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewRandomnessSamplerAtTipSet(chn.readWriter, genBlk.Ticket, tsk)}
 	return rnd.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy)
 }
 
@@ -360,7 +357,7 @@ func (chn *ChainStateReadWriter) ChainImport(ctx context.Context, in io.Reader) 
 	logStore.Info("starting CAR file import")
 	headKey, err := chain.Import(ctx, newCarStore(chn.bstore), in)
 	if err != nil {
-		return block.UndefTipSet.Key(), err
+		return block.TipSetKey{}, err
 	}
 	logStore.Infof("imported CAR file with head: %s", headKey)
 	return headKey, nil
@@ -388,27 +385,6 @@ func (chn *ChainStateReadWriter) AccountStateView(key block.TipSetKey) (state.Ac
 
 func (chn *ChainStateReadWriter) FaultStateView(key block.TipSetKey) (slashing.FaultStateView, error) {
 	return chn.StateView(key)
-}
-
-func DrawRandomness(rbase []byte, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	h := blake2b.New256()
-	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
-		return nil, xerrors.Errorf("deriving randomness: %w", err)
-	}
-	VRFDigest := blake2b.Sum256(rbase)
-	_, err := h.Write(VRFDigest[:])
-	if err != nil {
-		return nil, xerrors.Errorf("hashing VRFDigest: %w", err)
-	}
-	if err := binary.Write(h, binary.BigEndian, round); err != nil {
-		return nil, xerrors.Errorf("deriving randomness: %w", err)
-	}
-	_, err = h.Write(entropy)
-	if err != nil {
-		return nil, xerrors.Errorf("hashing entropy: %w", err)
-	}
-
-	return h.Sum(nil), nil
 }
 
 // ToDo 完善sector接口后再做

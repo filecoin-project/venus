@@ -35,7 +35,7 @@ var log = logging.Logger("mining")
 // Worker is the interface called by the Scheduler to run the mining work being
 // scheduled.
 type Worker interface {
-	Mine(runCtx context.Context, base block.TipSet, nullBlkCount uint64) (*FullBlock, error)
+	Mine(runCtx context.Context, base *block.TipSet, nullBlkCount uint64) (*FullBlock, error)
 }
 
 // GetStateTree is a function that gets the aggregate state tree of a TipSet. It's
@@ -44,7 +44,7 @@ type GetStateTree func(context.Context, block.TipSetKey) (state.Tree, error)
 
 // GetWeight is a function that calculates the weight of a TipSet.  Weight is
 // expressed as two uint64s comprising a rational number.
-type GetWeight func(context.Context, block.TipSet) (big.Int, error)
+type GetWeight func(context.Context, *block.TipSet) (big.Int, error)
 
 // MessageSource provides message candidates for mining into blocks
 type MessageSource interface {
@@ -161,7 +161,7 @@ func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
 
 // Mine implements the DefaultWorkers main mining function..
 // The returned bool indicates if this miner created a new block or not.
-func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, nullBlkCount uint64) (*FullBlock, error) {
+func (w *DefaultWorker) Mine(ctx context.Context, base *block.TipSet, nullBlkCount uint64) (*FullBlock, error) {
 	log.Info("Worker.Mine")
 	if !base.Defined() {
 		log.Warn("Worker.Mine returning because it can't mine on an empty tipset")
@@ -289,13 +289,13 @@ func (w *DefaultWorker) getPowerTable(powerKey, faultsKey block.TipSetKey) (cons
 	return consensus.NewPowerTableView(powerView, faultsView), nil
 }
 
-func (w *DefaultWorker) lookbackTipset(ctx context.Context, base block.TipSet, nullBlkCount uint64, lookback uint64) (block.TipSet, error) {
+func (w *DefaultWorker) lookbackTipset(ctx context.Context, base *block.TipSet, nullBlkCount uint64, lookback uint64) (*block.TipSet, error) {
 	if lookback <= nullBlkCount+1 { // new block looks back to base
 		return base, nil
 	}
 	baseHeight, err := base.Height()
 	if err != nil {
-		return block.UndefTipSet, err
+		return nil, err
 	}
 	targetEpoch := abi.ChainEpoch(uint64(baseHeight) + 1 + nullBlkCount - lookback)
 
@@ -304,7 +304,7 @@ func (w *DefaultWorker) lookbackTipset(ctx context.Context, base block.TipSet, n
 
 // drandEntriesForEpoch returns the array of drand entries that should be
 // included in the next block.  The return value maay be nil.
-func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.TipSet, nullBlkCount uint64) ([]*block.BeaconEntry, error) {
+func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base *block.TipSet, nullBlkCount uint64) ([]*block.BeaconEntry, error) {
 	panic("use BeaconEntriesForBlock instead")
 	/*baseHeight, err := base.Height()
 	if err != nil {
@@ -346,7 +346,7 @@ func (w *DefaultWorker) drandEntriesForEpoch(ctx context.Context, base block.Tip
 	return entries, nil*/
 }
 
-func (w *DefaultWorker) electionEntry(ctx context.Context, base block.TipSet, drandEntriesInBlock []*block.BeaconEntry) (*block.BeaconEntry, error) {
+func (w *DefaultWorker) electionEntry(ctx context.Context, base *block.TipSet, drandEntriesInBlock []*block.BeaconEntry) (*block.BeaconEntry, error) {
 	numEntries := len(drandEntriesInBlock)
 	if numEntries > 0 {
 		return drandEntriesInBlock[numEntries-1], nil

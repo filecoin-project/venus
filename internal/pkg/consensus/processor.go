@@ -3,13 +3,13 @@ package consensus
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 
 	//"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	//"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"go.opencensus.io/trace"
@@ -19,7 +19,7 @@ import (
 // ExecutionError might be set and the message can still be applied successfully.
 // See ApplyMessage() for details.
 type ApplicationResult struct {
-	Receipt        *vm.MessageReceipt
+	Receipt        *types.MessageReceipt
 	ExecutionError error
 }
 
@@ -40,26 +40,28 @@ type DefaultProcessor struct {
 	actors   vm.ActorCodeLoader
 	syscalls vm.SyscallsImpl
 	rnd      ChainRandomness
+	fork     fork.IFork
 }
 
 var _ Processor = (*DefaultProcessor)(nil)
 
 // NewDefaultProcessor creates a default processor from the given state tree and vms.
-func NewDefaultProcessor(syscalls vm.SyscallsImpl, rnd ChainRandomness) *DefaultProcessor {
-	return NewConfiguredProcessor(vm.DefaultActors, syscalls, rnd)
+func NewDefaultProcessor(syscalls vm.SyscallsImpl, rnd ChainRandomness, fork fork.IFork) *DefaultProcessor {
+	return NewConfiguredProcessor(vm.DefaultActors, syscalls, rnd, fork)
 }
 
 // NewConfiguredProcessor creates a default processor with custom validation and rewards.
-func NewConfiguredProcessor(actors vm.ActorCodeLoader, syscalls vm.SyscallsImpl, rnd ChainRandomness) *DefaultProcessor {
+func NewConfiguredProcessor(actors vm.ActorCodeLoader, syscalls vm.SyscallsImpl, rnd ChainRandomness, fork fork.IFork) *DefaultProcessor {
 	return &DefaultProcessor{
 		actors:   actors,
 		syscalls: syscalls,
 		rnd:      rnd,
+		fork:     fork,
 	}
 }
 
 // ProcessTipSet computes the state transition specified by the messages in all blocks in a TipSet.
-func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms *vm.Storage, parent, ts block.TipSet, msgs []vm.BlockMessagesInfo, vmOption vm.VmOption) (results []vm.MessageReceipt, err error) {
+func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms *vm.Storage, parent, ts *block.TipSet, msgs []vm.BlockMessagesInfo, vmOption vm.VmOption) (results []types.MessageReceipt, err error) {
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -79,7 +81,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 
 	v := vm.NewVM(st, vms, p.syscalls, vmOption)
 
-	return v.ApplyTipSetMessages(msgs, parent.Key(), parentEpoch, epoch)
+	return v.ApplyTipSetMessages(msgs, ts, parentEpoch, epoch)
 }
 
 // ProcessTipSet computes the state transition specified by the messages.

@@ -6,7 +6,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
@@ -27,9 +26,6 @@ type SyscallsStateView = vmcontext.SyscallsStateView
 
 // BlockMessagesInfo contains messages for one block in a tipset.
 type BlockMessagesInfo = interpreter.BlockMessagesInfo
-
-// MessageReceipt is what is returned by executing a message on the vm.
-type MessageReceipt = message.Receipt
 
 // NewVM creates a new VM interpreter.
 func NewVM(st state.Tree, store *storage.VMStorage, syscalls SyscallsImpl, option VmOption) Interpreter {

@@ -225,7 +225,7 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 		}
 
 		// get a view into the actor stateView
-		var initState init_.State
+		var initState init_.state
 		if _, err := w.vm.store.Get(w.vm.context, initActorEntry.Head.Cid, &initState); err != nil {
 			return nil, address.Undef, err
 		}

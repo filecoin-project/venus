@@ -35,7 +35,7 @@ type transitionSyncer interface {
 // chainHeadState is the interface for determining the head of the chain
 type chainHeadState interface {
 	GetHead() block.TipSetKey
-	GetTipSet(block.TipSetKey) (block.TipSet, error)
+	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 }
 
 // NewDispatcher creates a new syncing dispatcher with default queue sizes.

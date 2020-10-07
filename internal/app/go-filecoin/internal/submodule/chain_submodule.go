@@ -3,6 +3,7 @@ package submodule
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 
 	"github.com/ipfs/go-cid"
 
@@ -27,6 +28,8 @@ type ChainSubmodule struct {
 	Processor  *consensus.DefaultProcessor
 
 	StatusReporter *chain.StatusReporter
+
+	Fork fork.IFork
 }
 
 // xxx go back to using an interface here
@@ -34,7 +37,7 @@ type ChainSubmodule struct {
 	GenesisCid() cid.Cid
 	GetHead() block.TipSetKey
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
-	GetTipSetState(ctx context.Context, tsKey block.TipSetKey) (state.State, error)
+	GetTipSetState(ctx context.Context, tsKey block.TipSetKey) (state.state, error)
 	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
 	GetTipSetReceiptsRoot(tsKey block.TipSetKey) (cid.Cid, error)
 	HeadEvents() *ps.PubSub
@@ -61,7 +64,8 @@ func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *Blockstor
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, builtin.DefaultActors, drand)
 	faultChecker := slashing.NewFaultChecker(chainState)
 	syscalls := vmsupport.NewSyscalls(faultChecker, verifier.ProofVerifier)
-	processor := consensus.NewDefaultProcessor(syscalls, chainState)
+	fork := fork.NewChainFork(chainState, blockstore.CborStore, blockstore.Blockstore)
+	processor := consensus.NewDefaultProcessor(syscalls, chainState, fork)
 
 	return ChainSubmodule{
 		ChainReader:    chainStore,
@@ -70,6 +74,7 @@ func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *Blockstor
 		State:          chainState,
 		Processor:      processor,
 		StatusReporter: chainStatusReporter,
+		Fork:           fork,
 	}, nil
 }
 

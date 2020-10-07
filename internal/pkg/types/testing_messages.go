@@ -1,4 +1,4 @@
-package vm
+package types
 
 import (
 	"context"
@@ -10,17 +10,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 // MessageMaker creates unique, signed messages for use in tests.
 type MessageMaker struct {
-	DefaultGasFeeCap  types.AttoFIL
-	DefaultGasPremium types.AttoFIL
+	DefaultGasFeeCap  AttoFIL
+	DefaultGasPremium AttoFIL
 	DefaultGasUnits   gas.Unit
 
-	signer *types.MockSigner
+	signer *MockSigner
 	seq    uint
 	t      *testing.T
 }
@@ -28,14 +27,14 @@ type MessageMaker struct {
 // NewMessageMaker creates a new message maker with a set of signing keys.
 func NewMessageMaker(t *testing.T, keys []crypto.KeyInfo) *MessageMaker {
 	addresses := make([]address.Address, len(keys))
-	signer := types.NewMockSigner(keys)
+	signer := NewMockSigner(keys)
 
 	for i, key := range keys {
 		addr, _ := key.Address()
 		addresses[i] = addr
 	}
 
-	return &MessageMaker{types.ZeroAttoFIL, types.ZeroAttoFIL, gas.Unit(0), &signer, 0, t}
+	return &MessageMaker{ZeroAttoFIL, ZeroAttoFIL, gas.Unit(0), &signer, 0, t}
 }
 
 // Addresses returns the addresses for which this maker can sign messages.
@@ -44,21 +43,21 @@ func (mm *MessageMaker) Addresses() []address.Address {
 }
 
 // Signer returns the signer with which this maker signs messages.
-func (mm *MessageMaker) Signer() *types.MockSigner {
+func (mm *MessageMaker) Signer() *MockSigner {
 	return mm.signer
 }
 
 // NewUnsignedMessage creates a new message.
-func (mm *MessageMaker) NewUnsignedMessage(from address.Address, nonce uint64) *types.UnsignedMessage {
+func (mm *MessageMaker) NewUnsignedMessage(from address.Address, nonce uint64) *UnsignedMessage {
 	seq := mm.seq
 	mm.seq++
 	to, err := address.NewSecp256k1Address([]byte("destination"))
 	require.NoError(mm.t, err)
-	return types.NewMeteredMessage(
+	return NewMeteredMessage(
 		from,
 		to,
 		nonce,
-		types.ZeroAttoFIL,
+		ZeroAttoFIL,
 		abi.MethodNum(9000+seq),
 		[]byte("params"),
 		mm.DefaultGasFeeCap,
@@ -67,9 +66,9 @@ func (mm *MessageMaker) NewUnsignedMessage(from address.Address, nonce uint64) *
 }
 
 // NewSignedMessage creates a new signed message.
-func (mm *MessageMaker) NewSignedMessage(from address.Address, nonce uint64) *types.SignedMessage {
+func (mm *MessageMaker) NewSignedMessage(from address.Address, nonce uint64) *SignedMessage {
 	msg := mm.NewUnsignedMessage(from, nonce)
-	signed, err := types.NewSignedMessage(context.TODO(), *msg, mm.signer)
+	signed, err := NewSignedMessage(context.TODO(), *msg, mm.signer)
 	require.NoError(mm.t, err)
 	return signed
 }

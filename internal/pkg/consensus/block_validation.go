@@ -3,11 +3,12 @@ package consensus
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
@@ -17,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	//"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	//"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
@@ -24,12 +26,16 @@ var log = logging.Logger("consensus")
 
 type messageStore interface {
 	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
-	LoadReceipts(context.Context, cid.Cid) ([]vm.MessageReceipt, error)
+	LoadReceipts(context.Context, cid.Cid) ([]types.MessageReceipt, error)
 }
 
 type chainState interface {
 	GetActorAt(context.Context, block.TipSetKey, address.Address) (*actor.Actor, error)
-	// AccountStateView(block.TipSetKey) (state.AccountStateView, error)
+	GetTipSet(block.TipSetKey) (*block.TipSet, error)
+	GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error)
+	StateView(block.TipSetKey) (*state.View, error)
+	GetBlock(context.Context, cid.Cid) (*block.Block, error)
+	BeaconSchedule() beacon.Schedule
 }
 
 // BlockValidator defines an interface used to validate a blocks syntax and
@@ -110,7 +116,7 @@ func (dv *DefaultBlockValidator) NotFutureBlock(b *block.Block) error {
 
 // ValidateHeaderSemantic checks validation conditions on a header that can be
 // checked given only the parent header.
-func (dv *DefaultBlockValidator) ValidateHeaderSemantic(ctx context.Context, child *block.Block, parents block.TipSet) error {
+func (dv *DefaultBlockValidator) ValidateHeaderSemantic(ctx context.Context, child *block.Block, parents *block.TipSet) error {
 	ph, err := parents.Height()
 	if err != nil {
 		return err

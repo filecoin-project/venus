@@ -64,7 +64,7 @@ type publisher interface {
 }
 
 // todo add by force
-type gasPredictor interface{
+type gasPredictor interface {
 	PredictUnsignedMessageGas(ctx context.Context, msg *types.UnsignedMessage) (int64, error)
 }
 
@@ -251,7 +251,7 @@ func sendSignedMsg(ctx context.Context, ob *Outbox, signed *types.SignedMessage,
 }
 
 // HandleNewHead maintains the message queue in response to a new head tipset.
-func (ob *Outbox) HandleNewHead(ctx context.Context, oldTips, newTips []block.TipSet) error {
+func (ob *Outbox) HandleNewHead(ctx context.Context, oldTips, newTips []*block.TipSet) error {
 	return ob.policy.HandleNewHead(ctx, ob.queue, oldTips, newTips)
 }
 

@@ -17,7 +17,7 @@ import (
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
-func RequireNewTipSet(require *require.Assertions, blks ...*block.Block) block.TipSet {
+func RequireNewTipSet(require *require.Assertions, blks ...*block.Block) *block.TipSet {
 	ts, err := block.NewTipSet(blks...)
 	require.NoError(err)
 	return ts

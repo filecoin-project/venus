@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -41,7 +40,7 @@ type StorageClientNodeConnector struct {
 }
 
 func (s *StorageClientNodeConnector) WaitForMessage(ctx context.Context, mcid cid.Cid, onCompletion func(exitcode.ExitCode, []byte, cid.Cid, error) error) error {
-	return s.waiter.Wait(ctx, mcid, msg.DefaultMessageWaitLookback, func(block *block.Block, msg *types.SignedMessage, recepit *vm.MessageReceipt) error {
+	return s.waiter.Wait(ctx, mcid, msg.DefaultMessageWaitLookback, func(block *block.Block, msg *types.SignedMessage, recepit *types.MessageReceipt) error {
 		return onCompletion(recepit.ExitCode, recepit.ReturnValue, mcid, nil)
 	})
 }
@@ -95,10 +94,10 @@ func (s *StorageClientNodeConnector) GetMinerInfo(ctx context.Context, maddr add
 	}, nil
 }
 
-func (s *StorageClientNodeConnector) getTipSet(tok shared.TipSetToken) (block.TipSet, error) {
+func (s *StorageClientNodeConnector) getTipSet(tok shared.TipSetToken) (*block.TipSet, error) {
 	var tsk block.TipSetKey
 	if err := encoding.Decode(tok, &tsk); err != nil {
-		return block.TipSet{}, xerrors.Wrapf(err, "failed to marshal TipSetToken into a TipSetKey")
+		return nil, xerrors.Wrapf(err, "failed to marshal TipSetToken into a TipSetKey")
 	}
 
 	return s.chainStore.GetTipSet(tsk)
@@ -214,7 +213,7 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context, t
 // Adapted from https://github.com/filecoin-project/lotus/blob/3b34eba6124d16162b712e971f0db2ee108e0f67/markets/storageadapter/client.go#L156
 func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (dealID abi.DealID, err error) {
 	var unsigned types.UnsignedMessage
-	var receipt *vm.MessageReceipt
+	var receipt *types.MessageReceipt
 
 	// TODO: This is an inefficient way to discover a deal ID. See if we can find it uniquely on chain some other way or store the dealID when the message first lands (#4066).
 	// give the wait 30 seconds to avoid races
@@ -223,7 +222,7 @@ func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, 
 
 	// Fetch receipt to return dealId
 	about2Days := uint64(24 * 60)
-	err = s.waiter.Wait(ctx, *deal.PublishMessage, about2Days, func(_ *block.Block, msg *types.SignedMessage, rcpt *vm.MessageReceipt) error {
+	err = s.waiter.Wait(ctx, *deal.PublishMessage, about2Days, func(_ *block.Block, msg *types.SignedMessage, rcpt *types.MessageReceipt) error {
 		unsigned = msg.Message
 		receipt = rcpt
 		return nil
@@ -315,5 +314,5 @@ func (s *StorageClientNodeConnector) ValidateAskSignature(ctx context.Context, s
 
 // EventLogger logs new events on the storage client
 func (s *StorageClientNodeConnector) EventLogger(event storagemarket.ClientEvent, deal storagemarket.ClientDeal) {
-	log.Infof("Event: %s, Proposal CID: %s, State: %s, Message: %s", storagemarket.ClientEvents[event], deal.ProposalCid, storagemarket.DealStates[deal.State], deal.Message)
+	log.Infof("Event: %s, Proposal CID: %s, state: %s, Message: %s", storagemarket.ClientEvents[event], deal.ProposalCid, storagemarket.DealStates[deal.State], deal.Message)
 }

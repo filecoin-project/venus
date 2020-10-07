@@ -3,16 +3,14 @@ package types
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 	"runtime"
 	"strings"
 	"time"
 )
 
 type ExecutionTrace struct {
-	Msg        *types.UnsignedMessage
-	MsgRct     *message.Receipt
+	Msg        *UnsignedMessage
+	MsgRct     *MessageReceipt
 	Error      string
 	Duration   time.Duration
 	GasCharges []*GasTrace

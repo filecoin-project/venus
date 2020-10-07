@@ -24,7 +24,7 @@ type TipSetMetadata struct {
 	TipSetStateRoot cid.Cid
 
 	// TipSet is the set of blocks that forms the tip set
-	TipSet block.TipSet
+	TipSet *block.TipSet
 
 	// TipSetReceipts receipts from all message contained within this tipset
 	TipSetReceipts cid.Cid
@@ -93,10 +93,10 @@ func (ti *TipIndex) Get(tsKey block.TipSetKey) (*TipSetMetadata, error) {
 }
 
 // GetTipSet returns the tipset from func (ti *TipIndex) Get(tsKey string)
-func (ti *TipIndex) GetTipSet(tsKey block.TipSetKey) (block.TipSet, error) {
+func (ti *TipIndex) GetTipSet(tsKey block.TipSetKey) (*block.TipSet, error) {
 	tsas, err := ti.Get(tsKey)
 	if err != nil {
-		return block.UndefTipSet, err
+		return nil, err
 	}
 	return tsas.TipSet, nil
 }

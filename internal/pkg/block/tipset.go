@@ -31,14 +31,11 @@ var (
 	errUndefTipSet = errors.New("undefined tipset")
 )
 
-// UndefTipSet is a singleton representing a nil or undefined tipset.
-var UndefTipSet = TipSet{}
-
 // NewTipSet builds a new TipSet from a collection of blocks.
 // The blocks must be distinct (different CIDs), have the same height, and same parent set.
-func NewTipSet(blocks ...*Block) (TipSet, error) {
+func NewTipSet(blocks ...*Block) (*TipSet, error) {
 	if len(blocks) == 0 {
-		return UndefTipSet, errNoBlocks
+		return nil, errNoBlocks
 	}
 
 	first := blocks[0]
@@ -51,13 +48,13 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 	for i, blk := range blocks {
 		if i > 0 { // Skip redundant checks for first block
 			if blk.Height != height {
-				return UndefTipSet, errors.Errorf("Inconsistent block heights %d and %d", height, blk.Height)
+				return nil, errors.Errorf("Inconsistent block heights %d and %d", height, blk.Height)
 			}
 			if !blk.Parents.Equals(parents) {
-				return UndefTipSet, errors.Errorf("Inconsistent block parents %s and %s", parents.String(), blk.Parents.String())
+				return nil, errors.Errorf("Inconsistent block parents %s and %s", parents.String(), blk.Parents.String())
 			}
 			if !blk.ParentWeight.Equals(weight) {
-				return UndefTipSet, errors.Errorf("Inconsistent block parent weights %d and %d", weight, blk.ParentWeight)
+				return nil, errors.Errorf("Inconsistent block parent weights %d and %d", weight, blk.ParentWeight)
 			}
 		}
 		sorted[i] = blk
@@ -78,42 +75,45 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 	// Duplicate blocks (CIDs) are rejected here, pass that error through.
 	key, err := NewTipSetKeyFromUnique(cids...)
 	if err != nil {
-		return UndefTipSet, err
+		return nil, err
 	}
-	return TipSet{sorted, key}, nil
+	return &TipSet{sorted, key}, nil
 }
 
 // Defined checks whether the tipset is defined.
 // Invoking any other methods on an undefined tipset will result in undefined behaviour (c.f. cid.Undef)
-func (ts TipSet) Defined() bool {
+func (ts *TipSet) Defined() bool {
+	if ts == nil {
+		return false
+	}
 	return len(ts.blocks) > 0
 }
 
 // Len returns the number of blocks in the tipset.
-func (ts TipSet) Len() int {
+func (ts *TipSet) Len() int {
 	return len(ts.blocks)
 }
 
 // At returns the i'th block in the tipset.
 // An index outside the half-open range [0, Len()) will panic.
-func (ts TipSet) At(i int) *Block {
+func (ts *TipSet) At(i int) *Block {
 	return ts.blocks[i]
 }
 
 // Key returns a key for the tipset.
-func (ts TipSet) Key() TipSetKey {
+func (ts *TipSet) Key() TipSetKey {
 	return ts.key
 }
 
 // ToSlice returns an ordered slice of pointers to the tipset's blocks.
-func (ts TipSet) ToSlice() []*Block {
+func (ts *TipSet) ToSlice() []*Block {
 	slice := make([]*Block, len(ts.blocks))
 	copy(slice, ts.blocks)
 	return slice
 }
 
 // MinTicket returns the smallest ticket of all blocks in the tipset.
-func (ts TipSet) MinTicket() (Ticket, error) {
+func (ts *TipSet) MinTicket() (Ticket, error) {
 	if len(ts.blocks) == 0 {
 		return Ticket{}, errUndefTipSet
 	}
@@ -121,7 +121,7 @@ func (ts TipSet) MinTicket() (Ticket, error) {
 }
 
 // Height returns the height of a tipset.
-func (ts TipSet) Height() (abi.ChainEpoch, error) {
+func (ts *TipSet) Height() (abi.ChainEpoch, error) {
 	if len(ts.blocks) == 0 {
 		return 0, errUndefTipSet
 	}
@@ -129,24 +129,24 @@ func (ts TipSet) Height() (abi.ChainEpoch, error) {
 }
 
 // Height returns the height of a tipset.
-func (ts TipSet) EnsureHeight() abi.ChainEpoch {
+func (ts *TipSet) EnsureHeight() abi.ChainEpoch {
 	return ts.blocks[0].Height
 }
 
 // Parents returns the CIDs of the parents of the blocks in the tipset.
-func (ts TipSet) Parents() (TipSetKey, error) {
+func (ts *TipSet) Parents() (TipSetKey, error) {
 	if len(ts.blocks) == 0 {
 		return TipSetKey{}, errUndefTipSet
 	}
 	return ts.blocks[0].Parents, nil
 }
 
-func (ts TipSet) EnsureParents() TipSetKey {
+func (ts *TipSet) EnsureParents() TipSetKey {
 	return ts.blocks[0].Parents
 }
 
 // ParentWeight returns the tipset's ParentWeight in fixed point form.
-func (ts TipSet) ParentWeight() (fbig.Int, error) {
+func (ts *TipSet) ParentWeight() (fbig.Int, error) {
 	if len(ts.blocks) == 0 {
 		return fbig.Zero(), errUndefTipSet
 	}
@@ -155,7 +155,14 @@ func (ts TipSet) ParentWeight() (fbig.Int, error) {
 
 // Equals tests whether the tipset contains the same blocks as another.
 // Equality is not tested deeply: two tipsets are considered equal if their keys (ordered block CIDs) are equal.
-func (ts TipSet) Equals(ts2 TipSet) bool {
+func (ts *TipSet) Equals(ts2 *TipSet) bool {
+	if ts == nil && ts2 == nil {
+		return true
+	}
+	if ts == nil || ts2 == nil {
+		return false
+	}
+
 	return ts.Key().Equals(ts2.Key())
 }
 

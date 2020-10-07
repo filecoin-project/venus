@@ -38,8 +38,8 @@ func (ob *Outbox) GasEstimateFeeCap(ctx context.Context, msg *types.UnsignedMess
 	parentBaseFee := ts.Blocks()[0].ParentBaseFee
 	increaseFactor := math.Pow(1.+1./float64(types.BaseFeeMaxChangeDenom), float64(maxqueueblks))
 
-	big.Add(parentBaseFee,big.NewInt(int64(increaseFactor*(1<<8))))
-	feeInFuture := big.Add(parentBaseFee,big.NewInt(int64(increaseFactor*(1<<8))))
+	big.Add(parentBaseFee, big.NewInt(int64(increaseFactor*(1<<8))))
+	feeInFuture := big.Add(parentBaseFee, big.NewInt(int64(increaseFactor*(1<<8))))
 	out := big.Div(feeInFuture, big.NewInt(1<<8))
 
 	if msg.GasPremium != big.Zero() {
@@ -113,7 +113,7 @@ func (ob *Outbox) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
 		}
 
 		blocks += len(pts.Blocks())
-		msgs, err := ob.policy.MessagesForTipset(ctx,&pts)
+		msgs, err := ob.policy.MessagesForTipset(ctx, pts)
 		if err != nil {
 			return types.NewGasPremium(0), xerrors.Errorf("loading messages: %w", err)
 		}
@@ -158,7 +158,7 @@ func (ob *Outbox) GasEstimateGasLimit(ctx context.Context, msgIn *types.Unsigned
 
 	tsKey := ob.chains.GetHead()
 
-	actor,err := ob.actors.GetActorAt(ctx, tsKey, msgIn.From)
+	actor, err := ob.actors.GetActorAt(ctx, tsKey, msgIn.From)
 	if err != nil {
 		return -1, xerrors.Errorf("getting key address: %w", err)
 	}

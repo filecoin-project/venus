@@ -34,7 +34,7 @@ func NewConsensusFaultDetector(faultCh chan ConsensusFault) *ConsensusFaultDetec
 
 // CheckBlock records a new block and checks for faults
 // Preconditions: the signature is already checked and p is the parent
-func (detector *ConsensusFaultDetector) CheckBlock(b *block.Block, p block.TipSet) error {
+func (detector *ConsensusFaultDetector) CheckBlock(b *block.Block, p *block.TipSet) error {
 	latest := b.Height
 	parentHeight, err := p.Height()
 	if err != nil {

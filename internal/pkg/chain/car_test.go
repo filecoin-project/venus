@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 func TestChainImportExportGenesis(t *testing.T) {
@@ -155,7 +154,7 @@ func TestChainImportExportMessages(t *testing.T) {
 	ctx, gene, cb, carW, carR, bstore := setupDeps(t)
 
 	keys := types.MustGenerateKeyInfo(1, 42)
-	mm := vm.NewMessageMaker(t, keys)
+	mm := types.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
 
 	ts1 := cb.AppendManyOn(1, gene)
@@ -187,7 +186,7 @@ func TestChainImportExportMultiTipSetWithMessages(t *testing.T) {
 	ctx, gene, cb, carW, carR, bstore := setupDeps(t)
 
 	keys := types.MustGenerateKeyInfo(1, 42)
-	mm := vm.NewMessageMaker(t, keys)
+	mm := types.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
 
 	ts1 := cb.AppendManyOn(1, gene)
@@ -282,7 +281,7 @@ func validateBlockstoreImport(ctx context.Context, t *testing.T, start, stop blo
 			rectAMT, err := amt.LoadAMT(ctx, as, blk.MessageReceipts)
 			require.NoError(t, err)
 
-			var rect vm.MessageReceipt
+			var rect types.MessageReceipt
 			requireAMTDecoding(ctx, t, bstore, rectAMT, &rect)
 
 			if parents.Len() == 0 {
