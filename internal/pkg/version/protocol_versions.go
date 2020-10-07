@@ -16,6 +16,7 @@ const Protocol0 = 0
 func ConfigureProtocolVersions(network string) (*ProtocolVersionTable, error) {
 	return NewProtocolVersionTableBuilder(network).
 		Add("testnetnet", Protocol0, abi.ChainEpoch(0)).
+		Add("mainnet", Protocol0, abi.ChainEpoch(0)).
 		Add(TEST, Protocol0, abi.ChainEpoch(0)).
 		Build()
 }
