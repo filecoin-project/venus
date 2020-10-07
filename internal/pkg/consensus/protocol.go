@@ -11,6 +11,7 @@ package consensus
 // except for errors in the case the stores do not have a mapping.
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -31,4 +32,7 @@ type Protocol interface {
 
 	// BlockTime returns the block time used by the consensus protocol.
 	BlockTime() time.Duration
+
+	// todo add by force
+	PredictUnsignedMessageGas(ctx context.Context, msg *types.UnsignedMessage) (int64, error)
 }

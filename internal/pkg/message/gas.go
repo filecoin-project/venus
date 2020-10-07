@@ -169,9 +169,9 @@ func (ob *Outbox) GasEstimateGasLimit(ctx context.Context, msgIn *types.Unsigned
 	}
 
 	// todo 需要调用vm applyMessage计算 ???
+	gasUsed, err := ob.gp.PredictUnsignedMessageGas(ctx, &msg)
 
-
-	return 0, nil
+	return gasUsed + 76e3, nil
 }
 
 func (ob *Outbox) GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec, _ block.TipSetKey) (*types.UnsignedMessage, error) {

@@ -15,6 +15,9 @@ type VMInterpreter interface {
 	//
 	// Note: any message processing error will be present as an `ExitCode` in the `MessageReceipt`.
 	ApplyTipSetMessages(blocks []BlockMessagesInfo, head block.TipSetKey, parentEpoch abi.ChainEpoch, epoch abi.ChainEpoch) ([]message.Receipt, error)
+
+	// Todo add by force
+	ApplyMessage(msg *types.UnsignedMessage) message.Receipt
 }
 
 // BlockMessagesInfo contains messages for one block in a tipset.

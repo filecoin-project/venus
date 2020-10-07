@@ -3,7 +3,6 @@ package syncer
 import (
 	"context"
 	"fmt"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
@@ -89,6 +88,7 @@ type ChainReaderWriter interface {
 	SetHead(ctx context.Context, ts block.TipSet) error
 	HasTipSetAndStatesWithParentsAndHeight(pTsKey block.TipSetKey, h abi.ChainEpoch) bool
 	GetTipSetAndStatesByParentsAndHeight(pTsKey block.TipSetKey, h abi.ChainEpoch) ([]*chain.TipSetMetadata, error)
+	GetLatestBeaconEntry(ts *block.TipSet) (*block.BeaconEntry, error)
 }
 
 type messageStore interface {
@@ -120,6 +120,10 @@ type FullBlockValidator interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
 	RunStateTransition(ctx context.Context, ts block.TipSet, parentWeight fbig.Int, stateID cid.Cid, receiptRoot cid.Cid) (cid.Cid, []vm.MessageReceipt, error)
+
+	// Todo add by force
+	ValidateBlockBeacon(b *block.Block, parentEpoch abi.ChainEpoch, prevEntry *block.BeaconEntry) error
+	ValidateBlockWinner(ctx context.Context, blk *block.Block, stateID cid.Cid, prevEntry *block.BeaconEntry) error
 }
 
 // faultDetector tracks data for detecting consensus faults and emits faults
@@ -284,8 +288,28 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 
 	// Now that the tipset is validated preconditions are satisfied to check
 	// consensus faults
+	//prevBeacon, err := syncer.chainStore.GetLatestBeaconEntry(&parent)
+	//if err != nil {
+	//	return xerrors.Errorf("failed to get latest beacon entry: %w", err)
+	//}
+	//ph, err := parent.Height()
+	//if err != nil {
+	//	return xerrors.Errorf("failed to get parent height: %w", err)
+	//}
 	for i := 0; i < next.Len(); i++ {
-		err := syncer.faultDetector.CheckBlock(next.At(i), parent)
+		//// todo beacon check: add by force
+		//err := syncer.fullValidator.ValidateBlockBeacon(next.At(i), ph, prevBeacon)
+		//if  err != nil {
+		//	return xerrors.Errorf("failed to validate blocks random beacon values: %w", err)
+		//}
+		//
+		//// todo winner check: add by force
+		//err = syncer.fullValidator.ValidateBlockWinner(ctx, next.At(i), stateRoot, prevBeacon)
+		//if  err != nil {
+		//	return xerrors.Errorf("failed to validate blocks random beacon values: %w", err)
+		//}
+
+		err = syncer.faultDetector.CheckBlock(next.At(i), parent)
 		if err != nil {
 			return err
 		}
@@ -498,15 +522,16 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 		if err != nil {
 			return false, err
 		}
+		logSyncer.Infof("fetch tipset, height: %v", height)
 
 		// validate block message structure
-		/*	for i := 0; i < t.Len(); i++ {  todo validate message
-			err := syncer.blockValidator.ValidateMessagesSemantic(ctx, t.At(i), parentsKey)
-			if err != nil {
-				return false, err
-			}
-		}*/
-		fmt.Println("get message ", height)
+		//for i := 0; i < t.Len(); i++ {  // todo validate message
+		//	err := syncer.blockValidator.ValidateMessagesSemantic(ctx, t.At(i), parentsKey)
+		//	if err != nil {
+		//		return false, err
+		//	}
+		//}
+
 		// update status with latest fetched head and height
 		syncer.reporter.UpdateStatus(status.FetchHead(t.Key()), status.FetchHeight(height))
 		return syncer.chainStore.HasTipSetAndState(ctx, parentsKey), nil

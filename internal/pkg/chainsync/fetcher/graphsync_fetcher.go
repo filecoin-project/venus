@@ -36,7 +36,7 @@ const (
 	// Timeout for a single graphsync request getting "stuck"
 	// -- if no more responses are received for a period greater than this,
 	// we will assume the request has hung-up and cancel it
-	progressTimeout = 10 * time.Second
+	progressTimeout = 30 * time.Second // 10
 
 	// AMT selector recursion. An AMT has arity of 8 so this gives allows
 	// us to retrieve trees with 8^10 (1,073,741,824) elements.
@@ -76,7 +76,7 @@ type GraphSyncFetcher struct {
 	validator   consensus.SyntaxValidator
 	store       bstore.Blockstore
 	ssb         selectorbuilder.SelectorSpecBuilder
-	peerTracker graphsyncFallbackPeerTracker
+	peerTracker graphsyncFallbackPeerTracker  // DiscoverySubmodule::PeerTracker管理peers，hello中调用peerDiscoveredCallback,chainHeadCallback
 	systemClock clock.Clock
 }
 
@@ -108,7 +108,7 @@ func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore
 //
 // The constants below determine the maximum number of tipsets fetched at once
 // (maxRecursionDepth) and how fast the ramp up is (recursionMultipler)
-const maxRecursionDepth = 4
+const maxRecursionDepth = 64
 const recursionMultiplier = 4
 
 // FetchTipSets gets Tipsets starting from the given tipset key and continuing until
@@ -197,8 +197,8 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, max int,
 	// fetch remaining tipsets recursively
 	recursionDepth := 1
 	anchor := startingTipset // The tipset above the one we actually want to fetch.
+	logGraphsyncFetcher.Infof("fetchRemainingTipsets start ...")
 	for !isDone {
-
 		// Because a graphsync query always starts from a single CID,
 		// we fetch tipsets anchored from any block in the last (i.e. highest) tipset and
 		// recursively fetching sets of parents.
@@ -239,10 +239,12 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, max int,
 				break // Stop verifying, make another fetch
 			}
 		}
+		logGraphsyncFetcher.Infof("fetched recursionDepth for block %s, peer %s, %d levels", childBlock.Cid(), peer, recursionDepth)
 		if len(incomplete) == 0 && recursionDepth < max {
 			recursionDepth *= recursionMultiplier
 		}
 	}
+	logGraphsyncFetcher.Infof("fetchRemainingTipsets end ...")
 	return out, nil
 }
 
@@ -353,12 +355,23 @@ func (gsf *GraphSyncFetcher) recHeaderSel(recursionDepth int) ipld.Node {
 // fetchBlocksRecursively gets the blocks from recursionDepth ancestor tipsets
 // starting from baseCid.
 func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, recSelGen func(int) ipld.Node, baseCid cid.Cid, targetPeer peer.ID, recursionDepth int) error {
+	defer escape(baseCid,targetPeer,recursionDepth)()
+
 	requestCtx, requestCancel := context.WithCancel(ctx)
 	defer requestCancel()
+
 	selector := recSelGen(recursionDepth)
 
 	requestChan, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: baseCid}, selector, graphsync.ExtensionData{Name: ChainsyncProtocolExtension})
 	return gsf.consumeResponse(requestChan, errChan, requestCancel)
+}
+
+func escape(baseCid cid.Cid, targetPeer peer.ID, recursionDepth int) func() {
+	start := time.Now()
+	return func() {
+		logGraphsyncFetcher.Infof("fetched block %s, peer %s, %d levels, escape:%v",
+			baseCid.String(), targetPeer.String(), recursionDepth, time.Since(start))
+	}
 }
 
 // loadAndVerifyHeaders loads the IPLD blocks for the headers in a tipset.
@@ -639,8 +652,13 @@ func (pri *requestPeerFinder) FindNextPeer() error {
 	chains := pri.peerTracker.List()
 	for _, chain := range chains {
 		if _, tried := pri.triedPeers[chain.Sender]; !tried {
+			if len(chains) < len(pri.triedPeers) + 20 {  // 所有节点都被尝试时重新试
+				pri.triedPeers = make(map[peer.ID]struct{})
+			}
+
 			pri.triedPeers[chain.Sender] = struct{}{}
 			pri.currentPeer = chain.Sender
+
 			return nil
 		}
 	}

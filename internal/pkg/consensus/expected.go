@@ -1,23 +1,23 @@
 package consensus
 
 import (
+	"bytes"
 	"context"
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/go-state-types/network"
-	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"golang.org/x/xerrors"
 	"sync"
 	"time"
 
-	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -28,6 +28,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
+	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 )
 
 var (
@@ -65,6 +68,9 @@ const DRANDEpochLookback = 2
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
 	ProcessTipSet(context.Context, state.Tree, *vm.Storage, block.TipSet, block.TipSet, []vm.BlockMessagesInfo, vm.VmOption) ([]vm.MessageReceipt, error)
+
+	// Todo add by force
+	ProcessUnsignedMessage(context.Context,*types.UnsignedMessage, state.Tree, *vm.Storage, vm.VmOption) (int64, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
@@ -79,6 +85,7 @@ type StateViewer interface {
 }
 
 type chainReader interface {
+	GetHead() block.TipSetKey
 	GetTipSet(tsKey block.TipSetKey) (block.TipSet, error)
 	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
 	GetGenesisBlock(ctx context.Context) (*block.Block, error)
@@ -157,6 +164,44 @@ func NewExpected(cs cbor.IpldStore, bs blockstore.Blockstore, processor Processo
 // BlockTime returns the block time used by the consensus protocol.
 func (c *Expected) BlockTime() time.Duration {
 	return c.blockTime
+}
+
+// todo add by force
+func (c *Expected) PredictUnsignedMessageGas(ctx context.Context, msg *types.UnsignedMessage) (int64, error) {
+	stateRoot, err := c.chainState.GetTipSetStateRoot(c.chainState.GetHead())
+	if err != nil {
+		return 0, err
+	}
+
+	ts,err := c.chainState.GetTipSet(c.chainState.GetHead())
+	if err != nil {
+		return 0, err
+	}
+
+	vms := vm.NewStorage(c.bstore)
+	priorState, err := state.LoadState(ctx, vms, stateRoot)
+	if err != nil {
+		return 0, err
+	}
+
+	rnd := headRandomness{
+		chain: c.rnd,
+		head:  ts.Key(),
+	}
+
+	vmOption := vm.VmOption{
+		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
+			dertail, err := c.GetCirculatingSupplyDetailed(ctx, epoch, tree)
+			if err != nil {
+				return abi.TokenAmount{}, err
+			}
+			return dertail.FilCirculating, nil
+		},
+		NtwkVersionGetter: c.chainState.GetNtwkVersion,
+		Rnd:               &rnd,
+		BaseFee:           ts.At(0).ParentBaseFee,
+	}
+	return c.processor.ProcessUnsignedMessage(ctx, msg, priorState, vms, vmOption)
 }
 
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
@@ -322,6 +367,62 @@ func (c *Expected) validateMining(ctx context.Context,
 			return errors.Wrapf(err, "invalid ticket: %s in block %s", blk.Ticket.String(), blk.Cid())
 		}
 	}
+	return nil
+}
+
+// Todo beacon check
+func (c *Expected) ValidateBlockBeacon(b *block.Block, parentEpoch abi.ChainEpoch, prevEntry *block.BeaconEntry) error {
+	return beacon.ValidateBlockValues(c.drand, b, parentEpoch, prevEntry)
+}
+
+func (c *Expected) ValidateBlockWinner(ctx context.Context, blk *block.Block, stateID cid.Cid, prevEntry *block.BeaconEntry) error {
+	if blk.ElectionProof.WinCount < 1 {
+		return xerrors.Errorf("block is not claiming to be a winner")
+	}
+
+	view := c.state.PowerStateView(stateID)
+	if view == nil {
+		return xerrors.New("power state view is null")
+	}
+
+	_, qaPower, err := view.MinerClaimedPower(ctx, blk.Miner)
+	if err != nil {
+		return xerrors.Errorf("get miner power failed: %w", err)
+	}
+
+	rBeacon := prevEntry
+	if len(blk.BeaconEntries) != 0 {
+		rBeacon = blk.BeaconEntries[len(blk.BeaconEntries)-1]
+	}
+	buf := new(bytes.Buffer)
+	if err := blk.Miner.MarshalCBOR(buf); err != nil {
+		return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
+	}
+
+	vrfBase, err := cst.DrawRandomness(rBeacon.Data, acrypto.DomainSeparationTag_ElectionProofProduction, blk.Height, buf.Bytes())
+	if err != nil {
+		return xerrors.Errorf("could not draw randomness: %w", err)
+	}
+
+	_, waddr, err := view.MinerControlAddresses(ctx,blk.Miner)
+	if err != nil {
+		return xerrors.Errorf("query worker address failed: %w", err)
+	}
+
+	if err := VerifyElectionPoStVRF(ctx, waddr, vrfBase, blk.ElectionProof.VRFProof); err != nil {
+		return xerrors.Errorf("validating block election proof failed: %w", err)
+	}
+
+	totalPower, err := view.PowerNetworkTotal(ctx)
+	if err != nil {
+		return xerrors.Errorf("get miner power failed: %w", err)
+	}
+
+	j := blk.ElectionProof.ComputeWinCount(qaPower, totalPower.QualityAdjustedPower)
+	if blk.ElectionProof.WinCount != j {
+		return xerrors.Errorf("miner claims wrong number of wins: miner: %d, computed: %d", blk.ElectionProof.WinCount, j)
+	}
+
 	return nil
 }
 

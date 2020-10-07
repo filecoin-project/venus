@@ -44,6 +44,9 @@ type Outbox struct {
 	nonceLock sync.Mutex
 
 	journal journal.Writer
+
+	// todo add by force
+	gp gasPredictor
 }
 
 type messageValidator interface {
@@ -60,11 +63,16 @@ type publisher interface {
 	Publish(ctx context.Context, message *types.SignedMessage, height abi.ChainEpoch, bcast bool) error
 }
 
+// todo add by force
+type gasPredictor interface{
+	PredictUnsignedMessageGas(ctx context.Context, msg *types.UnsignedMessage) (int64, error)
+}
+
 var msgSendErrCt = metrics.NewInt64Counter("message_sender_error", "Number of errors encountered while sending a message")
 
 // NewOutbox creates a new outbox
-func NewOutbox(signer types.Signer, validator messageValidator, queue *Queue,
-	publisher publisher, policy QueuePolicy, chains chainProvider, actors actorProvider, jw journal.Writer) *Outbox {
+func NewOutbox(signer types.Signer, validator messageValidator, queue *Queue, publisher publisher, policy QueuePolicy, chains chainProvider,
+	actors actorProvider, jw journal.Writer, gp gasPredictor) *Outbox {
 	return &Outbox{
 		signer:    signer,
 		validator: validator,
@@ -74,6 +82,7 @@ func NewOutbox(signer types.Signer, validator messageValidator, queue *Queue,
 		chains:    chains,
 		actors:    actors,
 		journal:   jw,
+		gp:        gp,
 	}
 }
 
@@ -140,7 +149,7 @@ func (ob *Outbox) SendEncoded(ctx context.Context, from, to address.Address, val
 		return cid.Undef, nil, xerrors.Errorf("After estimation, GasPremium is greater than GasFeeCap")
 	}
 
-	signed, err := types.NewSignedMessage(ctx, *rawMsg, ob.signer)
+	signed, err := types.NewSignedMessage(ctx, *msg, ob.signer)
 
 	if err != nil {
 		return cid.Undef, nil, errors.Wrap(err, "failed to sign message")

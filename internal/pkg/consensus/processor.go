@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+
 	//"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -78,4 +80,15 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 	v := vm.NewVM(st, vms, p.syscalls, vmOption)
 
 	return v.ApplyTipSetMessages(msgs, parent.Key(), parentEpoch, epoch)
+}
+
+// ProcessTipSet computes the state transition specified by the messages.
+func (p *DefaultProcessor) ProcessUnsignedMessage(ctx context.Context, msg *types.UnsignedMessage, st state.Tree, vms *vm.Storage, vmOption vm.VmOption) (gasUsed int64, err error) {
+	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessUnsignedMessage")
+	span.AddAttributes(trace.StringAttribute("unsignedmessage", msg.String()))
+	defer tracing.AddErrorEndSpan(ctx, span, &err)
+
+	v := vm.NewVM(st, vms, p.syscalls, vmOption)
+	ret := v.ApplyMessage(msg)
+	return int64(ret.GasUsed), nil
 }

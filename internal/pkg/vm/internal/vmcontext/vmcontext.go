@@ -433,6 +433,12 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) (cbor.Marshaler, error)
 	return ret.inner, nil
 }
 
+// todo 预测消息的gasLimit
+func (vm *VM) ApplyMessage(msg *types.UnsignedMessage) message.Receipt {
+	ret := vm.applyMessage(msg, msg.OnChainLen())
+	return ret.Receipt
+}
+
 // applyMessage applies the message to the current stateView.
 func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) Ret {
 	// This method does not actually execute the message itself,
