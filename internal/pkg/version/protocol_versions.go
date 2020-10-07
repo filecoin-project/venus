@@ -1,6 +1,8 @@
 package version
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
@@ -15,8 +17,9 @@ const Protocol0 = 0
 // network upgrades need to be represented here. See #3491.
 func ConfigureProtocolVersions(network string) (*ProtocolVersionTable, error) {
 	return NewProtocolVersionTableBuilder(network).
-		Add("testnetnet", Protocol0, abi.ChainEpoch(0)).
+		Add("testnet", Protocol0, abi.ChainEpoch(0)).
 		Add("mainnet", Protocol0, abi.ChainEpoch(0)).
+		Add("localnet", Protocol0, abi.ChainEpoch(0)).
 		Add(TEST, Protocol0, abi.ChainEpoch(0)).
 		Build()
 }
