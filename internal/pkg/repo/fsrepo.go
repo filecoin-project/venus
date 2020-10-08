@@ -620,6 +620,6 @@ func (r *FSRepo) APIAddr() (string, error) {
 func badgerOptions() *badgerds.Options {
 	result := &badgerds.DefaultOptions
 	result.Truncate = true
-	result.MaxTableSize = 16 << 23
+	//result.MaxTableSize = 16 << 23
 	return result
 }

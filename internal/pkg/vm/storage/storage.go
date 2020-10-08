@@ -171,7 +171,7 @@ func (s *VMStorage) Flush() error {
 	// Default badger.DefaultOptions.MaxTableSize is 64Mib
 	// Pushing this hard would require measuring the size of each block and also accounting for badger object overheads.
 	// 1024 would give us very generous room for 64Kib per object.
-	maxBatchSize := 2 * 1024
+	maxBatchSize := 1024
 
 	// Write at most maxBatchSize objects to store at a time
 	remaining := blks
