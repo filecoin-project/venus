@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
@@ -386,6 +385,5 @@ func (b builder) Drand() beacon.Schedule {
 }
 
 func DefaultDrandIfaceFromConfig(fcGenTS uint64) (beacon.Schedule, error) {
-	fmt.Printf("generate drand schedule genTimeStamp: %v", fcGenTS)
 	return beacon.DrandConfigSchedule(fcGenTS, uint64(clock.DefaultEpochDuration.Seconds()))
 }
