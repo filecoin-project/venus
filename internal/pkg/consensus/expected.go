@@ -389,10 +389,10 @@ func (c *Expected) validateMining(ctx context.Context,
 			return errors.Wrap(err, "block signature invalid")
 		}
 
-		// Verify that the BLS signature aggregate is correct
-		if err := sigValidator.ValidateBLSMessageAggregate(ctx, blsMsgs[i], blk.BLSAggregateSig); err != nil {
+		// Verify that the BLS signature aggregate is correct todo remove to sync fast
+		/*if err := sigValidator.ValidateBLSMessageAggregate(ctx, blsMsgs[i], blk.BLSAggregateSig); err != nil {
 			return errors.Wrapf(err, "bls message verification failed for block %s", blk.Cid())
-		}
+		}*/
 
 		// Verify that all secp message signatures are correct
 		for i, msg := range secpMsgs[i] {

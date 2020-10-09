@@ -36,7 +36,7 @@ type lbEntry struct {
 }
 
 func (ci *ChainIndex) GetTipsetByHeight(_ context.Context, from *block.TipSet, to abi.ChainEpoch) (*block.TipSet, error) {
-	if from.EnsureHeight()-to <= ci.skipLength {
+	/*if from.EnsureHeight()-to <= ci.skipLength {
 		return ci.walkBack(from, to)
 	}
 
@@ -45,7 +45,8 @@ func (ci *ChainIndex) GetTipsetByHeight(_ context.Context, from *block.TipSet, t
 		return nil, err
 	}
 
-	cur := rounded.Key()
+	cur := rounded.Key()*/
+	cur := from.Key()
 	for {
 		cval, ok := ci.skipCache.Get(cur.String())
 		if !ok {

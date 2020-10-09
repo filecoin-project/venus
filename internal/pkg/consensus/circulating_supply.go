@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"context"
-	"fmt"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -48,9 +47,6 @@ type genesisActor struct {
 func (sm *Expected) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st state.Tree) (api.CirculatingSupply, error) {
 	sm.genesisMsigLk.Lock()
 	defer sm.genesisMsigLk.Unlock()
-	if height == 259 {
-		fmt.Print()
-	}
 	if sm.preIgnitionGenInfos == nil {
 		err := sm.setupPreIgnitionGenesisActorsTestnet(ctx)
 		if err != nil {
@@ -324,8 +320,6 @@ func getFilPowerLocked(ctx context.Context, st state.Tree) (abi.TokenAmount, err
 	if !found || err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load power actor: %w", err)
 	}
-	fmt.Println(builtin.StorageMarketActorAddr)
-	fmt.Println(act.Head)
 	var pst power.State
 	if err := adt.WrapStore(ctx, st.GetStore()).Get(ctx, act.Head.Cid, &pst); err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load power state: %w", err)

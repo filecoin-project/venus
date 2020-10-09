@@ -81,7 +81,7 @@ func (sys syscalls) VerifyConsensusFault(h1, h2, extra []byte) (*specsruntime.Co
 	return sys.impl.VerifyConsensusFault(sys.ctx, h1, h2, extra, sys.stateView)
 }
 
-var BatchSealVerifyParallelism = goruntime.NumCPU()
+var BatchSealVerifyParallelism = 2 * goruntime.NumCPU()
 
 func (sys syscalls) BatchVerifySeals(vis map[address.Address][]proof.SealVerifyInfo) (map[address.Address][]bool, error) {
 	out := make(map[address.Address][]bool)

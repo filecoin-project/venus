@@ -542,7 +542,6 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 	// Note: we are storing the actors by ActorID *address*
 	_, found, err := ctx.rt.state.GetActor(ctx.rt.context, addr)
 	if err != nil {
-		fmt.Println(err)
 		panic(err)
 	}
 	if found {
