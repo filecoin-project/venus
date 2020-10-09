@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
@@ -256,7 +257,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to construct drand grpc")
 		}
-		dGRPC, err := DefaultDrandIfaceFromConfig(b.repo.Config(), genBlk.Timestamp)
+		dGRPC, err := DefaultDrandIfaceFromConfig(genBlk.Timestamp)
 		if err != nil {
 			return nil, err
 		}
@@ -384,6 +385,7 @@ func (b builder) Drand() beacon.Schedule {
 	return b.drand
 }
 
-func DefaultDrandIfaceFromConfig(cfg *config.Config, fcGenTS uint64) (beacon.Schedule, error) {
+func DefaultDrandIfaceFromConfig(fcGenTS uint64) (beacon.Schedule, error) {
+	fmt.Printf("generate drand schedule genTimeStamp: %v", fcGenTS)
 	return beacon.DrandConfigSchedule(fcGenTS, uint64(clock.DefaultEpochDuration.Seconds()))
 }

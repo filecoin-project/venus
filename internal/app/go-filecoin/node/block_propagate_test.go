@@ -3,6 +3,7 @@ package node_test
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"testing"
 	"time"
 
@@ -124,8 +125,8 @@ func TestChainSyncWithMessages(t *testing.T) {
 		WithBuilderOpt(ChainClockConfigOption(c)).
 		WithGenesisInit(cs.GenesisInitFunc).
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
-		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof))
-		//WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
+		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
+		WithBuilderOpt(DrandConfigOption(beacon.NewMockSchedule(blockTime)))
 	nodeSend := builder1.Build(ctx)
 	senderAddress := cs.GiveKey(t, nodeSend, 1)
 
@@ -134,8 +135,8 @@ func TestChainSyncWithMessages(t *testing.T) {
 		WithBuilderOpt(ChainClockConfigOption(c)).
 		WithGenesisInit(cs.GenesisInitFunc).
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
-		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof))
-		//WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
+		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
+		WithBuilderOpt(DrandConfigOption(beacon.NewMockSchedule(blockTime)))
 	nodeReceive := builder2.Build(ctx)
 	receiverAddress := cs.GiveKey(t, nodeReceive, 2)
 
@@ -145,8 +146,8 @@ func TestChainSyncWithMessages(t *testing.T) {
 		WithGenesisInit(cs.GenesisInitFunc).
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
 		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
-		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{}))
-		//WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
+		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{})).
+		WithBuilderOpt(DrandConfigOption(beacon.NewMockSchedule(blockTime)))
 	nodeMine := builder3.Build(ctx)
 	cs.GiveKey(t, nodeMine, 0)
 	cs.GiveMiner(t, nodeMine, 0)
@@ -226,7 +227,7 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
 		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{})).
 		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
-		//WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime))).
+		WithBuilderOpt(DrandConfigOption(beacon.NewMockSchedule(blockTime))).
 		WithInitOpt(PeerKeyOpt(PeerKeys[0]))
 	minerNode := builder.Build(ctx)
 	seed.GiveKey(t, minerNode, 0)
@@ -243,8 +244,8 @@ func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*No
 		WithBuilderOpt(ChainClockConfigOption(c)).
 		WithBuilderOpt(VerifierConfigOption(&proofs.FakeVerifier{})).
 		WithBuilderOpt(PoStGeneratorOption(&consensus.TestElectionPoster{})).
-		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof))
-		//WithBuilderOpt(DrandConfigOption(drand.NewFake(genTime)))
+		WithBuilderOpt(MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
+		WithBuilderOpt(DrandConfigOption(beacon.NewMockSchedule(blockTime)))
 
 	for i := 0; i < nodeLimit; i++ {
 		nodes = append(nodes, builder2.Build(ctx))
