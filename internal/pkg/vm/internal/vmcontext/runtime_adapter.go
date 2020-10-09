@@ -246,10 +246,6 @@ func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
 		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
 	}
 
-	if builtin.IsSingletonActor(codeID) {
-		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Can only have one instance of singleton actors.")
-	}
-
 	vmlog.Debugf("creating actor, friendly-name: %s, code: %s, addr: %s\n", builtin.ActorNameByCode(codeID), codeID, addr)
 
 	// Check existing address. If nothing there, create empty actor.
