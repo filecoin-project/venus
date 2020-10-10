@@ -2,8 +2,10 @@ package syncer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
+	"io/ioutil"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -323,6 +325,8 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next *bl
 	if err != nil {
 		return errors.Wrapf(err, "could not store message rerceipts for tip set %s", next.String())
 	}
+	dddd, _ := json.MarshalIndent(receipts, "", "\t")
+	ioutil.WriteFile("receipt.json", dddd, 0777)
 
 	fmt.Println("Height:", next.EnsureHeight(), " Root:", root, " receiptcid ", receiptCid)
 	err = syncer.chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
@@ -520,8 +524,8 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
 
-	//tipsets = tipsets[0:2000]
-	//ci.Head = tipsets[1999].Key()
+	//tipsets = tipsets[0:100]
+	//ci.Head = tipsets[99].Key()
 	// Once headers check out, fetch messages
 	_, err = syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Sender, func(t *block.TipSet) (bool, error) {
 		parentsKey, err := t.Parents()

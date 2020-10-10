@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
@@ -134,7 +135,7 @@ func (shc *stateHandleContext) storeActor(actr *actor.Actor) {
 }
 
 // runtime aborts are trapped by invoke, it will always return an exit code.
-func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.ExitCode) {
+func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 	// Checkpoint stateView, for restoration on revert
 	// Note that changes prior to invocation (sequence number bump and gas prepayment) persist even if invocation fails.
 	err := ctx.rt.snapshot()
@@ -171,7 +172,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 					"methodNum", ctx.msg.method,
 					"value", ctx.msg.value,
 					"gasLimit", ctx.gasTank.gasAvailable) //todo for test remove
-				ret = returnWrapper{abi.Empty} // The Empty here should never be used, but slightly safer than zero value.
+				ret = []byte{} // The Empty here should never be used, but slightly safer than zero value.
 				errcode = p.Code()
 			default:
 				if err, ok := r.(error); ok {
@@ -184,7 +185,6 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 				panic(r)
 			}
 		}
-
 	}()
 
 	// pre-dispatch
@@ -221,7 +221,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 
 	// 4. if we are just sending funds, there is nothing else to do.
 	if ctx.msg.method == builtin.MethodSend {
-		return returnWrapper{abi.Empty}, exitcode.Ok
+		return nil, exitcode.Ok
 	}
 
 	// 5. load target actor code
@@ -232,21 +232,11 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 
 	// dispatch
 	adapter := newRuntimeAdapter(ctx) //runtimeAdapter{ctx: ctx}
-	out, err := actorImpl.Dispatch(ctx.msg.method, adapter, ctx.msg.params)
-	if err != nil {
-		// Dragons: this could be a params deserialization error too
-		runtime.Abort(exitcode.SysErrInvalidMethod)
+	var extErr *dispatch.ExcuteError
+	ret, extErr = actorImpl.Dispatch(ctx.msg.method, adapter, ctx.msg.params)
+	if extErr != nil {
+		runtime.Abortf(extErr.ExitCode(), extErr.Error())
 	}
-	// assert output implements expected interface
-	var marsh cbor.Marshaler = abi.Empty
-	if out != nil {
-		var ok bool
-		marsh, ok = out.(cbor.Marshaler)
-		if !ok {
-			runtime.Abortf(exitcode.SysErrorIllegalActor, "Returned value is not a CBORMarshaler")
-		}
-	}
-	ret = returnWrapper{inner: marsh}
 
 	// post-dispatch
 	// 1. check caller was validated
@@ -412,39 +402,6 @@ func (ctx *invocationContext) State() specsruntime.StateHandle {
 	return ctx.stateHandle
 }
 
-type returnWrapper struct {
-	inner cbor.Marshaler
-}
-
-func (r returnWrapper) ToCbor() (out []byte, err error) {
-	if r.inner == nil {
-		return nil, fmt.Errorf("failed to unmarshal nil return (did you mean []byte{}?)")
-	}
-	b := bytes.Buffer{}
-	if err = r.inner.MarshalCBOR(&b); err != nil {
-		return
-	}
-	out = b.Bytes()
-	if out == nil {
-		// A buffer with zero bytes written returns nil rather than an empty array,
-		// but the distinction matters for CBOR.
-		out = []byte{}
-	}
-	return
-}
-
-func (r returnWrapper) Into(o cbor.Unmarshaler) error {
-	// TODO: if inner is also a cbg.CBORUnmarshaler, overwrite o with inner.
-	if r.inner == nil {
-		return fmt.Errorf("failed to unmarshal nil return (did you mean []byte{}?)")
-	}
-	b := bytes.Buffer{}
-	if err := r.inner.MarshalCBOR(&b); err != nil {
-		return err
-	}
-	return o.UnmarshalCBOR(&b)
-}
-
 // Send implements runtime.InvocationContext.
 func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodNum, params cbor.Marshaler, value abi.TokenAmount, out cbor.Er) exitcode.ExitCode {
 	// check if side-effects are allowed
@@ -477,9 +434,15 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 
 	// 2. invoke
 	ret, code := newCtx.invoke()
-	_ = ctx.gasTank.TryCharge(gasOnActorExec)
-	ret.Into(out)
-	return code
+	if code != 0 {
+		return code
+	} else {
+		_ = ctx.gasTank.TryCharge(gasOnActorExec)
+		if err := out.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
+			runtime.Abortf(exitcode.ErrSerialization, "failed to unmarshal return value: %s", err)
+		}
+		return code
+	}
 }
 
 /// Balance implements runtime.InvocationContext.

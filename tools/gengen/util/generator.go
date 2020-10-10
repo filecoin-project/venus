@@ -1,6 +1,7 @@
 package gengen
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
@@ -13,7 +14,6 @@ import (
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	cbor2 "github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
@@ -618,8 +618,12 @@ func (g *GenesisGenerator) createMiner(ctx context.Context, m *CreateStorageMine
 	}
 
 	// get miner ID address
-	ret := out.(*power.CreateMinerReturn)
-	return ownerAddr, ret.IDAddress, nil
+	createMinerReturn := power.CreateMinerReturn{}
+	err = createMinerReturn.UnmarshalCBOR(bytes.NewReader(out))
+	if err != nil {
+		return address.Undef, address.Undef, err
+	}
+	return ownerAddr, createMinerReturn.IDAddress, nil
 }
 
 func (g *GenesisGenerator) publishDeals(actorAddr, clientAddr address.Address, clientkey *crypto.KeyInfo, comms []*CommitConfig, marketBalance abi.TokenAmount) ([]abi.DealID, error) {
@@ -674,8 +678,12 @@ func (g *GenesisGenerator) publishDeals(actorAddr, clientAddr address.Address, c
 		return nil, err
 	}
 
-	ret := out.(*market.PublishStorageDealsReturn)
-	return ret.IDs, nil
+	publishStoreageDealsReturn := market.PublishStorageDealsReturn{}
+	err = publishStoreageDealsReturn.UnmarshalCBOR(bytes.NewReader(out))
+	if err != nil {
+		return nil, err
+	}
+	return publishStoreageDealsReturn.IDs, nil
 }
 
 func (g *GenesisGenerator) getDealWeight(dealID abi.DealID, sectorExpiry abi.ChainEpoch, minerIDAddr address.Address) (dealWeight, verifiedWeight abi.DealWeight, err error) {
@@ -688,8 +696,12 @@ func (g *GenesisGenerator) getDealWeight(dealID abi.DealID, sectorExpiry abi.Cha
 	if err != nil {
 		return big.Zero(), big.Zero(), err
 	}
-	ret := weightOut.(*market.VerifyDealsForActivationReturn)
-	return ret.DealWeight, ret.VerifiedDealWeight, nil
+	verifyDealsReturn := market.VerifyDealsForActivationReturn{}
+	err = verifyDealsReturn.UnmarshalCBOR(bytes.NewReader(weightOut))
+	if err != nil {
+		return big.Zero(), big.Zero(), err
+	}
+	return verifyDealsReturn.DealWeight, verifyDealsReturn.VerifiedDealWeight, nil
 }
 
 func (g *GenesisGenerator) updatePower(ctx context.Context, minerAddr address.Address, rawPower, qaPower, networkPower abi.StoragePower, epochBlockReward big.Int) (abi.TokenAmount, error) {
@@ -778,7 +790,7 @@ func (g *GenesisGenerator) putSector(ctx context.Context, sector *sectorCommitIn
 	return err
 }
 
-func (g *GenesisGenerator) doExecValue(ctx context.Context, to, from address.Address, value big.Int, method abi.MethodNum, params []byte) (cbor2.Marshaler, error) {
+func (g *GenesisGenerator) doExecValue(ctx context.Context, to, from address.Address, value big.Int, method abi.MethodNum, params []byte) ([]byte, error) {
 	_, found, err := g.stateTree.GetActor(ctx, from)
 	if !found || err != nil {
 		return nil, xerrors.Errorf("doExec failed to get from actor (%s): %w", from, err)
@@ -797,7 +809,12 @@ func (g *GenesisGenerator) currentTotalPower(ctx context.Context, maddr address.
 	if err != nil {
 		return nil, err
 	}
-	return pwret.(*power.CurrentTotalPowerReturn), nil
+	currentTotalReturn := &power.CurrentTotalPowerReturn{}
+	err = currentTotalReturn.UnmarshalCBOR(bytes.NewReader(pwret))
+	if err != nil {
+		return nil, err
+	}
+	return currentTotalReturn, nil
 }
 
 func (g *GenesisGenerator) dealWeight(ctx context.Context, maddr address.Address, dealIDs []abi.DealID, sectorStart, sectorExpiry abi.ChainEpoch) (market.VerifyDealsForActivationReturn, error) {
@@ -821,7 +838,13 @@ func (g *GenesisGenerator) dealWeight(ctx context.Context, maddr address.Address
 	if err != nil {
 		return market.VerifyDealsForActivationReturn{}, err
 	}
-	return *ret.(*market.VerifyDealsForActivationReturn), nil
+
+	vdaReturn := market.VerifyDealsForActivationReturn{}
+	err = vdaReturn.UnmarshalCBOR(bytes.NewReader(ret))
+	if err != nil {
+		return market.VerifyDealsForActivationReturn{}, err
+	}
+	return vdaReturn, nil
 }
 
 func (g *GenesisGenerator) currentEpochBlockReward(ctx context.Context, maddr address.Address) (*reward.ThisEpochRewardReturn, error) {
@@ -830,7 +853,12 @@ func (g *GenesisGenerator) currentEpochBlockReward(ctx context.Context, maddr ad
 		return nil, err
 	}
 
-	return rwret.(*reward.ThisEpochRewardReturn), nil
+	epochRewardReturn := &reward.ThisEpochRewardReturn{}
+	err = epochRewardReturn.UnmarshalCBOR(bytes.NewReader(rwret))
+	if err != nil {
+		return nil, err
+	}
+	return epochRewardReturn, nil
 }
 
 func (g *GenesisGenerator) circSupply(ctx context.Context, maddr address.Address) abi.TokenAmount {

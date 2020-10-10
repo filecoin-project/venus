@@ -165,7 +165,7 @@ func (st *State) SetActor(ctx context.Context, addr ActorKey, act *actor.Actor) 
 	if addr.String() == "t02" && act.Balance.String() == "1099941831613802678928678794" {
 		fmt.Print()
 	}
-	//fmt.Println("set actor addr:", addr.String(), " Balance:", act.Balance.String(), " Head:", act.Head, " Nonce:", act.CallSeqNum)
+	fmt.Println("set actor addr:", addr.String(), " Balance:", act.Balance.String(), " Head:", act.Head, " Nonce:", act.CallSeqNum)
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
 		return xerrors.Errorf("ID lookup failed: %w", err)

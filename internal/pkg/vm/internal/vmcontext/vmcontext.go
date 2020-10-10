@@ -2,6 +2,7 @@ package vmcontext
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	. "github.com/ipfs/go-cid"
@@ -23,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -71,7 +71,7 @@ type Ret struct {
 
 // ActorImplLookup provides access to upgradeable actor code.
 type ActorImplLookup interface {
-	GetActorImpl(code Cid) (dispatch.Dispatcher, error)
+	GetActorImpl(code Cid) (dispatch.Dispatcher, *dispatch.ExcuteError)
 }
 
 type internalMessage struct {
@@ -105,7 +105,7 @@ func NewVM(actorImpls ActorImplLookup,
 // ApplyGenesisMessage forces the execution of a message in the vm actor.
 //
 // This method is intended to be used in the generation of the genesis block only.
-func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (cbor.Marshaler, error) {
+func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) ([]byte, error) {
 	vm.pricelist = gas.PricelistByEpoch(vm.currentEpoch)
 
 	// normalize from addr
@@ -248,7 +248,8 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 	seenMsgs := make(map[Cid]struct{})
 
 	// process messages on each block
-	for _, blk := range blocks {
+	for index, blk := range blocks {
+		fmt.Println("start to process block ", index)
 		if blk.Miner.Protocol() != address.ID {
 			panic("precond failure: block miner address must be an IDAddress")
 		}
@@ -266,7 +267,11 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 				continue
 			}
 
-			//fmt.Println("start to process bls message ", mcid)
+			if mcid.String() == "bafy2bzaced3fkz4x64crcly5rmkzn2m5vxd6pvfcq2taszxa4iqe2xnrs5vqm" {
+				fmt.Print()
+			}
+
+			fmt.Println("start to process bls message ", mcid)
 			// apply message
 			ret := vm.applyMessage(m, m.OnChainLen())
 
@@ -277,22 +282,22 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
-			/*iii, _ := vm.flush()
+			iii, _ := vm.flush()
 			fmt.Println("message: %s  root: %s\n", mcid, iii)
 
 			dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
 			fmt.Println(string(dddd))
-			xxxx := []*types.GasTrace{}
-			for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
-				xxx.Location = nil
-				if xxx.TotalGas >0 {
-					xxxx = append(xxxx, xxx)
+			/*	xxxx := []*types.GasTrace{}
+				for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
+					xxx.Location = nil
+					if xxx.TotalGas >0 {
+						xxxx = append(xxxx, xxx)
+					}
 				}
-			}
-			dddd, _ = json.MarshalIndent(xxxx,"","\t")
-			fmt.Println(string(dddd))
+				dddd, _ = json.MarshalIndent(xxxx,"","\t")
+				fmt.Println(string(dddd))*/
 
-			fmt.Println()*/
+			fmt.Println()
 		}
 
 		// Process SECP messages from the block
@@ -303,7 +308,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 				continue
 			}
 
-			//fmt.Println("start to process secp message ", mcid)
+			fmt.Println("start to process secp message ", mcid)
 			m := sm.Message
 			// apply message
 			// Note: the on-chain size for SECP messages is different
@@ -317,26 +322,25 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
 
-			/*iii, _ := vm.flush()
+			iii, _ := vm.flush()
 			fmt.Printf("message: %s  root: %s\n", mcid, iii)
 
 			dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
 			fmt.Println(string(dddd))
-
-				xxxx := []*types.GasTrace{}
-				for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
-					xxx.Location = nil
-					if xxx.TotalGas >0 {
-						xxxx = append(xxxx, xxx)
-					}
+			/*xxxx := []*types.GasTrace{}
+			for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
+				xxx.Location = nil
+				if xxx.TotalGas >0 {
+					xxxx = append(xxxx, xxx)
 				}
-				dddd, _ = json.MarshalIndent(xxxx,"","\t")
-				fmt.Println(string(dddd))
-			fmt.Println()*/
+			}
+			dddd, _ = json.MarshalIndent(xxxx,"","\t")
+			fmt.Println(string(dddd))*/
+			fmt.Println()
 		}
 
-		/*root, _ := vm.state.Flush(context.TODO())
-		fmt.Println("before reward: %d  root: %s", index, root)*/
+		root, _ := vm.state.Flush(context.TODO())
+		fmt.Println("before reward: %d  root: %s", index, root)
 
 		// Pay block reward.
 		// Dragons: missing final protocol design on if/how to determine the nominal power
@@ -345,14 +349,14 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 			return nil, err
 		}
 
-		/*root, _ = vm.state.Flush(context.TODO())
+		root, _ = vm.state.Flush(context.TODO())
 		fmt.Println("reward: %d  root: %s", index, root)
-		fmt.Print()*/
+		fmt.Print()
 	}
 
-	/*root, _ := vm.state.Flush(context.TODO())
+	root, _ := vm.state.Flush(context.TODO())
 	fmt.Println("before cron root: %s", root)
-	fmt.Println("xxxx")*/
+	fmt.Println("xxxx")
 
 	// cron tick
 	cronMessage := makeCronTickMessage()
@@ -360,9 +364,9 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 		return nil, err
 	}
 
-	/*root, _ = vm.state.Flush(context.TODO())
+	root, _ = vm.state.Flush(context.TODO())
 	fmt.Println("after cron root: %s", root)
-	fmt.Print()*/
+	fmt.Print()
 	// commit stateView
 	if _, err := vm.flush(); err != nil {
 		return nil, err
@@ -374,7 +378,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 // applyImplicitMessage applies messages automatically generated by the vm itself.
 //
 // This messages do not consume client gas and must not fail.
-func (vm *VM) applyImplicitMessage(imsg internalMessage) (cbor.Marshaler, error) {
+func (vm *VM) applyImplicitMessage(imsg internalMessage) ([]byte, error) {
 	// implicit messages gas is tracked separatly and not paid by the miner
 	gasTank := NewGasTracker(gas.SystemGasLimit)
 
@@ -438,7 +442,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) (cbor.Marshaler, error)
 		return nil, fmt.Errorf("invalid exit code %d during implicit message execution: from %s, to %s, method %d, value %s, params %v",
 			code, imsg.from, imsg.to, imsg.method, imsg.value, imsg.params)
 	}
-	return ret.inner, nil
+	return ret, nil
 }
 
 // todo 预测消息的gasLimit
@@ -603,14 +607,6 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) Ret {
 
 	// 3. invoke
 	ret, code := ctx.invoke()
-	// encode value
-	returnValue, err := ret.ToCbor()
-	if err != nil {
-		// failed to encode object returned by actor
-		returnValue = []byte{}
-		code = exitcode.SysErrorIllegalActor
-	}
-
 	// post-send
 	// 1. charge gas for putting the return value on the chain
 	// 2. settle gas money around (unused_gas -> sender)
@@ -618,12 +614,12 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) Ret {
 
 	// 1. charge for the space used by the return value
 	// Note: the GasUsed in the message receipt does not
-	ok = gasTank.TryCharge(vm.pricelist.OnChainReturnValue(len(returnValue)))
+	ok = gasTank.TryCharge(vm.pricelist.OnChainReturnValue(len(ret)))
 	if !ok {
 		// Insufficient gas remaining to cover the on-chain return value; proceed as in the case
 		// of method execution failure.
 		code = exitcode.SysErrOutOfGas
-		returnValue = []byte{}
+		ret = []byte{}
 	}
 
 	// Roll back all stateView if the receipt's exit code is not ok.
@@ -665,12 +661,15 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) Ret {
 	}
 
 	// 3. Success!
+	if ret == nil {
+		ret = []byte{} //todo cbor marshal cant diff nil and []byte  should be fix in encoding
+	}
 	return Ret{
 		GasTracker: gasTank,
 		OutPuts:    gasOutputs,
 		Receipt: types.MessageReceipt{
 			ExitCode:    code,
-			ReturnValue: returnValue,
+			ReturnValue: ret,
 			GasUsed:     gas.NewGas(gasUsed),
 		},
 	}
