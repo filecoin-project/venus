@@ -22,14 +22,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 )
 
-// ToDo
-var (
-	UpgradeSmokeHeight       = abi.ChainEpoch(-1)
-	UpgradeBreezeHeight      = abi.ChainEpoch(0)
-	BreezeGasTampingDuration = abi.ChainEpoch(0)
-	UpgradeIgnitionHeight    = abi.ChainEpoch(0)
-)
-
 // MessageProvider is an interface exposing the load methods of the
 // MessageStore.
 type MessageProvider interface {

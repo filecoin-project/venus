@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/build"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	"os"
 	"runtime/debug"
 	"sync"
@@ -556,7 +557,7 @@ func (store *Store) GenesisRootCid() cid.Cid {
 // todo review 最新的版本是Version4?
 func UseNewestNetwork() bool {
 	// TODO: Put these in a container we can iterate over
-	if UpgradeBreezeHeight <= 0 && UpgradeSmokeHeight <= 0 {
+	if fork.UpgradeBreezeHeight <= 0 && fork.UpgradeSmokeHeight <= 0 {
 		return true
 	}
 	return false
@@ -569,11 +570,11 @@ func (store *Store) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) n
 		return build.NewestNetworkVersion
 	}
 
-	if height <= UpgradeBreezeHeight {
+	if height <= fork.UpgradeBreezeHeight {
 		return network.Version0
 	}
 
-	if height <= UpgradeSmokeHeight {
+	if height <= fork.UpgradeSmokeHeight {
 		return network.Version1
 	}
 

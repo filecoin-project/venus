@@ -24,6 +24,21 @@ import (
 	//"github.com/prometheus/common/log"
 )
 
+var (
+	UpgradeSmokeHeight       = abi.ChainEpoch(-1)
+	UpgradeBreezeHeight      = abi.ChainEpoch(0)
+	BreezeGasTampingDuration = abi.ChainEpoch(0)
+	UpgradeIgnitionHeight    = abi.ChainEpoch(0)
+)
+
+func init() {
+	UpgradeSmokeHeight = 51000
+	UpgradeBreezeHeight = 41280
+	BreezeGasTampingDuration = 120
+	UpgradeIgnitionHeight = 94000
+}
+
+
 // todo 多处引用了lotus
 
 type chainReader interface {
