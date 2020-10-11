@@ -3,38 +3,49 @@ package poster
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/dline"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
-	"github.com/ipfs/go-cid"
-	xerrors "github.com/pkg/errors"
-	"go.opencensus.io/trace"
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	logging "github.com/ipfs/go-log/v2"
+	"github.com/ipfs/go-cid"
+	xerrors "github.com/pkg/errors"
+	"github.com/raulk/clock"
+	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-address"
-	sectorstorage "github.com/filecoin-project/go-filecoin/vendors/sector-storage"
+	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
+	actors "github.com/filecoin-project/go-filecoin/internal/pkg/specactors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/go-state-types/abi"
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	sectorstorage "github.com/filecoin-project/go-filecoin/vendors/sector-storage"
 )
 
 var log = logging.Logger("poster")
+
+// todo add by force
+// Epochs
+const MessageConfidence = uint64(5)
+
+// Clock is the global clock for the system. In standard builds,
+// we use a real-time clock, which maps to the `time` package.
+//
+// Tests that need control of time can replace this variable with
+// clock.NewMock(). Always use real time for socket/stream deadlines.
+var Clock = clock.New()
 
 // Poster listens for changes to the chain head and generates and submits a PoSt if one is required.
 type Poster struct {
@@ -118,7 +129,7 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead *block.TipSet) e
 		return err
 	}
 
-	stateView := p.stateViewer.StateView(root)
+	stateView := p.stateViewer.StateView(root, p.chain.GetNtwkVersion(ctx,tipsetHeight))
 	diInfo, err := stateView.StateMinerProvingDeadline(ctx, p.minerAddr, newHead)
 	if err != nil {
 		return err
@@ -163,9 +174,18 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, di *dline
 		// late to declare them for this deadline
 		declDeadline := (di.Index + 2) % miner.WPoStPeriodDeadlines
 
-		partitions, err := stateView.StateMinerPartitions(context.TODO(), p.minerAddr, declDeadline, newHead.Key())
+		deadline, err := stateView.StateMinerDeadlineForIdx(context.TODO(), p.minerAddr, declDeadline, newHead.Key())
 		if err != nil {
-			log.Errorf("getting partitions: %v", err)
+			log.Errorf("getting deadline error: %v", err)
+			return
+		}
+
+		partitions := make([]miner.Partition,0)
+		if err := deadline.ForEachPartition(func(idx uint64, part miner.Partition) error{
+			partitions = append(partitions, part)
+			return nil
+		}); err != nil {
+			log.Errorf("getting partitions error: %v", err)
 			return
 		}
 
@@ -173,16 +193,6 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, di *dline
 			sigmsg     cid.Cid
 			recoveries []miner.RecoveryDeclaration
 			faults     []miner.FaultDeclaration
-
-			// optionalCid returns the CID of the message, or cid.Undef is the
-			// message is nil. We don't need the argument (could capture the
-			// pointer), but it's clearer and purer like that.
-		/*	optionalCid = func(sigmsg *types.SignedMessage) cid.Cid {
-			if sigmsg == nil {
-				return cid.Undef
-			}
-			return sigmsg.Cid()
-		}*/
 		)
 
 		if recoveries, sigmsg, err = p.checkNextRecoveries(context.TODO(), declDeadline, partitions); err != nil {
@@ -211,9 +221,18 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, di *dline
 	}
 
 	// Get the partitions for the given deadline
-	partitions, err := stateView.StateMinerPartitions(ctx, p.minerAddr, di.Index, newHead.Key())
+	deadline, err := stateView.StateMinerDeadlineForIdx(context.TODO(), p.minerAddr,  di.Index, newHead.Key())
 	if err != nil {
-		log.Errorf("getting partitions: %w", err)
+		log.Errorf("getting deadline error: %v", err)
+		return
+	}
+
+	partitions := make([]miner.Partition,0)
+	if err := deadline.ForEachPartition(func(idx uint64, part miner.Partition) error{
+		partitions = append(partitions, part)
+		return nil
+	}); err != nil {
+		log.Errorf("getting partitions error: %v", err)
 		return
 	}
 
@@ -255,7 +274,12 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, di *dline
 					return
 				}
 
-				toProve, err = bitfield.MergeBitFields(toProve, partition.Recoveries)
+				recoveries, err := partition.RecoveringSectors()
+				if err != nil {
+					log.Errorf("get recoveries error: %w", err)
+					return
+				}
+				toProve, err = bitfield.MergeBitFields(toProve, recoveries)
 				if err != nil {
 					log.Errorf("adding recoveries to set of sectors to prove: %w", err)
 					return
@@ -286,8 +310,12 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, di *dline
 				}
 
 				skipCount += sc
-
-				ssi, err := p.sectorsForProof(ctx, stateView, good, partition.Sectors, newHead)
+				sectors, err := partition.AllSectors()
+				if err != nil {
+					log.Errorf("getting partition sectors error: %w", err)
+					return
+				}
+				ssi, err := p.sectorsForProof(ctx, stateView, good, sectors, newHead)
 				if err != nil {
 					log.Errorf("getting sorted sector info: %w", err)
 					return
@@ -318,7 +346,7 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, di *dline
 				"height", height,
 				"skipped", skipCount)
 
-			tsStart := build.Clock.Now()
+			tsStart := Clock.Now()
 
 			mid, err := address.IDFromAddress(p.minerAddr)
 			if err != nil {
@@ -423,7 +451,7 @@ func (p *Poster) sendPoSt(ctx context.Context, proofs []miner.SubmitWindowedPoSt
 }
 
 func (p *Poster) sectorsForProof(ctx context.Context, stateViewer *appstate.View, goodSectors, allSectors bitfield.BitField, ts *block.TipSet) ([]proof.SectorInfo, error) {
-	sset, err := stateViewer.StateMinerSectors(ctx, p.minerAddr, &goodSectors, false, ts.Key())
+	sset, err := stateViewer.StateMinerSectors(ctx, p.minerAddr, &goodSectors, ts.Key())
 	if err != nil {
 		return nil, err
 	}
@@ -462,7 +490,7 @@ func (p *Poster) sectorsForProof(ctx context.Context, stateViewer *appstate.View
 	return proofSectors, nil
 }
 
-func (p *Poster) batchPartitions(partitions []*miner.Partition) ([][]*miner.Partition, error) {
+func (p *Poster) batchPartitions(partitions []miner.Partition) ([][]miner.Partition, error) {
 	// Get the number of sectors allowed in a partition, for this proof size
 	sectorsPerPartition, err := builtin.PoStProofWindowPoStPartitionSectors(p.proofType)
 	if err != nil {
@@ -479,7 +507,7 @@ func (p *Poster) batchPartitions(partitions []*miner.Partition) ([][]*miner.Part
 	// sectors per partition    3:  ooo
 	// partitions per message   2:  oooOOO
 	//                              <1><2> (3rd doesn't fit)
-	partitionsPerMsg := int(miner.AddressedSectorsMax / sectorsPerPartition)
+	partitionsPerMsg := int(miner0.AddressedSectorsMax / sectorsPerPartition)
 
 	// The number of messages will be:
 	// ceiling(number of partitions / partitions per message)
@@ -489,7 +517,7 @@ func (p *Poster) batchPartitions(partitions []*miner.Partition) ([][]*miner.Part
 	}
 
 	// Split the partitions into batches
-	batches := make([][]*miner.Partition, 0, batchCount)
+	batches := make([][]miner.Partition, 0, batchCount)
 	for i := 0; i < len(partitions); i += partitionsPerMsg {
 		end := i + partitionsPerMsg
 		if end > len(partitions) {
@@ -500,7 +528,7 @@ func (p *Poster) batchPartitions(partitions []*miner.Partition) ([][]*miner.Part
 	return batches, nil
 }
 
-func (p *Poster) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitions []*miner.Partition) ([]miner.RecoveryDeclaration, cid.Cid, error) {
+func (p *Poster) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitions []miner.Partition) ([]miner.RecoveryDeclaration, cid.Cid, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.checkNextRecoveries")
 	defer span.End()
 
@@ -510,7 +538,17 @@ func (p *Poster) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitio
 	}
 
 	for partIdx, partition := range partitions {
-		unrecovered, err := bitfield.SubtractBitField(partition.Faults, partition.Recoveries)
+		faults, err := partition.FaultySectors()
+		if err != nil {
+			return nil, cid.Undef, err
+		}
+
+		recoveries, err := partition.RecoveringSectors()
+		if err != nil {
+			return nil, cid.Undef, err
+		}
+
+		unrecovered, err := bitfield.SubtractBitField(faults, recoveries)
 		if err != nil {
 			return nil, cid.Undef, xerrors.Errorf("subtracting recovered set from fault set: %w", err)
 		}
@@ -569,7 +607,7 @@ func (p *Poster) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitio
 		Params: enc,
 		Value:  big.NewInt(0),
 	}
-	spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(big.NewInt(100000000))} //todo add by force s.feeCfg.MaxWindowPoStGasFee)}
+	spec := &types.MessageSendSpec{MaxFee: abi.TokenAmount(big.NewInt(100000000))} //todo add by force s.feeCfg.MaxWindowPoStGasFee)}
 	p.setSender(ctx, msg, spec)
 
 	mcid, _, err := p.outbox.UnSignedSend(ctx, *msg)
@@ -579,7 +617,7 @@ func (p *Poster) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitio
 
 	log.Warnw("declare faults recovered Message CID", "cid", mcid)
 
-	err = p.waiter.Wait(context.TODO(), mcid, build.MessageConfidence, func(b *block.Block, signedMessage *types.SignedMessage, receipt *types.MessageReceipt) error {
+	err = p.waiter.Wait(context.TODO(), mcid, MessageConfidence, func(b *block.Block, signedMessage *types.SignedMessage, receipt *types.MessageReceipt) error {
 		if receipt.ExitCode != 0 {
 			return xerrors.Errorf("declare faults recovered wait non-0 exit code: %d", receipt.ExitCode)
 		}
@@ -592,7 +630,7 @@ func (p *Poster) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitio
 	return recoveries, mcid, nil
 }
 
-func (p *Poster) checkNextFaults(ctx context.Context, dlIdx uint64, partitions []*miner.Partition) ([]miner.FaultDeclaration, cid.Cid, error) {
+func (p *Poster) checkNextFaults(ctx context.Context, dlIdx uint64, partitions []miner.Partition) ([]miner.FaultDeclaration, cid.Cid, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.checkNextFaults")
 	defer span.End()
 
@@ -654,7 +692,7 @@ func (p *Poster) checkNextFaults(ctx context.Context, dlIdx uint64, partitions [
 		Params: enc,
 		Value:  big.NewInt(0), // TODO: Is there a fee?
 	}
-	spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(big.NewInt(100000000))} //s.feeCfg.MaxWindowPoStGasFee)}  //todo add by force  fee config
+	spec := &types.MessageSendSpec{MaxFee: abi.TokenAmount(big.NewInt(100000000))}  // s.feeCfg.MaxWindowPoStGasFee)}
 	p.setSender(ctx, msg, spec)
 
 	mcid, _, err := p.outbox.UnSignedSend(ctx, *msg)
@@ -664,7 +702,7 @@ func (p *Poster) checkNextFaults(ctx context.Context, dlIdx uint64, partitions [
 
 	log.Warnw("declare faults Message CID", "cid", mcid)
 
-	err = p.waiter.Wait(context.TODO(), mcid, build.MessageConfidence, func(b *block.Block, signedMessage *types.SignedMessage, receipt *types.MessageReceipt) error {
+	err = p.waiter.Wait(context.TODO(), mcid, MessageConfidence, func(b *block.Block, signedMessage *types.SignedMessage, receipt *types.MessageReceipt) error {
 		if receipt.ExitCode != 0 {
 			return xerrors.Errorf("declare faults wait non-0 exit code: %d", receipt.ExitCode)
 		}
@@ -722,7 +760,7 @@ func (p *Poster) checkSectors(ctx context.Context, check bitfield.BitField) (bit
 	return sbf, nil
 }
 
-func (p *Poster) setSender(ctx context.Context, msg *types.UnsignedMessage, spec *api.MessageSendSpec) {
+func (p *Poster) setSender(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) {
 	//todo use control address can complete it later
 	/*mi, err := s.api.StateMinerInfo(ctx, s.actor, types.EmptyTSK)
 	if err != nil {

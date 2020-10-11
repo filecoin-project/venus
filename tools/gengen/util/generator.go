@@ -585,7 +585,7 @@ func (g *GenesisGenerator) createMiner(ctx context.Context, m *CreateStorageMine
 	if err != nil {
 		return address.Undef, address.Undef, err
 	}
-	view := gfcstate.NewView(g.cst, stateRoot)
+	view := gfcstate.NewView(g.cst, stateRoot, network.Version0) // todo review network.Version0 ???
 	ownerAddr, err := view.InitResolveAddress(ctx, pkAddr)
 	if err != nil {
 		return address.Undef, address.Undef, err

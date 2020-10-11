@@ -80,8 +80,8 @@ type TicketValidator interface {
 
 // StateViewer provides views into the chain state.
 type StateViewer interface {
-	PowerStateView(root cid.Cid) PowerStateView
-	FaultStateView(root cid.Cid) FaultStateView
+	PowerStateView(root cid.Cid, version network.Version) PowerStateView
+	FaultStateView(root cid.Cid, version network.Version) FaultStateView
 }
 
 type chainReader interface {
@@ -327,9 +327,11 @@ func (c *Expected) validateMining(ctx context.Context,
 		secpMsgs = append(secpMsgs, blksecpMsgs)
 	}
 
-	keyStateView := c.state.PowerStateView(parentStateRoot)
+	height, _ := ts.Height()
+	version := c.chainState.GetNtwkVersion(ctx, height)
+	keyStateView := c.state.PowerStateView(parentStateRoot, version)
 	sigValidator := appstate.NewSignatureValidator(keyStateView)
-	faultsStateView := c.state.FaultStateView(parentStateRoot)
+	faultsStateView := c.state.FaultStateView(parentStateRoot, version)
 	keyPowerTable := NewPowerTableView(keyStateView, faultsStateView)
 
 	//tsHeight, err := ts.Height()
@@ -445,7 +447,7 @@ func (c *Expected) ValidateBlockWinner(ctx context.Context, blk *block.Block, st
 		return xerrors.Errorf("block is not claiming to be a winner")
 	}
 
-	view := c.state.PowerStateView(stateID)
+	view := c.state.PowerStateView(stateID, c.chainState.GetNtwkVersion(ctx, blk.Height))
 	if view == nil {
 		return xerrors.New("power state view is null")
 	}
@@ -584,13 +586,13 @@ func AsDefaultStateViewer(v *appstate.Viewer) DefaultStateViewer {
 }
 
 // PowerStateView returns a power state view for a state root.
-func (v *DefaultStateViewer) PowerStateView(root cid.Cid) PowerStateView {
-	return v.Viewer.StateView(root)
+func (v *DefaultStateViewer) PowerStateView(root cid.Cid, version network.Version) PowerStateView {
+	return v.Viewer.StateView(root, version)
 }
 
 // FaultStateView returns a fault state view for a state root.
-func (v *DefaultStateViewer) FaultStateView(root cid.Cid) FaultStateView {
-	return v.Viewer.StateView(root)
+func (v *DefaultStateViewer) FaultStateView(root cid.Cid, version network.Version) FaultStateView {
+	return v.Viewer.StateView(root, version)
 }
 
 // A chain randomness source with a fixed head tipset key.

@@ -24,3 +24,15 @@ func VersionForNetwork(version network.Version) Version {
 		panic(fmt.Sprintf("unsupported network version %d", version))
 	}
 }
+
+//// todo
+//func VersionForActor(act *actor.Actor) Version {
+//	switch act.Code.Cid {
+//	case builtin0.VerifiedRegistryActorCodeID:
+//		return Version0
+//	case builtin2.VerifiedRegistryActorCodeID:
+//		return Version2
+//	default:
+//		panic(fmt.Sprintf("no version was found for %v", *act))
+//	}
+//}

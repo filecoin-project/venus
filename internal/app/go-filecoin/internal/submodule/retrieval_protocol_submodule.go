@@ -3,9 +3,9 @@ package submodule
 import (
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
+	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
+	piecestoreimpl "github.com/filecoin-project/go-fil-markets/piecestore/impl"
 	iface "github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	impl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
@@ -52,7 +52,10 @@ func NewRetrievalProtocolSubmodule(
 	viewer *appstate.TipSetStateViewer,
 ) (*RetrievalProtocolSubmodule, error) {
 
-	retrievalDealPieceStore := piecestore.NewPieceStore(namespace.Wrap(ds, datastore.NewKey(PieceStoreDSPrefix)))
+	retrievalDealPieceStore, err := piecestoreimpl.NewPieceStore(namespace.Wrap(ds, datastore.NewKey(PieceStoreDSPrefix)))
+	if err != nil {
+		return nil, err
+	}
 
 	netwk := network.NewFromLibp2pHost(host)
 	pnode := retmkt.NewRetrievalProviderConnector(netwk, pieceManager, bs, pchMgrAPI, nil)
@@ -65,7 +68,11 @@ func NewRetrievalProtocolSubmodule(
 	cnode := retmkt.NewRetrievalClientConnector(bs, cr, signer, pchMgrAPI, viewer)
 	counter := storedcounter.New(ds, datastore.NewKey(RetrievalCounterDSKey))
 
-	resolver := discovery.Multi(discovery.NewLocal(namespace.Wrap(ds, datastore.NewKey(DiscoveryDSPrefix))))
+	peerResolver, err := discoveryimpl.NewLocal(namespace.Wrap(ds, datastore.NewKey(DiscoveryDSPrefix)))
+	if err != nil {
+		return nil, err
+	}
+	resolver := discoveryimpl.Multi(peerResolver)
 	marketClient, err := impl.NewClient(netwk, mds, dtTransfer, cnode, resolver, namespace.Wrap(ds, datastore.NewKey(RetrievalClientDSPrefix)), counter)
 	if err != nil {
 		return nil, err

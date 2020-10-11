@@ -3,16 +3,10 @@ package consensus
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
-
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -22,6 +16,12 @@ import (
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/build"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 type CirculatingSupply struct {
@@ -45,7 +45,7 @@ type genesisActor struct {
 	initBal abi.TokenAmount
 }
 
-func (sm *Expected) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st state.Tree) (api.CirculatingSupply, error) {
+func (sm *Expected) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st state.Tree) (CirculatingSupply, error) {
 	sm.genesisMsigLk.Lock()
 	defer sm.genesisMsigLk.Unlock()
 	if height == 259 {
@@ -54,34 +54,34 @@ func (sm *Expected) GetCirculatingSupplyDetailed(ctx context.Context, height abi
 	if sm.preIgnitionGenInfos == nil {
 		err := sm.setupPreIgnitionGenesisActorsTestnet(ctx)
 		if err != nil {
-			return api.CirculatingSupply{}, xerrors.Errorf("failed to setup pre-ignition genesis information: %w", err)
+			return CirculatingSupply{}, xerrors.Errorf("failed to setup pre-ignition genesis information: %w", err)
 		}
 	}
 	if sm.postIgnitionGenInfos == nil {
 		err := sm.setupPostIgnitionGenesisActors(ctx)
 		if err != nil {
-			return api.CirculatingSupply{}, xerrors.Errorf("failed to setup post-ignition genesis information: %w", err)
+			return CirculatingSupply{}, xerrors.Errorf("failed to setup post-ignition genesis information: %w", err)
 		}
 	}
 
 	filVested, err := sm.GetFilVested(ctx, height, st)
 	if err != nil {
-		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %w", err)
+		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %w", err)
 	}
 
 	filMined, err := GetFilMined(ctx, st)
 	if err != nil {
-		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filMined: %w", err)
+		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filMined: %w", err)
 	}
 
 	filBurnt, err := GetFilBurnt(ctx, st)
 	if err != nil {
-		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %w", err)
+		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %w", err)
 	}
 
 	filLocked, err := sm.GetFilLocked(ctx, st)
 	if err != nil {
-		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %w", err)
+		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %w", err)
 	}
 
 	ret := big.Add(filVested, filMined)
@@ -92,7 +92,7 @@ func (sm *Expected) GetCirculatingSupplyDetailed(ctx context.Context, height abi
 		ret = big.Zero()
 	}
 
-	return api.CirculatingSupply{
+	return CirculatingSupply{
 		FilVested:      filVested,
 		FilMined:       filMined,
 		FilBurnt:       filBurnt,

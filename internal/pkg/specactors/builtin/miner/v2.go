@@ -3,6 +3,7 @@ package miner
 import (
 	"bytes"
 	"errors"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -107,6 +108,34 @@ func (s *state2) NumLiveSectors() (uint64, error) {
 		return 0, err
 	}
 	return total, nil
+}
+
+// todo review
+func (s *state2) FaultsSectors() ([]uint64, error) {
+	out := bitfield.New()
+
+	dls, err := s.State.LoadDeadlines(s.store)
+	if err != nil {
+		return []uint64{}, err
+	}
+
+	if err := dls.ForEach(s.store, func(dlIdx uint64, dl *miner2.Deadline) error {
+		partitions, err := dl.PartitionsArray(s.store)
+		if err != nil {
+			return err
+		}
+
+		var partition miner.Partition
+		return partitions.ForEach(&partition, func(i int64) error {
+			out, err = bitfield.MergeBitFields(out, partition.Faults)
+			return err
+		})
+		return nil
+	}); err != nil {
+		return []uint64{}, err
+	}
+
+	return out.All(bitfield.MaxEncodedSize)
 }
 
 // GetSectorExpiration returns the effective expiration of the given sector.
@@ -244,6 +273,34 @@ func (s *state2) LoadDeadline(idx uint64) (Deadline, error) {
 	return &deadline2{*dl, s.store}, nil
 }
 
+// todo review
+func (s *state2) SuccessfulPoSts() (uint64, error) {
+	dls, err := s.State.LoadDeadlines(s.store)
+	if err != nil {
+		return 0, err
+	}
+
+	count := uint64(0)
+	err = dls.ForEach(s.store, func(i uint64, dl *miner2.Deadline) error {
+		dCount, err := dl.PostSubmissions.Count()
+		if err != nil {
+			return err
+		}
+		count += dCount
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
+// todo review
+func (s *state2) GetProvingPeriodStart() abi.ChainEpoch {
+	return s.ProvingPeriodStart
+}
+
 func (s *state2) ForEachDeadline(cb func(uint64, Deadline) error) error {
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {
@@ -305,6 +362,11 @@ func (s *state2) Info() (MinerInfo, error) {
 
 func (s *state2) DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error) {
 	return s.State.DeadlineInfo(epoch), nil
+}
+
+// todo add by force
+func (s *state2) SectorArray() (adt.Array, error) {
+	return adt2.AsArray(s.store, s.Sectors)
 }
 
 func (s *state2) sectors() (adt.Array, error) {

@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-state-types/exitcode"
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
@@ -13,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-state-types/abi"
 	specsbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -312,7 +311,7 @@ func (m *UnsignedMessage) ValidForBlockInclusion(minGas int64) error {
 		return xerrors.New("'GasFeeCap' less than 'GasPremium'")
 	}
 
-	if m.GasLimit > build.BlockGasLimit {
+	if m.GasLimit > BlockGasLimit {
 		return xerrors.New("'GasLimit' field cannot be greater than a block's gas limit")
 	}
 

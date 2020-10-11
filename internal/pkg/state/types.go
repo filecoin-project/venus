@@ -1,9 +1,9 @@
 package state
 
 import (
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/market"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 type ChainSectorInfo struct {

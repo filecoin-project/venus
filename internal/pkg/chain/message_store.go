@@ -2,8 +2,8 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/go-address"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"

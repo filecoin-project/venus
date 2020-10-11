@@ -5,6 +5,7 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -203,7 +204,7 @@ func retrieveNetworkName(ctx context.Context, genCid cid.Cid, cborStore cbor.Ipl
 		return "", errors.Wrapf(err, "failed to get block %s", genCid.String())
 	}
 
-	return appstate.NewView(cborStore, genesis.StateRoot.Cid).InitNetworkName(ctx)
+	return appstate.NewView(cborStore, genesis.StateRoot.Cid, network.Version0).InitNetworkName(ctx) // todo ???
 }
 
 // buildHost determines if we are publically dialable.  If so use public

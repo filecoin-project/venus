@@ -7,12 +7,10 @@ import (
 	dchain "github.com/drand/drand/chain"
 	hclient "github.com/drand/drand/client/http"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/filecoin-project/lotus/build"
 )
 
 func TestPrintGroupInfo(t *testing.T) {
-	server := build.DrandConfigs[build.DrandIncentinet].Servers[0]
+	server := DrandConfigs[DrandIncentinet].Servers[0]
 	c, err := hclient.New(server, nil, nil)
 	assert.NoError(t, err)
 	cg := c.(interface {

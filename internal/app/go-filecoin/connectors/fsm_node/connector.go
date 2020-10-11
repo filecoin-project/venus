@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/policy"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/market"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
 	fsm "github.com/filecoin-project/go-filecoin/vendors/storage-sealing"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
@@ -328,7 +329,7 @@ func (f *FiniteStateMachineNodeConnector) ChainGetTicket(ctx context.Context, to
 		return abi.SealRandomness{}, 0, err
 	}
 
-	randomEpoch := epoch - miner.ChainFinality
+	randomEpoch := epoch - policy.ChainFinality
 
 	buf := new(bytes.Buffer)
 	err = f.minerAddr.MarshalCBOR(buf)

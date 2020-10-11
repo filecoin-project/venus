@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/network"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -281,7 +282,7 @@ func ensureSectorDirAndMetadata(containsPreSealedSectors bool, dirPath string) e
 // machine with pre-sealed sectors) for a storage miner given a newly-minted
 // genesis block.
 func createGenesisFSMState(ctx context.Context, rep repo.Repo, genesisBlock *block.Block, maddr address.Address) ([]fsm.SectorInfo, error) {
-	view := state.NewViewer(cborutil.NewIpldStore(bstore.NewBlockstore(rep.Datastore()))).StateView(genesisBlock.StateRoot.Cid)
+	view := state.NewViewer(cborutil.NewIpldStore(bstore.NewBlockstore(rep.Datastore()))).StateView(genesisBlock.StateRoot.Cid, network.Version0)
 
 	conf, err := view.MinerSectorConfiguration(ctx, maddr)
 	if err != nil {

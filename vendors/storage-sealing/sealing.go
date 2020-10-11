@@ -15,6 +15,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/market"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
 	sectorstorage "github.com/filecoin-project/go-filecoin/vendors/sector-storage"
 	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
 	padreader "github.com/filecoin-project/go-padreader"
@@ -22,8 +24,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	statemachine "github.com/filecoin-project/go-statemachine"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 const SectorStorePrefix = "/sectors"

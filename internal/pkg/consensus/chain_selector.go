@@ -7,15 +7,15 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/types"
-	xerrors "github.com/pkg/errors"
 	"math/big"
 	"strings"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -48,9 +48,13 @@ func log2b(x fbig.Int) fbig.Int {
 	return fbig.NewInt(int64(bits - 1))
 }
 
-//todo gather const variable
+// todo gather const variable
 const WRatioNum = int64(1)
 const WRatioDen = uint64(2)
+
+// todo
+// Blocks (e)
+var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
 
 // Weight returns the EC weight of this TipSet as a filecoin big int.
 func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet, pStateID cid.Cid) (fbig.Int, error) {
@@ -58,7 +62,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet, pStateID c
 	if !pStateID.Defined() {
 		return fbig.Zero(), errors.New("undefined state passed to chain selector new weight")
 	}
-	powerTableView := NewPowerTableView(c.state.PowerStateView(pStateID), c.state.FaultStateView(pStateID))
+	powerTableView := NewPowerTableView(c.state.PowerStateView(pStateID, network.Version0), c.state.FaultStateView(pStateID, network.Version0))
 	networkPower, err := powerTableView.NetworkTotalPower(ctx)
 	if err != nil {
 		return fbig.Zero(), err
@@ -69,7 +73,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet, pStateID c
 		log2P = int64(networkPower.BitLen() - 1)
 	} else {
 		// Not really expect to be here ...
-		return types.EmptyInt, xerrors.Errorf("All power in the net is gone. You network might be disconnected, or the net is dead!")
+		return fbig.Zero(), xerrors.Errorf("All power in the net is gone. You network might be disconnected, or the net is dead!")
 	}
 
 	weight, err := ts.ParentWeight()
@@ -86,11 +90,11 @@ func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet, pStateID c
 	eWeight := big.NewInt((log2P * WRatioNum))
 	eWeight = eWeight.Lsh(eWeight, 8)
 	eWeight = eWeight.Mul(eWeight, new(big.Int).SetInt64(totalJ))
-	eWeight = eWeight.Div(eWeight, big.NewInt(int64(build.BlocksPerEpoch*WRatioDen)))
+	eWeight = eWeight.Div(eWeight, big.NewInt(int64(BlocksPerEpoch*WRatioDen)))
 
 	out = out.Add(out, eWeight)
 
-	return types.BigInt{Int: out}, nil
+	return fbig.Int{out}, nil
 }
 
 // IsHeavier returns true if tipset a is heavier than tipset b, and false

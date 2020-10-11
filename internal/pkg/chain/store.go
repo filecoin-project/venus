@@ -2,27 +2,27 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/prometheus/common/log"
-	"golang.org/x/xerrors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/build"
 	"os"
 	"runtime/debug"
 	"sync"
 
 	"github.com/cskr/pubsub"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
+	"github.com/prometheus/common/log"
 	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -552,17 +552,28 @@ func (store *Store) GenesisRootCid() cid.Cid {
 	return genesis.StateRoot.Cid
 }
 
+
+// todo review 最新的版本是Version4?
+func UseNewestNetwork() bool {
+	// TODO: Put these in a container we can iterate over
+	if UpgradeBreezeHeight <= 0 && UpgradeSmokeHeight <= 0 {
+		return true
+	}
+	return false
+}
+
+
 // GenesisCid returns the genesis cid of the chain tracked by the default store.
 func (store *Store) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
-	if build.UseNewestNetwork() {
+	if UseNewestNetwork() {
 		return build.NewestNetworkVersion
 	}
 
-	if height <= build.UpgradeBreezeHeight {
+	if height <= UpgradeBreezeHeight {
 		return network.Version0
 	}
 
-	if height <= build.UpgradeSmokeHeight {
+	if height <= UpgradeSmokeHeight {
 		return network.Version1
 	}
 

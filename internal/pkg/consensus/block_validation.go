@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	"github.com/filecoin-project/go-state-types/abi"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -33,7 +34,7 @@ type chainState interface {
 	GetActorAt(context.Context, block.TipSetKey, address.Address) (*actor.Actor, error)
 	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 	GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error)
-	StateView(block.TipSetKey) (*state.View, error)
+	StateView(block.TipSetKey, abi.ChainEpoch) (*state.View, error)
 	GetBlock(context.Context, cid.Cid) (*block.Block, error)
 	BeaconSchedule() beacon.Schedule
 }

@@ -3,8 +3,8 @@ package miner
 import (
 	"bytes"
 	"errors"
-
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -109,6 +109,34 @@ func (s *state0) NumLiveSectors() (uint64, error) {
 		return 0, err
 	}
 	return total, nil
+}
+
+// todo review
+func (s *state0) FaultsSectors() ([]uint64, error) {
+	out := bitfield.New()
+
+	dls, err := s.State.LoadDeadlines(s.store)
+	if err != nil {
+		return []uint64{}, err
+	}
+
+	if err := dls.ForEach(s.store, func(dlIdx uint64, dl *miner0.Deadline) error {
+		partitions, err := dl.PartitionsArray(s.store)
+		if err != nil {
+			return err
+		}
+
+		var partition miner.Partition
+		return partitions.ForEach(&partition, func(i int64) error {
+			out, err = bitfield.MergeBitFields(out, partition.Faults)
+			return err
+		})
+		return nil
+	}); err != nil {
+		return []uint64{}, err
+	}
+
+	return out.All(miner0.SectorsMax)
 }
 
 // GetSectorExpiration returns the effective expiration of the given sector.
@@ -245,6 +273,34 @@ func (s *state0) LoadDeadline(idx uint64) (Deadline, error) {
 	return &deadline0{*dl, s.store}, nil
 }
 
+// todo review
+func (s *state0) SuccessfulPoSts() (uint64, error) {
+	dls, err := s.State.LoadDeadlines(s.store)
+	if err != nil {
+		return 0, err
+	}
+
+	count := uint64(0)
+	err = dls.ForEach(s.store, func(i uint64, dl *miner0.Deadline) error {
+		dCount, err := dl.PostSubmissions.Count()
+		if err != nil {
+			return err
+		}
+		count += dCount
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
+// todo review
+func (s *state0) GetProvingPeriodStart() abi.ChainEpoch {
+	return s.ProvingPeriodStart
+}
+
 func (s *state0) ForEachDeadline(cb func(uint64, Deadline) error) error {
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {
@@ -306,6 +362,11 @@ func (s *state0) Info() (MinerInfo, error) {
 
 func (s *state0) DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error) {
 	return s.State.DeadlineInfo(epoch), nil
+}
+
+// todo review
+func (s *state0) SectorArray() (adt.Array, error) {
+	return adt0.AsArray(s.store, s.Sectors)
 }
 
 func (s *state0) sectors() (adt.Array, error) {

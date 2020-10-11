@@ -88,7 +88,7 @@ func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore
 		store:       blockstore,
 		validator:   v,
 		exchange:    exchange,
-		ssb:         selectorbuilder.NewSelectorSpecBuilder(basicnode.Style.Any),
+		ssb:         selectorbuilder.NewSelectorSpecBuilder(basicnode.Prototype__Any{}),
 		peerTracker: pt,
 		systemClock: systemClock,
 	}

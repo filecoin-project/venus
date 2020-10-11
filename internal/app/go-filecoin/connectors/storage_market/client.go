@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/filecoin-project/go-state-types/network"
 	ma "github.com/multiformats/go-multiaddr"
 	"reflect"
 	"time"
@@ -52,7 +52,7 @@ func (s *StorageClientNodeConnector) DealProviderCollateralBounds(ctx context.Co
 		return abi.TokenAmount{}, abi.TokenAmount{}, err
 	}
 
-	view := s.stateViewer.StateView(ts.At(0).StateRoot.Cid)
+	view := s.stateViewer.StateView(ts.At(0).StateRoot.Cid, network.Version0) // todo need correction
 	bounds, err := view.MarketDealProviderCollateralBounds(ctx, size, isVerified, ts.At(0).Height)
 	if err != nil {
 		return abi.TokenAmount{}, abi.TokenAmount{}, err
@@ -70,7 +70,7 @@ func (s *StorageClientNodeConnector) GetMinerInfo(ctx context.Context, maddr add
 		return nil, err
 	}
 
-	view := s.stateViewer.StateView(tsk.At(0).StateRoot.Cid)
+	view := s.stateViewer.StateView(tsk.At(0).StateRoot.Cid, network.Version0)// todo need correction
 
 	minerInfo, err := view.MinerInfo(ctx, maddr)
 	if err != nil {
@@ -89,7 +89,7 @@ func (s *StorageClientNodeConnector) GetMinerInfo(ctx context.Context, maddr add
 		Owner:      minerInfo.Owner,
 		Worker:     minerInfo.Worker,
 		SectorSize: uint64(minerInfo.SectorSize),
-		PeerID:     peer.ID(minerInfo.PeerId),
+		PeerID:     *minerInfo.PeerId,
 		Addrs:      multiaddrs,
 	}, nil
 }
@@ -147,13 +147,6 @@ func (s *StorageClientNodeConnector) EnsureFunds(ctx context.Context, addr, wall
 	return cid.Undef, err
 }
 
-// ListClientDeals returns all deals published on chain for the given account
-func (s *StorageClientNodeConnector) ListClientDeals(ctx context.Context, addr address.Address, tok shared.TipSetToken) ([]storagemarket.StorageDeal, error) {
-	return s.listDeals(ctx, tok, func(proposal *market.DealProposal, _ *market.DealState) bool {
-		return proposal.Client == addr
-	})
-}
-
 // ListStorageProviders finds all miners that will provide storage
 func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context, tok shared.TipSetToken) ([]*storagemarket.StorageProviderInfo, error) {
 	var tsk block.TipSetKey
@@ -185,7 +178,7 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context, t
 			return err
 		}
 
-		viewer, err := s.chainStore.StateView(tsk)
+		viewer, err := s.chainStore.StateView(tsk, abi.ChainEpoch(0))  // todo need correction
 		if err != nil {
 			return err
 		}
@@ -198,7 +191,7 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context, t
 			Owner:      info.Owner,
 			Worker:     info.Worker,
 			SectorSize: uint64(info.SectorSize),
-			PeerID:     peer.ID(info.PeerId),
+			PeerID:     *info.PeerId,
 		})
 		return nil
 	})
@@ -209,8 +202,6 @@ func (s *StorageClientNodeConnector) ListStorageProviders(ctx context.Context, t
 	return infos, nil
 }
 
-// ValidatePublishedDeal validates a deal has been published correctly
-// Adapted from https://github.com/filecoin-project/lotus/blob/3b34eba6124d16162b712e971f0db2ee108e0f67/markets/storageadapter/client.go#L156
 func (s *StorageClientNodeConnector) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (dealID abi.DealID, err error) {
 	var unsigned types.UnsignedMessage
 	var receipt *types.MessageReceipt

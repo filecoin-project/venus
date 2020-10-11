@@ -13,6 +13,7 @@ import (
 
 // Abstracts over a store of blockchain state.
 type chainStateChainReader interface {
+	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 	GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error)
 	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
 	GenesisRootCid() cid.Cid
@@ -37,5 +38,13 @@ func (cs TipSetStateViewer) StateView(baseKey block.TipSetKey) (*View, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get state root for %s", baseKey.String())
 	}
-	return NewView(cs.cst, root), nil
+
+	// todo review
+	ts, err := cs.chainReader.GetTipSet(baseKey)
+	if err != nil {
+		return nil, err
+	}
+
+	height, _ := ts.Height()
+	return NewView(cs.cst, root, cs.chainReader.GetNtwkVersion(context.TODO(), height)), nil
 }

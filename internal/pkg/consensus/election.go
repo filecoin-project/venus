@@ -4,28 +4,22 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
 
 	address "github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus/lib/sigs"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
-	//"github.com/minio/blake2b-simd"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/build"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus/lib/sigs"
 	crypto2 "github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	//"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	//"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
-	//"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	//"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
 )
 
 // Interface to PoSt verification, modify by force EPoStVerifier -> ProofVerifier
@@ -45,7 +39,7 @@ type MiningCheckAPI interface {
 	ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainGetRandomnessFromTickets(ctx context.Context, tsk block.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 
-	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, block.TipSetKey) (*api.MiningBaseInfo, error)
+	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, block.TipSetKey) (build.MiningBaseInfo, error)
 
 	WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error)
 }
@@ -55,14 +49,14 @@ func DefaultProofVerifier() ffiwrapper.Verifier {
 }
 
 func IsRoundWinner(ctx context.Context, ts *block.TipSet, round abi.ChainEpoch,
-	miner address.Address, brand types.BeaconEntry, mbi *api.MiningBaseInfo, a MiningCheckAPI) (*crypto2.ElectionProof, error) {
+	miner address.Address, brand block.BeaconEntry, mbi *build.MiningBaseInfo, a MiningCheckAPI) (*crypto2.ElectionProof, error) {
 
 	buf := new(bytes.Buffer)
 	if err := miner.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to cbor marshal address: %w", err)
 	}
 
-	electionRand, err := store.DrawRandomness(brand.Data, crypto.DomainSeparationTag_ElectionProofProduction, round, buf.Bytes())
+	electionRand, err := chain.DrawRandomness(brand.Data, crypto.DomainSeparationTag_ElectionProofProduction, round, buf.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to draw randomness: %w", err)
 	}
