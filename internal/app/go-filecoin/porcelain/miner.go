@@ -6,8 +6,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -19,6 +17,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
@@ -38,7 +37,6 @@ type MinerStateView interface {
 	MinerPeerID(ctx context.Context, maddr address.Address) (peer.ID, error)
 	MinerSectorConfiguration(ctx context.Context, maddr address.Address) (*state.MinerSectorConfiguration, error)
 	MinerSectorCount(ctx context.Context, maddr address.Address) (uint64, error)
-	MinerDeadlines(ctx context.Context, maddr address.Address) (*miner.Deadlines, error)
 	PowerNetworkTotal(ctx context.Context) (*state.NetworkPower, error)
 	MinerClaimedPower(ctx context.Context, miner address.Address) (raw, qa abi.StoragePower, err error)
 	MinerInfo(ctx context.Context, maddr address.Address) (*miner.MinerInfo, error)
@@ -226,7 +224,7 @@ func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr
 		ActorAddress:  minerAddr,
 		OwnerAddress:  minerInfo.Owner,
 		WorkerAddress: minerInfo.Worker,
-		PeerID:        peer.ID(minerInfo.PeerId),
+		PeerID:        *minerInfo.PeerId,
 
 		SealProofType:              minerInfo.SealProofType,
 		SectorSize:                 minerInfo.SectorSize,

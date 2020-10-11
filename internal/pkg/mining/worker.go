@@ -6,13 +6,13 @@ package mining
 
 import (
 	"context"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	cid "github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log/v2"
@@ -20,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/build"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
@@ -27,7 +28,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
 )
 
 var log = logging.Logger("mining")
@@ -64,7 +65,7 @@ type workerPorcelainAPI interface {
 	BlockTime() time.Duration
 	PowerStateView(baseKey block.TipSetKey) (consensus.PowerStateView, error)
 	FaultsStateView(baseKey block.TipSetKey) (consensus.FaultStateView, error)
-	MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*MiningBaseInfo, error)
+	MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*build.MiningBaseInfo, error)
 }
 
 type electionUtil interface {
@@ -355,13 +356,3 @@ func (w *DefaultWorker) electionEntry(ctx context.Context, base *block.TipSet, d
 	return chain.FindLatestDRAND(ctx, base, w.chainState)
 }
 
-type MiningBaseInfo struct {
-	MinerPower      abi.StoragePower
-	NetworkPower    abi.StoragePower
-	Sectors         []proof.SectorInfo
-	WorkerKey       address.Address
-	SectorSize      abi.SectorSize
-	PrevBeaconEntry block.BeaconEntry
-	BeaconEntries   []block.BeaconEntry
-	HasMinPower     bool
-}

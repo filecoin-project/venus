@@ -3,15 +3,16 @@ package storagemarketconnector
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	spasm "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -36,7 +37,8 @@ type chainReader interface {
 	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 	GetTipSetStateRoot(ctx context.Context, tipKey block.TipSetKey) (cid.Cid, error)
 	GetActorStateAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address, out interface{}) error
-	StateView(key block.TipSetKey) (*state.View, error)
+	StateView(key block.TipSetKey, height abi.ChainEpoch) (*state.View, error)
+	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
 	cbor.IpldStore
 }
 
@@ -90,35 +92,54 @@ func (c *connectorCommon) GetBalance(ctx context.Context, addr address.Address, 
 		return storagemarket.Balance{}, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
 	}
 
+	ts, err := c.chainStore.GetTipSet(tsk)
+	if err != nil {
+		return  storagemarket.Balance{}, err
+	}
+
+	height, err := ts.Height()
+	if err != nil {
+		return  storagemarket.Balance{}, err
+	}
+
 	// Direct state access should be replaced with use of the state view.
-	var smState spasm.State
-	err := c.chainStore.GetActorStateAt(ctx, tsk, builtin.StorageMarketActorAddr, &smState)
+	var smState market.State
+	err = c.chainStore.GetActorStateAt(ctx, tsk, builtin.StorageMarketActorAddr, &smState)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}
 
-	view, err := c.chainStore.StateView(tsk)
+	view, err := c.chainStore.StateView(tsk, height)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}
+
 	resAddr, err := view.InitResolveAddress(ctx, addr)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}
 
-	available, err := c.getBalance(ctx, smState.EscrowTable, resAddr)
+	escrowTable, err := smState.EscrowTable()
+	if err != nil {
+		return storagemarket.Balance{}, err
+	}
+	available, err := escrowTable.Get(resAddr)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}
 
-	locked, err := c.getBalance(ctx, smState.LockedTable, resAddr)
+	lockerTable, err := smState.LockedTable()
+	if err != nil {
+		return storagemarket.Balance{}, err
+	}
+	locked, err := lockerTable.Get(resAddr)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}
 
 	return storagemarket.Balance{
-		Available: abi.NewTokenAmount(available.Int64()),
-		Locked:    abi.NewTokenAmount(locked.Int64()),
+		Available: available,
+		Locked:    locked,
 	}, nil
 }
 
@@ -137,7 +158,17 @@ func (c *connectorCommon) GetMinerWorkerAddress(ctx context.Context, miner addre
 }
 
 func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, cb storagemarket.DealSectorCommittedCallback) error {
-	view, err := c.chainStore.StateView(c.chainStore.Head())
+	ts, err := c.chainStore.GetTipSet(c.chainStore.Head())
+	if err != nil {
+		return  err
+	}
+
+	height, err := ts.Height()
+	if err != nil {
+		return  err
+	}
+
+	view, err := c.chainStore.StateView(c.chainStore.Head(), height)
 	if err != nil {
 		cb(err)
 		return err
@@ -164,11 +195,6 @@ func (c *connectorCommon) OnDealSectorCommitted(ctx context.Context, provider ad
 		}
 
 		// that's enough for us to check chain state
-		view, err = c.chainStore.StateView(c.chainStore.Head())
-		if err != nil {
-			return false
-		}
-
 		_, found, err := view.MarketDealState(ctx, dealID)
 		if err != nil {
 			return false
@@ -193,32 +219,6 @@ func (c *connectorCommon) getBalance(ctx context.Context, root cid.Cid, addr add
 	return table.Get(addr)
 }
 
-func (c *connectorCommon) listDeals(ctx context.Context, tok shared.TipSetToken, predicate func(proposal *spasm.DealProposal, dealState *spasm.DealState) bool) ([]storagemarket.StorageDeal, error) {
-	view, err := c.loadStateView(tok)
-	if err != nil {
-		return nil, err
-	}
-
-	// Deals are not indexed in (expensive) chain state.
-	// This iterates *all* deal states, loads the associated proposals, and filters by provider.
-	// This is going to be really slow until we find a place to index deals, either here or in the module.
-	deals := []storagemarket.StorageDeal{}
-	err = view.MarketDealStatesForEach(ctx, func(dealId abi.DealID, state *spasm.DealState) error {
-		proposal, err := view.MarketDealProposal(ctx, dealId)
-		if err != nil {
-			return xerrors.Errorf("no proposal for deal %d: %w", dealId, err)
-		}
-		if predicate(&proposal, state) {
-			deals = append(deals, storagemarket.StorageDeal{
-				DealProposal: proposal,
-				DealState:    *state,
-			})
-		}
-		return nil
-	})
-	return deals, err
-}
-
 func (c *connectorCommon) VerifySignature(ctx context.Context, signature crypto.Signature, signer address.Address, plaintext []byte, tok shared.TipSetToken) (bool, error) {
 	view, err := c.loadStateView(tok)
 	if err != nil {
@@ -235,5 +235,15 @@ func (c *connectorCommon) loadStateView(tok shared.TipSetToken) (*appstate.View,
 	if err := encoding.Decode(tok, &tsk); err != nil {
 		return nil, xerrors.Errorf("failed to marshal tok to a tipset key: %w", err)
 	}
-	return c.chainStore.StateView(tsk)
+
+	ts, err := c.chainStore.GetTipSet(tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	height, err := ts.Height()
+	if err != nil {
+		return nil, err
+	}
+	return c.chainStore.StateView(tsk, height)
 }

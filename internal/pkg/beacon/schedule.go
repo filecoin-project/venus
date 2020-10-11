@@ -21,7 +21,6 @@ func (bs Schedule) BeaconForEpoch(e abi.ChainEpoch) RandomBeacon {
 type DrandEnum int
 
 func DrandConfigSchedule(genTimeStamp uint64, blockDelay uint64) (Schedule, error) {
-	out := Schedule{}
 	shd := Schedule{}
 	for start, config := range DrandScheduleFork {
 		bc, err := NewDrandBeacon(genTimeStamp, blockDelay, DrandConfigs[config])
@@ -31,11 +30,12 @@ func DrandConfigSchedule(genTimeStamp uint64, blockDelay uint64) (Schedule, erro
 		shd = append(shd, BeaconPoint{Start: start, Beacon: bc})
 	}
 
-	sort.Slice(out, func(i, j int) bool {
-		return out[i].Start < out[j].Start
+	sort.Slice(shd, func(i, j int) bool {
+		return shd[i].Start < shd[j].Start
 	})
 
-	return out, nil
+	log.Infof("Schedule: %v", shd)
+	return shd, nil
 }
 
 //todo how to fork

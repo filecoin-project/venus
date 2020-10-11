@@ -34,6 +34,7 @@ type chainReader interface {
 	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
 	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
 	GenesisRootCid() cid.Cid
+	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 }
 
 // NewManagerStateViewer initializes a new ManagerStateViewer
@@ -53,5 +54,12 @@ func (msv *ManagerStateViewer) GetStateView(ctx context.Context, tok shared.TipS
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tip state: %w", err)
 	}
-	return msv.viewer.StateView(root), nil
+
+	// TODO review
+	ts, err := msv.reader.GetTipSet(tsk)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get TipSet: %w", err)
+	}
+	height, _ := ts.Height()
+	return msv.viewer.StateView(root, msv.reader.GetNtwkVersion(ctx, height)), nil
 }

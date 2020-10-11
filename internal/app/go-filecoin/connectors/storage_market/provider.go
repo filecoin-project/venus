@@ -2,9 +2,6 @@ package storagemarketconnector
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
-	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	"io"
 
 	"github.com/filecoin-project/go-address"
@@ -20,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -29,6 +27,7 @@ import (
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	"github.com/filecoin-project/go-state-types/exitcode"
 )
 
 // StorageProviderNodeConnector adapts the node to provide an interface for the storage provider
@@ -74,7 +73,11 @@ func (s *StorageProviderNodeConnector) DealProviderCollateralBounds(ctx context.
 		return abi.TokenAmount{}, abi.TokenAmount{}, err
 	}
 
-	view := s.stateViewer.StateView(ts.At(0).StateRoot.Cid)
+	height, err := ts.Height()
+	if err != nil {
+		return abi.TokenAmount{}, abi.TokenAmount{}, err
+	}
+	view := s.stateViewer.StateView(ts.At(0).StateRoot.Cid, s.chainStore.GetNtwkVersion(ctx, height))
 	bounds, err := view.MarketDealProviderCollateralBounds(ctx, size, isVerified, ts.At(0).Height)
 	if err != nil {
 		return abi.TokenAmount{}, abi.TokenAmount{}, err
@@ -180,18 +183,25 @@ func (s *StorageProviderNodeConnector) OnDealExpiredOrSlashed(ctx context.Contex
 	return nil*/
 }
 
-func (s *StorageProviderNodeConnector) GetDataCap(ctx context.Context, addr address.Address, tok shared.TipSetToken) (*verifreg.DataCap, error) {
+func (s *StorageProviderNodeConnector) GetDataCap(ctx context.Context, addr address.Address, tok shared.TipSetToken) (*abi.StoragePower, error) {
+	storagePower := abi.NewStoragePower(0)
 	var tsk block.TipSetKey
 	if err := encoding.Decode(tok, &tsk); err != nil {
-		return nil, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
+		return &storagePower, xerrors.Errorf("failed to marshal TipSetToken into a TipSetKey: %w", err)
 	}
 	ts, err := s.chainStore.GetTipSet(tsk)
 	if err != nil {
-		return nil, err
+		return &storagePower, err
 	}
 
-	view := s.stateViewer.StateView(ts.At(0).StateRoot.Cid)
-	return view.StateVerifiedClientStatus(ctx, addr)
+	height, err := ts.Height()
+	if err != nil {
+		return &storagePower, err
+	}
+
+	view := s.stateViewer.StateView(ts.At(0).StateRoot.Cid, s.chainStore.GetNtwkVersion(ctx,height))
+	storagePower, err = view.StateVerifiedClientStatus(ctx, addr)
+	return &storagePower, err
 }
 
 // AddFunds adds storage market funds for a storage provider
@@ -255,13 +265,6 @@ func (s *StorageProviderNodeConnector) PublishDeals(ctx context.Context, deal st
 	}
 
 	return mcid, err
-}
-
-// ListProviderDeals lists all deals for the given provider
-func (s *StorageProviderNodeConnector) ListProviderDeals(ctx context.Context, addr address.Address, tok shared.TipSetToken) ([]storagemarket.StorageDeal, error) {
-	return s.listDeals(ctx, tok, func(proposal *market.DealProposal, dealState *market.DealState) bool {
-		return proposal.Provider == addr
-	})
 }
 
 // OnDealComplete adds the piece to the storage provider

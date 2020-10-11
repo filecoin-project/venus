@@ -2,25 +2,19 @@ package submodule
 
 import (
 	"context"
+	"github.com/pkg/errors"
+	"os"
+
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
 	"github.com/filecoin-project/go-fil-markets/filestore"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
+	piecestoreimpl "github.com/filecoin-project/go-fil-markets/piecestore/impl"
 	iface "github.com/filecoin-project/go-fil-markets/storagemarket"
 	impl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/funds"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnetwork "github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	"github.com/filecoin-project/go-multistore"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/pkg/errors"
-	"os"
-
 	storagemarketconnector "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/storage_market"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
@@ -28,6 +22,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-multistore"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/libp2p/go-libp2p-core/host"
 )
 
 // DiscoveryDSPrefix is a prefix for all datastore keys used by the local
@@ -76,7 +76,7 @@ func NewStorageProtocolSubmodule(
 	cnode := storagemarketconnector.NewStorageClientNodeConnector(cborutil.NewIpldStore(bs), c.State, mw, s, m.Outbox, clientAddr, stateViewer)
 	clientDs := namespace.Wrap(ds, datastore.NewKey(ClientDSPrefix))
 	dealFunds, _ := funds.NewDealFunds(ds, datastore.NewKey("/marketfunds/client"))
-	localDiscovery := discovery.NewLocal(namespace.Wrap(ds, datastore.NewKey(DiscoveryDSPrefix)))
+	localDiscovery, _ := discoveryimpl.NewLocal(namespace.Wrap(ds, datastore.NewKey(DiscoveryDSPrefix)))
 	client, err := impl.NewClient(smnetwork.NewFromLibp2pHost(h), bs, mds, dtTransfer, localDiscovery, clientDs, cnode, dealFunds)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating storage client")
@@ -126,7 +126,10 @@ func (sm *StorageProtocolSubmodule) AddStorageProvider(
 	}
 
 	dealsDs := namespace.Wrap(ds, datastore.NewKey(ProviderDSPrefix))
-	ps := piecestore.NewPieceStore(namespace.Wrap(ds, datastore.NewKey(PieceStoreDSPrefix)))
+	ps, err := piecestoreimpl.NewPieceStore(namespace.Wrap(ds, datastore.NewKey(PieceStoreDSPrefix)))
+	if err != nil {
+		return err
+	}
 	storedAsk, err := storedask.NewStoredAsk(ds, datastore.NewKey(AskDSKey), pnode, minerAddr)
 	if err != nil {
 		return err

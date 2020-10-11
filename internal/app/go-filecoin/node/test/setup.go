@@ -3,7 +3,7 @@ package test
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/lotus/node/modules"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"os"
 	"testing"
 	"time"
@@ -38,7 +38,7 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	nodes[0] = CreateBootstrapMiner(ctx, t, seed, chainClock, genCfg)
 
 	// create additional nodes
-	dr, _ := beacon.RandomSchedule(time.Unix(0, 0))
+	dr := beacon.NewMockSchedule(blockTime)
 	for i := uint(0); i < additionalNodes; i++ {
 		node := NewNodeBuilder(t).
 			WithGenesisInit(seed.GenesisInitFunc).
@@ -119,7 +119,7 @@ func CreateBootstrapMiner(ctx context.Context, t *testing.T, seed *node.ChainSee
 	require.NoError(t, err)
 
 	// create bootstrap miner
-	dr, _ := drand.RandomSchedule(time.Unix(0, 0))
+	dr := beacon.NewMockSchedule(blockTime)
 	bootstrapMiner := NewNodeBuilder(t).
 		WithGenesisInit(seed.GenesisInitFunc).
 		WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...).

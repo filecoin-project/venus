@@ -5,9 +5,9 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
@@ -145,10 +145,6 @@ func (v *FakeStateView) MinerPledgeCollateral(_ context.Context, maddr address.A
 	return m.PledgeRequirement, m.PledgeBalance, nil
 }
 
-func (v *FakeStateView) MinerDeadlines(ctx context.Context, maddr address.Address) (*miner.Deadlines, error) {
-	return nil, nil
-}
-
 func (v *FakeStateView) MinerInfo(ctx context.Context, maddr address.Address) (*miner.MinerInfo, error) {
 	m, ok := v.Miners[maddr]
 	if !ok {
@@ -157,7 +153,7 @@ func (v *FakeStateView) MinerInfo(ctx context.Context, maddr address.Address) (*
 	return &miner.MinerInfo{
 		Owner:  m.Owner,
 		Worker: m.Worker,
-		PeerId: []byte(m.PeerID),
+		PeerId: &m.PeerID,
 	}, nil
 }
 

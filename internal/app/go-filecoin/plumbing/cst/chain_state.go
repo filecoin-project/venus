@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	initactor "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
@@ -129,9 +129,22 @@ func (chn *ChainStateReadWriter) Head() block.TipSetKey {
 	return chn.readWriter.GetHead()
 }
 
+func (chn *ChainStateReadWriter) GetHeadHeight() (abi.ChainEpoch, error) {
+	ts, err := chn.GetTipSet(chn.Head())
+	if err != nil {
+		return 0, nil
+	}
+
+	return ts.Height()
+}
+
 // GetTipSet returns the tipset at the given key
 func (chn *ChainStateReadWriter) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	return chn.readWriter.GetTipSet(key)
+}
+
+func (chn *ChainStateReadWriter) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
+	return chn.readWriter.GetNtwkVersion(ctx, height)
 }
 
 // Ls returns an iterator over tipsets from head to genesis.
@@ -371,20 +384,22 @@ func (chn *ChainStateReadWriter) ChainStateTree(ctx context.Context, c cid.Cid) 
 	return dag.NewDAG(dserv).RecursiveGet(ctx, c)
 }
 
-func (chn *ChainStateReadWriter) StateView(key block.TipSetKey) (*state.View, error) {
+func (chn *ChainStateReadWriter) StateView(key block.TipSetKey, height abi.ChainEpoch) (*state.View, error) {
 	root, err := chn.readWriter.GetTipSetStateRoot(key)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get state root for %s", key.String())
 	}
-	return state.NewView(chn, root), nil
+
+
+	return state.NewView(chn, root, chn.GetNtwkVersion(context.TODO(), height)), nil
 }
 
-func (chn *ChainStateReadWriter) AccountStateView(key block.TipSetKey) (state.AccountStateView, error) {
-	return chn.StateView(key)
+func (chn *ChainStateReadWriter) AccountStateView(key block.TipSetKey, height abi.ChainEpoch) (state.AccountStateView, error) {
+	return chn.StateView(key, height)
 }
 
-func (chn *ChainStateReadWriter) FaultStateView(key block.TipSetKey) (slashing.FaultStateView, error) {
-	return chn.StateView(key)
+func (chn *ChainStateReadWriter) FaultStateView(key block.TipSetKey, height abi.ChainEpoch) (slashing.FaultStateView, error) {
+	return chn.StateView(key, height)
 }
 
 // ToDo 完善sector接口后再做
