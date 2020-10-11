@@ -127,7 +127,7 @@ func setConfigFromOptions(cfg *config.Config, options cmds.OptMap) error {
 	var netcfg *networks.NetworkConf
 	if netName == "mainnet" {
 		netcfg = networks.Mainnet()
-	} else if netName == "testnet" {
+	} else if netName == "testnetnet" {
 		netcfg = networks.Testnet()
 	} else if netName != "" {
 		return fmt.Errorf("unknown network name %s", netName)

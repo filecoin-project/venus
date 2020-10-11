@@ -267,14 +267,15 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 				continue
 			}
 
-			if mcid.String() == "bafy2bzaced3fkz4x64crcly5rmkzn2m5vxd6pvfcq2taszxa4iqe2xnrs5vqm" {
-				fmt.Print()
+			if mcid.String() == "bafy2bzacedzuicytagouyal2o66uggyzz623s7uczpmmg6pogeigkbpqjpngk" {
+				fmt.Println()
 			}
-
 			fmt.Println("start to process bls message ", mcid)
 			// apply message
 			ret := vm.applyMessage(m, m.OnChainLen())
-
+			if ret.Receipt.ExitCode == 6 {
+				fmt.Println(mcid.String())
+			}
 			// accumulate result
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, ret.OutPuts.MinerPenalty)
 			minerGasRewardTotal = big.Add(minerGasRewardTotal, ret.OutPuts.MinerTip)
@@ -287,15 +288,15 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 
 			dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
 			fmt.Println(string(dddd))
-			/*	xxxx := []*types.GasTrace{}
-				for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
-					xxx.Location = nil
-					if xxx.TotalGas >0 {
-						xxxx = append(xxxx, xxx)
+			/*		xxxx := []*types.GasTrace{}
+					for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
+						xxx.Location = nil
+						if xxx.TotalGas >0 {
+							xxxx = append(xxxx, xxx)
+						}
 					}
-				}
-				dddd, _ = json.MarshalIndent(xxxx,"","\t")
-				fmt.Println(string(dddd))*/
+					dddd, _ = json.MarshalIndent(xxxx,"","\t")
+					fmt.Println(string(dddd))*/
 
 			fmt.Println()
 		}
@@ -327,15 +328,15 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 
 			dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
 			fmt.Println(string(dddd))
-			/*xxxx := []*types.GasTrace{}
-			for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
-				xxx.Location = nil
-				if xxx.TotalGas >0 {
-					xxxx = append(xxxx, xxx)
+			/*	xxxx := []*types.GasTrace{}
+				for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
+					xxx.Location = nil
+					if xxx.TotalGas >0 {
+						xxxx = append(xxxx, xxx)
+					}
 				}
-			}
-			dddd, _ = json.MarshalIndent(xxxx,"","\t")
-			fmt.Println(string(dddd))*/
+				dddd, _ = json.MarshalIndent(xxxx,"","\t")
+				fmt.Println(string(dddd))*/
 			fmt.Println()
 		}
 
@@ -438,7 +439,6 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) ([]byte, error) {
 	// 4. invoke message
 	ret, code := ctx.invoke()
 	if code.IsError() {
-
 		return nil, fmt.Errorf("invalid exit code %d during implicit message execution: from %s, to %s, method %d, value %s, params %v",
 			code, imsg.from, imsg.to, imsg.method, imsg.value, imsg.params)
 	}
@@ -682,9 +682,8 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) Ret {
 //
 // Note: this is not idiomatic, it follows the Spec expectations for this method.
 func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amount abi.TokenAmount) (*actor.Actor, *actor.Actor) {
-	// allow only for positive amounts
-	if amount.LessThan(abi.NewTokenAmount(0)) {
-		panic("unreachable: negative funds transfer not allowed")
+	if amount.LessThan(big.Zero()) {
+		runtime.Abortf(exitcode.SysErrForbidden, "attempt to transfer negative value %s from %s to %s", amount, debitFrom, creditTo)
 	}
 
 	// retrieve debit account
@@ -696,17 +695,6 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 		panic(fmt.Errorf("unreachable: debit account not found. %s", err))
 	}
 
-	// check that account has enough balance for transfer
-	if fromActor.Balance.LessThan(amount) {
-		panic("unreachable: insufficient balance on debit account")
-	}
-
-	// debit funds
-	fromActor.Balance = big.Sub(fromActor.Balance, amount)
-	if err := vm.state.SetActor(vm.context, debitFrom, fromActor); err != nil {
-		panic(err)
-	}
-
 	// retrieve credit account
 	toActor, found, err := vm.state.GetActor(vm.context, creditTo)
 	if err != nil {
@@ -716,12 +704,23 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 		panic(fmt.Errorf("unreachable: credit account not found. %s", err))
 	}
 
+	// check that account has enough balance for transfer
+	if fromActor.Balance.LessThan(amount) {
+		runtime.Abortf(exitcode.SysErrInsufficientFunds, "sender %s insufficient balance %s to transfer %s to %s", amount, fromActor.Balance, debitFrom, creditTo)
+	}
+
+	// debit funds
+	fromActor.Balance = big.Sub(fromActor.Balance, amount)
+	if err := vm.state.SetActor(vm.context, debitFrom, fromActor); err != nil {
+		panic(err)
+	}
+
 	// credit funds
 	toActor.Balance = big.Add(toActor.Balance, amount)
 	if err := vm.state.SetActor(vm.context, creditTo, toActor); err != nil {
 		panic(err)
 	}
-	return toActor, fromActor
+	return fromActor, toActor
 }
 
 func (vm *VM) getActorImpl(code Cid) dispatch.Dispatcher {

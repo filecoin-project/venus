@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"runtime/debug"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -180,9 +178,12 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 				} else {
 					fmt.Println(r)
 				}
+
+				errcode = 1
+				ret = []byte{}
 				// do not trap unknown panics
-				debug.PrintStack()
-				panic(r)
+				vmlog.Errorf("spec actors failure: %s", r)
+				//debug.PrintStack()
 			}
 		}
 	}()
@@ -208,15 +209,9 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 
 	// 3. transfer funds carried by the msg
 	if !ctx.msg.value.Nil() && !ctx.msg.value.IsZero() {
-		if ctx.msg.value.LessThan(big.Zero()) {
-			runtime.Abortf(exitcode.SysErrForbidden, "attempt to transfer negative value %s from %s to %s",
-				ctx.msg.value, ctx.msg.from, ctx.msg.to)
+		if ctx.msg.from != ctx.msg.to {
+			ctx.fromActor, ctx.toActor = ctx.rt.transfer(ctx.msg.from, ctx.msg.to, ctx.msg.value)
 		}
-		if ctx.fromActor.Balance.LessThan(ctx.msg.value) {
-			runtime.Abortf(exitcode.SysErrInsufficientFunds, "sender %s insufficient balance %s to transfer %s to %s",
-				ctx.msg.from, ctx.fromActor.Balance, ctx.msg.value, ctx.msg.to)
-		}
-		ctx.toActor, ctx.fromActor = ctx.rt.transfer(ctx.msg.from, ctx.msg.to, ctx.msg.value)
 	}
 
 	// 4. if we are just sending funds, there is nothing else to do.
@@ -543,7 +538,7 @@ func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 	// This looks like it could cause a problem with gas refund going to a non-existent actor, but the gas payer
 	// is always an account actor, which cannot be the receiver of this message.
 	if receiverActor.Balance.GreaterThan(big.Zero()) {
-		ctx.rt.transfer(receiver, beneficiary, receiverActor.Balance)
+		ctx.fromActor, ctx.toActor = ctx.rt.transfer(receiver, beneficiary, receiverActor.Balance)
 	}
 
 	if err := ctx.rt.state.DeleteActor(ctx.rt.context, receiver); err != nil {
