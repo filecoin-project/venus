@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
@@ -375,7 +376,7 @@ func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks 
 	// nextBaseFee = max(nextBaseFee, build.MinimumBaseFee)
 
 	var delta int64
-	if epoch > UpgradeSmokeHeight {
+	if epoch > fork.UpgradeSmokeHeight {
 		delta = gasLimitUsed / int64(noOfBlocks)
 		delta -= types.BlockGasTarget
 	} else {
@@ -408,7 +409,7 @@ func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet) (a
 	if err != nil {
 		return zero, err
 	}
-	if baseHeight > UpgradeBreezeHeight && baseHeight < UpgradeBreezeHeight+BreezeGasTampingDuration {
+	if baseHeight > fork.UpgradeBreezeHeight && baseHeight < fork.UpgradeBreezeHeight + fork.BreezeGasTampingDuration {
 		return abi.NewTokenAmount(100), nil
 	}
 
