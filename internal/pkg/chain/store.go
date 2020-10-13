@@ -435,7 +435,7 @@ func (store *Store) HeadEvents() *pubsub.PubSub {
 
 // SetHead sets the passed in tipset as the new head of this chain.
 func (store *Store) SetHead(ctx context.Context, ts *block.TipSet) error {
-	logStore.Debugf("SetHead %s", ts.String())
+	logStore.Infof("SetHead %s", ts.String())
 
 	// Add logging to debug sporadic test failure.
 	if !ts.Defined() {

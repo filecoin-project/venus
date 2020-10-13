@@ -143,7 +143,7 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			// Handle control signals
 			select {
 			case ctrl := <-d.control:
-				log.Debugf("processing control: %v", ctrl)
+				log.Infof("processing control: %v", ctrl)
 				d.processCtrl(ctrl)
 			default:
 			}
@@ -158,7 +158,7 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			case first := <-d.incoming:
 				ws = append(ws, first)
 				ws = append(ws, d.drainIncoming()...)
-				log.Debugf("received %d incoming targets: %v", len(ws), ws)
+				log.Infof("received %d incoming targets: %v", len(ws), ws)
 			default:
 			}
 			catchup, err := d.transitioner.MaybeTransitionToCatchup(d.catchup, ws)
@@ -167,24 +167,27 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			} else {
 				d.catchup = catchup
 			}
+			log.Infof("catchup: %v", catchup)
 			for i, syncTarget := range ws {
 				// Drop targets we don't have room for
 				if d.workQueue.Len() >= d.workQueueSize {
-					log.Infof("not enough space for %d targets on work queue", len(ws)-i)
+					log.Warnf("not enough space for %d targets on work queue", len(ws)-i)
 					break
 				}
 				// Sort new targets by putting on work queue.
 				d.workQueue.Push(syncTarget)
 			}
 
+			log.Infof("workQueue len: %v", d.workQueue.Len())
+
 			// Check for work to do
-			log.Debugf("processing work queue of %d", d.workQueue.Len())
+			log.Infof("processing work queue of %d", d.workQueue.Len())
 			syncTarget, popped := d.workQueue.Pop()
 			if popped {
-				log.Debugf("processing %v", syncTarget)
+				log.Infof("processing %v", syncTarget)
 				// Do work
 				err := d.syncer.HandleNewTipSet(syncingCtx, &syncTarget.ChainInfo, d.catchup)
-				log.Debugf("finished processing %v", syncTarget)
+				log.Infof("finished processing %v", syncTarget)
 				if err != nil {
 					log.Infof("failed sync of %v (catchup=%t): %s", &syncTarget.ChainInfo, d.catchup, err)
 				}
@@ -195,11 +198,11 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 					log.Errorf("state update error setting head %s", err)
 				} else {
 					d.catchup = !follow
-					log.Debugf("catchup state: %v", d.catchup)
+					log.Infof("catchup state: %v", d.catchup)
 				}
 			} else {
 				// No work left, block until something shows up
-				log.Debugf("drained work queue, waiting")
+				log.Infof("drained work queue, waiting")
 				select {
 				case extra := <-d.incoming:
 					log.Debugf("stopped waiting, received %v", extra)

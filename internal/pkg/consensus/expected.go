@@ -360,9 +360,11 @@ func (c *Expected) validateMining(ctx context.Context,
 	//electionPowerStateView := c.state.PowerStateView(electionPowerStateRoot)
 	//electionPowerTable := NewPowerTableView(electionPowerStateView, faultsStateView)
 
+	fmt.Printf("ts height: %v, parentStateRoot:%v\n", height, parentStateRoot.String())
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
 
+		fmt.Printf("blk stateRoot:%v\n", blk.StateRoot.String())
 		// confirm block state root matches parent state root
 		if !parentStateRoot.Equals(blk.StateRoot.Cid) {
 			return ErrStateRootMismatch

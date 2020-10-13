@@ -207,6 +207,7 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 	if err != nil {
 		return nil, err
 	}
+	logSyncer.Infof("current head: %v %s", headHeight, head.Key())
 
 	headers, err := syncer.fetcher.FetchTipSetHeaders(ctx, ci.Head, ci.Sender, func(t *block.TipSet) (bool, error) {
 		h, err := t.Height()
@@ -289,6 +290,10 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next *bl
 	// a new state to add to the store.
 	root, receipts, err := syncer.fullValidator.RunStateTransition(ctx, next, parentWeight, stateRoot, parentReceiptRoot)
 	if err != nil {
+		gh,_ := grandParent.Height()
+		ph,_ := parent.Height()
+		nh,_ := next.Height()
+		logSyncer.Infof("gh: %v, ph: %v, h: %v", gh, ph, nh)
 		return err
 	}
 
@@ -496,25 +501,21 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, 
 	return syncer.SetStagedHead(ctx)
 }
 
-var syncOnec bool
+//var syncOnec bool
 
 // handleNewTipSet extends the Syncer's chain store with the given tipset if
 // the chain is a valid extension.  It stages new heaviest tipsets for later
 // setting the chain head
 func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) (err error) {
-	logSyncer.Infof("Begin fetch and sync of chain with head %v from %s", ci.Head, ci.Sender.String())
+	logSyncer.Infof("Begin fetch and sync of chain with head %v from %s at height %v", ci.Head, ci.Sender.String(), ci.Height)
 	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ci.Head.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	if syncOnec {
-		return
-	}
-	syncOnec = true
-
-	/*	dddd, _ := cid.Decode("bafy2bzacedmdhzljzbteuxmbytcbamxsopafrebmbhtnuocehwcfqtbgolovq")
-		ci.Head = block.NewTipSetKey(dddd)
-		ci.Height = 17004*/
+	//if syncOnec {
+	//	return
+	//}
+	//syncOnec = true
 
 	// If the store already has this tipset then the syncer is finished.
 	if syncer.chainStore.HasTipSetAndState(ctx, ci.Head) {
@@ -529,9 +530,10 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
+	height,_ := tipsets[0].Height()
+	logSyncer.Infof("fetch & validate header success at %v %s ...", height, tipsets[0].Key())
 
 	defer func() {
-		logSyncer.Infof("fetch messages success ...")
 		syncer.reporter.UpdateStatus(status.SyncFetchComplete(true))
 	}()
 

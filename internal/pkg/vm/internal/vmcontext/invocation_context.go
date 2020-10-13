@@ -162,14 +162,6 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 					"methodNum", ctx.msg.method,
 					"value", ctx.msg.value,
 					"gasLimit", ctx.gasTank.gasAvailable)
-				fmt.Println("revert during actor execution.",
-					"errorMessage", p,
-					"exitCode", p.Code(),
-					"sender", ctx.msg.from,
-					"receiver", ctx.msg.to,
-					"methodNum", ctx.msg.method,
-					"value", ctx.msg.value,
-					"gasLimit", ctx.gasTank.gasAvailable) //todo for test remove
 				ret = []byte{} // The Empty here should never be used, but slightly safer than zero value.
 				errcode = p.Code()
 			default:
