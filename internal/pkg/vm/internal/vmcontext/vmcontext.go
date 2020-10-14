@@ -284,7 +284,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
 			iii, _ := vm.flush()
-			fmt.Println("message: %s  root: %s\n", mcid, iii)
+			fmt.Printf("message: %s  root: %s\n", mcid, iii)
 
 			dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
 			fmt.Println(string(dddd))
@@ -341,7 +341,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 		}
 
 		root, _ := vm.state.Flush(context.TODO())
-		fmt.Println("before reward: %d  root: %s", index, root)
+		fmt.Printf("before reward: %d  root: %s\n", index, root)
 
 		// Pay block reward.
 		// Dragons: missing final protocol design on if/how to determine the nominal power
@@ -351,12 +351,12 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 		}
 
 		root, _ = vm.state.Flush(context.TODO())
-		fmt.Println("reward: %d  root: %s", index, root)
+		fmt.Printf("reward: %d  root: %s\n", index, root)
 		fmt.Print()
 	}
 
 	root, _ := vm.state.Flush(context.TODO())
-	fmt.Println("before cron root: %s", root)
+	fmt.Printf("before cron root: %s\n", root)
 	fmt.Println("xxxx")
 
 	// cron tick
@@ -366,7 +366,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 	}
 
 	root, _ = vm.state.Flush(context.TODO())
-	fmt.Println("after cron root: %s", root)
+	fmt.Printf("after cron root: %s\n", root)
 	fmt.Print()
 	// commit stateView
 	if _, err := vm.flush(); err != nil {

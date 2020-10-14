@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -18,7 +19,6 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/ipfs/go-cid"
 )
 
 func TestStatePutGet(t *testing.T) {
@@ -97,7 +97,7 @@ func TestGetAllActors(t *testing.T) {
 	tree := NewState(cst)
 	addr := vmaddr.NewForTestGetter()()
 
-	newActor := actor.Actor{Code: builtin.AccountActorCodeID, CallSeqNum: 1234, Balance: abi.NewTokenAmount(123)}
+	newActor := actor.Actor{Code: enccid.NewCid(builtin.AccountActorCodeID), CallSeqNum: 1234, Balance: abi.NewTokenAmount(123)}
 	err := tree.SetActor(ctx, addr, &newActor)
 	assert.NoError(t, err)
 	_, err = tree.Flush(ctx)
@@ -140,8 +140,8 @@ func TestStateTreeConsistency(t *testing.T) {
 
 	for i, a := range addrs {
 		if err := tree.SetActor(ctx, a, &actor.Actor{
-			Code:       randomCid,
-			Head:       randomCid,
+			Code:       enccid.NewCid(randomCid),
+			Head:       enccid.NewCid(randomCid),
 			Balance:    abi.NewTokenAmount(int64(10000 + i)),
 			CallSeqNum: uint64(1000 - i),
 		}); err != nil {

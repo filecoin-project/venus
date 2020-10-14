@@ -292,12 +292,6 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next *bl
 	// todo 这里因消息的验证在goroutine里无法检测错误,失败仍然会存储一个错误的结果?
 	root, receipts, err := syncer.fullValidator.RunStateTransition(ctx, next, parentWeight, stateRoot, parentReceiptRoot)
 	if err != nil {
-		logSyncer.Warnf("delete error TipSetMetadata from store, stateRoot: %s, tsKey: %s",
-			stateRoot.String(), parent.String())
-		err = syncer.chainStore.DelTipSetMetadata(ctx, parent)
-		if err != nil {
-			logSyncer.Errorf("delete error TipSetMetadata failed: %s", err)
-		}
 		return err
 	}
 
