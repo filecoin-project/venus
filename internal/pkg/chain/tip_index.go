@@ -92,6 +92,30 @@ func (ti *TipIndex) Get(tsKey block.TipSetKey) (*TipSetMetadata, error) {
 	return tsas, nil
 }
 
+// todo add by force
+func (ti *TipIndex) Del(ts *block.TipSet) error {
+	ti.mu.Lock()
+	defer ti.mu.Unlock()
+	tsKey := ts.String()
+	delete(ti.tsasByID, tsKey)
+
+	pSet, err := ts.Parents()
+	if err != nil {
+		return err
+	}
+	pKey := pSet.String()
+	h, err := ts.Height()
+	if err != nil {
+		return err
+	}
+	key := makeKey(pKey, h)
+	tsasByID, ok := ti.tsasByParentsAndHeight[key]
+	if ok {
+		delete(tsasByID,tsKey)
+	}
+	return nil
+}
+
 // GetTipSet returns the tipset from func (ti *TipIndex) Get(tsKey string)
 func (ti *TipIndex) GetTipSet(tsKey block.TipSetKey) (*block.TipSet, error) {
 	tsas, err := ti.Get(tsKey)

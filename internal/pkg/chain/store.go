@@ -263,6 +263,21 @@ func (store *Store) PutTipSetMetadata(ctx context.Context, tsm *TipSetMetadata) 
 	return nil
 }
 
+// todo add by force
+func (store *Store) DelTipSetMetadata(ctx context.Context, ts *block.TipSet) error {
+	err := store.tipIndex.Del(ts)
+	if err != nil {
+		return err
+	}
+
+	// Persist the state mapping.
+	if err = store.deleteTipSetMetadata(ts); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // GetTipSet returns the tipset identified by `key`.
 func (store *Store) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	blks := []*block.Block{}
@@ -525,6 +540,18 @@ func (store *Store) writeTipSetMetadata(tsm *TipSetMetadata) error {
 	}
 	key := datastore.NewKey(makeKey(tsm.TipSet.String(), h))
 	return store.ds.Put(key, val)
+}
+
+// todo add by force
+// deleteTipSetMetadata delete the state root id from the datastore for the tipset key.
+func (store *Store) deleteTipSetMetadata(ts *block.TipSet) error {
+	h, err := ts.Height()
+	if err != nil {
+		return err
+	}
+
+	key := datastore.NewKey(makeKey(ts.String(), h))
+	return store.ds.Delete(key)
 }
 
 // GetHead returns the current head tipset cids.
