@@ -13,7 +13,9 @@ import (
 func TestCheck(t *testing.T) {
 	tf.UnitTest(t)
 
-	// Filecoin currently requires go >= 1.13.1
+	// Filecoin currently requires go >= 1.14
+	assert.True(t, version.Check("go1.14"))
+
 	assert.True(t, version.Check("go1.13.1"))
 	assert.True(t, version.Check("go1.13.2"))
 
