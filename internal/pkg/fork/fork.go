@@ -3,9 +3,10 @@ package fork
 import (
 	//"bytes"
 	"context"
+	"os"
 	//"encoding/binary"
 
-	//"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	//"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -31,7 +32,15 @@ var (
 	UpgradeIgnitionHeight    = abi.ChainEpoch(0)
 )
 
+func SetAddressNetwork(n address.Network) {
+	address.CurrentNetwork = n
+}
+
 func init() {
+	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
+		SetAddressNetwork(address.Mainnet)
+	}
+
 	UpgradeSmokeHeight = 51000
 	UpgradeBreezeHeight = 41280
 	BreezeGasTampingDuration = 120
