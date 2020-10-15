@@ -2,10 +2,10 @@ package vmcontext_test
 
 import (
 	"fmt"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"io"
 	"testing"
 
+	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
@@ -294,12 +294,12 @@ func (ctx *fakeActorStateHandleContext) AllowSideEffects(allow bool) {
 	ctx.allowSideEffects = allow
 }
 
-func (ctx *fakeActorStateHandleContext) Create(obj cbg.CBORMarshaler) cid.Cid {
+func (ctx *fakeActorStateHandleContext) Create(obj cbor.Marshaler) cid.Cid {
 	ctx.head = ctx.store.StorePut(obj)
 	return ctx.head
 }
 
-func (ctx *fakeActorStateHandleContext) Load(obj cbg.CBORUnmarshaler) cid.Cid {
+func (ctx *fakeActorStateHandleContext) Load(obj cbor.Unmarshaler) cid.Cid {
 	found := ctx.store.StoreGet(ctx.head, obj)
 	if !found {
 		panic("inconsistent stateView")
@@ -307,7 +307,7 @@ func (ctx *fakeActorStateHandleContext) Load(obj cbg.CBORUnmarshaler) cid.Cid {
 	return ctx.head
 }
 
-func (ctx *fakeActorStateHandleContext) Replace(expected cid.Cid, obj cbg.CBORMarshaler) cid.Cid {
+func (ctx *fakeActorStateHandleContext) Replace(expected cid.Cid, obj cbor.Marshaler) cid.Cid {
 	if !ctx.head.Equals(expected) {
 		panic(fmt.Errorf("unexpected prior stateView %s expected %s", ctx.head, expected))
 	}

@@ -10,7 +10,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/minio/blake2b-simd"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 )
 
@@ -42,6 +41,6 @@ func (f FakeSyscalls) VerifyPoSt(ctx context.Context, info proof.WindowPoStVerif
 	panic("implement me")
 }
 
-func (f FakeSyscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view SyscallsStateView) (*runtime.ConsensusFault, error) {
+func (f FakeSyscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view SyscallsStateView) (*runtime.ConsensusFault, error) {
 	panic("implement me")
 }

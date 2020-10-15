@@ -2,6 +2,9 @@ package consensus_test
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	"github.com/filecoin-project/go-state-types/abi"
 	"testing"
 	"time"
 
@@ -19,7 +22,6 @@ import (
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
@@ -314,7 +316,7 @@ func (fms *fakeMsgSource) LoadMessages(context.Context, cid.Cid) ([]*types.Signe
 	return fms.secpMessages, fms.blsMessages, nil
 }
 
-func (fms *fakeMsgSource) LoadReceipts(context.Context, cid.Cid) ([]vm.MessageReceipt, error) {
+func (fms *fakeMsgSource) LoadReceipts(context.Context, cid.Cid) ([]types.MessageReceipt, error) {
 	return nil, nil
 }
 
@@ -325,4 +327,24 @@ type fakeChainState struct {
 
 func (fcs *fakeChainState) GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*actor.Actor, error) {
 	return fcs.actor, fcs.err
+}
+
+func (fcs *fakeChainState) GetTipSet(block.TipSetKey) (*block.TipSet, error){
+	return &block.TipSet{}, nil
+}
+
+func (fcs *fakeChainState) GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error){
+	return cid.Undef, nil
+}
+
+func (fcs *fakeChainState) StateView(block.TipSetKey, abi.ChainEpoch) (*state.View, error){
+	return nil, nil
+}
+
+func (fcs *fakeChainState) GetBlock(context.Context, cid.Cid) (*block.Block, error){
+	return nil, nil
+}
+
+func (fcs *fakeChainState) BeaconSchedule() beacon.Schedule {
+	return beacon.NewMockSchedule(0)
 }

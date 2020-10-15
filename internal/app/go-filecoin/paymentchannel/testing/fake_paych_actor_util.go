@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
@@ -49,7 +48,7 @@ func (fai *FakePaychActorUtil) Send(ctx context.Context,
 }
 
 // Wait stubs a message Waiter
-func (fai *FakePaychActorUtil) Wait(_ context.Context, _ cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+func (fai *FakePaychActorUtil) Wait(_ context.Context, _ cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	res := fai.result
 	return cb(res.Block, res.Msg, res.Rcpt)
 }
@@ -59,7 +58,8 @@ func (fai *FakePaychActorUtil) StubSendFundsResponse(from address.Address, amt a
 	newCID := shared_testutil.GenerateCids(1)[0]
 
 	msg := types.NewUnsignedMessage(from, fai.PaychAddr, 1, amt, builtin.MethodSend, []byte{})
-	msg.GasPrice = abi.NewTokenAmount(100)
+	msg.GasFeeCap = abi.NewTokenAmount(100)
+	msg.GasPremium = abi.NewTokenAmount(100)
 	msg.GasLimit = gas.NewGas(5000)
 
 	emptySig := crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{'0'}}
@@ -68,7 +68,7 @@ func (fai *FakePaychActorUtil) StubSendFundsResponse(from address.Address, amt a
 		Msg:           &types.SignedMessage{Message: *msg, Signature: emptySig},
 		DecodedParams: nil,
 		MsgCid:        newCID,
-		Rcpt:          &vm.MessageReceipt{ExitCode: code},
+		Rcpt:          &types.MessageReceipt{ExitCode: code},
 	}
 	return newCID
 }

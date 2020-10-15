@@ -7,13 +7,14 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -36,8 +37,8 @@ func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, sta
 		Parents:         baseTipSet.Key(),
 		ParentWeight:    types.Uint64ToBig(uint64(height * 10000)),
 		Height:          height,
-		StateRoot:       stateRootCid,
-		MessageReceipts: receiptRootCid,
+		StateRoot:       enccid.NewCid(stateRootCid),
+		MessageReceipts: enccid.NewCid(receiptRootCid),
 		BLSAggregateSig: &emptyBLSSig,
 	}
 	sig, err := signer.SignBytes(context.TODO(), b.SignatureData(), minerWorker)
@@ -76,7 +77,7 @@ func (fbv *FakeBlockValidator) ValidateUnsignedMessagesSyntax(ctx context.Contex
 }
 
 // ValidateReceiptsSyntax does nothing
-func (fbv *FakeBlockValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []vm.MessageReceipt) error {
+func (fbv *FakeBlockValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []types.MessageReceipt) error {
 	return nil
 }
 

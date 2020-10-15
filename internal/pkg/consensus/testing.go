@@ -3,12 +3,12 @@ package consensus
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
@@ -151,6 +151,10 @@ type FakeChainRandomness struct {
 
 func (s *FakeChainRandomness) SampleChainRandomness(_ context.Context, _ block.TipSetKey, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	return []byte(fmt.Sprintf("s=%d,e=%d,t=%d,p=%s", s.Seed, epoch, tag, string(entropy))), nil
+}
+
+func (s *FakeChainRandomness) ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error){
+	return []byte(""), nil
 }
 
 type FakeSampler struct {
