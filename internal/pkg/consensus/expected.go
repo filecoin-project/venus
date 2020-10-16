@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	"golang.org/x/xerrors"
 	"sync"
+	"golang.org/x/sync/errgroup"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -361,83 +362,104 @@ func (c *Expected) validateMining(ctx context.Context,
 	//electionPowerTable := NewPowerTableView(electionPowerStateView, faultsStateView)
 
 	fmt.Printf("ts height: %v, parentStateRoot:%v\n", height, parentStateRoot.String())
+	var wg errgroup.Group
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
+		wg.Go(func() error {
+			// Fetch the URL.
+			return c.validateBlock(ctx, keyPowerTable, sigValidator, blk, parentStateRoot, parentWeight, parentReceiptRoot)
+		})
+	}
+	return wg.Wait()
+}
+// Todo beacon check
+func (c *Expected) validateBlock(ctx context.Context,
+	keyPowerTable PowerTableView,
+	sigValidator *appstate.SignatureValidator,
+	blk *block.Block,
+	parentStateRoot cid.Cid,
+	parentWeight big.Int,
+	parentReceiptRoot cid.Cid) error {
+	// confirm block state root matches parent state root
+	if !parentStateRoot.Equals(blk.StateRoot.Cid) {
+		return ErrStateRootMismatch
+	}
 
-		fmt.Printf("blk stateRoot:%v\n", blk.StateRoot.String())
-		// confirm block state root matches parent state root
-		if !parentStateRoot.Equals(blk.StateRoot.Cid) {
-			return ErrStateRootMismatch
-		}
+	// confirm block receipts match parent receipts
+	if !parentReceiptRoot.Equals(blk.MessageReceipts.Cid) {
+		return ErrReceiptRootMismatch
+	}
 
-		// confirm block receipts match parent receipts
-		if !parentReceiptRoot.Equals(blk.MessageReceipts.Cid) {
-			return ErrReceiptRootMismatch
-		}
+	if !parentWeight.Equals(blk.ParentWeight) {
+		return errors.Errorf("block %s has invalid parent weight %d expected %d", blk.Cid().String(), blk.ParentWeight, parentWeight)
+	}
+	workerAddr, err := keyPowerTable.WorkerAddr(ctx, blk.Miner)
+	if err != nil {
+		return errors.Wrap(err, "failed to read worker address of block miner")
+	}
+	workerSignerAddr, err := keyPowerTable.SignerAddress(ctx, workerAddr)
+	if err != nil {
+		return errors.Wrapf(err, "failed to convert address, %s, to a signing address", workerAddr.String())
+	}
+	// Validate block signature
+	if blk.BlockSig == nil {
+		return errors.Errorf("invalid nil block signature")
+	}
+	if err := crypto.ValidateSignature(blk.SignatureData(), workerSignerAddr, *blk.BlockSig); err != nil {
+		return errors.Wrap(err, "block signature invalid")
+	}
 
-		if !parentWeight.Equals(blk.ParentWeight) {
-			return errors.Errorf("block %s has invalid parent weight %d expected %d", blk.Cid().String(), blk.ParentWeight, parentWeight)
-		}
-		workerAddr, err := keyPowerTable.WorkerAddr(ctx, blk.Miner)
-		if err != nil {
-			return errors.Wrap(err, "failed to read worker address of block miner")
-		}
-		workerSignerAddr, err := keyPowerTable.SignerAddress(ctx, workerAddr)
-		if err != nil {
-			return errors.Wrapf(err, "failed to convert address, %s, to a signing address", workerAddr.String())
-		}
-		// Validate block signature
-		if blk.BlockSig == nil {
-			return errors.Errorf("invalid nil block signature")
-		}
-		if err := crypto.ValidateSignature(blk.SignatureData(), workerSignerAddr, *blk.BlockSig); err != nil {
-			return errors.Wrap(err, "block signature invalid")
-		}
+	blksecpMsgs, blkblsMsgs, err := c.messageStore.LoadMessages(ctx, blk.Messages.Cid)
+	if err != nil {
+		return errors.Wrapf(err, "failed loading message list %s for block %s", blk.Messages, blk.Cid())
+	}
 
-		// Verify that the BLS signature aggregate is correct todo remove to sync fast
-		/*if err := sigValidator.ValidateBLSMessageAggregate(ctx, blsMsgs[i], blk.BLSAggregateSig); err != nil {
-			return errors.Wrapf(err, "bls message verification failed for block %s", blk.Cid())
-		}*/
 
-		// Verify that all secp message signatures are correct
-		for i, msg := range secpMsgs[i] {
-			if err := sigValidator.ValidateMessageSignature(ctx, msg); err != nil {
-				return errors.Wrapf(err, "invalid signature for secp message %d in block %s", i, blk.Cid())
-			}
+	// Verify that the BLS signature aggregate is correct todo remove to sync fast
+	if err := sigValidator.ValidateBLSMessageAggregate(ctx, blkblsMsgs, blk.BLSAggregateSig); err != nil {
+		return errors.Wrapf(err, "bls message verification failed for block %s", blk.Cid())
+	}
+
+	// Verify that all secp message signatures are correct
+
+	for i, msg := range blksecpMsgs {
+		if err := sigValidator.ValidateMessageSignature(ctx, msg); err != nil {
+			return errors.Wrapf(err, "invalid signature for secp message %d in block %s", i, blk.Cid())
 		}
+	}
 
-		electionEntry, err := c.electionEntry(ctx, blk)
-		if err != nil {
-			return errors.Wrapf(err, "failed to get election entry")
-		}
+	electionEntry, err := c.electionEntry(ctx, blk)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get election entry")
+	}
 
-		//round := tsHeight + base.NullRounds + 1
-		//winner, err := IsRoundWinner(ctx, ts, round, blk.Miner, rbase, mbi, m.api)
-		//if err != nil {
-		//	return xerrors.Errorf("failed to check if we win next round: %w", err)
-		//}
-		//if winner == nil {
-		//	return errors.Errorf("Block did not win election")
-		//}
+	//round := tsHeight + base.NullRounds + 1
+	//winner, err := IsRoundWinner(ctx, ts, round, blk.Miner, rbase, mbi, m.api)
+	//if err != nil {
+	//	return xerrors.Errorf("failed to check if we win next round: %w", err)
+	//}
+	//if winner == nil {
+	//	return errors.Errorf("Block did not win election")
+	//}
 
-		//valid, err := c.VerifyElectionProof(ctx, c.drand, electionEntry, blk.Height, blk.PoStProofs, blk.Miner, sectorSetStateView)
-		//if err != nil {
-		//	return errors.Wrapf(err, "failed verifying winning post")
-		//}
-		//if !valid {
-		//	return errors.Errorf("Invalid winning post")
-		//}
+	//valid, err := c.VerifyElectionProof(ctx, c.drand, electionEntry, blk.Height, blk.PoStProofs, blk.Miner, sectorSetStateView)
+	//if err != nil {
+	//	return errors.Wrapf(err, "failed verifying winning post")
+	//}
+	//if !valid {
+	//	return errors.Errorf("Invalid winning post")
+	//}
 
-		// Ticket was correctly generated by miner
-		sampleEpoch := blk.Height - miner.ElectionLookback
-		newPeriod := len(blk.BeaconEntries) > 0
-		if err := c.IsValidTicket(ctx, blk.Parents, electionEntry, newPeriod, sampleEpoch, blk.Miner, workerSignerAddr, blk.Ticket); err != nil {
-			fmt.Printf("invalid ticket: %s in block %s, err: %s", blk.Ticket.String(), blk.Cid(), err)
-			// return errors.Wrapf(err, "invalid ticket: %s in block %s", blk.Ticket.String(), blk.Cid())
-		}
+	// Ticket was correctly generated by miner
+	sampleEpoch := blk.Height - miner.ElectionLookback
+	newPeriod := len(blk.BeaconEntries) > 0
+	if err := c.IsValidTicket(ctx, blk.Parents, electionEntry, newPeriod, sampleEpoch, blk.Miner, workerSignerAddr, blk.Ticket); err != nil {
+		fmt.Printf("invalid ticket: %s in block %s, err: %s", blk.Ticket.String(), blk.Cid(), err)
+		//return errors.Wrapf(err, "invalid ticket: %s in block %s", blk.Ticket.String(), blk.Cid())
 	}
 	return nil
 }
+
 
 // Todo beacon check
 func (c *Expected) ValidateBlockBeacon(b *block.Block, parentEpoch abi.ChainEpoch, prevEntry *block.BeaconEntry) error {
