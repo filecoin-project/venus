@@ -35,7 +35,7 @@ func (blsSigner) GenPrivate() ([]byte, error) {
 
 func (blsSigner) ToPublic(priv []byte) ([]byte, error) {
 	pk := new(SecretKey).FromLEndian(priv)
-	if pk == nil || !pk.Valid() {
+	if pk == nil /* || !pk.Valid() */ {
 		return nil, fmt.Errorf("bls signature invalid private key")
 	}
 	return new(PublicKey).From(pk).Compress(), nil
@@ -43,7 +43,7 @@ func (blsSigner) ToPublic(priv []byte) ([]byte, error) {
 
 func (blsSigner) Sign(p []byte, msg []byte) ([]byte, error) {
 	pk := new(SecretKey).FromLEndian(p)
-	if pk == nil || !pk.Valid() {
+	if pk == nil /* || !pk.Valid() */ {
 		return nil, fmt.Errorf("bls signature invalid private key")
 	}
 	return new(Signature).Sign(pk, msg, []byte(DST)).Compress(), nil

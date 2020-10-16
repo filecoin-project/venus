@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
@@ -46,7 +45,7 @@ type MsgResult struct {
 	Msg           *types.SignedMessage
 	DecodedParams interface{}
 	MsgCid        cid.Cid
-	Rcpt          *vm.MessageReceipt
+	Rcpt          *types.MessageReceipt
 }
 
 var msgRcptsUndef = MsgResult{}
@@ -62,7 +61,7 @@ func NewFakePaymentChannelAPI(ctx context.Context, t *testing.T) *FakePaymentCha
 // API methods
 
 // Wait mocks waiting for a message to be mined
-func (f *FakePaymentChannelAPI) Wait(_ context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+func (f *FakePaymentChannelAPI) Wait(_ context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	if f.MsgWaitErr != nil {
 		return f.MsgWaitErr
 	}
@@ -74,7 +73,8 @@ func (f *FakePaymentChannelAPI) Wait(_ context.Context, msgCid cid.Cid, lookback
 func (f *FakePaymentChannelAPI) Send(_ context.Context,
 	from, to address.Address,
 	value types.AttoFIL,
-	gasPrice types.AttoFIL,
+	gasFeeCap types.AttoFIL,
+	gasPremium types.AttoFIL,
 	gasLimit gas.Unit,
 	bcast bool,
 	method abi.MethodNum,
@@ -90,7 +90,8 @@ func (f *FakePaymentChannelAPI) Send(_ context.Context,
 	expMessage := f.ExpectedResult.Msg.Message
 	require.Equal(f.t, f.ExpectedResult.DecodedParams, params)
 	require.Equal(f.t, expMessage.GasLimit, gasLimit)
-	require.Equal(f.t, expMessage.GasPrice, gasPrice)
+	require.Equal(f.t, expMessage.GasFeeCap, gasFeeCap)
+	require.Equal(f.t, expMessage.GasPremium, gasPremium)
 	require.Equal(f.t, expMessage.From, from)
 	require.Equal(f.t, expMessage.To, to)
 	require.Equal(f.t, expMessage.Value, value)
@@ -114,7 +115,8 @@ func GenCreatePaychActorMessage(
 
 	msg := types.NewUnsignedMessage(clientAccountAddr, builtin.InitActorAddr, 1,
 		types.NewAttoFIL(amt.Int), builtin.MethodsInit.Exec, []byte{})
-	msg.GasPrice = types.NewAttoFILFromFIL(100)
+	msg.GasFeeCap = types.NewAttoFILFromFIL(100)
+	msg.GasPremium = types.NewAttoFILFromFIL(100)
 	msg.GasLimit = gas.NewGas(5000)
 
 	params, err := paymentchannel.PaychActorCtorExecParamsFor(clientAccountAddr, minerAccountAddr)
@@ -133,7 +135,7 @@ func GenCreatePaychActorMessage(
 		Block:         &block.Block{Height: abi.ChainEpoch(height)},
 		Msg:           &types.SignedMessage{Message: *msg, Signature: emptySig},
 		MsgCid:        newcid,
-		Rcpt:          &vm.MessageReceipt{ExitCode: code, ReturnValue: requireEncode(t, &retVal)},
+		Rcpt:          &types.MessageReceipt{ExitCode: code, ReturnValue: requireEncode(t, &retVal)},
 		DecodedParams: &params,
 	}
 }
@@ -149,14 +151,15 @@ func GenSendFundsMessage(
 
 	msg := types.NewUnsignedMessage(from, to, 2,
 		types.NewAttoFIL(amt.Int), builtin.MethodSend, []byte{})
-	msg.GasPrice = types.NewAttoFILFromFIL(100)
+	msg.GasFeeCap = types.NewAttoFILFromFIL(100)
+	msg.GasPremium = types.NewAttoFILFromFIL(100)
 	msg.GasLimit = gas.NewGas(5000)
 	emptySig := crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{'0'}}
 	return newcid, MsgResult{
 		Block:  &block.Block{Height: abi.ChainEpoch(height)},
 		Msg:    &types.SignedMessage{Message: *msg, Signature: emptySig},
 		MsgCid: newcid,
-		Rcpt:   &vm.MessageReceipt{ExitCode: code},
+		Rcpt:   &types.MessageReceipt{ExitCode: code},
 	}
 }
 

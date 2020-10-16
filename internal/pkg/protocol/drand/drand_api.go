@@ -43,11 +43,11 @@ func (api *API) GetEntry(ctx context.Context, height abi.ChainEpoch, round uint6
 	select {
 	case resp := <-rch:
 		if resp.Err != nil {
-			return nil, xerrors.Errorf("beacon entry request returned error: %w", resp.Err)
+			return nil, xerrors.Errorf("beacon entry request returned error: %s", resp.Err)
 		}
 		return &resp.Entry, nil
 	case <-ctx.Done():
-		return nil, xerrors.Errorf("context timed out waiting on beacon entry to come back for round %d: %w", round, ctx.Err())
+		return nil, xerrors.Errorf("context timed out waiting on beacon entry to come back for round %d: %s", round, ctx.Err())
 	}
 
 }

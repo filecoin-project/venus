@@ -92,10 +92,12 @@ type fakeStream struct {
 
 var _ inet.Stream = &fakeStream{}
 
+
 func newFakeStream() fakeStream { return fakeStream{} }
 
 // Minimal implementation of the inet.Stream interface
 
+func (fs fakeStream) ID() string                         { return ""}
 func (fs fakeStream) Protocol() protocol.ID              { return fs.pid }            // nolint: golint
 func (fs fakeStream) SetProtocol(id protocol.ID)         { fs.pid = id }              // nolint: golint
 func (fs fakeStream) Stat() inet.Stat                    { panic("not implemented") } // nolint: golint
@@ -157,8 +159,8 @@ func (f *TestFetcher) AddSourceBlocks(blocks ...*block.Block) {
 }
 
 // FetchTipSets fetchs the tipset at `tsKey` from the network using the fetchers `sourceBlocks`.
-func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey block.TipSetKey, from peer.ID, done func(t block.TipSet) (bool, error)) ([]block.TipSet, error) {
-	var out []block.TipSet
+func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey block.TipSetKey, from peer.ID, done func(t *block.TipSet) (bool, error)) ([]*block.TipSet, error) {
+	var out []*block.TipSet
 	cur := tsKey
 	for {
 		res, err := f.GetBlocks(ctx, cur.ToSlice())
@@ -191,7 +193,7 @@ func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey block.TipSetKey, f
 }
 
 // FetchTipSetHeaders fetches the tipset at `tsKey` but not messages
-func (f *TestFetcher) FetchTipSetHeaders(ctx context.Context, tsKey block.TipSetKey, from peer.ID, done func(t block.TipSet) (bool, error)) ([]block.TipSet, error) {
+func (f *TestFetcher) FetchTipSetHeaders(ctx context.Context, tsKey block.TipSetKey, from peer.ID, done func(t *block.TipSet) (bool, error)) ([]*block.TipSet, error) {
 	return f.FetchTipSets(ctx, tsKey, from, done)
 }
 

@@ -50,34 +50,34 @@ func (sm *Expected) GetCirculatingSupplyDetailed(ctx context.Context, height abi
 	if sm.preIgnitionGenInfos == nil {
 		err := sm.setupPreIgnitionGenesisActorsTestnet(ctx)
 		if err != nil {
-			return CirculatingSupply{}, xerrors.Errorf("failed to setup pre-ignition genesis information: %w", err)
+			return CirculatingSupply{}, xerrors.Errorf("failed to setup pre-ignition genesis information: %v", err)
 		}
 	}
 	if sm.postIgnitionGenInfos == nil {
 		err := sm.setupPostIgnitionGenesisActors(ctx)
 		if err != nil {
-			return CirculatingSupply{}, xerrors.Errorf("failed to setup post-ignition genesis information: %w", err)
+			return CirculatingSupply{}, xerrors.Errorf("failed to setup post-ignition genesis information: %v", err)
 		}
 	}
 
 	filVested, err := sm.GetFilVested(ctx, height, st)
 	if err != nil {
-		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %w", err)
+		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %v", err)
 	}
 
 	filMined, err := GetFilMined(ctx, st)
 	if err != nil {
-		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filMined: %w", err)
+		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filMined: %v", err)
 	}
 
 	filBurnt, err := GetFilBurnt(ctx, st)
 	if err != nil {
-		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %w", err)
+		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %v", err)
 	}
 
 	filLocked, err := sm.GetFilLocked(ctx, st)
 	if err != nil {
-		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %w", err)
+		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %v", err)
 	}
 
 	ret := big.Add(filVested, filMined)
@@ -138,32 +138,32 @@ func (c *Expected) setupPreIgnitionGenesisActorsTestnet(ctx context.Context) err
 	gi := genesisInfo{}
 	gb, err := c.chainState.GetGenesisBlock(ctx)
 	if err != nil {
-		return xerrors.Errorf("getting genesis block: %w", err)
+		return xerrors.Errorf("getting genesis block: %v", err)
 	}
 	gts, err := block.NewTipSet(gb)
 	if err != nil {
-		return xerrors.Errorf("getting genesis tipset: %w", err)
+		return xerrors.Errorf("getting genesis tipset: %v", err)
 	}
 
 	/*	st, _, err := c.processBlock(ctx, gts)
 		if err != nil {
-			return xerrors.Errorf("getting genesis tipset state: %w", err)
+			return xerrors.Errorf("getting genesis tipset state: %v", err)
 		}*/
 
 	cst := cbornode.NewCborStore(c.bstore)
 	sTree, err := state.LoadState(ctx, cst, gts.At(0).StateRoot.Cid)
 	if err != nil {
-		return xerrors.Errorf("loading state tree: %w", err)
+		return xerrors.Errorf("loading state tree: %v", err)
 	}
 
 	gi.genesisMarketFunds, err = getFilMarketLocked(ctx, sTree)
 	if err != nil {
-		return xerrors.Errorf("setting up genesis market funds: %w", err)
+		return xerrors.Errorf("setting up genesis market funds: %v", err)
 	}
 
 	gi.genesisPledge, err = getFilPowerLocked(ctx, sTree)
 	if err != nil {
-		return xerrors.Errorf("setting up genesis pledge: %w", err)
+		return xerrors.Errorf("setting up genesis pledge: %v", err)
 	}
 
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
@@ -212,35 +212,35 @@ func (sm *Expected) setupPostIgnitionGenesisActors(ctx context.Context) error {
 
 	gb, err := sm.chainState.GetGenesisBlock(ctx)
 	if err != nil {
-		return xerrors.Errorf("getting genesis block: %w", err)
+		return xerrors.Errorf("getting genesis block: %v", err)
 	}
 
 	gts, err := block.NewTipSet(gb)
 	if err != nil {
-		return xerrors.Errorf("getting genesis tipset: %w", err)
+		return xerrors.Errorf("getting genesis tipset: %v", err)
 	}
 
 	/*st, _, err := sm.processBlock(ctx, gts)
 	if err != nil {
-		return xerrors.Errorf("getting genesis tipset state: %w", err)
+		return xerrors.Errorf("getting genesis tipset state: %v", err)
 	}*/
 
 	cst := cbornode.NewCborStore(sm.bstore)
 	sTree, err := state.LoadState(ctx, cst, gts.At(0).StateRoot.Cid)
 	if err != nil {
-		return xerrors.Errorf("loading state tree: %w", err)
+		return xerrors.Errorf("loading state tree: %v", err)
 	}
 
 	// Unnecessary, should be removed
 	gi.genesisMarketFunds, err = getFilMarketLocked(ctx, sTree)
 	if err != nil {
-		return xerrors.Errorf("setting up genesis market funds: %w", err)
+		return xerrors.Errorf("setting up genesis market funds: %v", err)
 	}
 
 	// Unnecessary, should be removed
 	gi.genesisPledge, err = getFilPowerLocked(ctx, sTree)
 	if err != nil {
-		return xerrors.Errorf("setting up genesis pledge: %w", err)
+		return xerrors.Errorf("setting up genesis pledge: %v", err)
 	}
 
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
@@ -288,12 +288,12 @@ func (sm *Expected) setupPostIgnitionGenesisActors(ctx context.Context) error {
 func GetFilMined(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
 	ractor, found, err := st.GetActor(ctx, builtin.RewardActorAddr)
 	if !found || err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load reward actor state: %w", err)
+		return big.Zero(), xerrors.Errorf("failed to load reward actor state: %v", err)
 	}
 
 	var rst reward.State
 	if err := adt.WrapStore(ctx, st.GetStore()).Get(ctx, ractor.Head.Cid, &rst); err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load reward state: %w", err)
+		return big.Zero(), xerrors.Errorf("failed to load reward state: %v", err)
 	}
 
 	return rst.TotalMined, nil
@@ -302,12 +302,12 @@ func GetFilMined(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
 func getFilMarketLocked(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
 	act, found, err := st.GetActor(ctx, builtin.StorageMarketActorAddr)
 	if !found || err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load market actor: %w", err)
+		return big.Zero(), xerrors.Errorf("failed to load market actor: %v", err)
 	}
 
 	var mst market.State
 	if err := adt.WrapStore(ctx, st.GetStore()).Get(ctx, act.Head.Cid, &mst); err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load reward state: %w", err)
+		return big.Zero(), xerrors.Errorf("failed to load reward state: %v", err)
 	}
 
 	fml := big.Add(mst.TotalClientLockedCollateral, mst.TotalProviderLockedCollateral)
@@ -318,11 +318,11 @@ func getFilMarketLocked(ctx context.Context, st state.Tree) (abi.TokenAmount, er
 func getFilPowerLocked(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
 	act, found, err := st.GetActor(ctx, builtin.StoragePowerActorAddr)
 	if !found || err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load power actor: %w", err)
+		return big.Zero(), xerrors.Errorf("failed to load power actor: %v", err)
 	}
 	var pst power.State
 	if err := adt.WrapStore(ctx, st.GetStore()).Get(ctx, act.Head.Cid, &pst); err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load power state: %w", err)
+		return big.Zero(), xerrors.Errorf("failed to load power state: %v", err)
 	}
 
 	return pst.TotalPledgeCollateral, nil
@@ -331,7 +331,7 @@ func getFilPowerLocked(ctx context.Context, st state.Tree) (abi.TokenAmount, err
 func GetFilBurnt(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
 	burnt, found, err := st.GetActor(ctx, builtin.BurntFundsActorAddr)
 	if !found || err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load burnt actor: %w", err)
+		return big.Zero(), xerrors.Errorf("failed to load burnt actor: %v", err)
 	}
 
 	return burnt.Balance, nil
@@ -357,7 +357,7 @@ func (sm *Expected) GetFilVested(ctx context.Context, height abi.ChainEpoch, st 
 	for _, v := range sm.preIgnitionGenInfos.genesisActors {
 		act, found, err := st.GetActor(ctx, v.addr)
 		if !found || err != nil {
-			return big.Zero(), xerrors.Errorf("failed to get actor: %w", err)
+			return big.Zero(), xerrors.Errorf("failed to get actor: %v", err)
 		}
 
 		diff := big.Sub(v.initBal, act.Balance)
@@ -378,12 +378,12 @@ func (sm *Expected) GetFilLocked(ctx context.Context, st state.Tree) (abi.TokenA
 
 	filMarketLocked, err := getFilMarketLocked(ctx, st)
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %w", err)
+		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %v", err)
 	}
 
 	filPowerLocked, err := getFilPowerLocked(ctx, st)
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to get filPowerLocked: %w", err)
+		return big.Zero(), xerrors.Errorf("failed to get filPowerLocked: %v", err)
 	}
 
 	return big.Add(filMarketLocked, filPowerLocked), nil

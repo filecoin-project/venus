@@ -17,7 +17,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
@@ -63,7 +62,7 @@ type sender func(ctx context.Context,
 	method abi.MethodNum,
 	params interface{}) (out cid.Cid, pubErrCh chan error, err error)
 
-type waiter func(_ context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error
+type waiter func(_ context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 
 // Send simulates posting to chain but calls actor code directly
 func (fai *FakeInitActorUtil) Send(ctx context.Context,
@@ -92,11 +91,11 @@ func (fai *FakeInitActorUtil) defaultSend(ctx context.Context,
 }
 
 // Wait simulates waiting for the result of a message and calls the callback `cb`
-func (fai *FakeInitActorUtil) Wait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+func (fai *FakeInitActorUtil) Wait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	return fai.msgWaiter(ctx, msgCid, cb)
 }
 
-func (fai *FakeInitActorUtil) defaultWait(_ context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+func (fai *FakeInitActorUtil) defaultWait(_ context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	require.Equal(fai.t, msgCid, fai.result.MsgCid)
 	res := fai.result
 	return cb(res.Block, res.Msg, res.Rcpt)
