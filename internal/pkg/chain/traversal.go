@@ -3,7 +3,6 @@ package chain
 import (
 	"context"
 	"errors"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
@@ -51,7 +50,7 @@ func (it *TipsetIterator) Next() error {
 			parentKey, err := it.value.Parents()
 			if err == nil {
 				it.value, err = it.store.GetTipSet(parentKey)
-				return nil
+				return err
 			}
 			return err
 		}
