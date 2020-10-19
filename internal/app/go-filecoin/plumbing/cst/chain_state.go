@@ -143,13 +143,26 @@ func (chn *ChainStateReadWriter) GetTipSet(key block.TipSetKey) (*block.TipSet, 
 	return chn.readWriter.GetTipSet(key)
 }
 
+// ChainGetTipSetByHeight looks back for a tipset at the specified epoch
+func (chn *ChainStateReadWriter) GetTipsetByHeight(ctx context.Context, height abi.ChainEpoch) (*block.TipSet, error) {
+	return chn.readWriter.GetTipSetByHeight(ctx, nil, height, true)
+}
+
 func (chn *ChainStateReadWriter) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
 	return chn.readWriter.GetNtwkVersion(ctx, height)
 }
 
 // Ls returns an iterator over tipsets from head to genesis.
-func (chn *ChainStateReadWriter) Ls(ctx context.Context) (*chain.TipsetIterator, error) {
-	ts, err := chn.readWriter.GetTipSet(chn.readWriter.GetHead())
+func (chn *ChainStateReadWriter) Ls(ctx context.Context, key block.TipSetKey) (*chain.TipsetIterator, error) {
+	var (
+		err error
+		ts  *block.TipSet
+	)
+	if key.Len() < 1{
+		ts, err = chn.readWriter.GetTipSet(chn.readWriter.GetHead())
+	} else {
+		ts, err = chn.readWriter.GetTipSet(key)
+	}
 	if err != nil {
 		return nil, err
 	}
