@@ -1,28 +1,19 @@
 package fork
 
 import (
-	//"bytes"
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	big2 "github.com/filecoin-project/go-state-types/big"
+	xerrors "github.com/pkg/errors"
 	"os"
-	//"encoding/binary"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	//"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-state-types/abi"
-	//"github.com/filecoin-project/go-state-types/big"
-	//"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	//"github.com/filecoin-project/specs-actors/actors/builtin"
-	//initBuilder "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	//"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	//"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	//power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
-	//"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-	//xerrors "github.com/pkg/errors"
-	//"github.com/prometheus/common/log"
 )
 
 var (
@@ -46,7 +37,6 @@ func init() {
 	BreezeGasTampingDuration = 120
 	UpgradeIgnitionHeight = 94000
 }
-
 
 // todo 多处引用了lotus
 
@@ -82,7 +72,6 @@ func NewChainFork(state chainReader, ipldstore cbornode.IpldStore, bstore blocks
 	return fork
 }
 
-
 func (fork *ChainFork) HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
 	retCid := root
 	var err error
@@ -97,34 +86,34 @@ func (fork *ChainFork) HandleStateForks(ctx context.Context, root cid.Cid, heigh
 	return retCid, nil
 }
 
-//func doTransfer(tree types.StateTree, from, to address.Address, amt abi.TokenAmount) error {
-//	fromAct, err := tree.GetActor(from)
-//	if err != nil {
-//		return xerrors.Errorf("failed to get 'from' actor for transfer: %w", err)
-//	}
-//
-//	fromAct.Balance = types.BigSub(fromAct.Balance, amt)
-//	if fromAct.Balance.Sign() < 0 {
-//		return xerrors.Errorf("(sanity) deducted more funds from target account than it had (%s, %s)", from, types.FIL(amt))
-//	}
-//
-//	if err := tree.SetActor(from, fromAct); err != nil {
-//		return xerrors.Errorf("failed to persist from actor: %w", err)
-//	}
-//
-//	toAct, err := tree.GetActor(to)
-//	if err != nil {
-//		return xerrors.Errorf("failed to get 'to' actor for transfer: %w", err)
-//	}
-//
-//	toAct.Balance = types.BigAdd(toAct.Balance, amt)
-//
-//	if err := tree.SetActor(to, toAct); err != nil {
-//		return xerrors.Errorf("failed to persist to actor: %w", err)
-//	}
-//	return nil
-//}
-//
+func doTransfer(tree state.Tree, from, to address.Address, amt abi.TokenAmount) error {
+	fromAct, found, err := tree.GetActor(context.TODO(), from)
+	if !found || err != nil {
+		return xerrors.Errorf("failed to get 'from' actor for transfer: %w", err)
+	}
+
+	fromAct.Balance = big2.Sub(fromAct.Balance, amt)
+	if fromAct.Balance.Sign() < 0 {
+		return xerrors.Errorf("(sanity) deducted more funds from target account than it had (%s, %s)", from, types.FIL(amt))
+	}
+
+	if err := tree.SetActor(context.TODO(), from, fromAct); err != nil {
+		return xerrors.Errorf("failed to persist from actor: %w", err)
+	}
+
+	toAct, found, err := tree.GetActor(context.TODO(), to)
+	if !found || err != nil {
+		return xerrors.Errorf("failed to get 'to' actor for transfer: %w", err)
+	}
+
+	toAct.Balance = big2.Add(toAct.Balance, amt)
+
+	if err := tree.SetActor(context.TODO(), to, toAct); err != nil {
+		return xerrors.Errorf("failed to persist to actor: %w", err)
+	}
+	return nil
+}
+
 //func (fork *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, root cid.Cid, ts *block.TipSet) (cid.Cid, error) {
 //	// Some initial parameters
 //	FundsForMiners := types.FromFil(1_000_000)

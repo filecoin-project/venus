@@ -82,7 +82,11 @@ func NewGenesisGenerator(vmStorage *vm.Storage) *GenesisGenerator {
 	}
 
 	g := GenesisGenerator{}
-	g.stateTree = state.NewState(vmStorage)
+	var err error
+	g.stateTree, err = state.NewState(vmStorage, state.StateTreeVersion1)
+	if err != nil {
+		panic(xerrors.Errorf("create state error, should never come here"))
+	}
 	g.store = vmStorage
 	g.cst = vmStorage
 
@@ -585,7 +589,7 @@ func (g *GenesisGenerator) createMiner(ctx context.Context, m *CreateStorageMine
 	if err != nil {
 		return address.Undef, address.Undef, err
 	}
-	view := gfcstate.NewView(g.cst, stateRoot, network.Version0) // todo review network.Version0 ???
+	view := gfcstate.NewView(g.cst, stateRoot, network.Version5) // todo review network.Version0 ???
 	ownerAddr, err := view.InitResolveAddress(ctx, pkAddr)
 	if err != nil {
 		return address.Undef, address.Undef, err

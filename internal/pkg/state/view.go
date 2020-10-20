@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
@@ -100,7 +99,7 @@ func (v *View) InitNetworkName(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return initState.NetworkName() // todo review
+	return initState.NetworkName()
 }
 
 // InitResolveAddress Returns ID address if public key address is given.
@@ -113,20 +112,15 @@ func (v *View) InitResolveAddress(ctx context.Context, a addr.Address) (addr.Add
 	if err != nil {
 		return addr.Undef, err
 	}
-
-	// todo review
-	rAddr, _, err := initState.ResolveAddress(a)
+	rAddr, found, err := initState.ResolveAddress(a)
 	if err != nil {
 		return addr.Undef, err
 	}
 
-	//state := &notinit.State{
-	//	AddressMap: initState.AddressMap,
-	//}
-	//rAddr, _, err := state.ResolveAddress(v.adtStore(ctx), a) //todo add by force bool?
-	//if err != nil {
-	//	return addr.Undef, err
-	//}
+	if !found {
+		return addr.Undef, xerrors.Errorf("not found resolve address")
+	}
+
 	return rAddr, nil
 }
 
@@ -141,7 +135,6 @@ func (v *View) AccountSignerAddress(ctx context.Context, a addr.Address) (addr.A
 		return addr.Undef, err
 	}
 
-	// todo review
 	return accountActorState.PubkeyAddress()
 }
 
@@ -160,7 +153,6 @@ func (v *View) MinerInfo(ctx context.Context, maddr addr.Address) (*miner.MinerI
 		return nil, err
 	}
 
-	// todo review
 	minerInfo, err := minerState.Info()
 	if err != nil {
 		return nil, err
@@ -176,9 +168,7 @@ func (v *View) MinerPeerID(ctx context.Context, maddr addr.Address) (peer.ID, er
 		return "", err
 	}
 
-	// todo review
 	return *minerInfo.PeerId, nil
-	// return peer.ID(minerInfo.PeerId), nil
 }
 
 type MinerSectorConfiguration struct {
@@ -207,20 +197,12 @@ func (v *View) MinerSectorCount(ctx context.Context, maddr addr.Address) (uint64
 		return 0, err
 	}
 
-	// todo review
 	sc, err := minerState.SectorArray()
 	if err != nil {
 		return 0, err
 	}
 
 	return sc.Length(), nil
-
-	//sectors, err := v.asArray(ctx, minerState.Sectors)
-	//if err != nil {
-	//	return 0, err
-	//}
-	//length := sectors.Length()
-	//return length, nil
 }
 
 // Loads sector info from miner state.
@@ -230,14 +212,12 @@ func (v *View) MinerGetSector(ctx context.Context, maddr addr.Address, sectorNum
 		return nil, false, err
 	}
 
-	// todo review
 	info, err := minerState.GetSector(sectorNum)
 	if err != nil {
 		return nil, false, err
 	}
 
 	return info, true, nil
-	// return minerState.GetSector(v.adtStore(ctx), sectorNum)
 }
 
 func (v *View) GetPartsProving(ctx context.Context, maddr addr.Address) ([]bitfield.BitField, error) {
@@ -248,8 +228,8 @@ func (v *View) GetPartsProving(ctx context.Context, maddr addr.Address) ([]bitfi
 
 	var partsProving []bitfield.BitField
 
-	if err := minerState.ForEachDeadline(func(idx uint64, dl miner.Deadline) error{
-		if err := dl.ForEachPartition(func(idx uint64, part miner.Partition) error{
+	if err := minerState.ForEachDeadline(func(idx uint64, dl miner.Deadline) error {
+		if err := dl.ForEachPartition(func(idx uint64, part miner.Partition) error {
 			allSectors, err := part.AllSectors()
 			if err != nil {
 				return err
@@ -284,16 +264,12 @@ func (v *View) MinerDeadlineInfo(ctx context.Context, maddr addr.Address, epoch 
 		return 0, 0, 0, 0, err
 	}
 
-	// todo review
 	deadlineInfo, err := minerState.DeadlineInfo(epoch)
 	if err != nil {
 		return 0, 0, 0, 0, err
 	}
 
 	return deadlineInfo.Index, deadlineInfo.Open, deadlineInfo.Close, deadlineInfo.Challenge, nil
-
-	//deadlineInfo := minerState.DeadlineInfo(epoch)
-	//return deadlineInfo.Index, deadlineInfo.Open, deadlineInfo.Close, deadlineInfo.Challenge, nil
 }
 
 // MinerSuccessfulPoSts counts how many successful window PoSts have been made this proving period so far.
@@ -303,28 +279,7 @@ func (v *View) MinerSuccessfulPoSts(ctx context.Context, maddr addr.Address) (ui
 		return 0, err
 	}
 
-	// todo review
 	return minerState.SuccessfulPoSts()
-
-	//deadlines, err := minerState.LoadDeadlines(v.adtStore(ctx))
-	//if err != nil {
-	//	return 0, err
-	//}
-	//
-	//count := uint64(0)
-	//err = deadlines.ForEach(v.adtStore(ctx), func(dlIdx uint64, dl *miner.Deadline) error {
-	//	dCount, err := dl.PostSubmissions.Count()
-	//	if err != nil {
-	//		return err
-	//	}
-	//	count += dCount
-	//	return nil
-	//})
-	//if err != nil {
-	//	return 0, err
-	//}
-
-	// return count, nil
 }
 
 // MinerDeadlines returns a bitfield of sectors in a proving period
@@ -344,9 +299,7 @@ func (v *View) MinerProvingPeriodStart(ctx context.Context, maddr addr.Address) 
 		return 0, err
 	}
 
-	// todo review
 	return minerState.GetProvingPeriodStart(), nil
-	//return minerState.ProvingPeriodStart, nil
 }
 
 // MinerSectorsForEach Iterates over the sectors in a miner's proving set.
@@ -358,7 +311,7 @@ func (v *View) MinerSectorsForEach(ctx context.Context, maddr addr.Address,
 	}
 
 	// todo review
-	sectors, err  :=  minerState.SectorArray()
+	sectors, err := minerState.SectorArray()
 	if err != nil {
 		return err
 	}
@@ -381,18 +334,6 @@ func (v *View) MinerSectorsForEach(ctx context.Context, maddr addr.Address,
 		}
 	}
 	return nil
-
-	//sectors, err := v.asArray(ctx, minerState.Sectors)
-	//if err != nil {
-	//	return err
-	//}
-
-	// // This version for the new actors
-	//var sector miner.SectorOnChainInfo
-	//return sectors.ForEach(&sector, func(secnum int64) error {
-	//	// Add more fields here as required by new callers.
-	//	return f(sector.SectorNumber, sector.SealedCID, sector.SealProof, sector.DealIDs)
-	//})
 }
 
 // MinerExists Returns true iff the miner exists.
@@ -414,33 +355,7 @@ func (v *View) MinerFaults(ctx context.Context, maddr addr.Address) ([]uint64, e
 		return nil, err
 	}
 
-	return minerState.FaultsSectors() // todo review
-
-	//out := bitfield.New()
-	//
-	//deallines, err := minerState.LoadDeadlines(v.adtStore(ctx))
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//err = deallines.ForEach(v.adtStore(ctx), func(dlIdx uint64, dl *miner.Deadline) error {
-	//	partitions, err := dl.PartitionsArray(v.adtStore(ctx))
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	var partition miner.Partition
-	//	return partitions.ForEach(&partition, func(i int64) error {
-	//		out, err = bitfield.MergeBitFields(out, partition.Faults)
-	//		return err
-	//	})
-	//})
-	//
-	//maxSectorNum, err := out.All(miner.SectorsMax)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//return maxSectorNum, nil
+	return minerState.FaultsSectors()
 }
 
 // MinerGetPrecommittedSector Looks up info for a miners precommitted sector.
@@ -451,14 +366,11 @@ func (v *View) MinerGetPrecommittedSector(ctx context.Context, maddr addr.Addres
 		return nil, false, err
 	}
 
-	// todo review
-	info ,err := minerState.GetPrecommittedSector(sectorNum)
+	info, err := minerState.GetPrecommittedSector(sectorNum)
 	if err != nil {
 		return nil, false, err
 	}
 	return info, true, nil
-
-	// return minerState.GetPrecommittedSector(v.adtStore(ctx), sectorNum)
 }
 
 // MarketEscrowBalance looks up a token amount in the escrow table for the given address
@@ -479,15 +391,6 @@ func (v *View) MarketEscrowBalance(ctx context.Context, addr addr.Address) (foun
 	}
 
 	return true, amount, nil
-
-	//escrow, err := v.asMap(ctx, marketState.EscrowTable)
-	//if err != nil {
-	//	return false, abi.NewTokenAmount(0), err
-	//}
-	//
-	//var value abi.TokenAmount
-	//found, err = escrow.Get(abi.AddrKey(addr), &value)
-	//return
 }
 
 // MarketComputeDataCommitment takes deal ids and uses associated commPs to compute commD for a sector that contains the deals
@@ -519,30 +422,6 @@ func (v *View) MarketComputeDataCommitment(ctx context.Context, registeredProof 
 		pieceInfos[i].Size = proposal.PieceSize
 	}
 	return ffiwrapper.GenerateUnsealedCID(registeredProof, pieceInfos)
-
-	//deals, err := v.asArray(ctx, marketState.Proposals)
-	//if err != nil {
-	//	return cid.Undef, err
-	//}
-	//
-	//// map deals to pieceInfo
-	//pieceInfos := make([]abi.PieceInfo, len(dealIDs))
-	//for i, id := range dealIDs {
-	//	var proposal market.DealProposal
-	//	found, err := deals.Get(uint64(id), &proposal)
-	//	if err != nil {
-	//		return cid.Undef, err
-	//	}
-	//
-	//	if !found {
-	//		return cid.Undef, xerrors.Errorf("deal %d not found", id)
-	//	}
-	//
-	//	pieceInfos[i].PieceCID = proposal.PieceCID
-	//	pieceInfos[i].Size = proposal.PieceSize
-	//}
-	//
-	//return ffiwrapper.GenerateUnsealedCID(registeredProof, pieceInfos)
 }
 
 // NOTE: exposes on-chain structures directly for storage FSM interface.
@@ -552,7 +431,6 @@ func (v *View) MarketDealProposal(ctx context.Context, dealID abi.DealID) (marke
 		return market.DealProposal{}, err
 	}
 
-	// todo review
 	proposals, err := marketState.Proposals()
 	if err != nil {
 		return market.DealProposal{}, err
@@ -568,22 +446,6 @@ func (v *View) MarketDealProposal(ctx context.Context, dealID abi.DealID) (marke
 		return market.DealProposal{}, xerrors.Errorf("deal %d not found", dealID)
 	}
 	return *proposal, nil
-
-	//deals, err := v.asArray(ctx, marketState.Proposals)
-	//if err != nil {
-	//	return market.DealProposal{}, err
-	//}
-	//
-	//var proposal market.DealProposal
-	//found, err := deals.Get(uint64(dealID), &proposal)
-	//if err != nil {
-	//	return market.DealProposal{}, err
-	//}
-	//if !found {
-	//	return market.DealProposal{}, xerrors.Errorf("deal %d not found", dealID)
-	//}
-
-	//return proposal, nil
 }
 
 // NOTE: exposes on-chain structures directly for storage FSM and market module interfaces.
@@ -593,19 +455,12 @@ func (v *View) MarketDealState(ctx context.Context, dealID abi.DealID) (*market.
 		return nil, false, err
 	}
 
-	// todo review
 	deals, err := marketState.States()
 	if err != nil {
 		return nil, false, err
 	}
 
 	return deals.Get(dealID)
-
-	//dealStates, err := v.asDealStateArray(ctx, marketState.States)
-	//if err != nil {
-	//	return nil, false, err
-	//}
-	//return dealStates.Get(dealID)
 }
 
 // NOTE: exposes on-chain structures directly for market interface.
@@ -616,7 +471,6 @@ func (v *View) MarketDealStatesForEach(ctx context.Context, f func(id abi.DealID
 		return err
 	}
 
-	// todo review
 	deals, err := marketState.States()
 	if err != nil {
 		return err
@@ -629,16 +483,6 @@ func (v *View) MarketDealStatesForEach(ctx context.Context, f func(id abi.DealID
 		return err
 	}
 	return nil
-
-	//dealStates, err := v.asDealStateArray(ctx, marketState.States)
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//var ds market.DealState
-	//return dealStates.ForEach(&ds, func(dealId int64) error {
-	//	return f(abi.DealID(dealId), &ds)
-	//})
 }
 
 // StateDealProviderCollateralBounds returns the min and max collateral a storage provider
@@ -648,13 +492,12 @@ func (v *View) MarketDealProviderCollateralBounds(ctx context.Context, size abi.
 }
 
 func (v *View) StateVerifiedClientStatus(ctx context.Context, addr addr.Address) (abi.StoragePower, error) {
-	// todo review
-	actr, err := v.loadActor(ctx, builtin.VerifiedRegistryActorAddr)
+	act, err := v.loadActor(ctx, verifreg.Address)
 	if err != nil {
 		return abi.NewStoragePower(0), err
 	}
 
-	state, err := verifreg.Load(adt.WrapStore(ctx, v.ipldStore), actr)
+	state, err := verifreg.Load(v.adtStore(ctx), act)
 	if err != nil {
 		return abi.NewStoragePower(0), err
 	}
@@ -677,7 +520,6 @@ func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*
 		return nil, err
 	}
 
-	// todo review
 	dealProposals, err := state.Proposals()
 	if err != nil {
 		return nil, err
@@ -685,13 +527,12 @@ func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*
 
 	dealProposal, found, err := dealProposals.Get(dealID)
 	if err != nil {
-		return  nil, err
+		return nil, err
 	}
 
 	if !found {
 		return nil, xerrors.New("deal proposal not found")
 	}
-
 
 	dealStates, err := state.States()
 	if err != nil {
@@ -700,7 +541,7 @@ func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*
 
 	dealState, found, err := dealStates.Get(dealID)
 	if err != nil {
-		return  nil, err
+		return nil, err
 	}
 
 	if !found {
@@ -740,7 +581,6 @@ func (v *View) PowerNetworkTotal(ctx context.Context) (*NetworkPower, error) {
 
 // Returns the power of a miner's committed sectors.
 func (v *View) MinerClaimedPower(ctx context.Context, miner addr.Address) (raw, qa abi.StoragePower, err error) {
-	// todo review
 	st, err := v.loadPowerActor(ctx)
 	if err != nil {
 		return big.Zero(), big.Zero(), err
@@ -755,7 +595,7 @@ func (v *View) MinerClaimedPower(ctx context.Context, miner addr.Address) (raw, 
 		return big.Zero(), big.Zero(), xerrors.New("miner not found")
 	}
 
-	return  p.RawBytePower, p.QualityAdjPower, nil
+	return p.RawBytePower, p.QualityAdjPower, nil
 }
 
 func (v *View) MinerNominalPowerMeetsConsensusMinimum(ctx context.Context, addr addr.Address) (bool, error) {
@@ -812,7 +652,6 @@ func (v *View) StateMinerDeadlineForIdx(ctx context.Context, addr addr.Address, 
 }
 
 func (v *View) StateMinerSectors(ctx context.Context, addr addr.Address, filter *bitfield.BitField, key block.TipSetKey) ([]*ChainSectorInfo, error) {
-	// todo review
 	mas, err := v.loadMinerActor(ctx, addr)
 	if err != nil {
 		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
@@ -825,13 +664,13 @@ func (v *View) StateMinerSectors(ctx context.Context, addr addr.Address, filter 
 
 	sset := make([]*ChainSectorInfo, len(siset))
 	for i, val := range siset {
-		sset[i] = &ChainSectorInfo {
+		sset[i] = &ChainSectorInfo{
 			Info: *val,
-			ID: val.SectorNumber,
+			ID:   val.SectorNumber,
 		}
 	}
 
-	return sset,nil
+	return sset, nil
 }
 
 func (v *View) GetFilLocked(ctx context.Context, st vmstate.Tree) (abi.TokenAmount, error) {
@@ -867,36 +706,21 @@ func (v *View) ResolveToKeyAddr(ctx context.Context, address addr.Address) (addr
 		return addr.Undef, xerrors.Errorf("failed to find actor: %s", address)
 	}
 
-	if act.Code.Cid != builtin.AccountActorCodeID {
-		return addr.Undef, xerrors.Errorf("address %s was not for an account actor", address)
-	}
-
-	// todo review
 	aast, err := account.Load(adt.WrapStore(context.TODO(), v.ipldStore), act)
 	if err != nil {
 		return addr.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", address, err)
 	}
 
-	//var aast account.State
-	//if err := v.ipldStore.Get(context.TODO(), act.Head.Cid, &aast); err != nil {
-	//	return addr.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", address, err)
-	//}
-
 	return aast.PubkeyAddress()
 }
 
 func (v *View) loadInitActor(ctx context.Context) (notinit.State, error) {
-	actr, err := v.loadActor(ctx, builtin.InitActorAddr)
+	actr, err := v.loadActor(ctx, notinit.Address)
 	if err != nil {
 		return nil, err
 	}
 
-	// todo review
 	return notinit.Load(adt.WrapStore(ctx, v.ipldStore), actr)
-
-	//var state notinit.State
-	//err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
-	//return &state, err
 }
 
 func (v *View) LoadMinerActor(ctx context.Context, address addr.Address) (miner.State, error) {
@@ -913,50 +737,34 @@ func (v *View) loadMinerActor(ctx context.Context, address addr.Address) (miner.
 		return nil, err
 	}
 
-	// todo review
 	return miner.Load(adt.WrapStore(context.TODO(), v.ipldStore), actr)
-
-	//var state miner.State
-	//err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
-	//return state, err
 }
 
 func (v *View) loadPowerActor(ctx context.Context) (power.State, error) {
-	actr, err := v.loadActor(ctx, builtin.StoragePowerActorAddr)
+	actr, err := v.loadActor(ctx, power.Address)
 	if err != nil {
 		return nil, err
 	}
 
 	return power.Load(adt.WrapStore(ctx, v.ipldStore), actr)
-	//var state power.State
-	//err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
-	//return &state, err
 }
 
 func (v *View) loadRewardActor(ctx context.Context) (reward.State, error) {
-	actr, err := v.loadActor(ctx, builtin.RewardActorAddr)
+	actr, err := v.loadActor(ctx, reward.Address)
 	if err != nil {
 		return nil, err
 	}
 
-	return reward.Load(adt.WrapStore(ctx, v.ipldStore), actr) // todo review
-
-	//var state reward.State
-	//err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
-	//return &state, err
+	return reward.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
 func (v *View) loadMarketActor(ctx context.Context) (market.State, error) {
-	actr, err := v.loadActor(ctx, builtin.StorageMarketActorAddr)
+	actr, err := v.loadActor(ctx, market.Address)
 	if err != nil {
 		return nil, err
 	}
 
-	return market.Load(adt.WrapStore(ctx, v.ipldStore), actr) // todo review
-
-	//var state market.State
-	//err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
-	//return &state, err
+	return market.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
 func (v *View) loadAccountActor(ctx context.Context, a addr.Address) (account.State, error) {
@@ -969,26 +777,24 @@ func (v *View) loadAccountActor(ctx context.Context, a addr.Address) (account.St
 		return nil, err
 	}
 
-	// var state account.State
-	// err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
-
-	// todo review
 	return account.Load(adt.WrapStore(context.TODO(), v.ipldStore), actr)
 }
 
 func (v *View) loadActor(ctx context.Context, address addr.Address) (*actor.Actor, error) {
-	tree, err := v.asMap(ctx, v.root)
+	tree, err := vmstate.LoadState(ctx, v.ipldStore, v.root)
 	if err != nil {
 		return nil, err
 	}
 
-	var actr actor.Actor
-	found, err := tree.Get(abi.AddrKey(address), &actr)
+	actor, found, err := tree.GetActor(ctx, address)
+	if err != nil {
+		return nil, err
+	}
 	if !found {
 		return nil, types.ErrNotFound
 	}
 
-	return &actr, err
+	return actor, err
 }
 
 func (v *View) adtStore(ctx context.Context) adt.Store {
@@ -996,26 +802,16 @@ func (v *View) adtStore(ctx context.Context) adt.Store {
 }
 
 func (v *View) asArray(ctx context.Context, root cid.Cid) (adt.Array, error) {
-	// todo review
-
 	return adt.AsArray(v.adtStore(ctx), root, v.networkVersion)
-	// return adt.AsArray(v.adtStore(ctx), root)
-}
-
-func (v *View) asMap(ctx context.Context, root cid.Cid) (adt.Map, error) {
-	// todo review
-	return adt.AsMap(v.adtStore(ctx), root, specactors.Version(v.networkVersion))
-	// return adt.AsMap(v.adtStore(ctx), root)
 }
 
 func getFilMarketLocked(ctx context.Context, ipldStore cbor.IpldStore, st vmstate.Tree) (abi.TokenAmount, error) {
-	// todo review
-	mactor, found, err := st.GetActor(ctx, builtin.StorageMarketActorAddr)
+	mactor, found, err := st.GetActor(ctx, market.Address)
 	if !found || err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load market actor: %w", err)
 	}
 
-	mst, err := market.Load(adt.WrapStore(ctx, ipldStore), mactor);
+	mst, err := market.Load(adt.WrapStore(ctx, ipldStore), mactor)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load market state: %w", err)
 	}
