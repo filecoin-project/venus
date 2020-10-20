@@ -25,11 +25,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	drandapi "github.com/filecoin-project/go-filecoin/internal/pkg/protocol/drand"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 )
 
@@ -39,7 +36,6 @@ type Builder struct {
 	libp2pOpts  []libp2p.Option
 	offlineMode bool
 	verifier    ffiwrapper.Verifier
-	postGen     postgenerator.PoStGenerator
 	propDelay   time.Duration
 	repo        repo.Repo
 	journal     journal.Journal
@@ -100,15 +96,6 @@ func Libp2pOptions(opts ...libp2p.Option) BuilderOpt {
 func VerifierConfigOption(verifier ffiwrapper.Verifier) BuilderOpt {
 	return func(c *Builder) error {
 		c.verifier = verifier
-		return nil
-	}
-}
-
-// PoStGeneratorOption returns a builder option that sets the post generator to
-// use during block generation
-func PoStGeneratorOption(generator postgenerator.PoStGenerator) BuilderOpt {
-	return func(b *Builder) error {
-		b.postGen = generator
 		return nil
 	}
 }
@@ -293,11 +280,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.StorageNetworking")
 	}
 
-	nd.BlockMining, err = submodule.NewBlockMiningSubmodule(ctx, b.postGen)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.BlockMining")
-	}
-
 	waiter := msg.NewWaiter(nd.chain.ChainReader, nd.chain.MessageStore, nd.Blockstore.Blockstore, nd.Blockstore.CborStore)
 
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
@@ -311,29 +293,9 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		MsgWaiter:    waiter,
 		Network:      nd.network.Network,
 		Outbox:       nd.Messaging.Outbox,
-		PieceManager: nd.PieceManager,
 		Wallet:       nd.Wallet.Wallet,
 	}))
 
-	nd.StorageProtocol, err = submodule.NewStorageProtocolSubmodule(
-		ctx,
-		nd.PorcelainAPI.WalletDefaultAddress,
-		&nd.chain,
-		&nd.Messaging,
-		waiter,
-		nd.Wallet.Signer,
-		nd.Host(),
-		nd.Repo.Datastore(),
-		nd.Blockstore.Blockstore,
-		nd.Repo.MultiStore(),
-		nd.network.DataTransfer,
-		state.NewViewer(nd.Blockstore.CborStore),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	nd.StorageAPI = storage.NewAPI(nd.StorageProtocol)
 	nd.DrandAPI = drandapi.New(b.drand, nd.PorcelainAPI)
 
 	return nd, nil

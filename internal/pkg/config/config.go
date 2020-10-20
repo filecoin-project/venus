@@ -12,8 +12,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // Config is an in memory representation of the filecoin configuration file
@@ -21,11 +19,9 @@ type Config struct {
 	API           *APIConfig           `json:"api"`
 	Bootstrap     *BootstrapConfig     `json:"bootstrap"`
 	Datastore     *DatastoreConfig     `json:"datastore"`
-	Mining        *MiningConfig        `json:"mining"`
 	Mpool         *MessagePoolConfig   `json:"mpool"`
 	NetworkParams *NetworkParamsConfig `json:"parameters"`
 	Observability *ObservabilityConfig `json:"observability"`
-	SectorBase    *SectorBaseConfig    `json:"sectorbase"`
 	Swarm         *SwarmConfig         `json:"swarm"`
 	Wallet        *WalletConfig        `json:"wallet"`
 }
@@ -99,21 +95,6 @@ func newDefaultBootstrapConfig() *BootstrapConfig {
 		Addresses:        []string{},
 		MinPeerThreshold: 0, // TODO: we don't actually have an bootstrap peers yet.
 		Period:           "1m",
-	}
-}
-
-// MiningConfig holds all configuration options related to mining.
-type MiningConfig struct {
-	MinerAddress            address.Address `json:"minerAddress"`
-	AutoSealIntervalSeconds uint            `json:"autoSealIntervalSeconds"`
-	StoragePrice            types.AttoFIL   `json:"storagePrice"`
-}
-
-func newDefaultMiningConfig() *MiningConfig {
-	return &MiningConfig{
-		MinerAddress:            address.Undef,
-		AutoSealIntervalSeconds: 120,
-		StoragePrice:            types.ZeroAttoFIL,
 	}
 }
 
@@ -230,26 +211,6 @@ func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 	}
 }
 
-// SectorBaseConfig holds all configuration options related to the node's
-// sector storage.
-type SectorBaseConfig struct {
-	// RootDir is the absolute path to the root directory holding sector data.
-	// If empty the default of <homedir>/sectors is implied.
-	RootDirPath string `json:"rootdir"`
-
-	// PreSealedSectorsDir is the absolute path to the directory holding any
-	// pre-sealed sector files and corresponding metadata JSON.
-	// If empty, it is assumed that no pre-sealed sectors exist.
-	PreSealedSectorsDirPath string `json:"preSealedSectorsDir"`
-}
-
-func newDefaultSectorbaseConfig() *SectorBaseConfig {
-	return &SectorBaseConfig{
-		RootDirPath:             "",
-		PreSealedSectorsDirPath: "",
-	}
-}
-
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
@@ -257,11 +218,9 @@ func NewDefaultConfig() *Config {
 		API:           newDefaultAPIConfig(),
 		Bootstrap:     newDefaultBootstrapConfig(),
 		Datastore:     newDefaultDatastoreConfig(),
-		Mining:        newDefaultMiningConfig(),
 		Mpool:         newDefaultMessagePoolConfig(),
 		NetworkParams: newDefaultNetworkParamsConfig(),
 		Observability: newDefaultObservabilityConfig(),
-		SectorBase:    newDefaultSectorbaseConfig(),
 		Swarm:         newDefaultSwarmConfig(),
 		Wallet:        newDefaultWalletConfig(),
 	}

@@ -154,27 +154,8 @@ func TestNodeStartMining(t *testing.T) {
 
 	seed.GiveKey(t, minerNode, 0)
 	seed.GiveMiner(t, minerNode, 0) // TODO: update to accommodate new go-fil-markets integration
-	// Start mining give error for fail to get miner actor from the heaviest tipset stateroot
-	assert.Contains(t, minerNode.StartMining(ctx).Error(), "failed to setup mining")
 
 	assert.NoError(t, minerNode.Start(ctx))
-
-	t.Run("Start/Stop/Start results in a MiningScheduler that is started", func(t *testing.T) {
-		assert.NoError(t, minerNode.StartMining(ctx))
-		defer minerNode.StopMining(ctx)
-		assert.True(t, minerNode.BlockMining.MiningScheduler.IsStarted())
-		minerNode.StopMining(ctx)
-		assert.False(t, minerNode.BlockMining.MiningScheduler.IsStarted())
-		assert.NoError(t, minerNode.StartMining(ctx))
-		assert.True(t, minerNode.BlockMining.MiningScheduler.IsStarted())
-	})
-
-	t.Run("Start + Start gives an error message saying mining is already started", func(t *testing.T) {
-		assert.NoError(t, minerNode.StartMining(ctx))
-		defer minerNode.StopMining(ctx)
-		err := minerNode.StartMining(ctx)
-		assert.Error(t, err, "node is already mining")
-	})
 }
 
 func TestOptionWithError(t *testing.T) {

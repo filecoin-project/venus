@@ -32,7 +32,7 @@ const (
 	versionFilename        = "version"
 	walletDatastorePrefix  = "wallet"
 	chainDatastorePrefix   = "chain"
-	dealsDatastorePrefix   = "deals"
+	// dealsDatastorePrefix   = "deals"
 	snapshotStorePrefix    = "snapshots"
 	snapshotFilenamePrefix = "snapshot"
 )
@@ -54,7 +54,6 @@ type FSRepo struct {
 	keystore keystore.Keystore
 	walletDs Datastore
 	chainDs  Datastore
-	dealsDs  Datastore
 
 	// lockfile is the file system lock to prevent others from opening the same repo.
 	lockfile io.Closer
@@ -227,10 +226,6 @@ func (r *FSRepo) loadFromDisk() error {
 		return errors.Wrap(err, "failed to open chain datastore")
 	}
 
-	if err := r.openDealsDatastore(); err != nil {
-		return errors.Wrap(err, "failed to open deals datastore")
-	}
-
 	if err := r.openMultiStore(); err != nil {
 		return errors.Wrap(err, "failed to open staging datastore")
 	}
@@ -297,11 +292,6 @@ func (r *FSRepo) ChainDatastore() Datastore {
 }
 
 // DealsDatastore returns the deals datastore.
-func (r *FSRepo) DealsDatastore() Datastore {
-	return r.dealsDs
-}
-
-// DealsDatastore returns the deals datastore.
 func (r *FSRepo) MultiStore() *multistore.MultiStore {
 	return r.mds
 }
@@ -328,10 +318,6 @@ func (r *FSRepo) Close() error {
 
 	if err := r.chainDs.Close(); err != nil {
 		return errors.Wrap(err, "failed to close chain datastore")
-	}
-
-	if err := r.dealsDs.Close(); err != nil {
-		return errors.Wrap(err, "failed to close miner deals datastore")
 	}
 
 	if err := r.removeAPIFile(); err != nil {
@@ -442,17 +428,6 @@ func (r *FSRepo) openWalletDatastore() error {
 	}
 
 	r.walletDs = ds
-
-	return nil
-}
-
-func (r *FSRepo) openDealsDatastore() error {
-	ds, err := badgerds.NewDatastore(filepath.Join(r.path, dealsDatastorePrefix), badgerOptions())
-	if err != nil {
-		return err
-	}
-
-	r.dealsDs = ds
 
 	return nil
 }

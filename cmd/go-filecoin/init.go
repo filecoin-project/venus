@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/filecoin-project/go-address"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -38,11 +37,7 @@ var initCmd = &cmds.Command{
 		cmds.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
 		cmds.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
 		cmds.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
-		cmds.StringOption(OptionSectorDir, "path of directory into which staged and sealed sectors will be written"),
-		cmds.StringOption(MinerActorAddress, "when set, sets the daemons's miner actor address to the provided address"),
-		cmds.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
 		cmds.StringOption(Network, "when set, populates config with network specific parameters"),
-		cmds.StringOption(OptionPresealedSectorDir, "when set to the path of a directory, imports pre-sealed sector data from that directory"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
@@ -99,29 +94,6 @@ var initCmd = &cmds.Command{
 }
 
 func setConfigFromOptions(cfg *config.Config, options cmds.OptMap) error {
-	var err error
-	if dir, ok := options[OptionSectorDir].(string); ok {
-		cfg.SectorBase.RootDirPath = dir
-	}
-
-	if autoSealIntervalSeconds, ok := options[AutoSealIntervalSeconds]; ok {
-		cfg.Mining.AutoSealIntervalSeconds = autoSealIntervalSeconds.(uint)
-	}
-
-	if ma, ok := options[MinerActorAddress].(string); ok {
-		if cfg.Mining.MinerAddress, err = address.NewFromString(ma); err != nil {
-			return err
-		}
-	}
-
-	if dir, ok := options[OptionPresealedSectorDir].(string); ok {
-		if cfg.Mining.MinerAddress == address.Undef {
-			return fmt.Errorf("if --%s is provided, --%s must also be provided", OptionPresealedSectorDir, MinerActorAddress)
-		}
-
-		cfg.SectorBase.PreSealedSectorsDirPath = dir
-	}
-
 	// Setup devnet specific config options.
 	netName, _ := options[Network].(string)
 	var netcfg *networks.NetworkConf
@@ -132,6 +104,7 @@ func setConfigFromOptions(cfg *config.Config, options cmds.OptMap) error {
 	} else if netName != "" {
 		return fmt.Errorf("unknown network name %s", netName)
 	}
+
 	if netcfg != nil {
 		cfg.Bootstrap = &netcfg.Bootstrap
 		cfg.NetworkParams = &netcfg.Network

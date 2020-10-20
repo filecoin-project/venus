@@ -94,7 +94,6 @@ func (cs *ChainSeed) GiveMiner(t *testing.T, nd *Node, which int) (address.Addre
 	t.Helper()
 	cfg := nd.Repo.Config()
 	m := cs.info.Miners[which]
-	cfg.Mining.MinerAddress = m.Address
 
 	require.NoError(t, nd.Repo.ReplaceConfig(cfg))
 
@@ -119,15 +118,6 @@ func (cs *ChainSeed) Addr(t *testing.T, key int) address.Address {
 
 // ConfigOpt mutates a node config post initialization
 type ConfigOpt func(*config.Config)
-
-// MinerConfigOpt is a config option that sets a node's miner address to one of
-// the chain seed's miner addresses
-func (cs *ChainSeed) MinerConfigOpt(which int) ConfigOpt {
-	return func(cfg *config.Config) {
-		m := cs.info.Miners[which]
-		cfg.Mining.MinerAddress = m.Address
-	}
-}
 
 // MinerInitOpt is a node init option that imports the key for the miner's owner
 func (cs *ChainSeed) MinerInitOpt(which int) InitOpt {

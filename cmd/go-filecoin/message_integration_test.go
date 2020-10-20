@@ -27,16 +27,12 @@ func TestMessageSend(t *testing.T) {
 
 	cs := node.FixtureChainSeed(t)
 	builder.WithGenesisInit(cs.GenesisInitFunc)
-	builder.WithConfig(cs.MinerConfigOpt(0))
 	builder.WithConfig(node.DefaultAddressConfigOpt(defaultAddr))
 	builder.WithInitOpt(cs.KeyInitOpt(1))
 	builder.WithInitOpt(cs.KeyInitOpt(0))
 
 	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
-
-	_, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-	require.NoError(t, err)
 
 	from, err := n.PorcelainAPI.WalletDefaultAddress() // this should = fixtures.TestAddresses[0]
 	require.NoError(t, err)
@@ -88,7 +84,7 @@ func TestMessageWait(t *testing.T) {
 	tf.IntegrationTest(t)
 	ctx := context.Background()
 
-	seed, genCfg, fakeClock, chainClock := test.CreateBootstrapSetup(t)
+	seed, genCfg, chainClock := test.CreateBootstrapSetup(t)
 	node := test.CreateBootstrapMiner(ctx, t, seed, chainClock, genCfg)
 
 	cmdClient, clientStop := test.RunNodeAPI(ctx, node, t)
@@ -114,8 +110,6 @@ func TestMessageWait(t *testing.T) {
 			sendResult.Cid.String(),
 		)
 
-		test.RequireMineOnce(ctx, t, fakeClock, node)
-
 		var waitResult commands.WaitResult
 		cmdClient.RunMarshaledJSON(
 			ctx,
@@ -138,11 +132,6 @@ func TestMessageWait(t *testing.T) {
 			"--gas-limit", "300",
 			fortest.TestAddresses[1].String(),
 		)
-
-		// mine 4 times so message is on the chain a few tipsets back
-		for i := 0; i < 4; i++ {
-			test.RequireMineOnce(ctx, t, fakeClock, node)
-		}
 
 		// Fail with timeout because the message is too early for the default lookback (2)
 		cmdClient.RunFail(

@@ -22,7 +22,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/sectors"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -81,7 +80,7 @@ func Init(ctx context.Context, r repo.Repo, gen genesis.InitFunc, opts ...InitOp
 
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	chainstore, err := chain.Init(ctx, r, bs, cst, gen)
+	_, err := chain.Init(ctx, r, bs, cst, gen)
 	if err != nil {
 		return errors.Wrap(err, "Could not Init Node")
 	}
@@ -114,11 +113,7 @@ func Init(ctx context.Context, r repo.Repo, gen genesis.InitFunc, opts ...InitOp
 		return errors.Wrap(err, "failed to write config")
 	}
 
-	genesisBlock, err := chainstore.GetGenesisBlock(ctx)
-	if err != nil {
-		return err
-	}
-	return InitSectors(ctx, r, genesisBlock)
+	return nil
 }
 
 func initPeerKey(store keystore.Keystore, key acrypto.PrivKey) error {
@@ -154,35 +149,6 @@ func importInitKeys(w *wallet.Wallet, importKeys []*crypto.KeyInfo) error {
 	for _, ki := range importKeys {
 		_, err := w.Import(ki)
 		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func InitSectors(ctx context.Context, rep repo.Repo, genesisBlock *block.Block) error {
-	cfg := rep.Config()
-
-	rpt, err := rep.Path()
-	if err != nil {
-		return err
-	}
-
-	spt, err := paths.GetSectorPath(cfg.SectorBase.RootDirPath, rpt)
-	if err != nil {
-		return err
-	}
-
-	if err := ensureSectorDirAndMetadata(false, spt); err != nil {
-		return err
-	}
-
-	if cfg.SectorBase.PreSealedSectorsDirPath != "" && cfg.Mining.MinerAddress != address.Undef {
-		if err := ensureSectorDirAndMetadata(true, cfg.SectorBase.PreSealedSectorsDirPath); err != nil {
-			return err
-		}
-
-		if err := importPreSealedSectorMetadata(ctx, rep, genesisBlock, cfg.Mining.MinerAddress); err != nil {
 			return err
 		}
 	}

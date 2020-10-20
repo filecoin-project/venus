@@ -75,12 +75,6 @@ func TestFaucetSendFunds(t *testing.T) {
 	msgcid := MustSendFundsFaucet(t, "localhost:9797", targetAddr)
 	assert.NotEmpty(t, msgcid)
 
-	// Mine the block containing the message, and another one to evaluate that state.
-	for i := 0; i < 2; i++ {
-		_, err := nd.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-		require.NoError(t, err)
-	}
-
 	// Check that funds have been transferred
 	expectedBalance := types.NewAttoFILFromFIL(faucetDripFil)
 	actr, err := nd.PorcelainAPI.ActorGet(ctx, targetAddr)

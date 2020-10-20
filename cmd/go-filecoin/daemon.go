@@ -18,7 +18,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
@@ -34,8 +33,8 @@ var daemonCmd = &cmds.Command{
 		cmds.BoolOption(OfflineMode, "start the node without networking"),
 		cmds.BoolOption(ELStdout),
 		cmds.BoolOption(IsRelay, "advertise and allow filecoin network traffic to be relayed through this node"),
-		cmds.StringOption(BlockTime, "period a node waits between mining successive blocks").WithDefault(clock.DefaultEpochDuration.String()),
-		cmds.StringOption(PropagationDelay, "time a node waits after the start of an epoch for blocks to arrive").WithDefault(clock.DefaultPropagationDelay.String()),
+		//cmds.StringOption(BlockTime, "period a node waits between mining successive blocks").WithDefault(clock.DefaultEpochDuration.String()),
+		//cmds.StringOption(PropagationDelay, "time a node waits after the start of an epoch for blocks to arrive").WithDefault(clock.DefaultPropagationDelay.String()),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		return daemonRun(req, re)
@@ -80,26 +79,6 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	if isRelay, ok := req.Options[IsRelay].(bool); ok && isRelay {
 		opts = append(opts, node.IsRelay())
 	}
-
-	durStr, ok := req.Options[BlockTime].(string)
-	if !ok {
-		return fmt.Errorf("invalid %s: %v", BlockTime, req.Options[BlockTime])
-	}
-	blockTime, err := time.ParseDuration(durStr)
-	if err != nil {
-		return fmt.Errorf("invalid %s: %s", BlockTime, durStr)
-	}
-	opts = append(opts, node.BlockTime(blockTime))
-
-	delayStr, ok := req.Options[PropagationDelay].(string)
-	if !ok {
-		return fmt.Errorf("invalid %s: %v", PropagationDelay, req.Options[PropagationDelay])
-	}
-	propDelay, err := time.ParseDuration(delayStr)
-	if err != nil {
-		return fmt.Errorf("invalid %s: %s", PropagationDelay, delayStr)
-	}
-	opts = append(opts, node.PropagationDelay(propDelay))
 
 	journal, err := journal.NewZapJournal(rep.JournalPath())
 	if err != nil {
@@ -227,12 +206,9 @@ func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig,
 
 func CreateServerEnv(ctx context.Context, nd *node.Node) *Env {
 	return &Env{
-		blockMiningAPI: nd.BlockMining.BlockMiningAPI,
 		drandAPI:       nd.DrandAPI,
 		ctx:            ctx,
 		inspectorAPI:   NewInspectorAPI(nd.Repo),
 		porcelainAPI:   nd.PorcelainAPI,
-		retrievalAPI:   nd.RetrievalProtocol,
-		storageAPI:     nd.StorageAPI,
 	}
 }

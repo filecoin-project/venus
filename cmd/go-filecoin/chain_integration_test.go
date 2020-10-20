@@ -37,14 +37,11 @@ func TestChainLs(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("chain ls with json encoding returns the whole chain as json", func(t *testing.T) {
-		seed, cfg, fakeClk, chainClk := test.CreateBootstrapSetup(t)
+		seed, cfg, chainClk := test.CreateBootstrapSetup(t)
 		n := test.CreateBootstrapMiner(ctx, t, seed, chainClk, cfg)
 
 		cmdClient, apiDone := test.RunNodeAPI(ctx, n, t)
 		defer apiDone()
-
-		blk := test.RequireMineOnce(ctx, t, fakeClk, n)
-		c := blk.Cid()
 
 		result2 := cmdClient.RunSuccess(ctx, "chain", "ls", "--enc", "json").ReadStdoutTrimNewlines()
 		var bs [][]block.Block
@@ -58,7 +55,6 @@ func TestChainLs(t *testing.T) {
 
 		assert.Equal(t, 2, len(bs))
 		assert.True(t, bs[1][0].Parents.Empty())
-		assert.True(t, c.Equals(bs[0][0].Cid()))
 	})
 
 	t.Run("chain ls with chain of size 1 returns genesis block", func(t *testing.T) {
@@ -78,13 +74,11 @@ func TestChainLs(t *testing.T) {
 	})
 
 	t.Run("chain ls --long returns CIDs, Miner, block height and message count", func(t *testing.T) {
-		seed, cfg, fakeClk, chainClk := test.CreateBootstrapSetup(t)
+		seed, cfg, chainClk := test.CreateBootstrapSetup(t)
 		n := test.CreateBootstrapMiner(ctx, t, seed, chainClk, cfg)
 
 		cmdClient, apiDone := test.RunNodeAPI(ctx, n, t)
 		defer apiDone()
-
-		test.RequireMineOnce(ctx, t, fakeClk, n)
 
 		chainLsResult := cmdClient.RunSuccess(ctx, "chain", "ls", "--long").ReadStdoutTrimNewlines()
 
@@ -94,13 +88,11 @@ func TestChainLs(t *testing.T) {
 	})
 
 	t.Run("chain ls --long with JSON encoding returns integer string block height", func(t *testing.T) {
-		seed, cfg, fakeClk, chainClk := test.CreateBootstrapSetup(t)
+		seed, cfg, chainClk := test.CreateBootstrapSetup(t)
 		n := test.CreateBootstrapMiner(ctx, t, seed, chainClk, cfg)
 
 		cmdClient, apiDone := test.RunNodeAPI(ctx, n, t)
 		defer apiDone()
-
-		test.RequireMineOnce(ctx, t, fakeClk, n)
 
 		chainLsResult := cmdClient.RunSuccess(ctx, "chain", "ls", "--long", "--enc", "json").ReadStdoutTrimNewlines()
 		assert.Contains(t, chainLsResult, `"height":0`)

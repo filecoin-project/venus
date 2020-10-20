@@ -9,43 +9,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/blocksub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 )
-
-// AddNewBlock receives a newly mined block and stores, validates and propagates it to the network.
-func (node *Node) AddNewBlock(ctx context.Context, o mining.FullBlock) (err error) {
-	b := o.Header
-	ctx, span := trace.StartSpan(ctx, "Node.AddNewBlock")
-	span.AddAttributes(trace.StringAttribute("block", b.Cid().String()))
-	defer tracing.AddErrorEndSpan(ctx, span, &err)
-
-	// Put block in storage wired to an exchange so this node and other
-	// nodes can fetch it.
-	log.Debugf("putting block in bitswap exchange: %s", b.Cid().String())
-	blkCid, err := node.Blockstore.CborStore.Put(ctx, b)
-	if err != nil {
-		return errors.Wrap(err, "could not add new block to online storage")
-	}
-
-	// Publish blocksub message
-	log.Debugf("publishing new block: %s", b.Cid().String())
-	go func() {
-		payload, err := blocksub.MakePayload(o.Header, o.BLSMessages, o.SECPMessages)
-		if err != nil {
-			log.Errorf("failed to create blocksub payload: %s", err)
-		}
-		err = node.syncer.BlockTopic.Publish(ctx, payload)
-		if err != nil {
-			log.Errorf("failed to publish on blocksub: %s", err)
-		}
-	}()
-
-	log.Debugf("syncing new block: %s", b.Cid().String())
-	ci := block.NewChainInfo(node.Host().ID(), node.Host().ID(), block.NewTipSetKey(blkCid), b.Height)
-	return node.syncer.ChainSyncManager.BlockProposer().SendOwnBlock(ci)
-}
 
 func (node *Node) handleBlockSub(ctx context.Context, msg pubsub.Message) (err error) {
 	sender := msg.GetSender()

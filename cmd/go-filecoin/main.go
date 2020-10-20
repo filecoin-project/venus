@@ -4,18 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net"
-	"net/url"
-	"os"
-	"syscall"
-
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-cmds/cli"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/pkg/errors"
+	"io"
+	"os"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
@@ -31,10 +27,10 @@ const (
 	OptionRepoDir = "repodir"
 
 	// OptionSectorDir is the name of the option for specifying the directory into which staged and sealed sectors will be written.
-	OptionSectorDir = "sectordir"
+	//OptionSectorDir = "sectordir"
 
 	// OptionPresealedSectorDir is the name of the option for specifying the directory from which presealed sectors should be pulled when initializing.
-	OptionPresealedSectorDir = "presealed-sectordir"
+	//OptionPresealedSectorDir = "presealed-sectordir"
 
 	// OptionDrandConfigAddr is the init option for configuring drand to a given network address at init time
 	OptionDrandConfigAddr = "drand-config-addr"
@@ -49,7 +45,7 @@ const (
 	ELStdout = "elstdout"
 
 	// AutoSealIntervalSeconds configures the daemon to check for and seal any staged sectors on an interval.
-	AutoSealIntervalSeconds = "auto-seal-interval-seconds"
+	//AutoSealIntervalSeconds = "auto-seal-interval-seconds"
 
 	// SwarmAddress is the multiaddr for this Filecoin node
 	SwarmAddress = "swarmlisten"
@@ -63,10 +59,10 @@ const (
 	// BlockTime is the duration string of the block time the daemon will
 	// run with.  TODO: this should eventually be more explicitly grouped
 	// with testing as we won't be able to set blocktime in production.
-	BlockTime = "block-time"
+	//BlockTime = "block-time"
 
 	// PropagationDelay is the duration the miner will wait for blocks to arrive before attempting to mine a new one
-	PropagationDelay = "prop-delay"
+	//PropagationDelay = "prop-delay"
 
 	// PeerKeyFile is the path of file containing key to use for new nodes libp2p identity
 	PeerKeyFile = "peerkeyfile"
@@ -75,7 +71,7 @@ const (
 	WalletKeyFile = "wallet-keyfile"
 
 	// MinerActorAddress when set, sets the daemons's miner address to the provided address
-	MinerActorAddress = "miner-actor-address"
+	//MinerActorAddress = "miner-actor-address"
 
 	// GenesisFile is the path of file containing archive of genesis block DAG data
 	GenesisFile = "genesisfile"
@@ -111,18 +107,9 @@ START RUNNING FILECOIN
   go-filecoin wallet                 - Manage your filecoin wallets
   go-filecoin address                - Interact with addresses
 
-STORE AND RETRIEVE DATA
-  go-filecoin client                 - Make deals, store data, retrieve data
-  go-filecoin retrieval-client       - Manage retrieval client operations
-
-MINE
-  go-filecoin miner                  - Manage a single miner actor
-  go-filecoin mining                 - Manage all mining operations for a node
-
 VIEW DATA STRUCTURES
   go-filecoin chain                  - Inspect the filecoin blockchain
   go-filecoin dag                    - Interact with IPLD DAG objects
-  go-filecoin deals                  - Manage deals made by or with this node
   go-filecoin show                   - Get human-readable representations of filecoin objects
 
 NETWORK COMMANDS
@@ -132,7 +119,6 @@ NETWORK COMMANDS
   go-filecoin ping <peer ID>...      - Send echo request packets to p2p network members
   go-filecoin swarm                  - Interact with the swarm
   go-filecoin stats                  - Monitor statistics on your network usage
-  go-filecion drand configure        - Configure drand server connection
   go-filecoin drand random           - retrieve drand randomness
 
 ACTOR COMMANDS
@@ -182,18 +168,18 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"bootstrap":        bootstrapCmd,
 	"chain":            chainCmd,
 	"config":           configCmd,
-	"client":           clientCmd,
+	//"client":           clientCmd,
 	"drand":            drandCmd,
 	"dag":              dagCmd,
-	"deals":            dealsCmd,
+	//"deals":            dealsCmd,
 	"dht":              dhtCmd,
 	"id":               idCmd,
 	"inspect":          inspectCmd,
 	"leb128":           leb128Cmd,
 	"log":              logCmd,
 	"message":          msgCmd,
-	"miner":            minerCmd,
-	"mining":           miningCmd,
+	//"miner":            minerCmd,
+	//"mining":           miningCmd,
 	"mpool":            mpoolCmd,
 	"outbox":           outboxCmd,
 	"ping":             pingCmd,
@@ -315,24 +301,6 @@ func requiresDaemon(req *cmds.Request) bool {
 		}
 	}
 	return true
-}
-
-func isConnectionRefused(err error) bool {
-	urlErr, ok := err.(*url.Error)
-	if !ok {
-		return false
-	}
-
-	opErr, ok := urlErr.Err.(*net.OpError)
-	if !ok {
-		return false
-	}
-
-	syscallErr, ok := opErr.Err.(*os.SyscallError)
-	if !ok {
-		return false
-	}
-	return syscallErr.Err == syscall.ECONNREFUSED
 }
 
 var feecapOption = cmds.StringOption("gas-feecap", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
