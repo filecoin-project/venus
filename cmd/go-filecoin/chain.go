@@ -5,11 +5,15 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/libp2p/go-libp2p-core/peer"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 )
 
 var chainCmd = &cmds.Command{
@@ -27,18 +31,35 @@ var chainCmd = &cmds.Command{
 	},
 }
 
+type ChainHeadResult struct {
+	Height       abi.ChainEpoch
+	ParentWeight big.Int
+	Cids         []cid.Cid
+}
+
 var storeHeadCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Get heaviest tipset CIDs",
+		Tagline: "Get heaviest tipset info",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		head, err := GetPorcelainAPI(env).ChainHead()
 		if err != nil {
 			return err
 		}
-		return re.Emit(head.Key())
+
+		h, err := head.Height()
+		if err != nil {
+			return err
+		}
+
+		pw, err := head.ParentWeight()
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(&ChainHeadResult{Height: h, ParentWeight: pw, Cids: head.Key().ToSlice()})
 	},
-	Type: []cid.Cid{},
+	Type: &ChainHeadResult{},
 }
 
 var storeLsCmd = &cmds.Command{
@@ -47,13 +68,36 @@ var storeLsCmd = &cmds.Command{
 		ShortDescription: `Provides a list of blocks in order from head to genesis. By default, only CIDs are returned for each block.`,
 	},
 	Options: []cmds.Option{
-		cmds.BoolOption("long", "l", "List blocks in long format, including CID, Miner, StateRoot, block height and message count respectively"),
+		cmds.Int64Option("height", "Start height of the query").WithDefault(-1),
+		cmds.UintOption("count", "Number of queries").WithDefault(10),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		iter, err := GetPorcelainAPI(env).ChainLs(req.Context)
-		if err != nil {
-			return err
+		count, _ := req.Options["count"].(uint)
+		if count < 1{
+			return nil
 		}
+
+		var iter *chain.TipsetIterator
+		var err error
+		height, _ := req.Options["height"].(int64)
+		if height >=0 {
+			ts, err := GetPorcelainAPI(env).ChainGetTipSetByHeight(req.Context, abi.ChainEpoch(height))
+			if err != nil {
+				return err
+			}
+
+			iter, err = GetPorcelainAPI(env).ChainLsWithHead(req.Context, ts.Key())
+			if err != nil {
+				return err
+			}
+		} else {
+			iter, err = GetPorcelainAPI(env).ChainLs(req.Context)
+			if err != nil {
+				return err
+			}
+		}
+
+		var number uint = 0
 		for ; !iter.Complete(); err = iter.Next() {
 			if err != nil {
 				return err
@@ -63,6 +107,11 @@ var storeLsCmd = &cmds.Command{
 			}
 			if err := re.Emit(iter.Value().ToSlice()); err != nil {
 				return err
+			}
+
+			number++
+			if number >= count {
+				break
 			}
 		}
 		return nil

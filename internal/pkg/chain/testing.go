@@ -96,7 +96,7 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 
 // NewGenesis creates and returns a tipset of one block with no parents.
 func (f *Builder) NewGenesis() *block.TipSet {
-	return block.RequireNewTipSet(f.t, f.AppendBlockOn(nil))
+	return block.RequireNewTipSet(f.t, f.AppendBlockOn(&block.UndefTipSet))
 }
 
 // AppendBlockOnBlocks creates and returns a new block child of `parents`, with no messages.

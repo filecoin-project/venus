@@ -61,11 +61,7 @@ type DrandBeacon struct {
 	localCache map[uint64]block.BeaconEntry
 }
 
-func NewDrandBeacon(genesisTs, interval uint64, config DrandConfig) (*DrandBeacon, error) {
-	if genesisTs == 0 {
-		panic("what are you doing this cant be zero")
-	}
-
+func NewDrandBeacon(genTimeStamp, interval uint64, config DrandConfig) (*DrandBeacon, error) {
 	drandChain, err := dchain.InfoFromJSON(bytes.NewReader([]byte(config.ChainInfoJSON)))
 	if err != nil {
 		return nil, xerrors.Errorf("unable to unmarshal drand chain info: %w", err)
@@ -107,7 +103,7 @@ func NewDrandBeacon(genesisTs, interval uint64, config DrandConfig) (*DrandBeaco
 	db.interval = drandChain.Period
 	db.drandGenTime = uint64(drandChain.GenesisTime)
 	db.filRoundTime = interval
-	db.filGenTime = genesisTs
+	db.filGenTime = genTimeStamp
 
 	return db, nil
 }

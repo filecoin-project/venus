@@ -170,7 +170,7 @@ func TestBootstrapWindowedPoSt(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		head := miner.Chain().ChainReader.GetHead()
 
-		view, err := miner.Chain().State.StateView(head)
+		view, err := miner.Chain().State.StateView(head,0)
 		require.NoError(t, err)
 
 		poSts, err := view.MinerSuccessfulPoSts(ctx, minerAddr)

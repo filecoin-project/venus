@@ -173,9 +173,21 @@ func (api *API) ChainTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	return api.chain.GetTipSet(key)
 }
 
+// ChainGetTipSetByHeight looks back for a tipset at the specified epoch.
+// If there are no blocks at the specified epoch, a tipset at an earlier epoch
+// will be returned.
+func (api *API) ChainGetTipSetByHeight(ctx context.Context, height abi.ChainEpoch) (*block.TipSet, error) {
+	return api.chain.GetTipsetByHeight(ctx, height)
+}
+
 // ChainLs returns an iterator of tipsets from head to genesis
 func (api *API) ChainLs(ctx context.Context) (*chain.TipsetIterator, error) {
-	return api.chain.Ls(ctx)
+	return api.chain.Ls(ctx, block.TipSetKey{})
+}
+
+// ChainLs returns an iterator of tipsets from specified head by tsKey to genesis
+func (api *API) ChainLsWithHead(ctx context.Context, tsKey block.TipSetKey) (*chain.TipsetIterator, error) {
+	return api.chain.Ls(ctx, tsKey)
 }
 
 func (api *API) SampleChainRandomness(ctx context.Context, head block.TipSetKey, tag acrypto.DomainSeparationTag,
