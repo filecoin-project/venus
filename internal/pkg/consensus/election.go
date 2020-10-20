@@ -14,7 +14,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/build"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus/lib/sigs"
 	crypto2 "github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
@@ -39,7 +38,7 @@ type MiningCheckAPI interface {
 	ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainGetRandomnessFromTickets(ctx context.Context, tsk block.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 
-	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, block.TipSetKey) (build.MiningBaseInfo, error)
+	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, block.TipSetKey) (block.MiningBaseInfo, error)
 
 	WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error)
 }
@@ -49,7 +48,7 @@ func DefaultProofVerifier() ffiwrapper.Verifier {
 }
 
 func IsRoundWinner(ctx context.Context, ts *block.TipSet, round abi.ChainEpoch,
-	miner address.Address, brand block.BeaconEntry, mbi *build.MiningBaseInfo, a MiningCheckAPI) (*crypto2.ElectionProof, error) {
+	miner address.Address, brand block.BeaconEntry, mbi *block.MiningBaseInfo, a MiningCheckAPI) (*crypto2.ElectionProof, error) {
 
 	buf := new(bytes.Buffer)
 	if err := miner.MarshalCBOR(buf); err != nil {
@@ -113,4 +112,3 @@ func VerifyElectionPoStVRF(ctx context.Context, worker address.Address, rand []b
 	}
 	return VerifyVRF(ctx, worker, rand, evrf)
 }
-

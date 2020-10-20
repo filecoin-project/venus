@@ -20,7 +20,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/build"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
@@ -65,7 +64,7 @@ type workerPorcelainAPI interface {
 	BlockTime() time.Duration
 	PowerStateView(baseKey block.TipSetKey) (consensus.PowerStateView, error)
 	FaultsStateView(baseKey block.TipSetKey) (consensus.FaultStateView, error)
-	MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*build.MiningBaseInfo, error)
+	MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*block.MiningBaseInfo, error)
 }
 
 type electionUtil interface {
@@ -355,4 +354,3 @@ func (w *DefaultWorker) electionEntry(ctx context.Context, base *block.TipSet, d
 
 	return chain.FindLatestDRAND(ctx, base, w.chainState)
 }
-

@@ -29,7 +29,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/build"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
@@ -251,7 +250,7 @@ func (api *API) StateView(baseKey block.TipSetKey) (*appstate.View, error) {
 		return nil, err
 	}
 
-	height,_ := ts.Height()
+	height, _ := ts.Height()
 	return api.chain.StateView(baseKey, height)
 }
 
@@ -372,7 +371,7 @@ func (api *API) PieceManager() piecemanager.PieceManager {
 	return api.pieceManager()
 }
 
-func (a *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*build.MiningBaseInfo, error) {
+func (a *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*block.MiningBaseInfo, error) {
 	ts, err := a.ChainTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset for mining base: %w", err)
@@ -453,7 +452,7 @@ func (a *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round a
 		return nil, xerrors.Errorf("determining if miner has min power failed: %w", err)
 	}
 
-	return &build.MiningBaseInfo{
+	return &block.MiningBaseInfo{
 		MinerPower:      mpow.QualityAdjPower,
 		NetworkPower:    tpow.QualityAdjPower,
 		Sectors:         sectors,
@@ -543,7 +542,7 @@ func (a *API) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifi
 		return nil, xerrors.Errorf("generating winning post challenges: %w", err)
 	}
 
-	sectors, err := provingSectors.All(numProvSect+1) // todo max?
+	sectors, err := provingSectors.All(numProvSect + 1) // todo max?
 	if err != nil {
 		return nil, xerrors.Errorf("failed to enumerate all sector IDs: %w", err)
 	}
@@ -581,7 +580,7 @@ func (a *API) GetPowerRaw(ctx context.Context, ts *block.TipSet, maddr address.A
 		return power.Claim{}, power.Claim{}, err
 	}
 
-	raw, qa ,err := viewer.MinerClaimedPower(ctx, maddr)
+	raw, qa, err := viewer.MinerClaimedPower(ctx, maddr)
 	if err != nil {
 		return power.Claim{}, power.Claim{}, err
 	}
@@ -592,12 +591,12 @@ func (a *API) GetPowerRaw(ctx context.Context, ts *block.TipSet, maddr address.A
 	}
 
 	return power.Claim{
-		RawBytePower:    raw,
-		QualityAdjPower: qa,
-	}, power.Claim{
-		RawBytePower:    np.RawBytePower,
-		QualityAdjPower: np.QualityAdjustedPower,
-	}, nil
+			RawBytePower:    raw,
+			QualityAdjPower: qa,
+		}, power.Claim{
+			RawBytePower:    np.RawBytePower,
+			QualityAdjPower: np.QualityAdjustedPower,
+		}, nil
 }
 
 func (a *API) MinerHasMinPower(ctx context.Context, addr address.Address, ts *block.TipSet) (bool, error) {

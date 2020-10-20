@@ -248,8 +248,8 @@ func (v *View) GetPartsProving(ctx context.Context, maddr addr.Address) ([]bitfi
 
 	var partsProving []bitfield.BitField
 
-	if err := minerState.ForEachDeadline(func(idx uint64, dl miner.Deadline) error{
-		if err := dl.ForEachPartition(func(idx uint64, part miner.Partition) error{
+	if err := minerState.ForEachDeadline(func(idx uint64, dl miner.Deadline) error {
+		if err := dl.ForEachPartition(func(idx uint64, part miner.Partition) error {
 			allSectors, err := part.AllSectors()
 			if err != nil {
 				return err
@@ -358,7 +358,7 @@ func (v *View) MinerSectorsForEach(ctx context.Context, maddr addr.Address,
 	}
 
 	// todo review
-	sectors, err  :=  minerState.SectorArray()
+	sectors, err := minerState.SectorArray()
 	if err != nil {
 		return err
 	}
@@ -452,7 +452,7 @@ func (v *View) MinerGetPrecommittedSector(ctx context.Context, maddr addr.Addres
 	}
 
 	// todo review
-	info ,err := minerState.GetPrecommittedSector(sectorNum)
+	info, err := minerState.GetPrecommittedSector(sectorNum)
 	if err != nil {
 		return nil, false, err
 	}
@@ -479,15 +479,6 @@ func (v *View) MarketEscrowBalance(ctx context.Context, addr addr.Address) (foun
 	}
 
 	return true, amount, nil
-
-	//escrow, err := v.asMap(ctx, marketState.EscrowTable)
-	//if err != nil {
-	//	return false, abi.NewTokenAmount(0), err
-	//}
-	//
-	//var value abi.TokenAmount
-	//found, err = escrow.Get(abi.AddrKey(addr), &value)
-	//return
 }
 
 // MarketComputeDataCommitment takes deal ids and uses associated commPs to compute commD for a sector that contains the deals
@@ -685,13 +676,12 @@ func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*
 
 	dealProposal, found, err := dealProposals.Get(dealID)
 	if err != nil {
-		return  nil, err
+		return nil, err
 	}
 
 	if !found {
 		return nil, xerrors.New("deal proposal not found")
 	}
-
 
 	dealStates, err := state.States()
 	if err != nil {
@@ -700,7 +690,7 @@ func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*
 
 	dealState, found, err := dealStates.Get(dealID)
 	if err != nil {
-		return  nil, err
+		return nil, err
 	}
 
 	if !found {
@@ -755,7 +745,7 @@ func (v *View) MinerClaimedPower(ctx context.Context, miner addr.Address) (raw, 
 		return big.Zero(), big.Zero(), xerrors.New("miner not found")
 	}
 
-	return  p.RawBytePower, p.QualityAdjPower, nil
+	return p.RawBytePower, p.QualityAdjPower, nil
 }
 
 func (v *View) MinerNominalPowerMeetsConsensusMinimum(ctx context.Context, addr addr.Address) (bool, error) {
@@ -825,13 +815,13 @@ func (v *View) StateMinerSectors(ctx context.Context, addr addr.Address, filter 
 
 	sset := make([]*ChainSectorInfo, len(siset))
 	for i, val := range siset {
-		sset[i] = &ChainSectorInfo {
+		sset[i] = &ChainSectorInfo{
 			Info: *val,
-			ID: val.SectorNumber,
+			ID:   val.SectorNumber,
 		}
 	}
 
-	return sset,nil
+	return sset, nil
 }
 
 func (v *View) GetFilLocked(ctx context.Context, st vmstate.Tree) (abi.TokenAmount, error) {
@@ -953,10 +943,6 @@ func (v *View) loadMarketActor(ctx context.Context) (market.State, error) {
 	}
 
 	return market.Load(adt.WrapStore(ctx, v.ipldStore), actr) // todo review
-
-	//var state market.State
-	//err = v.ipldStore.Get(ctx, actr.Head.Cid, &state)
-	//return &state, err
 }
 
 func (v *View) loadAccountActor(ctx context.Context, a addr.Address) (account.State, error) {
@@ -977,18 +963,20 @@ func (v *View) loadAccountActor(ctx context.Context, a addr.Address) (account.St
 }
 
 func (v *View) loadActor(ctx context.Context, address addr.Address) (*actor.Actor, error) {
-	tree, err := v.asMap(ctx, v.root)
+	tree, err := vmstate.LoadState(ctx, v.ipldStore, v.root)
 	if err != nil {
 		return nil, err
 	}
 
-	var actr actor.Actor
-	found, err := tree.Get(abi.AddrKey(address), &actr)
+	actor, found, err := tree.GetActor(ctx, address)
+	if err != nil {
+		return nil, err
+	}
 	if !found {
 		return nil, types.ErrNotFound
 	}
 
-	return &actr, err
+	return actor, err
 }
 
 func (v *View) adtStore(ctx context.Context) adt.Store {
@@ -996,16 +984,7 @@ func (v *View) adtStore(ctx context.Context) adt.Store {
 }
 
 func (v *View) asArray(ctx context.Context, root cid.Cid) (adt.Array, error) {
-	// todo review
-
 	return adt.AsArray(v.adtStore(ctx), root, v.networkVersion)
-	// return adt.AsArray(v.adtStore(ctx), root)
-}
-
-func (v *View) asMap(ctx context.Context, root cid.Cid) (adt.Map, error) {
-	// todo review
-	return adt.AsMap(v.adtStore(ctx), root, specactors.Version(v.networkVersion))
-	// return adt.AsMap(v.adtStore(ctx), root)
 }
 
 func getFilMarketLocked(ctx context.Context, ipldStore cbor.IpldStore, st vmstate.Tree) (abi.TokenAmount, error) {
@@ -1015,7 +994,7 @@ func getFilMarketLocked(ctx context.Context, ipldStore cbor.IpldStore, st vmstat
 		return big.Zero(), xerrors.Errorf("failed to load market actor: %w", err)
 	}
 
-	mst, err := market.Load(adt.WrapStore(ctx, ipldStore), mactor);
+	mst, err := market.Load(adt.WrapStore(ctx, ipldStore), mactor)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load market state: %w", err)
 	}

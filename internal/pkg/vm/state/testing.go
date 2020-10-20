@@ -17,7 +17,8 @@ import (
 //
 // TODO: we could avoid this if write a test cborStore that can map test cids to test states.
 func NewFromString(t *testing.T, s string, store cbor.IpldStore) *State {
-	tree := NewState(store)
+	tree, err := NewState(store, StateTreeVersion0)
+	require.NoError(t, err)
 	strAddr, err := address.NewSecp256k1Address([]byte(s))
 	fmt.Printf("strAddr: %s\n", strAddr)
 	require.NoError(t, err)
