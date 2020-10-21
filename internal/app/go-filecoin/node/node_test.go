@@ -183,8 +183,6 @@ func TestOptionWithError(t *testing.T) {
 func TestNodeConfig(t *testing.T) {
 	tf.UnitTest(t)
 
-	defaultCfg := config.NewDefaultConfig()
-
 	// fake mining
 	verifier := &proofs.FakeVerifier{}
 
@@ -209,7 +207,6 @@ func TestNodeConfig(t *testing.T) {
 	cfg := n.Repo.Config()
 
 	assert.Equal(t, true, n.OfflineMode)
-	assert.Equal(t, defaultCfg.Mining, cfg.Mining)
 	assert.Equal(t, &config.SwarmConfig{
 		Address: "/ip4/127.0.0.1/tcp/0",
 	}, cfg.Swarm)

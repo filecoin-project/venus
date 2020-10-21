@@ -158,7 +158,6 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			case first := <-d.incoming:
 				ws = append(ws, first)
 				ws = append(ws, d.drainIncoming()...)
-				log.Infof("received %d incoming targets: %v", len(ws), ws)
 			default:
 			}
 			catchup, err := d.transitioner.MaybeTransitionToCatchup(d.catchup, ws)
