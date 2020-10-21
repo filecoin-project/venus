@@ -269,7 +269,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next *bl
 
 	stopwatch := syncOneTimer.Start(ctx)
 	defer stopwatch.Stop(ctx)
-	fmt.Println("Get TipSetMetadata", parent.Key().String())
+	//fmt.Println("Get TipSetMetadata", parent.Key().String())
 	// Lookup parent state and receipt root. It is guaranteed by the syncer that it is in the chainStore.
 	stateRoot, err := syncer.chainStore.GetTipSetStateRoot(parent.Key())
 	if err != nil {
@@ -332,7 +332,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next *bl
 	ioutil.WriteFile("receipt.json", dddd, 0777)
 
 	fmt.Println("Height:", next.EnsureHeight(), " Root:", root, " receiptcid ", receiptCid)
-	fmt.Println("PutTipSetMetadata", next.Key().String())
+	//fmt.Println("PutTipSetMetadata", next.Key().String())
 	err = syncer.chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          next,
 		TipSetStateRoot: root,
@@ -515,6 +515,9 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 	//}
 	//syncOnec = true
 
+	//xx, _ := cid.Decode("bafy2bzacedplmwfhy4yuauuzbs4owjxo4m6wgd275dwwdam6qwpmdssgdpbvk")
+	//ci.Head = block.NewTipSetKey(xx)
+	//ci.Height = 2400
 	// If the store already has this tipset then the syncer is finished.
 	if syncer.chainStore.HasTipSetAndState(ctx, ci.Head) {
 		return nil
@@ -528,110 +531,132 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
-	height,_ := tipsets[0].Height()
+	height, _ := tipsets[0].Height()
 	logSyncer.Infof("fetch & validate header success at %v %s ...", height, tipsets[0].Key())
 
 	defer func() {
 		syncer.reporter.UpdateStatus(status.SyncFetchComplete(true))
 	}()
 
+	errProcessChan := make(chan error, 1)
+	errProcessChan <- nil //init
 	return SegProcess(tipsets, func(segTipset []*block.TipSet) error {
 		// fetch messages
-		segCi := block.ChainInfo{
-			Source: ci.Source,
-			Sender: ci.Sender,
-			Head:   segTipset[len(segTipset)-1].Key(),
-			Height: segTipset[len(segTipset)-1].EnsureHeight(),
-		}
-		_, err = syncer.fetcher.FetchTipSets(ctx, segCi.Head, segCi.Sender, func(t *block.TipSet) (bool, error) {
-			parentsKey, err := t.Parents()
-			if err != nil {
-				return true, err
-			}
-			height, err := t.Height()
-			if err != nil {
-				return false, err
-			}
-			logSyncer.Infof("fetch tipset, height: %v", height)
-
-			// validate block message structure
-			//for i := 0; i < t.Len(); i++ {  // todo validate message
-			//	err := syncer.blockValidator.ValidateMessagesSemantic(ctx, t.At(i), parentsKey)
-			//	if err != nil {
-			//		return false, err
-			//	}
-			//}
-
-			// update status with latest fetched head and height
-			syncer.reporter.UpdateStatus(status.FetchHead(t.Key()), status.FetchHeight(height))
-			return syncer.chainStore.HasTipSetAndState(ctx, parentsKey), nil
-		})
-		if err != nil {
-			return errors.Wrapf(err, "failure fetching full blocks")
-		}
-
-		//process
-		parent, grandParent, err := syncer.ancestorsFromStore(segTipset[0])
+		fmt.Println("start to fetch message")
+		err = syncer.fetchSegMessage(ctx, ci.Source, ci.Sender, segTipset)
 		if err != nil {
 			return err
 		}
-
-		// Try adding the segTipset of the chain to the store, checking for new
-		// heaviest segTipset.
-		for i, ts := range segTipset {
-			// TODO: this "i==0" leaks EC specifics into syncer abstraction
-			// for the sake of efficiency, consider plugging up this leak.
-			var wts *block.TipSet
-			if i == 0 {
-				wts, err = syncer.widen(ctx, ts)
-				if err != nil {
-					return err
-				}
-				if wts.Defined() {
-					logSyncer.Info("attempt to sync after widen")
-					err = syncer.syncOne(ctx, grandParent, parent, wts)
-					if err != nil {
-						return err
-					}
-					err = syncer.stageIfHeaviest(ctx, wts)
-					if err != nil {
-						return err
-					}
-				}
-			}
-			// If the segTipset has length greater than 1, then we need to sync each tipset
-			// in the chain in order to process the chain fully, including the non-widened
-			// first tipset.
-			// If the chan has length == 1, we can avoid processing the non-widened tipset
-			// as a performance optimization, because this tipset cannot be heavier
-			// than the widened first tipset.
-			if !wts.Defined() || len(segTipset) > 1 {
-				err = syncer.syncOne(ctx, grandParent, parent, ts)
-				if err != nil {
-					// While `syncOne` can indeed fail for reasons other than consensus,
-					// adding to the badTipSets at this point is the simplest, since we
-					// have access to the chain. If syncOne fails for non-consensus reasons,
-					// there is no assumption that the running node's data is valid at all,
-					// so we don't really lose anything with this simplification.
-					syncer.badTipSets.AddChain(segTipset[i:])
-					return errors.Wrapf(err, "failed to sync tipset %s, number %d of %d in chain", ts.Key(), i, len(segTipset))
-				}
-
-				err = syncer.stageIfHeaviest(ctx, ts)
-				if err != nil {
-					return err
-				}
-				syncer.SetStagedHead(ctx)
-			}
-
-			if i%500 == 0 {
-				logSyncer.Infof("processing block %d of %v for chain with head at %v", i, len(segTipset), segCi.Head.String())
-			}
-			grandParent = parent
-			parent = ts
+		fmt.Println("end to fetch message")
+		err := <-errProcessChan
+		if err != nil {
+			return err
 		}
-		return syncer.SetStagedHead(ctx)
+		//process
+		go func() {
+			fmt.Println("start to process message")
+			defer fmt.Println("end to process message")
+			errProcess := syncer.processTipSetSeg(ctx, segTipset)
+			if errProcess != nil {
+				errProcessChan <- errProcess
+				return
+			}
+			errProcessChan <- syncer.SetStagedHead(ctx)
+		}()
+		return nil
 	})
+}
+
+func (syncer *Syncer) fetchSegMessage(ctx context.Context, source, sender peer.ID, segTipset []*block.TipSet) error {
+	segCi := block.ChainInfo{
+		Source: source,
+		Sender: sender,
+		Head:   segTipset[len(segTipset)-1].Key(),
+		Height: segTipset[len(segTipset)-1].EnsureHeight(),
+	}
+	_, err := syncer.fetcher.FetchTipSets(ctx, segCi.Head, segCi.Sender, func(t *block.TipSet) (bool, error) {
+		parentsKey, err := t.Parents()
+		if err != nil {
+			return true, err
+		}
+		height, err := t.Height()
+		if err != nil {
+			return false, err
+		}
+		logSyncer.Infof("fetch tipset, height: %v", height)
+
+		// validate block message structure
+		//for i := 0; i < t.Len(); i++ {  // todo validate message
+		//	err := syncer.blockValidator.ValidateMessagesSemantic(ctx, t.At(i), parentsKey)
+		//	if err != nil {
+		//		return false, err
+		//	}
+		//}
+
+		// update status with latest fetched head and height
+		syncer.reporter.UpdateStatus(status.FetchHead(t.Key()), status.FetchHeight(height))
+		return syncer.chainStore.HasTipSetAndState(ctx, parentsKey), nil
+	})
+	if err != nil {
+		return errors.Wrapf(err, "failure fetching full blocks")
+	}
+	return nil
+}
+
+func (syncer *Syncer) processTipSetSeg(ctx context.Context, segTipset []*block.TipSet) error {
+	parent, grandParent, err := syncer.ancestorsFromStore(segTipset[0])
+	if err != nil {
+		return err
+	}
+	for i, ts := range segTipset {
+		// TODO: this "i==0" leaks EC specifics into syncer abstraction
+		// for the sake of efficiency, consider plugging up this leak.
+		var wts *block.TipSet
+		if i == 0 {
+			wts, err = syncer.widen(ctx, ts)
+			if err != nil {
+				return err
+			}
+			if wts.Defined() {
+				logSyncer.Info("attempt to sync after widen")
+				err = syncer.syncOne(ctx, grandParent, parent, wts)
+				if err != nil {
+					return err
+				}
+				err = syncer.stageIfHeaviest(ctx, wts)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		// If the segTipset has length greater than 1, then we need to sync each tipset
+		// in the chain in order to process the chain fully, including the non-widened
+		// first tipset.
+		// If the chan has length == 1, we can avoid processing the non-widened tipset
+		// as a performance optimization, because this tipset cannot be heavier
+		// than the widened first tipset.
+		if !wts.Defined() || len(segTipset) > 1 {
+			err = syncer.syncOne(ctx, grandParent, parent, ts)
+			if err != nil {
+				// While `syncOne` can indeed fail for reasons other than consensus,
+				// adding to the badTipSets at this point is the simplest, since we
+				// have access to the chain. If syncOne fails for non-consensus reasons,
+				// there is no assumption that the running node's data is valid at all,
+				// so we don't really lose anything with this simplification.
+				syncer.badTipSets.AddChain(segTipset[i:])
+				return errors.Wrapf(err, "failed to sync tipset %s, number %d of %d in chain", ts.Key(), i, len(segTipset))
+			}
+
+			err = syncer.stageIfHeaviest(ctx, ts)
+			if err != nil {
+				return err
+			}
+			syncer.SetStagedHead(ctx)
+		}
+		grandParent = parent
+		parent = ts
+	}
+	return nil
 }
 
 func (syncer *Syncer) stageIfHeaviest(ctx context.Context, candidate *block.TipSet) error {
@@ -680,7 +705,7 @@ func (syncer *Syncer) Status() status.Status {
 	return syncer.reporter.Status()
 }
 
-const maxProcessLen = 16 * 2
+const maxProcessLen = 1 + 4 + 16 + 16
 
 func SegProcess(ts []*block.TipSet, cb func(ts []*block.TipSet) error) error {
 	for {
