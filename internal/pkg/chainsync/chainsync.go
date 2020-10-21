@@ -2,7 +2,6 @@ package chainsync
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -10,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
 )
 
@@ -25,7 +25,6 @@ type BlockProposer interface {
 type Manager struct {
 	syncer       *syncer.Syncer
 	dispatcher   *dispatcher.Dispatcher
-	transitionCh chan bool
 }
 
 // NewManager creates a new chain sync manager.
@@ -39,7 +38,6 @@ func NewManager(fv syncer.FullBlockValidator, hv syncer.BlockValidator, cs synce
 	return Manager{
 		syncer:       syncer,
 		dispatcher:   dispatcher,
-		transitionCh: gapTransitioner.TransitionChannel(),
 	}, nil
 }
 
@@ -52,11 +50,6 @@ func (m *Manager) Start(ctx context.Context) error {
 // BlockProposer returns the block proposer.
 func (m *Manager) BlockProposer() BlockProposer {
 	return m.dispatcher
-}
-
-// TransitionChannel returns a channel emitting transition flags.
-func (m *Manager) TransitionChannel() chan bool {
-	return m.transitionCh
 }
 
 // Status returns the block proposer.

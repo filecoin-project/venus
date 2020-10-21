@@ -28,7 +28,10 @@ func TestStatePutGet(t *testing.T) {
 
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree := NewState(cst)
+	tree,err := NewState(cst, StateTreeVersion0)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	act1 := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
 	act1.IncrementSeqNum()
@@ -74,7 +77,10 @@ func TestStateErrors(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree := NewState(cst)
+	tree,err := NewState(cst, StateTreeVersion0)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	a, found, err := tree.GetActor(ctx, vmaddr.NewForTestGetter()())
 	assert.Nil(t, a)
@@ -94,11 +100,14 @@ func TestGetAllActors(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree := NewState(cst)
+	tree,err := NewState(cst, StateTreeVersion0)
+	if err != nil {
+		t.Fatal(err)
+	}
 	addr := vmaddr.NewForTestGetter()()
 
 	newActor := actor.Actor{Code: enccid.NewCid(builtin.AccountActorCodeID), CallSeqNum: 1234, Balance: abi.NewTokenAmount(123)}
-	err := tree.SetActor(ctx, addr, &newActor)
+	err = tree.SetActor(ctx, addr, &newActor)
 	assert.NoError(t, err)
 	_, err = tree.Flush(ctx)
 	require.NoError(t, err)
@@ -121,7 +130,10 @@ func TestStateTreeConsistency(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree := NewState(cst)
+	tree,err := NewState(cst, StateTreeVersion0)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	var addrs []address.Address
 	for i := 100; i < 150; i++ {

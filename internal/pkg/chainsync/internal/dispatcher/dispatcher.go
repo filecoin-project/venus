@@ -158,6 +158,7 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			case first := <-d.incoming:
 				ws = append(ws, first)
 				ws = append(ws, d.drainIncoming()...)
+				log.Infof("received %v incoming targets: %v", len(ws), first)
 			default:
 			}
 			catchup, err := d.transitioner.MaybeTransitionToCatchup(d.catchup, ws)
@@ -287,6 +288,7 @@ type GapTransitioner struct {
 	headSetter transitionSyncer
 	// transitionCh emits true when transitioning to catchup and false
 	// when transitioning to follow
+	// 挖矿开关: 追赶链时暂停挖矿,跟随链时启动挖矿
 	transitionCh chan bool
 }
 
@@ -319,7 +321,7 @@ func (gt *GapTransitioner) MaybeTransitionToCatchup(inCatchup bool, targets []Ta
 	// Note: we run this check even on targets we may drop
 	for _, target := range targets {
 		if target.Height > headHeight+MaxEpochGap {
-			gt.transitionCh <- true
+			// gt.transitionCh <- true
 			return true, nil
 		}
 	}
@@ -337,7 +339,7 @@ func (gt *GapTransitioner) MaybeTransitionToFollow(ctx context.Context, inCatchu
 	// this is safe -- all gap conditions cause syncing to enter catchup
 	// this is pessimistic -- gap conditions could be gone before we transition
 	if outstandingTargets == 0 {
-		gt.transitionCh <- false
+		// gt.transitionCh <- false
 		// set staging to head on transition catchup --> follow
 		return true, gt.headSetter.SetStagedHead(ctx)
 	}
