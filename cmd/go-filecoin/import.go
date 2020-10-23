@@ -25,7 +25,12 @@ var logImport = logging.Logger("commands/import")
 
 var importCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Initialize a filecoin repo",
+		Tagline: `
+import data into local repo.
+lotus chain export --recent-stateroots 901 <file>
+go-filecoin import <file>
+go-filecoin daemon --check-point <tipset>
+`,
 	},
 	Options: []cmds.Option{
 		cmds.StringOption("path", "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
