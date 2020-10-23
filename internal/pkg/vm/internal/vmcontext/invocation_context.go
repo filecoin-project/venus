@@ -321,7 +321,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 		}
 
 		// load actor
-		fmt.Println("create account  ", target)
+		//fmt.Println("create account  ", target)
 		targetActor, _, err := ctx.rt.state.GetActor(ctx.rt.context, target)
 		if err != nil {
 			panic(err)

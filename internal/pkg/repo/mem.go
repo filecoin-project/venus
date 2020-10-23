@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"github.com/filecoin-project/go-multistore"
 	"sync"
 
 	"github.com/ipfs/go-datastore"
@@ -18,7 +17,6 @@ type MemRepo struct {
 	lk         sync.RWMutex
 	C          *config.Config
 	D          Datastore
-	M          *multistore.MultiStore
 	Ks         keystore.Keystore
 	W          Datastore
 	Chain      Datastore
@@ -30,11 +28,9 @@ var _ Repo = (*MemRepo)(nil)
 
 // NewInMemoryRepo makes a new instance of MemRepo
 func NewInMemoryRepo() *MemRepo {
-	mds, _ := multistore.NewMultiDstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	return &MemRepo{
 		C:       config.NewDefaultConfig(),
 		D:       dss.MutexWrap(datastore.NewMapDatastore()),
-		M:       mds,
 		Ks:      keystore.MutexWrap(keystore.NewMemKeystore()),
 		W:       dss.MutexWrap(datastore.NewMapDatastore()),
 		Chain:   dss.MutexWrap(datastore.NewMapDatastore()),
@@ -63,11 +59,6 @@ func (mr *MemRepo) ReplaceConfig(cfg *config.Config) error {
 // Datastore returns the datastore.
 func (mr *MemRepo) Datastore() datastore.Batching {
 	return mr.D
-}
-
-// Datastore returns the datastore.
-func (mr *MemRepo) MultiStore() *multistore.MultiStore {
-	return mr.M
 }
 
 // Keystore returns the keystore.

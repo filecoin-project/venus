@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
@@ -40,6 +41,7 @@ type Builder struct {
 	repo        repo.Repo
 	journal     journal.Journal
 	isRelay     bool
+	checkPoint  block.TipSetKey
 	chainClock  clock.ChainEpochClock
 	genCid      cid.Cid
 	drand       beacon.Schedule
@@ -60,6 +62,14 @@ func OfflineMode(offlineMode bool) BuilderOpt {
 func IsRelay() BuilderOpt {
 	return func(c *Builder) error {
 		c.isRelay = true
+		return nil
+	}
+}
+
+// IsRelay configures node to act as a libp2p relay.
+func CheckPoint(checkPoint block.TipSetKey) BuilderOpt {
+	return func(c *Builder) error {
+		c.checkPoint = checkPoint
 		return nil
 	}
 }
@@ -234,7 +244,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	nd.ProofVerification = submodule.NewProofVerificationSubmodule(b.verifier)
 
-	nd.chain, err = submodule.NewChainSubmodule((*builder)(b), b.repo, &nd.Blockstore, &nd.ProofVerification, b.drand)
+	nd.chain, err = submodule.NewChainSubmodule((*builder)(b), b.repo, &nd.Blockstore, &nd.ProofVerification, b.checkPoint, b.drand)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}
@@ -260,7 +270,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	}
 	nd.ChainClock = b.chainClock
 
-	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.ProofVerification.ProofVerifier)
+	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.ProofVerification.ProofVerifier, b.checkPoint)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}

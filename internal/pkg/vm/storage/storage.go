@@ -3,18 +3,14 @@ package storage
 import (
 	"context"
 	"errors"
-	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	ipld "github.com/ipfs/go-ipld-format"
-	"io"
-	"unsafe"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
 
 // TODO: limit memory footprint
@@ -55,7 +51,7 @@ func (s *VMStorage) SetReadCache(enabled bool) {
 
 //**********ipld interface impl**************//
 func (s *VMStorage) Get(ctx context.Context, c cid.Cid, obj interface{}) error {
-	fmt.Println("storage get ", c.String(), " ", unsafe.Pointer(s))
+	//fmt.Println("storage get ", c.String(), " ", unsafe.Pointer(s))
 	raw, err := s.GetRaw(ctx, c)
 	if err != nil {
 		return err
@@ -68,11 +64,6 @@ func (s *VMStorage) Get(ctx context.Context, c cid.Cid, obj interface{}) error {
 	return nil
 }
 
-type cborMarshalerStreamed interface {
-	//MarshalCBOR(io.Writer) error
-	MarshalCBOR(io.Writer) error
-}
-
 func (s *VMStorage) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
 	nd, err := s.toNode(v)
 	if err != nil {
@@ -81,7 +72,7 @@ func (s *VMStorage) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
 	// append the object to the buffer
 	cid := nd.Cid()
 	s.writeBuffer[cid] = nd
-	fmt.Println("storage put ", cid.String())
+	//fmt.Println("storage put ", cid.String())
 	return cid, nil
 }
 

@@ -2,8 +2,12 @@ package chain
 
 import (
 	"context"
+	"fmt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/build"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipld/go-car"
+	"io"
 	"os"
 	"runtime/debug"
 	"sync"
@@ -75,6 +79,8 @@ type Store struct {
 	// for reading filecoin block and state objects kept by the node.
 	stateAndBlockSource *ipldSource
 
+	bsstore blockstore.Blockstore
+
 	// ds is the datastore for the chain's private metadata which consists
 	// of the tipset key to state root cid mapping, and the heaviest tipset
 	// key.
@@ -84,6 +90,8 @@ type Store struct {
 	genesis cid.Cid
 	// head is the tipset at the head of the best known chain.
 	head *block.TipSet
+
+	checkPoint block.TipSetKey
 	// Protects head and genesisCid.
 	mu sync.RWMutex
 
@@ -107,14 +115,22 @@ type Store struct {
 }
 
 // NewStore constructs a new default store.
-func NewStore(ds repo.Datastore, cst cbor.IpldStore, sr Reporter, genesisCid cid.Cid) *Store {
+func NewStore(ds repo.Datastore,
+	cst cbor.IpldStore,
+	bsstore blockstore.Blockstore,
+	sr Reporter,
+	checkPoint block.TipSetKey,
+	genesisCid cid.Cid,
+) *Store {
 	ipldSource := newSource(cst)
 	tipsetProvider := TipSetProviderFromBlocks(context.TODO(), ipldSource)
 	return &Store{
 		stateAndBlockSource: ipldSource,
 		ds:                  ds,
+		bsstore:             bsstore,
 		headEvents:          pubsub.New(12),
 		tipIndex:            NewTipIndex(),
+		checkPoint:          checkPoint,
 		genesis:             genesisCid,
 		reporter:            sr,
 		chainIndex:          NewChainIndex(tipsetProvider.GetTipSet),
@@ -153,12 +169,23 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		return errors.Wrap(err, "error loading head tipset")
 	}
 
+	var checkPointTs *block.TipSet
+	loopBack := abi.ChainEpoch(0)
+	if !store.checkPoint.Empty() {
+		checkPointTs, err = LoadTipSetBlocks(ctx, store.stateAndBlockSource, store.checkPoint)
+		if err != nil {
+			return errors.Wrap(err, "error loading head tipset")
+		}
+		loopBack = checkPointTs.EnsureHeight() - 10
+	}
+
 	startHeight := headTs.At(0).Height
 	logStore.Infof("start loading chain at tipset: %s, height: %d", headTsKey.String(), startHeight)
 	// Ensure we only produce 10 log messages regardless of the chain height.
 	logStatusEvery := startHeight / 10
 
-	var genesii *block.TipSet
+	var startPoint *block.TipSet
+
 	// Provide tipsets directly from the block store, not from the tipset index which is
 	// being rebuilt by this traversal.
 	tipsetProvider := TipSetProviderFromBlocks(ctx, store.stateAndBlockSource)
@@ -166,20 +193,24 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		if err != nil {
 			return err
 		}
+		startPoint = iterator.Value()
 
-		height, err := iterator.Value().Height()
+		height, err := startPoint.Height()
 		if err != nil {
 			return err
 		}
 		if logStatusEvery != 0 && (height%logStatusEvery) == 0 {
-			logStore.Infof("load tipset: %s, height: %v", iterator.Value().String(), height)
+			logStore.Infof("load tipset: %s, height: %v", startPoint.String(), height)
 		}
-		stateRoot, receipts, err := store.loadStateRootAndReceipts(iterator.Value())
+
+		stateRoot, receipts, err := store.loadStateRootAndReceipts(startPoint)
 		if err != nil {
 			return err
 		}
+
+		fmt.Println(startPoint.Key().String(), "", stateRoot, " ", startPoint.EnsureHeight())
 		err = store.PutTipSetMetadata(ctx, &TipSetMetadata{
-			TipSet:          iterator.Value(),
+			TipSet:          startPoint,
 			TipSetStateRoot: stateRoot,
 			TipSetReceipts:  receipts,
 		})
@@ -187,25 +218,19 @@ func (store *Store) Load(ctx context.Context) (err error) {
 			return err
 		}
 
-		genesii = iterator.Value()
-	}
-	// Check genesis here.
-	if genesii.Len() != 1 {
-		return errors.Errorf("load terminated with tipset of %d blocks, expected genesis with exactly 1", genesii.Len())
-	}
-
-	loadCid := genesii.At(0).Cid()
-	if !loadCid.Equals(store.genesis) {
-		return errors.Errorf("expected genesis cid: %s, loaded genesis cid: %s", store.genesis, loadCid)
+		if startPoint.EnsureHeight() <= loopBack {
+			break
+		}
 	}
 
 	logStore.Infof("finished loading %d tipsets from %s", startHeight, headTs.String())
 
 	//todo just for test should remove if ok
-	if headTs.EnsureHeight() > 0 {
+	if checkPointTs != nil && headTs.EnsureHeight() > checkPointTs.EnsureHeight() {
 		p, _ := headTs.Parents()
 		headTs, _ = store.GetTipSet(p)
 	}
+
 	// Set actual head.
 	return store.SetHead(ctx, headTs)
 }
@@ -337,18 +362,6 @@ func (store *Store) GetTipSetState(ctx context.Context, key block.TipSetKey) (st
 		return nil, err
 	}
 	return state.LoadState(ctx, store.stateAndBlockSource.cborStore, stateCid)
-}
-
-// GetGenesisState returns the state tree at genesis to retrieve initialization parameters.
-func (store *Store) GetGenesisState(ctx context.Context) (state.Tree, error) {
-	// retrieve genesis block
-	genesis, err := store.stateAndBlockSource.GetBlock(ctx, store.GenesisCid())
-	if err != nil {
-		return nil, err
-	}
-
-	// create state tree
-	return state.LoadState(ctx, store.stateAndBlockSource.cborStore, genesis.StateRoot.Cid)
 }
 
 // GetGenesisBlock returns the genesis block held by the chain store.
@@ -580,7 +593,6 @@ func (store *Store) GenesisRootCid() cid.Cid {
 	return genesis.StateRoot.Cid
 }
 
-
 // todo review 最新的版本是Version4?
 func UseNewestNetwork() bool {
 	// TODO: Put these in a container we can iterate over
@@ -589,7 +601,6 @@ func UseNewestNetwork() bool {
 	}
 	return false
 }
-
 
 // GenesisCid returns the genesis cid of the chain tracked by the default store.
 func (store *Store) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
@@ -606,6 +617,52 @@ func (store *Store) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) n
 	}
 
 	return build.NewestNetworkVersion
+}
+
+func (store *Store) Import(r io.Reader) (*block.TipSet, error) {
+	header, err := car.LoadCar(store.bsstore, r)
+	if err != nil {
+		return nil, xerrors.Errorf("loadcar failed: %w", err)
+	}
+
+	root, err := store.GetTipSet(block.NewTipSetKey(header.Roots...))
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
+	}
+
+	parent := root.EnsureParents()
+
+	log.Info("import height: ", root.EnsureHeight(), " root: ", root.At(0).StateRoot.Cid)
+	parentTipset, err := store.GetTipSet(parent)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
+	}
+	store.PutTipSetMetadata(context.Background(), &TipSetMetadata{
+		TipSetStateRoot: root.At(0).StateRoot.Cid,
+		TipSet:          parentTipset,
+		TipSetReceipts:  root.At(0).MessageReceipts.Cid,
+	})
+
+	loopBack := 900
+	curTipset := parentTipset
+	for i := 0; i < loopBack; i++ {
+		curTipsetKey := curTipset.EnsureParents()
+		curParentTipset, err := store.GetTipSet(curTipsetKey)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
+		}
+
+		if curParentTipset.EnsureHeight() == 0 {
+			break
+		}
+		store.PutTipSetMetadata(context.Background(), &TipSetMetadata{
+			TipSetStateRoot: curTipset.At(0).StateRoot.Cid,
+			TipSet:          curParentTipset,
+			TipSetReceipts:  curTipset.At(0).MessageReceipts.Cid,
+		})
+		curTipset = curParentTipset
+	}
+	return parentTipset, nil
 }
 
 // Stop stops all activities and cleans up.

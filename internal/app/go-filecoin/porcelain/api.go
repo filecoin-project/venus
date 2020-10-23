@@ -3,6 +3,7 @@ package porcelain
 import (
 	"context"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"io"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
@@ -131,7 +131,7 @@ func (a *API) MessageWaitDone(ctx context.Context, msgCid cid.Cid) (*types.Messa
 	return MessageWaitDone(ctx, a, msgCid)
 }
 
-func (a *API) PowerStateView(baseKey block.TipSetKey) (consensus.PowerStateView, error) {
+func (a *API) PowerStateView(baseKey block.TipSetKey) (state.PowerStateView, error) {
 	return a.StateView(baseKey)
 }
 
@@ -139,7 +139,7 @@ func (a *API) MinerStateView(baseKey block.TipSetKey) (MinerStateView, error) {
 	return a.StateView(baseKey)
 }
 
-func (a *API) FaultsStateView(baseKey block.TipSetKey) (consensus.FaultStateView, error) {
+func (a *API) FaultsStateView(baseKey block.TipSetKey) (state.FaultStateView, error) {
 	return a.StateView(baseKey)
 }
 
