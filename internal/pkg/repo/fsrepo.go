@@ -25,13 +25,13 @@ import (
 
 const (
 	// apiFile is the filename containing the filecoin node's api address.
-	apiFile                = "api"
-	configFilename         = "config.json"
-	tempConfigFilename     = ".config.json.temp"
-	lockFile               = "repo.lock"
-	versionFilename        = "version"
-	walletDatastorePrefix  = "wallet"
-	chainDatastorePrefix   = "chain"
+	apiFile               = "api"
+	configFilename        = "config.json"
+	tempConfigFilename    = ".config.json.temp"
+	lockFile              = "repo.lock"
+	versionFilename       = "version"
+	walletDatastorePrefix = "wallet"
+	chainDatastorePrefix  = "chain"
 	// dealsDatastorePrefix   = "deals"
 	snapshotStorePrefix    = "snapshots"
 	snapshotFilenamePrefix = "snapshot"
@@ -289,11 +289,6 @@ func (r *FSRepo) WalletDatastore() Datastore {
 // ChainDatastore returns the chain datastore.
 func (r *FSRepo) ChainDatastore() Datastore {
 	return r.chainDs
-}
-
-// DealsDatastore returns the deals datastore.
-func (r *FSRepo) MultiStore() *multistore.MultiStore {
-	return r.mds
 }
 
 // Version returns the version of the repo

@@ -1,4 +1,4 @@
-package consensus
+package state
 
 import (
 	"context"
@@ -8,18 +8,17 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 )
 
 // PowerStateView is a view of chain state for election computations, typically at some lookback from the
 // immediate parent state.
 // This type isn't doing much that the state view doesn't already do, consider removing it.
 type PowerStateView interface {
-	state.AccountStateView
-	MinerSectorConfiguration(ctx context.Context, maddr addr.Address) (*state.MinerSectorConfiguration, error)
+	AccountStateView
+	MinerSectorConfiguration(ctx context.Context, maddr addr.Address) (*MinerSectorConfiguration, error)
 	MinerControlAddresses(ctx context.Context, maddr addr.Address) (owner, worker addr.Address, err error)
 	MinerGetSector(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, bool, error)
-	PowerNetworkTotal(ctx context.Context) (*state.NetworkPower, error)
+	PowerNetworkTotal(ctx context.Context) (*NetworkPower, error)
 	MinerClaimedPower(ctx context.Context, miner addr.Address) (raw, qa abi.StoragePower, err error)
 }
 

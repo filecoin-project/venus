@@ -5,14 +5,14 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/require"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-state-types/abi"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
 )
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
@@ -29,12 +29,12 @@ type FakeConsensusStateViewer struct {
 }
 
 // PowerStateView returns the state view for a root.
-func (f *FakeConsensusStateViewer) PowerStateView(root cid.Cid) PowerStateView {
+func (f *FakeConsensusStateViewer) PowerStateView(root cid.Cid) state.PowerStateView {
 	return f.Views[root]
 }
 
 // FaultStateView returns the state view for a root.
-func (f *FakeConsensusStateViewer) FaultStateView(root cid.Cid) FaultStateView {
+func (f *FakeConsensusStateViewer) FaultStateView(root cid.Cid) state.FaultStateView {
 	return f.Views[root]
 }
 
@@ -153,7 +153,7 @@ func (s *FakeChainRandomness) SampleChainRandomness(_ context.Context, _ block.T
 	return []byte(fmt.Sprintf("s=%d,e=%d,t=%d,p=%s", s.Seed, epoch, tag, string(entropy))), nil
 }
 
-func (s *FakeChainRandomness) ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error){
+func (s *FakeChainRandomness) ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	return []byte(""), nil
 }
 

@@ -2,6 +2,7 @@ package chain_test
 
 import (
 	"context"
+	ds "github.com/ipfs/go-datastore"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -30,7 +31,10 @@ import (
 
 // newChainStore creates a new chain store for tests.
 func newChainStore(r repo.Repo, genCid cid.Cid) *chain.Store {
-	return chain.NewStore(r.Datastore(), cbor.NewMemCborStore(), chain.NewStatusReporter(), genCid)
+	dsstore := ds.NewMapDatastore()
+	tempBlock := bstore.NewBlockstore(dsstore)
+	cborStore := cbor.NewCborStore(tempBlock)
+	return chain.NewStore(r.Datastore(), cborStore, tempBlock, chain.NewStatusReporter(), block.UndefTipSet.Key(), genCid)
 }
 
 // requirePutTestChain puts the count tipsets preceding head in the source to
@@ -40,7 +44,7 @@ func requirePutTestChain(ctx context.Context, t *testing.T, chainStore *chain.St
 	for _, ts := range tss {
 		tsas := &chain.TipSetMetadata{
 			TipSet:          ts,
-			TipSetStateRoot: ts.At(0).StateRoot,
+			TipSetStateRoot: ts.At(0).StateRoot.Cid,
 			TipSetReceipts:  types.EmptyReceiptsCID,
 		}
 		require.NoError(t, chainStore.PutTipSetMetadata(ctx, tsas))
@@ -79,7 +83,7 @@ func TestPutTipSet(t *testing.T) {
 
 	genTsas := &chain.TipSetMetadata{
 		TipSet:          genTS,
-		TipSetStateRoot: genTS.At(0).StateRoot,
+		TipSetStateRoot: genTS.At(0).StateRoot.Cid,
 		TipSetReceipts:  types.EmptyReceiptsCID,
 	}
 	err := cs.PutTipSetMetadata(ctx, genTsas)
@@ -145,7 +149,7 @@ func TestGetTipSetState(t *testing.T) {
 	balance := abi.NewTokenAmount(1000000)
 	testActor := actor.NewActor(fakeCode, balance, cid.Undef)
 	addr := vmaddr.NewForTestGetter()()
-	st1 := state.NewState(cst)
+	st1, _ := state.NewState(cst, state.StateTreeVersion1)
 	require.NoError(t, st1.SetActor(ctx, addr, testActor))
 	root, err := st1.Flush(ctx)
 	require.NoError(t, err)
@@ -158,7 +162,7 @@ func TestGetTipSetState(t *testing.T) {
 	})
 
 	// setup chain store
-	store := chain.NewStore(ds, cst, chain.NewStatusReporter(), gen.At(0).Cid())
+	store := chain.NewStore(ds, cst, bs, chain.NewStatusReporter(), block.UndefTipSet.Key(), gen.At(0).Cid())
 
 	// add tipset and state to chain store
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
@@ -270,7 +274,7 @@ func TestSetGenesis(t *testing.T) {
 	require.Equal(t, genTS.At(0).Cid(), cs.GenesisCid())
 }
 
-func assertSetHead(t *testing.T, chainStore *chain.Store, ts block.TipSet) {
+func assertSetHead(t *testing.T, chainStore *chain.Store, ts *block.TipSet) {
 	ctx := context.Background()
 	err := chainStore.SetHead(ctx, ts)
 	assert.NoError(t, err)
@@ -284,7 +288,9 @@ func TestHead(t *testing.T) {
 	genTS := builder.NewGenesis()
 	r := repo.NewInMemoryRepo()
 	sr := chain.NewStatusReporter()
-	cs := chain.NewStore(r.Datastore(), cbor.NewMemCborStore(), sr, genTS.At(0).Cid())
+	bs := bstore.NewBlockstore(r.Datastore())
+	cborStore := cbor.NewCborStore(bs)
+	cs := chain.NewStore(r.Datastore(), cborStore, bs, sr, block.UndefTipSet.Key(), genTS.At(0).Cid())
 
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
@@ -346,7 +352,7 @@ func TestHeadEvents(t *testing.T) {
 	assertSetHead(t, chainStore, link2)
 	assertSetHead(t, chainStore, link1)
 	assertSetHead(t, chainStore, genTS)
-	heads := []block.TipSet{genTS, link1, link2, link3, link4, link3, link2, link1, genTS}
+	heads := []*block.TipSet{genTS, link1, link2, link3, link4, link3, link2, link1, genTS}
 
 	// Heads arrive in the expected order
 	for i := 0; i < 9; i++ {
@@ -372,7 +378,8 @@ func TestLoadAndReboot(t *testing.T) {
 	genTS := builder.NewGenesis()
 	rPriv := repo.NewInMemoryRepo()
 	ds := rPriv.Datastore()
-	cst := cborutil.NewIpldStore(bstore.NewBlockstore(ds))
+	bs := bstore.NewBlockstore(ds)
+	cst := cborutil.NewIpldStore(bs)
 
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
@@ -387,7 +394,7 @@ func TestLoadAndReboot(t *testing.T) {
 	requirePutBlocksToCborStore(t, cst, link3.ToSlice()...)
 	requirePutBlocksToCborStore(t, cst, link4.ToSlice()...)
 
-	chainStore := chain.NewStore(ds, cst, chain.NewStatusReporter(), genTS.At(0).Cid())
+	chainStore := chain.NewStore(ds, cst, bs, chain.NewStatusReporter(), block.UndefTipSet.Key(), genTS.At(0).Cid())
 	requirePutTestChain(ctx, t, chainStore, link4.Key(), builder, 5)
 	assertSetHead(t, chainStore, genTS) // set the genesis block
 
@@ -396,7 +403,7 @@ func TestLoadAndReboot(t *testing.T) {
 
 	// rebuild chain with same datastore and cborstore
 	sr := chain.NewStatusReporter()
-	rebootChain := chain.NewStore(ds, cst, sr, genTS.At(0).Cid())
+	rebootChain := chain.NewStore(ds, cst, bs, sr, block.UndefTipSet.Key(), genTS.At(0).Cid())
 	err := rebootChain.Load(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, link4.Key(), sr.Status().ValidatedHead)
@@ -416,10 +423,10 @@ func TestLoadAndReboot(t *testing.T) {
 }
 
 type tipSetGetter interface {
-	GetTipSet(block.TipSetKey) (block.TipSet, error)
+	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 }
 
-func requireGetTipSet(ctx context.Context, t *testing.T, chainStore tipSetGetter, key block.TipSetKey) block.TipSet {
+func requireGetTipSet(ctx context.Context, t *testing.T, chainStore tipSetGetter, key block.TipSetKey) *block.TipSet {
 	ts, err := chainStore.GetTipSet(key)
 	require.NoError(t, err)
 	return ts

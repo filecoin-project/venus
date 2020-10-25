@@ -1,7 +1,8 @@
-package consensus_test
+package state_test
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -14,11 +15,9 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
@@ -34,7 +33,7 @@ func TestTotal(t *testing.T) {
 
 	cst, _, root := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis)
 
-	table := consensus.NewPowerTableView(state.NewView(cst, root), state.NewView(cst, root))
+	table := state.NewPowerTableView(state.NewView(cst, root), state(cst, root))
 	networkPower, err := table.NetworkTotalPower(ctx)
 	require.NoError(t, err)
 
@@ -54,7 +53,7 @@ func TestMiner(t *testing.T) {
 	cst, addrs, root := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis)
 	addr := addrs[0]
 
-	table := consensus.NewPowerTableView(state.NewView(cst, root), state.NewView(cst, root))
+	table := state.NewPowerTableView(NewView(cst, root), NewView(cst, root))
 	actual, err := table.MinerClaimedPower(ctx, addr)
 	require.NoError(t, err)
 
@@ -72,7 +71,7 @@ func TestNoPowerAfterSlash(t *testing.T) {
 	kis := types.MustGenerateBLSKeyInfo(numMiners, 0)
 	cstPower, addrsPower, rootPower := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis)
 	cstFaults, _, rootFaults := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis[0:2]) // drop the third key
-	table := consensus.NewPowerTableView(state.NewView(cstPower, rootPower), state.NewView(cstFaults, rootFaults))
+	table := state.NewPowerTableView(NewView(cstPower, rootPower), NewView(cstFaults, rootFaults))
 
 	// verify that faulted miner claim is 0 power
 	claim, err := table.MinerClaimedPower(ctx, addrsPower[2])
@@ -88,7 +87,7 @@ func TestTotalPowerUnaffectedBySlash(t *testing.T) {
 	kis := types.MustGenerateBLSKeyInfo(numMiners, 0)
 	cstPower, _, rootPower := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis)
 	cstFaults, _, rootFaults := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis[0:2]) // drop the third key
-	table := consensus.NewPowerTableView(state.NewView(cstPower, rootPower), state.NewView(cstFaults, rootFaults))
+	table := state.NewPowerTableView(NewView(cstPower, rootPower), NewView(cstFaults, rootFaults))
 
 	// verify that faulted miner claim is 0 power
 	total, err := table.NetworkTotalPower(ctx)

@@ -23,21 +23,30 @@ type BlockProposer interface {
 
 // Manager sync the chain.
 type Manager struct {
-	syncer       *syncer.Syncer
-	dispatcher   *dispatcher.Dispatcher
+	syncer     *syncer.Syncer
+	dispatcher *dispatcher.Dispatcher
 }
 
 // NewManager creates a new chain sync manager.
-func NewManager(fv syncer.FullBlockValidator, hv syncer.BlockValidator, cs syncer.ChainSelector, s syncer.ChainReaderWriter, m *chain.MessageStore, f syncer.Fetcher, c clock.Clock, detector *slashing.ConsensusFaultDetector, fork fork.IFork) (Manager, error) {
-	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, f, status.NewReporter(), c, detector, fork)
+func NewManager(fv syncer.FullBlockValidator,
+	hv syncer.BlockValidator,
+	cs syncer.ChainSelector,
+	s syncer.ChainReaderWriter,
+	m *chain.MessageStore,
+	f syncer.Fetcher,
+	c clock.Clock,
+	checkPoint block.TipSetKey,
+	detector *slashing.ConsensusFaultDetector,
+	fork fork.IFork) (Manager, error) {
+	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, f, status.NewReporter(), c, detector, checkPoint, fork)
 	if err != nil {
 		return Manager{}, err
 	}
 	gapTransitioner := dispatcher.NewGapTransitioner(s, syncer)
 	dispatcher := dispatcher.NewDispatcher(syncer, gapTransitioner)
 	return Manager{
-		syncer:       syncer,
-		dispatcher:   dispatcher,
+		syncer:     syncer,
+		dispatcher: dispatcher,
 	}, nil
 }
 

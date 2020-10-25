@@ -5,9 +5,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 	"sync"
-	"golang.org/x/sync/errgroup"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -81,8 +81,8 @@ type TicketValidator interface {
 
 // StateViewer provides views into the chain state.
 type StateViewer interface {
-	PowerStateView(root cid.Cid, version network.Version) PowerStateView
-	FaultStateView(root cid.Cid, version network.Version) FaultStateView
+	PowerStateView(root cid.Cid, version network.Version) appstate.PowerStateView
+	FaultStateView(root cid.Cid, version network.Version) appstate.FaultStateView
 }
 
 type chainReader interface {
@@ -222,67 +222,14 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage) 
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context, ts *block.TipSet, parentWeight big.Int, parentStateRoot cid.Cid, parentReceiptRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
+func (c *Expected) RunStateTransition(ctx context.Context,
+	ts *block.TipSet,
+	secpMessages [][]*types.SignedMessage,
+	blsMessages [][]*types.UnsignedMessage,
+	parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
-
-	// Gather tipset messages todo should be a function
-	var secpMessages [][]*types.SignedMessage
-	var blsMessages [][]*types.UnsignedMessage
-
-	applied := make(map[address.Address]uint64)
-	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
-		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
-		if _, ok := applied[m.From]; !ok {
-			applied[m.From] = m.CallSeqNum
-		}
-
-		if applied[m.From] != m.CallSeqNum {
-			return false, nil
-		}
-
-		applied[m.From]++
-
-		return true, nil
-	}
-	for i := 0; i < ts.Len(); i++ {
-		blk := ts.At(i)
-		secpMsgs, blsMsgs, err := c.messageStore.LoadMessages(ctx, blk.Messages.Cid)
-		if err != nil {
-			return cid.Undef, []types.MessageReceipt{}, errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
-		}
-
-		var blksecpMessages []*types.SignedMessage
-		var blkblsMessages []*types.UnsignedMessage
-
-		for _, msg := range blsMsgs {
-			b, err := selectMsg(msg)
-			if err != nil {
-				return cid.Undef, []types.MessageReceipt{}, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
-			}
-			if b {
-				blkblsMessages = append(blkblsMessages, msg)
-			}
-		}
-
-		for _, msg := range secpMsgs {
-			b, err := selectMsg(&msg.Message)
-			if err != nil {
-				return cid.Undef, []types.MessageReceipt{}, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
-			}
-			if b {
-				blksecpMessages = append(blksecpMessages, msg)
-			}
-		}
-
-		blsMessages = append(blsMessages, blkblsMessages)
-		secpMessages = append(secpMessages, blksecpMessages)
-	}
-
-	if err := c.validateMining(ctx, ts, parentStateRoot, parentWeight, parentReceiptRoot); err != nil {
-		return cid.Undef, []types.MessageReceipt{}, err
-	}
 
 	vms := vm.NewStorage(c.bstore)
 	priorState, err := state.LoadState(ctx, vms, parentStateRoot)
@@ -309,7 +256,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *block.TipSet, par
 
 // validateMining checks validity of the ticket, proof, signature and miner
 // address of every block in the tipset.
-func (c *Expected) validateMining(ctx context.Context,
+func (c *Expected) ValidateMining(ctx context.Context,
 	ts *block.TipSet,
 	parentStateRoot cid.Cid,
 	parentWeight big.Int,
@@ -333,7 +280,7 @@ func (c *Expected) validateMining(ctx context.Context,
 	keyStateView := c.state.PowerStateView(parentStateRoot, version)
 	sigValidator := appstate.NewSignatureValidator(keyStateView)
 	faultsStateView := c.state.FaultStateView(parentStateRoot, version)
-	keyPowerTable := NewPowerTableView(keyStateView, faultsStateView)
+	keyPowerTable := appstate.NewPowerTableView(keyStateView, faultsStateView)
 
 	//tsHeight, err := ts.Height()
 	//if err != nil {
@@ -372,9 +319,10 @@ func (c *Expected) validateMining(ctx context.Context,
 	}
 	return wg.Wait()
 }
+
 // Todo beacon check
 func (c *Expected) validateBlock(ctx context.Context,
-	keyPowerTable PowerTableView,
+	keyPowerTable appstate.PowerTableView,
 	sigValidator *appstate.SignatureValidator,
 	blk *block.Block,
 	parentStateRoot cid.Cid,
@@ -413,7 +361,6 @@ func (c *Expected) validateBlock(ctx context.Context,
 	if err != nil {
 		return errors.Wrapf(err, "failed loading message list %s for block %s", blk.Messages, blk.Cid())
 	}
-
 
 	// Verify that the BLS signature aggregate is correct todo remove to sync fast
 	if err := sigValidator.ValidateBLSMessageAggregate(ctx, blkblsMsgs, blk.BLSAggregateSig); err != nil {
@@ -459,7 +406,6 @@ func (c *Expected) validateBlock(ctx context.Context,
 	}
 	return nil
 }
-
 
 // Todo beacon check
 func (c *Expected) ValidateBlockBeacon(b *block.Block, parentEpoch abi.ChainEpoch, prevEntry *block.BeaconEntry) error {
@@ -610,12 +556,12 @@ func AsDefaultStateViewer(v *appstate.Viewer) DefaultStateViewer {
 }
 
 // PowerStateView returns a power state view for a state root.
-func (v *DefaultStateViewer) PowerStateView(root cid.Cid, version network.Version) PowerStateView {
+func (v *DefaultStateViewer) PowerStateView(root cid.Cid, version network.Version) appstate.PowerStateView {
 	return v.Viewer.StateView(root, version)
 }
 
 // FaultStateView returns a fault state view for a state root.
-func (v *DefaultStateViewer) FaultStateView(root cid.Cid, version network.Version) FaultStateView {
+func (v *DefaultStateViewer) FaultStateView(root cid.Cid, version network.Version) appstate.FaultStateView {
 	return v.Viewer.StateView(root, version)
 }
 

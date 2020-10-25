@@ -2,13 +2,13 @@ package vmcontext
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	. "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -249,7 +249,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 
 	// process messages on each block
 	for index, blk := range blocks {
-		fmt.Println("start to process block ", index)
+		start := time.Now()
 		if blk.Miner.Protocol() != address.ID {
 			panic("precond failure: block miner address must be an IDAddress")
 		}
@@ -267,15 +267,8 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 				continue
 			}
 
-			if mcid.String() == "bafy2bzacedzuicytagouyal2o66uggyzz623s7uczpmmg6pogeigkbpqjpngk" {
-				fmt.Println()
-			}
-			fmt.Println("start to process bls message ", mcid)
 			// apply message
 			ret := vm.applyMessage(m, m.OnChainLen())
-			if ret.Receipt.ExitCode == 6 {
-				fmt.Println(mcid.String())
-			}
 			// accumulate result
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, ret.OutPuts.MinerPenalty)
 			minerGasRewardTotal = big.Add(minerGasRewardTotal, ret.OutPuts.MinerTip)
@@ -283,12 +276,12 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
-			iii, _ := vm.flush()
+			/*iii, _ := vm.flush()
 			fmt.Printf("message: %s  root: %s\n", mcid, iii)
 
 			dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
 			fmt.Println(string(dddd))
-			/*		xxxx := []*types.GasTrace{}
+					xxxx := []*types.GasTrace{}
 					for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
 						xxx.Location = nil
 						if xxx.TotalGas >0 {
@@ -296,9 +289,9 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 						}
 					}
 					dddd, _ = json.MarshalIndent(xxxx,"","\t")
-					fmt.Println(string(dddd))*/
+					fmt.Println(string(dddd))
 
-			fmt.Println()
+			fmt.Println()*/
 		}
 
 		// Process SECP messages from the block
@@ -309,7 +302,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 				continue
 			}
 
-			fmt.Println("start to process secp message ", mcid)
+			//fmt.Println("start to process secp message ", mcid)
 			m := sm.Message
 			// apply message
 			// Note: the on-chain size for SECP messages is different
@@ -323,12 +316,12 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
 
-			iii, _ := vm.flush()
+			/*iii, _ := vm.flush()
 			fmt.Printf("message: %s  root: %s\n", mcid, iii)
 
 			dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
 			fmt.Println(string(dddd))
-			/*	xxxx := []*types.GasTrace{}
+				xxxx := []*types.GasTrace{}
 				for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
 					xxx.Location = nil
 					if xxx.TotalGas >0 {
@@ -336,12 +329,12 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 					}
 				}
 				dddd, _ = json.MarshalIndent(xxxx,"","\t")
-				fmt.Println(string(dddd))*/
-			fmt.Println()
+				fmt.Println(string(dddd))
+			fmt.Println()*/
 		}
 
-		root, _ := vm.state.Flush(context.TODO())
-		fmt.Printf("before reward: %d  root: %s\n", index, root)
+		//root, _ := vm.state.Flush(context.TODO())
+		//fmt.Printf("before reward: %d  root: %s\n", index, root)
 
 		// Pay block reward.
 		// Dragons: missing final protocol design on if/how to determine the nominal power
@@ -350,24 +343,26 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 			return nil, err
 		}
 
-		root, _ = vm.state.Flush(context.TODO())
-		fmt.Printf("reward: %d  root: %s\n", index, root)
-		fmt.Print()
+		//root, _ = vm.state.Flush(context.TODO())
+		//fmt.Printf("reward: %d  root: %s\n", index, root)
+		//fmt.Print()
+		fmt.Println("process block ", index, " time ", time.Since(start).Milliseconds())
 	}
 
-	root, _ := vm.state.Flush(context.TODO())
-	fmt.Printf("before cron root: %s\n", root)
-	fmt.Println("xxxx")
+	//root, _ := vm.state.Flush(context.TODO())
+	//fmt.Printf("before cron root: %s\n", root)
+	//fmt.Println("xxxx")
 
 	// cron tick
+	start := time.Now()
 	cronMessage := makeCronTickMessage()
 	if _, err := vm.applyImplicitMessage(cronMessage); err != nil {
 		return nil, err
 	}
-
-	root, _ = vm.state.Flush(context.TODO())
-	fmt.Printf("after cron root: %s\n", root)
-	fmt.Print()
+	fmt.Println("process block cron job ", time.Since(start).Milliseconds())
+	//root, _ = vm.state.Flush(context.TODO())
+	//fmt.Printf("after cron root: %s\n", root)
+	//fmt.Print()
 	// commit stateView
 	if _, err := vm.flush(); err != nil {
 		return nil, err
@@ -445,7 +440,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) ([]byte, error) {
 	return ret, nil
 }
 
-// todo 预测消息的gasLimit
+// todo ?????gasLimit
 func (vm *VM) ApplyMessage(msg *types.UnsignedMessage) types.MessageReceipt {
 	ret := vm.applyMessage(msg, msg.OnChainLen())
 	return ret.Receipt

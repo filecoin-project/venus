@@ -77,11 +77,11 @@ func (t *FakeWorkerPorcelainAPI) BlockTime() time.Duration {
 }
 
 // PowerStateView returns the state view.
-func (t *FakeWorkerPorcelainAPI) PowerStateView(_ block.TipSetKey) (consensus.PowerStateView, error) {
+func (t *FakeWorkerPorcelainAPI) PowerStateView(_ block.TipSetKey) (state.PowerStateView, error) {
 	return t.stateView, nil
 }
 
-func (t *FakeWorkerPorcelainAPI) FaultsStateView(_ block.TipSetKey) (consensus.FaultStateView, error) {
+func (t *FakeWorkerPorcelainAPI) FaultsStateView(_ block.TipSetKey) (state.FaultStateView, error) {
 	return t.stateView, nil
 }
 

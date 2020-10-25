@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"math/big"
 	"strings"
 
@@ -18,7 +19,7 @@ import (
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	vmstate "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 var (
@@ -62,7 +63,8 @@ func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet, pStateID c
 	if !pStateID.Defined() {
 		return fbig.Zero(), errors.New("undefined state passed to chain selector new weight")
 	}
-	powerTableView := NewPowerTableView(c.state.PowerStateView(pStateID, network.Version0), c.state.FaultStateView(pStateID, network.Version0))
+	//todo change view version
+	powerTableView := state.NewPowerTableView(c.state.PowerStateView(pStateID, network.Version0), c.state.FaultStateView(pStateID, network.Version0))
 	networkPower, err := powerTableView.NetworkTotalPower(ctx)
 	if err != nil {
 		return fbig.Zero(), err
@@ -145,6 +147,6 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b *block.TipSet, aStat
 	return cmp == 1, nil
 }
 
-func (c *ChainSelector) loadStateTree(ctx context.Context, id cid.Cid) (*state.State, error) {
-	return state.LoadState(ctx, c.cstore, id)
+func (c *ChainSelector) loadStateTree(ctx context.Context, id cid.Cid) (*vmstate.State, error) {
+	return vmstate.LoadState(ctx, c.cstore, id)
 }

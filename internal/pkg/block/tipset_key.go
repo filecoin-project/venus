@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"sort"
+	"strings"
 
 	"github.com/ipfs/go-cid"
 
@@ -38,6 +39,21 @@ func NewTipSetKey(ids ...cid.Cid) TipSetKey {
 		cids[i] = enccid.NewCid(ids[i])
 	}
 	return TipSetKey{cids}
+}
+
+// NewTipSetKeyFromUnique initialises a set with CIDs that are expected to be unique.
+func NewTipSetKeyFromString(keyStr string) (TipSetKey, error) {
+	keyStr = strings.Trim(keyStr, "{}")
+	cidsStr := strings.Split(keyStr, ",")
+	cids := make([]enccid.Cid, len(cidsStr))
+	for i, cidStr := range cidsStr {
+		id, err := cid.Decode(cidStr)
+		if err != nil {
+			return UndefTipSet.key, err
+		}
+		cids[i] = enccid.NewCid(id)
+	}
+	return TipSetKey{cids}, nil
 }
 
 // NewTipSetKeyFromUnique initialises a set with CIDs that are expected to be unique.
