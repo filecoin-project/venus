@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -99,7 +98,6 @@ type ChainReaderWriter interface {
 	GetTipSetAndStatesByParentsAndHeight(pTsKey block.TipSetKey, h abi.ChainEpoch) ([]*chain.TipSetMetadata, error)
 	GetLatestBeaconEntry(ts *block.TipSet) (*block.BeaconEntry, error)
 	GetGenesisBlock(ctx context.Context) (*block.Block, error)
-	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
 }
 
 type messageStore interface {

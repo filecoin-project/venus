@@ -31,7 +31,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/go-state-types/network"
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 )
 
@@ -81,8 +80,8 @@ type TicketValidator interface {
 
 // StateViewer provides views into the chain state.
 type StateViewer interface {
-	PowerStateView(root cid.Cid, version network.Version) appstate.PowerStateView
-	FaultStateView(root cid.Cid, version network.Version) appstate.FaultStateView
+	PowerStateView(root cid.Cid) appstate.PowerStateView
+	FaultStateView(root cid.Cid) appstate.FaultStateView
 }
 
 type chainReader interface {
@@ -90,7 +89,6 @@ type chainReader interface {
 	GetHead() block.TipSetKey
 	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
 	GetGenesisBlock(ctx context.Context) (*block.Block, error)
-	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
 }
 
 type Randness interface {
@@ -212,7 +210,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage) 
 			}
 			return dertail.FilCirculating, nil
 		},
-		NtwkVersionGetter: c.chainState.GetNtwkVersion,
+		NtwkVersionGetter: c.fork.GetNtwkVersion,
 		Rnd:               &rnd,
 		BaseFee:           ts.At(0).ParentBaseFee,
 	}
@@ -276,10 +274,9 @@ func (c *Expected) ValidateMining(ctx context.Context,
 	}
 
 	height, _ := ts.Height()
-	version := c.chainState.GetNtwkVersion(ctx, height)
-	keyStateView := c.state.PowerStateView(parentStateRoot, version)
+	keyStateView := c.state.PowerStateView(parentStateRoot)
 	sigValidator := appstate.NewSignatureValidator(keyStateView)
-	faultsStateView := c.state.FaultStateView(parentStateRoot, version)
+	faultsStateView := c.state.FaultStateView(parentStateRoot)
 	keyPowerTable := appstate.NewPowerTableView(keyStateView, faultsStateView)
 
 	//tsHeight, err := ts.Height()
@@ -417,7 +414,7 @@ func (c *Expected) ValidateBlockWinner(ctx context.Context, blk *block.Block, st
 		return xerrors.Errorf("block is not claiming to be a winner")
 	}
 
-	view := c.state.PowerStateView(stateID, c.chainState.GetNtwkVersion(ctx, blk.Height))
+	view := c.state.PowerStateView(stateID)
 	if view == nil {
 		return xerrors.New("power state view is null")
 	}
@@ -532,7 +529,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms *vm.Stora
 			}
 			return dertail.FilCirculating, nil
 		},
-		NtwkVersionGetter: c.chainState.GetNtwkVersion,
+		NtwkVersionGetter: c.fork.GetNtwkVersion,
 		Rnd:               &rnd,
 		BaseFee:           ts.At(0).ParentBaseFee,
 		Fork:              c.fork,
@@ -556,13 +553,13 @@ func AsDefaultStateViewer(v *appstate.Viewer) DefaultStateViewer {
 }
 
 // PowerStateView returns a power state view for a state root.
-func (v *DefaultStateViewer) PowerStateView(root cid.Cid, version network.Version) appstate.PowerStateView {
-	return v.Viewer.StateView(root, version)
+func (v *DefaultStateViewer) PowerStateView(root cid.Cid) appstate.PowerStateView {
+	return v.Viewer.StateView(root)
 }
 
 // FaultStateView returns a fault state view for a state root.
-func (v *DefaultStateViewer) FaultStateView(root cid.Cid, version network.Version) appstate.FaultStateView {
-	return v.Viewer.StateView(root, version)
+func (v *DefaultStateViewer) FaultStateView(root cid.Cid) appstate.FaultStateView {
+	return v.Viewer.StateView(root)
 }
 
 // A chain randomness source with a fixed head tipset key.

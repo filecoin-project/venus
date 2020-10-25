@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -64,7 +63,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet, pStateID c
 		return fbig.Zero(), errors.New("undefined state passed to chain selector new weight")
 	}
 	//todo change view version
-	powerTableView := state.NewPowerTableView(c.state.PowerStateView(pStateID, network.Version0), c.state.FaultStateView(pStateID, network.Version0))
+	powerTableView := state.NewPowerTableView(c.state.PowerStateView(pStateID), c.state.FaultStateView(pStateID))
 	networkPower, err := powerTableView.NetworkTotalPower(ctx)
 	if err != nil {
 		return fbig.Zero(), err

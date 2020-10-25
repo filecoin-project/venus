@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	"github.com/filecoin-project/go-state-types/network"
 	xerrors "github.com/pkg/errors"
 	"io"
 	mrand "math/rand"
@@ -14,6 +12,7 @@ import (
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
@@ -32,8 +31,11 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/params"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
 	gfcstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -44,6 +46,33 @@ import (
 )
 
 const InitialBaseFee = 100e6
+
+// TODO: review add bu force
+// TODO: make a list/schedule of these.
+var GenesisNetworkVersion = func() network.Version {
+	// returns the version _before_ the first upgrade.
+	if fork.UpgradeBreezeHeight >= 0 {
+		return network.Version0
+	}
+	if fork.UpgradeSmokeHeight >= 0 {
+		return network.Version1
+	}
+	if fork.UpgradeIgnitionHeight >= 0 {
+		return network.Version2
+	}
+	if fork.UpgradeActorsV2Height >= 0 {
+		return network.Version3
+	}
+	if fork.UpgradeLiftoffHeight >= 0 {
+		return network.Version3
+	}
+	return params.ActorUpgradeNetworkVersion - 1 // genesis requires actors v0.
+}()
+
+func genesisNetworkVersion(context.Context, abi.ChainEpoch) network.Version {
+	return GenesisNetworkVersion
+}
+
 
 type cstore struct {
 	ctx context.Context
@@ -77,10 +106,6 @@ func NewGenesisGenerator(vmStorage *vm.Storage) *GenesisGenerator {
 		return big.Zero(), nil
 	}
 
-	nwv := func(context.Context, abi.ChainEpoch) network.Version {
-		return network.Version0
-	}
-
 	g := GenesisGenerator{}
 	var err error
 	g.stateTree, err = state.NewState(vmStorage, state.StateTreeVersion1)
@@ -93,7 +118,7 @@ func NewGenesisGenerator(vmStorage *vm.Storage) *GenesisGenerator {
 	g.chainRand = crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}}
 	vmOption := vm.VmOption{
 		CircSupplyCalculator: csc,
-		NtwkVersionGetter:    nwv,
+		NtwkVersionGetter:    genesisNetworkVersion,
 		Rnd:                  &crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}},
 		BaseFee:              abi.NewTokenAmount(InitialBaseFee),
 	}
