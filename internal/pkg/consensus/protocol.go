@@ -31,6 +31,6 @@ type Protocol interface {
 	// BlockTime returns the block time used by the consensus protocol.
 	BlockTime() time.Duration
 
-	// todo add by force
-	PredictUnsignedMessageGas(ctx context.Context, msg *types.UnsignedMessage) (int64, error)
+	// CallWithGas
+	CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (types.MessageReceipt, error)
 }

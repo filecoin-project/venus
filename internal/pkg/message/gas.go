@@ -160,7 +160,7 @@ func (ob *Outbox) GasEstimateGasLimit(ctx context.Context, msgIn *types.Unsigned
 
 	actor, err := ob.actors.GetActorAt(ctx, tsKey, msgIn.From)
 	if err != nil {
-		return -1, xerrors.Errorf("getting key address: %w", err)
+		return -1, xerrors.Errorf("getting key address: %s", err)
 	}
 
 	// Sender should not be an empty actor
@@ -168,10 +168,12 @@ func (ob *Outbox) GasEstimateGasLimit(ctx context.Context, msgIn *types.Unsigned
 		return -1, xerrors.Errorf("sender %s is missing/empty", msg.From)
 	}
 
-	// todo 需要调用vm applyMessage计算 ???
-	gasUsed, err := ob.gp.PredictUnsignedMessageGas(ctx, &msg)
+	ret, err := ob.gp.CallWithGas(ctx, &msg)
+	if err != nil {
+		return -1, xerrors.Errorf("call with gas err: %s", err)
+	}
 
-	return gasUsed + 76e3, nil
+	return int64(ret.GasUsed) + 76e3, nil
 }
 
 func (ob *Outbox) GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec, _ block.TipSetKey) (*types.UnsignedMessage, error) {

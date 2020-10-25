@@ -71,7 +71,7 @@ type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
 	ProcessTipSet(context.Context, state.Tree, *vm.Storage, *block.TipSet, *block.TipSet, []vm.BlockMessagesInfo, vm.VmOption) ([]types.MessageReceipt, error)
 	// Todo add by force
-	ProcessUnsignedMessage(context.Context, *types.UnsignedMessage, state.Tree, *vm.Storage, vm.VmOption) (int64, error)
+	ProcessUnsignedMessage(context.Context, *types.UnsignedMessage, state.Tree, *vm.Storage, vm.VmOption) (types.MessageReceipt, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
@@ -182,21 +182,21 @@ func (c *Expected) BlockTime() time.Duration {
 }
 
 // todo add by force
-func (c *Expected) PredictUnsignedMessageGas(ctx context.Context, msg *types.UnsignedMessage) (int64, error) {
+func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (types.MessageReceipt, error) {
 	stateRoot, err := c.chainState.GetTipSetStateRoot(c.chainState.GetHead())
 	if err != nil {
-		return 0, err
+		return types.MessageReceipt{}, err
 	}
 
 	ts, err := c.chainState.GetTipSet(c.chainState.GetHead())
 	if err != nil {
-		return 0, err
+		return types.MessageReceipt{}, err
 	}
 
 	vms := vm.NewStorage(c.bstore)
 	priorState, err := state.LoadState(ctx, vms, stateRoot)
 	if err != nil {
-		return 0, err
+		return types.MessageReceipt{}, err
 	}
 
 	rnd := headRandomness{

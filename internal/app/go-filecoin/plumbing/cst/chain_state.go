@@ -10,10 +10,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	initactor "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -43,7 +41,7 @@ var logStore = logging.Logger("plumbing/chain_store")
 
 type chainReadWriter interface {
 	GenesisRootCid() cid.Cid
-	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
+	GetNtwkVersion(context.Context, abi.ChainEpoch) network.Version
 	GetHead() block.TipSetKey
 	GetGenesisBlock(ctx context.Context) (*block.Block, error)
 	GetTipSet(block.TipSetKey) (*block.TipSet, error)
@@ -52,7 +50,7 @@ type chainReadWriter interface {
 	SetHead(context.Context, *block.TipSet) error
 	GetLatestBeaconEntry(ts *block.TipSet) (*block.BeaconEntry, error)
 	ReadOnlyStateStore() cborutil.ReadOnlyIpldStore
-	GetTipSetByHeight(ctx context.Context, ts *block.TipSet, h abi.ChainEpoch, prev bool) (*block.TipSet, error)
+	GetTipSetByHeight(context.Context, *block.TipSet, abi.ChainEpoch, bool) (*block.TipSet, error)
 }
 
 // ChainStateReadWriter composes a:
@@ -144,8 +142,12 @@ func (chn *ChainStateReadWriter) GetTipSet(key block.TipSetKey) (*block.TipSet, 
 }
 
 // ChainGetTipSetByHeight looks back for a tipset at the specified epoch
-func (chn *ChainStateReadWriter) GetTipsetByHeight(ctx context.Context, height abi.ChainEpoch) (*block.TipSet, error) {
-	return chn.readWriter.GetTipSetByHeight(ctx, nil, height, true)
+func (chn *ChainStateReadWriter) GetTipSetByHeight(ctx context.Context, ts *block.TipSet, h abi.ChainEpoch, prev bool) (*block.TipSet, error) {
+	return chn.readWriter.GetTipSetByHeight(ctx, ts, h, prev)
+}
+
+func (chn *ChainStateReadWriter) GetTipSetState(ctx context.Context, tsKey block.TipSetKey) (vmstate.Tree, error) {
+	return chn.readWriter.GetTipSetState(ctx, tsKey)
 }
 
 func (chn *ChainStateReadWriter) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
@@ -413,102 +415,4 @@ func (chn *ChainStateReadWriter) AccountStateView(key block.TipSetKey, height ab
 
 func (chn *ChainStateReadWriter) FaultStateView(key block.TipSetKey, height abi.ChainEpoch) (slashing.FaultStateView, error) {
 	return chn.StateView(key, height)
-}
-
-// ToDo 完善sector接口后再做
-func GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]proof.SectorInfo, error) {
-	//act, err := sm.LoadActorRaw(ctx, maddr, st)
-	//if err != nil {
-	//	return nil, xerrors.Errorf("failed to load miner actor: %w", err)
-	//}
-	//
-	//mas, err := miner.Load(sm.cs.Store(ctx), act)
-	//if err != nil {
-	//	return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
-	//}
-	//
-	//// TODO (!!): Actor Update: Make this active sectors
-	//
-	//allSectors, err := miner.AllPartSectors(mas, miner.Partition.AllSectors)
-	//if err != nil {
-	//	return nil, xerrors.Errorf("get all sectors: %w", err)
-	//}
-	//
-	//faultySectors, err := miner.AllPartSectors(mas, miner.Partition.FaultySectors)
-	//if err != nil {
-	//	return nil, xerrors.Errorf("get faulty sectors: %w", err)
-	//}
-	//
-	//provingSectors, err := bitfield.SubtractBitField(allSectors, faultySectors) // TODO: This is wrong, as it can contain faaults, change to just ActiveSectors in an upgrade
-	//if err != nil {
-	//	return nil, xerrors.Errorf("calc proving sectors: %w", err)
-	//}
-	//
-	//numProvSect, err := provingSectors.Count()
-	//if err != nil {
-	//	return nil, xerrors.Errorf("failed to count bits: %w", err)
-	//}
-	//
-	//// TODO(review): is this right? feels fishy to me
-	//if numProvSect == 0 {
-	//	return nil, nil
-	//}
-	//
-	//info, err := mas.Info()
-	//if err != nil {
-	//	return nil, xerrors.Errorf("getting miner info: %w", err)
-	//}
-	//
-	//spt, err := ffiwrapper.SealProofTypeFromSectorSize(info.SectorSize)
-	//if err != nil {
-	//	return nil, xerrors.Errorf("getting seal proof type: %w", err)
-	//}
-	//
-	//wpt, err := spt.RegisteredWinningPoStProof()
-	//if err != nil {
-	//	return nil, xerrors.Errorf("getting window proof type: %w", err)
-	//}
-	//
-	//mid, err := address.IDFromAddress(maddr)
-	//if err != nil {
-	//	return nil, xerrors.Errorf("getting miner ID: %w", err)
-	//}
-	//
-	//ids, err := pv.GenerateWinningPoStSectorChallenge(ctx, wpt, abi.ActorID(mid), rand, numProvSect)
-	//if err != nil {
-	//	return nil, xerrors.Errorf("generating winning post challenges: %w", err)
-	//}
-	//
-	//iter, err := provingSectors.BitIterator()
-	//if err != nil {
-	//	return nil, xerrors.Errorf("iterating over proving sectors: %w", err)
-	//}
-	//
-	//// Select winning sectors by _index_ in the all-sectors bitfield.
-	//selectedSectors := bitfield.New()
-	//prev := uint64(0)
-	//for _, n := range ids {
-	//	sno, err := iter.Nth(n - prev)
-	//	if err != nil {
-	//		return nil, xerrors.Errorf("iterating over proving sectors: %w", err)
-	//	}
-	//	selectedSectors.Set(sno)
-	//	prev = n
-	//}
-	//
-	//sectors, err := mas.LoadSectors(&selectedSectors)
-	//if err != nil {
-	//	return nil, xerrors.Errorf("loading proving sectors: %w", err)
-	//}
-	//
-	out := make([]proof.SectorInfo, 0)
-	//for i, sinfo := range sectors {
-	//	out[i] = proof0.SectorInfo{
-	//		SealProof:    spt,
-	//		SectorNumber: sinfo.SectorNumber,
-	//		SealedCID:    sinfo.SealedCID,
-	//	}
-	//}
-	//
-	return out, nil
 }

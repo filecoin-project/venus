@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -271,7 +272,7 @@ func (sm *Expected) setupPostIgnitionGenesisActors(ctx context.Context) error {
 	for k, v := range totalsByEpoch {
 		ns := msig0.State{
 			// In the pre-ignition logic, we incorrectly set this value in Fil, not attoFil, an off-by-10^18 error
-			InitialBalance: big.Mul(v, big.NewInt(int64(build.FilecoinPrecision))),
+			InitialBalance: big.Mul(v, big.NewInt(int64(fork.FilecoinPrecision))),
 			UnlockDuration: k,
 			PendingTxns:    cid.Undef,
 			// In the pre-ignition logic, the start epoch was 0. This changes in the fork logic of the Ignition upgrade itself.

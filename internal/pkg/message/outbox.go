@@ -65,7 +65,7 @@ type publisher interface {
 
 // todo add by force
 type gasPredictor interface {
-	PredictUnsignedMessageGas(ctx context.Context, msg *types.UnsignedMessage) (int64, error)
+	CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (types.MessageReceipt, error)
 }
 
 var msgSendErrCt = metrics.NewInt64Counter("message_sender_error", "Number of errors encountered while sending a message")

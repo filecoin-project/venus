@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/build"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	"os"
 	"runtime/debug"
@@ -310,7 +309,7 @@ func (store *Store) GetTipSetByHeight(ctx context.Context, ts *block.TipSet, h a
 		return ts, nil
 	}
 
-	lbts, err := store.chainIndex.GetTipsetByHeight(ctx, ts, h)
+	lbts, err := store.chainIndex.GetTipSetByHeight(ctx, ts, h)
 	if err != nil {
 		return nil, err
 	}
@@ -580,21 +579,18 @@ func (store *Store) GenesisRootCid() cid.Cid {
 	return genesis.StateRoot.Cid
 }
 
-
-// todo review 最新的版本是Version4?
 func UseNewestNetwork() bool {
 	// TODO: Put these in a container we can iterate over
-	if fork.UpgradeBreezeHeight <= 0 && fork.UpgradeSmokeHeight <= 0 {
+	if fork.UpgradeBreezeHeight <= 0 && fork.UpgradeSmokeHeight <= 0 && fork.UpgradeActorsV2Height <= 0 {
 		return true
 	}
 	return false
 }
 
-
 // GenesisCid returns the genesis cid of the chain tracked by the default store.
 func (store *Store) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
 	if UseNewestNetwork() {
-		return build.NewestNetworkVersion
+		return fork.NewestNetworkVersion
 	}
 
 	if height <= fork.UpgradeBreezeHeight {
@@ -605,7 +601,7 @@ func (store *Store) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) n
 		return network.Version1
 	}
 
-	return build.NewestNetworkVersion
+	return fork.NewestNetworkVersion
 }
 
 // Stop stops all activities and cleans up.

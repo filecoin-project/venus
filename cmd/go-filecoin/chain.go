@@ -81,7 +81,7 @@ var storeLsCmd = &cmds.Command{
 		var err error
 		height, _ := req.Options["height"].(int64)
 		if height >=0 {
-			ts, err := GetPorcelainAPI(env).ChainGetTipSetByHeight(req.Context, abi.ChainEpoch(height))
+			ts, err := GetPorcelainAPI(env).ChainGetTipSetByHeight(req.Context, nil, abi.ChainEpoch(height), true)
 			if err != nil {
 				return err
 			}

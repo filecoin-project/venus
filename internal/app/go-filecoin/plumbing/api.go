@@ -176,8 +176,8 @@ func (api *API) ChainTipSet(key block.TipSetKey) (*block.TipSet, error) {
 // ChainGetTipSetByHeight looks back for a tipset at the specified epoch.
 // If there are no blocks at the specified epoch, a tipset at an earlier epoch
 // will be returned.
-func (api *API) ChainGetTipSetByHeight(ctx context.Context, height abi.ChainEpoch) (*block.TipSet, error) {
-	return api.chain.GetTipsetByHeight(ctx, height)
+func (api *API) ChainGetTipSetByHeight(ctx context.Context, ts *block.TipSet, height abi.ChainEpoch, prev bool) (*block.TipSet, error) {
+	return api.chain.GetTipSetByHeight(ctx, ts, height, prev)
 }
 
 // ChainLs returns an iterator of tipsets from head to genesis

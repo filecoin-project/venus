@@ -64,7 +64,10 @@ func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *Blockstor
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, builtin.DefaultActors, drand)
 	faultChecker := slashing.NewFaultChecker(chainState)
 	syscalls := vmsupport.NewSyscalls(faultChecker, verifier.ProofVerifier)
-	fork := fork.NewChainFork(chainState, blockstore.CborStore, blockstore.Blockstore)
+	fork, err := fork.NewChainFork(chainState, blockstore.CborStore, blockstore.Blockstore)
+	if err != nil {
+		return ChainSubmodule{}, err
+	}
 	processor := consensus.NewDefaultProcessor(syscalls, chainState, fork)
 
 	return ChainSubmodule{
