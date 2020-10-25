@@ -10,7 +10,6 @@ import (
 
 	"github.com/cskr/pubsub"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -26,7 +25,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -590,31 +588,6 @@ func (store *Store) GenesisRootCid() cid.Cid {
 	defer store.mu.Unlock()
 	genesis, _ := store.stateAndBlockSource.GetBlock(context.TODO(), store.GenesisCid())
 	return genesis.StateRoot.Cid
-}
-
-func UseNewestNetwork() bool {
-	// TODO: Put these in a container we can iterate over
-	if fork.UpgradeBreezeHeight <= 0 && fork.UpgradeSmokeHeight <= 0 && fork.UpgradeActorsV2Height <= 0 {
-		return true
-	}
-	return false
-}
-
-// GenesisCid returns the genesis cid of the chain tracked by the default store.
-func (store *Store) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
-	if UseNewestNetwork() {
-		return fork.NewestNetworkVersion
-	}
-
-	if height <= fork.UpgradeBreezeHeight {
-		return network.Version0
-	}
-
-	if height <= fork.UpgradeSmokeHeight {
-		return network.Version1
-	}
-
-	return fork.NewestNetworkVersion
 }
 
 func (store *Store) Import(r io.Reader) (*block.TipSet, error) {

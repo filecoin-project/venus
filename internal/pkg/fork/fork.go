@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	bstore "github.com/filecoin-project/go-filecoin/internal/pkg/fork/blockstore"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/fork/bufbstore"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/params"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
 	init_ "github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/init"
@@ -213,6 +214,7 @@ type chainReader interface {
 }
 type IFork interface {
 	HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error)
+	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
 }
 
 var _ = IFork((*ChainFork)(nil))
@@ -268,7 +270,7 @@ func NewChainFork(cr chainReader, ipldstore cbor.IpldStore, bs blockstore.Blocks
 		}
 	} else {
 		// Otherwise, go directly to the latest version.
-		lastVersion = NewestNetworkVersion
+		lastVersion = params.NewestNetworkVersion
 	}
 
 	fork := &ChainFork{
@@ -306,6 +308,17 @@ func (fork *ChainFork) HandleStateForks(ctx context.Context, root cid.Cid, heigh
 func (sm *ChainFork) hasExpensiveFork(ctx context.Context, height abi.ChainEpoch) bool {
 	_, ok := sm.expensiveUpgrades[height]
 	return ok
+}
+
+func (sm *ChainFork) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
+	// The epochs here are the _last_ epoch for every version, or -1 if the
+	// version is disabled.
+	for _, spec := range sm.networkVersions {
+		if height <= spec.atOrBelow {
+			return spec.networkVersion
+		}
+	}
+	return sm.latestVersion
 }
 
 func doTransfer(tree vmstate.Tree, from, to address.Address, amt abi.TokenAmount) error {
@@ -584,7 +597,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork, root cid.Cid,
 		return cid.Undef, xerrors.Errorf("checking final state balance failed: %v", err)
 	}
 
-	exp := types.FromFil(FilBase)
+	exp := types.FromFil(params.FilBase)
 	if !exp.Equals(total) {
 		return cid.Undef, xerrors.Errorf("resultant state tree account balance was not correct: %s", total)
 	}

@@ -12,14 +12,7 @@ import (
 	xerrors "github.com/pkg/errors"
 
 	addr "github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/network"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/account"
 	notinit "github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/init"
@@ -34,6 +27,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	vmstate "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 )
 
 var dealProviderCollateralNum = big.NewInt(110)
@@ -50,8 +45,8 @@ func NewViewer(store cbor.IpldStore) *Viewer {
 }
 
 // StateView returns a new state view.
-func (c *Viewer) StateView(root cid.Cid, version network.Version) *View {
-	return NewView(c.ipldStore, root, version)
+func (c *Viewer) StateView(root cid.Cid) *View {
+	return NewView(c.ipldStore, root)
 }
 
 type genesisInfo struct {
@@ -79,17 +74,13 @@ type View struct {
 	genInfo       *genesisInfo
 	genesisMsigLk sync.Mutex
 	genesisRoot   cid.Cid
-
-	// todo add by force
-	networkVersion network.Version
 }
 
 // NewView creates a new state view
-func NewView(store cbor.IpldStore, root cid.Cid, version network.Version) *View {
+func NewView(store cbor.IpldStore, root cid.Cid) *View {
 	return &View{
 		ipldStore:      store,
 		root:           root,
-		networkVersion: version,
 	}
 }
 
@@ -282,17 +273,6 @@ func (v *View) MinerSuccessfulPoSts(ctx context.Context, maddr addr.Address) (ui
 	return minerState.SuccessfulPoSts()
 }
 
-// MinerDeadlines returns a bitfield of sectors in a proving period
-// todo 这个接口貌似没存在必要,且返回参数有二义性
-//func (v *View) MinerDeadlines(ctx context.Context, maddr addr.Address) (*miner.Deadlines, error) {
-//	minerState, err := v.loadMinerActor(ctx, maddr)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	return minerState.LoadDeadlines(v.adtStore(ctx))
-//}
-
 func (v *View) MinerProvingPeriodStart(ctx context.Context, maddr addr.Address) (abi.ChainEpoch, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
@@ -300,40 +280,6 @@ func (v *View) MinerProvingPeriodStart(ctx context.Context, maddr addr.Address) 
 	}
 
 	return minerState.GetProvingPeriodStart(), nil
-}
-
-// MinerSectorsForEach Iterates over the sectors in a miner's proving set.
-func (v *View) MinerSectorsForEach(ctx context.Context, maddr addr.Address,
-	f func(abi.SectorNumber, cid.Cid, abi.RegisteredSealProof, []abi.DealID) error) error {
-	minerState, err := v.loadMinerActor(ctx, maddr)
-	if err != nil {
-		return err
-	}
-
-	// todo review
-	sectors, err := minerState.SectorArray()
-	if err != nil {
-		return err
-	}
-
-	version := specactors.Version(v.networkVersion)
-	switch version {
-	case 0:
-		var info0 miner0.SectorOnChainInfo
-		if err := sectors.ForEach(&info0, func(_ int64) error {
-			return f(info0.SectorNumber, info0.SealedCID, info0.SealProof, info0.DealIDs)
-		}); err != nil {
-			return err
-		}
-	case 2:
-		var info2 miner2.SectorOnChainInfo
-		if err := sectors.ForEach(&info2, func(_ int64) error {
-			return f(info2.SectorNumber, info2.SealedCID, info2.SealProof, info2.DealIDs)
-		}); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // MinerExists Returns true iff the miner exists.
@@ -799,10 +745,6 @@ func (v *View) loadActor(ctx context.Context, address addr.Address) (*actor.Acto
 
 func (v *View) adtStore(ctx context.Context) adt.Store {
 	return StoreFromCbor(ctx, v.ipldStore)
-}
-
-func (v *View) asArray(ctx context.Context, root cid.Cid) (adt.Array, error) {
-	return adt.AsArray(v.adtStore(ctx), root, v.networkVersion)
 }
 
 func getFilMarketLocked(ctx context.Context, ipldStore cbor.IpldStore, st vmstate.Tree) (abi.TokenAmount, error) {

@@ -3,7 +3,6 @@ package consensus
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 
@@ -40,23 +39,22 @@ type DefaultProcessor struct {
 	actors   vm.ActorCodeLoader
 	syscalls vm.SyscallsImpl
 	rnd      ChainRandomness
-	fork     fork.IFork
+	// fork     fork.IFork
 }
 
 var _ Processor = (*DefaultProcessor)(nil)
 
 // NewDefaultProcessor creates a default processor from the given state tree and vms.
-func NewDefaultProcessor(syscalls vm.SyscallsImpl, rnd ChainRandomness, fork fork.IFork) *DefaultProcessor {
-	return NewConfiguredProcessor(vm.DefaultActors, syscalls, rnd, fork)
+func NewDefaultProcessor(syscalls vm.SyscallsImpl, rnd ChainRandomness) *DefaultProcessor {
+	return NewConfiguredProcessor(vm.DefaultActors, syscalls, rnd)
 }
 
 // NewConfiguredProcessor creates a default processor with custom validation and rewards.
-func NewConfiguredProcessor(actors vm.ActorCodeLoader, syscalls vm.SyscallsImpl, rnd ChainRandomness, fork fork.IFork) *DefaultProcessor {
+func NewConfiguredProcessor(actors vm.ActorCodeLoader, syscalls vm.SyscallsImpl, rnd ChainRandomness) *DefaultProcessor {
 	return &DefaultProcessor{
 		actors:   actors,
 		syscalls: syscalls,
 		rnd:      rnd,
-		fork:     fork,
 	}
 }
 

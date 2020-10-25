@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/params"
 	big2 "github.com/filecoin-project/go-state-types/big"
 )
 
@@ -17,7 +17,7 @@ func (f FIL) String() string {
 }
 
 func (f FIL) Unitless() string {
-	r := new(big.Rat).SetFrac(f.Int, big.NewInt(int64(fork.FilecoinPrecision)))
+	r := new(big.Rat).SetFrac(f.Int, big.NewInt(int64(params.FilecoinPrecision)))
 	if r.Sign() == 0 {
 		return "0"
 	}
@@ -68,7 +68,7 @@ func ParseFIL(s string) (FIL, error) {
 	}
 
 	if !attofil {
-		r = r.Mul(r, big.NewRat(int64(fork.FilecoinPrecision), 1))
+		r = r.Mul(r, big.NewRat(int64(params.FilecoinPrecision), 1))
 	}
 
 	if !r.IsInt() {

@@ -3,7 +3,6 @@ package cst
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-state-types/network"
 	"io"
 
 	"github.com/filecoin-project/go-address"
@@ -41,7 +40,6 @@ var logStore = logging.Logger("plumbing/chain_store")
 
 type chainReadWriter interface {
 	GenesisRootCid() cid.Cid
-	GetNtwkVersion(context.Context, abi.ChainEpoch) network.Version
 	GetHead() block.TipSetKey
 	GetGenesisBlock(ctx context.Context) (*block.Block, error)
 	GetTipSet(block.TipSetKey) (*block.TipSet, error)
@@ -148,10 +146,6 @@ func (chn *ChainStateReadWriter) GetTipSetByHeight(ctx context.Context, ts *bloc
 
 func (chn *ChainStateReadWriter) GetTipSetState(ctx context.Context, tsKey block.TipSetKey) (vmstate.Tree, error) {
 	return chn.readWriter.GetTipSetState(ctx, tsKey)
-}
-
-func (chn *ChainStateReadWriter) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
-	return chn.readWriter.GetNtwkVersion(ctx, height)
 }
 
 // Ls returns an iterator over tipsets from head to genesis.
@@ -406,7 +400,7 @@ func (chn *ChainStateReadWriter) StateView(key block.TipSetKey, height abi.Chain
 	}
 
 
-	return state.NewView(chn, root, chn.GetNtwkVersion(context.TODO(), height)), nil
+	return state.NewView(chn, root), nil
 }
 
 func (chn *ChainStateReadWriter) AccountStateView(key block.TipSetKey, height abi.ChainEpoch) (state.AccountStateView, error) {

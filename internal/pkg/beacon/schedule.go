@@ -1,49 +1,16 @@
 package beacon
 
 import (
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	"github.com/filecoin-project/go-state-types/abi"
 	xerrors "github.com/pkg/errors"
 	"sort"
 )
 
-type Schedule []BeaconPoint
-
-func (bs Schedule) BeaconForEpoch(e abi.ChainEpoch) RandomBeacon {
-	for i := len(bs) - 1; i >= 0; i-- {
-		bp := bs[i]
-		if e >= bp.Start {
-			return bp.Beacon
-		}
-	}
-	return bs[0].Beacon
-}
-
-type DrandEnum int
-
-func DrandConfigSchedule(genTimeStamp uint64, blockDelay uint64) (Schedule, error) {
-	shd := Schedule{}
-	for start, config := range DrandScheduleFork {
-		bc, err := NewDrandBeacon(genTimeStamp, blockDelay, DrandConfigs[config])
-		if err != nil {
-			return nil, xerrors.Errorf("creating drand beacon: %w", err)
-		}
-		shd = append(shd, BeaconPoint{Start: start, Beacon: bc})
-	}
-
-	sort.Slice(shd, func(i, j int) bool {
-		return shd[i].Start < shd[j].Start
-	})
-
-	log.Infof("Schedule: %v", shd)
-	return shd, nil
-}
-
-//todo how to fork
-const UpgradeSmokeHeight = 51000
 
 var DrandScheduleFork = map[abi.ChainEpoch]DrandEnum{
-	0:                  DrandIncentinet,
-	UpgradeSmokeHeight: DrandMainnet,
+	0:                       DrandIncentinet,
+	fork.UpgradeSmokeHeight: DrandMainnet,
 }
 
 const (
@@ -105,4 +72,37 @@ var DrandConfigs = map[DrandEnum]DrandConfig{
 		},
 		ChainInfoJSON: `{"public_key":"8cad0c72c606ab27d36ee06de1d5b2db1faf92e447025ca37575ab3a8aac2eaae83192f846fc9e158bc738423753d000","period":30,"genesis_time":1595873820,"hash":"80c8b872c714f4c00fdd3daa465d5514049f457f01f85a4caf68cdcd394ba039","groupHash":"d9406aaed487f7af71851b4399448e311f2328923d454e971536c05398ce2d9b"}`,
 	},
+}
+
+
+type Schedule []BeaconPoint
+
+func (bs Schedule) BeaconForEpoch(e abi.ChainEpoch) RandomBeacon {
+	for i := len(bs) - 1; i >= 0; i-- {
+		bp := bs[i]
+		if e >= bp.Start {
+			return bp.Beacon
+		}
+	}
+	return bs[0].Beacon
+}
+
+type DrandEnum int
+
+func DrandConfigSchedule(genTimeStamp uint64, blockDelay uint64) (Schedule, error) {
+	shd := Schedule{}
+	for start, config := range DrandScheduleFork {
+		bc, err := NewDrandBeacon(genTimeStamp, blockDelay, DrandConfigs[config])
+		if err != nil {
+			return nil, xerrors.Errorf("creating drand beacon: %w", err)
+		}
+		shd = append(shd, BeaconPoint{Start: start, Beacon: bc})
+	}
+
+	sort.Slice(shd, func(i, j int) bool {
+		return shd[i].Start < shd[j].Start
+	})
+
+	log.Infof("Schedule: %v", shd)
+	return shd, nil
 }

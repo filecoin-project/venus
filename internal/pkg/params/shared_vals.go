@@ -1,4 +1,4 @@
-package fork
+package params
 
 import (
 	"math/big"
@@ -45,4 +45,6 @@ const InitialBaseFee = 100e6
 const MinimumBaseFee = 100
 const PackingEfficiencyNum = 4
 const PackingEfficiencyDenom = 5
+
+
 

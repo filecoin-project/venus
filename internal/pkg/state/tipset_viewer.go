@@ -1,9 +1,6 @@
 package state
 
 import (
-	"context"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
@@ -15,7 +12,6 @@ import (
 type chainStateChainReader interface {
 	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 	GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error)
-	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
 	GenesisRootCid() cid.Cid
 }
 
@@ -39,12 +35,5 @@ func (cs TipSetStateViewer) StateView(baseKey block.TipSetKey) (*View, error) {
 		return nil, errors.Wrapf(err, "failed to get state root for %s", baseKey.String())
 	}
 
-	// todo review
-	ts, err := cs.chainReader.GetTipSet(baseKey)
-	if err != nil {
-		return nil, err
-	}
-
-	height, _ := ts.Height()
-	return NewView(cs.cst, root, cs.chainReader.GetNtwkVersion(context.TODO(), height)), nil
+	return NewView(cs.cst, root), nil
 }

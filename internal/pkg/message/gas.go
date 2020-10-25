@@ -150,7 +150,6 @@ func (ob *Outbox) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
 }
 
 func (ob *Outbox) GasEstimateGasLimit(ctx context.Context, msgIn *types.UnsignedMessage, _ block.TipSetKey) (int64, error) {
-
 	msg := *msgIn
 	msg.GasLimit = types.BlockGasLimit
 	msg.GasFeeCap = big.NewInt(int64(types.MinimumBaseFee) + 1)

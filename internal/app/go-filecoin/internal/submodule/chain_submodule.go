@@ -69,7 +69,7 @@ func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *Blockstor
 	if err != nil {
 		return ChainSubmodule{}, err
 	}
-	processor := consensus.NewDefaultProcessor(syscalls, chainState, fork)
+	processor := consensus.NewDefaultProcessor(syscalls, chainState)
 
 	return ChainSubmodule{
 		ChainReader:    chainStore,
