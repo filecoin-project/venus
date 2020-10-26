@@ -24,7 +24,10 @@ func init() {
 	})
 }
 
-var Address = builtin0.InitActorAddr
+var (
+	Address = builtin2.InitActorAddr
+	Methods = builtin2.MethodsInit
+)
 
 func Load(store adt.Store, act *actor.Actor) (State, error) {
 	switch act.Code.Cid {
