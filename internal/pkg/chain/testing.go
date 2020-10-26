@@ -180,8 +180,6 @@ func (f *Builder) Build(parent *block.TipSet, width int, build func(b *BlockBuil
 		height = parent.At(0).Height + 1
 		grandparentKey, err = parent.Parents()
 		require.NoError(f.t, err)
-	} else {
-		parent = block.UndefTipSet
 	}
 
 	parentWeight, err := f.stateBuilder.Weigh(parent, f.StateForKey(grandparentKey))
@@ -189,7 +187,7 @@ func (f *Builder) Build(parent *block.TipSet, width int, build func(b *BlockBuil
 
 	emptyBLSSig := crypto.Signature{
 		Type: crypto.SigTypeBLS,
-		Data: []byte(""),
+		Data: nil,
 		//Data: (*bls.Aggregate([]bls.Signature{}))[:],
 	}
 	for i := 0; i < width; i++ {
@@ -567,22 +565,7 @@ func (f *Builder) GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error) {
 }
 
 func (f *Builder) GetTipSetByHeight(ctx context.Context, ts *block.TipSet, h abi.ChainEpoch, prev bool) (*block.TipSet, error) {
-	if !ts.Defined() {
-		return ts, nil
-	}
-	if epoch, _ := ts.Height(); epoch == h {
-		return ts, nil
-	}
-
-	for {
-		ts = f.RequireTipSet(ts.EnsureParents())
-		height := ts.EnsureHeight()
-		if height >= 0 && height == h {
-			return ts, nil
-		} else if height < h {
-			return ts, nil
-		}
-	}
+	panic("implement me")
 }
 
 // RequireTipSet returns a tipset by key, which must exist.
@@ -628,18 +611,6 @@ func (f *Builder) StoreReceipts(ctx context.Context, receipts []types.MessageRec
 // StoreTxMeta stores a tx meta
 func (f *Builder) StoreTxMeta(ctx context.Context, meta types.TxMeta) (cid.Cid, error) {
 	return f.messages.StoreTxMeta(ctx, meta)
-}
-
-func (f *Builder) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error) {
-	return f.messages.ReadMsgMetaCids(ctx, mmc)
-}
-
-func (f *Builder) LoadUnsinedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error) {
-	return f.messages.LoadUnsinedMessagesFromCids(blsCids)
-}
-
-func (f *Builder) LoadSignedMessagesFromCids(secpCids []cid.Cid) ([]*types.SignedMessage, error) {
-	return f.messages.LoadSignedMessagesFromCids(secpCids)
 }
 
 ///// Internals /////
