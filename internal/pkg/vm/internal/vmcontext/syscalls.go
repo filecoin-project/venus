@@ -2,21 +2,27 @@ package vmcontext
 
 import (
 	"context"
-
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"github.com/ipfs/go-cid"
+	goruntime "runtime"
+	"sync"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gascost"
+	vmState "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 type SyscallsStateView interface {
 	state.AccountStateView
 	MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error)
+	TotalFilCircSupply(height abi.ChainEpoch, st vmState.Tree) (abi.TokenAmount, error)
+	GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version
 }
 
 // Syscall implementation interface.
@@ -24,19 +30,19 @@ type SyscallsStateView interface {
 type SyscallsImpl interface {
 	VerifySignature(ctx context.Context, view SyscallsStateView, signature crypto.Signature, signer address.Address, plaintext []byte) error
 	HashBlake2b(data []byte) [32]byte
-	ComputeUnsealedSectorCID(ctx context.Context, proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error)
-	VerifySeal(ctx context.Context, info abi.SealVerifyInfo) error
-	VerifyPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) error
-	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view SyscallsStateView) (*specsruntime.ConsensusFault, error)
+	ComputeUnsealedSectorCID(ctx context.Context, proof abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error)
+	VerifySeal(ctx context.Context, info proof.SealVerifyInfo) error
+	VerifyPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) error
+	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view SyscallsStateView) (*specsruntime.ConsensusFault, error)
 }
 
 type syscalls struct {
 	impl      SyscallsImpl
 	ctx       context.Context
 	gasTank   *GasTracker
-	pricelist gascost.Pricelist
+	pricelist gas.Pricelist
 	head      block.TipSetKey
-	state     SyscallsStateView
+	stateView SyscallsStateView
 }
 
 var _ specsruntime.Syscalls = (*syscalls)(nil)
@@ -47,7 +53,7 @@ func (sys syscalls) VerifySignature(signature crypto.Signature, signer address.A
 		return err
 	}
 	sys.gasTank.Charge(charge, "VerifySignature")
-	return sys.impl.VerifySignature(sys.ctx, sys.state, signature, signer, plaintext)
+	return sys.impl.VerifySignature(sys.ctx, sys.stateView, signature, signer, plaintext)
 }
 
 func (sys syscalls) HashBlake2b(data []byte) [32]byte {
@@ -55,22 +61,56 @@ func (sys syscalls) HashBlake2b(data []byte) [32]byte {
 	return sys.impl.HashBlake2b(data)
 }
 
-func (sys syscalls) ComputeUnsealedSectorCID(proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
-	sys.gasTank.Charge(sys.pricelist.OnComputeUnsealedSectorCid(proof, &pieces), "ComputeUnsealedSectorCID")
+func (sys syscalls) ComputeUnsealedSectorCID(proof abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+	sys.gasTank.Charge(sys.pricelist.OnComputeUnsealedSectorCid(proof, pieces), "ComputeUnsealedSectorCID")
 	return sys.impl.ComputeUnsealedSectorCID(sys.ctx, proof, pieces)
 }
 
-func (sys syscalls) VerifySeal(info abi.SealVerifyInfo) error {
+func (sys syscalls) VerifySeal(info proof.SealVerifyInfo) error {
 	sys.gasTank.Charge(sys.pricelist.OnVerifySeal(info), "VerifySeal")
 	return sys.impl.VerifySeal(sys.ctx, info)
 }
 
-func (sys syscalls) VerifyPoSt(info abi.WindowPoStVerifyInfo) error {
-	sys.gasTank.Charge(sys.pricelist.OnVerifyPoSt(info), "VerifyWindowPoSt")
+func (sys syscalls) VerifyPoSt(info proof.WindowPoStVerifyInfo) error {
+	sys.gasTank.Charge(sys.pricelist.OnVerifyPost(info), "VerifyWindowPoSt")
 	return sys.impl.VerifyPoSt(sys.ctx, info)
 }
 
 func (sys syscalls) VerifyConsensusFault(h1, h2, extra []byte) (*specsruntime.ConsensusFault, error) {
 	sys.gasTank.Charge(sys.pricelist.OnVerifyConsensusFault(), "VerifyConsensusFault")
-	return sys.impl.VerifyConsensusFault(sys.ctx, h1, h2, extra, sys.head, sys.state)
+	return sys.impl.VerifyConsensusFault(sys.ctx, h1, h2, extra, sys.stateView)
+}
+
+var BatchSealVerifyParallelism = 2 * goruntime.NumCPU()
+
+func (sys syscalls) BatchVerifySeals(vis map[address.Address][]proof.SealVerifyInfo) (map[address.Address][]bool, error) {
+	out := make(map[address.Address][]bool)
+
+	sema := make(chan struct{}, BatchSealVerifyParallelism)
+
+	var wg sync.WaitGroup
+	for addr, seals := range vis {
+		results := make([]bool, len(seals))
+		out[addr] = results
+
+		for i, s := range seals {
+			wg.Add(1)
+			go func(ma address.Address, ix int, svi proof.SealVerifyInfo, res []bool) {
+				defer wg.Done()
+				sema <- struct{}{}
+
+				if err := sys.VerifySeal(svi); err != nil {
+					vmlog.Warnw("seal verify in batch failed", "miner", ma, "index", ix, "err", err)
+					res[ix] = false
+				} else {
+					res[ix] = true
+				}
+
+				<-sema
+			}(addr, i, s, results)
+		}
+	}
+	wg.Wait()
+
+	return out, nil
 }

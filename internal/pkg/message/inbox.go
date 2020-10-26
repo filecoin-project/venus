@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -68,7 +68,7 @@ func (ib *Inbox) Pool() *Pool {
 // This removes messages from the pool that are found in the newly adopted chain and adds back
 // those from the removed chain (if any) that do not appear in the new chain.
 // The `oldChain` and `newChain` lists are expected in descending height order, and each may be empty.
-func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []block.TipSet) error {
+func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []*block.TipSet) error {
 	chainHeight, err := reorgHeight(oldChain, newChain)
 	if err != nil {
 		return err
@@ -127,7 +127,7 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []block.T
 // height. This prevents us from prematurely timing messages that arrive during long chains of null blocks.
 // Also when blocks fill, the rate of message processing will correspond more closely to rate of tip
 // sets than to the expected block time over short timescales.
-func timeoutMessages(ctx context.Context, pool *Pool, chains chain.TipSetProvider, head block.TipSet, maxAgeTipsets uint) error {
+func timeoutMessages(ctx context.Context, pool *Pool, chains chain.TipSetProvider, head *block.TipSet, maxAgeTipsets uint) error {
 	var err error
 
 	var minimumHeight abi.ChainEpoch

@@ -6,10 +6,11 @@ import (
 	"io"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
+	"github.com/filecoin-project/go-state-types/abi"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	initactor "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -19,6 +20,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	merkdag "github.com/ipfs/go-merkledag"
 	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -37,13 +39,16 @@ import (
 var logStore = logging.Logger("plumbing/chain_store")
 
 type chainReadWriter interface {
+	GenesisRootCid() cid.Cid
 	GetHead() block.TipSetKey
 	GetGenesisBlock(ctx context.Context) (*block.Block, error)
-	GetTipSet(block.TipSetKey) (block.TipSet, error)
+	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 	GetTipSetState(context.Context, block.TipSetKey) (vmstate.Tree, error)
 	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
-	SetHead(context.Context, block.TipSet) error
+	SetHead(context.Context, *block.TipSet) error
+	GetLatestBeaconEntry(ts *block.TipSet) (*block.BeaconEntry, error)
 	ReadOnlyStateStore() cborutil.ReadOnlyIpldStore
+	GetTipSetByHeight(context.Context, *block.TipSet, abi.ChainEpoch, bool) (*block.TipSet, error)
 }
 
 // ChainStateReadWriter composes a:
@@ -51,6 +56,7 @@ type chainReadWriter interface {
 // ChainWriter providing write access to the chain head.
 type ChainStateReadWriter struct {
 	readWriter      chainReadWriter
+	drand           beacon.Schedule
 	bstore          blockstore.Blockstore // Provides chain blocks.
 	messageProvider chain.MessageProvider
 	actors          vm.ActorCodeLoader
@@ -99,14 +105,19 @@ var (
 )
 
 // NewChainStateReadWriter returns a new ChainStateReadWriter.
-func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider, bs blockstore.Blockstore, ba vm.ActorCodeLoader) *ChainStateReadWriter {
+func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider, bs blockstore.Blockstore, ba vm.ActorCodeLoader, drand beacon.Schedule) *ChainStateReadWriter {
 	return &ChainStateReadWriter{
 		readWriter:        crw,
 		bstore:            bs,
 		messageProvider:   messages,
 		actors:            ba,
+		drand:             drand,
 		ReadOnlyIpldStore: crw.ReadOnlyStateStore(),
 	}
+}
+
+func (chn *ChainStateReadWriter) BeaconSchedule() beacon.Schedule {
+	return chn.drand
 }
 
 // Head returns the head tipset
@@ -114,14 +125,40 @@ func (chn *ChainStateReadWriter) Head() block.TipSetKey {
 	return chn.readWriter.GetHead()
 }
 
+func (chn *ChainStateReadWriter) GetHeadHeight() (abi.ChainEpoch, error) {
+	ts, err := chn.GetTipSet(chn.Head())
+	if err != nil {
+		return 0, nil
+	}
+
+	return ts.Height()
+}
+
 // GetTipSet returns the tipset at the given key
-func (chn *ChainStateReadWriter) GetTipSet(key block.TipSetKey) (block.TipSet, error) {
+func (chn *ChainStateReadWriter) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	return chn.readWriter.GetTipSet(key)
 }
 
+// ChainGetTipSetByHeight looks back for a tipset at the specified epoch
+func (chn *ChainStateReadWriter) GetTipSetByHeight(ctx context.Context, ts *block.TipSet, h abi.ChainEpoch, prev bool) (*block.TipSet, error) {
+	return chn.readWriter.GetTipSetByHeight(ctx, ts, h, prev)
+}
+
+func (chn *ChainStateReadWriter) GetTipSetState(ctx context.Context, tsKey block.TipSetKey) (vmstate.Tree, error) {
+	return chn.readWriter.GetTipSetState(ctx, tsKey)
+}
+
 // Ls returns an iterator over tipsets from head to genesis.
-func (chn *ChainStateReadWriter) Ls(ctx context.Context) (*chain.TipsetIterator, error) {
-	ts, err := chn.readWriter.GetTipSet(chn.readWriter.GetHead())
+func (chn *ChainStateReadWriter) Ls(ctx context.Context, key block.TipSetKey) (*chain.TipsetIterator, error) {
+	var (
+		err error
+		ts  *block.TipSet
+	)
+	if key.Len() < 1{
+		ts, err = chn.readWriter.GetTipSet(chn.readWriter.GetHead())
+	} else {
+		ts, err = chn.readWriter.GetTipSet(key)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -156,19 +193,29 @@ func (chn *ChainStateReadWriter) GetMessages(ctx context.Context, metaCid cid.Ci
 }
 
 // GetReceipts gets a receipt collection by CID.
-func (chn *ChainStateReadWriter) GetReceipts(ctx context.Context, id cid.Cid) ([]vm.MessageReceipt, error) {
+func (chn *ChainStateReadWriter) GetReceipts(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error) {
 	return chn.messageProvider.LoadReceipts(ctx, id)
 }
 
 // SampleChainRandomness computes randomness seeded by a ticket from the chain `head` at `sampleHeight`.
-func (chn *ChainStateReadWriter) SampleChainRandomness(ctx context.Context, head block.TipSetKey, tag acrypto.DomainSeparationTag,
+func (chn *ChainStateReadWriter) SampleChainRandomness(ctx context.Context, tsk block.TipSetKey, tag acrypto.DomainSeparationTag,
 	epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	genBlk, err := chn.readWriter.GetGenesisBlock(ctx)
 	if err != nil {
 		return nil, err
 	}
-	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewRandomnessSamplerAtHead(chn.readWriter, genBlk.Ticket, head)}
+
+	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewRandomnessSamplerAtTipSet(chn.readWriter, genBlk.Ticket, tsk)}
 	return rnd.Randomness(ctx, tag, epoch, entropy)
+}
+
+func (chn *ChainStateReadWriter) ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	genBlk, err := chn.readWriter.GetGenesisBlock(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewRandomnessSamplerAtTipSet(chn.readWriter, genBlk.Ticket, tsk)}
+	return rnd.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy)
 }
 
 // GetActor returns an actor from the latest state on the chain
@@ -244,16 +291,30 @@ func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, tipKey bl
 		return address.Undef, err
 	}
 
-	return state.ResolveAddress(&actorStore{ctx, chn.ReadOnlyIpldStore}, addr)
+	idAddress, found, err := state.ResolveAddress(&actorStore{ctx, chn.ReadOnlyIpldStore}, addr)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	if !found {
+		return address.Undef, xerrors.Errorf("not found address")
+	}
+	return idAddress, nil
 }
 
 // LsActors returns a channel with actors from the latest state on the chain
-func (chn *ChainStateReadWriter) LsActors(ctx context.Context) (<-chan vmstate.GetAllActorsResult, error) {
+func (chn *ChainStateReadWriter) LsActors(ctx context.Context) (map[address.Address]*actor.Actor, error) {
 	st, err := chn.readWriter.GetTipSetState(ctx, chn.readWriter.GetHead())
 	if err != nil {
 		return nil, err
 	}
-	return st.GetAllActors(ctx), nil
+
+	result := make(map[address.Address]*actor.Actor)
+	err = st.ForEach(func(key vmstate.ActorKey, a *actor.Actor) error {
+		result[key] = a
+		return nil
+	})
+	return result, nil
 }
 
 // GetActorSignature returns the signature of the given actor's given method.
@@ -318,7 +379,7 @@ func (chn *ChainStateReadWriter) ChainImport(ctx context.Context, in io.Reader) 
 	logStore.Info("starting CAR file import")
 	headKey, err := chain.Import(ctx, newCarStore(chn.bstore), in)
 	if err != nil {
-		return block.UndefTipSet.Key(), err
+		return block.TipSetKey{}, err
 	}
 	logStore.Infof("imported CAR file with head: %s", headKey)
 	return headKey, nil
@@ -332,18 +393,20 @@ func (chn *ChainStateReadWriter) ChainStateTree(ctx context.Context, c cid.Cid) 
 	return dag.NewDAG(dserv).RecursiveGet(ctx, c)
 }
 
-func (chn *ChainStateReadWriter) StateView(key block.TipSetKey) (*state.View, error) {
+func (chn *ChainStateReadWriter) StateView(key block.TipSetKey, height abi.ChainEpoch) (*state.View, error) {
 	root, err := chn.readWriter.GetTipSetStateRoot(key)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get state root for %s", key.String())
 	}
+
+
 	return state.NewView(chn, root), nil
 }
 
-func (chn *ChainStateReadWriter) AccountStateView(key block.TipSetKey) (state.AccountStateView, error) {
-	return chn.StateView(key)
+func (chn *ChainStateReadWriter) AccountStateView(key block.TipSetKey, height abi.ChainEpoch) (state.AccountStateView, error) {
+	return chn.StateView(key, height)
 }
 
-func (chn *ChainStateReadWriter) FaultStateView(key block.TipSetKey) (slashing.FaultStateView, error) {
-	return chn.StateView(key)
+func (chn *ChainStateReadWriter) FaultStateView(key block.TipSetKey, height abi.ChainEpoch) (slashing.FaultStateView, error) {
+	return chn.StateView(key, height)
 }

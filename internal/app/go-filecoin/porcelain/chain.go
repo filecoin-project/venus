@@ -11,11 +11,11 @@ import (
 
 type chainHeadPlumbing interface {
 	ChainHeadKey() block.TipSetKey
-	ChainTipSet(key block.TipSetKey) (block.TipSet, error)
+	ChainTipSet(key block.TipSetKey) (*block.TipSet, error)
 }
 
 // ChainHead gets the current head tipset from plumbing.
-func ChainHead(plumbing chainHeadPlumbing) (block.TipSet, error) {
+func ChainHead(plumbing chainHeadPlumbing) (*block.TipSet, error) {
 	return plumbing.ChainTipSet(plumbing.ChainHeadKey())
 }
 

@@ -3,26 +3,21 @@ package consensus
 import (
 	"context"
 	"fmt"
-	"testing"
 
-	address "github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/require"
-
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/postgenerator"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-state-types/abi"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
 )
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
-func RequireNewTipSet(require *require.Assertions, blks ...*block.Block) block.TipSet {
+func RequireNewTipSet(require *require.Assertions, blks ...*block.Block) *block.TipSet {
 	ts, err := block.NewTipSet(blks...)
 	require.NoError(err)
 	return ts
@@ -34,12 +29,12 @@ type FakeConsensusStateViewer struct {
 }
 
 // PowerStateView returns the state view for a root.
-func (f *FakeConsensusStateViewer) PowerStateView(root cid.Cid) PowerStateView {
+func (f *FakeConsensusStateViewer) PowerStateView(root cid.Cid) state.PowerStateView {
 	return f.Views[root]
 }
 
 // FaultStateView returns the state view for a root.
-func (f *FakeConsensusStateViewer) FaultStateView(root cid.Cid) FaultStateView {
+func (f *FakeConsensusStateViewer) FaultStateView(root cid.Cid) state.FaultStateView {
 	return f.Views[root]
 }
 
@@ -55,46 +50,46 @@ func (mv *FakeMessageValidator) ValidateUnsignedMessageSyntax(ctx context.Contex
 }
 
 // FakeElectionMachine generates fake election proofs and verifies all proofs
-type FakeElectionMachine struct{}
+//type FakeElectionMachine struct{}
 
-var _ ElectionValidator = new(FakeElectionMachine)
+// var _ ElectionValidator = new(FakeElectionMachine)
 
 // GenerateElectionProof returns a fake randomness
-func (fem *FakeElectionMachine) GenerateElectionProof(_ context.Context, _ *drand.Entry,
-	_ abi.ChainEpoch, _ address.Address, _ address.Address, _ types.Signer) (crypto.VRFPi, error) {
-	return MakeFakeVRFProofForTest(), nil
-}
+// func (fem *FakeElectionMachine) GenerateElectionProof(_ context.Context, _ *block.BeaconEntry,
+// 	_ abi.ChainEpoch, _ address.Address, _ address.Address, _ types.Signer) (crypto.VRFPi, error) {
+// 	return MakeFakeVRFProofForTest(), nil
+// }
 
 // GenerateEPoSt returns a fake post proof
-func (fem *FakeElectionMachine) GenerateWinningPoSt(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address, sectors SectorsStateView) ([]block.PoStProof, error) {
-	return []block.PoStProof{{
-		RegisteredProof: constants.DevRegisteredWinningPoStProof,
-		ProofBytes:      []byte{0xe},
-	}}, nil
-}
+//func (fem *FakeElectionMachine) GenerateWinningPoSt(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.Address, sectors SectorsStateView) ([]block., error) {
+//	return []block.PoStProof{{
+//		RegisteredProof: constants.DevRegisteredWinningPoStProof,
+//		ProofBytes:      []byte{0xe},
+//	}}, nil
+//}
 
-func (fem *FakeElectionMachine) IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool {
-	return true
-}
+// func (fem *FakeElectionMachine) IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool {
+// 	return true
+// }
 
-func (fem *FakeElectionMachine) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.Address, _ address.Address, _ crypto.VRFPi) error {
-	return nil
-}
+// func (fem *FakeElectionMachine) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.Address, _ address.Address, _ crypto.VRFPi) error {
+// 	return nil
+// }
 
-func (fem *FakeElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error) {
-	return true, nil
-}
+//func (fem *FakeElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error) {
+//	return true, nil
+//}
 
 // FakeTicketMachine generates fake tickets and verifies all tickets
 type FakeTicketMachine struct{}
 
 // MakeTicket returns a fake ticket
-func (ftm *FakeTicketMachine) MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, entry *drand.Entry, newPeriod bool, worker address.Address, signer types.Signer) (block.Ticket, error) {
+func (ftm *FakeTicketMachine) MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, entry *block.BeaconEntry, newPeriod bool, worker address.Address, signer types.Signer) (block.Ticket, error) {
 	return MakeFakeTicketForTest(), nil
 }
 
 // IsValidTicket always returns true
-func (ftm *FakeTicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey, entry *drand.Entry, newPeriod bool,
+func (ftm *FakeTicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey, entry *block.BeaconEntry, newPeriod bool,
 	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket block.Ticket) error {
 	return nil
 }
@@ -103,26 +98,9 @@ func (ftm *FakeTicketMachine) IsValidTicket(ctx context.Context, base block.TipS
 type FailingTicketValidator struct{}
 
 // IsValidTicket always returns false
-func (ftv *FailingTicketValidator) IsValidTicket(ctx context.Context, base block.TipSetKey, entry *drand.Entry, newPeriod bool,
+func (ftv *FailingTicketValidator) IsValidTicket(ctx context.Context, base block.TipSetKey, entry *block.BeaconEntry, newPeriod bool,
 	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket block.Ticket) error {
 	return fmt.Errorf("invalid ticket")
-}
-
-// FailingElectionValidator marks all election candidates as invalid
-type FailingElectionValidator struct{}
-
-var _ ElectionValidator = new(FailingElectionValidator)
-
-func (fev *FailingElectionValidator) IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool {
-	return false
-}
-
-func (fev *FailingElectionValidator) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.Address, _ address.Address, _ crypto.VRFPi) error {
-	return nil
-}
-
-func (fev *FailingElectionValidator) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.Address, sectors SectorsStateView) (bool, error) {
-	return true, nil
 }
 
 // MakeFakeTicketForTest creates a fake ticket
@@ -142,26 +120,26 @@ func MakeFakeVRFProofForTest() []byte {
 }
 
 // MakeFakePoStForTest creates a fake post
-func MakeFakePoStsForTest() []block.PoStProof {
-	return []block.PoStProof{{
-		RegisteredProof: constants.DevRegisteredWinningPoStProof,
-		ProofBytes:      []byte{0xe},
-	}}
-}
-
-// NFakeSectorInfos returns numSectors fake sector infos
-func RequireFakeSectorInfos(t *testing.T, numSectors uint64) []abi.SectorInfo {
-	var infos []abi.SectorInfo
-	for i := uint64(0); i < numSectors; i++ {
-		infos = append(infos, abi.SectorInfo{
-			RegisteredProof: constants.DevRegisteredSealProof,
-			SectorNumber:    abi.SectorNumber(i),
-			SealedCID:       types.CidFromString(t, fmt.Sprintf("fake-sector-%d", i)),
-		})
-	}
-
-	return infos
-}
+//func MakeFakePoStsForTest() []block.PoStProof {
+//	return []block.PoStProof{{
+//		RegisteredProof: constants.DevRegisteredWinningPoStProof,
+//		ProofBytes:      []byte{0xe},
+//	}}
+//}
+//
+//// NFakeSectorInfos returns numSectors fake sector infos
+//func RequireFakeSectorInfos(t *testing.T, numSectors uint64) []abi.SectorInfo {
+//	var infos []abi.SectorInfo
+//	for i := uint64(0); i < numSectors; i++ {
+//		infos = append(infos, abi.SectorInfo{
+//			RegisteredProof: constants.DevRegisteredSealProof,
+//			SectorNumber:    abi.SectorNumber(i),
+//			SealedCID:       types.CidFromString(t, fmt.Sprintf("fake-sector-%d", i)),
+//		})
+//	}
+//
+//	return infos
+//}
 
 ///// Sampler /////
 
@@ -173,6 +151,10 @@ type FakeChainRandomness struct {
 
 func (s *FakeChainRandomness) SampleChainRandomness(_ context.Context, _ block.TipSetKey, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	return []byte(fmt.Sprintf("s=%d,e=%d,t=%d,p=%s", s.Seed, epoch, tag, string(entropy))), nil
+}
+
+func (s *FakeChainRandomness) ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return []byte(""), nil
 }
 
 type FakeSampler struct {

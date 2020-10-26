@@ -21,15 +21,15 @@ import (
 // They are indexed by their CID.
 // Dragons: add the rest of the actors
 var DefaultActors = dispatch.NewBuilder().
+	Add(specs.SystemActorCodeID, &system.Actor{}).
 	Add(specs.InitActorCodeID, &init_.Actor{}).
+	Add(specs.RewardActorCodeID, &reward.Actor{}).
+	Add(specs.CronActorCodeID, &cron.Actor{}).
 	Add(specs.AccountActorCodeID, &account.Actor{}).
-	Add(specs.MultisigActorCodeID, &multisig.Actor{}).
-	Add(specs.PaymentChannelActorCodeID, &paych.Actor{}).
 	Add(specs.StoragePowerActorCodeID, &power.Actor{}).
 	Add(specs.StorageMarketActorCodeID, &market.Actor{}).
 	Add(specs.StorageMinerActorCodeID, &miner.Actor{}).
-	Add(specs.SystemActorCodeID, &system.Actor{}).
-	Add(specs.RewardActorCodeID, &reward.Actor{}).
-	Add(specs.CronActorCodeID, &cron.Actor{}).
+	Add(specs.MultisigActorCodeID, &multisig.Actor{}).
+	Add(specs.PaymentChannelActorCodeID, &paych.Actor{}).
 	Add(specs.VerifiedRegistryActorCodeID, &verifreg.Actor{}).
 	Build()

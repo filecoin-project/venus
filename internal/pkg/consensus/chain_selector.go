@@ -7,14 +7,18 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	"math/big"
 	"strings"
 
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	fbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	vmstate "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 var (
@@ -25,17 +29,15 @@ var (
 
 // ChainSelector weighs and compares chains.
 type ChainSelector struct {
-	cstore     cbor.IpldStore
-	state      StateViewer
-	genesisCid cid.Cid
+	cstore cbor.IpldStore
+	state  StateViewer
 }
 
 // NewChainSelector is the constructor for chain selection module.
-func NewChainSelector(cs cbor.IpldStore, state StateViewer, gCid cid.Cid) *ChainSelector {
+func NewChainSelector(cs cbor.IpldStore, state StateViewer) *ChainSelector {
 	return &ChainSelector{
-		cstore:     cs,
-		state:      state,
-		genesisCid: gCid,
+		cstore: cs,
+		state:  state,
 	}
 }
 
@@ -44,30 +46,55 @@ func log2b(x fbig.Int) fbig.Int {
 	return fbig.NewInt(int64(bits - 1))
 }
 
+// todo gather const variable
+const WRatioNum = int64(1)
+const WRatioDen = uint64(2)
+
+// todo
+// Blocks (e)
+var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
+
 // Weight returns the EC weight of this TipSet as a filecoin big int.
-func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID cid.Cid) (fbig.Int, error) {
+func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet) (fbig.Int, error) {
+	pStateID := ts.At(0).StateRoot.Cid
 	// Retrieve parent weight.
-	parentWeight, err := ts.ParentWeight()
-	if err != nil {
-		return fbig.Zero(), err
-	}
 	if !pStateID.Defined() {
 		return fbig.Zero(), errors.New("undefined state passed to chain selector new weight")
 	}
-	powerTableView := NewPowerTableView(c.state.PowerStateView(pStateID), c.state.FaultStateView(pStateID))
+	//todo change view version
+	powerTableView := state.NewPowerTableView(c.state.PowerStateView(pStateID), c.state.FaultStateView(pStateID))
 	networkPower, err := powerTableView.NetworkTotalPower(ctx)
 	if err != nil {
 		return fbig.Zero(), err
 	}
-	powerMeasure := log2b(networkPower)
 
-	wPowerFactor := fbig.Mul(wPrecision, powerMeasure)
-	wBlocksFactorNum := fbig.Mul(wRatioNum, fbig.Mul(powerMeasure, fbig.NewInt(int64(ts.Len()))))
-	wBlocksFactorDen := fbig.Mul(wRatioDen, fbig.NewInt(int64(expectedLeadersPerEpoch)))
-	wBlocksFactor := fbig.Div(fbig.Mul(wBlocksFactorNum, wPrecision), wBlocksFactorDen)
-	deltaWeight := fbig.Add(wPowerFactor, wBlocksFactor)
+	log2P := int64(0)
+	if networkPower.GreaterThan(fbig.NewInt(0)) {
+		log2P = int64(networkPower.BitLen() - 1)
+	} else {
+		// Not really expect to be here ...
+		return fbig.Zero(), xerrors.Errorf("All power in the net is gone. You network might be disconnected, or the net is dead!")
+	}
 
-	return fbig.Add(parentWeight, deltaWeight), nil
+	weight, err := ts.ParentWeight()
+	var out = new(big.Int).Set(weight.Int)
+	out.Add(out, big.NewInt(log2P<<8))
+
+	// (wFunction(totalPowerAtTipset(ts)) * sum(ts.blocks[].ElectionProof.WinCount) * wRatio_num * 2^8) / (e * wRatio_den)
+
+	totalJ := int64(0)
+	for _, b := range ts.Blocks() {
+		totalJ += b.ElectionProof.WinCount
+	}
+
+	eWeight := big.NewInt((log2P * WRatioNum))
+	eWeight = eWeight.Lsh(eWeight, 8)
+	eWeight = eWeight.Mul(eWeight, new(big.Int).SetInt64(totalJ))
+	eWeight = eWeight.Div(eWeight, big.NewInt(int64(BlocksPerEpoch*WRatioDen)))
+
+	out = out.Add(out, eWeight)
+
+	return fbig.Int{out}, nil
 }
 
 // IsHeavier returns true if tipset a is heavier than tipset b, and false
@@ -77,12 +104,12 @@ func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID ci
 // concatenation of block cids in the tipset.
 // TODO BLOCK CID CONCAT TIE BREAKER IS NOT IN THE SPEC AND SHOULD BE
 // EVALUATED BEFORE GETTING TO PRODUCTION.
-func (c *ChainSelector) IsHeavier(ctx context.Context, a, b block.TipSet, aStateID, bStateID cid.Cid) (bool, error) {
-	aW, err := c.Weight(ctx, a, aStateID)
+func (c *ChainSelector) IsHeavier(ctx context.Context, a, b *block.TipSet) (bool, error) {
+	aW, err := c.Weight(ctx, a)
 	if err != nil {
 		return false, err
 	}
-	bW, err := c.Weight(ctx, b, bStateID)
+	bW, err := c.Weight(ctx, b)
 	if err != nil {
 		return false, err
 	}
@@ -118,6 +145,6 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b block.TipSet, aState
 	return cmp == 1, nil
 }
 
-func (c *ChainSelector) loadStateTree(ctx context.Context, id cid.Cid) (*state.State, error) {
-	return state.LoadState(ctx, c.cstore, id)
+func (c *ChainSelector) loadStateTree(ctx context.Context, id cid.Cid) (*vmstate.State, error) {
+	return vmstate.LoadState(ctx, c.cstore, id)
 }

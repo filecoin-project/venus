@@ -4,19 +4,19 @@ import (
 	"context"
 	"time"
 
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/fetcher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/blocksub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
@@ -31,7 +31,7 @@ type SyncerSubmodule struct {
 	Consensus        consensus.Protocol
 	FaultDetector    slashing.ConsensusFaultDetector
 	ChainSyncManager *chainsync.Manager
-	Drand            drand.IFace
+	Drand            beacon.Schedule
 
 	// cancelChainSync cancels the context for chain sync subscriptions and handlers.
 	CancelChainSync context.CancelFunc
@@ -43,17 +43,17 @@ type syncerConfig interface {
 	GenesisCid() cid.Cid
 	BlockTime() time.Duration
 	ChainClock() clock.ChainEpochClock
-	Drand() drand.IFace
+	Drand() beacon.Schedule
 }
 
 type nodeChainSelector interface {
-	Weight(context.Context, block.TipSet, cid.Cid) (fbig.Int, error)
-	IsHeavier(ctx context.Context, a, b block.TipSet, aStateID, bStateID cid.Cid) (bool, error)
+	Weight(context.Context, *block.TipSet) (fbig.Int, error)
+	IsHeavier(ctx context.Context, a, b *block.TipSet) (bool, error)
 }
 
 // NewSyncerSubmodule creates a new chain submodule.
 func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *BlockstoreSubmodule, network *NetworkSubmodule,
-	discovery *DiscoverySubmodule, chn *ChainSubmodule, postVerifier consensus.EPoStVerifier) (SyncerSubmodule, error) {
+	discovery *DiscoverySubmodule, chn *ChainSubmodule, postVerifier consensus.ProofVerifier, checkPoint block.TipSetKey) (SyncerSubmodule, error) {
 	// setup validation
 	blkValid := consensus.NewDefaultBlockValidator(config.ChainClock(), chn.MessageStore, chn.State)
 	msgValid := consensus.NewMessageSyntaxValidator()
@@ -83,13 +83,14 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 	d := config.Drand()
 
 	// set up consensus
-	elections := consensus.NewElectionMachine(chn.State)
+	//	elections := consensus.NewElectionMachine(chn.state)
 	sampler := chain.NewSampler(chn.ChainReader, genBlk.Ticket)
 	tickets := consensus.NewTicketMachine(sampler)
 	stateViewer := consensus.AsDefaultStateViewer(state.NewViewer(blockstore.CborStore))
+
 	nodeConsensus := consensus.NewExpected(blockstore.CborStore, blockstore.Blockstore, chn.Processor, &stateViewer,
-		config.BlockTime(), elections, tickets, postVerifier, chn.ChainReader, config.ChainClock(), d)
-	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, &stateViewer, config.GenesisCid())
+		config.BlockTime(), tickets, postVerifier, chn.ChainReader, config.ChainClock(), d, chn.State, chn.MessageStore, chn.Fork)
+	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, &stateViewer)
 
 	// setup fecher
 	network.GraphExchange.RegisterIncomingRequestHook(func(p peer.ID, requestData graphsync.RequestData, hookActions graphsync.IncomingRequestHookActions) {
@@ -104,7 +105,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 	faultCh := make(chan slashing.ConsensusFault)
 	faultDetector := slashing.NewConsensusFaultDetector(faultCh)
 
-	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, fetcher, config.ChainClock(), faultDetector)
+	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, fetcher, config.ChainClock(), checkPoint, faultDetector, chn.Fork)
 	if err != nil {
 		return SyncerSubmodule{}, err
 	}

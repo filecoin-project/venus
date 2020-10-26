@@ -1,13 +1,15 @@
 package plumbing
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-state-types/abi"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
@@ -15,11 +17,17 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	ma "github.com/multiformats/go-multiaddr"
+	xerrors "github.com/pkg/errors"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
@@ -33,8 +41,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
 )
 
 // API is the plumbing implementation, the irreducible set of calls required
@@ -57,6 +65,7 @@ type API struct {
 	outbox       *message.Outbox
 	pieceManager func() piecemanager.PieceManager
 	wallet       *wallet.Wallet
+	drand        beacon.Schedule
 }
 
 // APIDeps contains all the API's dependencies
@@ -73,6 +82,7 @@ type APIDeps struct {
 	Outbox       *message.Outbox
 	PieceManager func() piecemanager.PieceManager
 	Wallet       *wallet.Wallet
+	Drand        beacon.Schedule
 }
 
 // New constructs a new instance of the API.
@@ -91,6 +101,7 @@ func New(deps *APIDeps) *API {
 		outbox:       deps.Outbox,
 		pieceManager: deps.PieceManager,
 		wallet:       deps.Wallet,
+		drand:        deps.Drand,
 	}
 }
 
@@ -107,7 +118,7 @@ func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address
 }
 
 // ActorLs returns a channel with actors from the latest state on the chain
-func (api *API) ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
+func (api *API) ActorLs(ctx context.Context) (map[address.Address]*actor.Actor, error) {
 	return api.chain.LsActors(ctx)
 }
 
@@ -143,7 +154,7 @@ func (api *API) ChainGetMessages(ctx context.Context, metaCid cid.Cid) ([]*types
 }
 
 // ChainGetReceipts gets a receipt collection by CID
-func (api *API) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]vm.MessageReceipt, error) {
+func (api *API) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error) {
 	return api.chain.GetReceipts(ctx, id)
 }
 
@@ -158,18 +169,34 @@ func (api *API) ChainSetHead(ctx context.Context, key block.TipSetKey) error {
 }
 
 // ChainTipSet returns the tipset at the given key
-func (api *API) ChainTipSet(key block.TipSetKey) (block.TipSet, error) {
+func (api *API) ChainTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	return api.chain.GetTipSet(key)
+}
+
+// ChainGetTipSetByHeight looks back for a tipset at the specified epoch.
+// If there are no blocks at the specified epoch, a tipset at an earlier epoch
+// will be returned.
+func (api *API) ChainGetTipSetByHeight(ctx context.Context, ts *block.TipSet, height abi.ChainEpoch, prev bool) (*block.TipSet, error) {
+	return api.chain.GetTipSetByHeight(ctx, ts, height, prev)
 }
 
 // ChainLs returns an iterator of tipsets from head to genesis
 func (api *API) ChainLs(ctx context.Context) (*chain.TipsetIterator, error) {
-	return api.chain.Ls(ctx)
+	return api.chain.Ls(ctx, block.TipSetKey{})
+}
+
+// ChainLs returns an iterator of tipsets from specified head by tsKey to genesis
+func (api *API) ChainLsWithHead(ctx context.Context, tsKey block.TipSetKey) (*chain.TipsetIterator, error) {
+	return api.chain.Ls(ctx, tsKey)
 }
 
 func (api *API) SampleChainRandomness(ctx context.Context, head block.TipSetKey, tag acrypto.DomainSeparationTag,
 	epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	return api.chain.SampleChainRandomness(ctx, head, tag, epoch, entropy)
+}
+
+func (api *API) ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return api.chain.ChainGetRandomnessFromBeacon(ctx, tsk, personalization, randEpoch, entropy)
 }
 
 // SyncerStatus returns the current status of the active or last active chain sync operation.
@@ -230,7 +257,13 @@ func (api *API) MessagePreview(ctx context.Context, from, to address.Address, me
 
 // StateView loads the state view for a tipset, i.e. the state *after* the application of the tipset's messages.
 func (api *API) StateView(baseKey block.TipSetKey) (*appstate.View, error) {
-	return api.chain.StateView(baseKey)
+	ts, err := api.chain.GetTipSet(baseKey)
+	if err != nil {
+		return nil, err
+	}
+
+	height, _ := ts.Height()
+	return api.chain.StateView(baseKey, height)
 }
 
 // MessageSend sends a message. It uses the default from address if none is given and signs the
@@ -239,8 +272,8 @@ func (api *API) StateView(baseKey block.TipSetKey) (*appstate.View, error) {
 // message to go on chain. Note that no default from address is provided.  The error
 // channel returned receives either nil or an error and is immediately closed after
 // the message is published to the network to signal that the publish is complete.
-func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
-	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, true, method, params)
+func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, baseFee types.AttoFIL, gasPremium types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
+	return api.outbox.Send(ctx, from, to, value, baseFee, gasPremium, gasLimit, true, method, params)
 }
 
 //SignedMessageSend sends a siged message.
@@ -253,7 +286,7 @@ func (api *API) SignedMessageSend(ctx context.Context, smsg *types.SignedMessage
 // the case that it appears in a newly mined block. An error is returned if one is
 // encountered or if the context is canceled. Otherwise, it waits forever for the message
 // to appear on chain.
-func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	return api.msgWaiter.Wait(ctx, msgCid, lookback, cb)
 }
 
@@ -348,4 +381,259 @@ func (api *API) DAGImportData(ctx context.Context, data io.Reader) (ipld.Node, e
 // PieceManager returns the piece manager
 func (api *API) PieceManager() piecemanager.PieceManager {
 	return api.pieceManager()
+}
+
+func (a *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*block.MiningBaseInfo, error) {
+	ts, err := a.ChainTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load tipset for mining base: %w", err)
+	}
+
+	prev, err := chain.FindLatestDRAND(ctx, ts, a.chain)
+	if err != nil {
+		return nil, err
+	}
+
+	height, err := ts.Height()
+	if err != nil {
+		return nil, err
+	}
+
+	entries, err := beacon.BeaconEntriesForBlock(ctx, a.drand, round, height, *prev)
+	if err != nil {
+		return nil, err
+	}
+
+	rbase := *prev
+	if len(entries) > 0 {
+		rbase = entries[len(entries)-1]
+	}
+
+	lbts, err := a.GetLookbackTipSetForRound(ctx, ts, round)
+	if err != nil {
+		return nil, xerrors.Errorf("getting lookback miner actor state: %w", err)
+	}
+
+	// todo review
+	buf := new(bytes.Buffer)
+	if err := maddr.MarshalCBOR(buf); err != nil {
+		return nil, xerrors.Errorf("failed to marshal miner address: %w", err)
+	}
+
+	prand, err := chain.DrawRandomness(rbase.Data, acrypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get randomness for winning post: %w", err)
+	}
+
+	sectors, err := a.GetSectorsForWinningPoSt(ctx, pv, lbts, maddr, prand)
+	if err != nil {
+		return nil, xerrors.Errorf("getting winning post proving set: %w", err)
+	}
+
+	if len(sectors) == 0 {
+		return nil, nil
+	}
+
+	mpow, tpow, err := a.GetPowerRaw(ctx, lbts, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get power: %w", err)
+	}
+
+	lbHeight, err := lbts.Height()
+	if err != nil {
+		return nil, err
+	}
+
+	viewer, err := a.chain.StateView(lbts.Key(), lbHeight)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := viewer.MinerInfo(ctx, maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	worker, err := a.ResolveToKeyAddr(ctx, info.Worker, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("resolving worker address: %w", err)
+	}
+
+	hmp, err := a.MinerHasMinPower(ctx, maddr, lbts)
+	if err != nil {
+		return nil, xerrors.Errorf("determining if miner has min power failed: %w", err)
+	}
+
+	return &block.MiningBaseInfo{
+		MinerPower:      mpow.QualityAdjPower,
+		NetworkPower:    tpow.QualityAdjPower,
+		Sectors:         sectors,
+		WorkerKey:       worker,
+		SectorSize:      info.SectorSize,
+		PrevBeaconEntry: *prev,
+		BeaconEntries:   entries,
+		HasMinPower:     hmp,
+	}, nil
+}
+
+func (a *API) GetLookbackTipSetForRound(ctx context.Context, ts *block.TipSet, round abi.ChainEpoch) (*block.TipSet, error) {
+	var lbr abi.ChainEpoch
+	if round > consensus.WinningPoStSectorSetLookback {
+		lbr = round - consensus.WinningPoStSectorSetLookback
+	}
+
+	// more null blocks than our lookback
+	if lbr > ts.EnsureHeight() {
+		return ts, nil
+	}
+
+	lbts, err := chain.FindTipsetAtEpoch(ctx, ts, lbr, a.chain)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get lookback tipset: %w", err)
+	}
+
+	return lbts, nil
+}
+
+func (a *API) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, ts *block.TipSet, maddr address.Address, rand abi.PoStRandomness) ([]proof.SectorInfo, error) {
+	var partsProving []bitfield.BitField
+	var info *miner.MinerInfo
+
+	//height, err := ts.Height()
+	//if err != nil {
+	//	return nil, err
+	//}
+	viewer, err := a.StateView(ts.Key())
+	if err != nil {
+		return nil, err
+	}
+
+	info, err = viewer.MinerInfo(ctx, maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	// todo review
+	partsProving, err = viewer.GetPartsProving(ctx, maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	provingSectors, err := bitfield.MultiMerge(partsProving...)
+	if err != nil {
+		return nil, xerrors.Errorf("merge partition proving sets: %w", err)
+	}
+
+	numProvSect, err := provingSectors.Count()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to count bits: %w", err)
+	}
+
+	// TODO(review): is this right? feels fishy to me
+	if numProvSect == 0 {
+		return nil, nil
+	}
+
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(info.SectorSize)
+	if err != nil {
+		return nil, xerrors.Errorf("getting seal proof type: %w", err)
+	}
+
+	wpt, err := spt.RegisteredWinningPoStProof()
+	if err != nil {
+		return nil, xerrors.Errorf("getting window proof type: %w", err)
+	}
+
+	mid, err := address.IDFromAddress(maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("getting miner ID: %w", err)
+	}
+
+	ids, err := pv.GenerateWinningPoStSectorChallenge(ctx, wpt, abi.ActorID(mid), rand, numProvSect)
+	if err != nil {
+		return nil, xerrors.Errorf("generating winning post challenges: %w", err)
+	}
+
+	sectors, err := provingSectors.All(numProvSect + 1) // todo max?
+	if err != nil {
+		return nil, xerrors.Errorf("failed to enumerate all sector IDs: %w", err)
+	}
+
+	out := make([]proof.SectorInfo, len(ids))
+	for i, n := range ids {
+		sid := sectors[n]
+
+		sinfo, found, err := viewer.MinerGetSector(ctx, maddr, abi.SectorNumber(sid))
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load sectors info: %w", err)
+		}
+		if !found {
+			return nil, xerrors.New("failed to load sectors info, not found")
+		}
+
+		out[i] = proof.SectorInfo{
+			SealProof:    spt,
+			SectorNumber: sinfo.SectorNumber,
+			SealedCID:    sinfo.SealedCID,
+		}
+	}
+
+	return out, nil
+}
+
+func (a *API) GetPowerRaw(ctx context.Context, ts *block.TipSet, maddr address.Address) (power.Claim, power.Claim, error) {
+	height, err := ts.Height()
+	if err != nil {
+		return power.Claim{}, power.Claim{}, err
+	}
+
+	viewer, err := a.chain.StateView(ts.Key(), height)
+	if err != nil {
+		return power.Claim{}, power.Claim{}, err
+	}
+
+	raw, qa, err := viewer.MinerClaimedPower(ctx, maddr)
+	if err != nil {
+		return power.Claim{}, power.Claim{}, err
+	}
+
+	np, err := viewer.PowerNetworkTotal(ctx)
+	if err != nil {
+		return power.Claim{}, power.Claim{}, err
+	}
+
+	return power.Claim{
+			RawBytePower:    raw,
+			QualityAdjPower: qa,
+		}, power.Claim{
+			RawBytePower:    np.RawBytePower,
+			QualityAdjPower: np.QualityAdjustedPower,
+		}, nil
+}
+
+func (a *API) MinerHasMinPower(ctx context.Context, addr address.Address, ts *block.TipSet) (bool, error) {
+	height, err := ts.Height()
+	if err != nil {
+		return false, err
+	}
+
+	viewer, err := a.chain.StateView(ts.Key(), height)
+	if err != nil {
+		return false, err
+	}
+
+	return viewer.MinerNominalPowerMeetsConsensusMinimum(ctx, addr)
+}
+
+func (a *API) ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *block.TipSet) (address.Address, error) {
+	height, err := ts.Height()
+	if err != nil {
+		return address.Undef, err
+	}
+
+	viewer, err := a.chain.StateView(ts.Key(), height)
+	if err != nil {
+		return address.Undef, err
+	}
+	return viewer.ResolveToKeyAddr(ctx, addr)
 }

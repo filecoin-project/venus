@@ -3,11 +3,12 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"io/ioutil"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -17,7 +18,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 )
@@ -36,7 +36,7 @@ type HelloMessage struct {
 	HeaviestTipSetCids   block.TipSetKey
 	HeaviestTipSetHeight abi.ChainEpoch
 	HeaviestTipSetWeight fbig.Int
-	GenesisHash          e.Cid
+	GenesisHash          enccid.Cid
 }
 
 // LatencyMessage is written in response to a hello message for measuring peer
@@ -70,7 +70,7 @@ type HelloProtocolHandler struct {
 
 type peerDiscoveredCallback func(ci *block.ChainInfo)
 
-type getTipSetFunc func() (block.TipSet, error)
+type getTipSetFunc func() (*block.TipSet, error)
 
 // NewHelloProtocolHandler creates a new instance of the hello protocol `Handler` and registers it to
 // the given `host.Host`.
@@ -165,7 +165,7 @@ func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 	}
 
 	return &HelloMessage{
-		GenesisHash:          e.NewCid(h.genesis),
+		GenesisHash:          enccid.NewCid(h.genesis),
 		HeaviestTipSetCids:   heaviest.Key(),
 		HeaviestTipSetHeight: height,
 		HeaviestTipSetWeight: weight,
@@ -213,6 +213,7 @@ func (h *HelloProtocolHandler) sendHello(s net.Stream) error {
 	return nil
 }
 
+// responding to latency
 func (h *HelloProtocolHandler) sendLatency(msg *LatencyMessage, s net.Stream) error {
 	msgRaw, err := encoding.Encode(msg)
 	if err != nil {

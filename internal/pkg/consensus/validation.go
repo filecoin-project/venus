@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/pkg/errors"
 
@@ -36,7 +36,7 @@ var invGasAboveBlockLimitCt *metrics.Int64Counter
 // The maximum allowed message value.
 var msgMaxValue = types.NewAttoFILFromFIL(2e9)
 
-// These gas cost values must match those in vm/internal/gascost.
+// These gas cost values must match those in vm/gas.
 // TODO: Look up gas costs from the same place the VM gets them, keyed by epoch. https://github.com/filecoin-project/go-filecoin/issues/3955
 const onChainMessageBase = gas.Unit(0)
 const onChainMessagePerByte = gas.Unit(2)
@@ -89,7 +89,7 @@ func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.Uns
 	// Sender must be an account actor.
 	if !(builtin.AccountActorCodeID.Equals(fromActor.Code.Cid)) {
 		dropNonAccountCt.Inc(ctx, 1)
-		return fmt.Errorf("sender %s is non-account actor with code %s: %s", msg.From, fromActor.Code.Cid, msg)
+		return fmt.Errorf("sender %s is non-account actor with code %s: %s", msg.From, fromActor.Code, msg)
 	}
 
 	// Avoid processing messages for actors that cannot pay.
@@ -116,7 +116,7 @@ func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.Uns
 // more value from the actor's balance.
 func canCoverGasLimit(msg *types.UnsignedMessage, actor *actor.Actor) bool {
 	// balance >= (gasprice*gasLimit + value)
-	gascost := big.Mul(abi.NewTokenAmount(msg.GasPrice.Int.Int64()), abi.NewTokenAmount(int64(msg.GasLimit)))
+	gascost := big.Mul(abi.NewTokenAmount(msg.GasFeeCap.Int.Int64()), abi.NewTokenAmount(int64(msg.GasLimit)))
 	expense := big.Add(gascost, abi.NewTokenAmount(msg.Value.Int.Int64()))
 	return actor.Balance.GreaterThanEqual(expense)
 }
@@ -191,9 +191,9 @@ func (v *DefaultMessageSyntaxValidator) validateMessageSyntaxShared(ctx context.
 		invParamsNilCt.Inc(ctx, 1)
 		return fmt.Errorf("nil params (should be empty-array): %s", msg)
 	}
-	if msg.GasPrice.LessThan(types.ZeroAttoFIL) {
+	if msg.GasFeeCap.LessThan(types.ZeroAttoFIL) {
 		invGasPriceNegativeCt.Inc(ctx, 1)
-		return fmt.Errorf("negative gas price %s: %s", msg.GasPrice, msg)
+		return fmt.Errorf("negative gas price %s: %s", msg.GasFeeCap, msg)
 	}
 	// The minimum gas limit ensures the sender has enough balance to pay for inclusion of the message in the chain
 	// *at all*. Without this, a message could hit out-of-gas but the sender pay nothing.
@@ -219,7 +219,8 @@ type MessageSignatureValidator struct {
 // signatureValidatorAPI allows the validator to access state needed for signature checking
 type signatureValidatorAPI interface {
 	Head() block.TipSetKey
-	AccountStateView(baseKey block.TipSetKey) (state.AccountStateView, error)
+	GetTipSet(key block.TipSetKey) (*block.TipSet, error)
+	AccountStateView(baseKey block.TipSetKey, height abi.ChainEpoch) (state.AccountStateView, error)
 }
 
 func NewMessageSignatureValidator(api signatureValidatorAPI) *MessageSignatureValidator {
@@ -232,7 +233,12 @@ func NewMessageSignatureValidator(api signatureValidatorAPI) *MessageSignatureVa
 //  validation failed, but possibly indicate a failure to retrieve state.
 func (v *MessageSignatureValidator) Validate(ctx context.Context, smsg *types.SignedMessage) error {
 	head := v.api.Head()
-	view, err := v.api.AccountStateView(head)
+	headTipset, err := v.api.GetTipSet(head)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get height: %v", err)
+	}
+
+	view, err := v.api.AccountStateView(head, headTipset.At(0).Height)
 	if err != nil {
 		return errors.Wrapf(err, "failed to load state at %v", head)
 	}

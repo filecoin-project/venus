@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -183,7 +183,7 @@ func (m *MetadataFormatJSONtoCBOR) convertJSONtoCBOR(ctx context.Context) error 
 			TipSet:          iter.Value(),
 			TipSetStateRoot: stateRoot,
 		}
-		// only write TipSet and State; Block and tipIndex formats are not changed.
+		// only write TipSet and state; Block and tipIndex formats are not changed.
 		if err = m.writeTipSetAndStateAsCBOR(tipSetAndState); err != nil {
 			return err
 		}
@@ -266,14 +266,14 @@ func loadChainHead(asCBOR bool, store *migrationChainStore) (block.TipSetKey, er
 }
 
 // function wrapper for loading state root as JSON
-func loadStateRootAsJSON(ts block.TipSet, store *migrationChainStore) (cid.Cid, error) {
+func loadStateRootAsJSON(ts *block.TipSet, store *migrationChainStore) (cid.Cid, error) {
 	return loadStateRoot(ts, false, store)
 }
 
 // loadStateRoot loads the chain store metadata into store, updating its
 // state root and then returning the state root + any error
 // pass true to load as CBOR (new format) or false to load as JSON (old format)
-func loadStateRoot(ts block.TipSet, asCBOR bool, store *migrationChainStore) (cid.Cid, error) {
+func loadStateRoot(ts *block.TipSet, asCBOR bool, store *migrationChainStore) (cid.Cid, error) {
 	h, err := ts.Height()
 	if err != nil {
 		return cid.Undef, err
@@ -357,7 +357,7 @@ func compareChainStores(ctx context.Context, oldStore *migrationChainStore, newS
 	return nil
 }
 
-func loadTipSet(ctx context.Context, cidSet block.TipSetKey, chainStore *migrationChainStore) (headTs block.TipSet, err error) {
+func loadTipSet(ctx context.Context, cidSet block.TipSetKey, chainStore *migrationChainStore) (headTs *block.TipSet, err error) {
 	var blocks []*block.Block
 	for iter := cidSet.Iter(); !iter.Complete(); iter.Next() {
 		blk, err := chainStore.GetBlock(ctx, iter.Value())

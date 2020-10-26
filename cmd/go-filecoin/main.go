@@ -4,19 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net"
-	"net/url"
-	"os"
-	"syscall"
-
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-cmds/cli"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/pkg/errors"
+	"io"
+	"os"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
@@ -32,10 +27,10 @@ const (
 	OptionRepoDir = "repodir"
 
 	// OptionSectorDir is the name of the option for specifying the directory into which staged and sealed sectors will be written.
-	OptionSectorDir = "sectordir"
+	//OptionSectorDir = "sectordir"
 
 	// OptionPresealedSectorDir is the name of the option for specifying the directory from which presealed sectors should be pulled when initializing.
-	OptionPresealedSectorDir = "presealed-sectordir"
+	//OptionPresealedSectorDir = "presealed-sectordir"
 
 	// OptionDrandConfigAddr is the init option for configuring drand to a given network address at init time
 	OptionDrandConfigAddr = "drand-config-addr"
@@ -50,7 +45,7 @@ const (
 	ELStdout = "elstdout"
 
 	// AutoSealIntervalSeconds configures the daemon to check for and seal any staged sectors on an interval.
-	AutoSealIntervalSeconds = "auto-seal-interval-seconds"
+	//AutoSealIntervalSeconds = "auto-seal-interval-seconds"
 
 	// SwarmAddress is the multiaddr for this Filecoin node
 	SwarmAddress = "swarmlisten"
@@ -64,10 +59,10 @@ const (
 	// BlockTime is the duration string of the block time the daemon will
 	// run with.  TODO: this should eventually be more explicitly grouped
 	// with testing as we won't be able to set blocktime in production.
-	BlockTime = "block-time"
+	//BlockTime = "block-time"
 
 	// PropagationDelay is the duration the miner will wait for blocks to arrive before attempting to mine a new one
-	PropagationDelay = "prop-delay"
+	//PropagationDelay = "prop-delay"
 
 	// PeerKeyFile is the path of file containing key to use for new nodes libp2p identity
 	PeerKeyFile = "peerkeyfile"
@@ -76,7 +71,7 @@ const (
 	WalletKeyFile = "wallet-keyfile"
 
 	// MinerActorAddress when set, sets the daemons's miner address to the provided address
-	MinerActorAddress = "miner-actor-address"
+	//MinerActorAddress = "miner-actor-address"
 
 	// GenesisFile is the path of file containing archive of genesis block DAG data
 	GenesisFile = "genesisfile"
@@ -102,7 +97,7 @@ func init() {
 
 // command object for the local cli
 var RootCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "A decentralized storage network",
 		Subcommands: `
 START RUNNING FILECOIN
@@ -112,18 +107,9 @@ START RUNNING FILECOIN
   go-filecoin wallet                 - Manage your filecoin wallets
   go-filecoin address                - Interact with addresses
 
-STORE AND RETRIEVE DATA
-  go-filecoin client                 - Make deals, store data, retrieve data
-  go-filecoin retrieval-client       - Manage retrieval client operations
-
-MINE
-  go-filecoin miner                  - Manage a single miner actor
-  go-filecoin mining                 - Manage all mining operations for a node
-
 VIEW DATA STRUCTURES
   go-filecoin chain                  - Inspect the filecoin blockchain
   go-filecoin dag                    - Interact with IPLD DAG objects
-  go-filecoin deals                  - Manage deals made by or with this node
   go-filecoin show                   - Get human-readable representations of filecoin objects
 
 NETWORK COMMANDS
@@ -133,7 +119,6 @@ NETWORK COMMANDS
   go-filecoin ping <peer ID>...      - Send echo request packets to p2p network members
   go-filecoin swarm                  - Interact with the swarm
   go-filecoin stats                  - Monitor statistics on your network usage
-  go-filecion drand configure        - Configure drand server connection
   go-filecoin drand random           - retrieve drand randomness
 
 ACTOR COMMANDS
@@ -153,12 +138,12 @@ TOOL COMMANDS
   go-filecoin version                - Show go-filecoin version information
 `,
 	},
-	Options: []cmdkit.Option{
-		cmdkit.StringOption(OptionAPI, "set the api port to use"),
-		cmdkit.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.filecoin/repo"),
-		cmdkit.StringOption(cmds.EncLong, cmds.EncShort, "The encoding type the output should be encoded with (pretty-json or json)").WithDefault("pretty-json"),
-		cmdkit.BoolOption("help", "Show the full command help text."),
-		cmdkit.BoolOption("h", "Show a short version of the command help text."),
+	Options: []cmds.Option{
+		cmds.StringOption(OptionAPI, "set the api port to use"),
+		cmds.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.filecoin/repo"),
+		cmds.StringOption(cmds.EncLong, cmds.EncShort, "The encoding type the output should be encoded with (pretty-json or json)").WithDefault("pretty-json"),
+		cmds.BoolOption("help", "Show the full command help text."),
+		cmds.BoolOption("h", "Show a short version of the command help text."),
 	},
 	Subcommands: make(map[string]*cmds.Command),
 }
@@ -172,29 +157,30 @@ var rootCmdDaemon = &cmds.Command{
 var rootSubcmdsLocal = map[string]*cmds.Command{
 	"daemon":  daemonCmd,
 	"init":    initCmd,
+	"import":  importCmd,
 	"version": versionCmd,
 	"leb128":  leb128Cmd,
 }
 
 // all top level commands, available on daemon. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
-	"actor":            actorCmd,
-	"address":          addrsCmd,
-	"bootstrap":        bootstrapCmd,
-	"chain":            chainCmd,
-	"config":           configCmd,
-	"client":           clientCmd,
-	"drand":            drandCmd,
-	"dag":              dagCmd,
-	"deals":            dealsCmd,
-	"dht":              dhtCmd,
-	"id":               idCmd,
-	"inspect":          inspectCmd,
-	"leb128":           leb128Cmd,
-	"log":              logCmd,
-	"message":          msgCmd,
-	"miner":            minerCmd,
-	"mining":           miningCmd,
+	"actor":     actorCmd,
+	"address":   addrsCmd,
+	"bootstrap": bootstrapCmd,
+	"chain":     chainCmd,
+	"config":    configCmd,
+	//"client":           clientCmd,
+	"drand": drandCmd,
+	"dag":   dagCmd,
+	//"deals":            dealsCmd,
+	"dht":     dhtCmd,
+	"id":      idCmd,
+	"inspect": inspectCmd,
+	"leb128":  leb128Cmd,
+	"log":     logCmd,
+	"message": msgCmd,
+	//"miner":            minerCmd,
+	//"mining":           miningCmd,
 	"mpool":            mpoolCmd,
 	"outbox":           outboxCmd,
 	"ping":             pingCmd,
@@ -246,26 +232,7 @@ func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.
 
 	client := cmdhttp.NewClient(e.api, cmdhttp.ClientWithAPIPrefix(APIPrefix))
 
-	res, err := client.Send(req)
-	if err != nil {
-		if isConnectionRefused(err) {
-			return cmdkit.Errorf(cmdkit.ErrFatal, "Connection Refused. Is the daemon running?")
-		}
-		if cmdKitErr, ok := err.(*cmdkit.Error); ok && cmdKitErr.Code == cmdkit.ErrNormal {
-			return re.CloseWithError(err)
-		}
-		if urlErr, ok := err.(*url.Error); ok && urlErr.Timeout() {
-			return re.CloseWithError(err)
-		}
-		return cmdkit.Errorf(cmdkit.ErrFatal, err.Error())
-	}
-
-	// copy received result into cli emitter
-	err = cmds.Copy(re, res)
-	if err != nil {
-		return cmdkit.Errorf(cmdkit.ErrFatal|cmdkit.ErrNormal, err.Error())
-	}
-	return nil
+	return client.Execute(req, re, env)
 }
 
 func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
@@ -337,51 +304,43 @@ func requiresDaemon(req *cmds.Request) bool {
 	return true
 }
 
-func isConnectionRefused(err error) bool {
-	urlErr, ok := err.(*url.Error)
-	if !ok {
-		return false
+var feecapOption = cmds.StringOption("gas-feecap", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
+var premiumOption = cmds.StringOption("gas-premium", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
+var limitOption = cmds.Int64Option("gas-limit", "Maximum GasUnits this message is allowed to consume")
+var previewOption = cmds.BoolOption("preview", "Preview the Gas cost of this command without actually executing it")
+
+func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.AttoFIL, gas.Unit, bool, error) {
+	feecapOption := req.Options["gas-feecap"]
+	if feecapOption == nil {
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.Zero, false, errors.New("gas-feecap option is required")
 	}
 
-	opErr, ok := urlErr.Err.(*net.OpError)
-	if !ok {
-		return false
+	premiumOption := req.Options["gas-premium"]
+	if feecapOption == nil {
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.Zero, false, errors.New("gas-premium option is required")
 	}
 
-	syscallErr, ok := opErr.Err.(*os.SyscallError)
+	feecap, ok := types.NewAttoFILFromFILString(feecapOption.(string))
 	if !ok {
-		return false
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
 	}
-	return syscallErr.Err == syscall.ECONNREFUSED
-}
-
-var priceOption = cmdkit.StringOption("gas-price", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
-var limitOption = cmdkit.Int64Option("gas-limit", "Maximum GasUnits this message is allowed to consume")
-var previewOption = cmdkit.BoolOption("preview", "Preview the Gas cost of this command without actually executing it")
-
-func parseGasOptions(req *cmds.Request) (types.AttoFIL, gas.Unit, bool, error) {
-	priceOption := req.Options["gas-price"]
-	if priceOption == nil {
-		return types.ZeroAttoFIL, gas.Zero, false, errors.New("gas-price option is required")
-	}
-
-	price, ok := types.NewAttoFILFromFILString(priceOption.(string))
+	premium, ok := types.NewAttoFILFromFILString(premiumOption.(string))
 	if !ok {
-		return types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
 	}
 
 	limitOption := req.Options["gas-limit"]
 	if limitOption == nil {
-		return types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("gas-limit option is required")
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("gas-limit option is required")
 	}
 
 	gasLimitInt, ok := limitOption.(int64)
 	if !ok {
 		msg := fmt.Sprintf("invalid gas limit: %s", limitOption)
-		return types.ZeroAttoFIL, gas.NewGas(0), false, errors.New(msg)
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.NewGas(0), false, errors.New(msg)
 	}
 
 	preview, _ := req.Options["preview"].(bool)
 
-	return price, gas.NewGas(gasLimitInt), preview, nil
+	return feecap, premium, gas.NewGas(gasLimitInt), preview, nil
 }

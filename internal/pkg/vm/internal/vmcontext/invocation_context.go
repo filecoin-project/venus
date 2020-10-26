@@ -4,25 +4,26 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"runtime/debug"
-
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
+
+var gasOnActorExec = gas.NewGasCharge("OnActorExec", 0, 0)
 
 // Context for a top-level invocation sequence.
 type topLevelContext struct {
@@ -72,39 +73,39 @@ func (shc *stateHandleContext) AllowSideEffects(allow bool) {
 	shc.allowSideEffects = allow
 }
 
-func (shc *stateHandleContext) Create(obj specsruntime.CBORMarshaler) cid.Cid {
+func (shc *stateHandleContext) Create(obj cbor.Marshaler) cid.Cid {
 	actr := shc.loadActor()
-	if actr.Head.Cid.Defined() {
-		runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to construct actor state: already initialized")
+	if actr.Head.Defined() {
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to construct actor stateView: already initialized")
 	}
-	c := shc.store().Put(obj)
-	actr.Head = e.NewCid(c)
+	c := shc.store().StorePut(obj)
+	actr.Head = enccid.NewCid(c)
 	shc.storeActor(actr)
 	return c
 }
 
-func (shc *stateHandleContext) Load(obj specsruntime.CBORUnmarshaler) cid.Cid {
-	// The actor must be loaded from store every time since the state may have changed via a different state handle
+func (shc *stateHandleContext) Load(obj cbor.Unmarshaler) cid.Cid {
+	// The actor must be loaded from store every time since the stateView may have changed via a different stateView handle
 	// (e.g. in a recursive call).
 	actr := shc.loadActor()
 	c := actr.Head.Cid
 	if !c.Defined() {
-		runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to load undefined state, must construct first")
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to load undefined stateView, must construct first")
 	}
-	found := shc.store().Get(c, obj)
+	found := shc.store().StoreGet(c, obj)
 	if !found {
-		panic(fmt.Errorf("failed to load state for actor %s, CID %s", shc.msg.to, c))
+		panic(fmt.Errorf("failed to load stateView for actor %s, CID %s", shc.msg.to, c))
 	}
 	return c
 }
 
-func (shc *stateHandleContext) Replace(expected cid.Cid, obj specsruntime.CBORMarshaler) cid.Cid {
+func (shc *stateHandleContext) Replace(expected cid.Cid, obj cbor.Marshaler) cid.Cid {
 	actr := shc.loadActor()
-	if !actr.Head.Cid.Equals(expected) {
-		panic(fmt.Errorf("unexpected prior state %s for actor %s, expected %s", actr.Head, shc.msg.to, expected))
+	if !actr.Head.Equals(expected) {
+		panic(fmt.Errorf("unexpected prior stateView %s for actor %s, expected %s", actr.Head, shc.msg.to, expected))
 	}
-	c := shc.store().Put(obj)
-	actr.Head = e.NewCid(c)
+	c := shc.store().StorePut(obj)
+	actr.Head = enccid.NewCid(c)
 	shc.storeActor(actr)
 	return c
 }
@@ -114,14 +115,14 @@ func (shc *stateHandleContext) store() specsruntime.Store {
 }
 
 func (shc *stateHandleContext) loadActor() *actor.Actor {
-	actr, found, err := shc.rt.state.GetActor(shc.rt.context, shc.msg.to)
+	entry, found, err := shc.rt.state.GetActor(shc.rt.context, shc.msg.to)
 	if err != nil {
 		panic(err)
 	}
 	if !found {
-		panic(fmt.Errorf("failed to find actor %s for state", shc.msg.to))
+		panic(fmt.Errorf("failed to find actor %s for stateView", shc.msg.to))
 	}
-	return actr
+	return entry
 }
 
 func (shc *stateHandleContext) storeActor(actr *actor.Actor) {
@@ -132,19 +133,21 @@ func (shc *stateHandleContext) storeActor(actr *actor.Actor) {
 }
 
 // runtime aborts are trapped by invoke, it will always return an exit code.
-func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.ExitCode) {
-	// Checkpoint state, for restoration on rollback
+func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
+	// Checkpoint stateView, for restoration on revert
 	// Note that changes prior to invocation (sequence number bump and gas prepayment) persist even if invocation fails.
-	priorRoot, err := ctx.rt.checkpoint()
+	err := ctx.rt.snapshot()
 	if err != nil {
 		panic(err)
 	}
+	defer ctx.rt.clearSnapshot()
 
-	// Install handler for abort, which rolls back all state changes from this and any nested invocations.
+	// Install handler for abort, which rolls back all stateView changes from this and any nested invocations.
 	// This is the only path by which a non-OK exit code may be returned.
 	defer func() {
 		if r := recover(); r != nil {
-			if err := ctx.rt.rollback(priorRoot); err != nil {
+
+			if err := ctx.rt.revert(); err != nil {
 				panic(err)
 			}
 			switch r.(type) {
@@ -158,14 +161,21 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 					"receiver", ctx.msg.to,
 					"methodNum", ctx.msg.method,
 					"value", ctx.msg.value,
-					"gasLimit", ctx.gasTank.gasLimit)
-				ret = returnWrapper{adt.Empty} // The Empty here should never be used, but slightly safer than zero value.
+					"gasLimit", ctx.gasTank.gasAvailable)
+				ret = []byte{} // The Empty here should never be used, but slightly safer than zero value.
 				errcode = p.Code()
-				return
 			default:
+				if err, ok := r.(error); ok {
+					fmt.Println(err.Error())
+				} else {
+					fmt.Println(r)
+				}
+
+				errcode = 1
+				ret = []byte{}
 				// do not trap unknown panics
-				debug.PrintStack()
-				panic(r)
+				vmlog.Errorf("spec actors failure: %s", r)
+				//debug.PrintStack()
 			}
 		}
 	}()
@@ -176,65 +186,48 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 	// 3. transfer optional funds
 	// 4. short-circuit _Send_ method
 	// 5. load target actor code
-	// 6. create target state handle
+	// 6. create target stateView handle
 	// assert from address is an ID address.
 	if ctx.msg.from.Protocol() != address.ID {
 		panic("bad code: sender address MUST be an ID address at invocation time")
 	}
 
-	// 1. charge gas for msg
-	ctx.gasTank.Charge(ctx.rt.pricelist.OnMethodInvocation(ctx.msg.value, ctx.msg.method), "method invocation")
-
-	// 2. load target actor
+	// 1. load target actor
 	// Note: we replace the "to" address with the normalized version
 	ctx.toActor, ctx.msg.to = ctx.resolveTarget(ctx.msg.to)
 
+	// 2. charge gas for msg
+	ctx.gasTank.Charge(ctx.rt.pricelist.OnMethodInvocation(ctx.msg.value, ctx.msg.method), "method invocation")
+
 	// 3. transfer funds carried by the msg
 	if !ctx.msg.value.Nil() && !ctx.msg.value.IsZero() {
-		if ctx.msg.value.LessThan(big.Zero()) {
-			runtime.Abortf(exitcode.SysErrForbidden, "attempt to transfer negative value %s from %s to %s",
-				ctx.msg.value, ctx.msg.from, ctx.msg.to)
+		if ctx.msg.from != ctx.msg.to {
+			ctx.fromActor, ctx.toActor = ctx.rt.transfer(ctx.msg.from, ctx.msg.to, ctx.msg.value)
 		}
-		if ctx.fromActor.Balance.LessThan(ctx.msg.value) {
-			runtime.Abortf(exitcode.SysErrInsufficientFunds, "sender %s insufficient balance %s to transfer %s to %s",
-				ctx.msg.from, ctx.fromActor.Balance, ctx.msg.value, ctx.msg.to)
-		}
-		ctx.toActor, ctx.fromActor = ctx.rt.transfer(ctx.msg.from, ctx.msg.to, ctx.msg.value)
 	}
 
 	// 4. if we are just sending funds, there is nothing else to do.
 	if ctx.msg.method == builtin.MethodSend {
-		return returnWrapper{adt.Empty}, exitcode.Ok
+		return nil, exitcode.Ok
 	}
 
 	// 5. load target actor code
 	actorImpl := ctx.rt.getActorImpl(ctx.toActor.Code.Cid)
-	// 6. create target state handle
+	// 6. create target stateView handle
 	stateHandle := newActorStateHandle((*stateHandleContext)(ctx))
 	ctx.stateHandle = &stateHandle
 
 	// dispatch
-	adapter := runtimeAdapter{ctx: ctx}
-	out, err := actorImpl.Dispatch(ctx.msg.method, &adapter, ctx.msg.params)
-	if err != nil {
-		// Dragons: this could be a params deserialization error too
-		runtime.Abort(exitcode.SysErrInvalidMethod)
+	adapter := newRuntimeAdapter(ctx) //runtimeAdapter{ctx: ctx}
+	var extErr *dispatch.ExcuteError
+	ret, extErr = actorImpl.Dispatch(ctx.msg.method, adapter, ctx.msg.params)
+	if extErr != nil {
+		runtime.Abortf(extErr.ExitCode(), extErr.Error())
 	}
-
-	// assert output implements expected interface
-	var marsh specsruntime.CBORMarshaler = adt.Empty
-	if out != nil {
-		var ok bool
-		marsh, ok = out.(specsruntime.CBORMarshaler)
-		if !ok {
-			runtime.Abortf(exitcode.SysErrorIllegalActor, "Returned value is not a CBORMarshaler")
-		}
-	}
-	ret = returnWrapper{inner: marsh}
 
 	// post-dispatch
 	// 1. check caller was validated
-	// 2. check state manipulation was valid
+	// 2. check stateView manipulation was valid
 	// 4. success!
 
 	// 1. check caller was validated
@@ -242,7 +235,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Caller MUST be validated during method execution")
 	}
 
-	// 2. validate state access
+	// 2. validate stateView access
 	ctx.stateHandle.Validate(func(obj interface{}) cid.Cid {
 		id, err := ctx.rt.store.CidOf(obj)
 		if err != nil {
@@ -251,7 +244,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 		return id
 	})
 
-	// Reset to pre-invocation state
+	// Reset to pre-invocation stateView
 	ctx.toActor = nil
 	ctx.stateHandle = nil
 
@@ -265,7 +258,7 @@ func (ctx *invocationContext) invoke() (ret returnWrapper, errcode exitcode.Exit
 // a new account actor will be created.
 // Otherwise, this method will abort execution.
 func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Actor, address.Address) {
-	// resolve the target address via the InitActor, and attempt to load state.
+	// resolve the target address via the InitActor, and attempt to load stateView.
 	initActorEntry, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.InitActorAddr)
 	if err != nil {
 		panic(err)
@@ -278,38 +271,33 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 		return initActorEntry, target
 	}
 
-	// get a view into the actor state
+	// get a view into the actor stateView
 	var state init_.State
-	if _, err := ctx.rt.store.Get(ctx.rt.context, initActorEntry.Head.Cid, &state); err != nil {
+	if err := ctx.rt.store.Get(ctx.rt.context, initActorEntry.Head.Cid, &state); err != nil {
 		panic(err)
 	}
 
 	// lookup the ActorID based on the address
-	targetIDAddr, err := state.ResolveAddress(ctx.rt.ContextStore(), target)
-	created := false
-	if err == init_.ErrAddressNotFound {
+
+	targetActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, target)
+	if err != nil {
+		panic(err)
+	}
+	if !found {
+		// Charge gas now that easy checks are done
+		ctx.gasTank.Charge(gas.PricelistByEpoch(ctx.rt.CurrentEpoch()).OnCreateActor(), "CreateActor  address %s", target)
 		// actor does not exist, create an account actor
 		// - precond: address must be a pub-key
 		// - sent init actor a msg to create the new account
+		targetIDAddr, err := ctx.rt.state.RegisterNewAddress(target)
+		if err != nil {
+			ctx.rt.state.RegisterNewAddress(target)
+			panic(err)
+		}
 
 		if target.Protocol() != address.SECP256K1 && target.Protocol() != address.BLS {
 			// Don't implicitly create an account actor for an address without an associated key.
 			runtime.Abort(exitcode.SysErrInvalidReceiver)
-		}
-
-		targetIDAddr, err = state.MapAddressToNewID(ctx.rt.ContextStore(), target)
-		if err != nil {
-			panic(err)
-		}
-		// store new state
-		initHead, _, err := ctx.rt.store.Put(ctx.rt.context, &state)
-		if err != nil {
-			panic(err)
-		}
-		// update init actor
-		initActorEntry.Head = e.NewCid(initHead)
-		if err := ctx.rt.state.SetActor(ctx.rt.context, builtin.InitActorAddr, initActorEntry); err != nil {
-			panic(err)
 		}
 
 		ctx.CreateActor(builtin.AccountActorCodeID, targetIDAddr)
@@ -332,24 +320,36 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*actor.Acto
 			runtime.Abort(code)
 		}
 
-		created = true
-	} else if err != nil {
-		panic(err)
-	}
+		// load actor
+		//fmt.Println("create account  ", target)
+		targetActor, _, err := ctx.rt.state.GetActor(ctx.rt.context, target)
+		if err != nil {
+			panic(err)
+		}
+		return targetActor, targetIDAddr
+	} else {
+		//load id address
+		targetIDAddr, found, err := state.ResolveAddress(ctx.rt.ContextStore(), target)
+		if err != nil {
+			panic(err)
+		}
 
-	// load actor
-	targetActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, targetIDAddr)
-	if err != nil {
-		panic(err)
-	}
-	if !found && created {
-		panic(fmt.Errorf("unreachable: actor is supposed to exist but it does not. addr: %s, idAddr: %s", target, targetIDAddr))
-	}
-	if !found {
-		runtime.Abort(exitcode.SysErrInvalidReceiver)
-	}
+		if !found {
+			panic(fmt.Errorf("unreachable: actor is supposed to exist but it does not. addr: %s, idAddr: %s", target, targetIDAddr))
+		}
 
-	return targetActor, targetIDAddr
+		// load actor
+		targetActor, found, err = ctx.rt.state.GetActor(ctx.rt.context, targetIDAddr)
+		if err != nil {
+			panic(err)
+		}
+
+		if !found {
+			runtime.Abort(exitcode.SysErrInvalidReceiver)
+		}
+
+		return targetActor, targetIDAddr
+	}
 }
 
 //
@@ -384,46 +384,13 @@ func (ctx *invocationContext) ValidateCaller(pattern runtime.CallerPattern) {
 	ctx.isCallerValidated = true
 }
 
-// State implements runtime.InvocationContext.
+// state implements runtime.InvocationContext.
 func (ctx *invocationContext) State() specsruntime.StateHandle {
 	return ctx.stateHandle
 }
 
-type returnWrapper struct {
-	inner specsruntime.CBORMarshaler
-}
-
-func (r returnWrapper) ToCbor() (out []byte, err error) {
-	if r.inner == nil {
-		return nil, fmt.Errorf("failed to unmarshal nil return (did you mean adt.Empty?)")
-	}
-	b := bytes.Buffer{}
-	if err = r.inner.MarshalCBOR(&b); err != nil {
-		return
-	}
-	out = b.Bytes()
-	if out == nil {
-		// A buffer with zero bytes written returns nil rather than an empty array,
-		// but the distinction matters for CBOR.
-		out = []byte{}
-	}
-	return
-}
-
-func (r returnWrapper) Into(o specsruntime.CBORUnmarshaler) error {
-	// TODO: if inner is also a specsruntime.CBORUnmarshaler, overwrite o with inner.
-	if r.inner == nil {
-		return fmt.Errorf("failed to unmarshal nil return (did you mean adt.Empty?)")
-	}
-	b := bytes.Buffer{}
-	if err := r.inner.MarshalCBOR(&b); err != nil {
-		return err
-	}
-	return o.UnmarshalCBOR(&b)
-}
-
 // Send implements runtime.InvocationContext.
-func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodNum, params specsruntime.CBORMarshaler, value abi.TokenAmount) (ret specsruntime.SendReturn, errcode exitcode.ExitCode) {
+func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodNum, params cbor.Marshaler, value abi.TokenAmount, out cbor.Er) exitcode.ExitCode {
 	// check if side-effects are allowed
 	if !ctx.allowSideEffects {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Calling Send() is not allowed during side-effect lock")
@@ -453,7 +420,16 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 	newCtx := newInvocationContext(ctx.rt, ctx.topLevel, newMsg, fromActor, ctx.gasTank, ctx.randSource)
 
 	// 2. invoke
-	return newCtx.invoke()
+	ret, code := newCtx.invoke()
+	if code != 0 {
+		return code
+	} else {
+		_ = ctx.gasTank.TryCharge(gasOnActorExec)
+		if err := out.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
+			runtime.Abortf(exitcode.ErrSerialization, "failed to unmarshal return value: %s", err)
+		}
+		return code
+	}
 }
 
 /// Balance implements runtime.InvocationContext.
@@ -497,13 +473,12 @@ func (ctx *invocationContext) NewActorAddress() address.Address {
 }
 
 // CreateActor implements runtime.ExtendedInvocationContext.
+// Creating an account is divided into two situations:
+//       case1: create based on message receive , the gas fee is deducted first.
+//       case2: create from spec actors, check first, and deduct gas fee
 func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) {
 	if !builtin.IsBuiltinActor(codeID) {
 		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
-	}
-
-	if builtin.IsSingletonActor(codeID) {
-		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Can only have one instance of singleton actors.")
 	}
 
 	vmlog.Debugf("creating actor, friendly-name: %s, code: %s, addr: %s\n", builtin.ActorNameByCode(codeID), codeID, addr)
@@ -519,17 +494,18 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Actor address already exists")
 	}
 
-	// Charge gas now that easy checks are done
-	ctx.gasTank.Charge(ctx.rt.pricelist.OnCreateActor(), "CreateActor code %s, address %s", codeID, addr)
-
 	newActor := &actor.Actor{
 		// make this the right 'type' of actor
-		Code:    e.NewCid(codeID),
-		Balance: abi.NewTokenAmount(0),
+		Code:       enccid.NewCid(codeID),
+		Balance:    abi.NewTokenAmount(0),
+		Head:       enccid.NewCid(EmptyObjectCid),
+		CallSeqNum: 0,
 	}
 	if err := ctx.rt.state.SetActor(ctx.rt.context, addr, newActor); err != nil {
 		panic(err)
 	}
+
+	_ = ctx.gasTank.TryCharge(gasOnActorExec)
 }
 
 // DeleteActor implements runtime.ExtendedInvocationContext.
@@ -539,61 +515,25 @@ func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 	if err != nil {
 		panic(err)
 	}
+
 	if !found {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "delete non-existent actor %s", receiverActor)
 	}
+
 	ctx.gasTank.Charge(ctx.rt.pricelist.OnDeleteActor(), "DeleteActor %s", receiver)
 
 	// Transfer any remaining balance to the beneficiary.
 	// This looks like it could cause a problem with gas refund going to a non-existent actor, but the gas payer
 	// is always an account actor, which cannot be the receiver of this message.
 	if receiverActor.Balance.GreaterThan(big.Zero()) {
-		ctx.rt.transfer(receiver, beneficiary, receiverActor.Balance)
+		ctx.fromActor, ctx.toActor = ctx.rt.transfer(receiver, beneficiary, receiverActor.Balance)
 	}
 
 	if err := ctx.rt.state.DeleteActor(ctx.rt.context, receiver); err != nil {
 		panic(err)
 	}
-}
 
-func (ctx *invocationContext) TotalFilCircSupply() abi.TokenAmount {
-	rewardActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.RewardActorAddr)
-	if !found || err != nil {
-		panic(fmt.Sprintf("failed to get rewardActor actor for computing total supply: %s", err))
-	}
-
-	burntActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.BurntFundsActorAddr)
-	if !found || err != nil {
-		panic(fmt.Sprintf("failed to get burntActor funds actor for computing total supply: %s", err))
-	}
-
-	marketActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.StorageMarketActorAddr)
-	if !found || err != nil {
-		panic(fmt.Sprintf("failed to get storage marketActor actor for computing total supply: %s", err))
-	}
-
-	// TODO: remove this, https://github.com/filecoin-project/go-filecoin/issues/4017
-	powerActor, found, err := ctx.rt.state.GetActor(ctx.rt.context, builtin.StoragePowerActorAddr)
-	if !found || err != nil {
-		panic(fmt.Sprintf("failed to get storage powerActor actor for computing total supply: %s", err))
-	}
-
-	// TODO: this 2 billion is coded for temporary compatibility with the Lotus implementation of this function,
-	// but including it here is brittle. Instead, this should inspect the reward actor's state which records
-	// exactly how much has actually been distributed in block rewards to this point, robust to various
-	// network initial conditions.
-	// https://github.com/filecoin-project/go-filecoin/issues/4017
-	total := big.NewInt(2e9)
-	total = big.Sub(total, rewardActor.Balance)
-	total = big.Sub(total, burntActor.Balance)
-	total = big.Sub(total, marketActor.Balance)
-
-	var st power.State
-	if found = ctx.Store().Get(powerActor.Head.Cid, &st); !found {
-		panic("failed to get storage powerActor state")
-	}
-
-	return big.Sub(total, st.TotalPledgeCollateral)
+	_ = ctx.gasTank.TryCharge(gasOnActorExec)
 }
 
 // patternContext implements the PatternContext

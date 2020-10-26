@@ -2,14 +2,13 @@ package commands
 
 import (
 	"github.com/filecoin-project/go-address"
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 )
 
 var outboxCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "View and manipulate the outbound message queue",
 	},
 	Subcommands: map[string]*cmds.Command{
@@ -25,11 +24,11 @@ type OutboxLsResult struct {
 }
 
 var outboxLsCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "List the queue(s) of sent but un-mined messages",
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("address", false, false, "Address of the queue to list (otherwise lists all)"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("address", false, false, "Address of the queue to list (otherwise lists all)"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addresses, err := queueAddressesFromArg(req, env, 0)
@@ -50,11 +49,11 @@ var outboxLsCmd = &cmds.Command{
 }
 
 var outboxClearCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Clear the queue(s) of sent messages",
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("address", false, false, "Address of the queue to clear (otherwise clears all)"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("address", false, false, "Address of the queue to clear (otherwise clears all)"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addresses, err := queueAddressesFromArg(req, env, 0)

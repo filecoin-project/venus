@@ -4,15 +4,15 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
 
 	blk "github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	fbig "github.com/filecoin-project/go-state-types/big"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -40,9 +40,9 @@ func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWei
 		Parents:         blk.NewTipSetKey(parentCid),
 		ParentWeight:    fbig.NewInt(int64(parentWeight)),
 		Height:          42 + abi.ChainEpoch(height),
-		Messages:        e.NewCid(cidGetter()),
-		StateRoot:       e.NewCid(cidGetter()),
-		MessageReceipts: e.NewCid(cidGetter()),
+		Messages:        enccid.NewCid(cidGetter()),
+		StateRoot:       enccid.NewCid(cidGetter()),
+		MessageReceipts: enccid.NewCid(cidGetter()),
 		Timestamp:       timestamp,
 	}
 }
@@ -51,11 +51,6 @@ func TestTipSet(t *testing.T) {
 	tf.UnitTest(t)
 
 	b1, b2, b3 := makeTestBlocks(t)
-
-	t.Run("undefined tipset", func(t *testing.T) {
-		assert.False(t, blk.UndefTipSet.Defined())
-		// No other methods are defined
-	})
 
 	t.Run("ordered by ticket digest", func(t *testing.T) {
 		ts := RequireNewTipSet(t, b3, b2, b1) // Presented in reverse order
@@ -131,9 +126,9 @@ func TestTipSet(t *testing.T) {
 		assert.Equal(t, ts1a, ts1b)
 		assert.NotEqual(t, ts1a, ts2)
 		assert.NotEqual(t, ts1a, ts3)
-		assert.NotEqual(t, ts1a, blk.UndefTipSet)
-		assert.NotEqual(t, ts2, blk.UndefTipSet)
-		assert.NotEqual(t, ts3, blk.UndefTipSet)
+		assert.NotEqual(t, ts1a, nil)
+		assert.NotEqual(t, ts2, nil)
+		assert.NotEqual(t, ts3, nil)
 	})
 
 	t.Run("slice", func(t *testing.T) {
@@ -196,12 +191,6 @@ func TestTipSet(t *testing.T) {
 	})
 }
 
-func TestUndefKey(t *testing.T) {
-	ts := blk.UndefTipSet
-	udKey := ts.Key()
-	assert.True(t, udKey.Empty())
-}
-
 func makeTestBlocks(t *testing.T) (*blk.Block, *blk.Block, *blk.Block) {
 	b1 := block(t, []byte{2}, 1, cid1, parentWeight, 1, "1")
 	b2 := block(t, []byte{3}, 1, cid1, parentWeight, 2, "2")
@@ -215,7 +204,7 @@ func makeTestBlocks(t *testing.T) (*blk.Block, *blk.Block, *blk.Block) {
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
-func RequireNewTipSet(t *testing.T, blks ...*blk.Block) blk.TipSet {
+func RequireNewTipSet(t *testing.T, blks ...*blk.Block) *blk.TipSet {
 	ts, err := blk.NewTipSet(blks...)
 	require.NoError(t, err)
 	return ts

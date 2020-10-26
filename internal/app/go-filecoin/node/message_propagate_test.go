@@ -6,11 +6,10 @@ import (
 	"time"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
@@ -22,7 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
-	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	specsbig "github.com/filecoin-project/go-state-types/big"
 )
 
 // TestMessagePropagation is a high level check that messages are propagated between message
@@ -79,10 +78,11 @@ func TestMessagePropagation(t *testing.T) {
 			senderAddress,
 			builtin.InitActorAddr,
 			specsbig.NewInt(100),
-			types.NewGasPrice(1),
+			types.NewGasFeeCap(1),
+			types.NewGasPremium(1),
 			gas.Unit(5000),
 			fooMethod,
-			adt.Empty,
+			[]byte{},
 		)
 		require.NoError(t, err)
 

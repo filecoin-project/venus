@@ -9,7 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	specsbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

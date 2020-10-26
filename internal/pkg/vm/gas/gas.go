@@ -1,8 +1,7 @@
 package gas
 
 import (
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/big"
 )
 
 // Unit is the unit of gas.
@@ -13,7 +12,7 @@ type Unit int64
 var Zero = NewGas(0)
 
 // SystemGasLimit is the maximum gas for implicit system messages.
-var SystemGasLimit = NewGas(1000000000000000000) // 10^18
+var SystemGasLimit = NewGas(10_000_000_000 * 10000) // 10^18
 
 // NewGas creates a gas value object.
 func NewGas(value int64) Unit {
@@ -23,10 +22,4 @@ func NewGas(value int64) Unit {
 // AsBigInt returns the internal value as a `big.Int`
 func (gas Unit) AsBigInt() big.Int {
 	return big.NewInt(int64(gas))
-}
-
-// ToTokens returns the cost of the gas given the price.
-func (gas Unit) ToTokens(price abi.TokenAmount) abi.TokenAmount {
-	// cost = gas * price
-	return big.Mul(gas.AsBigInt(), price)
 }

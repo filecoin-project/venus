@@ -6,7 +6,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -23,7 +22,7 @@ type ActorView struct {
 }
 
 var actorCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Interact with actors. Actors are built-in smart contracts.",
 	},
 	Subcommands: map[string]*cmds.Command{
@@ -38,12 +37,8 @@ var actorLsCmd = &cmds.Command{
 			return err
 		}
 
-		for result := range results {
-			if result.Error != nil {
-				return result.Error
-			}
-
-			output := makeActorView(result.Actor, result.Key)
+		for addr, actor := range results {
+			output := makeActorView(actor, addr)
 			if err := re.Emit(output); err != nil {
 				return err
 			}

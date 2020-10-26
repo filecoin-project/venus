@@ -3,15 +3,13 @@ package commands
 import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 
 	"github.com/ipfs/go-cid"
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
 var showCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Get human-readable representations of filecoin objects",
 	},
 	Subcommands: map[string]*cmds.Command{
@@ -23,17 +21,17 @@ var showCmd = &cmds.Command{
 }
 
 var showBlockCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Show a full filecoin block by its header CID",
 		ShortDescription: `Prints the miner, parent weight, height,
 and nonce of a given block. If JSON encoding is specified with the --enc flag,
 all other block properties will be included as well.`,
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("cid", true, false, "CID of block to show"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cid", true, false, "CID of block to show"),
 	},
-	Options: []cmdkit.Option{
-		cmdkit.BoolOption("messages", "m", "show messages in block"),
+	Options: []cmds.Option{
+		cmds.BoolOption("messages", "m", "show messages in block"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		cid, err := cid.Decode(req.Arguments[0])
@@ -52,14 +50,14 @@ all other block properties will be included as well.`,
 }
 
 var showHeaderCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Show a filecoin block header by its CID",
 		ShortDescription: `Prints the miner, parent weight, height,
 and nonce of a given block. If JSON encoding is specified with the --enc flag,
 all other block properties will be included as well.`,
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("cid", true, false, "CID of block to show"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cid", true, false, "CID of block to show"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		cid, err := cid.Decode(req.Arguments[0])
@@ -83,14 +81,14 @@ type allMessages struct {
 }
 
 var showMessagesCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Show a filecoin message collection by txmeta CID",
 		ShortDescription: `Prints info for all messages in a collection,
 at the given CID.  This CID is found in the "Messages" field of
 the filecoin block header.`,
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("cid", true, false, "CID of message collection to show"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cid", true, false, "CID of message collection to show"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		cid, err := cid.Decode(req.Arguments[0])
@@ -109,14 +107,14 @@ the filecoin block header.`,
 }
 
 var showReceiptsCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Show a filecoin receipt collection by its CID",
 		ShortDescription: `Prints info for all receipts in a collection,
-at the given CID.  Receipt collection CIDs are found in the "MessageReceipts"
+at the given CID.  MessageReceipt collection CIDs are found in the "MessageReceipts"
 field of the filecoin block header.`,
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("cid", true, false, "CID of receipt collection to show"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cid", true, false, "CID of receipt collection to show"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		cid, err := cid.Decode(req.Arguments[0])
@@ -131,5 +129,5 @@ field of the filecoin block header.`,
 
 		return re.Emit(receipts)
 	},
-	Type: []vm.MessageReceipt{},
+	Type: []types.MessageReceipt{},
 }

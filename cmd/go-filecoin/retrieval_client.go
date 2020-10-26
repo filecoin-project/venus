@@ -1,12 +1,11 @@
 package commands
 
 import (
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
 var retrievalClientCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Manage retrieval client operations",
 	},
 	Subcommands: map[string]*cmds.Command{
@@ -15,12 +14,12 @@ var retrievalClientCmd = &cmds.Command{
 }
 
 var clientRetrievePieceCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Read out piece data stored by a miner on the network",
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("miner", true, false, "Retrieval miner actor address"),
-		cmdkit.StringArg("cid", true, false, "Content identifier of piece to read"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("miner", true, false, "Retrieval miner actor address"),
+		cmds.StringArg("cid", true, false, "Content identifier of piece to read"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		panic("TODO: go-fil-markets integration")

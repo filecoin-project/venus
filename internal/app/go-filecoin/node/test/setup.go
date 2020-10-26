@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"os"
 	"testing"
 	"time"
@@ -13,12 +14,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/build/project"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
@@ -34,18 +31,18 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 	nodes := make([]*node.Node, 1+additionalNodes)
 
 	// create bootstrap miner
-	seed, genCfg, fakeClock, chainClock := CreateBootstrapSetup(t)
+	seed, genCfg, chainClock := CreateBootstrapSetup(t)
 	nodes[0] = CreateBootstrapMiner(ctx, t, seed, chainClock, genCfg)
 
 	// create additional nodes
+	dr := beacon.NewMockSchedule(blockTime)
 	for i := uint(0); i < additionalNodes; i++ {
 		node := NewNodeBuilder(t).
 			WithGenesisInit(seed.GenesisInitFunc).
 			WithConfig(node.DefaultAddressConfigOpt(seed.Addr(t, int(i+1)))).
-			WithBuilderOpt(node.PoStGeneratorOption(&consensus.TestElectionPoster{})).
 			WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...).
 			WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
-			WithBuilderOpt(node.DrandConfigOption(drand.NewFake(chainClock.StartTimeOfEpoch(0)))).
+			WithBuilderOpt(node.DrandConfigOption(dr)).
 			Build(ctx)
 		addr := seed.GiveKey(t, node, int(i+1))
 		err := node.PorcelainAPI.ConfigSet("wallet.defaultAddress", addr.String())
@@ -62,37 +59,10 @@ func MustCreateNodesWithBootstrap(ctx context.Context, t *testing.T, additionalN
 		}
 	}
 
-	// start simulated mining and wait for shutdown
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				RequireMineOnce(ctx, t, fakeClock, nodes[0])
-			}
-		}
-	}()
-
 	return nodes, cancel
 }
 
-func RequireMineOnce(ctx context.Context, t *testing.T, fakeClock clock.Fake, node *node.Node) *block.Block {
-	fakeClock.Advance(blockTime)
-	blk, err := node.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-
-	// fail only if ctx not done
-	select {
-	case <-ctx.Done():
-		return nil
-	default:
-		require.NoError(t, err)
-	}
-
-	return blk
-}
-
-func CreateBootstrapSetup(t *testing.T) (*node.ChainSeed, *gengen.GenesisCfg, clock.Fake, clock.ChainEpochClock) {
+func CreateBootstrapSetup(t *testing.T) (*node.ChainSeed, *gengen.GenesisCfg, clock.ChainEpochClock) {
 	// set up paths and fake clock.
 	genTime := int64(1000000000)
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
@@ -108,31 +78,22 @@ func CreateBootstrapSetup(t *testing.T) (*node.ChainSeed, *gengen.GenesisCfg, cl
 	seed := node.MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, propDelay, fakeClock)
 
-	return seed, genCfg, fakeClock, chainClock
+	return seed, genCfg, chainClock
 }
 
 func CreateBootstrapMiner(ctx context.Context, t *testing.T, seed *node.ChainSeed, chainClock clock.ChainEpochClock, genCfg *gengen.GenesisCfg) *node.Node {
-	// set up paths and fake clock.
-	presealPath := project.Root("fixtures/genesis-sectors")
-	minerAddress, err := address.NewIDAddress(106)
-	require.NoError(t, err)
-
 	// create bootstrap miner
+	dr := beacon.NewMockSchedule(blockTime)
 	bootstrapMiner := NewNodeBuilder(t).
 		WithGenesisInit(seed.GenesisInitFunc).
 		WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...).
-		WithBuilderOpt(node.PoStGeneratorOption(&consensus.TestElectionPoster{})).
 		WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
-		WithBuilderOpt(node.DrandConfigOption(drand.NewFake(chainClock.StartTimeOfEpoch(0)))).
+		WithBuilderOpt(node.DrandConfigOption(dr)).
 		WithBuilderOpt(node.MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
-		WithConfig(func(c *config.Config) {
-			c.SectorBase.PreSealedSectorsDirPath = presealPath
-			c.Mining.MinerAddress = minerAddress
-		}).
 		Build(ctx)
 
 	addr := seed.GiveKey(t, bootstrapMiner, 0)
-	err = bootstrapMiner.PorcelainAPI.ConfigSet("wallet.defaultAddress", addr.String())
+	err := bootstrapMiner.PorcelainAPI.ConfigSet("wallet.defaultAddress", addr.String())
 	require.NoError(t, err)
 
 	_, _, err = initNodeGenesisMiner(ctx, t, bootstrapMiner, seed, genCfg.Miners[0].Owner)
@@ -147,12 +108,7 @@ func initNodeGenesisMiner(ctx context.Context, t *testing.T, nd *node.Node, seed
 	seed.GiveKey(t, nd, minerIdx)
 	miner, owner := seed.GiveMiner(t, nd, 0)
 
-	genesisBlock, err := nd.Chain().ChainReader.GetGenesisBlock(ctx)
-	require.NoError(t, err)
-
-	err = node.InitSectors(ctx, nd.Repo, genesisBlock)
-	require.NoError(t, err)
-	return miner, owner, err
+	return miner, owner, nil
 }
 
 func loadGenesisConfig(t *testing.T, path string) *gengen.GenesisCfg {

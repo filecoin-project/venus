@@ -3,10 +3,11 @@ package gengen
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"io"
 
 	address "github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	bserv "github.com/ipfs/go-blockservice"
 	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -38,13 +39,15 @@ type CreateStorageMinerConfig struct {
 	// CommittedSectors is the list of sector commitments in this miner's proving set
 	CommittedSectors []*CommitConfig
 
-	// SealProofType is the proof configuration used by this miner
+	// RegisteredSealProof is the proof configuration used by this miner
 	// (which implies sector size and window post partition size)
-	SealProofType abi.RegisteredProof
+	SealProofType abi.RegisteredSealProof
 
 	// ProvingPeriodStart is next chain epoch at which a miner will need to submit a windowed post
 	// If unset, it will be set to the proving period.
 	ProvingPeriodStart *abi.ChainEpoch
+
+	MarketBalance abi.TokenAmount
 }
 
 // CommitConfig carries all information needed to get a sector commitment in the
@@ -54,7 +57,7 @@ type CommitConfig struct {
 	CommD     cid.Cid
 	SectorNum abi.SectorNumber
 	DealCfg   *DealConfig
-	ProofType abi.RegisteredProof
+	ProofType abi.RegisteredSealProof
 }
 
 // DealConfig carries the information needed to specify a self-deal committing
@@ -202,7 +205,13 @@ func MakeGenesisFunc(opts ...GenOption) genesis.InitFunc {
 				return nil, err
 			}
 		}
-		ri, err := GenGen(ctx, genCfg, bs)
+		vmStorage := vm.NewStorage(bs)
+		ri, err := GenGen(ctx, genCfg, vmStorage)
+		if err != nil {
+			return nil, err
+		}
+
+		err = vmStorage.Flush()
 		if err != nil {
 			return nil, err
 		}
@@ -221,8 +230,8 @@ func MakeGenesisFunc(opts ...GenOption) genesis.InitFunc {
 // the final genesis block.
 //
 // WARNING: Do not use maps in this code, they will make this code non deterministic.
-func GenGen(ctx context.Context, cfg *GenesisCfg, bs blockstore.Blockstore) (*RenderedGenInfo, error) {
-	generator := NewGenesisGenerator(bs)
+func GenGen(ctx context.Context, cfg *GenesisCfg, vmStorage *vm.Storage) (*RenderedGenInfo, error) {
+	generator := NewGenesisGenerator(vmStorage)
 	err := generator.Init(cfg)
 	if err != nil {
 		return nil, err
@@ -259,11 +268,12 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (*RenderedGenInfo, error) {
 	bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
 	bstore = blockstore.NewIdStore(bstore)
 	dserv := dag.NewDAGService(bserv.New(bstore, offline.Exchange(bstore)))
-
-	info, err := GenGen(ctx, cfg, bstore)
+	vmStorage := vm.NewStorage(bstore)
+	info, err := GenGen(ctx, cfg, vmStorage)
 	if err != nil {
 		return nil, err
 	}
+	vmStorage.Flush()
 	// Ignore cids that make it on chain but that should not be read through
 	// and therefore don't have corresponding blocks in store
 	ignore := cid.NewSet()

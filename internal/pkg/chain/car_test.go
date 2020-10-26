@@ -21,11 +21,9 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 func TestChainImportExportGenesis(t *testing.T) {
@@ -156,7 +154,7 @@ func TestChainImportExportMessages(t *testing.T) {
 	ctx, gene, cb, carW, carR, bstore := setupDeps(t)
 
 	keys := types.MustGenerateKeyInfo(1, 42)
-	mm := vm.NewMessageMaker(t, keys)
+	mm := types.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
 
 	ts1 := cb.AppendManyOn(1, gene)
@@ -188,7 +186,7 @@ func TestChainImportExportMultiTipSetWithMessages(t *testing.T) {
 	ctx, gene, cb, carW, carR, bstore := setupDeps(t)
 
 	keys := types.MustGenerateKeyInfo(1, 42)
-	mm := vm.NewMessageMaker(t, keys)
+	mm := types.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
 
 	ts1 := cb.AppendManyOn(1, gene)
@@ -263,27 +261,27 @@ func validateBlockstoreImport(ctx context.Context, t *testing.T, start, stop blo
 			blk, err := block.DecodeBlock(bsBlk.RawData())
 			assert.NoError(t, err)
 
-			txMetaBlk, err := bstore.Get(blk.Messages.Cid)
+			txMetaBlk, err := bstore.Get(blk.Messages)
 			require.NoError(t, err)
 			var meta types.TxMeta
 			require.NoError(t, encoding.Decode(txMetaBlk.RawData(), &meta))
 
-			secpAMT, err := amt.LoadAMT(ctx, as, meta.SecpRoot.Cid)
+			secpAMT, err := amt.LoadAMT(ctx, as, meta.SecpRoot)
 			require.NoError(t, err)
 
 			var smsg types.SignedMessage
 			requireAMTDecoding(ctx, t, bstore, secpAMT, &smsg)
 
-			blsAMT, err := amt.LoadAMT(ctx, as, meta.BLSRoot.Cid)
+			blsAMT, err := amt.LoadAMT(ctx, as, meta.BLSRoot)
 			require.NoError(t, err)
 
 			var umsg types.UnsignedMessage
 			requireAMTDecoding(ctx, t, bstore, blsAMT, &umsg)
 
-			rectAMT, err := amt.LoadAMT(ctx, as, blk.MessageReceipts.Cid)
+			rectAMT, err := amt.LoadAMT(ctx, as, blk.MessageReceipts)
 			require.NoError(t, err)
 
-			var rect vm.MessageReceipt
+			var rect types.MessageReceipt
 			requireAMTDecoding(ctx, t, bstore, rectAMT, &rect)
 
 			if parents.Len() == 0 {
@@ -304,12 +302,12 @@ func validateBlockstoreImport(ctx context.Context, t *testing.T, start, stop blo
 
 func requireAMTDecoding(ctx context.Context, t *testing.T, bstore blockstore.Blockstore, root *amt.Root, dest interface{}) {
 	err := root.ForEach(ctx, func(_ uint64, d *typegen.Deferred) error {
-		var c e.Cid
+		var c cid.Cid
 		if err := encoding.Decode(d.Raw, &c); err != nil {
 			return err
 		}
 
-		b, err := bstore.Get(c.Cid)
+		b, err := bstore.Get(c)
 		if err != nil {
 			return err
 		}

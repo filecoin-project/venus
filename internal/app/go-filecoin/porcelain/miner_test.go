@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -60,7 +60,7 @@ func (mpc *minerCreate) ConfigSet(dottedPath string, paramJSON string) error {
 	return mpc.config.Set(dottedPath, paramJSON)
 }
 
-func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
+func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasBaseFee, gasPremium types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
 	if mpc.msgFail {
 		return cid.Cid{}, nil, errors.New("test Error")
 	}
@@ -108,7 +108,8 @@ func TestMinerCreate(t *testing.T) {
 			ctx,
 			plumbing,
 			address.Address{},
-			types.NewGasPrice(0),
+			types.NewGasFeeCap(0),
+			types.NewGasPremium(0),
 			gas.NewGas(100),
 			constants.DevSealProofType,
 			"",
@@ -127,7 +128,8 @@ func TestMinerCreate(t *testing.T) {
 			ctx,
 			plumbing,
 			address.Address{},
-			types.NewGasPrice(0),
+			types.NewGasFeeCap(0),
+			types.NewGasPremium(0),
 			gas.NewGas(100),
 			constants.DevSealProofType,
 			"",
@@ -212,7 +214,7 @@ func (p *mSetWorkerPlumbing) MinerStateView(baseKey block.TipSetKey) (MinerState
 	}, nil
 }
 
-func (p *mSetWorkerPlumbing) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
+func (p *mSetWorkerPlumbing) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasBaseFee, gasPremium types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
 
 	if p.msgFail {
 		return cid.Cid{}, nil, errors.New("MsgFail")
@@ -243,7 +245,8 @@ func TestMinerSetWorkerAddress(t *testing.T) {
 	minerOwner := vmaddr.RequireIDAddress(t, 100)
 	minerAddr := vmaddr.RequireIDAddress(t, 101)
 	workerAddr := vmaddr.RequireIDAddress(t, 102)
-	gprice := types.ZeroAttoFIL
+	baseFee := types.ZeroAttoFIL
+	gasPremium := types.ZeroAttoFIL
 	glimit := gas.NewGas(0)
 
 	t.Run("Calling set worker address sets address", func(t *testing.T) {
@@ -253,7 +256,7 @@ func TestMinerSetWorkerAddress(t *testing.T) {
 			minerAddr:  minerAddr,
 		}
 
-		_, err := MinerSetWorkerAddress(context.Background(), plumbing, workerAddr, gprice, glimit)
+		_, err := MinerSetWorkerAddress(context.Background(), plumbing, workerAddr, baseFee, gasPremium, glimit)
 		assert.NoError(t, err)
 		assert.Equal(t, workerAddr, plumbing.workerAddr)
 	})
@@ -282,7 +285,7 @@ func TestMinerSetWorkerAddress(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := MinerSetWorkerAddress(context.Background(), test.plumbing, workerAddr, gprice, glimit)
+			_, err := MinerSetWorkerAddress(context.Background(), test.plumbing, workerAddr, baseFee, gasPremium, glimit)
 			assert.Error(t, err, test.error)
 			assert.Empty(t, test.plumbing.workerAddr)
 		})

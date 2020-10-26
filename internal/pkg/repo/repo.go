@@ -27,6 +27,7 @@ type Repo interface {
 
 	// Datastore is a general storage solution for things like blocks.
 	Datastore() ds.Batching
+
 	Keystore() keystore.Keystore
 
 	// WalletDatastore is a specific storage solution, only used to store sensitive wallet information.
@@ -34,9 +35,6 @@ type Repo interface {
 
 	// ChainDatastore is a specific storage solution, only used to store already validated chain data.
 	ChainDatastore() Datastore
-
-	// DealsDatastore holds deals data.
-	DealsDatastore() Datastore
 
 	// SetAPIAddr sets the address of the running API.
 	SetAPIAddr(string) error

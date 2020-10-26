@@ -6,19 +6,19 @@ import (
 	"path/filepath"
 
 	bserv "github.com/ipfs/go-blockservice"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	badgerds "github.com/ipfs/go-ds-badger2"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	dag "github.com/ipfs/go-merkledag"
-	errors "github.com/pkg/errors"
+	"github.com/pkg/errors"
 
 	plumbingDag "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/dag"
-	block "github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	chain "github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	encoding "github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
 
 var log = logging.Logger("chain-util/export")
@@ -76,20 +76,20 @@ type ChainExporter struct {
 // Export will export a chain (all blocks and their messages) to the writer `out`.
 func (ce *ChainExporter) Export(ctx context.Context) error {
 	msgStore := chain.NewMessageStore(ce.bstore)
-	return chain.Export(ctx, ce.Head, ce, msgStore, ce, ce.out)
+	return chain.Export(ctx, &ce.Head, ce, msgStore, ce, ce.out)
 }
 
 // GetTipSet gets the TipSet for a given TipSetKey from the ChainExporter blockstore.
-func (ce *ChainExporter) GetTipSet(key block.TipSetKey) (block.TipSet, error) {
+func (ce *ChainExporter) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	var blks []*block.Block
 	for it := key.Iter(); !it.Complete(); it.Next() {
 		bsBlk, err := ce.bstore.Get(it.Value())
 		if err != nil {
-			return block.UndefTipSet, errors.Wrapf(err, "failed to load tipset %s", key.String())
+			return nil, errors.Wrapf(err, "failed to load tipset %s", key.String())
 		}
 		blk, err := block.DecodeBlock(bsBlk.RawData())
 		if err != nil {
-			return block.UndefTipSet, errors.Wrapf(err, "failed to decode tipset %s", key.String())
+			return nil, errors.Wrapf(err, "failed to decode tipset %s", key.String())
 		}
 		blks = append(blks, blk)
 	}
@@ -104,28 +104,28 @@ func (ce *ChainExporter) ChainStateTree(ctx context.Context, c cid.Cid) ([]forma
 func getDatastoreHeadTipSet(ds *badgerds.Datastore, bs blockstore.Blockstore) (block.TipSet, error) {
 	bb, err := ds.Get(chain.HeadKey)
 	if err != nil {
-		return block.UndefTipSet, errors.Wrap(err, "failed to read HeadKey")
+		return block.TipSet{}, errors.Wrap(err, "failed to read HeadKey")
 	}
 	var cids block.TipSetKey
 	err = encoding.Decode(bb, &cids)
 	if err != nil {
-		return block.UndefTipSet, errors.Wrap(err, "failed to cast headCids")
+		return block.TipSet{}, errors.Wrap(err, "failed to cast headCids")
 	}
 	var blks []*block.Block
 	for _, c := range cids.ToSlice() {
 		bsBlk, err := bs.Get(c)
 		if err != nil {
-			return block.UndefTipSet, errors.Wrapf(err, "failed to read key %s from blockstore", c)
+			return block.TipSet{}, errors.Wrapf(err, "failed to read key %s from blockstore", c)
 		}
 		blk, err := block.DecodeBlock(bsBlk.RawData())
 		if err != nil {
-			return block.UndefTipSet, errors.Wrapf(err, "failed to decode block %s", c)
+			return block.TipSet{}, errors.Wrapf(err, "failed to decode block %s", c)
 		}
 		blks = append(blks, blk)
 	}
 	headTS, err := block.NewTipSet(blks...)
 	if err != nil {
-		return block.UndefTipSet, errors.Wrap(err, "failed to create Head tipset from headkey")
+		return block.TipSet{}, errors.Wrap(err, "failed to create Head tipset from headkey")
 	}
-	return headTS, nil
+	return *headTS, nil
 }

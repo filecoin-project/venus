@@ -78,7 +78,7 @@ func (m *DiscoverySubmodule) Start(node discoveryNode) error {
 	// Register peer tracker disconnect function with network.
 	m.PeerTracker.RegisterDisconnect(node.Network().Host.Network())
 
-	// Start up 'hello' handshake service
+	// Start up 'hello' handshake service,recv HelloMessage ???
 	peerDiscoveredCallback := func(ci *block.ChainInfo) {
 		m.PeerTracker.Track(ci)
 		m.BootstrapReady.Done()
@@ -90,7 +90,7 @@ func (m *DiscoverySubmodule) Start(node discoveryNode) error {
 	}
 
 	// chain head callback
-	chainHeadCallback := func() (block.TipSet, error) {
+	chainHeadCallback := func() (*block.TipSet, error) {
 		return node.Chain().State.GetTipSet(node.Chain().State.Head())
 	}
 

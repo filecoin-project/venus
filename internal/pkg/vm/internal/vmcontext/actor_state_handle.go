@@ -1,11 +1,11 @@
 package vmcontext
 
 import (
-	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/ipfs/go-cid"
 )
 
 type actorStateHandle struct {
@@ -14,7 +14,7 @@ type actorStateHandle struct {
 	//
 	// Any validation failure will result in the execution getting aborted.
 	validations []validateFn
-	// used_objs holds the pointers to objs that have been used with this handle and their expected state cid.
+	// used_objs holds the pointers to objs that have been used with this handle and their expected stateView cid.
 	usedObjs map[interface{}]cid.Cid
 }
 
@@ -23,9 +23,9 @@ type validateFn = func() bool
 
 type actorStateHandleContext interface {
 	AllowSideEffects(bool)
-	Create(obj specsruntime.CBORMarshaler) cid.Cid
-	Load(obj specsruntime.CBORUnmarshaler) cid.Cid
-	Replace(expected cid.Cid, obj specsruntime.CBORMarshaler) cid.Cid
+	Create(obj cbor.Marshaler) cid.Cid
+	Load(obj cbor.Unmarshaler) cid.Cid
+	Replace(expected cid.Cid, obj cbor.Marshaler) cid.Cid
 }
 
 // NewActorStateHandle returns a new `ActorStateHandle`
@@ -46,44 +46,43 @@ func newActorStateHandle(ctx actorStateHandleContext) actorStateHandle {
 
 var _ specsruntime.StateHandle = (*actorStateHandle)(nil)
 
-func (h *actorStateHandle) Create(obj specsruntime.CBORMarshaler) {
-	// Store the new state.
+func (h *actorStateHandle) StateCreate(obj cbor.Marshaler) {
+	// Store the new stateView.
 	c := h.ctx.Create(obj)
 	// Store the expected CID of obj.
 	h.usedObjs[obj] = c
 }
 
 // Readonly is the implementation of the ActorStateHandle interface.
-func (h *actorStateHandle) Readonly(obj specsruntime.CBORUnmarshaler) {
-	// Load state to obj.
+func (h *actorStateHandle) StateReadonly(obj cbor.Unmarshaler) {
+	// Load stateView to obj.
 	c := h.ctx.Load(obj)
-	// Track the state and expected CID used by the caller.
+	// Track the stateView and expected CID used by the caller.
 	h.usedObjs[obj] = c
 }
 
 // Transaction is the implementation of the ActorStateHandle interface.
-func (h *actorStateHandle) Transaction(obj specsruntime.CBORer, f func() interface{}) interface{} {
+func (h *actorStateHandle) StateTransaction(obj cbor.Er, f func()) {
 	if obj == nil {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil to Transaction()")
 	}
 
-	// Load state to obj.
+	// Load stateView to obj.
 	prior := h.ctx.Load(obj)
 
 	// Call user code allowing mutation but not side-effects
 	h.ctx.AllowSideEffects(false)
-	out := f()
+	f()
 	h.ctx.AllowSideEffects(true)
 
-	// Store the new state
+	// Store the new stateView
 	newCid := h.ctx.Replace(prior, obj)
 
-	// Record the expected state of obj
+	// Record the expected stateView of obj
 	h.usedObjs[obj] = newCid
-	return out
 }
 
-// Validate validates that the state was mutated properly.
+// Validate validates that the stateView was mutated properly.
 //
 // This method is not part of the public API,
 // it is expected to be called by the runtime after each actor method.
@@ -92,7 +91,7 @@ func (h *actorStateHandle) Validate(cidFn func(interface{}) cid.Cid) {
 		// verify the obj has not changed
 		usedCid := cidFn(obj)
 		if usedCid != head {
-			runtime.Abortf(exitcode.SysErrorIllegalActor, "State mutated outside of Transaction() scope")
+			runtime.Abortf(exitcode.SysErrorIllegalActor, "state mutated outside of Transaction() scope")
 		}
 	}
 }

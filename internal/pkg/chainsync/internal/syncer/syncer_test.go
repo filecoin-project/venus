@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -45,7 +45,7 @@ func TestOneBlock(t *testing.T) {
 	t1 := builder.AppendOn(genesis, 1)
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", t1.Key(), heightFromTip(t, t1)), false))
 
-	verifyTip(t, store, t1, t1.At(0).StateRoot.Cid)
+	verifyTip(t, store, t1, t1.At(0).StateRoot)
 	require.NoError(t, syncer.SetStagedHead(ctx))
 	verifyHead(t, store, t1)
 }
@@ -212,7 +212,7 @@ func TestRejectFinalityFork(t *testing.T) {
 	builder, store, s := setup(ctx, t)
 	genesis := builder.RequireTipSet(store.GetHead())
 
-	head := builder.AppendManyOn(int(miner.ChainFinalityish+2), genesis)
+	head := builder.AppendManyOn(int(miner.ChainFinality+2), genesis)
 	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", head.Key(), heightFromTip(t, head)), false))
 
 	// Differentiate fork for a new chain.  Fork has FinalityEpochs + 1
@@ -221,7 +221,7 @@ func TestRejectFinalityFork(t *testing.T) {
 	forkFinalityBase := builder.BuildOneOn(genesis, func(bb *chain.BlockBuilder) {
 		bb.SetTicket([]byte{0xbe})
 	})
-	forkFinalityHead := builder.AppendManyOn(int(miner.ChainFinalityish), forkFinalityBase)
+	forkFinalityHead := builder.AppendManyOn(int(miner.ChainFinality), forkFinalityBase)
 	assert.Error(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", forkFinalityHead.Key(), heightFromTip(t, forkFinalityHead)), false))
 }
 
@@ -447,7 +447,7 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 
 	// Build a chain with messages that will fail semantic header validation
 	kis := types.MustGenerateKeyInfo(1, 42)
-	mm := vm.NewMessageMaker(t, kis)
+	mm := types.NewMessageMaker(t, kis)
 	alice := mm.Addresses()[0]
 	m1 := mm.NewSignedMessage(alice, 0)
 	m2 := mm.NewSignedMessage(alice, 1)
@@ -526,7 +526,7 @@ func TestStoresMessageReceipts(t *testing.T) {
 	genesis := builder.RequireTipSet(store.GetHead())
 
 	keys := types.MustGenerateKeyInfo(1, 42)
-	mm := vm.NewMessageMaker(t, keys)
+	mm := types.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
 	t1 := builder.Build(genesis, 4, func(b *chain.BlockBuilder, i int) {
 		b.AddMessages([]*types.SignedMessage{}, []*types.UnsignedMessage{mm.NewUnsignedMessage(alice, uint64(i))})

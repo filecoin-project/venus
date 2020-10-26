@@ -13,9 +13,6 @@ import (
 	"sync"
 	"time"
 
-	pf "github.com/filecoin-project/go-paramfetch"
-	"github.com/pkg/errors"
-
 	"github.com/filecoin-project/go-filecoin/build/internal/helpers"
 	"github.com/filecoin-project/go-filecoin/build/internal/version"
 )
@@ -120,16 +117,16 @@ func deps() {
 
 	runCmd(cmd("go mod download"))
 
-	dat, err := ioutil.ReadFile("./parameters.json")
-	if err != nil {
-		panic(errors.Wrap(err, "failed to read contents of ./parameters.json"))
-	}
+	// dat, err := ioutil.ReadFile("./parameters.json")
+	// if err != nil {
+	// 	panic(errors.Wrap(err, "failed to read contents of ./parameters.json"))
+	// }
 
-	log.Println("Getting parameters...")
-	err = pf.GetParams(dat, 2048)
-	if err != nil {
-		panic(errors.Wrap(err, "failed to acquire Groth parameters for development sectors"))
-	}
+	// log.Println("Getting parameters...")
+	// err = pf.GetParams(context.Background(), dat, 2048) // todo by force
+	// if err != nil {
+	// 	panic(errors.Wrap(err, "failed to acquire Groth parameters for development sectors"))
+	// }
 
 	runCmd(cmd("./scripts/install-filecoin-ffi.sh"))
 }

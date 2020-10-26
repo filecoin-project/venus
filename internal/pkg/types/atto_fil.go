@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	specsabi "github.com/filecoin-project/specs-actors/actors/abi"
-	specsbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	specsabi "github.com/filecoin-project/go-state-types/abi"
+	specsbig "github.com/filecoin-project/go-state-types/big"
 )
 
 var attoPower = 18

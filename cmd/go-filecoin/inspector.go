@@ -4,7 +4,6 @@ import (
 	"os"
 	"runtime"
 
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	sysi "github.com/whyrusleeping/go-sysinfo"
 
@@ -14,7 +13,7 @@ import (
 )
 
 var inspectCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Show info about the filecoin node",
 	},
 	Subcommands: map[string]*cmds.Command{
@@ -27,7 +26,7 @@ var inspectCmd = &cmds.Command{
 	},
 }
 var allInspectCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Print all diagnostic information.",
 		ShortDescription: `
 Prints out information about filecoin process and its environment.
@@ -57,7 +56,7 @@ Prints out information about filecoin process and its environment.
 }
 
 var runtimeInspectCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Print runtime diagnostic information.",
 		ShortDescription: `
 Prints out information about the golang runtime.
@@ -71,7 +70,7 @@ Prints out information about the golang runtime.
 }
 
 var diskInspectCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Print filesystem usage information.",
 		ShortDescription: `
 Prints out information about the filesystem.
@@ -88,7 +87,7 @@ Prints out information about the filesystem.
 }
 
 var memoryInspectCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Print memory usage information.",
 		ShortDescription: `
 Prints out information about memory usage.
@@ -105,7 +104,7 @@ Prints out information about memory usage.
 }
 
 var configInspectCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Print in-memory config information.",
 		ShortDescription: `
 Prints out information about your filecoin nodes config.
@@ -119,7 +118,7 @@ Prints out information about your filecoin nodes config.
 }
 
 var envInspectCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Print filecoin environment information.",
 		ShortDescription: `
 Prints out information about your filecoin nodes environment.

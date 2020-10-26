@@ -2,10 +2,11 @@ package message
 
 import (
 	"context"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -21,12 +22,14 @@ var log = logging.Logger("message")
 
 // QueuePolicy manages a message queue state in response to changes on the blockchain.
 type QueuePolicy interface {
+	MessagesForTipset(context.Context, *block.TipSet) ([]types.ChainMsg, error)
+
 	// HandleNewHead updates a message queue in response to a new chain head. The new head may be based
 	// directly on the previous head, or it may be based on a prior tipset (aka a re-org).
 	// - `oldTips` is a list of tipsets that used to be on the main chain but are no longer.
 	// - `newTips` is a list of tipsets that now form the head of the main chain.
 	// Both lists are in descending height order, down to but not including the common ancestor tipset.
-	HandleNewHead(ctx context.Context, target PolicyTarget, oldTips, newTips []block.TipSet) error
+	HandleNewHead(ctx context.Context, target PolicyTarget, oldTips, newTips []*block.TipSet) error
 }
 
 // PolicyTarget is outbound queue object on which the policy acts.
@@ -56,7 +59,7 @@ func NewMessageQueuePolicy(messages messageProvider, maxAge uint) *DefaultQueueP
 }
 
 // HandleNewHead removes from the queue all messages that have now been mined in new blocks.
-func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTarget, oldTips, newTips []block.TipSet) error {
+func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTarget, oldTips, newTips []*block.TipSet) error {
 	chainHeight, err := reorgHeight(oldTips, newTips)
 	if err != nil {
 		return err
@@ -118,8 +121,96 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 	return nil
 }
 
+// ToDo add by force
+type BlockMessages struct {
+	Miner         address.Address
+	BlsMessages   []types.ChainMsg
+	SecpkMessages []types.ChainMsg
+	WinCount      int64
+}
+
+func (p *DefaultQueuePolicy) blockMsgsForTipset(ctx context.Context, ts *block.TipSet) ([]BlockMessages, error) {
+	applied := make(map[address.Address]uint64)
+
+	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
+		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
+		if _, ok := applied[m.From]; !ok {
+			applied[m.From] = m.CallSeqNum
+		}
+
+		if applied[m.From] != m.CallSeqNum {
+			return false, nil
+		}
+
+		applied[m.From]++
+
+		return true, nil
+	}
+
+	var out []BlockMessages
+	for _, b := range ts.Blocks() {
+		secpMsgs, blsMsgs, err := p.messageProvider.LoadMessages(ctx, b.Messages.Cid) // cs.MessagesForBlock(b)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get messages for block: %w", err)
+		}
+
+		bm := BlockMessages{
+			Miner:         b.Miner,
+			BlsMessages:   make([]types.ChainMsg, 0, len(blsMsgs)),
+			SecpkMessages: make([]types.ChainMsg, 0, len(secpMsgs)),
+			WinCount:      b.ElectionProof.WinCount,
+		}
+
+		for _, bmsg := range blsMsgs {
+			b, err := selectMsg(bmsg.VMMessage())
+			if err != nil {
+				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
+			}
+
+			if b {
+				bm.BlsMessages = append(bm.BlsMessages, bmsg)
+			}
+		}
+
+		for _, smsg := range secpMsgs {
+			b, err := selectMsg(smsg.VMMessage())
+			if err != nil {
+				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
+			}
+
+			if b {
+				bm.SecpkMessages = append(bm.SecpkMessages, smsg)
+			}
+		}
+
+		out = append(out, bm)
+	}
+
+	return out, nil
+}
+
+func (p *DefaultQueuePolicy) MessagesForTipset(ctx context.Context, ts *block.TipSet) ([]types.ChainMsg, error) {
+	bmsgs, err := p.blockMsgsForTipset(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []types.ChainMsg
+	for _, bm := range bmsgs {
+		for _, blsm := range bm.BlsMessages {
+			out = append(out, blsm)
+		}
+
+		for _, secm := range bm.SecpkMessages {
+			out = append(out, secm)
+		}
+	}
+
+	return out, nil
+}
+
 // reorgHeight returns height of the new chain given only the tipset diff which may be empty
-func reorgHeight(oldTips, newTips []block.TipSet) (abi.ChainEpoch, error) {
+func reorgHeight(oldTips, newTips []*block.TipSet) (abi.ChainEpoch, error) {
 	if len(newTips) > 0 {
 		return newTips[0].Height()
 	} else if len(oldTips) > 0 { // A pure rewind is unlikely in practice.

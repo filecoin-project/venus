@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -68,7 +68,7 @@ func TestReorgDiffSubset(t *testing.T) {
 // The blockchain forks and the common ancestor block is 'a' (> 0) blocks after the genesis block.
 // The  main chain has an additional 'b' blocks, the fork has an additional 'c' blocks.
 // This function returns the forked head, the main head and the common ancestor.
-func getForkOldNewCommon(ctx context.Context, t *testing.T, builder *chain.Builder, a, b, c int) (block.TipSet, block.TipSet, block.TipSet) {
+func getForkOldNewCommon(ctx context.Context, t *testing.T, builder *chain.Builder, a, b, c int) (*block.TipSet, *block.TipSet, *block.TipSet) {
 	// Add "a" tipsets to the head of the chainStore.
 	commonHead := builder.AppendManyOn(a, block.UndefTipSet)
 	oldHead := commonHead
@@ -85,7 +85,7 @@ func getForkOldNewCommon(ctx context.Context, t *testing.T, builder *chain.Build
 // and then a fork.  The forked head has a single block and the main chain
 // consists of this single block and another block together forming a tipset
 // that is a superset of the forked head.
-func getSubsetOldNewCommon(ctx context.Context, t *testing.T, builder *chain.Builder, a int) (block.TipSet, block.TipSet, block.TipSet) {
+func getSubsetOldNewCommon(ctx context.Context, t *testing.T, builder *chain.Builder, a int) (*block.TipSet, *block.TipSet, *block.TipSet) {
 	commonHead := builder.AppendManyBlocksOnBlocks(a)
 	block1 := builder.AppendBlockOnBlocks(commonHead)
 	block2 := builder.AppendBlockOnBlocks(commonHead)

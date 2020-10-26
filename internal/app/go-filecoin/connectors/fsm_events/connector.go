@@ -3,8 +3,8 @@ package fsmeventsconnector
 import (
 	"context"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	fsm "github.com/filecoin-project/storage-fsm"
+	fsm "github.com/filecoin-project/go-filecoin/vendors/storage-sealing"
+	"github.com/filecoin-project/go-state-types/abi"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"

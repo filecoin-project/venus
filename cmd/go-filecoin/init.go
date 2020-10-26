@@ -10,9 +10,7 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/filecoin-project/go-address"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -25,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
-	drandapi "github.com/filecoin-project/go-filecoin/internal/pkg/protocol/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
@@ -33,19 +30,14 @@ import (
 var logInit = logging.Logger("commands/init")
 
 var initCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Initialize a filecoin repo",
 	},
-	Options: []cmdkit.Option{
-		cmdkit.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
-		cmdkit.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
-		cmdkit.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
-		cmdkit.StringOption(OptionSectorDir, "path of directory into which staged and sealed sectors will be written"),
-		cmdkit.StringOption(MinerActorAddress, "when set, sets the daemons's miner actor address to the provided address"),
-		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
-		cmdkit.StringOption(Network, "when set, populates config with network specific parameters"),
-		cmdkit.StringOption(OptionPresealedSectorDir, "when set to the path of a directory, imports pre-sealed sector data from that directory"),
-		cmdkit.StringOption(OptionDrandConfigAddr, "configure drand with given address, uses secure contact protocol and no override.  If you need different settings use daemon drand command"),
+	Options: []cmds.Option{
+		cmds.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
+		cmds.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
+		cmds.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
+		cmds.StringOption(Network, "when set, populates config with network specific parameters"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
@@ -86,10 +78,6 @@ var initCmd = &cmds.Command{
 			return err
 		}
 
-		if err := setDrandConfig(rep, req.Options); err != nil {
-			logInit.Error("Error configuring drand config %s", err)
-			return err
-		}
 		if err := rep.ReplaceConfig(cfg); err != nil {
 			logInit.Errorf("Error replacing config %s", err)
 			return err
@@ -105,43 +93,20 @@ var initCmd = &cmds.Command{
 	},
 }
 
-func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
-	var err error
-	if dir, ok := options[OptionSectorDir].(string); ok {
-		cfg.SectorBase.RootDirPath = dir
-	}
-
-	if autoSealIntervalSeconds, ok := options[AutoSealIntervalSeconds]; ok {
-		cfg.Mining.AutoSealIntervalSeconds = autoSealIntervalSeconds.(uint)
-	}
-
-	if ma, ok := options[MinerActorAddress].(string); ok {
-		if cfg.Mining.MinerAddress, err = address.NewFromString(ma); err != nil {
-			return err
-		}
-	}
-
-	if dir, ok := options[OptionPresealedSectorDir].(string); ok {
-		if cfg.Mining.MinerAddress == address.Undef {
-			return fmt.Errorf("if --%s is provided, --%s must also be provided", OptionPresealedSectorDir, MinerActorAddress)
-		}
-
-		cfg.SectorBase.PreSealedSectorsDirPath = dir
-	}
-
+func setConfigFromOptions(cfg *config.Config, options cmds.OptMap) error {
 	// Setup devnet specific config options.
 	netName, _ := options[Network].(string)
 	var netcfg *networks.NetworkConf
-	if netName == "interop" {
-		netcfg = networks.Interop()
-	} else if netName == "testnet" {
+	if netName == "mainnet" {
+		netcfg = networks.Mainnet()
+	} else if netName == "testnetnet" {
 		netcfg = networks.Testnet()
 	} else if netName != "" {
 		return fmt.Errorf("unknown network name %s", netName)
 	}
+
 	if netcfg != nil {
 		cfg.Bootstrap = &netcfg.Bootstrap
-		cfg.Drand = &netcfg.Drand
 		cfg.NetworkParams = &netcfg.Network
 	}
 
@@ -155,23 +120,6 @@ type setWrapper struct {
 
 func (w *setWrapper) ConfigSet(dottedKey string, jsonString string) error {
 	return w.cfg.Set(dottedKey, jsonString)
-}
-
-func setDrandConfig(repo repo.Repo, options cmdkit.OptMap) error {
-	drandAddrStr, ok := options[OptionDrandConfigAddr].(string)
-	if !ok {
-		// skip configuring drand during init
-		return nil
-	}
-
-	// Arbitrary filecoin genesis time, it will be set correctly when daemon runs
-	// It is not needed to set config properly
-	dGRPC, err := node.DefaultDrandIfaceFromConfig(repo.Config(), 0)
-	if err != nil {
-		return err
-	}
-	d := drandapi.New(dGRPC, &setWrapper{repo.Config()})
-	return d.Configure([]string{drandAddrStr}, true, false)
 }
 
 func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (genesis.InitFunc, error) {
@@ -278,26 +226,27 @@ func extractGenesisBlock(source io.ReadCloser, rep repo.Repo) (*block.Block, err
 		return nil, err
 	}
 
+	//parent also have parents
 	// the root block of the car file has parents, this file must contain a chain.
-	var gensisBlk *block.Block
-	if !cur.Parents.Equals(block.UndefTipSet.Key()) {
-		// walk back up the chain until we hit a block with no parents, the genesis block.
-		for !cur.Parents.Equals(block.UndefTipSet.Key()) {
-			bsBlk, err := bs.Get(cur.Parents.ToSlice()[0])
-			if err != nil {
-				return nil, err
+	/*	var gensisBlk *block.Block
+		if !cur.Parents.Equals(block.UndefTipSet.Key()) {
+			// walk back up the chain until we hit a block with no parents, the genesis block.
+			for !cur.Parents.Equals(block.UndefTipSet.Key()) {
+				bsBlk, err := bs.Get(cur.Parents.ToSlice()[0])
+				if err != nil {
+					return nil, err
+				}
+				cur, err = block.DecodeBlock(bsBlk.RawData())
+				if err != nil {
+					return nil, err
+				}
 			}
-			cur, err = block.DecodeBlock(bsBlk.RawData())
-			if err != nil {
-				return nil, err
-			}
-		}
 
-		gensisBlk = cur
+			gensisBlk = cur
 
-		logInit.Infow("initialized go-filecoin with genesis file containing partial chain", "genesisCID", gensisBlk.Cid().String(), "headCIDs", ch.Roots)
-	} else {
-		gensisBlk = cur
-	}
-	return gensisBlk, nil
+			logInit.Infow("initialized go-filecoin with genesis file containing partial chain", "genesisCID", gensisBlk.Cid().String(), "headCIDs", ch.Roots)
+		} else {
+			gensisBlk = cur
+		}*/
+	return cur, nil
 }

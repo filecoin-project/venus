@@ -25,6 +25,7 @@ func TestMessageMarshal(t *testing.T) {
 		builtin.MethodSend,
 		[]byte("foobar"),
 		NewAttoFILFromFIL(3),
+		NewAttoFILFromFIL( 3),
 		gas.NewGas(4),
 	)
 
@@ -48,7 +49,8 @@ func TestMessageMarshal(t *testing.T) {
 	assert.Equal(t, msg.Method, msgBack.Method)
 	assert.Equal(t, msg.Params, msgBack.Params)
 	assert.Equal(t, msg.GasLimit, msgBack.GasLimit)
-	assert.Equal(t, msg.GasPrice, msgBack.GasPrice)
+	assert.Equal(t, msg.GasFeeCap, msgBack.GasFeeCap)
+	assert.Equal(t, msg.GasPremium, msgBack.GasPremium)
 	assert.True(t, msg.Equals(&msgBack))
 }
 

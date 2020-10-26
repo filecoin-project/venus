@@ -2,12 +2,13 @@ package piecemanager
 
 import (
 	"context"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"io"
 
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	fsm "github.com/filecoin-project/storage-fsm"
+	fsm "github.com/filecoin-project/go-filecoin/vendors/storage-sealing"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 var _ PieceManager = new(FiniteStateMachineBackEnd)
@@ -24,26 +25,26 @@ func NewFiniteStateMachineBackEnd(fsm *fsm.Sealing, idc fsm.SectorIDCounter) Fin
 	}
 }
 
-func (f *FiniteStateMachineBackEnd) SealPieceIntoNewSector(ctx context.Context, dealID abi.DealID, dealStart, dealEnd abi.ChainEpoch, pieceSize abi.UnpaddedPieceSize, pieceReader io.Reader) error {
-	sectorNumber, err := f.idc.Next()
-	if err != nil {
-		return err
-	}
-
-	return f.fsm.SealPiece(ctx, pieceSize, pieceReader, sectorNumber, fsm.DealInfo{
+func (f *FiniteStateMachineBackEnd) SealPieceIntoNewSector(ctx context.Context, dealID abi.DealID, dealStart, dealEnd abi.ChainEpoch, pieceSize abi.UnpaddedPieceSize, pieceReader io.Reader) (*storagemarket.PackingResult, error) {
+	sid, offset, err := f.fsm.AddPieceToAnySector(ctx, pieceSize, pieceReader, fsm.DealInfo{
 		DealID: dealID,
 		DealSchedule: fsm.DealSchedule{
 			StartEpoch: dealStart,
 			EndEpoch:   dealEnd,
 		},
 	})
+	return &storagemarket.PackingResult{
+		SectorNumber: sid,
+		Offset:       offset,
+		Size:         pieceSize.Padded(),
+	}, err
 }
 
 func (f *FiniteStateMachineBackEnd) PledgeSector(ctx context.Context) error {
 	return f.fsm.PledgeSector()
 }
 
-func (f *FiniteStateMachineBackEnd) UnsealSector(ctx context.Context, sectorID uint64) (io.ReadCloser, error) {
+func (f *FiniteStateMachineBackEnd) UnsealSector(ctx context.Context, sectorID abi.SectorNumber) (io.ReadCloser, error) {
 	panic("implement me")
 }
 

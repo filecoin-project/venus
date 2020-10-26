@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -56,7 +56,7 @@ func TestMessagePenaltyChecker(t *testing.T) {
 
 	t.Run("non-account actor fails", func(t *testing.T) {
 		badActor := newActor(t, 1000, 100)
-		badActor.Code = e.NewCid(types.CidFromString(t, "somecid"))
+		badActor.Code = types.CidFromString(t, "somecid")
 		msg := newMessage(t, alice, bob, 100, 5, 1, 0)
 		api := NewMockIngestionValidatorAPI()
 		api.ActorAddr = alice
@@ -93,7 +93,7 @@ func TestBLSSignatureValidationConfiguration(t *testing.T) {
 	from, err := address.NewBLSAddress(pubKey[:])
 	require.NoError(t, err)
 
-	msg := types.NewMeteredMessage(from, addresses[1], 0, types.ZeroAttoFIL, methodID, []byte("params"), types.NewGasPrice(1), gas.NewGas(300))
+	msg := types.NewMeteredMessage(from, addresses[1], 0, types.ZeroAttoFIL, methodID, []byte("params"), types.NewGasFeeCap(1), types.NewGasPremium(1), gas.NewGas(300))
 	unsigned := &types.SignedMessage{Message: *msg}
 	actor := newActor(t, 1000, 0)
 
@@ -162,7 +162,8 @@ func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF in
 		val,
 		methodID,
 		[]byte("params"),
-		types.NewGasPrice(gasPrice),
+		types.NewGasFeeCap(gasPrice),
+		types.NewGasPremium(1),
 		gasLimit,
 	)
 }
@@ -180,6 +181,10 @@ func NewMockIngestionValidatorAPI() *FakeIngestionValidatorAPI {
 
 func (api *FakeIngestionValidatorAPI) Head() block.TipSetKey {
 	return block.NewTipSetKey()
+}
+
+func (api *FakeIngestionValidatorAPI) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
+	return block.UndefTipSet, nil
 }
 
 func (api *FakeIngestionValidatorAPI) GetActorAt(ctx context.Context, key block.TipSetKey, a address.Address) (*actor.Actor, error) {

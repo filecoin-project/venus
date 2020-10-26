@@ -36,12 +36,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 const visitsPerBlock = 18
@@ -71,7 +69,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilderWithDeps(t, address.Undef, &chain.FakeStateBuilder{}, chain.NewClockTimestamper(chainClock))
 	keys := types.MustGenerateKeyInfo(2, 42)
-	mm := vm.NewMessageMaker(t, keys)
+	mm := types.NewMessageMaker(t, keys)
 	notDecodableBytes, err := encoding.Encode(notDecodable{Num: 5, Message: "applesauce"})
 	require.NoError(t, err)
 	notDecodableBlock, err := cbor.Decode(notDecodableBytes, constants.DefaultHashFunction, -1)
@@ -134,11 +132,11 @@ func TestGraphsyncFetcher(t *testing.T) {
 			blk := ts.At(i)
 
 			// use fetcher blockstore to retrieve messages
-			secpMsgs, blsMsgs, err := msgStore.LoadMessages(ctx, blk.Messages.Cid)
+			secpMsgs, blsMsgs, err := msgStore.LoadMessages(ctx, blk.Messages)
 			require.NoError(t, err)
 
 			// get expected messages from builders block store
-			expectedSecpMessages, expectedBLSMsgs, err := builder.LoadMessages(ctx, blk.Messages.Cid)
+			expectedSecpMessages, expectedBLSMsgs, err := builder.LoadMessages(ctx, blk.Messages)
 			require.NoError(t, err)
 
 			require.True(t, reflect.DeepEqual(secpMsgs, expectedSecpMessages))
@@ -231,9 +229,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.NoError(t, err)
 		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
-		final2Meta, err := builder.LoadTxMeta(ctx, final.At(2).Messages.Cid)
+		final2Meta, err := builder.LoadTxMeta(ctx, final.At(2).Messages)
 		require.NoError(t, err)
-		errorOnMessagesLoader := errorOnCidsLoader(loader, final2Meta.SecpRoot.Cid)
+		errorOnMessagesLoader := errorOnCidsLoader(loader, final2Meta.SecpRoot)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorOnMessagesLoader, final.Key().ToSlice()...)
 
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, syntax, fc, newFakePeerTracker(chain0))
@@ -444,9 +442,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 	t.Run("blocks present but messages don't decode", func(t *testing.T) {
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
 		blk := requireSimpleValidBlock(t, 3, address.Undef)
-		metaCid, err := msgStore.StoreTxMeta(ctx, types.TxMeta{SecpRoot: e.NewCid(notDecodableBlock.Cid()), BLSRoot: e.NewCid(types.EmptyMessagesCID)})
+		metaCid, err := msgStore.StoreTxMeta(ctx, types.TxMeta{SecpRoot: notDecodableBlock.Cid(), BLSRoot: types.EmptyMessagesCID})
 		require.NoError(t, err)
-		blk.Messages = e.NewCid(metaCid)
+		blk.Messages = metaCid
 		key := block.NewTipSetKey(blk.Cid())
 		chain0 := block.NewChainInfo(pid0, pid0, key, blk.Height)
 		nd, err := (&types.SignedMessage{}).ToNode()
@@ -668,7 +666,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilderWithDeps(t, address.Undef, &chain.FakeStateBuilder{}, chain.NewClockTimestamper(chainClock))
 	keys := types.MustGenerateKeyInfo(1, 42)
-	mm := vm.NewMessageMaker(t, keys)
+	mm := types.NewMessageMaker(t, keys)
 	notDecodableBlock, err := cbor.WrapObject(notDecodable{Num: 5, Message: "applebutter"}, constants.DefaultHashFunction, -1)
 	require.NoError(t, err)
 
@@ -711,7 +709,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	verifyNoMessages := func(t *testing.T, ts block.TipSet) {
 		for i := 0; i < ts.Len(); i++ {
 			blk := ts.At(i)
-			stored, err := bs.Has(blk.Messages.Cid)
+			stored, err := bs.Has(blk.Messages)
 			require.NoError(t, err)
 			require.False(t, stored)
 		}
@@ -744,9 +742,9 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	t.Run("fetch succeeds when messages don't decode", func(t *testing.T) {
 		mgs := newMockableGraphsync(ctx, bs, fc, t)
 		blk := requireSimpleValidBlock(t, 3, address.Undef)
-		metaCid, err := builder.StoreTxMeta(ctx, types.TxMeta{SecpRoot: e.NewCid(notDecodableBlock.Cid()), BLSRoot: e.NewCid(types.EmptyMessagesCID)})
+		metaCid, err := builder.StoreTxMeta(ctx, types.TxMeta{SecpRoot: notDecodableBlock.Cid(), BLSRoot: types.EmptyMessagesCID})
 		require.NoError(t, err)
-		blk.Messages = e.NewCid(metaCid)
+		blk.Messages = metaCid
 		key := block.NewTipSetKey(blk.Cid())
 		chain0 := block.NewChainInfo(pid0, pid0, key, blk.Height)
 		nd, err := (&types.SignedMessage{}).ToNode()
@@ -771,7 +769,7 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 	fc, chainClock := clock.NewFakeChain(1234567890, 5*time.Second, time.Second, time.Now().Unix())
 	builder := chain.NewBuilderWithDeps(t, address.Undef, &chain.FakeStateBuilder{}, chain.NewClockTimestamper(chainClock))
 	keys := types.MustGenerateKeyInfo(2, 42)
-	mm := vm.NewMessageMaker(t, keys)
+	mm := types.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
 	bob := mm.Addresses()[1]
 	gen := builder.NewGenesis()
@@ -859,11 +857,11 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, stored)
 
-		stored, err = bs.Has(ts.At(0).Messages.Cid)
+		stored, err = bs.Has(ts.At(0).Messages)
 		require.NoError(t, err)
 		assert.False(t, stored)
 
-		stored, err = bs.Has(ts.At(0).MessageReceipts.Cid)
+		stored, err = bs.Has(ts.At(0).MessageReceipts)
 		require.NoError(t, err)
 		assert.False(t, stored)
 	}
@@ -875,7 +873,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	// setup a chain
 	builder := chain.NewBuilder(t, address.Undef)
 	keys := types.MustGenerateKeyInfo(1, 42)
-	mm := vm.NewMessageMaker(t, keys)
+	mm := types.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
 	gen := builder.NewGenesis()
 	i := uint64(0)
@@ -959,13 +957,13 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, stored)
 
-		rawMeta, err := bs.Get(ts.At(0).Messages.Cid)
+		rawMeta, err := bs.Get(ts.At(0).Messages)
 		require.NoError(t, err)
 		var meta types.TxMeta
 		err = encoding.Decode(rawMeta.RawData(), &meta)
 		require.NoError(t, err)
 
-		stored, err = bs.Has(meta.SecpRoot.Cid)
+		stored, err = bs.Has(meta.SecpRoot)
 		require.NoError(t, err)
 		assert.True(t, stored)
 	}

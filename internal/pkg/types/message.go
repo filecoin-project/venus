@@ -9,7 +9,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-state-types/abi"
+	specsbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -18,18 +21,46 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	errPkg "github.com/pkg/errors"
 	typegen "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
+const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
+
+type MessageSendSpec struct {
+	MaxFee abi.TokenAmount
+}
+
+var DefaultMessageSendSpec = MessageSendSpec{
+	// MaxFee of 0.1FIL
+	MaxFee: abi.NewTokenAmount(int64(FilecoinPrecision) / 10),
+}
+
+func (ms *MessageSendSpec) Get() MessageSendSpec {
+	if ms == nil {
+		return DefaultMessageSendSpec
+	}
+
+	return *ms
+}
+
 const MessageVersion = 0
 
+// ToDo add by force
 // BlockGasLimit is the maximum amount of gas that can be used to execute messages in a single block.
-var BlockGasLimit = gas.NewGas(100e6)
+const BlockGasLimit = 10_000_000_000
+const BlockGasTarget = BlockGasLimit / 2
+const BaseFeeMaxChangeDenom = 8 // 12.5%
+const InitialBaseFee = 100e6
+const MinimumBaseFee = 100
+const PackingEfficiencyNum = 4
+const PackingEfficiencyDenom = 5
+
+// var BlockGasLimit = gas.NewGas(100e6)
 
 // EmptyMessagesCID is the cid of an empty collection of messages.
 var EmptyMessagesCID cid.Cid
@@ -40,6 +71,14 @@ var EmptyReceiptsCID cid.Cid
 // EmptyTxMetaCID is the cid of a TxMeta wrapping empty cids
 var EmptyTxMetaCID cid.Cid
 
+const FilBase = uint64(2_000_000_000)
+
+func FromFil(i uint64) AttoFIL {
+	return specsbig.Mul(specsbig.NewInt(int64(i)), specsbig.NewInt(int64(FilecoinPrecision)))
+}
+
+var TotalFilecoinInt = FromFil(FilBase)
+
 func init() {
 	tmpCst := cborutil.NewIpldStore(blockstore.NewBlockstore(datastore.NewMapDatastore()))
 	emptyAMTCid, err := amt.FromArray(context.Background(), tmpCst, []typegen.CBORMarshaler{})
@@ -48,11 +87,22 @@ func init() {
 	}
 	EmptyMessagesCID = emptyAMTCid
 	EmptyReceiptsCID = emptyAMTCid
-	EmptyTxMetaCID, err = tmpCst.Put(context.Background(), TxMeta{SecpRoot: e.NewCid(EmptyMessagesCID), BLSRoot: e.NewCid(EmptyMessagesCID)})
+	EmptyTxMetaCID, err = tmpCst.Put(context.Background(), TxMeta{SecpRoot: enccid.NewCid(EmptyMessagesCID), BLSRoot: enccid.NewCid(EmptyMessagesCID)})
 	if err != nil {
 		panic("could not create CID for empty TxMeta")
 	}
 }
+
+//
+type ChainMsg interface {
+	Cid() (cid.Cid, error)
+	VMMessage() *UnsignedMessage
+	ToStorageBlock() (blocks.Block, error)
+	// FIXME: This is the *message* length, this name is misleading.
+	ChainLength() int
+}
+
+var _ ChainMsg = &UnsignedMessage{}
 
 // UnsignedMessage is an exchange of information between two actors modeled
 // as a function call.
@@ -71,11 +121,13 @@ type UnsignedMessage struct {
 
 	Value AttoFIL `json:"value"`
 
-	GasPrice AttoFIL  `json:"gasPrice"`
-	GasLimit gas.Unit `json:"gasLimit"`
+	GasLimit   gas.Unit `json:"gasLimit"`
+	GasFeeCap  AttoFIL  `json:"gasFeeCap"`
+	GasPremium AttoFIL  `json:"gasPremium"`
 
 	Method abi.MethodNum `json:"method"`
 	Params []byte        `json:"params"`
+
 	// Pay attention to Equals() if updating this struct.
 }
 
@@ -93,14 +145,15 @@ func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, m
 }
 
 // NewMeteredMessage adds gas price and gas limit to the message
-func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte, price AttoFIL, limit gas.Unit) *UnsignedMessage {
+func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte, gasFeeCap, gasPremium AttoFIL, limit gas.Unit) *UnsignedMessage {
 	return &UnsignedMessage{
 		Version:    MessageVersion,
 		To:         to,
 		From:       from,
 		CallSeqNum: nonce,
 		Value:      value,
-		GasPrice:   price,
+		GasFeeCap:  gasFeeCap,
+		GasPremium: gasPremium,
 		GasLimit:   limit,
 		Method:     method,
 		Params:     params,
@@ -179,25 +232,146 @@ func (msg *UnsignedMessage) Equals(other *UnsignedMessage) bool {
 		msg.From == other.From &&
 		msg.CallSeqNum == other.CallSeqNum &&
 		msg.Value.Equals(other.Value) &&
-		msg.Method == other.Method &&
-		msg.GasPrice.Equals(other.GasPrice) &&
+		msg.GasPremium.Equals(other.GasPremium) &&
+		msg.GasFeeCap.Equals(other.GasFeeCap) &&
 		msg.GasLimit == other.GasLimit &&
+		msg.Method == other.Method &&
 		bytes.Equal(msg.Params, other.Params)
 }
 
+// ToDo add by force
+func (m *UnsignedMessage) ChainLength() int {
+	ser, err := m.Marshal()
+	if err != nil {
+		panic(err)
+	}
+	return len(ser)
+}
+
+func (m *UnsignedMessage) VMMessage() *UnsignedMessage {
+	return m
+}
+
+func (m *UnsignedMessage) ToStorageBlock() (blocks.Block, error) {
+	data, err := m.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := abi.CidBuilder.Sum(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return blocks.NewBlockWithCid(data, c)
+}
+
+func (m *UnsignedMessage) ValidForBlockInclusion(minGas int64) error {
+	if m.Version != 0 {
+		return xerrors.New("'Version' unsupported")
+	}
+
+	if m.To == address.Undef {
+		return xerrors.New("'To' address cannot be empty")
+	}
+
+	if m.From == address.Undef {
+		return xerrors.New("'From' address cannot be empty")
+	}
+
+	if m.Value.Int == nil {
+		return xerrors.New("'Value' cannot be nil")
+	}
+
+	if m.Value.LessThan(specsbig.Zero()) {
+		return xerrors.New("'Value' field cannot be negative")
+	}
+
+	//if m.Value.GreaterThan(specsbig.NewInt(int64(FilBase))) {
+	//	return xerrors.New("'Value' field cannot be greater than total filecoin supply")
+	//}
+
+	if m.GasFeeCap.Int == nil {
+		return xerrors.New("'GasFeeCap' cannot be nil")
+	}
+
+	if m.GasFeeCap.LessThan(specsbig.Zero()) {
+		return xerrors.New("'GasFeeCap' field cannot be negative")
+	}
+
+	if m.GasPremium.Int == nil {
+		return xerrors.New("'GasPremium' cannot be nil")
+	}
+
+	if m.GasPremium.LessThan(specsbig.Zero()) {
+		return xerrors.New("'GasPremium' field cannot be negative")
+	}
+
+	if m.GasPremium.GreaterThan(m.GasFeeCap) {
+		return xerrors.New("'GasFeeCap' less than 'GasPremium'")
+	}
+
+	if m.GasLimit > BlockGasLimit {
+		return xerrors.New("'GasLimit' field cannot be greater than a block's gas limit")
+	}
+
+	// since prices might vary with time, this is technically semantic validation
+	if int64(m.GasLimit) < minGas {
+		return xerrors.New("'GasLimit' field cannot be less than the cost of storing a message on chain")
+	}
+
+	return nil
+}
+
 // NewGasPrice constructs a gas price (in AttoFIL) from the given number.
-func NewGasPrice(price int64) AttoFIL {
+/*func NewGasPrice(price int64) AttoFIL {  //todo  add by force use basefee and gasPremium
+	return NewAttoFIL(big.NewInt(price))
+}*/
+
+func NewGasFeeCap(price int64) AttoFIL {
+	return NewAttoFIL(big.NewInt(price))
+}
+
+func NewGasPremium(price int64) AttoFIL {
 	return NewAttoFIL(big.NewInt(price))
 }
 
 // TxMeta tracks the merkleroots of both secp and bls messages separately
 type TxMeta struct {
-	_        struct{} `cbor:",toarray"`
-	BLSRoot  e.Cid    `json:"blsRoot"`
-	SecpRoot e.Cid    `json:"secpRoot"`
+	_        struct{}   `cbor:",toarray"`
+	BLSRoot  enccid.Cid `json:"blsRoot"`
+	SecpRoot enccid.Cid `json:"secpRoot"`
 }
 
 // String returns a readable printing string of TxMeta
 func (m TxMeta) String() string {
 	return fmt.Sprintf("secp: %s, bls: %s", m.SecpRoot.String(), m.BLSRoot.String())
+}
+
+// MessageReceipt is what is returned by executing a message on the vm.
+type MessageReceipt struct {
+	// control field for encoding struct as an array
+	_           struct{}          `cbor:",toarray"`
+	ExitCode    exitcode.ExitCode `json:"exitCode"`
+	ReturnValue []byte            `json:"return"`
+	GasUsed     gas.Unit          `json:"gasUsed"`
+}
+
+// Failure returns with a non-zero exit code.
+func Failure(exitCode exitcode.ExitCode, gasAmount gas.Unit) MessageReceipt {
+	return MessageReceipt{
+		ExitCode:    exitCode,
+		ReturnValue: []byte{},
+		GasUsed:     gasAmount,
+	}
+}
+
+func (r *MessageReceipt) String() string {
+	errStr := "(error encoding MessageReceipt)"
+
+	js, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		return errStr
+	}
+	return fmt.Sprintf("MessageReceipt: %s", string(js))
 }

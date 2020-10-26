@@ -3,33 +3,22 @@ package node
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/sector-storage/stores"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	fsm "github.com/filecoin-project/storage-fsm"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/stores"
 	"github.com/google/uuid"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	keystore "github.com/ipfs/go-ipfs-keystore"
 	acrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/connectors/sectors"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -80,7 +69,7 @@ func Init(ctx context.Context, r repo.Repo, gen genesis.InitFunc, opts ...InitOp
 
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	chainstore, err := chain.Init(ctx, r, bs, cst, gen)
+	_, err := chain.Init(ctx, r, bs, cst, gen)
 	if err != nil {
 		return errors.Wrap(err, "Could not Init Node")
 	}
@@ -113,11 +102,7 @@ func Init(ctx context.Context, r repo.Repo, gen genesis.InitFunc, opts ...InitOp
 		return errors.Wrap(err, "failed to write config")
 	}
 
-	genesisBlock, err := chainstore.GetGenesisBlock(ctx)
-	if err != nil {
-		return err
-	}
-	return InitSectors(ctx, r, genesisBlock)
+	return nil
 }
 
 func initPeerKey(store keystore.Keystore, key acrypto.PrivKey) error {
@@ -159,89 +144,6 @@ func importInitKeys(w *wallet.Wallet, importKeys []*crypto.KeyInfo) error {
 	return nil
 }
 
-func InitSectors(ctx context.Context, rep repo.Repo, genesisBlock *block.Block) error {
-	cfg := rep.Config()
-
-	rpt, err := rep.Path()
-	if err != nil {
-		return err
-	}
-
-	spt, err := paths.GetSectorPath(cfg.SectorBase.RootDirPath, rpt)
-	if err != nil {
-		return err
-	}
-
-	if err := ensureSectorDirAndMetadata(false, spt); err != nil {
-		return err
-	}
-
-	if cfg.SectorBase.PreSealedSectorsDirPath != "" && cfg.Mining.MinerAddress != address.Undef {
-		if err := ensureSectorDirAndMetadata(true, cfg.SectorBase.PreSealedSectorsDirPath); err != nil {
-			return err
-		}
-
-		if err := importPreSealedSectorMetadata(ctx, rep, genesisBlock, cfg.Mining.MinerAddress); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Save the provided slice of sector metadata (corresponding to pre-sealed
-// sectors) to the keyspace used by the finite-state machine.
-func persistGenesisFSMState(rep repo.Repo, info []fsm.SectorInfo) error {
-	for idx := range info {
-		key := datastore.NewKey(fsm.SectorStorePrefix).ChildString(fmt.Sprint(info[idx].SectorNumber))
-
-		b, err := encoding.Encode(&info[idx])
-		if err != nil {
-			return err
-		}
-
-		if err := rep.Datastore().Put(key, b); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func importPreSealedSectorMetadata(ctx context.Context, rep repo.Repo, genesisBlock *block.Block, maddr address.Address) error {
-	stateFSM, err := createGenesisFSMState(ctx, rep, genesisBlock, maddr)
-	if err != nil {
-		return err
-	}
-
-	err = persistGenesisFSMState(rep, stateFSM)
-	if err != nil {
-		return err
-	}
-
-	max := abi.SectorNumber(0)
-	for idx := range stateFSM {
-		if stateFSM[idx].SectorNumber > max {
-			max = stateFSM[idx].SectorNumber
-		}
-	}
-
-	// Increment the sector number counter until it is ready to dispense numbers
-	// outside of the range of numbers already consumed by the pre-sealed
-	// sectors.
-	cnt := sectors.NewPersistedSectorNumberCounter(rep.Datastore())
-	for {
-		num, err := cnt.Next()
-		if err != nil {
-			return err
-		}
-		if num > max {
-			break
-		}
-	}
-
-	return nil
-}
-
 func ensureSectorDirAndMetadata(containsPreSealedSectors bool, dirPath string) error {
 	_, err := os.Stat(filepath.Join(dirPath, stores.MetaFile))
 	if os.IsNotExist(err) {
@@ -275,74 +177,4 @@ func ensureSectorDirAndMetadata(containsPreSealedSectors bool, dirPath string) e
 	}
 
 	return nil
-}
-
-// Produce a slice of fsm.SectorInfo (used to seed the storage finite-state
-// machine with pre-sealed sectors) for a storage miner given a newly-minted
-// genesis block.
-func createGenesisFSMState(ctx context.Context, rep repo.Repo, genesisBlock *block.Block, maddr address.Address) ([]fsm.SectorInfo, error) {
-	view := state.NewViewer(cborutil.NewIpldStore(bstore.NewBlockstore(rep.Datastore()))).StateView(genesisBlock.StateRoot.Cid)
-
-	conf, err := view.MinerSectorConfiguration(ctx, maddr)
-	if err != nil {
-		return nil, err
-	}
-
-	// Loop through all the sectors in the genesis miner's proving set and
-	// persist to the shared (with storage-fsm) data store the relevant bits of
-	// sector and deal metadata.
-	var out []fsm.SectorInfo
-
-	err = view.MinerSectorsForEach(ctx, maddr, func(sectorNumber abi.SectorNumber, sealedCID cid.Cid, proofType abi.RegisteredProof, dealIDs []abi.DealID) error {
-		pieces := make([]fsm.Piece, len(dealIDs))
-		for idx := range dealIDs {
-			deal, err := view.MarketDealProposal(ctx, dealIDs[idx])
-			if err != nil {
-				return err
-			}
-
-			pieces[idx] = fsm.Piece{
-				Piece: abi.PieceInfo{
-					Size:     deal.PieceSize,
-					PieceCID: deal.PieceCID,
-				},
-				DealInfo: &fsm.DealInfo{
-					DealID: dealIDs[idx],
-					DealSchedule: fsm.DealSchedule{
-						StartEpoch: deal.StartEpoch,
-						EndEpoch:   deal.EndEpoch,
-					},
-				},
-			}
-		}
-
-		unsealedCID, err := view.MarketComputeDataCommitment(ctx, conf.SealProofType, dealIDs)
-		if err != nil {
-			return err
-		}
-
-		out = append(out, fsm.SectorInfo{
-			State:            fsm.Proving,
-			SectorNumber:     sectorNumber,
-			SectorType:       proofType,
-			Pieces:           pieces,
-			TicketValue:      abi.SealRandomness{},
-			TicketEpoch:      0,
-			PreCommit1Out:    nil,
-			CommD:            &unsealedCID,
-			CommR:            &sealedCID,
-			Proof:            nil,
-			PreCommitMessage: nil,
-			SeedValue:        abi.InteractiveSealRandomness{},
-			SeedEpoch:        0,
-			CommitMessage:    nil,
-		})
-
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return out, nil
 }

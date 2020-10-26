@@ -4,12 +4,11 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/go-leb128"
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
 var leb128Cmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline:          "Leb128 cli encode/decode",
 		ShortDescription: `Decode and encode leb128 text/uint64.`,
 	},
@@ -20,12 +19,12 @@ var leb128Cmd = &cmds.Command{
 }
 
 var decodeLeb128Cmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline:          "decode leb128",
 		ShortDescription: `Decode leb128 text`,
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("text", true, false, `The leb128 encoded text`),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("text", true, false, `The leb128 encoded text`),
 	},
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 		text := req.Arguments[0]
@@ -36,12 +35,12 @@ var decodeLeb128Cmd = &cmds.Command{
 }
 
 var encodeLeb128Cmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline:          "encode leb128",
 		ShortDescription: `Encode leb128 uint64`,
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("number", true, false, `The number to encode`),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("number", true, false, `The number to encode`),
 	},
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 		num, err := strconv.ParseUint(req.Arguments[0], 10, 64)

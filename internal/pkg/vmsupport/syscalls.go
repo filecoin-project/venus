@@ -4,15 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 	"github.com/minio/blake2b-simd"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
@@ -20,7 +20,7 @@ import (
 )
 
 type faultChecker interface {
-	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view slashing.FaultStateView) (*runtime.ConsensusFault, error)
+	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view slashing.FaultStateView) (*runtime.ConsensusFault, error)
 }
 
 // Syscalls contains the concrete implementation of VM system calls, including connection to
@@ -50,11 +50,11 @@ func (s *Syscalls) HashBlake2b(data []byte) [32]byte {
 	return blake2b.Sum256(data)
 }
 
-func (s *Syscalls) ComputeUnsealedSectorCID(_ context.Context, proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+func (s *Syscalls) ComputeUnsealedSectorCID(_ context.Context, proof abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	return ffiwrapper.GenerateUnsealedCID(proof, pieces)
 }
 
-func (s *Syscalls) VerifySeal(_ context.Context, info abi.SealVerifyInfo) error {
+func (s *Syscalls) VerifySeal(_ context.Context, info proof.SealVerifyInfo) error {
 	ok, err := s.verifier.VerifySeal(info)
 	if err != nil {
 		return err
@@ -64,7 +64,7 @@ func (s *Syscalls) VerifySeal(_ context.Context, info abi.SealVerifyInfo) error 
 	return nil
 }
 
-func (s *Syscalls) VerifyPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo) error {
+func (s *Syscalls) VerifyPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) error {
 	ok, err := s.verifier.VerifyWindowPoSt(ctx, info)
 	if err != nil {
 		return err
@@ -75,6 +75,6 @@ func (s *Syscalls) VerifyPoSt(ctx context.Context, info abi.WindowPoStVerifyInfo
 	return nil
 }
 
-func (s *Syscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, head block.TipSetKey, view vm.SyscallsStateView) (*runtime.ConsensusFault, error) {
-	return s.faultChecker.VerifyConsensusFault(ctx, h1, h2, extra, head, view)
+func (s *Syscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view vm.SyscallsStateView) (*runtime.ConsensusFault, error) {
+	return s.faultChecker.VerifyConsensusFault(ctx, h1, h2, extra, view)
 }

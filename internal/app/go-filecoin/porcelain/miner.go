@@ -6,22 +6,20 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-
 	address "github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	cid "github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
@@ -29,8 +27,8 @@ import (
 type mcAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedPath string, paramJSON string) error
-	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error)
-	MessageWait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasBaseFee, gasPremium types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error)
+	MessageWait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	WalletDefaultAddress() (address.Address, error)
 }
 
@@ -39,10 +37,9 @@ type MinerStateView interface {
 	MinerPeerID(ctx context.Context, maddr address.Address) (peer.ID, error)
 	MinerSectorConfiguration(ctx context.Context, maddr address.Address) (*state.MinerSectorConfiguration, error)
 	MinerSectorCount(ctx context.Context, maddr address.Address) (uint64, error)
-	MinerDeadlines(ctx context.Context, maddr address.Address) (*miner.Deadlines, error)
 	PowerNetworkTotal(ctx context.Context) (*state.NetworkPower, error)
 	MinerClaimedPower(ctx context.Context, miner address.Address) (raw, qa abi.StoragePower, err error)
-	MinerInfo(ctx context.Context, maddr address.Address) (miner.MinerInfo, error)
+	MinerInfo(ctx context.Context, maddr address.Address) (*miner.MinerInfo, error)
 }
 
 // MinerCreate creates a new miner actor for the given account and returns its address.
@@ -53,9 +50,10 @@ func MinerCreate(
 	ctx context.Context,
 	plumbing mcAPI,
 	minerOwnerAddr address.Address,
-	gasPrice types.AttoFIL,
+	gasBaseFee types.AttoFIL,
+	gasPremium types.AttoFIL,
 	gasLimit gas.Unit,
-	sealProofType abi.RegisteredProof,
+	sealProofType abi.RegisteredSealProof,
 	pid peer.ID,
 	collateral types.AttoFIL,
 ) (_ address.Address, err error) {
@@ -77,7 +75,7 @@ func MinerCreate(
 	params := power.CreateMinerParams{
 		Worker:        minerOwnerAddr,
 		Owner:         minerOwnerAddr,
-		Peer:          pid,
+		Peer:          abi.PeerID(pid),
 		SealProofType: sealProofType,
 	}
 
@@ -86,7 +84,8 @@ func MinerCreate(
 		minerOwnerAddr,
 		builtin.StoragePowerActorAddr,
 		collateral,
-		gasPrice,
+		gasBaseFee,
+		gasPremium,
 		gasLimit,
 		builtin.MethodsPower.CreateMiner,
 		&params,
@@ -96,7 +95,7 @@ func MinerCreate(
 	}
 
 	var result power.CreateMinerReturn
-	err = plumbing.MessageWait(ctx, smsgCid, msg.DefaultMessageWaitLookback, func(blk *block.Block, smsg *types.SignedMessage, receipt *vm.MessageReceipt) (err error) {
+	err = plumbing.MessageWait(ctx, smsgCid, msg.DefaultMessageWaitLookback, func(blk *block.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) (err error) {
 		if receipt.ExitCode != exitcode.Ok {
 			// Dragons: do we want to have this back?
 			return fmt.Errorf("Error executing actor code (exitcode: %d)", receipt.ExitCode)
@@ -168,7 +167,7 @@ type MinerSetPriceResponse struct {
 
 type minerStatusPlumbing interface {
 	MinerStateView(baseKey block.TipSetKey) (MinerStateView, error)
-	ChainTipSet(key block.TipSetKey) (block.TipSet, error)
+	ChainTipSet(key block.TipSetKey) (*block.TipSet, error)
 }
 
 // MinerProvingWindow contains a miners proving period start and end as well
@@ -186,7 +185,7 @@ type MinerStatus struct {
 	WorkerAddress address.Address
 	PeerID        peer.ID
 
-	SealProofType              abi.RegisteredProof
+	SealProofType              abi.RegisteredSealProof
 	SectorSize                 abi.SectorSize
 	WindowPoStPartitionSectors uint64
 	SectorCount                uint64
@@ -225,7 +224,7 @@ func MinerGetStatus(ctx context.Context, plumbing minerStatusPlumbing, minerAddr
 		ActorAddress:  minerAddr,
 		OwnerAddress:  minerInfo.Owner,
 		WorkerAddress: minerInfo.Worker,
-		PeerID:        minerInfo.PeerId,
+		PeerID:        *minerInfo.PeerId,
 
 		SealProofType:              minerInfo.SealProofType,
 		SectorSize:                 minerInfo.SectorSize,
@@ -244,7 +243,7 @@ type mwapi interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ChainHeadKey() block.TipSetKey
 	MinerStateView(baseKey block.TipSetKey) (MinerStateView, error)
-	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasBaseFee, gasPremium types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error)
 }
 
 // MinerSetWorkerAddress sets the worker address of the miner actor to the provided new address,
@@ -253,7 +252,7 @@ func MinerSetWorkerAddress(
 	ctx context.Context,
 	plumbing mwapi,
 	workerAddr address.Address,
-	gasPrice types.AttoFIL,
+	gasBaseFee, gasPremium types.AttoFIL,
 	gasLimit gas.Unit,
 ) (cid.Cid, error) {
 
@@ -282,7 +281,8 @@ func MinerSetWorkerAddress(
 		owner,
 		minerAddr,
 		types.ZeroAttoFIL,
-		gasPrice,
+		gasBaseFee,
+		gasPremium,
 		gasLimit,
 		builtin.MethodsMiner.ChangeWorkerAddress,
 		&workerAddr)

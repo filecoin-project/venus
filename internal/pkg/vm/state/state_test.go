@@ -2,10 +2,11 @@ package state
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -28,7 +28,10 @@ func TestStatePutGet(t *testing.T) {
 
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree := NewState(cst)
+	tree,err := NewState(cst, StateTreeVersion0)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	act1 := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
 	act1.IncrementSeqNum()
@@ -53,10 +56,10 @@ func TestStatePutGet(t *testing.T) {
 	assert.Equal(t, act2, act2out)
 
 	// now test it persists across recreation of tree
-	tcid, err := tree.Commit(ctx)
+	tcid, err := tree.Flush(ctx)
 	assert.NoError(t, err)
 
-	tree2, err := LoadState(ctx, cst, tcid)
+	tree2, err := LoadState(context.Background(), cst, tcid)
 	assert.NoError(t, err)
 
 	act1out2, found, err := tree2.GetActor(ctx, addr1)
@@ -71,11 +74,13 @@ func TestStatePutGet(t *testing.T) {
 
 func TestStateErrors(t *testing.T) {
 	tf.UnitTest(t)
-
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree := NewState(cst)
+	tree,err := NewState(cst, StateTreeVersion0)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	a, found, err := tree.GetActor(ctx, vmaddr.NewForTestGetter()())
 	assert.Nil(t, a)
@@ -95,22 +100,27 @@ func TestGetAllActors(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree := NewState(cst)
+	tree,err := NewState(cst, StateTreeVersion0)
+	if err != nil {
+		t.Fatal(err)
+	}
 	addr := vmaddr.NewForTestGetter()()
 
-	actor := actor.Actor{Code: e.NewCid(builtin.AccountActorCodeID), CallSeqNum: 1234, Balance: abi.NewTokenAmount(123)}
-	err := tree.SetActor(ctx, addr, &actor)
+	newActor := actor.Actor{Code: enccid.NewCid(builtin.AccountActorCodeID), CallSeqNum: 1234, Balance: abi.NewTokenAmount(123)}
+	err = tree.SetActor(ctx, addr, &newActor)
 	assert.NoError(t, err)
-	_, err = tree.Commit(ctx)
+	_, err = tree.Flush(ctx)
 	require.NoError(t, err)
 
-	results := tree.GetAllActors(ctx)
-
-	for result := range results {
-		assert.Equal(t, addr, result.Key)
-		assert.Equal(t, actor.Code, result.Actor.Code)
-		assert.Equal(t, actor.CallSeqNum, result.Actor.CallSeqNum)
-		assert.Equal(t, actor.Balance, result.Actor.Balance)
+	err = tree.ForEach(func(key ActorKey, result *actor.Actor) error {
+		assert.Equal(t, addr, key)
+		assert.Equal(t, newActor.Code, result.Code)
+		assert.Equal(t, newActor.CallSeqNum, result.CallSeqNum)
+		assert.Equal(t, newActor.Balance, result.Balance)
+		return nil
+	})
+	if err != nil {
+		t.Error(err)
 	}
 }
 
@@ -120,7 +130,10 @@ func TestStateTreeConsistency(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree := NewState(cst)
+	tree,err := NewState(cst, StateTreeVersion0)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	var addrs []address.Address
 	for i := 100; i < 150; i++ {
@@ -139,8 +152,8 @@ func TestStateTreeConsistency(t *testing.T) {
 
 	for i, a := range addrs {
 		if err := tree.SetActor(ctx, a, &actor.Actor{
-			Code:       e.NewCid(randomCid),
-			Head:       e.NewCid(randomCid),
+			Code:       enccid.NewCid(randomCid),
+			Head:       enccid.NewCid(randomCid),
 			Balance:    abi.NewTokenAmount(int64(10000 + i)),
 			CallSeqNum: uint64(1000 - i),
 		}); err != nil {
@@ -148,12 +161,12 @@ func TestStateTreeConsistency(t *testing.T) {
 		}
 	}
 
-	root, err := tree.Commit(ctx)
+	root, err := tree.Flush(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if root.String() != "bafy2bzaceadyjnrv3sbjvowfl3jr4pdn5p2bf3exjjie2f3shg4oy5sub7h34" {
-		t.Fatalf("State Tree Mismatch. Expected: bafy2bzaceadyjnrv3sbjvowfl3jr4pdn5p2bf3exjjie2f3shg4oy5sub7h34 Actual: %s", root.String())
+		t.Fatalf("state state Mismatch. Expected: bafy2bzaceadyjnrv3sbjvowfl3jr4pdn5p2bf3exjjie2f3shg4oy5sub7h34 Actual: %s", root.String())
 	}
 
 }

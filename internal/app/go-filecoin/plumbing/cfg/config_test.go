@@ -73,10 +73,6 @@ func TestConfigSet(t *testing.T) {
 		assert.Equal(t, ":1234", cfg.API.Address)
 
 		testAddr := vmaddr.RequireIDAddress(t, 100).String()
-		err = cfgAPI.Set("mining.minerAddress", testAddr)
-		require.NoError(t, err)
-		assert.Equal(t, testAddr, cfg.Mining.MinerAddress.String())
-
 		err = cfgAPI.Set("wallet.defaultAddress", testAddr)
 		require.NoError(t, err)
 		assert.Equal(t, testAddr, cfg.Wallet.DefaultAddress.String())

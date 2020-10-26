@@ -3,12 +3,11 @@ package commands
 import (
 	"strings"
 
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
 var configCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Get and set filecoin config values",
 		ShortDescription: `
 go-filecoin config controls configuration variables. These variables are stored
@@ -69,9 +68,9 @@ $ go-filecoin config bootstrap
 }
 `,
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("key", true, false, "The key of the config entry (e.g. \"api.address\")"),
-		cmdkit.StringArg("value", false, false, "Optionally, a value with which to set the config entry"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("key", true, false, "The key of the config entry (e.g. \"api.address\")"),
+		cmds.StringArg("value", false, false, "Optionally, a value with which to set the config entry"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		api := GetPorcelainAPI(env)

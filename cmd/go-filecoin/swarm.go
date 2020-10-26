@@ -1,7 +1,6 @@
 package commands
 
 import (
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -10,7 +9,7 @@ import (
 
 // swarmCmd contains swarm commands.
 var swarmCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Interact with the swarm",
 		ShortDescription: `
 'go-filecoin swarm' is a tool to manipulate the libp2p swarm. The swarm is the
@@ -25,16 +24,16 @@ libp2p peers on the internet.
 }
 
 var swarmPeersCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "List peers with open connections.",
 		ShortDescription: `
 'go-filecoin swarm peers' lists the set of peers this node is connected to.
 `,
 	},
-	Options: []cmdkit.Option{
-		cmdkit.BoolOption("verbose", "v", "Display all extra information"),
-		cmdkit.BoolOption("streams", "Also list information about open streams for each peer"),
-		cmdkit.BoolOption("latency", "Also list information about latency to each peer"),
+	Options: []cmds.Option{
+		cmds.BoolOption("verbose", "v", "Display all extra information"),
+		cmds.BoolOption("streams", "Also list information about open streams for each peer"),
+		cmds.BoolOption("latency", "Also list information about latency to each peer"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		verbose, _ := req.Options["verbose"].(bool)
@@ -52,7 +51,7 @@ var swarmPeersCmd = &cmds.Command{
 }
 
 var swarmConnectCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Open connection to a given address.",
 		ShortDescription: `
 'go-filecoin swarm connect' opens a new direct connection to a peer address.
@@ -62,8 +61,8 @@ The address format is a multiaddr:
 go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ
 `,
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("address", true, true, "Address of peer to connect to.").EnableStdin(),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("address", true, true, "Address of peer to connect to.").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		results, err := GetPorcelainAPI(env).NetworkConnect(req.Context, req.Arguments)

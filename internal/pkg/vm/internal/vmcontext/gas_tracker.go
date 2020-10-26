@@ -2,58 +2,83 @@ package vmcontext
 
 import (
 	"fmt"
+	types2 "github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
-// GasTracker maintains the state of gas usage throughout the execution of a message.
+// GasTracker maintains the stateView of gas usage throughout the execution of a message.
 type GasTracker struct {
-	gasLimit    gas.Unit
-	gasConsumed gas.Unit
+	gasAvailable int64
+	gasUsed      int64
+
+	executionTrace    types2.ExecutionTrace
+	numActorsCreated  uint64
+	allowInternal     bool
+	callerValidated   bool
+	lastGasChargeTime time.Time
+	lastGasCharge     *types2.GasTrace
 }
 
 // NewGasTracker initializes a new empty gas tracker
 func NewGasTracker(limit gas.Unit) GasTracker {
 	return GasTracker{
-		gasLimit:    limit,
-		gasConsumed: gas.Zero,
+		gasUsed:      0,
+		gasAvailable: int64(limit),
 	}
 }
 
 // Charge will add the gas charge to the current method gas context.
 //
 // WARNING: this method will panic if there is no sufficient gas left.
-func (t *GasTracker) Charge(amount gas.Unit, msg string, args ...interface{}) {
-	if ok := t.TryCharge(amount); !ok {
+func (t *GasTracker) Charge(gas gas.GasCharge, msg string, args ...interface{}) {
+	if ok := t.TryCharge(gas); !ok {
 		fmsg := fmt.Sprintf(msg, args...)
-		runtime.Abortf(exitcode.SysErrOutOfGas, "gas limit %d exceeded with charge of %d: %s", t.gasLimit, amount, fmsg)
+		runtime.Abortf(exitcode.SysErrOutOfGas, "gas limit %d exceeded with charge of %d: %s", t.gasAvailable, gas.Total(), fmsg)
 	}
 }
 
 // TryCharge charges `amount` or `RemainingGas()``, whichever is smaller.
 //
 // Returns `True` if the there was enough gas to pay for `amount`.
-func (t *GasTracker) TryCharge(amount gas.Unit) bool {
-	// check for limit
-	aux := t.gasConsumed + amount
-	if aux > t.gasLimit {
-		t.gasConsumed = t.gasLimit
-		return false
+func (t *GasTracker) TryCharge(gasCharge gas.GasCharge) bool {
+	toUse := gasCharge.Total()
+	//var callers [10]uintptr
+	//cout := gruntime.Callers(2+skip, callers[:])
+
+	now := time.Now() //build.Clock.Now()   todo add by force check here
+	if t.lastGasCharge != nil {
+		t.lastGasCharge.TimeTaken = now.Sub(t.lastGasChargeTime)
 	}
 
-	t.gasConsumed = aux
+	gasTrace := types2.GasTrace{
+		Name:  gasCharge.Name,
+		Extra: gasCharge.Extra,
+
+		TotalGas:   toUse,
+		ComputeGas: gasCharge.ComputeGas,
+		StorageGas: gasCharge.StorageGas,
+
+		TotalVirtualGas:   gasCharge.VirtualCompute*gas.GasComputeMulti + gasCharge.VirtualStorage*gas.GasStorageMulti,
+		VirtualComputeGas: gasCharge.VirtualCompute,
+		VirtualStorageGas: gasCharge.VirtualStorage,
+
+		//Callers: callers[:cout],
+	}
+	t.executionTrace.GasCharges = append(t.executionTrace.GasCharges, &gasTrace)
+	t.lastGasChargeTime = now
+	t.lastGasCharge = &gasTrace
+
+	// overflow safe
+	if t.gasUsed > t.gasAvailable-toUse {
+		t.gasUsed = t.gasAvailable
+		//return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gasCharge: used=%d, available=%d", t.gasUsed, t.gasAvailable)
+		return false
+	}
+	t.gasUsed += toUse
 	return true
-}
-
-// GasConsumed returns the gas consumed.
-func (t *GasTracker) GasConsumed() gas.Unit {
-	return t.gasConsumed
-}
-
-// RemainingGas returns the gas remaining.
-func (t *GasTracker) RemainingGas() gas.Unit {
-	return t.gasLimit - t.gasConsumed
 }

@@ -3,24 +3,23 @@ package block
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	fbig "github.com/filecoin-project/go-state-types/big"
 	blocks "github.com/ipfs/go-block-format"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	node "github.com/ipfs/go-ipld-format"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
 
 // BlockMessageLimit is the maximum number of messages in a block
-const BlockMessageLimit = 512
+const BlockMessageLimit = 10000
 
 // Block is a block in the blockchain.
 type Block struct {
@@ -38,10 +37,10 @@ type Block struct {
 
 	// BeaconEntries contain the verifiable oracle randomness used to elect
 	// this block's author leader
-	BeaconEntries []*drand.Entry
+	BeaconEntries []*BeaconEntry
 
-	// PoStProofs are the winning post proofs
-	PoStProofs []PoStProof `json:"PoStProofs"`
+	// WinPoStProof are the winning post proofs
+	WinPoStProof []PoStProof `json:"WinPoStProof"`
 
 	// Parents is the set of parents this block was based on. Typically one,
 	// but can be several in the case where there were multiple winning ticket-
@@ -56,14 +55,14 @@ type Block struct {
 
 	// StateRoot is the CID of the root of the state tree after application of the messages in the parent tipset
 	// to the parent tipset's state root.
-	StateRoot e.Cid `json:"stateRoot,omitempty"`
+	StateRoot enccid.Cid `json:"stateRoot,omitempty"`
 
 	// MessageReceipts is a list of receipts corresponding to the application of the messages in the parent tipset
 	// to the parent tipset's state root (corresponding to this block's StateRoot).
-	MessageReceipts e.Cid `json:"messageReceipts,omitempty"`
+	MessageReceipts enccid.Cid `json:"messageReceipts,omitempty"`
 
 	// Messages is the set of messages included in this block
-	Messages e.Cid `json:"messages,omitempty"`
+	Messages enccid.Cid `json:"messages,omitempty"`
 
 	// The aggregate signature of all BLS signed messages in the block
 	BLSAggregateSig *crypto.Signature `json:"blsAggregateSig"`
@@ -76,6 +75,8 @@ type Block struct {
 
 	// ForkSignaling is extra data used by miners to communicate
 	ForkSignaling uint64
+
+	ParentBaseFee abi.TokenAmount
 
 	cachedCid cid.Cid
 
@@ -171,11 +172,12 @@ func (b *Block) SignatureData() []byte {
 		Messages:        b.Messages,
 		StateRoot:       b.StateRoot,
 		MessageReceipts: b.MessageReceipts,
-		PoStProofs:      b.PoStProofs,
+		WinPoStProof:    b.WinPoStProof,
 		BeaconEntries:   b.BeaconEntries,
 		Timestamp:       b.Timestamp,
 		BLSAggregateSig: b.BLSAggregateSig,
 		ForkSignaling:   b.ForkSignaling,
+		ParentBaseFee:   b.ParentBaseFee,
 		// BlockSig omitted
 	}
 

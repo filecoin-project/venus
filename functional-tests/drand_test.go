@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
@@ -43,16 +42,16 @@ func TestDrandPublic(t *testing.T) {
 	}, true, false)
 	require.NoError(t, err)
 
-	entry1, err := nd.DrandAPI.GetEntry(ctx, 1)
+	entry1, err := nd.DrandAPI.GetEntry(ctx, 1, 1)
 	require.NoError(t, err)
 
-	assert.Equal(t, drand.Round(1), entry1.Round)
+	assert.Equal(t, 1, entry1.Round)
 	assert.NotNil(t, entry1.Data)
 
-	entry2, err := nd.DrandAPI.GetEntry(ctx, 2)
+	entry2, err := nd.DrandAPI.GetEntry(ctx, 1, 2)
 	require.NoError(t, err)
 
-	valid, err := nd.DrandAPI.VerifyEntry(entry1, entry2)
-	require.NoError(t, err)
-	require.True(t, valid)
+	if !nd.DrandAPI.VerifyEntry(entry1, entry2, 1) {
+		t.Errorf("no match")
+	}
 }

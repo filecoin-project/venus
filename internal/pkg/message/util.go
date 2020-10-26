@@ -1,6 +1,8 @@
 package message
 
 import (
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 )
@@ -12,4 +14,5 @@ type chainProvider interface {
 	// list of non-empty tip heights.
 	chain.TipSetProvider
 	GetHead() block.TipSetKey
+	GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error)
 }

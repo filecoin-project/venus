@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	logging "github.com/ipfs/go-log/v2"
 )
 
@@ -74,15 +74,15 @@ type Status struct {
 // NewDefaultChainStatus returns a ChainStaus with the default empty values.
 func newDefaultChainStatus() *Status {
 	return &Status{
-		ValidatedHead:        block.UndefTipSet.Key(),
+		ValidatedHead:        block.TipSetKey{},
 		ValidatedHeadHeight:  0,
-		SyncingHead:          block.UndefTipSet.Key(),
+		SyncingHead:          block.TipSetKey{},
 		SyncingHeight:        0,
 		SyncingTrusted:       false,
 		SyncingStarted:       0,
 		SyncingComplete:      true,
 		SyncingFetchComplete: true,
-		FetchingHead:         block.UndefTipSet.Key(),
+		FetchingHead:         block.TipSetKey{},
 		FetchingHeight:       0,
 	}
 }

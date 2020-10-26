@@ -1,8 +1,8 @@
 package constants
 
-import "github.com/filecoin-project/specs-actors/actors/abi"
+import "github.com/filecoin-project/go-state-types/abi"
 
-const DevSealProofType = abi.RegisteredProof_StackedDRG2KiBSeal
+const DevSealProofType = abi.RegisteredSealProof_StackedDrg2KiBV1
 
 // DevSectorSize is a tiny sector useful only for testing.
 var DevSectorSize abi.SectorSize

@@ -7,7 +7,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
 // ShowHeader runs the `show header` command against the filecoin process
@@ -37,8 +36,8 @@ func (f *Filecoin) ShowMessages(ctx context.Context, ref cid.Cid) ([]*types.Sign
 }
 
 // ShowReceipts runs the `show receipts` command against the filecoin process
-func (f *Filecoin) ShowReceipts(ctx context.Context, ref cid.Cid) ([]vm.MessageReceipt, error) {
-	var out []vm.MessageReceipt
+func (f *Filecoin) ShowReceipts(ctx context.Context, ref cid.Cid) ([]types.MessageReceipt, error) {
+	var out []types.MessageReceipt
 
 	sRef := ref.String()
 

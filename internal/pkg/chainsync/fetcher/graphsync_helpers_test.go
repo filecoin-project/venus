@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	fbig "github.com/filecoin-project/go-state-types/big"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
@@ -32,7 +32,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
@@ -360,9 +359,9 @@ func simpleBlock() *block.Block {
 		ParentWeight:    fbig.Zero(),
 		Parents:         block.NewTipSetKey(),
 		Height:          0,
-		StateRoot:       e.NewCid(types.EmptyMessagesCID),
-		Messages:        e.NewCid(types.EmptyTxMetaCID),
-		MessageReceipts: e.NewCid(types.EmptyReceiptsCID),
+		StateRoot:       types.EmptyMessagesCID,
+		Messages:        types.EmptyTxMetaCID,
+		MessageReceipts: types.EmptyReceiptsCID,
 		BlockSig:        &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
 		BLSAggregateSig: &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 	}
@@ -383,7 +382,7 @@ func requireSimpleValidBlock(t *testing.T, nonce uint64, miner address.Address) 
 		MhLength: -1,
 	}.Sum(bytes)
 	require.NoError(t, err)
-	b.StateRoot = e.NewCid(rawRoot)
+	b.StateRoot = rawRoot
 	b.Miner = miner
 	return b
 }

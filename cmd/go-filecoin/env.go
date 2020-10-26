@@ -7,19 +7,13 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/drand"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/mining"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/retrieval"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
 )
 
 // Env is the environment for command API handlers.
 type Env struct {
-	blockMiningAPI *mining.API
 	ctx            context.Context
 	drandAPI       *drand.API
 	porcelainAPI   *porcelain.API
-	retrievalAPI   retrieval.API
-	storageAPI     *storage.API
 	inspectorAPI   *Inspector
 }
 
@@ -42,23 +36,23 @@ func GetPorcelainAPI(env cmds.Environment) *porcelain.API {
 	return ce.porcelainAPI
 }
 
-// GetBlockAPI returns the block protocol api from the given environment.
-func GetBlockAPI(env cmds.Environment) *mining.API {
-	ce := env.(*Env)
-	return ce.blockMiningAPI
-}
-
-// GetRetrievalAPI returns the retrieval protocol api from the given environment.
-func GetRetrievalAPI(env cmds.Environment) retrieval.API {
-	ce := env.(*Env)
-	return ce.retrievalAPI
-}
-
-// GetStorageAPI returns the storage protocol api from the given environment.
-func GetStorageAPI(env cmds.Environment) *storage.API {
-	ce := env.(*Env)
-	return ce.storageAPI
-}
+//// GetBlockAPI returns the block protocol api from the given environment.
+//func GetBlockAPI(env cmds.Environment) *mining.API {
+//	ce := env.(*Env)
+//	return ce.blockMiningAPI
+//}
+//
+//// GetRetrievalAPI returns the retrieval protocol api from the given environment.
+//func GetRetrievalAPI(env cmds.Environment) retrieval.API {
+//	ce := env.(*Env)
+//	return ce.retrievalAPI
+//}
+//
+//// GetStorageAPI returns the storage protocol api from the given environment.
+//func GetStorageAPI(env cmds.Environment) *storage.API {
+//	ce := env.(*Env)
+//	return ce.storageAPI
+//}
 
 // GetInspectorAPI returns the inspector api from the given environment.
 func GetInspectorAPI(env cmds.Environment) *Inspector {

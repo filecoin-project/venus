@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -21,12 +20,12 @@ type IDDetails struct {
 }
 
 var idCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Show info about the network peers",
 	},
-	Options: []cmdkit.Option{
+	Options: []cmds.Option{
 		// TODO: ideally copy this from the `ipfs id` command
-		cmdkit.StringOption("format", "f", "Specify an output format"),
+		cmds.StringOption("format", "f", "Specify an output format"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addrs := GetPorcelainAPI(env).NetworkGetPeerAddresses()

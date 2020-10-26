@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"net/http"
 	_ "net/http/pprof" // nolint: golint
 	"os"
@@ -10,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
 	ma "github.com/multiformats/go-multiaddr"
@@ -19,24 +19,24 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 )
 
 var daemonCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Start a long-running daemon process",
 	},
-	Options: []cmdkit.Option{
-		cmdkit.StringOption(SwarmAddress, "multiaddress to listen on for filecoin network connections"),
-		cmdkit.StringOption(SwarmPublicRelayAddress, "public multiaddress for routing circuit relay traffic.  Necessary for relay nodes to provide this if they are not publically dialable"),
-		cmdkit.BoolOption(OfflineMode, "start the node without networking"),
-		cmdkit.BoolOption(ELStdout),
-		cmdkit.BoolOption(IsRelay, "advertise and allow filecoin network traffic to be relayed through this node"),
-		cmdkit.StringOption(BlockTime, "period a node waits between mining successive blocks").WithDefault(clock.DefaultEpochDuration.String()),
-		cmdkit.StringOption(PropagationDelay, "time a node waits after the start of an epoch for blocks to arrive").WithDefault(clock.DefaultPropagationDelay.String()),
+	Options: []cmds.Option{
+		cmds.StringOption(SwarmAddress, "multiaddress to listen on for filecoin network connections"),
+		cmds.StringOption(SwarmPublicRelayAddress, "public multiaddress for routing circuit relay traffic.  Necessary for relay nodes to provide this if they are not publically dialable"),
+		cmds.BoolOption(OfflineMode, "start the node without networking"),
+		cmds.StringOption("check-point", "where to start the chain"),
+		cmds.BoolOption(ELStdout),
+		cmds.BoolOption(IsRelay, "advertise and allow filecoin network traffic to be relayed through this node"),
+		//cmds.StringOption(BlockTime, "period a node waits between mining successive blocks").WithDefault(clock.DefaultEpochDuration.String()),
+		//cmds.StringOption(PropagationDelay, "time a node waits after the start of an epoch for blocks to arrive").WithDefault(clock.DefaultPropagationDelay.String()),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		return daemonRun(req, re)
@@ -82,25 +82,14 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 		opts = append(opts, node.IsRelay())
 	}
 
-	durStr, ok := req.Options[BlockTime].(string)
-	if !ok {
-		return fmt.Errorf("invalid %s: %v", BlockTime, req.Options[BlockTime])
+	if checkPoint, ok := req.Options["check-point"].(string); ok {
+		var tipsetKety block.TipSetKey
+		tipsetKety, err := block.NewTipSetKeyFromString(checkPoint)
+		if err != nil {
+			return err
+		}
+		opts = append(opts, node.CheckPoint(tipsetKety))
 	}
-	blockTime, err := time.ParseDuration(durStr)
-	if err != nil {
-		return fmt.Errorf("invalid %s: %s", BlockTime, durStr)
-	}
-	opts = append(opts, node.BlockTime(blockTime))
-
-	delayStr, ok := req.Options[PropagationDelay].(string)
-	if !ok {
-		return fmt.Errorf("invalid %s: %v", PropagationDelay, req.Options[PropagationDelay])
-	}
-	propDelay, err := time.ParseDuration(delayStr)
-	if err != nil {
-		return fmt.Errorf("invalid %s: %s", PropagationDelay, delayStr)
-	}
-	opts = append(opts, node.PropagationDelay(propDelay))
 
 	journal, err := journal.NewZapJournal(rep.JournalPath())
 	if err != nil {
@@ -228,12 +217,9 @@ func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig,
 
 func CreateServerEnv(ctx context.Context, nd *node.Node) *Env {
 	return &Env{
-		blockMiningAPI: nd.BlockMining.BlockMiningAPI,
-		drandAPI:       nd.DrandAPI,
-		ctx:            ctx,
-		inspectorAPI:   NewInspectorAPI(nd.Repo),
-		porcelainAPI:   nd.PorcelainAPI,
-		retrievalAPI:   nd.RetrievalProtocol,
-		storageAPI:     nd.StorageAPI,
+		drandAPI:     nd.DrandAPI,
+		ctx:          ctx,
+		inspectorAPI: NewInspectorAPI(nd.Repo),
+		porcelainAPI: nd.PorcelainAPI,
 	}
 }

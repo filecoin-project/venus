@@ -20,6 +20,6 @@ func main() {
 		panic(err)
 	}
 
-	cid := commcid.DataCommitmentV1ToCID(bytes)
+	cid, _ := commcid.DataCommitmentV1ToCID(bytes)
 	fmt.Printf("%s\n", cid)
 }

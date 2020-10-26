@@ -3,6 +3,7 @@ package actor
 
 import (
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"io"
 	"io/ioutil"
 
@@ -11,11 +12,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 )
+
+var ErrActorNotFound = errors.New("actor not found")
 
 // DefaultGasCost is default gas cost for the actor calls.
 const DefaultGasCost = 100
@@ -40,9 +41,9 @@ type Actor struct {
 	_ struct{} `cbor:",toarray"`
 	// Code is a CID of the VM code for this actor's implementation (or a constant for actors implemented in Go code).
 	// Code may be nil for an uninitialized actor (which exists because it has received a balance).
-	Code e.Cid
+	Code enccid.Cid
 	// Head is the CID of the root of the actor's state tree.
-	Head e.Cid
+	Head enccid.Cid
 	// CallSeqNum is the number expected on the next message from this actor.
 	// Messages are processed in strict, contiguous order.
 	CallSeqNum uint64
@@ -53,16 +54,20 @@ type Actor struct {
 // NewActor constructs a new actor.
 func NewActor(code cid.Cid, balance abi.TokenAmount, head cid.Cid) *Actor {
 	return &Actor{
-		Code:       e.NewCid(code),
+		Code:       enccid.NewCid(code),
 		CallSeqNum: 0,
 		Balance:    balance,
-		Head:       e.NewCid(head),
+		Head:       enccid.NewCid(head),
 	}
 }
 
 // Empty tests whether the actor's code is defined.
 func (a *Actor) Empty() bool {
 	return !a.Code.Defined()
+}
+
+func (a *Actor) IsAccountActor() bool {
+	return a.Code.Cid == builtin.AccountActorCodeID
 }
 
 // IncrementSeqNum increments the seq number.

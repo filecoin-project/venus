@@ -2,9 +2,10 @@ package piecemanager
 
 import (
 	"context"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"io"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 // PieceManager is responsible for sealing pieces into sectors and progressing
@@ -18,7 +19,7 @@ type PieceManager interface {
 	// errors encountered during the pre-commit or commit flows (including
 	// message creation) are recorded in StorageMining metadata but not exposed
 	// through this API.
-	SealPieceIntoNewSector(ctx context.Context, dealID abi.DealID, dealStart, dealEnd abi.ChainEpoch, pieceSize abi.UnpaddedPieceSize, pieceReader io.Reader) error
+	SealPieceIntoNewSector(ctx context.Context, dealID abi.DealID, dealStart, dealEnd abi.ChainEpoch, pieceSize abi.UnpaddedPieceSize, pieceReader io.Reader) (*storagemarket.PackingResult, error)
 
 	// PledgeSector behaves similarly to SealPieceIntoNewSector, but differs in
 	// that it does not require a deal having been made on-chain beforehand. It
@@ -28,7 +29,7 @@ type PieceManager interface {
 	// UnsealSector produces a reader to the unsealed bytes associated with the
 	// provided sector id, or an error if no such sealed sector exists. The
 	// bytes produced by the Reader will not include any bit-padding.
-	UnsealSector(ctx context.Context, sectorID uint64) (io.ReadCloser, error)
+	UnsealSector(ctx context.Context, sectorID abi.SectorNumber) (io.ReadCloser, error)
 
 	// LocatePieceForDealWithinSector produces information about the location of
 	// a deal's piece within a sealed sector, or an error if that piece does not

@@ -2,12 +2,11 @@
 package commands
 
 import (
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
 var dagCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Interact with IPLD DAG objects.",
 	},
 	Subcommands: map[string]*cmds.Command{
@@ -16,11 +15,11 @@ var dagCmd = &cmds.Command{
 }
 
 var dagGetCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "Get a DAG node by its CID",
 	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("ref", true, false, "CID of object to get"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("ref", true, false, "CID of object to get"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		out, err := GetPorcelainAPI(env).DAGGetNode(req.Context, req.Arguments[0])

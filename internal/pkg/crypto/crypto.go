@@ -18,8 +18,8 @@ import (
 // PrivateKeyBytes is the size of a serialized private key.
 const PrivateKeyBytes = 32
 
-// PublicKeyBytes is the size of a serialized public key.
-const PublicKeyBytes = 65
+////PublicKeyBytes is the size of a serialized public key.
+//const PublicKeyBytes = 48
 
 // PublicKeyForSecpSecretKey returns the public key for this private key.
 func PublicKeyForSecpSecretKey(sk []byte) []byte {

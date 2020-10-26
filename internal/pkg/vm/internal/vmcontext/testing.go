@@ -1,5 +1,6 @@
 package vmcontext
 
+/*
 import (
 	"context"
 	"fmt"
@@ -13,23 +14,22 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/system"
-	"github.com/filecoin-project/specs-actors/actors/puppet"
+	// "github.com/filecoin-project/specs-actors/actors/puppet"
+
 	"math/rand"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	vtypes "github.com/filecoin-project/chain-validation/chain/types"
-	vdriver "github.com/filecoin-project/chain-validation/drivers"
-	vstate "github.com/filecoin-project/chain-validation/state"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-crypto"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-stateView-types/abi"
+	"github.com/filecoin-project/go-stateView-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
+	acrypto "github.com/filecoin-project/go-stateView-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
@@ -44,13 +44,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/stateView"
 )
-
-var _ vstate.Factories = &Factories{}
-var _ vstate.VMWrapper = (*ValidationVMWrapper)(nil)
-var _ vstate.Applier = (*ValidationApplier)(nil)
-var _ vstate.KeyManager = (*KeyManager)(nil)
 
 var ChainvalActors = dispatch.NewBuilder().
 	Add(builtin.InitActorCodeID, &init_.Actor{}).
@@ -63,8 +58,6 @@ var ChainvalActors = dispatch.NewBuilder().
 	Add(builtin.SystemActorCodeID, &system.Actor{}).
 	Add(builtin.RewardActorCodeID, &reward.Actor{}).
 	Add(builtin.CronActorCodeID, &cron.Actor{}).
-	// add the puppet actor
-	Add(puppet.PuppetActorCodeID, &puppet.Actor{}).
 	Build()
 
 type Factories struct {
@@ -78,7 +71,7 @@ func NewFactories(config *ValidationConfig) *Factories {
 
 func (f *Factories) NewStateAndApplier() (vstate.VMWrapper, vstate.Applier) {
 	st := NewState()
-	return st, &ValidationApplier{state: st}
+	return st, &ValidationApplier{stateView: st}
 }
 
 func (f *Factories) NewKeyManager() vstate.KeyManager {
@@ -143,7 +136,7 @@ func (s specialSyscallWrapper) HashBlake2b(data []byte) [32]byte {
 	return s.internal.HashBlake2b(data)
 }
 
-func (s specialSyscallWrapper) ComputeUnsealedSectorCID(_ context.Context, proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+func (s specialSyscallWrapper) ComputeUnsealedSectorCID(_ context.Context, proof abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	return s.internal.ComputeUnsealedSectorCID(proof, pieces)
 }
 
@@ -163,7 +156,7 @@ func NewState() *ValidationVMWrapper {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	cst := cborutil.NewIpldStore(bs)
 	vmstrg := storage.NewStorage(bs)
-	vm := NewVM(ChainvalActors, &vmstrg, state.NewState(cst), specialSyscallWrapper{vdriver.NewChainValidationSyscalls()})
+	vm := NewVM(ChainvalActors, &vmstrg, stateView.NewState(cst), specialSyscallWrapper{vdriver.NewChainValidationSyscalls()})
 	return &ValidationVMWrapper{
 		vm: &vm,
 	}
@@ -179,9 +172,9 @@ func (w *ValidationVMWrapper) NewVM() {
 
 // Root implements ValidationVMWrapper.
 func (w *ValidationVMWrapper) Root() cid.Cid {
-	root, dirty := w.vm.state.Root()
+	root, dirty := w.vm.stateView.Root()
 	if dirty {
-		panic("vm state is dirty")
+		panic("vm stateView is dirty")
 	}
 	return root
 }
@@ -208,7 +201,7 @@ func (w *ValidationVMWrapper) Actor(addr address.Address) (vstate.Actor, error) 
 		return nil, fmt.Errorf("failed to normalize address: %s", addr)
 	}
 
-	a, found, err := w.vm.state.GetActor(w.vm.context, idAddr)
+	a, found, err := w.vm.stateView.GetActor(w.vm.context, idAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +216,7 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 	idAddr := addr
 	if addr.Protocol() != address.ID {
 		// go through init to register
-		initActorEntry, found, err := w.vm.state.GetActor(w.vm.context, builtin.InitActorAddr)
+		initActorEntry, found, err := w.vm.stateView.GetActor(w.vm.context, builtin.InitActorAddr)
 		if err != nil {
 			return nil, address.Undef, err
 		}
@@ -231,8 +224,8 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 			return nil, address.Undef, fmt.Errorf("actor not found")
 		}
 
-		// get a view into the actor state
-		var initState init_.State
+		// get a view into the actor stateView
+		var initState init_.state
 		if _, err := w.vm.store.Get(w.vm.context, initActorEntry.Head.Cid, &initState); err != nil {
 			return nil, address.Undef, err
 		}
@@ -243,19 +236,19 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 			return nil, address.Undef, err
 		}
 
-		// persist the init actor state
+		// persist the init actor stateView
 		initHead, _, err := w.vm.store.Put(w.vm.context, &initState)
 		if err != nil {
 			return nil, address.Undef, err
 		}
 		initActorEntry.Head = enccid.NewCid(initHead)
-		if err := w.vm.state.SetActor(w.vm.context, builtin.InitActorAddr, initActorEntry); err != nil {
+		if err := w.vm.stateView.SetActor(w.vm.context, builtin.InitActorAddr, initActorEntry); err != nil {
 			return nil, address.Undef, err
 		}
-		// persist state below
+		// persist stateView below
 	}
 
-	// create actor on state stree
+	// create actor on stateView stree
 
 	// store newState
 	head, _, err := w.vm.store.Put(w.vm.context, newState)
@@ -269,7 +262,7 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 		Head:    enccid.NewCid(head),
 		Balance: balance,
 	}
-	if err := w.vm.state.SetActor(w.vm.context, idAddr, a); err != nil {
+	if err := w.vm.stateView.SetActor(w.vm.context, idAddr, a); err != nil {
 		return nil, address.Undef, err
 	}
 
@@ -281,21 +274,21 @@ func (w *ValidationVMWrapper) CreateActor(code cid.Cid, addr address.Address, ba
 }
 
 // SetActorState implements ValidationVMWrapper.
-func (w *ValidationVMWrapper) SetActorState(addr address.Address, balance big.Int, state runtime.CBORMarshaler) (vstate.Actor, error) {
+func (w *ValidationVMWrapper) SetActorState(addr address.Address, balance big.Int, stateView runtime.CBORMarshaler) (vstate.Actor, error) {
 	idAddr, ok := w.vm.normalizeAddress(addr)
 	if !ok {
 		return nil, fmt.Errorf("actor not found")
 	}
 
-	a, found, err := w.vm.state.GetActor(w.vm.context, idAddr)
+	a, found, err := w.vm.stateView.GetActor(w.vm.context, idAddr)
 	if err != nil {
 		return nil, err
 	}
 	if !found {
 		return nil, fmt.Errorf("actor not found")
 	}
-	// store state
-	head, _, err := w.vm.store.Put(w.vm.context, state)
+	// store stateView
+	head, _, err := w.vm.store.Put(w.vm.context, stateView)
 	if err != nil {
 		return nil, err
 	}
@@ -303,7 +296,7 @@ func (w *ValidationVMWrapper) SetActorState(addr address.Address, balance big.In
 	a.Head = enccid.NewCid(head)
 	a.Balance = balance
 
-	if err := w.vm.state.SetActor(w.vm.context, idAddr, a); err != nil {
+	if err := w.vm.stateView.SetActor(w.vm.context, idAddr, a); err != nil {
 		return nil, err
 	}
 
@@ -326,7 +319,7 @@ func (w *ValidationVMWrapper) PersistChanges() error {
 //
 
 type ValidationApplier struct {
-	state *ValidationVMWrapper
+	stateView *ValidationVMWrapper
 }
 
 func (a *ValidationApplier) ApplyMessage(epoch abi.ChainEpoch, msg *vtypes.Message) (vtypes.ApplyMessageResult, error) {
@@ -334,7 +327,7 @@ func (a *ValidationApplier) ApplyMessage(epoch abi.ChainEpoch, msg *vtypes.Messa
 	ourMsg := a.preApplyMessage(epoch, msg)
 
 	// Invoke.
-	ourreceipt, penalty, reward := a.state.vm.applyMessage(ourMsg, ourMsg.OnChainLen(), &fakeRandSrc{})
+	ourreceipt, penalty, reward := a.stateView.vm.applyMessage(ourMsg, ourMsg.OnChainLen(), &fakeRandSrc{})
 
 	// Persist changes.
 	receipt, err := a.postApplyMessage(ourreceipt)
@@ -342,7 +335,7 @@ func (a *ValidationApplier) ApplyMessage(epoch abi.ChainEpoch, msg *vtypes.Messa
 		Receipt: receipt,
 		Penalty: penalty,
 		Reward:  reward,
-		Root:    a.state.Root().String(),
+		Root:    a.stateView.Root().String(),
 	}, err
 }
 
@@ -356,7 +349,7 @@ func (a *ValidationApplier) ApplySignedMessage(epoch abi.ChainEpoch, msg *vtypes
 	}
 
 	// Invoke.
-	ourreceipt, penalty, reward := a.state.vm.applyMessage(ourMsg, ourSigned.OnChainLen(), &fakeRandSrc{})
+	ourreceipt, penalty, reward := a.stateView.vm.applyMessage(ourMsg, ourSigned.OnChainLen(), &fakeRandSrc{})
 
 	// Persist changes.
 	receipt, err := a.postApplyMessage(ourreceipt)
@@ -364,15 +357,15 @@ func (a *ValidationApplier) ApplySignedMessage(epoch abi.ChainEpoch, msg *vtypes
 		Receipt: receipt,
 		Penalty: penalty,
 		Reward:  reward,
-		Root:    a.state.Root().String(),
+		Root:    a.stateView.Root().String(),
 	}, err
 }
 
 func (a *ValidationApplier) preApplyMessage(epoch abi.ChainEpoch, msg *vtypes.Message) *types.UnsignedMessage {
 	// set epoch
 	// Note: this would have normally happened during `ApplyTipset()`
-	a.state.vm.currentEpoch = epoch
-	a.state.vm.pricelist = gascost.PricelistByEpoch(epoch)
+	a.stateView.vm.currentEpoch = epoch
+	a.stateView.vm.pricelist = PricelistByEpoch(epoch)
 
 	// map message
 	return toOurMessage(msg)
@@ -381,7 +374,7 @@ func (a *ValidationApplier) preApplyMessage(epoch abi.ChainEpoch, msg *vtypes.Me
 func (a *ValidationApplier) postApplyMessage(ourreceipt message.Receipt) (vtypes.MessageReceipt, error) {
 	// commit and persist changes
 	// Note: this is not done on production for each msg
-	if err := a.state.PersistChanges(); err != nil {
+	if err := a.stateView.PersistChanges(); err != nil {
 		return vtypes.MessageReceipt{}, err
 	}
 
@@ -449,7 +442,7 @@ func (a *ValidationApplier) ApplyTipSetMessages(epoch abi.ChainEpoch, blocks []v
 	ourBlkMsgs := toOurBlockMessageInfoType(blocks)
 	// TODO: pass through parameter when chain validation type signature is updated to propagate it
 	head := block.NewTipSetKey()
-	receipts, err := a.state.vm.ApplyTipSetMessages(ourBlkMsgs, head, epoch, rnd)
+	receipts, err := a.stateView.vm.ApplyTipSetMessages(ourBlkMsgs, head, epoch, rnd)
 	if err != nil {
 		return vtypes.ApplyTipSetResult{}, err
 	}
@@ -465,7 +458,7 @@ func (a *ValidationApplier) ApplyTipSetMessages(epoch abi.ChainEpoch, blocks []v
 
 	return vtypes.ApplyTipSetResult{
 		Receipts: theirReceipts,
-		Root:     a.state.Root().String(),
+		Root:     a.stateView.Root().String(),
 	}, nil
 }
 
@@ -536,7 +529,7 @@ func (k *KeyManager) newBLSKey() *gfcrypto.KeyInfo {
 	//sk := ffi.PrivateKeyGenerate(s.blsSeed)
 	// s.blsSeed++
 	sk := [32]byte{}
-	sk[0] = uint8(k.blsSeed) // hack to keep gas values and state roots determinist
+	sk[0] = uint8(k.blsSeed) // hack to keep gas values and stateView roots determinist
 	k.blsSeed++
 	return &gfcrypto.KeyInfo{
 		SigType:    acrypto.SigTypeBLS,
@@ -564,3 +557,4 @@ func (a *actorWrapper) CallSeqNum() uint64 {
 func (a *actorWrapper) Balance() abi.TokenAmount {
 	return a.Actor.Balance
 }
+*/

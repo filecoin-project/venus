@@ -1,10 +1,13 @@
 package dispatch
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"reflect"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 )
@@ -21,11 +24,11 @@ type Dispatcher interface {
 	//
 	// - The `ctx` argument will be coerced to the type the method expects in its first argument.
 	// - If arg1 is `[]byte`, it will attempt to decode the value based on second argument in the target method.
-	Dispatch(method abi.MethodNum, ctx interface{}, arg1 interface{}) (interface{}, error)
+	Dispatch(method abi.MethodNum, ctx interface{}, arg1 interface{}) ([]byte, *ExcuteError)
 	// Signature is a helper function that returns the signature for a given method.
 	//
 	// Note: This is intended to be used by tests and tools.
-	Signature(method abi.MethodNum) (MethodSignature, error)
+	Signature(method abi.MethodNum) (MethodSignature, *ExcuteError)
 }
 
 type actorDispatcher struct {
@@ -41,11 +44,11 @@ type method interface {
 var _ Dispatcher = (*actorDispatcher)(nil)
 
 // Dispatch implements `Dispatcher`.
-func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, ctx interface{}, arg1 interface{}) (interface{}, error) {
+func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, ctx interface{}, arg1 interface{}) ([]byte, *ExcuteError) {
 	// get method signature
 	m, err := d.signature(methodNum)
 	if err != nil {
-		return nil, err
+		return []byte{}, err
 	}
 
 	// build args to pass to the method
@@ -60,13 +63,13 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, ctx interface{}, arg
 	} else if raw, ok := arg1.([]byte); ok {
 		obj, err := m.ArgInterface(raw)
 		if err != nil {
-			return nil, err
+			return []byte{}, NewExcuteError(exitcode.SysErrSenderInvalid, "fail to decode params")
 		}
 		args = append(args, reflect.ValueOf(obj))
 	} else if raw, ok := arg1.(runtime.CBORBytes); ok {
 		obj, err := m.ArgInterface(raw)
 		if err != nil {
-			return nil, err
+			return []byte{}, NewExcuteError(exitcode.SysErrSenderInvalid, "fail to decode params")
 		}
 		args = append(args, reflect.ValueOf(obj))
 	} else {
@@ -77,9 +80,9 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, ctx interface{}, arg
 	out := m.method.Call(args)
 
 	// Note: we only support single objects being returned
-	if len(out) > 1 {
+	/*if len(out) > 1 {  todo nocheck and lotus nocheck too
 		return nil, fmt.Errorf("actor method returned more than one object. method: %d, code: %s", methodNum, d.code)
-	}
+	}*/
 
 	// method returns unit
 	// Note: we need to check for `IsNill()` here because Go doesnt work if you do `== nil` on the interface
@@ -87,21 +90,35 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, ctx interface{}, arg
 		return nil, nil
 	}
 
-	// forward return
-	return out[0].Interface(), nil
+	switch ret := out[0].Interface().(type) {
+	case []byte:
+		return ret, nil
+	case *abi.EmptyValue:
+		return []byte{}, nil
+	case cbor.Marshaler:
+		buf := new(bytes.Buffer)
+		if err := ret.MarshalCBOR(buf); err != nil {
+			return []byte{}, NewExcuteError(2, "failed to marshal response to cbor err:%v", err)
+		}
+		return buf.Bytes(), nil
+	case nil:
+		return []byte{}, nil
+	default:
+		return []byte{}, NewExcuteError(3, "could not determine type for response from call")
+	}
 }
 
-func (d *actorDispatcher) signature(methodID abi.MethodNum) (*methodSignature, error) {
+func (d *actorDispatcher) signature(methodID abi.MethodNum) (*methodSignature, *ExcuteError) {
 	exports := d.actor.Exports()
 
 	// get method entry
 	methodIdx := (uint64)(methodID)
 	if len(exports) < (int)(methodIdx) {
-		return nil, fmt.Errorf("Method undefined. method: %d, code: %s", methodID, d.code)
+		return nil, NewExcuteError(exitcode.SysErrInvalidMethod, "Method undefined. method: %d, code: %s", methodID, d.code)
 	}
 	entry := exports[methodIdx]
 	if entry == nil {
-		return nil, fmt.Errorf("Method undefined. method: %d, code: %s", methodID, d.code)
+		return nil, NewExcuteError(exitcode.SysErrInvalidMethod, "Method undefined. method: %d, code: %s", methodID, d.code)
 	}
 
 	ventry := reflect.ValueOf(entry)
@@ -109,6 +126,24 @@ func (d *actorDispatcher) signature(methodID abi.MethodNum) (*methodSignature, e
 }
 
 // Signature implements `Dispatcher`.
-func (d *actorDispatcher) Signature(methodNum abi.MethodNum) (MethodSignature, error) {
+func (d *actorDispatcher) Signature(methodNum abi.MethodNum) (MethodSignature, *ExcuteError) {
 	return d.signature(methodNum)
+}
+
+type ExcuteError struct {
+	code exitcode.ExitCode
+	msg  string
+}
+
+func NewExcuteError(code exitcode.ExitCode, msg string, args ...interface{}) *ExcuteError {
+	return &ExcuteError{code: code, msg: fmt.Sprint(msg, args)}
+}
+
+func (err *ExcuteError) ExitCode() exitcode.ExitCode {
+	return err.code
+}
+
+func (err *ExcuteError) Error() string {
+	return err.msg
+
 }

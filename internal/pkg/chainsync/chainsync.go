@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
 )
 
@@ -22,23 +23,30 @@ type BlockProposer interface {
 
 // Manager sync the chain.
 type Manager struct {
-	syncer       *syncer.Syncer
-	dispatcher   *dispatcher.Dispatcher
-	transitionCh chan bool
+	syncer     *syncer.Syncer
+	dispatcher *dispatcher.Dispatcher
 }
 
 // NewManager creates a new chain sync manager.
-func NewManager(fv syncer.FullBlockValidator, hv syncer.BlockValidator, cs syncer.ChainSelector, s syncer.ChainReaderWriter, m *chain.MessageStore, f syncer.Fetcher, c clock.Clock, detector *slashing.ConsensusFaultDetector) (Manager, error) {
-	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, f, status.NewReporter(), c, detector)
+func NewManager(fv syncer.FullBlockValidator,
+	hv syncer.BlockValidator,
+	cs syncer.ChainSelector,
+	s syncer.ChainReaderWriter,
+	m *chain.MessageStore,
+	f syncer.Fetcher,
+	c clock.Clock,
+	checkPoint block.TipSetKey,
+	detector *slashing.ConsensusFaultDetector,
+	fork fork.IFork) (Manager, error) {
+	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, f, status.NewReporter(), c, detector, checkPoint, fork)
 	if err != nil {
 		return Manager{}, err
 	}
 	gapTransitioner := dispatcher.NewGapTransitioner(s, syncer)
 	dispatcher := dispatcher.NewDispatcher(syncer, gapTransitioner)
 	return Manager{
-		syncer:       syncer,
-		dispatcher:   dispatcher,
-		transitionCh: gapTransitioner.TransitionChannel(),
+		syncer:     syncer,
+		dispatcher: dispatcher,
 	}, nil
 }
 
@@ -51,11 +59,6 @@ func (m *Manager) Start(ctx context.Context) error {
 // BlockProposer returns the block proposer.
 func (m *Manager) BlockProposer() BlockProposer {
 	return m.dispatcher
-}
-
-// TransitionChannel returns a channel emitting transition flags.
-func (m *Manager) TransitionChannel() chan bool {
-	return m.transitionCh
 }
 
 // Status returns the block proposer.

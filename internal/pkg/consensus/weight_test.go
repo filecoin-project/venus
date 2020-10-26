@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	fbig "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/go-state-types/abi"
+	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +22,7 @@ func TestWeight(t *testing.T) {
 	cst := cbor.NewMemCborStore()
 	ctx := context.Background()
 	fakeTree := state.NewFromString(t, "test-Weight-StateCid", cst)
-	fakeRoot, err := fakeTree.Commit(ctx)
+	fakeRoot, err := fakeTree.Flush(ctx)
 	require.NoError(t, err)
 	// We only care about total power for the weight function
 	// Total is 16, so bitlen is 5, log2b is 4

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/crypto"
 )
 
 // Signer signs data with a private key obtained internally from a provided address.

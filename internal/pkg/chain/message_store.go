@@ -2,27 +2,32 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 )
 
 // MessageProvider is an interface exposing the load methods of the
 // MessageStore.
 type MessageProvider interface {
 	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
-	LoadReceipts(context.Context, cid.Cid) ([]vm.MessageReceipt, error)
+	LoadReceipts(context.Context, cid.Cid) ([]types.MessageReceipt, error)
 	LoadTxMeta(context.Context, cid.Cid) (types.TxMeta, error)
 }
 
@@ -30,7 +35,7 @@ type MessageProvider interface {
 // MessageStore.
 type MessageWriter interface {
 	StoreMessages(ctx context.Context, secpMessages []*types.SignedMessage, blsMessages []*types.UnsignedMessage) (cid.Cid, error)
-	StoreReceipts(context.Context, []vm.MessageReceipt) (cid.Cid, error)
+	StoreReceipts(context.Context, []types.MessageReceipt) (cid.Cid, error)
 	StoreTxMeta(context.Context, types.TxMeta) (cid.Cid, error)
 }
 
@@ -112,7 +117,7 @@ func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "could not store secp cids as AMT")
 	}
-	ret.SecpRoot = e.NewCid(secpRaw)
+	ret.SecpRoot = enccid.NewCid(secpRaw)
 
 	// store bls messages
 	blsCids, err := ms.storeUnsignedMessages(blsMessages)
@@ -123,23 +128,82 @@ func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "could not store bls cids as AMT")
 	}
-	ret.BLSRoot = e.NewCid(blsRaw)
+	ret.BLSRoot = enccid.NewCid(blsRaw)
 
 	return ms.StoreTxMeta(ctx, ret)
 }
 
+//load message from tipset NOTICE skip message with the same nonce
+func (ms *MessageStore) LoadTipSetMesssages(ctx context.Context, ts *block.TipSet) ([][]*types.SignedMessage, [][]*types.UnsignedMessage, error) {
+	var secpMessages [][]*types.SignedMessage
+	var blsMessages [][]*types.UnsignedMessage
+
+	applied := make(map[address.Address]uint64)
+
+	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
+		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
+		if _, ok := applied[m.From]; !ok {
+			applied[m.From] = m.CallSeqNum
+		}
+
+		if applied[m.From] != m.CallSeqNum {
+			return false, nil
+		}
+
+		applied[m.From]++
+
+		return true, nil
+	}
+
+	for i := 0; i < ts.Len(); i++ {
+		blk := ts.At(i)
+		secpMsgs, blsMsgs, err := ms.LoadMessages(ctx, blk.Messages.Cid)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
+		}
+
+		var blksecpMessages []*types.SignedMessage
+		var blkblsMessages []*types.UnsignedMessage
+
+		for _, msg := range blsMsgs {
+			b, err := selectMsg(msg)
+			if err != nil {
+				return nil, nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
+			}
+			if b {
+				blkblsMessages = append(blkblsMessages, msg)
+			}
+		}
+
+		for _, msg := range secpMsgs {
+			b, err := selectMsg(&msg.Message)
+			if err != nil {
+				return nil, nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
+			}
+			if b {
+				blksecpMessages = append(blksecpMessages, msg)
+			}
+		}
+
+		blsMessages = append(blsMessages, blkblsMessages)
+		secpMessages = append(secpMessages, blksecpMessages)
+	}
+
+	return secpMessages, blsMessages, nil
+}
+
 // LoadReceipts loads the signed messages in the collection with cid c from ipld
 // storage and returns the slice implied by the collection
-func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]vm.MessageReceipt, error) {
+func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]types.MessageReceipt, error) {
 	rawReceipts, err := ms.loadAMTRaw(ctx, c)
 	if err != nil {
 		return nil, err
 	}
 
 	// load receipts from cids
-	receipts := make([]vm.MessageReceipt, len(rawReceipts))
+	receipts := make([]types.MessageReceipt, len(rawReceipts))
 	for i, raw := range rawReceipts {
-		receipt := vm.MessageReceipt{}
+		receipt := types.MessageReceipt{}
 		if err := encoding.Decode(raw, &receipt); err != nil {
 			return nil, errors.Wrapf(err, "could not decode receipt %s", c)
 		}
@@ -151,7 +215,7 @@ func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]vm.Messa
 
 // StoreReceipts puts the input signed messages to a collection and then writes
 // this collection to ipld storage.  The cid of the collection is returned.
-func (ms *MessageStore) StoreReceipts(ctx context.Context, receipts []vm.MessageReceipt) (cid.Cid, error) {
+func (ms *MessageStore) StoreReceipts(ctx context.Context, receipts []types.MessageReceipt) (cid.Cid, error) {
 	// store secp messages
 	rawReceipts, err := ms.storeMessageReceipts(receipts)
 	if err != nil {
@@ -244,7 +308,7 @@ func (ms *MessageStore) StoreTxMeta(ctx context.Context, meta types.TxMeta) (cid
 	return c, err
 }
 
-func (ms *MessageStore) storeMessageReceipts(receipts []vm.MessageReceipt) ([][]byte, error) {
+func (ms *MessageStore) storeMessageReceipts(receipts []types.MessageReceipt) ([][]byte, error) {
 	rawReceipts := make([][]byte, len(receipts))
 	for i, rcpt := range receipts {
 		_, rcptBlock, err := ms.storeBlock(rcpt)
@@ -302,4 +366,87 @@ func (ms *MessageStore) storeAMTCids(ctx context.Context, cids []cid.Cid) (cid.C
 		cidMarshallers[i] = &cidMarshaller
 	}
 	return amt.FromArray(ctx, as, cidMarshallers)
+}
+
+// ToDo review add by force
+func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch) abi.TokenAmount {
+	// deta := gasLimitUsed/noOfBlocks - build.BlockGasTarget
+	// change := baseFee * deta / BlockGasTarget
+	// nextBaseFee = baseFee + change
+	// nextBaseFee = max(nextBaseFee, build.MinimumBaseFee)
+
+	var delta int64
+	if epoch > fork.UpgradeSmokeHeight {
+		delta = gasLimitUsed / int64(noOfBlocks)
+		delta -= types.BlockGasTarget
+	} else {
+		delta = types.PackingEfficiencyDenom * gasLimitUsed / (int64(noOfBlocks) * types.PackingEfficiencyNum)
+		delta -= types.BlockGasTarget
+	}
+
+	// cap change at 12.5% (BaseFeeMaxChangeDenom) by capping delta
+	if delta > types.BlockGasTarget {
+		delta = types.BlockGasTarget
+	}
+	if delta < -types.BlockGasTarget {
+		delta = -types.BlockGasTarget
+	}
+
+	change := big.Mul(baseFee, big.NewInt(delta))
+	change = big.Div(change, big.NewInt(types.BlockGasTarget))
+	change = big.Div(change, big.NewInt(types.BaseFeeMaxChangeDenom))
+
+	nextBaseFee := big.Add(baseFee, change)
+	if big.Cmp(nextBaseFee, big.NewInt(types.MinimumBaseFee)) < 0 {
+		nextBaseFee = big.NewInt(types.MinimumBaseFee)
+	}
+	return nextBaseFee
+}
+
+func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet) (abi.TokenAmount, error) {
+	zero := abi.NewTokenAmount(0)
+	baseHeight, err := ts.Height()
+	if err != nil {
+		return zero, err
+	}
+	if baseHeight > fork.UpgradeBreezeHeight && baseHeight < fork.UpgradeBreezeHeight + fork.BreezeGasTampingDuration {
+		return abi.NewTokenAmount(100), nil
+	}
+
+	// totalLimit is sum of GasLimits of unique messages in a tipset
+	totalLimit := int64(0)
+
+	seen := make(map[cid.Cid]struct{})
+
+	for _, b := range ts.Blocks() {
+		secpMsgs, blsMsgs, err := ms.LoadMessages(ctx, b.Messages.Cid)
+		if err != nil {
+			return zero, xerrors.Errorf("error getting messages for: %s: %w", b.Cid(), err)
+		}
+
+		for _, m := range blsMsgs {
+			c, err := m.Cid()
+			if err != nil {
+				return zero, xerrors.Errorf("error getting cid for message: %v: %w", m, err)
+			}
+			if _, ok := seen[c]; !ok {
+				totalLimit += int64(m.GasLimit)
+				seen[c] = struct{}{}
+			}
+		}
+		for _, m := range secpMsgs {
+			c, err := m.Cid()
+			if err != nil {
+				return zero, xerrors.Errorf("error getting cid for signed message: %v: %w", m, err)
+			}
+			if _, ok := seen[c]; !ok {
+				totalLimit += int64(m.Message.GasLimit)
+				seen[c] = struct{}{}
+			}
+		}
+	}
+
+	parentBaseFee := ts.Blocks()[0].ParentBaseFee
+
+	return ComputeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks()), baseHeight), nil
 }

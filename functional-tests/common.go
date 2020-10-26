@@ -3,19 +3,17 @@ package functional
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
+	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/drand"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
@@ -46,7 +44,7 @@ func loadGenesisConfig(t *testing.T, path string) *gengen.GenesisCfg {
 	return &cfg
 }
 
-func makeNode(ctx context.Context, t *testing.T, seed *node.ChainSeed, chainClock clock.ChainEpochClock, drand drand.IFace) *node.Node {
+func makeNode(ctx context.Context, t *testing.T, seed *node.ChainSeed, chainClock clock.ChainEpochClock, drand beacon.Schedule) *node.Node {
 	builder := test.NewNodeBuilder(t).
 		WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
 		WithGenesisInit(seed.GenesisInitFunc).
@@ -61,31 +59,12 @@ func initNodeGenesisMiner(ctx context.Context, t *testing.T, nd *node.Node, seed
 	seed.GiveKey(t, nd, minerIdx)
 	miner, owner := seed.GiveMiner(t, nd, 0)
 
-	gen, err := nd.Chain().ChainReader.GetGenesisBlock(ctx)
-	require.NoError(t, err)
+	//gen, err := nd.Chain().ChainReader.GetGenesisBlock(ctx)
+	//require.NoError(t, err)
 
 	c := nd.Repo.Config()
-	c.SectorBase.PreSealedSectorsDirPath = presealPath
-	err = nd.Repo.ReplaceConfig(c)
+	err := nd.Repo.ReplaceConfig(c)
 	require.NoError(t, err)
 
-	err = node.InitSectors(ctx, nd.Repo, gen)
-	require.NoError(t, err)
 	return miner, owner, err
-}
-
-func simulateBlockMining(ctx context.Context, t *testing.T, fakeClock clock.Fake, blockTime time.Duration, node *node.Node) {
-	var err error
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			// check error from previous loop (but only if not done)
-			require.NoError(t, err)
-
-			fakeClock.Advance(blockTime)
-			_, err = node.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-		}
-	}
 }

@@ -1,13 +1,12 @@
 package commands
 
 import (
-	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
 	"github.com/libp2p/go-libp2p-core/metrics"
 )
 
 var statsCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "View various filecoin node statistics",
 	},
 	Subcommands: map[string]*cmds.Command{
@@ -16,7 +15,7 @@ var statsCmd = &cmds.Command{
 }
 
 var statsBandwidthCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
+	Helptext: cmds.HelpText{
 		Tagline: "View bandwidth usage metrics",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {

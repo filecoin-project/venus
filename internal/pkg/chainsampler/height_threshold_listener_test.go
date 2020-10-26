@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/stretchr/testify/assert"
@@ -49,7 +49,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 
 		nextTS := builder.Build(startHead, 1, nil)
 		go func() {
-			_, err := listener.Handle([]block.TipSet{nextTS})
+			_, err := listener.Handle([]*block.TipSet{nextTS})
 			require.NoError(t, err)
 		}()
 
@@ -75,7 +75,7 @@ func TestNewHeightThresholdListener(t *testing.T) {
 
 		shorterFork := builder.BuildManyOn(1, startHead, nil)
 		go func() {
-			_, err := listener.Handle([]block.TipSet{shorterFork})
+			_, err := listener.Handle([]*block.TipSet{shorterFork})
 			require.NoError(t, err)
 		}()
 
@@ -167,14 +167,14 @@ func TestNewHeightThresholdListener(t *testing.T) {
 
 		// add tipsets till finality
 		go func() {
-			for i := abi.ChainEpoch(0); i < miner.ChainFinalityish; i++ {
+			for i := abi.ChainEpoch(0); i < miner.ChainFinality; i++ {
 				nextTS = builder.BuildOn(nextTS, 1, nil)
-				valid, err := listener.Handle([]block.TipSet{nextTS})
+				valid, err := listener.Handle([]*block.TipSet{nextTS})
 				require.NoError(t, err)
 
 				h, err := nextTS.Height()
 				require.NoError(t, err)
-				if h >= 8+miner.ChainFinalityish {
+				if h >= 8+miner.ChainFinality {
 					assert.False(t, valid)
 				} else {
 					assert.True(t, valid)
@@ -240,8 +240,8 @@ func waitForInvalidation(t *testing.T, hc chan block.TipSetKey, ec chan error, i
 	}
 }
 
-func tipsetToSlice(ts block.TipSet, ancestors int, builder *chain.Builder) ([]block.TipSet, error) {
-	s := make([]block.TipSet, ancestors)
+func tipsetToSlice(ts *block.TipSet, ancestors int, builder *chain.Builder) ([]*block.TipSet, error) {
+	s := make([]*block.TipSet, ancestors)
 	for i := 0; i < ancestors; i++ {
 		s[i] = ts
 

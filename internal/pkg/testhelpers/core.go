@@ -28,7 +28,7 @@ func RequireMakeStateTree(t *testing.T, cst cbor.IpldStore, acts map[address.Add
 		require.NoError(t, err)
 	}
 
-	c, err := tree.Commit(ctx)
+	c, err := tree.Flush(ctx)
 	require.NoError(t, err)
 
 	return c, tree
@@ -36,14 +36,14 @@ func RequireMakeStateTree(t *testing.T, cst cbor.IpldStore, acts map[address.Add
 
 // RequireNewMinerActor creates a new miner actor with the given owner, pledge, and collateral,
 // and requires that its steps succeed.
-func RequireNewMinerActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.Storage, owner address.Address, pledge uint64, pid peer.ID, coll types.AttoFIL) (*actor.Actor, address.Address) {
+func RequireNewMinerActor(ctx context.Context, t *testing.T, st state.State, vms vm.Storage, owner address.Address, pledge uint64, pid peer.ID, coll types.AttoFIL) (*actor.Actor, address.Address) {
 	// Dragons: re-write using the new actor states structures directly
 
 	return nil, address.Undef
 }
 
 // RequireLookupActor converts the given address to an id address before looking up the actor in the state tree
-func RequireLookupActor(ctx context.Context, t *testing.T, st state.Tree, vms vm.Storage, actorAddr address.Address) (*actor.Actor, address.Address) {
+func RequireLookupActor(ctx context.Context, t *testing.T, st state.State, vms vm.Storage, actorAddr address.Address) (*actor.Actor, address.Address) {
 	// Dragons: delete, nothing outside the vm should be concerned about actor id indexes
 
 	return nil, address.Undef

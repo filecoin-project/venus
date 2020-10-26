@@ -2,11 +2,12 @@ package vm
 
 import (
 	"bytes"
+	cbor2 "github.com/filecoin-project/go-state-types/cbor"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -30,7 +31,7 @@ func NewTestStorage(state interface{}) *TestStorage {
 var _ specsruntime.Store = (*TestStorage)(nil)
 
 // Put implements runtime.Store.
-func (ts *TestStorage) Put(v specsruntime.CBORMarshaler) cid.Cid {
+func (ts *TestStorage) StorePut(v cbor2.Marshaler) cid.Cid {
 	ts.state = v
 	if cm, ok := v.(cbg.CBORMarshaler); ok {
 		buf := new(bytes.Buffer)
@@ -47,7 +48,7 @@ func (ts *TestStorage) Put(v specsruntime.CBORMarshaler) cid.Cid {
 }
 
 // Get implements runtime.Store.
-func (ts *TestStorage) Get(cid cid.Cid, obj specsruntime.CBORUnmarshaler) bool {
+func (ts *TestStorage) StoreGet(cid cid.Cid, obj cbor2.Unmarshaler) bool {
 	node, err := cbor.WrapObject(ts.state, constants.DefaultHashFunction, -1)
 	if err != nil {
 		return false

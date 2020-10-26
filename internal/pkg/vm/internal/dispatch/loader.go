@@ -1,8 +1,7 @@
 package dispatch
 
 import (
-	"fmt"
-
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/ipfs/go-cid"
 )
 
@@ -12,10 +11,10 @@ type CodeLoader struct {
 }
 
 // GetActorImpl returns executable code for an actor by code cid at a specific protocol version
-func (cl CodeLoader) GetActorImpl(code cid.Cid) (Dispatcher, error) {
+func (cl CodeLoader) GetActorImpl(code cid.Cid) (Dispatcher, *ExcuteError) {
 	actor, ok := cl.actors[code]
 	if !ok {
-		return nil, fmt.Errorf("Actor code not found. code: %s", code)
+		return nil, NewExcuteError(exitcode.SysErrorIllegalActor, "Actor code not found. code: %s", code)
 	}
 	return &actorDispatcher{code: code, actor: actor}, nil
 }

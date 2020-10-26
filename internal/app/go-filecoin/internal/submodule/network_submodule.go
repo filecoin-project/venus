@@ -2,13 +2,20 @@ package submodule
 
 import (
 	"context"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	dtnet "github.com/filecoin-project/go-data-transfer/network"
+	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
+	"github.com/filecoin-project/go-storedcounter"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
+	"runtime"
 	"time"
 
 	"github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	graphsync "github.com/ipfs/go-graphsync"
+	"github.com/ipfs/go-graphsync"
 	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
@@ -22,13 +29,13 @@ import (
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
+	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
@@ -53,6 +60,10 @@ type NetworkSubmodule struct {
 	Network *net.Network
 
 	GraphExchange graphsync.GraphExchange
+
+	//data transfer
+	DataTransfer     datatransfer.Manager
+	DataTransferHost dtnet.DataTransferNetwork
 }
 
 type blankValidator struct{}
@@ -89,13 +100,19 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	var pubsubMessageSigning bool
 	if !config.OfflineMode() {
 		makeDHT := func(h host.Host) (routing.Routing, error) {
+			mode := dht.ModeServer
+			opts := []dht.Option{dht.Mode(mode),
+				dht.Datastore(repo.Datastore()),
+				dht.NamespacedValidator("v", validator),
+				dht.ProtocolPrefix(net.FilecoinDHT(networkName)),
+				dht.QueryFilter(dht.PublicQueryFilter),
+				dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
+				dht.DisableProviders(),
+				dht.DisableValues()}
 			r, err := dht.New(
-				ctx,
-				h,
-				dhtopts.Datastore(repo.Datastore()),
-				dhtopts.NamespacedValidator("v", validator),
-				dhtopts.Protocols(net.FilecoinDHT(networkName)),
+				ctx, h, opts...,
 			)
+
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to setup routing")
 			}
@@ -121,7 +138,21 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	// to enable publishing on first connection.  The default of one
 	// second is not acceptable for tests.
 	libp2pps.GossipSubHeartbeatInterval = 100 * time.Millisecond
-	gsub, err := libp2pps.NewGossipSub(ctx, peerHost, libp2pps.WithMessageSigning(pubsubMessageSigning), libp2pps.WithDiscovery(&discovery.NoopDiscovery{}))
+	options := []libp2pps.Option{
+		// Gossipsubv1.1 configuration
+		libp2pps.WithFloodPublish(true),
+
+		//  校验 buffer 队列, 32 -> 10K
+		libp2pps.WithValidateQueueSize(10 << 10),
+		// 校验 worker 数量, 1x cpu -> 2x cpu
+		libp2pps.WithValidateWorkers(runtime.NumCPU() * 2),
+		// 校验 goroutine 数量阈值 8K -> 16K
+		libp2pps.WithValidateThrottle(16 << 10),
+
+		libp2pps.WithMessageSigning(pubsubMessageSigning),
+		libp2pps.WithDiscovery(&discovery.NoopDiscovery{}),
+	}
+	gsub, err := libp2pps.NewGossipSub(ctx, peerHost, options...)
 	if err != nil {
 		return NetworkSubmodule{}, errors.Wrap(err, "failed to set up network")
 	}
@@ -140,17 +171,28 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	storer := gsstoreutil.StorerForBlockstore(blockstore.Blockstore)
 	gsync := graphsyncimpl.New(ctx, graphsyncNetwork, loader, storer, graphsyncimpl.RejectAllRequestsByDefault())
 
+	//dataTransger
+	sc := storedcounter.New(repo.Datastore(), datastore.NewKey("/datatransfer/client/counter"))
+	dtNet := dtnet.NewFromLibp2pHost(peerHost)
+	dtDs := namespace.Wrap(repo.Datastore(), datastore.NewKey("/datatransfer/client/transfers"))
+	transport := dtgstransport.NewTransport(peerHost.ID(), gsync)
+	dt, err := dtimpl.NewDataTransfer(dtDs, dtNet, transport, sc)
+	if err != nil {
+		return NetworkSubmodule{}, err
+	}
 	// build network
 	network := net.New(peerHost, net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService))
 	// build the network submdule
 	return NetworkSubmodule{
-		NetworkName:   networkName,
-		Host:          peerHost,
-		Router:        router,
-		pubsub:        gsub,
-		Bitswap:       bswap,
-		GraphExchange: gsync,
-		Network:       network,
+		NetworkName:      networkName,
+		Host:             peerHost,
+		Router:           router,
+		pubsub:           gsub,
+		Bitswap:          bswap,
+		GraphExchange:    gsync,
+		Network:          network,
+		DataTransfer:     dt,
+		DataTransferHost: dtNet,
 	}, nil
 }
 
@@ -201,7 +243,7 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 			return nil, err
 		}
 		// Set up autoNATService as a streamhandler on the host.
-		_, err = autonatsvc.NewAutoNATService(ctx, relayHost)
+		_, err = autonatsvc.NewAutoNATService(ctx, relayHost, true)
 		if err != nil {
 			return nil, err
 		}

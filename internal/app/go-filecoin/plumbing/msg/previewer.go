@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -17,7 +17,7 @@ import (
 type previewerChainReader interface {
 	GetHead() block.TipSetKey
 	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
-	GetTipSet(block.TipSetKey) (block.TipSet, error)
+	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 }
 
 // Dragons: delete

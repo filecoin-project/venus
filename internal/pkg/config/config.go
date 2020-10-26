@@ -10,10 +10,8 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // Config is an in memory representation of the filecoin configuration file
@@ -21,12 +19,9 @@ type Config struct {
 	API           *APIConfig           `json:"api"`
 	Bootstrap     *BootstrapConfig     `json:"bootstrap"`
 	Datastore     *DatastoreConfig     `json:"datastore"`
-	Drand         *DrandConfig         `json:"drand"`
-	Mining        *MiningConfig        `json:"mining"`
 	Mpool         *MessagePoolConfig   `json:"mpool"`
 	NetworkParams *NetworkParamsConfig `json:"parameters"`
 	Observability *ObservabilityConfig `json:"observability"`
-	SectorBase    *SectorBaseConfig    `json:"sectorbase"`
 	Swarm         *SwarmConfig         `json:"swarm"`
 	Wallet        *WalletConfig        `json:"wallet"`
 }
@@ -103,21 +98,6 @@ func newDefaultBootstrapConfig() *BootstrapConfig {
 	}
 }
 
-// MiningConfig holds all configuration options related to mining.
-type MiningConfig struct {
-	MinerAddress            address.Address `json:"minerAddress"`
-	AutoSealIntervalSeconds uint            `json:"autoSealIntervalSeconds"`
-	StoragePrice            types.AttoFIL   `json:"storagePrice"`
-}
-
-func newDefaultMiningConfig() *MiningConfig {
-	return &MiningConfig{
-		MinerAddress:            address.Undef,
-		AutoSealIntervalSeconds: 120,
-		StoragePrice:            types.ZeroAttoFIL,
-	}
-}
-
 // WalletConfig holds all configuration options related to the wallet.
 type WalletConfig struct {
 	DefaultAddress address.Address `json:"defaultAddress,omitempty"`
@@ -131,30 +111,8 @@ func newDefaultWalletConfig() *WalletConfig {
 
 // DrandConfig holds all configuration options related to pulling randomness from Drand servers
 type DrandConfig struct {
-	// Addresses are are drand server addresses in the format
-	Addresses []string `json:"addresses"`
-	// Secure is whether or not the drand address are secure (e.g. TLS)
-	Secure bool `json:"secure"`
-	// DistKey is the distributed public key of the server group expressed as hex encoded coefficients
-	DistKey       [][]byte `json:"distKey"`
-	StartTimeUnix int64    `json:"startTimeUnix"`
-	RoundSeconds  int      `json:"roundSeconds"`
-}
-
-func newDefaultDrandConfig() *DrandConfig {
-	return &DrandConfig{
-		Addresses: []string{
-			"localhost:8080",
-			"localhost:8081",
-			"localhost:8082",
-			"localhost:8083",
-			"localhost:8084",
-		},
-		Secure:        false,
-		DistKey:       [][]byte{},
-		StartTimeUnix: 0,
-		RoundSeconds:  30,
-	}
+	StartTimeUnix int64 `json:"startTimeUnix"`
+	RoundSeconds  int   `json:"roundSeconds"`
 }
 
 // HeartbeatConfig holds all configuration options related to node heartbeat.
@@ -245,31 +203,11 @@ func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 	return &NetworkParamsConfig{
 		ConsensusMinerMinPower: 0, // 0 means don't override the value
 		ReplaceProofTypes: []int64{
-			int64(abi.RegisteredProof_StackedDRG2KiBSeal),
-			int64(abi.RegisteredProof_StackedDRG512MiBSeal),
-			int64(abi.RegisteredProof_StackedDRG32GiBSeal),
-			int64(abi.RegisteredProof_StackedDRG64GiBSeal),
+			int64(abi.RegisteredSealProof_StackedDrg2KiBV1),
+			int64(abi.RegisteredSealProof_StackedDrg512MiBV1),
+			int64(abi.RegisteredSealProof_StackedDrg32GiBV1),
+			int64(abi.RegisteredSealProof_StackedDrg64GiBV1),
 		},
-	}
-}
-
-// SectorBaseConfig holds all configuration options related to the node's
-// sector storage.
-type SectorBaseConfig struct {
-	// RootDir is the absolute path to the root directory holding sector data.
-	// If empty the default of <homedir>/sectors is implied.
-	RootDirPath string `json:"rootdir"`
-
-	// PreSealedSectorsDir is the absolute path to the directory holding any
-	// pre-sealed sector files and corresponding metadata JSON.
-	// If empty, it is assumed that no pre-sealed sectors exist.
-	PreSealedSectorsDirPath string `json:"preSealedSectorsDir"`
-}
-
-func newDefaultSectorbaseConfig() *SectorBaseConfig {
-	return &SectorBaseConfig{
-		RootDirPath:             "",
-		PreSealedSectorsDirPath: "",
 	}
 }
 
@@ -280,12 +218,9 @@ func NewDefaultConfig() *Config {
 		API:           newDefaultAPIConfig(),
 		Bootstrap:     newDefaultBootstrapConfig(),
 		Datastore:     newDefaultDatastoreConfig(),
-		Drand:         newDefaultDrandConfig(),
-		Mining:        newDefaultMiningConfig(),
 		Mpool:         newDefaultMessagePoolConfig(),
 		NetworkParams: newDefaultNetworkParamsConfig(),
 		Observability: newDefaultObservabilityConfig(),
-		SectorBase:    newDefaultSectorbaseConfig(),
 		Swarm:         newDefaultSwarmConfig(),
 		Wallet:        newDefaultWalletConfig(),
 	}
