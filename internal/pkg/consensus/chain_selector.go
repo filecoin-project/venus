@@ -29,17 +29,15 @@ var (
 
 // ChainSelector weighs and compares chains.
 type ChainSelector struct {
-	cstore     cbor.IpldStore
-	state      StateViewer
-	genesisCid cid.Cid
+	cstore cbor.IpldStore
+	state  StateViewer
 }
 
 // NewChainSelector is the constructor for chain selection module.
-func NewChainSelector(cs cbor.IpldStore, state StateViewer, gCid cid.Cid) *ChainSelector {
+func NewChainSelector(cs cbor.IpldStore, state StateViewer) *ChainSelector {
 	return &ChainSelector{
-		cstore:     cs,
-		state:      state,
-		genesisCid: gCid,
+		cstore: cs,
+		state:  state,
 	}
 }
 
@@ -57,7 +55,8 @@ const WRatioDen = uint64(2)
 var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
 
 // Weight returns the EC weight of this TipSet as a filecoin big int.
-func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet, pStateID cid.Cid) (fbig.Int, error) {
+func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet) (fbig.Int, error) {
+	pStateID := ts.At(0).StateRoot.Cid
 	// Retrieve parent weight.
 	if !pStateID.Defined() {
 		return fbig.Zero(), errors.New("undefined state passed to chain selector new weight")
@@ -105,12 +104,12 @@ func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet, pStateID c
 // concatenation of block cids in the tipset.
 // TODO BLOCK CID CONCAT TIE BREAKER IS NOT IN THE SPEC AND SHOULD BE
 // EVALUATED BEFORE GETTING TO PRODUCTION.
-func (c *ChainSelector) IsHeavier(ctx context.Context, a, b *block.TipSet, aStateID, bStateID cid.Cid) (bool, error) {
-	aW, err := c.Weight(ctx, a, aStateID)
+func (c *ChainSelector) IsHeavier(ctx context.Context, a, b *block.TipSet) (bool, error) {
+	aW, err := c.Weight(ctx, a)
 	if err != nil {
 		return false, err
 	}
-	bW, err := c.Weight(ctx, b, bStateID)
+	bW, err := c.Weight(ctx, b)
 	if err != nil {
 		return false, err
 	}

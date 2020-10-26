@@ -32,7 +32,7 @@ var (
 )
 
 // UndefTipSet is a singleton representing a nil or undefined tipset.
-var UndefTipSet = TipSet{}
+var UndefTipSet = &TipSet{}
 
 // NewTipSet builds a new TipSet from a collection of blocks.
 // The blocks must be distinct (different CIDs), have the same height, and same parent set.

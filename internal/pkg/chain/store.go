@@ -626,6 +626,8 @@ func (store *Store) Import(r io.Reader) (*block.TipSet, error) {
 		if curParentTipset.EnsureHeight() == 0 {
 			break
 		}
+
+		//save fake root
 		store.PutTipSetMetadata(context.Background(), &TipSetMetadata{
 			TipSetStateRoot: curTipset.At(0).StateRoot.Cid,
 			TipSet:          curParentTipset,

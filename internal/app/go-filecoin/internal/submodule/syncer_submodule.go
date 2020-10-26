@@ -47,8 +47,8 @@ type syncerConfig interface {
 }
 
 type nodeChainSelector interface {
-	Weight(context.Context, *block.TipSet, cid.Cid) (fbig.Int, error)
-	IsHeavier(ctx context.Context, a, b *block.TipSet, aStateID, bStateID cid.Cid) (bool, error)
+	Weight(context.Context, *block.TipSet) (fbig.Int, error)
+	IsHeavier(ctx context.Context, a, b *block.TipSet) (bool, error)
 }
 
 // NewSyncerSubmodule creates a new chain submodule.
@@ -87,9 +87,10 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 	sampler := chain.NewSampler(chn.ChainReader, genBlk.Ticket)
 	tickets := consensus.NewTicketMachine(sampler)
 	stateViewer := consensus.AsDefaultStateViewer(state.NewViewer(blockstore.CborStore))
+
 	nodeConsensus := consensus.NewExpected(blockstore.CborStore, blockstore.Blockstore, chn.Processor, &stateViewer,
 		config.BlockTime(), tickets, postVerifier, chn.ChainReader, config.ChainClock(), d, chn.State, chn.MessageStore, chn.Fork)
-	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, &stateViewer, config.GenesisCid())
+	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, &stateViewer)
 
 	// setup fecher
 	network.GraphExchange.RegisterIncomingRequestHook(func(p peer.ID, requestData graphsync.RequestData, hookActions graphsync.IncomingRequestHookActions) {

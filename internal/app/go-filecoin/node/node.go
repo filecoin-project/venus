@@ -8,7 +8,6 @@ import (
 
 	fbig "github.com/filecoin-project/go-state-types/big"
 	bserv "github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
@@ -58,8 +57,8 @@ type Node struct {
 	// Subsystems
 	//
 
-	chain         submodule.ChainSubmodule
-	syncer        submodule.SyncerSubmodule
+	chain  submodule.ChainSubmodule
+	syncer submodule.SyncerSubmodule
 
 	//
 	// Supporting services
@@ -74,7 +73,7 @@ type Node struct {
 	// Protocols
 	//
 
-	VersionTable      *version.ProtocolVersionTable
+	VersionTable *version.ProtocolVersionTable
 }
 
 // Start boots up the node.
@@ -225,21 +224,7 @@ func (node *Node) handleSubscription(ctx context.Context, sub pubsub.Subscriptio
 
 // getWeight is the default GetWeight function for the mining worker.
 func (node *Node) getWeight(ctx context.Context, ts *block.TipSet) (fbig.Int, error) {
-	parent, err := ts.Parents()
-	if err != nil {
-		return fbig.Zero(), err
-	}
-	var baseStRoot cid.Cid
-	if parent.Empty() {
-		// use genesis state as parent state of genesis block
-		baseStRoot, err = node.chain.ChainReader.GetTipSetStateRoot(ts.Key())
-	} else {
-		baseStRoot, err = node.chain.ChainReader.GetTipSetStateRoot(parent)
-	}
-	if err != nil {
-		return fbig.Zero(), err
-	}
-	return node.syncer.ChainSelector.Weight(ctx, ts, baseStRoot)
+	return node.syncer.ChainSelector.Weight(ctx, ts)
 }
 
 // -- Accessors

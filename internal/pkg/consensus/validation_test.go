@@ -183,6 +183,10 @@ func (api *FakeIngestionValidatorAPI) Head() block.TipSetKey {
 	return block.NewTipSetKey()
 }
 
+func (api *FakeIngestionValidatorAPI) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
+	return block.UndefTipSet, nil
+}
+
 func (api *FakeIngestionValidatorAPI) GetActorAt(ctx context.Context, key block.TipSetKey, a address.Address) (*actor.Actor, error) {
 	if a == api.ActorAddr {
 		return api.Actor, nil

@@ -129,7 +129,7 @@ func (p *Poster) startPoStIfNeeded(ctx context.Context, newHead *block.TipSet) e
 		return err
 	}
 
-	stateView := p.stateViewer.StateView(root, p.chain.GetNtwkVersion(ctx,tipsetHeight))
+	stateView := p.stateViewer.StateView(root)
 	diInfo, err := stateView.StateMinerProvingDeadline(ctx, p.minerAddr, newHead)
 	if err != nil {
 		return err
@@ -180,8 +180,8 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, di *dline
 			return
 		}
 
-		partitions := make([]miner.Partition,0)
-		if err := deadline.ForEachPartition(func(idx uint64, part miner.Partition) error{
+		partitions := make([]miner.Partition, 0)
+		if err := deadline.ForEachPartition(func(idx uint64, part miner.Partition) error {
 			partitions = append(partitions, part)
 			return nil
 		}); err != nil {
@@ -221,14 +221,14 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, di *dline
 	}
 
 	// Get the partitions for the given deadline
-	deadline, err := stateView.StateMinerDeadlineForIdx(context.TODO(), p.minerAddr,  di.Index, newHead.Key())
+	deadline, err := stateView.StateMinerDeadlineForIdx(context.TODO(), p.minerAddr, di.Index, newHead.Key())
 	if err != nil {
 		log.Errorf("getting deadline error: %v", err)
 		return
 	}
 
-	partitions := make([]miner.Partition,0)
-	if err := deadline.ForEachPartition(func(idx uint64, part miner.Partition) error{
+	partitions := make([]miner.Partition, 0)
+	if err := deadline.ForEachPartition(func(idx uint64, part miner.Partition) error {
 		partitions = append(partitions, part)
 		return nil
 	}); err != nil {
@@ -692,7 +692,7 @@ func (p *Poster) checkNextFaults(ctx context.Context, dlIdx uint64, partitions [
 		Params: enc,
 		Value:  big.NewInt(0), // TODO: Is there a fee?
 	}
-	spec := &types.MessageSendSpec{MaxFee: abi.TokenAmount(big.NewInt(100000000))}  // s.feeCfg.MaxWindowPoStGasFee)}
+	spec := &types.MessageSendSpec{MaxFee: abi.TokenAmount(big.NewInt(100000000))} // s.feeCfg.MaxWindowPoStGasFee)}
 	p.setSender(ctx, msg, spec)
 
 	mcid, _, err := p.outbox.UnSignedSend(ctx, *msg)

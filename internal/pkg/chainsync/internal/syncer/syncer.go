@@ -110,9 +110,9 @@ type messageStore interface {
 type ChainSelector interface {
 	// IsHeavier returns true if tipset a is heavier than tipset b and false if
 	// tipset b is heavier than tipset a.
-	IsHeavier(ctx context.Context, a, b *block.TipSet, aStateID, bStateID cid.Cid) (bool, error)
+	IsHeavier(ctx context.Context, a, b *block.TipSet) (bool, error)
 	// Weight returns the weight of a tipset after the upgrade to version 1
-	Weight(ctx context.Context, ts *block.TipSet, stRoot cid.Cid) (big.Int, error)
+	Weight(ctx context.Context, ts *block.TipSet) (big.Int, error)
 }
 
 // BlockValidator does semanitc validation on headers
@@ -423,7 +423,8 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 // TODO #3537 this should be stored the first time it is computed and retrieved
 // from disk just like aggregate state roots.
 func (syncer *Syncer) calculateParentWeight(ctx context.Context, parent *block.TipSet) (big.Int, error) {
-	return syncer.chainSelector.Weight(ctx, parent, parent.At(0).StateRoot.Cid)
+
+	return syncer.chainSelector.Weight(ctx, parent)
 }
 
 // ancestorsFromStore returns the parent and grandparent tipsets of `ts`
@@ -730,30 +731,30 @@ func (syncer *Syncer) processTipSetSeg(ctx context.Context, segTipset []*block.T
 func (syncer *Syncer) stageIfHeaviest(ctx context.Context, candidate *block.TipSet) error {
 	// stageIfHeaviest sets the provided candidates to the staging head of the chain if they
 	// are heavier. Precondtion: candidates are validated and added to the store.
-	parentKey, err := candidate.Parents()
-	if err != nil {
-		return err
-	}
-	candidateParentStateID, err := syncer.chainStore.GetTipSetStateRoot(parentKey)
-	if err != nil {
-		return err
-	}
-
-	stagedParentKey, err := syncer.staged.Parents()
-	if err != nil {
-		return err
-	}
-	var stagedBaseStateID cid.Cid
-	if syncer.staged.EnsureHeight() == 0 { // if staged is genesis base state is genesis state
-		stagedBaseStateID = syncer.staged.At(0).StateRoot.Cid
-	} else {
-		stagedBaseStateID, err = syncer.chainStore.GetTipSetStateRoot(stagedParentKey)
+	/*	parentKey, err := candidate.Parents()
 		if err != nil {
 			return err
 		}
-	}
+		candidateParentStateID, err := syncer.chainStore.GetTipSetStateRoot(parentKey)
+		if err != nil {
+			return err
+		}
 
-	heavier, err := syncer.chainSelector.IsHeavier(ctx, candidate, syncer.staged, candidateParentStateID, stagedBaseStateID)
+		stagedParentKey, err := syncer.staged.Parents()
+		if err != nil {
+			return err
+		}
+		var stagedBaseStateID cid.Cid
+		if syncer.staged.EnsureHeight() == 0 { // if staged is genesis base state is genesis state
+			stagedBaseStateID = syncer.staged.At(0).StateRoot.Cid
+		} else {
+			stagedBaseStateID, err = syncer.chainStore.GetTipSetStateRoot(stagedParentKey)
+			if err != nil {
+				return err
+			}
+		}*/
+
+	heavier, err := syncer.chainSelector.IsHeavier(ctx, candidate, syncer.staged)
 	if err != nil {
 		return err
 	}
