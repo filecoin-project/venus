@@ -30,6 +30,7 @@ func init() {
 	})
 }
 
+var Methods = builtin2.MethodsMiner
 // Unchanged between v0 and v2 actors
 var WPoStProvingPeriod = miner0.WPoStProvingPeriod
 var WPoStPeriodDeadlines = miner0.WPoStPeriodDeadlines
@@ -152,6 +153,17 @@ type MinerInfo struct {
 	ConsensusFaultElapsed      abi.ChainEpoch
 }
 
+func (mi MinerInfo) IsController(addr address.Address) bool {
+	if addr == mi.Owner || addr == mi.Worker {
+		return true
+	}
+	for _, ca := range mi.ControlAddresses {
+		if addr == ca {
+			return true
+		}
+	}
+	return false
+}
 type SectorExpiration struct {
 	OnTime abi.ChainEpoch
 
@@ -185,4 +197,7 @@ type LockedFunds struct {
 	VestingFunds             abi.TokenAmount
 	InitialPledgeRequirement abi.TokenAmount
 	PreCommitDeposits        abi.TokenAmount
+}
+func (lf LockedFunds) TotalLockedFunds() abi.TokenAmount {
+	return big.Add(lf.VestingFunds, big.Add(lf.InitialPledgeRequirement, lf.PreCommitDeposits))
 }

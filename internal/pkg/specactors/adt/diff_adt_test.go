@@ -14,8 +14,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
-	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 )
@@ -24,24 +24,24 @@ func TestDiffAdtArray(t *testing.T) {
 	ctxstoreA := newContextStore()
 	ctxstoreB := newContextStore()
 
-	arrA := adt0.MakeEmptyArray(ctxstoreA)
-	arrB := adt0.MakeEmptyArray(ctxstoreB)
+	arrA := adt2.MakeEmptyArray(ctxstoreA)
+	arrB := adt2.MakeEmptyArray(ctxstoreB)
 
-	require.NoError(t, arrA.Set(0, runtime.CBORBytes([]byte{0}))) // delete
+	require.NoError(t, arrA.Set(0, builtin2.CBORBytes([]byte{0}))) // delete
 
-	require.NoError(t, arrA.Set(1, runtime.CBORBytes([]byte{0}))) // modify
-	require.NoError(t, arrB.Set(1, runtime.CBORBytes([]byte{1})))
+	require.NoError(t, arrA.Set(1, builtin2.CBORBytes([]byte{0}))) // modify
+	require.NoError(t, arrB.Set(1, builtin2.CBORBytes([]byte{1})))
 
-	require.NoError(t, arrA.Set(2, runtime.CBORBytes([]byte{1}))) // delete
+	require.NoError(t, arrA.Set(2, builtin2.CBORBytes([]byte{1}))) // delete
 
-	require.NoError(t, arrA.Set(3, runtime.CBORBytes([]byte{0}))) // noop
-	require.NoError(t, arrB.Set(3, runtime.CBORBytes([]byte{0})))
+	require.NoError(t, arrA.Set(3, builtin2.CBORBytes([]byte{0}))) // noop
+	require.NoError(t, arrB.Set(3, builtin2.CBORBytes([]byte{0})))
 
-	require.NoError(t, arrA.Set(4, runtime.CBORBytes([]byte{0}))) // modify
-	require.NoError(t, arrB.Set(4, runtime.CBORBytes([]byte{6})))
+	require.NoError(t, arrA.Set(4, builtin2.CBORBytes([]byte{0}))) // modify
+	require.NoError(t, arrB.Set(4, builtin2.CBORBytes([]byte{6})))
 
-	require.NoError(t, arrB.Set(5, runtime.CBORBytes{8})) // add
-	require.NoError(t, arrB.Set(6, runtime.CBORBytes{9})) // add
+	require.NoError(t, arrB.Set(5, builtin2.CBORBytes{8})) // add
+	require.NoError(t, arrB.Set(6, builtin2.CBORBytes{9})) // add
 
 	changes := new(TestDiffArray)
 
@@ -78,24 +78,24 @@ func TestDiffAdtMap(t *testing.T) {
 	ctxstoreA := newContextStore()
 	ctxstoreB := newContextStore()
 
-	mapA := adt0.MakeEmptyMap(ctxstoreA)
-	mapB := adt0.MakeEmptyMap(ctxstoreB)
+	mapA := adt2.MakeEmptyMap(ctxstoreA)
+	mapB := adt2.MakeEmptyMap(ctxstoreB)
 
-	require.NoError(t, mapA.Put(abi.UIntKey(0), runtime.CBORBytes([]byte{0}))) // delete
+	require.NoError(t, mapA.Put(abi.UIntKey(0), builtin2.CBORBytes([]byte{0}))) // delete
 
-	require.NoError(t, mapA.Put(abi.UIntKey(1), runtime.CBORBytes([]byte{0}))) // modify
-	require.NoError(t, mapB.Put(abi.UIntKey(1), runtime.CBORBytes([]byte{1})))
+	require.NoError(t, mapA.Put(abi.UIntKey(1), builtin2.CBORBytes([]byte{0}))) // modify
+	require.NoError(t, mapB.Put(abi.UIntKey(1), builtin2.CBORBytes([]byte{1})))
 
-	require.NoError(t, mapA.Put(abi.UIntKey(2), runtime.CBORBytes([]byte{1}))) // delete
+	require.NoError(t, mapA.Put(abi.UIntKey(2), builtin2.CBORBytes([]byte{1}))) // delete
 
-	require.NoError(t, mapA.Put(abi.UIntKey(3), runtime.CBORBytes([]byte{0}))) // noop
-	require.NoError(t, mapB.Put(abi.UIntKey(3), runtime.CBORBytes([]byte{0})))
+	require.NoError(t, mapA.Put(abi.UIntKey(3), builtin2.CBORBytes([]byte{0}))) // noop
+	require.NoError(t, mapB.Put(abi.UIntKey(3), builtin2.CBORBytes([]byte{0})))
 
-	require.NoError(t, mapA.Put(abi.UIntKey(4), runtime.CBORBytes([]byte{0}))) // modify
-	require.NoError(t, mapB.Put(abi.UIntKey(4), runtime.CBORBytes([]byte{6})))
+	require.NoError(t, mapA.Put(abi.UIntKey(4), builtin2.CBORBytes([]byte{0}))) // modify
+	require.NoError(t, mapB.Put(abi.UIntKey(4), builtin2.CBORBytes([]byte{6})))
 
-	require.NoError(t, mapB.Put(abi.UIntKey(5), runtime.CBORBytes{8})) // add
-	require.NoError(t, mapB.Put(abi.UIntKey(6), runtime.CBORBytes{9})) // add
+	require.NoError(t, mapB.Put(abi.UIntKey(5), builtin2.CBORBytes{8})) // add
+	require.NoError(t, mapB.Put(abi.UIntKey(6), builtin2.CBORBytes{9})) // add
 
 	changes := new(TestDiffMap)
 
@@ -146,7 +146,7 @@ func (t *TestDiffMap) AsKey(key string) (abi.Keyer, error) {
 }
 
 func (t *TestDiffMap) Add(key string, val *typegen.Deferred) error {
-	v := new(runtime.CBORBytes)
+	v := new(builtin2.CBORBytes)
 	err := v.UnmarshalCBOR(bytes.NewReader(val.Raw))
 	if err != nil {
 		return err
@@ -163,13 +163,13 @@ func (t *TestDiffMap) Add(key string, val *typegen.Deferred) error {
 }
 
 func (t *TestDiffMap) Modify(key string, from, to *typegen.Deferred) error {
-	vFrom := new(runtime.CBORBytes)
+	vFrom := new(builtin2.CBORBytes)
 	err := vFrom.UnmarshalCBOR(bytes.NewReader(from.Raw))
 	if err != nil {
 		return err
 	}
 
-	vTo := new(runtime.CBORBytes)
+	vTo := new(builtin2.CBORBytes)
 	err = vTo.UnmarshalCBOR(bytes.NewReader(to.Raw))
 	if err != nil {
 		return err
@@ -196,7 +196,7 @@ func (t *TestDiffMap) Modify(key string, from, to *typegen.Deferred) error {
 }
 
 func (t *TestDiffMap) Remove(key string, val *typegen.Deferred) error {
-	v := new(runtime.CBORBytes)
+	v := new(builtin2.CBORBytes)
 	err := v.UnmarshalCBOR(bytes.NewReader(val.Raw))
 	if err != nil {
 		return err
@@ -214,7 +214,7 @@ func (t *TestDiffMap) Remove(key string, val *typegen.Deferred) error {
 
 type adtMapDiffResult struct {
 	key uint64
-	val runtime.CBORBytes
+	val builtin2.CBORBytes
 }
 
 type TestAdtMapDiffModified struct {
@@ -224,7 +224,7 @@ type TestAdtMapDiffModified struct {
 
 type adtArrayDiffResult struct {
 	key uint64
-	val runtime.CBORBytes
+	val builtin2.CBORBytes
 }
 
 type TestDiffArray struct {
@@ -241,7 +241,7 @@ type TestAdtArrayDiffModified struct {
 }
 
 func (t *TestDiffArray) Add(key uint64, val *typegen.Deferred) error {
-	v := new(runtime.CBORBytes)
+	v := new(builtin2.CBORBytes)
 	err := v.UnmarshalCBOR(bytes.NewReader(val.Raw))
 	if err != nil {
 		return err
@@ -254,13 +254,13 @@ func (t *TestDiffArray) Add(key uint64, val *typegen.Deferred) error {
 }
 
 func (t *TestDiffArray) Modify(key uint64, from, to *typegen.Deferred) error {
-	vFrom := new(runtime.CBORBytes)
+	vFrom := new(builtin2.CBORBytes)
 	err := vFrom.UnmarshalCBOR(bytes.NewReader(from.Raw))
 	if err != nil {
 		return err
 	}
 
-	vTo := new(runtime.CBORBytes)
+	vTo := new(builtin2.CBORBytes)
 	err = vTo.UnmarshalCBOR(bytes.NewReader(to.Raw))
 	if err != nil {
 		return err
@@ -282,7 +282,7 @@ func (t *TestDiffArray) Modify(key uint64, from, to *typegen.Deferred) error {
 }
 
 func (t *TestDiffArray) Remove(key uint64, val *typegen.Deferred) error {
-	v := new(runtime.CBORBytes)
+	v := new(builtin2.CBORBytes)
 	err := v.UnmarshalCBOR(bytes.NewReader(val.Raw))
 	if err != nil {
 		return err

@@ -9,12 +9,14 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
+var Methods = builtin2.MethodsMultisig
 func Message(version specactors.Version, from address.Address) MessageBuilder {
 	switch version {
 	case specactors.Version0:
@@ -45,6 +47,7 @@ type MessageBuilder interface {
 
 // this type is the same between v0 and v2
 type ProposalHashData = multisig2.ProposalHashData
+type ProposeReturn = multisig2.ProposeReturn
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
 	params := multisig2.TxnIDParams{ID: multisig2.TxnID(id)}
