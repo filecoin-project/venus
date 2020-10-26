@@ -20,7 +20,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
@@ -188,7 +187,8 @@ func (f *Builder) Build(parent *block.TipSet, width int, build func(b *BlockBuil
 
 	emptyBLSSig := crypto.Signature{
 		Type: crypto.SigTypeBLS,
-		Data: (*bls.Aggregate([]bls.Signature{}))[:],
+		Data: nil,
+		//Data: (*bls.Aggregate([]bls.Signature{}))[:],
 	}
 	for i := 0; i < width; i++ {
 		ticket := block.Ticket{}
@@ -562,6 +562,10 @@ func (f *Builder) GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error) {
 		return cid.Undef, errors.Errorf("no state for %s", key)
 	}
 	return found, nil
+}
+
+func (f *Builder) GetTipSetByHeight(ctx context.Context, ts *block.TipSet, h abi.ChainEpoch, prev bool) (*block.TipSet, error) {
+	panic("implement me")
 }
 
 // RequireTipSet returns a tipset by key, which must exist.

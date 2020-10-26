@@ -114,7 +114,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 
 // Builds a chain of single-block tips, returned in descending height order.
 // Each block's ticket is its stringified height (as bytes).
-func makeChain(t *testing.T, length int) (*chain.Builder, []block.TipSet) {
+func makeChain(t *testing.T, length int) (*chain.Builder, []*block.TipSet) {
 	b := chain.NewBuilder(t, address.Undef)
 	height := 0
 	head := b.BuildManyOn(length, block.UndefTipSet, func(b *chain.BlockBuilder) {
