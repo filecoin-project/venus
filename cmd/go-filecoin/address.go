@@ -30,6 +30,7 @@ var addrsCmd = &cmds.Command{
 		"ls":      addrsLsCmd,
 		"new":     addrsNewCmd,
 		"default": defaultAddressCmd,
+		"set-default": setDefaultAddressCmd,
 	},
 }
 
@@ -83,6 +84,26 @@ var addrsLsCmd = &cmds.Command{
 var defaultAddressCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addr, err := GetPorcelainAPI(env).WalletDefaultAddress()
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(&AddressResult{addr})
+	},
+	Type: &AddressResult{},
+}
+
+var setDefaultAddressCmd = &cmds.Command{
+	Arguments: []cmds.Argument{
+		cmds.StringArg("address", true, false, "Address to set default for"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		addr, err := address.NewFromString(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		err = GetPorcelainAPI(env).SetWalletDefaultAddress(addr)
 		if err != nil {
 			return err
 		}
