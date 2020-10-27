@@ -321,7 +321,7 @@ func (ms *MessageStore) storeMessageReceipts(receipts []types.MessageReceipt) ([
 }
 
 func (ms *MessageStore) storeBlock(data interface{}) (cid.Cid, blocks.Block, error) {
-	sblk, err := makeBlock(data)
+	sblk, err := MakeBlock(data)
 	if err != nil {
 		return cid.Undef, nil, err
 	}
@@ -333,7 +333,7 @@ func (ms *MessageStore) storeBlock(data interface{}) (cid.Cid, blocks.Block, err
 	return sblk.Cid(), sblk, nil
 }
 
-func makeBlock(obj interface{}) (blocks.Block, error) {
+func MakeBlock(obj interface{}) (blocks.Block, error) {
 	data, err := encoding.Encode(obj)
 	if err != nil {
 		return nil, err
@@ -409,7 +409,7 @@ func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet) (a
 	if err != nil {
 		return zero, err
 	}
-	if baseHeight > fork.UpgradeBreezeHeight && baseHeight < fork.UpgradeBreezeHeight + fork.BreezeGasTampingDuration {
+	if baseHeight > fork.UpgradeBreezeHeight && baseHeight < fork.UpgradeBreezeHeight+fork.BreezeGasTampingDuration {
 		return abi.NewTokenAmount(100), nil
 	}
 

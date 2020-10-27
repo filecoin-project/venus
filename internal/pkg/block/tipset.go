@@ -94,6 +94,9 @@ func (ts *TipSet) Defined() bool {
 
 // Len returns the number of blocks in the tipset.
 func (ts *TipSet) Len() int {
+	if ts == nil {
+		return 0
+	}
 	return len(ts.blocks)
 }
 

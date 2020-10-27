@@ -49,19 +49,17 @@ func TestSamplingChainRandomness(t *testing.T) {
 
 	t.Run("skips missing tipsets", func(t *testing.T) {
 		builder, ch := makeChain(t, 21)
-		head := ch[0].Key()
 		sampler := chain.NewSampler(builder, genesisTicket)
 
 		// Sample height after the head falls back to the head.
 		headParent := ch[1].Key()
 		r, err := sampler.SampleTicket(ctx, headParent, abi.ChainEpoch(20))
-		assert.NoError(t, err)
-		assert.Equal(t, makeSample(19), r)
+		assert.EqualError(t, err, "cannot draw randomness from the future")
 
 		// Another way of the same thing, sample > head.
+		head := ch[0].Key()
 		r, err = sampler.SampleTicket(ctx, head, abi.ChainEpoch(21))
-		assert.NoError(t, err)
-		assert.Equal(t, makeSample(20), r)
+		assert.EqualError(t, err, "cannot draw randomness from the future")
 
 		// Add new head so as to produce null blocks between 20 and 25
 		// i.e.: 25 20 19 18 ... 0

@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"runtime/debug"
@@ -205,7 +204,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 			return err
 		}
 
-		fmt.Println(startPoint.Key().String(), "", stateRoot, " ", startPoint.EnsureHeight())
+		//fmt.Println(startPoint.Key().String(), "", stateRoot, " ", startPoint.EnsureHeight())
 		err = store.PutTipSetMetadata(ctx, &TipSetMetadata{
 			TipSet:          startPoint,
 			TipSetStateRoot: stateRoot,
