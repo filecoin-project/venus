@@ -26,7 +26,10 @@ import (
 // MessageProvider is an interface exposing the load methods of the
 // MessageStore.
 type MessageProvider interface {
-	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
+	LoadMetaMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
+	ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
+	LoadUnsinedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error)
+	LoadSignedMessagesFromCids(secpCids []cid.Cid) ([]*types.SignedMessage, error)
 	LoadReceipts(context.Context, cid.Cid) ([]types.MessageReceipt, error)
 	LoadTxMeta(context.Context, cid.Cid) (types.TxMeta, error)
 }
@@ -64,18 +67,9 @@ func (ms *MessageStore) LoadMessages(ctx context.Context, metaCid cid.Cid) ([]*t
 	}
 
 	// load secp messages from cids
-	secpMsgs := make([]*types.SignedMessage, len(secpCids))
-	for i, c := range secpCids {
-		messageBlock, err := ms.bs.Get(c)
-		if err != nil {
-			return nil, nil, errors.Wrapf(err, "failed to get secp message %s", c)
-		}
-
-		message := &types.SignedMessage{}
-		if err := encoding.Decode(messageBlock.RawData(), message); err != nil {
-			return nil, nil, errors.Wrapf(err, "could not decode secp message %s", c)
-		}
-		secpMsgs[i] = message
+	secpMsgs, err := ms.LoadSignedMessagesFromCids(secpCids)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	blsCids, err := ms.loadAMTCids(ctx, meta.BLSRoot.Cid)
@@ -84,21 +78,63 @@ func (ms *MessageStore) LoadMessages(ctx context.Context, metaCid cid.Cid) ([]*t
 	}
 
 	// load bls messages from cids
+	blsMsgs, err := ms.LoadUnsinedMessagesFromCids(blsCids)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return secpMsgs, blsMsgs, nil
+}
+
+func (ms *MessageStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error) {
+	meta, err := ms.LoadTxMeta(ctx, mmc)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	secpCids, err := ms.loadAMTCids(ctx, meta.SecpRoot.Cid)
+	if err != nil {
+		return nil, nil, err
+	}
+	blsCids, err := ms.loadAMTCids(ctx, meta.BLSRoot.Cid)
+	if err != nil {
+		return nil, nil, err
+	}
+	return blsCids, secpCids, nil
+}
+
+func (ms *MessageStore) LoadUnsinedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error) {
 	blsMsgs := make([]*types.UnsignedMessage, len(blsCids))
 	for i, c := range blsCids {
 		messageBlock, err := ms.bs.Get(c)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "failed to get bls message %s", c)
+			return nil, errors.Wrapf(err, "failed to get bls message %s", c)
 		}
 
 		message := &types.UnsignedMessage{}
 		if err := encoding.Decode(messageBlock.RawData(), message); err != nil {
-			return nil, nil, errors.Wrapf(err, "could not decode bls message %s", c)
+			return nil, errors.Wrapf(err, "could not decode bls message %s", c)
 		}
 		blsMsgs[i] = message
 	}
+	return blsMsgs, nil
+}
 
-	return secpMsgs, blsMsgs, nil
+func (ms *MessageStore) LoadSignedMessagesFromCids(secpCids []cid.Cid) ([]*types.SignedMessage, error) {
+	secpMsgs := make([]*types.SignedMessage, len(secpCids))
+	for i, c := range secpCids {
+		messageBlock, err := ms.bs.Get(c)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get secp message %s", c)
+		}
+
+		message := &types.SignedMessage{}
+		if err := encoding.Decode(messageBlock.RawData(), message); err != nil {
+			return nil, errors.Wrapf(err, "could not decode secp message %s", c)
+		}
+		secpMsgs[i] = message
+	}
+	return secpMsgs, nil
 }
 
 // StoreMessages puts the input signed messages to a collection and then writes
@@ -409,7 +445,7 @@ func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet) (a
 	if err != nil {
 		return zero, err
 	}
-	if baseHeight > fork.UpgradeBreezeHeight && baseHeight < fork.UpgradeBreezeHeight + fork.BreezeGasTampingDuration {
+	if baseHeight > fork.UpgradeBreezeHeight && baseHeight < fork.UpgradeBreezeHeight+fork.BreezeGasTampingDuration {
 		return abi.NewTokenAmount(100), nil
 	}
 

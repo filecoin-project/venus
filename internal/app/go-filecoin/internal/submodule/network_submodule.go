@@ -61,6 +61,7 @@ type NetworkSubmodule struct {
 
 	GraphExchange graphsync.GraphExchange
 
+	PeerMgr *net.PeerMgr
 	//data transfer
 	DataTransfer     datatransfer.Manager
 	DataTransferHost dtnet.DataTransferNetwork
@@ -182,6 +183,20 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	}
 	// build network
 	network := net.New(peerHost, net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService))
+	//peer manager
+	bootNodes, err := net.ParseAddresses(ctx, repo.Config().Bootstrap.Addresses)
+	if err != nil {
+		return NetworkSubmodule{}, err
+	}
+	period, err := time.ParseDuration(repo.Config().Bootstrap.Period)
+	if err != nil {
+		return NetworkSubmodule{}, err
+	}
+	peerMgr, err := net.NewPeerMgr(peerHost, router.(*dht.IpfsDHT), period, bootNodes)
+	if err != nil {
+		return NetworkSubmodule{}, err
+	}
+	peerMgr.Run(ctx)
 	// build the network submdule
 	return NetworkSubmodule{
 		NetworkName:      networkName,
@@ -193,6 +208,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 		Network:          network,
 		DataTransfer:     dt,
 		DataTransferHost: dtNet,
+		PeerMgr:          peerMgr,
 	}, nil
 }
 
