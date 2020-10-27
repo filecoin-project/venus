@@ -25,13 +25,13 @@ func TestMessageMarshal(t *testing.T) {
 		builtin.MethodSend,
 		[]byte("foobar"),
 		NewAttoFILFromFIL(3),
-		NewAttoFILFromFIL( 3),
+		NewAttoFILFromFIL(3),
 		gas.NewGas(4),
 	)
 
 	// This check requests that you add a non-zero value for new fields above,
 	// then update the field count below.
-	require.Equal(t, 10, reflect.TypeOf(*msg).NumField())
+	require.Equal(t, 11, reflect.TypeOf(*msg).NumField())
 
 	marshalled, err := msg.Marshal()
 	assert.NoError(t, err)
