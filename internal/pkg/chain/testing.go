@@ -605,11 +605,6 @@ func (f *Builder) RequireTipSets(head block.TipSetKey, count int) []*block.TipSe
 	return tips
 }
 
-// LoadMessages returns the message collections tracked by the builder.
-func (f *Builder) LoadMessages(ctx context.Context, metaCid cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
-	return f.messages.LoadMessages(ctx, metaCid)
-}
-
 // LoadReceipts returns the message collections tracked by the builder.
 func (f *Builder) LoadReceipts(ctx context.Context, c cid.Cid) ([]types.MessageReceipt, error) {
 	return f.messages.LoadReceipts(ctx, c)
@@ -628,6 +623,23 @@ func (f *Builder) StoreReceipts(ctx context.Context, receipts []types.MessageRec
 // StoreTxMeta stores a tx meta
 func (f *Builder) StoreTxMeta(ctx context.Context, meta types.TxMeta) (cid.Cid, error) {
 	return f.messages.StoreTxMeta(ctx, meta)
+}
+
+func (f *Builder) LoadUnsinedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error) {
+	return f.messages.LoadUnsinedMessagesFromCids(blsCids)
+}
+
+func (f *Builder) LoadSignedMessagesFromCids(secpCids []cid.Cid) ([]*types.SignedMessage, error) {
+	return f.messages.LoadSignedMessagesFromCids(secpCids)
+}
+
+// LoadMessages returns the message collections tracked by the builder.
+func (f *Builder) LoadMetaMessages(ctx context.Context, metaCid cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
+	return f.messages.LoadMessages(ctx, metaCid)
+}
+
+func (f *Builder) ReadMsgMetaCids(ctx context.Context, metaCid cid.Cid) ([]cid.Cid, []cid.Cid, error) {
+	return f.messages.ReadMsgMetaCids(ctx, metaCid)
 }
 
 ///// Internals /////
