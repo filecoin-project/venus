@@ -106,6 +106,11 @@ func (a *API) WalletDefaultAddress() (address.Address, error) {
 	return WalletDefaultAddress(a)
 }
 
+// SetWalletDefaultAddress set the specified address as the default in the config.
+func (a *API) SetWalletDefaultAddress(addr address.Address) error {
+	return SetWalletDefaultAddress(a, addr)
+}
+
 // SealPieceIntoNewSector writes the provided piece into a new sector
 func (a *API) SealPieceIntoNewSector(ctx context.Context, dealID abi.DealID, dealStart, dealEnd abi.ChainEpoch, pieceSize abi.UnpaddedPieceSize, pieceReader io.Reader) (*storagemarket.PackingResult, error) {
 	return SealPieceIntoNewSector(ctx, a, dealID, dealStart, dealEnd, pieceSize, pieceReader)

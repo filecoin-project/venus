@@ -575,10 +575,10 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 	span.AddAttributes(trace.StringAttribute("tipset", ci.Head.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	if syncOnec {
-		return
-	}
-	syncOnec = true
+	//if syncOnec {
+	//	return
+	//}
+	//syncOnec = true
 
 	xx, _ := cid.Decode("bafy2bzacedplmwfhy4yuauuzbs4owjxo4m6wgd275dwwdam6qwpmdssgdpbvk")
 	ci.Head = block.NewTipSetKey(xx)

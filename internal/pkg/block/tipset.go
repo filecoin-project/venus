@@ -193,3 +193,54 @@ func (ts *TipSet) MinTimestamp() uint64 {
 	}
 	return minTs
 }
+
+func (ts *TipSet) IsChildOf(parent *TipSet) bool {
+	return CidArrsEqual(ts.EnsureParents().ToSlice(), parent.key.ToSlice()) &&
+		// FIXME: The height check might go beyond what is meant by
+		//  "parent", but many parts of the code rely on the tipset's
+		//  height for their processing logic at the moment to obviate it.
+		ts.EnsureHeight() > parent.EnsureHeight()
+}
+
+func CidArrsEqual(a, b []cid.Cid) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	// order ignoring compare...
+	s := make(map[cid.Cid]bool)
+	for _, c := range a {
+		s[c] = true
+	}
+
+	for _, c := range b {
+		if !s[c] {
+			return false
+		}
+	}
+	return true
+}
+
+func CidArrsSubset(a, b []cid.Cid) bool {
+	// order ignoring compare...
+	s := make(map[cid.Cid]bool)
+	for _, c := range b {
+		s[c] = true
+	}
+
+	for _, c := range a {
+		if !s[c] {
+			return false
+		}
+	}
+	return true
+}
+
+func CidArrsContains(a []cid.Cid, b cid.Cid) bool {
+	for _, elem := range a {
+		if elem.Equals(b) {
+			return true
+		}
+	}
+	return false
+}

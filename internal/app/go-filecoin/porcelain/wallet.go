@@ -60,3 +60,20 @@ func WalletDefaultAddress(plumbing wdaPlumbing) (address.Address, error) {
 
 	return address.Undef, ErrNoDefaultFromAddress
 }
+
+// SetWalletDefaultAddress set the specified address as the default in the config.
+func SetWalletDefaultAddress(plumbing wdaPlumbing, a address.Address) error {
+	addrs := plumbing.WalletAddresses()
+
+	for _, addr := range addrs {
+		if addr == a {
+			err := plumbing.ConfigSet("wallet.defaultAddress", a.String())
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+
+	return errors.New("addr not in the wallet list")
+}

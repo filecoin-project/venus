@@ -3,6 +3,7 @@ package state_test
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -33,7 +34,7 @@ func TestTotal(t *testing.T) {
 
 	cst, _, root := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis)
 
-	table := state.NewPowerTableView(state.NewView(cst, root), state(cst, root))
+	table := state.NewPowerTableView(state.NewView(cst, root), state.NewView(cst, root))
 	networkPower, err := table.NetworkTotalPower(ctx)
 	require.NoError(t, err)
 
@@ -53,7 +54,7 @@ func TestMiner(t *testing.T) {
 	cst, addrs, root := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis)
 	addr := addrs[0]
 
-	table := state.NewPowerTableView(NewView(cst, root), NewView(cst, root))
+	table := state.NewPowerTableView(state.NewView(cst, root), state.NewView(cst, root))
 	actual, err := table.MinerClaimedPower(ctx, addr)
 	require.NoError(t, err)
 
@@ -71,7 +72,7 @@ func TestNoPowerAfterSlash(t *testing.T) {
 	kis := types.MustGenerateBLSKeyInfo(numMiners, 0)
 	cstPower, addrsPower, rootPower := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis)
 	cstFaults, _, rootFaults := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis[0:2]) // drop the third key
-	table := state.NewPowerTableView(NewView(cstPower, rootPower), NewView(cstFaults, rootFaults))
+	table := state.NewPowerTableView(state.NewView(cstPower, rootPower), state.NewView(cstFaults, rootFaults))
 
 	// verify that faulted miner claim is 0 power
 	claim, err := table.MinerClaimedPower(ctx, addrsPower[2])
@@ -87,7 +88,7 @@ func TestTotalPowerUnaffectedBySlash(t *testing.T) {
 	kis := types.MustGenerateBLSKeyInfo(numMiners, 0)
 	cstPower, _, rootPower := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis)
 	cstFaults, _, rootFaults := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis[0:2]) // drop the third key
-	table := state.NewPowerTableView(NewView(cstPower, rootPower), NewView(cstFaults, rootFaults))
+	table := state.NewPowerTableView(state.NewView(cstPower, rootPower), state.NewView(cstFaults, rootFaults))
 
 	// verify that faulted miner claim is 0 power
 	total, err := table.NetworkTotalPower(ctx)
@@ -100,7 +101,9 @@ func TestTotalPowerUnaffectedBySlash(t *testing.T) {
 func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64, ownerKeys []crypto.KeyInfo) (*cborutil.IpldStore, []address.Address, cid.Cid) {
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
+	vmStorage := vm.NewStorage(bs)
 	cst := cborutil.NewIpldStore(bs)
+
 	numMiners := len(ownerKeys)
 	minerConfigs := make([]*gengen.CreateStorageMinerConfig, numMiners)
 	for i := 0; i < numMiners; i++ {
@@ -120,7 +123,7 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 	require.NoError(t, gengen.NetworkName("ptvtest")(genCfg))
 	require.NoError(t, gengen.ImportKeys(ownerKeys, "1000000")(genCfg))
 
-	info, err := gengen.GenGen(ctx, genCfg, bs)
+	info, err := gengen.GenGen(ctx, genCfg, vmStorage)
 	require.NoError(t, err)
 
 	var genesis block.Block
@@ -129,5 +132,5 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 	for i := 0; i < numMiners; i++ {
 		retAddrs[i] = info.Miners[i].Address
 	}
-	return cst, retAddrs, genesis.StateRoot
+	return cst, retAddrs, genesis.StateRoot.Cid
 }

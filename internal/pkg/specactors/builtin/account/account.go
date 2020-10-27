@@ -24,6 +24,7 @@ func init() {
 	})
 }
 
+var Methods = builtin2.MethodsAccount
 func Load(store adt.Store, act *actor.Actor) (State, error) {
 	switch act.Code.Cid {
 	case builtin0.AccountActorCodeID:

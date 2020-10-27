@@ -7,8 +7,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-state-types/abi"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
 
+var Methods = builtin2.MethodsPaych
 func Message(version specactors.Version, from address.Address) MessageBuilder {
 	switch version {
 	case specactors.Version0:

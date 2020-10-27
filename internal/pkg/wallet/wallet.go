@@ -125,7 +125,7 @@ func (w *Wallet) GetPubKeyForAddress(addr address.Address) ([]byte, error) {
 
 // NewKeyInfo creates a new KeyInfo struct in the wallet backend and returns it
 func (w *Wallet) NewKeyInfo() (*crypto.KeyInfo, error) {
-	newAddr, err := NewAddress(w, address.SECP256K1)
+	newAddr, err := NewAddress(w, address.BLS)
 	if err != nil {
 		return &crypto.KeyInfo{}, err
 	}
