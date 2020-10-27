@@ -7,7 +7,6 @@ import (
 	"sort"
 )
 
-
 var DrandScheduleFork = map[abi.ChainEpoch]DrandEnum{
 	0:                       DrandIncentinet,
 	fork.UpgradeSmokeHeight: DrandMainnet,
@@ -74,7 +73,6 @@ var DrandConfigs = map[DrandEnum]DrandConfig{
 	},
 }
 
-
 type Schedule []BeaconPoint
 
 func (bs Schedule) BeaconForEpoch(e abi.ChainEpoch) RandomBeacon {
@@ -94,7 +92,7 @@ func DrandConfigSchedule(genTimeStamp uint64, blockDelay uint64) (Schedule, erro
 	for start, config := range DrandScheduleFork {
 		bc, err := NewDrandBeacon(genTimeStamp, blockDelay, DrandConfigs[config])
 		if err != nil {
-			return nil, xerrors.Errorf("creating drand beacon: %w", err)
+			return nil, xerrors.Errorf("creating drand beacon: %s", err)
 		}
 		shd = append(shd, BeaconPoint{Start: start, Beacon: bc})
 	}

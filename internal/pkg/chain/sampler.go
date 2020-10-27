@@ -113,19 +113,19 @@ func (s *Sampler) SampleRandomnessFromBeacon(ctx context.Context, tsk block.TipS
 func DrawRandomness(rbase []byte, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	h := blake2b.New256()
 	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
-		return nil, xerrors.Errorf("deriving randomness: %w", err)
+		return nil, xerrors.Errorf("deriving randomness: %s", err)
 	}
 	VRFDigest := blake2b.Sum256(rbase)
 	_, err := h.Write(VRFDigest[:])
 	if err != nil {
-		return nil, xerrors.Errorf("hashing VRFDigest: %w", err)
+		return nil, xerrors.Errorf("hashing VRFDigest: %s", err)
 	}
 	if err := binary.Write(h, binary.BigEndian, round); err != nil {
-		return nil, xerrors.Errorf("deriving randomness: %w", err)
+		return nil, xerrors.Errorf("deriving randomness: %s", err)
 	}
 	_, err = h.Write(entropy)
 	if err != nil {
-		return nil, xerrors.Errorf("hashing entropy: %w", err)
+		return nil, xerrors.Errorf("hashing entropy: %s", err)
 	}
 
 	return h.Sum(nil), nil

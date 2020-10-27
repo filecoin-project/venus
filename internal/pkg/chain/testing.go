@@ -20,7 +20,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
@@ -181,6 +180,8 @@ func (f *Builder) Build(parent *block.TipSet, width int, build func(b *BlockBuil
 		height = parent.At(0).Height + 1
 		grandparentKey, err = parent.Parents()
 		require.NoError(f.t, err)
+	} else {
+		parent = block.UndefTipSet
 	}
 
 	parentWeight, err := f.stateBuilder.Weigh(parent, f.StateForKey(grandparentKey))
@@ -188,7 +189,8 @@ func (f *Builder) Build(parent *block.TipSet, width int, build func(b *BlockBuil
 
 	emptyBLSSig := crypto.Signature{
 		Type: crypto.SigTypeBLS,
-		Data: (*bls.Aggregate([]bls.Signature{}))[:],
+		Data: []byte(""),
+		//Data: (*bls.Aggregate([]bls.Signature{}))[:],
 	}
 	for i := 0; i < width; i++ {
 		ticket := block.Ticket{}
@@ -562,6 +564,25 @@ func (f *Builder) GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error) {
 		return cid.Undef, errors.Errorf("no state for %s", key)
 	}
 	return found, nil
+}
+
+func (f *Builder) GetTipSetByHeight(ctx context.Context, ts *block.TipSet, h abi.ChainEpoch, prev bool) (*block.TipSet, error) {
+	if !ts.Defined() {
+		return ts, nil
+	}
+	if epoch, _ := ts.Height(); epoch == h {
+		return ts, nil
+	}
+
+	for {
+		ts = f.RequireTipSet(ts.EnsureParents())
+		height := ts.EnsureHeight()
+		if height >= 0 && height == h {
+			return ts, nil
+		} else if height < h {
+			return ts, nil
+		}
+	}
 }
 
 // RequireTipSet returns a tipset by key, which must exist.

@@ -186,7 +186,7 @@ func TestFindCommonAncestorFork(t *testing.T) {
 	mainItr := chain.IterAncestors(ctx, builder, mainHead)
 	commonAncestor, err := chain.FindCommonAncestor(mainItr, forkItr)
 	assert.NoError(t, err)
-	assert.Equal(t, commonHeadTip, commonAncestor)
+	assert.ObjectsAreEqualValues(commonHeadTip, commonAncestor)
 }
 
 func TestFindCommonAncestorNoFork(t *testing.T) {
@@ -232,5 +232,5 @@ func TestFindCommonAncestorNullBlockFork(t *testing.T) {
 
 	commonAncestor, err := chain.FindCommonAncestor(afterNullItr, noNullItr)
 	assert.NoError(t, err)
-	assert.Equal(t, commonHead, commonAncestor)
+	assert.ObjectsAreEqualValues(commonHead, commonAncestor)
 }
