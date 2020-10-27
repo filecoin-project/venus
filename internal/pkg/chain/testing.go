@@ -180,6 +180,8 @@ func (f *Builder) Build(parent *block.TipSet, width int, build func(b *BlockBuil
 		height = parent.At(0).Height + 1
 		grandparentKey, err = parent.Parents()
 		require.NoError(f.t, err)
+	} else {
+		parent = block.UndefTipSet
 	}
 
 	parentWeight, err := f.stateBuilder.Weigh(parent, f.StateForKey(grandparentKey))
@@ -187,7 +189,7 @@ func (f *Builder) Build(parent *block.TipSet, width int, build func(b *BlockBuil
 
 	emptyBLSSig := crypto.Signature{
 		Type: crypto.SigTypeBLS,
-		Data: nil,
+		Data: []byte(""),
 		//Data: (*bls.Aggregate([]bls.Signature{}))[:],
 	}
 	for i := 0; i < width; i++ {
@@ -565,7 +567,22 @@ func (f *Builder) GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error) {
 }
 
 func (f *Builder) GetTipSetByHeight(ctx context.Context, ts *block.TipSet, h abi.ChainEpoch, prev bool) (*block.TipSet, error) {
-	panic("implement me")
+	if !ts.Defined() {
+		return ts, nil
+	}
+	if epoch, _ := ts.Height(); epoch == h {
+		return ts, nil
+	}
+
+	for {
+		ts = f.RequireTipSet(ts.EnsureParents())
+		height := ts.EnsureHeight()
+		if height >= 0 && height == h {
+			return ts, nil
+		} else if height < h {
+			return ts, nil
+		}
+	}
 }
 
 // RequireTipSet returns a tipset by key, which must exist.
