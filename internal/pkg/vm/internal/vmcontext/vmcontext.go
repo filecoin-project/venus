@@ -2,6 +2,7 @@ package vmcontext
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	. "github.com/ipfs/go-cid"
@@ -276,22 +277,22 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
-			/*iii, _ := vm.flush()
+			iii, _ := vm.flush()
 			fmt.Printf("message: %s  root: %s\n", mcid, iii)
 
 			dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
 			fmt.Println(string(dddd))
-					xxxx := []*types.GasTrace{}
-					for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
-						xxx.Location = nil
-						if xxx.TotalGas >0 {
-							xxxx = append(xxxx, xxx)
-						}
-					}
-					dddd, _ = json.MarshalIndent(xxxx,"","\t")
+					//xxxx := []*types.GasTrace{}
+					//for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
+					//	xxx.Location = nil
+					//	if xxx.TotalGas >0 {
+					//		xxxx = append(xxxx, xxx)
+					//	}
+					//}
+					//dddd, _ = json.MarshalIndent(xxxx,"","\t")
 					fmt.Println(string(dddd))
 
-			fmt.Println()*/
+			fmt.Println()
 		}
 
 		// Process SECP messages from the block
@@ -316,25 +317,25 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
 
-			/*iii, _ := vm.flush()
+			iii, _ := vm.flush()
 			fmt.Printf("message: %s  root: %s\n", mcid, iii)
 
 			dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
 			fmt.Println(string(dddd))
-				xxxx := []*types.GasTrace{}
-				for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
-					xxx.Location = nil
-					if xxx.TotalGas >0 {
-						xxxx = append(xxxx, xxx)
-					}
-				}
-				dddd, _ = json.MarshalIndent(xxxx,"","\t")
+				//xxxx := []*types.GasTrace{}
+				//for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
+				//	xxx.Location = nil
+				//	if xxx.TotalGas >0 {
+				//		xxxx = append(xxxx, xxx)
+				//	}
+				//}
+				//dddd, _ = json.MarshalIndent(xxxx,"","\t")
 				fmt.Println(string(dddd))
-			fmt.Println()*/
+			fmt.Println()
 		}
 
-		//root, _ := vm.state.Flush(context.TODO())
-		//fmt.Printf("before reward: %d  root: %s\n", index, root)
+		root, _ := vm.state.Flush(context.TODO())
+		fmt.Printf("before reward: %d  root: %s\n", index, root)
 
 		// Pay block reward.
 		// Dragons: missing final protocol design on if/how to determine the nominal power
@@ -343,15 +344,15 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 			return nil, err
 		}
 
-		//root, _ = vm.state.Flush(context.TODO())
-		//fmt.Printf("reward: %d  root: %s\n", index, root)
-		//fmt.Print()
+		root, _ = vm.state.Flush(context.TODO())
+		fmt.Printf("reward: %d  root: %s\n", index, root)
+		fmt.Print()
 		fmt.Println("process block ", index, " time ", time.Since(start).Milliseconds())
 	}
 
-	//root, _ := vm.state.Flush(context.TODO())
-	//fmt.Printf("before cron root: %s\n", root)
-	//fmt.Println("xxxx")
+	root, _ := vm.state.Flush(context.TODO())
+	fmt.Printf("before cron root: %s\n", root)
+	fmt.Println("xxxx")
 
 	// cron tick
 	start := time.Now()
@@ -360,9 +361,9 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 		return nil, err
 	}
 	fmt.Println("process block cron job ", time.Since(start).Milliseconds())
-	//root, _ = vm.state.Flush(context.TODO())
-	//fmt.Printf("after cron root: %s\n", root)
-	//fmt.Print()
+	root, _ = vm.state.Flush(context.TODO())
+	fmt.Printf("after cron root: %s\n", root)
+	fmt.Print()
 	// commit stateView
 	if _, err := vm.flush(); err != nil {
 		return nil, err

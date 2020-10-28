@@ -3,6 +3,7 @@ package dispatcher
 import (
 	"container/heap"
 	"context"
+	"fmt"
 	"runtime/debug"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -189,6 +190,7 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 				err := d.syncer.HandleNewTipSet(syncingCtx, &syncTarget.ChainInfo, d.catchup)
 				log.Infof("finished processing %v", syncTarget)
 				if err != nil {
+					fmt.Printf("failed sync of %v (catchup=%t): %s\n", &syncTarget.ChainInfo, d.catchup, err)
 					log.Infof("failed sync of %v (catchup=%t): %s", &syncTarget.ChainInfo, d.catchup, err)
 				}
 				d.syncTargetCount++

@@ -283,16 +283,15 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 
 	stopwatch := syncOneTimer.Start(ctx)
 	defer stopwatch.Stop(ctx)
-	//fmt.Println("Get TipSetMetadata", parent.Key().String())
+
 	// Lookup parent state and receipt root. It is guaranteed by the syncer that it is in the chainStore.
 	parentStateRoot, err := syncer.chainStore.GetTipSetStateRoot(parent.Key())
 	if err != nil {
 		return err
 	}
-	fmt.Println(parentStateRoot)
+
 	if !parent.Key().Equals(syncer.checkPoint) {
-		//skip check if just checkpoint
-		// validate pre block
+		//skip check if just checkpoint validate pre block
 		parentWeight, err := syncer.calculateParentWeight(ctx, parent)
 		if err != nil {
 			return err
@@ -580,9 +579,6 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 	//}
 	//syncOnec = true
 
-	xx, _ := cid.Decode("bafy2bzacedplmwfhy4yuauuzbs4owjxo4m6wgd275dwwdam6qwpmdssgdpbvk")
-	ci.Head = block.NewTipSetKey(xx)
-	ci.Height = 2400
 	// If the store already has this tipset then the syncer is finished.
 	if syncer.chainStore.HasTipSetAndState(ctx, ci.Head) {
 		return nil
@@ -596,38 +592,37 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
-	height, _ := tipsets[0].Height()
-	logSyncer.Infof("fetch & validate header success at %v %s ...", height, tipsets[0].Key())
 
 	defer func() {
 		syncer.reporter.UpdateStatus(status.SyncFetchComplete(true))
 	}()
 
-	errProcessChan := make(chan error, 1)
-	errProcessChan <- nil //init
-	return SegProcess(tipsets, func(segTipset []*block.TipSet) error {
-		// fetch messages
-		fmt.Println("start to fetch message")
+	//errProcessChan := make(chan error, 1) // toto 目前这样的逻辑貌似没存在的意义,卡不住子线程,也返回不了错误信息
+	//errProcessChan <- nil //init
+	return SegProcess(tipsets, func(segTipset []*block.TipSet, errChan chan<- error) error {
 		err = syncer.fetchSegMessage(ctx, ci.Source, ci.Sender, segTipset)
 		if err != nil {
 			return err
 		}
-		fmt.Println("end to fetch message")
-		err := <-errProcessChan
-		if err != nil {
-			return err
-		}
-		//process
+
+		//err := <-errProcessChan
+		//if err != nil {
+		//	return err
+		//}
+
 		go func() {
-			fmt.Println("start to process message")
-			defer fmt.Println("end to process message")
+			fmt.Printf("start to process tipset from height: %v\n", segTipset[len(segTipset)-1].EnsureHeight())
+			defer fmt.Printf("end to process tipset from height: %v\n", segTipset[len(segTipset)-1].EnsureHeight())
 			errProcess := syncer.processTipSetSeg(ctx, segTipset)
 			if errProcess != nil {
-				errProcessChan <- errProcess
+				errChan <- errors.Wrapf(err, "process tipset error at %v, err: %s", segTipset[len(segTipset)-1].EnsureHeight(), errProcess.Error())
+				// errProcessChan <- errProcess
 				return
 			}
-			errProcessChan <- syncer.SetStagedHead(ctx)
+			// errProcessChan <- syncer.SetStagedHead(ctx)
+			errChan <- syncer.SetStagedHead(ctx)
 		}()
+
 		return nil
 	})
 }
@@ -639,32 +634,34 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, source, sender peer.I
 		Head:   segTipset[len(segTipset)-1].Key(),
 		Height: segTipset[len(segTipset)-1].EnsureHeight(),
 	}
+	fmt.Printf("start to fetch tipset from height: %v\n", segCi.Height)
 	_, err := syncer.fetcher.FetchTipSets(ctx, segCi.Head, segCi.Sender, func(t *block.TipSet) (bool, error) {
-		height, err := t.Height()
-		if err != nil {
-			return false, err
-		}
-		logSyncer.Infof("fetch tipset, height: %v", height)
-
-		// validate block message structure
-		//for i := 0; i < t.Len(); i++ {  // todo validate message
-		//	err := syncer.blockValidator.ValidateMessagesSemantic(ctx, t.At(i), parentsKey)
-		//	if err != nil {
-		//		return false, err
-		//	}
-		//}
-
-		// update status with latest fetched head and height
-		syncer.reporter.UpdateStatus(status.FetchHead(t.Key()), status.FetchHeight(height))
-
 		parentsKey, err := t.Parents()
 		if err != nil {
 			return true, err
 		}
+
+		height, err := t.Height()
+		if err != nil {
+			return false, err
+		}
+		logSyncer.Debugf("fetch tipset, height: %v", height)
+
+		// validate block message structure
+		for i := 0; i < t.Len(); i++ {
+			err := syncer.blockValidator.ValidateMessagesSemantic(ctx, t.At(i), parentsKey)
+			if err != nil {
+				return false, err
+			}
+		}
+
+		// update status with latest fetched head and height
+		syncer.reporter.UpdateStatus(status.FetchHead(t.Key()), status.FetchHeight(height))
 		return syncer.chainStore.HasTipSetAndState(ctx, parentsKey), nil
 	})
+	fmt.Printf("end to fetch tipset from height: %v\n", segCi.Height)
 	if err != nil {
-		return errors.Wrapf(err, "failure fetching full blocks")
+		return errors.Wrapf(err, "failure fetching full blocks at %v", segCi.Height)
 	}
 	return nil
 }
@@ -720,7 +717,10 @@ func (syncer *Syncer) processTipSetSeg(ctx context.Context, segTipset []*block.T
 				if err != nil {
 					return err
 				}
-				syncer.SetStagedHead(ctx)
+				err = syncer.SetStagedHead(ctx)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		parent = ts
@@ -731,29 +731,6 @@ func (syncer *Syncer) processTipSetSeg(ctx context.Context, segTipset []*block.T
 func (syncer *Syncer) stageIfHeaviest(ctx context.Context, candidate *block.TipSet) error {
 	// stageIfHeaviest sets the provided candidates to the staging head of the chain if they
 	// are heavier. Precondtion: candidates are validated and added to the store.
-	/*	parentKey, err := candidate.Parents()
-		if err != nil {
-			return err
-		}
-		candidateParentStateID, err := syncer.chainStore.GetTipSetStateRoot(parentKey)
-		if err != nil {
-			return err
-		}
-
-		stagedParentKey, err := syncer.staged.Parents()
-		if err != nil {
-			return err
-		}
-		var stagedBaseStateID cid.Cid
-		if syncer.staged.EnsureHeight() == 0 { // if staged is genesis base state is genesis state
-			stagedBaseStateID = syncer.staged.At(0).StateRoot.Cid
-		} else {
-			stagedBaseStateID, err = syncer.chainStore.GetTipSetStateRoot(stagedParentKey)
-			if err != nil {
-				return err
-			}
-		}*/
-
 	heavier, err := syncer.chainSelector.IsHeavier(ctx, candidate, syncer.staged)
 	if err != nil {
 		return err
@@ -775,20 +752,46 @@ func (syncer *Syncer) Status() status.Status {
 }
 
 const maxProcessLen = 1 + 4 + 16 + 16
+func SegProcess(ts []*block.TipSet, cb func(ts []*block.TipSet, errChan chan<- error) error) error {
+	tsSize := len(ts)
+	sz := len(ts)/maxProcessLen + 1
+	errProcessChan := make(chan error, sz)
+	fmt.Printf("SegProcess tsSize: %v,%v\n", tsSize, sz)
 
-func SegProcess(ts []*block.TipSet, cb func(ts []*block.TipSet) error) error {
+	var err error
 	for {
 		if len(ts) == 0 {
-			return nil
+			break
 		} else if len(ts) < maxProcessLen {
-			return cb(ts)
+			err = cb(ts, errProcessChan)
+			if err != nil {
+				break
+			}
 		} else {
 			processTs := ts[0:maxProcessLen]
-			err := cb(processTs)
+			err = cb(processTs, errProcessChan)
 			if err != nil {
-				return err
+				break
 			}
 			ts = ts[maxProcessLen:]
 		}
 	}
+	fmt.Printf("Seg Process Begin Complete: %v ...\n", err)
+
+	num := (tsSize - len(ts)) / maxProcessLen
+	if len(ts) <= 0 {
+		num = sz
+	}
+	fmt.Printf("SegProcess tsSize: %v, %v, %v\n", tsSize, sz, num)
+	for idx := 0; idx < num; idx++ {
+		e, ok := <- errProcessChan
+		if ok && e != nil {
+			fmt.Printf("[%v] process tipset err: %s\n", idx, e.Error())
+			err = e
+		}
+	}
+
+	fmt.Println("Seg Process End ...")
+
+	return err
 }
