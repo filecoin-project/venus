@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -32,12 +31,14 @@ func TestWeight(t *testing.T) {
 		ParentWeight: fbig.Zero(),
 		Ticket:       ticket,
 	})
-	sel := consensus.NewChainSelector(cst, &viewer, types.CidFromString(t, "genesisCid"))
+	sel := consensus.NewChainSelector(cst, &viewer)
+	//sel := consensus.NewChainSelector(cst, &viewer, types.CidFromString(t, "genesisCid"))
 
 	t.Run("basic happy path", func(t *testing.T) {
 		// 0 + (4*256 + (4*1*1*256/5*2))
 		// 1024 + 102 = 1126
-		w, err := sel.Weight(ctx, toWeigh, fakeRoot)
+		w, err := sel.Weight(ctx, toWeigh)
+		//w, err := sel.Weight(ctx, toWeigh, fakeRoot)
 		assert.NoError(t, err)
 		assert.Equal(t, fbig.NewInt(1126), w)
 	})
@@ -48,20 +49,20 @@ func TestWeight(t *testing.T) {
 		asHigherX := makeStateViewer(fakeRoot, abi.NewStoragePower(32))
 
 		// 0 + (3*256) + (3*1*1*256/2*5) = 844 (truncating not rounding division)
-		selLower := consensus.NewChainSelector(cst, &asLowerX, types.CidFromString(t, "genesisCid"))
-		fixWeight, err := selLower.Weight(ctx, toWeigh, fakeRoot)
+		selLower := consensus.NewChainSelector(cst, &asLowerX)
+		fixWeight, err := selLower.Weight(ctx, toWeigh)
 		assert.NoError(t, err)
 		assert.Equal(t, fbig.NewInt(844), fixWeight)
 
 		// Weight is same when total bytes = 16 as when total bytes = 31
-		selSame := consensus.NewChainSelector(cst, &asSameX, types.CidFromString(t, "genesisCid"))
-		fixWeight, err = selSame.Weight(ctx, toWeigh, fakeRoot)
+		selSame := consensus.NewChainSelector(cst, &asSameX)
+		fixWeight, err = selSame.Weight(ctx, toWeigh)
 		assert.NoError(t, err)
 		assert.Equal(t, fbig.NewInt(1126), fixWeight)
 
 		// 0 + (5*256) + (5*1*1*256/2*5) = 1408
-		selHigher := consensus.NewChainSelector(cst, &asHigherX, types.CidFromString(t, "genesisCid"))
-		fixWeight, err = selHigher.Weight(ctx, toWeigh, fakeRoot)
+		selHigher := consensus.NewChainSelector(cst, &asHigherX)
+		fixWeight, err = selHigher.Weight(ctx, toWeigh)
 		assert.NoError(t, err)
 		assert.Equal(t, fbig.NewInt(1408), fixWeight)
 	})
@@ -74,7 +75,7 @@ func TestWeight(t *testing.T) {
 		})
 
 		// 49 + (4*256) + (4*1*1*256/2*5) = 1175
-		w, err := sel.Weight(ctx, toWeighWithParent, fakeRoot)
+		w, err := sel.Weight(ctx, toWeighWithParent)
 		assert.NoError(t, err)
 		assert.Equal(t, fbig.NewInt(1175), w)
 	})
@@ -98,7 +99,7 @@ func TestWeight(t *testing.T) {
 			},
 		)
 		// 0 + (4*256) + (4*3*1*256/2*5) = 1331
-		w, err := sel.Weight(ctx, toWeighThreeBlock, fakeRoot)
+		w, err := sel.Weight(ctx, toWeighThreeBlock)
 		assert.NoError(t, err)
 		assert.Equal(t, fbig.NewInt(1331), w)
 	})

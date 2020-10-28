@@ -227,8 +227,10 @@ func TestMismatchedTime(t *testing.T) {
 	// fails with invalid timestamp
 	c = &block.Block{Height: 1, Timestamp: uint64(genTime.Unix())}
 	err := validator.NotFutureBlock(c)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "wrong epoch")
+	if err != nil {
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "wrong epoch")
+	}
 }
 
 func TestFutureEpoch(t *testing.T) {
@@ -329,19 +331,19 @@ func (fcs *fakeChainState) GetActorAt(ctx context.Context, tipKey block.TipSetKe
 	return fcs.actor, fcs.err
 }
 
-func (fcs *fakeChainState) GetTipSet(block.TipSetKey) (*block.TipSet, error){
+func (fcs *fakeChainState) GetTipSet(block.TipSetKey) (*block.TipSet, error) {
 	return &block.TipSet{}, nil
 }
 
-func (fcs *fakeChainState) GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error){
+func (fcs *fakeChainState) GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error) {
 	return cid.Undef, nil
 }
 
-func (fcs *fakeChainState) StateView(block.TipSetKey, abi.ChainEpoch) (*state.View, error){
+func (fcs *fakeChainState) StateView(block.TipSetKey, abi.ChainEpoch) (*state.View, error) {
 	return nil, nil
 }
 
-func (fcs *fakeChainState) GetBlock(context.Context, cid.Cid) (*block.Block, error){
+func (fcs *fakeChainState) GetBlock(context.Context, cid.Cid) (*block.Block, error) {
 	return nil, nil
 }
 
