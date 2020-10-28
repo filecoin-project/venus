@@ -15,5 +15,4 @@ func SanityCheck(t *testing.T, cfgJSON string) {
 	assert.True(t, strings.Contains(cfgJSON, "bootstrap"))
 	assert.True(t, strings.Contains(cfgJSON, "bootstrap"))
 	assert.True(t, strings.Contains(cfgJSON, "\"minPeerThreshold\": 0"))
-	assert.True(t, strings.Contains(cfgJSON, "minerAddress"))
 }

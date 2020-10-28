@@ -52,6 +52,10 @@ type Builder struct {
 	tipStateCids map[string]cid.Cid
 }
 
+func (f *Builder) LoadMessages(ctx context.Context, c cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
+	return []*types.SignedMessage{}, []*types.UnsignedMessage{}, nil
+}
+
 var _ BlockProvider = (*Builder)(nil)
 var _ TipSetProvider = (*Builder)(nil)
 var _ MessageProvider = (*Builder)(nil)
