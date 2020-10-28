@@ -21,7 +21,10 @@ import (
 // the state tree, requiring that all its steps succeed.
 func RequireMakeStateTree(t *testing.T, cst cbor.IpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, *state.State) {
 	ctx := context.Background()
-	tree := state.NewState(cst)
+	tree, err := state.NewState(cst, state.StateTreeVersion0)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	for addr, act := range acts {
 		err := tree.SetActor(ctx, addr, act)
