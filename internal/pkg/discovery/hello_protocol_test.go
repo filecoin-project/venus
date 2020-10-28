@@ -29,10 +29,10 @@ func (msb *mockHelloCallback) HelloCallback(ci *block.ChainInfo) {
 }
 
 type mockHeaviestGetter struct {
-	heaviest block.TipSet
+	heaviest *block.TipSet
 }
 
-func (mhg *mockHeaviestGetter) getHeaviestTipSet() (block.TipSet, error) {
+func (mhg *mockHeaviestGetter) getHeaviestTipSet() (*block.TipSet, error) {
 	return mhg.heaviest, nil
 }
 
