@@ -3,6 +3,7 @@ package consensus_test
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -56,7 +57,7 @@ func TestMessagePenaltyChecker(t *testing.T) {
 
 	t.Run("non-account actor fails", func(t *testing.T) {
 		badActor := newActor(t, 1000, 100)
-		badActor.Code = types.CidFromString(t, "somecid")
+		badActor.Code = enccid.NewCid(types.CidFromString(t, "somecid"))
 		msg := newMessage(t, alice, bob, 100, 5, 1, 0)
 		api := NewMockIngestionValidatorAPI()
 		api.ActorAddr = alice
@@ -196,6 +197,6 @@ func (api *FakeIngestionValidatorAPI) GetActorAt(ctx context.Context, key block.
 	}, nil
 }
 
-func (api *FakeIngestionValidatorAPI) AccountStateView(baseKey block.TipSetKey) (state.AccountStateView, error) {
+func (api *FakeIngestionValidatorAPI) AccountStateView(baseKey block.TipSetKey, height abi.ChainEpoch) (state.AccountStateView, error) {
 	return &state.FakeStateView{}, nil
 }
