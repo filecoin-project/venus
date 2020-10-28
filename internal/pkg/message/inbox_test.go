@@ -325,7 +325,7 @@ func TestUpdateMessagePool(t *testing.T) {
 
 			// update pool with tipset that has no messages
 			next := requireChainWithMessages(t, chainProvider.Builder, head, msgsSet{msgs{}})[0]
-			assert.NoError(t, ib.HandleNewHead(ctx, nil, []block.TipSet{next}))
+			assert.NoError(t, ib.HandleNewHead(ctx, nil, []*block.TipSet{next}))
 
 			// assert all added messages still in pool
 			assertPoolEquals(t, p, m[:i+1]...)
@@ -336,7 +336,7 @@ func TestUpdateMessagePool(t *testing.T) {
 
 		// next tipset times out first message only
 		next := requireChainWithMessages(t, chainProvider.Builder, head, msgsSet{msgs{}})[0]
-		assert.NoError(t, ib.HandleNewHead(ctx, nil, []block.TipSet{next}))
+		assert.NoError(t, ib.HandleNewHead(ctx, nil, []*block.TipSet{next}))
 		assertPoolEquals(t, p, m[1:]...)
 
 		// adding a chain of 4 tipsets times out based on final state
@@ -373,7 +373,7 @@ func TestUpdateMessagePool(t *testing.T) {
 				bb.IncHeight(4) // 4 null blocks
 			})
 
-			assert.NoError(t, ib.HandleNewHead(ctx, nil, []block.TipSet{next}))
+			assert.NoError(t, ib.HandleNewHead(ctx, nil, []*block.TipSet{next}))
 
 			// assert all added messages still in pool
 			assertPoolEquals(t, p, m[:i+1]...)
@@ -383,12 +383,12 @@ func TestUpdateMessagePool(t *testing.T) {
 
 		// next tipset times out first message only
 		next := requireChainWithMessages(t, chainProvider.Builder, head, msgsSet{msgs{}})[0]
-		assert.NoError(t, ib.HandleNewHead(ctx, nil, []block.TipSet{next}))
+		assert.NoError(t, ib.HandleNewHead(ctx, nil, []*block.TipSet{next}))
 		assertPoolEquals(t, p, m[1:]...)
 	})
 }
 
-func newProviderWithGenesis(t *testing.T) (*message.FakeProvider, block.TipSet) {
+func newProviderWithGenesis(t *testing.T) (*message.FakeProvider, *block.TipSet) {
 	provider := message.NewFakeProvider(t)
 	head := provider.Builder.NewGenesis()
 	provider.SetHead(head.Key())
@@ -447,8 +447,8 @@ func assertPoolEquals(t *testing.T, p *message.Pool, expMsgs ...*types.SignedMes
 // Precondition: the root tipset must be defined.  The chain of tipsets is
 // returned in descending height order (head-first).
 // TODO: move this onto the builder, #3110
-func requireChainWithMessages(t *testing.T, builder *chain.Builder, root block.TipSet, msgSets ...[][]*types.SignedMessage) []block.TipSet {
-	var tipSets []block.TipSet
+func requireChainWithMessages(t *testing.T, builder *chain.Builder, root *block.TipSet, msgSets ...[][]*types.SignedMessage) []*block.TipSet {
+	var tipSets []*block.TipSet
 	parent := root
 	require.True(t, parent.Defined())
 

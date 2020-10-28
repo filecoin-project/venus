@@ -7,7 +7,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,17 +37,19 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 	// We generally desire messages to expire from the pool before the queue so that retries are
 	// accepted.
 	maxAge := uint(10)
-	gasPrice := types.NewGasPrice(1)
+	gasPrice := types.NewGasPremium(1)
+	gasPremium := types.NewGasPremium(1)
 	gasUnits := gas.NewGas(1000)
 
-	makeHandler := func(provider *message.FakeProvider, root block.TipSet) *message.HeadHandler {
+	makeHandler := func(provider *message.FakeProvider, root *block.TipSet) *message.HeadHandler {
 		mpool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		inbox := message.NewInbox(mpool, maxAge, provider, provider)
 		queue := message.NewQueue()
 		publisher := message.NewDefaultPublisher(&message.MockNetworkPublisher{}, mpool)
 		policy := message.NewMessageQueuePolicy(provider, maxAge)
+		gp := message.NewGasPredictor("gasPredictor")
 		outbox := message.NewOutbox(signer, &message.FakeValidator{}, queue, publisher, policy,
-			provider, provider, objournal)
+			provider, provider, objournal, gp)
 
 		return message.NewHeadHandler(inbox, outbox, provider, root)
 	}
@@ -65,7 +66,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		inbox := handler.Inbox
 
 		// First, send a message and expect to find it in the message queue and pool.
-		mid1, donePub1, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasUnits, true, abi.MethodNum(9000001), []byte{})
+		mid1, donePub1, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasPremium, gasUnits, true, abi.MethodNum(9000001), []byte{})
 		require.NoError(t, err)
 		require.NotNil(t, donePub1)
 		require.Equal(t, 1, len(outbox.Queue().List(sender))) // Message is in the queue.
@@ -95,7 +96,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 
 		// Send another message from the same account.
 		// First, send a message and expect to find it in the message queue and pool.
-		mid2, donePub2, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasUnits, true, abi.MethodNum(9000002), []byte{})
+		mid2, donePub2, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasPremium, gasUnits, true, abi.MethodNum(9000002), []byte{})
 		// This case causes the nonce to be wrongly calculated, since the first, now-unmined message
 		// is not in the outbox, and actor state has not updated, but the message pool already has
 		// a message with the same nonce.
