@@ -771,7 +771,7 @@ func SegProcess(ts []*block.TipSet, cb func(ts []*block.TipSet) error) error {
 		}
 	}
 
-	fmt.Println("Seg Process End ...")
+	fmt.Printf("Sync Process End,Remaining: %v, err: %v ...", len(ts), err)
 
 	return err
 }
