@@ -597,30 +597,29 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 		syncer.reporter.UpdateStatus(status.SyncFetchComplete(true))
 	}()
 
-	//errProcessChan := make(chan error, 1) // toto 目前这样的逻辑貌似没存在的意义,卡不住子线程,也返回不了错误信息
-	//errProcessChan <- nil //init
-	return SegProcess(tipsets, func(segTipset []*block.TipSet, errChan chan<- error) error {
+	errProcessChan := make(chan error, 1)
+	errProcessChan <- nil //init
+	return SegProcess(tipsets, func(segTipset []*block.TipSet) error {
 		err = syncer.fetchSegMessage(ctx, ci.Source, ci.Sender, segTipset)
 		if err != nil {
 			return err
 		}
 
-		//err := <-errProcessChan
-		//if err != nil {
-		//	return err
-		//}
+		err = <-errProcessChan
+		if err != nil {
+			fmt.Printf("process error: %s\n", err.Error())
+			return err
+		}
 
 		go func() {
 			fmt.Printf("start to process tipset from height: %v\n", segTipset[len(segTipset)-1].EnsureHeight())
 			defer fmt.Printf("end to process tipset from height: %v\n", segTipset[len(segTipset)-1].EnsureHeight())
 			errProcess := syncer.processTipSetSeg(ctx, segTipset)
 			if errProcess != nil {
-				errChan <- errors.Wrapf(err, "process tipset error at %v, err: %s", segTipset[len(segTipset)-1].EnsureHeight(), errProcess.Error())
-				// errProcessChan <- errProcess
+				errProcessChan <- errProcess
 				return
 			}
-			// errProcessChan <- syncer.SetStagedHead(ctx)
-			errChan <- syncer.SetStagedHead(ctx)
+			errProcessChan <- syncer.SetStagedHead(ctx)
 		}()
 
 		return nil
@@ -752,42 +751,23 @@ func (syncer *Syncer) Status() status.Status {
 }
 
 const maxProcessLen = 1 + 4 + 16 + 16
-func SegProcess(ts []*block.TipSet, cb func(ts []*block.TipSet, errChan chan<- error) error) error {
-	tsSize := len(ts)
-	sz := len(ts)/maxProcessLen + 1
-	errProcessChan := make(chan error, sz)
-	fmt.Printf("SegProcess tsSize: %v,%v\n", tsSize, sz)
-
+func SegProcess(ts []*block.TipSet, cb func(ts []*block.TipSet) error) error {
 	var err error
 	for {
 		if len(ts) == 0 {
 			break
 		} else if len(ts) < maxProcessLen {
-			err = cb(ts, errProcessChan)
+			err = cb(ts)
 			if err != nil {
 				break
 			}
 		} else {
 			processTs := ts[0:maxProcessLen]
-			err = cb(processTs, errProcessChan)
+			err = cb(processTs)
 			if err != nil {
 				break
 			}
 			ts = ts[maxProcessLen:]
-		}
-	}
-	fmt.Printf("Seg Process Begin Complete: %v ...\n", err)
-
-	num := (tsSize - len(ts)) / maxProcessLen
-	if len(ts) <= 0 {
-		num = sz
-	}
-	fmt.Printf("SegProcess tsSize: %v, %v, %v\n", tsSize, sz, num)
-	for idx := 0; idx < num; idx++ {
-		e, ok := <- errProcessChan
-		if ok && e != nil {
-			fmt.Printf("[%v] process tipset err: %s\n", idx, e.Error())
-			err = e
 		}
 	}
 
