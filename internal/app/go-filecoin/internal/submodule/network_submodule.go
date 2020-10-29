@@ -183,6 +183,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	}
 	// build network
 	network := net.New(peerHost, net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService))
+
 	//peer manager
 	bootNodes, err := net.ParseAddresses(ctx, repo.Config().Bootstrap.Addresses)
 	if err != nil {
@@ -196,7 +197,8 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	if err != nil {
 		return NetworkSubmodule{}, err
 	}
-	peerMgr.Run(ctx)
+	go peerMgr.Run(ctx)
+
 	// build the network submdule
 	return NetworkSubmodule{
 		NetworkName:      networkName,

@@ -12,7 +12,8 @@ import (
 func main() {
 
 	logging.SetAllLoggers(logging.LevelFatal)
-	// set default log level if no flags given
+
+	//// set default log level if no flags given
 	//var level logging.LogLevel
 	//var err error
 	//lvl := os.Getenv("GO_FILECOIN_LOG_LEVEL")
@@ -25,56 +26,19 @@ func main() {
 	//	}
 	//}
 	//
-	//errCode := 1
 	//logging.SetAllLoggers(level)
-	//err = logging.SetLogLevel("dht", "error")
-	//if err != nil {
-	//	os.Exit(errCode)
-	//}
-	//err = logging.SetLogLevel("bitswap", "error")
-	//if err != nil {
-	//	os.Exit(errCode)
-	//}
-	//err = logging.SetLogLevel("graphsync", "info")
-	//if err != nil {
-	//	os.Exit(errCode)
-	//}
-	//err = logging.SetLogLevel("heartbeat", "error")
-	//if err != nil {
-	//	os.Exit(errCode)
-	//}
-	//err = logging.SetLogLevel("blockservice", "error")
-	//if err != nil {
-	//	os.Exit(errCode)
-	//}
-	//err = logging.SetLogLevel("peerqueue", "error")
-	//if err != nil {
-	//	os.Exit(errCode)
-	//}
-	//err = logging.SetLogLevel("swarm", "error")
-	//if err != nil {
-	//	os.Exit(errCode)
-	//}
-	//err = logging.SetLogLevel("swarm2", "error")
-	//if err != nil {
-	//	os.Exit(errCode)
-	//}
-	//err = logging.SetLogLevel("basichost", "error")
-	//if err != nil {
-	//	os.Exit(errCode)
-	//}
-	//err = logging.SetLogLevel("dht_net", "error")
-	//if err != nil {
-	//	os.Exit(errCode)
-	//}
-	//err = logging.SetLogLevel("pubsub", "error")
-	//if err != nil {
-	//	os.Exit(errCode)
-	//}
-	//err = logging.SetLogLevel("relay", "error")
-	//if err != nil {
-	//	os.Exit(errCode)
-	//}
+	//logging.SetLogLevel("dht", "error")          // nolint: errcheck
+	//logging.SetLogLevel("bitswap", "error")      // nolint: errcheck
+	//logging.SetLogLevel("graphsync", "info")     // nolint: errcheck
+	//logging.SetLogLevel("heartbeat", "error")    // nolint: errcheck
+	//logging.SetLogLevel("blockservice", "error") // nolint: errcheck
+	//logging.SetLogLevel("peerqueue", "error")    // nolint: errcheck
+	//logging.SetLogLevel("swarm", "error")        // nolint: errcheck
+	//logging.SetLogLevel("swarm2", "error")       // nolint: errcheck
+	//logging.SetLogLevel("basichost", "error")    // nolint: errcheck
+	//logging.SetLogLevel("dht_net", "error")      // nolint: errcheck
+	//logging.SetLogLevel("pubsub", "error")       // nolint: errcheck
+	//logging.SetLogLevel("relay", "error")        // nolint: errcheck
 
 	code, _ := commands.Run(context.Background(), os.Args, os.Stdin, os.Stdout, os.Stderr)
 	os.Exit(code)
