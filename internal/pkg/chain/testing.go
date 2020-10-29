@@ -630,6 +630,18 @@ func (f *Builder) StoreTxMeta(ctx context.Context, meta types.TxMeta) (cid.Cid, 
 	return f.messages.StoreTxMeta(ctx, meta)
 }
 
+func (f *Builder) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error) {
+	return f.messages.ReadMsgMetaCids(ctx, mmc)
+}
+
+func (f *Builder) LoadUnsinedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error) {
+	return f.messages.LoadUnsinedMessagesFromCids(blsCids)
+}
+
+func (f *Builder) LoadSignedMessagesFromCids(secpCids []cid.Cid) ([]*types.SignedMessage, error) {
+	return f.messages.LoadSignedMessagesFromCids(secpCids)
+}
+
 ///// Internals /////
 
 func makeCid(i interface{}) (cid.Cid, error) {
