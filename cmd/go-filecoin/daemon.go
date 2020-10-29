@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"net/http"
 	_ "net/http/pprof" // nolint: golint
 	"os"
@@ -11,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	paramfetch "github.com/filecoin-project/go-paramfetch"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
 	ma "github.com/multiformats/go-multiaddr"
@@ -19,9 +19,11 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	proofparams "github.com/filecoin-project/go-filecoin/proof-params"
 )
 
 var daemonCmd = &cmds.Command{
@@ -32,6 +34,7 @@ var daemonCmd = &cmds.Command{
 		cmds.StringOption(SwarmAddress, "multiaddress to listen on for filecoin network connections"),
 		cmds.StringOption(SwarmPublicRelayAddress, "public multiaddress for routing circuit relay traffic.  Necessary for relay nodes to provide this if they are not publically dialable"),
 		cmds.BoolOption(OfflineMode, "start the node without networking"),
+		cmds.BoolOption(LiteNode, "start the node with lite mode").WithDefault(true),
 		cmds.StringOption("check-point", "where to start the chain"),
 		cmds.BoolOption(ELStdout),
 		cmds.BoolOption(IsRelay, "advertise and allow filecoin network traffic to be relayed through this node"),
@@ -67,6 +70,17 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 
 	if publicRelayAddress, ok := req.Options[SwarmPublicRelayAddress].(string); ok && publicRelayAddress != "" {
 		config.Swarm.PublicRelayAddress = publicRelayAddress
+	}
+
+	isLite := false
+	if liteMode, ok := req.Options[LiteNode].(bool); ok {
+		isLite = liteMode
+	}
+
+	if !isLite {
+		if err := paramfetch.GetParams(req.Context, proofparams.ParametersJSON(), 0); err != nil {
+			return errors.Wrapf(err, "fetching proof parameters: %v", err)
+		}
 	}
 
 	opts, err := node.OptionsFromRepo(rep)

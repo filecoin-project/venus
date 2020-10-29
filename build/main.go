@@ -117,17 +117,6 @@ func deps() {
 
 	runCmd(cmd("go mod download"))
 
-	// dat, err := ioutil.ReadFile("./parameters.json")
-	// if err != nil {
-	// 	panic(errors.Wrap(err, "failed to read contents of ./parameters.json"))
-	// }
-
-	// log.Println("Getting parameters...")
-	// err = pf.GetParams(context.Background(), dat, 2048) // todo by force
-	// if err != nil {
-	// 	panic(errors.Wrap(err, "failed to acquire Groth parameters for development sectors"))
-	// }
-
 	runCmd(cmd("./scripts/install-filecoin-ffi.sh"))
 }
 
