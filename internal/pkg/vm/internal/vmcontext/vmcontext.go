@@ -192,7 +192,7 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 
 	// get a view into the actor stateView
 	initActorState, err := initActor.Load(adt.WrapStore(vm.context, vm.store), initActorEntry)
-	if err := vm.store.Get(vm.context, initActorEntry.Head.Cid, &initActorState); err != nil {
+	if err != nil {
 		panic(err)
 	}
 
