@@ -26,7 +26,7 @@ import (
 var log = logging.Logger("consensus")
 
 type messageStore interface {
-	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
+	LoadMetaMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
 	LoadReceipts(context.Context, cid.Cid) ([]types.MessageReceipt, error)
 }
 
@@ -189,7 +189,7 @@ func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, c
 	//}
 
 	// ToDo 同步时存储落后于验证,TipSetMetadata尚未被存储?
-	secpMsgs, blsMsgs, err := dv.ms.LoadMessages(ctx, child.Messages.Cid)
+	secpMsgs, blsMsgs, err := dv.ms.LoadMetaMessages(ctx, child.Messages.Cid)
 	if err != nil {
 		return errors.Wrapf(err, "block validation failed loading message list %s for block %s", child.Messages, child.Cid())
 	}

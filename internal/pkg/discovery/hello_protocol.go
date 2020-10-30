@@ -7,6 +7,11 @@ import (
 	"io/ioutil"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
+	fnet "github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
@@ -15,11 +20,6 @@ import (
 	net "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 )
 
 var log = logging.Logger("/fil/hello")
@@ -66,6 +66,8 @@ type HelloProtocolHandler struct {
 	getHeaviestTipSet getTipSetFunc
 
 	networkName string
+
+	peerMgr *fnet.PeerMgr
 }
 
 type peerDiscoveredCallback func(ci *block.ChainInfo)
@@ -74,11 +76,12 @@ type getTipSetFunc func() (*block.TipSet, error)
 
 // NewHelloProtocolHandler creates a new instance of the hello protocol `Handler` and registers it to
 // the given `host.Host`.
-func NewHelloProtocolHandler(h host.Host, gen cid.Cid, networkName string) *HelloProtocolHandler {
+func NewHelloProtocolHandler(h host.Host, peerMgr *fnet.PeerMgr, gen cid.Cid, networkName string) *HelloProtocolHandler {
 	return &HelloProtocolHandler{
 		host:        h,
 		genesis:     gen,
 		networkName: networkName,
+		peerMgr:     peerMgr,
 	}
 }
 
@@ -116,6 +119,7 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	// no error
 	case err == nil:
 		// notify the local node of the new `block.ChainInfo`
+		h.peerMgr.AddFilecoinPeer(from)
 		h.peerDiscovered(ci)
 	// processing errors
 	case err == ErrBadGenesis:

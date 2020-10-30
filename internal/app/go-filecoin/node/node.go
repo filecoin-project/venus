@@ -102,6 +102,10 @@ func (node *Node) Start(ctx context.Context) error {
 	go node.handleNewChainHeads(syncCtx, head)
 
 	if !node.OfflineMode {
+		// Start node discovery
+		if err := node.Discovery.Start(node); err != nil {
+			return err
+		}
 
 		// Subscribe to block pubsub topic to learn about new chain heads.
 		node.syncer.BlockSub, err = node.pubsubscribe(syncCtx, node.syncer.BlockTopic, node.handleBlockSub)
@@ -112,11 +116,6 @@ func (node *Node) Start(ctx context.Context) error {
 		// Subscribe to the message pubsub topic to learn about messages to mine into blocks.
 		node.Messaging.MessageSub, err = node.pubsubscribe(syncCtx, node.Messaging.MessageTopic, node.processMessage)
 		if err != nil {
-			return err
-		}
-
-		// Start node discovery
-		if err := node.Discovery.Start(node); err != nil {
 			return err
 		}
 

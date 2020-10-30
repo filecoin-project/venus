@@ -2,15 +2,13 @@ package porcelain
 
 import (
 	"context"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"io"
-	"time"
-
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"io"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -114,16 +112,6 @@ func (a *API) SetWalletDefaultAddress(addr address.Address) error {
 // SealPieceIntoNewSector writes the provided piece into a new sector
 func (a *API) SealPieceIntoNewSector(ctx context.Context, dealID abi.DealID, dealStart, dealEnd abi.ChainEpoch, pieceSize abi.UnpaddedPieceSize, pieceReader io.Reader) (*storagemarket.PackingResult, error) {
 	return SealPieceIntoNewSector(ctx, a, dealID, dealStart, dealEnd, pieceSize, pieceReader)
-}
-
-// PingMinerWithTimeout pings a storage or retrieval miner, waiting the given
-// timeout and returning desciptive errors.
-func (a *API) PingMinerWithTimeout(
-	ctx context.Context,
-	minerPID peer.ID,
-	timeout time.Duration,
-) error {
-	return PingMinerWithTimeout(ctx, minerPID, timeout, a)
 }
 
 // MinerSetWorkerAddress sets the miner worker address to the provided address

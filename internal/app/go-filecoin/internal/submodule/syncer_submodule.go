@@ -2,6 +2,7 @@ package submodule
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/exchange"
 	"time"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
@@ -52,8 +53,14 @@ type nodeChainSelector interface {
 }
 
 // NewSyncerSubmodule creates a new chain submodule.
-func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *BlockstoreSubmodule, network *NetworkSubmodule,
-	discovery *DiscoverySubmodule, chn *ChainSubmodule, postVerifier consensus.ProofVerifier, checkPoint block.TipSetKey) (SyncerSubmodule, error) {
+func NewSyncerSubmodule(ctx context.Context,
+	config syncerConfig,
+	blockstore *BlockstoreSubmodule,
+	network *NetworkSubmodule,
+	discovery *DiscoverySubmodule,
+	chn *ChainSubmodule,
+	postVerifier consensus.ProofVerifier,
+	checkPoint block.TipSetKey) (SyncerSubmodule, error) {
 	// setup validation
 	blkValid := consensus.NewDefaultBlockValidator(config.ChainClock(), chn.MessageStore, chn.State)
 	msgValid := consensus.NewMessageSyntaxValidator()
@@ -102,10 +109,11 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, blockstore *Bl
 		}
 	})
 	fetcher := fetcher.NewGraphSyncFetcher(ctx, network.GraphExchange, blockstore.Blockstore, syntax, config.ChainClock(), discovery.PeerTracker)
+	exchangeClient := exchange.NewClient(network.Host, network.PeerMgr)
 	faultCh := make(chan slashing.ConsensusFault)
 	faultDetector := slashing.NewConsensusFaultDetector(faultCh)
 
-	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, fetcher, config.ChainClock(), checkPoint, faultDetector, chn.Fork)
+	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, blockstore.Blockstore, fetcher, exchangeClient, config.ChainClock(), checkPoint, faultDetector, chn.Fork)
 	if err != nil {
 		return SyncerSubmodule{}, err
 	}

@@ -26,7 +26,7 @@ import (
 // MessageProvider is an interface exposing the load methods of the
 // MessageStore.
 type MessageProvider interface {
-	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
+	LoadMetaMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
 	ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 	LoadUnsinedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error)
 	LoadSignedMessagesFromCids(secpCids []cid.Cid) ([]*types.SignedMessage, error)
@@ -52,9 +52,9 @@ func NewMessageStore(bs blockstore.Blockstore) *MessageStore {
 	return &MessageStore{bs: bs}
 }
 
-// LoadMessages loads the signed messages in the collection with cid c from ipld
+// LoadMetaMessages loads the signed messages in the collection with cid c from ipld
 // storage.
-func (ms *MessageStore) LoadMessages(ctx context.Context, metaCid cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
+func (ms *MessageStore) LoadMetaMessages(ctx context.Context, metaCid cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
 	// load txmeta
 	meta, err := ms.LoadTxMeta(ctx, metaCid)
 	if err != nil {
@@ -193,7 +193,7 @@ func (ms *MessageStore) LoadTipSetMesssages(ctx context.Context, ts *block.TipSe
 
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
-		secpMsgs, blsMsgs, err := ms.LoadMessages(ctx, blk.Messages.Cid)
+		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, blk.Messages.Cid)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
 		}
@@ -455,7 +455,7 @@ func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet) (a
 	seen := make(map[cid.Cid]struct{})
 
 	for _, b := range ts.Blocks() {
-		secpMsgs, blsMsgs, err := ms.LoadMessages(ctx, b.Messages.Cid)
+		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, b.Messages.Cid)
 		if err != nil {
 			return zero, xerrors.Errorf("error getting messages for: %s: %w", b.Cid(), err)
 		}

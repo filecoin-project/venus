@@ -264,7 +264,7 @@ func (c *Expected) ValidateMining(ctx context.Context,
 	var blsMsgs [][]*types.UnsignedMessage
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
-		blksecpMsgs, blkblsMsgs, err := c.messageStore.LoadMessages(ctx, blk.Messages.Cid)
+		blksecpMsgs, blkblsMsgs, err := c.messageStore.LoadMetaMessages(ctx, blk.Messages.Cid)
 		if err != nil {
 			return errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
 		}
@@ -354,7 +354,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 		return errors.Wrap(err, "block signature invalid")
 	}
 
-	blksecpMsgs, blkblsMsgs, err := c.messageStore.LoadMessages(ctx, blk.Messages.Cid)
+	blksecpMsgs, blkblsMsgs, err := c.messageStore.LoadMetaMessages(ctx, blk.Messages.Cid)
 	if err != nil {
 		return errors.Wrapf(err, "failed loading message list %s for block %s", blk.Messages, blk.Cid())
 	}

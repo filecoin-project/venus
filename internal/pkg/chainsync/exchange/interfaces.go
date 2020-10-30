@@ -3,8 +3,6 @@ package exchange
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-
-	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
@@ -12,13 +10,7 @@ import (
 // requests from clients and services them by returning the requested
 // chain data.
 type Server interface {
-	// HandleStream is the protocol handler to be registered on a libp2p
-	// protocol router.
-	//
-	// In the current version of the protocol, streams are single-use. The
-	// server will read a single Request, and will respond with a single
-	// Response. It will dispose of the stream straight after.
-	HandleStream(stream network.Stream)
+	Register()
 }
 
 // Client is the requesting side of the ChainExchange protocol. It acts as

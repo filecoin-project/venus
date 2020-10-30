@@ -238,7 +238,7 @@ func (c *Expected) processBlock(ctx context.Context, ts *block.TipSet) (cid.Cid,
 	var blsMessages [][]*types.UnsignedMessage
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
-		secpMsgs, blsMsgs, err := c.messageStore.LoadMessages(ctx, blk.Messages.Cid)
+		secpMsgs, blsMsgs, err := c.messageStore.LoadMetaMessages(ctx, blk.Messages.Cid)
 		if err != nil {
 			return cid.Undef, []types.MessageReceipt{}, xerrors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
 		}

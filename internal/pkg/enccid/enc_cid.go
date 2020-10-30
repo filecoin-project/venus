@@ -126,3 +126,19 @@ func castCidToBytes(link cid.Cid) ([]byte, error) {
 	}
 	return append([]byte{0}, link.Bytes()...), nil
 }
+
+func EncidToCidArr(idArr []Cid) []cid.Cid {
+	result := make([]cid.Cid, len(idArr))
+	for index, val := range idArr {
+		result[index] = val.Cid
+	}
+	return result
+}
+
+func WrapCid(ids []cid.Cid) []Cid {
+	result := make([]Cid, len(ids))
+	for index, id := range ids {
+		result[index] = NewCid(id)
+	}
+	return result
+}

@@ -5,13 +5,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/libp2p/go-libp2p-core/host"
 	"time"
 
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
-
-	cborutil "github.com/filecoin-project/go-cbor-util"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/helpers"
@@ -20,7 +20,10 @@ import (
 
 type chainReader interface {
 	GetTipSet(block.TipSetKey) (*block.TipSet, error)
-	ReadMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
+}
+
+type messageStore interface {
+	ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 
 	LoadUnsinedMessagesFromCids(cids []cid.Cid) ([]*types.UnsignedMessage, error)
 	LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.SignedMessage, error)
@@ -30,20 +33,29 @@ type chainReader interface {
 // libp2p ChainExchange protocol.
 type server struct {
 	cr chainReader
+	mr messageStore
+	h  host.Host
 }
 
 var _ Server = (*server)(nil)
 
 // NewServer creates a new libp2p-based exchange.Server. It services requests
 // for the libp2p ChainExchange protocol.
-func NewServer(cr chainReader) Server {
+func NewServer(cr chainReader, mr messageStore, h host.Host) Server {
 	return &server{
 		cr: cr,
+		mr: mr,
+		h:  h,
 	}
 }
 
+func (s *server) Register() {
+	s.h.SetStreamHandler(BlockSyncProtocolID, s.handleStream)     // old
+	s.h.SetStreamHandler(ChainExchangeProtocolID, s.handleStream) // new
+}
+
 // HandleStream implements Server.HandleStream. Refer to the godocs there.
-func (s *server) HandleStream(stream inet.Stream) {
+func (s *server) handleStream(stream inet.Stream) {
 	ctx, span := trace.StartSpan(context.Background(), "chainxchg.HandleStream")
 	defer span.End()
 
@@ -52,7 +64,7 @@ func (s *server) HandleStream(stream inet.Stream) {
 	defer helpers.FullClose(stream) //nolint:errcheck
 
 	var req Request
-	if err := cborutil.ReadCborRPC(bufio.NewReader(stream), &req); err != nil {
+	if err := ReadCborRPC(bufio.NewReader(stream), &req); err != nil {
 		log.Warnf("failed to read block sync request: %s", err)
 		return
 	}
@@ -66,7 +78,7 @@ func (s *server) HandleStream(stream inet.Stream) {
 	}
 
 	_ = stream.SetDeadline(time.Now().Add(WriteResDeadline))
-	if err := cborutil.WriteCborRPC(stream, resp); err != nil {
+	if err := WriteCborRPC(stream, resp); err != nil {
 		_ = stream.SetDeadline(time.Time{})
 		log.Warnw("failed to write back response for handle stream",
 			"err", err, "peer", stream.Conn().RemotePeer())
@@ -126,7 +138,7 @@ func validateRequest(ctx context.Context, req *Request) (*validatedRequest, *Res
 			ErrorMessage: "no cids in request",
 		}
 	}
-	validReq.head = block.NewTipSetKey(req.Head...)
+	validReq.head = block.NewTipSetKey(enccid.EncidToCidArr(req.Head)...)
 
 	// FIXME: Add as a defer at the start.
 	span.AddAttributes(
@@ -142,7 +154,7 @@ func (s *server) serviceRequest(ctx context.Context, req *validatedRequest) (*Re
 	_, span := trace.StartSpan(ctx, "chainxchg.ServiceRequest")
 	defer span.End()
 
-	chain, err := collectChainSegment(s.cr, req)
+	chain, err := collectChainSegment(s.cr, s.mr, req)
 	if err != nil {
 		log.Warn("block sync request: collectChainSegment failed: ", err)
 		return &Response{
@@ -162,7 +174,7 @@ func (s *server) serviceRequest(ctx context.Context, req *validatedRequest) (*Re
 	}, nil
 }
 
-func collectChainSegment(cr chainReader, req *validatedRequest) ([]*BSTipSet, error) {
+func collectChainSegment(cr chainReader, mr messageStore, req *validatedRequest) ([]*BSTipSet, error) {
 	var bstips []*BSTipSet
 
 	cur := req.head
@@ -178,7 +190,7 @@ func collectChainSegment(cr chainReader, req *validatedRequest) ([]*BSTipSet, er
 		}
 
 		if req.options.IncludeMessages {
-			bmsgs, bmincl, smsgs, smincl, err := gatherMessages(cr, ts)
+			bmsgs, bmincl, smsgs, smincl, err := gatherMessages(cr, mr, ts)
 			if err != nil {
 				return nil, xerrors.Errorf("gather messages failed: %w", err)
 			}
@@ -203,14 +215,14 @@ func collectChainSegment(cr chainReader, req *validatedRequest) ([]*BSTipSet, er
 	}
 }
 
-func gatherMessages(cr chainReader, ts *block.TipSet) ([]*types.UnsignedMessage, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
+func gatherMessages(cr chainReader, mr messageStore, ts *block.TipSet) ([]*types.UnsignedMessage, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
 	blsmsgmap := make(map[cid.Cid]uint64)
 	secpkmsgmap := make(map[cid.Cid]uint64)
 	var secpkincl, blsincl [][]uint64
 
 	var blscids, secpkcids []cid.Cid
 	for _, block := range ts.Blocks() {
-		bc, sc, err := cr.ReadMsgMetaCids(block.Messages.Cid)
+		bc, sc, err := mr.ReadMsgMetaCids(context.TODO(), block.Messages.Cid)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -243,12 +255,12 @@ func gatherMessages(cr chainReader, ts *block.TipSet) ([]*types.UnsignedMessage,
 		secpkincl = append(secpkincl, smi)
 	}
 
-	blsmsgs, err := cr.LoadUnsinedMessagesFromCids(blscids)
+	blsmsgs, err := mr.LoadUnsinedMessagesFromCids(blscids)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 
-	secpkmsgs, err := cr.LoadSignedMessagesFromCids(secpkcids)
+	secpkmsgs, err := mr.LoadSignedMessagesFromCids(secpkcids)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}

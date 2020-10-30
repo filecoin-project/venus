@@ -62,7 +62,6 @@ type Network struct {
 	host host.Host
 	metrics.Reporter
 	*Router
-	*Pinger
 }
 
 // New returns a new Network
@@ -70,11 +69,9 @@ func New(
 	host host.Host,
 	router *Router,
 	reporter metrics.Reporter,
-	pinger *Pinger,
 ) *Network {
 	return &Network{
 		host:     host,
-		Pinger:   pinger,
 		Reporter: reporter,
 		Router:   router,
 	}

@@ -2,6 +2,8 @@ package chainsync
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/exchange"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -33,12 +35,14 @@ func NewManager(fv syncer.FullBlockValidator,
 	cs syncer.ChainSelector,
 	s syncer.ChainReaderWriter,
 	m *chain.MessageStore,
+	bsstore blockstore.Blockstore,
 	f syncer.Fetcher,
+	exchangeClient exchange.Client,
 	c clock.Clock,
 	checkPoint block.TipSetKey,
 	detector *slashing.ConsensusFaultDetector,
 	fork fork.IFork) (Manager, error) {
-	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, f, status.NewReporter(), c, detector, checkPoint, fork)
+	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, bsstore, f, exchangeClient, status.NewReporter(), c, detector, checkPoint, fork)
 	if err != nil {
 		return Manager{}, err
 	}

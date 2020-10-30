@@ -217,7 +217,7 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts *block.TipSet, pred Wa
 	tsMessages := make([][]*types.UnsignedMessage, ts.Len())
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
-		secpMsgs, blsMsgs, err := w.messageProvider.LoadMessages(ctx, blk.Messages.Cid)
+		secpMsgs, blsMsgs, err := w.messageProvider.LoadMetaMessages(ctx, blk.Messages.Cid)
 		if err != nil {
 			return nil, false, err
 		}

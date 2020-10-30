@@ -72,6 +72,7 @@ func (b *Bootstrapper) Start(ctx context.Context) {
 	b.ctx, b.cancel = context.WithCancel(ctx)
 	b.ticker = time.NewTicker(b.Period)
 
+	b.Bootstrap(nil) //boot first
 	go func() {
 		defer b.ticker.Stop()
 

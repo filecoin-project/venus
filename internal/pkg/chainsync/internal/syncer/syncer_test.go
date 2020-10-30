@@ -235,7 +235,7 @@ func TestNoUncessesaryFetch(t *testing.T) {
 	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", head.Key(), heightFromTip(t, head)), false))
 
 	// A new syncer unable to fetch blocks from the network can handle a tipset that's already
-	// in the store and linked to genesis.
+	// in the bsstore and linked to genesis.
 	emptyFetcher := chain.NewBuilder(t, address.Undef)
 	newSyncer, err := syncer.NewSyncer(&chain.FakeStateEvaluator{}, &chain.FakeStateEvaluator{}, &chain.FakeChainSelector{}, store, builder, emptyFetcher, status.NewReporter(), clock.NewFake(time.Unix(1234567890, 0)), &noopFaultDetector{})
 	require.NoError(t, err)
@@ -243,20 +243,20 @@ func TestNoUncessesaryFetch(t *testing.T) {
 	assert.NoError(t, newSyncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", head.Key(), heightFromTip(t, head)), false))
 }
 
-// Syncer must track state of subsets of parent tipsets tracked in the store
+// Syncer must track state of subsets of parent tipsets tracked in the bsstore
 // when they are the ancestor in a chain.  This is in order to maintain the
 // invariant that the aggregate state of the  parents of the base of a collected chain
-// is kept in the store.  This invariant allows chains built on subsets of
+// is kept in the bsstore.  This invariant allows chains built on subsets of
 // tracked tipsets to be handled correctly.
 // This test tests that the syncer stores the state of such a base tipset of a collected chain,
-// i.e. a subset of an existing tipset in the store.
+// i.e. a subset of an existing tipset in the bsstore.
 //
-// Ex: {A1, A2} -> {B1, B2, B3} in store to start
+// Ex: {A1, A2} -> {B1, B2, B3} in bsstore to start
 // {B1, B2} -> {C1, C2} chain 1 input to syncer
 // C1 -> D1 chain 2 input to syncer
 //
 // The last operation will fail if the state of subset {B1, B2} is not
-// kept in the store because syncing C1 requires retrieving parent state.
+// kept in the bsstore because syncing C1 requires retrieving parent state.
 func TestSubsetParent(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
@@ -269,7 +269,7 @@ func TestSubsetParent(t *testing.T) {
 	require.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", tipB1B2B3.Key(), heightFromTip(t, tipB1B2B3)), false))
 
 	// Sync one tipset with a parent equal to a subset of an existing
-	// tipset in the store: {B1, B2} -> {C1, C2}
+	// tipset in the bsstore: {B1, B2} -> {C1, C2}
 	tipB1B2 := block.RequireNewTipSet(t, tipB1B2B3.At(0), tipB1B2B3.At(1))
 	tipC1C2 := builder.AppendOn(tipB1B2, 2)
 
@@ -286,7 +286,7 @@ func TestSubsetParent(t *testing.T) {
 	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", tipD1OnC1C2.Key(), heightFromTip(t, tipD1OnC1C2)), false))
 }
 
-// Check that the syncer correctly adds widened chain ancestors to the store.
+// Check that the syncer correctly adds widened chain ancestors to the bsstore.
 func TestWidenChainAncestor(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
@@ -319,7 +319,7 @@ func TestWidenChainAncestor(t *testing.T) {
 }
 
 // Syncer finds a heaviest tipset by combining blocks from the ancestors of a
-// chain and blocks already in the store.
+// chain and blocks already in the bsstore.
 //
 // A guide to this test -- the point is that sometimes when merging chains the syncer
 // will find a new heaviest tipset that is not the head of either chain.  The syncer
@@ -339,7 +339,7 @@ func TestWidenChainAncestor(t *testing.T) {
 // and the weight of the union of link2 of both branches (a valid tipset) is
 //   W(link1) + 7 = 9
 //
-// Therefore the syncer should set the head of the store to the union of the links..
+// Therefore the syncer should set the head of the bsstore to the union of the links..
 func TestHeaviestIsWidenedAncestor(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
@@ -544,8 +544,8 @@ func TestStoresMessageReceipts(t *testing.T) {
 
 ///// Set-up /////
 
-// Initializes a chain builder, store and syncer.
-// The chain builder has a single genesis block, which is set as the head of the store.
+// Initializes a chain builder, bsstore and syncer.
+// The chain builder has a single genesis block, which is set as the head of the bsstore.
 func setup(ctx context.Context, t *testing.T) (*chain.Builder, *chain.Store, *syncer.Syncer) {
 	eval := &chain.FakeStateEvaluator{}
 	return setupWithValidator(ctx, t, eval, eval)
@@ -561,12 +561,12 @@ func setupWithValidator(ctx context.Context, t *testing.T, fullVal syncer.FullBl
 	cst := cborutil.NewIpldStore(bs)
 
 	store := chain.NewStore(ds, cst, chain.NewStatusReporter(), genesis.At(0).Cid())
-	// Initialize chainStore store genesis state and tipset as head.
+	// Initialize chainStore bsstore genesis state and tipset as head.
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: genStateRoot, TipSet: genesis, TipSetReceipts: types.EmptyReceiptsCID}))
 	require.NoError(t, store.SetHead(ctx, genesis))
 
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
-	// *not* as the store, to which the syncer must ensure to put blocks.
+	// *not* as the bsstore, to which the syncer must ensure to put blocks.
 	sel := &chain.FakeChainSelector{}
 	syncer, err := syncer.NewSyncer(fullVal, headerVal, sel, store, builder, builder, status.NewReporter(), clock.NewFake(time.Unix(1234567890, 0)), &noopFaultDetector{})
 	require.NoError(t, err)
@@ -577,7 +577,7 @@ func setupWithValidator(ctx context.Context, t *testing.T, fullVal syncer.FullBl
 
 ///// Verification helpers /////
 
-// Sub-interface of the store used for verification.
+// Sub-interface of the bsstore used for verification.
 type syncStoreReader interface {
 	GetHead() block.TipSetKey
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
@@ -585,7 +585,7 @@ type syncStoreReader interface {
 	GetTipSetAndStatesByParentsAndHeight(block.TipSetKey, abi.ChainEpoch) ([]*chain.TipSetMetadata, error)
 }
 
-// Verifies that a tipset and associated state root are stored in the chain store.
+// Verifies that a tipset and associated state root are stored in the chain bsstore.
 func verifyTip(t *testing.T, store syncStoreReader, tip block.TipSet, stateRoot cid.Cid) {
 	foundTip, err := store.GetTipSet(tip.Key())
 	require.NoError(t, err)
@@ -604,7 +604,7 @@ func verifyTip(t *testing.T, store syncStoreReader, tip block.TipSet, stateRoot 
 	assert.True(t, containsTipSet(childTsasSlice, tip))
 }
 
-// Verifies that the store's head is as expected.
+// Verifies that the bsstore's head is as expected.
 func verifyHead(t *testing.T, store syncStoreReader, head block.TipSet) {
 	headTipSet, err := store.GetTipSet(store.GetHead())
 	require.NoError(t, err)

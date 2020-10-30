@@ -8,9 +8,17 @@ import (
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	"os"
 	"runtime"
+	"strings"
 	"time"
 
+	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
+	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-cid"
@@ -27,20 +35,15 @@ import (
 	circuit "github.com/libp2p/go-libp2p-circuit"
 	"github.com/libp2p/go-libp2p-core/host"
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
+	smux "github.com/libp2p/go-libp2p-core/mux"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	mplex "github.com/libp2p/go-libp2p-mplex"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
+	yamux "github.com/libp2p/go-libp2p-yamux"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
-	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
-
-	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
-	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 )
 
 // NetworkSubmodule enhances the `Node` with networking capabilities.
@@ -87,7 +90,7 @@ type networkRepo interface {
 // NewNetworkSubmodule creates a new network submodule.
 func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo networkRepo, blockstore *BlockstoreSubmodule) (NetworkSubmodule, error) {
 	bandwidthTracker := p2pmetrics.NewBandwidthCounter()
-	libP2pOpts := append(config.Libp2pOpts(), libp2p.BandwidthReporter(bandwidthTracker))
+	libP2pOpts := append(config.Libp2pOpts(), libp2p.BandwidthReporter(bandwidthTracker), makeSmuxTransportOption(true))
 
 	networkName, err := retrieveNetworkName(ctx, config.GenesisCid(), blockstore.CborStore)
 	if err != nil {
@@ -159,12 +162,9 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	}
 
 	// set up bitswap
-	nwork := bsnet.NewFromIpfsHost(peerHost, router)
-	//nwork := bsnet.NewFromIpfsHost(innerHost, router)
-	bswap := bitswap.New(ctx, nwork, blockstore.Blockstore)
-
-	// set up pinger
-	pingService := ping.NewPingService(peerHost)
+	nwork := bsnet.NewFromIpfsHost(peerHost, router, bsnet.Prefix("/chain"))
+	bitswapOptions := []bitswap.Option{bitswap.ProvideEnabled(false)}
+	bswap := bitswap.New(ctx, nwork, blockstore.Blockstore, bitswapOptions...)
 
 	// set up graphsync
 	graphsyncNetwork := gsnet.NewFromLibp2pHost(peerHost)
@@ -182,8 +182,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 		return NetworkSubmodule{}, err
 	}
 	// build network
-	network := net.New(peerHost, net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService))
-
+	network := net.New(peerHost, net.NewRouter(router), bandwidthTracker)
 	//peer manager
 	bootNodes, err := net.ParseAddresses(ctx, repo.Config().Bootstrap.Addresses)
 	if err != nil {
@@ -197,8 +196,8 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	if err != nil {
 		return NetworkSubmodule{}, err
 	}
-	go peerMgr.Run(ctx)
 
+	go peerMgr.Run(ctx)
 	// build the network submdule
 	return NetworkSubmodule{
 		NetworkName:      networkName,
@@ -249,6 +248,7 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 			}
 			return nil
 		}
+
 		relayHost, err := libp2p.New(
 			ctx,
 			libp2p.EnableRelay(circuit.OptHop),
@@ -256,10 +256,12 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 			libp2p.Routing(makeDHTRightType),
 			publicAddrFactory,
 			libp2p.ChainOptions(libP2pOpts...),
+			libp2p.Ping(true),
 		)
 		if err != nil {
 			return nil, err
 		}
+
 		// Set up autoNATService as a streamhandler on the host.
 		_, err = autonatsvc.NewAutoNATService(ctx, relayHost, true)
 		if err != nil {
@@ -269,8 +271,45 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 	}
 	return libp2p.New(
 		ctx,
-		libp2p.EnableAutoRelay(),
 		libp2p.Routing(makeDHTRightType),
 		libp2p.ChainOptions(libP2pOpts...),
+		libp2p.Ping(true),
+		libp2p.DisableRelay(),
 	)
+}
+
+func makeSmuxTransportOption(mplexExp bool) libp2p.Option {
+	const yamuxID = "/yamux/1.0.0"
+	const mplexID = "/mplex/6.7.0"
+
+	ymxtpt := *yamux.DefaultTransport
+	ymxtpt.AcceptBacklog = 512
+
+	if os.Getenv("YAMUX_DEBUG") != "" {
+		ymxtpt.LogOutput = os.Stderr
+	}
+
+	muxers := map[string]smux.Multiplexer{yamuxID: &ymxtpt}
+	if mplexExp {
+		muxers[mplexID] = mplex.DefaultTransport
+	}
+
+	// Allow muxer preference order overriding
+	order := []string{yamuxID, mplexID}
+	if prefs := os.Getenv("LIBP2P_MUX_PREFS"); prefs != "" {
+		order = strings.Fields(prefs)
+	}
+
+	opts := make([]libp2p.Option, 0, len(order))
+	for _, id := range order {
+		tpt, ok := muxers[id]
+		if !ok {
+			log.Warnf("unknown or duplicate muxer in LIBP2P_MUX_PREFS: %s", id)
+			continue
+		}
+		delete(muxers, id)
+		opts = append(opts, libp2p.Muxer(id, tpt))
+	}
+
+	return libp2p.ChainOptions(opts...)
 }

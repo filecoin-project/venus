@@ -227,11 +227,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Network")
 	}
 
-	nd.Discovery, err = submodule.NewDiscoverySubmodule(ctx, (*builder)(b), b.repo.Config().Bootstrap, &nd.network)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.Discovery")
-	}
-
 	nd.VersionTable, err = version.ConfigureProtocolVersions(nd.network.NetworkName)
 	if err != nil {
 		return nil, err
@@ -248,6 +243,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}
+
 	if b.drand == nil {
 		genBlk, err := nd.chain.ChainReader.GetGenesisBlock(ctx)
 		if err != nil {
@@ -269,6 +265,11 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		b.chainClock = clock.NewChainClock(geneBlk.Timestamp, b.blockTime, b.propDelay)
 	}
 	nd.ChainClock = b.chainClock
+
+	nd.Discovery, err = submodule.NewDiscoverySubmodule(ctx, (*builder)(b), b.repo.Config().Bootstrap, &nd.network, nd.chain.ChainReader, nd.chain.MessageStore)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build node.Discovery")
+	}
 
 	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.ProofVerification.ProofVerifier, b.checkPoint)
 	if err != nil {

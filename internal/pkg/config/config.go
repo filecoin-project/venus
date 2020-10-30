@@ -93,7 +93,7 @@ type BootstrapConfig struct {
 func newDefaultBootstrapConfig() *BootstrapConfig {
 	return &BootstrapConfig{
 		Addresses:        []string{},
-		MinPeerThreshold: 0, // TODO: we don't actually have an bootstrap peers yet.
+		MinPeerThreshold: 3, // TODO: we don't actually have an bootstrap peers yet.
 		Period:           "1m",
 	}
 }

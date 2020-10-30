@@ -154,7 +154,7 @@ func (chn *ChainStateReadWriter) Ls(ctx context.Context, key block.TipSetKey) (*
 		err error
 		ts  *block.TipSet
 	)
-	if key.Len() < 1{
+	if key.Len() < 1 {
 		ts, err = chn.readWriter.GetTipSet(chn.readWriter.GetHead())
 	} else {
 		ts, err = chn.readWriter.GetTipSet(key)
@@ -185,7 +185,7 @@ func (chn *ChainStateReadWriter) ReadObj(ctx context.Context, obj cid.Cid) ([]by
 
 // GetMessages gets a message collection by CID returned as unsigned bls and signed secp
 func (chn *ChainStateReadWriter) GetMessages(ctx context.Context, metaCid cid.Cid) ([]*types.UnsignedMessage, []*types.SignedMessage, error) {
-	secp, bls, err := chn.messageProvider.LoadMessages(ctx, metaCid)
+	secp, bls, err := chn.messageProvider.LoadMetaMessages(ctx, metaCid)
 	if err != nil {
 		return []*types.UnsignedMessage{}, []*types.SignedMessage{}, err
 	}
@@ -398,7 +398,6 @@ func (chn *ChainStateReadWriter) StateView(key block.TipSetKey, height abi.Chain
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get state root for %s", key.String())
 	}
-
 
 	return state.NewView(chn, root), nil
 }

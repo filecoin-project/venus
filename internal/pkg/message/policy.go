@@ -70,7 +70,7 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 	chain.Reverse(newTips)
 	for _, tipset := range newTips {
 		for i := 0; i < tipset.Len(); i++ {
-			secpMsgs, _, err := p.messageProvider.LoadMessages(ctx, tipset.At(i).Messages.Cid)
+			secpMsgs, _, err := p.messageProvider.LoadMetaMessages(ctx, tipset.At(i).Messages.Cid)
 			if err != nil {
 				return err
 			}
@@ -98,7 +98,7 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 	// Traverse these in descending height order.
 	for _, tipset := range oldTips {
 		for i := 0; i < tipset.Len(); i++ {
-			secpMsgs, _, err := p.messageProvider.LoadMessages(ctx, tipset.At(i).Messages.Cid)
+			secpMsgs, _, err := p.messageProvider.LoadMetaMessages(ctx, tipset.At(i).Messages.Cid)
 			if err != nil {
 				return err
 			}
@@ -149,7 +149,7 @@ func (p *DefaultQueuePolicy) blockMsgsForTipset(ctx context.Context, ts *block.T
 
 	var out []BlockMessages
 	for _, b := range ts.Blocks() {
-		secpMsgs, blsMsgs, err := p.messageProvider.LoadMessages(ctx, b.Messages.Cid) // cs.MessagesForBlock(b)
+		secpMsgs, blsMsgs, err := p.messageProvider.LoadMetaMessages(ctx, b.Messages.Cid) // cs.MessagesForBlock(b)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get messages for block: %w", err)
 		}

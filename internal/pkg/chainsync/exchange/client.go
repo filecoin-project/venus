@@ -2,10 +2,13 @@ package exchange
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
+	"io/ioutil"
 	"math/rand"
 	"time"
 
@@ -16,8 +19,6 @@ import (
 
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
-
-	cborutil "github.com/filecoin-project/go-cbor-util"
 )
 
 // client implements exchange.Client, using the libp2p ChainExchange protocol
@@ -196,7 +197,7 @@ func (c *client) processResponse(req *Request, res *Response, tipsets []*block.T
 		}
 
 		// Check that the returned head matches the one requested
-		if !block.CidArrsEqual(validRes.tipsets[0].Key().ToSlice(), req.Head) {
+		if !block.CidArrsEqual(validRes.tipsets[0].Key().ToSlice(), enccid.EncidToCidArr(req.Head)) {
 			return nil, xerrors.Errorf("returned chain head does not match request")
 		}
 
@@ -300,7 +301,7 @@ func (c *client) GetBlocks(ctx context.Context, tsk block.TipSetKey, count int) 
 	}
 
 	req := &Request{
-		Head:    tsk.ToSlice(),
+		Head:    enccid.WrapCid(tsk.ToSlice()),
 		Length:  uint64(count),
 		Options: Headers,
 	}
@@ -318,7 +319,7 @@ func (c *client) GetFullTipSet(ctx context.Context, peer peer.ID, tsk block.TipS
 	// TODO: round robin through these peers on error
 
 	req := &Request{
-		Head:    tsk.ToSlice(),
+		Head:    enccid.WrapCid(tsk.ToSlice()),
 		Length:  1,
 		Options: Headers | Messages,
 	}
@@ -348,7 +349,7 @@ func (c *client) GetChainMessages(ctx context.Context, tipsets []*block.TipSet) 
 	defer span.End()
 
 	req := &Request{
-		Head:    head.Key().ToSlice(),
+		Head:    enccid.WrapCid(head.Key().ToSlice()),
 		Length:  length,
 		Options: Messages,
 	}
@@ -415,7 +416,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 
 	// Write request.
 	_ = stream.SetWriteDeadline(time.Now().Add(WriteReqDeadline))
-	if err := cborutil.WriteCborRPC(stream, req); err != nil {
+	if err := WriteCborRPC(stream, req); err != nil {
 		_ = stream.SetWriteDeadline(time.Time{})
 		c.peerTracker.logFailure(peer, time.Since(connectionStart), req.Length)
 		// FIXME: Should we also remove peer here?
@@ -425,9 +426,19 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 	//  its own API (https://github.com/libp2p/go-libp2p-core/issues/162).
 
 	// Read response.
+	_ = stream.SetReadDeadline(time.Time{})
+
+	//TODO Note: this will remove once we've completed the go-libp2p migration to
+	//		      go-libp2p-core 0.7.0
+	respBytes, err := ioutil.ReadAll(bufio.NewReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline)))
+	if err != nil {
+		return nil, err
+	}
+
 	var res Response
-	err = cborutil.ReadCborRPC(
-		bufio.NewReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline)),
+	err = ReadCborRPC(
+		bytes.NewReader(respBytes),
+		//bufio.NewReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline)),
 		&res)
 	if err != nil {
 		c.peerTracker.logFailure(peer, time.Since(connectionStart), req.Length)

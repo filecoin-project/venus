@@ -2,10 +2,10 @@ package exchange
 
 import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"time"
 
-	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
@@ -51,7 +51,7 @@ type Request struct {
 	// fetching backwards.
 	// FIXME: Consider using `TipSetKey` now (introduced after the creation
 	//  of this protocol) instead of converting back and forth.
-	Head []cid.Cid
+	Head []enccid.Cid
 	// Number of block sets to fetch from `Head` (inclusive, should always
 	// be in the range `[1, MaxRequestLength]`).
 	Length uint64
@@ -142,6 +142,7 @@ func (res *Response) statusToError() error {
 
 // FIXME: Rename.
 type BSTipSet struct {
+	_ struct{} `cbor:",toarray"`
 	// List of blocks belonging to a single tipset to which the
 	// `CompactedMessages` are linked.
 	Blocks   []*block.Block
@@ -161,6 +162,7 @@ type BSTipSet struct {
 // FIXME: The logic to decompress this structure should belong
 //  to itself, not to the consumer.
 type CompactedMessages struct {
+	_           struct{} `cbor:",toarray"`
 	Bls         []*types.UnsignedMessage
 	BlsIncludes [][]uint64
 

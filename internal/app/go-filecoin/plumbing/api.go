@@ -15,7 +15,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	ma "github.com/multiformats/go-multiaddr"
 	xerrors "github.com/pkg/errors"
 
@@ -313,11 +312,6 @@ func (api *API) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, coun
 // NetworkGetClosestPeers issues a getClosestPeers query to the filecoin network.
 func (api *API) NetworkGetClosestPeers(ctx context.Context, key string) (<-chan peer.ID, error) {
 	return api.network.GetClosestPeers(ctx, key)
-}
-
-// NetworkPing sends echo request packets over the network.
-func (api *API) NetworkPing(ctx context.Context, pid peer.ID) (<-chan ping.Result, error) {
-	return api.network.Pinger.Ping(ctx, pid)
 }
 
 // NetworkFindPeer searches the libp2p router for a given peer id
