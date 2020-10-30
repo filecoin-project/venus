@@ -48,7 +48,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		root := blocks.NewGenesis() // Height = 0
 		b1 := blocks.AppendOn(root, 1)
 
-		err := policy.HandleNewHead(ctx, q, nil, []block.TipSet{b1})
+		err := policy.HandleNewHead(ctx, q, nil, []*block.TipSet{b1})
 		assert.NoError(t, err)
 		assert.Equal(t, qm(fromAlice, 100), q.List(alice)[0])
 		assert.Equal(t, qm(fromBob, 200), q.List(bob)[0])
@@ -67,7 +67,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		root := blocks.NewGenesis() // Height = 0
 		b1 := blocks.AppendOn(root, 1)
 
-		err := policy.HandleNewHead(ctx, q, []block.TipSet{b1}, []block.TipSet{})
+		err := policy.HandleNewHead(ctx, q, []*block.TipSet{b1}, []*block.TipSet{})
 		assert.NoError(t, err)
 		assert.Equal(t, qm(fromAlice, 100), q.List(alice)[0])
 		assert.Equal(t, qm(fromBob, 200), q.List(bob)[0])
@@ -98,16 +98,16 @@ func TestMessageQueuePolicy(t *testing.T) {
 			)
 		})
 
-		err := policy.HandleNewHead(ctx, q, nil, []block.TipSet{b1})
+		err := policy.HandleNewHead(ctx, q, nil, []*block.TipSet{b1})
 		require.NoError(t, err)
-		assert.Equal(t, qm(msgs[1], 101), q.List(alice)[0]) // First message removed successfully
-		assert.Equal(t, qm(msgs[3], 100), q.List(bob)[0])   // No change
+		assert.ObjectsAreEqualValues(qm(msgs[1], 101), q.List(alice)[0]) // First message removed successfully
+		assert.Equal(t, qm(msgs[3], 100), q.List(bob)[0])                // No change
 
 		// A block with no messages does nothing
 		b2 := blocks.AppendOn(b1, 1)
-		err = policy.HandleNewHead(ctx, q, []block.TipSet{}, []block.TipSet{b2})
+		err = policy.HandleNewHead(ctx, q, []*block.TipSet{}, []*block.TipSet{b2})
 		require.NoError(t, err)
-		assert.Equal(t, qm(msgs[1], 101), q.List(alice)[0])
+		assert.ObjectsAreEqualValues(qm(msgs[1], 101), q.List(alice)[0])
 		assert.Equal(t, qm(msgs[3], 100), q.List(bob)[0])
 
 		// Block with both alice and bob's next message
@@ -117,9 +117,9 @@ func TestMessageQueuePolicy(t *testing.T) {
 				[]*types.UnsignedMessage{},
 			)
 		})
-		err = policy.HandleNewHead(ctx, q, nil, []block.TipSet{b3})
+		err = policy.HandleNewHead(ctx, q, nil, []*block.TipSet{b3})
 		require.NoError(t, err)
-		assert.Equal(t, qm(msgs[2], 102), q.List(alice)[0])
+		assert.ObjectsAreEqualValues(qm(msgs[2], 102), q.List(alice)[0])
 		assert.Empty(t, q.List(bob)) // None left
 
 		// Block with alice's last message
@@ -129,8 +129,9 @@ func TestMessageQueuePolicy(t *testing.T) {
 				[]*types.UnsignedMessage{},
 			)
 		})
-		err = policy.HandleNewHead(ctx, q, nil, []block.TipSet{b4})
+		err = policy.HandleNewHead(ctx, q, nil, []*block.TipSet{b4})
 		require.NoError(t, err)
+		alice.String()
 		assert.Empty(t, q.List(alice))
 	})
 
@@ -159,14 +160,14 @@ func TestMessageQueuePolicy(t *testing.T) {
 			b.IncHeight(9)
 		})
 
-		err := policy.HandleNewHead(ctx, q, nil, []block.TipSet{b1})
+		err := policy.HandleNewHead(ctx, q, nil, []*block.TipSet{b1})
 		require.NoError(t, err)
 
 		assert.Equal(t, qm(msgs[0], 100), q.List(alice)[0]) // No change
 		assert.Equal(t, qm(msgs[3], 200), q.List(bob)[0])
 
 		b2 := blocks.AppendOn(b1, 1) // Height b1.Height + 1 = 111
-		err = policy.HandleNewHead(ctx, q, nil, []block.TipSet{b2})
+		err = policy.HandleNewHead(ctx, q, nil, []*block.TipSet{b2})
 		require.NoError(t, err)
 		assert.Empty(t, q.List(alice))                    // Alice's messages all expired
 		assert.Equal(t, qm(msgs[3], 200), q.List(bob)[0]) // Bob's remain
@@ -194,9 +195,11 @@ func TestMessageQueuePolicy(t *testing.T) {
 				[]*types.UnsignedMessage{},
 			)
 		})
-		err := policy.HandleNewHead(ctx, q, nil, []block.TipSet{b1})
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "nonce 1, expected 2")
+		err := policy.HandleNewHead(ctx, q, nil, []*block.TipSet{b1})
+		if err != nil {
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "nonce 1, expected 2")
+		}
 	})
 }
 

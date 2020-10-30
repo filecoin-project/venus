@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
@@ -60,6 +61,11 @@ func (p *FakeProvider) GetActorAt(ctx context.Context, key block.TipSetKey, addr
 	return a, nil
 }
 
+func (p *FakeProvider) LoadMessages(ctx context.Context, cid cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
+	msg := &types.UnsignedMessage{From: address.TestAddress, CallSeqNum: 1}
+	return []*types.SignedMessage{{Message: *msg}}, []*types.UnsignedMessage{msg}, nil
+}
+
 // SetHead sets the head tipset
 func (p *FakeProvider) SetHead(head block.TipSetKey) {
 	_, e := p.GetTipSet(head)
@@ -111,8 +117,12 @@ func (v FakeValidator) ValidateSignedMessageSyntax(ctx context.Context, msg *typ
 type NullPolicy struct {
 }
 
+func (p NullPolicy) MessagesForTipset(ctx context.Context, set *block.TipSet) ([]types.ChainMsg, error) {
+	panic("implement me")
+}
+
 // HandleNewHead does nothing.
-func (NullPolicy) HandleNewHead(ctx context.Context, target PolicyTarget, oldChain, newChain []block.TipSet) error {
+func (NullPolicy) HandleNewHead(ctx context.Context, target PolicyTarget, oldChain, newChain []*block.TipSet) error {
 	return nil
 }
 
@@ -125,4 +135,18 @@ type MockNetworkPublisher struct {
 func (p *MockNetworkPublisher) Publish(ctx context.Context, data []byte) error {
 	p.Data = data
 	return nil
+}
+
+type MockGasPredictor struct {
+	gas string
+}
+
+func NewGasPredictor(gas string) *MockGasPredictor {
+	return &MockGasPredictor{
+		gas: gas,
+	}
+}
+
+func (gas *MockGasPredictor) CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (types.MessageReceipt, error) {
+	return types.NewReceiptMaker().NewReceipt(), nil
 }
