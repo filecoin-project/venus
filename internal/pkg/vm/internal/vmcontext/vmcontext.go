@@ -21,7 +21,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/account"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/cron"
 	initActor "github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/reward"
@@ -33,7 +35,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 )
@@ -292,7 +293,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 					//	}
 					//}
 					//dddd, _ = json.MarshalIndent(xxxx,"","\t")
-					fmt.Println(string(dddd))
+					//fmt.Println(string(dddd))
 
 			fmt.Println()
 		}
@@ -332,7 +333,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 				//	}
 				//}
 				//dddd, _ = json.MarshalIndent(xxxx,"","\t")
-				fmt.Println(string(dddd))
+				//fmt.Println(string(dddd))
 			fmt.Println()
 		}
 
@@ -365,7 +366,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 	fmt.Println("process block cron job ", time.Since(start).Milliseconds())
 	root, _ = vm.state.Flush(context.TODO())
 	fmt.Printf("after cron root: %s\n", root)
-	fmt.Print()
+
 	// commit stateView
 	if _, err := vm.flush(); err != nil {
 		return nil, err
@@ -396,7 +397,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) ([]byte, error) {
 	if !found {
 		return nil, fmt.Errorf("implicit message `from` field actor not found, addr: %s", imsg.from)
 	}
-	originatorIsAccount := fromActor.Code.Equals(builtin.AccountActorCodeID)
+	originatorIsAccount := builtin.IsAccountActor(fromActor.Code.Cid)
 
 	// Compute the originator address. Unlike real messages, implicit ones can be originated by
 	// singleton non-account actors. Singleton addresses are reorg-proof so ok to use here.
@@ -501,7 +502,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) Ret {
 		}
 	}
 
-	if !fromActor.Code.Equals(builtin.AccountActorCodeID) {
+	if !builtin.IsAccountActor(fromActor.Code.Cid) /*!fromActor.Code.Equals(builtin.AccountActorCodeID)*/ {
 		// Execution error; sender is not an account.
 		gasOutputs := gas.ZeroGasOutputs()
 		gasOutputs.MinerPenalty = minerPenaltyAmount
@@ -650,7 +651,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) Ret {
 		panic(xerrors.Errorf("failed to burn base fee: %w", err))
 	}
 
-	if err := vm.transferFromGasHolder(builtin.RewardActorAddr, gasHolder, gasOutputs.MinerTip); err != nil {
+	if err := vm.transferFromGasHolder(reward.Address, gasHolder, gasOutputs.MinerTip); err != nil {
 		panic(xerrors.Errorf("failed to give miner gas reward: %w", err))
 	}
 
@@ -909,9 +910,9 @@ func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount,
 	}
 	return internalMessage{
 		from:   builtin.SystemActorAddr,
-		to:     builtin.RewardActorAddr,
+		to:     reward.Address,
 		value:  big.Zero(),
-		method: builtin.MethodsReward.AwardBlockReward,
+		method:reward.Methods.AwardBlockReward,
 		params: encoded,
 	}
 }
@@ -919,9 +920,9 @@ func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount,
 func makeCronTickMessage() internalMessage {
 	return internalMessage{
 		from:   builtin.SystemActorAddr,
-		to:     builtin.CronActorAddr,
+		to:     cron.Address,
 		value:  big.Zero(),
-		method: builtin.MethodsCron.EpochTick,
+		method: cron.Methods.EpochTick,
 		params: []byte{},
 	}
 }
