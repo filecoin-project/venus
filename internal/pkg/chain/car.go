@@ -93,7 +93,7 @@ func Export(ctx context.Context, headTS *block.TipSet, cr carChainReader, mr car
 				filter[hdr.Messages.Cid] = true
 			}
 
-			secpMsgs, blsMsgs, err := mr.LoadMessages(ctx, hdr.Messages.Cid)
+			secpMsgs, blsMsgs, err := mr.LoadMetaMessages(ctx, hdr.Messages.Cid)
 			if err != nil {
 				return err
 			}

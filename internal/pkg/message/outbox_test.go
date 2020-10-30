@@ -38,9 +38,10 @@ func TestOutbox(t *testing.T) {
 		publisher := &message.MockPublisher{}
 		provider := message.NewFakeProvider(t)
 		bcast := true
+		gp := message.NewGasPredictor("gasPredictor")
 
 		ob := message.NewOutbox(w, message.FakeValidator{RejectMessages: true}, queue, publisher,
-			message.NullPolicy{}, provider, provider, newOutboxTestJournal(t))
+			message.NullPolicy{}, provider, provider, newOutboxTestJournal(t), gp)
 
 		cid, _, err := ob.Send(context.Background(), sender, sender, types.NewAttoFILFromFIL(2), types.NewGasFeeCap(0), types.NewGasPremium(0), gas.NewGas(0), bcast, builtin.MethodSend, abi.Empty)
 		assert.Errorf(t, err, "for testing")
@@ -54,6 +55,7 @@ func TestOutbox(t *testing.T) {
 		queue := message.NewQueue()
 		publisher := &message.MockPublisher{}
 		provider := message.NewFakeProvider(t)
+		gp := message.NewGasPredictor("gasPredictor")
 
 		head := provider.BuildOneOn(block.UndefTipSet, func(b *chain.BlockBuilder) {
 			b.IncHeight(1000)
@@ -62,7 +64,7 @@ func TestOutbox(t *testing.T) {
 		actr.CallSeqNum = 42
 		provider.SetHeadAndActor(t, head.Key(), sender, actr)
 
-		ob := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, message.NullPolicy{}, provider, provider, newOutboxTestJournal(t))
+		ob := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, message.NullPolicy{}, provider, provider, newOutboxTestJournal(t), gp)
 		require.Empty(t, queue.List(sender))
 		require.Nil(t, publisher.Message)
 
@@ -98,6 +100,7 @@ func TestOutbox(t *testing.T) {
 		publisher := &message.MockPublisher{}
 		provider := message.NewFakeProvider(t)
 		bcast := true
+		gp := message.NewGasPredictor("gasPredictor")
 
 		head := provider.BuildOneOn(block.UndefTipSet, func(b *chain.BlockBuilder) {
 			b.IncHeight(1000)
@@ -106,7 +109,7 @@ func TestOutbox(t *testing.T) {
 		actr.CallSeqNum = 42
 		provider.SetHeadAndActor(t, head.Key(), sender, actr)
 
-		s := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, message.NullPolicy{}, provider, provider, newOutboxTestJournal(t))
+		s := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, message.NullPolicy{}, provider, provider, newOutboxTestJournal(t), gp)
 
 		var wg sync.WaitGroup
 		addTwentyMessages := func(batch int) {
@@ -139,7 +142,6 @@ func TestOutbox(t *testing.T) {
 
 		for i := 0; i < 60; i++ {
 			assert.True(t, nonces[actr.CallSeqNum+uint64(i)])
-
 		}
 	})
 
@@ -150,12 +152,13 @@ func TestOutbox(t *testing.T) {
 		queue := message.NewQueue()
 		publisher := &message.MockPublisher{}
 		provider := message.NewFakeProvider(t)
+		gp := message.NewGasPredictor("gasPredictor")
 
 		head := provider.NewGenesis()
 		actr := actor.NewActor(builtin.StorageMarketActorCodeID, abi.NewTokenAmount(0), cid.Undef)
 		provider.SetHeadAndActor(t, head.Key(), sender, actr)
 
-		ob := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, message.NullPolicy{}, provider, provider, newOutboxTestJournal(t))
+		ob := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, message.NullPolicy{}, provider, provider, newOutboxTestJournal(t), gp)
 
 		_, _, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasFeeCap(0), types.NewGasPremium(0), gas.NewGas(0), true, builtin.MethodSend, abi.Empty)
 		assert.Error(t, err)

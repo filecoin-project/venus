@@ -49,11 +49,12 @@ type FSRepo struct {
 	lk  sync.RWMutex
 	cfg *config.Config
 
-	ds       Datastore
-	mds      *multistore.MultiStore
-	keystore keystore.Keystore
-	walletDs Datastore
-	chainDs  Datastore
+	ds        Datastore
+	stagingDs Datastore
+	mds       *multistore.MultiStore
+	keystore  keystore.Keystore
+	walletDs  Datastore
+	chainDs   Datastore
 
 	// lockfile is the file system lock to prevent others from opening the same repo.
 	lockfile io.Closer
@@ -315,6 +316,14 @@ func (r *FSRepo) Close() error {
 		return errors.Wrap(err, "failed to close chain datastore")
 	}
 
+	if err := r.mds.Close(); err != nil {
+		return errors.Wrap(err, "failed to close mds datastore")
+	}
+
+	if err := r.stagingDs.Close(); err != nil {
+		return errors.Wrap(err, "failed to close stagingDs datastore")
+	}
+
 	if err := r.removeAPIFile(); err != nil {
 		return errors.Wrap(err, "error removing API file")
 	}
@@ -428,12 +437,13 @@ func (r *FSRepo) openWalletDatastore() error {
 }
 
 func (r *FSRepo) openMultiStore() error {
-	ds, err := badgerds.NewDatastore(filepath.Join(r.path, "/staging"), badgerOptions())
+	var err error
+	r.stagingDs, err = badgerds.NewDatastore(filepath.Join(r.path, "/staging"), badgerOptions())
 	if err != nil {
 		return err
 	}
 
-	mds, err := multistore.NewMultiDstore(ds)
+	mds, err := multistore.NewMultiDstore(r.stagingDs)
 	if err != nil {
 		return err
 	}

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -94,7 +95,7 @@ func TestHeartbeatConnectSuccess(t *testing.T) {
 		},
 		func() (block.TipSet, error) {
 			tipSet := chain.NewBuilder(t, address.Undef).NewGenesis()
-			return tipSet, nil
+			return *tipSet, nil
 		},
 	)
 
@@ -123,7 +124,7 @@ func TestHeartbeatConnectFailure(t *testing.T) {
 		},
 		func() (block.TipSet, error) {
 			tipSet := chain.NewBuilder(t, address.Undef).NewGenesis()
-			return tipSet, nil
+			return *tipSet, nil
 		},
 	)
 	assert.Error(t, hbs.Connect(ctx))
@@ -174,7 +175,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 			Nickname:        "BobHoblaw",
 		},
 		func() (block.TipSet, error) {
-			return expTs, nil
+			return *expTs, nil
 		},
 		metrics.WithMinerAddressGetter(func() address.Address {
 			return addr
@@ -187,15 +188,15 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 	assert.Error(t, runCtx.Err(), context.Canceled.Error())
 }
 
-func mustMakeTipset(t *testing.T, height abi.ChainEpoch) block.TipSet {
+func mustMakeTipset(t *testing.T, height abi.ChainEpoch) *block.TipSet {
 	ts, err := block.NewTipSet(&block.Block{
 		Miner:           vmaddr.NewForTestGetter()(),
 		Ticket:          block.Ticket{VRFProof: []byte{0}},
 		Parents:         block.TipSetKey{},
 		ParentWeight:    fbig.Zero(),
 		Height:          height,
-		MessageReceipts: types.EmptyMessagesCID,
-		Messages:        types.EmptyTxMetaCID,
+		MessageReceipts: enccid.NewCid(types.EmptyMessagesCID),
+		Messages:        enccid.NewCid(types.EmptyTxMetaCID),
 	})
 	if err != nil {
 		t.Fatal(err)
