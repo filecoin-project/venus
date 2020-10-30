@@ -4,17 +4,27 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
-	. "github.com/ipfs/go-cid"
+
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/account"
+	initActor "github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/init"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/reward"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
@@ -23,15 +33,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 )
@@ -72,7 +74,7 @@ type Ret struct {
 
 // ActorImplLookup provides access to upgradeable actor code.
 type ActorImplLookup interface {
-	GetActorImpl(code Cid) (dispatch.Dispatcher, *dispatch.ExcuteError)
+	GetActorImpl(code cid.Cid) (dispatch.Dispatcher, *dispatch.ExcuteError)
 }
 
 type internalMessage struct {
@@ -156,7 +158,7 @@ func (vm *VM) clearSnapshot() {
 func (vm *VM) flush() (state.Root, error) {
 	// flush all blocks out of the store
 	if root, err := vm.state.Flush(vm.context); err != nil {
-		return Undef, err
+		return cid.Undef, err
 	} else {
 		/*		// flush all blocks out of the store
 				if err := vm.store.Flush(); err != nil {
@@ -180,7 +182,7 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 	}
 
 	// resolve the target address via the InitActor, and attempt to load stateView.
-	initActorEntry, found, err := vm.state.GetActor(vm.context, builtin.InitActorAddr)
+	initActorEntry, found, err := vm.state.GetActor(vm.context, initActor.Address)
 	if err != nil {
 		panic(errors.Wrapf(err, "failed to load init actor"))
 	}
@@ -189,12 +191,12 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 	}
 
 	// get a view into the actor stateView
-	var state init_.State
-	if err := vm.store.Get(vm.context, initActorEntry.Head.Cid, &state); err != nil {
+	initActorState, err := initActor.Load(adt.WrapStore(vm.context, vm.store), initActorEntry)
+	if err := vm.store.Get(vm.context, initActorEntry.Head.Cid, &initActorState); err != nil {
 		panic(err)
 	}
 
-	idAddr, found, err := state.ResolveAddress(vm.ContextStore(), addr)
+	idAddr, found, err := initActorState.ResolveAddress(addr)
 	if !found {
 		return address.Undef, false
 	}
@@ -246,7 +248,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []interpreter.BlockMessagesInfo, ts *bl
 
 	// create message tracker
 	// Note: the same message could have been included by more than one miner
-	seenMsgs := make(map[Cid]struct{})
+	seenMsgs := make(map[cid.Cid]struct{})
 
 	// process messages on each block
 	for index, blk := range blocks {
@@ -401,12 +403,14 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) ([]byte, error) {
 	var originator address.Address
 	if originatorIsAccount {
 		// Load sender account stateView to obtain stable pubkey address.
-		var senderState account.State
-		err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
+		senderState, err := account.Load(adt.WrapStore(vm.context, vm.store), fromActor)
 		if err != nil {
 			panic(err)
 		}
-		originator = senderState.Address
+		originator, err = senderState.PubkeyAddress()
+		if err != nil {
+			panic(err)
+		}
 	} else if builtin.IsBuiltinActor(fromActor.Code.Cid) {
 		originator = imsg.from // Cannot resolve non-account actor to pubkey addresses.
 	} else {
@@ -441,7 +445,7 @@ func (vm *VM) applyImplicitMessage(imsg internalMessage) ([]byte, error) {
 	return ret, nil
 }
 
-// todo ?????gasLimit
+// todo estimate gasLimit
 func (vm *VM) ApplyMessage(msg *types.UnsignedMessage) types.MessageReceipt {
 	ret := vm.applyMessage(msg, msg.OnChainLen())
 	return ret.Receipt
@@ -540,10 +544,12 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) Ret {
 	}
 
 	// 5. Increment sender CallSeqNum
-	vm.state.MutateActor(msg.From, func(msgFromActor *actor.Actor) error {
+	if err = vm.state.MutateActor(msg.From, func(msgFromActor *actor.Actor) error {
 		msgFromActor.IncrementSeqNum()
 		return nil
-	})
+	}); err != nil {
+		panic(err)
+	}
 
 	// reload from actor
 	// Note: balance might have changed
@@ -556,8 +562,9 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) Ret {
 	}
 
 	// Load sender account stateView to obtain stable pubkey address.
-	var senderState account.State
-	err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
+	// var senderState account.State
+	// err = vm.store.Get(vm.context, fromActor.Head.Cid, &senderState)
+	senderState,err := account.Load(adt.WrapStore(vm.context, vm.store), fromActor)
 	if err != nil {
 		panic(err)
 	}
@@ -577,8 +584,12 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) Ret {
 	// 2. build invocation context
 	// 3. process the msg
 
+	addr, err := senderState.PubkeyAddress()
+	if err != nil {
+		panic(err)
+	}
 	topLevel := topLevelContext{
-		originatorStableAddress: senderState.Address,
+		originatorStableAddress: addr,
 		originatorCallSeq:       msg.CallSeqNum,
 		newActorAddressCount:    0,
 	}
@@ -719,7 +730,7 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 	return fromActor, toActor
 }
 
-func (vm *VM) getActorImpl(code Cid) dispatch.Dispatcher {
+func (vm *VM) getActorImpl(code cid.Cid) dispatch.Dispatcher {
 	actorImpl, err := vm.actorImpls.GetActorImpl(code)
 	if err != nil {
 		runtime.Abort(exitcode.SysErrInvalidReceiver)
@@ -827,35 +838,38 @@ func (vm *syscallsStateView) AccountSignerAddress(ctx context.Context, accountAd
 	if accountAddr.Protocol() == address.SECP256K1 || accountAddr.Protocol() == address.BLS {
 		return accountAddr, nil
 	}
-	actor, found, err := vm.state.GetActor(vm.context, accountAddr)
+	accountActor, found, err := vm.state.GetActor(vm.context, accountAddr)
 	if err != nil {
 		return address.Undef, errors.Wrapf(err, "signer resolution failed to find actor %s", accountAddr)
 	}
 	if !found {
 		return address.Undef, fmt.Errorf("signer resolution found no such actor %s", accountAddr)
 	}
-	var state account.State
-	if err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
+
+	accountState, err := account.Load(adt.WrapStore(vm.context, vm.store), accountActor)
+	if err != nil {
 		// This error is internal, shouldn't propagate as on-chain failure
 		panic(fmt.Errorf("signer resolution failed to lost stateView for %s ", accountAddr))
 	}
-	return state.Address, nil
+
+	return accountState.PubkeyAddress()
 }
 
 func (vm *syscallsStateView) MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error) {
-	actor, found, err := vm.state.GetActor(vm.context, maddr)
+	accountActor, found, err := vm.state.GetActor(vm.context, maddr)
 	if err != nil {
 		return address.Undef, address.Undef, errors.Wrapf(err, "miner resolution failed to find actor %s", maddr)
 	}
 	if !found {
 		return address.Undef, address.Undef, fmt.Errorf("miner resolution found no such actor %s", maddr)
 	}
-	var state miner.State
-	if err := vm.store.Get(vm.context, actor.Head.Cid, &state); err != nil {
-		// This error is internal, shouldn't propagate as on-chain failure
+
+	accountState, err := miner.Load(adt.WrapStore(vm.context, vm.store), accountActor)
+	if err != nil {
 		panic(fmt.Errorf("signer resolution failed to lost stateView for %s ", maddr))
 	}
-	minerInfo, err := state.GetInfo(vm.ContextStore())
+
+	minerInfo, err := accountState.Info()
 	if err != nil {
 		panic(fmt.Errorf("failed to get miner info %s ", maddr))
 	}
@@ -863,8 +877,7 @@ func (vm *syscallsStateView) MinerControlAddresses(ctx context.Context, maddr ad
 }
 
 func (vm *syscallsStateView) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version {
-	//return vm.ntwkVersion(ctx, ce)
-	return network.Version(0) //todo add by force fork
+	return vm.vmOption.NtwkVersionGetter(ctx, ce)
 }
 
 func (vm *syscallsStateView) TotalFilCircSupply(height abi.ChainEpoch, st state.Tree) (abi.TokenAmount, error) {
@@ -875,12 +888,12 @@ func (vm *syscallsStateView) TotalFilCircSupply(height abi.ChainEpoch, st state.
 // utils
 //
 
-func msgCID(msg *types.UnsignedMessage) Cid {
-	cid, err := msg.Cid()
+func msgCID(msg *types.UnsignedMessage) cid.Cid {
+	c, err := msg.Cid()
 	if err != nil {
 		panic(fmt.Sprintf("failed to compute message CID: %v; %+v", err, msg))
 	}
-	return cid
+	return c
 }
 
 func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount, gasReward abi.TokenAmount, winCount int64) internalMessage {
