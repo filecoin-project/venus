@@ -223,7 +223,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	logStore.Infof("finished loading %d tipsets from %s", startHeight, headTs.String())
 
 	//todo just for test should remove if ok
-	if checkPointTs != nil && headTs.EnsureHeight() > checkPointTs.EnsureHeight() {
+	if checkPointTs == nil || headTs.EnsureHeight() > checkPointTs.EnsureHeight() {
 		p, _ := headTs.Parents()
 		headTs, _ = store.GetTipSet(p)
 	}
