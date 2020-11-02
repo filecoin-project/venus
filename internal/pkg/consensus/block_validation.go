@@ -333,55 +333,5 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.
 		return fmt.Errorf("block %s has nil signature", blk.Cid())
 	}
 
-	// validate all the messages syntax
-	// ToDo 同步时存储落后于验证,消息并没有被存储?
-	//secpMsgs, blsMsgs, err := dv.ms.LoadMessages(ctx, blk.Messages.Cid)
-	//if err != nil {
-	//	return errors.Wrapf(err, "loading message failed for block %s", blk.Cid())
-	//}
-	//
-	//pl := gas.PricelistByEpoch(blk.Height)
-	//var sumGasLimit int64
-	//checkMsg := func(msg types.ChainMsg) error {
-	//	m := msg.VMMessage()
-	//
-	//	if m.ChainLength() > 32*1024 {
-	//		log.Warnf("message is too large! (%dB)", m.ChainLength())
-	//		return xerrors.Errorf("message is too large! (%dB)", m.ChainLength())
-	//	}
-	//
-	//	if m.To == address.Undef {
-	//		return xerrors.Errorf("local message has invalid destination address")
-	//	}
-	//
-	//	if !m.Value.LessThan(types.TotalFilecoinInt) {
-	//		return xerrors.Errorf("value-too-high")
-	//	}
-	//
-	//	minGas := pl.OnChainMessage(msg.ChainLength())
-	//	if err := m.ValidForBlockInclusion(minGas.Total()); err != nil {
-	//		return err
-	//	}
-	//
-	//	sumGasLimit += int64(m.GasLimit)
-	//	if sumGasLimit > types.BlockGasLimit {
-	//		return xerrors.Errorf("block gas limit exceeded")
-	//	}
-	//
-	//	return nil
-	//}
-	//
-	//for i, m := range blsMsgs {
-	//	if err := checkMsg(m); err != nil {
-	//		return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
-	//	}
-	//}
-	//
-	//for i, m := range secpMsgs {
-	//	if err := checkMsg(m); err != nil {
-	//		return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
-	//	}
-	//}
-
 	return nil
 }

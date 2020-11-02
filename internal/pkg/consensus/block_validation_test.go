@@ -314,7 +314,7 @@ type fakeMsgSource struct {
 	secpMessages []*types.SignedMessage
 }
 
-func (fms *fakeMsgSource) LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
+func (fms *fakeMsgSource) LoadMetaMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
 	return fms.secpMessages, fms.blsMessages, nil
 }
 
