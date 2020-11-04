@@ -1,8 +1,8 @@
 package block
 
 import (
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 )
 
 type PoStProof struct {
@@ -11,7 +11,7 @@ type PoStProof struct {
 	ProofBytes []byte
 }
 
-func FromAbiProofArr(abiProof []proof.PoStProof) []PoStProof {
+func FromAbiProofArr(abiProof []builtin.PoStProof) []PoStProof {
 	pof := make([]PoStProof, len(abiProof))
 	for index, postProof := range abiProof {
 		pof[index] = PoStProof{
@@ -22,15 +22,15 @@ func FromAbiProofArr(abiProof []proof.PoStProof) []PoStProof {
 	return pof
 }
 
-func FromAbiProof(abiProof proof.PoStProof) PoStProof {
+func FromAbiProof(abiProof builtin.PoStProof) PoStProof {
 	return PoStProof{
 		PoStProof:  abiProof.PoStProof,
 		ProofBytes: abiProof.ProofBytes,
 	}
 }
 
-func (p PoStProof) AsAbiProof() proof.PoStProof {
-	return proof.PoStProof{
+func (p PoStProof) AsAbiProof() builtin.PoStProof {
+	return builtin.PoStProof{
 		PoStProof:  p.PoStProof,
 		ProofBytes: p.ProofBytes,
 	}

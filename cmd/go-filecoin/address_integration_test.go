@@ -8,7 +8,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/reward"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
@@ -60,7 +60,7 @@ func TestWalletBalance(t *testing.T) {
 	assert.Equal(t, "0", balance.String())
 
 	t.Log("[success] balance 1394000000000000000000000000")
-	cmdClient.RunMarshaledJSON(ctx, &balance, "wallet", "balance", builtin.RewardActorAddr.String())
+	cmdClient.RunMarshaledJSON(ctx, &balance, "wallet", "balance", reward.Address.String())
 	assert.Equal(t, "1394000000000000000000000000", balance.String())
 
 	t.Log("[success] newly generated one")

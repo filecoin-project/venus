@@ -10,10 +10,11 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cfg"
 	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
@@ -24,7 +25,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
@@ -69,14 +69,14 @@ func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Addres
 	return mpc.msgCid, nil, nil
 }
 
-func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, lookback uint64, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	assert.Equal(mpc.testing, msgCid, msgCid)
 	midAddr, err := address.NewIDAddress(100)
 	if err != nil {
 		return err
 	}
 
-	value, err := encoding.Encode(&power.CreateMinerReturn{
+	value, err := encoding.Encode(&power2.CreateMinerReturn{
 		IDAddress:     midAddr,
 		RobustAddress: mpc.address,
 	})
@@ -84,7 +84,7 @@ func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, lookbac
 		return err
 	}
 
-	receipt := vm.MessageReceipt{
+	receipt := types.MessageReceipt{
 		ReturnValue: value,
 		ExitCode:    exitcode.Ok,
 	}
@@ -149,8 +149,8 @@ func (p *mStatusPlumbing) ChainHeadKey() block.TipSetKey {
 	return p.head
 }
 
-func (p *mStatusPlumbing) ChainTipSet(_ block.TipSetKey) (block.TipSet, error) {
-	return p.ts, nil
+func (p *mStatusPlumbing) ChainTipSet(_ block.TipSetKey) (*block.TipSet, error) {
+	return &p.ts, nil
 }
 
 func (p *mStatusPlumbing) MinerStateView(baseKey block.TipSetKey) (MinerStateView, error) {
@@ -179,7 +179,7 @@ func TestMinerGetStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	plumbing := mStatusPlumbing{
-		ts, key, vmaddr.RequireIDAddress(t, 1), vmaddr.RequireIDAddress(t, 2), vmaddr.RequireIDAddress(t, 3),
+		*ts, key, vmaddr.RequireIDAddress(t, 1), vmaddr.RequireIDAddress(t, 2), vmaddr.RequireIDAddress(t, 3),
 	}
 	status, err := MinerGetStatus(context.Background(), &plumbing, plumbing.miner, key)
 	assert.NoError(t, err)
@@ -222,7 +222,7 @@ func (p *mSetWorkerPlumbing) MessageSend(ctx context.Context, from, to address.A
 	return types.EmptyMessagesCID, nil, nil
 }
 
-func (p *mSetWorkerPlumbing) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *vm.MessageReceipt) error) error {
+func (p *mSetWorkerPlumbing) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	if p.msgWaitFail {
 		return errors.New("MsgWaitFail")
 	}

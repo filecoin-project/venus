@@ -9,8 +9,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	initactor "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -29,6 +27,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
+	initactor "github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -61,15 +61,6 @@ type ChainStateReadWriter struct {
 	messageProvider chain.MessageProvider
 	actors          vm.ActorCodeLoader
 	cborutil.ReadOnlyIpldStore
-}
-
-type actorStore struct {
-	ctx context.Context
-	cborutil.ReadOnlyIpldStore
-}
-
-func (as *actorStore) Context() context.Context {
-	return as.ctx
 }
 
 type carStore struct {
@@ -272,7 +263,7 @@ func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, tipKey bl
 		return address.Undef, errors.Wrap(err, "failed to load latest state")
 	}
 
-	init, found, err := st.GetActor(ctx, builtin.InitActorAddr)
+	init, found, err := st.GetActor(ctx, initactor.Address)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -291,7 +282,7 @@ func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, tipKey bl
 		return address.Undef, err
 	}
 
-	idAddress, found, err := state.ResolveAddress(&actorStore{ctx, chn.ReadOnlyIpldStore}, addr)
+	idAddress, found, err := state.ResolveAddress(addr)
 	if err != nil {
 		return address.Undef, err
 	}

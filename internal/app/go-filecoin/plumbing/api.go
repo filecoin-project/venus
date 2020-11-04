@@ -18,10 +18,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	xerrors "github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
-
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/dag"
@@ -35,6 +31,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/power"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -489,7 +488,7 @@ func (a *API) GetLookbackTipSetForRound(ctx context.Context, ts *block.TipSet, r
 	return lbts, nil
 }
 
-func (a *API) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, ts *block.TipSet, maddr address.Address, rand abi.PoStRandomness) ([]proof.SectorInfo, error) {
+func (a *API) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, ts *block.TipSet, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
 	var partsProving []bitfield.BitField
 	var info *miner.MinerInfo
 
@@ -553,7 +552,7 @@ func (a *API) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifi
 		return nil, xerrors.Errorf("failed to enumerate all sector IDs: %w", err)
 	}
 
-	out := make([]proof.SectorInfo, len(ids))
+	out := make([]builtin.SectorInfo, len(ids))
 	for i, n := range ids {
 		sid := sectors[n]
 
@@ -565,7 +564,7 @@ func (a *API) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifi
 			return nil, xerrors.New("failed to load sectors info, not found")
 		}
 
-		out[i] = proof.SectorInfo{
+		out[i] = builtin.SectorInfo{
 			SealProof:    spt,
 			SectorNumber: sinfo.SectorNumber,
 			SealedCID:    sinfo.SealedCID,

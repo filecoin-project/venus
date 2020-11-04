@@ -6,13 +6,13 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/policy"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
@@ -167,14 +167,14 @@ func TestNewHeightThresholdListener(t *testing.T) {
 
 		// add tipsets till finality
 		go func() {
-			for i := abi.ChainEpoch(0); i < miner.ChainFinality; i++ {
+			for i := abi.ChainEpoch(0); i < policy.ChainFinality; i++ {
 				nextTS = builder.BuildOn(nextTS, 1, nil)
 				valid, err := listener.Handle([]*block.TipSet{nextTS})
 				require.NoError(t, err)
 
 				h, err := nextTS.Height()
 				require.NoError(t, err)
-				if h >= 8+miner.ChainFinality {
+				if h >= 8+policy.ChainFinality {
 					assert.False(t, valid)
 				} else {
 					assert.True(t, valid)
