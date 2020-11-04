@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
+	init_ "github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/init"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -76,7 +76,7 @@ func TestMessagePropagation(t *testing.T) {
 		_, _, err := sender.PorcelainAPI.MessageSend(
 			ctx,
 			senderAddress,
-			builtin.InitActorAddr,
+			init_.Address,
 			specsbig.NewInt(100),
 			types.NewGasFeeCap(1),
 			types.NewGasPremium(1),

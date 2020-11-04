@@ -1,10 +1,9 @@
 package chainsampler
 
 import (
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/policy"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 // HeightThresholdListener listens for new heaviest chains and notifies when a height threshold is crossed.
@@ -47,7 +46,7 @@ func (l *HeightThresholdListener) Handle(chain []*block.TipSet) (bool, error) {
 	}
 
 	// check if we've hit finality and should stop listening
-	if h >= l.target+miner.ChainFinality {
+	if h >= l.target+policy.ChainFinality {
 		l.DoneCh <- struct{}{}
 		return false, nil
 	}

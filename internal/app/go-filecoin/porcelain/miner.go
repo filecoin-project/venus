@@ -4,20 +4,21 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
-
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	cid "github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
+	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
+
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
@@ -72,7 +73,7 @@ func MinerCreate(
 		return address.Undef, fmt.Errorf("can only have one miner per node")
 	}
 
-	params := power.CreateMinerParams{
+	params := power2.CreateMinerParams{
 		Worker:        minerOwnerAddr,
 		Owner:         minerOwnerAddr,
 		Peer:          abi.PeerID(pid),
@@ -82,19 +83,19 @@ func MinerCreate(
 	smsgCid, _, err := plumbing.MessageSend(
 		ctx,
 		minerOwnerAddr,
-		builtin.StoragePowerActorAddr,
+		power.Address,
 		collateral,
 		gasBaseFee,
 		gasPremium,
 		gasLimit,
-		builtin.MethodsPower.CreateMiner,
+		power.Methods.CreateMiner,
 		&params,
 	)
 	if err != nil {
 		return address.Undef, err
 	}
 
-	var result power.CreateMinerReturn
+	var result power2.CreateMinerReturn
 	err = plumbing.MessageWait(ctx, smsgCid, msg.DefaultMessageWaitLookback, func(blk *block.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) (err error) {
 		if receipt.ExitCode != exitcode.Ok {
 			// Dragons: do we want to have this back?
@@ -147,8 +148,8 @@ func MinerPreviewCreate(
 	usedGas, err = plumbing.MessagePreview(
 		ctx,
 		fromAddr,
-		builtin.StorageMarketActorAddr,
-		builtin.MethodsPower.CreateMiner,
+		market.Address,
+		power.Methods.CreateMiner,
 		sectorSize,
 		pid,
 	)
@@ -284,7 +285,7 @@ func MinerSetWorkerAddress(
 		gasBaseFee,
 		gasPremium,
 		gasLimit,
-		builtin.MethodsMiner.ChangeWorkerAddress,
+		miner.Methods.ChangeWorkerAddress,
 		&workerAddr)
 	return c, err
 }

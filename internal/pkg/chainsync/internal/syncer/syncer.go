@@ -649,12 +649,17 @@ func (syncer *Syncer) fetchChainBlocks(ctx context.Context, knownTip *block.TipS
 	}
 	var windows = 500
 	untilHeight := knownTip.EnsureHeight()
+	count := 0
 loop:
 	for len(chainTipsets) == 0 || chainTipsets[len(chainTipsets)-1].EnsureHeight() > untilHeight {
 		tipset, err := syncer.chainStore.GetTipSet(targetTip)
 		if err == nil {
 			chainTipsets = append(chainTipsets, tipset)
 			targetTip = tipset.EnsureParents()
+			count++
+			if count%500 == 0 {
+				fmt.Println("load from local db ", "Height:", tipset.EnsureHeight())
+			}
 			continue
 		}
 

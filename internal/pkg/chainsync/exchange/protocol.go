@@ -1,14 +1,14 @@
 package exchange
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"time"
 
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/policy"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
@@ -30,7 +30,7 @@ const (
 //  to partition and reassemble the requests if they go above the maximum.
 //  (Also as a consequence of this temporarily removing the `const`
 //   qualifier to avoid "const initializer [...] is not a constant" error.)
-var MaxRequestLength = uint64(miner0.ChainFinality)
+var MaxRequestLength = uint64(policy.ChainFinality)
 
 const (
 	// Extracted constants from the code.
