@@ -68,10 +68,10 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 	p := &block.Block{Height: 1, Timestamp: uint64(ts.Unix())}
 	parents := consensus.RequireNewTipSet(require.New(t), p)
 
-	msg0 := &types.UnsignedMessage{From: address.TestAddress, CallSeqNum: 1}
-	msg1 := &types.UnsignedMessage{From: address.TestAddress, CallSeqNum: 2}
-	msg2 := &types.UnsignedMessage{From: address.TestAddress, CallSeqNum: 3}
-	msg3 := &types.UnsignedMessage{From: address.TestAddress, CallSeqNum: 4}
+	msg0 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 1}
+	msg1 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 2}
+	msg2 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 3}
+	msg3 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 4}
 
 	t.Run("rejects block with message from missing actor", func(t *testing.T) {
 		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{
@@ -315,7 +315,7 @@ type fakeMsgSource struct {
 	secpMessages []*types.SignedMessage
 }
 
-func (fms *fakeMsgSource) LoadMetaMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
+func (fms *fakeMsgSource) LoadMetaMessages(ctx context.Context, c cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
 	return fms.secpMessages, fms.blsMessages, nil
 }
 

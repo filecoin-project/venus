@@ -2,6 +2,14 @@ package discovery_test
 
 import (
 	"context"
+	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	ds "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/failstore"
+	"github.com/ipfs/go-datastore/retrystore"
+	"github.com/libp2p/go-libp2p-core/host"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"testing"
 	"time"
 
@@ -56,8 +64,12 @@ func TestHelloHandshake(t *testing.T) {
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	discovery.NewHelloProtocolHandler(a, genesisA.Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
-	discovery.NewHelloProtocolHandler(b, genesisA.Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
+	//peer manager
+	aPeerMgr, err := mockPeerMgr(t, ctx, a)
+	require.NoError(t, err)
+
+	discovery.NewHelloProtocolHandler(a, aPeerMgr, genesisA.Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
+	discovery.NewHelloProtocolHandler(b, aPeerMgr, genesisA.Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
 
 	msc1.On("HelloCallback", b.ID(), heavy2.Key(), abi.ChainEpoch(3)).Return()
 	msc2.On("HelloCallback", a.ID(), heavy1.Key(), abi.ChainEpoch(2)).Return()
@@ -112,8 +124,12 @@ func TestHelloBadGenesis(t *testing.T) {
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	discovery.NewHelloProtocolHandler(a, genesisA.Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
-	discovery.NewHelloProtocolHandler(b, genesisB.Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
+	//peer manager
+	peerMgr, err := mockPeerMgr(t, ctx, a)
+	require.NoError(t, err)
+
+	discovery.NewHelloProtocolHandler(a, peerMgr, genesisA.Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
+	discovery.NewHelloProtocolHandler(b, peerMgr, genesisB.Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
 
 	msc1.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 	msc2.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
@@ -151,8 +167,12 @@ func TestHelloMultiBlock(t *testing.T) {
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	discovery.NewHelloProtocolHandler(a, genesisTipset.At(0).Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
-	discovery.NewHelloProtocolHandler(b, genesisTipset.At(0).Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
+	//peer manager
+	peerMgr, err := mockPeerMgr(t, ctx, a)
+	require.NoError(t, err)
+
+	discovery.NewHelloProtocolHandler(a, peerMgr, genesisTipset.At(0).Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
+	discovery.NewHelloProtocolHandler(b, peerMgr, genesisTipset.At(0).Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
 
 	msc1.On("HelloCallback", b.ID(), heavy2.Key(), abi.ChainEpoch(3)).Return()
 	msc2.On("HelloCallback", a.ID(), heavy1.Key(), abi.ChainEpoch(2)).Return()
@@ -164,4 +184,20 @@ func TestHelloMultiBlock(t *testing.T) {
 
 	msc1.AssertExpectations(t)
 	msc2.AssertExpectations(t)
+}
+
+func mockPeerMgr(t *testing.T, ctx context.Context, h host.Host) (*net.PeerMgr, error) {
+	addrInfo, err := net.ParseAddresses(ctx, repo.NewInMemoryRepo().Config().Bootstrap.Addresses)
+	require.NoError(t, err)
+
+	rds := &retrystore.Datastore{
+		Batching: failstore.NewFailstore(ds.NewMapDatastore(), func(op string) error {
+			return fmt.Errorf("this is an actual error")
+		}),
+		Retries: 5,
+		TempErrFunc: func(err error) bool {
+			return false
+		},
+	}
+	return net.NewPeerMgr(h, dht.NewDHT(ctx, h, rds), 10, addrInfo)
 }

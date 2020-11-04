@@ -95,7 +95,15 @@ func TestBLSSignatureValidationConfiguration(t *testing.T) {
 	require.NoError(t, err)
 
 	msg := types.NewMeteredMessage(from, addresses[1], 0, types.ZeroAttoFIL, methodID, []byte("params"), types.NewGasFeeCap(1), types.NewGasPremium(1), gas.NewGas(300))
-	unsigned := &types.SignedMessage{Message: *msg}
+	mmsgCid, err := msg.Cid()
+	require.NoError(t, err)
+
+	var signer = types.NewMockSigner(keys)
+	signer.AddrKeyInfo[msg.From] = keys[0]
+	sig, err := signer.SignBytes(ctx, mmsgCid.Bytes(), msg.From)
+	require.NoError(t, err)
+	unsigned := &types.SignedMessage{Message: *msg, Signature: sig}
+
 	actor := newActor(t, 1000, 0)
 
 	t.Run("syntax validator does not ignore missing signature", func(t *testing.T) {
@@ -171,21 +179,28 @@ func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF in
 
 // FakeIngestionValidatorAPI provides a latest state
 type FakeIngestionValidatorAPI struct {
+	Block     *block.Block
 	ActorAddr address.Address
 	Actor     *actor.Actor
 }
 
 // NewMockIngestionValidatorAPI creates a new FakeIngestionValidatorAPI.
 func NewMockIngestionValidatorAPI() *FakeIngestionValidatorAPI {
-	return &FakeIngestionValidatorAPI{Actor: &actor.Actor{}}
+	block := &block.Block{
+		Height: 10,
+	}
+	return &FakeIngestionValidatorAPI{
+		Actor: &actor.Actor{},
+		Block: block,
+	}
 }
 
 func (api *FakeIngestionValidatorAPI) Head() block.TipSetKey {
-	return block.NewTipSetKey()
+	return block.NewTipSetKey(api.Block.Cid())
 }
 
 func (api *FakeIngestionValidatorAPI) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
-	return block.UndefTipSet, nil
+	return block.NewTipSet(api.Block)
 }
 
 func (api *FakeIngestionValidatorAPI) GetActorAt(ctx context.Context, key block.TipSetKey, a address.Address) (*actor.Actor, error) {

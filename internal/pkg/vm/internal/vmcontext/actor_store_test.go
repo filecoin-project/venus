@@ -27,7 +27,7 @@ func TestActorStore(t *testing.T) {
 	gasTank := vmcontext.NewGasTracker(1e6)
 
 	t.Run("abort on put serialization failure", func(t *testing.T) {
-		store := vmcontext.NewActorStorage(ctx, &raw, &gasTank, gas.PricelistByEpoch(0))
+		store := vmcontext.NewActorStorage(ctx, raw, &gasTank, gas.PricelistByEpoch(0))
 		_, thrown := tryPut(store, cannotCBOR{})
 		abort, ok := thrown.(vmr.ExecutionPanic)
 		assert.NotNil(t, thrown)
@@ -36,7 +36,7 @@ func TestActorStore(t *testing.T) {
 	})
 
 	t.Run("abort on get serialization failure", func(t *testing.T) {
-		store := vmcontext.NewActorStorage(ctx, &raw, &gasTank, gas.PricelistByEpoch(0))
+		store := vmcontext.NewActorStorage(ctx, raw, &gasTank, gas.PricelistByEpoch(0))
 		v := typegen.CborInt(0)
 
 		c, thrown := tryPut(store, &v)
@@ -94,6 +94,14 @@ func (c cannotCBOR) MarshalCBOR(w io.Writer) error {
 }
 
 type brokenStorage struct{}
+
+func (s brokenStorage) GetWithLen(ctx context.Context, cid cid.Cid, obj interface{}) (int, error) {
+	panic("implement me")
+}
+
+func (s brokenStorage) PutWithLen(ctx context.Context, obj interface{}) (cid.Cid, int, error) {
+	panic("implement me")
+}
 
 func (brokenStorage) Get(_ context.Context, _ cid.Cid, _ interface{}) (int, error) {
 	return 0, fmt.Errorf("no")
