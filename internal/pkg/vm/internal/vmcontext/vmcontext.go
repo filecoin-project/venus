@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/cron"
@@ -36,7 +37,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
 var vmlog = logging.Logger("vm.context")
