@@ -3,8 +3,9 @@ package crypto
 import (
 	"math/big"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/minio/blake2b-simd"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
 )
 
 // VRFPi is the proof output from running a VRF.

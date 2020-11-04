@@ -1,15 +1,13 @@
 package genesis
 
 import (
+	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-state-types/abi"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
-
-	address "github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 )
 
 // InitFunc is the signature for function that is used to create a genesis block.

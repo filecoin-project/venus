@@ -36,7 +36,6 @@ import (
 
 var log = logging.Logger("poster")
 
-// todo add by force
 // Epochs
 const MessageConfidence = uint64(5)
 

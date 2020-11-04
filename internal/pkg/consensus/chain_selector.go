@@ -7,17 +7,17 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"math/big"
 	"strings"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	vmstate "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 

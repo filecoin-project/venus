@@ -294,6 +294,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Chain:        nd.chain.State,
+		Fork:         nd.chain.Fork,
 		Sync:         cst.NewChainSyncProvider(nd.syncer.ChainSyncManager),
 		Config:       cfg.NewConfig(b.repo),
 		DAG:          dag.NewDAG(merkledag.NewDAGService(nd.Blockservice.Blockservice)),

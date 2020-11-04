@@ -28,12 +28,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/piecemanager"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/power"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/policy"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -52,6 +54,7 @@ type API struct {
 	logger logging.EventLogger
 
 	chain        *cst.ChainStateReadWriter
+	fork         fork.IFork
 	syncer       *cst.ChainSyncProvider
 	config       *cfg.Config
 	dag          *dag.DAG
@@ -69,6 +72,7 @@ type API struct {
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
 	Chain        *cst.ChainStateReadWriter
+	Fork         fork.IFork
 	Sync         *cst.ChainSyncProvider
 	Config       *cfg.Config
 	DAG          *dag.DAG
@@ -88,6 +92,7 @@ func New(deps *APIDeps) *API {
 	return &API{
 		logger:       logging.Logger("porcelain"),
 		chain:        deps.Chain,
+		fork:         deps.Fork,
 		syncer:       deps.Sync,
 		config:       deps.Config,
 		dag:          deps.DAG,
@@ -471,8 +476,8 @@ func (a *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round a
 
 func (a *API) GetLookbackTipSetForRound(ctx context.Context, ts *block.TipSet, round abi.ChainEpoch) (*block.TipSet, error) {
 	var lbr abi.ChainEpoch
-	if round > consensus.WinningPoStSectorSetLookback {
-		lbr = round - consensus.WinningPoStSectorSetLookback
+	if round > policy.GetWinningPoStSectorSetLookback(a.fork.GetNtwkVersion(ctx,round)) {
+		lbr = round - policy.GetWinningPoStSectorSetLookback(a.fork.GetNtwkVersion(ctx,round))
 	}
 
 	// more null blocks than our lookback
