@@ -3,6 +3,8 @@ package poster
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/policy"
 	"sync"
 	"time"
 
@@ -17,9 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
@@ -259,12 +259,12 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, di *dline
 
 		skipCount := uint64(0)
 		postSkipped := bitfield.New()
-		var postOut []proof.PoStProof
+		var postOut []builtin.PoStProof
 		somethingToProve := true
 
 		for retries := 0; retries < 5; retries++ {
 			var partitions []miner.PoStPartition
-			var sinfos []proof.SectorInfo
+			var sinfos []builtin.SectorInfo
 			for partIdx, partition := range batch {
 				// TODO: Can do this in parallel
 				toProve, err := partition.ActiveSectors()
@@ -428,7 +428,7 @@ func (p *Poster) sendPoSt(ctx context.Context, proofs []miner.SubmitWindowedPoSt
 			types.NewGasFeeCap(1), //todo add by force 费用估算
 			gas.NewGas(10000),
 			true,
-			builtin.MethodsMiner.SubmitWindowedPoSt,
+			miner.Methods.SubmitWindowedPoSt,
 			winPostParams,
 		)
 		if err != nil {
@@ -449,7 +449,7 @@ func (p *Poster) sendPoSt(ctx context.Context, proofs []miner.SubmitWindowedPoSt
 	return nil
 }
 
-func (p *Poster) sectorsForProof(ctx context.Context, stateViewer *appstate.View, goodSectors, allSectors bitfield.BitField, ts *block.TipSet) ([]proof.SectorInfo, error) {
+func (p *Poster) sectorsForProof(ctx context.Context, stateViewer *appstate.View, goodSectors, allSectors bitfield.BitField, ts *block.TipSet) ([]builtin.SectorInfo, error) {
 	sset, err := stateViewer.StateMinerSectors(ctx, p.minerAddr, &goodSectors, ts.Key())
 	if err != nil {
 		return nil, err
@@ -459,22 +459,22 @@ func (p *Poster) sectorsForProof(ctx context.Context, stateViewer *appstate.View
 		return nil, nil
 	}
 
-	substitute := proof.SectorInfo{
+	substitute := builtin.SectorInfo{
 		SectorNumber: sset[0].ID,
 		SealedCID:    sset[0].Info.SealedCID,
 		SealProof:    sset[0].Info.SealProof,
 	}
 
-	sectorByID := make(map[uint64]proof.SectorInfo, len(sset))
+	sectorByID := make(map[uint64]builtin.SectorInfo, len(sset))
 	for _, sector := range sset {
-		sectorByID[uint64(sector.ID)] = proof.SectorInfo{
+		sectorByID[uint64(sector.ID)] = builtin.SectorInfo{
 			SectorNumber: sector.ID,
 			SealedCID:    sector.Info.SealedCID,
 			SealProof:    sector.Info.SealProof,
 		}
 	}
 
-	proofSectors := make([]proof.SectorInfo, 0, len(sset))
+	proofSectors := make([]builtin.SectorInfo, 0, len(sset))
 	if err := allSectors.ForEach(func(sectorNo uint64) error {
 		if info, found := sectorByID[sectorNo]; found {
 			proofSectors = append(proofSectors, info)
@@ -490,8 +490,8 @@ func (p *Poster) sectorsForProof(ctx context.Context, stateViewer *appstate.View
 }
 
 func (p *Poster) batchPartitions(partitions []miner.Partition) ([][]miner.Partition, error) {
-	// Get the number of sectors allowed in a partition, for this proof size
-	sectorsPerPartition, err := builtin.PoStProofWindowPoStPartitionSectors(p.proofType)
+	// Get the number of sectors allowed in a partition, for this builtin size
+	sectorsPerPartition, err := policy.GetMaxPoStPartitions(p.proofType)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sectors per partition: %w", err)
 	}
@@ -602,7 +602,7 @@ func (p *Poster) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitio
 	msg := &types.UnsignedMessage{
 		To:     p.minerAddr,
 		From:   p.workerAddr,
-		Method: builtin.MethodsMiner.DeclareFaultsRecovered,
+		Method: miner.Methods.DeclareFaultsRecovered,
 		Params: enc,
 		Value:  big.NewInt(0),
 	}
@@ -687,7 +687,7 @@ func (p *Poster) checkNextFaults(ctx context.Context, dlIdx uint64, partitions [
 	msg := &types.UnsignedMessage{
 		To:     p.minerAddr,
 		From:   p.workerAddr,
-		Method: builtin.MethodsMiner.DeclareFaults,
+		Method: miner.Methods.DeclareFaults,
 		Params: enc,
 		Value:  big.NewInt(0), // TODO: Is there a fee?
 	}

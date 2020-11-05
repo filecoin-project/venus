@@ -7,7 +7,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -87,7 +88,7 @@ func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.Uns
 	}
 
 	// Sender must be an account actor.
-	if !(builtin.AccountActorCodeID.Equals(fromActor.Code.Cid)) {
+	if !(builtin0.AccountActorCodeID.Equals(fromActor.Code.Cid)) && !(builtin2.AccountActorCodeID.Equals(fromActor.Code.Cid)) {
 		dropNonAccountCt.Inc(ctx, 1)
 		return fmt.Errorf("sender %s is non-account actor with code %s: %s", msg.From, fromActor.Code, msg)
 	}

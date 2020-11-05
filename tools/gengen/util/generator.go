@@ -70,6 +70,7 @@ var GenesisNetworkVersion = func() network.Version {
 }()
 
 func genesisNetworkVersion(context.Context, abi.ChainEpoch) network.Version {
+	fmt.Printf("GenesisNetworkVersion: %v\n", GenesisNetworkVersion)
 	return GenesisNetworkVersion
 }
 

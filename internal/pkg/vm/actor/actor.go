@@ -3,17 +3,18 @@ package actor
 
 import (
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"io"
 	"io/ioutil"
 
 	fxamackercbor "github.com/fxamacker/cbor/v2"
 	"github.com/ipfs/go-cid"
-
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 )
 
 var ErrActorNotFound = errors.New("actor not found")
@@ -67,7 +68,7 @@ func (a *Actor) Empty() bool {
 }
 
 func (a *Actor) IsAccountActor() bool {
-	return a.Code.Cid == builtin.AccountActorCodeID
+	return a.Code.Cid.Equals(builtin0.AccountActorCodeID) || a.Code.Equals(builtin2.AccountActorCodeID)
 }
 
 // IncrementSeqNum increments the seq number.
@@ -96,7 +97,7 @@ func (a *Actor) MarshalCBOR(w io.Writer) error {
 
 // Format implements fmt.Formatter.
 func (a *Actor) Format(f fmt.State, c rune) {
-	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", builtin.ActorNameByCode(a.Code.Cid), a, a.Balance, a.CallSeqNum))) // nolint: errcheck
+	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", a.Code, a, a.Balance, a.CallSeqNum))) // nolint: errcheck
 }
 
 // NextNonce returns the nonce value for an account actor, which is the nonce expected on the
@@ -106,7 +107,7 @@ func NextNonce(actor *Actor) (uint64, error) {
 	if actor == nil {
 		return 0, nil
 	}
-	if !(actor.Empty() || actor.Code.Equals(builtin.AccountActorCodeID)) {
+	if !(actor.Empty() || actor.IsAccountActor()) {
 		return 0, errors.New("next nonce only defined for account or empty actors")
 	}
 	return actor.CallSeqNum, nil

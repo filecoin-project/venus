@@ -14,13 +14,16 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	//"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	//"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+
 )
 
 var log = logging.Logger("consensus")
@@ -299,7 +302,7 @@ func (dv *DefaultBlockValidator) getAndValidateFromActor(ctx context.Context, ms
 	}
 
 	// ensure actor is an account actor
-	if !actor.Code.Equals(builtin.AccountActorCodeID) {
+	if !actor.Code.Equals(builtin0.AccountActorCodeID) && actor.Code.Equals(builtin2.AccountActorCodeID) {
 		return nil, errors.New("sent from non-account actor")
 	}
 

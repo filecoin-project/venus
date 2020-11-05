@@ -21,7 +21,7 @@ import (
 	"io/ioutil"
 	"time"
 
-	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt" // todo block headers use adt0 ???
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt" // todo block headers use adt0
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
