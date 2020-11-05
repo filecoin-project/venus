@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/stores"
 	"github.com/google/uuid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	keystore "github.com/ipfs/go-ipfs-keystore"
@@ -20,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/stores"
 )
 
 const defaultPeerKeyBits = 2048

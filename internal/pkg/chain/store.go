@@ -205,7 +205,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 			return err
 		}
 
-		fmt.Println(startPoint.Key().String(), "", stateRoot, " ", startPoint.EnsureHeight())
+		fmt.Println(startPoint.Key().String(), "root: ", stateRoot, "height: ", startPoint.EnsureHeight())
 		err = store.PutTipSetMetadata(ctx, &TipSetMetadata{
 			TipSet:          startPoint,
 			TipSetStateRoot: stateRoot,
@@ -224,8 +224,14 @@ func (store *Store) Load(ctx context.Context) (err error) {
 
 	//todo just for test should remove if ok
 	if checkPointTs == nil || headTs.EnsureHeight() > checkPointTs.EnsureHeight() {
-		p, _ := headTs.Parents()
-		headTs, _ = store.GetTipSet(p)
+		p, err := headTs.Parents()
+		if err != nil {
+			return err
+		}
+		headTs, err = store.GetTipSet(p)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Set actual head.

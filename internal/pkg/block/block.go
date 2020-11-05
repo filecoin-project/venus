@@ -3,7 +3,6 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
 

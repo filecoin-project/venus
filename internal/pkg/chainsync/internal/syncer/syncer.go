@@ -21,7 +21,7 @@ import (
 	"io/ioutil"
 	"time"
 
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt" // todo block headers use adt0
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt" // todo block headers use adt0 ???
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
@@ -991,9 +991,9 @@ func zipTipSetAndMessages(bs blockstore.Blockstore, ts *block.TipSet, allbmsgs [
 // of both types (BLS and Secpk).
 func computeMsgMeta(bs blockstore.Blockstore, bmsgCids, smsgCids []cid.Cid) (cid.Cid, error) {
 	// block headers use adt0
-	store := blockadt.WrapStore(context.TODO(), cborutil.NewIpldStore(bs))
-	bmArr := blockadt.MakeEmptyArray(store)
-	smArr := blockadt.MakeEmptyArray(store)
+	store := adt0.WrapStore(context.TODO(), cborutil.NewIpldStore(bs))
+	bmArr := adt0.MakeEmptyArray(store)
+	smArr := adt0.MakeEmptyArray(store)
 
 	for i, m := range bmsgCids {
 		c := cbg.CborCid(m)
