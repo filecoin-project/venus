@@ -9,8 +9,8 @@ require (
 	github.com/GeertJohan/go.rice v1.0.0
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/cskr/pubsub v1.0.2
+	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
-	github.com/dgraph-io/badger/v2 v2.2007.2 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v0.7.3-0.20190315170154-87d593639c77
 	github.com/docker/go-connections v0.4.0 // indirect
@@ -18,6 +18,7 @@ require (
 	github.com/drand/drand v1.1.2-0.20200905144319-79c957281b32
 	github.com/drand/kyber v1.1.2
 	github.com/elastic/go-sysinfo v1.4.0
+	github.com/fatih/color v1.9.0
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200716204036-cddc56607e1d
 	github.com/filecoin-project/go-address v0.0.4
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20201006184820-924ee87a1349
@@ -34,10 +35,12 @@ require (
 	github.com/filecoin-project/go-state-types v0.0.0-20201013222834-41ea465f274f
 	github.com/filecoin-project/go-statemachine v0.0.0-20200925024713-05bd7c71fbfe
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
+	github.com/filecoin-project/lotus v0.10.2-0.20201015111416-4e659e30c54e
 	github.com/filecoin-project/specs-actors v0.9.12
 	github.com/filecoin-project/specs-actors/v2 v2.2.0
 	//github.com/filecoin-project/go-filecoin/vendors/sector-storage v0.0.0-20200508203401-a74812ba12f3
 	github.com/filecoin-project/specs-storage v0.1.1-0.20200907031224-ed2e5cd13796
+	github.com/filecoin-project/test-vectors/schema v0.0.5-0.20201014133607-1352e6bb4e71
 	//github.com/filecoin-project/go-filecoin/vendors/storage-sealing v0.0.0-20200508212339-4980cb4c92b1
 	github.com/fxamacker/cbor/v2 v2.2.0
 	github.com/go-kit/kit v0.10.0
@@ -94,7 +97,6 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/multiformats/go-multiaddr-net v0.2.0
 	github.com/multiformats/go-multihash v0.0.14
-	github.com/onsi/ginkgo v1.14.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/otiai10/copy v1.0.2
@@ -108,16 +110,19 @@ require (
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200826160007-0b9f6c5fb163
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
-	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542 // indirect
 	go.opencensus.io v0.22.4
 	go.uber.org/zap v1.15.0
-	golang.org/x/net v0.0.0-20200707034311-ab3426394381 // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/sync v0.0.0-20201008141435-b3e1573b7520
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	gotest.tools v2.2.0+incompatible
+
 )
 
 replace github.com/filecoin-project/filecoin-ffi => ./vendors/filecoin-ffi
+replace github.com/filecoin-project/test-vectors => ./vendors/test-vectors
+
+replace github.com/supranational/blst => ./vendors/fil-blst/blst
+replace github.com/filecoin-project/fil-blst => ./vendors/fil-blst

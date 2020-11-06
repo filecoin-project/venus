@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/reward"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/verifreg"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	vmstate "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -79,8 +78,8 @@ type View struct {
 // NewView creates a new state view
 func NewView(store cbor.IpldStore, root cid.Cid) *View {
 	return &View{
-		ipldStore:      store,
-		root:           root,
+		ipldStore: store,
+		root:      root,
 	}
 }
 
@@ -638,7 +637,7 @@ func (v *View) GetFilLocked(ctx context.Context, st vmstate.Tree) (abi.TokenAmou
 	return big.Add(filMarketLocked, filPowerLocked), nil
 }
 
-func (v *View) LoadActor(ctx context.Context, address addr.Address) (*actor.Actor, error) {
+func (v *View) LoadActor(ctx context.Context, address addr.Address) (*types.Actor, error) {
 	return v.loadActor(ctx, address)
 }
 
@@ -726,7 +725,7 @@ func (v *View) loadAccountActor(ctx context.Context, a addr.Address) (account.St
 	return account.Load(adt.WrapStore(context.TODO(), v.ipldStore), actr)
 }
 
-func (v *View) loadActor(ctx context.Context, address addr.Address) (*actor.Actor, error) {
+func (v *View) loadActor(ctx context.Context, address addr.Address) (*types.Actor, error) {
 	tree, err := vmstate.LoadState(ctx, v.ipldStore, v.root)
 	if err != nil {
 		return nil, err

@@ -1,6 +1,7 @@
 package market
 
 import (
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
 func init() {
@@ -32,7 +32,7 @@ var (
 	Methods = builtin2.MethodsMarket
 )
 
-func Load(store adt.Store, act *actor.Actor) (st State, err error) {
+func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code.Cid {
 	case builtin0.StorageMarketActorCodeID:
 		return load0(store, act.Head.Cid)

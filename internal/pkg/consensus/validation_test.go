@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 
 	"github.com/stretchr/testify/assert"
@@ -207,7 +206,7 @@ func (api *FakeIngestionValidatorAPI) GetActorAt(ctx context.Context, key block.
 	if a == api.ActorAddr {
 		return api.Actor, nil
 	}
-	return &actor.Actor{
+	return &types.Actor{
 		Balance: abi.NewTokenAmount(0),
 	}, nil
 }

@@ -2,6 +2,7 @@ package builtin
 
 import (
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -25,10 +25,6 @@ var CronActorAddr = builtin0.CronActorAddr
 var SaftAddress = makeAddress("t0122")
 var ReserveAddress = makeAddress("t090")
 var RootVerifierAddress = makeAddress("t080")
-
-var (
-	ExpectedLeadersPerEpoch = builtin0.ExpectedLeadersPerEpoch
-)
 
 const (
 	EpochDurationSeconds = builtin0.EpochDurationSeconds
@@ -67,7 +63,7 @@ func RegisterActorState(code cid.Cid, loader ActorStateLoader) {
 	ActorStateLoaders[code] = loader
 }
 
-func Load(store adt.Store, act *actor.Actor) (cbor.Marshaler, error) {
+func Load(store adt.Store, act *types.Actor) (cbor.Marshaler, error) {
 	loader, found := ActorStateLoaders[act.Code.Cid]
 	if !found {
 		return nil, xerrors.Errorf("unknown actor code %s", act.Code)
@@ -92,6 +88,10 @@ func IsBuiltinActor(c cid.Cid) bool {
 
 func IsAccountActor(c cid.Cid) bool {
 	return c == builtin0.AccountActorCodeID || c == builtin2.AccountActorCodeID
+}
+
+func IsInittActor(c cid.Cid) bool {
+	return c == builtin0.InitActorCodeID || c == builtin2.InitActorCodeID
 }
 
 func IsStorageMinerActor(c cid.Cid) bool {

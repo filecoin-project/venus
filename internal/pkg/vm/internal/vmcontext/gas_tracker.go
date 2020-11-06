@@ -25,16 +25,16 @@ type GasTracker struct {
 }
 
 // NewGasTracker initializes a new empty gas tracker
-func NewGasTracker(limit gas.Unit) GasTracker {
-	return GasTracker{
+func NewGasTracker(limit types2.Unit) *GasTracker {
+	return &GasTracker{
 		gasUsed:      0,
 		gasAvailable: int64(limit),
 	}
 }
 
-// Charge will add the gas charge to the current method gas context.
+// Charge will add the gas charge To the current Method gas context.
 //
-// WARNING: this method will panic if there is no sufficient gas left.
+// WARNING: this Method will panic if there is no sufficient gas left.
 func (t *GasTracker) Charge(gas gas.GasCharge, msg string, args ...interface{}) {
 	if ok := t.TryCharge(gas); !ok {
 		fmsg := fmt.Sprintf(msg, args...)
@@ -44,7 +44,7 @@ func (t *GasTracker) Charge(gas gas.GasCharge, msg string, args ...interface{}) 
 
 // TryCharge charges `amount` or `RemainingGas()``, whichever is smaller.
 //
-// Returns `True` if the there was enough gas to pay for `amount`.
+// Returns `True` if the there was enough gas To pay for `amount`.
 func (t *GasTracker) TryCharge(gasCharge gas.GasCharge) bool {
 	toUse := gasCharge.Total()
 	//var callers [10]uintptr
@@ -69,6 +69,7 @@ func (t *GasTracker) TryCharge(gasCharge gas.GasCharge) bool {
 
 		//Callers: callers[:cout],
 	}
+
 	t.executionTrace.GasCharges = append(t.executionTrace.GasCharges, &gasTrace)
 	t.lastGasChargeTime = now
 	t.lastGasCharge = &gasTrace

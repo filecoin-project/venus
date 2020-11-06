@@ -8,7 +8,7 @@ import (
 	actors "github.com/filecoin-project/go-filecoin/internal/pkg/specactors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
 	init_ "github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/init"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -28,8 +28,8 @@ type Root = cid.Cid
 
 // Review: can we get rid of this?
 type Tree interface {
-	GetActor(ctx context.Context, addr ActorKey) (*actor.Actor, bool, error)
-	SetActor(ctx context.Context, addr ActorKey, act *actor.Actor) error
+	GetActor(ctx context.Context, addr ActorKey) (*types.Actor, bool, error)
+	SetActor(ctx context.Context, addr ActorKey, act *types.Actor) error
 	DeleteActor(ctx context.Context, addr ActorKey) error
 
 	Flush(ctx context.Context) (cid.Cid, error)
@@ -39,8 +39,8 @@ type Tree interface {
 
 	RegisterNewAddress(addr ActorKey) (address.Address, error)
 
-	MutateActor(addr ActorKey, f func(*actor.Actor) error) error
-	ForEach(f func(ActorKey, *actor.Actor) error) error
+	MutateActor(addr ActorKey, f func(*types.Actor) error) error
+	ForEach(f func(ActorKey, *types.Actor) error) error
 	GetStore() cbor.IpldStore
 }
 
@@ -153,7 +153,7 @@ func LoadState(ctx context.Context, cst cbor.IpldStore, c cid.Cid) (*State, erro
 	}
 }
 
-func (st *State) SetActor(ctx context.Context, addr ActorKey, act *actor.Actor) error {
+func (st *State) SetActor(ctx context.Context, addr ActorKey, act *types.Actor) error {
 	fmt.Println("set actor addr:", addr.String(), " Balance:", act.Balance.String(), " Head:", act.Head, " Nonce:", act.CallSeqNum)
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
@@ -178,7 +178,7 @@ func (st *State) lookupIDinternal(addr address.Address) (address.Address, error)
 
 	a, found, err := ias.ResolveAddress(addr)
 	if err == nil && !found {
-		err = actor.ErrActorNotFound
+		err = types.ErrActorNotFound
 	}
 	if err != nil {
 		return address.Undef, xerrors.Errorf("resolve address %s: %w", addr, err)
@@ -207,7 +207,7 @@ func (st *State) LookupID(addr ActorKey) (address.Address, error) {
 }
 
 // GetActor returns the actor from any type of `addr` provided.
-func (st *State) GetActor(ctx context.Context, addr ActorKey) (*actor.Actor, bool, error) {
+func (st *State) GetActor(ctx context.Context, addr ActorKey) (*types.Actor, bool, error) {
 	if addr == address.Undef {
 		return nil, false, fmt.Errorf("GetActor called on undefined address")
 	}
@@ -215,7 +215,7 @@ func (st *State) GetActor(ctx context.Context, addr ActorKey) (*actor.Actor, boo
 	// Transform `addr` to its ID format.
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
-		if xerrors.Is(err, actor.ErrActorNotFound) {
+		if xerrors.Is(err, types.ErrActorNotFound) {
 			return nil, false, nil
 		}
 		return nil, false, xerrors.Errorf("address resolution: %w", err)
@@ -231,7 +231,7 @@ func (st *State) GetActor(ctx context.Context, addr ActorKey) (*actor.Actor, boo
 		return snapAct, true, nil
 	}
 
-	var act actor.Actor
+	var act types.Actor
 	if found, err := st.root.Get(abi.AddrKey(addr), &act); err != nil {
 		return nil, false, xerrors.Errorf("hamt find failed: %w", err)
 	} else if !found {
@@ -251,7 +251,7 @@ func (st *State) DeleteActor(ctx context.Context, addr ActorKey) error {
 
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
-		if xerrors.Is(err, actor.ErrActorNotFound) {
+		if xerrors.Is(err, types.ErrActorNotFound) {
 			return xerrors.Errorf("resolution lookup failed (%s): %w", addr, err)
 		}
 		return xerrors.Errorf("address resolution: %w", err)
@@ -318,7 +318,7 @@ func (st *State) ClearSnapshot() {
 
 func (st *State) RegisterNewAddress(addr ActorKey) (address.Address, error) {
 	var out address.Address
-	err := st.MutateActor(init_.Address, func(initact *actor.Actor) error {
+	err := st.MutateActor(init_.Address, func(initact *types.Actor) error {
 		ias, err := init_.Load(&AdtStore{st.Store}, initact)
 		if err != nil {
 			return err
@@ -360,7 +360,7 @@ func (st *State) Revert() error {
 	return nil
 }
 
-func (st *State) MutateActor(addr ActorKey, f func(*actor.Actor) error) error {
+func (st *State) MutateActor(addr ActorKey, f func(*types.Actor) error) error {
 	act, found, err := st.GetActor(context.Background(), addr)
 	if !found || err != nil {
 		return err
@@ -373,8 +373,8 @@ func (st *State) MutateActor(addr ActorKey, f func(*actor.Actor) error) error {
 	return st.SetActor(context.Background(), addr, act)
 }
 
-func (st *State) ForEach(f func(ActorKey, *actor.Actor) error) error {
-	var act actor.Actor
+func (st *State) ForEach(f func(ActorKey, *types.Actor) error) error {
+	var act types.Actor
 	return st.root.ForEach(&act, func(k string) error {
 		act := act // copy
 		addr, err := address.NewFromBytes([]byte(k))
@@ -395,15 +395,15 @@ func (st *State) GetStore() cbor.IpldStore {
 	return st.Store
 }
 
-func Diff(oldTree, newTree *State) (map[string]actor.Actor, error) {
-	out := map[string]actor.Actor{}
+func Diff(oldTree, newTree *State) (map[string]types.Actor, error) {
+	out := map[string]types.Actor{}
 
 	var (
 		ncval, ocval cbg.Deferred
 		buf          = bytes.NewReader(nil)
 	)
 	if err := newTree.root.ForEach(&ncval, func(k string) error {
-		var act actor.Actor
+		var act types.Actor
 
 		addr, err := address.NewFromBytes([]byte(k))
 		if err != nil {

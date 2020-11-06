@@ -2,17 +2,18 @@ package gengen_test
 
 import (
 	"context"
-	"github.com/filecoin-project/go-state-types/abi"
 	"io/ioutil"
 	"testing"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/go-state-types/abi"
+	builtin2 "github.com/filecoin-project/specs-actors/actors/builtin"
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
 	. "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 
 	"github.com/stretchr/testify/assert"
@@ -67,9 +68,9 @@ func TestGenGenLoading(t *testing.T) {
 	o := td.Run("actor", "ls").AssertSuccess()
 
 	stdout := o.ReadStdout()
-	assert.Contains(t, stdout, builtin.StoragePowerActorCodeID.String())
-	assert.Contains(t, stdout, builtin.StorageMarketActorCodeID.String())
-	assert.Contains(t, stdout, builtin.InitActorCodeID.String())
+	assert.Contains(t, stdout, builtin2.StoragePowerActorCodeID.String())
+	assert.Contains(t, stdout, builtin2.StorageMarketActorCodeID.String())
+	assert.Contains(t, stdout, builtin2.InitActorCodeID.String())
 }
 
 func TestGenGenDeterministic(t *testing.T) {
@@ -79,7 +80,7 @@ func TestGenGenDeterministic(t *testing.T) {
 	var info *RenderedGenInfo
 	for i := 0; i < 5; i++ {
 		bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
-		inf, err := GenGen(ctx, testConfig(t), bstore)
+		inf, err := GenGen(ctx, testConfig(t), storage.NewStorage(bstore))
 		assert.NoError(t, err)
 		if info == nil {
 			info = inf

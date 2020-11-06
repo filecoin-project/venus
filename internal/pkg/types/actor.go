@@ -1,8 +1,7 @@
 // Package actor implements tooling to write and manipulate actors in go.
-package actor
+package types
 
 import (
-	"fmt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"io"
 	"io/ioutil"
@@ -13,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
 var ErrActorNotFound = errors.New("actor not found")
@@ -66,10 +64,6 @@ func (a *Actor) Empty() bool {
 	return !a.Code.Defined()
 }
 
-func (a *Actor) IsAccountActor() bool {
-	return a.Code.Cid == builtin.AccountActorCodeID
-}
-
 // IncrementSeqNum increments the seq number.
 func (a *Actor) IncrementSeqNum() {
 	a.CallSeqNum = a.CallSeqNum + 1
@@ -92,22 +86,4 @@ func (a *Actor) MarshalCBOR(w io.Writer) error {
 	}
 	_, err = w.Write(bs)
 	return err
-}
-
-// Format implements fmt.Formatter.
-func (a *Actor) Format(f fmt.State, c rune) {
-	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", builtin.ActorNameByCode(a.Code.Cid), a, a.Balance, a.CallSeqNum))) // nolint: errcheck
-}
-
-// NextNonce returns the nonce value for an account actor, which is the nonce expected on the
-// next message to be sent from that actor.
-// Returns zero for a nil actor, which is the value expected on the first message.
-func NextNonce(actor *Actor) (uint64, error) {
-	if actor == nil {
-		return 0, nil
-	}
-	if !(actor.Empty() || actor.Code.Equals(builtin.AccountActorCodeID)) {
-		return 0, errors.New("next nonce only defined for account or empty actors")
-	}
-	return actor.CallSeqNum, nil
 }

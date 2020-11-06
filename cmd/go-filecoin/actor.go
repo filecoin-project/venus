@@ -9,7 +9,6 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
 // ActorView represents a generic way to represent details about any actor to the user.
@@ -62,7 +61,7 @@ var actorLsCmd = &cmds.Command{
 	},
 }
 
-func makeActorView(act *actor.Actor, addr address.Address) *ActorView {
+func makeActorView(act *types.Actor, addr address.Address) *ActorView {
 	return &ActorView{
 		Address: addr.String(),
 		Code:    act.Code.Cid,

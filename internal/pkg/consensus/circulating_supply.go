@@ -2,6 +2,8 @@ package consensus
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork/blockstore"
+	"sync"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -21,10 +23,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/reward"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
+
+type genesisReader interface {
+	GetGenesisBlock(ctx context.Context) (*block.Block, error)
+}
 
 type CirculatingSupply struct {
 	FilVested      abi.TokenAmount
@@ -47,23 +51,38 @@ type genesisActor struct {
 	initBal abi.TokenAmount
 }
 
-func (sm *Expected) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st state.Tree) (CirculatingSupply, error) {
-	sm.genesisMsigLk.Lock()
-	defer sm.genesisMsigLk.Unlock()
-	if sm.preIgnitionGenInfos == nil {
-		err := sm.setupPreIgnitionGenesisActorsTestnet(ctx)
+type CirculatingSupplyCalculator struct {
+	bstore        blockstore.Blockstore
+	genesisReader genesisReader
+
+	genesisMsigs []msig0.State
+	// info about the Accounts in the genesis state
+	preIgnitionGenInfos  *genesisInfo
+	postIgnitionGenInfos *genesisInfo
+	genesisMsigLk        sync.Mutex
+}
+
+func NewCirculatingSupplyCalculator(bstore blockstore.Blockstore, genesisReader genesisReader) *CirculatingSupplyCalculator {
+	return &CirculatingSupplyCalculator{bstore: bstore, genesisReader: genesisReader}
+}
+
+func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st state.Tree) (CirculatingSupply, error) {
+	caculator.genesisMsigLk.Lock()
+	defer caculator.genesisMsigLk.Unlock()
+	if caculator.preIgnitionGenInfos == nil {
+		err := caculator.setupPreIgnitionGenesisActorsTestnet(ctx)
 		if err != nil {
 			return CirculatingSupply{}, xerrors.Errorf("failed to setup pre-ignition genesis information: %v", err)
 		}
 	}
-	if sm.postIgnitionGenInfos == nil {
-		err := sm.setupPostIgnitionGenesisActors(ctx)
+	if caculator.postIgnitionGenInfos == nil {
+		err := caculator.setupPostIgnitionGenesisActors(ctx)
 		if err != nil {
 			return CirculatingSupply{}, xerrors.Errorf("failed to setup post-ignition genesis information: %v", err)
 		}
 	}
 
-	filVested, err := sm.GetFilVested(ctx, height, st)
+	filVested, err := caculator.GetFilVested(ctx, height, st)
 	if err != nil {
 		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %v", err)
 	}
@@ -86,7 +105,7 @@ func (sm *Expected) GetCirculatingSupplyDetailed(ctx context.Context, height abi
 		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %v", err)
 	}
 
-	filLocked, err := sm.GetFilLocked(ctx, st)
+	filLocked, err := caculator.GetFilLocked(ctx, st)
 	if err != nil {
 		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %v", err)
 	}
@@ -177,15 +196,15 @@ func GetFilBurnt(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
 	return burnt.Balance, nil
 }
 
-func (sm *Expected) GetFilVested(ctx context.Context, height abi.ChainEpoch, st state.Tree) (abi.TokenAmount, error) {
+func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, height abi.ChainEpoch, st state.Tree) (abi.TokenAmount, error) {
 	vf := big.Zero()
 	if height <= fork.UpgradeIgnitionHeight {
-		for _, v := range sm.preIgnitionGenInfos.genesisMsigs {
+		for _, v := range caculator.preIgnitionGenInfos.genesisMsigs {
 			au := big.Sub(v.InitialBalance, v.AmountLocked(height))
 			vf = big.Add(vf, au)
 		}
 	} else {
-		for _, v := range sm.postIgnitionGenInfos.genesisMsigs {
+		for _, v := range caculator.postIgnitionGenInfos.genesisMsigs {
 			// In the pre-ignition logic, we simply called AmountLocked(height), assuming startEpoch was 0.
 			// The start epoch changed in the Ignition upgrade.
 			au := big.Sub(v.InitialBalance, v.AmountLocked(height-v.StartEpoch))
@@ -195,7 +214,7 @@ func (sm *Expected) GetFilVested(ctx context.Context, height abi.ChainEpoch, st 
 
 	// there should not be any such accounts in testnet (and also none in mainnet?)
 	// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
-	for _, v := range sm.preIgnitionGenInfos.genesisActors {
+	for _, v := range caculator.preIgnitionGenInfos.genesisActors {
 		act, _, err := st.GetActor(ctx, v.addr)
 		if err != nil {
 			return big.Zero(), xerrors.Errorf("failed to get actor: %v", err)
@@ -210,15 +229,15 @@ func (sm *Expected) GetFilVested(ctx context.Context, height abi.ChainEpoch, st 
 	// After UpgradeActorsV2Height these funds are accounted for in GetFilReserveDisbursed
 	if height <= fork.UpgradeActorsV2Height {
 		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
-		vf = big.Add(vf, sm.preIgnitionGenInfos.genesisPledge)
+		vf = big.Add(vf, caculator.preIgnitionGenInfos.genesisPledge)
 		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
-		vf = big.Add(vf, sm.preIgnitionGenInfos.genesisMarketFunds)
+		vf = big.Add(vf, caculator.preIgnitionGenInfos.genesisMarketFunds)
 	}
 
 	return vf, nil
 }
 
-func (sm *Expected) GetFilLocked(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
+func (caculator *CirculatingSupplyCalculator) GetFilLocked(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
 
 	filMarketLocked, err := getFilMarketLocked(ctx, st)
 	if err != nil {
@@ -233,7 +252,7 @@ func (sm *Expected) GetFilLocked(ctx context.Context, st state.Tree) (abi.TokenA
 	return big.Add(filMarketLocked, filPowerLocked), nil
 }
 
-func (c *Expected) processBlock(ctx context.Context, ts *block.TipSet) (cid.Cid, []types.MessageReceipt, error) {
+/*func (c *Expected) processBlock(ctx context.Context, ts *block.TipSet) (cid.Cid, []types.MessageReceipt, error) {
 	var secpMessages [][]*types.SignedMessage
 	var blsMessages [][]*types.UnsignedMessage
 	for i := 0; i < ts.Len(); i++ {
@@ -269,11 +288,11 @@ func (c *Expected) processBlock(ctx context.Context, ts *block.TipSet) (cid.Cid,
 	}
 	return root, receipts, err
 }
-
-func (c *Expected) setupPreIgnitionGenesisActorsTestnet(ctx context.Context) error {
+*/
+func (caculator *CirculatingSupplyCalculator) setupPreIgnitionGenesisActorsTestnet(ctx context.Context) error {
 	gi := genesisInfo{}
 
-	gb, err := c.chainState.GetGenesisBlock(ctx)
+	gb, err := caculator.genesisReader.GetGenesisBlock(ctx)
 	if err != nil {
 		return xerrors.Errorf("getting genesis block: %v", err)
 	}
@@ -288,7 +307,7 @@ func (c *Expected) setupPreIgnitionGenesisActorsTestnet(ctx context.Context) err
 	//	return xerrors.Errorf("getting genesis tipset state: %v", err)
 	//}
 
-	cst := cbornode.NewCborStore(c.bstore)
+	cst := cbornode.NewCborStore(caculator.bstore)
 	sTree, err := state.LoadState(ctx, cst, gts.At(0).StateRoot.Cid)
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %v", err)
@@ -338,17 +357,17 @@ func (c *Expected) setupPreIgnitionGenesisActorsTestnet(ctx context.Context) err
 		gi.genesisMsigs = append(gi.genesisMsigs, ns)
 	}
 
-	c.preIgnitionGenInfos = &gi
+	caculator.preIgnitionGenInfos = &gi
 
 	return nil
 }
 
 // sets up information about the actors in the genesis state, post the ignition fork
-func (sm *Expected) setupPostIgnitionGenesisActors(ctx context.Context) error {
+func (caculator *CirculatingSupplyCalculator) setupPostIgnitionGenesisActors(ctx context.Context) error {
 
 	gi := genesisInfo{}
 
-	gb, err := sm.chainState.GetGenesisBlock(ctx)
+	gb, err := caculator.genesisReader.GetGenesisBlock(ctx)
 	if err != nil {
 		return xerrors.Errorf("getting genesis block: %v", err)
 	}
@@ -363,7 +382,7 @@ func (sm *Expected) setupPostIgnitionGenesisActors(ctx context.Context) error {
 	//	return xerrors.Errorf("getting genesis tipset state: %v", err)
 	//}
 
-	cst := cbornode.NewCborStore(sm.bstore)
+	cst := cbornode.NewCborStore(caculator.bstore)
 	sTree, err := state.LoadState(ctx, cst, gts.At(0).StateRoot.Cid)
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %v", err)
@@ -418,7 +437,7 @@ func (sm *Expected) setupPostIgnitionGenesisActors(ctx context.Context) error {
 		gi.genesisMsigs = append(gi.genesisMsigs, ns)
 	}
 
-	sm.postIgnitionGenInfos = &gi
+	caculator.postIgnitionGenInfos = &gi
 
 	return nil
 }

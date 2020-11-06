@@ -1,6 +1,7 @@
 package init
 
 import (
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
@@ -29,7 +29,7 @@ var (
 	Methods = builtin2.MethodsInit
 )
 
-func Load(store adt.Store, act *actor.Actor) (State, error) {
+func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code.Cid {
 	case builtin0.InitActorCodeID:
 		return load0(store, act.Head.Cid)

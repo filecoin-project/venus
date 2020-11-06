@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 )
@@ -172,7 +171,7 @@ func (ob *Outbox) GasEstimateGasLimit(ctx context.Context, msgIn *types.Unsigned
 		return -1, xerrors.Errorf("call with gas err: %s", err)
 	}
 
-	return int64(ret.GasUsed) + 76e3, nil
+	return int64(ret.Receipt.GasUsed) + 76e3, nil
 }
 
 func (ob *Outbox) GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec, _ block.TipSetKey) (*types.UnsignedMessage, error) {
@@ -181,7 +180,7 @@ func (ob *Outbox) GasEstimateMessageGas(ctx context.Context, msg *types.Unsigned
 		if err != nil {
 			return nil, xerrors.Errorf("estimating gas used: %w", err)
 		}
-		msg.GasLimit = gas.NewGas(int64(float64(gasLimit) * GasLimitOverestimation))
+		msg.GasLimit = types.NewGas(int64(float64(gasLimit) * GasLimitOverestimation))
 	}
 
 	if msg.GasPremium == types.ZeroAttoFIL || big.Cmp(msg.GasPremium, big.NewInt(0)) == 0 {

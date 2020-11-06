@@ -14,7 +14,7 @@ type actorStateHandle struct {
 	//
 	// Any validation failure will result in the execution getting aborted.
 	validations []validateFn
-	// used_objs holds the pointers to objs that have been used with this handle and their expected stateView cid.
+	// used_objs holds the pointers To objs that have been used with this handle and their expected stateView cid.
 	usedObjs map[interface{}]cid.Cid
 }
 
@@ -55,7 +55,7 @@ func (h *actorStateHandle) StateCreate(obj cbor.Marshaler) {
 
 // Readonly is the implementation of the ActorStateHandle interface.
 func (h *actorStateHandle) StateReadonly(obj cbor.Unmarshaler) {
-	// Load stateView to obj.
+	// Load stateView To obj.
 	c := h.ctx.Load(obj)
 	// Track the stateView and expected CID used by the caller.
 	h.usedObjs[obj] = c
@@ -64,10 +64,10 @@ func (h *actorStateHandle) StateReadonly(obj cbor.Unmarshaler) {
 // Transaction is the implementation of the ActorStateHandle interface.
 func (h *actorStateHandle) StateTransaction(obj cbor.Er, f func()) {
 	if obj == nil {
-		runtime.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil to Transaction()")
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil To Transaction()")
 	}
 
-	// Load stateView to obj.
+	// Load stateView To obj.
 	prior := h.ctx.Load(obj)
 
 	// Call user code allowing mutation but not side-effects
@@ -84,8 +84,8 @@ func (h *actorStateHandle) StateTransaction(obj cbor.Er, f func()) {
 
 // Validate validates that the stateView was mutated properly.
 //
-// This method is not part of the public API,
-// it is expected to be called by the runtime after each actor method.
+// This Method is not part of the public API,
+// it is expected To be called by the runtime after each actor Method.
 func (h *actorStateHandle) Validate(cidFn func(interface{}) cid.Cid) {
 	for obj, head := range h.usedObjs {
 		// verify the obj has not changed

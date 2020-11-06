@@ -2,28 +2,28 @@ package consensus_test
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/go-state-types/abi"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 func TestBlockValidHeaderSemantic(t *testing.T) {
@@ -323,11 +323,11 @@ func (fms *fakeMsgSource) LoadReceipts(context.Context, cid.Cid) ([]types.Messag
 }
 
 type fakeChainState struct {
-	actor *actor.Actor
+	actor *types.Actor
 	err   error
 }
 
-func (fcs *fakeChainState) GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*actor.Actor, error) {
+func (fcs *fakeChainState) GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*types.Actor, error) {
 	return fcs.actor, fcs.err
 }
 

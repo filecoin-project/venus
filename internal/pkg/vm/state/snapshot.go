@@ -2,7 +2,7 @@ package state
 
 import (
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 type stateSnaps struct {
@@ -23,7 +23,7 @@ func newStateSnapLayer() *stateSnapLayer {
 }
 
 type streeOp struct {
-	Act    actor.Actor
+	Act    types.Actor
 	Delete bool
 }
 
@@ -83,12 +83,12 @@ func (ss *stateSnaps) cacheResolveAddress(addr, resa address.Address) {
 	ss.lastMaybeNonEmptyResolveCache = len(ss.layers) - 1
 }
 
-func (ss *stateSnaps) getActor(addr address.Address) (*actor.Actor, error) {
+func (ss *stateSnaps) getActor(addr address.Address) (*types.Actor, error) {
 	for i := len(ss.layers) - 1; i >= 0; i-- {
 		act, ok := ss.layers[i].actors[addr]
 		if ok {
 			if act.Delete {
-				return nil, actor.ErrActorNotFound
+				return nil, types.ErrActorNotFound
 			}
 
 			return &act.Act, nil
@@ -97,7 +97,7 @@ func (ss *stateSnaps) getActor(addr address.Address) (*actor.Actor, error) {
 	return nil, nil
 }
 
-func (ss *stateSnaps) setActor(addr address.Address, act *actor.Actor) {
+func (ss *stateSnaps) setActor(addr address.Address, act *types.Actor) {
 	ss.layers[len(ss.layers)-1].actors[addr] = streeOp{Act: *act}
 }
 

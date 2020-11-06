@@ -141,7 +141,7 @@ func MonkeyPatchNetworkParamsOption(params *config.NetworkParamsConfig) BuilderO
 			policy.SetConsensusMinerMinPower(big.NewIntUnsigned(params.ConsensusMinerMinPower))
 		}
 		if len(params.ReplaceProofTypes) > 0 {
-			newSupportedTypes := make([]abi.RegisteredSealProof,len(params.ReplaceProofTypes))
+			newSupportedTypes := make([]abi.RegisteredSealProof, len(params.ReplaceProofTypes))
 			for idx, proofType := range params.ReplaceProofTypes {
 				newSupportedTypes[idx] = abi.RegisteredSealProof(proofType)
 			}
@@ -238,17 +238,12 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	nd.ProofVerification = submodule.NewProofVerificationSubmodule(b.verifier)
 
-	nd.chain, err = submodule.NewChainSubmodule((*builder)(b), b.repo, &nd.Blockstore, &nd.ProofVerification, b.checkPoint, b.drand)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.Chain")
-	}
-
 	if b.drand == nil {
 		genBlk, err := nd.chain.ChainReader.GetGenesisBlock(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to construct drand grpc")
 		}
-		dGRPC, err := DefaultDrandIfaceFromConfig(genBlk.Timestamp)
+		dGRPC, err := beacon.DefaultDrandIfaceFromConfig(genBlk.Timestamp)
 		if err != nil {
 			return nil, err
 		}
@@ -263,7 +258,13 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		}
 		b.chainClock = clock.NewChainClock(geneBlk.Timestamp, b.blockTime, b.propDelay)
 	}
+
 	nd.ChainClock = b.chainClock
+
+	nd.chain, err = submodule.NewChainSubmodule((*builder)(b), b.repo, &nd.Blockstore, &nd.ProofVerification, b.checkPoint, b.drand)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build node.Chain")
+	}
 
 	nd.Discovery, err = submodule.NewDiscoverySubmodule(ctx, (*builder)(b), b.repo.Config().Bootstrap, &nd.network, nd.chain.ChainReader, nd.chain.MessageStore)
 	if err != nil {
@@ -294,6 +295,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Chain:        nd.chain.State,
+		Fork:         nd.chain.Fork,
 		Sync:         cst.NewChainSyncProvider(nd.syncer.ChainSyncManager),
 		Config:       cfg.NewConfig(b.repo),
 		DAG:          dag.NewDAG(merkledag.NewDAGService(nd.Blockservice.Blockservice)),
@@ -354,8 +356,4 @@ func (b builder) OfflineMode() bool {
 
 func (b builder) Drand() beacon.Schedule {
 	return b.drand
-}
-
-func DefaultDrandIfaceFromConfig(fcGenTS uint64) (beacon.Schedule, error) {
-	return beacon.DrandConfigSchedule(fcGenTS, uint64(clock.DefaultEpochDuration.Seconds()))
 }

@@ -4,16 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
-	"sync"
 	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -25,13 +23,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 )
 
 var (
@@ -44,18 +42,6 @@ var (
 )
 
 const AllowableClockDriftSecs = uint64(1)
-
-// challengeBits is the number of bits in the challenge ticket's domain
-const challengeBits = 256
-
-// expectedLeadersPerEpoch is the mean number of leaders per epoch
-const expectedLeadersPerEpoch = 5
-
-const TicketRandomnessLookback = abi.ChainEpoch(1)
-
-// WinningPoStSectorSetLookback is the past epoch offset for reading the
-// winning post sector set
-const WinningPoStSectorSetLookback = 10
 
 // ElectionPowerTableLookback is the past epoch offset for reading the
 // election power values
@@ -70,7 +56,7 @@ type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
 	ProcessTipSet(context.Context, state.Tree, *vm.Storage, *block.TipSet, *block.TipSet, []vm.BlockMessagesInfo, vm.VmOption) ([]types.MessageReceipt, error)
 	// Todo add by force
-	ProcessUnsignedMessage(context.Context, *types.UnsignedMessage, state.Tree, *vm.Storage, vm.VmOption) (types.MessageReceipt, error)
+	ProcessUnsignedMessage(context.Context, *types.UnsignedMessage, state.Tree, *vm.Storage, vm.VmOption) (*vm.Ret, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
@@ -127,15 +113,10 @@ type Expected struct {
 
 	rnd Randness
 
-	clock clock.ChainEpochClock
-	drand beacon.Schedule
-	fork  fork.IFork
-
-	genesisMsigs []msig0.State
-	// info about the Accounts in the genesis state
-	preIgnitionGenInfos  *genesisInfo
-	postIgnitionGenInfos *genesisInfo
-	genesisMsigLk        sync.Mutex
+	clock                       clock.ChainEpochClock
+	drand                       beacon.Schedule
+	fork                        fork.IFork
+	circulatingSupplyCalculator *CirculatingSupplyCalculator
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
@@ -157,19 +138,20 @@ func NewExpected(cs cbor.IpldStore,
 	fork fork.IFork,
 ) *Expected {
 	c := &Expected{
-		cstore:          cs,
-		blockTime:       bt,
-		bstore:          bs,
-		processor:       processor,
-		state:           state,
-		TicketValidator: tv,
-		proofVerifier:   pv,
-		chainState:      chainState,
-		clock:           clock,
-		drand:           drand,
-		messageStore:    messageStore,
-		rnd:             rnd,
-		fork:            fork,
+		cstore:                      cs,
+		blockTime:                   bt,
+		bstore:                      bs,
+		processor:                   processor,
+		state:                       state,
+		TicketValidator:             tv,
+		proofVerifier:               pv,
+		chainState:                  chainState,
+		clock:                       clock,
+		drand:                       drand,
+		messageStore:                messageStore,
+		rnd:                         rnd,
+		fork:                        fork,
+		circulatingSupplyCalculator: NewCirculatingSupplyCalculator(bs, chainState),
 	}
 	return c
 }
@@ -180,21 +162,22 @@ func (c *Expected) BlockTime() time.Duration {
 }
 
 // todo add by force
-func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (types.MessageReceipt, error) {
-	stateRoot, err := c.chainState.GetTipSetStateRoot(c.chainState.GetHead())
+func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (*vm.Ret, error) {
+	head := c.chainState.GetHead()
+	stateRoot, err := c.chainState.GetTipSetStateRoot(head)
 	if err != nil {
-		return types.MessageReceipt{}, err
+		return nil, err
 	}
 
-	ts, err := c.chainState.GetTipSet(c.chainState.GetHead())
+	ts, err := c.chainState.GetTipSet(head)
 	if err != nil {
-		return types.MessageReceipt{}, err
+		return nil, err
 	}
 
 	vms := vm.NewStorage(c.bstore)
 	priorState, err := state.LoadState(ctx, vms, stateRoot)
 	if err != nil {
-		return types.MessageReceipt{}, err
+		return nil, err
 	}
 
 	rnd := headRandomness{
@@ -204,7 +187,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage) 
 
 	vmOption := vm.VmOption{
 		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
-			dertail, err := c.GetCirculatingSupplyDetailed(ctx, epoch, tree)
+			dertail, err := c.circulatingSupplyCalculator.GetCirculatingSupplyDetailed(ctx, epoch, tree)
 			if err != nil {
 				return abi.TokenAmount{}, err
 			}
@@ -213,6 +196,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage) 
 		NtwkVersionGetter: c.fork.GetNtwkVersion,
 		Rnd:               &rnd,
 		BaseFee:           ts.At(0).ParentBaseFee,
+		Epoch:             ts.At(0).Height,
 	}
 	return c.processor.ProcessUnsignedMessage(ctx, msg, priorState, vms, vmOption)
 }
@@ -395,7 +379,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 	//}
 
 	// Ticket was correctly generated by miner
-	sampleEpoch := blk.Height - miner.ElectionLookback
+	sampleEpoch := blk.Height - constants.TicketRandomnessLookback
 	newPeriod := len(blk.BeaconEntries) > 0
 	if err := c.IsValidTicket(ctx, blk.Parents, electionEntry, newPeriod, sampleEpoch, blk.Miner, workerSignerAddr, blk.Ticket); err != nil {
 		fmt.Printf("invalid ticket: %s in block %s, err: %s", blk.Ticket.String(), blk.Cid(), err)
@@ -523,7 +507,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms *vm.Stora
 
 	vmOption := vm.VmOption{
 		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
-			dertail, err := c.GetCirculatingSupplyDetailed(ctx, epoch, tree)
+			dertail, err := c.circulatingSupplyCalculator.GetCirculatingSupplyDetailed(ctx, epoch, tree)
 			if err != nil {
 				return abi.TokenAmount{}, err
 			}
@@ -533,6 +517,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms *vm.Stora
 		Rnd:               &rnd,
 		BaseFee:           ts.At(0).ParentBaseFee,
 		Fork:              c.fork,
+		Epoch:             ts.At(0).Height,
 	}
 	receipts, err := c.processor.ProcessTipSet(ctx, st, vms, pts, ts, msgs, vmOption)
 	if err != nil {

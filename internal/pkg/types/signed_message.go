@@ -97,16 +97,6 @@ func (smsg *SignedMessage) ToNode() (ipld.Node, error) {
 
 }
 
-// OnChainLen returns the amount of bytes used to represent the message on chain.
-// TODO we can save this redundant encoding if we plumbed the size through from when the message was originally decoded from the network.
-func (smsg *SignedMessage) OnChainLen() int {
-	bits, err := encoding.Encode(smsg)
-	if err != nil {
-		panic(err)
-	}
-	return len(bits)
-}
-
 func (smsg *SignedMessage) String() string {
 	errStr := "(error encoding SignedMessage)"
 	cid, err := smsg.Cid()

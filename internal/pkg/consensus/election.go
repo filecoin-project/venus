@@ -5,11 +5,12 @@ import (
 	"context"
 	"fmt"
 
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof" // todo ref lotus
+
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -23,9 +24,9 @@ import (
 
 // Interface to PoSt verification, modify by force EPoStVerifier -> ProofVerifier
 type ProofVerifier interface {
-	VerifySeal(info proof.SealVerifyInfo) (bool, error)
-	VerifyWinningPoSt(ctx context.Context, info proof.WinningPoStVerifyInfo) (bool, error)
-	VerifyWindowPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) (bool, error)
+	VerifySeal(info proof2.SealVerifyInfo) (bool, error)
+	VerifyWinningPoSt(ctx context.Context, info proof2.WinningPoStVerifyInfo) (bool, error)
+	VerifyWindowPoSt(ctx context.Context, info proof2.WindowPoStVerifyInfo) (bool, error)
 	GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error)
 }
 

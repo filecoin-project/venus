@@ -1,13 +1,14 @@
 package genesis
 
 import (
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 )
@@ -27,7 +28,7 @@ var Ticket = block.Ticket{
 
 // VM is the view into the VM used during genesis block creation.
 type VM interface {
-	ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) ([]byte, error)
+	ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (*vm.Ret, error)
 	ContextStore() adt.Store
 	TotalFilCircSupply(abi.ChainEpoch, state.Tree) (abi.TokenAmount, error)
 }

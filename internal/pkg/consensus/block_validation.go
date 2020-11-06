@@ -14,13 +14,14 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	//"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	//"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
 var log = logging.Logger("consensus")
@@ -31,7 +32,7 @@ type messageStore interface {
 }
 
 type chainState interface {
-	GetActorAt(context.Context, block.TipSetKey, address.Address) (*actor.Actor, error)
+	GetActorAt(context.Context, block.TipSetKey, address.Address) (*types.Actor, error)
 	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 	GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error)
 	StateView(block.TipSetKey, abi.ChainEpoch) (*state.View, error)
@@ -130,7 +131,7 @@ func (dv *DefaultBlockValidator) ValidateHeaderSemantic(ctx context.Context, chi
 	return nil
 }
 
-func (dv *DefaultBlockValidator) validateMessage(msg *types.UnsignedMessage, expectedCallSeqNum map[address.Address]uint64, fromActor *actor.Actor) error {
+func (dv *DefaultBlockValidator) validateMessage(msg *types.UnsignedMessage, expectedCallSeqNum map[address.Address]uint64, fromActor *types.Actor) error {
 	callSeq, ok := expectedCallSeqNum[msg.From]
 	if !ok {
 		callSeq = fromActor.CallSeqNum
@@ -292,14 +293,14 @@ func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, c
 	return nil
 }
 
-func (dv *DefaultBlockValidator) getAndValidateFromActor(ctx context.Context, msg *types.UnsignedMessage, parents block.TipSetKey) (*actor.Actor, error) {
+func (dv *DefaultBlockValidator) getAndValidateFromActor(ctx context.Context, msg *types.UnsignedMessage, parents block.TipSetKey) (*types.Actor, error) {
 	actor, err := dv.cs.GetActorAt(ctx, parents, msg.From)
 	if err != nil {
 		return nil, err
 	}
 
 	// ensure actor is an account actor
-	if !actor.Code.Equals(builtin.AccountActorCodeID) {
+	if !actor.Code.Equals(builtin0.AccountActorCodeID) && actor.Code.Equals(builtin2.AccountActorCodeID) {
 		return nil, errors.New("sent from non-account actor")
 	}
 

@@ -20,7 +20,7 @@ type vmStorage interface {
 	PutWithLen(ctx context.Context, obj interface{}) (cid.Cid, int, error)
 }
 
-// ActorStorage hides the storage methods from the actors and turns the errors into runtime panics.
+// ActorStorage hides the storage methods From the actors and turns the errors into runtime panics.
 type ActorStorage struct {
 	context   context.Context
 	inner     vmStorage
@@ -53,7 +53,7 @@ const serializationErr = exitcode.ErrSerialization
 func (s *ActorStorage) StorePut(obj cbor.Marshaler) cid.Cid {
 	cid, ln, err := s.inner.PutWithLen(s.context, obj)
 	if err != nil {
-		msg := fmt.Sprintf("failed to put object %s in store: %s", reflect.TypeOf(obj), err)
+		msg := fmt.Sprintf("failed To put object %s in store: %s", reflect.TypeOf(obj), err)
 		if _, ok := err.(storage.SerializationError); ok {
 			runtime.Abortf(serializationErr, msg)
 		} else {
@@ -66,19 +66,20 @@ func (s *ActorStorage) StorePut(obj cbor.Marshaler) cid.Cid {
 }
 
 func (s *ActorStorage) StoreGet(cid cid.Cid, obj cbor.Unmarshaler) bool {
-	ln, err := s.inner.GetWithLen(s.context, cid, obj)
+	//gas charge must check first
+	s.gasTank.Charge(s.pricelist.OnIpldGet(), "storage get %s bytes into %v", cid, obj)
+	_, err := s.inner.GetWithLen(s.context, cid, obj)
 	if err == storage.ErrNotFound {
 		return false
 	}
 	//fmt.Println("gas storage get ", cid.String())
 	if err != nil {
-		msg := fmt.Sprintf("failed to get object %s %s from store: %s", reflect.TypeOf(obj), cid, err)
+		msg := fmt.Sprintf("failed To get object %s %s From store: %s", reflect.TypeOf(obj), cid, err)
 		if _, ok := err.(storage.SerializationError); ok {
 			runtime.Abortf(serializationErr, msg)
 		} else {
 			panic(msg)
 		}
 	}
-	s.gasTank.Charge(s.pricelist.OnIpldGet(), "storage get %s %d bytes into %v", cid, ln, obj)
 	return true
 }

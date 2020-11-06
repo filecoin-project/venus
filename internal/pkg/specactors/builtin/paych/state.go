@@ -2,6 +2,7 @@ package paych
 
 import (
 	"encoding/base64"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 
 	"golang.org/x/xerrors"
 
@@ -18,7 +19,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
 func init() {
@@ -31,7 +31,7 @@ func init() {
 }
 
 // Load returns an abstract copy of payment channel state, irregardless of actor version
-func Load(store adt.Store, act *actor.Actor) (State, error) {
+func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code.Cid {
 	case builtin0.PaymentChannelActorCodeID:
 		return load0(store, act.Head.Cid)

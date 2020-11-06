@@ -79,11 +79,11 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 
 	v := vm.NewVM(st, vms, p.syscalls, vmOption)
 
-	return v.ApplyTipSetMessages(msgs, ts, parentEpoch, epoch)
+	return v.ApplyTipSetMessages(msgs, ts, parentEpoch, epoch, nil)
 }
 
 // ProcessTipSet computes the state transition specified by the messages.
-func (p *DefaultProcessor) ProcessUnsignedMessage(ctx context.Context, msg *types.UnsignedMessage, st state.Tree, vms *vm.Storage, vmOption vm.VmOption) (ret types.MessageReceipt, err error) {
+func (p *DefaultProcessor) ProcessUnsignedMessage(ctx context.Context, msg *types.UnsignedMessage, st state.Tree, vms *vm.Storage, vmOption vm.VmOption) (ret *vm.Ret, err error) {
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessUnsignedMessage")
 	span.AddAttributes(trace.StringAttribute("unsignedmessage", msg.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)

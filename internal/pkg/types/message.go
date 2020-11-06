@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
@@ -121,9 +120,9 @@ type UnsignedMessage struct {
 
 	Value AttoFIL `json:"value"`
 
-	GasLimit   gas.Unit `json:"gasLimit"`
-	GasFeeCap  AttoFIL  `json:"gasFeeCap"`
-	GasPremium AttoFIL  `json:"gasPremium"`
+	GasLimit   Unit    `json:"gasLimit"`
+	GasFeeCap  AttoFIL `json:"gasFeeCap"`
+	GasPremium AttoFIL `json:"gasPremium"`
 
 	Method abi.MethodNum `json:"method"`
 	Params []byte        `json:"params"`
@@ -145,7 +144,7 @@ func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, m
 }
 
 // NewMeteredMessage adds gas price and gas limit to the message
-func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte, gasFeeCap, gasPremium AttoFIL, limit gas.Unit) *UnsignedMessage {
+func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte, gasFeeCap, gasPremium AttoFIL, limit Unit) *UnsignedMessage {
 	return &UnsignedMessage{
 		Version:    MessageVersion,
 		To:         to,
@@ -202,15 +201,6 @@ func (msg *UnsignedMessage) Cid() (cid.Cid, error) {
 	}
 
 	return obj.Cid(), nil
-}
-
-// OnChainLen returns the amount of bytes used to represent the message on chain.
-func (msg *UnsignedMessage) OnChainLen() int {
-	bits, err := encoding.Encode(msg)
-	if err != nil {
-		panic(err)
-	}
-	return len(bits)
 }
 
 func (msg *UnsignedMessage) String() string {
@@ -323,6 +313,20 @@ func (m *UnsignedMessage) ValidForBlockInclusion(minGas int64) error {
 	return nil
 }
 
+func DecodeMessage(b []byte) (*UnsignedMessage, error) {
+	var msg UnsignedMessage
+
+	if err := encoding.Decode(b, &msg); err != nil {
+		return nil, err
+	}
+
+	if msg.Version != MessageVersion {
+		return nil, fmt.Errorf("decoded message had incorrect version (%d)", msg.Version)
+	}
+
+	return &msg, nil
+}
+
 // NewGasPrice constructs a gas price (in AttoFIL) from the given number.
 /*func NewGasPrice(price int64) AttoFIL {  //todo  add by force use basefee and gasPremium
 	return NewAttoFIL(big.NewInt(price))
@@ -354,11 +358,11 @@ type MessageReceipt struct {
 	_           struct{}          `cbor:",toarray"`
 	ExitCode    exitcode.ExitCode `json:"exitCode"`
 	ReturnValue []byte            `json:"return"`
-	GasUsed     gas.Unit          `json:"gasUsed"`
+	GasUsed     Unit              `json:"gasUsed"`
 }
 
 // Failure returns with a non-zero exit code.
-func Failure(exitCode exitcode.ExitCode, gasAmount gas.Unit) MessageReceipt {
+func Failure(exitCode exitcode.ExitCode, gasAmount Unit) MessageReceipt {
 	return MessageReceipt{
 		ExitCode:    exitCode,
 		ReturnValue: []byte{},

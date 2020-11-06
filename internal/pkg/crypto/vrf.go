@@ -1,9 +1,9 @@
 package crypto
 
 import (
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"math/big"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/minio/blake2b-simd"
 )
 
@@ -28,7 +28,7 @@ type ElectionProof struct {
 const precision = 256
 
 // Blocks (e)
-var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
+var BlocksPerEpoch = uint64(constants.ExpectedLeadersPerEpoch)
 
 var blocksPerEpoch = NewInt(BlocksPerEpoch)
 

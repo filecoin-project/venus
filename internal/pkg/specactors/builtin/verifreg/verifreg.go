@@ -2,6 +2,7 @@ package verifreg
 
 import (
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -12,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
 func init() {
@@ -29,7 +29,7 @@ var (
 	Methods = builtin2.MethodsVerifiedRegistry
 )
 
-func Load(store adt.Store, act *actor.Actor) (State, error) {
+func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code.Cid {
 	case builtin0.VerifiedRegistryActorCodeID:
 		return load0(store, act.Head.Cid)

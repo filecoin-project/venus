@@ -3,13 +3,13 @@ package vmcontext
 import (
 	"context"
 
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
 )
 
-// Dragons: see if we can reuse the `adt.AsStore` method to construct this instead of re-writing it
+// Dragons: see if we can reuse the `adt.AsStore` Method To construct this instead of re-writing it
 type contextStore struct {
 	context context.Context
 	store   *storage.VMStorage

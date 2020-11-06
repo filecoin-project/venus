@@ -19,7 +19,6 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 	specsbig "github.com/filecoin-project/go-state-types/big"
 )
@@ -80,7 +79,7 @@ func TestMessagePropagation(t *testing.T) {
 			specsbig.NewInt(100),
 			types.NewGasFeeCap(1),
 			types.NewGasPremium(1),
-			gas.Unit(5000),
+			types.Unit(5000),
 			fooMethod,
 			[]byte{},
 		)

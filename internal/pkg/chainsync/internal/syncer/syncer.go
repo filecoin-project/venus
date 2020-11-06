@@ -4,16 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/exchange"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
-	bstore "github.com/filecoin-project/go-filecoin/internal/pkg/fork/blockstore"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/policy"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/go-state-types/big"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -27,16 +21,22 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/big"
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt" // todo block headers use adt0
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/exchange"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
+	bstore "github.com/filecoin-project/go-filecoin/internal/pkg/fork/blockstore"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/policy"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
 // Syncer updates its chain.Store according to the methods of its
@@ -252,7 +252,7 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 			return true, err
 		}
 
-		if h+miner.ChainFinality < headHeight {
+		if h+policy.ChainFinality < headHeight {
 			return true, ErrNewChainTooLong
 		}
 
@@ -587,6 +587,10 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 	defer func() {
 		beInSyncing = false //reset to start new sync
 	}()
+
+	//cidd, _ := cid.Decode("bafy2bzacebxacniavpxu3dokkofk2zqu7rkhjfyzpc34zm4ekp2o732fyghay")
+	//ci.Head = block.NewTipSetKey(cidd)
+	//ci.Height = 50012
 
 	// If the store already has this tipset then the syncer is finished.
 	if syncer.chainStore.HasTipSetAndState(ctx, ci.Head) {
@@ -991,9 +995,9 @@ func zipTipSetAndMessages(bs blockstore.Blockstore, ts *block.TipSet, allbmsgs [
 // of both types (BLS and Secpk).
 func computeMsgMeta(bs blockstore.Blockstore, bmsgCids, smsgCids []cid.Cid) (cid.Cid, error) {
 	// block headers use adt0
-	store := blockadt.WrapStore(context.TODO(), cborutil.NewIpldStore(bs))
-	bmArr := blockadt.MakeEmptyArray(store)
-	smArr := blockadt.MakeEmptyArray(store)
+	store := adt0.WrapStore(context.TODO(), cborutil.NewIpldStore(bs))
+	bmArr := adt0.MakeEmptyArray(store)
+	smArr := adt0.MakeEmptyArray(store)
 
 	for i, m := range bmsgCids {
 		c := cbg.CborCid(m)

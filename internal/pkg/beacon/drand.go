@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"sync"
 	"time"
 
@@ -18,6 +19,10 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 )
+
+func DefaultDrandIfaceFromConfig(fcGenTS uint64) (Schedule, error) {
+	return DrandConfigSchedule(fcGenTS, uint64(clock.DefaultEpochDuration.Seconds()))
+}
 
 type DrandConfig struct {
 	Servers       []string

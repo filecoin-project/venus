@@ -1,4 +1,4 @@
-package gas
+package types
 
 import (
 	"github.com/filecoin-project/go-state-types/big"
