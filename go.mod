@@ -122,7 +122,9 @@ require (
 )
 
 replace github.com/filecoin-project/filecoin-ffi => ./vendors/filecoin-ffi
+
 replace github.com/filecoin-project/test-vectors => ./vendors/test-vectors
 
 replace github.com/supranational/blst => ./vendors/fil-blst/blst
+
 replace github.com/filecoin-project/fil-blst => ./vendors/fil-blst
