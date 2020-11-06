@@ -31,7 +31,7 @@ func TestBatchSize(t *testing.T) {
 
 	// This iteration count was picked experimentally based on a badger default maxtablesize of 64 << 20.
 	// If the batching is disabled inside the store, this test should fail.
-	require.Equal(t, int64(64<<20), badger.DefaultOptions.MaxTableSize)
+	require.Equal(t, int64(16<<20), badger.DefaultOptions.MaxTableSize)
 	iterCount := int64(2) << 16
 
 	data := bytes.Repeat([]byte("badger"), 100)

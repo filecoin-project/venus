@@ -259,7 +259,6 @@ func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
 	// Note: we are storing the actors by ActorID *address*
 	_, found, err := a.ctx.vm.state.GetActor(a.ctx.vm.context, addr)
 	if err != nil {
-		fmt.Println(err)
 		panic(err)
 	}
 	if found {

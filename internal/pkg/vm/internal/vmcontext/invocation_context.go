@@ -346,7 +346,6 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 		}
 
 		// load actor
-		//fmt.Println("create account  ", target)
 		targetActor, _, err := ctx.vm.state.GetActor(ctx.vm.context, target)
 		if err != nil {
 			panic(err)
@@ -421,9 +420,6 @@ func (ctx *invocationContext) ValidateCaller(pattern runtime.CallerPattern) {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Method must validate caller identity exactly once")
 	}
 	if !pattern.IsMatch((*patternContext2)(ctx)) {
-		ccc := (*patternContext2)(ctx).CallerCode()
-		pattern.IsMatch((*patternContext2)(ctx))
-		fmt.Println(ccc)
 		runtime.Abortf(exitcode.SysErrForbidden, "Method invoked by incorrect caller")
 	}
 	ctx.isCallerValidated = true

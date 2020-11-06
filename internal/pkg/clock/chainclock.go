@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-
 	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
 )
 
 // DefaultEpochDuration is the default duration of epochs

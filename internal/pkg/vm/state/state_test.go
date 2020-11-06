@@ -28,7 +28,7 @@ func TestStatePutGet(t *testing.T) {
 
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree, err := NewState(cst, StateTreeVersion0)
+	tree, err := NewState(cst, StateTreeVersion1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestStateErrors(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree, err := NewState(cst, StateTreeVersion0)
+	tree, err := NewState(cst, StateTreeVersion1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestGetAllActors(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree, err := NewState(cst, StateTreeVersion0)
+	tree, err := NewState(cst, StateTreeVersion1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestStateTreeConsistency(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree, err := NewState(cst, StateTreeVersion0)
+	tree, err := NewState(cst, StateTreeVersion1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,8 +165,8 @@ func TestStateTreeConsistency(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if root.String() != "bafy2bzaceadyjnrv3sbjvowfl3jr4pdn5p2bf3exjjie2f3shg4oy5sub7h34" {
-		t.Fatalf("state state Mismatch. Expected: bafy2bzaceadyjnrv3sbjvowfl3jr4pdn5p2bf3exjjie2f3shg4oy5sub7h34 Actual: %s", root.String())
+	if root.String() != "bafy2bzacebzirvsnrqtjkzpc3md2lql46owuqcshwtpxv4hrbzead6xj5ywrk" {
+		t.Fatalf("state state Mismatch. Expected: bafy2bzaceb2bhqw75pqp44efoxvlnm73lnctq6djair56bfn5x3gw56epcxbi Actual: %s", root.String())
 	}
 
 }

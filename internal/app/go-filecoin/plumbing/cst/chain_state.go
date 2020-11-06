@@ -63,15 +63,6 @@ type ChainStateReadWriter struct {
 	cborutil.ReadOnlyIpldStore
 }
 
-type actorStore struct {
-	ctx context.Context
-	cborutil.ReadOnlyIpldStore
-}
-
-func (as *actorStore) Context() context.Context {
-	return as.ctx
-}
-
 type carStore struct {
 	store blockstore.Blockstore
 }

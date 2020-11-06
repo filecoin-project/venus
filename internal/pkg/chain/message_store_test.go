@@ -36,7 +36,7 @@ func TestMessageStoreMessagesHappy(t *testing.T) {
 	msgsCid, err := ms.StoreMessages(ctx, msgs, []*types.UnsignedMessage{})
 	assert.NoError(t, err)
 
-	rtMsgs, _, err := ms.LoadMessages(ctx, msgsCid)
+	rtMsgs, _, err := ms.LoadMetaMessages(ctx, msgsCid)
 	assert.NoError(t, err)
 
 	assert.Equal(t, msgs, rtMsgs)

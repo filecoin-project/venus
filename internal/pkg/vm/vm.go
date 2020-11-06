@@ -1,9 +1,9 @@
 package vm
 
 import (
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/register"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -47,7 +47,7 @@ func NewStorage(bs blockstore.Blockstore) *Storage {
 }
 
 // DefaultActors is a code loader with the built-in actors that come with the system.
-var DefaultActors = builtin.DefaultActors
+var DefaultActors = register.DefaultActors
 
 // ActorCodeLoader allows yo to load an actor's code based on its id an epoch.
 type ActorCodeLoader = dispatch.CodeLoader

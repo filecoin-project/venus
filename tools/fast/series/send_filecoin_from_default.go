@@ -5,9 +5,9 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 

@@ -62,7 +62,7 @@ func TestMessageCid(t *testing.T) {
 		addrGetter(),
 		0,
 		NewAttoFILFromFIL(999),
-		builtin.MethodSend,
+		0,
 		nil,
 	)
 
@@ -71,7 +71,7 @@ func TestMessageCid(t *testing.T) {
 		addrGetter(),
 		0,
 		NewAttoFILFromFIL(4004),
-		builtin.MethodSend,
+		0,
 		nil,
 	)
 
@@ -93,7 +93,7 @@ func TestMessageString(t *testing.T) {
 		addrGetter(),
 		0,
 		NewAttoFILFromFIL(999),
-		builtin.MethodSend,
+		0,
 		nil,
 	)
 

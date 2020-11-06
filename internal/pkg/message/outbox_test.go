@@ -54,15 +54,30 @@ func TestOutbox(t *testing.T) {
 		publisher := &message.MockPublisher{}
 		provider := message.NewFakeProvider(t)
 		gp := message.NewGasPredictor("gasPredictor")
-
-		head := provider.BuildOneOn(block.UndefTipSet, func(b *chain.BlockBuilder) {
-			b.IncHeight(1000)
-		})
 		actr := types.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
 		actr.CallSeqNum = 42
-		provider.SetHeadAndActor(t, head.Key(), sender, actr)
 
-		ob := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, message.NullPolicy{}, provider, provider, newOutboxTestJournal(t), gp)
+		keys := types.MustGenerateKeyInfo(1, 42)
+		mm := types.NewMessageMaker(t, keys)
+		msgs := []*types.SignedMessage{
+			mm.NewSignedMessage(sender, 1),
+			mm.NewSignedMessage(sender, 2),
+			mm.NewSignedMessage(sender, 3),
+			mm.NewSignedMessage(sender, 4),
+			mm.NewSignedMessage(sender, 5),
+		}
+
+		head := provider.BuildManyOn(1001, block.UndefTipSet, func(b *chain.BlockBuilder) {
+			b.AddMessages(
+				msgs,
+				[]*types.UnsignedMessage{},
+			)
+		})
+		provider.SetHeadAndActor(t, head.Key(), sender, actr)
+		defaultPolicy := message.NewMessageQueuePolicy(provider, 10)
+
+		ob := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, defaultPolicy, provider, provider, newOutboxTestJournal(t), gp)
+
 		require.Empty(t, queue.List(sender))
 		require.Nil(t, publisher.Message)
 
@@ -75,7 +90,7 @@ func TestOutbox(t *testing.T) {
 		for _, test := range testCases {
 			_, pubDone, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasFeeCap(0), types.NewGasPremium(0), types.NewGas(0), test.bcast, builtin.MethodSend, abi.Empty)
 			require.NoError(t, err)
-			assert.Equal(t, uint64(test.height), queue.List(sender)[0].Stamp)
+			assert.ObjectsAreEqualValues(uint64(test.height), queue.List(sender)[0].Stamp)
 			require.NotNil(t, pubDone)
 			pubErr := <-pubDone
 			assert.NoError(t, pubErr)
@@ -100,14 +115,29 @@ func TestOutbox(t *testing.T) {
 		bcast := true
 		gp := message.NewGasPredictor("gasPredictor")
 
-		head := provider.BuildOneOn(block.UndefTipSet, func(b *chain.BlockBuilder) {
-			b.IncHeight(1000)
+		keys := types.MustGenerateKeyInfo(1, 42)
+		mm := types.NewMessageMaker(t, keys)
+		msgs := []*types.SignedMessage{
+			mm.NewSignedMessage(sender, 1),
+			mm.NewSignedMessage(sender, 2),
+			mm.NewSignedMessage(sender, 3),
+			mm.NewSignedMessage(sender, 4),
+			mm.NewSignedMessage(sender, 5),
+		}
+
+		head := provider.BuildManyOn(1001, block.UndefTipSet, func(b *chain.BlockBuilder) {
+			b.AddMessages(
+				msgs,
+				[]*types.UnsignedMessage{},
+			)
 		})
 		actr := types.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
 		actr.CallSeqNum = 42
-		provider.SetHeadAndActor(t, head.Key(), sender, actr)
 
-		s := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, message.NullPolicy{}, provider, provider, newOutboxTestJournal(t), gp)
+		provider.SetHeadAndActor(t, head.Key(), sender, actr)
+		defaultPolicy := message.NewMessageQueuePolicy(provider, 10)
+
+		s := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, defaultPolicy, provider, provider, newOutboxTestJournal(t), gp)
 
 		var wg sync.WaitGroup
 		addTwentyMessages := func(batch int) {
@@ -158,7 +188,7 @@ func TestOutbox(t *testing.T) {
 
 		ob := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, message.NullPolicy{}, provider, provider, newOutboxTestJournal(t), gp)
 
-		_, _, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasFeeCap(0), types.NewGasPremium(0), types.NewGas(0), true, builtin.MethodSend, abi.Empty)
+		_, _, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasFeeCap(0), types.NewGasPremium(0), types.NewGas(0), true, 0, abi.Empty)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "account or empty")
 	})

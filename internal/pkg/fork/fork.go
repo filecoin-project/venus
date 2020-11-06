@@ -621,7 +621,7 @@ func setNetworkName(ctx context.Context, store adt.Store, tree *vmstate.State, n
 
 	c, err := store.Put(ctx, initState)
 	if err != nil {
-		return xerrors.Errorf("writing new init state: %w", err)
+		return xerrors.Errorf("writing new init state: %v", err)
 	}
 	ia.Head = enccid.NewCid(c)
 

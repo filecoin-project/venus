@@ -7,17 +7,17 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"math/big"
 	"strings"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	vmstate "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -49,10 +49,6 @@ func log2b(x fbig.Int) fbig.Int {
 // todo gather const variable
 const WRatioNum = int64(1)
 const WRatioDen = uint64(2)
-
-// todo
-// Blocks (e)
-var BlocksPerEpoch = uint64(builtin.ExpectedLeadersPerEpoch)
 
 // Weight returns the EC weight of this TipSet as a filecoin big int.
 func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet) (fbig.Int, error) {
@@ -90,7 +86,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet) (fbig.Int,
 	eWeight := big.NewInt((log2P * WRatioNum))
 	eWeight = eWeight.Lsh(eWeight, 8)
 	eWeight = eWeight.Mul(eWeight, new(big.Int).SetInt64(totalJ))
-	eWeight = eWeight.Div(eWeight, big.NewInt(int64(BlocksPerEpoch*WRatioDen)))
+	eWeight = eWeight.Div(eWeight, big.NewInt(int64(uint64(constants.ExpectedLeadersPerEpoch)*WRatioDen)))
 
 	out = out.Add(out, eWeight)
 

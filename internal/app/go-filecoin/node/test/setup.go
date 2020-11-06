@@ -3,19 +3,19 @@ package test
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/build/project"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 

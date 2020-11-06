@@ -3,24 +3,25 @@ package consensus
 import (
 	"context"
 
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof" // todo ref lotus
+
 	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 )
 
 type genFakeVerifier struct{}
 
 var _ ffiwrapper.Verifier = (*genFakeVerifier)(nil)
 
-func (m genFakeVerifier) VerifySeal(svi proof.SealVerifyInfo) (bool, error) {
+func (m genFakeVerifier) VerifySeal(svi proof2.SealVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (m genFakeVerifier) VerifyWinningPoSt(ctx context.Context, info proof.WinningPoStVerifyInfo) (bool, error) {
+func (m genFakeVerifier) VerifyWinningPoSt(ctx context.Context, info proof2.WinningPoStVerifyInfo) (bool, error) {
 	panic("not supported")
 }
 
-func (m genFakeVerifier) VerifyWindowPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) (bool, error) {
+func (m genFakeVerifier) VerifyWindowPoSt(ctx context.Context, info proof2.WindowPoStVerifyInfo) (bool, error) {
 	panic("not supported")
 }
 

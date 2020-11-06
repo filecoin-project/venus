@@ -6,17 +6,16 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	blk "github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -234,7 +233,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 func TestSignatureData(t *testing.T) {
 	tf.UnitTest(t)
 	newAddress := vmaddr.NewForTestGetter()
-	posts := []proof.PoStProof{proof.PoStProof{abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, []byte{0x07}}}
+	posts := []builtin.PoStProof{builtin.PoStProof{abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, []byte{0x07}}}
 
 	b := &blk.Block{
 		Miner:         newAddress(),
@@ -262,7 +261,7 @@ func TestSignatureData(t *testing.T) {
 		},
 	}
 
-	diffposts := []proof.PoStProof{proof.PoStProof{abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, []byte{0x07, 0x08}}}
+	diffposts := []builtin.PoStProof{builtin.PoStProof{abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, []byte{0x07, 0x08}}}
 
 	diff := &blk.Block{
 		Miner:         newAddress(),

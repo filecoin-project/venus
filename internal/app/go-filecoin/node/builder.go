@@ -2,14 +2,10 @@ package node
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p"
@@ -23,12 +19,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	drandapi "github.com/filecoin-project/go-filecoin/internal/pkg/protocol/drand"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/policy"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
+	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
 )
 
 // Builder is a helper to aid in the construction of a filecoin node.
@@ -139,15 +138,15 @@ func JournalConfigOption(jrl journal.Journal) BuilderOpt {
 func MonkeyPatchNetworkParamsOption(params *config.NetworkParamsConfig) BuilderOpt {
 	return func(c *Builder) error {
 		if params.ConsensusMinerMinPower > 0 {
-			power.ConsensusMinerMinPower = big.NewIntUnsigned(params.ConsensusMinerMinPower)
+			policy.SetConsensusMinerMinPower(big.NewIntUnsigned(params.ConsensusMinerMinPower))
 		}
 		if len(params.ReplaceProofTypes) > 0 {
-			newSupportedTypes := make(map[abi.RegisteredSealProof]struct{})
-			for _, proofType := range params.ReplaceProofTypes {
-				newSupportedTypes[abi.RegisteredSealProof(proofType)] = struct{}{}
+			newSupportedTypes := make([]abi.RegisteredSealProof, len(params.ReplaceProofTypes))
+			for idx, proofType := range params.ReplaceProofTypes {
+				newSupportedTypes[idx] = abi.RegisteredSealProof(proofType)
 			}
 			// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
-			miner.SupportedProofTypes = newSupportedTypes
+			policy.SetSupportedProofTypes(newSupportedTypes...)
 		}
 
 		/*policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
@@ -164,7 +163,7 @@ func MonkeyPatchNetworkParamsOption(params *config.NetworkParamsConfig) BuilderO
 func MonkeyPatchSetProofTypeOption(proofType abi.RegisteredSealProof) BuilderOpt {
 	return func(c *Builder) error {
 		// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
-		miner.SupportedProofTypes = map[abi.RegisteredSealProof]struct{}{proofType: {}}
+		policy.SetSupportedProofTypes(abi.RegisteredSealProof(proofType))
 		return nil
 	}
 }
@@ -296,6 +295,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Chain:        nd.chain.State,
+		Fork:         nd.chain.Fork,
 		Sync:         cst.NewChainSyncProvider(nd.syncer.ChainSyncManager),
 		Config:       cfg.NewConfig(b.repo),
 		DAG:          dag.NewDAG(merkledag.NewDAGService(nd.Blockservice.Blockservice)),

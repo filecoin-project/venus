@@ -2,6 +2,7 @@ package message
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -146,6 +147,6 @@ func NewGasPredictor(gas string) *MockGasPredictor {
 	}
 }
 
-func (gas *MockGasPredictor) CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (types.MessageReceipt, error) {
-	return types.NewReceiptMaker().NewReceipt(), nil
+func (gas *MockGasPredictor) CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (*vm.Ret, error) {
+	return &vm.Ret{}, nil
 }

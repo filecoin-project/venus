@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/register"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
 	gobig "math/big"
@@ -104,7 +104,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 
 	//chain fork
 	messageStore := chain.NewMessageStore(bs)
-	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, bs, builtin.DefaultActors, nil)
+	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, bs, register.DefaultActors, nil)
 	faultChecker := slashing.NewFaultChecker(chainState)
 	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
 	chainFork, err := fork.NewChainFork(chainState, ipldStore, bs)
@@ -226,7 +226,7 @@ type ExecuteMessageParams struct {
 
 // ExecuteMessage executes a conformance test vector message in a temporary VM.
 func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageParams) (*vm.Ret, cid.Cid, error) {
-	actorBuilder := builtin.DefaultActorBuilder
+	actorBuilder := register.DefaultActorBuilder
 	// register the chaos actor if required by the vector.
 	if chaosOn, ok := d.selector["chaos_actor"]; ok && chaosOn == "true" {
 		chaosActor := chaos.Actor{}

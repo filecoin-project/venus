@@ -215,8 +215,9 @@ func (f *Builder) Build(parent *block.TipSet, width int, build func(b *BlockBuil
 			//StateRoot:       stateRoot,
 			//EPoStInfo:       ePoStInfo,
 			//ForkSignaling:   forkSig,
-			Timestamp: f.stamper.Stamp(height),
-			BlockSig:  &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
+			Timestamp:     f.stamper.Stamp(height),
+			BlockSig:      &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
+			ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0c, 0x0d}, WinCount: int64(10)},
 		}
 
 		if build != nil {
@@ -453,13 +454,29 @@ type FakeStateEvaluator struct {
 	FakeStateBuilder
 }
 
-// RunStateTransition delegates to StateBuilder.ComputeState.
-func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, parentWeight fbig.Int, stateID cid.Cid, receiptCid cid.Cid) (cid.Cid, []types.MessageReceipt, error) {
-	return e.ComputeState(stateID, blsMessages, secpMessages)
+func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *block.TipSet, secpMessages [][]*types.SignedMessage, blsMessages [][]*types.UnsignedMessage, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
+	return e.ComputeState(parentStateRoot, blsMessages, secpMessages)
 }
 
+func (e *FakeStateEvaluator) ValidateMining(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid, parentWeight fbig.Int, parentReceiptRoot cid.Cid) error {
+	return nil
+}
+
+func (e *FakeStateEvaluator) ValidateBlockBeacon(b *block.Block, parentEpoch abi.ChainEpoch, prevEntry *block.BeaconEntry) error {
+	return nil
+}
+
+func (e *FakeStateEvaluator) ValidateBlockWinner(ctx context.Context, blk *block.Block, stateID cid.Cid, prevEntry *block.BeaconEntry) error {
+	return nil
+}
+
+// RunStateTransition delegates to StateBuilder.ComputeState.
+//func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, parentWeight fbig.Int, stateID cid.Cid, receiptCid cid.Cid) (cid.Cid, []types.MessageReceipt, error) {
+//	return e.ComputeState(stateID, blsMessages, secpMessages)
+//}
+
 // ValidateHeaderSemantic is a stub that always returns no error
-func (e *FakeStateEvaluator) ValidateHeaderSemantic(_ context.Context, _ *block.Block, _ block.TipSet) error {
+func (e *FakeStateEvaluator) ValidateHeaderSemantic(_ context.Context, _ *block.Block, _ *block.TipSet) error {
 	return nil
 }
 

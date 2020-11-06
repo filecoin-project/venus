@@ -1,7 +1,6 @@
 package dispatch
 
 import (
-	"fmt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors"
 	vmr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -29,7 +28,6 @@ func (cl CodeLoader) GetActorImpl(code cid.Cid, rt vmr.Runtime) (Dispatcher, *Ex
 	if !ok {
 		return nil, NewExcuteError(exitcode.SysErrorIllegalActor, "Actor code not found. code: %s", code)
 	}
-	fmt.Println(code.String())
 	if err := actor.predicate(rt, actor.vmActor); err != nil {
 		return nil, NewExcuteError(exitcode.SysErrorIllegalActor, "unsupport actor. code: %s", code)
 	}
@@ -72,7 +70,6 @@ func (b *CodeLoaderBuilder) Add(predict ActorPredicate, actor Actor) *CodeLoader
 // Add lets you add an actor dispatch table for a given version.
 func (b *CodeLoaderBuilder) AddMany(predict ActorPredicate, actors ...runtime.VMActor) *CodeLoaderBuilder {
 	for _, actor := range actors {
-		fmt.Println("add actor ", actor.Code())
 		b.Add(predict, actor)
 	}
 	return b

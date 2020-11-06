@@ -2,13 +2,13 @@ package syncer_test
 
 import (
 	"context"
+
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -23,12 +23,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/policy"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 )
 
-func heightFromTip(t *testing.T, tip block.TipSet) abi.ChainEpoch {
+func heightFromTip(t *testing.T, tip *block.TipSet) abi.ChainEpoch {
 	h, err := tip.Height()
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +45,7 @@ func TestOneBlock(t *testing.T) {
 	t1 := builder.AppendOn(genesis, 1)
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", t1.Key(), heightFromTip(t, t1)), false))
 
-	verifyTip(t, store, t1, t1.At(0).StateRoot)
+	verifyTip(t, store, t1, t1.At(0).StateRoot.Cid)
 	require.NoError(t, syncer.SetStagedHead(ctx))
 	verifyHead(t, store, t1)
 }
@@ -212,7 +212,7 @@ func TestRejectFinalityFork(t *testing.T) {
 	builder, store, s := setup(ctx, t)
 	genesis := builder.RequireTipSet(store.GetHead())
 
-	head := builder.AppendManyOn(int(miner.ChainFinality+2), genesis)
+	head := builder.AppendManyOn(int(policy.ChainFinality+2), genesis)
 	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", head.Key(), heightFromTip(t, head)), false))
 
 	// Differentiate fork for a new chain.  Fork has FinalityEpochs + 1
@@ -221,7 +221,7 @@ func TestRejectFinalityFork(t *testing.T) {
 	forkFinalityBase := builder.BuildOneOn(genesis, func(bb *chain.BlockBuilder) {
 		bb.SetTicket([]byte{0xbe})
 	})
-	forkFinalityHead := builder.AppendManyOn(int(miner.ChainFinality), forkFinalityBase)
+	forkFinalityHead := builder.AppendManyOn(int(policy.ChainFinality), forkFinalityBase)
 	assert.Error(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", forkFinalityHead.Key(), heightFromTip(t, forkFinalityHead)), false))
 }
 
@@ -413,12 +413,7 @@ type poisonValidator struct {
 	fullFailureTS   uint64
 }
 
-func newPoisonValidator(t *testing.T, headerFailure, fullFailure uint64) *poisonValidator {
-	return &poisonValidator{headerFailureTS: headerFailure, fullFailureTS: fullFailure}
-}
-
-func (pv *poisonValidator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage,
-	_ fbig.Int, _ cid.Cid, _ cid.Cid) (cid.Cid, []vm.MessageReceipt, error) {
+func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *block.TipSet, secpMessages [][]*types.SignedMessage, blsMessages [][]*types.UnsignedMessage, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
 	stamp := ts.At(0).Timestamp
 	if pv.fullFailureTS == stamp {
 		return cid.Undef, nil, errors.New("run state transition fails on poison timestamp")
@@ -426,7 +421,23 @@ func (pv *poisonValidator) RunStateTransition(_ context.Context, ts block.TipSet
 	return cid.Undef, nil, nil
 }
 
-func (pv *poisonValidator) ValidateHeaderSemantic(_ context.Context, header *block.Block, _ block.TipSet) error {
+func (pv *poisonValidator) ValidateMining(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid, parentWeight fbig.Int, parentReceiptRoot cid.Cid) error {
+	panic("implement me")
+}
+
+func (pv *poisonValidator) ValidateBlockBeacon(b *block.Block, parentEpoch abi.ChainEpoch, prevEntry *block.BeaconEntry) error {
+	panic("implement me")
+}
+
+func (pv *poisonValidator) ValidateBlockWinner(ctx context.Context, blk *block.Block, stateID cid.Cid, prevEntry *block.BeaconEntry) error {
+	panic("implement me")
+}
+
+func newPoisonValidator(t *testing.T, headerFailure, fullFailure uint64) *poisonValidator {
+	return &poisonValidator{headerFailureTS: headerFailure, fullFailureTS: fullFailure}
+}
+
+func (pv *poisonValidator) ValidateHeaderSemantic(_ context.Context, header *block.Block, _ *block.TipSet) error {
 	if pv.headerFailureTS == header.Timestamp {
 		return errors.New("val semantic fails on poison timestamp")
 	}
@@ -560,7 +571,7 @@ func setupWithValidator(ctx context.Context, t *testing.T, fullVal syncer.FullBl
 	bs := bstore.NewBlockstore(ds)
 	cst := cborutil.NewIpldStore(bs)
 
-	store := chain.NewStore(ds, cst, chain.NewStatusReporter(), genesis.At(0).Cid())
+	store := chain.NewStore(ds, cst, bs, chain.NewStatusReporter(), genesis.Key(), genesis.At(0).Cid())
 	// Initialize chainStore bsstore genesis state and tipset as head.
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: genStateRoot, TipSet: genesis, TipSetReceipts: types.EmptyReceiptsCID}))
 	require.NoError(t, store.SetHead(ctx, genesis))
@@ -580,13 +591,13 @@ func setupWithValidator(ctx context.Context, t *testing.T, fullVal syncer.FullBl
 // Sub-interface of the bsstore used for verification.
 type syncStoreReader interface {
 	GetHead() block.TipSetKey
-	GetTipSet(block.TipSetKey) (block.TipSet, error)
+	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
 	GetTipSetAndStatesByParentsAndHeight(block.TipSetKey, abi.ChainEpoch) ([]*chain.TipSetMetadata, error)
 }
 
 // Verifies that a tipset and associated state root are stored in the chain bsstore.
-func verifyTip(t *testing.T, store syncStoreReader, tip block.TipSet, stateRoot cid.Cid) {
+func verifyTip(t *testing.T, store syncStoreReader, tip *block.TipSet, stateRoot cid.Cid) {
 	foundTip, err := store.GetTipSet(tip.Key())
 	require.NoError(t, err)
 	assert.Equal(t, tip, foundTip)
@@ -605,13 +616,13 @@ func verifyTip(t *testing.T, store syncStoreReader, tip block.TipSet, stateRoot 
 }
 
 // Verifies that the bsstore's head is as expected.
-func verifyHead(t *testing.T, store syncStoreReader, head block.TipSet) {
+func verifyHead(t *testing.T, store syncStoreReader, head *block.TipSet) {
 	headTipSet, err := store.GetTipSet(store.GetHead())
 	require.NoError(t, err)
 	assert.Equal(t, head, headTipSet)
 }
 
-func containsTipSet(tsasSlice []*chain.TipSetMetadata, ts block.TipSet) bool {
+func containsTipSet(tsasSlice []*chain.TipSetMetadata, ts *block.TipSet) bool {
 	for _, tsas := range tsasSlice {
 		if tsas.TipSet.String() == ts.String() { //bingo
 			return true

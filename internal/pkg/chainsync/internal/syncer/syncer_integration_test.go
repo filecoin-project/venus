@@ -39,7 +39,7 @@ func TestLoadFork(t *testing.T) {
 	repo := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(repo.Datastore())
 	cborStore := cborutil.NewIpldStore(bs)
-	store := chain.NewStore(repo.ChainDatastore(), cborStore, chain.NewStatusReporter(), genesis.At(0).Cid())
+	store := chain.NewStore(repo.ChainDatastore(), cborStore, bs, chain.NewStatusReporter(), genesis.Key(), genesis.At(0).Cid())
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: genStateRoot, TipSet: genesis, TipSetReceipts: types.EmptyReceiptsCID}))
 	require.NoError(t, store.SetHead(ctx, genesis))
 
@@ -63,7 +63,7 @@ func TestLoadFork(t *testing.T) {
 	// The syncer/bsstore assume that the fetcher populates the underlying block bsstore such that
 	// tipsets can be reconstructed. The chain builder used for testing doesn't do that, so do
 	// it manually here.
-	for _, tip := range []block.TipSet{left, right} {
+	for _, tip := range []*block.TipSet{left, right} {
 		for itr := chain.IterAncestors(ctx, builder, tip); !itr.Complete(); require.NoError(t, itr.Next()) {
 			for _, block := range itr.Value().ToSlice() {
 				_, err := cborStore.Put(ctx, block)
@@ -74,7 +74,7 @@ func TestLoadFork(t *testing.T) {
 
 	// Load a new chain bsstore on the underlying data. It will only compute state for the
 	// left (heavy) branch. It has a fetcher that can't provide blocks.
-	newStore := chain.NewStore(repo.ChainDatastore(), cborStore, chain.NewStatusReporter(), genesis.At(0).Cid())
+	newStore := chain.NewStore(repo.ChainDatastore(), cborStore, bs, chain.NewStatusReporter(), genesis.Key(), genesis.At(0).Cid())
 	require.NoError(t, newStore.Load(ctx))
 	fakeFetcher := th.NewTestFetcher()
 	offlineSyncer, err := syncer.NewSyncer(eval, eval, sel, newStore, builder, fakeFetcher, status.NewReporter(), clock.NewFake(time.Unix(1234567890, 0)), &noopFaultDetector{})

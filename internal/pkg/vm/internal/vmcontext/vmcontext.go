@@ -706,7 +706,6 @@ func (vm *VM) transferToGasHolder(addr address.Address, gasHolder *types.Actor, 
 	if amt.LessThan(big.NewInt(0)) {
 		return xerrors.Errorf("attempted To transfer negative Value To gas holder")
 	}
-	//fmt.Println(fmt.Sprintf("transfer %s To holder", amt.String()))
 	return vm.state.MutateActor(addr, func(a *types.Actor) error {
 		if err := deductFunds(a, amt); err != nil {
 			return err
@@ -724,7 +723,6 @@ func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *types.Actor
 	if amt.Equals(big.NewInt(0)) {
 		return nil
 	}
-	//fmt.Println(fmt.Sprintf("transfer %s From holder", amt.String()))
 
 	return vm.state.MutateActor(addr, func(a *types.Actor) error {
 		if err := deductFunds(gasHolder, amt); err != nil {

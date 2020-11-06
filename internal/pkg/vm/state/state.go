@@ -155,9 +155,6 @@ func LoadState(ctx context.Context, cst cbor.IpldStore, c cid.Cid) (*State, erro
 
 func (st *State) SetActor(ctx context.Context, addr ActorKey, act *types.Actor) error {
 	fmt.Println("set actor addr:", addr.String(), " Balance:", act.Balance.String(), " Head:", act.Head, " Nonce:", act.CallSeqNum)
-	if act.Head.String() == "bafy2bzacecsfx3u5iv44bee3vgwjootiz4rbno66zorofs7smvhha6hnbf2hq" && addr.String() == "f01" {
-		fmt.Println()
-	}
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
 		return xerrors.Errorf("ID lookup failed: %w", err)

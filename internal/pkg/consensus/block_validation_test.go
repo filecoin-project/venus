@@ -2,27 +2,28 @@ package consensus_test
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/go-state-types/abi"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 func TestBlockValidHeaderSemantic(t *testing.T) {
@@ -66,10 +67,10 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 	p := &block.Block{Height: 1, Timestamp: uint64(ts.Unix())}
 	parents := consensus.RequireNewTipSet(require.New(t), p)
 
-	msg0 := &types.UnsignedMessage{From: address.TestAddress, CallSeqNum: 1}
-	msg1 := &types.UnsignedMessage{From: address.TestAddress, CallSeqNum: 2}
-	msg2 := &types.UnsignedMessage{From: address.TestAddress, CallSeqNum: 3}
-	msg3 := &types.UnsignedMessage{From: address.TestAddress, CallSeqNum: 4}
+	msg0 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 1}
+	msg1 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 2}
+	msg2 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 3}
+	msg3 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 4}
 
 	t.Run("rejects block with message from missing actor", func(t *testing.T) {
 		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{
@@ -313,7 +314,7 @@ type fakeMsgSource struct {
 	secpMessages []*types.SignedMessage
 }
 
-func (fms *fakeMsgSource) LoadMetaMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
+func (fms *fakeMsgSource) LoadMetaMessages(ctx context.Context, c cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
 	return fms.secpMessages, fms.blsMessages, nil
 }
 
