@@ -60,7 +60,7 @@ func setup() testSetup {
 	h := vmcontext.NewActorStateHandle(&ctx)
 
 	cleanup := func() {
-		// the vmcontext is supposed to call validate after each actor method
+		// the vmcontext is supposed To call validate after each actor Method
 		implH := h.(extendedStateHandle)
 		implH.Validate(func(obj interface{}) cid.Cid { return store.CidOf(obj) })
 	}
@@ -134,7 +134,7 @@ func TestActorStateHandle(t *testing.T) {
 		expected := "new stateView"
 
 		ts.h.StateTransaction(&out, func() {
-			// check stateView is not what we are going to use
+			// check stateView is not what we are going To use
 			assert.NotEqual(t, out.FieldA, expected)
 			out.FieldA = expected
 		})
@@ -158,7 +158,7 @@ func TestActorStateHandle(t *testing.T) {
 		assert.Equal(t, out, ts.initialstate)
 	})
 
-	t.Run("transaction returning value", func(t *testing.T) {
+	t.Run("transaction returning Value", func(t *testing.T) {
 		ts := setup()
 		defer ts.cleanup()
 
@@ -225,7 +225,7 @@ func TestActorStateHandleNilState(t *testing.T) {
 		h := vmcontext.NewActorStateHandle(&ctx)
 
 		cleanup := func() {
-			// the vmcontext is supposed to call validate after each actor method
+			// the vmcontext is supposed To call validate after each actor Method
 			implH := h.(extendedStateHandle)
 			implH.Validate(func(obj interface{}) cid.Cid { return store.CidOf(obj) })
 		}
@@ -261,7 +261,7 @@ func TestActorStateHandleNilState(t *testing.T) {
 		h.StateReadonly(&out) // should not fail
 	})
 
-	t.Run("readonly nil pointer to stateView", func(t *testing.T) {
+	t.Run("readonly nil pointer To stateView", func(t *testing.T) {
 		defer mustPanic(t)
 
 		h, cleanup := setup()
@@ -270,7 +270,7 @@ func TestActorStateHandleNilState(t *testing.T) {
 		h.StateReadonly(nil)
 	})
 
-	t.Run("transaction nil pointer to stateView", func(t *testing.T) {
+	t.Run("transaction nil pointer To stateView", func(t *testing.T) {
 		defer mustPanic(t)
 
 		h, cleanup := setup()

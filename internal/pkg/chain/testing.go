@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 // Builder builds fake chains and acts as a provider and fetcher for the chain thus generated.
@@ -367,7 +366,7 @@ func (FakeStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.Unsign
 			receipts = append(receipts, types.MessageReceipt{
 				ExitCode:    0,
 				ReturnValue: mCId.Bytes(),
-				GasUsed:     gas.NewGas(3),
+				GasUsed:     types.NewGas(3),
 			})
 		}
 	}
@@ -381,7 +380,7 @@ func (FakeStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.Unsign
 			receipts = append(receipts, types.MessageReceipt{
 				ExitCode:    0,
 				ReturnValue: mCId.Bytes(),
-				GasUsed:     gas.NewGas(3),
+				GasUsed:     types.NewGas(3),
 			})
 		}
 	}

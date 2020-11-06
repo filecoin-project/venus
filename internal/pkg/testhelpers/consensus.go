@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -164,7 +163,7 @@ func CreateAndApplyTestMessage(t *testing.T, st state.State, vms vm.Storage, to 
 func applyTestMessageWithAncestors(actors vm.ActorCodeLoader, st state.State, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
 	msg.GasFeeCap = types.NewGasFeeCap(1)
 	msg.GasPremium = types.NewGasPremium(1)
-	msg.GasLimit = gas.NewGas(300)
+	msg.GasLimit = types.NewGas(300)
 
 	ta := newTestApplier(actors)
 	return newMessageApplier(msg, ta, st, store, bh, address.Undef, ancestors)

@@ -3,9 +3,8 @@ package vmcontext
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
@@ -49,19 +48,25 @@ type runtimeAdapter struct {
 
 func newRuntimeAdapter(ctx *invocationContext) *runtimeAdapter {
 	return &runtimeAdapter{ctx: ctx, syscalls: syscalls{
-		impl:      ctx.rt.syscalls,
-		ctx:       ctx.rt.context,
+		impl:      ctx.vm.syscalls,
+		ctx:       ctx.vm.context,
 		gasTank:   ctx.gasTank,
-		pricelist: ctx.rt.pricelist,
-		stateView: ctx.rt.stateView(),
+		pricelist: ctx.vm.pricelist,
+		stateView: ctx.stateView(),
 	}}
 }
 
 func (a *runtimeAdapter) Caller() address.Address {
+	if a.ctx.Message().Caller().Protocol() != address.ID {
+		panic("runtime message has a non-ID caller")
+	}
 	return a.ctx.Message().Caller()
 }
 
 func (a *runtimeAdapter) Receiver() address.Address {
+	if a.ctx.Message().Receiver() != address.Undef && a.ctx.Message().Receiver().Protocol() != address.ID {
+		panic("runtime message has a non-ID receiver")
+	}
 	return a.ctx.Message().Receiver()
 }
 
@@ -73,46 +78,46 @@ func (a *runtimeAdapter) StateCreate(obj cbor.Marshaler) {
 	c := a.StorePut(obj)
 	err := a.stateCommit(EmptyObjectCid, c)
 	if err != nil {
-		panic(fmt.Errorf("failed to commit stateView after creating object: %w", err))
+		panic(fmt.Errorf("failed To commit stateView after creating object: %w", err))
 	}
 }
 
 func (a *runtimeAdapter) stateCommit(oldh, newh cid.Cid) error {
 
 	// TODO: we can make this more efficient in the future...
-	act, found, err := a.ctx.rt.state.GetActor(a.Context(), a.Receiver())
+	act, found, err := a.ctx.vm.state.GetActor(a.Context(), a.Receiver())
 	if !found || err != nil {
-		return xerrors.Errorf("failed to get actor to commit stateView, %s", err)
+		return xerrors.Errorf("failed To get actor To commit stateView, %s", err)
 	}
 
 	if act.Head.Cid != oldh {
-		return xerrors.Errorf("failed to update, inconsistent base reference, %s", err)
+		return xerrors.Errorf("failed To update, inconsistent base reference, %s", err)
 	}
 
 	act.Head = enccid.NewCid(newh)
-	if err := a.ctx.rt.state.SetActor(a.Context(), a.Receiver(), act); err != nil {
-		return xerrors.Errorf("failed to set actor in commit stateView, %s", err)
+	if err := a.ctx.vm.state.SetActor(a.Context(), a.Receiver(), act); err != nil {
+		return xerrors.Errorf("failed To set actor in commit stateView, %s", err)
 	}
 
 	return nil
 }
 
 func (a *runtimeAdapter) StateReadonly(obj cbor.Unmarshaler) {
-	act, found, err := a.ctx.rt.state.GetActor(a.Context(), a.Receiver())
+	act, found, err := a.ctx.vm.state.GetActor(a.Context(), a.Receiver())
 	if !found || err != nil {
-		a.Abortf(exitcode.SysErrorIllegalArgument, "failed to get actor for Readonly stateView: %s", err)
+		a.Abortf(exitcode.SysErrorIllegalArgument, "failed To get actor for Readonly stateView: %s", err)
 	}
 	a.StoreGet(act.Head.Cid, obj)
 }
 
 func (a *runtimeAdapter) StateTransaction(obj cbor.Er, f func()) {
 	if obj == nil {
-		a.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil to Transaction()")
+		a.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil To Transaction()")
 	}
 
-	act, found, err := a.ctx.rt.state.GetActor(a.Context(), a.Receiver())
+	act, found, err := a.ctx.vm.state.GetActor(a.Context(), a.Receiver())
 	if !found || err != nil {
-		a.Abortf(exitcode.SysErrorIllegalActor, "failed to get actor for Transaction: %s", err)
+		a.Abortf(exitcode.SysErrorIllegalActor, "failed To get actor for Transaction: %s", err)
 	}
 	baseState := act.Head.Cid
 	a.StoreGet(baseState, obj)
@@ -125,7 +130,7 @@ func (a *runtimeAdapter) StateTransaction(obj cbor.Er, f func()) {
 
 	err = a.stateCommit(baseState, c)
 	if err != nil {
-		panic(fmt.Errorf("failed to commit stateView after transaction: %w", err))
+		panic(fmt.Errorf("failed To commit stateView after transaction: %w", err))
 	}
 }
 
@@ -158,6 +163,7 @@ func (a *runtimeAdapter) GetRandomnessFromTickets(personalization crypto.DomainS
 }
 
 func (a *runtimeAdapter) Send(toAddr address.Address, methodNum abi.MethodNum, params cbor.Marshaler, value abi.TokenAmount, out cbor.Er) exitcode.ExitCode {
+	fmt.Println("Send: ", toAddr.String())
 	return a.ctx.Send(toAddr, methodNum, params, value, out)
 }
 
@@ -215,12 +221,12 @@ func (a *runtimeAdapter) CurrentBalance() abi.TokenAmount {
 
 // ResolveAddress implements Runtime.
 func (a *runtimeAdapter) ResolveAddress(addr address.Address) (address.Address, bool) {
-	return a.ctx.rt.normalizeAddress(addr)
+	return a.ctx.vm.normalizeAddress(addr)
 }
 
 // GetActorCodeCID implements Runtime.
 func (a *runtimeAdapter) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) {
-	entry, found, err := a.ctx.rt.state.GetActor(a.Context(), addr)
+	entry, found, err := a.ctx.vm.state.GetActor(a.Context(), addr)
 	if !found {
 		return cid.Undef, false
 	}
@@ -251,7 +257,7 @@ func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
 	// Check existing address. If nothing there, create empty actor.
 	//
 	// Note: we are storing the actors by ActorID *address*
-	_, found, err := a.ctx.rt.state.GetActor(a.ctx.rt.context, addr)
+	_, found, err := a.ctx.vm.state.GetActor(a.ctx.vm.context, addr)
 	if err != nil {
 		fmt.Println(err)
 		panic(err)
@@ -261,16 +267,16 @@ func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
 	}
 
 	// Charge gas now that easy checks are done
-	a.ctx.gasTank.Charge(gas.PricelistByEpoch(a.ctx.rt.CurrentEpoch()).OnCreateActor(), "CreateActor code %s, address %s", codeID, addr)
+	a.ctx.gasTank.Charge(gas.PricelistByEpoch(a.ctx.vm.CurrentEpoch()).OnCreateActor(), "CreateActor code %s, address %s", codeID, addr)
 
-	newActor := &actor.Actor{
+	newActor := &types.Actor{
 		// make this the right 'type' of actor
 		Code:       enccid.NewCid(codeID),
 		Balance:    abi.NewTokenAmount(0),
 		Head:       enccid.NewCid(EmptyObjectCid),
 		CallSeqNum: 0,
 	}
-	if err := a.ctx.rt.state.SetActor(a.ctx.rt.context, addr, newActor); err != nil {
+	if err := a.ctx.vm.state.SetActor(a.ctx.vm.context, addr, newActor); err != nil {
 		panic(err)
 	}
 
@@ -283,9 +289,9 @@ func (a *runtimeAdapter) DeleteActor(beneficiary address.Address) {
 }
 
 func (a *runtimeAdapter) TotalFilCircSupply() abi.TokenAmount {
-	circSupply, err := a.stateView.TotalFilCircSupply(a.CurrEpoch(), a.ctx.rt.state)
+	circSupply, err := a.stateView.TotalFilCircSupply(a.CurrEpoch(), a.ctx.vm.state)
 	if err != nil {
-		runtime.Abortf(exitcode.ErrIllegalState, "failed to get total circ supply: %s", err)
+		runtime.Abortf(exitcode.ErrIllegalState, "failed To get total circ supply: %s", err)
 	}
 	return circSupply
 }
@@ -293,14 +299,14 @@ func (a *runtimeAdapter) TotalFilCircSupply() abi.TokenAmount {
 // Context implements Runtime.
 // Dragons: this can disappear once we have the storage abstraction
 func (a *runtimeAdapter) Context() context.Context {
-	return a.ctx.rt.context
+	return a.ctx.vm.context
 }
 
 var nullTraceSpan = func() {}
 
 // StartSpan implements Runtime.
 func (a *runtimeAdapter) StartSpan(name string) func() {
-	// Dragons: leeave empty for now, add TODO to add this into gfc
+	// Dragons: leeave empty for now, add TODO To add this into gfc
 	return nullTraceSpan
 }
 

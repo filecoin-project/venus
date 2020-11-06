@@ -3,14 +3,13 @@ package state
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
 // NewFromString sets a state tree based on an int.
@@ -22,7 +21,7 @@ func NewFromString(t *testing.T, s string, store cbor.IpldStore) *State {
 	strAddr, err := address.NewSecp256k1Address([]byte(s))
 	fmt.Printf("strAddr: %s\n", strAddr)
 	require.NoError(t, err)
-	err = tree.SetActor(context.Background(), strAddr, &actor.Actor{})
+	err = tree.SetActor(context.Background(), strAddr, &types.Actor{})
 	require.NoError(t, err)
 	return tree
 }
@@ -37,7 +36,7 @@ func MustCommit(st State) cid.Cid {
 }
 
 // MustGetActor gets the actor or panics if it can't.
-func MustGetActor(st State, a address.Address) (*actor.Actor, bool) {
+func MustGetActor(st State, a address.Address) (*types.Actor, bool) {
 	actor, found, err := st.GetActor(context.Background(), a)
 	if err != nil {
 		panic(err)
@@ -46,7 +45,7 @@ func MustGetActor(st State, a address.Address) (*actor.Actor, bool) {
 }
 
 // MustSetActor sets the actor or panics if it can't.
-func MustSetActor(st State, address address.Address, actor *actor.Actor) cid.Cid {
+func MustSetActor(st State, address address.Address, actor *types.Actor) cid.Cid {
 	err := st.SetActor(context.Background(), address, actor)
 	if err != nil {
 		panic(err)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -15,6 +16,8 @@ import (
 type Runtime interface {
 	// CurrentEpoch is the current chain epoch.
 	CurrentEpoch() abi.ChainEpoch
+
+	NtwkVersion() network.Version
 }
 
 // InvocationContext is passed to the actors on each method call.

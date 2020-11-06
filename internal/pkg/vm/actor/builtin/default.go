@@ -1,35 +1,30 @@
 package builtin
 
 import (
-	specs "github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	"github.com/filecoin-project/specs-actors/actors/builtin/system"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-
+	"fmt"
+	actors "github.com/filecoin-project/go-filecoin/internal/pkg/specactors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+
+	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
+	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
 )
 
 // DefaultActors is list of all actors that ship with Filecoin.
 // They are indexed by their CID.
 // Dragons: add the rest of the actors
-var DefaultActors = dispatch.NewBuilder().
-	Add(specs.SystemActorCodeID, &system.Actor{}).
-	Add(specs.InitActorCodeID, &init_.Actor{}).
-	Add(specs.RewardActorCodeID, &reward.Actor{}).
-	Add(specs.CronActorCodeID, &cron.Actor{}).
-	Add(specs.AccountActorCodeID, &account.Actor{}).
-	Add(specs.StoragePowerActorCodeID, &power.Actor{}).
-	Add(specs.StorageMarketActorCodeID, &market.Actor{}).
-	Add(specs.StorageMinerActorCodeID, &miner.Actor{}).
-	Add(specs.MultisigActorCodeID, &multisig.Actor{}).
-	Add(specs.PaymentChannelActorCodeID, &paych.Actor{}).
-	Add(specs.VerifiedRegistryActorCodeID, &verifreg.Actor{}).
-	Build()
+var DefaultActorBuilder = dispatch.NewBuilder()
+var DefaultActors dispatch.CodeLoader
+
+func init() {
+	xxx := exported0.BuiltinActors()
+	yyy := exported2.BuiltinActors()
+	for _, xx := range xxx {
+		fmt.Println(xx.Code())
+	}
+	for _, xx := range yyy {
+		fmt.Println(xx.Code())
+	}
+	DefaultActorBuilder.AddMany(dispatch.ActorsVersionPredicate(actors.Version0), exported0.BuiltinActors()...)
+	DefaultActorBuilder.AddMany(dispatch.ActorsVersionPredicate(actors.Version2), exported2.BuiltinActors()...)
+	DefaultActors = DefaultActorBuilder.Build()
+}

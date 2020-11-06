@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 const (
@@ -311,38 +310,38 @@ var premiumOption = cmds.StringOption("gas-premium", "Price (FIL e.g. 0.00013) t
 var limitOption = cmds.Int64Option("gas-limit", "Maximum GasUnits this message is allowed to consume")
 var previewOption = cmds.BoolOption("preview", "Preview the Gas cost of this command without actually executing it")
 
-func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.AttoFIL, gas.Unit, bool, error) {
+func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.AttoFIL, types.Unit, bool, error) {
 	feecapOption := req.Options["gas-feecap"]
 	if feecapOption == nil {
-		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.Zero, false, errors.New("gas-feecap option is required")
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, types.Zero, false, errors.New("gas-feecap option is required")
 	}
 
 	premiumOption := req.Options["gas-premium"]
 	if feecapOption == nil {
-		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.Zero, false, errors.New("gas-premium option is required")
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, types.Zero, false, errors.New("gas-premium option is required")
 	}
 
 	feecap, ok := types.NewAttoFILFromFILString(feecapOption.(string))
 	if !ok {
-		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, types.NewGas(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
 	}
 	premium, ok := types.NewAttoFILFromFILString(premiumOption.(string))
 	if !ok {
-		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, types.NewGas(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
 	}
 
 	limitOption := req.Options["gas-limit"]
 	if limitOption == nil {
-		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.NewGas(0), false, errors.New("gas-limit option is required")
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, types.NewGas(0), false, errors.New("gas-limit option is required")
 	}
 
 	gasLimitInt, ok := limitOption.(int64)
 	if !ok {
 		msg := fmt.Sprintf("invalid gas limit: %s", limitOption)
-		return types.ZeroAttoFIL, types.ZeroAttoFIL, gas.NewGas(0), false, errors.New(msg)
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, types.NewGas(0), false, errors.New(msg)
 	}
 
 	preview, _ := req.Options["preview"].(bool)
 
-	return feecap, premium, gas.NewGas(gasLimitInt), preview, nil
+	return feecap, premium, types.NewGas(gasLimitInt), preview, nil
 }

@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -15,8 +16,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -32,6 +31,7 @@ func init() {
 }
 
 var Methods = builtin2.MethodsMiner
+
 // Unchanged between v0 and v2 actors
 var WPoStProvingPeriod = miner0.WPoStProvingPeriod
 var WPoStPeriodDeadlines = miner0.WPoStPeriodDeadlines
@@ -41,7 +41,7 @@ var FaultDeclarationCutoff = miner0.FaultDeclarationCutoff
 
 const MinSectorExpiration = miner0.MinSectorExpiration
 
-func Load(store adt.Store, act *actor.Actor) (st State, err error) {
+func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code.Cid {
 	case builtin0.StorageMinerActorCodeID:
 		return load0(store, act.Head.Cid)
@@ -81,7 +81,7 @@ type State interface {
 	SuccessfulPoSts() (uint64, error) // todo add by force
 	DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error)
 	GetProvingPeriodStart() abi.ChainEpoch // todo add by force
-	FaultsSectors() ([]uint64, error) // todo add by force
+	FaultsSectors() ([]uint64, error)      // todo add by force
 
 	// Diff helpers. Used by Diff* functions internally.
 	sectors() (adt.Array, error)
@@ -165,6 +165,7 @@ func (mi MinerInfo) IsController(addr address.Address) bool {
 	}
 	return false
 }
+
 type SectorExpiration struct {
 	OnTime abi.ChainEpoch
 
@@ -199,6 +200,7 @@ type LockedFunds struct {
 	InitialPledgeRequirement abi.TokenAmount
 	PreCommitDeposits        abi.TokenAmount
 }
+
 func (lf LockedFunds) TotalLockedFunds() abi.TokenAmount {
 	return big.Add(lf.VestingFunds, big.Add(lf.InitialPledgeRequirement, lf.PreCommitDeposits))
 }

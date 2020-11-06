@@ -40,7 +40,6 @@ import (
 	gfcstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
 )
@@ -72,7 +71,6 @@ var GenesisNetworkVersion = func() network.Version {
 func genesisNetworkVersion(context.Context, abi.ChainEpoch) network.Version {
 	return GenesisNetworkVersion
 }
-
 
 type cstore struct {
 	ctx context.Context
@@ -121,6 +119,7 @@ func NewGenesisGenerator(vmStorage *vm.Storage) *GenesisGenerator {
 		NtwkVersionGetter:    genesisNetworkVersion,
 		Rnd:                  &crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}},
 		BaseFee:              abi.NewTokenAmount(InitialBaseFee),
+		Epoch:                0,
 	}
 	g.vm = vm.NewVM(g.stateTree, vmStorage, vmsupport.NewSyscalls(&vmsupport.NilFaultChecker{}, &proofs.FakeVerifier{}), vmOption).(genesis.VM)
 
@@ -163,7 +162,7 @@ func (g *GenesisGenerator) flush(ctx context.Context) (cid.Cid, error) {
 	return g.stateTree.Flush(ctx)
 }
 
-func (g *GenesisGenerator) createSingletonActor(ctx context.Context, addr address.Address, codeCid cid.Cid, balance abi.TokenAmount, stateFn func() (interface{}, error)) (*actor.Actor, error) {
+func (g *GenesisGenerator) createSingletonActor(ctx context.Context, addr address.Address, codeCid cid.Cid, balance abi.TokenAmount, stateFn func() (interface{}, error)) (*types.Actor, error) {
 	if addr.Protocol() != address.ID {
 		return nil, fmt.Errorf("non-singleton actor would be missing from Init actor's address table")
 	}
@@ -176,7 +175,7 @@ func (g *GenesisGenerator) createSingletonActor(ctx context.Context, addr addres
 		return nil, fmt.Errorf("failed to store state")
 	}
 
-	a := actor.Actor{
+	a := types.Actor{
 		Code:       enccid.NewCid(codeCid),
 		CallSeqNum: 0,
 		Balance:    balance,
@@ -189,7 +188,7 @@ func (g *GenesisGenerator) createSingletonActor(ctx context.Context, addr addres
 	return &a, nil
 }
 
-func (g *GenesisGenerator) updateSingletonActor(ctx context.Context, addr address.Address, stateFn func(actor2 *actor.Actor) (interface{}, error)) (*actor.Actor, error) {
+func (g *GenesisGenerator) updateSingletonActor(ctx context.Context, addr address.Address, stateFn func(actor2 *types.Actor) (interface{}, error)) (*types.Actor, error) {
 	if addr.Protocol() != address.ID {
 		return nil, fmt.Errorf("non-singleton actor would be missing from Init actor's address table")
 	}
@@ -207,7 +206,7 @@ func (g *GenesisGenerator) updateSingletonActor(ctx context.Context, addr addres
 		return nil, fmt.Errorf("failed to store state")
 	}
 
-	a := actor.Actor{
+	a := types.Actor{
 		Code:       oldActor.Code,
 		CallSeqNum: 0,
 		Balance:    oldActor.Balance,
@@ -484,7 +483,7 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		totalQaPow = big.Add(totalQaPow, minerQAPower)
 	}
 
-	g.updateSingletonActor(ctx, builtin.StoragePowerActorAddr, func(actor *actor.Actor) (interface{}, error) {
+	g.updateSingletonActor(ctx, builtin.StoragePowerActorAddr, func(actor *types.Actor) (interface{}, error) {
 		var mState power.State
 		err := g.store.Get(ctx, actor.Head.Cid, &mState)
 		if err != nil {
@@ -498,7 +497,7 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		return &mState, nil
 	})
 
-	g.updateSingletonActor(ctx, builtin.RewardActorAddr, func(actor *actor.Actor) (interface{}, error) {
+	g.updateSingletonActor(ctx, builtin.RewardActorAddr, func(actor *types.Actor) (interface{}, error) {
 		return reward.ConstructState(networkQAPower), nil
 	})
 
@@ -525,7 +524,7 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		sectorWeight := miner.QAPowerForWeight(size, sector.expiration, dweight.DealWeight, dweight.VerifiedDealWeight)
 
 		// we've added fake power for this sector above, remove it now
-		_, err = g.updateSingletonActor(ctx, builtin.StoragePowerActorAddr, func(actor *actor.Actor) (interface{}, error) {
+		_, err = g.updateSingletonActor(ctx, builtin.StoragePowerActorAddr, func(actor *types.Actor) (interface{}, error) {
 			var mState power.State
 			err = g.store.Get(ctx, actor.Head.Cid, &mState)
 			if err != nil {
@@ -646,9 +645,12 @@ func (g *GenesisGenerator) createMiner(ctx context.Context, m *CreateStorageMine
 		return address.Undef, address.Undef, err
 	}
 
+	if out.Receipt.ExitCode != 0 {
+		return address.Undef, address.Undef, xerrors.Errorf("execute genesis msg error")
+	}
 	// get miner ID address
 	createMinerReturn := power.CreateMinerReturn{}
-	err = createMinerReturn.UnmarshalCBOR(bytes.NewReader(out))
+	err = createMinerReturn.UnmarshalCBOR(bytes.NewReader(out.Receipt.ReturnValue))
 	if err != nil {
 		return address.Undef, address.Undef, err
 	}
@@ -706,9 +708,11 @@ func (g *GenesisGenerator) publishDeals(actorAddr, clientAddr address.Address, c
 	if err != nil {
 		return nil, err
 	}
-
+	if out.Receipt.ExitCode != 0 {
+		return nil, xerrors.Errorf("execute genesis msg error")
+	}
 	publishStoreageDealsReturn := market.PublishStorageDealsReturn{}
-	err = publishStoreageDealsReturn.UnmarshalCBOR(bytes.NewReader(out))
+	err = publishStoreageDealsReturn.UnmarshalCBOR(bytes.NewReader(out.Receipt.ReturnValue))
 	if err != nil {
 		return nil, err
 	}
@@ -725,8 +729,11 @@ func (g *GenesisGenerator) getDealWeight(dealID abi.DealID, sectorExpiry abi.Cha
 	if err != nil {
 		return big.Zero(), big.Zero(), err
 	}
+	if weightOut.Receipt.ExitCode != 0 {
+		return big.Zero(), big.Zero(), xerrors.Errorf("execute genesis msg error")
+	}
 	verifyDealsReturn := market.VerifyDealsForActivationReturn{}
-	err = verifyDealsReturn.UnmarshalCBOR(bytes.NewReader(weightOut))
+	err = verifyDealsReturn.UnmarshalCBOR(bytes.NewReader(weightOut.Receipt.ReturnValue))
 	if err != nil {
 		return big.Zero(), big.Zero(), err
 	}
@@ -829,8 +836,10 @@ func (g *GenesisGenerator) doExecValue(ctx context.Context, to, from address.Add
 	if err != nil {
 		return nil, xerrors.Errorf("doExec apply message failed: %w", err)
 	}
-
-	return ret, nil
+	if ret.Receipt.ExitCode != 0 {
+		return nil, xerrors.Errorf("execute genesis msg error")
+	}
+	return ret.Receipt.ReturnValue, nil
 }
 
 func (g *GenesisGenerator) currentTotalPower(ctx context.Context, maddr address.Address) (*power.CurrentTotalPowerReturn, error) {

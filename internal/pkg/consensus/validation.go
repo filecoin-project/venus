@@ -15,8 +15,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 var dropNonAccountCt *metrics.Int64Counter
@@ -38,8 +36,8 @@ var msgMaxValue = types.NewAttoFILFromFIL(2e9)
 
 // These gas cost values must match those in vm/gas.
 // TODO: Look up gas costs from the same place the VM gets them, keyed by epoch. https://github.com/filecoin-project/go-filecoin/issues/3955
-const onChainMessageBase = gas.Unit(0)
-const onChainMessagePerByte = gas.Unit(2)
+const onChainMessageBase = types.Unit(0)
+const onChainMessagePerByte = types.Unit(2)
 
 func init() {
 	dropNonAccountCt = metrics.NewInt64Counter("consensus/msg_non_account_sender", "Count of dropped messages with non-account sender")
@@ -65,7 +63,7 @@ type MessagePenaltyChecker struct {
 // penaltyCheckerAPI allows the validator to access latest state
 type penaltyCheckerAPI interface {
 	Head() block.TipSetKey
-	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*actor.Actor, error)
+	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*types.Actor, error)
 }
 
 func NewMessagePenaltyChecker(api penaltyCheckerAPI) *MessagePenaltyChecker {
@@ -114,7 +112,7 @@ func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.Uns
 // Check's whether the maximum gas charge + message value is within the actor's balance.
 // Note that this is an imperfect test, since nested messages invoked by this one may transfer
 // more value from the actor's balance.
-func canCoverGasLimit(msg *types.UnsignedMessage, actor *actor.Actor) bool {
+func canCoverGasLimit(msg *types.UnsignedMessage, actor *types.Actor) bool {
 	// balance >= (gasprice*gasLimit + value)
 	gascost := big.Mul(abi.NewTokenAmount(msg.GasFeeCap.Int.Int64()), abi.NewTokenAmount(int64(msg.GasLimit)))
 	expense := big.Add(gascost, abi.NewTokenAmount(msg.Value.Int.Int64()))
@@ -199,7 +197,7 @@ func (v *DefaultMessageSyntaxValidator) validateMessageSyntaxShared(ctx context.
 	// *at all*. Without this, a message could hit out-of-gas but the sender pay nothing.
 	// NOTE(anorth): this check has been moved to execution time, and the miner is penalized for including
 	// such a message. We can probably remove this.
-	minMsgGas := onChainMessageBase + onChainMessagePerByte*gas.Unit(msgLen)
+	minMsgGas := onChainMessageBase + onChainMessagePerByte*types.Unit(msgLen)
 	if msg.GasLimit < minMsgGas {
 		invGasBelowMinimumCt.Inc(ctx, 1)
 		return fmt.Errorf("gas limit %d below minimum %d to cover message size: %s", msg.GasLimit, minMsgGas, msg)

@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
 )
 
-// Dragons: see if we can reuse the `adt.AsStore` method to construct this instead of re-writing it
+// Dragons: see if we can reuse the `adt.AsStore` Method To construct this instead of re-writing it
 type contextStore struct {
 	context context.Context
 	store   *storage.VMStorage

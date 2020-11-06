@@ -20,8 +20,6 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 // TestNewHeadHandlerIntegration tests inbox and outbox policy consistency.
@@ -39,7 +37,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 	maxAge := uint(10)
 	gasPrice := types.NewGasPremium(1)
 	gasPremium := types.NewGasPremium(1)
-	gasUnits := gas.NewGas(1000)
+	gasUnits := types.NewGas(1000)
 
 	makeHandler := func(provider *message.FakeProvider, root *block.TipSet) *message.HeadHandler {
 		mpool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
@@ -57,7 +55,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 	t.Run("test send after reverted message", func(t *testing.T) {
 		provider := message.NewFakeProvider(t)
 		root := provider.NewGenesis()
-		actr := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
+		actr := types.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
 		actr.CallSeqNum = 42
 		provider.SetHeadAndActor(t, root.Key(), sender, actr)
 

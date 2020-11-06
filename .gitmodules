@@ -4,3 +4,6 @@
 [submodule "vendors/fil-blst"]
 	path = vendors/fil-blst
 	url = https://github.com/filecoin-project/fil-blst.git
+[submodule "vendors/test-vectors"]
+	path = vendors/test-vectors
+	url = https://github.com/filecoin-project/test-vectors.git

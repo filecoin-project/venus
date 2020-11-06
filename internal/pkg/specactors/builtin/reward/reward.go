@@ -1,6 +1,7 @@
 package reward
 
 import (
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-state-types/abi"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/ipfs/go-cid"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
 func init() {
@@ -29,7 +29,7 @@ var (
 	Methods = builtin2.MethodsReward
 )
 
-func Load(store adt.Store, act *actor.Actor) (st State, err error) {
+func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code.Cid {
 	case builtin0.RewardActorCodeID:
 		return load0(store, act.Head.Cid)

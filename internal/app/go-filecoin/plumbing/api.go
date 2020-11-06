@@ -38,8 +38,6 @@ import (
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
 )
@@ -105,7 +103,7 @@ func New(deps *APIDeps) *API {
 }
 
 // ActorGet returns an actor from the latest state on the chain
-func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error) {
+func (api *API) ActorGet(ctx context.Context, addr address.Address) (*types.Actor, error) {
 	return api.chain.GetActor(ctx, addr)
 }
 
@@ -117,7 +115,7 @@ func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address
 }
 
 // ActorLs returns a channel with actors from the latest state on the chain
-func (api *API) ActorLs(ctx context.Context) (map[address.Address]*actor.Actor, error) {
+func (api *API) ActorLs(ctx context.Context) (map[address.Address]*types.Actor, error) {
 	return api.chain.LsActors(ctx)
 }
 
@@ -250,7 +248,7 @@ func (api *API) MessagePoolRemove(cid cid.Cid) {
 
 // MessagePreview previews the Gas cost of a message by running it locally on the client and
 // recording the amount of Gas used.
-func (api *API) MessagePreview(ctx context.Context, from, to address.Address, method abi.MethodNum, params ...interface{}) (gas.Unit, error) {
+func (api *API) MessagePreview(ctx context.Context, from, to address.Address, method abi.MethodNum, params ...interface{}) (types.Unit, error) {
 	return api.msgPreviewer.Preview(ctx, from, to, method, params...)
 }
 
@@ -271,7 +269,7 @@ func (api *API) StateView(baseKey block.TipSetKey) (*appstate.View, error) {
 // message to go on chain. Note that no default from address is provided.  The error
 // channel returned receives either nil or an error and is immediately closed after
 // the message is published to the network to signal that the publish is complete.
-func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, baseFee types.AttoFIL, gasPremium types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
+func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, baseFee types.AttoFIL, gasPremium types.AttoFIL, gasLimit types.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
 	return api.outbox.Send(ctx, from, to, value, baseFee, gasPremium, gasLimit, true, method, params)
 }
 

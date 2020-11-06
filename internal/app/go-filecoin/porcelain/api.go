@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 // API is the porcelain implementation, a set of convenience calls written on the
@@ -65,7 +64,7 @@ func (a *API) MinerCreate(
 	ctx context.Context,
 	accountAddr address.Address,
 	gasBaseFee, gasPremium types.AttoFIL,
-	gasLimit gas.Unit,
+	gasLimit types.Unit,
 	sealProofType abi.RegisteredSealProof,
 	pid peer.ID,
 	collateral types.AttoFIL,
@@ -79,7 +78,7 @@ func (a *API) MinerPreviewCreate(
 	fromAddr address.Address,
 	sectorSize abi.SectorSize,
 	pid peer.ID,
-) (usedGas gas.Unit, err error) {
+) (usedGas types.Unit, err error) {
 	return MinerPreviewCreate(ctx, a, fromAddr, sectorSize, pid)
 }
 
@@ -115,7 +114,7 @@ func (a *API) SealPieceIntoNewSector(ctx context.Context, dealID abi.DealID, dea
 }
 
 // MinerSetWorkerAddress sets the miner worker address to the provided address
-func (a *API) MinerSetWorkerAddress(ctx context.Context, toAddr address.Address, gasBaseFee, gasPremium types.AttoFIL, gasLimit gas.Unit) (cid.Cid, error) {
+func (a *API) MinerSetWorkerAddress(ctx context.Context, toAddr address.Address, gasBaseFee, gasPremium types.AttoFIL, gasLimit types.Unit) (cid.Cid, error) {
 	return MinerSetWorkerAddress(ctx, a, toAddr, gasBaseFee, gasPremium, gasLimit)
 }
 

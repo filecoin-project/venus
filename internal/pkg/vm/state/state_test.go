@@ -3,11 +3,12 @@ package state
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
@@ -28,14 +28,14 @@ func TestStatePutGet(t *testing.T) {
 
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree,err := NewState(cst, StateTreeVersion0)
+	tree, err := NewState(cst, StateTreeVersion0)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	act1 := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
+	act1 := types.NewActor(builtin2.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
 	act1.IncrementSeqNum()
-	act2 := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
+	act2 := types.NewActor(builtin2.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
 	act2.IncrementSeqNum()
 	act2.IncrementSeqNum()
 
@@ -77,7 +77,7 @@ func TestStateErrors(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree,err := NewState(cst, StateTreeVersion0)
+	tree, err := NewState(cst, StateTreeVersion0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,19 +100,19 @@ func TestGetAllActors(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree,err := NewState(cst, StateTreeVersion0)
+	tree, err := NewState(cst, StateTreeVersion0)
 	if err != nil {
 		t.Fatal(err)
 	}
 	addr := vmaddr.NewForTestGetter()()
 
-	newActor := actor.Actor{Code: enccid.NewCid(builtin.AccountActorCodeID), CallSeqNum: 1234, Balance: abi.NewTokenAmount(123)}
+	newActor := types.Actor{Code: enccid.NewCid(builtin2.AccountActorCodeID), CallSeqNum: 1234, Balance: abi.NewTokenAmount(123)}
 	err = tree.SetActor(ctx, addr, &newActor)
 	assert.NoError(t, err)
 	_, err = tree.Flush(ctx)
 	require.NoError(t, err)
 
-	err = tree.ForEach(func(key ActorKey, result *actor.Actor) error {
+	err = tree.ForEach(func(key ActorKey, result *types.Actor) error {
 		assert.Equal(t, addr, key)
 		assert.Equal(t, newActor.Code, result.Code)
 		assert.Equal(t, newActor.CallSeqNum, result.CallSeqNum)
@@ -130,7 +130,7 @@ func TestStateTreeConsistency(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree,err := NewState(cst, StateTreeVersion0)
+	tree, err := NewState(cst, StateTreeVersion0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func TestStateTreeConsistency(t *testing.T) {
 	}
 
 	for i, a := range addrs {
-		if err := tree.SetActor(ctx, a, &actor.Actor{
+		if err := tree.SetActor(ctx, a, &types.Actor{
 			Code:       enccid.NewCid(randomCid),
 			Head:       enccid.NewCid(randomCid),
 			Balance:    abi.NewTokenAmount(int64(10000 + i)),

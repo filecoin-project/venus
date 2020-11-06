@@ -3,14 +3,15 @@ package cst
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
 	"io"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
+	initactor "github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	initactor "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -32,7 +33,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	vmstate "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -219,7 +219,7 @@ func (chn *ChainStateReadWriter) ChainGetRandomnessFromBeacon(ctx context.Contex
 }
 
 // GetActor returns an actor from the latest state on the chain
-func (chn *ChainStateReadWriter) GetActor(ctx context.Context, addr address.Address) (*actor.Actor, error) {
+func (chn *ChainStateReadWriter) GetActor(ctx context.Context, addr address.Address) (*types.Actor, error) {
 	return chn.GetActorAt(ctx, chn.readWriter.GetHead(), addr)
 }
 
@@ -229,7 +229,7 @@ func (chn *ChainStateReadWriter) GetTipSetStateRoot(ctx context.Context, tipKey 
 }
 
 // GetActorAt returns an actor at a specified tipset key.
-func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*actor.Actor, error) {
+func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*types.Actor, error) {
 	st, err := chn.readWriter.GetTipSetState(ctx, tipKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load latest state")
@@ -272,7 +272,7 @@ func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, tipKey bl
 		return address.Undef, errors.Wrap(err, "failed to load latest state")
 	}
 
-	init, found, err := st.GetActor(ctx, builtin.InitActorAddr)
+	init, found, err := st.GetActor(ctx, initactor.Address)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -280,18 +280,12 @@ func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, tipKey bl
 		return address.Undef, errors.Wrapf(err, "no actor at address %s", addr)
 	}
 
-	blk, err := chn.bstore.Get(init.Head.Cid)
+	state, err := initactor.Load(adt.WrapStore(ctx, chn.IpldStore), init)
 	if err != nil {
 		return address.Undef, err
 	}
 
-	var state initactor.State
-	err = encoding.Decode(blk.RawData(), &state)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	idAddress, found, err := state.ResolveAddress(&actorStore{ctx, chn.ReadOnlyIpldStore}, addr)
+	idAddress, found, err := state.ResolveAddress(addr)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -303,14 +297,14 @@ func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, tipKey bl
 }
 
 // LsActors returns a channel with actors from the latest state on the chain
-func (chn *ChainStateReadWriter) LsActors(ctx context.Context) (map[address.Address]*actor.Actor, error) {
+func (chn *ChainStateReadWriter) LsActors(ctx context.Context) (map[address.Address]*types.Actor, error) {
 	st, err := chn.readWriter.GetTipSetState(ctx, chn.readWriter.GetHead())
 	if err != nil {
 		return nil, err
 	}
 
-	result := make(map[address.Address]*actor.Actor)
-	err = st.ForEach(func(key vmstate.ActorKey, a *actor.Actor) error {
+	result := make(map[address.Address]*types.Actor)
+	err = st.ForEach(func(key vmstate.ActorKey, a *types.Actor) error {
 		result[key] = a
 		return nil
 	})
@@ -333,7 +327,7 @@ func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAdd
 	}
 
 	// Dragons: this is broken, we need to ask the VM for the impl, it might need to apply migrations based on epoch
-	executable, err := chn.actors.GetActorImpl(actor.Code.Cid)
+	executable, err := chn.actors.GetUnsafeActorImpl(actor.Code.Cid)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load actor code")
 	}

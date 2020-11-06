@@ -22,7 +22,6 @@ import (
 	e "github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
@@ -323,11 +322,11 @@ func (fms *fakeMsgSource) LoadReceipts(context.Context, cid.Cid) ([]types.Messag
 }
 
 type fakeChainState struct {
-	actor *actor.Actor
+	actor *types.Actor
 	err   error
 }
 
-func (fcs *fakeChainState) GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*actor.Actor, error) {
+func (fcs *fakeChainState) GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*types.Actor, error) {
 	return fcs.actor, fcs.err
 }
 

@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 
@@ -60,7 +59,7 @@ func (mpc *minerCreate) ConfigSet(dottedPath string, paramJSON string) error {
 	return mpc.config.Set(dottedPath, paramJSON)
 }
 
-func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasBaseFee, gasPremium types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
+func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasBaseFee, gasPremium types.AttoFIL, gasLimit types.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
 	if mpc.msgFail {
 		return cid.Cid{}, nil, errors.New("test Error")
 	}
@@ -110,7 +109,7 @@ func TestMinerCreate(t *testing.T) {
 			address.Address{},
 			types.NewGasFeeCap(0),
 			types.NewGasPremium(0),
-			gas.NewGas(100),
+			types.NewGas(100),
 			constants.DevSealProofType,
 			"",
 			collateral,
@@ -130,7 +129,7 @@ func TestMinerCreate(t *testing.T) {
 			address.Address{},
 			types.NewGasFeeCap(0),
 			types.NewGasPremium(0),
-			gas.NewGas(100),
+			types.NewGas(100),
 			constants.DevSealProofType,
 			"",
 			collateral,
@@ -214,7 +213,7 @@ func (p *mSetWorkerPlumbing) MinerStateView(baseKey block.TipSetKey) (MinerState
 	}, nil
 }
 
-func (p *mSetWorkerPlumbing) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasBaseFee, gasPremium types.AttoFIL, gasLimit gas.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
+func (p *mSetWorkerPlumbing) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasBaseFee, gasPremium types.AttoFIL, gasLimit types.Unit, method abi.MethodNum, params interface{}) (cid.Cid, chan error, error) {
 
 	if p.msgFail {
 		return cid.Cid{}, nil, errors.New("MsgFail")
@@ -247,7 +246,7 @@ func TestMinerSetWorkerAddress(t *testing.T) {
 	workerAddr := vmaddr.RequireIDAddress(t, 102)
 	baseFee := types.ZeroAttoFIL
 	gasPremium := types.ZeroAttoFIL
-	glimit := gas.NewGas(0)
+	glimit := types.NewGas(0)
 
 	t.Run("Calling set worker address sets address", func(t *testing.T) {
 		plumbing := &mSetWorkerPlumbing{

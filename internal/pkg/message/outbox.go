@@ -2,21 +2,20 @@ package message
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"golang.org/x/xerrors"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/ipfs/go-cid"
-	"github.com/pkg/errors"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
+	"github.com/pkg/errors"
 )
 
 // Outbox validates and marshals messages for sending and maintains the outbound message queue.
@@ -56,7 +55,7 @@ type messageValidator interface {
 
 type actorProvider interface {
 	// GetActorAt returns the actor state defined by the chain up to some tipset
-	GetActorAt(ctx context.Context, tipset block.TipSetKey, addr address.Address) (*actor.Actor, error)
+	GetActorAt(ctx context.Context, tipset block.TipSetKey, addr address.Address) (*types.Actor, error)
 }
 
 type publisher interface {
@@ -65,7 +64,7 @@ type publisher interface {
 
 // todo add by force
 type gasPredictor interface {
-	CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (types.MessageReceipt, error)
+	CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (*vm.Ret, error)
 }
 
 var msgSendErrCt = metrics.NewInt64Counter("message_sender_error", "Number of errors encountered while sending a message")
@@ -94,7 +93,7 @@ func (ob *Outbox) Queue() *Queue {
 // Send marshals and sends a message, retaining it in the outbound message queue.
 // If bcast is true, the publisher broadcasts the message to the network at the current block height.
 func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value types.AttoFIL,
-	baseFee types.AttoFIL, gasPremium types.AttoFIL, gasLimit gas.Unit, bcast bool, method abi.MethodNum, params interface{}) (out cid.Cid, pubErrCh chan error, err error) {
+	baseFee types.AttoFIL, gasPremium types.AttoFIL, gasLimit types.Unit, bcast bool, method abi.MethodNum, params interface{}) (out cid.Cid, pubErrCh chan error, err error) {
 	encodedParams, err := encoding.Encode(params)
 	if err != nil {
 		return cid.Undef, nil, errors.Wrap(err, "invalid params")
@@ -106,7 +105,7 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 // SendEncoded sends an encoded message, retaining it in the outbound message queue.
 // If bcast is true, the publisher broadcasts the message to the network at the current block height.
 func (ob *Outbox) SendEncoded(ctx context.Context, from, to address.Address, value types.AttoFIL,
-	baseFee types.AttoFIL, gasPremium types.AttoFIL, gasLimit gas.Unit, bcast bool, method abi.MethodNum, encodedParams []byte) (out cid.Cid, pubErrCh chan error, err error) {
+	baseFee types.AttoFIL, gasPremium types.AttoFIL, gasLimit types.Unit, bcast bool, method abi.MethodNum, encodedParams []byte) (out cid.Cid, pubErrCh chan error, err error) {
 	defer func() {
 		if err != nil {
 			msgSendErrCt.Inc(ctx, 1)
@@ -257,17 +256,16 @@ func (ob *Outbox) HandleNewHead(ctx context.Context, oldTips, newTips []*block.T
 
 // nextNonce returns the next expected nonce value for an account actor. This is the larger
 // of the actor's nonce value, or one greater than the largest nonce from the actor found in the message queue.
-func nextNonce(act *actor.Actor, queue *Queue, address address.Address) (uint64, error) {
-	actorNonce, err := actor.NextNonce(act)
-	if err != nil {
-		return 0, err
+func nextNonce(act *types.Actor, queue *Queue, address address.Address) (uint64, error) {
+	if !(act.Empty() || builtin.IsAccountActor(act.Code.Cid)) {
+		return 0, errors.New("next nonce only defined for account or empty actors")
 	}
 
 	poolNonce, found := queue.LargestNonce(address)
-	if found && poolNonce >= actorNonce {
+	if found && poolNonce >= act.CallSeqNum {
 		return poolNonce + 1, nil
 	}
-	return actorNonce, nil
+	return act.CallSeqNum, nil
 }
 
 func tipsetHeight(provider chainProvider, key block.TipSetKey) (abi.ChainEpoch, error) {

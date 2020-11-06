@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"reflect"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -16,6 +17,12 @@ import (
 type Actor interface {
 	// Exports has a list of method available on the actor.
 	Exports() []interface{}
+	// Code returns the code ID for this actor.
+	Code() cid.Cid
+
+	// State returns a new State object for this actor. This can be used to
+	// decode the actor's state.
+	State() cbor.Er
 }
 
 // Dispatcher allows for dynamic method dispatching on an actor.
@@ -67,6 +74,12 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, ctx interface{}, arg
 		}
 		args = append(args, reflect.ValueOf(obj))
 	} else if raw, ok := arg1.(runtime.CBORBytes); ok {
+		obj, err := m.ArgInterface(raw)
+		if err != nil {
+			return []byte{}, NewExcuteError(exitcode.SysErrSenderInvalid, "fail to decode params")
+		}
+		args = append(args, reflect.ValueOf(obj))
+	} else if raw, ok := arg1.(builtin.CBORBytes); ok {
 		obj, err := m.ArgInterface(raw)
 		if err != nil {
 			return []byte{}, NewExcuteError(exitcode.SysErrSenderInvalid, "fail to decode params")

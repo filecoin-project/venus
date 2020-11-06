@@ -18,9 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -94,7 +91,7 @@ func TestBLSSignatureValidationConfiguration(t *testing.T) {
 	from, err := address.NewBLSAddress(pubKey[:])
 	require.NoError(t, err)
 
-	msg := types.NewMeteredMessage(from, addresses[1], 0, types.ZeroAttoFIL, methodID, []byte("params"), types.NewGasFeeCap(1), types.NewGasPremium(1), gas.NewGas(300))
+	msg := types.NewMeteredMessage(from, addresses[1], 0, types.ZeroAttoFIL, methodID, []byte("params"), types.NewGasFeeCap(1), types.NewGasPremium(1), types.NewGas(300))
 	unsigned := &types.SignedMessage{Message: *msg}
 	actor := newActor(t, 1000, 0)
 
@@ -146,14 +143,14 @@ func TestMessageSyntaxValidator(t *testing.T) {
 
 }
 
-func newActor(t *testing.T, balanceAF int, nonce uint64) *actor.Actor {
-	actor := actor.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(int64(balanceAF)), cid.Undef)
+func newActor(t *testing.T, balanceAF int, nonce uint64) *types.Actor {
+	actor := types.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(int64(balanceAF)), cid.Undef)
 	actor.CallSeqNum = nonce
 	return actor
 }
 
 func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF int,
-	gasPrice int64, gasLimit gas.Unit) *types.UnsignedMessage {
+	gasPrice int64, gasLimit types.Unit) *types.UnsignedMessage {
 	val, ok := types.NewAttoFILFromString(fmt.Sprintf("%d", valueAF), 10)
 	require.True(t, ok, "invalid attofil")
 	return types.NewMeteredMessage(
@@ -172,12 +169,12 @@ func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF in
 // FakeIngestionValidatorAPI provides a latest state
 type FakeIngestionValidatorAPI struct {
 	ActorAddr address.Address
-	Actor     *actor.Actor
+	Actor     *types.Actor
 }
 
 // NewMockIngestionValidatorAPI creates a new FakeIngestionValidatorAPI.
 func NewMockIngestionValidatorAPI() *FakeIngestionValidatorAPI {
-	return &FakeIngestionValidatorAPI{Actor: &actor.Actor{}}
+	return &FakeIngestionValidatorAPI{Actor: &types.Actor{}}
 }
 
 func (api *FakeIngestionValidatorAPI) Head() block.TipSetKey {
@@ -188,11 +185,11 @@ func (api *FakeIngestionValidatorAPI) GetTipSet(key block.TipSetKey) (*block.Tip
 	return block.UndefTipSet, nil
 }
 
-func (api *FakeIngestionValidatorAPI) GetActorAt(ctx context.Context, key block.TipSetKey, a address.Address) (*actor.Actor, error) {
+func (api *FakeIngestionValidatorAPI) GetActorAt(ctx context.Context, key block.TipSetKey, a address.Address) (*types.Actor, error) {
 	if a == api.ActorAddr {
 		return api.Actor, nil
 	}
-	return &actor.Actor{
+	return &types.Actor{
 		Balance: abi.NewTokenAmount(0),
 	}, nil
 }

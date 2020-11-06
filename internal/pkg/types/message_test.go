@@ -4,13 +4,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 func TestMessageMarshal(t *testing.T) {
@@ -22,11 +20,11 @@ func TestMessageMarshal(t *testing.T) {
 		addrGetter(),
 		42,
 		NewAttoFILFromFIL(17777),
-		builtin.MethodSend,
+		0,
 		[]byte("foobar"),
 		NewAttoFILFromFIL(3),
 		NewAttoFILFromFIL(3),
-		gas.NewGas(4),
+		NewGas(4),
 	)
 
 	// This check requests that you add a non-zero value for new fields above,

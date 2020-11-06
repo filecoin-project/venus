@@ -5,7 +5,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/interpreter"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
@@ -15,8 +14,10 @@ import (
 
 type VmOption = vmcontext.VmOption
 
+type Ret = vmcontext.Ret
+
 // Interpreter is the VM.
-type Interpreter = interpreter.VMInterpreter
+type Interpreter = vmcontext.VMInterpreter
 
 // Storage is the raw storage for the VM.
 type Storage = storage.VMStorage
@@ -25,11 +26,18 @@ type SyscallsImpl = vmcontext.SyscallsImpl
 type SyscallsStateView = vmcontext.SyscallsStateView
 
 // BlockMessagesInfo contains messages for one block in a tipset.
-type BlockMessagesInfo = interpreter.BlockMessagesInfo
+type BlockMessagesInfo = vmcontext.BlockMessagesInfo
+
+type ExecCallBack = vmcontext.ExecCallBack
+type VmMessage = vmcontext.VmMessage
 
 // NewVM creates a new VM interpreter.
 func NewVM(st state.Tree, store *storage.VMStorage, syscalls SyscallsImpl, option VmOption) Interpreter {
-	vm := vmcontext.NewVM(builtin.DefaultActors, store, st, syscalls, option)
+	if option.ActorCodeLoader == nil {
+		option.ActorCodeLoader = &DefaultActors
+	}
+
+	vm := vmcontext.NewVM(option.ActorCodeLoader, store, st, syscalls, option)
 	return &vm
 }
 

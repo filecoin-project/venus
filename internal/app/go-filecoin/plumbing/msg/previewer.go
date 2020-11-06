@@ -2,6 +2,7 @@ package msg
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -9,7 +10,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -42,6 +42,6 @@ func NewPreviewer(chainReader previewerChainReader, cst cbor.IpldStore, bs bstor
 }
 
 // Preview sends a read-only message to an actor.
-func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, method abi.MethodNum, params ...interface{}) (gas.Unit, error) {
+func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, method abi.MethodNum, params ...interface{}) (types.Unit, error) {
 	panic("unimplemented")
 }

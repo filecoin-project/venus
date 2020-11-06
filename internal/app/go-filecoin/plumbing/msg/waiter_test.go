@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -209,7 +208,7 @@ func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, ro
 				if err != nil {
 					panic(err)
 				}
-				receipts = append(receipts, types.MessageReceipt{ExitCode: 0, ReturnValue: c.Bytes(), GasUsed: gas.Zero})
+				receipts = append(receipts, types.MessageReceipt{ExitCode: 0, ReturnValue: c.Bytes(), GasUsed: types.Zero})
 			}
 			txMeta, err := msgStore.StoreMessages(context.Background(), msgs, []*types.UnsignedMessage{})
 			if err != nil {

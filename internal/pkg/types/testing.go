@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
@@ -18,7 +17,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 )
 
 // MockSigner implements the Signer interface
@@ -171,11 +169,11 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 			newAddr,
 			0,
 			ZeroAttoFIL,
-			builtin.MethodSend,
+			0,
 			[]byte("params"),
 			ZeroAttoFIL,
 			ZeroAttoFIL,
-			gas.Zero,
+			Zero,
 		)
 		smsg, err := NewSignedMessage(context.TODO(), *msg, &ms)
 		if err != nil {
@@ -263,7 +261,7 @@ func NewSignedMsgs(n uint, ms MockSigner) []*SignedMessage {
 		msg.CallSeqNum = uint64(i)
 		msg.GasFeeCap = ZeroAttoFIL
 		msg.GasPremium = ZeroAttoFIL
-		msg.GasLimit = gas.NewGas(0)
+		msg.GasLimit = NewGas(0)
 		smsgs[i], err = NewSignedMessage(context.TODO(), *msg, ms)
 		if err != nil {
 			panic(err)

@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,10 +37,10 @@ func newWdaTestPlumbing(t *testing.T) *wdaTestPlumbing {
 	}
 }
 
-func (wbtp *wbTestPlumbing) ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error) {
+func (wbtp *wbTestPlumbing) ActorGet(ctx context.Context, addr address.Address) (*types.Actor, error) {
 	aux := abi.NewTokenAmount(0)
 	aux.SetBits(wbtp.balance.Int.Bits())
-	testActor := actor.NewActor(cid.Undef, aux, cid.Undef)
+	testActor := types.NewActor(cid.Undef, aux, cid.Undef)
 	return testActor, nil
 }
 

@@ -30,7 +30,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
 	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	sectorstorage "github.com/filecoin-project/go-filecoin/vendors/sector-storage"
 )
 
@@ -427,7 +426,7 @@ func (p *Poster) sendPoSt(ctx context.Context, proofs []miner.SubmitWindowedPoSt
 			types.ZeroAttoFIL,
 			types.NewGasFeeCap(1),
 			types.NewGasFeeCap(1), //todo add by force 费用估算
-			gas.NewGas(10000),
+			types.NewGas(10000),
 			true,
 			builtin.MethodsMiner.SubmitWindowedPoSt,
 			winPostParams,

@@ -13,6 +13,7 @@ import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"time"
@@ -32,7 +33,7 @@ type Protocol interface {
 	BlockTime() time.Duration
 
 	// CallWithGas
-	CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (types.MessageReceipt, error)
+	CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (*vm.Ret, error)
 
 	ValidateMining(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid, parentWeight big.Int, parentReceiptRoot cid.Cid) error
 }

@@ -26,7 +26,7 @@ package vmcontext
 // 	return false
 // }
 
-// // TestSuiteSkips contains tests we wish to skip.
+// // TestSuiteSkips contains tests we wish To skip.
 // var TestSuiteSkipper TestSkipper
 
 // func init() {

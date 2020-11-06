@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
+	"github.com/ipfs/go-datastore"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
@@ -485,4 +486,23 @@ func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet) (a
 	parentBaseFee := ts.Blocks()[0].ParentBaseFee
 
 	return ComputeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks()), baseHeight), nil
+}
+
+func GetReceiptRoot(receipts []types.MessageReceipt) (cid.Cid, error) {
+	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	rawReceipts := make([][]byte, len(receipts))
+	for i, rcpt := range receipts {
+		sblk, err := MakeBlock(rcpt)
+		if err != nil {
+			return cid.Undef, err
+		}
+		rawReceipts[i] = sblk.RawData()
+	}
+
+	as := cborutil.NewIpldStore(bs)
+	rawMarshallers := make([]cbg.CBORMarshaler, len(rawReceipts))
+	for i, raw := range rawReceipts {
+		rawMarshallers[i] = &cbg.Deferred{Raw: raw}
+	}
+	return amt.FromArray(context.TODO(), as, rawMarshallers)
 }

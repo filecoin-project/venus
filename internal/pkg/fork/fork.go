@@ -37,21 +37,20 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/multisig"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/policy"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	vmstate "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 var log = logging.Logger("fork")
 
 var (
-	UpgradeSmokeHeight       = abi.ChainEpoch(-1)
-	UpgradeBreezeHeight      = abi.ChainEpoch(0)
-	UpgradeIgnitionHeight    = abi.ChainEpoch(0)
-	UpgradeLiftoffHeight     = abi.ChainEpoch(0)
-	UpgradeActorsV2Height    = abi.ChainEpoch(0)
-	UpgradeRefuelHeight      = abi.ChainEpoch(0)
-	UpgradeTapeHeight        = abi.ChainEpoch(0)
-	UpgradeKumquatHeight     = abi.ChainEpoch(0)
+	UpgradeSmokeHeight    = abi.ChainEpoch(-1)
+	UpgradeBreezeHeight   = abi.ChainEpoch(0)
+	UpgradeIgnitionHeight = abi.ChainEpoch(0)
+	UpgradeLiftoffHeight  = abi.ChainEpoch(0)
+	UpgradeActorsV2Height = abi.ChainEpoch(0)
+	UpgradeRefuelHeight   = abi.ChainEpoch(0)
+	UpgradeTapeHeight     = abi.ChainEpoch(0)
+	UpgradeKumquatHeight  = abi.ChainEpoch(0)
 
 	BreezeGasTampingDuration = abi.ChainEpoch(0)
 )
@@ -404,7 +403,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork, root cid.Cid,
 	//}
 
 	// Take all excess funds away, put them into the reserve account
-	err = tree.ForEach(func(addr address.Address, act *actor.Actor) error {
+	err = tree.ForEach(func(addr address.Address, act *types.Actor) error {
 		switch act.Code.Cid {
 		case builtin0.AccountActorCodeID, builtin0.MultisigActorCodeID, builtin0.PaymentChannelActorCodeID:
 			sysAcc, err := isSystemAccount(addr)
@@ -477,7 +476,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork, root cid.Cid,
 
 	var transfersBack []transfer
 	// Now, we return some funds to places where they are needed
-	err = tree.ForEach(func(addr address.Address, act *actor.Actor) error {
+	err = tree.ForEach(func(addr address.Address, act *types.Actor) error {
 		lbact, _, err := lbtree.GetActor(ctx, addr)
 		if err != nil {
 			return xerrors.Errorf("failed to get actor in lookback state")
@@ -505,11 +504,11 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork, root cid.Cid,
 			}
 
 			var minfo miner0.MinerInfo
-			if err :=  sm.ipldstore.Get(ctx, st.Info, &minfo); err != nil {
+			if err := sm.ipldstore.Get(ctx, st.Info, &minfo); err != nil {
 				return xerrors.Errorf("failed to get miner info: %v", err)
 			}
 
-			sectorsArr, err := adt0.AsArray(adt.WrapStore(ctx,sm.ipldstore), st.Sectors)
+			sectorsArr, err := adt0.AsArray(adt.WrapStore(ctx, sm.ipldstore), st.Sectors)
 			if err != nil {
 				return xerrors.Errorf("failed to load sectors array: %v", err)
 			}
@@ -533,7 +532,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork, root cid.Cid,
 					return xerrors.Errorf("failed to load miner state: %v", err)
 				}
 
-				lbsectors, err := adt0.AsArray(adt.WrapStore(ctx,sm.ipldstore), lbst.Sectors)
+				lbsectors, err := adt0.AsArray(adt.WrapStore(ctx, sm.ipldstore), lbst.Sectors)
 				if err != nil {
 					return xerrors.Errorf("failed to load lb sectors array: %v", err)
 				}
@@ -589,7 +588,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork, root cid.Cid,
 
 	// Now, a final sanity check to make sure the balances all check out
 	total := abi.NewTokenAmount(0)
-	err = tree.ForEach(func(addr address.Address, act *actor.Actor) error {
+	err = tree.ForEach(func(addr address.Address, act *types.Actor) error {
 		total = big.Add(total, act.Balance)
 		return nil
 	})
@@ -647,7 +646,7 @@ func resetGenesisMsigs(ctx context.Context, sm *ChainFork, store adt0.Store, tre
 		return xerrors.Errorf("loading state tree: %w", err)
 	}
 
-	err = genesisTree.ForEach(func(addr address.Address, genesisActor *actor.Actor) error {
+	err = genesisTree.ForEach(func(addr address.Address, genesisActor *types.Actor) error {
 		if genesisActor.Code.Cid == builtin0.MultisigActorCodeID {
 			currActor, _, err := tree.GetActor(ctx, addr)
 			if err != nil {
@@ -764,7 +763,7 @@ func splitGenesisMultisig(ctx context.Context, addr address.Address, store adt0.
 		return xerrors.Errorf("storing new state: %w", err)
 	}
 
-	newActor := actor.Actor{
+	newActor := types.Actor{
 		Code:       enccid.NewCid(builtin0.MultisigActorCodeID),
 		Head:       enccid.NewCid(scid),
 		CallSeqNum: 0,
@@ -831,7 +830,7 @@ func resetMultisigVesting(ctx context.Context, store adt0.Store, tree *vmstate.S
 }
 
 func UpgradeIgnition(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
-	store := adt.WrapStore(ctx,sm.ipldstore)
+	store := adt.WrapStore(ctx, sm.ipldstore)
 
 	if UpgradeLiftoffHeight <= epoch {
 		return cid.Undef, xerrors.Errorf("liftoff height must be beyond ignition height")
@@ -886,7 +885,7 @@ func UpgradeIgnition(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi
 }
 
 func UpgradeRefuel(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
-	store := adt.WrapStore(ctx,sm.ipldstore)
+	store := adt.WrapStore(ctx, sm.ipldstore)
 	tree, err := sm.StateTree(ctx, root)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting state tree: %v", err)
@@ -931,7 +930,7 @@ func UpgradeActorsV2(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi
 	newRoot, err := store.Put(ctx, &vmstate.StateRoot{
 		Version: vmstate.StateTreeVersion1,
 		Actors:  enccid.NewCid(newHamtRoot),
-		Info:     enccid.NewCid(info),
+		Info:    enccid.NewCid(info),
 	})
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to persist new state root: %v", err)
@@ -967,7 +966,7 @@ func UpgradeLiftoff(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.
 		return cid.Undef, xerrors.Errorf("getting state tree: %v", err)
 	}
 
-	err = setNetworkName(ctx, adt.WrapStore(ctx,sm.ipldstore), tree, "mainnet")
+	err = setNetworkName(ctx, adt.WrapStore(ctx, sm.ipldstore), tree, "mainnet")
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("setting network name: %v", err)
 	}

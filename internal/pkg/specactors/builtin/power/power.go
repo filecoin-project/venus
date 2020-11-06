@@ -2,6 +2,7 @@ package power
 
 import (
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -11,8 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
@@ -31,7 +30,7 @@ var (
 	Methods = builtin2.MethodsPower
 )
 
-func Load(store adt.Store, act *actor.Actor) (st State, err error) {
+func Load(store adt.Store, act *types.Actor) (st State, err error) {
 	switch act.Code.Cid {
 	case builtin0.StoragePowerActorCodeID:
 		return load0(store, act.Head.Cid)
@@ -65,6 +64,7 @@ type Claim struct {
 	// Sum of quality adjusted power for a miner's sectors.
 	QualityAdjPower abi.StoragePower
 }
+
 func AddClaims(a Claim, b Claim) Claim {
 	return Claim{
 		RawBytePower:    big.Add(a.RawBytePower, b.RawBytePower),

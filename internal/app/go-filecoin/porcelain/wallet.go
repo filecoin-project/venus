@@ -8,14 +8,13 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
 // ErrNoDefaultFromAddress is returned when a default wallet address couldn't be determined (eg, there are zero addresses in the wallet).
 var ErrNoDefaultFromAddress = errors.New("unable to determine a default wallet address")
 
 type wbPlumbing interface {
-	ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error)
+	ActorGet(ctx context.Context, addr address.Address) (*types.Actor, error)
 }
 
 // WalletBalance gets the current balance associated with an address
