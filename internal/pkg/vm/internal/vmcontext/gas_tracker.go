@@ -69,10 +69,7 @@ func (t *GasTracker) TryCharge(gasCharge gas.GasCharge) bool {
 
 		//Callers: callers[:cout],
 	}
-	/*	if toUse > 0 {
-		xxxx, _ := json.Marshal(gasTrace)
-		fmt.Println(string(xxxx))
-	}*/
+
 	t.executionTrace.GasCharges = append(t.executionTrace.GasCharges, &gasTrace)
 	t.lastGasChargeTime = now
 	t.lastGasCharge = &gasTrace

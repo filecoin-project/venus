@@ -6,13 +6,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork/blockstore"
-	"io/ioutil"
-	"os"
-	"os/exec"
-	"strconv"
-
 	"github.com/fatih/color"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork/blockstore"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -25,6 +20,10 @@ import (
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipld/go-car"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"strconv"
 )
 
 // ExecuteMessageVector executes a message-class test vector.
@@ -55,11 +54,7 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema
 		if m.EpochOffset != nil {
 			baseEpoch += *m.EpochOffset
 		}
-		name := "case: " + vector.Meta.ID + " " + msg.From.String() + " " + msg.To.String() + " " + root.String()
-		fmt.Println(name)
-		if name == "case: collect-ok f1nhudgskmseowv7rp4e6scxsmlt3qoysvpn73tuy f2xjl6b4xwp7wj4qs4nwdmufenzhfu4izqiyehmiq bafy2bzaceazpunovvojrxe3beayap57itwgvlj67qtrjrpaa2lslohwimaagy" {
-			fmt.Print()
-		}
+
 		// Execute the message.
 		var ret *vm.Ret
 		ret, root, err = driver.ExecuteMessage(bs, ExecuteMessageParams{

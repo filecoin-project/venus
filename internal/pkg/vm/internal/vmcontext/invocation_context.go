@@ -42,8 +42,8 @@ type topLevelContext struct {
 type invocationContext struct {
 	vm                *VM
 	topLevel          *topLevelContext
-	msg               VmMessage    // The message being processed
-	fromActor         *types.Actor // The immediate calling actor
+	originMsg         VmMessage //msg not trasfer from and to address
+	msg               VmMessage // The message being processed
 	gasTank           *GasTracker
 	randSource        crypto.RandomnessSource
 	isCallerValidated bool
@@ -57,7 +57,8 @@ type internalActorStateHandle interface {
 	Validate(func(interface{}) cid.Cid)
 }
 
-func newInvocationContext(rt *VM, gasIpld ipfscbor.IpldStore, topLevel *topLevelContext, msg VmMessage, fromActor *types.Actor, gasTank *GasTracker, randSource crypto.RandomnessSource) invocationContext {
+func newInvocationContext(rt *VM, gasIpld ipfscbor.IpldStore, topLevel *topLevelContext, msg VmMessage, gasTank *GasTracker, randSource crypto.RandomnessSource) invocationContext {
+	orginMsg := msg
 	// Note: the toActor and stateHandle are loaded during the `invoke()`
 	resF, ok := rt.normalizeAddress(msg.From)
 	if !ok {
@@ -75,12 +76,11 @@ func newInvocationContext(rt *VM, gasIpld ipfscbor.IpldStore, topLevel *topLevel
 		vm:                rt,
 		topLevel:          topLevel,
 		msg:               msg,
-		fromActor:         fromActor,
+		originMsg:         orginMsg,
 		gasTank:           gasTank,
 		randSource:        randSource,
 		isCallerValidated: false,
 		allowSideEffects:  true,
-		toActor:           nil,
 		stateHandle:       nil,
 		gasIpld:           gasIpld,
 	}
@@ -134,18 +134,18 @@ func (shc *stateHandleContext) store() specsruntime.Store {
 }
 
 func (shc *stateHandleContext) loadActor() *types.Actor {
-	entry, found, err := shc.vm.state.GetActor(shc.vm.context, shc.msg.To)
+	entry, found, err := shc.vm.state.GetActor(shc.vm.context, shc.originMsg.To)
 	if err != nil {
 		panic(err)
 	}
 	if !found {
-		panic(fmt.Errorf("failed To find actor %s for stateView", shc.msg.To))
+		panic(fmt.Errorf("failed To find actor %s for stateView", shc.originMsg.To))
 	}
 	return entry
 }
 
 func (shc *stateHandleContext) storeActor(actr *types.Actor) {
-	err := shc.vm.state.SetActor(shc.vm.context, shc.msg.To, actr)
+	err := shc.vm.state.SetActor(shc.vm.context, shc.originMsg.To, actr)
 	if err != nil {
 		panic(err)
 	}
@@ -176,10 +176,10 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 				vmlog.Warnw("Abort during actor execution.",
 					"errorMessage", p,
 					"exitCode", p.Code(),
-					"sender", ctx.msg.From,
-					"receiver", ctx.msg.To,
-					"methodNum", ctx.msg.Method,
-					"Value", ctx.msg.Value,
+					"sender", ctx.originMsg.From,
+					"receiver", ctx.originMsg.To,
+					"methodNum", ctx.originMsg.Method,
+					"Value", ctx.originMsg.Value,
 					"gasLimit", ctx.gasTank.gasAvailable)
 				ret = []byte{} // The Empty here should never be used, but slightly safer than zero Value.
 				errcode = p.Code()
@@ -213,26 +213,32 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 
 	// 1. load target actor
 	// Note: we replace the "To" address with the normalized version
-
-	ctx.toActor, ctx.msg.To = ctx.resolveTarget(ctx.msg.To)
+	_, toIdAddr := ctx.resolveTarget(ctx.originMsg.To)
+	if ctx.vm.NtwkVersion() > network.Version3 {
+		ctx.msg.To = toIdAddr
+	}
 
 	// 2. charge gas for msg
-	ctx.gasTank.Charge(ctx.vm.pricelist.OnMethodInvocation(ctx.msg.Value, ctx.msg.Method), "Method invocation")
+	ctx.gasTank.Charge(ctx.vm.pricelist.OnMethodInvocation(ctx.originMsg.Value, ctx.originMsg.Method), "Method invocation")
 
 	// 3. transfer funds carried by the msg
-	if !ctx.msg.Value.Nil() && !ctx.msg.Value.IsZero() {
-		if ctx.msg.From != ctx.msg.To {
-			ctx.fromActor, ctx.toActor = ctx.vm.transfer(ctx.msg.From, ctx.msg.To, ctx.msg.Value)
+	if !ctx.originMsg.Value.Nil() && !ctx.originMsg.Value.IsZero() {
+		if ctx.originMsg.From != ctx.originMsg.To {
+			ctx.vm.transfer(ctx.originMsg.From, ctx.originMsg.To, ctx.originMsg.Value)
 		}
 	}
 
 	// 4. if we are just sending funds, there is nothing else To do.
-	if ctx.msg.Method == builtin.MethodSend {
+	if ctx.originMsg.Method == builtin.MethodSend {
 		return nil, exitcode.Ok
 	}
 
 	// 5. load target actor code
-	actorImpl := ctx.vm.getActorImpl(ctx.toActor.Code.Cid, ctx.Runtime())
+	toActor, found, err := ctx.vm.state.GetActor(ctx.vm.context, ctx.originMsg.To)
+	if err != nil || !found {
+		panic(xerrors.Errorf("cannt find to actor %v", err))
+	}
+	actorImpl := ctx.vm.getActorImpl(toActor.Code.Cid, ctx.Runtime())
 	// 6. create target stateView handle
 	stateHandle := newActorStateHandle((*stateHandleContext)(ctx))
 	ctx.stateHandle = &stateHandle
@@ -240,7 +246,7 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 	// dispatch
 	adapter := newRuntimeAdapter(ctx) //runtimeAdapter{ctx: ctx}
 	var extErr *dispatch.ExcuteError
-	ret, extErr = actorImpl.Dispatch(ctx.msg.Method, adapter, ctx.msg.Params)
+	ret, extErr = actorImpl.Dispatch(ctx.originMsg.Method, adapter, ctx.originMsg.Params)
 	if extErr != nil {
 		runtime.Abortf(extErr.ExitCode(), extErr.Error())
 	}
@@ -265,7 +271,6 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 	})
 
 	// Reset To pre-invocation stateView
-	ctx.toActor = nil
 	ctx.stateHandle = nil
 
 	// 3. success!
@@ -333,7 +338,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 			Params: &target,
 		}
 
-		newCtx := newInvocationContext(ctx.vm, ctx.gasIpld, ctx.topLevel, newMsg, nil, ctx.gasTank, ctx.randSource)
+		newCtx := newInvocationContext(ctx.vm, ctx.gasIpld, ctx.topLevel, newMsg, ctx.gasTank, ctx.randSource)
 		_, code := newCtx.invoke()
 		if code.IsError() {
 			// we failed To construct an account actor..
@@ -416,6 +421,9 @@ func (ctx *invocationContext) ValidateCaller(pattern runtime.CallerPattern) {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Method must validate caller identity exactly once")
 	}
 	if !pattern.IsMatch((*patternContext2)(ctx)) {
+		ccc := (*patternContext2)(ctx).CallerCode()
+		pattern.IsMatch((*patternContext2)(ctx))
+		fmt.Println(ccc)
 		runtime.Abortf(exitcode.SysErrForbidden, "Method invoked by incorrect caller")
 	}
 	ctx.isCallerValidated = true
@@ -436,9 +444,7 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 	// 1. alias fromActor
 	// 2. build internal message
 
-	// 1. fromActor = executing toActor
 	from := ctx.msg.To
-	fromActor := ctx.toActor
 
 	// 2. build internal message
 	newMsg := VmMessage{
@@ -449,12 +455,8 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 		Params: params,
 	}
 
-	// invoke
 	// 1. build new context
-	// 2. invoke message
-
-	// 1. build new context
-	newCtx := newInvocationContext(ctx.vm, ctx.gasIpld, ctx.topLevel, newMsg, fromActor, ctx.gasTank, ctx.randSource)
+	newCtx := newInvocationContext(ctx.vm, ctx.gasIpld, ctx.topLevel, newMsg, ctx.gasTank, ctx.randSource)
 	// 2. invoke
 	ret, code := newCtx.invoke()
 	if code != 0 {
@@ -470,7 +472,14 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 
 /// Balance implements runtime.InvocationContext.
 func (ctx *invocationContext) Balance() abi.TokenAmount {
-	return ctx.toActor.Balance
+	toActor, found, err := ctx.vm.state.GetActor(ctx.vm.context, ctx.originMsg.To)
+	if err != nil {
+		panic(xerrors.Errorf("cannt find to actor %v", err))
+	}
+	if !found {
+		return abi.NewTokenAmount(0)
+	}
+	return toActor.Balance
 }
 
 //
@@ -547,7 +556,7 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 
 // DeleteActor implements runtime.ExtendedInvocationContext.
 func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
-	receiver := ctx.msg.To
+	receiver := ctx.originMsg.To
 	receiverActor, found, err := ctx.vm.state.GetActor(ctx.vm.context, receiver)
 	if err != nil {
 		panic(err)
@@ -563,7 +572,7 @@ func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 	// This looks like it could cause a problem with gas refund going To a non-existent actor, but the gas payer
 	// is always an account actor, which cannot be the receiver of this message.
 	if receiverActor.Balance.GreaterThan(big.Zero()) {
-		ctx.fromActor, ctx.toActor = ctx.vm.transfer(receiver, beneficiary, receiverActor.Balance)
+		ctx.vm.transfer(receiver, beneficiary, receiverActor.Balance)
 	}
 
 	if err := ctx.vm.state.DeleteActor(ctx.vm.context, receiver); err != nil {
@@ -586,7 +595,11 @@ type patternContext2 invocationContext
 var _ runtime.PatternContext = (*patternContext2)(nil)
 
 func (ctx *patternContext2) CallerCode() cid.Cid {
-	return ctx.fromActor.Code.Cid
+	toActor, found, err := ctx.vm.state.GetActor(ctx.vm.context, ctx.originMsg.From)
+	if err != nil || !found {
+		panic(xerrors.Errorf("cannt find to actor %v", err))
+	}
+	return toActor.Code.Cid
 }
 
 func (ctx *patternContext2) CallerAddr() address.Address {

@@ -7,16 +7,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
-	xerrors "github.com/pkg/errors"
-
 	_ "github.com/filecoin-project/go-filecoin/internal/pkg/consensus/lib/sigs/bls"  // enable bls signatures
 	_ "github.com/filecoin-project/go-filecoin/internal/pkg/consensus/lib/sigs/secp" // enable secp signatures
+	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vmsupport"
 	gobig "math/big"
 
 	"github.com/filecoin-project/go-address"
@@ -166,9 +164,14 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 			default:
 				// sneak in messages originating from other addresses as both kinds.
 				// these should fail, as they are actually invalid senders.
-				/*	sb.SECPMessages = append(sb.SECPMessages, msg)
-					sb.BLSMessages = append(sb.BLSMessages, msg)*/
-				return nil, xerrors.New("unsupport sendor")
+				sb.SECPMessages = append(sb.SECPMessages, &types.SignedMessage{
+					Message: *msg,
+					Signature: crypto.Signature{
+						Type: crypto.SigTypeSecp256k1,
+						Data: make([]byte, 65),
+					},
+				})
+				sb.BLSMessages = append(sb.BLSMessages, msg)
 			}
 		}
 		blocks = append(blocks, sb)

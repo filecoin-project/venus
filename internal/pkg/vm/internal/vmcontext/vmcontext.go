@@ -390,7 +390,7 @@ func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 		pricelist: vm.pricelist,
 		gasTank:   gasTank,
 	}
-	ctx := newInvocationContext(vm, gasIpld, &topLevel, imsg, fromActor, gasTank, vm.vmOption.Rnd)
+	ctx := newInvocationContext(vm, gasIpld, &topLevel, imsg, gasTank, vm.vmOption.Rnd)
 
 	// 4. invoke message
 	ret, code := ctx.invoke()
@@ -516,16 +516,6 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 		panic(err)
 	}
 
-	// reload From actor
-	// Note: balance might have changed
-	fromActor, found, err = vm.state.GetActor(vm.context, msg.From)
-	if err != nil {
-		panic(err)
-	}
-	if !found {
-		panic("unreachable: actor cannot possibly not exist")
-	}
-
 	// 7. snapshot stateView
 	// Even if the message fails, the following accumulated changes will be applied:
 	// - CallSeqNumber increment
@@ -555,14 +545,17 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 		Params: msg.Params,
 	}
 
-	// 2. build invocation context
 	gasIpld := &GasChargeStorage{
 		context:   vm.context,
 		inner:     vm.store,
 		pricelist: vm.pricelist,
 		gasTank:   gasTank,
 	}
-	ctx := newInvocationContext(vm, gasIpld, &topLevel, imsg, fromActor, gasTank, vm.vmOption.Rnd)
+
+	// 2. build invocation context
+	//Note replace from and to address here
+	ctx := newInvocationContext(vm, gasIpld, &topLevel, imsg, gasTank, vm.vmOption.Rnd)
+
 	// 3. invoke
 	ret, code := ctx.invoke()
 	// post-send
@@ -623,12 +616,6 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 	if ret == nil {
 		ret = []byte{} //todo cbor marshal cant diff nil and []byte  should be fix in encoding
 	}
-	for _, xx := range gasTank.executionTrace.GasCharges {
-		if xx.TotalGas > 0 {
-			cccc, _ := json.Marshal(xx)
-			fmt.Println(string(cccc))
-		}
-	}
 	return &Ret{
 		GasTracker: gasTank,
 		OutPuts:    gasOutputs,
@@ -646,7 +633,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 // WARNING: this Method will panic if the the amount is negative, accounts dont exist, or have inssuficient funds.
 //
 // Note: this is not idiomatic, it follows the Spec expectations for this Method.
-func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amount abi.TokenAmount) (*types.Actor, *types.Actor) {
+func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amount abi.TokenAmount) {
 	if amount.LessThan(big.Zero()) {
 		runtime.Abortf(exitcode.SysErrForbidden, "attempt To transfer negative Value %s From %s To %s", amount, debitFrom, creditTo)
 	}
@@ -685,7 +672,6 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 	if err := vm.state.SetActor(vm.context, creditTo, toActor); err != nil {
 		panic(err)
 	}
-	return fromActor, toActor
 }
 
 func (vm *VM) getActorImpl(code cid.Cid, runtime2 runtime.Runtime) dispatch.Dispatcher {
@@ -816,10 +802,6 @@ func (vm *VM) flush() (state.Root, error) {
 	if root, err := vm.state.Flush(vm.context); err != nil {
 		return cid.Undef, err
 	} else {
-		/*		// flush all blocks out of the store
-				if err := vm.store.Flush(); err != nil {
-					return Undef, err
-				}*/
 		return root, nil
 	}
 }

@@ -57,16 +57,17 @@ func newRuntimeAdapter(ctx *invocationContext) *runtimeAdapter {
 }
 
 func (a *runtimeAdapter) Caller() address.Address {
-	if a.ctx.Message().Caller().Protocol() != address.ID {
+	/*	if a.ctx.Message().Caller().Protocol() != address.ID {
 		panic("runtime message has a non-ID caller")
-	}
+	}*/
 	return a.ctx.Message().Caller()
 }
 
 func (a *runtimeAdapter) Receiver() address.Address {
-	if a.ctx.Message().Receiver() != address.Undef && a.ctx.Message().Receiver().Protocol() != address.ID {
+	//todo refer lotus imple
+	/*	if a.ctx.Message().Receiver() != address.Undef && a.ctx.Message().Receiver().Protocol() != address.ID {
 		panic("runtime message has a non-ID receiver")
-	}
+	}*/
 	return a.ctx.Message().Receiver()
 }
 
@@ -163,7 +164,6 @@ func (a *runtimeAdapter) GetRandomnessFromTickets(personalization crypto.DomainS
 }
 
 func (a *runtimeAdapter) Send(toAddr address.Address, methodNum abi.MethodNum, params cbor.Marshaler, value abi.TokenAmount, out cbor.Er) exitcode.ExitCode {
-	fmt.Println("Send: ", toAddr.String())
 	return a.ctx.Send(toAddr, methodNum, params, value, out)
 }
 
