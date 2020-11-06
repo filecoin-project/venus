@@ -92,7 +92,6 @@ func NewVM(actorImpls ActorImplLookup,
 //
 // This Method is intended To be used in the generation of the genesis block only.
 func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (*Ret, error) {
-	vm.SetCurrentEpoch(0)
 	// normalize From addr
 	var ok bool
 	if from, ok = vm.normalizeAddress(from); !ok {
@@ -108,6 +107,7 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 		Params: params,
 	}
 
+	vm.SetCurrentEpoch(0)
 	ret, err := vm.applyImplicitMessage(imsg)
 	if err != nil {
 		return ret, err
@@ -162,7 +162,6 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 // ApplyTipSetMessages implements interpreter.VMInterpreter
 func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, parentEpoch, epoch abi.ChainEpoch, cb ExecCallBack) ([]types.MessageReceipt, error) {
 	var receipts []types.MessageReceipt
-	vm.SetCurrentEpoch(epoch)
 	pstate, _ := vm.state.Flush(vm.context)
 	for i := parentEpoch; i < epoch; i++ {
 		if i > parentEpoch {
@@ -346,7 +345,6 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 //
 // This messages do not consume client gas and must not fail.
 func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
-	vm.SetCurrentEpoch(vm.vmOption.Epoch)
 	// implicit messages gas is tracked separatly and not paid by the miner
 	gasTank := NewGasTracker(types.SystemGasLimit)
 
