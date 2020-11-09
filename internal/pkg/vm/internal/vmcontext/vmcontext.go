@@ -2,7 +2,6 @@ package vmcontext
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -183,11 +182,17 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 		}
 		// handle state forks
 		// XXX: The state tree
-		_, err := vm.vmOption.Fork.HandleStateForks(vm.context, pstate, i, ts)
+		forkedCid, err := vm.vmOption.Fork.HandleStateForks(vm.context, pstate, i, ts)
 		if err != nil {
 			return nil, xerrors.Errorf("hand fork error", err)
 		}
-
+		fmt.Printf("after fork root: %s\n", forkedCid)
+		if pstate != forkedCid {
+			err = vm.state.At(forkedCid)
+			if err != nil {
+				return nil, xerrors.Errorf("load fork cid error", err)
+			}
+		}
 		vm.SetCurrentEpoch(i + 1)
 	}
 
@@ -228,11 +233,11 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 			}
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
-			iii, _ := vm.flush()
-			fmt.Printf("message: %s  root: %s\n", mcid, iii)
+			//iii, _ := vm.flush()
+			//fmt.Printf("message: %s  root: %s\n", mcid, iii)
 
-			dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
-			fmt.Println(string(dddd))
+			//dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
+			//fmt.Println(string(dddd))
 			//xxxx := []*types.GasTrace{}
 			//for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
 			//	xxx.Location = nil
@@ -243,7 +248,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 			//dddd, _ = json.MarshalIndent(xxxx,"","\t")
 			//fmt.Println(string(dddd))
 
-			fmt.Println()
+			//fmt.Println()
 		}
 
 		// Process SECP messages From the block
@@ -273,11 +278,11 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
 
-			iii, _ := vm.flush()
-			fmt.Printf("message: %s  root: %s\n", mcid, iii)
+			//iii, _ := vm.flush()
+			//fmt.Printf("message: %s  root: %s\n", mcid, iii)
 
-			dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
-			fmt.Println(string(dddd))
+			//dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
+			//fmt.Println(string(dddd))
 			//xxxx := []*types.GasTrace{}
 			//for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
 			//	xxx.Location = nil
@@ -287,7 +292,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 			//}
 			//dddd, _ = json.MarshalIndent(xxxx,"","\t")
 			//fmt.Println(string(dddd))
-			fmt.Println()
+			//fmt.Println()
 		}
 
 		root, _ := vm.state.Flush(context.TODO())
@@ -308,8 +313,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 
 		root, _ = vm.state.Flush(context.TODO())
 		fmt.Printf("reward: %d  root: %s\n", index, root)
-		fmt.Print()
-		fmt.Println("process block ", index, " time ", time.Since(start).Milliseconds())
+		//fmt.Println("process block ", index, " time ", time.Since(start).Milliseconds())
 	}
 
 	root, _ := vm.state.Flush(context.TODO())
@@ -329,7 +333,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 		}
 	}
 
-	fmt.Println("process block cron job ", time.Since(start).Milliseconds())
+	//fmt.Println("process block cron job ", time.Since(start).Milliseconds())
 	root, _ = vm.state.Flush(context.TODO())
 	fmt.Printf("after cron root: %s\n", root)
 

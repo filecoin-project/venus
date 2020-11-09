@@ -224,7 +224,7 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 	// 3. transfer funds carried by the msg
 	if !ctx.originMsg.Value.Nil() && !ctx.originMsg.Value.IsZero() {
 		if ctx.msg.From != toIdAddr {
-			ctx.vm.transfer(ctx.originMsg.From, ctx.originMsg.To, ctx.originMsg.Value)
+			ctx.vm.transfer(ctx.msg.From, toIdAddr, ctx.originMsg.Value)
 		}
 	}
 

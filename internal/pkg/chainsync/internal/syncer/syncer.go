@@ -588,9 +588,9 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 		beInSyncing = false //reset to start new sync
 	}()
 
-	//cidd, _ := cid.Decode("bafy2bzacebxacniavpxu3dokkofk2zqu7rkhjfyzpc34zm4ekp2o732fyghay")
-	//ci.Head = block.NewTipSetKey(cidd)
-	//ci.Height = 50012
+	cidd, _ := cid.Decode("bafy2bzacebxacniavpxu3dokkofk2zqu7rkhjfyzpc34zm4ekp2o732fyghay")
+	ci.Head = block.NewTipSetKey(cidd)
+	ci.Height = 50012
 
 	// If the store already has this tipset then the syncer is finished.
 	if syncer.chainStore.HasTipSetAndState(ctx, ci.Head) {

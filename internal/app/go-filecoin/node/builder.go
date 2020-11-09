@@ -238,6 +238,10 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	nd.ProofVerification = submodule.NewProofVerificationSubmodule(b.verifier)
 
+	nd.chain, err = submodule.NewChainSubmodule((*builder)(b), b.repo, &nd.Blockstore, &nd.ProofVerification, b.checkPoint, b.drand)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build node.Chain")
+	}
 	if b.drand == nil {
 		genBlk, err := nd.chain.ChainReader.GetGenesisBlock(ctx)
 		if err != nil {
@@ -260,11 +264,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	}
 
 	nd.ChainClock = b.chainClock
-
-	nd.chain, err = submodule.NewChainSubmodule((*builder)(b), b.repo, &nd.Blockstore, &nd.ProofVerification, b.checkPoint, b.drand)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.Chain")
-	}
 
 	nd.Discovery, err = submodule.NewDiscoverySubmodule(ctx, (*builder)(b), b.repo.Config().Bootstrap, &nd.network, nd.chain.ChainReader, nd.chain.MessageStore)
 	if err != nil {

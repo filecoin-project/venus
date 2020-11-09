@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"runtime/debug"
@@ -205,7 +204,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 			return err
 		}
 
-		fmt.Println(startPoint.Key().String(), "root: ", stateRoot, "height: ", startPoint.EnsureHeight())
+		// fmt.Println(startPoint.Key().String(), "root: ", stateRoot, "height: ", startPoint.EnsureHeight())
 		err = store.PutTipSetMetadata(ctx, &TipSetMetadata{
 			TipSet:          startPoint,
 			TipSetStateRoot: stateRoot,
@@ -223,16 +222,16 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	logStore.Infof("finished loading %d tipsets from %s", startHeight, headTs.String())
 
 	//todo just for test should remove if ok, 新创建节点会出问题?
-	//if checkPointTs == nil || headTs.EnsureHeight() > checkPointTs.EnsureHeight() {
-	//	p, err := headTs.Parents()
-	//	if err != nil {
-	//		return err
-	//	}
-	//	headTs, err = store.GetTipSet(p)
-	//	if err != nil {
-	//		return err
-	//	}
-	//}
+	if checkPointTs == nil || headTs.EnsureHeight() > checkPointTs.EnsureHeight() {
+		p, err := headTs.Parents()
+		if err != nil {
+			return err
+		}
+		headTs, err = store.GetTipSet(p)
+		if err != nil {
+			return err
+		}
+	}
 
 	// Set actual head.
 	return store.SetHead(ctx, headTs)

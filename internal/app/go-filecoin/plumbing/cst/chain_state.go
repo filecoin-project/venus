@@ -107,10 +107,6 @@ func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider
 	}
 }
 
-func (chn *ChainStateReadWriter) BeaconSchedule() beacon.Schedule {
-	return chn.drand
-}
-
 // Head returns the head tipset
 func (chn *ChainStateReadWriter) Head() block.TipSetKey {
 	return chn.readWriter.GetHead()

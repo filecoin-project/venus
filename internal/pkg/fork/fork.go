@@ -37,20 +37,21 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/multisig"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/policy"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+
 	vmstate "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 var log = logging.Logger("fork")
 
 var (
-	UpgradeSmokeHeight    = abi.ChainEpoch(-1)
-	UpgradeBreezeHeight   = abi.ChainEpoch(0)
-	UpgradeIgnitionHeight = abi.ChainEpoch(0)
-	UpgradeLiftoffHeight  = abi.ChainEpoch(0)
-	UpgradeActorsV2Height = abi.ChainEpoch(0)
-	UpgradeRefuelHeight   = abi.ChainEpoch(0)
-	UpgradeTapeHeight     = abi.ChainEpoch(0)
-	UpgradeKumquatHeight  = abi.ChainEpoch(0)
+	UpgradeSmokeHeight       = abi.ChainEpoch(-1)
+	UpgradeBreezeHeight      = abi.ChainEpoch(0)
+	UpgradeIgnitionHeight    = abi.ChainEpoch(0)
+	UpgradeLiftoffHeight     = abi.ChainEpoch(0)
+	UpgradeActorsV2Height    = abi.ChainEpoch(0)
+	UpgradeRefuelHeight      = abi.ChainEpoch(0)
+	UpgradeTapeHeight        = abi.ChainEpoch(0)
+	UpgradeKumquatHeight     = abi.ChainEpoch(0)
 
 	BreezeGasTampingDuration = abi.ChainEpoch(0)
 )
@@ -322,8 +323,11 @@ func (sm *ChainFork) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) 
 
 func doTransfer(tree vmstate.Tree, from, to address.Address, amt abi.TokenAmount) error {
 	fromAct, found, err := tree.GetActor(context.TODO(), from)
-	if !found || err != nil {
+	if err != nil {
 		return xerrors.Errorf("failed to get 'from' actor for transfer: %v", err)
+	}
+	if !found {
+		return xerrors.Errorf("did not find 'from' actor for transfer: %v", from.String())
 	}
 
 	fromAct.Balance = big.Sub(fromAct.Balance, amt)
@@ -336,8 +340,11 @@ func doTransfer(tree vmstate.Tree, from, to address.Address, amt abi.TokenAmount
 	}
 
 	toAct, found, err := tree.GetActor(context.TODO(), to)
-	if !found || err != nil {
+	if err != nil {
 		return xerrors.Errorf("failed to get 'to' actor for transfer: %v", err)
+	}
+	if !found {
+		return xerrors.Errorf("did not find 'to' actor for transfer: %v", from.String())
 	}
 
 	toAct.Balance = big.Add(toAct.Balance, amt)
@@ -347,6 +354,19 @@ func doTransfer(tree vmstate.Tree, from, to address.Address, amt abi.TokenAmount
 	}
 
 	return nil
+}
+
+func (sm *ChainFork) ParentState(ts *block.TipSet) cid.Cid {
+	if ts == nil {
+		tts, err := sm.cr.GetTipSet(sm.cr.Head())
+		if err == nil {
+			return tts.Blocks()[0].StateRoot.Cid
+		}
+	}else {
+		return ts.Blocks()[0].StateRoot.Cid
+	}
+
+	return cid.Undef
 }
 
 func UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
@@ -379,10 +399,13 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork, root cid.Cid,
 		return cid.Undef, xerrors.Errorf("failed to get tipset at lookback height: %v", err)
 	}
 
-	lbtree, err := sm.cr.GetTipSetState(ctx, lbts.Key())
+	lbtree, err := sm.cr.GetTipSetState(ctx, lbts.EnsureParents())
+	//lbtree, err := sm.StateTree(ctx, sm.ParentState(lbts))
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("loading state tree failed: %v", err)
 	}
+	//xxxxx, _ := lbtree.Flush(context.Background())
+	//fmt.Println("lbtree root: ", xxxxx)
 
 	tree, err := sm.StateTree(ctx, root)
 	if err != nil {
@@ -451,6 +474,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork, root cid.Cid,
 	}
 
 	// Execute transfers from previous step
+	//fmt.Printf("num:%v, transfers:%v\n", len(transfers), transfers)
 	for _, t := range transfers {
 		if err := doTransfer(tree, t.From, t.To, t.Amt); err != nil {
 			return cid.Undef, xerrors.Errorf("transfer %s %s->%s failed: %v", t.Amt, t.From, t.To, err)
@@ -482,79 +506,83 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork, root cid.Cid,
 			return xerrors.Errorf("failed to get actor in lookback state")
 		}
 
-		prevBalance := abi.NewTokenAmount(0)
-		if lbact != nil {
-			prevBalance = lbact.Balance
-		}
-
-		switch act.Code.Cid {
-		case builtin0.AccountActorCodeID, builtin0.MultisigActorCodeID, builtin0.PaymentChannelActorCodeID:
-			nbalance := big.Min(prevBalance, AccountCap)
-			if nbalance.Sign() != 0 {
-				transfersBack = append(transfersBack, transfer{
-					From: builtin.ReserveAddress,
-					To:   addr,
-					Amt:  nbalance,
-				})
-			}
-		case builtin0.StorageMinerActorCodeID:
-			var st miner0.State
-			if err := sm.ipldstore.Get(ctx, act.Head.Cid, &st); err != nil {
-				return xerrors.Errorf("failed to load miner state: %v", err)
+			prevBalance := abi.NewTokenAmount(0)
+			if lbact != nil {
+				prevBalance = lbact.Balance
 			}
 
-			var minfo miner0.MinerInfo
-			if err := sm.ipldstore.Get(ctx, st.Info, &minfo); err != nil {
-				return xerrors.Errorf("failed to get miner info: %v", err)
-			}
-
-			sectorsArr, err := adt0.AsArray(adt.WrapStore(ctx, sm.ipldstore), st.Sectors)
-			if err != nil {
-				return xerrors.Errorf("failed to load sectors array: %v", err)
-			}
-
-			slen := sectorsArr.Length()
-
-			power := big.Mul(big.NewInt(int64(slen)), big.NewInt(int64(minfo.SectorSize)))
-
-			mfunds := minerFundsAlloc(power, totalPower)
-			transfersBack = append(transfersBack, transfer{
-				From: builtin.ReserveAddress,
-				To:   minfo.Worker,
-				Amt:  mfunds,
-			})
-
-			// Now make sure to give each miner who had power at the lookback some FIL
-			lbact, _, err := lbtree.GetActor(ctx, addr)
-			if err == nil {
-				var lbst miner0.State
-				if err := sm.ipldstore.Get(ctx, lbact.Head.Cid, &lbst); err != nil {
+			switch act.Code.Cid {
+			case builtin0.AccountActorCodeID, builtin0.MultisigActorCodeID, builtin0.PaymentChannelActorCodeID:
+				nbalance := big.Min(prevBalance, AccountCap)
+				if nbalance.Sign() != 0 {
+					transfersBack = append(transfersBack, transfer{
+						From: builtin.ReserveAddress,
+						To:   addr,
+						Amt:  nbalance,
+					})
+				}
+			case builtin0.StorageMinerActorCodeID:
+				var st miner0.State
+				if err := sm.ipldstore.Get(ctx, act.Head.Cid, &st); err != nil {
 					return xerrors.Errorf("failed to load miner state: %v", err)
 				}
 
-				lbsectors, err := adt0.AsArray(adt.WrapStore(ctx, sm.ipldstore), lbst.Sectors)
+				var minfo miner0.MinerInfo
+				if err :=  sm.ipldstore.Get(ctx, st.Info, &minfo); err != nil {
+					return xerrors.Errorf("failed to get miner info: %v", err)
+				}
+
+				sectorsArr, err := adt0.AsArray(adt.WrapStore(ctx,sm.ipldstore), st.Sectors)
 				if err != nil {
-					return xerrors.Errorf("failed to load lb sectors array: %v", err)
+					return xerrors.Errorf("failed to load sectors array: %v", err)
 				}
 
-				if lbsectors.Length() > 0 {
-					transfersBack = append(transfersBack, transfer{
-						From: builtin.ReserveAddress,
-						To:   minfo.Worker,
-						Amt:  BaseMinerBalance,
-					})
-				}
+				slen := sectorsArr.Length()
 
-			} else {
-				log.Warnf("failed to get miner in lookback state: %s", err)
+				power := big.Mul(big.NewInt(int64(slen)), big.NewInt(int64(minfo.SectorSize)))
+
+				mfunds := minerFundsAlloc(power, totalPower)
+				transfersBack = append(transfersBack, transfer{
+					From: builtin.ReserveAddress,
+					To:   minfo.Worker,
+					Amt:  mfunds,
+				})
+
+				// Now make sure to give each miner who had power at the lookback some FIL
+				lbact, found, err := lbtree.GetActor(ctx, addr)
+				if err == nil {
+					if found {
+						var lbst miner0.State
+						if err := sm.ipldstore.Get(ctx, lbact.Head.Cid, &lbst); err != nil {
+							return xerrors.Errorf("failed to load miner state: %v", err)
+						}
+
+						lbsectors, err := adt0.AsArray(adt.WrapStore(ctx,sm.ipldstore), lbst.Sectors)
+						if err != nil {
+							return xerrors.Errorf("failed to load lb sectors array: %v", err)
+						}
+
+						if lbsectors.Length() > 0 {
+							transfersBack = append(transfersBack, transfer{
+								From: builtin.ReserveAddress,
+								To:   minfo.Worker,
+								Amt:  BaseMinerBalance,
+							})
+						}
+					} else {
+						log.Warnf("did not find actor: %s", addr.String())
+					}
+				} else {
+					log.Warnf("failed to get miner in lookback state: %s", err)
+				}
 			}
-		}
 		return nil
 	})
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("foreach over state tree failed: %v", err)
 	}
 
+	//fmt.Printf("num:%v, transfersBack:%v\n", len(transfersBack), transfersBack)
 	for _, t := range transfersBack {
 		if err := doTransfer(tree, t.From, t.To, t.Amt); err != nil {
 			return cid.Undef, xerrors.Errorf("transfer %s %s->%s failed: %v", t.Amt, t.From, t.To, err)
@@ -562,9 +590,12 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork, root cid.Cid,
 	}
 
 	// transfer all burnt funds back to the reserve account
-	burntAct, _, err := tree.GetActor(ctx, builtin0.BurntFundsActorAddr)
+	burntAct, find, err := tree.GetActor(ctx, builtin0.BurntFundsActorAddr)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to load burnt funds actor: %v", err)
+	}
+	if !find {
+		return cid.Undef, xerrors.New("did not find burnt funds actor")
 	}
 	if err := doTransfer(tree, builtin0.BurntFundsActorAddr, builtin.ReserveAddress, burntAct.Balance); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to unburn funds: %v", err)
@@ -576,9 +607,12 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork, root cid.Cid,
 		return cid.Undef, xerrors.Errorf("failed to parse reimbursement service address")
 	}
 
-	reimb, _, err := tree.GetActor(ctx, reimbAddr)
+	reimb, find, err := tree.GetActor(ctx, reimbAddr)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to load reimbursement account actor: %v", err)
+	}
+	if !find {
+		return cid.Undef, xerrors.New("did not find reimbursement actor")
 	}
 
 	difference := big.Sub(DesiredReimbursementBalance, reimb.Balance)
@@ -605,9 +639,12 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork, root cid.Cid,
 }
 
 func setNetworkName(ctx context.Context, store adt.Store, tree *vmstate.State, name string) error {
-	ia, _, err := tree.GetActor(ctx, builtin0.InitActorAddr)
+	ia, find, err := tree.GetActor(ctx, builtin0.InitActorAddr)
 	if err != nil {
 		return xerrors.Errorf("getting init actor: %w", err)
+	}
+	if !find {
+		return xerrors.New("did not find init actor")
 	}
 
 	initState, err := init_.Load(store, ia)
@@ -621,7 +658,7 @@ func setNetworkName(ctx context.Context, store adt.Store, tree *vmstate.State, n
 
 	c, err := store.Put(ctx, initState)
 	if err != nil {
-		return xerrors.Errorf("writing new init state: %v", err)
+		return xerrors.Errorf("writing new init state: %w", err)
 	}
 	ia.Head = enccid.NewCid(c)
 
@@ -648,9 +685,12 @@ func resetGenesisMsigs(ctx context.Context, sm *ChainFork, store adt0.Store, tre
 
 	err = genesisTree.ForEach(func(addr address.Address, genesisActor *types.Actor) error {
 		if genesisActor.Code.Cid == builtin0.MultisigActorCodeID {
-			currActor, _, err := tree.GetActor(ctx, addr)
+			currActor, find, err := tree.GetActor(ctx, addr)
 			if err != nil {
 				return xerrors.Errorf("loading actor: %w", err)
+			}
+			if !find {
+				return xerrors.Errorf("did not find actor: %s", addr.String())
 			}
 
 			var currState multisig0.State
@@ -707,9 +747,12 @@ func splitGenesisMultisig(ctx context.Context, addr address.Address, store adt0.
 		return xerrors.Errorf("cannot split into 0 portions")
 	}
 
-	mact, _, err := tree.GetActor(ctx, addr)
+	mact, find, err := tree.GetActor(ctx, addr)
 	if err != nil {
 		return xerrors.Errorf("getting msig actor: %w", err)
+	}
+	if !find {
+		return xerrors.Errorf("did not find actor: %s", addr.String())
 	}
 
 	mst, err := multisig.Load(store, mact)
@@ -798,9 +841,12 @@ func splitGenesisMultisig(ctx context.Context, addr address.Address, store adt0.
 }
 
 func resetMultisigVesting(ctx context.Context, store adt0.Store, tree *vmstate.State, addr address.Address, startEpoch abi.ChainEpoch, duration abi.ChainEpoch, balance abi.TokenAmount) error {
-	act, _, err := tree.GetActor(ctx, addr)
+	act, find, err := tree.GetActor(ctx, addr)
 	if err != nil {
 		return xerrors.Errorf("getting actor: %w", err)
+	}
+	if !find {
+		return xerrors.Errorf("did not find actor: %s", addr.String())
 	}
 
 	if !builtin.IsMultisigActor(act.Code.Cid) {
@@ -830,7 +876,7 @@ func resetMultisigVesting(ctx context.Context, store adt0.Store, tree *vmstate.S
 }
 
 func UpgradeIgnition(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
-	store := adt.WrapStore(ctx, sm.ipldstore)
+	store := adt.WrapStore(ctx,sm.ipldstore)
 
 	if UpgradeLiftoffHeight <= epoch {
 		return cid.Undef, xerrors.Errorf("liftoff height must be beyond ignition height")
@@ -885,7 +931,7 @@ func UpgradeIgnition(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi
 }
 
 func UpgradeRefuel(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
-	store := adt.WrapStore(ctx, sm.ipldstore)
+	store := adt.WrapStore(ctx,sm.ipldstore)
 	tree, err := sm.StateTree(ctx, root)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting state tree: %v", err)
@@ -930,7 +976,7 @@ func UpgradeActorsV2(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi
 	newRoot, err := store.Put(ctx, &vmstate.StateRoot{
 		Version: vmstate.StateTreeVersion1,
 		Actors:  enccid.NewCid(newHamtRoot),
-		Info:    enccid.NewCid(info),
+		Info:     enccid.NewCid(info),
 	})
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to persist new state root: %v", err)
@@ -966,7 +1012,7 @@ func UpgradeLiftoff(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.
 		return cid.Undef, xerrors.Errorf("getting state tree: %v", err)
 	}
 
-	err = setNetworkName(ctx, adt.WrapStore(ctx, sm.ipldstore), tree, "mainnet")
+	err = setNetworkName(ctx, adt.WrapStore(ctx,sm.ipldstore), tree, "mainnet")
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("setting network name: %v", err)
 	}
