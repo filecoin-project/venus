@@ -47,9 +47,9 @@ func (tm TicketMachine) MakeTicket(ctx context.Context, base block.TipSetKey, ep
 }
 
 // IsValidTicket verifies that the ticket's proof of randomness is valid with respect to its parent.
-func (tm TicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey, entry *block.BeaconEntry, newPeriod bool,
+func (tm TicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey, entry *block.BeaconEntry, bSmokeHeight bool,
 	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket block.Ticket) error {
-	randomness, err := tm.ticketVRFRandomness(ctx, base, entry, newPeriod, miner, epoch)
+	randomness, err := tm.ticketVRFRandomness(ctx, base, entry, bSmokeHeight, miner, epoch)
 	if err != nil {
 		return errors.Wrap(err, "failed to generate ticket randomness")
 	}
@@ -57,7 +57,7 @@ func (tm TicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey,
 	return crypto.ValidateBlsSignature(randomness, workerSigner, ticket.VRFProof)
 }
 
-func (tm TicketMachine) ticketVRFRandomness(ctx context.Context, base block.TipSetKey, entry *block.BeaconEntry, newPeriod bool, miner address.Address, epoch abi.ChainEpoch) (abi.Randomness, error) {
+func (tm TicketMachine) ticketVRFRandomness(ctx context.Context, base block.TipSetKey, entry *block.BeaconEntry, bSmokeHeight bool, miner address.Address, epoch abi.ChainEpoch) (abi.Randomness, error) {
 	entropyBuf := bytes.Buffer{}
 	minerEntropy, err := encoding.Encode(miner)
 	if err != nil {
@@ -67,7 +67,8 @@ func (tm TicketMachine) ticketVRFRandomness(ctx context.Context, base block.TipS
 	if err != nil {
 		return nil, err
 	}
-	if !newPeriod { // resample previous ticket and add to entropy
+
+	if bSmokeHeight { // todo
 		ticket, err := tm.sampler.SampleTicket(ctx, base, epoch)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to sample previous ticket")
