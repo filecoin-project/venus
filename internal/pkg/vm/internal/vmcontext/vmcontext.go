@@ -3,17 +3,15 @@ package vmcontext
 import (
 	"context"
 	"fmt"
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
-	"time"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -202,7 +200,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 
 	// process messages on each block
 	for index, blk := range blocks {
-		start := time.Now()
+		//start := time.Now()
 		if blk.Miner.Protocol() != address.ID {
 			panic("precond failure: block miner address must be an IDAddress")
 		}
@@ -321,7 +319,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 	fmt.Println("xxxx")
 
 	// cron tick
-	start := time.Now()
+	//start := time.Now()
 	cronMessage := makeCronTickMessage()
 	ret, err := vm.applyImplicitMessage(cronMessage)
 	if err != nil {
