@@ -5,6 +5,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/register"
 
 	"github.com/ipfs/go-cid"
 
@@ -61,7 +62,7 @@ func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *Blockstor
 
 	actorState := appstate.NewTipSetStateViewer(chainStore, blockstore.CborStore)
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)
-	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, builtin.DefaultActors, drand)
+	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, register.DefaultActors, drand)
 	faultChecker := slashing.NewFaultChecker(chainState)
 	syscalls := vmsupport.NewSyscalls(faultChecker, verifier.ProofVerifier)
 	fork, err := fork.NewChainFork(chainState, blockstore.CborStore, blockstore.Blockstore)

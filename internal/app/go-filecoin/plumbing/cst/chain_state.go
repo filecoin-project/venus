@@ -107,10 +107,6 @@ func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider
 	}
 }
 
-func (chn *ChainStateReadWriter) BeaconSchedule() beacon.Schedule {
-	return chn.drand
-}
-
 // Head returns the head tipset
 func (chn *ChainStateReadWriter) Head() block.TipSetKey {
 	return chn.readWriter.GetHead()
@@ -123,6 +119,11 @@ func (chn *ChainStateReadWriter) GetHeadHeight() (abi.ChainEpoch, error) {
 	}
 
 	return ts.Height()
+}
+
+// GetGenesisBlock returns the genesis block
+func (chn *ChainStateReadWriter) GetGenesisBlock(ctx context.Context) (*block.Block, error) {
+	return chn.readWriter.GetGenesisBlock(ctx)
 }
 
 // GetTipSet returns the tipset at the given key

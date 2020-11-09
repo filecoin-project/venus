@@ -164,13 +164,14 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 			default:
 				// sneak in messages originating from other addresses as both kinds.
 				// these should fail, as they are actually invalid senders.
-				sb.SECPMessages = append(sb.SECPMessages, &types.SignedMessage{
+				/*sb.SECPMessages = append(sb.SECPMessages, &types.SignedMessage{
 					Message: *msg,
 					Signature: crypto.Signature{
 						Type: crypto.SigTypeSecp256k1,
 						Data: make([]byte, 65),
 					},
-				})
+				})*/
+				sb.BLSMessages = append(sb.BLSMessages, msg) //todo  use interface for message
 				sb.BLSMessages = append(sb.BLSMessages, msg)
 			}
 		}

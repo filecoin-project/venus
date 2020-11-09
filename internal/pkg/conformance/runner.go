@@ -27,7 +27,7 @@ import (
 )
 
 // ExecuteMessageVector executes a message-class test vector.
-func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema.Variant) {
+func ExecuteMessageVector(r Reporter, v string, vector *schema.TestVector, variant *schema.Variant) {
 	var (
 		ctx       = context.Background()
 		baseEpoch = variant.Epoch
@@ -39,7 +39,6 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema
 	if err != nil {
 		r.Fatalf("failed to load the vector CAR: %w", err)
 	}
-
 	// Create a new Driver.
 	driver := NewDriver(ctx, vector.Selector, DriverOpts{DisableVMFlush: true})
 
@@ -83,7 +82,7 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema
 }
 
 // ExecuteTipsetVector executes a tipset-class test vector.
-func ExecuteTipsetVector(r Reporter, vector *schema.TestVector, variant *schema.Variant) {
+func ExecuteTipsetVector(r Reporter, v string, vector *schema.TestVector, variant *schema.Variant) {
 	var (
 		ctx       = context.Background()
 		baseEpoch = abi.ChainEpoch(variant.Epoch)

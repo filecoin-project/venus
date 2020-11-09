@@ -346,7 +346,3 @@ func (fcs *fakeChainState) StateView(block.TipSetKey, abi.ChainEpoch) (*state.Vi
 func (fcs *fakeChainState) GetBlock(context.Context, cid.Cid) (*block.Block, error) {
 	return nil, nil
 }
-
-func (fcs *fakeChainState) BeaconSchedule() beacon.Schedule {
-	return beacon.NewMockSchedule(0)
-}

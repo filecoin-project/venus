@@ -36,7 +36,7 @@ type Tree interface {
 	Snapshot(ctx context.Context) error
 	ClearSnapshot()
 	Revert() error
-
+	At(Root) error
 	RegisterNewAddress(addr ActorKey) (address.Address, error)
 
 	MutateActor(addr ActorKey, f func(*types.Actor) error) error
@@ -395,6 +395,19 @@ func (st *State) GetStore() cbor.IpldStore {
 	return st.Store
 }
 
+func (st *State) At(root Root) error {
+	newState, err := LoadState(context.Background(), st.Store, root)
+	if err != nil {
+		return err
+	}
+	st.root = newState.root
+	st.version = newState.version
+	st.version = newState.version
+	st.version = newState.version
+	st.version = newState.version
+	st.version = newState.version
+	return nil
+}
 func Diff(oldTree, newTree *State) (map[string]types.Actor, error) {
 	out := map[string]types.Actor{}
 

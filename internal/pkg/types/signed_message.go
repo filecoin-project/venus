@@ -65,6 +65,10 @@ func (smsg *SignedMessage) Marshal() ([]byte, error) {
 
 // Cid returns the canonical CID for the SignedMessage.
 func (smsg *SignedMessage) Cid() (cid.Cid, error) {
+	if smsg.Signature.Type == crypto.SigTypeBLS {
+		return smsg.Message.Cid()
+	}
+
 	obj, err := smsg.ToNode()
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to marshal to cbor")
@@ -75,6 +79,10 @@ func (smsg *SignedMessage) Cid() (cid.Cid, error) {
 
 // ToNode converts the SignedMessage to an IPLD node.
 func (smsg *SignedMessage) ToNode() (ipld.Node, error) {
+	if smsg.Signature.Type == crypto.SigTypeBLS {
+		return smsg.Message.ToNode()
+	}
+
 	data, err := encoding.Encode(smsg)
 	if err != nil {
 		return nil, err

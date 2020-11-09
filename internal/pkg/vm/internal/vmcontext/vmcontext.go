@@ -2,19 +2,16 @@ package vmcontext
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
-	"time"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -92,7 +89,6 @@ func NewVM(actorImpls ActorImplLookup,
 //
 // This Method is intended To be used in the generation of the genesis block only.
 func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (*Ret, error) {
-	vm.SetCurrentEpoch(0)
 	// normalize From addr
 	var ok bool
 	if from, ok = vm.normalizeAddress(from); !ok {
@@ -108,6 +104,7 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 		Params: params,
 	}
 
+	vm.SetCurrentEpoch(0)
 	ret, err := vm.applyImplicitMessage(imsg)
 	if err != nil {
 		return ret, err
@@ -162,7 +159,6 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 // ApplyTipSetMessages implements interpreter.VMInterpreter
 func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, parentEpoch, epoch abi.ChainEpoch, cb ExecCallBack) ([]types.MessageReceipt, error) {
 	var receipts []types.MessageReceipt
-	vm.SetCurrentEpoch(epoch)
 	pstate, _ := vm.state.Flush(vm.context)
 	for i := parentEpoch; i < epoch; i++ {
 		if i > parentEpoch {
@@ -184,11 +180,17 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 		}
 		// handle state forks
 		// XXX: The state tree
-		_, err := vm.vmOption.Fork.HandleStateForks(vm.context, pstate, i, ts)
+		forkedCid, err := vm.vmOption.Fork.HandleStateForks(vm.context, pstate, i, ts)
 		if err != nil {
 			return nil, xerrors.Errorf("hand fork error", err)
 		}
-
+		fmt.Printf("after fork root: %s\n", forkedCid)
+		if pstate != forkedCid {
+			err = vm.state.At(forkedCid)
+			if err != nil {
+				return nil, xerrors.Errorf("load fork cid error", err)
+			}
+		}
 		vm.SetCurrentEpoch(i + 1)
 	}
 
@@ -198,7 +200,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 
 	// process messages on each block
 	for index, blk := range blocks {
-		start := time.Now()
+		//start := time.Now()
 		if blk.Miner.Protocol() != address.ID {
 			panic("precond failure: block miner address must be an IDAddress")
 		}
@@ -229,11 +231,11 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 			}
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
-			iii, _ := vm.flush()
-			fmt.Printf("message: %s  root: %s\n", mcid, iii)
+			//iii, _ := vm.flush()
+			//fmt.Printf("message: %s  root: %s\n", mcid, iii)
 
-			dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
-			fmt.Println(string(dddd))
+			//dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
+			//fmt.Println(string(dddd))
 			//xxxx := []*types.GasTrace{}
 			//for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
 			//	xxx.Location = nil
@@ -244,7 +246,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 			//dddd, _ = json.MarshalIndent(xxxx,"","\t")
 			//fmt.Println(string(dddd))
 
-			fmt.Println()
+			//fmt.Println()
 		}
 
 		// Process SECP messages From the block
@@ -274,11 +276,11 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
 
-			iii, _ := vm.flush()
-			fmt.Printf("message: %s  root: %s\n", mcid, iii)
+			//iii, _ := vm.flush()
+			//fmt.Printf("message: %s  root: %s\n", mcid, iii)
 
-			dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
-			fmt.Println(string(dddd))
+			//dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
+			//fmt.Println(string(dddd))
 			//xxxx := []*types.GasTrace{}
 			//for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
 			//	xxx.Location = nil
@@ -288,7 +290,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 			//}
 			//dddd, _ = json.MarshalIndent(xxxx,"","\t")
 			//fmt.Println(string(dddd))
-			fmt.Println()
+			//fmt.Println()
 		}
 
 		root, _ := vm.state.Flush(context.TODO())
@@ -309,8 +311,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 
 		root, _ = vm.state.Flush(context.TODO())
 		fmt.Printf("reward: %d  root: %s\n", index, root)
-		fmt.Print()
-		fmt.Println("process block ", index, " time ", time.Since(start).Milliseconds())
+		//fmt.Println("process block ", index, " time ", time.Since(start).Milliseconds())
 	}
 
 	root, _ := vm.state.Flush(context.TODO())
@@ -318,7 +319,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 	fmt.Println("xxxx")
 
 	// cron tick
-	start := time.Now()
+	//start := time.Now()
 	cronMessage := makeCronTickMessage()
 	ret, err := vm.applyImplicitMessage(cronMessage)
 	if err != nil {
@@ -330,7 +331,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 		}
 	}
 
-	fmt.Println("process block cron job ", time.Since(start).Milliseconds())
+	//fmt.Println("process block cron job ", time.Since(start).Milliseconds())
 	root, _ = vm.state.Flush(context.TODO())
 	fmt.Printf("after cron root: %s\n", root)
 
@@ -346,7 +347,6 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 //
 // This messages do not consume client gas and must not fail.
 func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
-	vm.SetCurrentEpoch(vm.vmOption.Epoch)
 	// implicit messages gas is tracked separatly and not paid by the miner
 	gasTank := NewGasTracker(types.SystemGasLimit)
 

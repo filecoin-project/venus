@@ -28,6 +28,7 @@ require (
 	github.com/filecoin-project/go-data-transfer v0.9.0
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f
 	github.com/filecoin-project/go-fil-markets v0.9.1
+	github.com/filecoin-project/go-jsonrpc v0.1.2-0.20201008195726-68c6a2704e49
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-padreader v0.0.0-20200903213702-ed5fae088b20
@@ -107,6 +108,7 @@ require (
 	github.com/raulk/clock v1.1.0
 	github.com/stretchr/testify v1.6.1
 	github.com/supranational/blst v0.1.1
+	github.com/urfave/cli/v2 v2.2.0
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200826160007-0b9f6c5fb163
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1

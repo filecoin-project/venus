@@ -3,7 +3,6 @@ package consensus
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -37,7 +36,6 @@ type chainState interface {
 	GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error)
 	StateView(block.TipSetKey, abi.ChainEpoch) (*state.View, error)
 	GetBlock(context.Context, cid.Cid) (*block.Block, error)
-	BeaconSchedule() beacon.Schedule
 }
 
 // BlockValidator defines an interface used to validate a blocks syntax and
