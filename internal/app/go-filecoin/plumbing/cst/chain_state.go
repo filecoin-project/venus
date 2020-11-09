@@ -121,6 +121,11 @@ func (chn *ChainStateReadWriter) GetHeadHeight() (abi.ChainEpoch, error) {
 	return ts.Height()
 }
 
+// GetGenesisBlock returns the genesis block
+func (chn *ChainStateReadWriter) GetGenesisBlock(ctx context.Context) (*block.Block, error) {
+	return chn.readWriter.GetGenesisBlock(ctx)
+}
+
 // GetTipSet returns the tipset at the given key
 func (chn *ChainStateReadWriter) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	return chn.readWriter.GetTipSet(key)

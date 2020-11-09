@@ -211,6 +211,7 @@ type chainReader interface {
 	GetTipSetByHeight(context.Context, *block.TipSet, abi.ChainEpoch, bool) (*block.TipSet, error)
 	GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error)
 	GetTipSetState(context.Context, block.TipSetKey) (vmstate.Tree, error)
+	GetGenesisBlock(ctx context.Context) (*block.Block, error)
 }
 type IFork interface {
 	HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error)
@@ -670,10 +671,13 @@ func setNetworkName(ctx context.Context, store adt.Store, tree *vmstate.State, n
 }
 
 // TODO: After the Liftoff epoch, refactor this to use resetMultisigVesting
-func resetGenesisMsigs(ctx context.Context, sm *ChainFork, store adt0.Store, tree *vmstate.State, startEpoch abi.ChainEpoch) error {
-	key := sm.cr.Head()
+func resetGenesisMsigs0(ctx context.Context, sm *ChainFork, store adt0.Store, tree *vmstate.State, startEpoch abi.ChainEpoch) error {
+	gb, err := sm.cr.GetGenesisBlock(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting genesis block: %w", err)
+	}
 
-	gts, err := sm.cr.GetTipSet(key)
+	gts, err := block.NewTipSet(gb)
 	if err != nil {
 		return xerrors.Errorf("getting genesis tipset: %v", err)
 	}
@@ -742,7 +746,7 @@ func makeKeyAddr(splitAddr address.Address, count uint64) (address.Address, erro
 	return addr, nil
 }
 
-func splitGenesisMultisig(ctx context.Context, addr address.Address, store adt0.Store, tree *vmstate.State, portions uint64, epoch abi.ChainEpoch) error {
+func splitGenesisMultisig0(ctx context.Context, addr address.Address, store adt0.Store, tree *vmstate.State, portions uint64, epoch abi.ChainEpoch) error {
 	if portions < 1 {
 		return xerrors.Errorf("cannot split into 0 portions")
 	}
@@ -840,7 +844,7 @@ func splitGenesisMultisig(ctx context.Context, addr address.Address, store adt0.
 	return nil
 }
 
-func resetMultisigVesting(ctx context.Context, store adt0.Store, tree *vmstate.State, addr address.Address, startEpoch abi.ChainEpoch, duration abi.ChainEpoch, balance abi.TokenAmount) error {
+func resetMultisigVesting0(ctx context.Context, store adt0.Store, tree *vmstate.State, addr address.Address, startEpoch abi.ChainEpoch, duration abi.ChainEpoch, balance abi.TokenAmount) error {
 	act, find, err := tree.GetActor(ctx, addr)
 	if err != nil {
 		return xerrors.Errorf("getting actor: %w", err)
@@ -876,7 +880,7 @@ func resetMultisigVesting(ctx context.Context, store adt0.Store, tree *vmstate.S
 }
 
 func UpgradeIgnition(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
-	store := adt.WrapStore(ctx,sm.ipldstore)
+	store := adt.WrapStore(ctx, sm.ipldstore)
 
 	if UpgradeLiftoffHeight <= epoch {
 		return cid.Undef, xerrors.Errorf("liftoff height must be beyond ignition height")
@@ -907,17 +911,17 @@ func UpgradeIgnition(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi
 		return cid.Undef, xerrors.Errorf("second split address: %v", err)
 	}
 
-	err = resetGenesisMsigs(ctx, sm, store, tree, UpgradeLiftoffHeight)
+	err = resetGenesisMsigs0(ctx, sm, store, tree, UpgradeLiftoffHeight)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("resetting genesis msig start epochs: %v", err)
 	}
 
-	err = splitGenesisMultisig(ctx, split1, store, tree, 50, epoch)
+	err = splitGenesisMultisig0(ctx, split1, store, tree, 50, epoch)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("splitting first msig: %v", err)
 	}
 
-	err = splitGenesisMultisig(ctx, split2, store, tree, 50, epoch)
+	err = splitGenesisMultisig0(ctx, split2, store, tree, 50, epoch)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("splitting second msig: %v", err)
 	}
@@ -931,23 +935,23 @@ func UpgradeIgnition(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi
 }
 
 func UpgradeRefuel(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
-	store := adt.WrapStore(ctx,sm.ipldstore)
+	store := adt.WrapStore(ctx, sm.ipldstore)
 	tree, err := sm.StateTree(ctx, root)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting state tree: %v", err)
 	}
 
-	err = resetMultisigVesting(ctx, store, tree, builtin.SaftAddress, 0, 0, big.Zero())
+	err = resetMultisigVesting0(ctx, store, tree, builtin.SaftAddress, 0, 0, big.Zero())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("tweaking msig vesting: %v", err)
 	}
 
-	err = resetMultisigVesting(ctx, store, tree, builtin.ReserveAddress, 0, 0, big.Zero())
+	err = resetMultisigVesting0(ctx, store, tree, builtin.ReserveAddress, 0, 0, big.Zero())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("tweaking msig vesting: %v", err)
 	}
 
-	err = resetMultisigVesting(ctx, store, tree, builtin.RootVerifierAddress, 0, 0, big.Zero())
+	err = resetMultisigVesting0(ctx, store, tree, builtin.RootVerifierAddress, 0, 0, big.Zero())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("tweaking msig vesting: %v", err)
 	}
