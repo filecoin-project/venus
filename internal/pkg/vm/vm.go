@@ -1,13 +1,13 @@
 package vm
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/register"
+	"github.com/filecoin-project/venus/internal/pkg/vm/register"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
+	"github.com/filecoin-project/venus/internal/pkg/vm/internal/dispatch"
+	"github.com/filecoin-project/venus/internal/pkg/vm/internal/vmcontext"
+	"github.com/filecoin-project/venus/internal/pkg/vm/state"
+	"github.com/filecoin-project/venus/internal/pkg/vm/storage"
 )
 
 // Re-exports

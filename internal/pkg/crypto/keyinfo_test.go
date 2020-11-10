@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/internal/pkg/crypto"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 )
 
 func TestKeyInfoMarshal(t *testing.T) {

@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork/blockstore"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
@@ -15,15 +14,16 @@ import (
 	// Used for genesis.
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/params"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/power"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/reward"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/fork"
+	"github.com/filecoin-project/venus/internal/pkg/fork/blockstore"
+	"github.com/filecoin-project/venus/internal/pkg/params"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/market"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/power"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/reward"
+	"github.com/filecoin-project/venus/internal/pkg/vm/state"
 )
 
 type genesisReader interface {

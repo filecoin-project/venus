@@ -1,8 +1,9 @@
 package cfg
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"sync"
+
+	"github.com/filecoin-project/venus/internal/pkg/repo"
 )
 
 // Config is plumbing implementation for setting and retrieving values from local config.

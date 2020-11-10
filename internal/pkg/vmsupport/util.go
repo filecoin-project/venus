@@ -6,7 +6,7 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
+	"github.com/filecoin-project/venus/internal/pkg/slashing"
 )
 
 type NilFaultChecker struct {

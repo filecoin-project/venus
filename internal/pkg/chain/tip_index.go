@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 )
@@ -111,7 +111,7 @@ func (ti *TipIndex) Del(ts *block.TipSet) error {
 	key := makeKey(pKey, h)
 	tsasByID, ok := ti.tsasByParentsAndHeight[key]
 	if ok {
-		delete(tsasByID,tsKey)
+		delete(tsasByID, tsKey)
 	}
 	return nil
 }

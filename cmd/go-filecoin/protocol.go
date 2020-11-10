@@ -3,7 +3,7 @@ package commands
 import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/porcelain"
 )
 
 var protocolCmd = &cmds.Command{

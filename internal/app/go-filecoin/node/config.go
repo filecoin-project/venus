@@ -5,7 +5,7 @@ import (
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	errors "github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	"github.com/filecoin-project/venus/internal/pkg/repo"
 )
 
 // OptionsFromRepo takes a repo and returns options that configure a node

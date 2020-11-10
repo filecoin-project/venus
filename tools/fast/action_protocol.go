@@ -3,7 +3,7 @@ package fast
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/porcelain"
 )
 
 // Protocol runs the `protocol` command against the filecoin process

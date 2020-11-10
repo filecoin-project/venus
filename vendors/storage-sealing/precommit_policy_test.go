@@ -11,7 +11,7 @@ import (
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	sealing "github.com/filecoin-project/go-filecoin/vendors/storage-sealing"
+	sealing "github.com/filecoin-project/venus/vendors/storage-sealing"
 )
 
 type fakeChain struct {

@@ -3,7 +3,7 @@ package series
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/venus/tools/fast"
 )
 
 // Connect issues a `swarm connect` to the `from` node, using the addresses of the `to` node

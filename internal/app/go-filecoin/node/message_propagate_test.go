@@ -10,17 +10,17 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
-	init_ "github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/init"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
-	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 	specsbig "github.com/filecoin-project/go-state-types/big"
+	. "github.com/filecoin-project/venus/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/node/test"
+	"github.com/filecoin-project/venus/internal/pkg/constants"
+	"github.com/filecoin-project/venus/internal/pkg/proofs"
+	init_ "github.com/filecoin-project/venus/internal/pkg/specactors/builtin/init"
+	th "github.com/filecoin-project/venus/internal/pkg/testhelpers"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/version"
+	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 
 // TestMessagePropagation is a high level check that messages are propagated between message

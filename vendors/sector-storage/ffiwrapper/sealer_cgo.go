@@ -20,10 +20,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/fr32"
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/stores"
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/storiface"
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/zerocomm"
+	"github.com/filecoin-project/venus/vendors/sector-storage/fr32"
+	"github.com/filecoin-project/venus/vendors/sector-storage/stores"
+	"github.com/filecoin-project/venus/vendors/sector-storage/storiface"
+	"github.com/filecoin-project/venus/vendors/sector-storage/zerocomm"
 )
 
 var _ Storage = &Sealer{}

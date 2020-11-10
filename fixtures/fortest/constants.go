@@ -11,9 +11,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	cid "github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/build/project"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	gen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	"github.com/filecoin-project/venus/build/project"
+	"github.com/filecoin-project/venus/internal/pkg/crypto"
+	gen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 
 // The file used to build these addresses can be found in:

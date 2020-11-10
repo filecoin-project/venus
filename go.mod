@@ -1,4 +1,4 @@
-module github.com/filecoin-project/go-filecoin
+module github.com/filecoin-project/venus
 
 go 1.14
 
@@ -28,6 +28,7 @@ require (
 	github.com/filecoin-project/go-data-transfer v0.9.0
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f
 	github.com/filecoin-project/go-fil-markets v0.9.1
+	github.com/filecoin-project/go-filecoin v0.6.4
 	github.com/filecoin-project/go-jsonrpc v0.1.2-0.20201008195726-68c6a2704e49
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-multistore v0.0.3

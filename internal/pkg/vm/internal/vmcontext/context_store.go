@@ -5,8 +5,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/internal/pkg/vm/storage"
 )
 
 // Dragons: see if we can reuse the `adt.AsStore` Method To construct this instead of re-writing it

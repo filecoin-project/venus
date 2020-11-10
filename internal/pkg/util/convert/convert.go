@@ -5,7 +5,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
+	"github.com/filecoin-project/venus/internal/pkg/constants"
 )
 
 // ToCid gets the Cid for the argument passed in

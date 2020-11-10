@@ -3,12 +3,13 @@ package sigs
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/venus/internal/pkg/block"
 )
 
 // Sign takes in signature type, private key and message. Returns a signature for that message.
@@ -71,7 +72,6 @@ func CheckBlockSignature(ctx context.Context, blk *block.Block, worker address.A
 	// todo change by force
 	_, span := trace.StartSpan(ctx, "checkBlockSignature")
 	defer span.End()
-
 
 	if blk.BlockSig == nil {
 		return xerrors.New("block signature not present")

@@ -1,7 +1,7 @@
 package sectorstorage
 
 import (
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/storiface"
+	"github.com/filecoin-project/venus/vendors/sector-storage/storiface"
 )
 
 func (m *Manager) WorkerStats() map[uint64]storiface.WorkerStats {

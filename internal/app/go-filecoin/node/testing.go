@@ -2,8 +2,6 @@ package node
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-state-types/abi"
 	"math/rand"
 	"testing"
 
@@ -15,13 +13,15 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
-	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/fixtures/fortest"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/config"
+	"github.com/filecoin-project/venus/internal/pkg/constants"
+	"github.com/filecoin-project/venus/internal/pkg/proofs"
+	"github.com/filecoin-project/venus/internal/pkg/vm"
+	"github.com/filecoin-project/venus/internal/pkg/wallet"
+	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 
 // ChainSeed is a generalized struct for configuring node

@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/internal/pkg/config"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 )
 
 func TestInitRepoDirect(t *testing.T) {

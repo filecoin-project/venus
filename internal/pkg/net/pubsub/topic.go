@@ -12,7 +12,7 @@ type Topic struct {
 	pubsubTopic *libp2p.Topic
 }
 
-// Message defines the common interface for go-filecoin message consumers.
+// Message defines the common interface for venus message consumers.
 // It's a subset of the go-libp2p-pubsub/pubsub.go Message type.
 type Message interface {
 	GetSource() peer.ID

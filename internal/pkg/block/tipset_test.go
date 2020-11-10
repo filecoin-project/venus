@@ -4,18 +4,18 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/internal/pkg/enccid"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
 
-	blk "github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	fbig "github.com/filecoin-project/go-state-types/big"
+	blk "github.com/filecoin-project/venus/internal/pkg/block"
 
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 const parentWeight = uint64(1337000)

@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/build/internal/helpers"
-	"github.com/filecoin-project/go-filecoin/build/internal/version"
+	"github.com/filecoin-project/venus/build/internal/helpers"
+	"github.com/filecoin-project/venus/build/internal/version"
 )
 
 var lineBreak = "\n"
@@ -154,10 +154,10 @@ func forcebuild() {
 }
 
 func forceBuildFC() {
-	log.Println("Force building go-filecoin...")
+	log.Println("Force building venus...")
 
 	runCmd(cmd([]string{
-		"bash", "-c", fmt.Sprintf("go build %s -a -v -o go-filecoin .", flags()),
+		"bash", "-c", fmt.Sprintf("go build %s -a -v -o venus .", flags()),
 	}...))
 }
 
@@ -231,17 +231,17 @@ func generateGenesis() {
 }
 
 func flags() string {
-	return fmt.Sprintf("-ldflags=github.com/filecoin-project/go-filecoin=\"%s\"", strings.Join([]string{
-		fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/build/flags.GitRoot=%s", helpers.GetGitRoot()),
-		fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/build/flags.GitCommit=%s", getCommitSha()),
+	return fmt.Sprintf("-ldflags=github.com/filecoin-project/venus=\"%s\"", strings.Join([]string{
+		fmt.Sprintf("-X github.com/filecoin-project/venus/build/flags.GitRoot=%s", helpers.GetGitRoot()),
+		fmt.Sprintf("-X github.com/filecoin-project/venus/build/flags.GitCommit=%s", getCommitSha()),
 	}, " "))
 }
 
 func buildFilecoin() {
-	log.Println("Building go-filecoin...")
+	log.Println("Building venus...")
 
 	runCmd(cmd([]string{
-		"bash", "-c", fmt.Sprintf("go build %s -v -o go-filecoin .", flags()),
+		"bash", "-c", fmt.Sprintf("go build %s -v -o venus .", flags()),
 	}...))
 }
 
@@ -266,7 +266,7 @@ func buildGenesisFileServer() {
 func buildMigrations() {
 	log.Println("Building migrations...")
 	runCmd(cmd([]string{
-		"go", "build", "-o", "./tools/migration/go-filecoin-migrate", "./tools/migration/main.go"}...))
+		"go", "build", "-o", "./tools/migration/venus-migrate", "./tools/migration/main.go"}...))
 }
 
 func buildPrereleaseTool() {

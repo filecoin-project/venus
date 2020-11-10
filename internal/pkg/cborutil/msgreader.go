@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/venus/internal/pkg/encoding"
 )
 
 // ErrMessageTooLarge is returned when reading too big of a message

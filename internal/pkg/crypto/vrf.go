@@ -1,10 +1,11 @@
 package crypto
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"math/big"
 
 	"github.com/minio/blake2b-simd"
+
+	"github.com/filecoin-project/venus/internal/pkg/constants"
 )
 
 // VRFPi is the proof output from running a VRF.

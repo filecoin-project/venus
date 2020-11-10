@@ -2,7 +2,8 @@ package exchange
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+
+	"github.com/filecoin-project/venus/internal/pkg/block"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 

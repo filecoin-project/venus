@@ -3,7 +3,7 @@ package fast
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 // MpoolLs runs the `mpool ls` command against the filecoin process.

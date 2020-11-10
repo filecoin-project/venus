@@ -6,10 +6,12 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"strconv"
+
 	"github.com/fatih/color"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork/blockstore"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/test-vectors/schema"
@@ -20,10 +22,10 @@ import (
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipld/go-car"
-	"io/ioutil"
-	"os"
-	"os/exec"
-	"strconv"
+
+	"github.com/filecoin-project/venus/internal/pkg/fork/blockstore"
+	"github.com/filecoin-project/venus/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/vm"
 )
 
 // ExecuteMessageVector executes a message-class test vector.

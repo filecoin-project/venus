@@ -4,18 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-cmds/cli"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/pkg/errors"
-	"io"
-	"os"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/paths"
+	"github.com/filecoin-project/venus/internal/pkg/repo"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 const (
@@ -103,41 +104,41 @@ var RootCmd = &cmds.Command{
 		Tagline: "A decentralized storage network",
 		Subcommands: `
 START RUNNING FILECOIN
-  go-filecoin init                   - Initialize a filecoin repo
-  go-filecoin config <key> [<value>] - Get and set filecoin config values
-  go-filecoin daemon                 - Start a long-running daemon process
-  go-filecoin wallet                 - Manage your filecoin wallets
-  go-filecoin address                - Interact with addresses
+  venus init                   - Initialize a filecoin repo
+  venus config <key> [<value>] - Get and set filecoin config values
+  venus daemon                 - Start a long-running daemon process
+  venus wallet                 - Manage your filecoin wallets
+  venus address                - Interact with addresses
 
 VIEW DATA STRUCTURES
-  go-filecoin chain                  - Inspect the filecoin blockchain
-  go-filecoin dag                    - Interact with IPLD DAG objects
-  go-filecoin show                   - Get human-readable representations of filecoin objects
+  venus chain                  - Inspect the filecoin blockchain
+  venus dag                    - Interact with IPLD DAG objects
+  venus show                   - Get human-readable representations of filecoin objects
 
 NETWORK COMMANDS
-  go-filecoin bootstrap              - Interact with bootstrap addresses
-  go-filecoin dht                    - Interact with the dht
-  go-filecoin id                     - Show info about the network peers
-  go-filecoin ping <peer ID>...      - Send echo request packets to p2p network members
-  go-filecoin swarm                  - Interact with the swarm
-  go-filecoin stats                  - Monitor statistics on your network usage
-  go-filecoin drand random           - retrieve drand randomness
+  venus bootstrap              - Interact with bootstrap addresses
+  venus dht                    - Interact with the dht
+  venus id                     - Show info about the network peers
+  venus ping <peer ID>...      - Send echo request packets to p2p network members
+  venus swarm                  - Interact with the swarm
+  venus stats                  - Monitor statistics on your network usage
+  venus drand random           - retrieve drand randomness
 
 ACTOR COMMANDS
-  go-filecoin actor                  - Interact with actors. Actors are built-in smart contracts
-  go-filecoin paych                  - Payment channel operations
+  venus actor                  - Interact with actors. Actors are built-in smart contracts
+  venus paych                  - Payment channel operations
 
 MESSAGE COMMANDS
-  go-filecoin message                - Manage messages
-  go-filecoin mpool                  - Manage the message pool
-  go-filecoin outbox                 - Manage the outbound message queue
+  venus message                - Manage messages
+  venus mpool                  - Manage the message pool
+  venus outbox                 - Manage the outbound message queue
 
 TOOL COMMANDS
-  go-filecoin inspect                - Show info about the go-filecoin node
-  go-filecoin leb128                 - Leb128 cli encode/decode
-  go-filecoin log                    - Interact with the daemon event log output
-  go-filecoin protocol               - Show protocol parameter details
-  go-filecoin version                - Show go-filecoin version information
+  venus inspect                - Show info about the venus node
+  venus leb128                 - Leb128 cli encode/decode
+  venus log                    - Interact with the daemon event log output
+  venus protocol               - Show protocol parameter details
+  venus version                - Show venus version information
 `,
 	},
 	Options: []cmds.Option{

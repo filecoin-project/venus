@@ -8,9 +8,9 @@ import (
 	"github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/tools/fast"
-	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/tools/fast"
+	"github.com/filecoin-project/venus/tools/fast/fastesting"
 )
 
 func TestSetFilecoinOpts(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
 
 	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"

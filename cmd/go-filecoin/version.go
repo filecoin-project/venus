@@ -3,7 +3,7 @@ package commands
 import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
-	"github.com/filecoin-project/go-filecoin/build/flags"
+	"github.com/filecoin-project/venus/build/flags"
 )
 
 type versionInfo struct {

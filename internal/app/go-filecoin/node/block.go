@@ -6,11 +6,11 @@ import (
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net/blocksub"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/encoding"
+	"github.com/filecoin-project/venus/internal/pkg/metrics/tracing"
+	"github.com/filecoin-project/venus/internal/pkg/net/blocksub"
+	"github.com/filecoin-project/venus/internal/pkg/net/pubsub"
 )
 
 func (node *Node) handleBlockSub(ctx context.Context, msg pubsub.Message) (err error) {

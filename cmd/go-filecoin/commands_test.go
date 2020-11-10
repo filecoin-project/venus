@@ -3,10 +3,10 @@ package commands_test
 import (
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+	"github.com/filecoin-project/venus/fixtures/fortest"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/node/test"
+	th "github.com/filecoin-project/venus/internal/pkg/testhelpers"
 )
 
 // create a basic new TestDaemon, with a miner and the KeyInfo it needs to sign

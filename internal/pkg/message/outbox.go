@@ -2,20 +2,21 @@ package message
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"golang.org/x/xerrors"
 	"sync"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/encoding"
+	"github.com/filecoin-project/venus/internal/pkg/journal"
+	"github.com/filecoin-project/venus/internal/pkg/metrics"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin"
+	"github.com/filecoin-project/venus/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/vm"
 )
 
 // Outbox validates and marshals messages for sending and maintains the outbound message queue.

@@ -2,18 +2,19 @@ package submodule
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/exchange"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/util/moresync"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/chain"
+	"github.com/filecoin-project/venus/internal/pkg/chainsync/exchange"
+	"github.com/filecoin-project/venus/internal/pkg/config"
+	"github.com/filecoin-project/venus/internal/pkg/discovery"
+	"github.com/filecoin-project/venus/internal/pkg/net"
+	"github.com/filecoin-project/venus/internal/pkg/util/moresync"
 )
 
 var log = logging.Logger("node") // nolint: deadcode

@@ -1,9 +1,9 @@
 package vmcontext
 
 import (
-	actors "github.com/filecoin-project/go-filecoin/internal/pkg/specactors"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	actors "github.com/filecoin-project/venus/internal/pkg/specactors"
 	"github.com/ipfs/go-cid"
 )
 

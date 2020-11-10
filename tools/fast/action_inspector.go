@@ -3,8 +3,8 @@ package fast
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	"github.com/filecoin-project/venus/cmd/go-filecoin"
+	"github.com/filecoin-project/venus/internal/pkg/config"
 )
 
 // InspectAll runs the `inspect all` command against the filecoin process

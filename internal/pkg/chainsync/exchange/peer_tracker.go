@@ -3,13 +3,14 @@ package exchange
 // FIXME: This needs to be reviewed.
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"sort"
 	"sync"
 	"time"
 
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+
+	"github.com/filecoin-project/venus/internal/pkg/net"
 )
 
 type peerStats struct {

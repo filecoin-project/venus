@@ -3,14 +3,14 @@ package block
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"sort"
 	"strings"
 
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/venus/internal/pkg/enccid"
+	"github.com/filecoin-project/venus/internal/pkg/encoding"
 )
 
 // TipSetKey is an immutable set of CIDs forming a unique key for a TipSet.

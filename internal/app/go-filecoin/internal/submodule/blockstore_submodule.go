@@ -6,7 +6,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
+	"github.com/filecoin-project/venus/internal/pkg/cborutil"
 )
 
 // BlockstoreSubmodule enhances the `Node` with local key/value storing capabilities.

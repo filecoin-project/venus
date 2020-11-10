@@ -26,32 +26,32 @@ import (
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	bstore "github.com/filecoin-project/go-filecoin/internal/pkg/fork/blockstore"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork/bufbstore"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/params"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
-	init_ "github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/init"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/multisig"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/policy"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/enccid"
+	bstore "github.com/filecoin-project/venus/internal/pkg/fork/blockstore"
+	"github.com/filecoin-project/venus/internal/pkg/fork/bufbstore"
+	"github.com/filecoin-project/venus/internal/pkg/params"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin"
+	init_ "github.com/filecoin-project/venus/internal/pkg/specactors/builtin/init"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/multisig"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/policy"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 
-	vmstate "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	vmstate "github.com/filecoin-project/venus/internal/pkg/vm/state"
 )
 
 var log = logging.Logger("fork")
 
 var (
-	UpgradeSmokeHeight       = abi.ChainEpoch(-1)
-	UpgradeBreezeHeight      = abi.ChainEpoch(0)
-	UpgradeIgnitionHeight    = abi.ChainEpoch(0)
-	UpgradeLiftoffHeight     = abi.ChainEpoch(0)
-	UpgradeActorsV2Height    = abi.ChainEpoch(0)
-	UpgradeRefuelHeight      = abi.ChainEpoch(0)
-	UpgradeTapeHeight        = abi.ChainEpoch(0)
-	UpgradeKumquatHeight     = abi.ChainEpoch(0)
+	UpgradeSmokeHeight    = abi.ChainEpoch(-1)
+	UpgradeBreezeHeight   = abi.ChainEpoch(0)
+	UpgradeIgnitionHeight = abi.ChainEpoch(0)
+	UpgradeLiftoffHeight  = abi.ChainEpoch(0)
+	UpgradeActorsV2Height = abi.ChainEpoch(0)
+	UpgradeRefuelHeight   = abi.ChainEpoch(0)
+	UpgradeTapeHeight     = abi.ChainEpoch(0)
+	UpgradeKumquatHeight  = abi.ChainEpoch(0)
 
 	BreezeGasTampingDuration = abi.ChainEpoch(0)
 )
@@ -363,7 +363,7 @@ func (sm *ChainFork) ParentState(ts *block.TipSet) cid.Cid {
 		if err == nil {
 			return tts.Blocks()[0].StateRoot.Cid
 		}
-	}else {
+	} else {
 		return ts.Blocks()[0].StateRoot.Cid
 	}
 
@@ -507,76 +507,76 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork, root cid.Cid,
 			return xerrors.Errorf("failed to get actor in lookback state")
 		}
 
-			prevBalance := abi.NewTokenAmount(0)
-			if lbact != nil {
-				prevBalance = lbact.Balance
-			}
+		prevBalance := abi.NewTokenAmount(0)
+		if lbact != nil {
+			prevBalance = lbact.Balance
+		}
 
-			switch act.Code.Cid {
-			case builtin0.AccountActorCodeID, builtin0.MultisigActorCodeID, builtin0.PaymentChannelActorCodeID:
-				nbalance := big.Min(prevBalance, AccountCap)
-				if nbalance.Sign() != 0 {
-					transfersBack = append(transfersBack, transfer{
-						From: builtin.ReserveAddress,
-						To:   addr,
-						Amt:  nbalance,
-					})
-				}
-			case builtin0.StorageMinerActorCodeID:
-				var st miner0.State
-				if err := sm.ipldstore.Get(ctx, act.Head.Cid, &st); err != nil {
-					return xerrors.Errorf("failed to load miner state: %v", err)
-				}
-
-				var minfo miner0.MinerInfo
-				if err :=  sm.ipldstore.Get(ctx, st.Info, &minfo); err != nil {
-					return xerrors.Errorf("failed to get miner info: %v", err)
-				}
-
-				sectorsArr, err := adt0.AsArray(adt.WrapStore(ctx,sm.ipldstore), st.Sectors)
-				if err != nil {
-					return xerrors.Errorf("failed to load sectors array: %v", err)
-				}
-
-				slen := sectorsArr.Length()
-
-				power := big.Mul(big.NewInt(int64(slen)), big.NewInt(int64(minfo.SectorSize)))
-
-				mfunds := minerFundsAlloc(power, totalPower)
+		switch act.Code.Cid {
+		case builtin0.AccountActorCodeID, builtin0.MultisigActorCodeID, builtin0.PaymentChannelActorCodeID:
+			nbalance := big.Min(prevBalance, AccountCap)
+			if nbalance.Sign() != 0 {
 				transfersBack = append(transfersBack, transfer{
 					From: builtin.ReserveAddress,
-					To:   minfo.Worker,
-					Amt:  mfunds,
+					To:   addr,
+					Amt:  nbalance,
 				})
+			}
+		case builtin0.StorageMinerActorCodeID:
+			var st miner0.State
+			if err := sm.ipldstore.Get(ctx, act.Head.Cid, &st); err != nil {
+				return xerrors.Errorf("failed to load miner state: %v", err)
+			}
 
-				// Now make sure to give each miner who had power at the lookback some FIL
-				lbact, found, err := lbtree.GetActor(ctx, addr)
-				if err == nil {
-					if found {
-						var lbst miner0.State
-						if err := sm.ipldstore.Get(ctx, lbact.Head.Cid, &lbst); err != nil {
-							return xerrors.Errorf("failed to load miner state: %v", err)
-						}
+			var minfo miner0.MinerInfo
+			if err := sm.ipldstore.Get(ctx, st.Info, &minfo); err != nil {
+				return xerrors.Errorf("failed to get miner info: %v", err)
+			}
 
-						lbsectors, err := adt0.AsArray(adt.WrapStore(ctx,sm.ipldstore), lbst.Sectors)
-						if err != nil {
-							return xerrors.Errorf("failed to load lb sectors array: %v", err)
-						}
+			sectorsArr, err := adt0.AsArray(adt.WrapStore(ctx, sm.ipldstore), st.Sectors)
+			if err != nil {
+				return xerrors.Errorf("failed to load sectors array: %v", err)
+			}
 
-						if lbsectors.Length() > 0 {
-							transfersBack = append(transfersBack, transfer{
-								From: builtin.ReserveAddress,
-								To:   minfo.Worker,
-								Amt:  BaseMinerBalance,
-							})
-						}
-					} else {
-						log.Warnf("did not find actor: %s", addr.String())
+			slen := sectorsArr.Length()
+
+			power := big.Mul(big.NewInt(int64(slen)), big.NewInt(int64(minfo.SectorSize)))
+
+			mfunds := minerFundsAlloc(power, totalPower)
+			transfersBack = append(transfersBack, transfer{
+				From: builtin.ReserveAddress,
+				To:   minfo.Worker,
+				Amt:  mfunds,
+			})
+
+			// Now make sure to give each miner who had power at the lookback some FIL
+			lbact, found, err := lbtree.GetActor(ctx, addr)
+			if err == nil {
+				if found {
+					var lbst miner0.State
+					if err := sm.ipldstore.Get(ctx, lbact.Head.Cid, &lbst); err != nil {
+						return xerrors.Errorf("failed to load miner state: %v", err)
+					}
+
+					lbsectors, err := adt0.AsArray(adt.WrapStore(ctx, sm.ipldstore), lbst.Sectors)
+					if err != nil {
+						return xerrors.Errorf("failed to load lb sectors array: %v", err)
+					}
+
+					if lbsectors.Length() > 0 {
+						transfersBack = append(transfersBack, transfer{
+							From: builtin.ReserveAddress,
+							To:   minfo.Worker,
+							Amt:  BaseMinerBalance,
+						})
 					}
 				} else {
-					log.Warnf("failed to get miner in lookback state: %s", err)
+					log.Warnf("did not find actor: %s", addr.String())
 				}
+			} else {
+				log.Warnf("failed to get miner in lookback state: %s", err)
 			}
+		}
 		return nil
 	})
 	if err != nil {
@@ -980,7 +980,7 @@ func UpgradeActorsV2(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi
 	newRoot, err := store.Put(ctx, &vmstate.StateRoot{
 		Version: vmstate.StateTreeVersion1,
 		Actors:  enccid.NewCid(newHamtRoot),
-		Info:     enccid.NewCid(info),
+		Info:    enccid.NewCid(info),
 	})
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to persist new state root: %v", err)
@@ -1016,7 +1016,7 @@ func UpgradeLiftoff(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.
 		return cid.Undef, xerrors.Errorf("getting state tree: %v", err)
 	}
 
-	err = setNetworkName(ctx, adt.WrapStore(ctx,sm.ipldstore), tree, "mainnet")
+	err = setNetworkName(ctx, adt.WrapStore(ctx, sm.ipldstore), tree, "mainnet")
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("setting network name: %v", err)
 	}

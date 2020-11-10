@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"math/big"
 	"strings"
 
@@ -16,9 +15,10 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	vmstate "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/constants"
+	"github.com/filecoin-project/venus/internal/pkg/state"
+	vmstate "github.com/filecoin-project/venus/internal/pkg/vm/state"
 )
 
 var (

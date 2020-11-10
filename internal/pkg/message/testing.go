@@ -2,7 +2,6 @@ package message
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -12,10 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/chain"
+	"github.com/filecoin-project/venus/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/vm"
 )
 
 // FakeProvider is a chain and actor provider for testing.

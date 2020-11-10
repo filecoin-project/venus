@@ -2,7 +2,6 @@ package submodule
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/exchange"
 	"time"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
@@ -11,17 +10,18 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/fetcher"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net/blocksub"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	"github.com/filecoin-project/venus/internal/pkg/beacon"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/chain"
+	"github.com/filecoin-project/venus/internal/pkg/chainsync"
+	"github.com/filecoin-project/venus/internal/pkg/chainsync/exchange"
+	"github.com/filecoin-project/venus/internal/pkg/chainsync/fetcher"
+	"github.com/filecoin-project/venus/internal/pkg/clock"
+	"github.com/filecoin-project/venus/internal/pkg/consensus"
+	"github.com/filecoin-project/venus/internal/pkg/net/blocksub"
+	"github.com/filecoin-project/venus/internal/pkg/net/pubsub"
+	"github.com/filecoin-project/venus/internal/pkg/slashing"
+	"github.com/filecoin-project/venus/internal/pkg/state"
 )
 
 // SyncerSubmodule enhances the node with chain syncing capabilities

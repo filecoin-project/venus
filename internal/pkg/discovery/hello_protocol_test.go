@@ -3,15 +3,17 @@ package discovery_test
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	"testing"
+	"time"
+
+	"github.com/filecoin-project/venus/internal/pkg/net"
+	"github.com/filecoin-project/venus/internal/pkg/repo"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/failstore"
 	"github.com/ipfs/go-datastore/retrystore"
 	"github.com/libp2p/go-libp2p-core/host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"testing"
-	"time"
+
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -21,11 +23,11 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/chain"
+	"github.com/filecoin-project/venus/internal/pkg/discovery"
+	th "github.com/filecoin-project/venus/internal/pkg/testhelpers"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 )
 
 type mockHelloCallback struct {

@@ -8,7 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 
-	bstore "github.com/filecoin-project/go-filecoin/internal/pkg/fork/blockstore"
+	bstore "github.com/filecoin-project/venus/internal/pkg/fork/blockstore"
 )
 
 var log = logging.Logger("bufbs")

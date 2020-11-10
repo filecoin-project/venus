@@ -8,8 +8,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/metrics"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 var (

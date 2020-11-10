@@ -4,7 +4,7 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
+	"github.com/filecoin-project/venus/internal/pkg/net"
 )
 
 // swarmCmd contains swarm commands.

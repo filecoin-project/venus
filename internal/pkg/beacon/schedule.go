@@ -1,10 +1,12 @@
 package beacon
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
+	"sort"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	xerrors "github.com/pkg/errors"
-	"sort"
+
+	"github.com/filecoin-project/venus/internal/pkg/fork"
 )
 
 var DrandScheduleFork = map[abi.ChainEpoch]DrandEnum{

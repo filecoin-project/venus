@@ -13,14 +13,14 @@ import (
 
 	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/power"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/plumbing/msg"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/encoding"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/market"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/power"
+	"github.com/filecoin-project/venus/internal/pkg/state"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 // mcAPI is the subset of the plumbing.API that MinerCreate uses.

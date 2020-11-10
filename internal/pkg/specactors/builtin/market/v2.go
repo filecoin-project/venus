@@ -9,9 +9,9 @@ import (
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
 )
 
 var _ State = (*state2)(nil)

@@ -5,15 +5,15 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/dispatcher"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/util/moresync"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/chainsync/internal/dispatcher"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/util/moresync"
 )
 
 type mockSyncer struct {

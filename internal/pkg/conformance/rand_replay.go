@@ -7,8 +7,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	crypto2 "github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/test-vectors/schema"
+	crypto2 "github.com/filecoin-project/venus/internal/pkg/crypto"
 )
 
 type ReplayingRand struct {
