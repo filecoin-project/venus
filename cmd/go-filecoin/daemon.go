@@ -96,7 +96,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 		opts = append(opts, node.IsRelay())
 	}
 
-	if checkPoint, ok := req.Options["check-point"].(string); ok {
+	if checkPoint, ok := req.Options[CheckPoint].(string); ok {
 		var tipsetKety block.TipSetKey
 		tipsetKety, err := block.NewTipSetKeyFromString(checkPoint)
 		if err != nil {

@@ -84,6 +84,8 @@ const (
 	// IsRelay when set causes the the daemon to provide libp2p relay
 	// services allowing other filecoin nodes behind NATs to talk directly.
 	IsRelay = "is-relay"
+
+	CheckPoint = "check-point"
 )
 
 func init() {

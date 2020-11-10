@@ -65,7 +65,6 @@ func IsRelay() BuilderOpt {
 	}
 }
 
-// IsRelay configures node to act as a libp2p relay.
 func CheckPoint(checkPoint block.TipSetKey) BuilderOpt {
 	return func(c *Builder) error {
 		c.checkPoint = checkPoint
