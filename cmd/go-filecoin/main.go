@@ -183,15 +183,14 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"message": msgCmd,
 	//"miner":            minerCmd,
 	//"mining":           miningCmd,
-	"mpool":            mpoolCmd,
-	"outbox":           outboxCmd,
-	"protocol":         protocolCmd,
-	"retrieval-client": retrievalClientCmd,
-	"show":             showCmd,
-	"stats":            statsCmd,
-	"swarm":            swarmCmd,
-	"wallet":           walletCmd,
-	"version":          versionCmd,
+	"mpool":    mpoolCmd,
+	"outbox":   outboxCmd,
+	"protocol": protocolCmd,
+	"show":     showCmd,
+	"stats":    statsCmd,
+	"swarm":    swarmCmd,
+	"wallet":   walletCmd,
+	"version":  versionCmd,
 }
 
 func init() {
