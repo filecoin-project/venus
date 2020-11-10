@@ -41,6 +41,7 @@ require (
 	github.com/filecoin-project/specs-actors/v2 v2.2.0
 	//github.com/filecoin-project/go-filecoin/vendors/sector-storage v0.0.0-20200508203401-a74812ba12f3
 	github.com/filecoin-project/specs-storage v0.1.1-0.20200907031224-ed2e5cd13796
+	github.com/filecoin-project/test-vectors v0.0.0-00010101000000-000000000000
 	github.com/filecoin-project/test-vectors/schema v0.0.5-0.20201014133607-1352e6bb4e71
 	//github.com/filecoin-project/go-filecoin/vendors/storage-sealing v0.0.0-20200508212339-4980cb4c92b1
 	github.com/fxamacker/cbor/v2 v2.2.0

@@ -54,7 +54,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 
 	t.Run("test send after reverted message", func(t *testing.T) {
 		provider := message.NewFakeProvider(t)
-		root := provider.NewGenesis()
+		root := provider.Genesis()
 		actr := types.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
 		actr.CallSeqNum = 42
 		provider.SetHeadAndActor(t, root.Key(), sender, actr)
@@ -117,7 +117,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 
 	t.Run("ignores empty tipset", func(t *testing.T) {
 		provider := message.NewFakeProvider(t)
-		root := provider.NewGenesis()
+		root := provider.Genesis()
 		provider.SetHead(root.Key())
 
 		handler := makeHandler(provider, root)
@@ -127,7 +127,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 
 	t.Run("ignores duplicate tipset", func(t *testing.T) {
 		provider := message.NewFakeProvider(t)
-		root := provider.NewGenesis()
+		root := provider.Genesis()
 		provider.SetHead(root.Key())
 
 		handler := makeHandler(provider, root)

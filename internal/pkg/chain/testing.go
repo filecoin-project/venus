@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/exchange"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -12,7 +14,6 @@ import (
 	fbig "github.com/filecoin-project/go-state-types/big"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	ds "github.com/ipfs/go-datastore"
 	syncds "github.com/ipfs/go-datastore/sync"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -39,16 +40,47 @@ import (
 // exactly the same chain.
 type Builder struct {
 	t            *testing.T
+	genesis      *block.TipSet
+	store        *Store
 	minerAddress address.Address
 	stateBuilder StateBuilder
 	stamper      TimeStamper
+	repo         repo.Repo
 	bs           blockstore.Blockstore
 	cstore       cbor.IpldStore
-	messages     *MessageStore
+	mstore       *MessageStore
 	seq          uint64 // For unique tickets
 
 	// Cache of the state root CID computed for each tipset key.
 	tipStateCids map[string]cid.Cid
+}
+
+func (f *Builder) Cstore() cbor.IpldStore {
+	return f.cstore
+}
+
+func (f *Builder) Genesis() *block.TipSet {
+	return f.genesis
+}
+
+func (f *Builder) Mstore() *MessageStore {
+	return f.mstore
+}
+
+func (f *Builder) BlockStore() blockstore.Blockstore {
+	return f.bs
+}
+
+func (f *Builder) Repo() repo.Repo {
+	return f.repo
+}
+
+func (f *Builder) Store() *Store {
+	return f.store
+}
+
+func (f *Builder) RemovePeer(peer peer.ID) {
+	return
 }
 
 func (f *Builder) LoadMessages(ctx context.Context, c cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
@@ -73,32 +105,53 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 		require.NoError(t, err)
 	}
 
-	bs := blockstore.NewBlockstore(syncds.MutexWrap(ds.NewMapDatastore()))
+	repo := repo.NewInMemoryRepo()
+	bs := blockstore.NewBlockstore(syncds.MutexWrap(repo.Datastore()))
+	ds := repo.ChainDatastore()
+	cst := cborutil.NewIpldStore(bs)
+
 	b := &Builder{
 		t:            t,
 		minerAddress: miner,
 		stateBuilder: sb,
 		stamper:      stamper,
+		repo:         repo,
 		bs:           bs,
-		cstore:       cborutil.NewIpldStore(bs),
-		messages:     NewMessageStore(bs),
+		cstore:       cst,
+		mstore:       NewMessageStore(bs),
 		tipStateCids: make(map[string]cid.Cid),
 	}
-
 	ctx := context.TODO()
-	_, err := b.messages.StoreMessages(ctx, []*types.SignedMessage{}, []*types.UnsignedMessage{})
+	_, err := b.mstore.StoreMessages(ctx, []*types.SignedMessage{}, []*types.UnsignedMessage{})
 	require.NoError(t, err)
-	_, err = b.messages.StoreReceipts(ctx, []types.MessageReceipt{})
+	_, err = b.mstore.StoreReceipts(ctx, []types.MessageReceipt{})
 	require.NoError(t, err)
-
+	//append genesis
 	nullState := types.CidFromString(t, "null")
 	b.tipStateCids[block.NewTipSetKey().String()] = nullState
-	return b
-}
 
-// NewGenesis creates and returns a tipset of one block with no parents.
-func (f *Builder) NewGenesis() *block.TipSet {
-	return block.RequireNewTipSet(f.t, f.AppendBlockOn(block.UndefTipSet))
+	b.genesis = b.BuildOrphaTipset(block.UndefTipSet, 1, nil)
+	b.store = NewStore(ds, cst, bs, NewStatusReporter(), block.UndefTipSet.Key(), b.genesis.At(0).Cid())
+
+	for _, block := range b.genesis.Blocks() {
+		// add block to cstore
+		_, err := b.cstore.Put(context.TODO(), block)
+		require.NoError(t, err)
+	}
+
+	// Compute and remember state for the tipset.
+	stateRoot, receipt := b.ComputeState(b.genesis)
+	b.tipStateCids[b.genesis.Key().String()] = stateRoot
+	receiptRoot, err := b.mstore.StoreReceipts(ctx, receipt)
+	require.NoError(t, err)
+	tipsetMeta := &TipSetMetadata{
+		TipSetStateRoot: stateRoot,
+		TipSet:          b.genesis,
+		TipSetReceipts:  receiptRoot,
+	}
+	require.NoError(t, b.store.PutTipSetMetadata(context.TODO(), tipsetMeta))
+	b.store.SetHead(context.TODO(), b.genesis)
+	return b
 }
 
 // AppendBlockOnBlocks creates and returns a new block child of `parents`, with no messages.
@@ -173,21 +226,39 @@ func (f *Builder) BuildManyOn(height int, parent *block.TipSet, build func(b *Bl
 // generalise this to random miner addresses when that is rejected by the syncer.
 // The `build` function is invoked to modify the block before it is stored.
 func (f *Builder) Build(parent *block.TipSet, width int, build func(b *BlockBuilder, i int)) *block.TipSet {
+	tip := f.BuildOrphaTipset(parent, width, build)
+
+	for _, block := range tip.Blocks() {
+		// add block to cstore
+		_, err := f.cstore.Put(context.TODO(), block)
+		require.NoError(f.t, err)
+	}
+
+	// Compute and remember state for the tipset.
+	stateRoot, _ := f.ComputeState(tip)
+	f.tipStateCids[tip.Key().String()] = stateRoot
+	/*	tipsetMeta := &TipSetMetadata{
+			TipSetStateRoot: stateRoot,
+			TipSet:          tip,
+			TipSetReceipts:  types.EmptyReceiptsCID,
+		}
+		require.NoError(f.t, f.store.PutTipSetMetadata(context.TODO(), tipsetMeta))*/
+	return tip
+}
+
+func (f *Builder) BuildOrphaTipset(parent *block.TipSet, width int, build func(b *BlockBuilder, i int)) *block.TipSet {
 	require.True(f.t, width > 0)
 	var blocks []*block.Block
-
 	height := abi.ChainEpoch(0)
-	grandparentKey := block.NewTipSetKey()
 	if parent.Defined() {
 		var err error
 		height = parent.At(0).Height + 1
-		grandparentKey, err = parent.Parents()
 		require.NoError(f.t, err)
 	} else {
 		parent = block.UndefTipSet
 	}
 
-	parentWeight, err := f.stateBuilder.Weigh(parent, f.StateForKey(grandparentKey))
+	parentWeight, err := f.stateBuilder.Weigh(context.TODO(), parent)
 	require.NoError(f.t, err)
 
 	emptyBLSSig := crypto.Signature{
@@ -195,6 +266,7 @@ func (f *Builder) Build(parent *block.TipSet, width int, build func(b *BlockBuil
 		Data: []byte(""),
 		//Data: (*bls.Aggregate([]bls.Signature{}))[:],
 	}
+
 	for i := 0; i < width; i++ {
 		ticket := block.Ticket{}
 		ticket.VRFProof = make([]byte, binary.Size(f.seq))
@@ -221,28 +293,21 @@ func (f *Builder) Build(parent *block.TipSet, width int, build func(b *BlockBuil
 		}
 
 		if build != nil {
-			build(&BlockBuilder{b, f.t, f.messages}, i)
+			build(&BlockBuilder{b, f.t, f.mstore}, i)
 		}
 
 		// Compute state root for this block.
 		ctx := context.Background()
 		prevState := f.StateForKey(parent.Key())
-		smsgs, umsgs, err := f.messages.LoadMetaMessages(ctx, b.Messages.Cid)
+		smsgs, umsgs, err := f.mstore.LoadMetaMessages(ctx, b.Messages.Cid)
 		require.NoError(f.t, err)
 		stateRootRaw, _, err := f.stateBuilder.ComputeState(prevState, [][]*types.UnsignedMessage{umsgs}, [][]*types.SignedMessage{smsgs})
 		require.NoError(f.t, err)
 		b.StateRoot = enccid.NewCid(stateRootRaw)
 
-		// add block to cstore
-		_, err = f.cstore.Put(ctx, b)
-		require.NoError(f.t, err)
 		blocks = append(blocks, b)
 	}
-	tip := block.RequireNewTipSet(f.t, blocks...)
-	// Compute and remember state for the tipset.
-	f.tipStateCids[tip.Key().String()] = f.ComputeState(tip)
-
-	return tip
+	return block.RequireNewTipSet(f.t, blocks...)
 }
 
 // StateForKey loads (or computes) the state root for a tipset key.
@@ -255,7 +320,8 @@ func (f *Builder) StateForKey(key block.TipSetKey) cid.Cid {
 	// been considered together as a tipset).
 	tip, err := f.GetTipSet(key)
 	require.NoError(f.t, err)
-	return f.ComputeState(tip)
+	state, _ = f.ComputeState(tip)
+	return state
 }
 
 // GetBlockstoreValue gets data straight out of the underlying blockstore by cid
@@ -264,27 +330,30 @@ func (f *Builder) GetBlockstoreValue(ctx context.Context, c cid.Cid) (blocks.Blo
 }
 
 // ComputeState computes the state for a tipset from its parent state.
-func (f *Builder) ComputeState(tip *block.TipSet) cid.Cid {
+func (f *Builder) ComputeState(tip *block.TipSet) (cid.Cid, []types.MessageReceipt) {
 	parentKey, err := tip.Parents()
 	require.NoError(f.t, err)
 	// Load the state of the parent tipset and compute the required state (recursively).
 	prev := f.StateForKey(parentKey)
-	state, _, err := f.stateBuilder.ComputeState(prev, [][]*types.UnsignedMessage{}, f.tipMessages(tip))
+	umsg, msg := f.tipMessages(tip)
+	state, receipt, err := f.stateBuilder.ComputeState(prev, umsg, msg)
 	require.NoError(f.t, err)
-	return state
+	return state, receipt
 }
 
 // tipMessages returns the messages of a tipset.  Each block's messages are
 // grouped into a slice and a slice of these slices is returned.
-func (f *Builder) tipMessages(tip *block.TipSet) [][]*types.SignedMessage {
+func (f *Builder) tipMessages(tip *block.TipSet) ([][]*types.UnsignedMessage, [][]*types.SignedMessage) {
 	ctx := context.Background()
+	var umsg [][]*types.UnsignedMessage
 	var msgs [][]*types.SignedMessage
 	for i := 0; i < tip.Len(); i++ {
-		smsgs, _, err := f.messages.LoadMetaMessages(ctx, tip.At(i).Messages.Cid)
+		smsgs, blsMsg, err := f.mstore.LoadMetaMessages(ctx, tip.At(i).Messages.Cid)
 		require.NoError(f.t, err)
 		msgs = append(msgs, smsgs)
+		umsg = append(umsg, blsMsg)
 	}
-	return msgs
+	return umsg, msgs
 }
 
 // Wraps a simple build function in one that also accepts an index, propagating a nil function.
@@ -340,7 +409,7 @@ func (bb *BlockBuilder) SetStateRoot(root cid.Cid) {
 // StateBuilder abstracts the computation of state root CIDs from the chain builder.
 type StateBuilder interface {
 	ComputeState(prev cid.Cid, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, []types.MessageReceipt, error)
-	Weigh(tip *block.TipSet, state cid.Cid) (fbig.Int, error)
+	Weigh(ctx context.Context, tip *block.TipSet) (fbig.Int, error)
 }
 
 // FakeStateBuilder computes a fake state CID by hashing the CIDs of a block's parents and messages.
@@ -399,7 +468,7 @@ func (FakeStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.Unsign
 }
 
 // Weigh computes a tipset's weight as its parent weight plus one for each block in the tipset.
-func (FakeStateBuilder) Weigh(tip *block.TipSet, state cid.Cid) (fbig.Int, error) {
+func (FakeStateBuilder) Weigh(context context.Context, tip *block.TipSet) (fbig.Int, error) {
 	parentWeight := fbig.Zero()
 	if tip.Defined() {
 		var err error
@@ -493,12 +562,12 @@ type FakeChainSelector struct {
 }
 
 // IsHeavier compares chains weighed with StateBuilder.Weigh.
-func (e *FakeChainSelector) IsHeavier(ctx context.Context, a, b *block.TipSet, aStateID, bStateID cid.Cid) (bool, error) {
-	aw, err := e.Weigh(a, aStateID)
+func (e *FakeChainSelector) IsHeavier(ctx context.Context, a, b *block.TipSet) (bool, error) {
+	aw, err := e.Weigh(ctx, a)
 	if err != nil {
 		return false, err
 	}
-	bw, err := e.Weigh(b, bStateID)
+	bw, err := e.Weigh(ctx, b)
 	if err != nil {
 		return false, err
 	}
@@ -506,8 +575,8 @@ func (e *FakeChainSelector) IsHeavier(ctx context.Context, a, b *block.TipSet, a
 }
 
 // Weight delegates to the statebuilder
-func (e *FakeChainSelector) Weight(ctx context.Context, ts *block.TipSet, stID cid.Cid) (fbig.Int, error) {
-	return e.Weigh(ts, stID)
+func (e *FakeChainSelector) Weight(ctx context.Context, ts *block.TipSet) (fbig.Int, error) {
+	return e.Weigh(ctx, ts)
 }
 
 ///// Interface and accessor implementations /////
@@ -522,7 +591,7 @@ func (f *Builder) GetBlock(ctx context.Context, c cid.Cid) (*block.Block, error)
 }
 
 // GetBlocks returns the blocks identified by `cids`.
-func (f *Builder) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*block.Block, error) {
+func (f *Builder) GetBlocksByIds(ctx context.Context, cids []cid.Cid) ([]*block.Block, error) {
 	ret := make([]*block.Block, len(cids))
 	for i, c := range cids {
 		var block block.Block
@@ -627,39 +696,84 @@ func (f *Builder) RequireTipSets(head block.TipSetKey, count int) []*block.TipSe
 
 // LoadReceipts returns the message collections tracked by the builder.
 func (f *Builder) LoadReceipts(ctx context.Context, c cid.Cid) ([]types.MessageReceipt, error) {
-	return f.messages.LoadReceipts(ctx, c)
+	return f.mstore.LoadReceipts(ctx, c)
 }
 
 // LoadTxMeta returns the tx meta wrapper tracked by the builder.
 func (f *Builder) LoadTxMeta(ctx context.Context, metaCid cid.Cid) (types.TxMeta, error) {
-	return f.messages.LoadTxMeta(ctx, metaCid)
+	return f.mstore.LoadTxMeta(ctx, metaCid)
 }
 
 // StoreReceipts stores message receipts and returns a commitment.
 func (f *Builder) StoreReceipts(ctx context.Context, receipts []types.MessageReceipt) (cid.Cid, error) {
-	return f.messages.StoreReceipts(ctx, receipts)
+	return f.mstore.StoreReceipts(ctx, receipts)
 }
 
 // StoreTxMeta stores a tx meta
 func (f *Builder) StoreTxMeta(ctx context.Context, meta types.TxMeta) (cid.Cid, error) {
-	return f.messages.StoreTxMeta(ctx, meta)
+	return f.mstore.StoreTxMeta(ctx, meta)
 }
 
 func (f *Builder) LoadUnsinedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error) {
-	return f.messages.LoadUnsinedMessagesFromCids(blsCids)
+	return f.mstore.LoadUnsinedMessagesFromCids(blsCids)
 }
 
 func (f *Builder) LoadSignedMessagesFromCids(secpCids []cid.Cid) ([]*types.SignedMessage, error) {
-	return f.messages.LoadSignedMessagesFromCids(secpCids)
+	return f.mstore.LoadSignedMessagesFromCids(secpCids)
 }
 
 // LoadMessages returns the message collections tracked by the builder.
 func (f *Builder) LoadMetaMessages(ctx context.Context, metaCid cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
-	return f.messages.LoadMetaMessages(ctx, metaCid)
+	return f.mstore.LoadMetaMessages(ctx, metaCid)
 }
 
 func (f *Builder) ReadMsgMetaCids(ctx context.Context, metaCid cid.Cid) ([]cid.Cid, []cid.Cid, error) {
-	return f.messages.ReadMsgMetaCids(ctx, metaCid)
+	return f.mstore.ReadMsgMetaCids(ctx, metaCid)
+}
+
+///// exchange  /////
+func (f *Builder) GetBlocks(ctx context.Context, tsk block.TipSetKey, count int) ([]*block.TipSet, error) {
+	ts, err := f.GetTipSet(tsk)
+	if err != nil {
+		return nil, err
+	}
+	result := []*block.TipSet{ts}
+	for i := 1; i < count; i++ {
+		if ts.EnsureHeight() == 0 {
+			break
+		}
+		ts, err = f.GetTipSet(ts.EnsureParents())
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, ts)
+	}
+	return result, nil
+}
+
+func (f *Builder) GetChainMessages(ctx context.Context, tipsets []*block.TipSet) ([]*exchange.CompactedMessages, error) {
+	result := []*exchange.CompactedMessages{}
+	for _, ts := range tipsets {
+		bmsgs, bmincl, smsgs, smincl, err := exchange.GatherMessages(f, f.mstore, ts)
+		if err != nil {
+			return nil, err
+		}
+		compactMsg := &exchange.CompactedMessages{}
+		compactMsg.Bls = bmsgs
+		compactMsg.BlsIncludes = bmincl
+		compactMsg.Secpk = smsgs
+		compactMsg.SecpkIncludes = smincl
+		result = append(result, compactMsg)
+	}
+	return result, nil
+}
+
+func (f *Builder) GetFullTipSet(ctx context.Context, peer peer.ID, tsk block.TipSetKey) (*block.FullTipSet, error) {
+	panic("implement me")
+}
+
+func (f *Builder) AddPeer(peer peer.ID) {
+	return
 }
 
 ///// Internals /////

@@ -390,7 +390,7 @@ func TestUpdateMessagePool(t *testing.T) {
 
 func newProviderWithGenesis(t *testing.T) (*message.FakeProvider, *block.TipSet) {
 	provider := message.NewFakeProvider(t)
-	head := provider.Builder.NewGenesis()
+	head := provider.Builder.Genesis()
 	provider.SetHead(head.Key())
 	return provider, head
 }

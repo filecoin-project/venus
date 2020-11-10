@@ -190,7 +190,7 @@ func collectChainSegment(cr chainReader, mr messageStore, req *validatedRequest)
 		}
 
 		if req.options.IncludeMessages {
-			bmsgs, bmincl, smsgs, smincl, err := gatherMessages(cr, mr, ts)
+			bmsgs, bmincl, smsgs, smincl, err := GatherMessages(cr, mr, ts)
 			if err != nil {
 				return nil, xerrors.Errorf("gather messages failed: %w", err)
 			}
@@ -215,7 +215,7 @@ func collectChainSegment(cr chainReader, mr messageStore, req *validatedRequest)
 	}
 }
 
-func gatherMessages(cr chainReader, mr messageStore, ts *block.TipSet) ([]*types.UnsignedMessage, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
+func GatherMessages(cr chainReader, mr messageStore, ts *block.TipSet) ([]*types.UnsignedMessage, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
 	blsmsgmap := make(map[cid.Cid]uint64)
 	secpkmsgmap := make(map[cid.Cid]uint64)
 	var secpkincl, blsincl [][]uint64

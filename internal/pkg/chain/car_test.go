@@ -236,7 +236,6 @@ func setupDeps(t *testing.T) (context.Context, *block.TipSet, *chain.Builder, *b
 
 	// chain builder and its genesis
 	cb := chain.NewBuilder(t, address.Undef)
-	gene := cb.NewGenesis()
 	// buffers to read and write the car file from
 	var buf bytes.Buffer
 	carW := bufio.NewWriter(&buf)
@@ -245,7 +244,7 @@ func setupDeps(t *testing.T) (context.Context, *block.TipSet, *chain.Builder, *b
 	// a store to import the car file to and validate from.
 	mds := ds.NewMapDatastore()
 	bstore := blockstore.NewBlockstore(mds)
-	return ctx, gene, cb, carW, carR, bstore
+	return ctx, cb.Genesis(), cb, carW, carR, bstore
 
 }
 

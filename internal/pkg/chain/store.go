@@ -222,7 +222,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	logStore.Infof("finished loading %d tipsets from %s", startHeight, headTs.String())
 
 	//todo just for test should remove if ok, 新创建节点会出问题?
-	if checkPointTs == nil || headTs.EnsureHeight() > checkPointTs.EnsureHeight() {
+	/*	if checkPointTs == nil || headTs.EnsureHeight() > checkPointTs.EnsureHeight() {
 		p, err := headTs.Parents()
 		if err != nil {
 			return err
@@ -231,7 +231,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		if err != nil {
 			return err
 		}
-	}
+	}*/
 
 	// Set actual head.
 	return store.SetHead(ctx, headTs)

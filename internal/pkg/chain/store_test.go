@@ -94,7 +94,7 @@ func TestPutTipSet(t *testing.T) {
 
 	ctx := context.Background()
 	builder := chain.NewBuilder(t, address.Undef)
-	genTS := builder.NewGenesis()
+	genTS := builder.Genesis()
 	r := repo.NewInMemoryRepo()
 	cs := newChainStore(r, genTS.At(0).Cid())
 
@@ -113,7 +113,7 @@ func TestGetByKey(t *testing.T) {
 
 	ctx := context.Background()
 	builder := chain.NewBuilder(t, address.Undef)
-	genTS := builder.NewGenesis()
+	genTS := builder.Genesis()
 	r := repo.NewInMemoryRepo()
 	cs := newChainStore(r, genTS.At(0).Cid())
 
@@ -160,7 +160,7 @@ func TestGetByParent(t *testing.T) {
 
 	ctx := context.Background()
 	builder := chain.NewBuilder(t, address.Undef)
-	genTS := builder.NewGenesis()
+	genTS := builder.Genesis()
 	r := repo.NewInMemoryRepo()
 	cs := newChainStore(r, genTS.At(0).Cid())
 
@@ -197,7 +197,7 @@ func TestGetMultipleByParent(t *testing.T) {
 
 	ctx := context.Background()
 	builder := chain.NewBuilder(t, address.Undef)
-	genTS := builder.NewGenesis()
+	genTS := builder.Genesis()
 	r := repo.NewInMemoryRepo()
 	cs := newChainStore(r, genTS.At(0).Cid())
 
@@ -237,7 +237,7 @@ func TestSetGenesis(t *testing.T) {
 	tf.UnitTest(t)
 
 	builder := chain.NewBuilder(t, address.Undef)
-	genTS := builder.NewGenesis()
+	genTS := builder.Genesis()
 	r := repo.NewInMemoryRepo()
 	cs := newChainStore(r, genTS.At(0).Cid())
 
@@ -255,7 +255,7 @@ func TestHead(t *testing.T) {
 	tf.UnitTest(t)
 
 	builder := chain.NewBuilder(t, address.Undef)
-	genTS := builder.NewGenesis()
+	genTS := builder.Genesis()
 	r := repo.NewInMemoryRepo()
 	sr := chain.NewStatusReporter()
 	bs := bstore.NewBlockstore(r.Datastore())
@@ -302,7 +302,7 @@ func TestHeadEvents(t *testing.T) {
 	tf.UnitTest(t)
 
 	builder := chain.NewBuilder(t, address.Undef)
-	genTS := builder.NewGenesis()
+	genTS := builder.Genesis()
 	r := repo.NewInMemoryRepo()
 	chainStore := newChainStore(r, genTS.At(0).Cid())
 
@@ -347,7 +347,7 @@ func TestLoadAndReboot(t *testing.T) {
 
 	ctx := context.Background()
 	builder := chain.NewBuilder(t, address.Undef)
-	genTS := builder.NewGenesis()
+	genTS := builder.Genesis()
 	rPriv := repo.NewInMemoryRepo()
 	ds := rPriv.Datastore()
 	bs := bstore.NewBlockstore(ds)

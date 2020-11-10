@@ -63,7 +63,7 @@ func TestDAGGet(t *testing.T) {
 		dserv := merkledag.NewDAGService(blkserv)
 		dag := NewDAG(dserv)
 
-		ipldnode := chain.NewBuilder(t, address.Undef).NewGenesis().At(0).ToNode()
+		ipldnode := chain.NewBuilder(t, address.Undef).Genesis().At(0).ToNode()
 
 		// put into out blockservice
 		assert.NoError(t, blkserv.AddBlock(ipldnode))

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/exchange"
 	"testing"
 	"time"
 
@@ -92,12 +93,11 @@ type fakeStream struct {
 
 var _ inet.Stream = &fakeStream{}
 
-
 func newFakeStream() fakeStream { return fakeStream{} }
 
 // Minimal implementation of the inet.Stream interface
 
-func (fs fakeStream) ID() string                         { return ""}
+func (fs fakeStream) ID() string                         { return "" }
 func (fs fakeStream) Protocol() protocol.ID              { return fs.pid }            // nolint: golint
 func (fs fakeStream) SetProtocol(id protocol.ID)         { fs.pid = id }              // nolint: golint
 func (fs fakeStream) Stat() inet.Stat                    { panic("not implemented") } // nolint: golint
@@ -208,4 +208,41 @@ func (f *TestFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*block.B
 		}
 	}
 	return ret, nil
+}
+
+func NewTestExchange() *TestExchange {
+	return &TestExchange{
+		sourceBlocks: make(map[string]*block.Block),
+	}
+}
+
+// AddSourceBlocks adds the input blocks to the fetcher source.
+func (f *TestExchange) AddSourceBlocks(blocks ...*block.Block) {
+	for _, block := range blocks {
+		f.sourceBlocks[block.Cid().String()] = block
+	}
+}
+
+type TestExchange struct {
+	sourceBlocks map[string]*block.Block // s
+}
+
+func (f *TestExchange) GetBlocks(ctx context.Context, tsk block.TipSetKey, count int) ([]*block.TipSet, error) {
+	panic("implement me")
+}
+
+func (f *TestExchange) GetChainMessages(ctx context.Context, tipsets []*block.TipSet) ([]*exchange.CompactedMessages, error) {
+	panic("implement me")
+}
+
+func (f *TestExchange) GetFullTipSet(ctx context.Context, peer peer.ID, tsk block.TipSetKey) (*block.FullTipSet, error) {
+	panic("implement me")
+}
+
+func (f *TestExchange) AddPeer(peer peer.ID) {
+	return
+}
+
+func (f *TestExchange) RemovePeer(peer peer.ID) {
+	return
 }
