@@ -202,9 +202,9 @@ func (g *Inspector) Runtime() *RuntimeInfo {
 // Environment returns information about the environment filecoin is running in.
 func (g *Inspector) Environment() *EnvironmentInfo {
 	return &EnvironmentInfo{
-		FilAPI:  os.Getenv("FIL_API"),
-		FilPath: os.Getenv("FIL_PATH"),
-		GoPath:  os.Getenv("GOPATH"),
+		FilAPI:  os.Getenv(EnvFilApi),
+		FilPath: os.Getenv(EnvFilPath),
+		GoPath:  os.Getenv(EnvGo),
 	}
 }
 

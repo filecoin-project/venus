@@ -86,6 +86,11 @@ const (
 	IsRelay = "is-relay"
 
 	CheckPoint = "check-point"
+
+	// envirement params
+	EnvFilApi  = "FIL_API"
+	EnvFilPath = "FIL_PATH"
+	EnvGo      = "GOPATH"
 )
 
 func init() {
@@ -263,7 +268,7 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 	var rawAddr string
 	var err error
 	// second highest precedence is env vars.
-	if envapi := os.Getenv("FIL_API"); envapi != "" {
+	if envapi := os.Getenv(EnvFilApi); envapi != "" {
 		rawAddr = envapi
 	}
 

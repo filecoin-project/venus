@@ -55,7 +55,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	config := rep.Config()
 
 	// second highest precedence is env vars.
-	if envAPI := os.Getenv("FIL_API"); envAPI != "" {
+	if envAPI := os.Getenv(EnvFilApi); envAPI != "" {
 		config.API.Address = envAPI
 	}
 
