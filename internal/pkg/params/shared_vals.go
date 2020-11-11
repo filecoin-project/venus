@@ -35,16 +35,5 @@ func init() {
 	InitialFilReserved = InitialFilReserved.Mul(InitialFilReserved, big.NewInt(int64(FilecoinPrecision)))
 }
 
-// ///////
-// Limits
-
-const BlockGasLimit = 10_000_000_000
-const BlockGasTarget = BlockGasLimit / 2
-const BaseFeeMaxChangeDenom = 8 // 12.5%
-const InitialBaseFee = 100e6
-const MinimumBaseFee = 100
-const PackingEfficiencyNum = 4
-const PackingEfficiencyDenom = 5
-
 
 

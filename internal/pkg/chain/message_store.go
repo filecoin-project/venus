@@ -406,10 +406,10 @@ func (ms *MessageStore) storeAMTCids(ctx context.Context, cids []cid.Cid) (cid.C
 }
 
 func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch) abi.TokenAmount {
-	// deta := gasLimitUsed/noOfBlocks - build.BlockGasTarget
+	// deta := gasLimitUsed/noOfBlocks - constants.BlockGasTarget
 	// change := baseFee * deta / BlockGasTarget
 	// nextBaseFee = baseFee + change
-	// nextBaseFee = max(nextBaseFee, build.MinimumBaseFee)
+	// nextBaseFee = max(nextBaseFee, constants.MinimumBaseFee)
 
 	var delta int64
 	if epoch > fork.UpgradeSmokeHeight {
