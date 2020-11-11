@@ -404,7 +404,7 @@ func (store *Store) GetLatestBeaconEntry(ts *block.TipSet) (*block.BeaconEntry, 
 		cur = next
 	}
 
-	if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
+	if os.Getenv("VENUS_IGNORE_DRAND") == "_yes_" {
 		return &block.BeaconEntry{
 			Data: []byte{9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
 		}, nil

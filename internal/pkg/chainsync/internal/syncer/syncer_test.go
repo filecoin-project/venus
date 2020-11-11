@@ -426,19 +426,11 @@ func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *block.Tip
 	return types.EmptyTxMetaCID, nil, nil
 }
 
-func (pv *poisonValidator) ValidateMining(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid, parentWeight fbig.Int, parentReceiptRoot cid.Cid) error {
+func (pv *poisonValidator) ValidateMining(ctx context.Context, parent, ts *block.TipSet, parentWeight big.Int, parentReceiptRoot cid.Cid) error {
 	if pv.headerFailureTS == ts.At(0).Timestamp {
 		return errors.New("val semantic fails on poison timestamp")
 	}
 	return nil
-}
-
-func (pv *poisonValidator) ValidateBlockBeacon(b *block.Block, parentEpoch abi.ChainEpoch, prevEntry *block.BeaconEntry) error {
-	panic("implement me")
-}
-
-func (pv *poisonValidator) ValidateBlockWinner(ctx context.Context, blk *block.Block, stateID cid.Cid, prevEntry *block.BeaconEntry) error {
-	panic("implement me")
 }
 
 func newPoisonValidator(t *testing.T, headerFailure, fullFailure uint64) *poisonValidator {

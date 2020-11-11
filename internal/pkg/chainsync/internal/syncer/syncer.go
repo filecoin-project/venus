@@ -147,9 +147,7 @@ type FullBlockValidator interface {
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
 	RunStateTransition(ctx context.Context, ts *block.TipSet, secpMessages [][]*types.SignedMessage, blsMessages [][]*types.UnsignedMessage, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error)
 	// Todo add by force
-	ValidateMining(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid, parentWeight big.Int, parentReceiptRoot cid.Cid) error
-	ValidateBlockBeacon(b *block.Block, parentEpoch abi.ChainEpoch, prevEntry *block.BeaconEntry) error
-	ValidateBlockWinner(ctx context.Context, blk *block.Block, stateID cid.Cid, prevEntry *block.BeaconEntry) error
+	ValidateMining(ctx context.Context, parent, ts *block.TipSet, parentWeight big.Int, parentReceiptRoot cid.Cid) error
 }
 
 // faultDetector tracks data for detecting consensus faults and emits faults
@@ -324,9 +322,9 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 			return xerrors.Errorf("get parent tipset receipt failed %w", err)
 		}
 
-		err = syncer.fullValidator.ValidateMining(ctx, next, parentStateRoot, parentWeight, parentReceiptRoot)
+		err = syncer.fullValidator.ValidateMining(ctx, parent, next, parentWeight, parentReceiptRoot)
 		if err != nil {
-			return err
+			return xerrors.Errorf("validate mining failed %w", err)
 		}
 	}
 
@@ -393,18 +391,6 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 	}
 
 	for i := 0; i < next.Len(); i++ {
-		//// todo beacon check: add by force
-		//err := syncer.fullValidator.ValidateBlockBeacon(next.At(i), ph, prevBeacon)
-		//if  err != nil {
-		//	return xerrors.Errorf("failed to validate blocks random beacon values: %w", err)
-		//}
-		//
-		//// todo winner check: add by force
-		//err = syncer.fullValidator.ValidateBlockWinner(ctx, next.At(i), stateRoot, prevBeacon)
-		//if  err != nil {
-		//	return xerrors.Errorf("failed to validate blocks random beacon values: %w", err)
-		//}
-
 		err = syncer.faultDetector.CheckBlock(next.At(i), parent)
 		if err != nil {
 			return err
@@ -589,9 +575,9 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 		beInSyncing = false //reset to start new sync
 	}()
 
-	/*	cidd, _ := cid.Decode("bafy2bzacebxacniavpxu3dokkofk2zqu7rkhjfyzpc34zm4ekp2o732fyghay")
-		ci.Head = block.NewTipSetKey(cidd)
-		ci.Height = 50012*/
+	cidd, _ := cid.Decode("bafy2bzaced2rl3cgi6f3dujeo6dcrhgcftwwevd27xztpvszk74jny2tlan2m")
+	ci.Head = block.NewTipSetKey(cidd)
+	ci.Height = 5028
 
 	// If the store already has this tipset then the syncer is finished.
 	if syncer.chainStore.HasTipSetAndState(ctx, ci.Head) {
