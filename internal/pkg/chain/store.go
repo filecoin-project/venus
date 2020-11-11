@@ -223,14 +223,14 @@ func (store *Store) Load(ctx context.Context) (err error) {
 
 	//todo just for test should remove if ok, 新创建节点会出问题?
 	if checkPointTs == nil || headTs.EnsureHeight() > checkPointTs.EnsureHeight() {
-		p, err := headTs.Parents()
-		if err != nil {
-			return err
-		}
-		headTs, err = store.GetTipSet(p)
-		if err != nil {
-			return err
-		}
+		//p, err := headTs.Parents()
+		//if err != nil {
+		//	return err
+		//}
+		//headTs, err = store.GetTipSet(p)
+		//if err != nil {
+		//	return err
+		//}
 	}
 
 	// Set actual head.
