@@ -182,7 +182,7 @@ func TestOutbox(t *testing.T) {
 		provider := message.NewFakeProvider(t)
 		gp := message.NewGasPredictor("gasPredictor")
 
-		head := provider.NewGenesis()
+		head := provider.Genesis()
 		actr := types.NewActor(builtin.StorageMarketActorCodeID, abi.NewTokenAmount(0), cid.Undef)
 		provider.SetHeadAndActor(t, head.Key(), sender, actr)
 

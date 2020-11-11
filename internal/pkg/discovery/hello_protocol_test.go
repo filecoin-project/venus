@@ -157,7 +157,7 @@ func TestHelloMultiBlock(t *testing.T) {
 
 	builder := chain.NewBuilder(t, address.Undef)
 
-	genesisTipset := builder.NewGenesis()
+	genesisTipset := builder.Genesis()
 	assert.Equal(t, 1, genesisTipset.Len())
 
 	heavy1 := builder.AppendOn(genesisTipset, 3)

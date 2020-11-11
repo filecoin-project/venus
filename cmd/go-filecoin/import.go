@@ -106,7 +106,7 @@ func ImportChain(r repo.Repo, fname string) error {
 	bar.Start()
 	tip, err := chainStore.Import(br)
 	if err != nil {
-		return xerrors.Errorf("importing chain failed: %w", err)
+		return xerrors.Errorf("importing chain failed: %s", err)
 	}
 	bar.Finish()
 

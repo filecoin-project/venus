@@ -19,7 +19,7 @@ import (
 func TestNewHeightThresholdListener(t *testing.T) {
 	tf.UnitTest(t)
 	builder := chain.NewBuilder(t, address.Undef)
-	genesis := builder.NewGenesis()
+	genesis := builder.Genesis()
 
 	startHead := builder.BuildManyOn(6, genesis, nil)
 

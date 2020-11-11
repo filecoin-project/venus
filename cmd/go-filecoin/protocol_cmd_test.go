@@ -20,7 +20,7 @@ func TestProtocol(t *testing.T) {
 	b := test.NewNodeBuilder(t)
 	node := b.
 		WithConfig(func(c *config.Config) {
-			c.Mining.AutoSealIntervalSeconds = 120
+
 		}).
 		Build(ctx)
 	require.NoError(t, node.Chain().ChainReader.Load(ctx))

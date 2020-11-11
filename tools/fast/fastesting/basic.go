@@ -73,13 +73,6 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.File
 	err = series.SetupGenesisNode(ctx, genesis, genesisMiner.Address, files.NewReaderFile(genesisMiner.Owner))
 	require.NoError(t, err)
 
-	// Define a MiningOnce function which will bet set on the context to provide
-	// a way to mine blocks in the series used during testing
-	var miningOnce series.MiningOnceFunc = func() {
-		_, err := genesis.MiningOnce(ctx)
-		require.NoError(t, err)
-	}
-
 	// Define a MessageWait function which will bet set on the context to provide
 	// a way to wait for a message to appear on the mining queue
 	var waitForMpool series.MpoolWaitFunc = func() {
@@ -87,7 +80,6 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.File
 		require.NoError(t, err)
 	}
 
-	ctx = series.SetCtxMiningOnce(ctx, miningOnce)
 	ctx = series.SetCtxWaitForMpool(ctx, waitForMpool)
 	ctx = series.SetCtxSleepDelay(ctx, time.Second)
 

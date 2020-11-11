@@ -2,8 +2,8 @@ package syncer
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -18,7 +18,6 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
-	"io/ioutil"
 	"time"
 
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt" // todo block headers use adt0
@@ -110,7 +109,7 @@ type ChainReaderWriter interface {
 	GetTipSetReceiptsRoot(tsKey block.TipSetKey) (cid.Cid, error)
 	HasTipSetAndState(ctx context.Context, tsKey block.TipSetKey) bool
 	PutTipSetMetadata(ctx context.Context, tsas *chain.TipSetMetadata) error
-	DelTipSetMetadata(ctx context.Context, ts *block.TipSet) error // todo add by force
+	DelTipSetMetadata(ctx context.Context, ts *block.TipSet) error
 	SetHead(ctx context.Context, ts *block.TipSet) error
 	HasTipSetAndStatesWithParentsAndHeight(pTsKey block.TipSetKey, h abi.ChainEpoch) bool
 	GetTipSetAndStatesByParentsAndHeight(pTsKey block.TipSetKey, h abi.ChainEpoch) ([]*chain.TipSetMetadata, error)
@@ -416,10 +415,11 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 	if err != nil {
 		return errors.Wrapf(err, "could not bsstore message rerceipts for tip set %s", next.String())
 	}
-	dddd, _ := json.MarshalIndent(receipts, "", "\t")
+	/*dddd, _ := json.MarshalIndent(receipts, "", "\t")
 	ioutil.WriteFile("receipt.json", dddd, 0777)
+	*/
+	logSyncer.Infow("Process Block ", "Height:", next.EnsureHeight(), " Root:", root, " receiptcid ", receiptCid, " time: ", time.Now().Sub(toProcessTime).Milliseconds())
 
-	fmt.Println("Height:", next.EnsureHeight(), " Root:", root, " receiptcid ", receiptCid, " time: ", time.Now().Sub(toProcessTime).Milliseconds())
 	err = syncer.chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          next,
 		TipSetStateRoot: root,
@@ -511,6 +511,7 @@ func (syncer *Syncer) widen(ctx context.Context, ts *block.TipSet) (*block.TipSe
 	if !syncer.chainStore.HasTipSetAndStatesWithParentsAndHeight(parentSet, height) {
 		return nil, nil
 	}
+	//find current tipset base the same parent and height
 	candidates, err := syncer.chainStore.GetTipSetAndStatesByParentsAndHeight(parentSet, height)
 	if err != nil {
 		return nil, err
@@ -588,9 +589,9 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 		beInSyncing = false //reset to start new sync
 	}()
 
-	cidd, _ := cid.Decode("bafy2bzacebxacniavpxu3dokkofk2zqu7rkhjfyzpc34zm4ekp2o732fyghay")
-	ci.Head = block.NewTipSetKey(cidd)
-	ci.Height = 50012
+	/*	cidd, _ := cid.Decode("bafy2bzacebxacniavpxu3dokkofk2zqu7rkhjfyzpc34zm4ekp2o732fyghay")
+		ci.Head = block.NewTipSetKey(cidd)
+		ci.Height = 50012*/
 
 	// If the store already has this tipset then the syncer is finished.
 	if syncer.chainStore.HasTipSetAndState(ctx, ci.Head) {
@@ -600,15 +601,27 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 	syncer.reporter.UpdateStatus(status.SyncingStarted(syncer.clock.Now().Unix()), status.SyncHead(ci.Head), status.SyncHeight(ci.Height), status.SyncComplete(false))
 	defer syncer.reporter.UpdateStatus(status.SyncComplete(true))
 
+	syncer.reporter.UpdateStatus(func(s *status.Status) {
+		s.FetchingHead = ci.Head
+		s.FetchingHeight = ci.Height
+	})
+
 	tipsets, err := syncer.fetchChainBlocks(ctx, syncer.staged, ci.Head)
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching or validating headers")
+	}
+	//todo ci shuold give a tipset to ignore block for each blocks
+	//todo incoming tipset should compare with current sync head to ignore sasme
+	if tipsets[len(tipsets)-1].At(0).ParentWeight.LessThan(syncer.staged.At(0).ParentWeight) {
+		return xerrors.New("do not sync a less weight tip")
 	}
 
 	logSyncer.Infof("fetch & validate header success at %v %s ...", tipsets[0].EnsureHeight(), tipsets[0].Key())
 	errProcessChan := make(chan error, 1)
 	errProcessChan <- nil //init
-	return SegProcess(tipsets, func(segTipset []*block.TipSet) error {
+	var wg sync.WaitGroup
+	//todo  write a pipline segment processor function
+	err = SegProcess(tipsets, func(segTipset []*block.TipSet) error {
 		// fetch messages
 		startTip := segTipset[0].EnsureHeight()
 		emdTipset := segTipset[len(segTipset)-1].EnsureHeight()
@@ -622,8 +635,9 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 		if err != nil {
 			return xerrors.Errorf("process message failed %v", err)
 		}
-
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			logSyncer.Infof("start to process message segement %d-%d", startTip, emdTipset)
 			defer logSyncer.Infof("finish to process message segement %d-%d", startTip, emdTipset)
 			errProcess := syncer.processTipSetSeg(ctx, segTipset)
@@ -636,6 +650,17 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 
 		return nil
 	})
+
+	if err != nil {
+		return err
+	}
+	wg.Wait()
+	select {
+	case err = <-errProcessChan:
+		return err
+	default:
+		return nil
+	}
 }
 
 func (syncer *Syncer) fetchChainBlocks(ctx context.Context, knownTip *block.TipSet, targetTip block.TipSetKey) ([]*block.TipSet, error) {
@@ -651,6 +676,7 @@ func (syncer *Syncer) fetchChainBlocks(ctx context.Context, knownTip *block.TipS
 		}
 		return copyBlockstore(ctx, bs, syncer.bsstore)
 	}
+
 	var windows = 500
 	untilHeight := knownTip.EnsureHeight()
 	count := 0
@@ -756,7 +782,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *block.TipSet, know
 		}
 
 		if nts.Equals(tips[cur]) {
-			return tips[:cur+1], nil
+			return tips[:cur], nil
 		}
 
 		if nts.EnsureHeight() < tips[cur].EnsureHeight() {
@@ -1036,16 +1062,14 @@ func computeMsgMeta(bs blockstore.Blockstore, bmsgCids, smsgCids []cid.Cid) (cid
 
 const maxProcessLen = 32
 
-func SegProcess(ts []*block.TipSet, cb func(ts []*block.TipSet) error) error {
-	var err error
+func SegProcess(ts []*block.TipSet, cb func(ts []*block.TipSet) error) (err error) {
 	for {
 		if len(ts) == 0 {
 			break
 		} else if len(ts) < maxProcessLen {
+			// break out if less than process len
 			err = cb(ts)
-			if err != nil {
-				break
-			}
+			break
 		} else {
 			processTs := ts[0:maxProcessLen]
 			err = cb(processTs)

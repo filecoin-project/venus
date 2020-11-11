@@ -45,7 +45,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		requireEnqueue(q, fromAlice, 100)
 		requireEnqueue(q, fromBob, 200)
 
-		root := blocks.NewGenesis() // Height = 0
+		root := blocks.Genesis() // Height = 0
 		b1 := blocks.AppendOn(root, 1)
 
 		err := policy.HandleNewHead(ctx, q, nil, []*block.TipSet{b1})
@@ -64,7 +64,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		requireEnqueue(q, fromAlice, 100)
 		requireEnqueue(q, fromBob, 200)
 
-		root := blocks.NewGenesis() // Height = 0
+		root := blocks.Genesis() // Height = 0
 		b1 := blocks.AppendOn(root, 1)
 
 		err := policy.HandleNewHead(ctx, q, []*block.TipSet{b1}, []*block.TipSet{})

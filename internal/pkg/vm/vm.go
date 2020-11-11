@@ -30,6 +30,7 @@ type BlockMessagesInfo = vmcontext.BlockMessagesInfo
 
 type ExecCallBack = vmcontext.ExecCallBack
 type VmMessage = vmcontext.VmMessage
+type FakeSyscalls = vmcontext.FakeSyscalls
 
 // NewVM creates a new VM interpreter.
 func NewVM(st state.Tree, store *storage.VMStorage, syscalls SyscallsImpl, option VmOption) Interpreter {

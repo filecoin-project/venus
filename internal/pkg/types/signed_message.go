@@ -124,7 +124,6 @@ func (smsg *SignedMessage) Equals(other *SignedMessage) bool {
 		smsg.Signature.Equals(&other.Signature)
 }
 
-// ToDo add by force
 func (m *SignedMessage) ChainLength() int {
 	ser, err := m.Marshal()
 	if err != nil {

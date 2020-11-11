@@ -222,7 +222,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	logStore.Infof("finished loading %d tipsets from %s", startHeight, headTs.String())
 
 	//todo just for test should remove if ok, 新创建节点会出问题?
-	if checkPointTs == nil || headTs.EnsureHeight() > checkPointTs.EnsureHeight() {
+	/*	if checkPointTs == nil || headTs.EnsureHeight() > checkPointTs.EnsureHeight() {
 		p, err := headTs.Parents()
 		if err != nil {
 			return err
@@ -231,7 +231,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		if err != nil {
 			return err
 		}
-	}
+	}*/
 
 	// Set actual head.
 	return store.SetHead(ctx, headTs)
@@ -289,7 +289,6 @@ func (store *Store) PutTipSetMetadata(ctx context.Context, tsm *TipSetMetadata) 
 	return nil
 }
 
-// todo add by force
 func (store *Store) DelTipSetMetadata(ctx context.Context, ts *block.TipSet) error {
 	err := store.tipIndex.Del(ts)
 	if err != nil {
@@ -556,7 +555,6 @@ func (store *Store) writeTipSetMetadata(tsm *TipSetMetadata) error {
 	return store.ds.Put(key, val)
 }
 
-// todo add by force
 // deleteTipSetMetadata delete the state root id from the datastore for the tipset key.
 func (store *Store) deleteTipSetMetadata(ts *block.TipSet) error {
 	h, err := ts.Height()

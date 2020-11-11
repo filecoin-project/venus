@@ -147,7 +147,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 	loader := successLoader(ctx, builder)
 	t.Run("happy path returns correct tipsets", func(t *testing.T) {
-		gen := builder.NewGenesis()
+		gen := builder.Genesis()
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		height, err := final.Height()
 		require.NoError(t, err)
@@ -168,7 +168,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("initial request fails on a block but fallback peer succeeds", func(t *testing.T) {
-		gen := builder.NewGenesis()
+		gen := builder.Genesis()
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		height, err := final.Height()
 		require.NoError(t, err)
@@ -198,7 +198,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("initial request fails and no other peers succeed", func(t *testing.T) {
-		gen := builder.NewGenesis()
+		gen := builder.Genesis()
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		height, err := final.Height()
 		require.NoError(t, err)
@@ -224,7 +224,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("requests fails because blocks are present but are missing messages", func(t *testing.T) {
-		gen := builder.NewGenesis()
+		gen := builder.Genesis()
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		height, err := final.Height()
 		require.NoError(t, err)
@@ -246,7 +246,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("partial response fail during recursive fetch recovers at fail point", func(t *testing.T) {
-		gen := builder.NewGenesis()
+		gen := builder.Genesis()
 		final := builder.BuildManyOn(5, gen, withMessageBuilder)
 		height, err := final.Height()
 		require.NoError(t, err)
@@ -298,7 +298,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("missing single block in multi block tip during recursive fetch", func(t *testing.T) {
-		gen := builder.NewGenesis()
+		gen := builder.Genesis()
 		multi := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		penultimate := builder.BuildManyOn(3, multi, withMessageBuilder)
 		final := builder.BuildOn(penultimate, 1, withMessageEachBuilder)
@@ -322,7 +322,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("missing single block in multi block tip during recursive fetch, recover through fallback", func(t *testing.T) {
-		gen := builder.NewGenesis()
+		gen := builder.Genesis()
 		multi := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		withMultiParent := builder.BuildOn(multi, 1, withMessageEachBuilder)
 		penultimate := builder.BuildManyOn(2, withMultiParent, withMessageBuilder)
@@ -361,7 +361,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("stopping at edge heights in recursive fetch", func(t *testing.T) {
-		gen := builder.NewGenesis()
+		gen := builder.Genesis()
 		recursive16stop := builder.BuildManyOn(1, gen, withMessageBuilder)
 		recursive16middle := builder.BuildManyOn(15, recursive16stop, withMessageBuilder)
 		recursive4stop := builder.BuildManyOn(1, recursive16middle, withMessageBuilder)
@@ -461,7 +461,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("messages don't validate", func(t *testing.T) {
-		gen := builder.NewGenesis()
+		gen := builder.Genesis()
 		final := builder.BuildOn(gen, 1, withMessageEachBuilder)
 		height, err := final.Height()
 		require.NoError(t, err)
@@ -481,7 +481,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("hangup occurs during first layer fetch but recovers through fallback", func(t *testing.T) {
-		gen := builder.NewGenesis()
+		gen := builder.Genesis()
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		height, err := final.Height()
 		require.NoError(t, err)
@@ -511,7 +511,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("initial request hangs up and no other peers succeed", func(t *testing.T) {
-		gen := builder.NewGenesis()
+		gen := builder.Genesis()
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		height, err := final.Height()
 		require.NoError(t, err)
@@ -536,7 +536,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("partial response hangs up during recursive fetch recovers at hang up point", func(t *testing.T) {
-		gen := builder.NewGenesis()
+		gen := builder.Genesis()
 		final := builder.BuildManyOn(5, gen, withMessageBuilder)
 		height, err := final.Height()
 		require.NoError(t, err)
@@ -588,7 +588,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("hangs up on single block in multi block tip during recursive fetch", func(t *testing.T) {
-		gen := builder.NewGenesis()
+		gen := builder.Genesis()
 		multi := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		penultimate := builder.BuildManyOn(3, multi, withMessageBuilder)
 		final := builder.BuildOn(penultimate, 1, withMessageEachBuilder)
@@ -612,7 +612,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("hangs up on single block in multi block tip during recursive fetch, recover through fallback", func(t *testing.T) {
-		gen := builder.NewGenesis()
+		gen := builder.Genesis()
 		multi := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		withMultiParent := builder.BuildOn(multi, 1, withMessageEachBuilder)
 		penultimate := builder.BuildManyOn(2, withMultiParent, withMessageBuilder)
@@ -717,7 +717,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	}
 
 	t.Run("happy path returns correct tipsets", func(t *testing.T) {
-		gen := builder.NewGenesis()
+		gen := builder.Genesis()
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		height, err := final.Height()
 		require.NoError(t, err)
@@ -773,7 +773,7 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 	mm := types.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
 	bob := mm.Addresses()[1]
-	gen := builder.NewGenesis()
+	gen := builder.Genesis()
 
 	// count > 64 force multiple layers in amts
 	messageCount := uint64(100)
@@ -876,7 +876,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	keys := types.MustGenerateKeyInfo(1, 42)
 	mm := types.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
-	gen := builder.NewGenesis()
+	gen := builder.Genesis()
 	i := uint64(0)
 	tipCount := 32
 	final := builder.BuildManyOn(tipCount, gen, func(b *chain.BlockBuilder) {

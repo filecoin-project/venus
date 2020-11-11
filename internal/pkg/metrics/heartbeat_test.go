@@ -94,7 +94,7 @@ func TestHeartbeatConnectSuccess(t *testing.T) {
 			Nickname:        "BobHoblaw",
 		},
 		func() (block.TipSet, error) {
-			tipSet := chain.NewBuilder(t, address.Undef).NewGenesis()
+			tipSet := chain.NewBuilder(t, address.Undef).Genesis()
 			return *tipSet, nil
 		},
 	)
@@ -123,7 +123,7 @@ func TestHeartbeatConnectFailure(t *testing.T) {
 			Nickname:        "BobHoblaw",
 		},
 		func() (block.TipSet, error) {
-			tipSet := chain.NewBuilder(t, address.Undef).NewGenesis()
+			tipSet := chain.NewBuilder(t, address.Undef).Genesis()
 			return *tipSet, nil
 		},
 	)
