@@ -12,6 +12,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -158,6 +159,7 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 
 // ApplyTipSetMessages implements interpreter.VMInterpreter
 func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, parentEpoch, epoch abi.ChainEpoch, cb ExecCallBack) ([]types.MessageReceipt, error) {
+	tStart := time.Now()
 	var receipts []types.MessageReceipt
 	pstate, _ := vm.state.Flush(vm.context)
 	for i := parentEpoch; i < epoch; i++ {
@@ -182,17 +184,18 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 		// XXX: The state tree
 		forkedCid, err := vm.vmOption.Fork.HandleStateForks(vm.context, pstate, i, ts)
 		if err != nil {
-			return nil, xerrors.Errorf("hand fork error", err)
+			return nil, xerrors.Errorf("hand fork error: %v", err)
 		}
 		fmt.Printf("after fork root: %s\n", forkedCid)
 		if pstate != forkedCid {
 			err = vm.state.At(forkedCid)
 			if err != nil {
-				return nil, xerrors.Errorf("load fork cid error", err)
+				return nil, xerrors.Errorf("load fork cid error: %v", err)
 			}
 		}
 		vm.SetCurrentEpoch(i + 1)
 	}
+	fmt.Printf("process tipset fork: %v\n", time.Now().Sub(tStart).Milliseconds())
 
 	// create message tracker
 	// Note: the same message could have been included by more than one miner
@@ -200,7 +203,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 
 	// process messages on each block
 	for index, blk := range blocks {
-		//start := time.Now()
+		tStart = time.Now()
 		if blk.Miner.Protocol() != address.ID {
 			panic("precond failure: block miner address must be an IDAddress")
 		}
@@ -311,7 +314,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 
 		root, _ = vm.state.Flush(context.TODO())
 		fmt.Printf("reward: %d  root: %s\n", index, root)
-		//fmt.Println("process block ", index, " time ", time.Since(start).Milliseconds())
+		fmt.Println("process block ", index, " time ", time.Since(tStart).Milliseconds())
 	}
 
 	root, _ := vm.state.Flush(context.TODO())
@@ -319,7 +322,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 	fmt.Println("xxxx")
 
 	// cron tick
-	//start := time.Now()
+	tStart = time.Now()
 	cronMessage := makeCronTickMessage()
 	ret, err := vm.applyImplicitMessage(cronMessage)
 	if err != nil {
@@ -331,7 +334,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 		}
 	}
 
-	//fmt.Println("process block cron job ", time.Since(start).Milliseconds())
+	fmt.Printf("process tipset cron: %v\n", time.Now().Sub(tStart).Milliseconds())
 	root, _ = vm.state.Flush(context.TODO())
 	fmt.Printf("after cron root: %s\n", root)
 

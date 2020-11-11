@@ -405,7 +405,6 @@ func (ms *MessageStore) storeAMTCids(ctx context.Context, cids []cid.Cid) (cid.C
 	return amt.FromArray(ctx, as, cidMarshallers)
 }
 
-// ToDo review add by force
 func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch) abi.TokenAmount {
 	// deta := gasLimitUsed/noOfBlocks - build.BlockGasTarget
 	// change := baseFee * deta / BlockGasTarget
@@ -415,27 +414,27 @@ func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks 
 	var delta int64
 	if epoch > fork.UpgradeSmokeHeight {
 		delta = gasLimitUsed / int64(noOfBlocks)
-		delta -= types.BlockGasTarget
+		delta -= constants.BlockGasTarget
 	} else {
-		delta = types.PackingEfficiencyDenom * gasLimitUsed / (int64(noOfBlocks) * types.PackingEfficiencyNum)
-		delta -= types.BlockGasTarget
+		delta = constants.PackingEfficiencyDenom * gasLimitUsed / (int64(noOfBlocks) * constants.PackingEfficiencyNum)
+		delta -= constants.BlockGasTarget
 	}
 
 	// cap change at 12.5% (BaseFeeMaxChangeDenom) by capping delta
-	if delta > types.BlockGasTarget {
-		delta = types.BlockGasTarget
+	if delta > constants.BlockGasTarget {
+		delta = constants.BlockGasTarget
 	}
-	if delta < -types.BlockGasTarget {
-		delta = -types.BlockGasTarget
+	if delta < -constants.BlockGasTarget {
+		delta = -constants.BlockGasTarget
 	}
 
 	change := big.Mul(baseFee, big.NewInt(delta))
-	change = big.Div(change, big.NewInt(types.BlockGasTarget))
-	change = big.Div(change, big.NewInt(types.BaseFeeMaxChangeDenom))
+	change = big.Div(change, big.NewInt(constants.BlockGasTarget))
+	change = big.Div(change, big.NewInt(constants.BaseFeeMaxChangeDenom))
 
 	nextBaseFee := big.Add(baseFee, change)
-	if big.Cmp(nextBaseFee, big.NewInt(types.MinimumBaseFee)) < 0 {
-		nextBaseFee = big.NewInt(types.MinimumBaseFee)
+	if big.Cmp(nextBaseFee, big.NewInt(constants.MinimumBaseFee)) < 0 {
+		nextBaseFee = big.NewInt(constants.MinimumBaseFee)
 	}
 	return nextBaseFee
 }

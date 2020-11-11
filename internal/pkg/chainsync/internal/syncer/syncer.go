@@ -109,7 +109,7 @@ type ChainReaderWriter interface {
 	GetTipSetReceiptsRoot(tsKey block.TipSetKey) (cid.Cid, error)
 	HasTipSetAndState(ctx context.Context, tsKey block.TipSetKey) bool
 	PutTipSetMetadata(ctx context.Context, tsas *chain.TipSetMetadata) error
-	DelTipSetMetadata(ctx context.Context, ts *block.TipSet) error // todo add by force
+	DelTipSetMetadata(ctx context.Context, ts *block.TipSet) error
 	SetHead(ctx context.Context, ts *block.TipSet) error
 	HasTipSetAndStatesWithParentsAndHeight(pTsKey block.TipSetKey, h abi.ChainEpoch) bool
 	GetTipSetAndStatesByParentsAndHeight(pTsKey block.TipSetKey, h abi.ChainEpoch) ([]*chain.TipSetMetadata, error)

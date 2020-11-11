@@ -289,7 +289,6 @@ func (store *Store) PutTipSetMetadata(ctx context.Context, tsm *TipSetMetadata) 
 	return nil
 }
 
-// todo add by force
 func (store *Store) DelTipSetMetadata(ctx context.Context, ts *block.TipSet) error {
 	err := store.tipIndex.Del(ts)
 	if err != nil {
@@ -556,7 +555,6 @@ func (store *Store) writeTipSetMetadata(tsm *TipSetMetadata) error {
 	return store.ds.Put(key, val)
 }
 
-// todo add by force
 // deleteTipSetMetadata delete the state root id from the datastore for the tipset key.
 func (store *Store) deleteTipSetMetadata(ts *block.TipSet) error {
 	h, err := ts.Height()

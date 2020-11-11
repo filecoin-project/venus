@@ -55,7 +55,6 @@ const DRANDEpochLookback = 2
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
 	ProcessTipSet(context.Context, state.Tree, *vm.Storage, *block.TipSet, *block.TipSet, []vm.BlockMessagesInfo, vm.VmOption) ([]types.MessageReceipt, error)
-	// Todo add by force
 	ProcessUnsignedMessage(context.Context, *types.UnsignedMessage, state.Tree, *vm.Storage, vm.VmOption) (*vm.Ret, error)
 }
 
@@ -161,7 +160,6 @@ func (c *Expected) BlockTime() time.Duration {
 	return c.blockTime
 }
 
-// todo add by force
 func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (*vm.Ret, error) {
 	head := c.chainState.GetHead()
 	stateRoot, err := c.chainState.GetTipSetStateRoot(head)

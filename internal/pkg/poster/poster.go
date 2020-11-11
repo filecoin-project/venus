@@ -424,7 +424,7 @@ func (p *Poster) sendPoSt(ctx context.Context, proofs []miner.SubmitWindowedPoSt
 			p.minerAddr,
 			types.ZeroAttoFIL,
 			types.NewGasFeeCap(1),
-			types.NewGasFeeCap(1), //todo add by force 费用估算
+			types.NewGasFeeCap(1),
 			types.NewGas(10000),
 			true,
 			miner.Methods.SubmitWindowedPoSt,
