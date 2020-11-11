@@ -36,7 +36,7 @@ var invGasAboveBlockLimitCt *metrics.Int64Counter
 var msgMaxValue = types.NewAttoFILFromFIL(2e9)
 
 // These gas cost values must match those in vm/gas.
-// TODO: Look up gas costs from the same place the VM gets them, keyed by epoch. https://github.com/filecoin-project/go-filecoin/issues/3955
+// TODO: Look up gas costs from the same place the VM gets them, keyed by epoch. https://github.com/filecoin-project/venus/issues/3955
 const onChainMessageBase = types.Unit(0)
 const onChainMessagePerByte = types.Unit(2)
 

@@ -45,7 +45,7 @@ type MinerStateView interface {
 // MinerCreate creates a new miner actor for the given account and returns its address.
 // It will wait for the the actor to appear on-chain and add set the address to mining.minerAddress in the config.
 // TODO: add ability to pass in a KeyInfo to store for signing blocks.
-//       See https://github.com/filecoin-project/go-filecoin/issues/1843
+//       See https://github.com/filecoin-project/venus/issues/1843
 func MinerCreate(
 	ctx context.Context,
 	plumbing mcAPI,

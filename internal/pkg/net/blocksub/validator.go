@@ -43,7 +43,7 @@ func NewBlockTopicValidator(bv consensus.BlockSyntaxValidator, opts ...pubsub.Va
 			// produce the AMT roots referenced in the block header.
 			// At present, those lists are ignored by chain validation anyway.
 			// Such a check happens later in block semantic validation, but it would probably be a good idea to do
-			// it here too. https://github.com/filecoin-project/go-filecoin/issues/3903
+			// it here too. https://github.com/filecoin-project/venus/issues/3903
 			// ToDo 签名签证在 ValidateMessagesSemantic 函数中 add by force
 			return true
 		},

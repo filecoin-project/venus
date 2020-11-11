@@ -24,7 +24,7 @@ import (
 // build and sign a message from those that add to the local queue/pool and broadcast it.
 // See discussion in
 // https://github.com/filecoin-project/go-filecoin/pull/3178#discussion_r311593312
-// and https://github.com/filecoin-project/go-filecoin/issues/3052#issuecomment-513643661
+// and https://github.com/filecoin-project/venus/issues/3052#issuecomment-513643661
 type Outbox struct {
 	// Signs messages
 	signer types.Signer

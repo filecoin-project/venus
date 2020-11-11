@@ -763,7 +763,7 @@ func (g *GenesisGenerator) updatePower(ctx context.Context, minerAddr address.Ad
 	// but needed due to gain non-zero power in small networks when no minerAddr meets the consensus minimum.
 	// At present, both impls ignore the consensus minimum and rely on this incorrect value.
 	// See https://github.com/filecoin-project/specs-actors/issues/266
-	//     https://github.com/filecoin-project/go-filecoin/issues/3958
+	//     https://github.com/filecoin-project/venus/issues/3958
 	powerState.TotalRawBytePower = big.Add(powerState.TotalRawBytePower, rawPower)
 	powerState.TotalQualityAdjPower = big.Add(powerState.TotalQualityAdjPower, qaPower)
 

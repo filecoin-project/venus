@@ -124,7 +124,7 @@ const recursionMultiplier = 4
 // TODO: In the future, the blocks will be validated directly through graphsync as
 // go-filecoin migrates to the same IPLD library used by go-graphsync (go-ipld-prime)
 //
-// See: https://github.com/filecoin-project/go-filecoin/issues/3175
+// See: https://github.com/filecoin-project/venus/issues/3175
 func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey block.TipSetKey, originatingPeer peer.ID, done func(*block.TipSet) (bool, error)) ([]*block.TipSet, error) {
 	return gsf.fetchTipSetsCommon(ctx, 8, tsKey, originatingPeer, done, gsf.loadAndVerifyFullBlock, gsf.fullBlockSel, gsf.recFullBlockSel)
 }

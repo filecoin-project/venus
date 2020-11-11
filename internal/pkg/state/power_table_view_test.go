@@ -39,7 +39,7 @@ func TestTotal(t *testing.T) {
 	require.NoError(t, err)
 
 	// TODO: test that the QA power is used when it differs from raw byte power after gengen computes it properly
-	// https://github.com/filecoin-project/go-filecoin/issues/4011
+	// https://github.com/filecoin-project/venus/issues/4011
 	expected := big.NewIntUnsigned(uint64(constants.DevSectorSize) * numCommittedSectors * uint64(numMiners))
 	assert.True(t, expected.Equals(networkPower))
 }

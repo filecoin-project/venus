@@ -98,7 +98,7 @@ type Store struct {
 	// TODO: rename to notifications.  Also, reconsider ordering assumption depending
 	// on decisions made around the FC node notification system.
 	// TODO: replace this with a synchronous event bus
-	// https://github.com/filecoin-project/go-filecoin/issues/2309
+	// https://github.com/filecoin-project/venus/issues/2309
 	headEvents *pubsub.PubSub
 
 	// Tracks tipsets by height/parentset for use by expected consensus.

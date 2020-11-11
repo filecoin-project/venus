@@ -29,7 +29,7 @@ func (w Cid) MarshalCBOR() ([]byte, error) {
 	// handle undef cid by writing null
 	// TODO: remove this handling after removing paths that attempt to encode an Undef CID
 	// This should never appear on chain, and the only usages are tests.
-	// https://github.com/filecoin-project/go-filecoin/issues/3931
+	// https://github.com/filecoin-project/venus/issues/3931
 	if w.Equals(cid.Undef) {
 		return []byte{0xf6}, nil
 	}

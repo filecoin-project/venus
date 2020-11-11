@@ -94,7 +94,7 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 	// Note that this will include messages that were never sent by this node since the queue doesn't
 	// keep track of "allowed" senders. However, messages from other addresses will expire
 	// harmlessly.
-	// See discussion in https://github.com/filecoin-project/go-filecoin/issues/3052
+	// See discussion in https://github.com/filecoin-project/venus/issues/3052
 	// Traverse these in descending height order.
 	for _, tipset := range oldTips {
 		for i := 0; i < tipset.Len(); i++ {

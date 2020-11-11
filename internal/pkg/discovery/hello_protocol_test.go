@@ -14,7 +14,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
