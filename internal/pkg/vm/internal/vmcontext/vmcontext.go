@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/cron"
+	initActor "github.com/filecoin-project/venus/internal/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/reward"
 	"github.com/filecoin-project/venus/internal/pkg/types"
 	"github.com/filecoin-project/venus/internal/pkg/vm/gas"
@@ -126,14 +127,43 @@ func (vm *VM) ContextStore() adt.Store {
 }
 
 func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
-	r, err := vm.state.LookupID(addr)
-	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
-			return address.Undef, false
-		}
-		panic(errors.Wrapf(err, "failed to resolve address %s", addr))
+	//r, err := vm.state.LookupID(addr)
+	//if err != nil {
+	//	if xerrors.Is(err, types.ErrActorNotFound) {
+	//		return address.Undef, false
+	//	}
+	//	panic(errors.Wrapf(err, "failed to resolve address %s", addr))
+	//}
+	//return r, true
+
+	// short-circuit if the address is already an ID address
+	if addr.Protocol() == address.ID {
+		return addr, true
 	}
-	return r, true
+
+	// resolve the target address via the InitActor, and attempt To load stateView.
+	initActorEntry, found, err := vm.state.GetActor(vm.context, initActor.Address)
+	if err != nil {
+		panic(errors.Wrapf(err, "failed To load init actor"))
+	}
+	if !found {
+		panic(errors.Wrapf(err, "no init actor"))
+	}
+
+	// get a view into the actor stateView
+	initActorState, err := initActor.Load(adt.WrapStore(vm.context, vm.store), initActorEntry)
+	if err != nil {
+		panic(err)
+	}
+
+	idAddr, found, err := initActorState.ResolveAddress(addr)
+	if !found {
+		return address.Undef, false
+	}
+	if err != nil {
+		panic(err)
+	}
+	return idAddr, true
 }
 
 // ApplyTipSetMessages implements interpreter.VMInterpreter
