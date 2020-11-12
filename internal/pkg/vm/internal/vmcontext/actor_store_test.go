@@ -8,17 +8,16 @@ import (
 
 	cbor2 "github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/venus/internal/pkg/vm"
+	"github.com/filecoin-project/venus/internal/pkg/vm/gas"
+	vmr "github.com/filecoin-project/venus/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/venus/internal/pkg/vm/internal/vmcontext"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	typegen "github.com/whyrusleeping/cbor-gen"
-
-	"github.com/filecoin-project/venus/internal/pkg/vm"
-	"github.com/filecoin-project/venus/internal/pkg/vm/gas"
-	vmr "github.com/filecoin-project/venus/internal/pkg/vm/internal/runtime"
-	"github.com/filecoin-project/venus/internal/pkg/vm/internal/vmcontext"
 )
 
 func TestActorStore(t *testing.T) {
@@ -27,7 +26,7 @@ func TestActorStore(t *testing.T) {
 	gasTank := vmcontext.NewGasTracker(1e6)
 
 	t.Run("abort on put serialization failure", func(t *testing.T) {
-		store := vmcontext.NewActorStorage(ctx, raw, &gasTank, gas.PricelistByEpoch(0))
+		store := vmcontext.NewActorStorage(ctx, raw, gasTank, gas.PricelistByEpoch(0))
 		_, thrown := tryPut(store, cannotCBOR{})
 		abort, ok := thrown.(vmr.ExecutionPanic)
 		assert.NotNil(t, thrown)
@@ -36,7 +35,7 @@ func TestActorStore(t *testing.T) {
 	})
 
 	t.Run("abort on get serialization failure", func(t *testing.T) {
-		store := vmcontext.NewActorStorage(ctx, raw, &gasTank, gas.PricelistByEpoch(0))
+		store := vmcontext.NewActorStorage(ctx, raw, gasTank, gas.PricelistByEpoch(0))
 		v := typegen.CborInt(0)
 
 		c, thrown := tryPut(store, &v)
@@ -52,7 +51,7 @@ func TestActorStore(t *testing.T) {
 	})
 
 	t.Run("panic on put storage failure", func(t *testing.T) {
-		store := vmcontext.NewActorStorage(ctx, &brokenStorage{}, &gasTank, gas.PricelistByEpoch(0))
+		store := vmcontext.NewActorStorage(ctx, &brokenStorage{}, gasTank, gas.PricelistByEpoch(0))
 		v := typegen.CborInt(0)
 		_, thrown := tryPut(store, &v)
 		_, ok := thrown.(vmr.ExecutionPanic)
@@ -61,7 +60,7 @@ func TestActorStore(t *testing.T) {
 	})
 
 	t.Run("panic on get storage failure", func(t *testing.T) {
-		store := vmcontext.NewActorStorage(ctx, &brokenStorage{}, &gasTank, gas.PricelistByEpoch(0))
+		store := vmcontext.NewActorStorage(ctx, &brokenStorage{}, gasTank, gas.PricelistByEpoch(0))
 		var v typegen.CborInt
 		thrown := tryGet(store, cid.Undef, &v)
 		_, ok := thrown.(vmr.ExecutionPanic)

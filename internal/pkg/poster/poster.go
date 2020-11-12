@@ -208,13 +208,13 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, di *dline
 
 	buf := new(bytes.Buffer)
 	if err := p.minerAddr.MarshalCBOR(buf); err != nil {
-		log.Errorf("failed to marshal address to cbor: %w", err)
+		log.Errorf("failed to marshal address to cbor: %v", err)
 		return
 	}
 
 	rand, err := p.chain.ChainGetRandomnessFromBeacon(ctx, newHead.Key(), acrypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes())
 	if err != nil {
-		log.Errorf("failed to get chain randomness for window post (ts=%d; deadline=%d): %w", newHead.EnsureHeight(), di, err)
+		log.Errorf("failed to get chain randomness for window post (ts=%d; deadline=%d): %v", newHead.EnsureHeight(), di, err)
 		return
 	}
 
@@ -268,54 +268,54 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, di *dline
 				// TODO: Can do this in parallel
 				toProve, err := partition.ActiveSectors()
 				if err != nil {
-					log.Errorf("getting active sectors: %w", err)
+					log.Errorf("getting active sectors: %v", err)
 					return
 				}
 
 				recoveries, err := partition.RecoveringSectors()
 				if err != nil {
-					log.Errorf("get recoveries error: %w", err)
+					log.Errorf("get recoveries error: %v", err)
 					return
 				}
 				toProve, err = bitfield.MergeBitFields(toProve, recoveries)
 				if err != nil {
-					log.Errorf("adding recoveries to set of sectors to prove: %w", err)
+					log.Errorf("adding recoveries to set of sectors to prove: %v", err)
 					return
 				}
 
 				good, err := p.checkSectors(ctx, toProve)
 				if err != nil {
-					log.Errorf("checking sectors to skip: %w", err)
+					log.Errorf("checking sectors to skip: %v", err)
 					return
 				}
 
 				good, err = bitfield.SubtractBitField(good, postSkipped)
 				if err != nil {
-					log.Errorf("toProve - postSkipped: %w", err)
+					log.Errorf("toProve - postSkipped: %v", err)
 					return
 				}
 
 				skipped, err := bitfield.SubtractBitField(toProve, good)
 				if err != nil {
-					log.Errorf("toProve - good: %w", err)
+					log.Errorf("toProve - good: %v", err)
 					return
 				}
 
 				sc, err := skipped.Count()
 				if err != nil {
-					log.Errorf("getting skipped sector count: %w", err)
+					log.Errorf("getting skipped sector count: %v", err)
 					return
 				}
 
 				skipCount += sc
 				sectors, err := partition.AllSectors()
 				if err != nil {
-					log.Errorf("getting partition sectors error: %w", err)
+					log.Errorf("getting partition sectors error: %v", err)
 					return
 				}
 				ssi, err := p.sectorsForProof(ctx, stateView, good, sectors, newHead)
 				if err != nil {
-					log.Errorf("getting sorted sector info: %w", err)
+					log.Errorf("getting sorted sector info: %v", err)
 					return
 				}
 
@@ -368,7 +368,7 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, di *dline
 			// Proof generation failed, so retry
 
 			if len(ps) == 0 {
-				log.Errorf("running window post failed: %w", err)
+				log.Errorf("running window post failed: %v", err)
 				return
 			}
 
@@ -400,7 +400,7 @@ func (p *Poster) doPoSt(ctx context.Context, stateView *appstate.View, di *dline
 	commEpoch := di.Open
 	commRand, err := p.chain.SampleChainRandomness(ctx, newHead.Key(), acrypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil)
 	if err != nil {
-		log.Errorf("failed to get chain randomness for window post (ts=%d; deadline=%d): %w", newHead.EnsureHeight(), commEpoch, err)
+		log.Errorf("failed to get chain randomness for window post (ts=%d; deadline=%d): %v", newHead.EnsureHeight(), commEpoch, err)
 		return
 	}
 
@@ -482,7 +482,7 @@ func (p *Poster) sectorsForProof(ctx context.Context, stateViewer *appstate.View
 		}
 		return nil
 	}); err != nil {
-		return nil, xerrors.Errorf("iterating partition sector bitmap: %w", err)
+		return nil, xerrors.Errorf("iterating partition sector bitmap: %v", err)
 	}
 
 	return proofSectors, nil
@@ -492,7 +492,7 @@ func (p *Poster) batchPartitions(partitions []miner.Partition) ([][]miner.Partit
 	// Get the number of sectors allowed in a partition, for this builtin size
 	sectorsPerPartition, err := policy.GetMaxPoStPartitions(p.proofType)
 	if err != nil {
-		return nil, xerrors.Errorf("getting sectors per partition: %w", err)
+		return nil, xerrors.Errorf("getting sectors per partition: %v", err)
 	}
 
 	// We don't want to exceed the number of sectors allowed in a message.
@@ -548,12 +548,12 @@ func (p *Poster) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitio
 
 		unrecovered, err := bitfield.SubtractBitField(faults, recoveries)
 		if err != nil {
-			return nil, cid.Undef, xerrors.Errorf("subtracting recovered set from fault set: %w", err)
+			return nil, cid.Undef, xerrors.Errorf("subtracting recovered set from fault set: %v", err)
 		}
 
 		uc, err := unrecovered.Count()
 		if err != nil {
-			return nil, cid.Undef, xerrors.Errorf("counting unrecovered sectors: %w", err)
+			return nil, cid.Undef, xerrors.Errorf("counting unrecovered sectors: %v", err)
 		}
 
 		if uc == 0 {
@@ -564,13 +564,13 @@ func (p *Poster) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitio
 
 		recovered, err := p.checkSectors(ctx, unrecovered)
 		if err != nil {
-			return nil, cid.Undef, xerrors.Errorf("checking unrecovered sectors: %w", err)
+			return nil, cid.Undef, xerrors.Errorf("checking unrecovered sectors: %v", err)
 		}
 
 		// if all sectors failed to recover, don't declare recoveries
 		recoveredCount, err := recovered.Count()
 		if err != nil {
-			return nil, cid.Undef, xerrors.Errorf("counting recovered sectors: %w", err)
+			return nil, cid.Undef, xerrors.Errorf("counting recovered sectors: %v", err)
 		}
 
 		if recoveredCount == 0 {
@@ -595,7 +595,7 @@ func (p *Poster) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitio
 
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
-		return recoveries, cid.Undef, xerrors.Errorf("could not serialize declare recoveries parameters: %w", aerr)
+		return recoveries, cid.Undef, xerrors.Errorf("could not serialize declare recoveries parameters: %v", aerr)
 	}
 
 	msg := &types.UnsignedMessage{
@@ -610,7 +610,7 @@ func (p *Poster) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitio
 
 	mcid, _, err := p.outbox.UnSignedSend(ctx, *msg)
 	if err != nil {
-		return recoveries, mcid, xerrors.Errorf("pushing message to mpool: %w", err)
+		return recoveries, mcid, xerrors.Errorf("pushing message to mpool: %v", err)
 	}
 
 	log.Warnw("declare faults recovered Message CID", "cid", mcid)
@@ -622,7 +622,7 @@ func (p *Poster) checkNextRecoveries(ctx context.Context, dlIdx uint64, partitio
 		return nil
 	})
 	if err != nil {
-		return recoveries, mcid, xerrors.Errorf("declare faults recovered wait error: %w", err)
+		return recoveries, mcid, xerrors.Errorf("declare faults recovered wait error: %v", err)
 	}
 
 	return recoveries, mcid, nil
@@ -640,22 +640,22 @@ func (p *Poster) checkNextFaults(ctx context.Context, dlIdx uint64, partitions [
 	for partIdx, partition := range partitions {
 		toCheck, err := partition.ActiveSectors()
 		if err != nil {
-			return nil, cid.Undef, xerrors.Errorf("getting active sectors: %w", err)
+			return nil, cid.Undef, xerrors.Errorf("getting active sectors: %v", err)
 		}
 
 		good, err := p.checkSectors(ctx, toCheck)
 		if err != nil {
-			return nil, cid.Undef, xerrors.Errorf("checking sectors: %w", err)
+			return nil, cid.Undef, xerrors.Errorf("checking sectors: %v", err)
 		}
 
 		faulty, err := bitfield.SubtractBitField(toCheck, good)
 		if err != nil {
-			return nil, cid.Undef, xerrors.Errorf("calculating faulty sector set: %w", err)
+			return nil, cid.Undef, xerrors.Errorf("calculating faulty sector set: %v", err)
 		}
 
 		c, err := faulty.Count()
 		if err != nil {
-			return nil, cid.Undef, xerrors.Errorf("counting faulty sectors: %w", err)
+			return nil, cid.Undef, xerrors.Errorf("counting faulty sectors: %v", err)
 		}
 
 		if c == 0 {
@@ -680,7 +680,7 @@ func (p *Poster) checkNextFaults(ctx context.Context, dlIdx uint64, partitions [
 
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
-		return faults, cid.Undef, xerrors.Errorf("could not serialize declare faults parameters: %w", aerr)
+		return faults, cid.Undef, xerrors.Errorf("could not serialize declare faults parameters: %v", aerr)
 	}
 
 	msg := &types.UnsignedMessage{
@@ -695,7 +695,7 @@ func (p *Poster) checkNextFaults(ctx context.Context, dlIdx uint64, partitions [
 
 	mcid, _, err := p.outbox.UnSignedSend(ctx, *msg)
 	if err != nil {
-		return faults, mcid, xerrors.Errorf("pushing message to mpool: %w", err)
+		return faults, mcid, xerrors.Errorf("pushing message to mpool: %v", err)
 	}
 
 	log.Warnw("declare faults Message CID", "cid", mcid)
@@ -708,7 +708,7 @@ func (p *Poster) checkNextFaults(ctx context.Context, dlIdx uint64, partitions [
 	})
 
 	if err != nil {
-		return faults, mcid, xerrors.Errorf("declare faults wait error: %w", err)
+		return faults, mcid, xerrors.Errorf("declare faults wait error: %v", err)
 	}
 	return faults, mcid, nil
 }
@@ -716,7 +716,7 @@ func (p *Poster) checkNextFaults(ctx context.Context, dlIdx uint64, partitions [
 func (p *Poster) checkSectors(ctx context.Context, check bitfield.BitField) (bitfield.BitField, error) {
 	spt, err := p.proofType.RegisteredSealProof()
 	if err != nil {
-		return bitfield.BitField{}, xerrors.Errorf("getting seal proof type: %w", err)
+		return bitfield.BitField{}, xerrors.Errorf("getting seal proof type: %v", err)
 	}
 
 	mid, err := address.IDFromAddress(p.minerAddr)
@@ -737,12 +737,12 @@ func (p *Poster) checkSectors(ctx context.Context, check bitfield.BitField) (bit
 		return nil
 	})
 	if err != nil {
-		return bitfield.BitField{}, xerrors.Errorf("iterating over bitfield: %w", err)
+		return bitfield.BitField{}, xerrors.Errorf("iterating over bitfield: %v", err)
 	}
 
 	bad, err := p.faultTracker.CheckProvable(ctx, spt, tocheck)
 	if err != nil {
-		return bitfield.BitField{}, xerrors.Errorf("checking provable sectors: %w", err)
+		return bitfield.BitField{}, xerrors.Errorf("checking provable sectors: %v", err)
 	}
 	for _, id := range bad {
 		delete(sectors, id)

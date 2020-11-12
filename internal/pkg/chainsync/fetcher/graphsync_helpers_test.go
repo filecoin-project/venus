@@ -235,8 +235,10 @@ func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s select
 		cid := lnk.(cidlink.Link).Cid
 		node, err := loader(cid)
 		if err != nil {
+			fmt.Println("Link Fail ", cid.String())
 			return nil, err
 		}
+		fmt.Println("Link ", cid.String())
 		blks = append(blks, node)
 		return bytes.NewBuffer(node.RawData()), nil
 	}

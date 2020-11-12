@@ -254,6 +254,10 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, vmStorage *vm.Storage) (*Rende
 		return nil, err
 	}
 
+	err = vmStorage.Flush()
+	if err != nil {
+		return nil, err
+	}
 	return &RenderedGenInfo{
 		Keys:       generator.keys,
 		GenesisCid: genCid,

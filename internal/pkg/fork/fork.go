@@ -641,7 +641,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork, root cid.Cid,
 func setNetworkName(ctx context.Context, store adt.Store, tree *vmstate.State, name string) error {
 	ia, find, err := tree.GetActor(ctx, builtin0.InitActorAddr)
 	if err != nil {
-		return xerrors.Errorf("getting init actor: %w", err)
+		return xerrors.Errorf("getting init actor: %v", err)
 	}
 	if !find {
 		return xerrors.New("did not find init actor")
@@ -649,21 +649,21 @@ func setNetworkName(ctx context.Context, store adt.Store, tree *vmstate.State, n
 
 	initState, err := init_.Load(store, ia)
 	if err != nil {
-		return xerrors.Errorf("reading init state: %w", err)
+		return xerrors.Errorf("reading init state: %v", err)
 	}
 
 	if err := initState.SetNetworkName(name); err != nil {
-		return xerrors.Errorf("setting network name: %w", err)
+		return xerrors.Errorf("setting network name: %v", err)
 	}
 
 	c, err := store.Put(ctx, initState)
 	if err != nil {
-		return xerrors.Errorf("writing new init state: %w", err)
+		return xerrors.Errorf("writing new init state: %v", err)
 	}
 	ia.Head = enccid.NewCid(c)
 
 	if err := tree.SetActor(ctx, builtin0.InitActorAddr, ia); err != nil {
-		return xerrors.Errorf("setting init actor: %w", err)
+		return xerrors.Errorf("setting init actor: %v", err)
 	}
 
 	return nil
@@ -673,7 +673,7 @@ func setNetworkName(ctx context.Context, store adt.Store, tree *vmstate.State, n
 func resetGenesisMsigs0(ctx context.Context, sm *ChainFork, store adt0.Store, tree *vmstate.State, startEpoch abi.ChainEpoch) error {
 	gb, err := sm.cr.GetGenesisBlock(ctx)
 	if err != nil {
-		return xerrors.Errorf("getting genesis block: %w", err)
+		return xerrors.Errorf("getting genesis block: %v", err)
 	}
 
 	gts, err := block.NewTipSet(gb)
@@ -683,14 +683,14 @@ func resetGenesisMsigs0(ctx context.Context, sm *ChainFork, store adt0.Store, tr
 
 	genesisTree, err := sm.StateTree(ctx, gts.Blocks()[0].StateRoot.Cid)
 	if err != nil {
-		return xerrors.Errorf("loading state tree: %w", err)
+		return xerrors.Errorf("loading state tree: %v", err)
 	}
 
 	err = genesisTree.ForEach(func(addr address.Address, genesisActor *types.Actor) error {
 		if genesisActor.Code.Cid == builtin0.MultisigActorCodeID {
 			currActor, find, err := tree.GetActor(ctx, addr)
 			if err != nil {
-				return xerrors.Errorf("loading actor: %w", err)
+				return xerrors.Errorf("loading actor: %v", err)
 			}
 			if !find {
 				return xerrors.Errorf("did not find actor: %s", addr.String())
@@ -698,26 +698,26 @@ func resetGenesisMsigs0(ctx context.Context, sm *ChainFork, store adt0.Store, tr
 
 			var currState multisig0.State
 			if err := store.Get(ctx, currActor.Head.Cid, &currState); err != nil {
-				return xerrors.Errorf("reading multisig state: %w", err)
+				return xerrors.Errorf("reading multisig state: %v", err)
 			}
 
 			currState.StartEpoch = startEpoch
 
 			head, err := store.Put(ctx, &currState)
 			if err != nil {
-				return xerrors.Errorf("writing new multisig state: %w", err)
+				return xerrors.Errorf("writing new multisig state: %v", err)
 			}
 			currActor.Head = enccid.NewCid(head)
 
 			if err := tree.SetActor(ctx, addr, currActor); err != nil {
-				return xerrors.Errorf("setting multisig actor: %w", err)
+				return xerrors.Errorf("setting multisig actor: %v", err)
 			}
 		}
 		return nil
 	})
 
 	if err != nil {
-		return xerrors.Errorf("iterating over genesis actors: %w", err)
+		return xerrors.Errorf("iterating over genesis actors: %v", err)
 	}
 
 	return nil
@@ -726,20 +726,20 @@ func resetGenesisMsigs0(ctx context.Context, sm *ChainFork, store adt0.Store, tr
 func makeKeyAddr(splitAddr address.Address, count uint64) (address.Address, error) {
 	var b bytes.Buffer
 	if err := splitAddr.MarshalCBOR(&b); err != nil {
-		return address.Undef, xerrors.Errorf("marshalling split address: %w", err)
+		return address.Undef, xerrors.Errorf("marshalling split address: %v", err)
 	}
 
 	if err := binary.Write(&b, binary.BigEndian, count); err != nil {
-		return address.Undef, xerrors.Errorf("writing count into a buffer: %w", err)
+		return address.Undef, xerrors.Errorf("writing count into a buffer: %v", err)
 	}
 
 	if err := binary.Write(&b, binary.BigEndian, []byte("Ignition upgrade")); err != nil {
-		return address.Undef, xerrors.Errorf("writing fork name into a buffer: %w", err)
+		return address.Undef, xerrors.Errorf("writing fork name into a buffer: %v", err)
 	}
 
 	addr, err := address.NewActorAddress(b.Bytes())
 	if err != nil {
-		return address.Undef, xerrors.Errorf("create actor address: %w", err)
+		return address.Undef, xerrors.Errorf("create actor address: %v", err)
 	}
 
 	return addr, nil
@@ -752,7 +752,7 @@ func splitGenesisMultisig0(ctx context.Context, addr address.Address, store adt0
 
 	mact, find, err := tree.GetActor(ctx, addr)
 	if err != nil {
-		return xerrors.Errorf("getting msig actor: %w", err)
+		return xerrors.Errorf("getting msig actor: %v", err)
 	}
 	if !find {
 		return xerrors.Errorf("did not find actor: %s", addr.String())
@@ -760,37 +760,37 @@ func splitGenesisMultisig0(ctx context.Context, addr address.Address, store adt0
 
 	mst, err := multisig.Load(store, mact)
 	if err != nil {
-		return xerrors.Errorf("getting msig state: %w", err)
+		return xerrors.Errorf("getting msig state: %v", err)
 	}
 
 	signers, err := mst.Signers()
 	if err != nil {
-		return xerrors.Errorf("getting msig signers: %w", err)
+		return xerrors.Errorf("getting msig signers: %v", err)
 	}
 
 	thresh, err := mst.Threshold()
 	if err != nil {
-		return xerrors.Errorf("getting msig threshold: %w", err)
+		return xerrors.Errorf("getting msig threshold: %v", err)
 	}
 
 	ibal, err := mst.InitialBalance()
 	if err != nil {
-		return xerrors.Errorf("getting msig initial balance: %w", err)
+		return xerrors.Errorf("getting msig initial balance: %v", err)
 	}
 
 	se, err := mst.StartEpoch()
 	if err != nil {
-		return xerrors.Errorf("getting msig start epoch: %w", err)
+		return xerrors.Errorf("getting msig start epoch: %v", err)
 	}
 
 	ud, err := mst.UnlockDuration()
 	if err != nil {
-		return xerrors.Errorf("getting msig unlock duration: %w", err)
+		return xerrors.Errorf("getting msig unlock duration: %v", err)
 	}
 
 	pending, err := adt0.MakeEmptyMap(store).Root()
 	if err != nil {
-		return xerrors.Errorf("failed to create empty map: %w", err)
+		return xerrors.Errorf("failed to create empty map: %v", err)
 	}
 
 	newIbal := big.Div(ibal, big.NewInt(int64(portions)))
@@ -806,7 +806,7 @@ func splitGenesisMultisig0(ctx context.Context, addr address.Address, store adt0
 
 	scid, err := store.Put(ctx, newState)
 	if err != nil {
-		return xerrors.Errorf("storing new state: %w", err)
+		return xerrors.Errorf("storing new state: %v", err)
 	}
 
 	newActor := types.Actor{
@@ -820,21 +820,21 @@ func splitGenesisMultisig0(ctx context.Context, addr address.Address, store adt0
 	for i < portions {
 		keyAddr, err := makeKeyAddr(addr, i)
 		if err != nil {
-			return xerrors.Errorf("creating key address: %w", err)
+			return xerrors.Errorf("creating key address: %v", err)
 		}
 
 		idAddr, err := tree.RegisterNewAddress(keyAddr)
 		if err != nil {
-			return xerrors.Errorf("registering new address: %w", err)
+			return xerrors.Errorf("registering new address: %v", err)
 		}
 
 		err = tree.SetActor(ctx, idAddr, &newActor)
 		if err != nil {
-			return xerrors.Errorf("setting new msig actor state: %w", err)
+			return xerrors.Errorf("setting new msig actor state: %v", err)
 		}
 
 		if err := doTransfer(tree, addr, idAddr, newIbal); err != nil {
-			return xerrors.Errorf("transferring split msig balance: %w", err)
+			return xerrors.Errorf("transferring split msig balance: %v", err)
 		}
 
 		i++
@@ -846,19 +846,19 @@ func splitGenesisMultisig0(ctx context.Context, addr address.Address, store adt0
 func resetMultisigVesting0(ctx context.Context, store adt0.Store, tree *vmstate.State, addr address.Address, startEpoch abi.ChainEpoch, duration abi.ChainEpoch, balance abi.TokenAmount) error {
 	act, find, err := tree.GetActor(ctx, addr)
 	if err != nil {
-		return xerrors.Errorf("getting actor: %w", err)
+		return xerrors.Errorf("getting actor: %v", err)
 	}
 	if !find {
 		return xerrors.Errorf("did not find actor: %s", addr.String())
 	}
 
 	if !builtin.IsMultisigActor(act.Code.Cid) {
-		return xerrors.Errorf("actor wasn't msig: %w", err)
+		return xerrors.Errorf("actor wasn't msig: %v", err)
 	}
 
 	var msigState multisig0.State
 	if err := store.Get(ctx, act.Head.Cid, &msigState); err != nil {
-		return xerrors.Errorf("reading multisig state: %w", err)
+		return xerrors.Errorf("reading multisig state: %v", err)
 	}
 
 	msigState.StartEpoch = startEpoch
@@ -867,12 +867,12 @@ func resetMultisigVesting0(ctx context.Context, store adt0.Store, tree *vmstate.
 
 	head, err := store.Put(ctx, &msigState)
 	if err != nil {
-		return xerrors.Errorf("writing new multisig state: %w", err)
+		return xerrors.Errorf("writing new multisig state: %v", err)
 	}
 	act.Head = enccid.NewCid(head)
 
 	if err := tree.SetActor(ctx, addr, act); err != nil {
-		return xerrors.Errorf("setting multisig actor: %w", err)
+		return xerrors.Errorf("setting multisig actor: %v", err)
 	}
 
 	return nil

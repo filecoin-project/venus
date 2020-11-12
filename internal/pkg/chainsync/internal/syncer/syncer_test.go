@@ -8,13 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/internal/pkg/block"
 	"github.com/filecoin-project/venus/internal/pkg/chain"
 	"github.com/filecoin-project/venus/internal/pkg/chainsync/internal/syncer"
@@ -24,6 +18,12 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/specactors/policy"
 	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/util/test"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func heightFromTip(t *testing.T, tip *block.TipSet) abi.ChainEpoch {
@@ -586,13 +586,13 @@ type syncStoreReader interface {
 func verifyTip(t *testing.T, store syncStoreReader, tip *block.TipSet, stateRoot cid.Cid) {
 	foundTip, err := store.GetTipSet(tip.Key())
 	require.NoError(t, err)
-	assert.Equal(t, tip, foundTip)
+	test.Equal(t, tip, foundTip)
 
 	fmt.Println(foundTip.Key().String())
 	fmt.Println(tip.Key().String())
 	foundState, err := store.GetTipSetStateRoot(tip.Key())
 	require.NoError(t, err)
-	assert.Equal(t, stateRoot, foundState)
+	test.Equal(t, stateRoot, foundState)
 
 	parent, err := tip.Parents()
 	assert.NoError(t, err)
@@ -607,7 +607,7 @@ func verifyTip(t *testing.T, store syncStoreReader, tip *block.TipSet, stateRoot
 func verifyHead(t *testing.T, store syncStoreReader, head *block.TipSet) {
 	headTipSet, err := store.GetTipSet(store.GetHead())
 	require.NoError(t, err)
-	assert.Equal(t, head, headTipSet)
+	test.Equal(t, head, headTipSet)
 }
 
 func containsTipSet(tsasSlice []*chain.TipSetMetadata, ts *block.TipSet) bool {

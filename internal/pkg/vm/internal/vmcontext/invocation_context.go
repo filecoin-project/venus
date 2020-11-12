@@ -389,7 +389,7 @@ func (ctx *invocationContext) resolveToKeyAddr(addr address.Address) (address.Ad
 
 	aast, err := account.Load(adt.WrapStore(ctx.vm.context, ctx.vm.store), act)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", addr, err)
+		return address.Undef, xerrors.Errorf("failed to get account actor state for %s: %v", addr, err)
 	}
 
 	return aast.PubkeyAddress()
@@ -560,7 +560,7 @@ func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 	}
 
 	if !found {
-		runtime.Abortf(exitcode.SysErrorIllegalActor, "delete non-existent actor %s", receiverActor)
+		runtime.Abortf(exitcode.SysErrorIllegalActor, "delete non-existent actor %v", receiverActor)
 	}
 
 	ctx.gasTank.Charge(ctx.vm.pricelist.OnDeleteActor(), "DeleteActor %s", receiver)

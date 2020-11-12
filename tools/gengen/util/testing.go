@@ -2,8 +2,10 @@ package gengen
 
 import (
 	"fmt"
-
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	tutil "github.com/filecoin-project/specs-actors/support/testing"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 
@@ -16,24 +18,15 @@ import (
 func MakeCommitCfgs(n int) ([]*CommitConfig, error) {
 	cfgs := make([]*CommitConfig, n)
 	for i := 0; i < n; i++ {
-		commP, err := constants.DefaultCidBuilder.Sum([]byte(fmt.Sprintf("commP: %d", i)))
-		if err != nil {
-			return nil, err
-		}
-		commR, err := constants.DefaultCidBuilder.Sum([]byte(fmt.Sprintf("commR: %d", i)))
-		if err != nil {
-			return nil, err
-		}
-		commD, err := constants.DefaultCidBuilder.Sum([]byte(fmt.Sprintf("commD: %d", i)))
-		if err != nil {
-			return nil, err
-		}
+		commP := tutil.MakeCID(fmt.Sprintf("commP: %d", i), &market.PieceCIDPrefix)
+		commR := tutil.MakeCID(fmt.Sprintf("commR: %d", i), &miner0.SealedCIDPrefix)
+		commD := tutil.MakeCID(fmt.Sprintf("commD: %d", i), &market.PieceCIDPrefix)
 
 		dealCfg := &DealConfig{
 			CommP:     commP,
-			PieceSize: uint64(1),
+			PieceSize: uint64(2048),
 			Verified:  false,
-			EndEpoch:  int64(1024),
+			EndEpoch:  int64(538000),
 		}
 
 		cfgs[i] = &CommitConfig{
