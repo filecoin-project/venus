@@ -6,8 +6,8 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/params"
 	big2 "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus/internal/pkg/params"
 )
 
 type FIL big2.Int

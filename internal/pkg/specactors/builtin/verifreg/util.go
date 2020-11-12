@@ -2,10 +2,10 @@ package verifreg
 
 import (
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus/internal/pkg/specactors"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )

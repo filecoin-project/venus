@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	th "github.com/filecoin-project/venus/internal/pkg/testhelpers"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	manet "github.com/multiformats/go-multiaddr-net"
 
 	"github.com/stretchr/testify/assert"

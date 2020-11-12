@@ -17,11 +17,11 @@ import (
 	"github.com/filecoin-project/go-address"
 	logging "github.com/ipfs/go-log/v2"
 
-	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/tools/fast"
-	"github.com/filecoin-project/go-filecoin/tools/fast/series"
-	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	commands "github.com/filecoin-project/venus/cmd/go-filecoin"
+	"github.com/filecoin-project/venus/internal/pkg/constants"
+	"github.com/filecoin-project/venus/tools/fast"
+	"github.com/filecoin-project/venus/tools/fast/series"
+	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 
 	iptb "github.com/ipfs/iptb/testbed"
 )

@@ -8,7 +8,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	cli "gopkg.in/urfave/cli.v2"
 
-	export "github.com/filecoin-project/go-filecoin/tools/chain-util/pkg/export"
+	export "github.com/filecoin-project/venus/tools/chain-util/pkg/export"
 )
 
 var log = logging.Logger("chain-util")

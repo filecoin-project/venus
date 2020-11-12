@@ -2,13 +2,13 @@ package vmcontext
 
 import (
 	"fmt"
-	types2 "github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/exitcode"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
+	types2 "github.com/filecoin-project/venus/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/vm/gas"
+	"github.com/filecoin-project/venus/internal/pkg/vm/internal/runtime"
 )
 
 // GasTracker maintains the stateView of gas usage throughout the execution of a message.

@@ -12,8 +12,8 @@ import (
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/fsutil"
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/storiface"
+	"github.com/filecoin-project/venus/vendors/sector-storage/fsutil"
+	"github.com/filecoin-project/venus/vendors/sector-storage/storiface"
 )
 
 const veryLargeRle = 1 << 20

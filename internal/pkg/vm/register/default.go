@@ -1,8 +1,8 @@
 package register
 
 import (
-	actors "github.com/filecoin-project/go-filecoin/internal/pkg/specactors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	actors "github.com/filecoin-project/venus/internal/pkg/specactors"
+	"github.com/filecoin-project/venus/internal/pkg/vm/internal/dispatch"
 
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
 	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"

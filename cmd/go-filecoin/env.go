@@ -5,16 +5,16 @@ import (
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/drand"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/porcelain"
+	"github.com/filecoin-project/venus/internal/pkg/protocol/drand"
 )
 
 // Env is the environment for command API handlers.
 type Env struct {
-	ctx            context.Context
-	drandAPI       *drand.API
-	porcelainAPI   *porcelain.API
-	inspectorAPI   *Inspector
+	ctx          context.Context
+	drandAPI     *drand.API
+	porcelainAPI *porcelain.API
+	inspectorAPI *Inspector
 }
 
 var _ cmds.Environment = (*Env)(nil)

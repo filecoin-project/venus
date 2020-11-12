@@ -3,8 +3,6 @@ package beacon
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"sync"
 	"time"
 
@@ -18,6 +16,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/clock"
 )
 
 func DefaultDrandIfaceFromConfig(fcGenTS uint64) (Schedule, error) {

@@ -3,8 +3,6 @@ package poster
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/policy"
 	"sync"
 	"time"
 
@@ -22,15 +20,17 @@ import (
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
-	actors "github.com/filecoin-project/go-filecoin/internal/pkg/specactors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
-	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	sectorstorage "github.com/filecoin-project/go-filecoin/vendors/sector-storage"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/plumbing/cst"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/plumbing/msg"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/message"
+	actors "github.com/filecoin-project/venus/internal/pkg/specactors"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/policy"
+	appstate "github.com/filecoin-project/venus/internal/pkg/state"
+	"github.com/filecoin-project/venus/internal/pkg/types"
+	sectorstorage "github.com/filecoin-project/venus/vendors/sector-storage"
 )
 
 var log = logging.Logger("poster")

@@ -3,8 +3,8 @@ package sealing
 import (
 	"io"
 
-	nr "github.com/filecoin-project/go-filecoin/vendors/storage-sealing/lib/nullreader"
 	"github.com/filecoin-project/go-state-types/abi"
+	nr "github.com/filecoin-project/venus/vendors/storage-sealing/lib/nullreader"
 )
 
 type NullReader struct {

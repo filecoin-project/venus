@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/internal/pkg/fork"
 )
 
 // ProtocolCodenames is a table that summarises the protocol codenames that

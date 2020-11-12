@@ -29,8 +29,8 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper/basicfs"
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/stores"
+	"github.com/filecoin-project/venus/vendors/sector-storage/ffiwrapper/basicfs"
+	"github.com/filecoin-project/venus/vendors/sector-storage/stores"
 )
 
 func init() {

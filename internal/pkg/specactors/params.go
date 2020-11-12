@@ -3,7 +3,7 @@ package specactors
 import (
 	"bytes"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/aerrors"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/aerrors"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 

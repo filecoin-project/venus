@@ -13,10 +13,10 @@ import (
 	"github.com/ipfs/iptb/testbed/interfaces"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	fcconfig "github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/tools/fast/fastutil"
-	dockerplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/docker"
-	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
+	fcconfig "github.com/filecoin-project/venus/internal/pkg/config"
+	"github.com/filecoin-project/venus/tools/fast/fastutil"
+	dockerplugin "github.com/filecoin-project/venus/tools/iptb-plugins/filecoin/docker"
+	localplugin "github.com/filecoin-project/venus/tools/iptb-plugins/filecoin/local"
 )
 
 var (

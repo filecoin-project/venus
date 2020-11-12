@@ -8,7 +8,7 @@ import (
 	crypto2 "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/minio/blake2b-simd"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus/lib/sigs"
+	"github.com/filecoin-project/venus/internal/pkg/consensus/lib/sigs"
 )
 
 type secpSigner struct{}

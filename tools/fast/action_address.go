@@ -6,7 +6,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	commands "github.com/filecoin-project/venus/cmd/go-filecoin"
 )
 
 // AddressNew runs the address new command against the filecoin process.

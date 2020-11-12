@@ -3,16 +3,13 @@ package networks
 import (
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	"github.com/filecoin-project/venus/internal/pkg/config"
 )
-
 
 func Mainnet() *NetworkConf {
 	return &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
-			Addresses: []string{
-
-			},
+			Addresses:        []string{},
 			MinPeerThreshold: 1,
 			Period:           "30s",
 		},

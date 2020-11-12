@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors"
+	"github.com/filecoin-project/venus/internal/pkg/specactors"
 
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"

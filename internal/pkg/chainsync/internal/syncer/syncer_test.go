@@ -3,9 +3,6 @@ package syncer_test
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/util/test"
-
 	"testing"
 	"time"
 
@@ -18,14 +15,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/policy"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/chain"
+	"github.com/filecoin-project/venus/internal/pkg/chainsync/internal/syncer"
+	"github.com/filecoin-project/venus/internal/pkg/chainsync/status"
+	"github.com/filecoin-project/venus/internal/pkg/clock"
+	"github.com/filecoin-project/venus/internal/pkg/fork"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/policy"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 func heightFromTip(t *testing.T, tip *block.TipSet) abi.ChainEpoch {
@@ -588,13 +586,13 @@ type syncStoreReader interface {
 func verifyTip(t *testing.T, store syncStoreReader, tip *block.TipSet, stateRoot cid.Cid) {
 	foundTip, err := store.GetTipSet(tip.Key())
 	require.NoError(t, err)
-	test.Equal(t, tip, foundTip)
+	assert.Equal(t, tip, foundTip)
 
 	fmt.Println(foundTip.Key().String())
 	fmt.Println(tip.Key().String())
 	foundState, err := store.GetTipSetStateRoot(tip.Key())
 	require.NoError(t, err)
-	test.Equal(t, stateRoot, foundState)
+	assert.Equal(t, stateRoot, foundState)
 
 	parent, err := tip.Parents()
 	assert.NoError(t, err)
@@ -609,7 +607,7 @@ func verifyTip(t *testing.T, store syncStoreReader, tip *block.TipSet, stateRoot
 func verifyHead(t *testing.T, store syncStoreReader, head *block.TipSet) {
 	headTipSet, err := store.GetTipSet(store.GetHead())
 	require.NoError(t, err)
-	test.Equal(t, head, headTipSet)
+	assert.Equal(t, head, headTipSet)
 }
 
 func containsTipSet(tsasSlice []*chain.TipSetMetadata, ts *block.TipSet) bool {

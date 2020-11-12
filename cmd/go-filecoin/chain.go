@@ -12,8 +12,8 @@ import (
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/chain"
 )
 
 var chainCmd = &cmds.Command{
@@ -73,14 +73,14 @@ var storeLsCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		count, _ := req.Options["count"].(uint)
-		if count < 1{
+		if count < 1 {
 			return nil
 		}
 
 		var iter *chain.TipsetIterator
 		var err error
 		height, _ := req.Options["height"].(int64)
-		if height >=0 {
+		if height >= 0 {
 			ts, err := GetPorcelainAPI(env).ChainGetTipSetByHeight(req.Context, nil, abi.ChainEpoch(height), true)
 			if err != nil {
 				return err

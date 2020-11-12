@@ -7,8 +7,8 @@ import (
 	files "github.com/ipfs/go-ipfs-files"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
-	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/porcelain"
+	"github.com/filecoin-project/venus/tools/fast"
 )
 
 // ImportAndStore imports the `data` to the `client`, and proposes a storage

@@ -20,28 +20,28 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
-	appstate "github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/venus/internal/pkg/beacon"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/chain"
+	"github.com/filecoin-project/venus/internal/pkg/clock"
+	"github.com/filecoin-project/venus/internal/pkg/constants"
+	"github.com/filecoin-project/venus/internal/pkg/crypto"
+	"github.com/filecoin-project/venus/internal/pkg/fork"
+	"github.com/filecoin-project/venus/internal/pkg/metrics/tracing"
+	appstate "github.com/filecoin-project/venus/internal/pkg/state"
+	"github.com/filecoin-project/venus/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/vm"
+	"github.com/filecoin-project/venus/internal/pkg/vm/state"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/account"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/power"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/policy"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/account"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/power"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/policy"
 
-	_ "github.com/filecoin-project/go-filecoin/internal/pkg/consensus/lib/sigs/bls"  // enable bls signatures
-	_ "github.com/filecoin-project/go-filecoin/internal/pkg/consensus/lib/sigs/secp" // enable secp signatures
+	_ "github.com/filecoin-project/venus/internal/pkg/consensus/lib/sigs/bls"  // enable bls signatures
+	_ "github.com/filecoin-project/venus/internal/pkg/consensus/lib/sigs/secp" // enable secp signatures
 )
 
 var (

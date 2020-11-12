@@ -12,7 +12,7 @@ var drandCmd = &cmds.Command{
 	},
 
 	Subcommands: map[string]*cmds.Command{
-		"random":    drandRandom,
+		"random": drandRandom,
 	},
 }
 

@@ -2,13 +2,13 @@ package blocksub
 
 import (
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/enccid"
+	"github.com/filecoin-project/venus/internal/pkg/encoding"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 // BlockTopic returns the network pubsub topic identifier on which new blocks are announced.

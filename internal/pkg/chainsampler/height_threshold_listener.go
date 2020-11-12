@@ -1,9 +1,9 @@
 package chainsampler
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/policy"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/policy"
 )
 
 // HeightThresholdListener listens for new heaviest chains and notifies when a height threshold is crossed.

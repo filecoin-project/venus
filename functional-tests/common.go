@@ -3,18 +3,19 @@ package functional
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
-	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/internal/pkg/beacon"
+	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/node/test"
+	"github.com/filecoin-project/venus/internal/pkg/clock"
+	"github.com/filecoin-project/venus/internal/pkg/constants"
+	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 
 // setup presealed sectors and use these paths to run test against sectors with larger sector size

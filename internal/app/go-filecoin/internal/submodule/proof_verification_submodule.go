@@ -1,7 +1,7 @@
 package submodule
 
 import (
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/venus/vendors/sector-storage/ffiwrapper"
 )
 
 // ProofVerificationSubmodule adds proof verification capabilities to the node.

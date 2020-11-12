@@ -3,11 +3,11 @@ package fsmchain
 import (
 	"context"
 
-	fsm "github.com/filecoin-project/go-filecoin/vendors/storage-sealing"
 	"github.com/filecoin-project/go-state-types/abi"
+	fsm "github.com/filecoin-project/venus/vendors/storage-sealing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/venus/internal/pkg/chain"
+	"github.com/filecoin-project/venus/internal/pkg/encoding"
 )
 
 // ChainConnector uses the chain store to provide a ChainHead method

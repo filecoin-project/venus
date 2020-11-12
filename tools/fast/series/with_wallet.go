@@ -6,7 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/venus/tools/fast"
 )
 
 // ErrWithWalletRestoreFailed is returned if the original address could not be restored.

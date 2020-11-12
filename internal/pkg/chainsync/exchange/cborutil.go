@@ -1,8 +1,9 @@
 package exchange
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"io"
+
+	"github.com/filecoin-project/venus/internal/pkg/encoding"
 )
 
 // WriteCborRPC with encode an object to cbor, opting for fast path if possible

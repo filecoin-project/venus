@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/fsutil"
+	"github.com/filecoin-project/venus/vendors/sector-storage/fsutil"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

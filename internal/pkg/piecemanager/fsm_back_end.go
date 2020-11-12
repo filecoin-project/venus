@@ -7,8 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	fsm "github.com/filecoin-project/go-filecoin/vendors/storage-sealing"
 	"github.com/filecoin-project/go-state-types/abi"
+	fsm "github.com/filecoin-project/venus/vendors/storage-sealing"
 )
 
 var _ PieceManager = new(FiniteStateMachineBackEnd)

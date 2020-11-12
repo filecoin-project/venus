@@ -10,8 +10,8 @@ import (
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/conformance"
 	"github.com/filecoin-project/test-vectors/schema"
+	"github.com/filecoin-project/venus/internal/pkg/conformance"
 )
 
 var execFlags struct {

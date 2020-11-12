@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork/blockstore"
+	"github.com/filecoin-project/venus/internal/pkg/fork/blockstore"
 	"log"
 	"sync"
 
@@ -11,7 +11,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"

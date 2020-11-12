@@ -4,12 +4,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	"github.com/filecoin-project/venus/internal/pkg/repo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	. "github.com/filecoin-project/go-filecoin/tools/migration/internal"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
+	. "github.com/filecoin-project/venus/tools/migration/internal"
 )
 
 func TestMigrationRunner_RunBuildonly(t *testing.T) {

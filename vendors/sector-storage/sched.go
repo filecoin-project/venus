@@ -12,8 +12,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/sealtasks"
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/storiface"
+	"github.com/filecoin-project/venus/vendors/sector-storage/sealtasks"
+	"github.com/filecoin-project/venus/vendors/sector-storage/storiface"
 )
 
 type schedPrioCtxKey int

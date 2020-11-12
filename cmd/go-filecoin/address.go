@@ -7,8 +7,8 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	files "github.com/ipfs/go-ipfs-files"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/crypto"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 var walletCmd = &cmds.Command{
@@ -27,9 +27,9 @@ var addrsCmd = &cmds.Command{
 		Tagline: "Interact with addresses",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"ls":      addrsLsCmd,
-		"new":     addrsNewCmd,
-		"default": defaultAddressCmd,
+		"ls":          addrsLsCmd,
+		"new":         addrsNewCmd,
+		"default":     defaultAddressCmd,
 		"set-default": setDefaultAddressCmd,
 	},
 }

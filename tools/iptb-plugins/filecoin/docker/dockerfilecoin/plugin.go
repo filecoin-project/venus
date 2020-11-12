@@ -1,7 +1,7 @@
 package main
 
 import (
-	plugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/docker"
+	plugin "github.com/filecoin-project/venus/tools/iptb-plugins/filecoin/docker"
 )
 
 var PluginName = plugin.PluginName // nolint: golint, staticcheck, deadcode, unused

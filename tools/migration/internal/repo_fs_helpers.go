@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	"github.com/filecoin-project/venus/internal/pkg/repo"
 	rcopy "github.com/otiai10/copy"
 )
 

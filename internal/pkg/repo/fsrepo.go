@@ -2,7 +2,6 @@ package repo
 
 import (
 	"fmt"
-	"github.com/filecoin-project/go-multistore"
 	"io"
 	"io/ioutil"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-multistore"
 	ds "github.com/ipfs/go-datastore"
 	badgerds "github.com/ipfs/go-ds-badger2"
 	lockfile "github.com/ipfs/go-fs-lock"
@@ -20,7 +20,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	"github.com/filecoin-project/venus/internal/pkg/config"
 )
 
 const (
@@ -142,7 +142,7 @@ func OpenFSRepo(repoPath string, version uint) (*FSRepo, error) {
 	}
 
 	if !hasConfig {
-		return nil, errors.Errorf("no repo found at %s; run: 'go-filecoin init [--repodir=%s]'", repoPath, repoPath)
+		return nil, errors.Errorf("no repo found at %s; run: 'venus init [--repodir=%s]'", repoPath, repoPath)
 	}
 
 	info, err := os.Stat(repoPath)
@@ -200,7 +200,7 @@ func (r *FSRepo) loadFromDisk() error {
 	}
 
 	if localVersion < r.version {
-		return fmt.Errorf("out of date repo version, got %d expected %d. Migrate with tools/migration/go-filecoin-migrate", localVersion, Version)
+		return fmt.Errorf("out of date repo version, got %d expected %d. Migrate with tools/migration/venus-migrate", localVersion, Version)
 	}
 
 	if localVersion > r.version {

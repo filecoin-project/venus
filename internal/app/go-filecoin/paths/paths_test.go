@@ -3,7 +3,7 @@ package paths
 import (
 	"testing"
 
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/require"
 )
 

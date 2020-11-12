@@ -13,9 +13,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	commands "github.com/filecoin-project/venus/cmd/go-filecoin"
+	"github.com/filecoin-project/venus/internal/pkg/constants"
+	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 
 // GenesisInfo chains require information to start a single node with funds
