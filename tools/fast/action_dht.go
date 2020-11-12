@@ -12,7 +12,7 @@ import (
 
 // DHTFindPeer runs the `dht findpeer` command against the filecoin process
 func (f *Filecoin) DHTFindPeer(ctx context.Context, pid peer.ID) ([]multiaddr.Multiaddr, error) {
-	decoder, err := f.RunCmdLDJSONWithStdin(ctx, nil, "go-filecoin", "dht", "findpeer", pid.String())
+	decoder, err := f.RunCmdLDJSONWithStdin(ctx, nil, "venus", "dht", "findpeer", pid.String())
 	if err != nil {
 		return nil, err
 	}
@@ -41,6 +41,6 @@ func (f *Filecoin) DHTFindPeer(ctx context.Context, pid peer.ID) ([]multiaddr.Mu
 
 // DHTFindProvs runs the `dht findprovs` command against the filecoin process
 func (f *Filecoin) DHTFindProvs(ctx context.Context, key cid.Cid) (*json.Decoder, error) {
-	args := []string{"go-filecoin", "dht", "findprovs", key.String()}
+	args := []string{"venus", "dht", "findprovs", key.String()}
 	return f.RunCmdLDJSONWithStdin(ctx, nil, args...)
 }

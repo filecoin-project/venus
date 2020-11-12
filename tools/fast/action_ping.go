@@ -4,7 +4,7 @@ package fast
 //func (f *Filecoin) Ping(ctx context.Context, pid peer.ID, options ...ActionOption) ([]commands.PingResult, error) {
 //	sPid := pid.Pretty()
 //
-//	args := []string{"go-filecoin", "ping"}
+//	args := []string{"venus", "ping"}
 //
 //	for _, option := range options {
 //		args = append(args, option()...)

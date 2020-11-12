@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/venus/build/project"
-	"github.com/filecoin-project/venus/internal/pkg/repo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/venus/build/project"
+	"github.com/filecoin-project/venus/internal/pkg/repo"
 	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/tools/migration/internal"
 )
@@ -18,7 +18,7 @@ import (
 func TestUsage(t *testing.T) {
 	tf.IntegrationTest(t) // because we're using exec.Command
 	command := requireGetMigrationBinary(t)
-	usage := `go-filecoin-migrate (describe|buildonly|migrate) --old-repo=<repolink> [-h|--help] [-v|--verbose]`
+	usage := `venus-migrate (describe|buildonly|migrate) --old-repo=<repolink> [-h|--help] [-v|--verbose]`
 
 	t.Run("bare invocation prints usage but exits with 1", func(t *testing.T) {
 		out, err := exec.Command(command).CombinedOutput()
@@ -42,7 +42,7 @@ func TestUsage(t *testing.T) {
 func TestOptions(t *testing.T) {
 	tf.IntegrationTest(t) // because we're using exec.Command
 	command := requireGetMigrationBinary(t)
-	usage := `go-filecoin-migrate (describe|buildonly|migrate) --old-repo=<repolink> [-h|--help] [-v|--verbose]`
+	usage := `venus-migrate (describe|buildonly|migrate) --old-repo=<repolink> [-h|--help] [-v|--verbose]`
 
 	t.Run("error when calling with invalid command", func(t *testing.T) {
 		out, err := exec.Command(command, "foo", "--old-repo=something").CombinedOutput()
@@ -79,7 +79,7 @@ func TestOptions(t *testing.T) {
 func requireGetMigrationBinary(t *testing.T) string {
 	root := project.Root()
 
-	bin := filepath.Join(root, "tools/migration/go-filecoin-migrate")
+	bin := filepath.Join(root, "tools/migration/venus-migrate")
 	_, err := os.Stat(bin)
 	require.NoError(t, err)
 

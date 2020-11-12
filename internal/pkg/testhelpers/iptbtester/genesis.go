@@ -127,18 +127,18 @@ func RequireGenesis(t *testing.T, dir string, cfg *gengen.GenesisCfg) *GenesisIn
 func MustImportGenesisMiner(tn *TestNode, gi *GenesisInfo) {
 	ctx := context.Background()
 
-	tn.MustRunCmd(ctx, "go-filecoin", "config", "mining.minerAddress", fmt.Sprintf("\"%s\"", gi.MinerAddress))
+	tn.MustRunCmd(ctx, "venus", "config", "mining.minerAddress", fmt.Sprintf("\"%s\"", gi.MinerAddress))
 
-	tn.MustRunCmd(ctx, "go-filecoin", "wallet", "import", gi.KeyFile)
+	tn.MustRunCmd(ctx, "venus", "wallet", "import", gi.KeyFile)
 
-	tn.MustRunCmd(ctx, "go-filecoin", "config", "wallet.defaultAddress", fmt.Sprintf("\"%s\"", gi.WalletAddress))
+	tn.MustRunCmd(ctx, "venus", "config", "wallet.defaultAddress", fmt.Sprintf("\"%s\"", gi.WalletAddress))
 
 	// Get node id
 	id := idResult{}
-	tn.MustRunCmdJSON(ctx, &id, "go-filecoin", "id")
+	tn.MustRunCmdJSON(ctx, &id, "venus", "id")
 
 	// Update miner
-	tn.MustRunCmd(ctx, "go-filecoin", "miner", "update-peerid", "--from="+gi.WalletAddress, "--gas-price=1", "--gas-limit=300", gi.MinerAddress, id.ID)
+	tn.MustRunCmd(ctx, "venus", "miner", "update-peerid", "--from="+gi.WalletAddress, "--gas-price=1", "--gas-limit=300", gi.MinerAddress, id.ID)
 }
 
 // MustInitWithGenesis init TestNode, passing in the `--genesisfile` flag, by calling MustInit

@@ -122,7 +122,7 @@ const recursionMultiplier = 4
 // that later don't validate (bitswap actually does this as well)
 //
 // TODO: In the future, the blocks will be validated directly through graphsync as
-// go-filecoin migrates to the same IPLD library used by go-graphsync (go-ipld-prime)
+// venus migrates to the same IPLD library used by go-graphsync (go-ipld-prime)
 //
 // See: https://github.com/filecoin-project/venus/issues/3175
 func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey block.TipSetKey, originatingPeer peer.ID, done func(*block.TipSet) (bool, error)) ([]*block.TipSet, error) {

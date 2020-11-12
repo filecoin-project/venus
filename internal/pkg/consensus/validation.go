@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/internal/pkg/block"
-  "github.com/filecoin-project/venus/internal/pkg/constants"
+	"github.com/filecoin-project/venus/internal/pkg/constants"
 	"github.com/filecoin-project/venus/internal/pkg/crypto"
 	"github.com/filecoin-project/venus/internal/pkg/metrics"
 	"github.com/filecoin-project/venus/internal/pkg/state"
