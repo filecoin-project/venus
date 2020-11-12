@@ -2,7 +2,6 @@ package blockstore
 
 import (
 	"context"
-	// "fmt"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -16,12 +15,10 @@ func (m MemStore) DeleteBlock(k cid.Cid) error {
 	return nil
 }
 func (m MemStore) Has(k cid.Cid) (bool, error) {
-	//fmt.Println("Has ", k.String())
 	_, ok := m[k]
 	return ok, nil
 }
 func (m MemStore) Get(k cid.Cid) (blocks.Block, error) {
-	//fmt.Println("Get ", k.String())
 	b, ok := m[k]
 	if !ok {
 		return nil, blockstore.ErrNotFound
@@ -51,7 +48,6 @@ func (m MemStore) Put(b blocks.Block) error {
 		// the error is only for debugging.
 		b, _ = blocks.NewBlockWithCid(b.RawData(), b.Cid())
 	}
-	//fmt.Println("Put ", b.Cid().String())
 	m[b.Cid()] = b
 	return nil
 }
