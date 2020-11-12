@@ -11,7 +11,7 @@ go-filecon $ ./tools/gengen/gengen --keypath fixtures --out-car fixtures/genesis
 
 ### Building
 
-The gengen tool expects that you can already build `go-filecoin`. Please refer
+The gengen tool expects that you can already build `venus`. Please refer
 to the README in the root of this project for details.
 
 ```

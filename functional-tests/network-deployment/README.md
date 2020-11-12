@@ -5,7 +5,7 @@ These tests can be run against a deployed kittyhawk network to verify
 expected behavior.
 
 All tests can be run by invoking the `test` command with the `-deployment <network>`
-flag from the project root. A `go-filecoin` binary should be built and located in the
+flag from the project root. A `venus` binary should be built and located in the
 project root (`go run ./build build-filecoin`).
 
 ```
@@ -36,9 +36,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/tools/fast"
-	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/tools/fast"
+	"github.com/filecoin-project/venus/tools/fast/fastesting"
 )
 
 func TestFoo(t *testing.T) {

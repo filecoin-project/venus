@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/encoding"
 )
 
-// IpldStore is a go-filecoin implementation of the go-hamt-ipld CborStore
+// IpldStore is a venus implementation of the go-hamt-ipld CborStore
 // interface.
 type IpldStore struct {
 	blocks Blocks

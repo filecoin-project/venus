@@ -1,6 +1,6 @@
 ### The FAST Shell
 
-FAST has a [`Shell`](https://godoc.org/github.com/filecoin-project/go-filecoin/tools/fast#Filecoin.Shell) which can be used to start the users shell with the environment setup to run `go-filecoin` commands against the process it is called on.
+FAST has a [`Shell`](https://godoc.org/github.com/filecoin-project/venus/tools/fast#Filecoin.Shell) which can be used to start the users shell with the environment setup to run `venus` commands against the process it is called on.
 
 The exact environment the shell will have is largely dependent on the plugin use are using.
 Generally, this will be the Filecoin localplugin when writing tests using FAST.
@@ -9,17 +9,17 @@ The Filecoin localplugin shell environment will have the following variables set
 
 | Name  | Description |
 |:---|:---|
-| `FIL_PATH` |  The value is set to the repository directory for the Filecoin node. Any `go-filecoin` commands ran in the shell will be executed against the Filecoin process for which the Shell method was invoked on in FAST. |
+| `FIL_PATH` |  The value is set to the repository directory for the Filecoin node. Any `venus` commands ran in the shell will be executed against the Filecoin process for which the Shell method was invoked on in FAST. |
 | `FIL_PID` | The value is set to the PID for the Filecoin daemon. |
 | `FIL_BINARY` | The value is set to the binary running the Filecoin daemon. Please refer to the section below on `PATH` for more details. |
-| `PATH` | The users `PATH` will be updated to include a location that contains the binary used for executing all `go-filecoin` commands. The `go-filecoin` binary included in this location itself is defined by either the value of the `localplugin.AttrFilecoinBinary`, or the first `go-filecoin` binary found in the users `PATH`. <br/> <br/>_Note: The value of `FIL_BINARY` will not be the exact value. During node setup, the binary is copied to ensure it does not change during execution. `FIL_BINARY` will be this new path._ |
+| `PATH` | The users `PATH` will be updated to include a location that contains the binary used for executing all `venus` commands. The `venus` binary included in this location itself is defined by either the value of the `localplugin.AttrFilecoinBinary`, or the first `venus` binary found in the users `PATH`. <br/> <br/>_Note: The value of `FIL_BINARY` will not be the exact value. During node setup, the binary is copied to ensure it does not change during execution. `FIL_BINARY` will be this new path._ |
 
 The information around the `PATH` seems a little complex, but it's to ensure that there are no issues as a result of mixing binaries.
-This has the advantage that while using FAST, users can re-compile `go-filecoin` without affecting constructed nodes.
+This has the advantage that while using FAST, users can re-compile `venus` without affecting constructed nodes.
 It should be noted that the copying of the binary occurs during the call to `NewProcess`.
 
 It should also be noted that users shell configuration will be ran when the shell opens.
-If shell configuration updates the `PATH` by appending to the front, if any of those directories contain `go-filecoin`, then the `go-filecoin` command inside of the FAST Shell will **not** point to the correct binary, because of this, it is best to actually execute commands using the `$FIL_BINARY` variable (eg: `$FIL_BINARY id`).
+If shell configuration updates the `PATH` by appending to the front, if any of those directories contain `venus`, then the `venus` command inside of the FAST Shell will **not** point to the correct binary, because of this, it is best to actually execute commands using the `$FIL_BINARY` variable (eg: `$FIL_BINARY id`).
 
 ### Using a FAST Shell in _go test_
 
@@ -71,7 +71,7 @@ Tests can be used to get nodes into certain state.
 You may want to then use a shell to execute additional commands to debug an issue.
 You may have added additional logging you want to look at, or look at existing logging that will be produced by commands you run.
 
-FAST Provides a [`StartLogCapture`](https://godoc.org/github.com/filecoin-project/go-filecoin/tools/fast#Filecoin.StartLogCapture) which will capture all output written to the daemons `stderr` until `Stop` is called.
+FAST Provides a [`StartLogCapture`](https://godoc.org/github.com/filecoin-project/venus/tools/fast#Filecoin.StartLogCapture) which will capture all output written to the daemons `stderr` until `Stop` is called.
 The captured logs are stored in the return value of `StartLogCapture`, which can be copied to any `io.Writer`.
 
 ```go

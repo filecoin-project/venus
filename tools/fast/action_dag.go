@@ -12,7 +12,7 @@ func (f *Filecoin) DagGet(ctx context.Context, ref cid.Cid) (map[string]interfac
 
 	sRef := ref.String()
 
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "dag", "get", sRef); err != nil {
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "venus", "dag", "get", sRef); err != nil {
 		return nil, err
 	}
 

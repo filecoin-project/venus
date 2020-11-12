@@ -29,7 +29,7 @@ func main() {
 	dryRun := flag.Bool("dry-run", false, "perform a dry run instead of executing create/delete/update actions")
 	limit := flag.Int("limit", 7, "limit of prereleases to keep")
 	owner := flag.String("owner", "filecoin-project", "github owner or organization")
-	repo := flag.String("repo", "go-filecoin", "github project repository")
+	repo := flag.String("repo", "venus", "github project repository")
 	token, ok := os.LookupEnv("GITHUB_TOKEN")
 	if !ok {
 		log.Fatal("Github token must be provided through GITHUB_TOKEN environment variable")

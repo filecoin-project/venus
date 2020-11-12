@@ -9,7 +9,7 @@ import (
 // ConfigGet runs the `config` command against the filecoin process, and decodes the
 // output into `v`.
 func (f *Filecoin) ConfigGet(ctx context.Context, key string, v interface{}) error {
-	args := []string{"go-filecoin", "config", key}
+	args := []string{"venus", "config", key}
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, v, args...); err != nil {
 		return err
@@ -26,7 +26,7 @@ func (f *Filecoin) ConfigSet(ctx context.Context, key string, v interface{}) err
 		return err
 	}
 
-	args := []string{"go-filecoin", "config", key, string(value)}
+	args := []string{"venus", "config", key, string(value)}
 
 	out, err := f.RunCmdWithStdin(ctx, nil, args...)
 	if err != nil {

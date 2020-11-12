@@ -2,8 +2,8 @@
 
 [![CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin.svg?style=svg)](https://circleci.com/gh/filecoin-project/go-filecoin)
 [![User Devnet Release](https://img.shields.io/endpoint.svg?color=brightgreen&style=flat&logo=GitHub&url=https://raw.githubusercontent.com/filecoin-project/go-filecoin-badges/master/user-devnet.json)](https://github.com/filecoin-project/venus/releases/latest)
-[![Nightly Devnet Release](https://img.shields.io/endpoint.svg?color=blue&style=flat&logo=GitHub&url=https://raw.githubusercontent.com/filecoin-project/venus-badges/master/nightly-devnet.json)](https://github.com/filecoin-project/venus/releases)
-[![Staging Devnet Release](https://img.shields.io/endpoint.svg?color=brightgreen&style=flat&logo=GitHub&url=https://raw.githubusercontent.com/filecoin-project/venus-badges/master/staging-devnet.json)](https://github.com/filecoin-project/venus/releases)
+[![Nightly Devnet Release](https://img.shields.io/endpoint.svg?color=blue&style=flat&logo=GitHub&url=https://raw.githubusercontent.com/filecoin-project/go-filecoin-badges/master/nightly-devnet.json)](https://github.com/filecoin-project/venus/releases)
+[![Staging Devnet Release](https://img.shields.io/endpoint.svg?color=brightgreen&style=flat&logo=GitHub&url=https://raw.githubusercontent.com/filecoin-project/go-filecoin-badges/master/staging-devnet.json)](https://github.com/filecoin-project/venus/releases)
 
 venus is an implementation of the Filecoin Distributed Storage Network. For more details  about Filecoin, checkout the [Filecoin Spec](https://spec.filecoin.io).
 

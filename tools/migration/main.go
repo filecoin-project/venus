@@ -16,9 +16,9 @@ const defaultLogFilePath = "~/.filecoin-migration-logs"
 // USAGE is the usage documentation for the migration tool
 const USAGE = `
 USAGE
-	go-filecoin-migrate -h|--help
-	go-filecoin-migrate (describe|buildonly|migrate) --old-repo=<repolink> [-h|--help] [-v|--verbose]
-	go-filecoin-migrate install --old-repo=<repolink> --new-repo=<migrated-repo> [-v|--verbose]
+	venus-migrate -h|--help
+	venus-migrate (describe|buildonly|migrate) --old-repo=<repolink> [-h|--help] [-v|--verbose]
+	venus-migrate install --old-repo=<repolink> --new-repo=<migrated-repo> [-v|--verbose]
 
 COMMANDS
 	describe	prints a description of what the current migration will do
@@ -46,19 +46,19 @@ OPTIONS
 
 EXAMPLES
 	for a migration from version 1 to 2:
-	go-filecoin-migrate migrate --old-repo=~/.filecoin
+	venus-migrate migrate --old-repo=~/.filecoin
 		Migrates then installs the repo. Migrated repo will be in ~/.filecoin_1_2_<timestamp>
 		and symlinked to ~/.filecoin
 
-	go-filecoin-migrate migrate --old-repo=/opt/filecoin
+	venus-migrate migrate --old-repo=/opt/filecoin
 		Migrates then installs the repo. Migrated repo will be in /opt/filecoin_1_2_<timestamp>
 		and symlinked to /opt/filecoin
 
-	go-filecoin-migrate build-only --old-repo=/opt/filecoin
+	venus-migrate build-only --old-repo=/opt/filecoin
 		Runs migration steps only. Migrated repo will be in /opt/filecoin_1_2_<timestamp>
 		and symlinked to /opt/filecoin
 
-	go-filecoin-migrate install --old-repo=/opt/filecoin --new-repo=/opt/filecoin-123445566860 --verbose
+	venus-migrate install --old-repo=/opt/filecoin --new-repo=/opt/filecoin-123445566860 --verbose
 		swaps out the link at /opt/filecoin to point to /opt/filecoin-123445566860, as long as
 		/opt/filecoin is a symlink and /opt/filecoin-123445566860 has an up-to-date version.
 `
