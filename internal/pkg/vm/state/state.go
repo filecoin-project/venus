@@ -32,6 +32,7 @@ type Tree interface {
 	GetActor(ctx context.Context, addr ActorKey) (*types.Actor, bool, error)
 	SetActor(ctx context.Context, addr ActorKey, act *types.Actor) error
 	DeleteActor(ctx context.Context, addr ActorKey) error
+	LookupID(addr ActorKey) (address.Address, error)
 
 	Flush(ctx context.Context) (cid.Cid, error)
 	Snapshot(ctx context.Context) error
@@ -155,7 +156,7 @@ func LoadState(ctx context.Context, cst cbor.IpldStore, c cid.Cid) (*State, erro
 }
 
 func (st *State) SetActor(ctx context.Context, addr ActorKey, act *types.Actor) error {
-	fmt.Println("set actor addr:", addr.String(), " Balance:", act.Balance.String(), " Head:", act.Head, " Nonce:", act.CallSeqNum)
+	// fmt.Println("set actor addr:", addr.String(), " Balance:", act.Balance.String(), " Head:", act.Head, " Nonce:", act.CallSeqNum)
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
 		return xerrors.Errorf("ID lookup failed: %w", err)

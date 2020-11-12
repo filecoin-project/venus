@@ -4,31 +4,34 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/go-state-types/network"
+  "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
-	"time"
 
 	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/crypto"
 	"github.com/filecoin-project/venus/internal/pkg/encoding"
-	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
-	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin"
-	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/cron"
-	initActor "github.com/filecoin-project/venus/internal/pkg/specactors/builtin/init"
-	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/reward"
 	"github.com/filecoin-project/venus/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/vm/actor"
 	"github.com/filecoin-project/venus/internal/pkg/vm/gas"
 	"github.com/filecoin-project/venus/internal/pkg/vm/internal/dispatch"
+	"github.com/filecoin-project/venus/internal/pkg/vm/internal/gascost"
+	"github.com/filecoin-project/venus/internal/pkg/vm/internal/interpreter"
+	"github.com/filecoin-project/venus/internal/pkg/vm/internal/message"
 	"github.com/filecoin-project/venus/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/venus/internal/pkg/vm/internal/storage"
 	"github.com/filecoin-project/venus/internal/pkg/vm/state"
-	"github.com/filecoin-project/venus/internal/pkg/vm/storage"
 )
 
 var vmlog = logging.Logger("vm.context")
@@ -126,35 +129,45 @@ func (vm *VM) ContextStore() adt.Store {
 	return &contextStore{context: vm.context, store: vm.store}
 }
 
+// todo modify by force Learn from lotus???
 func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
-	// short-circuit if the address is already an ID address
-	if addr.Protocol() == address.ID {
-		return addr, true
-	}
-
-	// resolve the target address via the InitActor, and attempt To load stateView.
-	initActorEntry, found, err := vm.state.GetActor(vm.context, initActor.Address)
+	r, err := vm.state.LookupID(addr)
 	if err != nil {
-		panic(errors.Wrapf(err, "failed To load init actor"))
+		if xerrors.Is(err, types.ErrActorNotFound) {
+			return address.Undef, false
+		}
+		panic(errors.Wrapf(err, "failed to resolve address %s", addr))
 	}
-	if !found {
-		panic(errors.Wrapf(err, "no init actor"))
-	}
+	return r, true
 
-	// get a view into the actor stateView
-	initActorState, err := initActor.Load(adt.WrapStore(vm.context, vm.store), initActorEntry)
-	if err != nil {
-		panic(err)
-	}
-
-	idAddr, found, err := initActorState.ResolveAddress(addr)
-	if !found {
-		return address.Undef, false
-	}
-	if err != nil {
-		panic(err)
-	}
-	return idAddr, true
+	//// short-circuit if the address is already an ID address
+	//if addr.Protocol() == address.ID {
+	//	return addr, true
+	//}
+	//
+	//// resolve the target address via the InitActor, and attempt To load stateView.
+	//initActorEntry, found, err := vm.state.GetActor(vm.context, initActor.Address)
+	//if err != nil {
+	//	panic(errors.Wrapf(err, "failed To load init actor"))
+	//}
+	//if !found {
+	//	panic(errors.Wrapf(err, "no init actor"))
+	//}
+	//
+	//// get a view into the actor stateView
+	//initActorState, err := initActor.Load(adt.WrapStore(vm.context, vm.store), initActorEntry)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//idAddr, found, err := initActorState.ResolveAddress(addr)
+	//if !found {
+	//	return address.Undef, false
+	//}
+	//if err != nil {
+	//	panic(err)
+	//}
+	//return idAddr, true
 }
 
 // ApplyTipSetMessages implements interpreter.VMInterpreter

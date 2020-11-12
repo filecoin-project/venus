@@ -63,7 +63,7 @@ func newInvocationContext(rt *VM, gasIpld ipfscbor.IpldStore, topLevel *topLevel
 	// Note: the toActor and stateHandle are loaded during the `invoke()`
 	resF, ok := rt.normalizeAddress(msg.From)
 	if !ok {
-		runtime.Abortf(exitcode.SysErrInvalidReceiver, "resolve msg.From address failed")
+		runtime.Abortf(exitcode.SysErrInvalidReceiver, "resolve msg.From [%s] address failed", msg.From)
 	}
 	msg.From = resF
 
