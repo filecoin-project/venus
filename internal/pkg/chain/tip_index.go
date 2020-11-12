@@ -92,7 +92,6 @@ func (ti *TipIndex) Get(tsKey block.TipSetKey) (*TipSetMetadata, error) {
 	return tsas, nil
 }
 
-// todo add by force
 func (ti *TipIndex) Del(ts *block.TipSet) error {
 	ti.mu.Lock()
 	defer ti.mu.Unlock()

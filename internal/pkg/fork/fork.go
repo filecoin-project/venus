@@ -209,7 +209,6 @@ type chainReader interface {
 	Head() block.TipSetKey
 	GetTipSet(tsKey block.TipSetKey) (*block.TipSet, error)
 	GetTipSetByHeight(context.Context, *block.TipSet, abi.ChainEpoch, bool) (*block.TipSet, error)
-	GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error)
 	GetTipSetState(context.Context, block.TipSetKey) (vmstate.Tree, error)
 	GetGenesisBlock(ctx context.Context) (*block.Block, error)
 }

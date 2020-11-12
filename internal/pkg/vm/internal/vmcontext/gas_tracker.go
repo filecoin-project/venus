@@ -50,7 +50,7 @@ func (t *GasTracker) TryCharge(gasCharge gas.GasCharge) bool {
 	//var callers [10]uintptr
 	//cout := gruntime.Callers(2+skip, callers[:])
 
-	now := time.Now() //build.Clock.Now()   todo add by force check here
+	now := time.Now()
 	if t.lastGasCharge != nil {
 		t.lastGasCharge.TimeTaken = now.Sub(t.lastGasChargeTime)
 	}

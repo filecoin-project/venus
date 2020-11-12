@@ -4,13 +4,11 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/venus/internal/pkg/chainsync/exchange"
-	"github.com/filecoin-project/venus/internal/pkg/repo"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	fbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/big"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	syncds "github.com/ipfs/go-datastore/sync"
@@ -25,9 +23,11 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/clock"
 	"github.com/filecoin-project/venus/internal/pkg/constants"
 	"github.com/filecoin-project/venus/internal/pkg/crypto"
-	"github.com/filecoin-project/venus/internal/pkg/enccid"
 	"github.com/filecoin-project/venus/internal/pkg/encoding"
 	"github.com/filecoin-project/venus/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/chainsync/exchange"
+	"github.com/filecoin-project/venus/internal/pkg/enccid"
+	"github.com/filecoin-project/venus/internal/pkg/repo"
 )
 
 // Builder builds fake chains and acts as a provider and fetcher for the chain thus generated.
@@ -409,7 +409,7 @@ func (bb *BlockBuilder) SetStateRoot(root cid.Cid) {
 // StateBuilder abstracts the computation of state root CIDs from the chain builder.
 type StateBuilder interface {
 	ComputeState(prev cid.Cid, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, []types.MessageReceipt, error)
-	Weigh(ctx context.Context, tip *block.TipSet) (fbig.Int, error)
+	Weigh(ctx context.Context, tip *block.TipSet) (big.Int, error)
 }
 
 // FakeStateBuilder computes a fake state CID by hashing the CIDs of a block's parents and messages.
@@ -468,17 +468,17 @@ func (FakeStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.Unsign
 }
 
 // Weigh computes a tipset's weight as its parent weight plus one for each block in the tipset.
-func (FakeStateBuilder) Weigh(context context.Context, tip *block.TipSet) (fbig.Int, error) {
-	parentWeight := fbig.Zero()
+func (FakeStateBuilder) Weigh(context context.Context, tip *block.TipSet) (big.Int, error) {
+	parentWeight := big.Zero()
 	if tip.Defined() {
 		var err error
 		parentWeight, err = tip.ParentWeight()
 		if err != nil {
-			return fbig.Zero(), err
+			return big.Zero(), err
 		}
 	}
 
-	return fbig.Add(parentWeight, fbig.NewInt(int64(tip.Len()))), nil
+	return big.Add(parentWeight, big.NewInt(int64(tip.Len()))), nil
 }
 
 ///// Timestamper /////
@@ -527,20 +527,12 @@ func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *block.T
 	return e.ComputeState(parentStateRoot, blsMessages, secpMessages)
 }
 
-func (e *FakeStateEvaluator) ValidateMining(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid, parentWeight fbig.Int, parentReceiptRoot cid.Cid) error {
-	return nil
-}
-
-func (e *FakeStateEvaluator) ValidateBlockBeacon(b *block.Block, parentEpoch abi.ChainEpoch, prevEntry *block.BeaconEntry) error {
-	return nil
-}
-
-func (e *FakeStateEvaluator) ValidateBlockWinner(ctx context.Context, blk *block.Block, stateID cid.Cid, prevEntry *block.BeaconEntry) error {
+func (e *FakeStateEvaluator) ValidateMining(ctx context.Context, parent, ts *block.TipSet, parentWeight big.Int, parentReceiptRoot cid.Cid) error {
 	return nil
 }
 
 // RunStateTransition delegates to StateBuilder.ComputeState.
-//func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, parentWeight fbig.Int, stateID cid.Cid, receiptCid cid.Cid) (cid.Cid, []types.MessageReceipt, error) {
+//func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, parentWeight big.Int, stateID cid.Cid, receiptCid cid.Cid) (cid.Cid, []types.MessageReceipt, error) {
 //	return e.ComputeState(stateID, blsMessages, secpMessages)
 //}
 
@@ -575,7 +567,7 @@ func (e *FakeChainSelector) IsHeavier(ctx context.Context, a, b *block.TipSet) (
 }
 
 // Weight delegates to the statebuilder
-func (e *FakeChainSelector) Weight(ctx context.Context, ts *block.TipSet) (fbig.Int, error) {
+func (e *FakeChainSelector) Weight(ctx context.Context, ts *block.TipSet) (big.Int, error) {
 	return e.Weigh(ctx, ts)
 }
 

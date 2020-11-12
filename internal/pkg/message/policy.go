@@ -121,7 +121,6 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 	return nil
 }
 
-// ToDo add by force
 type BlockMessages struct {
 	Miner         address.Address
 	BlsMessages   []types.ChainMsg

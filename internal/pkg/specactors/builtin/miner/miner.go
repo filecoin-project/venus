@@ -62,7 +62,7 @@ type State interface {
 	LockedFunds() (LockedFunds, error)
 	FeeDebt() (abi.TokenAmount, error)
 
-	SectorArray() (adt.Array, error) // todo add by force
+	SectorArray() (adt.Array, error)
 	GetSector(abi.SectorNumber) (*SectorOnChainInfo, error)
 	FindSector(abi.SectorNumber) (*SectorLocation, error)
 	GetSectorExpiration(abi.SectorNumber) (*SectorExpiration, error)
@@ -78,10 +78,10 @@ type State interface {
 
 	Info() (MinerInfo, error)
 
-	SuccessfulPoSts() (uint64, error) // todo add by force
+	SuccessfulPoSts() (uint64, error)
 	DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error)
-	GetProvingPeriodStart() abi.ChainEpoch // todo add by force
-	FaultsSectors() ([]uint64, error)      // todo add by force
+	GetProvingPeriodStart() abi.ChainEpoch
+	FaultsSectors() ([]uint64, error)
 
 	// Diff helpers. Used by Diff* functions internally.
 	sectors() (adt.Array, error)

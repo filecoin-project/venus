@@ -410,7 +410,6 @@ func (a *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round a
 		return nil, xerrors.Errorf("getting lookback miner actor state: %w", err)
 	}
 
-	// todo review
 	buf := new(bytes.Buffer)
 	if err := maddr.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal miner address: %w", err)
@@ -509,7 +508,6 @@ func (a *API) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifi
 		return nil, err
 	}
 
-	// todo review
 	partsProving, err = viewer.GetPartsProving(ctx, maddr)
 	if err != nil {
 		return nil, err

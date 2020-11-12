@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/venus/internal/pkg/constants"
+	"github.com/filecoin-project/venus/internal/pkg/state"
+	"github.com/filecoin-project/venus/internal/pkg/vm/gas"
 	"github.com/filecoin-project/go-state-types/abi"
 	"golang.org/x/xerrors"
 
@@ -99,11 +102,6 @@ func NewDefaultBlockValidator(c clock.ChainEpochClock, m messageStore, cs chainS
 // NotFutureBlock errors if the block belongs to a future epoch according to
 // the chain clock.
 func (dv *DefaultBlockValidator) NotFutureBlock(b *block.Block) error {
-	//currentEpoch := dv.EpochAtTime(dv.Now())
-	//if b.Height > currentEpoch {
-	//	return fmt.Errorf("block %s with timestamp %d generate in future epoch %d", b.Cid().String(), b.Timestamp, b.Height)
-	//}
-
 	now := uint64(dv.Now().Unix())
 	if b.Timestamp > now+AllowableClockDriftSecs {
 		return xerrors.Errorf("block was from the future (now=%d, blk=%d): temporal error", now, b.Timestamp)
@@ -147,48 +145,6 @@ func (dv *DefaultBlockValidator) validateMessage(msg *types.UnsignedMessage, exp
 
 // ValidateFullSemantic checks validation conditions on a block's messages that don't require message execution.
 func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, child *block.Block, parents block.TipSetKey) error {
-	// validate call sequence numbers
-	//secpMsgs, blsMsgs, err := dv.ms.LoadMessages(ctx, child.Messages.Cid)
-	//if err != nil {
-	//	return errors.Wrapf(err, "block validation failed loading message list %s for block %s", child.Messages, child.Cid())
-	//}
-	//
-	//expectedCallSeqNum := map[address.Address]uint64{}
-	//for _, msg := range blsMsgs {
-	//	msgCid, err := msg.Cid()
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	from, err := dv.getAndValidateFromActor(ctx, msg, parents)
-	//	if err != nil {
-	//		return errors.Wrapf(err, "from actor %s for message %s of block %s invalid", msg.From, msgCid, child.Cid())
-	//	}
-	//
-	//	err = dv.validateMessage(msg, expectedCallSeqNum, from)
-	//	if err != nil {
-	//		return errors.Wrapf(err, "message %s of block %s invalid", msgCid, child.Cid())
-	//	}
-	//}
-	//
-	//for _, msg := range secpMsgs {
-	//	msgCid, err := msg.Cid()
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	from, err := dv.getAndValidateFromActor(ctx, &msg.Message, parents)
-	//	if err != nil {
-	//		return errors.Wrapf(err, "from actor %s for message %s of block %s invalid", msg.Message.From, msgCid, child.Cid())
-	//	}
-	//
-	//	err = dv.validateMessage(&msg.Message, expectedCallSeqNum, from)
-	//	if err != nil {
-	//		return errors.Wrapf(err, "message %s of block %s invalid", msgCid, child.Cid())
-	//	}
-	//}
-
-	// ToDo 同步时存储落后于验证,TipSetMetadata尚未被存储?
 	secpMsgs, blsMsgs, err := dv.ms.LoadMetaMessages(ctx, child.Messages.Cid)
 	if err != nil {
 		return errors.Wrapf(err, "block validation failed loading message list %s for block %s", child.Messages, child.Cid())
@@ -218,7 +174,7 @@ func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, c
 		}
 
 		sumGasLimit += int64(m.GasLimit)
-		if sumGasLimit > types.BlockGasLimit {
+		if sumGasLimit > constants.BlockGasLimit {
 			return xerrors.Errorf("block gas limit exceeded")
 		}
 
@@ -236,58 +192,6 @@ func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, c
 			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 		}
 	}
-
-	//callSeqNums := make(map[address.Address]uint64)
-	//checkMsg := func(msg types.ChainMsg) error {
-	//	m := msg.VMMessage()
-	//
-	//	// Phase 2: (Partial) semantic validation:
-	//	// the sender exists and is an account actor, and the nonces make sense
-	//	if _, ok := callSeqNums[m.From]; !ok {
-	//		// `GetActor` does not validate that this is an account actor.
-	//		act, err := dv.getAndValidateFromActor(ctx, m, parents)
-	//		if err != nil {
-	//			log.Warnf("failed to get actor for %s of parents %s, err: %s", m.From, parents, err.Error())
-	//			return nil
-	//		}
-	//
-	//		if !act.IsAccountActor() {
-	//			return xerrors.New("Sender must be an account actor")
-	//		}
-	//		callSeqNums[m.From] = act.CallSeqNum
-	//	}
-	//
-	//	if callSeqNums[m.From] != m.CallSeqNum {
-	//		return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", callSeqNums[m.From], m.CallSeqNum)
-	//	}
-	//	callSeqNums[m.From]++
-	//
-	//	return nil
-	//}
-	//
-	//for i, m := range blsMsgs {
-	//	if err := checkMsg(m); err != nil {
-	//		return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
-	//	}
-	//}
-	//
-	//for i, m := range secpMsgs {
-	//	if err := checkMsg(m); err != nil {
-	//		return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
-	//	}
-	//
-	//	// Signature Validator
-	//	view, err := dv.cs.AccountStateView(parents)
-	//	if err != nil {
-	//		return errors.Wrapf(err, "failed to load state at %v", parents)
-	//	}
-	//
-	//	sigValidator := state.NewSignatureValidator(view)
-	//
-	//	if err := sigValidator.ValidateMessageSignature(ctx, m); err != nil {
-	//		return errors.Wrap(err, fmt.Errorf("invalid signature by sender over message data").Error())
-	//	}
-	//}
 
 	return nil
 }

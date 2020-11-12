@@ -145,7 +145,7 @@ func TestMessageSyntaxValidator(t *testing.T) {
 	})
 
 	t.Run("block gas limit fails", func(t *testing.T) {
-		msg, err := types.NewSignedMessage(ctx, *newMessage(t, alice, bob, 100, 5, 1, types.BlockGasLimit+1), signer)
+		msg, err := types.NewSignedMessage(ctx, *newMessage(t, alice, bob, 100, 5, 1, constants.BlockGasLimit+1), signer)
 		require.NoError(t, err)
 		assert.Errorf(t, validator.ValidateSignedMessageSyntax(ctx, msg), "block limit")
 	})

@@ -39,12 +39,6 @@ func NewBlockTopicValidator(bv consensus.BlockSyntaxValidator, opts ...pubsub.Va
 				mInvalidBlk.Inc(ctx, 1)
 				return false
 			}
-			// Note: there is no validation here that the BLS and SECP message CIDs included in the payload
-			// produce the AMT roots referenced in the block header.
-			// At present, those lists are ignored by chain validation anyway.
-			// Such a check happens later in block semantic validation, but it would probably be a good idea to do
-			// it here too. https://github.com/filecoin-project/venus/issues/3903
-			// ToDo 签名签证在 ValidateMessagesSemantic 函数中 add by force
 			return true
 		},
 	}

@@ -372,7 +372,6 @@ func (s *state2) DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error) {
 	return s.State.DeadlineInfo(epoch), nil
 }
 
-// todo add by force
 func (s *state2) SectorArray() (adt.Array, error) {
 	return adt2.AsArray(s.store, s.Sectors)
 }

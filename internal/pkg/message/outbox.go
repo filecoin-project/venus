@@ -45,7 +45,6 @@ type Outbox struct {
 
 	journal journal.Writer
 
-	// todo add by force
 	gp gasPredictor
 }
 
@@ -63,7 +62,6 @@ type publisher interface {
 	Publish(ctx context.Context, message *types.SignedMessage, height abi.ChainEpoch, bcast bool) error
 }
 
-// todo add by force
 type gasPredictor interface {
 	CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (*vm.Ret, error)
 }

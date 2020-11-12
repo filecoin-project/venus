@@ -1,22 +1,24 @@
 package consensus
 
+import "C"
 import (
 	"bytes"
 	"context"
 	"fmt"
-	"golang.org/x/sync/errgroup"
-	"golang.org/x/xerrors"
+	"os"
 	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/internal/pkg/beacon"
 	"github.com/filecoin-project/venus/internal/pkg/block"
@@ -30,6 +32,16 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/types"
 	"github.com/filecoin-project/venus/internal/pkg/vm"
 	"github.com/filecoin-project/venus/internal/pkg/vm/state"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
+
+	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/account"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/power"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/policy"
+
+	_ "github.com/filecoin-project/venus/internal/pkg/consensus/lib/sigs/bls"  // enable bls signatures
+	_ "github.com/filecoin-project/venus/internal/pkg/consensus/lib/sigs/secp" // enable secp signatures
 )
 
 var (
@@ -55,7 +67,6 @@ const DRANDEpochLookback = 2
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
 	ProcessTipSet(context.Context, state.Tree, *vm.Storage, *block.TipSet, *block.TipSet, []vm.BlockMessagesInfo, vm.VmOption) ([]types.MessageReceipt, error)
-	// Todo add by force
 	ProcessUnsignedMessage(context.Context, *types.UnsignedMessage, state.Tree, *vm.Storage, vm.VmOption) (*vm.Ret, error)
 }
 
@@ -75,6 +86,8 @@ type chainReader interface {
 	GetHead() block.TipSetKey
 	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
 	GetGenesisBlock(ctx context.Context) (*block.Block, error)
+	GetLatestBeaconEntry(ts *block.TipSet) (*block.BeaconEntry, error)
+	GetTipSetByHeight(context.Context, *block.TipSet, abi.ChainEpoch, bool) (*block.TipSet, error)
 }
 
 type Randness interface {
@@ -161,7 +174,6 @@ func (c *Expected) BlockTime() time.Duration {
 	return c.blockTime
 }
 
-// todo add by force
 func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (*vm.Ret, error) {
 	head := c.chainState.GetHead()
 	stateRoot, err := c.chainState.GetTipSetStateRoot(head)
@@ -239,8 +251,7 @@ func (c *Expected) RunStateTransition(ctx context.Context,
 // validateMining checks validity of the ticket, proof, signature and miner
 // address of every block in the tipset.
 func (c *Expected) ValidateMining(ctx context.Context,
-	ts *block.TipSet,
-	parentStateRoot cid.Cid,
+	parent, ts *block.TipSet,
 	parentWeight big.Int,
 	parentReceiptRoot cid.Cid) error {
 
@@ -257,6 +268,10 @@ func (c *Expected) ValidateMining(ctx context.Context,
 		secpMsgs = append(secpMsgs, blksecpMsgs)
 	}
 
+	parentStateRoot, err := c.chainState.GetTipSetStateRoot(parent.Key())
+	if err != nil {
+		return xerrors.Errorf("get parent tipset state failed %s", err)
+	}
 	keyStateView := c.state.PowerStateView(parentStateRoot)
 	sigValidator := appstate.NewSignatureValidator(keyStateView)
 	faultsStateView := c.state.FaultStateView(parentStateRoot)
@@ -267,21 +282,24 @@ func (c *Expected) ValidateMining(ctx context.Context,
 		blk := ts.At(i)
 		wg.Go(func() error {
 			// Fetch the URL.
-			return c.validateBlock(ctx, keyPowerTable, sigValidator, blk, parentStateRoot, parentWeight, parentReceiptRoot)
+			return c.validateBlock(ctx, keyPowerTable, sigValidator, parent, blk, parentWeight, parentReceiptRoot)
 		})
 	}
 	return wg.Wait()
 }
 
-// Todo beacon check
 func (c *Expected) validateBlock(ctx context.Context,
 	keyPowerTable appstate.PowerTableView,
 	sigValidator *appstate.SignatureValidator,
+	parent *block.TipSet,
 	blk *block.Block,
-	parentStateRoot cid.Cid,
 	parentWeight big.Int,
 	parentReceiptRoot cid.Cid) error {
 	// confirm block state root matches parent state root
+	parentStateRoot, err := c.chainState.GetTipSetStateRoot(parent.Key())
+	if err != nil {
+		return xerrors.Errorf("get parent tipset state failed %s", err)
+	}
 	if !parentStateRoot.Equals(blk.StateRoot.Cid) {
 		return ErrStateRootMismatch
 	}
@@ -315,42 +333,41 @@ func (c *Expected) validateBlock(ctx context.Context,
 		return errors.Wrapf(err, "failed loading message list %s for block %s", blk.Messages, blk.Cid())
 	}
 
-	// Verify that the BLS signature aggregate is correct todo remove to sync fast
+	// Verify that the BLS signature aggregate is correct todo remove to sync fast ???
 	if err := sigValidator.ValidateBLSMessageAggregate(ctx, blkblsMsgs, blk.BLSAggregateSig); err != nil {
 		return errors.Wrapf(err, "bls message verification failed for block %s", blk.Cid())
 	}
 
 	// Verify that all secp message signatures are correct
-
 	for i, msg := range blksecpMsgs {
 		if err := sigValidator.ValidateMessageSignature(ctx, msg); err != nil {
 			return errors.Wrapf(err, "invalid signature for secp message %d in block %s", i, blk.Cid())
 		}
 	}
 
-	//round := tsHeight + base.NullRounds + 1
-	//winner, err := IsRoundWinner(ctx, ts, round, blk.Miner, rbase, mbi, m.api)
-	//if err != nil {
-	//	return xerrors.Errorf("failed to check if we win next round: %w", err)
-	//}
-	//if winner == nil {
-	//	return errors.Errorf("Block did not win election")
+	// Verify beacon are correct
+	// Todo review add by force ???
+	prevBeacon, err := c.chainState.GetLatestBeaconEntry(parent)
+	if err != nil {
+		return xerrors.Errorf("failed to get latest beacon entry: %s", err)
+	}
+	parentHeight, _ := parent.Height()
+	if err = c.ValidateBlockBeacon(blk, parentHeight, prevBeacon); err != nil {
+		return err
+	}
+
+	// wining check
+	// Todo review add by force ???
+	//if err = c.ValidateBlockWinner(ctx, parent, blk, parentStateRoot, prevBeacon); err != nil {
+	//	return err
 	//}
 
-	//valid, err := c.VerifyElectionProof(ctx, c.drand, electionEntry, blk.Height, blk.PoStProofs, blk.Miner, sectorSetStateView)
-	//if err != nil {
-	//	return errors.Wrapf(err, "failed verifying winning post")
-	//}
-	//if !valid {
-	//	return errors.Errorf("Invalid winning post")
-	//}
-
+	// Ticket was correctly generated by miner
 	beaconBase, err := c.beaconBaseEntry(ctx, blk)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get election entry")
 	}
 
-	// Ticket was correctly generated by miner
 	sampleEpoch := blk.Height - constants.TicketRandomnessLookback
 	bSmokeHeight := blk.Height > fork.UpgradeSmokeHeight
 	if err := c.IsValidTicket(ctx, blk.Parents, beaconBase, bSmokeHeight, sampleEpoch, blk.Miner, workerSignerAddr, blk.Ticket); err != nil {
@@ -360,14 +377,230 @@ func (c *Expected) validateBlock(ctx context.Context,
 	return nil
 }
 
-// Todo beacon check
-func (c *Expected) ValidateBlockBeacon(b *block.Block, parentEpoch abi.ChainEpoch, prevEntry *block.BeaconEntry) error {
-	return beacon.ValidateBlockValues(c.drand, b, parentEpoch, prevEntry)
+func (c *Expected) ValidateBlockBeacon(blk *block.Block, parentEpoch abi.ChainEpoch, prevEntry *block.BeaconEntry) error {
+	if os.Getenv("VENUS_IGNORE_DRAND") == "_yes_" {
+		return nil
+	}
+	return beacon.ValidateBlockValues(c.drand, blk, parentEpoch, prevEntry)
 }
 
-func (c *Expected) ValidateBlockWinner(ctx context.Context, blk *block.Block, stateID cid.Cid, prevEntry *block.BeaconEntry) error {
+func (c *Expected) minerHasMinPower(ctx context.Context, addr address.Address, ts *block.TipSet) (bool, error) {
+	vms := vm.NewStorage(c.bstore)
+	sm, err := state.LoadState(ctx, vms, ts.Blocks()[0].StateRoot.Cid)
+	if err != nil {
+		return false, xerrors.Errorf("loading state: %w", err)
+	}
+
+	pact, find, err := sm.GetActor(ctx, power.Address)
+	if err != nil {
+		return false, xerrors.Errorf("get power actor failed: %w", err)
+	}
+
+	if !find {
+		return false, xerrors.New("power actor not found")
+	}
+
+	ps, err := power.Load(adt.WrapStore(ctx, vms), pact)
+	if err != nil {
+		return false, err
+	}
+
+	return ps.MinerNominalPowerMeetsConsensusMinimum(addr)
+}
+
+func (c *Expected) MinerEligibleToMine(ctx context.Context, addr address.Address, baseTs *block.TipSet, lookbackTs *block.TipSet) (bool, error) {
+	hmp, err := c.minerHasMinPower(ctx, addr, lookbackTs)
+
+	// TODO: We're blurring the lines between a "runtime network version" and a "Lotus upgrade epoch", is that unavoidable?
+	baseHeight, _ := baseTs.Height()
+	if c.fork.GetNtwkVersion(ctx, baseHeight) <= network.Version3 {
+		return hmp, err
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	if !hmp {
+		return false, nil
+	}
+
+	// Post actors v2, also check MinerEligibleForElection with base ts
+	vms := vm.NewStorage(c.bstore)
+	sm, err := state.LoadState(ctx, vms, baseTs.Blocks()[0].StateRoot.Cid)
+	if err != nil {
+		return false, xerrors.Errorf("loading state: %w", err)
+	}
+
+	pact, find, err := sm.GetActor(ctx, power.Address)
+	if err != nil {
+		return false, xerrors.Errorf("get power actor failed: %w", err)
+	}
+
+	if !find {
+		return false, xerrors.New("power actor not found")
+	}
+
+	pstate, err := power.Load(adt.WrapStore(ctx, c.cstore), pact)
+	if err != nil {
+		return false, err
+	}
+
+	baseTree, err := state.LoadState(ctx, vms, baseTs.Blocks()[0].StateRoot.Cid)
+	if err != nil {
+		return false, xerrors.Errorf("loading state: %w", err)
+	}
+
+	mact, find, err := baseTree.GetActor(ctx, addr)
+	if err != nil {
+		return false, xerrors.Errorf("loading miner actor state: %w", err)
+	}
+
+	if !find {
+		return false, xerrors.Errorf("miner actor %s not found", addr)
+	}
+
+	mstate, err := miner.Load(adt.WrapStore(ctx, vms), mact)
+	if err != nil {
+		return false, err
+	}
+
+	// Non-empty power claim.
+	if claim, found, err := pstate.MinerPower(addr); err != nil {
+		return false, err
+	} else if !found {
+		return false, err
+	} else if claim.QualityAdjPower.LessThanEqual(big.Zero()) {
+		return false, err
+	}
+
+	// No fee debt.
+	if debt, err := mstate.FeeDebt(); err != nil {
+		return false, err
+	} else if !debt.IsZero() {
+		return false, err
+	}
+
+	// No active consensus faults.
+	if mInfo, err := mstate.Info(); err != nil {
+		return false, err
+	} else if baseHeight <= mInfo.ConsensusFaultElapsed {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func (c *Expected) GetLookbackTipSetForRound(ctx context.Context, ts *block.TipSet, round abi.ChainEpoch) (*block.TipSet, cid.Cid, error) {
+	var lbr abi.ChainEpoch
+	lb := policy.GetWinningPoStSectorSetLookback(c.fork.GetNtwkVersion(ctx, round))
+	if round > lb {
+		lbr = round - lb
+	}
+
+	// more null blocks than our lookback
+	h, _ := ts.Height()
+	if lbr >= h {
+		// This should never happen at this point, but may happen before
+		// network version 3 (where the lookback was only 10 blocks).
+		st, err := c.chainState.GetTipSetStateRoot(ts.Key())
+		if err != nil {
+			return nil, cid.Undef, err
+		}
+		return ts, st, nil
+	}
+
+	// Get the tipset after the lookback tipset, or the next non-null one.
+	nextTs, err := c.chainState.GetTipSetByHeight(ctx, ts, lbr+1, true)
+	if err != nil {
+		return nil, cid.Undef, xerrors.Errorf("failed to get lookback tipset+1: %w", err)
+	}
+
+	nextTh, _ := nextTs.Height()
+	if lbr > nextTh {
+		return nil, cid.Undef, xerrors.Errorf("failed to find non-null tipset %s (%d) which is known to exist, found %s (%d)", ts.Key(), h, nextTs.Key(), nextTh)
+
+	}
+
+	pKey, err := nextTs.Parents()
+	if err != nil {
+		return nil, cid.Undef, err
+	}
+	lbts, err := c.chainState.GetTipSet(pKey)
+	if err != nil {
+		return nil, cid.Undef, xerrors.Errorf("failed to resolve lookback tipset: %w", err)
+	}
+
+	return lbts, nextTs.Blocks()[0].StateRoot.Cid, nil
+}
+
+// ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
+func GetMinerWorkerRaw(ctx context.Context, stateID cid.Cid, bstore blockstore.Blockstore, addr address.Address) (address.Address, error) {
+	vms := vm.NewStorage(bstore)
+	state, err := state.LoadState(ctx, vms, stateID)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("loading state: %w", err)
+	}
+
+	act, find, err := state.GetActor(ctx, addr)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
+	}
+	// fmt.Printf("act: %v\n", *act)
+
+	if !find {
+		return address.Undef, xerrors.Errorf("actor not found for %s", addr)
+	}
+
+	mas, err := miner.Load(adt.WrapStore(ctx, vms), act)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+	}
+
+	info, err := mas.Info()
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to load actor info: %w", err)
+	}
+
+	if info.Worker.Protocol() == address.BLS || info.Worker.Protocol() == address.SECP256K1 {
+		return addr, nil
+	}
+
+	actWorker, find, err := state.GetActor(ctx, info.Worker)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
+	}
+	// fmt.Printf("act: %v\n", *actWorker)
+
+	if !find {
+		return address.Undef, xerrors.Errorf("actor not found for %s", addr)
+	}
+
+	aast, err := account.Load(adt.WrapStore(context.TODO(), vms), actWorker)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", addr, err)
+	}
+
+	return aast.PubkeyAddress()
+}
+
+func (c *Expected) ValidateBlockWinner(ctx context.Context, baseTs *block.TipSet, blk *block.Block, stateID cid.Cid, prevEntry *block.BeaconEntry) error {
 	if blk.ElectionProof.WinCount < 1 {
 		return xerrors.Errorf("block is not claiming to be a winner")
+	}
+
+	lbts,_, err := c.GetLookbackTipSetForRound(ctx, baseTs, blk.Height)
+	if err != nil {
+		return xerrors.Errorf("failed to get lookback tipset for block: %w", err)
+	}
+
+	eligible, err := c.MinerEligibleToMine(ctx, blk.Miner, baseTs, lbts)
+	if err != nil {
+		return xerrors.Errorf("determining if miner has min power failed: %w", err)
+	}
+
+	if !eligible {
+		return xerrors.New("block's miner is ineligible to mine")
 	}
 
 	view := c.state.PowerStateView(stateID)
@@ -377,7 +610,7 @@ func (c *Expected) ValidateBlockWinner(ctx context.Context, blk *block.Block, st
 
 	_, qaPower, err := view.MinerClaimedPower(ctx, blk.Miner)
 	if err != nil {
-		return xerrors.Errorf("get miner power failed: %w", err)
+		return xerrors.Errorf("get miner power failed: %s", err)
 	}
 
 	rBeacon := prevEntry
@@ -386,26 +619,26 @@ func (c *Expected) ValidateBlockWinner(ctx context.Context, blk *block.Block, st
 	}
 	buf := new(bytes.Buffer)
 	if err := blk.Miner.MarshalCBOR(buf); err != nil {
-		return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
+		return xerrors.Errorf("failed to marshal miner address to cbor: %s", err)
 	}
 
 	vrfBase, err := chain.DrawRandomness(rBeacon.Data, acrypto.DomainSeparationTag_ElectionProofProduction, blk.Height, buf.Bytes())
 	if err != nil {
-		return xerrors.Errorf("could not draw randomness: %w", err)
+		return xerrors.Errorf("could not draw randomness: %s", err)
 	}
 
-	_, waddr, err := view.MinerControlAddresses(ctx, blk.Miner)
+	waddr, err := GetMinerWorkerRaw(ctx, stateID, c.bstore, blk.Miner)
 	if err != nil {
-		return xerrors.Errorf("query worker address failed: %w", err)
+		return xerrors.Errorf("query worker address failed: %s", err)
 	}
 
 	if err := VerifyElectionPoStVRF(ctx, waddr, vrfBase, blk.ElectionProof.VRFProof); err != nil {
-		return xerrors.Errorf("validating block election proof failed: %w", err)
+		return xerrors.Errorf("validating block election proof failed: %s", err)
 	}
 
 	totalPower, err := view.PowerNetworkTotal(ctx)
 	if err != nil {
-		return xerrors.Errorf("get miner power failed: %w", err)
+		return xerrors.Errorf("get miner power failed: %s", err)
 	}
 
 	j := blk.ElectionProof.ComputeWinCount(qaPower, totalPower.QualityAdjustedPower)

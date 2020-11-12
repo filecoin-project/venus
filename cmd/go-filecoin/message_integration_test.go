@@ -173,7 +173,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
-	doubleTheBlockGasLimit := strconv.Itoa(int(types.BlockGasLimit) * 2)
+	doubleTheBlockGasLimit := strconv.Itoa(int(constants.BlockGasLimit) * 2)
 
 	t.Run("when the gas limit is above the block limit, the message fails", func(t *testing.T) {
 		cmdClient.RunFail(

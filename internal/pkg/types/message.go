@@ -49,18 +49,6 @@ func (ms *MessageSendSpec) Get() MessageSendSpec {
 
 const MessageVersion = 0
 
-// ToDo add by force
-// BlockGasLimit is the maximum amount of gas that can be used to execute messages in a single block.
-const BlockGasLimit = 10_000_000_000
-const BlockGasTarget = BlockGasLimit / 2
-const BaseFeeMaxChangeDenom = 8 // 12.5%
-const InitialBaseFee = 100e6
-const MinimumBaseFee = 100
-const PackingEfficiencyNum = 4
-const PackingEfficiencyDenom = 5
-
-// var BlockGasLimit = gas.NewGas(100e6)
-
 // EmptyMessagesCID is the cid of an empty collection of messages.
 var EmptyMessagesCID cid.Cid
 
@@ -70,13 +58,9 @@ var EmptyReceiptsCID cid.Cid
 // EmptyTxMetaCID is the cid of a TxMeta wrapping empty cids
 var EmptyTxMetaCID cid.Cid
 
-const FilBase = uint64(2_000_000_000)
-
 func FromFil(i uint64) AttoFIL {
 	return specsbig.Mul(specsbig.NewInt(int64(i)), specsbig.NewInt(int64(FilecoinPrecision)))
 }
-
-var TotalFilecoinInt = FromFil(FilBase)
 
 func init() {
 	tmpCst := cborutil.NewIpldStore(blockstore.NewBlockstore(datastore.NewMapDatastore()))
@@ -229,7 +213,6 @@ func (msg *UnsignedMessage) Equals(other *UnsignedMessage) bool {
 		bytes.Equal(msg.Params, other.Params)
 }
 
-// ToDo add by force
 func (m *UnsignedMessage) ChainLength() int {
 	ser, err := m.Marshal()
 	if err != nil {
@@ -301,7 +284,7 @@ func (m *UnsignedMessage) ValidForBlockInclusion(minGas int64) error {
 		return xerrors.New("'GasFeeCap' less than 'GasPremium'")
 	}
 
-	if m.GasLimit > BlockGasLimit {
+	if m.GasLimit > constants.BlockGasLimit {
 		return xerrors.New("'GasLimit' field cannot be greater than a block's gas limit")
 	}
 
@@ -326,11 +309,6 @@ func DecodeMessage(b []byte) (*UnsignedMessage, error) {
 
 	return &msg, nil
 }
-
-// NewGasPrice constructs a gas price (in AttoFIL) from the given number.
-/*func NewGasPrice(price int64) AttoFIL {  //todo  add by force use basefee and gasPremium
-	return NewAttoFIL(big.NewInt(price))
-}*/
 
 func NewGasFeeCap(price int64) AttoFIL {
 	return NewAttoFIL(big.NewInt(price))
