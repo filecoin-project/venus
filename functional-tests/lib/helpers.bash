@@ -54,12 +54,12 @@ function free_port {
 }
 
 function import_private_key {
-  ./go-filecoin wallet import "${FIXTURES_PATH}/$1".key \
+  ./venus wallet import "${FIXTURES_PATH}/$1".key \
     --repodir="$2"
 }
 
 function init_local_daemon {
-  ./go-filecoin init \
+  ./venus init \
     --auto-seal-interval-seconds="${AUTO_SEAL_INTERVAL_SECONDS}" \
     --repodir="$1" \
     --sectordir="$2" \
@@ -69,14 +69,14 @@ function init_local_daemon {
 
 function init_devnet_daemon {
     if [[ "$CLUSTER" = "staging" ]]; then
-        ./go-filecoin init \
+        ./venus init \
             --auto-seal-interval-seconds="${AUTO_SEAL_INTERVAL_SECONDS}" \
             --repodir="$1" \
             --cmdapiaddr=/ip4/127.0.0.1/tcp/"$2" \
             --devnet-staging \
             --genesisfile="http://test.kittyhawk.wtf:8020/genesis.car"
    else
-        ./go-filecoin init \
+        ./venus init \
             --auto-seal-interval-seconds="${AUTO_SEAL_INTERVAL_SECONDS}" \
             --repodir="$1" \
             --cmdapiaddr=/ip4/127.0.0.1/tcp/"$2" \
@@ -86,7 +86,7 @@ function init_devnet_daemon {
 }
 
 function start_daemon {
-  ./go-filecoin daemon \
+  ./venus daemon \
     --repodir="$1" \
     --block-time="${BLOCK_TIME}" \
     --cmdapiaddr=/ip4/127.0.0.1/tcp/"$2" \
@@ -94,19 +94,19 @@ function start_daemon {
 }
 
 function get_first_address {
-  ./go-filecoin id \
+  ./venus id \
     --repodir="$1" \
     | jq -r ".Addresses[0]"
 }
 
 function get_peer_id {
-  ./go-filecoin id \
+  ./venus id \
     --repodir="$1" \
     | jq -r ".ID"
 }
 
 function get_peers {
-  ./go-filecoin swarm peers \
+  ./venus swarm peers \
     --repodir="$1"
 }
 
@@ -121,7 +121,7 @@ function wait_for_peers {
 }
 
 function swarm_connect {
-  ./go-filecoin swarm connect "$1" \
+  ./venus swarm connect "$1" \
     --repodir="$2"
     local __peers
 
@@ -133,7 +133,7 @@ function swarm_connect {
 }
 
 function chain_ls {
-  ./go-filecoin chain ls --enc=json \
+  ./venus chain ls --enc=json \
     --repodir="$1"
 }
 
@@ -157,7 +157,7 @@ function wait_for_message_in_chain_by_method_and_sender {
     fi
 
     __hodl=$(echo "$(chain_ls $3)" \
-        | jq -r '.[].messages["/"]' | while read -r cid; do ./go-filecoin show messages $cid --enc=json --repodir=$3; done | jq -s 'add' \
+        | jq -r '.[].messages["/"]' | while read -r cid; do ./venus show messages $cid --enc=json --repodir=$3; done | jq -s 'add' \
         | jq ".[] | select(.meteredMessage != null) | .meteredMessage.message | select(.method == \"$1\").from | select(. == \"$2\")" 2>/dev/null | head -n 1 || true)
 
     __polls_remaining=$((__polls_remaining - 1))
@@ -171,14 +171,14 @@ function wait_for_message_in_chain_by_method_and_sender {
 }
 
 function create_miner {
-  ./go-filecoin miner create 100 \
+  ./venus miner create 100 \
     --gas-limit=10000 \
     --gas-price=1 \
     --repodir="$1"
 }
 
 function send_fil {
-  ./go-filecoin message send \
+  ./venus message send \
     --from "$1" \
     --value $2 \
     --gas-limit=10000 \
@@ -188,37 +188,37 @@ function send_fil {
 }
 
 function set_wallet_default_address_in_config {
-  ./go-filecoin config wallet.defaultAddress \""$1"\" \
+  ./venus config wallet.defaultAddress \""$1"\" \
     --repodir="$2"
 }
 
 function set_mining_address_in_config {
-  ./go-filecoin config mining.minerAddress \""$1"\" \
+  ./venus config mining.minerAddress \""$1"\" \
     --repodir="$2"
 }
 
 function wait_mpool_size {
-  ./go-filecoin mpool \
+  ./venus mpool \
     --wait-for-count="$1" \
     --repodir="$2"
 }
 
 function set_price {
-  ./go-filecoin miner set-price --repodir="$3" --gas-price=1 --gas-limit=300 "$1" "$2" --enc=json | jq -r .MinerSetPriceResponse.AddAskCid.'"\/"'
+  ./venus miner set-price --repodir="$3" --gas-price=1 --gas-limit=300 "$1" "$2" --enc=json | jq -r .MinerSetPriceResponse.AddAskCid.'"\/"'
 }
 
 function miner_update_pid {
-  ./go-filecoin miner update-peerid "$1" "$2" \
+  ./venus miner update-peerid "$1" "$2" \
     --gas-price=1 --gas-limit=300 \
     --repodir="$3"
 }
 
 function message_wait {
-    ./go-filecoin message wait $1 --repodir=$2
+    ./venus message wait $1 --repodir=$2
 }
 
 function fork_message_wait {
-  eval "exec $1< <(./go-filecoin message wait $2 --repodir=$3)"
+  eval "exec $1< <(./venus message wait $2 --repodir=$3)"
 }
 
 function join {

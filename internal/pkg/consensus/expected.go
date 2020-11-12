@@ -20,6 +20,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus/internal/pkg/beacon"
 	"github.com/filecoin-project/venus/internal/pkg/block"
 	"github.com/filecoin-project/venus/internal/pkg/chain"
@@ -32,7 +33,6 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/types"
 	"github.com/filecoin-project/venus/internal/pkg/vm"
 	"github.com/filecoin-project/venus/internal/pkg/vm/state"
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/account"

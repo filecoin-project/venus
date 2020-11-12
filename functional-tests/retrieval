@@ -96,8 +96,8 @@ sleep 2
 
 echo ""
 echo "client imports pieces..."
-PIECE_1_CID=$(./go-filecoin client import --repodir="${CL_REPO_DIR}" < "${PIECE_1_PATH}")
-PIECE_2_CID=$(./go-filecoin client import --repodir="${CL_REPO_DIR}" < "${PIECE_2_PATH}")
+PIECE_1_CID=$(./venus client import --repodir="${CL_REPO_DIR}" < "${PIECE_1_PATH}")
+PIECE_2_CID=$(./venus client import --repodir="${CL_REPO_DIR}" < "${PIECE_2_PATH}")
 
 echo ""
 echo "importing private keys..."
@@ -134,7 +134,7 @@ echo ""
 
 echo ""
 echo "bootstrap miner node starts mining (so that messages can be processed)..."
-./go-filecoin mining start \
+./venus mining start \
   --repodir="$BOOTSTRAP_MN_REPO_DIR" \
 
 echo ""
@@ -153,7 +153,7 @@ STORAGE_MN_MINER_FIL_ADDR=$(create_miner "${STORAGE_MN_REPO_DIR}")
 
 echo ""
 echo "storage miner node starts mining (so that it processes storage proposals)..."
-./go-filecoin mining start \
+./venus mining start \
   --repodir="$STORAGE_MN_REPO_DIR" \
 
 echo ""
@@ -175,12 +175,12 @@ message_wait "${STORAGE_MN_MINER_SET_PRICE_MSG_CID}" "${STORAGE_MN_REPO_DIR}"
 
 echo ""
 echo "client proposes a storage deal, which transfers file 1..."
-PROPOSAL1_CID=$(./go-filecoin client propose-storage-deal "${STORAGE_MN_MINER_FIL_ADDR}" "${PIECE_1_CID}" 0 5 --repodir="$CL_REPO_DIR" --enc=json |  jq -r '.ProposalCid["/"]')
+PROPOSAL1_CID=$(./venus client propose-storage-deal "${STORAGE_MN_MINER_FIL_ADDR}" "${PIECE_1_CID}" 0 5 --repodir="$CL_REPO_DIR" --enc=json |  jq -r '.ProposalCid["/"]')
 echo "proposal 1 cid: $PROPOSAL1_CID"
 
 echo ""
 echo "client proposes a storage deal, which transfers piece 2..."
-PROPOSAL2_CID=$(./go-filecoin client propose-storage-deal "${STORAGE_MN_MINER_FIL_ADDR}" "${PIECE_2_CID}" 0 5 --repodir="$CL_REPO_DIR" --enc=json |  jq -r '.ProposalCid["/"]')
+PROPOSAL2_CID=$(./venus client propose-storage-deal "${STORAGE_MN_MINER_FIL_ADDR}" "${PIECE_2_CID}" 0 5 --repodir="$CL_REPO_DIR" --enc=json |  jq -r '.ProposalCid["/"]')
 echo "proposal 2 cid: $PROPOSAL2_CID"
 
 echo ""
@@ -197,11 +197,11 @@ wait_for_message_in_chain_by_method_and_sender submitPoSt "${STORAGE_MN_MINER_OW
 
 echo ""
 echo "storage deal 1 status:"
-./go-filecoin client query-storage-deal "${PROPOSAL1_CID}" --repodir="$CL_REPO_DIR" --enc=json |  jq .
+./venus client query-storage-deal "${PROPOSAL1_CID}" --repodir="$CL_REPO_DIR" --enc=json |  jq .
 
 echo ""
 echo "storage deal 2 status:"
-./go-filecoin client query-storage-deal "${PROPOSAL2_CID}" --repodir="$CL_REPO_DIR" --enc=json |  jq .
+./venus client query-storage-deal "${PROPOSAL2_CID}" --repodir="$CL_REPO_DIR" --enc=json |  jq .
 
 echo ""
 echo ""
@@ -211,7 +211,7 @@ echo ""
 echo ""
 echo ""
 
-./go-filecoin retrieval-client retrieve-piece  "${STORAGE_MN_MINER_FIL_ADDR}" "${PIECE_1_CID}" \
+./venus retrieval-client retrieve-piece  "${STORAGE_MN_MINER_FIL_ADDR}" "${PIECE_1_CID}" \
   --repodir="${CL_REPO_DIR}" > "${UNSEAL_PATH}"
 
 GOT=$(shasum < "${UNSEAL_PATH}")

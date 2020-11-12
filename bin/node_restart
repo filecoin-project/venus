@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 filecoin_repo="/var/local/filecoin/repo"
-filecoin_exec="go-filecoin --repodir=${filecoin_repo}"
+filecoin_exec="venus --repodir=${filecoin_repo}"
 
 # Number of time to check before giving up
 limit=3600

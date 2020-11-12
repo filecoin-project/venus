@@ -1,6 +1,5 @@
 all:
 	go run ./build/*.go build
-	#go run github.com/GeertJohan/go.rice/rice append --exec go-filecoin -i ./proof-params/
 	go run github.com/GeertJohan/go.rice/rice append --exec venus -i ./proof-params/
 
 deps:

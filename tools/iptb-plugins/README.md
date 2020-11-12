@@ -1,4 +1,4 @@
-# How to use IPTB with go-filecoin
+# How to use IPTB with venus
 
 These scripts allow one to:
 
@@ -14,9 +14,9 @@ First, ensure you have the latest version of IPTB installed:
 $> go get -u github.com/ipfs/iptb
 ```
 
-Next, ensure you have go-filecoin **installed**, IPTB requires that the go-filecoin bin be in your path:
+Next, ensure you have venus **installed**, IPTB requires that the venus bin be in your path:
 ```shell
-$> cd $GOPATH/src/github.com/filecoin-project/go-filecoin
+$> cd $GOPATH/src/github.com/filecoin-project/venus
 $> go run build/main.go deps
 $> go run build/main.go install
 ```
@@ -116,7 +116,7 @@ $> iptb connect
 
 Verify the connections were made:
 ```shell
-$> iptb run -- go-filecoin swarm peers
+$> iptb run -- venus swarm peers
 node[0] exit 0
 
 /ip4/127.0.0.1/tcp/33427/ipfs/QmVihFTmJDpWc8iAQXcbp4mavc6dWDuHqktm9EfFyTvBiC
@@ -134,7 +134,7 @@ node[0] exit 0
 
 Run a command on all the nodes:
 ```
-$> iptb run -- go-filecoin wallet addrs ls
+$> iptb run -- venus wallet addrs ls
 node[0] exit 0
 
 fcqd8399qra4a94tspmplcrh68x7vkhqzxaxtk6nw
@@ -148,7 +148,7 @@ fcqn9054lff4s9v6rlt76h08k4ra0gt9xmpymcl9w
 
 Or just the even number nodes:
 ```shell
-$> iptb run [0,2,4,6,8] -- go-filecoin id
+$> iptb run [0,2,4,6,8] -- venus id
 node[0] exit 0
 
 {
@@ -167,7 +167,7 @@ node[0] exit 0
 ```
 Or nodes 3-5:
 ```shell
-$> iptb run [3-5] -- go-filecoin swarm peers
+$> iptb run [3-5] -- venus swarm peers
 node[3] exit 0
 
 node[4] exit 0
@@ -178,7 +178,7 @@ node[5] exit 0
 Jump into a shell for a node:
 ```shell
 $> iptb shell 0
-$> go-filecoin id
+$> venus id
 {
         "Addresses": [
                 "/ip4/127.0.0.1/tcp/44311/ipfs/Qmbb5hawLiz1md6hcAiW98p1SLSE4u1cV5BNZB5VnhKQQ8",
@@ -193,7 +193,7 @@ $> go-filecoin id
 }
 $> exit
 $> iptb shell 1
-$> go-filecoin id
+$> venus id
 {
         "Addresses": [
                 "/ip4/127.0.0.1/tcp/39583/ipfs/QmaTJHZeSTorvtCSstk1LJs5HvHUt7vmbpaJuaYJFWtWiu",

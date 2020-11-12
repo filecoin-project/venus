@@ -10,7 +10,7 @@ import (
 func (f *Filecoin) MpoolLs(ctx context.Context, options ...ActionOption) ([]*types.SignedMessage, error) {
 	var out []*types.SignedMessage
 
-	args := []string{"go-filecoin", "mpool", "ls"}
+	args := []string{"venus", "mpool", "ls"}
 
 	for _, option := range options {
 		args = append(args, option()...)

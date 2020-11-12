@@ -408,7 +408,7 @@ func (td *TestDaemon) WaitForAPI() error {
 // CreateStorageMinerAddr issues a new message to the network, mines the message
 // and returns the address of the new miner
 // equivalent to:
-//     `go-filecoin miner create --from $TEST_ACCOUNT 20`
+//     `venus miner create --from $TEST_ACCOUNT 20`
 func (td *TestDaemon) CreateStorageMinerAddr(peer *TestDaemon, fromAddr address.Address) address.Address {
 	var wg sync.WaitGroup
 	var minerAddr address.Address
@@ -477,7 +477,7 @@ func (td *TestDaemon) WaitForMessageRequireSuccess(msgCid cid.Cid) *types.Messag
 // CreateAddress adds a new address to the daemons wallet and
 // returns it.
 // equivalent to:
-//     `go-filecoin address new`
+//     `venus address new`
 func (td *TestDaemon) CreateAddress() string {
 	td.test.Helper()
 	outNew := td.RunSuccess("address", "new")
@@ -619,7 +619,7 @@ func ContainerDir(dir string) func(*TestDaemon) {
 }
 
 // ShouldInit allows setting the `init` config option on the daemon. If
-// set, `go-filecoin init` is run before starting up the daemon.
+// set, `venus init` is run before starting up the daemon.
 func ShouldInit(i bool) func(*TestDaemon) {
 	return func(td *TestDaemon) {
 		td.init = i
@@ -731,7 +731,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	}
 
 	if td.init {
-		t.Logf("run: go-filecoin init %s", initopts)
+		t.Logf("run: venus init %s", initopts)
 		out, err := RunInit(td, initopts...)
 		if err != nil {
 			t.Log(string(out))
@@ -758,7 +758,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	return td
 }
 
-// RunInit is the equivalent of executing `go-filecoin init`.
+// RunInit is the equivalent of executing `venus init`.
 func RunInit(td *TestDaemon, opts ...string) ([]byte, error) {
 	filecoinBin := MustGetFilecoinBinary()
 

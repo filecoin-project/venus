@@ -11,10 +11,10 @@ localnet -shell
 
 ### Building
 
-The localnet tool expects that you can already build `go-filecoin`. Please refer
+The localnet tool expects that you can already build `venus`. Please refer
 to the README in the root of this project for details.
 
-localnet is only compatible with `go-filecoin` binaries built from the same git ref.
+localnet is only compatible with `venus` binaries built from the same git ref.
 
 ```
 go build -o localnet main.go
@@ -24,8 +24,8 @@ go build -o localnet main.go
 
 ```
 Usage of ./localnet:
-  -binpath go-filecoin
-    	set the binary used when executing go-filecoin commands
+  -binpath venus
+    	set the binary used when executing venus commands
   -blocktime duration
     	duration for blocktime (default 5s)
   -miner-collateral string
@@ -49,8 +49,8 @@ Usage of ./localnet:
 The default settings are pretty close to what the devnets run. The tool defaults
 to small sectors, but that can be changed by passing `-small-sectors=false`. To
 make it a bit easier to use, there is also a `-shell` flag that can be passed
-which will drop the user into a shell with a go-filecoin daemon already running
-and ready to be used with `go-filecoin`.
+which will drop the user into a shell with a venus daemon already running
+and ready to be used with `venus`.
 
 _Note: Using regular sized sectors with localnet can be incredibly taxing on a
 system and should probably be avoided on laptops due to the number of miners
@@ -74,10 +74,10 @@ A few helpful things to note when working with localnet
 3. The stdout and stderr are written to disk under the repository directory
    - **stderr** `/tmp/localnet417209521/0/daemon.stderr`
    - **stdout** `/tmp/localnet417209521/0/daemon.stdout`
-4. The localnet tool will copy the `go-filecoin` binary specifed by `binpath` and
+4. The localnet tool will copy the `venus` binary specifed by `binpath` and
    place it in a `bin` directory under each nodes repository which is used to execute
    all commands. To ensure binary compatibility, it's best to execute this same binary
 5. You can run commands against any of the nodes by using the `-repodir` flag with
-   the go-filecoin binary
+   the venus binary
    - `/tmp/localnet417209521/0/bin/go-filecoin -repodir=/tmp/localnet417209521/0 id`
     

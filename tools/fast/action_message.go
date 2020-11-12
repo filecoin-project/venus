@@ -16,7 +16,7 @@ import (
 func (f *Filecoin) MessageSend(ctx context.Context, target address.Address, method abi.MethodNum, options ...ActionOption) (cid.Cid, error) {
 	var out commands.MessageSendResult
 
-	args := []string{"go-filecoin", "message", "send"}
+	args := []string{"venus", "message", "send"}
 
 	for _, option := range options {
 		args = append(args, option()...)
@@ -39,7 +39,7 @@ func (f *Filecoin) MessageSend(ctx context.Context, target address.Address, meth
 func (f *Filecoin) MessageWait(ctx context.Context, mcid cid.Cid, options ...ActionOption) (commands.WaitResult, error) {
 	var out commands.WaitResult
 
-	args := []string{"go-filecoin", "message", "wait"}
+	args := []string{"venus", "message", "wait"}
 
 	for _, option := range options {
 		args = append(args, option()...)
