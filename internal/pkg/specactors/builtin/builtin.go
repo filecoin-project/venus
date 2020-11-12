@@ -2,14 +2,14 @@ package builtin
 
 import (
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"

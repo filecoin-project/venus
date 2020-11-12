@@ -4,11 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	actors "github.com/filecoin-project/go-filecoin/internal/pkg/specactors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
-	init_ "github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/init"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -17,7 +14,11 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/internal/pkg/enccid"
+	actors "github.com/filecoin-project/venus/internal/pkg/specactors"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
+	init_ "github.com/filecoin-project/venus/internal/pkg/specactors/builtin/init"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 type StateTreeVersion uint64
@@ -31,6 +32,7 @@ type Tree interface {
 	GetActor(ctx context.Context, addr ActorKey) (*types.Actor, bool, error)
 	SetActor(ctx context.Context, addr ActorKey, act *types.Actor) error
 	DeleteActor(ctx context.Context, addr ActorKey) error
+	LookupID(addr ActorKey) (address.Address, error)
 
 	Flush(ctx context.Context) (cid.Cid, error)
 	Snapshot(ctx context.Context) error
@@ -154,7 +156,7 @@ func LoadState(ctx context.Context, cst cbor.IpldStore, c cid.Cid) (*State, erro
 }
 
 func (st *State) SetActor(ctx context.Context, addr ActorKey, act *types.Actor) error {
-	fmt.Println("set actor addr:", addr.String(), " Balance:", act.Balance.String(), " Head:", act.Head, " Nonce:", act.CallSeqNum)
+	// fmt.Println("set actor addr:", addr.String(), " Balance:", act.Balance.String(), " Head:", act.Head, " Nonce:", act.CallSeqNum)
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
 		return xerrors.Errorf("ID lookup failed: %w", err)

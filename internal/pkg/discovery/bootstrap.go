@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/util/moresync"
+	"github.com/filecoin-project/venus/internal/pkg/util/moresync"
 	logging "github.com/ipfs/go-log/v2"
 	host "github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"

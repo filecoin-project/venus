@@ -6,11 +6,11 @@ import (
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net/blocksub"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/encoding"
+	"github.com/filecoin-project/venus/internal/pkg/metrics/tracing"
+	"github.com/filecoin-project/venus/internal/pkg/net/blocksub"
+	"github.com/filecoin-project/venus/internal/pkg/net/pubsub"
 )
 
 func (node *Node) handleBlockSub(ctx context.Context, msg pubsub.Message) (err error) {
@@ -38,7 +38,7 @@ func (node *Node) handleBlockSub(ctx context.Context, msg pubsub.Message) (err e
 	// The block we went to all that effort decoding is dropped on the floor!
 	// Don't be too quick to change that, though: the syncer re-fetching the block
 	// is currently critical to reliable validation.
-	// See https://github.com/filecoin-project/go-filecoin/issues/2962
+	// See https://github.com/filecoin-project/venus/issues/2962
 	// TODO Implement principled trusting of ChainInfo's
 	// to address in #2674
 	chainInfo := block.NewChainInfo(source, sender, block.NewTipSetKey(header.Cid()), header.Height)

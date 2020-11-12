@@ -11,7 +11,7 @@ package internal
 // See runner_test for examples.
 
 import (
-	migration12 "github.com/filecoin-project/go-filecoin/tools/migration/migrations/repo-1-2"
+	migration12 "github.com/filecoin-project/venus/tools/migration/migrations/repo-1-2"
 )
 
 // DefaultMigrationsProvider is the migrations provider dependency used in production.

@@ -7,11 +7,11 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/fixtures/fortest"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/node/test"
+	th "github.com/filecoin-project/venus/internal/pkg/testhelpers"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 )
 
 func TestOutbox(t *testing.T) {

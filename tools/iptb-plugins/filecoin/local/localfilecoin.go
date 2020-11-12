@@ -17,13 +17,13 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	"github.com/filecoin-project/venus/internal/pkg/config"
 
 	"github.com/ipfs/iptb/testbed/interfaces"
 	"github.com/ipfs/iptb/util"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
+	"github.com/filecoin-project/venus/tools/iptb-plugins/filecoin"
 )
 
 // PluginName is the name of the plugin

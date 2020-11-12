@@ -7,13 +7,14 @@ import (
 	"sort"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/constants"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 const MinGasPremium = 100e3
@@ -35,7 +36,7 @@ func (ob *Outbox) GasEstimateFeeCap(ctx context.Context, msg *types.UnsignedMess
 	}
 
 	parentBaseFee := ts.Blocks()[0].ParentBaseFee
-	increaseFactor := math.Pow(1.+1./float64(types.BaseFeeMaxChangeDenom), float64(maxqueueblks))
+	increaseFactor := math.Pow(1.+1./float64(constants.BaseFeeMaxChangeDenom), float64(maxqueueblks))
 
 	big.Add(parentBaseFee, big.NewInt(int64(increaseFactor*(1<<8))))
 	feeInFuture := big.Add(parentBaseFee, big.NewInt(int64(increaseFactor*(1<<8))))
@@ -59,7 +60,7 @@ func medianGasPremium(prices []gasMeta, blocks int) abi.TokenAmount {
 		return prices[i].price.GreaterThan(prices[j].price)
 	})
 
-	at := types.BlockGasTarget * int64(blocks) / 2
+	at := constants.BlockGasTarget * int64(blocks) / 2
 	prev1, prev2 := big.Zero(), big.Zero()
 	for _, price := range prices {
 		prev1, prev2 = price.price, prev1
@@ -150,8 +151,8 @@ func (ob *Outbox) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64,
 
 func (ob *Outbox) GasEstimateGasLimit(ctx context.Context, msgIn *types.UnsignedMessage, _ block.TipSetKey) (int64, error) {
 	msg := *msgIn
-	msg.GasLimit = types.BlockGasLimit
-	msg.GasFeeCap = big.NewInt(int64(types.MinimumBaseFee) + 1)
+	msg.GasLimit = constants.BlockGasLimit
+	msg.GasFeeCap = big.NewInt(int64(constants.MinimumBaseFee) + 1)
 	msg.GasPremium = big.NewInt(1)
 
 	tsKey := ob.chains.GetHead()

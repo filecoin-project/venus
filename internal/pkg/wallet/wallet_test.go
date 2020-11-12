@@ -10,10 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
+	"github.com/filecoin-project/venus/internal/pkg/crypto"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
+	vmaddr "github.com/filecoin-project/venus/internal/pkg/vm/address"
+	"github.com/filecoin-project/venus/internal/pkg/wallet"
 )
 
 func TestWalletSimple(t *testing.T) {

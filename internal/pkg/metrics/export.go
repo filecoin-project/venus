@@ -12,7 +12,7 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/trace"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	"github.com/filecoin-project/venus/internal/pkg/config"
 )
 
 // RegisterPrometheusEndpoint registers and serves prometheus metrics

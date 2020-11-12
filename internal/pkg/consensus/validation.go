@@ -11,11 +11,12 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+  "github.com/filecoin-project/venus/internal/pkg/constants"
+	"github.com/filecoin-project/venus/internal/pkg/crypto"
+	"github.com/filecoin-project/venus/internal/pkg/metrics"
+	"github.com/filecoin-project/venus/internal/pkg/state"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 var dropNonAccountCt *metrics.Int64Counter
@@ -36,7 +37,7 @@ var invGasAboveBlockLimitCt *metrics.Int64Counter
 var msgMaxValue = types.NewAttoFILFromFIL(2e9)
 
 // These gas cost values must match those in vm/gas.
-// TODO: Look up gas costs from the same place the VM gets them, keyed by epoch. https://github.com/filecoin-project/go-filecoin/issues/3955
+// TODO: Look up gas costs from the same place the VM gets them, keyed by epoch. https://github.com/filecoin-project/venus/issues/3955
 const onChainMessageBase = types.Unit(0)
 const onChainMessagePerByte = types.Unit(2)
 
@@ -203,9 +204,9 @@ func (v *DefaultMessageSyntaxValidator) validateMessageSyntaxShared(ctx context.
 		invGasBelowMinimumCt.Inc(ctx, 1)
 		return fmt.Errorf("gas limit %d below minimum %d to cover message size: %s", msg.GasLimit, minMsgGas, msg)
 	}
-	if msg.GasLimit > types.BlockGasLimit {
+	if msg.GasLimit > constants.BlockGasLimit {
 		invGasAboveBlockLimitCt.Inc(ctx, 1)
-		return fmt.Errorf("gas limit %d exceeds block limit %d: %s", msg.GasLimit, types.BlockGasLimit, msg)
+		return fmt.Errorf("gas limit %d exceeds block limit %d: %s", msg.GasLimit, constants.BlockGasLimit, msg)
 	}
 	return nil
 }

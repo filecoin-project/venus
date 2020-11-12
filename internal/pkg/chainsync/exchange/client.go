@@ -5,9 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"io/ioutil"
 	"math/rand"
 	"time"
@@ -19,6 +16,10 @@ import (
 
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/enccid"
+	"github.com/filecoin-project/venus/internal/pkg/net"
 )
 
 // client implements exchange.Client, using the libp2p ChainExchange protocol

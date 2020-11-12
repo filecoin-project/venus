@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/venus/cmd/go-filecoin"
+	"github.com/filecoin-project/venus/tools/fast"
 	"github.com/ipfs/go-cid"
 )
 

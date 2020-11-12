@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/types"
+	"github.com/filecoin-project/venus/tools/fast"
 	"github.com/ipfs/go-cid"
 )
 

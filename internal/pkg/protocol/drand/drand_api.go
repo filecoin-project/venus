@@ -2,9 +2,10 @@ package drand
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/beacon"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/internal/pkg/beacon"
+	"github.com/filecoin-project/venus/internal/pkg/block"
 	xerrors "github.com/pkg/errors"
 )
 

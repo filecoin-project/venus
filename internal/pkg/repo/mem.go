@@ -7,8 +7,8 @@ import (
 	dss "github.com/ipfs/go-datastore/sync"
 	"github.com/ipfs/go-ipfs-keystore"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/paths"
+	"github.com/filecoin-project/venus/internal/pkg/config"
 )
 
 // MemRepo is an in-memory implementation of the Repo interface.

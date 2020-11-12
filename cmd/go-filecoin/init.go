@@ -17,14 +17,14 @@ import (
 	"github.com/ipld/go-car"
 	"github.com/libp2p/go-libp2p-core/crypto"
 
-	"github.com/filecoin-project/go-filecoin/fixtures/networks"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	"github.com/filecoin-project/venus/fixtures/networks"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/paths"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/config"
+	"github.com/filecoin-project/venus/internal/pkg/genesis"
+	"github.com/filecoin-project/venus/internal/pkg/repo"
+	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 
 var logInit = logging.Logger("commands/init")

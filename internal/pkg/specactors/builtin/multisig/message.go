@@ -12,11 +12,12 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/specactors"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 var Methods = builtin2.MethodsMultisig
+
 func Message(version specactors.Version, from address.Address) MessageBuilder {
 	switch version {
 	case specactors.Version0:

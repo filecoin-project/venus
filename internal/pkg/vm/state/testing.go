@@ -3,13 +3,14 @@ package state
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 // NewFromString sets a state tree based on an int.

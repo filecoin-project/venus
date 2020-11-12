@@ -8,7 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 // ActorView represents a generic way to represent details about any actor to the user.

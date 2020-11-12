@@ -3,16 +3,16 @@ package vmcontext
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-	"github.com/filecoin-project/go-state-types/cbor"
 	"reflect"
 
 	"github.com/filecoin-project/go-state-types/exitcode"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
+	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/venus/internal/pkg/vm/gas"
+	"github.com/filecoin-project/venus/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/venus/internal/pkg/vm/storage"
 )
 
 type vmStorage interface {

@@ -11,8 +11,8 @@ import (
 	dsq "github.com/ipfs/go-datastore/query"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
+	"github.com/filecoin-project/venus/internal/pkg/crypto"
+	"github.com/filecoin-project/venus/internal/pkg/repo"
 )
 
 // DSBackendType is the reflect type of the DSBackend.

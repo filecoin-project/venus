@@ -6,13 +6,13 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statemachine"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/market"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/miner"
 
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/zerocomm"
+	"github.com/filecoin-project/venus/vendors/sector-storage/zerocomm"
 )
 
 const minRetryTime = 1 * time.Minute

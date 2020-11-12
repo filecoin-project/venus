@@ -15,10 +15,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/sealtasks"
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/stores"
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/storiface"
+	"github.com/filecoin-project/venus/vendors/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/venus/vendors/sector-storage/sealtasks"
+	"github.com/filecoin-project/venus/vendors/sector-storage/stores"
+	"github.com/filecoin-project/venus/vendors/sector-storage/storiface"
 )
 
 var pathTypes = []stores.SectorFileType{stores.FTUnsealed, stores.FTSealed, stores.FTCache}

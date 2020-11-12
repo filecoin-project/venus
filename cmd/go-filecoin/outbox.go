@@ -4,7 +4,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
+	"github.com/filecoin-project/venus/internal/pkg/message"
 )
 
 var outboxCmd = &cmds.Command{

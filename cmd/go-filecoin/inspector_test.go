@@ -6,10 +6,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/cmd/go-filecoin"
+	"github.com/filecoin-project/venus/internal/pkg/config"
+	"github.com/filecoin-project/venus/internal/pkg/repo"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 )
 
 func TestRuntime(t *testing.T) {

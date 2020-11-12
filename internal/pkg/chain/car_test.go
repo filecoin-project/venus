@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -20,11 +18,12 @@ import (
 	"github.com/stretchr/testify/require"
 	typegen "github.com/whyrusleeping/cbor-gen"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/chain"
+	"github.com/filecoin-project/venus/internal/pkg/enccid"
+	"github.com/filecoin-project/venus/internal/pkg/encoding"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 func TestChainImportExportGenesis(t *testing.T) {

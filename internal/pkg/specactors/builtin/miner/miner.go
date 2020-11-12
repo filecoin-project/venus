@@ -1,7 +1,6 @@
 package miner
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -13,12 +12,13 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 func init() {

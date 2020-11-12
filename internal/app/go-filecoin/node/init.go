@@ -13,13 +13,13 @@ import (
 	acrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/genesis"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/stores"
+	"github.com/filecoin-project/venus/internal/pkg/cborutil"
+	"github.com/filecoin-project/venus/internal/pkg/chain"
+	"github.com/filecoin-project/venus/internal/pkg/crypto"
+	"github.com/filecoin-project/venus/internal/pkg/genesis"
+	"github.com/filecoin-project/venus/internal/pkg/repo"
+	"github.com/filecoin-project/venus/internal/pkg/wallet"
+	"github.com/filecoin-project/venus/vendors/sector-storage/stores"
 )
 
 const defaultPeerKeyBits = 2048

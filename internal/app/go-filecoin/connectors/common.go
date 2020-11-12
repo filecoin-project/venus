@@ -4,8 +4,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/encoding"
 )
 
 type chainState interface {

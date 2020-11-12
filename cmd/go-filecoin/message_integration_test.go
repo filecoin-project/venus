@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/fixtures/fortest"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	commands "github.com/filecoin-project/venus/cmd/go-filecoin"
+	"github.com/filecoin-project/venus/fixtures/fortest"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/node/test"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 func TestMessageSend(t *testing.T) {
@@ -173,7 +173,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
-	doubleTheBlockGasLimit := strconv.Itoa(int(types.BlockGasLimit) * 2)
+	doubleTheBlockGasLimit := strconv.Itoa(int(constants.BlockGasLimit) * 2)
 
 	t.Run("when the gas limit is above the block limit, the message fails", func(t *testing.T) {
 		cmdClient.RunFail(

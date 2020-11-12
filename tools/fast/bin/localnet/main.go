@@ -28,11 +28,11 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 
-	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/tools/fast"
-	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
-	"github.com/filecoin-project/go-filecoin/tools/fast/series"
-	lpfc "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
+	commands "github.com/filecoin-project/venus/cmd/go-filecoin"
+	"github.com/filecoin-project/venus/tools/fast"
+	"github.com/filecoin-project/venus/tools/fast/environment"
+	"github.com/filecoin-project/venus/tools/fast/series"
+	lpfc "github.com/filecoin-project/venus/tools/iptb-plugins/filecoin/local"
 )
 
 var (

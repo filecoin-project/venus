@@ -9,9 +9,9 @@ import (
 	runtime2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/encoding"
+	"github.com/filecoin-project/venus/internal/pkg/state"
 )
 
 type FaultStateView interface {

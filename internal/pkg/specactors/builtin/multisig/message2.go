@@ -10,9 +10,9 @@ import (
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors"
-	init_ "github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/init"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/specactors"
+	init_ "github.com/filecoin-project/venus/internal/pkg/specactors/builtin/init"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 type message2 struct{ message0 }

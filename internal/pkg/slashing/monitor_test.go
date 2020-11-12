@@ -1,16 +1,16 @@
 package slashing_test
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
+	"github.com/filecoin-project/venus/internal/pkg/enccid"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	. "github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	. "github.com/filecoin-project/venus/internal/pkg/slashing"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/internal/pkg/types"
+	vmaddr "github.com/filecoin-project/venus/internal/pkg/vm/address"
 )
 
 func assertEmptyCh(t *testing.T, faultCh chan ConsensusFault) {

@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node/test"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/node/test"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 )
 
 func TestDhtFindPeer(t *testing.T) {
@@ -35,6 +35,6 @@ func TestDhtFindPeer(t *testing.T) {
 }
 
 // TODO: findprovs will have to be untested until
-//  https://github.com/filecoin-project/go-filecoin/issues/2357
+//  https://github.com/filecoin-project/venus/issues/2357
 //  original tests were flaky; testing may need to be omitted entirely
 //  unless it can consistently pass.

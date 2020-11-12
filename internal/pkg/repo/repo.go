@@ -5,7 +5,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	keystore "github.com/ipfs/go-ipfs-keystore"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	"github.com/filecoin-project/venus/internal/pkg/config"
 )
 
 // Version is the version of repo schema that this code understands.

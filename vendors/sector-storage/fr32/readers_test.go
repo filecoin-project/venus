@@ -9,7 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/fr32"
+	"github.com/filecoin-project/venus/vendors/sector-storage/fr32"
 )
 
 func TestUnpadReader(t *testing.T) {

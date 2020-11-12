@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/venus/internal/pkg/constants"
+	"github.com/filecoin-project/venus/internal/pkg/crypto"
 )
 
 // MockSigner implements the Signer interface

@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/venus/internal/pkg/block"
 )
 
 // Mock beacon assumes that filecoin rounds are 1:1 mapped with the beacon rounds

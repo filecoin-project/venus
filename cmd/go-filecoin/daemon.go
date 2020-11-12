@@ -17,13 +17,13 @@ import (
 	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/paths"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	proofparams "github.com/filecoin-project/go-filecoin/proof-params"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/node"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/paths"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/config"
+	"github.com/filecoin-project/venus/internal/pkg/journal"
+	"github.com/filecoin-project/venus/internal/pkg/repo"
+	proofparams "github.com/filecoin-project/venus/proof-params"
 )
 
 var daemonCmd = &cmds.Command{

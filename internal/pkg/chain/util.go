@@ -1,7 +1,7 @@
 package chain
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/block"
 )
 
 // Reverse reverses the order of the slice `chain`.

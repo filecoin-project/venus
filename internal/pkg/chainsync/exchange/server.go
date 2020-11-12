@@ -4,10 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/libp2p/go-libp2p-core/host"
 	"time"
 
 	"go.opencensus.io/trace"
@@ -15,7 +11,12 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/helpers"
+	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
+
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/enccid"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 type chainReader interface {

@@ -3,6 +3,8 @@ package vmcontext
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -12,23 +14,21 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
-	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/cron"
-	initActor "github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/init"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/reward"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/storage"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/encoding"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/cron"
+	initActor "github.com/filecoin-project/venus/internal/pkg/specactors/builtin/init"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/reward"
+	"github.com/filecoin-project/venus/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/vm/gas"
+	"github.com/filecoin-project/venus/internal/pkg/vm/internal/dispatch"
+	"github.com/filecoin-project/venus/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/venus/internal/pkg/vm/state"
+	"github.com/filecoin-project/venus/internal/pkg/vm/storage"
 )
 
 var vmlog = logging.Logger("vm.context")
@@ -127,6 +127,15 @@ func (vm *VM) ContextStore() adt.Store {
 }
 
 func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
+	//r, err := vm.state.LookupID(addr)
+	//if err != nil {
+	//	if xerrors.Is(err, types.ErrActorNotFound) {
+	//		return address.Undef, false
+	//	}
+	//	panic(errors.Wrapf(err, "failed to resolve address %s", addr))
+	//}
+	//return r, true
+
 	// short-circuit if the address is already an ID address
 	if addr.Protocol() == address.ID {
 		return addr, true

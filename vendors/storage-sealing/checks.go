@@ -9,11 +9,11 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/venus/vendors/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/venus/vendors/sector-storage/zerocomm"
 )
 
 // TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting

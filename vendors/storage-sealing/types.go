@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-storage/storage"
 
-	sectorstorage "github.com/filecoin-project/go-filecoin/vendors/sector-storage"
-	"github.com/filecoin-project/go-filecoin/vendors/storage-sealing/sealiface"
+	sectorstorage "github.com/filecoin-project/venus/vendors/sector-storage"
+	"github.com/filecoin-project/venus/vendors/storage-sealing/sealiface"
 )
 
 // Piece is a tuple of piece and deal info

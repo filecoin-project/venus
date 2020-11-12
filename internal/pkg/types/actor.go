@@ -2,7 +2,6 @@
 package types
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"io"
 	"io/ioutil"
 
@@ -12,6 +11,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/venus/internal/pkg/enccid"
 )
 
 var ErrActorNotFound = errors.New("actor not found")

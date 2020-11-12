@@ -16,17 +16,17 @@ import (
 
 	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 
-	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cfg"
-	. "github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	vmaddr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/plumbing/cfg"
+	. "github.com/filecoin-project/venus/internal/app/go-filecoin/porcelain"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/constants"
+	"github.com/filecoin-project/venus/internal/pkg/encoding"
+	"github.com/filecoin-project/venus/internal/pkg/repo"
+	"github.com/filecoin-project/venus/internal/pkg/state"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/internal/pkg/types"
+	vmaddr "github.com/filecoin-project/venus/internal/pkg/vm/address"
+	"github.com/filecoin-project/venus/internal/pkg/wallet"
 )
 
 type minerCreate struct {

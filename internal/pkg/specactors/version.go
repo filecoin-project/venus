@@ -24,4 +24,3 @@ func VersionForNetwork(version network.Version) Version {
 		panic(fmt.Sprintf("unsupported network version %d", version))
 	}
 }
-

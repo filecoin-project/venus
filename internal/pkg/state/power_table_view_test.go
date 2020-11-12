@@ -2,8 +2,6 @@ package state_test
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -14,14 +12,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/cborutil"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/cborutil"
+	"github.com/filecoin-project/venus/internal/pkg/constants"
+	"github.com/filecoin-project/venus/internal/pkg/crypto"
+	"github.com/filecoin-project/venus/internal/pkg/repo"
+	"github.com/filecoin-project/venus/internal/pkg/state"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/vm"
+	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 
 func TestTotal(t *testing.T) {
@@ -39,7 +39,7 @@ func TestTotal(t *testing.T) {
 	require.NoError(t, err)
 
 	// TODO: test that the QA power is used when it differs from raw byte power after gengen computes it properly
-	// https://github.com/filecoin-project/go-filecoin/issues/4011
+	// https://github.com/filecoin-project/venus/issues/4011
 	expected := big.NewIntUnsigned(uint64(constants.DevSectorSize) * numCommittedSectors * uint64(numMiners))
 	assert.True(t, expected.Equals(networkPower))
 }

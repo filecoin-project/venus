@@ -10,10 +10,10 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/consensus"
+	"github.com/filecoin-project/venus/internal/pkg/state"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 // BlockTimeTest is the block time used by workers during testing.

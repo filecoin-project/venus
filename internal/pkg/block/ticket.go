@@ -7,7 +7,7 @@ import (
 
 	"github.com/minio/blake2b-simd"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
+	"github.com/filecoin-project/venus/internal/pkg/crypto"
 )
 
 // A Ticket is a marker of a tick of the blockchain's clock.  It is the source

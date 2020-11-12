@@ -2,28 +2,27 @@ package syncer_test
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/chain"
+	"github.com/filecoin-project/venus/internal/pkg/chainsync/internal/syncer"
+	"github.com/filecoin-project/venus/internal/pkg/chainsync/status"
+	"github.com/filecoin-project/venus/internal/pkg/clock"
+	"github.com/filecoin-project/venus/internal/pkg/fork"
+	th "github.com/filecoin-project/venus/internal/pkg/testhelpers"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
 // Syncer is capable of recovering from a fork reorg after the bsstore is loaded.
 // This is a regression test to guard against the syncer assuming that the bsstore having all
 // blocks from a tipset means the syncer has computed its state.
 // Such a case happens when the bsstore has just loaded, but this tipset is not on its heaviest chain).
-// See https://github.com/filecoin-project/go-filecoin/issues/1148#issuecomment-432008060
+// See https://github.com/filecoin-project/venus/issues/1148#issuecomment-432008060
 func TestLoadFork(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()

@@ -16,8 +16,8 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
-	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
+	commands "github.com/filecoin-project/venus/cmd/go-filecoin"
+	"github.com/filecoin-project/venus/tools/iptb-plugins/filecoin"
 )
 
 func (l *Localfilecoin) isAlive() (bool, error) {

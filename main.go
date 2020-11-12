@@ -6,7 +6,7 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	commands "github.com/filecoin-project/venus/cmd/go-filecoin"
 )
 
 func main() {

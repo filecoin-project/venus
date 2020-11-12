@@ -2,9 +2,9 @@ package policy
 
 import (
 	"sort"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors"
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
@@ -14,6 +14,8 @@ import (
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	paych2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
 	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
+
+	"github.com/filecoin-project/venus/internal/pkg/specactors"
 )
 
 const (
@@ -120,6 +122,7 @@ func GetWinningPoStSectorSetLookback(nwVer network.Version) abi.ChainEpoch {
 func GetMaxSectorExpirationExtension() abi.ChainEpoch {
 	return miner0.MaxSectorExpirationExtension
 }
+
 // TODO: we'll probably need to abstract over this better in the future.
 func GetMaxPoStPartitions(p abi.RegisteredPoStProof) (int, error) {
 	sectorsPerPart, err := builtin2.PoStProofWindowPoStPartitionSectors(p)

@@ -3,25 +3,24 @@ package consensus_test
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/enccid"
 	"testing"
 
 	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/gas"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/consensus"
+	"github.com/filecoin-project/venus/internal/pkg/enccid"
+	"github.com/filecoin-project/venus/internal/pkg/state"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/vm/gas"
 )
 
 var keys = types.MustGenerateKeyInfo(2, 42)
@@ -146,7 +145,7 @@ func TestMessageSyntaxValidator(t *testing.T) {
 	})
 
 	t.Run("block gas limit fails", func(t *testing.T) {
-		msg, err := types.NewSignedMessage(ctx, *newMessage(t, alice, bob, 100, 5, 1, types.BlockGasLimit+1), signer)
+		msg, err := types.NewSignedMessage(ctx, *newMessage(t, alice, bob, 100, 5, 1, constants.BlockGasLimit+1), signer)
 		require.NoError(t, err)
 		assert.Errorf(t, validator.ValidateSignedMessageSyntax(ctx, msg), "block limit")
 	})

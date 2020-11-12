@@ -8,18 +8,18 @@ import (
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof" // todo ref lotus
 
 	address "github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus/lib/sigs"
-	crypto2 "github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/chain"
+	"github.com/filecoin-project/venus/internal/pkg/consensus/lib/sigs"
+	crypto2 "github.com/filecoin-project/venus/internal/pkg/crypto"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/internal/pkg/state"
+	"github.com/filecoin-project/venus/vendors/sector-storage/ffiwrapper"
 )
 
 // Interface to PoSt verification, modify by force EPoStVerifier -> ProofVerifier

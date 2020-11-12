@@ -5,12 +5,12 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net/msgsub"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
+	"github.com/filecoin-project/venus/internal/pkg/config"
+	"github.com/filecoin-project/venus/internal/pkg/consensus"
+	"github.com/filecoin-project/venus/internal/pkg/journal"
+	"github.com/filecoin-project/venus/internal/pkg/message"
+	"github.com/filecoin-project/venus/internal/pkg/net/msgsub"
+	"github.com/filecoin-project/venus/internal/pkg/net/pubsub"
 )
 
 // MessagingSubmodule enhances the `Node` with internal messaging capabilities.

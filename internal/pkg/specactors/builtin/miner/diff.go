@@ -2,7 +2,7 @@ package miner
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 

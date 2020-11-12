@@ -2,17 +2,18 @@ package chainsync
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/exchange"
+
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/dispatcher"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/slashing"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/chain"
+	"github.com/filecoin-project/venus/internal/pkg/chainsync/exchange"
+	"github.com/filecoin-project/venus/internal/pkg/chainsync/internal/dispatcher"
+	"github.com/filecoin-project/venus/internal/pkg/chainsync/internal/syncer"
+	"github.com/filecoin-project/venus/internal/pkg/chainsync/status"
+	"github.com/filecoin-project/venus/internal/pkg/clock"
+	"github.com/filecoin-project/venus/internal/pkg/fork"
+	"github.com/filecoin-project/venus/internal/pkg/slashing"
 )
 
 // BlockProposer allows callers to propose new blocks for inclusion in the chain.

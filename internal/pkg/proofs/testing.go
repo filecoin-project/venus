@@ -4,8 +4,8 @@ import (
 	"context"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
-	"github.com/filecoin-project/go-filecoin/vendors/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/vendors/sector-storage/ffiwrapper"
 )
 
 // FakeVerifier is a simple mock Verifier for testing.

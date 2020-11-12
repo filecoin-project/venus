@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/fork"
+	"github.com/filecoin-project/venus/internal/pkg/fork"
 	"math"
 	"testing"
 
