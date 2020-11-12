@@ -2,6 +2,7 @@ package commands_test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/internal/pkg/constants"
 	"strconv"
 	"testing"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/filecoin-project/venus/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/venus/internal/app/go-filecoin/node/test"
 	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 func TestMessageSend(t *testing.T) {
