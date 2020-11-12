@@ -125,7 +125,6 @@ func (vm *VM) ContextStore() adt.Store {
 	return &contextStore{context: vm.context, store: vm.store}
 }
 
-// todo modify by force Learn from lotus???
 func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 	r, err := vm.state.LookupID(addr)
 	if err != nil {
@@ -135,35 +134,6 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 		panic(errors.Wrapf(err, "failed to resolve address %s", addr))
 	}
 	return r, true
-
-	//// short-circuit if the address is already an ID address
-	//if addr.Protocol() == address.ID {
-	//	return addr, true
-	//}
-	//
-	//// resolve the target address via the InitActor, and attempt To load stateView.
-	//initActorEntry, found, err := vm.state.GetActor(vm.context, initActor.Address)
-	//if err != nil {
-	//	panic(errors.Wrapf(err, "failed To load init actor"))
-	//}
-	//if !found {
-	//	panic(errors.Wrapf(err, "no init actor"))
-	//}
-	//
-	//// get a view into the actor stateView
-	//initActorState, err := initActor.Load(adt.WrapStore(vm.context, vm.store), initActorEntry)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//
-	//idAddr, found, err := initActorState.ResolveAddress(addr)
-	//if !found {
-	//	return address.Undef, false
-	//}
-	//if err != nil {
-	//	panic(err)
-	//}
-	//return idAddr, true
 }
 
 // ApplyTipSetMessages implements interpreter.VMInterpreter
