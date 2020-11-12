@@ -11,7 +11,7 @@ import (
 func (f *Filecoin) InspectAll(ctx context.Context, options ...ActionOption) (*commands.AllInspectorInfo, error) {
 	var out commands.AllInspectorInfo
 
-	args := []string{"go-filecoin", "inspect", "all"}
+	args := []string{"venus", "inspect", "all"}
 
 	for _, option := range options {
 		args = append(args, option()...)
@@ -28,7 +28,7 @@ func (f *Filecoin) InspectAll(ctx context.Context, options ...ActionOption) (*co
 func (f *Filecoin) InspectRuntime(ctx context.Context, options ...ActionOption) (*commands.RuntimeInfo, error) {
 	var out commands.RuntimeInfo
 
-	args := []string{"go-filecoin", "inspect", "runtime"}
+	args := []string{"venus", "inspect", "runtime"}
 
 	for _, option := range options {
 		args = append(args, option()...)
@@ -45,7 +45,7 @@ func (f *Filecoin) InspectRuntime(ctx context.Context, options ...ActionOption) 
 func (f *Filecoin) InspectDisk(ctx context.Context, options ...ActionOption) (*commands.DiskInfo, error) {
 	var out commands.DiskInfo
 
-	args := []string{"go-filecoin", "inspect", "disk"}
+	args := []string{"venus", "inspect", "disk"}
 
 	for _, option := range options {
 		args = append(args, option()...)
@@ -62,7 +62,7 @@ func (f *Filecoin) InspectDisk(ctx context.Context, options ...ActionOption) (*c
 func (f *Filecoin) InspectMemory(ctx context.Context, options ...ActionOption) (*commands.MemoryInfo, error) {
 	var out commands.MemoryInfo
 
-	args := []string{"go-filecoin", "inspect", "memory"}
+	args := []string{"venus", "inspect", "memory"}
 
 	for _, option := range options {
 		args = append(args, option()...)
@@ -79,7 +79,7 @@ func (f *Filecoin) InspectMemory(ctx context.Context, options ...ActionOption) (
 func (f *Filecoin) InspectConfig(ctx context.Context, options ...ActionOption) (*config.Config, error) {
 	var out config.Config
 
-	args := []string{"go-filecoin", "inspect", "config"}
+	args := []string{"venus", "inspect", "config"}
 
 	for _, option := range options {
 		args = append(args, option()...)

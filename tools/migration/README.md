@@ -1,6 +1,6 @@
 # IMPORTANT
 
-**DO NOT REGENERATE** test fixtures associated with a migration, using go-filecoin code that is later than the intended "oldVersion" associated with the migration.
+**DO NOT REGENERATE** test fixtures associated with a migration, using venus code that is later than the intended "oldVersion" associated with the migration.
 
 This will not only invalidate the tests, but users will be unable to run migrations on 
 their repo, because the migration code becomes polluted with behaviors past its original 

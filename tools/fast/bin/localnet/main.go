@@ -69,7 +69,7 @@ func init() {
 	// to searching path.
 	binpath, err = getFilecoinBinary()
 	if err != nil {
-		// Look for `go-filecoin` in the path to set `binpath` default
+		// Look for `venus` in the path to set `binpath` default
 		// If the binary is not found, an error will be returned. If the
 		// error is ErrNotFound we ignore it.
 		// Error is handled after flag parsing so help can be shown without
@@ -84,7 +84,7 @@ func init() {
 	}
 
 	flag.StringVar(&workdir, "workdir", workdir, "set the working directory used to store filecoin repos")
-	flag.StringVar(&binpath, "binpath", binpath, "set the binary used when executing `go-filecoin` commands")
+	flag.StringVar(&binpath, "binpath", binpath, "set the binary used when executing `venus` commands")
 	flag.BoolVar(&shell, "shell", shell, "setup a filecoin client node and enter into a shell ready to use")
 	flag.BoolVar(&smallSectors, "small-sectors", smallSectors, "enables small sectors")
 	flag.DurationVar(&blocktime, "blocktime", blocktime, "duration for blocktime")
@@ -96,12 +96,12 @@ func init() {
 	// ExitOnError is set
 	flag.Parse(os.Args[1:]) // nolint: errcheck
 
-	// If we failed to find `go-filecoin` and it was not set, handle the error
+	// If we failed to find `venus` and it was not set, handle the error
 	if len(binpath) == 0 {
-		msg := "failed when checking for `go-filecoin` binary;"
+		msg := "failed when checking for `venus` binary;"
 		if err == nil {
 			err = fmt.Errorf("no binary provided or found")
-			msg = "please install or build `go-filecoin`;"
+			msg = "please install or build `venus`;"
 		}
 
 		handleError(err, msg)

@@ -10,7 +10,7 @@ import (
 func (f *Filecoin) Protocol(ctx context.Context) (*porcelain.ProtocolParams, error) {
 	var out porcelain.ProtocolParams
 
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "protocol"); err != nil {
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "venus", "protocol"); err != nil {
 		return nil, err
 	}
 

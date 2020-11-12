@@ -15,7 +15,7 @@ func (f *Filecoin) ShowHeader(ctx context.Context, ref cid.Cid) (*block.Block, e
 
 	sRef := ref.String()
 
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "show", "header", sRef); err != nil {
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "venus", "show", "header", sRef); err != nil {
 		return nil, err
 	}
 
@@ -28,7 +28,7 @@ func (f *Filecoin) ShowMessages(ctx context.Context, ref cid.Cid) ([]*types.Sign
 
 	sRef := ref.String()
 
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "show", "messages", sRef); err != nil {
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "venus", "show", "messages", sRef); err != nil {
 		return nil, err
 	}
 
@@ -41,7 +41,7 @@ func (f *Filecoin) ShowReceipts(ctx context.Context, ref cid.Cid) ([]types.Messa
 
 	sRef := ref.String()
 
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "show", "receipts", sRef); err != nil {
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "venus", "show", "receipts", sRef); err != nil {
 		return nil, err
 	}
 

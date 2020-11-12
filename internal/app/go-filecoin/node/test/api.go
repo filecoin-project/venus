@@ -74,7 +74,7 @@ func (c *Client) Address() string {
 func (c *Client) Run(ctx context.Context, command ...string) *th.CmdOutput {
 	c.tb.Helper()
 	args := []string{
-		"go-filecoin", // A dummy first arg is required, simulating shell invocation.
+		"venus", // A dummy first arg is required, simulating shell invocation.
 		fmt.Sprintf("--cmdapiaddr=%s", c.address),
 	}
 	args = append(args, command...)

@@ -7,7 +7,7 @@ import (
 
 // DealsList runs the `deals list` command against the filecoin process
 func (f *Filecoin) DealsList(ctx context.Context, options ...ActionOption) (*json.Decoder, error) {
-	args := []string{"go-filecoin", "deals", "list"}
+	args := []string{"venus", "deals", "list"}
 
 	for _, option := range options {
 		args = append(args, option()...)

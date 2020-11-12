@@ -15,7 +15,7 @@ import (
 // WalletBalance run the wallet balance command against the filecoin process.
 func (f *Filecoin) WalletBalance(ctx context.Context, addr address.Address) (types.AttoFIL, error) {
 	var balance types.AttoFIL
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &balance, "go-filecoin", "wallet", "balance", addr.String()); err != nil {
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &balance, "venus", "wallet", "balance", addr.String()); err != nil {
 		return types.ZeroAttoFIL, err
 	}
 	return balance, nil
@@ -25,7 +25,7 @@ func (f *Filecoin) WalletBalance(ctx context.Context, addr address.Address) (typ
 func (f *Filecoin) WalletImport(ctx context.Context, file files.File) ([]address.Address, error) {
 	// the command returns an AddressListResult
 	var alr commands.AddressLsResult
-	if err := f.RunCmdJSONWithStdin(ctx, file, &alr, "go-filecoin", "wallet", "import"); err != nil {
+	if err := f.RunCmdJSONWithStdin(ctx, file, &alr, "venus", "wallet", "import"); err != nil {
 		return nil, err
 	}
 	return alr.Addresses, nil
@@ -42,7 +42,7 @@ func (f *Filecoin) WalletExport(ctx context.Context, addrs []address.Address) ([
 		sAddrs = append(sAddrs, a.String())
 	}
 
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &klr, "go-filecoin", "wallet", "export", strings.Join(sAddrs, " ")); err != nil {
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &klr, "venus", "wallet", "export", strings.Join(sAddrs, " ")); err != nil {
 		return nil, err
 	}
 
