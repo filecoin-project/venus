@@ -2,6 +2,8 @@ package consensus_test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/internal/pkg/crypto"
+	"github.com/filecoin-project/venus/internal/pkg/enccid"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -30,6 +32,10 @@ func TestWeight(t *testing.T) {
 	toWeigh := block.RequireNewTipSet(t, &block.Block{
 		ParentWeight: fbig.Zero(),
 		Ticket:       ticket,
+		ElectionProof: &crypto.ElectionProof{
+			WinCount: 1,
+		},
+		StateRoot: enccid.NewCid(fakeRoot),
 	})
 	sel := consensus.NewChainSelector(cst, &viewer)
 	//sel := consensus.NewChainSelector(cst, &viewer, types.CidFromString(t, "genesisCid"))
@@ -72,6 +78,10 @@ func TestWeight(t *testing.T) {
 		toWeighWithParent := block.RequireNewTipSet(t, &block.Block{
 			ParentWeight: parentWeight,
 			Ticket:       ticket,
+			ElectionProof: &crypto.ElectionProof{
+				WinCount: 1,
+			},
+			StateRoot: enccid.NewCid(fakeRoot),
 		})
 
 		// 49 + (4*256) + (4*1*1*256/2*5) = 1175
@@ -86,16 +96,28 @@ func TestWeight(t *testing.T) {
 				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
 				Timestamp:    0,
+				ElectionProof: &crypto.ElectionProof{
+					WinCount: 1,
+				},
+				StateRoot: enccid.NewCid(fakeRoot),
 			},
 			&block.Block{
 				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
 				Timestamp:    1,
+				ElectionProof: &crypto.ElectionProof{
+					WinCount: 1,
+				},
+				StateRoot: enccid.NewCid(fakeRoot),
 			},
 			&block.Block{
 				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
 				Timestamp:    2,
+				ElectionProof: &crypto.ElectionProof{
+					WinCount: 1,
+				},
+				StateRoot: enccid.NewCid(fakeRoot),
 			},
 		)
 		// 0 + (4*256) + (4*3*1*256/2*5) = 1331

@@ -230,7 +230,7 @@ func (v *View) GetPartsProving(ctx context.Context, maddr addr.Address) ([]bitfi
 			}
 			p, err := bitfield.SubtractBitField(allSectors, faultySectors)
 			if err != nil {
-				return xerrors.Errorf("subtract faults from partition sectors: %w", err)
+				return xerrors.Errorf("subtract faults from partition sectors: %v", err)
 			}
 
 			partsProving = append(partsProving, p)
@@ -621,17 +621,17 @@ func (v *View) StateMinerSectors(ctx context.Context, addr addr.Address, filter 
 func (v *View) GetFilLocked(ctx context.Context, st vmstate.Tree) (abi.TokenAmount, error) {
 	filMarketLocked, err := getFilMarketLocked(ctx, v.ipldStore, st)
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %w", err)
+		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %v", err)
 	}
 
 	powerState, err := v.loadPowerActor(ctx)
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to get filPowerLocked: %w", err)
+		return big.Zero(), xerrors.Errorf("failed to get filPowerLocked: %v", err)
 	}
 
 	filPowerLocked, err := powerState.TotalLocked()
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to get filPowerLocked: %w", err)
+		return big.Zero(), xerrors.Errorf("failed to get filPowerLocked: %v", err)
 	}
 
 	return big.Add(filMarketLocked, filPowerLocked), nil
@@ -653,7 +653,7 @@ func (v *View) ResolveToKeyAddr(ctx context.Context, address addr.Address) (addr
 
 	aast, err := account.Load(adt.WrapStore(context.TODO(), v.ipldStore), act)
 	if err != nil {
-		return addr.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", address, err)
+		return addr.Undef, xerrors.Errorf("failed to get account actor state for %s: %v", address, err)
 	}
 
 	return aast.PubkeyAddress()
@@ -749,12 +749,12 @@ func (v *View) adtStore(ctx context.Context) adt.Store {
 func getFilMarketLocked(ctx context.Context, ipldStore cbor.IpldStore, st vmstate.Tree) (abi.TokenAmount, error) {
 	mactor, found, err := st.GetActor(ctx, market.Address)
 	if !found || err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load market actor: %w", err)
+		return big.Zero(), xerrors.Errorf("failed to load market actor: %v", err)
 	}
 
 	mst, err := market.Load(adt.WrapStore(ctx, ipldStore), mactor)
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load market state: %w", err)
+		return big.Zero(), xerrors.Errorf("failed to load market state: %v", err)
 	}
 
 	return mst.TotalLocked()

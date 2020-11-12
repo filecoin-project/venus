@@ -2,6 +2,7 @@ package consensus_test
 
 import (
 	"context"
+	fbig "github.com/filecoin-project/go-state-types/big"
 	"testing"
 	"time"
 
@@ -11,10 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-
 	"github.com/filecoin-project/go-state-types/abi"
-	_ "github.com/filecoin-project/venus/internal/pkg/beacon"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/venus/internal/pkg/block"
 	"github.com/filecoin-project/venus/internal/pkg/clock"
 	"github.com/filecoin-project/venus/internal/pkg/consensus"
@@ -67,10 +66,10 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 	p := &block.Block{Height: 1, Timestamp: uint64(ts.Unix())}
 	parents := consensus.RequireNewTipSet(require.New(t), p)
 
-	msg0 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 1}
-	msg1 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 2}
-	msg2 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 3}
-	msg3 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 4}
+	msg0 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 1, Value: fbig.NewInt(0), GasFeeCap: fbig.NewInt(0), GasPremium: fbig.NewInt(0), GasLimit: 1000000}
+	msg1 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 2, Value: fbig.NewInt(0), GasFeeCap: fbig.NewInt(0), GasPremium: fbig.NewInt(0), GasLimit: 1000000}
+	msg2 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 3, Value: fbig.NewInt(0), GasFeeCap: fbig.NewInt(0), GasPremium: fbig.NewInt(0), GasLimit: 1000000}
+	msg3 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 4, Value: fbig.NewInt(0), GasFeeCap: fbig.NewInt(0), GasPremium: fbig.NewInt(0), GasLimit: 1000000}
 
 	t.Run("rejects block with message from missing actor", func(t *testing.T) {
 		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{
@@ -98,7 +97,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "non-account actor")
+		require.Contains(t, err.Error(), "Sender must be an account actor")
 	})
 
 	t.Run("accepts block with bls messages in monotonic sequence", func(t *testing.T) {
@@ -132,7 +131,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "out of order")
+		require.Contains(t, err.Error(), "wrong nonce")
 	})
 
 	t.Run("rejects block with gaps", func(t *testing.T) {
@@ -144,7 +143,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "out of order")
+		require.Contains(t, err.Error(), "wrong nonce")
 	})
 
 	t.Run("rejects block with bls message with nonce too low", func(t *testing.T) {
@@ -156,7 +155,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "out of order")
+		require.Contains(t, err.Error(), "wrong nonce")
 	})
 
 	t.Run("rejects block with secp message with nonce too low", func(t *testing.T) {
@@ -168,7 +167,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "out of order")
+		require.Contains(t, err.Error(), "wrong nonce")
 	})
 
 	t.Run("rejects block with message too high", func(t *testing.T) {
@@ -180,7 +179,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "out of order")
+		require.Contains(t, err.Error(), "wrong nonce")
 	})
 
 	t.Run("rejects secp message < bls messages", func(t *testing.T) {
@@ -193,7 +192,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "out of order")
+		require.Contains(t, err.Error(), "wrong nonce")
 	})
 
 	t.Run("accepts bls message < secp messages", func(t *testing.T) {
@@ -246,7 +245,7 @@ func TestFutureEpoch(t *testing.T) {
 	c := &block.Block{Height: 1, Timestamp: uint64(genTime.Add(blockTime).Unix())}
 	err := validator.NotFutureBlock(c)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "future epoch")
+	assert.Contains(t, err.Error(), "block was from the future")
 }
 
 func TestBlockValidSyntax(t *testing.T) {

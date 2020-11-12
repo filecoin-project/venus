@@ -20,14 +20,14 @@ import (
 
 	"github.com/filecoin-project/venus/internal/pkg/block"
 	"github.com/filecoin-project/venus/internal/pkg/cborutil"
+	"github.com/filecoin-project/venus/internal/pkg/chainsync/exchange"
 	"github.com/filecoin-project/venus/internal/pkg/clock"
 	"github.com/filecoin-project/venus/internal/pkg/constants"
 	"github.com/filecoin-project/venus/internal/pkg/crypto"
-	"github.com/filecoin-project/venus/internal/pkg/encoding"
-	"github.com/filecoin-project/venus/internal/pkg/types"
-	"github.com/filecoin-project/venus/internal/pkg/chainsync/exchange"
 	"github.com/filecoin-project/venus/internal/pkg/enccid"
+	"github.com/filecoin-project/venus/internal/pkg/encoding"
 	"github.com/filecoin-project/venus/internal/pkg/repo"
+	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
 // Builder builds fake chains and acts as a provider and fetcher for the chain thus generated.
@@ -81,10 +81,6 @@ func (f *Builder) Store() *Store {
 
 func (f *Builder) RemovePeer(peer peer.ID) {
 	return
-}
-
-func (f *Builder) LoadMessages(ctx context.Context, c cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
-	return []*types.SignedMessage{}, []*types.UnsignedMessage{}, nil
 }
 
 var _ BlockProvider = (*Builder)(nil)
@@ -230,7 +226,8 @@ func (f *Builder) Build(parent *block.TipSet, width int, build func(b *BlockBuil
 
 	for _, block := range tip.Blocks() {
 		// add block to cstore
-		_, err := f.cstore.Put(context.TODO(), block)
+		ccid, err := f.cstore.Put(context.TODO(), block)
+		fmt.Println("geneblock: ", ccid.String())
 		require.NoError(f.t, err)
 	}
 

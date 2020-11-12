@@ -3,13 +3,13 @@ package syncer
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/internal/pkg/util"
 	"sync"
 	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log/v2"
@@ -575,10 +575,6 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 		beInSyncing = false //reset to start new sync
 	}()
 
-	cidd, _ := cid.Decode("bafy2bzaced2rl3cgi6f3dujeo6dcrhgcftwwevd27xztpvszk74jny2tlan2m")
-	ci.Head = block.NewTipSetKey(cidd)
-	ci.Height = 5028
-
 	// If the store already has this tipset then the syncer is finished.
 	if syncer.chainStore.HasTipSetAndState(ctx, ci.Head) {
 		return nil
@@ -660,7 +656,7 @@ func (syncer *Syncer) fetchChainBlocks(ctx context.Context, knownTip *block.TipS
 				cborStore.Put(ctx, blk)
 			}
 		}
-		return copyBlockstore(ctx, bs, syncer.bsstore)
+		return util.CopyBlockstore(ctx, bs, syncer.bsstore)
 	}
 
 	var windows = 500
@@ -841,7 +837,7 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*block.Ti
 		}
 	}
 
-	err = copyBlockstore(ctx, bs, syncer.bsstore)
+	err = util.CopyBlockstore(ctx, bs, syncer.bsstore)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failure fetching full blocks")
 	}
@@ -1069,31 +1065,4 @@ func SegProcess(ts []*block.TipSet, cb func(ts []*block.TipSet) error) (err erro
 	fmt.Printf("Sync Process End,Remaining: %v, err: %v ...", len(ts), err)
 
 	return err
-}
-
-func copyBlockstore(ctx context.Context, from, to bstore.Blockstore) error {
-	ctx, span := trace.StartSpan(ctx, "copyBlockstore")
-	defer span.End()
-
-	cids, err := from.AllKeysChan(ctx)
-	if err != nil {
-		return err
-	}
-
-	// TODO: should probably expose better methods on the blockstore for this operation
-	var blks []blocks.Block
-	for c := range cids {
-		b, err := from.Get(c)
-		if err != nil {
-			return err
-		}
-
-		blks = append(blks, b)
-	}
-
-	if err := to.PutMany(blks); err != nil {
-		return err
-	}
-
-	return nil
 }

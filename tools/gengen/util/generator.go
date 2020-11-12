@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	builtin2 "github.com/filecoin-project/specs-actors/actors/builtin"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	xerrors "github.com/pkg/errors"
 	"io"
 	mrand "math/rand"
@@ -13,17 +16,17 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	"github.com/filecoin-project/specs-actors/actors/builtin/system"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin/account"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin/cron"
+	init_ "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin/reward"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin/system"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
+	"github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -116,17 +119,41 @@ func NewGenesisGenerator(vmStorage *vm.Storage) *GenesisGenerator {
 	g.chainRand = crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}}
 	vmOption := vm.VmOption{
 		CircSupplyCalculator: csc,
-		NtwkVersionGetter:    genesisNetworkVersion,
-		Rnd:                  &crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}},
-		BaseFee:              abi.NewTokenAmount(InitialBaseFee),
-		Epoch:                0,
+		NtwkVersionGetter: func(ctx context.Context, epoch abi.ChainEpoch) network.Version {
+			return network.Version6
+		},
+		Rnd:     &crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}},
+		BaseFee: abi.NewTokenAmount(InitialBaseFee),
+		Epoch:   0,
 	}
 	g.vm = vm.NewVM(g.stateTree, vmStorage, vmsupport.NewSyscalls(&vmsupport.NilFaultChecker{}, &proofs.FakeVerifier{}), vmOption).(genesis.VM)
 
 	return &g
 }
 
+func (g *GenesisGenerator) initChainParams() {
+	fork.UpgradeBreezeHeight = 0
+	fork.BreezeGasTampingDuration = 120
+	fork.UpgradeSmokeHeight = 0
+	fork.UpgradeIgnitionHeight = 0
+	fork.UpgradeRefuelHeight = 0
+	fork.UpgradeActorsV2Height = 0
+	fork.UpgradeTapeHeight = 0
+	// This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
+	// Miners, clients, developers, custodians all need time to prepare.
+	// We still have upgrades and state changes to do, but can happen after signaling timing here.
+	fork.UpgradeLiftoffHeight = 0
+	fork.UpgradeKumquatHeight = 0
+
+	power0.ConsensusMinerMinPower = big.NewInt(0)
+	for _, policy := range builtin2.SealProofPolicies {
+		policy.ConsensusMinerMinPower = big.NewInt(0)
+	}
+}
+
 func (g *GenesisGenerator) Init(cfg *GenesisCfg) error {
+	g.initChainParams()
+
 	g.pnrg = mrand.New(mrand.NewSource(cfg.Seed))
 
 	keys, err := genKeys(cfg.KeysToGen, g.pnrg)
@@ -420,11 +447,6 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 			return nil, err
 		}
 
-		mState, err := g.loadMinerState(ctx, actorAddr)
-		if err != nil {
-			return nil, err
-		}
-
 		// Add configured deals to the market actor with miner as provider and worker as client
 		dealIDs := []abi.DealID{}
 		if len(m.CommittedSectors) > 0 {
@@ -439,10 +461,9 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		minerRawPower := big.Zero()
 		for i, comm := range m.CommittedSectors {
 			// Adjust sector expiration up to the epoch before the subsequent proving period starts.
-			periodOffset := mState.ProvingPeriodStart % miner.WPoStProvingPeriod
-			expiryOffset := abi.ChainEpoch(comm.DealCfg.EndEpoch+1) % miner.WPoStProvingPeriod
-			sectorExpiration := abi.ChainEpoch(comm.DealCfg.EndEpoch) + miner.WPoStProvingPeriod + (periodOffset - expiryOffset)
-
+			//todo pick a better sector exp
+			maxPeriods := miner0.MaxSectorExpirationExtension / miner0.WPoStProvingPeriod
+			sectorExpiration := (maxPeriods-1)*miner0.WPoStProvingPeriod - 1
 			// Acquire deal weight value
 			// call deal verify market actor to do calculation
 			dealWeight, verifiedWeight, err := g.getDealWeight(dealIDs[i], sectorExpiration, actorAddr)
@@ -555,11 +576,9 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		}
 
 		pcd := miner.PreCommitDepositForPower(epochReward.ThisEpochRewardSmoothed, tpow.QualityAdjPowerSmoothed, sectorWeight)
-
 		pledge := miner.InitialPledgeForPower(
 			sectorWeight,
 			epochReward.ThisEpochBaselinePower,
-			tpow.PledgeCollateral,
 			epochReward.ThisEpochRewardSmoothed,
 			tpow.QualityAdjPowerSmoothed,
 			g.circSupply(ctx, sector.miner),

@@ -41,7 +41,7 @@ func (cl CodeLoader) GetUnsafeActorImpl(code cid.Cid) (Dispatcher, error) {
 	//todo version check
 	actor, ok := cl.actors[code]
 	if !ok {
-		return nil, xerrors.Errorf("unable to get actorv for code ", code)
+		return nil, xerrors.Errorf("unable to get actorv for code %s", code)
 	}
 	return &actorDispatcher{code: code, actor: actor.vmActor}, nil
 }

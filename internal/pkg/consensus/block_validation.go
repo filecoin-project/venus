@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/internal/pkg/constants"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/internal/pkg/state"
 	"github.com/filecoin-project/venus/internal/pkg/vm/gas"
-	"github.com/filecoin-project/go-state-types/abi"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -21,8 +22,6 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/block"
 	"github.com/filecoin-project/venus/internal/pkg/clock"
 	"github.com/filecoin-project/venus/internal/pkg/types"
-	//"github.com/filecoin-project/venus/internal/pkg/vm/gas"
-	//"github.com/filecoin-project/go-state-types/abi"
 )
 
 var log = logging.Logger("consensus")
@@ -150,6 +149,7 @@ func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, c
 
 	pl := gas.PricelistByEpoch(child.Height)
 	var sumGasLimit int64
+	callSeqNums := make(map[address.Address]uint64)
 	checkMsg := func(msg types.ChainMsg) error {
 		m := msg.VMMessage()
 
@@ -176,9 +176,29 @@ func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, c
 			return xerrors.Errorf("block gas limit exceeded")
 		}
 
+		// Phase 2: (Partial) semantic validation:
+		// the sender exists and is an account actor, and the nonces make sense
+		if _, ok := callSeqNums[m.From]; !ok {
+			// `GetActor` does not validate that this is an account actor.
+			act, err := dv.getAndValidateFromActor(ctx, m, parents)
+			if err != nil {
+				log.Warnf("failed to get actor for %s of parents %s, err: %s", m.From, parents, err.Error())
+				return err
+			}
+
+			if !builtin.IsAccountActor(act.Code.Cid) {
+				return xerrors.New("Sender must be an account actor")
+			}
+			callSeqNums[m.From] = act.CallSeqNum
+		}
+
+		if callSeqNums[m.From] != m.CallSeqNum {
+			return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", callSeqNums[m.From], m.CallSeqNum)
+		}
+		callSeqNums[m.From]++
+
 		return nil
 	}
-
 	for i, m := range blsMsgs {
 		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)

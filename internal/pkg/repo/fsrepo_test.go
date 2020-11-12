@@ -110,7 +110,7 @@ func TestFSRepoOpen(t *testing.T) {
 		assert.NoError(t, WriteVersion(repoPath, 0))
 
 		_, err = OpenFSRepo(repoPath, 1)
-		expected := fmt.Sprintf("out of date repo version, got 0 expected %d. Migrate with tools/migration/go-filecoin-migrate", Version)
+		expected := fmt.Sprintf("out of date repo version, got 0 expected %d. Migrate with tools/migration/venus-migrate", Version)
 
 		assert.EqualError(t, err, expected)
 	})

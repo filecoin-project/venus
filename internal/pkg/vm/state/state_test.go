@@ -28,32 +28,34 @@ func TestStatePutGet(t *testing.T) {
 
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree, err := NewState(cst, StateTreeVersion1)
+	tree, err := NewStateWithBuiltinActor(t, cst, StateTreeVersion1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	act1 := types.NewActor(builtin2.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
-	act1.IncrementSeqNum()
-	act2 := types.NewActor(builtin2.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
-	act2.IncrementSeqNum()
-	act2.IncrementSeqNum()
-
 	addrGetter := vmaddr.NewForTestGetter()
 	addr1 := addrGetter()
 	addr2 := addrGetter()
+	AddAccount(t, tree, cst, addr1)
+	AddAccount(t, tree, cst, addr2)
 
-	assert.NoError(t, tree.SetActor(ctx, addr1, act1))
-	assert.NoError(t, tree.SetActor(ctx, addr2, act2))
+	UpdateAccount(t, tree, addr1, func(act1 *types.Actor) {
+		act1.IncrementSeqNum()
+	})
+
+	UpdateAccount(t, tree, addr2, func(act2 *types.Actor) {
+		act2.IncrementSeqNum()
+		act2.IncrementSeqNum()
+	})
 
 	act1out, found, err := tree.GetActor(ctx, addr1)
 	assert.NoError(t, err)
 	assert.True(t, found)
-	assert.Equal(t, act1, act1out)
+	assert.Equal(t, uint64(1), act1out.CallSeqNum)
 	act2out, found, err := tree.GetActor(ctx, addr2)
 	assert.NoError(t, err)
 	assert.True(t, found)
-	assert.Equal(t, act2, act2out)
+	assert.Equal(t, uint64(2), act2out.CallSeqNum)
 
 	// now test it persists across recreation of tree
 	tcid, err := tree.Flush(ctx)
@@ -65,11 +67,11 @@ func TestStatePutGet(t *testing.T) {
 	act1out2, found, err := tree2.GetActor(ctx, addr1)
 	assert.NoError(t, err)
 	assert.True(t, found)
-	assert.Equal(t, act1, act1out2)
+	assert.Equal(t, uint64(1), act1out2.CallSeqNum)
 	act2out2, found, err := tree2.GetActor(ctx, addr2)
 	assert.NoError(t, err)
 	assert.True(t, found)
-	assert.Equal(t, act2, act2out2)
+	assert.Equal(t, uint64(2), act2out2.CallSeqNum)
 }
 
 func TestStateErrors(t *testing.T) {
@@ -77,15 +79,12 @@ func TestStateErrors(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree, err := NewState(cst, StateTreeVersion1)
+	tree, err := NewStateWithBuiltinActor(t, cst, StateTreeVersion1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	a, found, err := tree.GetActor(ctx, vmaddr.NewForTestGetter()())
-	assert.Nil(t, a)
-	assert.False(t, found)
-	assert.NoError(t, err)
+	AddAccount(t, tree, cst, vmaddr.NewForTestGetter()())
 
 	c, err := constants.DefaultCidBuilder.Sum([]byte("cats"))
 	assert.NoError(t, err)
@@ -94,25 +93,28 @@ func TestStateErrors(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, tr2)
 }
+
 func TestGetAllActors(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := cborutil.NewIpldStore(bs)
-	tree, err := NewState(cst, StateTreeVersion1)
+	tree, err := NewStateWithBuiltinActor(t, cst, StateTreeVersion1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	addr := vmaddr.NewForTestGetter()()
 
 	newActor := types.Actor{Code: enccid.NewCid(builtin2.AccountActorCodeID), CallSeqNum: 1234, Balance: abi.NewTokenAmount(123)}
-	err = tree.SetActor(ctx, addr, &newActor)
-	assert.NoError(t, err)
+	AddAccount(t, tree, cst, addr)
 	_, err = tree.Flush(ctx)
 	require.NoError(t, err)
 
 	err = tree.ForEach(func(key ActorKey, result *types.Actor) error {
+		if addr != key {
+			return nil
+		}
 		assert.Equal(t, addr, key)
 		assert.Equal(t, newActor.Code, result.Code)
 		assert.Equal(t, newActor.CallSeqNum, result.CallSeqNum)

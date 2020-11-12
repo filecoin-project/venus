@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/venus/internal/pkg/encoding"
 	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/internal/pkg/vm"
 	"github.com/filecoin-project/venus/internal/pkg/vm/internal/vmcontext"
 )
 
@@ -50,7 +49,7 @@ func (t *testActorStateHandleState) UnmarshalCBOR(r io.Reader) error {
 func setup() testSetup {
 	initialstate := testActorStateHandleState{FieldA: "fakestate"}
 
-	store := vm.NewTestStorage(&initialstate)
+	store := vmcontext.NewTestStorage(&initialstate)
 	initialhead := store.CidOf(&initialstate)
 	ctx := fakeActorStateHandleContext{
 		head:             initialhead,
@@ -216,7 +215,7 @@ func TestActorStateHandleNilState(t *testing.T) {
 	tf.UnitTest(t)
 
 	setup := func() (runtime.StateHandle, func()) {
-		store := vm.NewTestStorage(nil)
+		store := vmcontext.NewTestStorage(nil)
 		ctx := fakeActorStateHandleContext{
 			store:            store,
 			allowSideEffects: true,

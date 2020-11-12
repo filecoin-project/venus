@@ -586,6 +586,7 @@ func (gsf *GraphSyncFetcher) loadAndVerifySubComponents(ctx context.Context,
 		}
 
 		link := getMetaComponent(meta)
+		fmt.Println(link)
 		ok, err := gsf.store.Has(link)
 		if err != nil {
 			return err
@@ -653,18 +654,10 @@ func (pri *requestPeerFinder) FindNextPeer() error {
 	chains := pri.peerTracker.List()
 	for _, chain := range chains {
 		if _, tried := pri.triedPeers[chain.Sender]; !tried {
-			if len(chains) < len(pri.triedPeers)+20 { // 所有节点都被尝试时重新试
-				pri.triedPeers = make(map[peer.ID]struct{})
-			}
-
 			pri.triedPeers[chain.Sender] = struct{}{}
 			pri.currentPeer = chain.Sender
-
 			return nil
 		}
-	}
-	for _, chain := range chains {
-		delete(pri.triedPeers, chain.Sender)
 	}
 	return fmt.Errorf("Unable to find any untried peers")
 }
