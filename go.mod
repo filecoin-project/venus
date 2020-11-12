@@ -18,8 +18,6 @@ require (
 	github.com/docker/go-units v0.4.0
 	github.com/drand/drand v1.1.2-0.20200905144319-79c957281b32
 	github.com/drand/kyber v1.1.2
-	github.com/elastic/go-sysinfo v1.4.0 // indirect
-	github.com/elastic/go-windows v1.0.1 // indirect
 	github.com/fatih/color v1.9.0
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200716204036-cddc56607e1d
 	github.com/filecoin-project/go-address v0.0.4
@@ -28,8 +26,6 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.9.0
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f
-	github.com/filecoin-project/go-fil-markets v0.9.1 // indirect
-	github.com/filecoin-project/go-jsonrpc v0.1.2-0.20201008195726-68c6a2704e49
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
@@ -98,7 +94,6 @@ require (
 	github.com/multiformats/go-multihash v0.0.14
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
-	github.com/otiai10/copy v1.0.2
 	github.com/pelletier/go-toml v1.6.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
@@ -109,7 +104,6 @@ require (
 	github.com/spf13/viper v1.5.0 // indirect
 	github.com/stretchr/testify v1.6.1
 	github.com/supranational/blst v0.1.1
-	github.com/urfave/cli/v2 v2.2.0
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200826160007-0b9f6c5fb163
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
@@ -123,7 +117,6 @@ require (
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	gotest.tools v2.2.0+incompatible
 	honnef.co/go/tools v0.0.1-2020.1.3 // indirect
-	howett.net/plist v0.0.0-20200419221736-3b63eb3a43b5 // indirect
 
 )
 
