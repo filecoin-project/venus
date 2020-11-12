@@ -2,18 +2,18 @@ package message
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
 	"math"
 	"math/rand"
 	"sort"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/constants"
 	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
