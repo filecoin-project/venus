@@ -2,6 +2,7 @@ package discovery_test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/internal/pkg/util/test"
 	"sort"
 	"testing"
 
@@ -135,5 +136,5 @@ func TestPeerTrackerNetworkDisconnect(t *testing.T) {
 	require.NoError(t, mn.DisconnectPeers(selfID, cID))
 
 	tracked := tracker.List()
-	assert.Equal(t, []*block.ChainInfo{bCI}, tracked)
+	test.Equal(t, []*block.ChainInfo{bCI}, tracked)
 }
