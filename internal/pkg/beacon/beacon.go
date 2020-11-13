@@ -18,7 +18,7 @@ type Response struct {
 	Err   error
 }
 
-type BeaconPoint struct {
+type BeaconPoint struct { //nolint
 	Start  abi.ChainEpoch
 	Beacon RandomBeacon
 }
@@ -79,7 +79,7 @@ func ValidateBlockValues(bSchedule Schedule, h *block.Block, parentEpoch abi.Cha
 	return nil
 }
 
-func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, epoch abi.ChainEpoch, parentEpoch abi.ChainEpoch, prev block.BeaconEntry) ([]block.BeaconEntry, error) {
+func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, epoch abi.ChainEpoch, parentEpoch abi.ChainEpoch, prev block.BeaconEntry) ([]block.BeaconEntry, error) { //nolint
 	{
 		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
 		currBeacon := bSchedule.BeaconForEpoch(epoch)

@@ -610,12 +610,14 @@ func (store *Store) Import(r io.Reader) (*block.TipSet, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
 	}
-	store.PutTipSetMetadata(context.Background(), &TipSetMetadata{
+	err = store.PutTipSetMetadata(context.Background(), &TipSetMetadata{
 		TipSetStateRoot: root.At(0).StateRoot.Cid,
 		TipSet:          parentTipset,
 		TipSetReceipts:  root.At(0).MessageReceipts.Cid,
 	})
-
+	if err != nil {
+		return nil, err
+	}
 	loopBack := 900
 	curTipset := parentTipset
 	for i := 0; i < loopBack; i++ {
@@ -630,11 +632,14 @@ func (store *Store) Import(r io.Reader) (*block.TipSet, error) {
 		}
 
 		//save fake root
-		store.PutTipSetMetadata(context.Background(), &TipSetMetadata{
+		err = store.PutTipSetMetadata(context.Background(), &TipSetMetadata{
 			TipSetStateRoot: curTipset.At(0).StateRoot.Cid,
 			TipSet:          curParentTipset,
 			TipSetReceipts:  curTipset.At(0).MessageReceipts.Cid,
 		})
+		if err != nil {
+			return nil, err
+		}
 		curTipset = curParentTipset
 	}
 	return parentTipset, nil

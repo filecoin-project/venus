@@ -14,6 +14,7 @@ type Config struct {
 	_ struct{} // guard against nameless init
 }
 
+//nolint
 func sizeFromConfig(cfg Config) (abi.SectorSize, error) {
 	return cfg.SealProofType.SectorSize()
 }

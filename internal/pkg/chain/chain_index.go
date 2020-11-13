@@ -11,7 +11,7 @@ import (
 
 var DefaultChainIndexCacheSize = 32 << 10
 
-type ChainIndex struct {
+type ChainIndex struct { //nolint
 	skipCache *lru.ARCCache
 
 	loadTipSet loadTipSetFunc
@@ -103,7 +103,7 @@ func (ci *ChainIndex) fillCache(tsk block.TipSetKey) (*lbEntry, error) {
 		skipTarget, err = ci.walkBack(parent, rheight)
 		if err != nil {
 			return nil, xerrors.Errorf("fillCache walkback: %s", err)
-	}
+		}
 	}
 
 	lbe := &lbEntry{

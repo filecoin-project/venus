@@ -79,7 +79,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 	require.NoError(t, err)
 	basicBlock, err := blocks.NewBlockWithCid(notDecodableBytes, notDecodableBlock.Cid())
 	require.NoError(t, err)
-	builder.BlockStore().Put(basicBlock)
+	err = builder.BlockStore().Put(basicBlock)
+	require.NoError(t, err)
 	alice := mm.Addresses()[0]
 	bob := mm.Addresses()[1]
 
@@ -115,7 +116,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 	bs := builder.BlockStore()
 	genesisBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-	util.CopyBlockstore(ctx, bs, genesisBs)
+	err = util.CopyBlockstore(ctx, bs, genesisBs)
+	require.NoError(t, err)
 	msgStore := builder.Mstore()
 	doneAt := func(tsKey block.TipSetKey) func(*block.TipSet) (bool, error) {
 		return func(ts *block.TipSet) (bool, error) {
@@ -161,7 +163,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		err = util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err)
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		mgs.stubResponseWithLoader(pid0, layer1Selector, loader, final.Key().ToSlice()...)
 		mgs.stubResponseWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
@@ -191,10 +194,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 		pid0Loader := errorOnCidsLoader(loader, final.At(1).Cid(), final.At(2).Cid())
 		pid1Loader := errorOnCidsLoader(loader, final.At(2).Cid())
 
-		fmt.Println(final.Key().ToSlice())
-
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		err = util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err)
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, pid0Loader, final.Key().ToSlice()...)
 		mgs.expectRequestToRespondWithLoader(pid1, layer1Selector, pid1Loader, final.At(1).Cid(), final.At(2).Cid())
@@ -224,7 +226,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 		pt := newFakePeerTracker(chain0, chain1, chain2)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		err = util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err, "copy blockstore fail")
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		errorLoader := errorOnCidsLoader(loader, final.At(1).Cid(), final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorLoader, final.Key().ToSlice()...)
@@ -250,7 +253,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		err = util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err, "copy blockstore fail")
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		final2Meta, err := builder.LoadTxMeta(ctx, final.At(2).Messages.Cid)
 		require.NoError(t, err)
@@ -287,7 +291,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 		}
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		err = util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err, "copy blockstore fail")
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		pid0Loader := errorOnCidsLoader(loader, blocks[3].Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, pid0Loader, final.At(0).Cid())
@@ -331,7 +336,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		err = util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err)
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		errorInMultiBlockLoader := errorOnCidsLoader(loader, multi.At(1).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorInMultiBlockLoader, final.At(0).Cid())
@@ -361,7 +367,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain2 := block.NewChainInfo(pid2, pid2, final.Key(), height)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		err = util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err)
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		errorInMultiBlockLoader := errorOnCidsLoader(loader, multi.At(1).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorInMultiBlockLoader, final.At(0).Cid())
@@ -392,7 +399,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 	t.Run("stopping at edge heights in recursive fetch", func(t *testing.T) {
 		gen := builder.Genesis()
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		err := util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err)
 
 		recursive16stop := builder.BuildManyOn(1, gen, withMessageBuilder)
 		recursive16middle := builder.BuildManyOn(15, recursive16stop, withMessageBuilder)
@@ -443,7 +451,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 	t.Run("value returned with non block format", func(t *testing.T) {
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		err = util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err)
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 
 		key := block.NewTipSetKey(notDecodableBlock.Cid())
@@ -461,7 +470,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 	t.Run("block returned with invalid syntax", func(t *testing.T) {
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		err = util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err)
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		blk := simpleBlock()
 		blk.Height = 1
@@ -481,11 +491,10 @@ func TestGraphsyncFetcher(t *testing.T) {
 		//put msg to bs first
 		metaCid, err := msgStore.StoreTxMeta(ctx, types.TxMeta{SecpRoot: enccid.NewCid(notDecodableBlock.Cid()), BLSRoot: enccid.NewCid(types.EmptyMessagesCID)})
 		require.NoError(t, err)
-		fmt.Println("Meta ", metaCid)
 		//copy a bs to bakebs contains genesis block and msg
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, bs, bakeBs)
-
+		err = util.CopyBlockstore(ctx, bs, bakeBs)
+		require.NoError(t, err)
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		blk := requireSimpleValidBlock(t, 3, address.Undef)
 		blk.Messages = enccid.NewCid(metaCid)
@@ -511,7 +520,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		err = util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err)
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		mgs.stubResponseWithLoader(pid0, layer1Selector, loader, final.Key().ToSlice()...)
 
@@ -537,7 +547,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 		pt := newFakePeerTracker(chain0, chain1, chain2)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		err = util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err)
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithHangupAfter(pid0, layer1Selector, loader, 0, final.At(1).Cid(), final.At(2).Cid())
@@ -569,7 +580,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 		pt := newFakePeerTracker(chain0, chain1, chain2)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		err = util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err)
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithHangupAfter(pid0, layer1Selector, loader, 0, final.At(1).Cid(), final.At(2).Cid())
@@ -606,7 +618,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 		}
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		err = util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err)
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
@@ -650,7 +663,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		err = util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err)
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
@@ -680,7 +694,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain2 := block.NewChainInfo(pid2, pid2, final.Key(), height)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		err = util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err)
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
@@ -736,7 +751,8 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 
 	bs := builder.BlockStore()
 	genesisBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-	util.CopyBlockstore(ctx, bs, genesisBs)
+	err = util.CopyBlockstore(ctx, bs, genesisBs)
+	require.NoError(t, err)
 
 	recursiveSelector := func(levels int) selector.Selector {
 		s, err := ssb.ExploreRecursive(selector.RecursionLimitDepth(levels), ssb.ExploreIndex(block.IndexParentsField,
@@ -781,8 +797,8 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	t.Run("happy path returns correct tipsets", func(t *testing.T) {
 		gen := builder.Genesis()
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
-
+		err = util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err)
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		height, err := final.Height()
 		require.NoError(t, err)
@@ -807,7 +823,8 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 
 	t.Run("fetch succeeds when messages don't decode", func(t *testing.T) {
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		err = util.CopyBlockstore(ctx, genesisBs, bakeBs)
+		require.NoError(t, err)
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		blk := requireSimpleValidBlock(t, 3, address.Undef)
 		metaCid, err := builder.StoreTxMeta(ctx, types.TxMeta{SecpRoot: enccid.NewCid(notDecodableBlock.Cid()), BLSRoot: enccid.NewCid(types.EmptyMessagesCID)})

@@ -2,6 +2,7 @@ package fr32_test
 
 import (
 	"bytes"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"io"
 	"io/ioutil"
 	"os"
@@ -18,6 +19,7 @@ import (
 )
 
 func TestWriteTwoPcs(t *testing.T) {
+	tf.UnitTest(t)
 	tf, _ := ioutil.TempFile("/tmp/", "scrb-")
 
 	paddedSize := abi.PaddedPieceSize(16 << 20)

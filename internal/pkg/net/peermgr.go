@@ -61,7 +61,7 @@ type PeerMgr struct {
 }
 
 type NewFilPeer struct {
-	Id peer.ID
+	Id peer.ID //nolint
 }
 
 func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, period time.Duration, bootstrap []peer.AddrInfo) (*PeerMgr, error) {
@@ -129,7 +129,7 @@ func (pmgr *PeerMgr) Disconnect(p peer.ID) {
 
 func (pmgr *PeerMgr) Stop(ctx context.Context) error {
 	log.Warn("closing peermgr done")
-	pmgr.filPeerEmitter.Close()
+	_ = pmgr.filPeerEmitter.Close()
 	close(pmgr.done)
 	return nil
 }

@@ -17,10 +17,10 @@ type GasTracker struct {
 	gasUsed      int64
 
 	executionTrace    types2.ExecutionTrace
-	numActorsCreated  uint64
-	allowInternal     bool
-	callerValidated   bool
-	lastGasChargeTime time.Time
+	numActorsCreated  uint64    //nolint
+	allowInternal     bool      //nolint
+	callerValidated   bool      //nolint
+	lastGasChargeTime time.Time //nolint
 	lastGasCharge     *types2.GasTrace
 }
 

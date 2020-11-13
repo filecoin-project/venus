@@ -7,7 +7,7 @@ import (
 	"contrib.go.opencensus.io/exporter/jaeger"
 	"contrib.go.opencensus.io/exporter/prometheus"
 	ma "github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr-net" //nolint
 	prom "github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/trace"
@@ -33,7 +33,7 @@ func RegisterPrometheusEndpoint(cfg *config.MetricsConfig) error {
 		return err
 	}
 
-	_, promAddr, err := manet.DialArgs(promma)
+	_, promAddr, err := manet.DialArgs(promma) //nolint
 	if err != nil {
 		return err
 	}

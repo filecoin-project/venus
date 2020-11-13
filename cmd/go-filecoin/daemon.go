@@ -14,7 +14,7 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
 	ma "github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr-net" //nolint
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/internal/app/go-filecoin/node"
@@ -185,7 +185,7 @@ func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig,
 
 	// Listen on the configured address in order to bind the port number in case it has
 	// been configured as zero (i.e. OS-provided)
-	apiListener, err := manet.Listen(maddr)
+	apiListener, err := manet.Listen(maddr) //nolint
 	if err != nil {
 		return err
 	}
@@ -199,7 +199,7 @@ func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig,
 	}
 
 	go func() {
-		err := apiserv.Serve(manet.NetListener(apiListener))
+		err := apiserv.Serve(manet.NetListener(apiListener)) //nolint
 		if err != nil && err != http.ErrServerClosed {
 			panic(err)
 		}

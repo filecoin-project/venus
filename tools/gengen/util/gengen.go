@@ -277,7 +277,10 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (*RenderedGenInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	vmStorage.Flush()
+	err = vmStorage.Flush()
+	if err != nil {
+		return nil, err
+	}
 	// Ignore cids that make it on chain but that should not be read through
 	// and therefore don't have corresponding blocks in store
 	ignore := cid.NewSet()

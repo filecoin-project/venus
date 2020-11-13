@@ -131,7 +131,8 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 			Epoch:             execEpoch,
 		}
 	)
-	defer vmStorage.Flush() //flush data to blockstore
+	//flush data to blockstore
+	defer vmStorage.Flush() //nolint
 
 	stateTree, err := state.LoadState(context.TODO(), ipldStore, preroot)
 	if err != nil {

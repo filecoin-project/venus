@@ -13,6 +13,7 @@ import (
 // tickets and blocks. This does not set a DefaultAddress in the Wallet; in this
 // case, node/init.go Init generates a new address in the wallet and sets it to
 // the default address.
+//nolint
 func makeTestDaemonWithMinerAndStart(t *testing.T) *th.TestDaemon {
 	daemon := th.NewDaemon(
 		t,

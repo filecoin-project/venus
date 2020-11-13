@@ -40,7 +40,8 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 	vmStorage := vm.NewStorage(bstore)
 	info, err := gengen.GenGen(context.TODO(), cfg, vmStorage)
 	require.NoError(t, err)
-	vmStorage.Flush()
+	err = vmStorage.Flush()
+	require.NoError(t, err)
 	return &ChainSeed{
 		info:   info,
 		bstore: bstore,

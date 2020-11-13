@@ -10,15 +10,12 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/internal/pkg/constants"
 	"github.com/filecoin-project/venus/internal/pkg/crypto"
 	"github.com/filecoin-project/venus/internal/pkg/encoding"
 )
-
-var log = logging.Logger("types")
 
 // SignedMessage contains a message and its signature
 // TODO do not export these fields as it increases the chances of producing a
@@ -124,20 +121,20 @@ func (smsg *SignedMessage) Equals(other *SignedMessage) bool {
 		smsg.Signature.Equals(&other.Signature)
 }
 
-func (m *SignedMessage) ChainLength() int {
-	ser, err := m.Marshal()
+func (smsg *SignedMessage) ChainLength() int {
+	ser, err := smsg.Marshal()
 	if err != nil {
 		panic(err)
 	}
 	return len(ser)
 }
 
-func (sm *SignedMessage) ToStorageBlock() (blocks.Block, error) {
-	if sm.Signature.Type == crypto.SigTypeBLS {
-		return sm.Message.ToStorageBlock()
+func (smsg *SignedMessage) ToStorageBlock() (blocks.Block, error) {
+	if smsg.Signature.Type == crypto.SigTypeBLS {
+		return smsg.Message.ToStorageBlock()
 	}
 
-	data, err := sm.Marshal()
+	data, err := smsg.Marshal()
 	if err != nil {
 		return nil, err
 	}
@@ -150,8 +147,8 @@ func (sm *SignedMessage) ToStorageBlock() (blocks.Block, error) {
 	return blocks.NewBlockWithCid(data, c)
 }
 
-func (sm *SignedMessage) VMMessage() *UnsignedMessage {
-	return &sm.Message
+func (smsg *SignedMessage) VMMessage() *UnsignedMessage {
+	return &smsg.Message
 }
 
 var _ ChainMsg = &SignedMessage{}
