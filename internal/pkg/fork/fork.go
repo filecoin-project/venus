@@ -53,7 +53,7 @@ var (
 	UpgradeTapeHeight     = abi.ChainEpoch(0)
 	UpgradeKumquatHeight  = abi.ChainEpoch(0)
 
-	BreezeGasTampingDuration = abi.ChainEpoch(0)
+	BreezeGasTampingDuration = abi.ChainEpoch(120)
 )
 
 func SetAddressNetwork(n address.Network) {
