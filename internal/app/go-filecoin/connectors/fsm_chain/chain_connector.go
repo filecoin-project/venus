@@ -2,12 +2,13 @@ package fsmchain
 
 import (
 	"context"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	fsm "github.com/filecoin-project/venus/vendors/storage-sealing"
 
 	"github.com/filecoin-project/venus/internal/pkg/chain"
 	"github.com/filecoin-project/venus/internal/pkg/encoding"
+	"github.com/filecoin-project/venus/internal/pkg/util/fsm"
 )
 
 // ChainConnector uses the chain store to provide a ChainHead method
@@ -39,4 +40,8 @@ func (a *ChainConnector) ChainHead(ctx context.Context) (fsm.TipSetToken, abi.Ch
 	}
 
 	return tok, height, err
+}
+
+func (a *ChainConnector) StateNetworkVersion(ctx context.Context, tok fsm.TipSetToken) (network.Version, error) {
+	panic("implement me")
 }

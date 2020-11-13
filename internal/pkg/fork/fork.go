@@ -305,20 +305,20 @@ func (fork *ChainFork) HandleStateForks(ctx context.Context, root cid.Cid, heigh
 	return retCid, nil
 }
 
-func (sm *ChainFork) hasExpensiveFork(ctx context.Context, height abi.ChainEpoch) bool {
-	_, ok := sm.expensiveUpgrades[height]
+func (fork *ChainFork) hasExpensiveFork(ctx context.Context, height abi.ChainEpoch) bool {
+	_, ok := fork.expensiveUpgrades[height]
 	return ok
 }
 
-func (sm *ChainFork) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
+func (fork *ChainFork) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
 	// The epochs here are the _last_ epoch for every version, or -1 if the
 	// version is disabled.
-	for _, spec := range sm.networkVersions {
+	for _, spec := range fork.networkVersions {
 		if height <= spec.atOrBelow {
 			return spec.networkVersion
 		}
 	}
-	return sm.latestVersion
+	return fork.latestVersion
 }
 
 func doTransfer(tree vmstate.Tree, from, to address.Address, amt abi.TokenAmount) error {
@@ -356,9 +356,9 @@ func doTransfer(tree vmstate.Tree, from, to address.Address, amt abi.TokenAmount
 	return nil
 }
 
-func (sm *ChainFork) ParentState(ts *block.TipSet) cid.Cid {
+func (fork *ChainFork) ParentState(ts *block.TipSet) cid.Cid {
 	if ts == nil {
-		tts, err := sm.cr.GetTipSet(sm.cr.Head())
+		tts, err := fork.cr.GetTipSet(fork.cr.Head())
 		if err == nil {
 			return tts.Blocks()[0].StateRoot.Cid
 		}

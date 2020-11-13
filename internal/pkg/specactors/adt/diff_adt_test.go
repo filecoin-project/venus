@@ -3,6 +3,7 @@ package adt
 import (
 	"bytes"
 	"context"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 
 	"testing"
 
@@ -21,6 +22,7 @@ import (
 )
 
 func TestDiffAdtArray(t *testing.T) {
+	tf.UnitTest(t)
 	ctxstoreA := newContextStore()
 	ctxstoreB := newContextStore()
 

@@ -3,6 +3,7 @@ package submodule
 import (
 	"context"
 	"crypto/rand"
+	"github.com/go-errors/errors"
 	"github.com/jbenet/goprocess"
 	"github.com/libp2p/go-eventbus"
 	"github.com/libp2p/go-libp2p-core/connmgr"
@@ -11,18 +12,18 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	crypto "github.com/libp2p/go-libp2p-crypto"
-	pstoremem "github.com/libp2p/go-libp2p-peerstore/pstoremem"
-	multiaddr "github.com/multiformats/go-multiaddr"
-	errors "github.com/pkg/errors"
+	crypto "github.com/libp2p/go-libp2p-crypto" //nolint
+	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
+	"github.com/multiformats/go-multiaddr"
 )
 
 type noopLibP2PHost struct {
-	peerId peer.ID
+	peerId peer.ID //nolint
 }
 
+//nolint
 func NewNoopLibP2PHost() noopLibP2PHost {
-	pk, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	pk, _, _ := crypto.GenerateEd25519Key(rand.Reader) //nolint
 	pid, _ := peer.IDFromPrivateKey(pk)
 	return noopLibP2PHost{pid}
 }

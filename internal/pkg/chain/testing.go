@@ -146,7 +146,8 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 		TipSetReceipts:  receiptRoot,
 	}
 	require.NoError(t, b.store.PutTipSetMetadata(context.TODO(), tipsetMeta))
-	b.store.SetHead(context.TODO(), b.genesis)
+	err = b.store.SetHead(context.TODO(), b.genesis)
+	require.NoError(t, err)
 	return b
 }
 

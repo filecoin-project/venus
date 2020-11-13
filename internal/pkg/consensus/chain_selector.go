@@ -21,12 +21,6 @@ import (
 	vmstate "github.com/filecoin-project/venus/internal/pkg/vm/state"
 )
 
-var (
-	wRatioNum  = fbig.NewInt(1)
-	wRatioDen  = fbig.NewInt(2)
-	wPrecision = fbig.NewInt(256)
-)
-
 // ChainSelector weighs and compares chains.
 type ChainSelector struct {
 	cstore cbor.IpldStore
@@ -39,11 +33,6 @@ func NewChainSelector(cs cbor.IpldStore, state StateViewer) *ChainSelector {
 		cstore: cs,
 		state:  state,
 	}
-}
-
-func log2b(x fbig.Int) fbig.Int {
-	bits := x.BitLen()
-	return fbig.NewInt(int64(bits - 1))
 }
 
 // todo gather const variable
@@ -73,6 +62,9 @@ func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet) (fbig.Int,
 	}
 
 	weight, err := ts.ParentWeight()
+	if err != nil {
+		return fbig.NewInt(0), err
+	}
 	var out = new(big.Int).Set(weight.Int)
 	out.Add(out, big.NewInt(log2P<<8))
 
@@ -90,7 +82,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet) (fbig.Int,
 
 	out = out.Add(out, eWeight)
 
-	return fbig.Int{out}, nil
+	return fbig.Int{Int: out}, nil
 }
 
 // IsHeavier returns true if tipset a is heavier than tipset b, and false

@@ -13,7 +13,7 @@ const (
 	GasComputeMulti = 1
 )
 
-type GasCharge struct {
+type GasCharge struct { //nolint
 	Name  string
 	Extra interface{}
 

@@ -4,12 +4,12 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	fsm "github.com/filecoin-project/venus/vendors/storage-sealing"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/venus/internal/pkg/chain"
 	"github.com/filecoin-project/venus/internal/pkg/chainsampler"
 	"github.com/filecoin-project/venus/internal/pkg/encoding"
+	"github.com/filecoin-project/venus/internal/pkg/util/fsm"
 )
 
 var log = logging.Logger("fsm_events") // nolint: deadcode

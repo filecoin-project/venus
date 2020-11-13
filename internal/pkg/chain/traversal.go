@@ -46,7 +46,6 @@ func (it *TipsetIterator) Next() error {
 	default:
 		if it.value.EnsureHeight() == 0 {
 			it.value = &block.TipSet{}
-			return nil
 		} else {
 			parentKey, err := it.value.Parents()
 			if err == nil {
@@ -55,6 +54,7 @@ func (it *TipsetIterator) Next() error {
 			}
 			return err
 		}
+		return nil
 	}
 }
 

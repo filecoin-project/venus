@@ -41,7 +41,6 @@ type VM struct {
 	state      state.Tree
 
 	syscalls     SyscallsImpl
-	currentHead  block.TipSetKey
 	currentEpoch abi.ChainEpoch
 	pricelist    gas.Pricelist
 
@@ -53,7 +52,7 @@ type ActorImplLookup interface {
 	GetActorImpl(code cid.Cid, rt runtime.Runtime) (dispatch.Dispatcher, *dispatch.ExcuteError)
 }
 
-func VmMessageFromUnsignedMessage(msg *types.UnsignedMessage) VmMessage {
+func VmMessageFromUnsignedMessage(msg *types.UnsignedMessage) VmMessage { //nolint
 	return VmMessage{
 		From:   msg.From,
 		To:     msg.To,
@@ -72,7 +71,7 @@ func NewVM(actorImpls ActorImplLookup,
 	store *storage.VMStorage,
 	st state.Tree,
 	syscalls SyscallsImpl,
-	VmOption VmOption,
+	vmOption VmOption,
 ) VM {
 	return VM{
 		context:    context.Background(),
@@ -80,7 +79,7 @@ func NewVM(actorImpls ActorImplLookup,
 		store:      store,
 		state:      st,
 		syscalls:   syscalls,
-		vmOption:   VmOption,
+		vmOption:   vmOption,
 		// loaded during execution
 		// currentEpoch: ..,
 	}
@@ -181,7 +180,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 			}
 			pstate, err = vm.flush()
 			if err != nil {
-				return nil, xerrors.Errorf("can not flush vm state To db", err)
+				return nil, xerrors.Errorf("can not flush vm state To db %vs", err)
 			}
 			if cb != nil {
 				if err := cb(cid.Undef, cronMessage, ret); err != nil {
@@ -768,7 +767,7 @@ func depositFunds(act *types.Actor, amt abi.TokenAmount) {
 
 var _ specsruntime.Message = (*VmMessage)(nil)
 
-type VmMessage struct {
+type VmMessage struct { //nolint
 	From   address.Address
 	To     address.Address
 	Value  abi.TokenAmount
@@ -807,6 +806,7 @@ func (vm *VM) clearSnapshot() {
 	vm.state.ClearSnapshot()
 }
 
+//nolint
 func (vm *VM) flush() (state.Root, error) {
 	// flush all blocks out of the store
 	if root, err := vm.state.Flush(vm.context); err != nil {

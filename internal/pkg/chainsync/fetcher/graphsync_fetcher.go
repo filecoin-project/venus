@@ -108,7 +108,7 @@ func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore
 //
 // The constants below determine the maximum number of tipsets fetched at once
 // (maxRecursionDepth) and how fast the ramp up is (recursionMultipler)
-const maxRecursionDepth = 64
+const maxRecursionDepth = 64 //nolint
 const recursionMultiplier = 4
 
 // FetchTipSets gets Tipsets starting from the given tipset key and continuing until
@@ -586,7 +586,6 @@ func (gsf *GraphSyncFetcher) loadAndVerifySubComponents(ctx context.Context,
 		}
 
 		link := getMetaComponent(meta)
-		fmt.Println(link)
 		ok, err := gsf.store.Has(link)
 		if err != nil {
 			return err

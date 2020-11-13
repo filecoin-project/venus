@@ -100,6 +100,7 @@ func optionalAddr(o interface{}) (ret address.Address, err error) {
 	return
 }
 
+//nolint
 func optionalSectorSizeWithDefault(o interface{}, def abi.SectorSize) (abi.SectorSize, error) {
 	if o != nil {
 		n, err := strconv.ParseUint(o.(string), 10, 64)

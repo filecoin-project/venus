@@ -28,7 +28,7 @@ type BlockMessagesInfo struct {
 	WinCount     int64
 }
 
-type VmOption struct {
+type VmOption struct { //nolint
 	CircSupplyCalculator CircSupplyCalculator
 	NtwkVersionGetter    NtwkVersionGetter
 	Rnd                  crypto.RandomnessSource

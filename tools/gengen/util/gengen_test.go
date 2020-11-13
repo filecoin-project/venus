@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	builtin2 "github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 

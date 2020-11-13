@@ -2,6 +2,7 @@ package fr32_test
 
 import (
 	"bytes"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -49,6 +50,7 @@ func padFFI(buf []byte) []byte {
 }
 
 func TestPadChunkFFI(t *testing.T) {
+	tf.UnitTest(t)
 	testByteChunk := func(b byte) func(*testing.T) {
 		return func(t *testing.T) {
 			var buf [128]byte
@@ -70,6 +72,7 @@ func TestPadChunkFFI(t *testing.T) {
 }
 
 func TestPadChunkRandEqFFI(t *testing.T) {
+	tf.UnitTest(t)
 	for i := 0; i < 200; i++ {
 		var input [127]byte
 		rand.Read(input[:])
@@ -85,6 +88,7 @@ func TestPadChunkRandEqFFI(t *testing.T) {
 }
 
 func TestRoundtrip(t *testing.T) {
+	tf.UnitTest(t)
 	testByteChunk := func(b byte) func(*testing.T) {
 		return func(t *testing.T) {
 			var buf [128]byte
@@ -107,6 +111,7 @@ func TestRoundtrip(t *testing.T) {
 }
 
 func TestRoundtripChunkRand(t *testing.T) {
+	tf.UnitTest(t)
 	for i := 0; i < 200; i++ {
 		var input [127]byte
 		rand.Read(input[:])
@@ -124,6 +129,7 @@ func TestRoundtripChunkRand(t *testing.T) {
 }
 
 func TestRoundtrip16MRand(t *testing.T) {
+	tf.UnitTest(t)
 	up := abi.PaddedPieceSize(16 << 20).Unpadded()
 
 	input := make([]byte, up)
@@ -143,6 +149,7 @@ func TestRoundtrip16MRand(t *testing.T) {
 }
 
 func BenchmarkPadChunk(b *testing.B) {
+	tf.BenchUnitTest(b)
 	var buf [128]byte
 	in := bytes.Repeat([]byte{0xff}, 127)
 
@@ -154,6 +161,7 @@ func BenchmarkPadChunk(b *testing.B) {
 }
 
 func BenchmarkChunkRoundtrip(b *testing.B) {
+	tf.BenchUnitTest(b)
 	var buf [128]byte
 	copy(buf[:], bytes.Repeat([]byte{0xff}, 127))
 	var out [127]byte
@@ -167,6 +175,7 @@ func BenchmarkChunkRoundtrip(b *testing.B) {
 }
 
 func BenchmarkUnpadChunk(b *testing.B) {
+	tf.BenchUnitTest(b)
 	var buf [128]byte
 	copy(buf[:], bytes.Repeat([]byte{0xff}, 127))
 
@@ -184,6 +193,7 @@ func BenchmarkUnpadChunk(b *testing.B) {
 }
 
 func BenchmarkUnpad16MChunk(b *testing.B) {
+	tf.BenchUnitTest(b)
 	up := abi.PaddedPieceSize(16 << 20).Unpadded()
 
 	var buf [16 << 20]byte
@@ -201,6 +211,7 @@ func BenchmarkUnpad16MChunk(b *testing.B) {
 }
 
 func BenchmarkPad16MChunk(b *testing.B) {
+	tf.BenchUnitTest(b)
 	up := abi.PaddedPieceSize(16 << 20).Unpadded()
 
 	var buf [16 << 20]byte
@@ -217,6 +228,7 @@ func BenchmarkPad16MChunk(b *testing.B) {
 }
 
 func BenchmarkPad1GChunk(b *testing.B) {
+	tf.BenchUnitTest(b)
 	up := abi.PaddedPieceSize(1 << 30).Unpadded()
 
 	var buf [1 << 30]byte
@@ -233,6 +245,7 @@ func BenchmarkPad1GChunk(b *testing.B) {
 }
 
 func BenchmarkUnpad1GChunk(b *testing.B) {
+	tf.BenchUnitTest(b)
 	up := abi.PaddedPieceSize(1 << 30).Unpadded()
 
 	var buf [1 << 30]byte

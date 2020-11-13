@@ -55,7 +55,6 @@ type CirculatingSupplyCalculator struct {
 	bstore        blockstore.Blockstore
 	genesisReader genesisReader
 
-	genesisMsigs []msig0.State
 	// info about the Accounts in the genesis state
 	preIgnitionGenInfos  *genesisInfo
 	postIgnitionGenInfos *genesisInfo

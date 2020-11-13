@@ -2,6 +2,7 @@ package conformance
 
 import (
 	"encoding/json"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -47,6 +48,7 @@ var ignore = map[string]struct{}{
 // as well as files beginning with _. It parses each file as a test vector, and
 // runs it via the Driver.
 func TestConformance(t *testing.T) {
+	tf.UnitTest(t)
 	if skip := strings.TrimSpace(os.Getenv(EnvSkipConformance)); skip == "1" {
 		t.SkipNow()
 	}

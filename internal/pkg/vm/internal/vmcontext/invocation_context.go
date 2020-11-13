@@ -214,9 +214,9 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 
 	// 1. load target actor
 	// Note: we replace the "To" address with the normalized version
-	_, toIdAddr := ctx.resolveTarget(ctx.originMsg.To)
+	_, toIDAddr := ctx.resolveTarget(ctx.originMsg.To)
 	if ctx.vm.NtwkVersion() > network.Version3 {
-		ctx.msg.To = toIdAddr
+		ctx.msg.To = toIDAddr
 	}
 
 	// 2. charge gas for msg
@@ -224,8 +224,8 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 
 	// 3. transfer funds carried by the msg
 	if !ctx.originMsg.Value.Nil() && !ctx.originMsg.Value.IsZero() {
-		if ctx.msg.From != toIdAddr {
-			ctx.vm.transfer(ctx.msg.From, toIdAddr, ctx.originMsg.Value)
+		if ctx.msg.From != toIDAddr {
+			ctx.vm.transfer(ctx.msg.From, toIDAddr, ctx.originMsg.Value)
 		}
 	}
 
@@ -305,10 +305,11 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 
 	// lookup the ActorID based on the address
 
-	targetActor, found, err := ctx.vm.state.GetActor(ctx.vm.context, target)
+	_, found, err = ctx.vm.state.GetActor(ctx.vm.context, target)
 	if err != nil {
 		panic(err)
 	}
+	//nolint
 	if !found {
 		// Charge gas now that easy checks are done
 		ctx.gasTank.Charge(gas.PricelistByEpoch(ctx.vm.CurrentEpoch()).OnCreateActor(), "CreateActor  address %s", target)
@@ -317,7 +318,6 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 		// - sent init actor a msg To create the new account
 		targetIDAddr, err := ctx.vm.state.RegisterNewAddress(target)
 		if err != nil {
-			ctx.vm.state.RegisterNewAddress(target)
 			panic(err)
 		}
 
@@ -364,7 +364,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 		}
 
 		// load actor
-		targetActor, found, err = ctx.vm.state.GetActor(ctx.vm.context, targetIDAddr)
+		targetActor, found, err := ctx.vm.state.GetActor(ctx.vm.context, targetIDAddr)
 		if err != nil {
 			panic(err)
 		}
@@ -456,15 +456,13 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 	newCtx := newInvocationContext(ctx.vm, ctx.gasIpld, ctx.topLevel, newMsg, ctx.gasTank, ctx.randSource)
 	// 2. invoke
 	ret, code := newCtx.invoke()
-	if code != 0 {
-		return code
-	} else {
+	if code == 0 {
 		_ = ctx.gasTank.TryCharge(gasOnActorExec)
 		if err := out.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
 			runtime.Abortf(exitcode.ErrSerialization, "failed To unmarshal return Value: %s", err)
 		}
-		return code
 	}
+	return code
 }
 
 /// Balance implements runtime.InvocationContext.

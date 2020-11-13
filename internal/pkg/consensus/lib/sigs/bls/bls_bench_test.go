@@ -2,12 +2,14 @@ package bls
 
 import (
 	"crypto/rand"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
 )
 
 func BenchmarkBLSSign(b *testing.B) {
+	tf.BenchUnitTest(b)
 	signer := blsSigner{}
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()

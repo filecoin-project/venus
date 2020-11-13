@@ -53,11 +53,11 @@ func NewStateWithBuiltinActor(t *testing.T, store cbor.IpldStore, ver StateTreeV
 		NetworkName: "test-net",
 	}
 
-	initCodeId, err := store.Put(ctx, initState)
+	initCodeID, err := store.Put(ctx, initState)
 	require.NoError(t, err)
 	initActor := &types.Actor{
 		Code:       enccid.NewCid(builtin0.InitActorCodeID),
-		Head:       enccid.NewCid(initCodeId),
+		Head:       enccid.NewCid(initCodeID),
 		CallSeqNum: 0,
 		Balance:    abi.TokenAmount{},
 	}
@@ -78,7 +78,7 @@ func AddAccount(t *testing.T, tree *State, store cbor.IpldStore, addr address.Ad
 	//add a account for t3
 	idAddr, err := initState.MapAddressToNewID(adtStore, addr)
 	require.NoError(t, err)
-	newInitStateId, err := store.Put(ctx, initState)
+	newInitStateId, err := store.Put(ctx, initState) //nolint
 	require.NoError(t, err)
 	initActor.Head = enccid.NewCid(newInitStateId)
 	err = tree.SetActor(ctx, builtin0.InitActorAddr, initActor)
@@ -98,7 +98,7 @@ func AddAccount(t *testing.T, tree *State, store cbor.IpldStore, addr address.Ad
 	require.NoError(t, err)
 
 	//save t3 address
-	accountState := &account.State{addr}
+	accountState := &account.State{Address: addr}
 	accountRoot, err := store.Put(context.TODO(), accountState)
 	if err != nil {
 		panic(err)

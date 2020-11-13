@@ -2,6 +2,7 @@ package chaos
 
 import (
 	"context"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -15,6 +16,7 @@ import (
 )
 
 func TestSingleton(t *testing.T) {
+	tf.UnitTest(t)
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock2.NewBuilder(context.Background(), receiver)
 
@@ -29,6 +31,7 @@ func TestSingleton(t *testing.T) {
 }
 
 func TestCallerValidationNone(t *testing.T) {
+	tf.UnitTest(t)
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock2.NewBuilder(context.Background(), receiver)
 
@@ -40,6 +43,7 @@ func TestCallerValidationNone(t *testing.T) {
 }
 
 func TestCallerValidationIs(t *testing.T) {
+	tf.UnitTest(t)
 	caller := atesting2.NewIDAddr(t, 100)
 	receiver := atesting2.NewIDAddr(t, 101)
 	builder := mock2.NewBuilder(context.Background(), receiver)
@@ -69,6 +73,7 @@ func TestCallerValidationIs(t *testing.T) {
 }
 
 func TestCallerValidationType(t *testing.T) {
+	tf.UnitTest(t)
 	caller := atesting2.NewIDAddr(t, 100)
 	receiver := atesting2.NewIDAddr(t, 101)
 	builder := mock2.NewBuilder(context.Background(), receiver)
@@ -95,6 +100,7 @@ func TestCallerValidationType(t *testing.T) {
 }
 
 func TestCallerValidationInvalidBranch(t *testing.T) {
+	tf.UnitTest(t)
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock2.NewBuilder(context.Background(), receiver)
 
@@ -108,6 +114,7 @@ func TestCallerValidationInvalidBranch(t *testing.T) {
 }
 
 func TestDeleteActor(t *testing.T) {
+	tf.UnitTest(t)
 	receiver := atesting2.NewIDAddr(t, 100)
 	beneficiary := atesting2.NewIDAddr(t, 101)
 	builder := mock2.NewBuilder(context.Background(), receiver)
@@ -122,6 +129,7 @@ func TestDeleteActor(t *testing.T) {
 }
 
 func TestMutateStateInTransaction(t *testing.T) {
+	tf.UnitTest(t)
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock2.NewBuilder(context.Background(), receiver)
 
@@ -148,6 +156,7 @@ func TestMutateStateInTransaction(t *testing.T) {
 }
 
 func TestMutateStateAfterTransaction(t *testing.T) {
+	tf.UnitTest(t)
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock2.NewBuilder(context.Background(), receiver)
 
@@ -175,6 +184,7 @@ func TestMutateStateAfterTransaction(t *testing.T) {
 }
 
 func TestMutateStateReadonly(t *testing.T) {
+	tf.UnitTest(t)
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock2.NewBuilder(context.Background(), receiver)
 
@@ -201,6 +211,7 @@ func TestMutateStateReadonly(t *testing.T) {
 }
 
 func TestMutateStateInvalidBranch(t *testing.T) {
+	tf.UnitTest(t)
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock2.NewBuilder(context.Background(), receiver)
 
@@ -215,6 +226,7 @@ func TestMutateStateInvalidBranch(t *testing.T) {
 }
 
 func TestAbortWith(t *testing.T) {
+	tf.UnitTest(t)
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock2.NewBuilder(context.Background(), receiver)
 
@@ -233,6 +245,7 @@ func TestAbortWith(t *testing.T) {
 }
 
 func TestAbortWithUncontrolled(t *testing.T) {
+	tf.UnitTest(t)
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock2.NewBuilder(context.Background(), receiver)
 
@@ -250,6 +263,7 @@ func TestAbortWithUncontrolled(t *testing.T) {
 }
 
 func TestInspectRuntime(t *testing.T) {
+	tf.UnitTest(t)
 	caller := atesting2.NewIDAddr(t, 100)
 	receiver := atesting2.NewIDAddr(t, 101)
 	builder := mock2.NewBuilder(context.Background(), receiver)

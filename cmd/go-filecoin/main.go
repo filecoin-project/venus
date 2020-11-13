@@ -11,7 +11,7 @@ import (
 	"github.com/ipfs/go-ipfs-cmds/cli"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
 	ma "github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr-net" //nolint
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/internal/app/go-filecoin/paths"
@@ -283,7 +283,7 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 		return "", errors.Wrap(err, fmt.Sprintf("unable to convert API endpoint address %s to a multiaddr", rawAddr))
 	}
 
-	_, host, err := manet.DialArgs(maddr)
+	_, host, err := manet.DialArgs(maddr) //nolint
 	if err != nil {
 		return "", errors.Wrap(err, fmt.Sprintf("unable to dial API endpoint address %s", maddr))
 	}

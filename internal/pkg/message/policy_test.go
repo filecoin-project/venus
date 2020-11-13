@@ -131,7 +131,6 @@ func TestMessageQueuePolicy(t *testing.T) {
 		})
 		err = policy.HandleNewHead(ctx, q, nil, []*block.TipSet{b4})
 		require.NoError(t, err)
-		alice.String()
 		assert.Empty(t, q.List(alice))
 	})
 

@@ -12,7 +12,7 @@ import (
 
 // Re-exports
 
-type VmOption = vmcontext.VmOption
+type VmOption = vmcontext.VmOption //nolint
 
 type Ret = vmcontext.Ret
 
@@ -29,7 +29,7 @@ type SyscallsStateView = vmcontext.SyscallsStateView
 type BlockMessagesInfo = vmcontext.BlockMessagesInfo
 
 type ExecCallBack = vmcontext.ExecCallBack
-type VmMessage = vmcontext.VmMessage
+type VmMessage = vmcontext.VmMessage //nolint
 type FakeSyscalls = vmcontext.FakeSyscalls
 
 // NewVM creates a new VM interpreter.

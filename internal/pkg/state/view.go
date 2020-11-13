@@ -2,8 +2,6 @@ package state
 
 import (
 	"context"
-	"sync"
-
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
@@ -16,11 +14,11 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/internal/pkg/block"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/account"
 	notinit "github.com/filecoin-project/venus/internal/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/multisig"
 	paychActor "github.com/filecoin-project/venus/internal/pkg/specactors/builtin/paych"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/power"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/reward"
@@ -29,9 +27,6 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/util/ffiwrapper"
 	vmstate "github.com/filecoin-project/venus/internal/pkg/vm/state"
 )
-
-var dealProviderCollateralNum = big.NewInt(110)
-var dealProviderCollateralDen = big.NewInt(100)
 
 // Viewer builds state views from state root CIDs.
 type Viewer struct {
@@ -48,19 +43,6 @@ func (c *Viewer) StateView(root cid.Cid) *View {
 	return NewView(c.ipldStore, root)
 }
 
-type genesisInfo struct {
-	genesisMsigs []multisig.State
-	// info about the Accounts in the genesis state
-	genesisActors      []genesisActor
-	genesisPledge      abi.TokenAmount
-	genesisMarketFunds abi.TokenAmount
-}
-
-type genesisActor struct {
-	addr    addr.Address
-	initBal abi.TokenAmount
-}
-
 // View is a read-only interface to a snapshot of application-level actor state.
 // This object interprets the actor state, abstracting the concrete on-chain structures so as to
 // hide the complications of protocol versions.
@@ -69,10 +51,6 @@ type genesisActor struct {
 type View struct {
 	ipldStore cbor.IpldStore
 	root      cid.Cid
-
-	genInfo       *genesisInfo
-	genesisMsigLk sync.Mutex
-	genesisRoot   cid.Cid
 }
 
 // NewView creates a new state view
@@ -208,6 +186,98 @@ func (v *View) MinerGetSector(ctx context.Context, maddr addr.Address, sectorNum
 	}
 
 	return info, true, nil
+}
+
+func (v *View) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, st cid.Cid, maddr addr.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
+	mas, err := v.LoadMinerActor(ctx, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor state: %s", err)
+	}
+
+	// TODO (!!): Actor Update: Make this active sectors
+
+	allSectors, err := miner.AllPartSectors(mas, miner.Partition.AllSectors)
+	if err != nil {
+		return nil, xerrors.Errorf("get all sectors: %s", err)
+	}
+
+	faultySectors, err := miner.AllPartSectors(mas, miner.Partition.FaultySectors)
+	if err != nil {
+		return nil, xerrors.Errorf("get faulty sectors: %s", err)
+	}
+
+	provingSectors, err := bitfield.SubtractBitField(allSectors, faultySectors) // TODO: This is wrong, as it can contain faaults, change to just ActiveSectors in an upgrade
+	if err != nil {
+		return nil, xerrors.Errorf("calc proving sectors: %s", err)
+	}
+
+	numProvSect, err := provingSectors.Count()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to count bits: %s", err)
+	}
+
+	// TODO(review): is this right? feels fishy to me
+	if numProvSect == 0 {
+		return nil, nil
+	}
+
+	info, err := mas.Info()
+	if err != nil {
+		return nil, xerrors.Errorf("getting miner info: %s", err)
+	}
+
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(info.SectorSize)
+	if err != nil {
+		return nil, xerrors.Errorf("getting seal proof type: %s", err)
+	}
+
+	wpt, err := spt.RegisteredWinningPoStProof()
+	if err != nil {
+		return nil, xerrors.Errorf("getting window proof type: %s", err)
+	}
+
+	mid, err := addr.IDFromAddress(maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("getting miner ID: %s", err)
+	}
+
+	ids, err := pv.GenerateWinningPoStSectorChallenge(ctx, wpt, abi.ActorID(mid), rand, numProvSect)
+	if err != nil {
+		return nil, xerrors.Errorf("generating winning post challenges: %s", err)
+	}
+
+	iter, err := provingSectors.BitIterator()
+	if err != nil {
+		return nil, xerrors.Errorf("iterating over proving sectors: %s", err)
+	}
+
+	// Select winning sectors by _index_ in the all-sectors bitfield.
+	selectedSectors := bitfield.New()
+	prev := uint64(0)
+	for _, n := range ids {
+		sno, err := iter.Nth(n - prev)
+		if err != nil {
+			return nil, xerrors.Errorf("iterating over proving sectors: %s", err)
+		}
+		selectedSectors.Set(sno)
+		prev = n
+	}
+
+	sectors, err := mas.LoadSectors(&selectedSectors)
+	if err != nil {
+		return nil, xerrors.Errorf("loading proving sectors: %s", err)
+	}
+
+	out := make([]builtin.SectorInfo, len(sectors))
+	for i, sinfo := range sectors {
+		out[i] = builtin.SectorInfo{
+			SealProof:    spt,
+			SectorNumber: sinfo.SectorNumber,
+			SealedCID:    sinfo.SealedCID,
+		}
+	}
+
+	return out, nil
 }
 
 func (v *View) GetPartsProving(ctx context.Context, maddr addr.Address) ([]bitfield.BitField, error) {
@@ -422,7 +492,7 @@ func (v *View) MarketDealStatesForEach(ctx context.Context, f func(id abi.DealID
 	}
 
 	ff := func(id abi.DealID, ds market.DealState) error {
-		return f(abi.DealID(id), &ds)
+		return f(id, &ds)
 	}
 	if err := deals.ForEach(ff); err != nil {
 		return err

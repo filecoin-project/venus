@@ -28,7 +28,7 @@ type CborBlockStore struct {
 }
 
 func (cbor *CborBlockStore) PutBlocks(ctx context.Context, block []*block.Block) {
-	cbor.cborStore.Put(ctx, block)
+	_, _ = cbor.cborStore.Put(ctx, block)
 }
 
 // Default Chain diagram below.  Note that blocks in the same tipset are in parentheses.
@@ -399,10 +399,6 @@ func TestLoadAndReboot(t *testing.T) {
 
 	// Check the head
 	assert.Equal(t, link4.Key(), rebootChain.GetHead())
-}
-
-type tipSetGetter interface {
-	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 }
 
 func requireGetTipSet(ctx context.Context, t *testing.T, chainStore *CborBlockStore, key block.TipSetKey) *block.TipSet {

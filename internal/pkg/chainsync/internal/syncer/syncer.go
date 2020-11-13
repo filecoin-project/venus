@@ -575,6 +575,10 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 		beInSyncing = false //reset to start new sync
 	}()
 
+	cidd, _ := cid.Decode("bafy2bzaced2rl3cgi6f3dujeo6dcrhgcftwwevd27xztpvszk74jny2tlan2m")
+	ci.Head = block.NewTipSetKey(cidd)
+	ci.Height = 5028
+
 	// If the store already has this tipset then the syncer is finished.
 	if syncer.chainStore.HasTipSetAndState(ctx, ci.Head) {
 		return nil
@@ -653,7 +657,10 @@ func (syncer *Syncer) fetchChainBlocks(ctx context.Context, knownTip *block.TipS
 		cborStore := cborutil.NewIpldStore(bs)
 		for _, tips := range saveTips {
 			for _, blk := range tips.Blocks() {
-				cborStore.Put(ctx, blk)
+				_, err := cborStore.Put(ctx, blk)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		return util.CopyBlockstore(ctx, bs, syncer.bsstore)
@@ -731,7 +738,10 @@ loop:
 		}
 		return nil, xerrors.Errorf("failed to sync fork: %w", err)
 	}
-	flushDb(fork)
+	err = flushDb(fork)
+	if err != nil {
+		return nil, err
+	}
 	chainTipsets = append(chainTipsets, fork...)
 	chain.Reverse(chainTipsets)
 	return chainTipsets, nil

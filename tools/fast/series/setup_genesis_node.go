@@ -2,8 +2,6 @@ package series
 
 import (
 	"context"
-	"math/big"
-
 	"github.com/filecoin-project/go-address"
 	files "github.com/ipfs/go-ipfs-files"
 
@@ -35,6 +33,5 @@ func SetupGenesisNode(ctx context.Context, node *fast.Filecoin, minerAddress add
 		return err
 	}
 
-	_, err = node.MinerUpdatePeerid(ctx, minerAddress, node.PeerID, fast.AOFromAddr(wallet[0]), fast.AOPrice(big.NewFloat(.0000001)), fast.AOLimit(1))
-	return err
+	return nil
 }

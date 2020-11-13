@@ -7,10 +7,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/internal/pkg/util/ffiwrapper"
 )
 
 // FakeStateView is a fake state view.
@@ -135,6 +138,14 @@ func (v *FakeStateView) MinerClaimedPower(ctx context.Context, miner address.Add
 		return big.Zero(), big.Zero(), errors.Errorf("no miner %s", miner)
 	}
 	return m.ClaimedRawPower, m.ClaimedQAPower, nil
+}
+
+func (v *FakeStateView) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
+	_, ok := v.Miners[maddr]
+	if !ok {
+		return nil, errors.Errorf("no miner %s", maddr)
+	}
+	return []builtin.SectorInfo{}, nil
 }
 
 func (v *FakeStateView) MinerPledgeCollateral(_ context.Context, maddr address.Address) (locked abi.TokenAmount, total abi.TokenAmount, err error) {
