@@ -586,7 +586,6 @@ func (gsf *GraphSyncFetcher) loadAndVerifySubComponents(ctx context.Context,
 		}
 
 		link := getMetaComponent(meta)
-		fmt.Println(link)
 		ok, err := gsf.store.Has(link)
 		if err != nil {
 			return err

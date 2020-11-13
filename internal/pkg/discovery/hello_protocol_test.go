@@ -2,15 +2,12 @@ package discovery_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/venus/internal/pkg/net"
 	"github.com/filecoin-project/venus/internal/pkg/repo"
 	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/failstore"
-	"github.com/ipfs/go-datastore/retrystore"
 	"github.com/libp2p/go-libp2p-core/host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 
@@ -191,14 +188,5 @@ func mockPeerMgr(t *testing.T, ctx context.Context, h host.Host) (*net.PeerMgr, 
 	addrInfo, err := net.ParseAddresses(ctx, repo.NewInMemoryRepo().Config().Bootstrap.Addresses)
 	require.NoError(t, err)
 
-	rds := &retrystore.Datastore{
-		Batching: failstore.NewFailstore(ds.NewMapDatastore(), func(op string) error {
-			return fmt.Errorf("this is an actual error")
-		}),
-		Retries: 5,
-		TempErrFunc: func(err error) bool {
-			return false
-		},
-	}
-	return net.NewPeerMgr(h, dht.NewDHT(ctx, h, rds), 10, addrInfo)
+	return net.NewPeerMgr(h, dht.NewDHT(ctx, h, ds.NewMapDatastore()), 10, addrInfo)
 }
