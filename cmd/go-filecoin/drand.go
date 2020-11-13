@@ -22,7 +22,7 @@ var drandRandom = &cmds.Command{
 	},
 	Options: []cmds.Option{
 		cmds.Uint64Option("round", "retrieve randomness at given round (default 0)"),
-		cmds.Uint64Option("round", "retrieve randomness at height round (default 0)"),
+		cmds.Uint64Option("height", "retrieve randomness at height round (default 0)"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		round, _ := req.Options["round"].(uint64)

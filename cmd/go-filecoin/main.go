@@ -119,14 +119,12 @@ NETWORK COMMANDS
   venus bootstrap              - Interact with bootstrap addresses
   venus dht                    - Interact with the dht
   venus id                     - Show info about the network peers
-  venus ping <peer ID>...      - Send echo request packets to p2p network members
   venus swarm                  - Interact with the swarm
   venus stats                  - Monitor statistics on your network usage
   venus drand random           - retrieve drand randomness
 
 ACTOR COMMANDS
   venus actor                  - Interact with actors. Actors are built-in smart contracts
-  venus paych                  - Payment channel operations
 
 MESSAGE COMMANDS
   venus message                - Manage messages
