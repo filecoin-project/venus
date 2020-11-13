@@ -61,7 +61,7 @@ type PeerMgr struct {
 }
 
 type NewFilPeer struct {
-	Id peer.ID
+	Id peer.ID //nolint
 }
 
 func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, period time.Duration, bootstrap []peer.AddrInfo) (*PeerMgr, error) {

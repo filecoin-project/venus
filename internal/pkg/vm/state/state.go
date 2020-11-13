@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/types"
 )
 
-type StateTreeVersion uint64
+type StateTreeVersion uint64 //nolint
 
 type ActorKey = address.Address
 
@@ -55,7 +55,7 @@ const (
 	StateTreeVersion1
 )
 
-type StateRoot struct {
+type StateRoot struct { //nolint
 	_ struct{} `cbor:",toarray"`
 	// State tree version.
 	Version StateTreeVersion
@@ -66,7 +66,7 @@ type StateRoot struct {
 }
 
 // TODO: version this.
-type StateInfo0 struct{}
+type StateInfo0 struct{} //nolint
 
 // state stores actors state by their ID.
 type State struct {

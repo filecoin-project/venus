@@ -78,7 +78,7 @@ func AddAccount(t *testing.T, tree *State, store cbor.IpldStore, addr address.Ad
 	//add a account for t3
 	idAddr, err := initState.MapAddressToNewID(adtStore, addr)
 	require.NoError(t, err)
-	newInitStateId, err := store.Put(ctx, initState)
+	newInitStateId, err := store.Put(ctx, initState) //nolint
 	require.NoError(t, err)
 	initActor.Head = enccid.NewCid(newInitStateId)
 	err = tree.SetActor(ctx, builtin0.InitActorAddr, initActor)

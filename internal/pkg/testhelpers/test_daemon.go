@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	ma "github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr-net" //nolint
 	"github.com/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
@@ -581,7 +581,7 @@ func tryAPICheck(td *TestDaemon) error {
 		return err
 	}
 
-	_, host, err := manet.DialArgs(maddr)
+	_, host, err := manet.DialArgs(maddr) //nolint
 	if err != nil {
 		return err
 	}

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"testing"
 
-	manet "github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr-net" //nolint
 
 	"github.com/stretchr/testify/require"
 
@@ -26,7 +26,7 @@ func TestInitOverHttp(t *testing.T) {
 	maddr, err := td.CmdAddr()
 	require.NoError(t, err)
 
-	_, host, err := manet.DialArgs(maddr)
+	_, host, err := manet.DialArgs(maddr) //nolint
 	require.NoError(t, err)
 
 	url := fmt.Sprintf("http://%s/api/init", host)

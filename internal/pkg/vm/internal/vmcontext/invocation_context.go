@@ -309,6 +309,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 	if err != nil {
 		panic(err)
 	}
+	//nolint
 	if !found {
 		// Charge gas now that easy checks are done
 		ctx.gasTank.Charge(gas.PricelistByEpoch(ctx.vm.CurrentEpoch()).OnCreateActor(), "CreateActor  address %s", target)

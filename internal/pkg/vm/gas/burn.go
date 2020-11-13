@@ -10,7 +10,7 @@ const (
 	gasOveruseDenom = 10
 )
 
-type GasOutputs struct {
+type GasOutputs struct { //nolint
 	BaseFeeBurn        abi.TokenAmount
 	OverEstimationBurn abi.TokenAmount
 

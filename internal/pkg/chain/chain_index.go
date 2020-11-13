@@ -11,7 +11,7 @@ import (
 
 var DefaultChainIndexCacheSize = 32 << 10
 
-type ChainIndex struct {
+type ChainIndex struct { //nolint
 	skipCache *lru.ARCCache
 
 	loadTipSet loadTipSetFunc

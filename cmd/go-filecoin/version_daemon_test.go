@@ -10,7 +10,7 @@ import (
 
 	th "github.com/filecoin-project/venus/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
-	manet "github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr-net" //nolint
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,7 +37,7 @@ func TestVersionOverHttp(t *testing.T) {
 	maddr, err := td.CmdAddr()
 	require.NoError(t, err)
 
-	_, host, err := manet.DialArgs(maddr)
+	_, host, err := manet.DialArgs(maddr) //nolint
 	require.NoError(t, err)
 
 	url := fmt.Sprintf("http://%s/api/version", host)

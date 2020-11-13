@@ -12,17 +12,18 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	crypto "github.com/libp2p/go-libp2p-crypto"
+	crypto "github.com/libp2p/go-libp2p-crypto" //nolint
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	"github.com/multiformats/go-multiaddr"
 )
 
 type noopLibP2PHost struct {
-	peerId peer.ID
+	peerId peer.ID //nolint
 }
 
+//nolint
 func NewNoopLibP2PHost() noopLibP2PHost {
-	pk, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	pk, _, _ := crypto.GenerateEd25519Key(rand.Reader) //nolint
 	pid, _ := peer.IDFromPrivateKey(pk)
 	return noopLibP2PHost{pid}
 }
