@@ -2,6 +2,7 @@ package fr32_test
 
 import (
 	"bytes"
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"io/ioutil"
 	"testing"
 
@@ -13,6 +14,7 @@ import (
 )
 
 func TestUnpadReader(t *testing.T) {
+	tf.UnitTest(t)
 	ps := abi.PaddedPieceSize(64 << 20).Unpadded()
 
 	raw := bytes.Repeat([]byte{0x77}, int(ps))
