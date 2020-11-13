@@ -3,8 +3,10 @@ package discovery_test
 import (
 	"context"
 	"github.com/filecoin-project/venus/internal/pkg/util/test"
+	"github.com/libp2p/go-libp2p-core/network"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/venus/internal/pkg/block"
 	"github.com/filecoin-project/venus/internal/pkg/discovery"
@@ -131,10 +133,23 @@ func TestPeerTrackerNetworkDisconnect(t *testing.T) {
 	// register tracker OnDisconnect callback in self's network
 	tracker.RegisterDisconnect(self.Network())
 
+	disconnect := make(chan error)
+	notifee := &network.NotifyBundle{}
+	notifee.DisconnectedF = func(network network.Network, conn network.Conn) {
+		disconnect <- nil
+	}
+	self.Network().Notify(notifee)
 	// disconnect from tracked a and untracked c
 	require.NoError(t, mn.DisconnectPeers(selfID, aID))
 	require.NoError(t, mn.DisconnectPeers(selfID, cID))
 
+	select {
+	case <-time.After(time.Second * 5):
+		t.Errorf("time out for wait disconnect notify")
+	case <-disconnect:
+	}
+
 	tracked := tracker.List()
+	time.Sleep(time.Second)
 	test.Equal(t, []*block.ChainInfo{bCI}, tracked)
 }

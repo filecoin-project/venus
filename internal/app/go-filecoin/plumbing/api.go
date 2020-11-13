@@ -373,7 +373,7 @@ func (api *API) DAGImportData(ctx context.Context, data io.Reader) (ipld.Node, e
 func (api *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*block.MiningBaseInfo, error) {
 	ts, err := api.ChainTipSet(tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load tipset for mining base: %w", err)
+		return nil, xerrors.Errorf("failed to load tipset for mining base: %v", err)
 	}
 
 	prev, err := chain.FindLatestDRAND(ctx, ts, api.chain)
@@ -398,22 +398,22 @@ func (api *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round
 
 	lbts, err := api.GetLookbackTipSetForRound(ctx, ts, round)
 	if err != nil {
-		return nil, xerrors.Errorf("getting lookback miner actor state: %w", err)
+		return nil, xerrors.Errorf("getting lookback miner actor state: %v", err)
 	}
 
 	buf := new(bytes.Buffer)
 	if err := maddr.MarshalCBOR(buf); err != nil {
-		return nil, xerrors.Errorf("failed to marshal miner address: %w", err)
+		return nil, xerrors.Errorf("failed to marshal miner address: %v", err)
 	}
 
 	prand, err := chain.DrawRandomness(rbase.Data, acrypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get randomness for winning post: %w", err)
+		return nil, xerrors.Errorf("failed to get randomness for winning post: %v", err)
 	}
 
 	sectors, err := api.GetSectorsForWinningPoSt(ctx, pv, lbts, maddr, prand)
 	if err != nil {
-		return nil, xerrors.Errorf("getting winning post proving set: %w", err)
+		return nil, xerrors.Errorf("getting winning post proving set: %v", err)
 	}
 
 	if len(sectors) == 0 {
@@ -422,7 +422,7 @@ func (api *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round
 
 	mpow, tpow, err := api.GetPowerRaw(ctx, lbts, maddr)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get power: %w", err)
+		return nil, xerrors.Errorf("failed to get power: %v", err)
 	}
 
 	lbHeight, err := lbts.Height()
@@ -442,12 +442,12 @@ func (api *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round
 
 	worker, err := api.ResolveToKeyAddr(ctx, info.Worker, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("resolving worker address: %w", err)
+		return nil, xerrors.Errorf("resolving worker address: %v", err)
 	}
 
 	hmp, err := api.MinerHasMinPower(ctx, maddr, lbts)
 	if err != nil {
-		return nil, xerrors.Errorf("determining if miner has min power failed: %w", err)
+		return nil, xerrors.Errorf("determining if miner has min power failed: %v", err)
 	}
 
 	return &block.MiningBaseInfo{
@@ -475,7 +475,7 @@ func (api *API) GetLookbackTipSetForRound(ctx context.Context, ts *block.TipSet,
 
 	lbts, err := chain.FindTipsetAtEpoch(ctx, ts, lbr, api.chain)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get lookback tipset: %w", err)
+		return nil, xerrors.Errorf("failed to get lookback tipset: %v", err)
 	}
 
 	return lbts, nil
@@ -506,12 +506,12 @@ func (api *API) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Veri
 
 	provingSectors, err := bitfield.MultiMerge(partsProving...)
 	if err != nil {
-		return nil, xerrors.Errorf("merge partition proving sets: %w", err)
+		return nil, xerrors.Errorf("merge partition proving sets: %v", err)
 	}
 
 	numProvSect, err := provingSectors.Count()
 	if err != nil {
-		return nil, xerrors.Errorf("failed to count bits: %w", err)
+		return nil, xerrors.Errorf("failed to count bits: %v", err)
 	}
 
 	// TODO(review): is this right? feels fishy to me
@@ -521,27 +521,27 @@ func (api *API) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Veri
 
 	spt, err := ffiwrapper.SealProofTypeFromSectorSize(info.SectorSize)
 	if err != nil {
-		return nil, xerrors.Errorf("getting seal proof type: %w", err)
+		return nil, xerrors.Errorf("getting seal proof type: %v", err)
 	}
 
 	wpt, err := spt.RegisteredWinningPoStProof()
 	if err != nil {
-		return nil, xerrors.Errorf("getting window proof type: %w", err)
+		return nil, xerrors.Errorf("getting window proof type: %v", err)
 	}
 
 	mid, err := address.IDFromAddress(maddr)
 	if err != nil {
-		return nil, xerrors.Errorf("getting miner ID: %w", err)
+		return nil, xerrors.Errorf("getting miner ID: %v", err)
 	}
 
 	ids, err := pv.GenerateWinningPoStSectorChallenge(ctx, wpt, abi.ActorID(mid), rand, numProvSect)
 	if err != nil {
-		return nil, xerrors.Errorf("generating winning post challenges: %w", err)
+		return nil, xerrors.Errorf("generating winning post challenges: %v", err)
 	}
 
 	sectors, err := provingSectors.All(numProvSect + 1) // todo max?
 	if err != nil {
-		return nil, xerrors.Errorf("failed to enumerate all sector IDs: %w", err)
+		return nil, xerrors.Errorf("failed to enumerate all sector IDs: %v", err)
 	}
 
 	out := make([]builtin.SectorInfo, len(ids))
@@ -550,7 +550,7 @@ func (api *API) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Veri
 
 		sinfo, found, err := viewer.MinerGetSector(ctx, maddr, abi.SectorNumber(sid))
 		if err != nil {
-			return nil, xerrors.Errorf("failed to load sectors info: %w", err)
+			return nil, xerrors.Errorf("failed to load sectors info: %v", err)
 		}
 		if !found {
 			return nil, xerrors.New("failed to load sectors info, not found")
