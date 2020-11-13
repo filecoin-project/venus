@@ -232,7 +232,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 func TestSignatureData(t *testing.T) {
 	tf.UnitTest(t)
 	newAddress := types.NewForTestGetter()
-	posts := []builtin.PoStProof{builtin.PoStProof{abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, []byte{0x07}}}
+	posts := []builtin.PoStProof{{PoStProof: abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, ProofBytes: []byte{0x07}}}
 
 	b := &blk.Block{
 		Miner:         newAddress(),
@@ -260,7 +260,7 @@ func TestSignatureData(t *testing.T) {
 		},
 	}
 
-	diffposts := []builtin.PoStProof{builtin.PoStProof{abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, []byte{0x07, 0x08}}}
+	diffposts := []builtin.PoStProof{{PoStProof: abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, ProofBytes: []byte{0x07, 0x08}}}
 
 	diff := &blk.Block{
 		Miner:         newAddress(),

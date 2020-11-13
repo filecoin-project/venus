@@ -71,10 +71,6 @@ var GenesisNetworkVersion = func() network.Version {
 	return params.ActorUpgradeNetworkVersion - 1 // genesis requires actors v0.
 }()
 
-func genesisNetworkVersion(context.Context, abi.ChainEpoch) network.Version {
-	return GenesisNetworkVersion
-}
-
 type cstore struct {
 	ctx context.Context
 	cbor.IpldStore
@@ -504,7 +500,7 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		totalQaPow = big.Add(totalQaPow, minerQAPower)
 	}
 
-	g.updateSingletonActor(ctx, builtin.StoragePowerActorAddr, func(actor *types.Actor) (interface{}, error) {
+	_, err := g.updateSingletonActor(ctx, builtin.StoragePowerActorAddr, func(actor *types.Actor) (interface{}, error) {
 		var mState power.State
 		err := g.store.Get(ctx, actor.Head.Cid, &mState)
 		if err != nil {
@@ -517,10 +513,16 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		mState.ThisEpochRawBytePower = totalRawPow
 		return &mState, nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	g.updateSingletonActor(ctx, builtin.RewardActorAddr, func(actor *types.Actor) (interface{}, error) {
+	_, err = g.updateSingletonActor(ctx, builtin.RewardActorAddr, func(actor *types.Actor) (interface{}, error) {
 		return reward.ConstructState(networkQAPower), nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	// Now commit the sectors and power updates.
 	for _, sector := range sectorsToCommit {

@@ -40,6 +40,7 @@ require (
 	github.com/filecoin-project/specs-actors/v2 v2.2.0
 	github.com/filecoin-project/test-vectors/schema v0.0.5-0.20201014133607-1352e6bb4e71
 	github.com/fxamacker/cbor/v2 v2.2.0
+	github.com/go-errors/errors v1.0.1
 	github.com/go-kit/kit v0.10.0
 	github.com/golangci/golangci-lint v1.21.0
 	github.com/google/go-github v17.0.0+incompatible

@@ -129,7 +129,7 @@ func (pmgr *PeerMgr) Disconnect(p peer.ID) {
 
 func (pmgr *PeerMgr) Stop(ctx context.Context) error {
 	log.Warn("closing peermgr done")
-	pmgr.filPeerEmitter.Close()
+	_ = pmgr.filPeerEmitter.Close()
 	close(pmgr.done)
 	return nil
 }

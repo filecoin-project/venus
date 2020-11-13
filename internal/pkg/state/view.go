@@ -2,8 +2,6 @@ package state
 
 import (
 	"context"
-	"sync"
-
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
@@ -20,7 +18,6 @@ import (
 	notinit "github.com/filecoin-project/venus/internal/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/multisig"
 	paychActor "github.com/filecoin-project/venus/internal/pkg/specactors/builtin/paych"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/power"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/reward"
@@ -29,9 +26,6 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/util/ffiwrapper"
 	vmstate "github.com/filecoin-project/venus/internal/pkg/vm/state"
 )
-
-var dealProviderCollateralNum = big.NewInt(110)
-var dealProviderCollateralDen = big.NewInt(100)
 
 // Viewer builds state views from state root CIDs.
 type Viewer struct {
@@ -48,19 +42,6 @@ func (c *Viewer) StateView(root cid.Cid) *View {
 	return NewView(c.ipldStore, root)
 }
 
-type genesisInfo struct {
-	genesisMsigs []multisig.State
-	// info about the Accounts in the genesis state
-	genesisActors      []genesisActor
-	genesisPledge      abi.TokenAmount
-	genesisMarketFunds abi.TokenAmount
-}
-
-type genesisActor struct {
-	addr    addr.Address
-	initBal abi.TokenAmount
-}
-
 // View is a read-only interface to a snapshot of application-level actor state.
 // This object interprets the actor state, abstracting the concrete on-chain structures so as to
 // hide the complications of protocol versions.
@@ -69,10 +50,6 @@ type genesisActor struct {
 type View struct {
 	ipldStore cbor.IpldStore
 	root      cid.Cid
-
-	genInfo       *genesisInfo
-	genesisMsigLk sync.Mutex
-	genesisRoot   cid.Cid
 }
 
 // NewView creates a new state view
@@ -422,7 +399,7 @@ func (v *View) MarketDealStatesForEach(ctx context.Context, f func(id abi.DealID
 	}
 
 	ff := func(id abi.DealID, ds market.DealState) error {
-		return f(abi.DealID(id), &ds)
+		return f(id, &ds)
 	}
 	if err := deals.ForEach(ff); err != nil {
 		return err

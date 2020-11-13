@@ -22,6 +22,6 @@ func (mockFork *MockFork) HandleStateForks(ctx context.Context, root cid.Cid, he
 	return root, nil
 }
 
-func (sm *MockFork) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
+func (mockFork *MockFork) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
 	return network.Version0
 }

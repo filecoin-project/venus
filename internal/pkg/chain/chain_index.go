@@ -103,7 +103,7 @@ func (ci *ChainIndex) fillCache(tsk block.TipSetKey) (*lbEntry, error) {
 		skipTarget, err = ci.walkBack(parent, rheight)
 		if err != nil {
 			return nil, xerrors.Errorf("fillCache walkback: %s", err)
-	}
+		}
 	}
 
 	lbe := &lbEntry{

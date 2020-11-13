@@ -63,7 +63,7 @@ func TestHelloHandshake(t *testing.T) {
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
 	//peer manager
-	aPeerMgr, err := mockPeerMgr(t, ctx, a)
+	aPeerMgr, err := mockPeerMgr(ctx, t, a)
 	require.NoError(t, err)
 
 	discovery.NewHelloProtocolHandler(a, aPeerMgr, genesisA.Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
@@ -123,7 +123,7 @@ func TestHelloBadGenesis(t *testing.T) {
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
 	//peer manager
-	peerMgr, err := mockPeerMgr(t, ctx, a)
+	peerMgr, err := mockPeerMgr(ctx, t, a)
 	require.NoError(t, err)
 
 	discovery.NewHelloProtocolHandler(a, peerMgr, genesisA.Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
@@ -166,7 +166,7 @@ func TestHelloMultiBlock(t *testing.T) {
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
 	//peer manager
-	peerMgr, err := mockPeerMgr(t, ctx, a)
+	peerMgr, err := mockPeerMgr(ctx, t, a)
 	require.NoError(t, err)
 
 	discovery.NewHelloProtocolHandler(a, peerMgr, genesisTipset.At(0).Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
@@ -184,7 +184,7 @@ func TestHelloMultiBlock(t *testing.T) {
 	msc2.AssertExpectations(t)
 }
 
-func mockPeerMgr(t *testing.T, ctx context.Context, h host.Host) (*net.PeerMgr, error) {
+func mockPeerMgr(ctx context.Context, t *testing.T, h host.Host) (*net.PeerMgr, error) {
 	addrInfo, err := net.ParseAddresses(ctx, repo.NewInMemoryRepo().Config().Bootstrap.Addresses)
 	require.NoError(t, err)
 

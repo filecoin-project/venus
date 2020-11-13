@@ -213,20 +213,20 @@ func (msg *UnsignedMessage) Equals(other *UnsignedMessage) bool {
 		bytes.Equal(msg.Params, other.Params)
 }
 
-func (m *UnsignedMessage) ChainLength() int {
-	ser, err := m.Marshal()
+func (msg *UnsignedMessage) ChainLength() int {
+	ser, err := msg.Marshal()
 	if err != nil {
 		panic(err)
 	}
 	return len(ser)
 }
 
-func (m *UnsignedMessage) VMMessage() *UnsignedMessage {
-	return m
+func (msg *UnsignedMessage) VMMessage() *UnsignedMessage {
+	return msg
 }
 
-func (m *UnsignedMessage) ToStorageBlock() (blocks.Block, error) {
-	data, err := m.Marshal()
+func (msg *UnsignedMessage) ToStorageBlock() (blocks.Block, error) {
+	data, err := msg.Marshal()
 	if err != nil {
 		return nil, err
 	}
@@ -239,24 +239,24 @@ func (m *UnsignedMessage) ToStorageBlock() (blocks.Block, error) {
 	return blocks.NewBlockWithCid(data, c)
 }
 
-func (m *UnsignedMessage) ValidForBlockInclusion(minGas int64) error {
-	if m.Version != 0 {
+func (msg *UnsignedMessage) ValidForBlockInclusion(minGas int64) error {
+	if msg.Version != 0 {
 		return xerrors.New("'Version' unsupported")
 	}
 
-	if m.To == address.Undef {
+	if msg.To == address.Undef {
 		return xerrors.New("'To' address cannot be empty")
 	}
 
-	if m.From == address.Undef {
+	if msg.From == address.Undef {
 		return xerrors.New("'From' address cannot be empty")
 	}
 
-	if m.Value.Int == nil {
+	if msg.Value.Int == nil {
 		return xerrors.New("'Value' cannot be nil")
 	}
 
-	if m.Value.LessThan(specsbig.Zero()) {
+	if msg.Value.LessThan(specsbig.Zero()) {
 		return xerrors.New("'Value' field cannot be negative")
 	}
 
@@ -264,32 +264,32 @@ func (m *UnsignedMessage) ValidForBlockInclusion(minGas int64) error {
 	//	return xerrors.New("'Value' field cannot be greater than total filecoin supply")
 	//}
 
-	if m.GasFeeCap.Int == nil {
+	if msg.GasFeeCap.Int == nil {
 		return xerrors.New("'GasFeeCap' cannot be nil")
 	}
 
-	if m.GasFeeCap.LessThan(specsbig.Zero()) {
+	if msg.GasFeeCap.LessThan(specsbig.Zero()) {
 		return xerrors.New("'GasFeeCap' field cannot be negative")
 	}
 
-	if m.GasPremium.Int == nil {
+	if msg.GasPremium.Int == nil {
 		return xerrors.New("'GasPremium' cannot be nil")
 	}
 
-	if m.GasPremium.LessThan(specsbig.Zero()) {
+	if msg.GasPremium.LessThan(specsbig.Zero()) {
 		return xerrors.New("'GasPremium' field cannot be negative")
 	}
 
-	if m.GasPremium.GreaterThan(m.GasFeeCap) {
+	if msg.GasPremium.GreaterThan(msg.GasFeeCap) {
 		return xerrors.New("'GasFeeCap' less than 'GasPremium'")
 	}
 
-	if m.GasLimit > constants.BlockGasLimit {
+	if msg.GasLimit > constants.BlockGasLimit {
 		return xerrors.New("'GasLimit' field cannot be greater than a block's gas limit")
 	}
 
 	// since prices might vary with time, this is technically semantic validation
-	if int64(m.GasLimit) < minGas {
+	if int64(msg.GasLimit) < minGas {
 		return xerrors.New("'GasLimit' field cannot be less than the cost of storing a message on chain")
 	}
 

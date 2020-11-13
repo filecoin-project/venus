@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/internal/pkg/block"
 	"github.com/filecoin-project/venus/internal/pkg/crypto"
 	"github.com/filecoin-project/venus/internal/pkg/state"
 	"github.com/filecoin-project/venus/internal/pkg/vm/gas"
@@ -42,7 +41,6 @@ type syscalls struct {
 	ctx       context.Context
 	gasTank   *GasTracker
 	pricelist gas.Pricelist
-	head      block.TipSetKey
 	stateView SyscallsStateView
 }
 

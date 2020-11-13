@@ -298,6 +298,9 @@ func (chn *ChainStateReadWriter) LsActors(ctx context.Context) (map[address.Addr
 		result[key] = a
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 

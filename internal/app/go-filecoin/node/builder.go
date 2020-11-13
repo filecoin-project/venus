@@ -163,7 +163,7 @@ func MonkeyPatchNetworkParamsOption(params *config.NetworkParamsConfig) BuilderO
 func MonkeyPatchSetProofTypeOption(proofType abi.RegisteredSealProof) BuilderOpt {
 	return func(c *Builder) error {
 		// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
-		policy.SetSupportedProofTypes(abi.RegisteredSealProof(proofType))
+		policy.SetSupportedProofTypes(proofType)
 		return nil
 	}
 }

@@ -38,7 +38,6 @@ const (
 	// DefaultDaemonCmdTimeout is the default timeout for executing commands.
 	DefaultDaemonCmdTimeout = 1 * time.Minute
 	repoName                = "repo"
-	sectorsName             = "sectors"
 )
 
 // RunSuccessFirstLine executes the given command, asserts success and returns

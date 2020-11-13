@@ -41,7 +41,6 @@ type VM struct {
 	state      state.Tree
 
 	syscalls     SyscallsImpl
-	currentHead  block.TipSetKey
 	currentEpoch abi.ChainEpoch
 	pricelist    gas.Pricelist
 
@@ -181,7 +180,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 			}
 			pstate, err = vm.flush()
 			if err != nil {
-				return nil, xerrors.Errorf("can not flush vm state To db", err)
+				return nil, xerrors.Errorf("can not flush vm state To db %vs", err)
 			}
 			if cb != nil {
 				if err := cb(cid.Undef, cronMessage, ret); err != nil {

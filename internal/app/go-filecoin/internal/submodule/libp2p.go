@@ -3,6 +3,7 @@ package submodule
 import (
 	"context"
 	"crypto/rand"
+	"github.com/go-errors/errors"
 	"github.com/jbenet/goprocess"
 	"github.com/libp2p/go-eventbus"
 	"github.com/libp2p/go-libp2p-core/connmgr"
@@ -12,9 +13,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	crypto "github.com/libp2p/go-libp2p-crypto"
-	pstoremem "github.com/libp2p/go-libp2p-peerstore/pstoremem"
-	multiaddr "github.com/multiformats/go-multiaddr"
-	errors "github.com/pkg/errors"
+	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
+	"github.com/multiformats/go-multiaddr"
 )
 
 type noopLibP2PHost struct {

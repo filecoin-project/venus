@@ -653,7 +653,10 @@ func (syncer *Syncer) fetchChainBlocks(ctx context.Context, knownTip *block.TipS
 		cborStore := cborutil.NewIpldStore(bs)
 		for _, tips := range saveTips {
 			for _, blk := range tips.Blocks() {
-				cborStore.Put(ctx, blk)
+				_, err := cborStore.Put(ctx, blk)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		return util.CopyBlockstore(ctx, bs, syncer.bsstore)
@@ -731,7 +734,10 @@ loop:
 		}
 		return nil, xerrors.Errorf("failed to sync fork: %w", err)
 	}
-	flushDb(fork)
+	err = flushDb(fork)
+	if err != nil {
+		return nil, err
+	}
 	chainTipsets = append(chainTipsets, fork...)
 	chain.Reverse(chainTipsets)
 	return chainTipsets, nil
