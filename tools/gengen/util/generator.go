@@ -535,12 +535,12 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 
 		dweight, err := g.dealWeight(ctx, sector.miner, params.DealIDs, 0, sector.expiration)
 		if err != nil {
-			return nil, xerrors.Errorf("getting deal weight: %w", err)
+			return nil, xerrors.Errorf("getting deal weight: %v", err)
 		}
 
 		size, err := sector.comm.ProofType.SectorSize()
 		if err != nil {
-			return nil, xerrors.Errorf("failed to get sector size: %w", err)
+			return nil, xerrors.Errorf("failed to get sector size: %v", err)
 		}
 		sectorWeight := miner.QAPowerForWeight(size, sector.expiration, dweight.DealWeight, dweight.VerifiedDealWeight)
 
@@ -562,17 +562,17 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		})
 
 		if err != nil {
-			return nil, xerrors.Errorf("removing fake power: %w", err)
+			return nil, xerrors.Errorf("removing fake power: %v", err)
 		}
 
 		epochReward, err := g.currentEpochBlockReward(ctx, sector.miner)
 		if err != nil {
-			return nil, xerrors.Errorf("getting current epoch reward: %w", err)
+			return nil, xerrors.Errorf("getting current epoch reward: %v", err)
 		}
 
 		tpow, err := g.currentTotalPower(ctx, sector.miner)
 		if err != nil {
-			return nil, xerrors.Errorf("getting current total power: %w", err)
+			return nil, xerrors.Errorf("getting current total power: %v", err)
 		}
 
 		pcd := miner.PreCommitDepositForPower(epochReward.ThisEpochRewardSmoothed, tpow.QualityAdjPowerSmoothed, sectorWeight)
@@ -589,7 +589,7 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		encodeParams, _ := encoding.Encode(params)
 		_, err = g.doExecValue(ctx, sector.miner, sector.owner, pledge, builtin.MethodsMiner.PreCommitSector, encodeParams)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
+			return nil, xerrors.Errorf("failed to confirm presealed sectors: %v", err)
 		}
 
 		// Commit one-by-one, otherwise pledge math tends to explode
@@ -599,7 +599,7 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		encodeParams, _ = encoding.Encode(confirmParams)
 		_, err = g.doExecValue(ctx, sector.miner, builtin.StoragePowerActorAddr, big.Zero(), builtin.MethodsMiner.ConfirmSectorProofsValid, encodeParams)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
+			return nil, xerrors.Errorf("failed to confirm presealed sectors: %v", err)
 		}
 	}
 	return minfos, nil
@@ -848,12 +848,12 @@ func (g *GenesisGenerator) putSector(ctx context.Context, sector *sectorCommitIn
 func (g *GenesisGenerator) doExecValue(ctx context.Context, to, from address.Address, value big.Int, method abi.MethodNum, params []byte) ([]byte, error) {
 	_, found, err := g.stateTree.GetActor(ctx, from)
 	if !found || err != nil {
-		return nil, xerrors.Errorf("doExec failed to get from actor (%s): %w", from, err)
+		return nil, xerrors.Errorf("doExec failed to get from actor (%s): %v", from, err)
 	}
 
 	ret, err := g.vm.ApplyGenesisMessage(from, to, method, value, params)
 	if err != nil {
-		return nil, xerrors.Errorf("doExec apply message failed: %w", err)
+		return nil, xerrors.Errorf("doExec apply message failed: %v", err)
 	}
 	if ret.Receipt.ExitCode != 0 {
 		return nil, xerrors.Errorf("execute genesis msg error")
