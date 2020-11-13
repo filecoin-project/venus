@@ -61,10 +61,6 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.File
 
 	fastenvOpts.InitOpts = append([]fast.ProcessInitOption{fast.POGenesisFile(genesisURI)}, fastenvOpts.InitOpts...)
 
-	if isMissingBlockTimeOpt(fastenvOpts) {
-		fastenvOpts.DaemonOpts = append([]fast.ProcessDaemonOption{fast.POBlockTime(time.Millisecond)}, fastenvOpts.DaemonOpts...)
-	}
-
 	// Setup the first node which is used to help coordinate the other nodes by providing
 	// funds, mining for the network, etc
 	genesis, err := env.NewProcess(ctx, localplugin.PluginName, options, fastenvOpts)

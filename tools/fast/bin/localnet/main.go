@@ -6,9 +6,7 @@ package main
 // on the users computer. The network will stay standing till the program is closed.
 
 import (
-	"bytes"
 	"context"
-	"crypto/rand"
 	flg "flag"
 	"fmt"
 	"io"
@@ -22,8 +20,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	files "github.com/ipfs/go-ipfs-files"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
@@ -194,7 +190,7 @@ func main() {
 
 	fastenvOpts := fast.FilecoinOpts{
 		InitOpts:   []fast.ProcessInitOption{fast.POGenesisFile(genesisURI)},
-		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(blocktime)},
+		DaemonOpts: []fast.ProcessDaemonOption{},
 	}
 
 	ctx = series.SetCtxSleepDelay(ctx, blocktime)
@@ -213,11 +209,11 @@ func main() {
 		return
 	}
 
-	if err := genesis.MiningStart(ctx); err != nil {
-		exitcode = handleError(err, "failed to start mining on genesis node;")
-		return
-	}
-
+	/*	if err := genesis.MiningStart(ctx); err != nil {
+			exitcode = handleError(err, "failed to start mining on genesis node;")
+			return
+		}
+	*/
 	// Create the processes that we will use to become miners
 	var miners []*fast.Filecoin
 	for i := 0; i < minerCount; i++ {
@@ -252,8 +248,6 @@ func main() {
 	// WaitForDealState
 	// 9. Query deal till complete
 
-	var deals []*network.Response
-
 	for _, miner := range miners {
 		err = series.InitAndStart(ctx, miner)
 		if err != nil {
@@ -273,43 +267,10 @@ func main() {
 			return
 		}
 
-		pparams, err := miner.Protocol(ctx)
-		if err != nil {
-			exitcode = handleError(err, "failed to get protocol;")
-			return
-		}
-
-		sinfo := pparams.SupportedSectors[0]
-
-		ask, err := series.CreateStorageMinerWithAsk(ctx, miner, minerCollateral, minerPrice, minerExpiry, sinfo.Size)
-		if err != nil {
-			exitcode = handleError(err, "failed series.CreateStorageMinerWithAsk;")
-			return
-		}
-
-		if err := miner.MiningStart(ctx); err != nil {
+		/*	if err := miner.MiningStart(ctx); err != nil {
 			exitcode = handleError(err, "failed miner.MiningStart;")
 			return
-		}
-
-		var data bytes.Buffer
-		dataReader := io.LimitReader(rand.Reader, int64(sinfo.MaxPieceSize))
-		dataReader = io.TeeReader(dataReader, &data)
-		_, deal, err := series.ImportAndStore(ctx, genesis, ask, files.NewReaderFile(dataReader))
-		if err != nil {
-			exitcode = handleError(err, "failed series.ImportAndStore;")
-			return
-		}
-
-		deals = append(deals, deal)
-	}
-
-	for _, deal := range deals {
-		_, err = series.WaitForDealState(ctx, genesis, deal, storagemarket.StorageDealActive)
-		if err != nil {
-			exitcode = handleError(err, "failed series.WaitForDealState;")
-			return
-		}
+		}*/
 	}
 
 	if shell {
