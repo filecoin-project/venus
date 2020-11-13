@@ -148,7 +148,6 @@ func (v *FakeStateView) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrap
 	return []builtin.SectorInfo{}, nil
 }
 
-
 func (v *FakeStateView) MinerPledgeCollateral(_ context.Context, maddr address.Address) (locked abi.TokenAmount, total abi.TokenAmount, err error) {
 	m, ok := v.Miners[maddr]
 	if !ok {

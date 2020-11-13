@@ -410,7 +410,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 	}
 
 	winnerCheck := async.Err(func() error {
-		if err = c.ValidateBlockWinner(ctx, lbTs, lbStateRoot, parent, parentStateRoot, blk,  prevBeacon); err != nil {
+		if err = c.ValidateBlockWinner(ctx, lbTs, lbStateRoot, parent, parentStateRoot, blk, prevBeacon); err != nil {
 			return err
 		}
 		return nil
