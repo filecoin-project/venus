@@ -106,7 +106,7 @@ func TestMinerCreate(t *testing.T) {
 		addr, err := MinerCreate(
 			ctx,
 			plumbing,
-			address.Address{},
+			address.TestAddress,
 			types.NewGasFeeCap(0),
 			types.NewGasPremium(0),
 			types.NewGas(100),
@@ -126,7 +126,7 @@ func TestMinerCreate(t *testing.T) {
 		_, err := MinerCreate(
 			ctx,
 			plumbing,
-			address.Address{},
+			address.TestAddress,
 			types.NewGasFeeCap(0),
 			types.NewGasPremium(0),
 			types.NewGas(100),
