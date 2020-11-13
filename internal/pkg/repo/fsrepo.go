@@ -199,10 +199,6 @@ func (r *FSRepo) loadFromDisk() error {
 		return errors.Wrap(err, "failed to read version")
 	}
 
-	if localVersion < r.version {
-		return fmt.Errorf("out of date repo version, got %d expected %d. Migrate with tools/migration/venus-migrate", localVersion, Version)
-	}
-
 	if localVersion > r.version {
 		return fmt.Errorf("binary needs update to handle repo version, got %d expected %d. Update binary to latest release", localVersion, Version)
 	}

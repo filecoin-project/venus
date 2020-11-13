@@ -139,7 +139,6 @@ func build() {
 	buildFaucet()
 	buildGenesisFileServer()
 	generateGenesis()
-	buildMigrations()
 	buildPrereleaseTool()
 }
 
@@ -149,7 +148,6 @@ func forcebuild() {
 	buildFaucet()
 	buildGenesisFileServer()
 	generateGenesis()
-	buildMigrations()
 	buildPrereleaseTool()
 }
 
@@ -263,12 +261,6 @@ func buildGenesisFileServer() {
 	runCmd(cmd([]string{"go", "build", "-o", "./tools/genesis-file-server/genesis-file-server", "./tools/genesis-file-server/"}...))
 }
 
-func buildMigrations() {
-	log.Println("Building migrations...")
-	runCmd(cmd([]string{
-		"go", "build", "-o", "./tools/migration/venus-migrate", "./tools/migration/main.go"}...))
-}
-
 func buildPrereleaseTool() {
 	log.Println("Building prerelease-tool...")
 
@@ -326,8 +318,6 @@ func main() {
 		buildGengen()
 	case "generate-genesis":
 		generateGenesis()
-	case "build-migrations":
-		buildMigrations()
 	case "build":
 		build()
 	case "fbuild":
