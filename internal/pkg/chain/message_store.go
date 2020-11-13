@@ -445,6 +445,7 @@ func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet) (a
 	if err != nil {
 		return zero, err
 	}
+
 	if baseHeight > fork.UpgradeBreezeHeight && baseHeight < fork.UpgradeBreezeHeight+fork.BreezeGasTampingDuration {
 		return abi.NewTokenAmount(100), nil
 	}
