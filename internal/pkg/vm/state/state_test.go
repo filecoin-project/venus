@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/repo"
 	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/internal/pkg/types"
-	vmaddr "github.com/filecoin-project/venus/internal/pkg/vm/address"
 )
 
 func TestStatePutGet(t *testing.T) {
@@ -33,7 +32,7 @@ func TestStatePutGet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	addrGetter := vmaddr.NewForTestGetter()
+	addrGetter := types.NewForTestGetter()
 	addr1 := addrGetter()
 	addr2 := addrGetter()
 	AddAccount(t, tree, cst, addr1)
@@ -84,7 +83,7 @@ func TestStateErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	AddAccount(t, tree, cst, vmaddr.NewForTestGetter()())
+	AddAccount(t, tree, cst, types.NewForTestGetter()())
 
 	c, err := constants.DefaultCidBuilder.Sum([]byte("cats"))
 	assert.NoError(t, err)
@@ -104,7 +103,7 @@ func TestGetAllActors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	addr := vmaddr.NewForTestGetter()()
+	addr := types.NewForTestGetter()()
 
 	newActor := types.Actor{Code: enccid.NewCid(builtin2.AccountActorCodeID), CallSeqNum: 1234, Balance: abi.NewTokenAmount(123)}
 	AddAccount(t, tree, cst, addr)

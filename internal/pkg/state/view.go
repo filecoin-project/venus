@@ -26,8 +26,8 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/reward"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/verifreg"
 	"github.com/filecoin-project/venus/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/util/ffiwrapper"
 	vmstate "github.com/filecoin-project/venus/internal/pkg/vm/state"
-	"github.com/filecoin-project/venus/vendors/sector-storage/ffiwrapper"
 )
 
 var dealProviderCollateralNum = big.NewInt(110)

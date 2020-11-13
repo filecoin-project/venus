@@ -19,7 +19,7 @@ import (
 	crypto2 "github.com/filecoin-project/venus/internal/pkg/crypto"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/internal/pkg/state"
-	"github.com/filecoin-project/venus/vendors/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/venus/internal/pkg/util/ffiwrapper"
 )
 
 // Interface to PoSt verification, modify by force EPoStVerifier -> ProofVerifier

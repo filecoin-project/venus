@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/message"
 	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/internal/pkg/types"
-	vmaddr "github.com/filecoin-project/venus/internal/pkg/vm/address"
 )
 
 func newOutboxTestJournal(t *testing.T) journal.Writer {
@@ -49,7 +48,7 @@ func TestOutbox(t *testing.T) {
 	t.Run("send message enqueues and calls Publish, but respects bcast flag for broadcasting", func(t *testing.T) {
 		w, _ := types.NewMockSignersAndKeyInfo(1)
 		sender := w.Addresses[0]
-		toAddr := vmaddr.NewForTestGetter()()
+		toAddr := types.NewForTestGetter()()
 		queue := message.NewQueue()
 		publisher := &message.MockPublisher{}
 		provider := message.NewFakeProvider(t)
@@ -108,7 +107,7 @@ func TestOutbox(t *testing.T) {
 
 		w, _ := types.NewMockSignersAndKeyInfo(1)
 		sender := w.Addresses[0]
-		toAddr := vmaddr.NewForTestGetter()()
+		toAddr := types.NewForTestGetter()()
 		queue := message.NewQueue()
 		publisher := &message.MockPublisher{}
 		provider := message.NewFakeProvider(t)
@@ -176,7 +175,7 @@ func TestOutbox(t *testing.T) {
 	t.Run("fails with non-account actor", func(t *testing.T) {
 		w, _ := types.NewMockSignersAndKeyInfo(1)
 		sender := w.Addresses[0]
-		toAddr := vmaddr.NewForTestGetter()()
+		toAddr := types.NewForTestGetter()()
 		queue := message.NewQueue()
 		publisher := &message.MockPublisher{}
 		provider := message.NewFakeProvider(t)

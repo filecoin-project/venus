@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/metrics"
 	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/internal/pkg/types"
-	vmaddr "github.com/filecoin-project/venus/internal/pkg/vm/address"
 )
 
 var testCid cid.Cid
@@ -190,7 +189,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 
 func mustMakeTipset(t *testing.T, height abi.ChainEpoch) *block.TipSet {
 	ts, err := block.NewTipSet(&block.Block{
-		Miner:           vmaddr.NewForTestGetter()(),
+		Miner:           types.NewForTestGetter()(),
 		Ticket:          block.Ticket{VRFProof: []byte{0}},
 		Parents:         block.TipSetKey{},
 		ParentWeight:    fbig.Zero(),

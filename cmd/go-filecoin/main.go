@@ -59,11 +59,6 @@ const (
 	// NAT mapping.
 	SwarmPublicRelayAddress = "swarmrelaypublic"
 
-	// BlockTime is the duration string of the block time the daemon will
-	// run with.  TODO: this should eventually be more explicitly grouped
-	// with testing as we won't be able to set blocktime in production.
-	//BlockTime = "block-time"
-
 	// PropagationDelay is the duration the miner will wait for blocks to arrive before attempting to mine a new one
 	//PropagationDelay = "prop-delay"
 

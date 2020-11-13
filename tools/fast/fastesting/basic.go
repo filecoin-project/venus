@@ -167,13 +167,3 @@ func dumpEnvOutputOnFail(t *testing.T, procs []*fast.Filecoin) {
 		require.NoError(t, w.Close())
 	}
 }
-
-func isMissingBlockTimeOpt(opts fast.FilecoinOpts) bool {
-	for _, fn := range opts.DaemonOpts {
-		s := fn()
-		if len(s) > 0 && s[0] == "--block-time" {
-			return false
-		}
-	}
-	return true
-}

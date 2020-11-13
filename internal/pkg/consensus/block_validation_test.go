@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/state"
 	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/internal/pkg/types"
-	vmaddr "github.com/filecoin-project/venus/internal/pkg/vm/address"
 )
 
 func TestBlockValidHeaderSemantic(t *testing.T) {
@@ -262,7 +261,7 @@ func TestBlockValidSyntax(t *testing.T) {
 
 	validTs := uint64(mclock.Now().Unix())
 	validSt := e.NewCid(types.NewCidForTestGetter()())
-	validAd := vmaddr.NewForTestGetter()()
+	validAd := types.NewForTestGetter()()
 	validTi := block.Ticket{VRFProof: []byte{1}}
 	// create a valid block
 	blk := &block.Block{

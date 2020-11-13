@@ -2,8 +2,6 @@ package fast
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/multiformats/go-multiaddr"
 )
 
@@ -61,13 +59,6 @@ func PODevnetUser() ProcessInitOption {
 
 // ProcessDaemonOption are options passed to process when starting.
 type ProcessDaemonOption func() []string
-
-// POBlockTime provides the `--block-time=<duration>` to process when starting.
-func POBlockTime(d time.Duration) ProcessDaemonOption {
-	return func() []string {
-		return []string{"--block-time", d.String()}
-	}
-}
 
 // POIsRelay provides the `--is-relay` to process when starting.
 func POIsRelay() ProcessDaemonOption {

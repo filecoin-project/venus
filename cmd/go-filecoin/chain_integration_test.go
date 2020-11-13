@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	commands "github.com/filecoin-project/venus/cmd/go-filecoin"
 	"testing"
 
-	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -27,7 +27,7 @@ func TestChainHead(t *testing.T) {
 	defer done()
 
 	jsonResult := cmdClient.RunSuccess(ctx, "chain", "head", "--enc", "json").ReadStdoutTrimNewlines()
-	var cidsFromJSON []cid.Cid
+	var cidsFromJSON commands.ChainHeadResult
 	err := json.Unmarshal([]byte(jsonResult), &cidsFromJSON)
 	assert.NoError(t, err)
 }

@@ -8,13 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
-	vmaddr "github.com/filecoin-project/venus/internal/pkg/vm/address"
 )
 
 func TestMessageMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
-	addrGetter := vmaddr.NewForTestGetter()
+	addrGetter := NewForTestGetter()
 	msg := NewMeteredMessage(
 		addrGetter(),
 		addrGetter(),
@@ -55,7 +54,7 @@ func TestMessageMarshal(t *testing.T) {
 func TestMessageCid(t *testing.T) {
 	tf.UnitTest(t)
 
-	addrGetter := vmaddr.NewForTestGetter()
+	addrGetter := NewForTestGetter()
 
 	msg1 := NewUnsignedMessage(
 		addrGetter(),
@@ -86,7 +85,7 @@ func TestMessageCid(t *testing.T) {
 func TestMessageString(t *testing.T) {
 	tf.UnitTest(t)
 
-	addrGetter := vmaddr.NewForTestGetter()
+	addrGetter := NewForTestGetter()
 
 	msg := NewUnsignedMessage(
 		addrGetter(),

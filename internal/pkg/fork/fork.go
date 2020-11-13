@@ -198,7 +198,7 @@ func (us UpgradeSchedule) Validate() error {
 			// Previous upgrade was disabled.
 			continue
 		}
-		if !(prev.Height < curr.Height) {
+		if !(prev.Height <= curr.Height) {
 			return xerrors.Errorf("upgrade heights must be strictly increasing: upgrade %d was at height %d, followed by upgrade %d at height %d", i-1, prev.Height, i, curr.Height)
 		}
 	}

@@ -31,16 +31,15 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/fork"
 	"github.com/filecoin-project/venus/internal/pkg/message"
 	"github.com/filecoin-project/venus/internal/pkg/net"
-	"github.com/filecoin-project/venus/internal/pkg/piecemanager"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/power"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/policy"
 	appstate "github.com/filecoin-project/venus/internal/pkg/state"
 	"github.com/filecoin-project/venus/internal/pkg/types"
+	"github.com/filecoin-project/venus/internal/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/internal/pkg/vm"
 	"github.com/filecoin-project/venus/internal/pkg/wallet"
-	"github.com/filecoin-project/venus/vendors/sector-storage/ffiwrapper"
 )
 
 // API is the plumbing implementation, the irreducible set of calls required
@@ -62,7 +61,6 @@ type API struct {
 	msgWaiter    *msg.Waiter
 	network      *net.Network
 	outbox       *message.Outbox
-	pieceManager func() piecemanager.PieceManager
 	wallet       *wallet.Wallet
 	drand        beacon.Schedule
 }
@@ -80,7 +78,6 @@ type APIDeps struct {
 	MsgWaiter    *msg.Waiter
 	Network      *net.Network
 	Outbox       *message.Outbox
-	PieceManager func() piecemanager.PieceManager
 	Wallet       *wallet.Wallet
 	Drand        beacon.Schedule
 }
@@ -100,7 +97,6 @@ func New(deps *APIDeps) *API {
 		msgWaiter:    deps.MsgWaiter,
 		network:      deps.Network,
 		outbox:       deps.Outbox,
-		pieceManager: deps.PieceManager,
 		wallet:       deps.Wallet,
 		drand:        deps.Drand,
 	}
@@ -372,11 +368,6 @@ func (api *API) DAGCat(ctx context.Context, c cid.Cid) (io.Reader, error) {
 // node via Bitswap and a copy will be kept in the blockstore.
 func (api *API) DAGImportData(ctx context.Context, data io.Reader) (ipld.Node, error) {
 	return api.dag.ImportData(ctx, data)
-}
-
-// PieceManager returns the piece manager
-func (api *API) PieceManager() piecemanager.PieceManager {
-	return api.pieceManager()
 }
 
 func (a *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv ffiwrapper.Verifier) (*block.MiningBaseInfo, error) {
