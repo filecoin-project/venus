@@ -23,6 +23,18 @@ const (
 	MinFilPeers = 12
 )
 
+type IPeerMgr interface {
+	AddFilecoinPeer(p peer.ID)
+	GetPeerLatency(p peer.ID) (time.Duration, bool)
+	SetPeerLatency(p peer.ID, latency time.Duration)
+	Disconnect(p peer.ID)
+	Stop(ctx context.Context) error
+	Run(ctx context.Context)
+}
+
+var _ IPeerMgr = &PeerMgr{}
+var _ IPeerMgr = &MockPeerMgr{}
+
 type PeerMgr struct {
 	bootstrappers []peer.AddrInfo
 
@@ -184,4 +196,31 @@ func (pmgr *PeerMgr) doExpand(ctx context.Context) {
 	if err := pmgr.dht.Bootstrap(ctx); err != nil {
 		log.Warnf("dht bootstrapping failed: %s", err)
 	}
+}
+
+type MockPeerMgr struct {
+}
+
+func (m MockPeerMgr) AddFilecoinPeer(p peer.ID) {
+	return
+}
+
+func (m MockPeerMgr) GetPeerLatency(p peer.ID) (time.Duration, bool) {
+	return time.Duration(0), true
+}
+
+func (m MockPeerMgr) SetPeerLatency(p peer.ID, latency time.Duration) {
+	return
+}
+
+func (m MockPeerMgr) Disconnect(p peer.ID) {
+	return
+}
+
+func (m MockPeerMgr) Stop(ctx context.Context) error {
+	return nil
+}
+
+func (m MockPeerMgr) Run(ctx context.Context) {
+	return
 }

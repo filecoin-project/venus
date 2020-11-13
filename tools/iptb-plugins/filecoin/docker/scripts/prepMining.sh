@@ -40,7 +40,7 @@ printf "Initializing %d nodes\n" "$1"
 iptb init -- --genesisfile=/data/genesis.car
 
 printf "Starting %d nodes\n" "$1"
-iptb start -- --block-time=5s
+iptb start
 
 printf "Configuring %d nodes\n" "$1"
 for i in $(eval echo {0..$1})

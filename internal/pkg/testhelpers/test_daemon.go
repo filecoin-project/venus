@@ -60,9 +60,10 @@ type TestDaemon struct {
 	containerDir     string // Path to directory containing repo and sectors
 	genesisFile      string
 	keyFiles         []string
-	withMiner        address.Address
 	autoSealInterval string
+	networkName      string
 	isRelay          bool
+	offline          bool
 	initArgs         []string
 
 	firstRun bool
@@ -83,11 +84,6 @@ type TestDaemon struct {
 // RepoDir returns the repo directory of the test daemon.
 func (td *TestDaemon) RepoDir() string {
 	return path.Join(td.containerDir, repoName)
-}
-
-// SectorDir returns the sector root directory of the test daemon.
-func (td *TestDaemon) SectorDir() string {
-	return path.Join(td.containerDir, sectorsName)
 }
 
 // CmdAddr returns the command address of the test daemon (if it is running).
@@ -668,13 +664,6 @@ func InitArgs(a ...string) func(*TestDaemon) {
 	}
 }
 
-// WithMiner allows setting the --with-miner flag on init.
-func WithMiner(m address.Address) func(*TestDaemon) {
-	return func(td *TestDaemon) {
-		td.withMiner = m
-	}
-}
-
 // IsRelay starts the daemon with the --is-relay option.
 func IsRelay(td *TestDaemon) {
 	td.isRelay = true
@@ -690,6 +679,8 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		test:        t,
 		init:        true, // we want to init unless told otherwise
 		firstRun:    true,
+		offline:     false,
+		networkName: "integrationnet",
 		cmdTimeout:  DefaultDaemonCmdTimeout,
 		genesisFile: GenesisFilePath(), // default file includes all test addresses,
 	}
@@ -709,21 +700,20 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	}
 
 	repoDirFlag := fmt.Sprintf("--repodir=%s", td.RepoDir())
-	sectorDirFlag := fmt.Sprintf("--sectordir=%s", td.SectorDir())
 
 	// build command options
-	initopts := []string{repoDirFlag, sectorDirFlag}
+	initopts := []string{repoDirFlag}
 
 	if td.genesisFile != "" {
 		initopts = append(initopts, fmt.Sprintf("--genesisfile=%s", td.genesisFile))
 	}
 
-	if td.withMiner != address.Undef {
-		initopts = append(initopts, fmt.Sprintf("--with-miner=%s", td.withMiner))
-	}
-
 	if td.autoSealInterval != "" {
 		initopts = append(initopts, fmt.Sprintf("--auto-seal-interval-seconds=%s", td.autoSealInterval))
+	}
+
+	if len(td.networkName) > 0 {
+		initopts = append(initopts, fmt.Sprintf("--network=%s", td.networkName))
 	}
 
 	for _, arg := range td.initArgs {
@@ -747,12 +737,14 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	swarmAddr := "/ip4/127.0.0.1/tcp/0"
 	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", swarmAddr)
 
-	blockTimeFlag := fmt.Sprintf("--block-time=%s", BlockTimeTest)
-
-	td.daemonArgs = []string{filecoinBin, "daemon", repoDirFlag, cmdAPIAddrFlag, swarmListenFlag, blockTimeFlag}
+	td.daemonArgs = []string{filecoinBin, "daemon", repoDirFlag, cmdAPIAddrFlag, swarmListenFlag}
 
 	if td.isRelay {
 		td.daemonArgs = append(td.daemonArgs, "--is-relay")
+	}
+
+	if td.offline {
+		td.daemonArgs = append(td.daemonArgs, "--offline")
 	}
 
 	return td

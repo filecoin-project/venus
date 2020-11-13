@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/go-address"
-	cmds "github.com/ipfs/go-ipfs-cmds"
-	files "github.com/ipfs/go-ipfs-files"
-
 	"github.com/filecoin-project/venus/internal/pkg/crypto"
 	"github.com/filecoin-project/venus/internal/pkg/types"
+	cmds "github.com/ipfs/go-ipfs-cmds"
+	files "github.com/ipfs/go-ipfs-files"
 )
 
 var walletCmd = &cmds.Command{

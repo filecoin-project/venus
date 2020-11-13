@@ -88,7 +88,6 @@ function init_devnet_daemon {
 function start_daemon {
   ./venus daemon \
     --repodir="$1" \
-    --block-time="${BLOCK_TIME}" \
     --cmdapiaddr=/ip4/127.0.0.1/tcp/"$2" \
     --swarmlisten=/ip4/127.0.0.1/tcp/"$3" &
 }

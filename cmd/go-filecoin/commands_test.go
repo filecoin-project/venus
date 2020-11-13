@@ -16,7 +16,6 @@ import (
 func makeTestDaemonWithMinerAndStart(t *testing.T) *th.TestDaemon {
 	daemon := th.NewDaemon(
 		t,
-		th.WithMiner(fortest.TestMiners[0]),
 		th.KeyFile(fortest.KeyFilePaths()[0]),
 	).Start()
 	return daemon

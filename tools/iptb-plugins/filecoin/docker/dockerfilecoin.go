@@ -36,7 +36,7 @@ var log = logging.Logger(PluginName)
 var DefaultDockerHost = client.DefaultDockerHost
 
 // DefaultDockerImage is the image name the plugin will use when deploying a container>
-var DefaultDockerImage = "go-filecoin"
+var DefaultDockerImage = "venus"
 
 // DefaultDockerUser is the user that will run the command(s) inside the container.
 var DefaultDockerUser = "filecoin"
@@ -369,7 +369,7 @@ func (l *Dockerfilecoin) Connect(ctx context.Context, n testbedi.Core) error {
 	for _, a := range swarmaddrs {
 		// we should try all addresses
 		// TODO(frrist) libp2p has a better way to do this built in iirc
-		output, err := l.RunCmd(ctx, nil, "go-filecoin", "swarm", "connect", a)
+		output, err := l.RunCmd(ctx, nil, "venus", "swarm", "connect", a)
 		if err != nil {
 			return err
 		}
@@ -445,7 +445,7 @@ func (l *Dockerfilecoin) APIAddr() (string, error) {
 
 // SwarmAddrs returns the addresses a node is listening on for swarm connections.
 func (l *Dockerfilecoin) SwarmAddrs() ([]string, error) {
-	out, err := l.RunCmd(context.Background(), nil, "go-filecoin", "id", "--format='<addrs>'")
+	out, err := l.RunCmd(context.Background(), nil, "venus", "id", "--format='<addrs>'")
 	if err != nil {
 		return nil, err
 	}

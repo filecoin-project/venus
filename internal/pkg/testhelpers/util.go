@@ -41,7 +41,7 @@ func MustGetFilecoinBinary() string {
 func GetFilecoinBinary() (string, error) {
 	bin, provided := testflags.BinaryPath()
 	if !provided {
-		bin = project.Root("go-filecoin")
+		bin = project.Root("venus")
 	}
 
 	_, err := os.Stat(bin)

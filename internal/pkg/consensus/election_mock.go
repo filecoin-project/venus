@@ -6,7 +6,7 @@ import (
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof" // todo ref lotus
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/vendors/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/venus/internal/pkg/util/ffiwrapper"
 )
 
 type genFakeVerifier struct{}

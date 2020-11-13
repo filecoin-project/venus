@@ -38,7 +38,7 @@ var _ Client = (*client)(nil)
 
 // NewClient creates a new libp2p-based exchange.Client that uses the libp2p
 // ChainExhange protocol as the fetching mechanism.
-func NewClient(host host.Host, pmgr *net.PeerMgr) Client {
+func NewClient(host host.Host, pmgr net.IPeerMgr) Client {
 	return &client{
 		host:        host,
 		peerTracker: newPeerTracker(host, pmgr),

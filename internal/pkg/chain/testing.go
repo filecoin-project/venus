@@ -226,8 +226,7 @@ func (f *Builder) Build(parent *block.TipSet, width int, build func(b *BlockBuil
 
 	for _, block := range tip.Blocks() {
 		// add block to cstore
-		ccid, err := f.cstore.Put(context.TODO(), block)
-		fmt.Println("geneblock: ", ccid.String())
+		_, err := f.cstore.Put(context.TODO(), block)
 		require.NoError(f.t, err)
 	}
 

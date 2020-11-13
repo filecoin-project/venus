@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/venus/vendors/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/venus/internal/pkg/util/ffiwrapper"
 	"github.com/ipfs/go-cid"
 	"github.com/minio/blake2b-simd"
 

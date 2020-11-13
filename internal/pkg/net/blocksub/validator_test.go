@@ -25,7 +25,6 @@ import (
 	th "github.com/filecoin-project/venus/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/internal/pkg/types"
-	vmaddr "github.com/filecoin-project/venus/internal/pkg/vm/address"
 )
 
 func TestBlockTopicValidator(t *testing.T) {
@@ -88,7 +87,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 	require.NoError(t, err)
 
 	// generate a miner address for blocks
-	miner := vmaddr.NewForTestGetter()()
+	miner := types.NewForTestGetter()()
 
 	mclock.Advance(blocktime) // enter epoch 1
 

@@ -26,8 +26,8 @@ import (
 	drandapi "github.com/filecoin-project/venus/internal/pkg/protocol/drand"
 	"github.com/filecoin-project/venus/internal/pkg/repo"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/policy"
+	"github.com/filecoin-project/venus/internal/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/internal/pkg/version"
-	"github.com/filecoin-project/venus/vendors/sector-storage/ffiwrapper"
 )
 
 // Builder is a helper to aid in the construction of a filecoin node.

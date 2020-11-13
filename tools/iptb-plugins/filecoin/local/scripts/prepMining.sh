@@ -39,7 +39,7 @@ printf "Setting up initial boostrap node (0)\n"
 minerAddr=$(cat $FIXDIR/gen.json | jq ".Miners[0].Address" -r)
 
 iptb init 0 -- --genesisfile=$FIXDIR/genesis.car
-iptb start 0 -- --block-time=5s
+iptb start 0
 iptb run 0 -- go-filecoin config mining.minerAddress "\"$minerAddr\""
 
 # import miner owner

@@ -230,7 +230,7 @@ jobs:
             - "bundle/"
             - "tools/gengen/gengen"
             - "fixtures"
-            - "go-filecoin"
+            - "venus"
             - "tools"
 
   unit_test_linux:

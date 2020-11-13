@@ -74,7 +74,7 @@ func init() {
 		// error is ErrNotFound we ignore it.
 		// Error is handled after flag parsing so help can be shown without
 		// erroring first
-		binpath, err = exec.LookPath("go-filecoin")
+		binpath, err = exec.LookPath("venus")
 		if err != nil {
 			xerr, ok := err.(*exec.Error)
 			if ok && xerr.Err == exec.ErrNotFound {

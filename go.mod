@@ -24,7 +24,6 @@ require (
 	github.com/filecoin-project/go-address v0.0.4
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20201006184820-924ee87a1349
 	github.com/filecoin-project/go-bitfield v0.2.1
-	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.9.0
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f
@@ -35,19 +34,15 @@ require (
 	github.com/filecoin-project/go-padreader v0.0.0-20200903213702-ed5fae088b20
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
 	github.com/filecoin-project/go-state-types v0.0.0-20201013222834-41ea465f274f
-	github.com/filecoin-project/go-statemachine v0.0.0-20200925024713-05bd7c71fbfe
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
 	github.com/filecoin-project/lotus v0.10.2-0.20201015111416-4e659e30c54e
 	github.com/filecoin-project/specs-actors v0.9.12
 	github.com/filecoin-project/specs-actors/v2 v2.2.0
-	github.com/filecoin-project/specs-storage v0.1.1-0.20200907031224-ed2e5cd13796
 	github.com/filecoin-project/test-vectors/schema v0.0.5-0.20201014133607-1352e6bb4e71
 	github.com/fxamacker/cbor/v2 v2.2.0
 	github.com/go-kit/kit v0.10.0
 	github.com/golangci/golangci-lint v1.21.0
 	github.com/google/go-github v17.0.0+incompatible
-	github.com/google/uuid v1.1.1
-	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ipfs/go-bitswap v0.2.20
@@ -80,10 +75,12 @@ require (
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/jbenet/goprocess v0.1.4
 	github.com/jstemmer/go-junit-report v0.9.1
+	github.com/libp2p/go-eventbus v0.2.1
 	github.com/libp2p/go-libp2p v0.11.0
 	github.com/libp2p/go-libp2p-autonat-svc v0.2.0
 	github.com/libp2p/go-libp2p-circuit v0.3.1
 	github.com/libp2p/go-libp2p-core v0.6.1
+	github.com/libp2p/go-libp2p-crypto v0.1.0
 	github.com/libp2p/go-libp2p-kad-dht v0.8.3
 	github.com/libp2p/go-libp2p-mplex v0.2.4
 	github.com/libp2p/go-libp2p-peerstore v0.2.6

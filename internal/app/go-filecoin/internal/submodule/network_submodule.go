@@ -64,7 +64,7 @@ type NetworkSubmodule struct {
 
 	GraphExchange graphsync.GraphExchange
 
-	PeerMgr *net.PeerMgr
+	PeerMgr net.IPeerMgr
 	//data transfer
 	DataTransfer     datatransfer.Manager
 	DataTransferHost dtnet.DataTransferNetwork
@@ -102,6 +102,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	var router routing.Routing
 	validator := blankValidator{}
 	var pubsubMessageSigning bool
+	var peerMgr net.IPeerMgr
 	if !config.OfflineMode() {
 		makeDHT := func(h host.Host) (routing.Routing, error) {
 			mode := dht.ModeServer
@@ -131,10 +132,28 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 		}
 		// require message signing in online mode when we have priv key
 		pubsubMessageSigning = true
+
+		//peer manager
+		bootNodes, err := net.ParseAddresses(ctx, repo.Config().Bootstrap.Addresses)
+		if err != nil {
+			return NetworkSubmodule{}, err
+		}
+		period, err := time.ParseDuration(repo.Config().Bootstrap.Period)
+		if err != nil {
+			return NetworkSubmodule{}, err
+		}
+
+		peerMgr, err = net.NewPeerMgr(peerHost, router.(*dht.IpfsDHT), period, bootNodes)
+		if err != nil {
+			return NetworkSubmodule{}, err
+		}
+
+		go peerMgr.Run(ctx)
 	} else {
 		router = offroute.NewOfflineRouter(repo.Datastore(), validator)
-		peerHost = rhost.Wrap(noopLibP2PHost{}, router)
+		peerHost = rhost.Wrap(NewNoopLibP2PHost(), router)
 		pubsubMessageSigning = false
+		peerMgr = &net.MockPeerMgr{}
 	}
 
 	// Set up libp2p network
@@ -183,21 +202,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	}
 	// build network
 	network := net.New(peerHost, net.NewRouter(router), bandwidthTracker)
-	//peer manager
-	bootNodes, err := net.ParseAddresses(ctx, repo.Config().Bootstrap.Addresses)
-	if err != nil {
-		return NetworkSubmodule{}, err
-	}
-	period, err := time.ParseDuration(repo.Config().Bootstrap.Period)
-	if err != nil {
-		return NetworkSubmodule{}, err
-	}
-	peerMgr, err := net.NewPeerMgr(peerHost, router.(*dht.IpfsDHT), period, bootNodes)
-	if err != nil {
-		return NetworkSubmodule{}, err
-	}
 
-	go peerMgr.Run(ctx)
 	// build the network submdule
 	return NetworkSubmodule{
 		NetworkName:      networkName,

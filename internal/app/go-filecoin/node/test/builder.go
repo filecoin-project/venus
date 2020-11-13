@@ -88,6 +88,7 @@ func (b *NodeBuilder) Build(ctx context.Context) *node.Node {
 	b.requireNoError(err)
 
 	nd, err := node.New(ctx, append(repoConfigOpts, b.builderOpts...)...)
+	nd.OfflineMode = true
 	b.requireNoError(err)
 	return nd
 }

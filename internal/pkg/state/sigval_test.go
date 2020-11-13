@@ -12,7 +12,6 @@ import (
 
 	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/internal/pkg/types"
-	vmaddr "github.com/filecoin-project/venus/internal/pkg/vm/address"
 )
 
 type fakeStateView struct {
@@ -47,7 +46,7 @@ func TestSignMessageOk(t *testing.T) {
 		assert.NoError(t, v.ValidateMessageSignature(ctx, smsg))
 	})
 	t.Run("resolution required", func(t *testing.T) {
-		idAddress := vmaddr.RequireIDAddress(t, 1)
+		idAddress := types.RequireIDAddress(t, 1)
 		// Use ID address in message but sign with corresponding key address.
 		state := &fakeStateView{keys: map[address.Address]address.Address{
 			idAddress: keyAddr,
@@ -94,7 +93,7 @@ func TestBadFrom(t *testing.T) {
 		assert.Error(t, v.ValidateMessageSignature(ctx, smsg))
 	})
 	t.Run("resolution required", func(t *testing.T) {
-		idAddress := vmaddr.RequireIDAddress(t, 1)
+		idAddress := types.RequireIDAddress(t, 1)
 		// Use ID address in message but sign with corresponding key address.
 		state := &fakeStateView{keys: map[address.Address]address.Address{
 			idAddress: keyAddr,
