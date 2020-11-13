@@ -6,7 +6,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/internal/pkg/crypto"
 	"github.com/filecoin-project/venus/internal/pkg/enccid"
-	vmaddr "github.com/filecoin-project/venus/internal/pkg/vm/address"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -232,7 +231,7 @@ func TestBlockDaemon(t *testing.T) {
 
 func mockBlock(t *testing.T) (*block.Block, error) {
 	b := &block.Block{
-		Miner:         vmaddr.NewForTestGetter()(),
+		Miner:         types.NewForTestGetter()(),
 		Ticket:        block.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
 		ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
 		Height:        2,

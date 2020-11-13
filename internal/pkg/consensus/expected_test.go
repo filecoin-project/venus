@@ -30,7 +30,6 @@ package consensus_test
 //	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 //	"github.com/filecoin-project/venus/internal/pkg/types"
 //	"github.com/filecoin-project/venus/internal/pkg/vm"
-//	vmaddr "github.com/filecoin-project/venus/internal/pkg/vm/address"
 //	"github.com/filecoin-project/venus/internal/pkg/vm/state"
 //	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 //)

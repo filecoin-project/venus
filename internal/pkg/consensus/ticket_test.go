@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/block"
 	"github.com/filecoin-project/venus/internal/pkg/crypto"
 	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
-	vmaddr "github.com/filecoin-project/venus/internal/pkg/vm/address"
 
 	"github.com/filecoin-project/venus/internal/pkg/consensus"
 	"github.com/filecoin-project/venus/internal/pkg/types"
@@ -66,7 +65,7 @@ func TestNextTicketFailsWithInvalidSigner(t *testing.T) {
 	require.NoError(t, err)
 
 	signer, _ := types.NewMockSignersAndKeyInfo(1)
-	badAddr := vmaddr.RequireIDAddress(t, 100)
+	badAddr := types.RequireIDAddress(t, 100)
 	rnd := consensus.FakeSampler{Seed: 0}
 	tm := consensus.NewTicketMachine(&rnd)
 	electionEntry := &block.BeaconEntry{}

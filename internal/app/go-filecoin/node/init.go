@@ -2,12 +2,6 @@ package node
 
 import (
 	"context"
-	"encoding/json"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-
-	"github.com/google/uuid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	keystore "github.com/ipfs/go-ipfs-keystore"
 	acrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -19,7 +13,6 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/genesis"
 	"github.com/filecoin-project/venus/internal/pkg/repo"
 	"github.com/filecoin-project/venus/internal/pkg/wallet"
-	"github.com/filecoin-project/venus/vendors/sector-storage/stores"
 )
 
 const defaultPeerKeyBits = 2048
@@ -141,40 +134,5 @@ func importInitKeys(w *wallet.Wallet, importKeys []*crypto.KeyInfo) error {
 			return err
 		}
 	}
-	return nil
-}
-
-func ensureSectorDirAndMetadata(containsPreSealedSectors bool, dirPath string) error {
-	_, err := os.Stat(filepath.Join(dirPath, stores.MetaFile))
-	if os.IsNotExist(err) {
-		// TODO: Set the appropriate permissions.
-		_ = os.MkdirAll(dirPath, 0777)
-
-		dirMeta := stores.LocalStorageMeta{
-			ID:       stores.ID(uuid.New().String()),
-			Weight:   10,
-			CanSeal:  true,
-			CanStore: true,
-		}
-
-		if containsPreSealedSectors {
-			dirMeta.CanSeal = false
-			dirMeta.CanStore = false
-			dirMeta.Weight = 0
-		}
-
-		b, err := json.MarshalIndent(&dirMeta, "", "  ")
-		if err != nil {
-			return err
-		}
-
-		// TODO: Set the appropriate permissions.
-		if err := ioutil.WriteFile(filepath.Join(dirPath, stores.MetaFile), b, 0777); err != nil {
-			return err
-		}
-	} else if err != nil {
-		return err
-	}
-
 	return nil
 }

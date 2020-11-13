@@ -26,10 +26,10 @@ type bsPeerTracker struct {
 	peers         map[peer.ID]*peerStats
 	avgGlobalTime time.Duration
 
-	pmgr *net.PeerMgr
+	pmgr net.IPeerMgr
 }
 
-func newPeerTracker(h host.Host, pmgr *net.PeerMgr) *bsPeerTracker {
+func newPeerTracker(h host.Host, pmgr net.IPeerMgr) *bsPeerTracker {
 	bsPt := &bsPeerTracker{
 		peers: make(map[peer.ID]*peerStats),
 		pmgr:  pmgr,

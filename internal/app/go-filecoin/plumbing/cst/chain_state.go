@@ -8,17 +8,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	format "github.com/ipfs/go-ipld-format"
-	logging "github.com/ipfs/go-log/v2"
-	merkdag "github.com/ipfs/go-merkledag"
-	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/venus/internal/app/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/venus/internal/pkg/beacon"
 	"github.com/filecoin-project/venus/internal/pkg/block"
@@ -34,6 +23,15 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/types"
 	"github.com/filecoin-project/venus/internal/pkg/vm"
 	vmstate "github.com/filecoin-project/venus/internal/pkg/vm/state"
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-cid"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	format "github.com/ipfs/go-ipld-format"
+	logging "github.com/ipfs/go-log/v2"
+	merkdag "github.com/ipfs/go-merkledag"
+	"github.com/pkg/errors"
 )
 
 var logStore = logging.Logger("plumbing/chain_store")
@@ -283,7 +281,7 @@ func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, tipKey bl
 	}
 
 	if !found {
-		return address.Undef, xerrors.Errorf("not found address")
+		return address.Undef, types.ErrActorNotFound
 	}
 	return idAddress, nil
 }

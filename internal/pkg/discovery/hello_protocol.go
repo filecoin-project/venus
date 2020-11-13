@@ -68,7 +68,7 @@ type HelloProtocolHandler struct {
 
 	networkName string
 
-	peerMgr *fnet.PeerMgr
+	peerMgr fnet.IPeerMgr
 }
 
 type peerDiscoveredCallback func(ci *block.ChainInfo)
@@ -77,7 +77,7 @@ type getTipSetFunc func() (*block.TipSet, error)
 
 // NewHelloProtocolHandler creates a new instance of the hello protocol `Handler` and registers it to
 // the given `host.Host`.
-func NewHelloProtocolHandler(h host.Host, peerMgr *fnet.PeerMgr, gen cid.Cid, networkName string) *HelloProtocolHandler {
+func NewHelloProtocolHandler(h host.Host, peerMgr fnet.IPeerMgr, gen cid.Cid, networkName string) *HelloProtocolHandler {
 	return &HelloProtocolHandler{
 		host:        h,
 		genesis:     gen,

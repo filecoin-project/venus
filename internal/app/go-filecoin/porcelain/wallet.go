@@ -20,7 +20,7 @@ type wbPlumbing interface {
 // WalletBalance gets the current balance associated with an address
 func WalletBalance(ctx context.Context, plumbing wbPlumbing, addr address.Address) (abi.TokenAmount, error) {
 	act, err := plumbing.ActorGet(ctx, addr)
-	if err == types.ErrNotFound {
+	if err == types.ErrActorNotFound {
 		// if the account doesn't exit, the balance should be zero
 		return abi.NewTokenAmount(0), nil
 	}

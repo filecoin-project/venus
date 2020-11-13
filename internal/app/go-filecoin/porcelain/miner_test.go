@@ -25,7 +25,6 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/state"
 	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/internal/pkg/types"
-	vmaddr "github.com/filecoin-project/venus/internal/pkg/vm/address"
 	"github.com/filecoin-project/venus/internal/pkg/wallet"
 )
 
@@ -99,7 +98,7 @@ func TestMinerCreate(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		ctx := context.Background()
-		expectedAddress := vmaddr.NewForTestGetter()()
+		expectedAddress := types.NewForTestGetter()()
 		plumbing := newMinerCreate(t, false, expectedAddress)
 		collateral := types.NewAttoFILFromFIL(1)
 
@@ -178,7 +177,7 @@ func TestMinerGetStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	plumbing := mStatusPlumbing{
-		*ts, key, vmaddr.RequireIDAddress(t, 1), vmaddr.RequireIDAddress(t, 2), vmaddr.RequireIDAddress(t, 3),
+		*ts, key, types.RequireIDAddress(t, 1), types.RequireIDAddress(t, 2), types.RequireIDAddress(t, 3),
 	}
 	status, err := MinerGetStatus(context.Background(), &plumbing, plumbing.miner, key)
 	assert.NoError(t, err)
@@ -241,9 +240,9 @@ func (p *mSetWorkerPlumbing) ConfigGet(dottedKey string) (interface{}, error) {
 func TestMinerSetWorkerAddress(t *testing.T) {
 	tf.UnitTest(t)
 
-	minerOwner := vmaddr.RequireIDAddress(t, 100)
-	minerAddr := vmaddr.RequireIDAddress(t, 101)
-	workerAddr := vmaddr.RequireIDAddress(t, 102)
+	minerOwner := types.RequireIDAddress(t, 100)
+	minerAddr := types.RequireIDAddress(t, 101)
+	workerAddr := types.RequireIDAddress(t, 102)
 	baseFee := types.ZeroAttoFIL
 	gasPremium := types.ZeroAttoFIL
 	glimit := types.NewGas(0)

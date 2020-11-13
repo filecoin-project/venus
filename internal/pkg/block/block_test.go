@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin"
 	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/internal/pkg/types"
-	vmaddr "github.com/filecoin-project/venus/internal/pkg/vm/address"
 )
 
 func TestTriangleEncoding(t *testing.T) {
@@ -38,7 +37,7 @@ func TestTriangleEncoding(t *testing.T) {
 	// into a block (second half of the second case). I don't claim this is ideal,
 	// see: https://github.com/filecoin-project/venus/issues/599
 
-	newAddress := vmaddr.NewForTestGetter()
+	newAddress := types.NewForTestGetter()
 
 	testRoundTrip := func(t *testing.T, exp *blk.Block) {
 		jb, err := json.Marshal(exp)
@@ -120,7 +119,7 @@ func TestDecodeBlock(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("successfully decodes raw bytes to a Filecoin block", func(t *testing.T) {
-		addrGetter := vmaddr.NewForTestGetter()
+		addrGetter := types.NewForTestGetter()
 
 		c1 := types.CidFromString(t, "a")
 		c2 := types.CidFromString(t, "b")
@@ -200,7 +199,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
 	var parent, child blk.Block
-	child.Miner = vmaddr.NewForTestGetter()()
+	child.Miner = types.NewForTestGetter()()
 	child.Height = 1
 	child.ParentWeight = fbig.Zero()
 	child.Parents = blk.NewTipSetKey(parent.Cid())
@@ -232,7 +231,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 
 func TestSignatureData(t *testing.T) {
 	tf.UnitTest(t)
-	newAddress := vmaddr.NewForTestGetter()
+	newAddress := types.NewForTestGetter()
 	posts := []builtin.PoStProof{builtin.PoStProof{abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, []byte{0x07}}}
 
 	b := &blk.Block{

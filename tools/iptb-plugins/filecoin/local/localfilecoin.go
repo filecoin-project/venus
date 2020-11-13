@@ -36,7 +36,7 @@ var errIsAlive = errors.New("node is already running")
 var errTimeout = errors.New("timeout")
 
 // defaultFilecoinBinary is the name or full path of the binary that will be used
-const defaultFilecoinBinary = "go-filecoin"
+const defaultFilecoinBinary = "venus"
 
 // defaultRepoPath is the name of the repo path relative to the plugin root directory
 const defaultRepoPath = "repo"
@@ -324,7 +324,7 @@ func (l *Localfilecoin) RunCmd(ctx context.Context, stdin io.Reader, args ...str
 	}
 
 	firstArg := args[0]
-	if firstArg == "go-filecoin" {
+	if firstArg == "venus" {
 		firstArg = l.binPath
 	}
 

@@ -2,10 +2,7 @@ package porcelain
 
 import (
 	"context"
-	"io"
-
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/internal/pkg/state"
 	"github.com/ipfs/go-cid"
@@ -107,11 +104,6 @@ func (a *API) WalletDefaultAddress() (address.Address, error) {
 // SetWalletDefaultAddress set the specified address as the default in the config.
 func (a *API) SetWalletDefaultAddress(addr address.Address) error {
 	return SetWalletDefaultAddress(a, addr)
-}
-
-// SealPieceIntoNewSector writes the provided piece into a new sector
-func (a *API) SealPieceIntoNewSector(ctx context.Context, dealID abi.DealID, dealStart, dealEnd abi.ChainEpoch, pieceSize abi.UnpaddedPieceSize, pieceReader io.Reader) (*storagemarket.PackingResult, error) {
-	return SealPieceIntoNewSector(ctx, a, dealID, dealStart, dealEnd, pieceSize, pieceReader)
 }
 
 // MinerSetWorkerAddress sets the miner worker address to the provided address

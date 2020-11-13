@@ -10,7 +10,6 @@ import (
 	. "github.com/filecoin-project/venus/internal/pkg/slashing"
 	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/internal/pkg/types"
-	vmaddr "github.com/filecoin-project/venus/internal/pkg/vm/address"
 )
 
 func assertEmptyCh(t *testing.T, faultCh chan ConsensusFault) {
@@ -23,7 +22,7 @@ func assertEmptyCh(t *testing.T, faultCh chan ConsensusFault) {
 
 func TestNoFaults(t *testing.T) {
 	tf.UnitTest(t)
-	addrGetter := vmaddr.NewForTestGetter()
+	addrGetter := types.NewForTestGetter()
 	minerAddr1 := addrGetter()
 	minerAddr2 := addrGetter()
 	minerAddr3 := addrGetter()
@@ -95,7 +94,7 @@ func TestNoFaults(t *testing.T) {
 
 func TestFault(t *testing.T) {
 	tf.UnitTest(t)
-	addrGetter := vmaddr.NewForTestGetter()
+	addrGetter := types.NewForTestGetter()
 	minerAddr1 := addrGetter()
 
 	parentBlock := &block.Block{Height: 42}
@@ -116,7 +115,7 @@ func TestFault(t *testing.T) {
 
 func TestFaultNullBlocks(t *testing.T) {
 	tf.UnitTest(t)
-	addrGetter := vmaddr.NewForTestGetter()
+	addrGetter := types.NewForTestGetter()
 	minerAddr1 := addrGetter()
 
 	t.Run("same base", func(t *testing.T) {
