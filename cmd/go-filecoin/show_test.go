@@ -180,7 +180,7 @@ func TestBlockDaemon(t *testing.T) {
 		defer done()
 
 		//_, err := n.BlockMining.BlockMiningAPI.MiningOnce(ctx)
-		mockBlk, err := mockBlock(t)
+		mockBlk, err := mockBlock(t) //nolint
 		require.NoError(t, err)
 
 		from, err := n.PorcelainAPI.WalletDefaultAddress() // this should = fixtures.TestAddresses[0]
