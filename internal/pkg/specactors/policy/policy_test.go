@@ -1,6 +1,7 @@
 package policy
 
 import (
+	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,6 +18,7 @@ import (
 )
 
 func TestSupportedProofTypes(t *testing.T) {
+	tf.UnitTest(t)
 	var oldTypes []abi.RegisteredSealProof
 	for t := range miner0.SupportedProofTypes {
 		oldTypes = append(oldTypes, t)
@@ -44,6 +46,7 @@ func TestSupportedProofTypes(t *testing.T) {
 
 // Tests assumptions about policies being the same between actor versions.
 func TestAssumptions(t *testing.T) {
+	tf.UnitTest(t)
 	require.EqualValues(t, miner0.SupportedProofTypes, miner2.SupportedProofTypes)
 	require.Equal(t, miner0.PreCommitChallengeDelay, miner2.PreCommitChallengeDelay)
 	require.Equal(t, miner0.MaxSectorExpirationExtension, miner2.MaxSectorExpirationExtension)
@@ -55,7 +58,9 @@ func TestAssumptions(t *testing.T) {
 	require.Equal(t, paych0.SettleDelay, paych2.SettleDelay)
 	require.True(t, verifreg0.MinVerifiedDealSize.Equals(verifreg2.MinVerifiedDealSize))
 }
+
 func TestPartitionSizes(t *testing.T) {
+	tf.UnitTest(t)
 	for p := range abi.PoStSealProofTypes {
 		sizeNew, err := builtin2.PoStProofWindowPoStPartitionSectors(p)
 		require.NoError(t, err)

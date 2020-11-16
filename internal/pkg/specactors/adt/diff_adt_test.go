@@ -77,6 +77,7 @@ func TestDiffAdtArray(t *testing.T) {
 }
 
 func TestDiffAdtMap(t *testing.T) {
+	tf.UnitTest(t)
 	ctxstoreA := newContextStore()
 	ctxstoreB := newContextStore()
 

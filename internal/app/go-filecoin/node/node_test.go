@@ -65,6 +65,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 
 		require.NoError(t, node.Init(ctx, r, gengen.DefaultGenesis))
 		r.Config().Bootstrap.Addresses = []string{}
+		r.Config().Bootstrap.MinPeerThreshold = 0
 		opts, err := node.OptionsFromRepo(r)
 		require.NoError(t, err)
 
@@ -92,6 +93,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		// Create a node with the nodes above as bootstrap nodes.
 		r := repo.NewInMemoryRepo()
 		r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
+		r.Config().Bootstrap.MinPeerThreshold = 0
 
 		require.NoError(t, node.Init(ctx, r, gengen.DefaultGenesis))
 		r.Config().Bootstrap.Addresses = []string{peer1, peer2}
@@ -208,6 +210,6 @@ func TestNodeConfig(t *testing.T) {
 
 	assert.Equal(t, true, n.OfflineMode)
 	assert.Equal(t, &config.SwarmConfig{
-		Address: "/ip4/127.0.0.1/tcp/0",
+		Address: "/ip4/0.0.0.0/tcp/0",
 	}, cfg.Swarm)
 }
