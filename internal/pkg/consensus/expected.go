@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/venus/internal/pkg/enccid"
 	"os"
 	"strings"
 	"time"
@@ -598,9 +599,9 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 		return err
 	}
 
-	mrcid, err := tmpstore.Put(ctx, &block.MsgMeta{
-		BlsMessages:   bmroot,
-		SecpkMessages: smroot,
+	mrcid, err := tmpstore.Put(ctx, &types.TxMeta{
+		BLSRoot: enccid.NewCid(bmroot),
+		SecpRoot: enccid.NewCid(smroot),
 	})
 	if err != nil {
 		return err
@@ -655,7 +656,6 @@ func (c *Expected) VerifyWinningPoStProof(ctx context.Context, blk *block.Block,
 	if err != nil {
 		return xerrors.Errorf("getting winning post sector set: %v", err)
 	}
-	// fmt.Printf("Sectors: %v\n", sectors)
 
 	proofs := make([]proof2.PoStProof, len(blk.WinPoStProof))
 	for idx, pf := range blk.WinPoStProof {
@@ -841,7 +841,6 @@ func (c *Expected) GetLookbackTipSetForRound(ctx context.Context, ts *block.TipS
 	}
 
 	// Get the tipset after the lookback tipset, or the next non-null one.
-	// fmt.Printf("ts: %s, lbr: %v \n", ts.Key(), lbr)
 	nextTs, err := c.chainState.GetTipSetByHeight(ctx, ts, lbr+1, false)
 	if err != nil {
 		return nil, cid.Undef, xerrors.Errorf("failed to get lookback tipset+1: %v", err)
@@ -876,7 +875,6 @@ func GetMinerWorkerRaw(ctx context.Context, stateID cid.Cid, bstore blockstore.B
 	if err != nil {
 		return address.Undef, xerrors.Errorf("(get sset) failed to load miner actor: %v", err)
 	}
-	// fmt.Printf("act: %v\n", *act)
 
 	if !find {
 		return address.Undef, xerrors.Errorf("actor not found for %s", addr)
@@ -900,7 +898,6 @@ func GetMinerWorkerRaw(ctx context.Context, stateID cid.Cid, bstore blockstore.B
 	if err != nil {
 		return address.Undef, xerrors.Errorf("(get sset) failed to load miner actor: %v", err)
 	}
-	// fmt.Printf("act: %v\n", *actWorker)
 
 	if !find {
 		return address.Undef, xerrors.Errorf("actor not found for %s", addr)
