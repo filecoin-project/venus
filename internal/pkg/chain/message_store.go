@@ -9,9 +9,16 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
+
+	// named msgarray here to make it clear that these are the types used by
+	// messages, regardless of specs-actors version.
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
+
+	bstore "github.com/filecoin-project/venus/internal/pkg/fork/blockstore"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -505,4 +512,30 @@ func GetReceiptRoot(receipts []types.MessageReceipt) (cid.Cid, error) {
 		rawMarshallers[i] = &cbg.Deferred{Raw: raw}
 	}
 	return amt.FromArray(context.TODO(), as, rawMarshallers)
+}
+
+func GetChainMsgRoot(ctx context.Context, messages []types.ChainMsg) (cid.Cid, error) {
+	tmpbs := bstore.NewTemporary()
+	tmpstore := blockadt.WrapStore(ctx, cbor.NewCborStore(tmpbs))
+
+	arr := blockadt.MakeEmptyArray(tmpstore)
+
+	for i, m := range messages {
+		b, err := m.ToStorageBlock()
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		err =tmpbs.Put(b)
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		k := cbg.CborCid(b.Cid())
+		if err := arr.Set(uint64(i), &k); err != nil {
+			return cid.Undef, xerrors.Errorf("failed to put message: %v", err)
+		}
+	}
+
+	return arr.Root()
 }

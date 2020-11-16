@@ -5,8 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/venus/internal/pkg/enccid"
 	"os"
 	"strings"
 	"time"
@@ -21,14 +19,9 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
-
-	// named msgarray here to make it clear that these are the types used by
-	// messages, regardless of specs-actors version
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
@@ -38,8 +31,8 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/clock"
 	"github.com/filecoin-project/venus/internal/pkg/constants"
 	"github.com/filecoin-project/venus/internal/pkg/crypto"
+	"github.com/filecoin-project/venus/internal/pkg/enccid"
 	"github.com/filecoin-project/venus/internal/pkg/fork"
-	bstore "github.com/filecoin-project/venus/internal/pkg/fork/blockstore"
 	"github.com/filecoin-project/venus/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin"
@@ -553,65 +546,43 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 	}
 
 	// Validate message arrays in a temporary blockstore.
-	tmpbs := bstore.NewTemporary()
-	tmpstore := blockadt.WrapStore(ctx, cbor.NewCborStore(tmpbs))
-
-	bmArr := blockadt.MakeEmptyArray(tmpstore)
+	blsMsgs := make([]types.ChainMsg, len(blkblsMsgs))
 	for i, m := range blkblsMsgs {
 		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid bls message at index %d: %v", i, err)
 		}
 
-		c, err := store.PutMessage(tmpbs, m)
-		if err != nil {
-			return xerrors.Errorf("failed to store message: %v", err)
-		}
-
-		k := cbg.CborCid(c)
-		if err := bmArr.Set(uint64(i), &k); err != nil {
-			return xerrors.Errorf("failed to put bls message at index %d: %v", i, err)
-		}
+		blsMsgs[i] = m
 	}
 
-	smArr := blockadt.MakeEmptyArray(tmpstore)
+	secpMsgs := make([]types.ChainMsg, len(blksecpMsgs))
 	for i, m := range blksecpMsgs {
 		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid secpk message at index %d: %v", i, err)
 		}
 
-		c, err := store.PutMessage(tmpbs, m)
-		if err != nil {
-			return xerrors.Errorf("failed to store message: %v", err)
-		}
-		k := cbg.CborCid(c)
-		if err := smArr.Set(uint64(i), &k); err != nil {
-			return xerrors.Errorf("failed to put secpk message at index %d: %v", i, err)
-		}
+		secpMsgs[i] = m
 	}
 
-	bmroot, err := bmArr.Root()
+	bmroot, err := chain.GetChainMsgRoot(ctx, blsMsgs)
 	if err != nil {
-		return err
+		return xerrors.Errorf("get blsMsgs root failed: %v", err)
 	}
 
-	smroot, err := smArr.Root()
+	smroot, err := chain.GetChainMsgRoot(ctx, secpMsgs)
 	if err != nil {
-		return err
+		return xerrors.Errorf("get secpMsgs root failed: %v", err)
 	}
 
-	mrcid, err := tmpstore.Put(ctx, &types.TxMeta{
-		BLSRoot: enccid.NewCid(bmroot),
+	b, err := chain.MakeBlock(&types.TxMeta{
+		BLSRoot:  enccid.NewCid(bmroot),
 		SecpRoot: enccid.NewCid(smroot),
 	})
-	if err != nil {
-		return err
-	}
 
-	if blk.Messages.Cid != mrcid {
+	if blk.Messages.Cid != b.Cid() {
 		return fmt.Errorf("messages didnt match message root in header")
 	}
 
-	// Todo Finally, flush. need it here?
 	return nil
 }
 
