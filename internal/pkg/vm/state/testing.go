@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"fmt"
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
@@ -28,7 +27,7 @@ func NewFromString(t *testing.T, s string, store cbor.IpldStore) *State {
 
 	//create account
 	strAddr, err := address.NewSecp256k1Address([]byte(s))
-	fmt.Printf("strAddr: %s\n", strAddr)
+	stateLog.Debugf("strAddr: %s\n", strAddr)
 	require.NoError(t, err)
 
 	//add a account for t3

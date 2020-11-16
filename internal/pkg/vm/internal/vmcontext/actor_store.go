@@ -3,11 +3,10 @@ package vmcontext
 import (
 	"context"
 	"fmt"
-	"reflect"
-
 	"github.com/filecoin-project/go-state-types/exitcode"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
+	"reflect"
 
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/venus/internal/pkg/vm/gas"
@@ -60,7 +59,7 @@ func (s *ActorStorage) StorePut(obj cbor.Marshaler) cid.Cid {
 			panic(msg)
 		}
 	}
-	//fmt.Println("gas storage put ", cid.String())
+	contextLog.Debugf("gas storage put ", cid.String())
 	s.gasTank.Charge(s.pricelist.OnIpldPut(ln), "storage put %s %d bytes into %v", cid, ln, obj)
 	return cid
 }
@@ -72,7 +71,7 @@ func (s *ActorStorage) StoreGet(cid cid.Cid, obj cbor.Unmarshaler) bool {
 	if err == storage.ErrNotFound {
 		return false
 	}
-	//fmt.Println("gas storage get ", cid.String())
+	contextLog.Debugf("gas storage put ", cid.String())
 	if err != nil {
 		msg := fmt.Sprintf("failed To get object %s %s From store: %s", reflect.TypeOf(obj), cid, err)
 		if _, ok := err.(storage.SerializationError); ok {

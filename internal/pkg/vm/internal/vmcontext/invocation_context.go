@@ -174,7 +174,7 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 			case runtime.ExecutionPanic:
 				p := r.(runtime.ExecutionPanic)
 
-				vmlog.Warnw("Abort during actor execution.",
+				contextLog.Warnw("Abort during actor execution.",
 					"errorMessage", p,
 					"exitCode", p.Code(),
 					"sender", ctx.originMsg.From,
@@ -186,15 +186,15 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 				errcode = p.Code()
 			default:
 				if err, ok := r.(error); ok {
-					fmt.Println(err.Error())
+					contextLog.Error(err.Error())
 				} else {
-					fmt.Println(r)
+					contextLog.Error(r)
 				}
 
 				errcode = 1
 				ret = []byte{}
 				// do not trap unknown panics
-				vmlog.Errorf("spec actors failure: %s", r)
+				contextLog.Errorf("spec actors failure: %s", r)
 				//debug.PrintStack()
 			}
 		}
@@ -523,7 +523,7 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
 	}
 
-	vmlog.Debugf("creating actor, friendly-name: %s, code: %s, addr: %s\n", builtin.ActorNameByCode(codeID), codeID, addr)
+	contextLog.Debugf("creating actor, friendly-name: %s, code: %s, addr: %s\n", builtin.ActorNameByCode(codeID), codeID, addr)
 
 	// Check existing address. If nothing there, create empty actor.
 	// Note: we are storing the actors by ActorID *address*

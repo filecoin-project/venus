@@ -11,10 +11,14 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	ipld "github.com/ipfs/go-ipld-format"
+	logging "github.com/ipfs/go-log/v2"
+	"unsafe"
 )
 
 // TODO: limit memory footprint
 // TODO: implement ipld.Store
+
+var storageLog = logging.Logger("vm.storage")
 
 // VMStorage implements a content-addressable store for the VM.
 type VMStorage struct {
@@ -51,7 +55,7 @@ func (s *VMStorage) SetReadCache(enabled bool) {
 
 //**********ipld interface impl**************//
 func (s *VMStorage) Get(ctx context.Context, c cid.Cid, obj interface{}) error {
-	//fmt.Println("storage get ", c.String(), " ", unsafe.Pointer(s))
+	storageLog.Debugf("storage get ", c.String(), " ", unsafe.Pointer(s))
 	raw, err := s.GetRaw(ctx, c)
 	if err != nil {
 		return err
@@ -72,7 +76,7 @@ func (s *VMStorage) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
 	// append the object to the buffer
 	cid := nd.Cid()
 	s.writeBuffer[cid] = nd
-	//fmt.Println("storage put ", cid.String())
+	storageLog.Debugf("storage put ", cid.String())
 	return cid, nil
 }
 
@@ -88,7 +92,7 @@ func (s *VMStorage) PutWithLen(ctx context.Context, obj interface{}) (cid.Cid, i
 	// append the object to the buffer
 	cid := nd.Cid()
 	s.writeBuffer[cid] = nd
-	//fmt.Println("storage put with len ", cid.String())
+	storageLog.Debugf("storage put with len ", cid.String())
 	return cid, len(nd.RawData()), nil
 }
 
@@ -107,7 +111,7 @@ func (s *VMStorage) GetWithLen(ctx context.Context, cid cid.Cid, obj interface{}
 	if err != nil {
 		return 0, err
 	}
-	//fmt.Println("storage get with len ", cid.String())
+	storageLog.Debugf("storage get with len ", cid.String())
 	err = encoding.Decode(raw, obj)
 	if err != nil {
 		return 0, SerializationError{err}
@@ -159,7 +163,7 @@ func (s *VMStorage) Flush() error {
 	// extract list of blocks for the underlying store from our internal map
 	blks := make([]blocks.Block, 0, len(s.writeBuffer))
 	for _, nd := range s.writeBuffer {
-		//fmt.Println("storage flush buffer ", nd.Cid())
+		storageLog.Debugf("storage flush buffer ", nd.Cid())
 		blks = append(blks, nd)
 	}
 
