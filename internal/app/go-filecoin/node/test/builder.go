@@ -81,6 +81,9 @@ func (b *NodeBuilder) Build(ctx context.Context) *node.Node {
 	// Initialise repo.
 	repo := repo.NewInMemoryRepo()
 
+	for _, opt := range b.configMutations {
+		opt(repo.Config())
+	}
 	b.requireNoError(node.Init(ctx, repo, b.gif, b.initOpts...))
 
 	// Initialize the node.

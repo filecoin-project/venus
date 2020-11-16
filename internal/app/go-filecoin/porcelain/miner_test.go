@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/venus/internal/app/go-filecoin/plumbing/cfg"
 	. "github.com/filecoin-project/venus/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/venus/internal/pkg/block"
-	"github.com/filecoin-project/venus/internal/pkg/constants"
 	"github.com/filecoin-project/venus/internal/pkg/encoding"
 	"github.com/filecoin-project/venus/internal/pkg/repo"
 	"github.com/filecoin-project/venus/internal/pkg/state"
@@ -91,50 +90,6 @@ func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, lookbac
 
 func (mpc *minerCreate) WalletDefaultAddress() (address.Address, error) {
 	return wallet.NewAddress(mpc.wallet, address.SECP256K1)
-}
-
-func TestMinerCreate(t *testing.T) {
-	tf.UnitTest(t)
-
-	t.Run("success", func(t *testing.T) {
-		ctx := context.Background()
-		expectedAddress := types.NewForTestGetter()()
-		plumbing := newMinerCreate(t, false, expectedAddress)
-		collateral := types.NewAttoFILFromFIL(1)
-
-		addr, err := MinerCreate(
-			ctx,
-			plumbing,
-			address.Address{},
-			types.NewGasFeeCap(0),
-			types.NewGasPremium(0),
-			types.NewGas(100),
-			constants.DevSealProofType,
-			"",
-			collateral,
-		)
-		require.NoError(t, err)
-		assert.Equal(t, expectedAddress, addr)
-	})
-
-	t.Run("failure to send", func(t *testing.T) {
-		ctx := context.Background()
-		plumbing := newMinerCreate(t, true, address.Address{})
-		collateral := types.NewAttoFILFromFIL(1)
-
-		_, err := MinerCreate(
-			ctx,
-			plumbing,
-			address.Address{},
-			types.NewGasFeeCap(0),
-			types.NewGasPremium(0),
-			types.NewGas(100),
-			constants.DevSealProofType,
-			"",
-			collateral,
-		)
-		assert.Error(t, err, "Test Error")
-	})
 }
 
 type mStatusPlumbing struct {
