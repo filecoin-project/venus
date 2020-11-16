@@ -210,6 +210,6 @@ func TestNodeConfig(t *testing.T) {
 
 	assert.Equal(t, true, n.OfflineMode)
 	assert.Equal(t, &config.SwarmConfig{
-		Address: "/ip4/0.0.0.0/tcp/0",
+		Address: "/ip4/127.0.0.1/tcp/0",
 	}, cfg.Swarm)
 }

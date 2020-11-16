@@ -177,7 +177,6 @@ func New(ctx context.Context, opts ...BuilderOpt) (*Node, error) {
 		propDelay:   clock.DefaultPropagationDelay,
 		verifier:    ffiwrapper.ProofVerifier,
 	}
-
 	// apply builder options
 	for _, o := range opts {
 		if err := o(n); err != nil {

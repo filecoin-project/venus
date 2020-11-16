@@ -8,7 +8,4 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 # Go tests
 go test -v "./$(basename $DIR)/..." -functional
 
-# Shell Tests
-. $DIR/retrieval
-
 
