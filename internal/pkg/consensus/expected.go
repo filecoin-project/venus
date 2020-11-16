@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/chain/store"
 	"os"
 	"strings"
 	"time"
@@ -19,9 +20,14 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
+
+	// named msgarray here to make it clear that these are the types used by
+	// messages, regardless of specs-actors version
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
@@ -32,8 +38,10 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/constants"
 	"github.com/filecoin-project/venus/internal/pkg/crypto"
 	"github.com/filecoin-project/venus/internal/pkg/fork"
+	bstore "github.com/filecoin-project/venus/internal/pkg/fork/blockstore"
 	"github.com/filecoin-project/venus/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/account"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/internal/pkg/specactors/builtin/power"
@@ -41,6 +49,7 @@ import (
 	appstate "github.com/filecoin-project/venus/internal/pkg/state"
 	"github.com/filecoin-project/venus/internal/pkg/types"
 	"github.com/filecoin-project/venus/internal/pkg/vm"
+	"github.com/filecoin-project/venus/internal/pkg/vm/gas"
 	"github.com/filecoin-project/venus/internal/pkg/vm/state"
 
 	_ "github.com/filecoin-project/venus/internal/pkg/consensus/lib/sigs/bls"  // enable bls signatures
@@ -286,7 +295,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 
 	// fast checks first
 	if err := blockSanityChecks(blk); err != nil {
-		return xerrors.Errorf("incoming header failed basic sanity checks: %w", err)
+		return xerrors.Errorf("incoming header failed basic sanity checks: %v", err)
 	}
 
 	baseHeight, _ := parent.Height()
@@ -297,7 +306,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 
 	now := uint64(time.Now().Unix())
 	if blk.Timestamp > now+AllowableClockDriftSecs {
-		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, blk.Timestamp, ErrTemporal)
+		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %v", now, blk.Timestamp, ErrTemporal)
 	}
 	if blk.Timestamp > now {
 		log.Warn("Got block from the future, but within threshold", blk.Timestamp, time.Now().Unix())
@@ -336,9 +345,16 @@ func (c *Expected) validateBlock(ctx context.Context,
 		return errors.Wrapf(err, "failed to convert address, %s, to a signing address", workerAddr.String())
 	}
 
+	msgsCheck := async.Err(func() error {
+		if err := c.checkBlockMessages(ctx, sigValidator, blk, parent, parentStateRoot); err != nil {
+			return xerrors.Errorf("block had invalid messages: %v", err)
+		}
+		return nil
+	})
+
 	minerCheck := async.Err(func() error {
 		if err := c.minerIsValid(ctx, blk.Miner, parentStateRoot); err != nil {
-			return xerrors.Errorf("minerIsValid failed: %w", err)
+			return xerrors.Errorf("minerIsValid failed: %v", err)
 		}
 		return nil
 	})
@@ -346,7 +362,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 	baseFeeCheck := async.Err(func() error {
 		baseFee, err := c.messageStore.ComputeBaseFee(ctx, parent)
 		if err != nil {
-			return xerrors.Errorf("computing base fee: %w", err)
+			return xerrors.Errorf("computing base fee: %v", err)
 		}
 		if big.Cmp(baseFee, blk.ParentBaseFee) != 0 {
 			return xerrors.Errorf("base fee doesn't match: %s (header) != %s (computed)",
@@ -359,24 +375,6 @@ func (c *Expected) validateBlock(ctx context.Context,
 		// Validate block signature
 		if err := crypto.ValidateSignature(blk.SignatureData(), workerSignerAddr, *blk.BlockSig); err != nil {
 			return errors.Wrap(err, "block signature invalid")
-		}
-
-		// Validate message signature
-		blksecpMsgs, blkblsMsgs, err := c.messageStore.LoadMetaMessages(ctx, blk.Messages.Cid)
-		if err != nil {
-			return errors.Wrapf(err, "failed loading message list %s for block %s", blk.Messages, blk.Cid())
-		}
-
-		// Verify that the BLS signature aggregate is correct
-		if err := sigValidator.ValidateBLSMessageAggregate(ctx, blkblsMsgs, blk.BLSAggregateSig); err != nil {
-			return errors.Wrapf(err, "bls message verification failed for block %s", blk.Cid())
-		}
-
-		// Verify that all secp message signatures are correct
-		for i, msg := range blksecpMsgs {
-			if err := sigValidator.ValidateMessageSignature(ctx, msg); err != nil {
-				return errors.Wrapf(err, "invalid signature for secp message %d in block %s", i, blk.Cid())
-			}
 		}
 
 		return nil
@@ -418,7 +416,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 
 	wproofCheck := async.Err(func() error {
 		if err := c.VerifyWinningPoStProof(ctx, blk, prevBeacon, lbStateRoot); err != nil {
-			return xerrors.Errorf("invalid election post: %w", err)
+			return xerrors.Errorf("invalid election post: %v", err)
 		}
 		return nil
 	})
@@ -430,7 +428,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 		beaconValuesCheck,
 		wproofCheck,
 		winnerCheck,
-		//msgsCheck,
+		msgsCheck,
 		baseFeeCheck,
 	}
 
@@ -480,6 +478,142 @@ func blockSanityChecks(b *block.Block) error {
 	return nil
 }
 
+// TODO: We should extract this somewhere else and make the message pool and miner use the same logic
+func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstate.SignatureValidator, blk *block.Block, baseTs *block.TipSet, stateRoot cid.Cid) error {
+	blksecpMsgs, blkblsMsgs, err := c.messageStore.LoadMetaMessages(ctx, blk.Messages.Cid)
+	if err != nil {
+		return errors.Wrapf(err, "failed loading message list %s for block %s", blk.Messages, blk.Cid())
+	}
+	{
+		// Verify that the BLS signature aggregate is correct
+		if err := sigValidator.ValidateBLSMessageAggregate(ctx, blkblsMsgs, blk.BLSAggregateSig); err != nil {
+			return errors.Wrapf(err, "bls message verification failed for block %s", blk.Cid())
+		}
+
+		// Verify that all secp message signatures are correct
+		for i, msg := range blksecpMsgs {
+			if err := sigValidator.ValidateMessageSignature(ctx, msg); err != nil {
+				return errors.Wrapf(err, "invalid signature for secp message %d in block %s", i, blk.Cid())
+			}
+		}
+	}
+
+	nonces := make(map[address.Address]uint64)
+	vms := vm.NewStorage(c.bstore)
+	st, err := state.LoadState(ctx, vms, stateRoot)
+	if err != nil {
+		return xerrors.Errorf("loading state: %v", err)
+	}
+
+	baseHeight, _ := baseTs.Height()
+	pl := gas.PricelistByEpoch(baseHeight)
+	var sumGasLimit int64
+	checkMsg := func(msg types.ChainMsg) error {
+		m := msg.VMMessage()
+
+		// Phase 1: syntactic validation, as defined in the spec
+		minGas := pl.OnChainMessage(msg.ChainLength())
+		if err := m.ValidForBlockInclusion(minGas.Total()); err != nil {
+			return err
+		}
+
+		// ValidForBlockInclusion checks if any single message does not exceed BlockGasLimit
+		// So below is overflow safe
+		sumGasLimit += int64(m.GasLimit)
+		if sumGasLimit > constants.BlockGasLimit {
+			return xerrors.Errorf("block gas limit exceeded")
+		}
+
+		// Phase 2: (Partial) semantic validation:
+		// the sender exists and is an account actor, and the nonces make sense
+		if _, ok := nonces[m.From]; !ok {
+			// `GetActor` does not validate that this is an account actor.
+			act, find, err := st.GetActor(ctx, m.From)
+			if err != nil {
+				return xerrors.Errorf("failed to get actor: %v", err)
+			}
+
+			if !find {
+				return xerrors.Errorf("actor %s not found", m.From)
+			}
+
+			if !builtin.IsAccountActor(act.Code.Cid) {
+				return xerrors.New("Sender must be an account actor")
+			}
+			nonces[m.From] = act.CallSeqNum
+		}
+
+		if nonces[m.From] != m.CallSeqNum {
+			return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", nonces[m.From], m.CallSeqNum)
+		}
+		nonces[m.From]++
+
+		return nil
+	}
+
+	// Validate message arrays in a temporary blockstore.
+	tmpbs := bstore.NewTemporary()
+	tmpstore := blockadt.WrapStore(ctx, cbor.NewCborStore(tmpbs))
+
+	bmArr := blockadt.MakeEmptyArray(tmpstore)
+	for i, m := range blkblsMsgs {
+		if err := checkMsg(m); err != nil {
+			return xerrors.Errorf("block had invalid bls message at index %d: %v", i, err)
+		}
+
+		c, err := store.PutMessage(tmpbs, m)
+		if err != nil {
+			return xerrors.Errorf("failed to store message: %v", err)
+		}
+
+		k := cbg.CborCid(c)
+		if err := bmArr.Set(uint64(i), &k); err != nil {
+			return xerrors.Errorf("failed to put bls message at index %d: %v", i, err)
+		}
+	}
+
+	smArr := blockadt.MakeEmptyArray(tmpstore)
+	for i, m := range blksecpMsgs {
+		if err := checkMsg(m); err != nil {
+			return xerrors.Errorf("block had invalid secpk message at index %d: %v", i, err)
+		}
+
+		c, err := store.PutMessage(tmpbs, m)
+		if err != nil {
+			return xerrors.Errorf("failed to store message: %v", err)
+		}
+		k := cbg.CborCid(c)
+		if err := smArr.Set(uint64(i), &k); err != nil {
+			return xerrors.Errorf("failed to put secpk message at index %d: %v", i, err)
+		}
+	}
+
+	bmroot, err := bmArr.Root()
+	if err != nil {
+		return err
+	}
+
+	smroot, err := smArr.Root()
+	if err != nil {
+		return err
+	}
+
+	mrcid, err := tmpstore.Put(ctx, &block.MsgMeta{
+		BlsMessages:   bmroot,
+		SecpkMessages: smroot,
+	})
+	if err != nil {
+		return err
+	}
+
+	if blk.Messages.Cid != mrcid {
+		return fmt.Errorf("messages didnt match message root in header")
+	}
+
+	// Todo Finally, flush. need it here?
+	return nil
+}
+
 func (c *Expected) VerifyWinningPoStProof(ctx context.Context, blk *block.Block, prevBeacon *block.BeaconEntry, lbst cid.Cid) error {
 	if constants.InsecurePoStValidation {
 		if len(blk.WinPoStProof) == 0 {
@@ -494,7 +628,7 @@ func (c *Expected) VerifyWinningPoStProof(ctx context.Context, blk *block.Block,
 
 	buf := new(bytes.Buffer)
 	if err := blk.Miner.MarshalCBOR(buf); err != nil {
-		return xerrors.Errorf("failed to marshal miner address: %w", err)
+		return xerrors.Errorf("failed to marshal miner address: %v", err)
 	}
 
 	rbase := prevBeacon
@@ -504,12 +638,12 @@ func (c *Expected) VerifyWinningPoStProof(ctx context.Context, blk *block.Block,
 
 	rand, err := chain.DrawRandomness(rbase.Data, acrypto.DomainSeparationTag_WinningPoStChallengeSeed, blk.Height, buf.Bytes())
 	if err != nil {
-		return xerrors.Errorf("failed to get randomness for verifying winning post proof: %w", err)
+		return xerrors.Errorf("failed to get randomness for verifying winning post proof: %v", err)
 	}
 
 	mid, err := address.IDFromAddress(blk.Miner)
 	if err != nil {
-		return xerrors.Errorf("failed to get ID from miner address %s: %w", blk.Miner, err)
+		return xerrors.Errorf("failed to get ID from miner address %s: %v", blk.Miner, err)
 	}
 
 	view := c.state.PowerStateView(lbst)
@@ -519,7 +653,7 @@ func (c *Expected) VerifyWinningPoStProof(ctx context.Context, blk *block.Block,
 
 	sectors, err := view.GetSectorsForWinningPoSt(ctx, c.proofVerifier, lbst, blk.Miner, rand)
 	if err != nil {
-		return xerrors.Errorf("getting winning post sector set: %w", err)
+		return xerrors.Errorf("getting winning post sector set: %v", err)
 	}
 	// fmt.Printf("Sectors: %v\n", sectors)
 
@@ -535,7 +669,7 @@ func (c *Expected) VerifyWinningPoStProof(ctx context.Context, blk *block.Block,
 	})
 
 	if err != nil {
-		return xerrors.Errorf("failed to verify election post: %w", err)
+		return xerrors.Errorf("failed to verify election post: %v", err)
 	}
 
 	if !ok {
@@ -647,12 +781,7 @@ func (c *Expected) MinerEligibleToMine(ctx context.Context, addr address.Address
 		return false, err
 	}
 
-	baseTree, err := state.LoadState(ctx, vms, parentStateRoot)
-	if err != nil {
-		return false, xerrors.Errorf("loading state: %v", err)
-	}
-
-	mact, find, err := baseTree.GetActor(ctx, addr)
+	mact, find, err := sm.GetActor(ctx, addr)
 	if err != nil {
 		return false, xerrors.Errorf("loading miner actor state: %v", err)
 	}
