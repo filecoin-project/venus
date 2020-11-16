@@ -754,6 +754,11 @@ commands:
         default: false
     steps:
       - run:
+          name: Install opencl
+          command: |
+            sudo apt-get update
+            sudo apt-get install ocl-icd-opencl-dev
+      - run:
           name: install statediff globally
           command: |
             ## statediff is optional; we succeed even if compilation fails.
