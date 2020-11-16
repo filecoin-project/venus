@@ -45,6 +45,9 @@ func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 				c.API.Address = "/ip4/127.0.0.1/tcp/0"
 				c.Swarm.Address = "/ip4/127.0.0.1/tcp/0"
 			}),
+			node.ConfigOpt(func(c *config.Config) {
+				c.Bootstrap.MinPeerThreshold = 0
+			}),
 		},
 		builderOpts: []node.BuilderOpt{},
 		tb:          tb,
@@ -91,7 +94,6 @@ func (b *NodeBuilder) Build(ctx context.Context) *node.Node {
 	b.requireNoError(err)
 
 	nd, err := node.New(ctx, append(repoConfigOpts, b.builderOpts...)...)
-	nd.OfflineMode = true
 	b.requireNoError(err)
 	return nd
 }

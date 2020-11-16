@@ -20,7 +20,6 @@ import (
 	. "github.com/filecoin-project/venus/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/venus/internal/pkg/block"
 	"github.com/filecoin-project/venus/internal/pkg/encoding"
-	"github.com/filecoin-project/venus/internal/pkg/repo"
 	"github.com/filecoin-project/venus/internal/pkg/state"
 	tf "github.com/filecoin-project/venus/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/internal/pkg/types"
@@ -34,19 +33,6 @@ type minerCreate struct {
 	wallet  *wallet.Wallet
 	msgCid  cid.Cid
 	msgFail bool
-}
-
-func newMinerCreate(t *testing.T, msgFail bool, address address.Address) *minerCreate {
-	testRepo := repo.NewInMemoryRepo()
-	backend, err := wallet.NewDSBackend(testRepo.WalletDatastore())
-	require.NoError(t, err)
-	return &minerCreate{
-		testing: t,
-		address: address,
-		config:  cfg.NewConfig(testRepo),
-		wallet:  wallet.New(backend),
-		msgFail: msgFail,
-	}
 }
 
 func (mpc *minerCreate) ConfigGet(dottedPath string) (interface{}, error) {

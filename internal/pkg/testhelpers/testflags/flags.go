@@ -10,7 +10,6 @@ import (
 var integrationTest = flag.Bool("integration", true, "Run the integration go tests")
 var unitTest = flag.Bool("unit", true, "Run the unit go tests")
 var functionalTest = flag.Bool("functional", false, "Run the functional go tests")
-var sectorBuilderTest = flag.Bool("sectorbuilder", false, "Run the sector builder tests")
 var deploymentTest = flag.String("deployment", "", "Run the deployment tests against a network")
 var binaryPath = flag.String("binary-path", "", "Run forked processes tests using provided binary")
 
@@ -84,14 +83,6 @@ func BenchUnitTest(t *testing.B) {
 // serially. Tests that use this flag are bad an should feel bad.
 func BadUnitTestWithSideEffects(t *testing.T) {
 	if !*unitTest && !testing.Short() {
-		t.SkipNow()
-	}
-}
-
-// SectorBuilderTest will run the test its called from iff the `-sectorbuilder` flag
-// is passed when calling `go test`. Otherwise the test will be skipped.
-func SectorBuilderTest(t *testing.T) {
-	if !*sectorBuilderTest {
 		t.SkipNow()
 	}
 }
