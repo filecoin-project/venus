@@ -7,10 +7,8 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	commands "github.com/filecoin-project/venus/cmd/go-filecoin"
 	"github.com/filecoin-project/venus/fixtures/fortest"
 	"github.com/filecoin-project/venus/internal/app/go-filecoin/node"
 	"github.com/filecoin-project/venus/internal/app/go-filecoin/node/test"
@@ -77,87 +75,6 @@ func TestMessageSend(t *testing.T) {
 		"--value", "5.5",
 		fortest.TestAddresses[3].String(),
 	)
-}
-
-func TestMessageWait(t *testing.T) {
-	tf.IntegrationTest(t)
-	ctx := context.Background()
-
-	seed, genCfg, chainClock := test.CreateBootstrapSetup(t)
-	node := test.CreateBootstrapMiner(ctx, t, seed, chainClock, genCfg)
-
-	cmdClient, clientStop := test.RunNodeAPI(ctx, node, t)
-	defer clientStop()
-
-	t.Run("[success] transfer only", func(t *testing.T) {
-		var sendResult commands.MessageSendResult
-		cmdClient.RunMarshaledJSON(ctx, &sendResult, "message", "send",
-			"--gas-price", "1",
-			"--gas-limit", "300",
-			fortest.TestAddresses[1].String(),
-		)
-
-		// Fail with timeout before the message has been mined
-		cmdClient.RunFail(
-			ctx,
-			"deadline exceeded",
-			"message", "wait",
-			"--message=false",
-			"--receipt=false",
-			"--timeout=100ms",
-			"--return",
-			sendResult.Cid.String(),
-		)
-
-		var waitResult commands.WaitResult
-		cmdClient.RunMarshaledJSON(
-			ctx,
-			&waitResult,
-			"message", "wait",
-			"--message=false",
-			"--receipt=false",
-			"--timeout=1m",
-			"--return",
-			sendResult.Cid.String(),
-		)
-		assert.Equal(t, fortest.TestAddresses[1], waitResult.Message.Message.To)
-	})
-
-	t.Run("[success] lookback", func(t *testing.T) {
-		var sendResult commands.MessageSendResult
-		cmdClient.RunMarshaledJSON(ctx, &sendResult, "message", "send",
-			"--from", fortest.TestAddresses[0].String(),
-			"--gas-price", "1",
-			"--gas-limit", "300",
-			fortest.TestAddresses[1].String(),
-		)
-
-		// Fail with timeout because the message is too early for the default lookback (2)
-		cmdClient.RunFail(
-			ctx,
-			"deadline exceeded",
-			"message", "wait",
-			"--message=false",
-			"--receipt=false",
-			"--timeout=1s",
-			"--return",
-			sendResult.Cid.String(),
-		)
-
-		// succeed by specifying a higher lookback
-		var waitResult commands.WaitResult
-		cmdClient.RunMarshaledJSON(
-			ctx,
-			&waitResult,
-			"message", "wait",
-			"--message=false",
-			"--receipt=false",
-			"--lookback=10",
-			"--timeout=1m",
-			"--return",
-			sendResult.Cid.String(),
-		)
-	})
 }
 
 func TestMessageSendBlockGasLimit(t *testing.T) {
