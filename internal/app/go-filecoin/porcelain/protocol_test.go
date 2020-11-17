@@ -54,7 +54,7 @@ func TestProtocolParams(t *testing.T) {
 		}
 
 		expected := &porcelain.ProtocolParams{
-			Network:          "protocolTest",
+			Network: "protocolTest",
 			SupportedSectors: []porcelain.SectorInfo{
 				{constants.DevSectorSize, abi.PaddedPieceSize(constants.DevSectorSize).Unpadded()},
 				{constants.FiveHundredTwelveMiBSectorSize, abi.PaddedPieceSize(constants.FiveHundredTwelveMiBSectorSize).Unpadded()},
