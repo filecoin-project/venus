@@ -54,7 +54,6 @@ func TestProtocolParams(t *testing.T) {
 		}
 
 		expected := &porcelain.ProtocolParams{
-			AutoSealInterval: 120,
 			Network:          "protocolTest",
 			SupportedSectors: []porcelain.SectorInfo{
 				{constants.DevSectorSize, abi.PaddedPieceSize(constants.DevSectorSize).Unpadded()},
