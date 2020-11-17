@@ -70,8 +70,7 @@ func (c *Client) Address() string {
 	return c.address
 }
 
-// Run runs a CLI command and returns its output.
-func (c *Client) Run(ctx context.Context, command ...string) *th.CmdOutput {
+func (c *Client) run(ctx context.Context, command ...string) (*th.CmdOutput, int, error) {
 	c.tb.Helper()
 	args := []string{
 		"venus", // A dummy first arg is required, simulating shell invocation.
@@ -92,6 +91,13 @@ func (c *Client) Run(ctx context.Context, command ...string) *th.CmdOutput {
 	require.NoError(c.tb, writeStdErr.Close())
 
 	out := th.ReadOutput(c.tb, command, readStdOut, readStdErr)
+
+	return out, exitCode, err
+}
+
+// Run runs a CLI command and returns its output.
+func (c *Client) Run(ctx context.Context, command ...string) *th.CmdOutput {
+	out, exitCode, err := c.run(ctx, command...)
 	if err != nil {
 		out.SetInvocationError(err)
 	} else {
@@ -111,7 +117,8 @@ func (c *Client) RunSuccess(ctx context.Context, command ...string) *th.CmdOutpu
 
 // RunFail runs a command and asserts that it fails with a specified message on stderr.
 func (c *Client) RunFail(ctx context.Context, err string, command ...string) *th.CmdOutput {
-	output := c.Run(ctx, command...)
+	output, exitCode, _ := c.run(ctx, command...)
+	output.SetStatus(exitCode)
 	output.AssertFail(err)
 	return output
 }

@@ -21,7 +21,6 @@ type SectorInfo struct {
 // ProtocolParams contains parameters that modify the filecoin nodes protocol
 type ProtocolParams struct {
 	Network          string
-	AutoSealInterval uint
 	BlockTime        time.Duration
 	SupportedSectors []SectorInfo
 }
@@ -39,16 +38,6 @@ type ProtocolStateView interface {
 
 // ProtocolParameters returns protocol parameter information about the node
 func ProtocolParameters(ctx context.Context, plumbing protocolParamsPlumbing) (*ProtocolParams, error) {
-	autoSealIntervalInterface, err := plumbing.ConfigGet("mining.autoSealIntervalSeconds")
-	if err != nil {
-		return nil, err
-	}
-
-	autoSealInterval, ok := autoSealIntervalInterface.(uint)
-	if !ok {
-		return nil, errors.New("Failed to read autoSealInterval from config")
-	}
-
 	networkName, err := getNetworkName(ctx, plumbing)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not retrieve network name")
@@ -64,7 +53,6 @@ func ProtocolParameters(ctx context.Context, plumbing protocolParamsPlumbing) (*
 
 	return &ProtocolParams{
 		Network:          networkName,
-		AutoSealInterval: autoSealInterval,
 		BlockTime:        plumbing.BlockTime(),
 		SupportedSectors: supportedSectors,
 	}, nil

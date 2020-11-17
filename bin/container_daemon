@@ -14,7 +14,7 @@ fi
 if [ -e "$repo/config.json" ]; then
   echo "Found Filecoin fs-repo at $repo"
 else
-  go-filecoin init
+  venus init
   # TODO configure custom API and address here
 fi
 
@@ -25,4 +25,4 @@ else
   echo "ERROR: arguments have been set but the first argument isn't 'daemon'" >&2
 fi
 
-exec go-filecoin daemon "$@"
+exec venus daemon "$@"

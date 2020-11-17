@@ -23,7 +23,7 @@ func TestDaemonStartupMessage(t *testing.T) {
 	daemon.ShutdownSuccess()
 
 	out := daemon.ReadStdout()
-	assert.Regexp(t, "^\"My peer ID is [a-zA-Z0-9]*", out)
+	assert.Regexp(t, "\"My peer ID is [a-zA-Z0-9]*", out)
 	assert.Regexp(t, "\\n\"Swarm listening on.*", out)
 }
 

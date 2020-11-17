@@ -3,11 +3,11 @@ package commands
 import (
 	"bufio"
 	"context"
-	"github.com/filecoin-project/venus/internal/app/go-filecoin/paths"
-	"github.com/filecoin-project/venus/internal/pkg/block"
-	"github.com/filecoin-project/venus/internal/pkg/cborutil"
-	"github.com/filecoin-project/venus/internal/pkg/chain"
-	"github.com/filecoin-project/venus/internal/pkg/repo"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -15,10 +15,12 @@ import (
 	"github.com/mitchellh/go-homedir"
 	xerrors "github.com/pkg/errors"
 	"gopkg.in/cheggaaa/pb.v1"
-	"io"
-	"net/http"
-	"os"
-	"strings"
+
+	"github.com/filecoin-project/venus/internal/app/go-filecoin/paths"
+	"github.com/filecoin-project/venus/internal/pkg/block"
+	"github.com/filecoin-project/venus/internal/pkg/cborutil"
+	"github.com/filecoin-project/venus/internal/pkg/chain"
+	"github.com/filecoin-project/venus/internal/pkg/repo"
 )
 
 var logImport = logging.Logger("commands/import")
@@ -28,8 +30,8 @@ var importCmd = &cmds.Command{
 		Tagline: `
 import data into local repo.
 lotus chain export --recent-stateroots 901 <file>
-go-filecoin import <file>
-go-filecoin daemon --check-point <tipset>
+venus import <file>
+venus daemon --check-point <tipset>
 `,
 	},
 	Options: []cmds.Option{

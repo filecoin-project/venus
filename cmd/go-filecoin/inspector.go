@@ -131,14 +131,14 @@ Prints out information about your filecoin nodes environment.
 	Type: EnvironmentInfo{},
 }
 
-// NewInspectorAPI returns a `Inspector` used to inspect the go-filecoin node.
+// NewInspectorAPI returns a `Inspector` used to inspect the venus node.
 func NewInspectorAPI(r repo.Repo) *Inspector {
 	return &Inspector{
 		repo: r,
 	}
 }
 
-// Inspector contains information used to inspect the go-filecoin node.
+// Inspector contains information used to inspect the venus node.
 type Inspector struct {
 	repo repo.Repo
 }
@@ -254,7 +254,7 @@ func (g *Inspector) Config() *config.Config {
 	return g.repo.Config()
 }
 
-// FilecoinVersion returns the version of go-filecoin.
+// FilecoinVersion returns the version of venus.
 func (g *Inspector) FilecoinVersion() string {
 	return flags.GitCommit
 }

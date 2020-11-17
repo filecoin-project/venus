@@ -14,7 +14,7 @@ var logCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Interact with the daemon subsystems log output.",
 		ShortDescription: `
-'go-filecoin log' contains utility commands to affect the subsystems logging
+'venus log' contains utility commands to affect the subsystems logging
 output of a running daemon.
 `,
 	},
@@ -100,7 +100,7 @@ var logLsCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "List the logging subsystems.",
 		ShortDescription: `
-'go-filecoin log ls' is a utility command used to list the logging
+'venus log ls' is a utility command used to list the logging
 subsystems of a running daemon.
 `,
 	},
