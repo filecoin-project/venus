@@ -80,6 +80,8 @@ const (
 	// IsRelay when set causes the the daemon to provide libp2p relay
 	// services allowing other filecoin nodes behind NATs to talk directly.
 	IsRelay = "is-relay"
+
+	Size = "size"
 )
 
 func init() {
@@ -154,6 +156,7 @@ var rootCmdDaemon = &cmds.Command{
 // all top level commands, not available to daemon
 var rootSubcmdsLocal = map[string]*cmds.Command{
 	"daemon":  daemonCmd,
+	"fetch":   fetchCmd,
 	"init":    initCmd,
 	"import":  importCmd,
 	"version": versionCmd,

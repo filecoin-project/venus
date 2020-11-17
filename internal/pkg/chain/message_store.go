@@ -526,7 +526,7 @@ func GetChainMsgRoot(ctx context.Context, messages []types.ChainMsg) (cid.Cid, e
 			return cid.Undef, err
 		}
 
-		err =tmpbs.Put(b)
+		err = tmpbs.Put(b)
 		if err != nil {
 			return cid.Undef, err
 		}

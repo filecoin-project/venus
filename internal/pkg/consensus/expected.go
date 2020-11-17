@@ -578,7 +578,9 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 		BLSRoot:  enccid.NewCid(bmroot),
 		SecpRoot: enccid.NewCid(smroot),
 	})
-
+	if err != nil {
+		return xerrors.Errorf("serialize tx meta failed: %v", err)
+	}
 	if blk.Messages.Cid != b.Cid() {
 		return fmt.Errorf("messages didnt match message root in header")
 	}
