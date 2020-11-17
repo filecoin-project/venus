@@ -46,7 +46,7 @@ type Tree interface {
 	GetStore() cbor.IpldStore
 }
 
-var stateLog = logging.Logger("vm.statetree")
+var vmdebug = logging.Logger("vm.debug")
 
 const (
 	// StateTreeVersion0 corresponds to actors < v2.
@@ -137,7 +137,7 @@ func LoadState(ctx context.Context, cst cbor.IpldStore, c cid.Cid) (*State, erro
 			adtForSTVersion(root.Version),
 		)
 		if err != nil {
-			stateLog.Errorf("loading hamt node %s failed: %s", c, err)
+			vmdebug.Errorf("loading hamt node %s failed: %s", c, err)
 			return nil, err
 		}
 
@@ -156,7 +156,7 @@ func LoadState(ctx context.Context, cst cbor.IpldStore, c cid.Cid) (*State, erro
 }
 
 func (st *State) SetActor(ctx context.Context, addr ActorKey, act *types.Actor) error {
-	stateLog.Debugf("set actor addr:", addr.String(), " Balance:", act.Balance.String(), " Head:", act.Head, " Nonce:", act.CallSeqNum)
+	vmdebug.Debugf("set actor addr:", addr.String(), " Balance:", act.Balance.String(), " Head:", act.Head, " Nonce:", act.CallSeqNum)
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
 		return xerrors.Errorf("ID lookup failed: %w", err)
@@ -246,7 +246,7 @@ func (st *State) GetActor(ctx context.Context, addr ActorKey) (*types.Actor, boo
 }
 
 func (st *State) DeleteActor(ctx context.Context, addr ActorKey) error {
-	stateLog.Debugf("Delete Actor ", addr)
+	vmdebug.Debugf("Delete Actor ", addr)
 	if addr == address.Undef {
 		return xerrors.Errorf("DeleteActor called on undefined address")
 	}

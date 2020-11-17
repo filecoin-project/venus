@@ -26,7 +26,6 @@ func (s *GasChargeStorage) Get(ctx context.Context, c cid.Cid, out interface{}) 
 
 func (s *GasChargeStorage) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
 	cid, ln, err := s.inner.PutWithLen(s.context, v)
-	contextLog.Debugf("gas storage put ", cid.String())
 	s.gasTank.Charge(s.pricelist.OnIpldPut(ln), "storage put %s %d bytes into %v", cid, ln, v)
 	return cid, err
 }
