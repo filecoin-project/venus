@@ -12,7 +12,7 @@ var swarmCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Interact with the swarm",
 		ShortDescription: `
-'go-filecoin swarm' is a tool to manipulate the libp2p swarm. The swarm is the
+'venus swarm' is a tool to manipulate the libp2p swarm. The swarm is the
 component that opens, listens for, and maintains connections to other
 libp2p peers on the internet.
 `,
@@ -27,7 +27,7 @@ var swarmPeersCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "List peers with open connections.",
 		ShortDescription: `
-'go-filecoin swarm peers' lists the set of peers this node is connected to.
+'venus swarm peers' lists the set of peers this node is connected to.
 `,
 	},
 	Options: []cmds.Option{
@@ -54,11 +54,11 @@ var swarmConnectCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Open connection to a given address.",
 		ShortDescription: `
-'go-filecoin swarm connect' opens a new direct connection to a peer address.
+'venus swarm connect' opens a new direct connection to a peer address.
 
 The address format is a multiaddr:
 
-go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ
+venus swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ
 `,
 	},
 	Arguments: []cmds.Argument{

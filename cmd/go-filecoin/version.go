@@ -7,13 +7,13 @@ import (
 )
 
 type versionInfo struct {
-	// Commit, is the git sha that was used to build this version of go-filecoin.
+	// Commit, is the git sha that was used to build this version of venus.
 	Commit string
 }
 
 var versionCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Show go-filecoin version information",
+		Tagline: "Show venus version information",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		return re.Emit(&versionInfo{

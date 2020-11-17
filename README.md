@@ -59,12 +59,6 @@ Windows is not yet supported.
 A validating node can run on most systems with at least 8GB of RAM. 
 A mining node requires significant RAM and GPU resources, depending on the sector configuration to be used.
 
-### Install from Source on MacOS
-```sh
-curl -fsSL https://raw.githubusercontent.com/filecoin-project/go-filecoin/master/scripts/build/mac-build.sh | bash
-```
-Note: macOS users may need to update their git config with `git config --global core.autocrlf input`
-
 ### Install from Source
 
 Clone this git repository to your machine:

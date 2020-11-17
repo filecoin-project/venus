@@ -18,10 +18,6 @@ require (
 	github.com/docker/go-units v0.4.0
 	github.com/drand/drand v1.2.1
 	github.com/drand/kyber v1.1.4
-	github.com/elastic/go-sysinfo v1.4.0 // indirect
-	github.com/elastic/go-windows v1.0.1 // indirect
-	github.com/drand/drand v1.1.2-0.20200905144319-79c957281b32
-	github.com/drand/kyber v1.1.2
 	github.com/fatih/color v1.9.0
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200716204036-cddc56607e1d
 	github.com/filecoin-project/go-address v0.0.4
@@ -30,7 +26,6 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.9.0
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20200716160307-8f644712406f
-	github.com/filecoin-project/go-jsonrpc v0.1.2-0.20201008195726-68c6a2704e49
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
@@ -39,7 +34,6 @@ require (
 	github.com/filecoin-project/lotus v1.1.2
 	github.com/filecoin-project/specs-actors v0.9.13
 	github.com/filecoin-project/specs-actors/v2 v2.2.0
-	github.com/filecoin-project/statediff v0.0.12 // indirect
 	github.com/filecoin-project/test-vectors/schema v0.0.5
 	github.com/fxamacker/cbor/v2 v2.2.0
 	github.com/go-errors/errors v1.0.1
@@ -110,13 +104,14 @@ require (
 	github.com/spf13/viper v1.5.0 // indirect
 	github.com/stretchr/testify v1.6.1
 	github.com/supranational/blst v0.1.1
-	github.com/urfave/cli/v2 v2.3.0
+	github.com/urfave/cli/v2 v2.3.0 // indirect
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200826160007-0b9f6c5fb163
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
 	go.opencensus.io v0.22.4
 	go.uber.org/zap v1.15.0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
+	golang.org/x/mod v0.3.1-0.20200828183125-ce943fd02449 // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/sync v0.0.0-20201008141435-b3e1573b7520
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1

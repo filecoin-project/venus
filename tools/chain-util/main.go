@@ -28,7 +28,7 @@ var exportCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.PathFlag{
 			Name:  repoFlag,
-			Usage: "the repo where go-filecoin was initialized",
+			Usage: "the repo where venus was initialized",
 		},
 		&cli.PathFlag{
 			Name:  outFlag,

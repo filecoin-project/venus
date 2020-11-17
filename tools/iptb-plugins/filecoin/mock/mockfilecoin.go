@@ -13,7 +13,7 @@ import (
 // PluginName is the name of the plugin
 var PluginName = "mockfilecoin"
 
-// Mockfilecoin is a mock structure used for testing things that use go-filecoin iptb plugins
+// Mockfilecoin is a mock structure used for testing things that use venus iptb plugins
 type Mockfilecoin struct {
 	dir string
 
