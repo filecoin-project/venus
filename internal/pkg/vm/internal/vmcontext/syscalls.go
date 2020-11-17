@@ -99,7 +99,7 @@ func (sys syscalls) BatchVerifySeals(vis map[address.Address][]proof.SealVerifyI
 				sema <- struct{}{}
 
 				if err := sys.VerifySeal(svi); err != nil {
-					contextLog.Warnw("seal verify in batch failed", "miner", ma, "index", ix, "err", err)
+					vmlog.Warnw("seal verify in batch failed", "miner", ma, "index", ix, "err", err)
 					res[ix] = false
 				} else {
 					res[ix] = true

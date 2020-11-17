@@ -377,7 +377,7 @@ func getFilecoinBinary() (string, error) {
 		return "", err
 	}
 
-	bin := filepath.Join(gopath, "/src/github.com/filecoin-project/go-filecoin/go-filecoin")
+	bin := filepath.Join(gopath, "/src/github.com/filecoin-project/venus/venus")
 	_, err = os.Stat(bin)
 	if err != nil {
 		return "", err

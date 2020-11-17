@@ -246,7 +246,7 @@ func extractGenesisBlock(source io.ReadCloser, rep repo.Repo) (*block.Block, err
 
 			gensisBlk = cur
 
-			logInit.Infow("initialized go-filecoin with genesis file containing partial chain", "genesisCID", gensisBlk.Cid().String(), "headCIDs", ch.Roots)
+			logInit.Infow("initialized venus with genesis file containing partial chain", "genesisCID", gensisBlk.Cid().String(), "headCIDs", ch.Roots)
 		} else {
 			gensisBlk = cur
 		}*/
