@@ -1,4 +1,4 @@
-package proof_params //nolint
+package fixtures //nolint
 
 import rice "github.com/GeertJohan/go.rice"
 

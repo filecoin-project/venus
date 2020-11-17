@@ -241,7 +241,6 @@ jobs:
           cmd: "build"
       - mkdir_test_results
       - go_test:
-          functional: false
           integration: false
       - store_test_results:
           path: test-results
@@ -280,42 +279,6 @@ jobs:
       - store_test_results:
           path: test-results
 
-  functional_test_linux:
-    docker:
-      - image: circleci/golang:1.14.1-stretch
-    parallelism: 2
-    working_directory: /go/src/github.com/filecoin-project/venus
-    resource_class: xlarge
-    parameters:
-    steps:
-      - linux_configure
-      - add_ssh_keys:
-          fingerprints:
-            - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
-      - checkout
-      - update_submodules
-      # Save the Git SHA of the rust-fil-proofs submodule so that we can use it when creating a cache key
-      - generate_rust_submodules_checksums
-      - restore_cache:
-          keys:
-            - v9-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/filecoin-ffi-checksum.txt" }}
-            - v9-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/filecoin-ffi-checksum.txt" }}
-      # The second checkout ensures we have the most recent code since the
-      # restore_cache step above can override the venus code with cached code
-      - git_fetch_all_tags
-      - checkout
-      - go_build:
-          cmd: "build"
-      - attach_workspace:
-          at: "."
-      - mkdir_test_results
-      - go_test:
-          unit: false
-          integration: false
-          functional: true
-      - store_test_results:
-          path: test-results
-
   publish_release:
     docker:
       - image: circleci/golang:1.14.1-stretch
@@ -341,8 +304,6 @@ jobs:
           name: Publish new release
           command: |
             ./scripts/publish-release.sh
-
-
 
   build_docker_img:
     docker:
@@ -527,9 +488,6 @@ workflows:
       - integration_test_linux:
           requires:
             - build_linux
-      - functional_test_linux:
-          requires:
-            - build_linux
 
   build_nightly_osx:
     triggers:
@@ -558,9 +516,6 @@ workflows:
       - integration_test_linux:
           requires:
             - build_linux
-      - functional_test_linux:
-          requires:
-            - build_linux
       - build_macos
       - build_docker_img:
           nightly: true
@@ -568,7 +523,6 @@ workflows:
             - build_linux
             - unit_test_linux
             - integration_test_linux
-            - functional_test_linux
       - publish_release:
           nightly: true
           requires:
@@ -597,16 +551,11 @@ workflows:
           requires:
             - build_linux
           <<: *user_devnet_filter
-      - functional_test_linux:
-          requires:
-            - build_linux
-          <<: *user_devnet_filter
       - publish_release:
           requires:
             - build_linux
             - unit_test_linux
             - integration_test_linux
-            - functional_test_linux
             - build_macos
           <<: *user_devnet_filter
       - build_docker_img:
@@ -615,7 +564,6 @@ workflows:
             - build_linux
             - unit_test_linux
             - integration_test_linux
-            - functional_test_linux
           <<: *user_devnet_filter
       - approve_deploy:
           type: approval
@@ -647,16 +595,11 @@ workflows:
           requires:
             - build_linux
           <<: *staging_devnet_filter
-      - functional_test_linux:
-          requires:
-            - build_linux
-          <<: *staging_devnet_filter
       - publish_release:
           requires:
             - build_linux
             - unit_test_linux
             - integration_test_linux
-            - functional_test_linux
             - build_macos
           <<: *staging_devnet_filter
       - build_docker_img:
@@ -665,7 +608,6 @@ workflows:
             - build_linux
             - unit_test_linux
             - integration_test_linux
-            - functional_test_linux
           <<: *staging_devnet_filter
       - trigger_devnet_deploy:
           staging_devnet: true
@@ -728,9 +670,6 @@ commands:
       integration:
         type: boolean
         default: true
-      functional:
-        type: boolean
-        default: false
     steps:
       - run:
           name: install params file
@@ -752,7 +691,7 @@ commands:
             export TEST_PACKAGES="$(go list ./... | circleci tests split)"
 
             # Parallelism and timeout set to support medium-class containers, for builds on forked repos.
-            go run ./build test -cover -coverprofile coverage.out -covermode=atomic -timeout=30m -parallel=4 -functional=<< parameters.functional >> -integration=<< parameters.integration >> -unit=<< parameters.unit >> -v 2>&1 | tee test-results/go-test-suite/go-test.out
+            go run ./build test -cover -coverprofile coverage.out -covermode=atomic -timeout=30m -parallel=4 -integration=<< parameters.integration >> -unit=<< parameters.unit >> -v 2>&1 | tee test-results/go-test-suite/go-test.out
             mkdir -p /tmp/artifacts
             mv coverage.out /tmp/artifacts/coverage.out
       - codecov/upload:
