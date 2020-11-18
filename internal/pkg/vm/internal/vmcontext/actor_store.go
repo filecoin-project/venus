@@ -59,7 +59,6 @@ func (s *ActorStorage) StorePut(obj cbor.Marshaler) cid.Cid {
 			panic(msg)
 		}
 	}
-	contextLog.Debugf("gas storage put ", cid.String())
 	s.gasTank.Charge(s.pricelist.OnIpldPut(ln), "storage put %s %d bytes into %v", cid, ln, obj)
 	return cid
 }
@@ -71,7 +70,6 @@ func (s *ActorStorage) StoreGet(cid cid.Cid, obj cbor.Unmarshaler) bool {
 	if err == storage.ErrNotFound {
 		return false
 	}
-	contextLog.Debugf("gas storage put ", cid.String())
 	if err != nil {
 		msg := fmt.Sprintf("failed To get object %s %s From store: %s", reflect.TypeOf(obj), cid, err)
 		if _, ok := err.(storage.SerializationError); ok {

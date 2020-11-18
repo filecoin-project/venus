@@ -2,6 +2,7 @@ package vmcontext
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -31,7 +32,8 @@ import (
 	"github.com/filecoin-project/venus/internal/pkg/vm/storage"
 )
 
-var contextLog = logging.Logger("vm.context")
+var vmlog = logging.Logger("vm.context")
+var vmdebug = logging.Logger("vm.debug")
 
 // VM holds the stateView and executes messages over the stateView.
 type VM struct {
@@ -44,6 +46,7 @@ type VM struct {
 	currentEpoch abi.ChainEpoch
 	pricelist    gas.Pricelist
 
+	vmDebug  bool // open debug or not
 	vmOption VmOption
 }
 
@@ -194,7 +197,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 		if err != nil {
 			return nil, xerrors.Errorf("hand fork error: %v", err)
 		}
-		contextLog.Debugf("after fork root: %s\n", forkedCid)
+		vmlog.Debugf("after fork root: %s\n", forkedCid)
 		if pstate != forkedCid {
 			err = vm.state.At(forkedCid)
 			if err != nil {
@@ -203,7 +206,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 		}
 		vm.SetCurrentEpoch(i + 1)
 	}
-	contextLog.Debugf("process tipset fork: %v\n", time.Now().Sub(tStart).Milliseconds())
+	vmlog.Debugf("process tipset fork: %v\n", time.Now().Sub(tStart).Milliseconds())
 	// create message tracker
 	// Note: the same message could have been included by more than one miner
 	seenMsgs := make(map[cid.Cid]struct{})
@@ -241,21 +244,22 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 			}
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
-			//iii, _ := vm.flush()
-			contextLog.Debugf("message: %s  root: %s\n", mcid)
 
-			//dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
-			//xxxx := []*types.GasTrace{}
-			//for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
-			//	xxx.Location = nil
-			//	if xxx.TotalGas >0 {
-			//		xxxx = append(xxxx, xxx)
-			//	}
-			//}
-			//dddd, _ = json.MarshalIndent(xxxx,"","\t")
-			//fmt.Println(string(dddd))
+			if vm.vmDebug {
+				rootCid, _ := vm.flush()
+				vmdebug.Debugf("message: %s  root: %s", mcid, rootCid)
+				msgGasOutput, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
+				vmdebug.Debug(string(msgGasOutput))
 
-			//fmt.Println()
+				valuedTraces := []*types.GasTrace{}
+				for _, trace := range ret.GasTracker.executionTrace.GasCharges {
+					if trace.TotalGas > 0 {
+						valuedTraces = append(valuedTraces, trace)
+					}
+				}
+				tracesBytes, _ := json.MarshalIndent(valuedTraces, "", "\t")
+				vmdebug.Debug(string(tracesBytes))
+			}
 		}
 
 		// Process SECP messages From the block
@@ -266,7 +270,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 				continue
 			}
 
-			contextLog.Debugf("start To process secp message ", mcid)
+			vmlog.Debugf("start To process secp message ", mcid)
 			m := sm.Message
 			// apply message
 			// Note: the on-chain size for SECP messages is different
@@ -285,25 +289,27 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
 
-			//iii, _ := vm.flush()
-			contextLog.Debugf("message: %s  root: %s\n", mcid)
+			if vm.vmDebug {
+				rootCid, _ := vm.flush()
+				vmdebug.Debugf("message: %s  root: %s", mcid, rootCid)
+				msgGasOutput, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
+				vmdebug.Debug(string(msgGasOutput))
 
-			//dddd, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
-
-			//xxxx := []*types.GasTrace{}
-			//for _, xxx := range ret.GasTracker.executionTrace.GasCharges {
-			//	xxx.Location = nil
-			//	if xxx.TotalGas >0 {
-			//		xxxx = append(xxxx, xxx)
-			//	}
-			//}
-			//dddd, _ = json.MarshalIndent(xxxx,"","\t")
-			//fmt.Println(string(dddd))
-			//fmt.Println()
+				valuedTraces := []*types.GasTrace{}
+				for _, trace := range ret.GasTracker.executionTrace.GasCharges {
+					if trace.TotalGas > 0 {
+						valuedTraces = append(valuedTraces, trace)
+					}
+				}
+				tracesBytes, _ := json.MarshalIndent(valuedTraces, "", "\t")
+				vmdebug.Debug(string(tracesBytes))
+			}
 		}
 
-		root, _ := vm.state.Flush(context.TODO())
-		contextLog.Debugf("before reward: %d  root: %s\n", index, root)
+		if vm.vmDebug {
+			root, _ := vm.state.Flush(context.TODO())
+			vmdebug.Debugf("before reward: %d  root: %s\n", index, root)
+		}
 
 		// Pay block reward.
 		// Dragons: missing final protocol design on if/how To determine the nominal power
@@ -318,17 +324,23 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 			}
 		}
 
-		root, _ = vm.state.Flush(context.TODO())
-		contextLog.Debugf("reward: %d  root: %s\n", index, root)
-		contextLog.Debugf("process block %v time %v", index, time.Since(tStart).Milliseconds())
+		if vm.vmDebug {
+			root, _ := vm.state.Flush(context.TODO())
+			vmdebug.Debugf("reward: %d  root: %s\n", index, root)
+		}
+		vmlog.Infof("process block %v time %v", index, time.Since(tStart).Milliseconds())
+
 	}
 
-	root, _ := vm.state.Flush(context.TODO())
-	contextLog.Debugf("before cron root: %s\n", root)
+	if vm.vmDebug {
+		root, _ := vm.state.Flush(context.TODO())
+		vmdebug.Debugf("before cron root: %s\n", root)
+	}
 
 	// cron tick
 	tStart = time.Now()
 	cronMessage := makeCronTickMessage()
+
 	ret, err := vm.applyImplicitMessage(cronMessage)
 	if err != nil {
 		return nil, err
@@ -339,9 +351,11 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 		}
 	}
 
-	contextLog.Debugf("process tipset cron: %v\n", time.Now().Sub(tStart).Milliseconds())
-	root, _ = vm.state.Flush(context.TODO())
-	contextLog.Debugf("after cron root: %s\n", root)
+	vmlog.Debugf("process tipset cron: %v\n", time.Now().Sub(tStart).Milliseconds())
+	if vm.vmDebug {
+		root, _ := vm.state.Flush(context.TODO())
+		vmdebug.Debugf("after cron root: %s\n", root)
+	}
 
 	// commit stateView
 	if _, err := vm.flush(); err != nil {

@@ -253,7 +253,7 @@ func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
 		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
 	}
 
-	contextLog.Debugf("creating actor, friendly-name: %s, code: %s, addr: %s\n", builtin.ActorNameByCode(codeID), codeID, addr)
+	vmlog.Debugf("creating actor, friendly-name: %s, code: %s, addr: %s\n", builtin.ActorNameByCode(codeID), codeID, addr)
 
 	// Check existing address. If nothing there, create empty actor.
 	//

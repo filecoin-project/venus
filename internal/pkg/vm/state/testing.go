@@ -27,7 +27,6 @@ func NewFromString(t *testing.T, s string, store cbor.IpldStore) *State {
 
 	//create account
 	strAddr, err := address.NewSecp256k1Address([]byte(s))
-	stateLog.Debugf("strAddr: %s\n", strAddr)
 	require.NoError(t, err)
 
 	//add a account for t3
