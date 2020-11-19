@@ -1,6 +1,8 @@
 go-filecoin
-!cmd/go-filecoin 
-!internal/app/go-filecoin 
+venus
+venus
+!cmd/venus
+!app/venus
 
 .task
 .idea
@@ -20,7 +22,6 @@ tools/fast/bin/localnet
 tools/faucet/faucet
 tools/aggregator/aggregator
 tools/genesis-file-server/genesis-file-server
-tools/migration/go-filecoin-migrate
 tools/prerelease-tool/prerelease-tool
 tools/chain-util/chain-util
 **/paramcache
@@ -34,3 +35,5 @@ debug.test
 
 // HomeBrew
 Brewfile.lock.json
+
+receipt.json

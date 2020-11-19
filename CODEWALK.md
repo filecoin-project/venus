@@ -4,7 +4,7 @@
  -->
 # Go-filecoin code overview
 
-This document provides a high level tour of the go-filecoin implementation of the Filecoin protocols in Go.
+This document provides a high level tour of the venus implementation of the Filecoin protocols in Go.
 
 This document assumes a reasonable level of knowledge about the Filecoin system and protocols, which are not re-explained here. 
 It is complemented by specs (link forthcoming) that describe the key concepts implemented here.
@@ -63,7 +63,7 @@ It is complemented by specs (link forthcoming) that describe the key concepts im
 
 ## Background
 
-The go-filecoin implementations is the result of combined research and development effort.
+The venus implementations is the result of combined research and development effort.
 The protocol spec and architecture evolved from a prototype, and is the result of iterating towards our goals. 
 Go-filecoin is a work in progress.
 We are still working on clarifying the architecture and propagating good patterns throughout the code.
@@ -74,14 +74,14 @@ Some benefits of this include:
 
 - the projects encode data in the same way ([IPLD](https://ipld.io/), 
 [CIDs](https://github.com/multiformats/cid)), easing interoperability;
-- the go-filecoin project can build on solid libraries like the IPFS commands.
+- the venus project can build on solid libraries like the IPFS commands.
 
 Other patterns, we've evolving for our needs:
 
 - go-ipfs relies heavily on shell-based integration testing; we aim to rely heavily on unit testing and Go-based integration tests.
 - The go-ipfs package structure involves a deep hierarchy of dependent implementations; 
 we're moving towards a more Go-idiomatic approach with narrow interfaces defined in consuming packages (see [Patterns](#patterns).
-- The term "block" is heavily overloaded: a blockchain block ([`types/block.go`](https://github.com/filecoin-project/go-filecoin/tree/master/types/block.go)), 
+- The term "block" is heavily overloaded: a blockchain block ([`types/block.go`](https://github.com/filecoin-project/venus/tree/master/types/block.go)), 
 but also content-id-addressed blocks in the block service. 
 Blockchain blocks are stored in block service blocks, but are not the same thing.
 
@@ -132,22 +132,22 @@ Internal │        │   Protocol   │    Protocol     │  Protocol   │  �
 
 ### History–the Node object
 
-The `Node` ([`node/`](https://github.com/filecoin-project/go-filecoin/tree/master/node)) object is the "server". 
+The `Node` ([`node/`](https://github.com/filecoin-project/venus/tree/master/node)) object is the "server". 
 It contains much of the core protocol implementation and plumbing. 
 As an accident of history it has become something of a god-object, which we are working to resolve. 
 The `Node` object is difficult to unit test due to its many dependencies and complicated set-up. 
-We are [moving away from this pattern](https://github.com/filecoin-project/go-filecoin/issues/1469#issuecomment-451619821),
+We are [moving away from this pattern](https://github.com/filecoin-project/venus/issues/1469#issuecomment-451619821),
 and expect the Node object to be reduced to a glorified constructor over time.
 
-The [`api`](https://github.com/filecoin-project/go-filecoin/tree/master/api) package contains the API of all the 
+The [`api`](https://github.com/filecoin-project/venus/tree/master/api) package contains the API of all the 
 core building blocks upon which the protocols are implemented. 
 The implementation of this API is the `Node`. 
 We are migrating away from this `api` package to the plumbing package, see below.
 
-The [`protocol`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol) package contains much of the application-level protocol code. 
+The [`protocol`](https://github.com/filecoin-project/venus/tree/master/protocol) package contains much of the application-level protocol code. 
 The protocols are implemented in terms of the plumbing & porcelain APIs (see below).
 Currently the hello, retrieval and storage protocols are implemented here. 
-Block mining should move here (from the [`mining`](https://github.com/filecoin-project/go-filecoin/tree/master/mining) top-level package and `Node` internals). 
+Block mining should move here (from the [`mining`](https://github.com/filecoin-project/venus/tree/master/mining) top-level package and `Node` internals). 
 Chain syncing may move here too.
 
 ### Core services
@@ -172,8 +172,8 @@ Services include (not exhaustive):
 
 ### Plumbing & porcelain
 
-The [`plumbing`](https://github.com/filecoin-project/go-filecoin/tree/master/plumbing) & 
-[`porcelain`](https://github.com/filecoin-project/go-filecoin/tree/master/porcelain) packages are 
+The [`plumbing`](https://github.com/filecoin-project/venus/tree/master/plumbing) & 
+[`porcelain`](https://github.com/filecoin-project/venus/tree/master/porcelain) packages are 
 the API for most non-protocol commands. 
 
 __Plumbing__ is the set of public apis required to implement all user-, tool-, and some protocol-level features. 
@@ -188,14 +188,14 @@ Porcelain implementations are ideally tested with fakes of the plumbing they use
 
 ### Commands
 
-The `go-filecoin` binary can run in two different modes, either as a long-running daemon exposing a JSON/HTTP RPC API, 
+The `venus` binary can run in two different modes, either as a long-running daemon exposing a JSON/HTTP RPC API, 
 or as a command-line interface which interprets and routes requests as RPCs to a daemon. 
-In typical usage, you start the daemon with `go-filecoin daemon` then use the same binary to issue commands like `go-filecoin wallet addrs`, 
+In typical usage, you start the daemon with `venus daemon` then use the same binary to issue commands like `venus wallet addrs`, 
 which are transmitted to the daemon over the HTTP API.
 
 The commands package uses the [go-ipfs command library](https://github.com/ipfs/go-ipfs-cmds) and defines commands as both CLI and JSON entry points.
 
-[Commands](https://github.com/filecoin-project/go-filecoin/tree/master/commands) implement user- and tool-facing functionality. 
+[Commands](https://github.com/filecoin-project/venus/tree/master/commands) implement user- and tool-facing functionality. 
 Command implementations should be very, very small. 
 With no logic of their own, they should call just into a single plumbing or porcelain method (never into core APIs directly). 
 The go-ipfs command library introduces some boilerplate which we can reduce with some effort in the future. 
@@ -206,7 +206,7 @@ They start some nodes and interact with them through shell commands.
 
 ### Protocols
 
-[Protocols](https://github.com/filecoin-project/go-filecoin/tree/master/protocol) embody 
+[Protocols](https://github.com/filecoin-project/venus/tree/master/protocol) embody 
 "application-level" functionality. They are persistent; they keep running without active user/tool activity. 
 Protocols interact with the network. 
 Protocols depend on `plumbing` and `porcelain` for their implementation, as well some "private" core APIs (at present, many still depend on the `Node` object).
@@ -226,9 +226,9 @@ Much in mining package, but also a bunch in the node implementation.
 - Chain protocol: protocol for exchange of mined blocks
 
 ##### Protocol Mining APIs
-The [`storage`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/storage/),
-[`retrieval`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/retrieval/)
-and [`block`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/mining/) packages now house their own APIs. These are the new interfaces for all mining commands, but not miner creation. These Protocol APIs provide a the new interface for the Network layer of go-filecoin.  Protocol APIs also consume Plumbing and Porcelain APIs. They are ephemeral, like the Porcelain API. Note also that the MiningOnce command uses `BlockMiningAPI` to create its own block mining worker, which lasts only for the time it takes to mine and post a new block.
+The [`storage`](https://github.com/filecoin-project/venus/tree/master/protocol/storage/),
+[`retrieval`](https://github.com/filecoin-project/venus/tree/master/protocol/retrieval/)
+and [`block`](https://github.com/filecoin-project/venus/tree/master/protocol/mining/) packages now house their own APIs. These are the new interfaces for all mining commands, but not miner creation. These Protocol APIs provide a the new interface for the Network layer of venus.  Protocol APIs also consume Plumbing and Porcelain APIs. They are ephemeral, like the Porcelain API. Note also that the MiningOnce command uses `BlockMiningAPI` to create its own block mining worker, which lasts only for the time it takes to mine and post a new block.
 
 
 
@@ -242,7 +242,7 @@ It is expected that other implementations will match the behaviour of the Go act
 An ABI describes how inputs and outputs to the VM are encoded. 
 Future work will replace this implementation with a "real" VM.
 
-The [Actor](https://github.com/filecoin-project/go-filecoin/blob/master/actor/actor.go) struct is the base implementation of actors, with fields common to all of them.
+The [Actor](https://github.com/filecoin-project/venus/blob/master/actor/actor.go) struct is the base implementation of actors, with fields common to all of them.
 
 - `Code` is a CID identifying the actor code, but since these actors are implemented in Go, is actually some fixed bytes acting as an identifier. 
 This identifier selects the kind of actor implementation when a message is sent to its address.
@@ -256,17 +256,17 @@ A storage miner actor exists for each miner in the Filesystem network.
 Their structs share the same code CID so they have the same behavior, but have distinct head state CIDs and balance. 
 Each actor instance exists at an address in the state tree. An address is the hash of the actor’s public key.
 
-The [account](https://github.com/filecoin-project/go-filecoin/blob/master/actor/builtin/account) actor doesn’t have any special behavior or state other than a balance. 
+The [account](https://github.com/filecoin-project/venus/blob/master/actor/builtin/account) actor doesn’t have any special behavior or state other than a balance. 
 Everyone who wants to send messages (transactions) has an account actor, and it is from this actor’s address that they send messages.
 
-Every storage miner has an instance of a [miner](https://github.com/filecoin-project/go-filecoin/blob/master/actor/builtin/miner) actor. 
+Every storage miner has an instance of a [miner](https://github.com/filecoin-project/venus/blob/master/actor/builtin/miner) actor. 
 The miner actor plays a role in the storage protocol, for example it pledges space and collateral for storage, posts proofs of storage, etc. 
 A miner actor’s state is located in the state tree at its address; the value found there is an Actor structure. 
 The head CID in the actor structure points to that miner’s state instance (encoded).
 
-Other built-in actors include the [payment broker](https://github.com/filecoin-project/go-filecoin/blob/master/actor/builtin/paymentbroken), 
+Other built-in actors include the [payment broker](https://github.com/filecoin-project/venus/blob/master/actor/builtin/paymentbroken), 
 which provides a mechanism for off-chain payments via payment channels, 
-and the [storage market](https://github.com/filecoin-project/go-filecoin/blob/master/actor/storagemarket), 
+and the [storage market](https://github.com/filecoin-project/venus/blob/master/actor/storagemarket), 
 which starts miners and tracks total storage (aka "power"). 
 These are both singletons.
 
@@ -275,7 +275,7 @@ Method implementations typically load the state tree, perform some query or muta
 
 ### The state tree
 
-Blockchain state is represented in the [state tree](https://github.com/filecoin-project/go-filecoin/blob/master/state/tree.go), 
+Blockchain state is represented in the [state tree](https://github.com/filecoin-project/venus/blob/master/state/tree.go), 
 which contains the state of all actors. 
 The state tree is a map of address to (encoded) actor structs. 
 The state tree interface exposes getting and setting actors at addresses, and iterating actors. 
@@ -309,19 +309,19 @@ These messages are executed locally against a read only version of the state tre
 They never leave the node, they are not broadcast. 
 The plumbing API exposes `MessageSend` and `MessageQuery` for these two cases. 
 
-The [processor](https://github.com/filecoin-project/go-filecoin/blob/master/consensus/processor.go) is the 
+The [processor](https://github.com/filecoin-project/venus/blob/master/consensus/processor.go) is the 
 entry point for making and validating state transitions represented by the messages. 
 It is modelled Ethereum’s message processing system. 
 The processor manages the application of messages to the state tree from the prior block/s. 
 It loads the actor from which a message came, check signatures, 
 then loads the actor and state to which a message is addressed and passes the message to the VM for execution. 
 
-The [vm](https://github.com/filecoin-project/go-filecoin/blob/master/vm) package has the low level detail of calling actor methods. 
-A [VM context](https://github.com/filecoin-project/go-filecoin/blob/master/vm/context.go) defines the world visible from an actor implementation while executing, 
+The [vm](https://github.com/filecoin-project/venus/blob/master/vm) package has the low level detail of calling actor methods. 
+A [VM context](https://github.com/filecoin-project/venus/blob/master/vm/context.go) defines the world visible from an actor implementation while executing, 
 
 ### Consensus
 
-Filecoin uses a consensus algorithm called [expected consensus](https://github.com/filecoin-project/go-filecoin/blob/master/consensus/expected.go). 
+Filecoin uses a consensus algorithm called [expected consensus](https://github.com/filecoin-project/venus/blob/master/consensus/expected.go). 
 Unlike proof-of-work schemes, expected-consensus is a proof-of-stake model, where probability of mining a block in each round (30 seconds) 
 is proportional to amount of storage a miner has committed to the network. 
 Each round, miners are elected through a probabilistic but private mechanism akin to rolling independent, private, but verifiable dice. 
@@ -330,7 +330,7 @@ If a miner is elected, they have the right to mine a block in that round.
 
 Given the probabilistic nature of mining new blocks, more than one block may be mined in any given round. 
 Hence, a new block might have more than one parent block. 
-The parents form a set, which we call a [tipset](https://github.com/filecoin-project/go-filecoin/blob/master/consensus/tipset.go). 
+The parents form a set, which we call a [tipset](https://github.com/filecoin-project/venus/blob/master/consensus/tipset.go). 
 All the blocks in a tipset are at the same height and share the same parents. 
 Tipsets contain one or more blocks. 
 A null block count indicates the absence of any blocks mined in a previous round. 
@@ -338,18 +338,18 @@ Subsequent blocks are built upon *all* of the tipset;
 there is a canonical ordering of the messages in a tipset defining a new consensus state, not directly referenced from any of the tipset’s blocks.
 
 ### Storage protocol
-The storage protocol is mechanism by which clients make deals directly with storage miners to store their data, implemented in [`protocol/storage`](https://github.com/filecoin-project/go-filecoin/blob/master/protocol/storage).
+The storage protocol is mechanism by which clients make deals directly with storage miners to store their data, implemented in [`protocol/storage`](https://github.com/filecoin-project/venus/blob/master/protocol/storage).
 
-A storage miner ([protocol/storage/miner.go](https://github.com/filecoin-project/go-filecoin/blob/master/protocol/storage/miner.go)) advertises storage with an on-chain ask, 
+A storage miner ([protocol/storage/miner.go](https://github.com/filecoin-project/venus/blob/master/protocol/storage/miner.go)) advertises storage with an on-chain ask, 
 which specifies an asking price and storage capacity at that price. 
 Clients discover asks by iterating miner actors’ on-chain state. 
 A client wishing to take an ask creates a deal proposal. 
 A proposal references a specific unit of data, termed a piece, which has a CID (hash of the bytes). 
 A piece must fit inside a single sector (see below) as defined by network parameters.
 
-A storage client ([protocol/storage/client.go](https://github.com/filecoin-project/go-filecoin/blob/master/protocol/storage/client.go)) connects directly to a miner to propose a deal, 
+A storage client ([protocol/storage/client.go](https://github.com/filecoin-project/venus/blob/master/protocol/storage/client.go)) connects directly to a miner to propose a deal, 
 using a libp2p peer id embedded in the on-chain storage miner actor data. 
-An off-chain lookup service maps peer ids to concrete addresses, in the form of multiaddr, using a [libp2p distributed hash table](https://github.com/filecoin-project/go-filecoin/blob/master/networking.md) (DHT). 
+An off-chain lookup service maps peer ids to concrete addresses, in the form of multiaddr, using a [libp2p distributed hash table](https://github.com/filecoin-project/venus/blob/master/networking.md) (DHT). 
 A client also creates a payment channel so the miner can be paid over time for storing the piece. 
 The miner responds with acceptance or otherwise.
 
@@ -367,7 +367,7 @@ There is no on-chain mapping of pieces to sectors; a client must keep track of i
 Note that the mechanisms for communication of deals and state are not specified in the protocol, except the format of messages and the eventual on-chain commitment. 
 Other mechanisms may be used.
 
-The storage [client commands](https://github.com/filecoin-project/go-filecoin/blob/master/commands/client.go) interface to a `go-filecoin` daemon in the same way as other node [commands](#commands). 
+The storage [client commands](https://github.com/filecoin-project/venus/blob/master/commands/client.go) interface to a `venus` daemon in the same way as other node [commands](#commands). 
 Right now, a client must be running a full node, but that’s not in-principle necessary. 
 Future reorganisation will allow the extraction of a thin client binary. 
 
@@ -403,8 +403,8 @@ A proving period is a window of time (a fixed number of blocks) in which the min
 in order to demonstrate to the network that they have not lost the sector which they have committed. 
 If the miner does not get a `submitPoSt` message included in a block during a proving period, it may be penalised ("slashed").
 
-Storage and proofs are administered by the [sector builder](https://github.com/filecoin-project/go-filecoin/tree/master/proofs/sectorbuilder). 
-Most of the sector builder is implemented in Rust and invoked via a [FFI](https://github.com/filecoin-project/go-filecoin/blob/master/proofs/interface.go). 
+Storage and proofs are administered by the [sector builder](https://github.com/filecoin-project/venus/tree/master/proofs/sectorbuilder). 
+Most of the sector builder is implemented in Rust and invoked via a [FFI](https://github.com/filecoin-project/venus/blob/master/proofs/interface.go). 
 This code includes functionality to:
 - write (and "preprocess") user piece-bytes to disk,
 - schedule seal (proof-of-replication) jobs,
@@ -415,7 +415,7 @@ This code includes functionality to:
 - map between piece key (CID of user piece) and sealed sector-bytes.
 
 The Go `SectorBuilder` interface corresponds closely to the rust `SectorBuilder` struct. 
-Rust code is invoked directly (in-process) via Cgo. The sector builder’s lifecycle (in Rust) is controlled by go-filecoin. 
+Rust code is invoked directly (in-process) via Cgo. The sector builder’s lifecycle (in Rust) is controlled by venus. 
 Cgo functions like `C.CBytes` are used to move bytes across Cgo from Go to Rust; 
 Go allocates in the Rust heap through Cgo and then provides Rust with pointers from which it can reconstitute arrays, structs, and so forth.
 
@@ -428,13 +428,13 @@ In the future, we would like to able to interface to it via IPC/RPC as well as F
 
 The sector builder and proofs code is written in Rust partly to ease use of the [Bellman zk-SNARK library](https://github.com/zkcrypto/bellman). 
 The PoRep and PoSt code is under active development. 
-PoRep is integrated with go-filecoin, while the PoST implementation and integration is still in progress (March 2019).
+PoRep is integrated with venus, while the PoST implementation and integration is still in progress (March 2019).
 
 ### Building and distribution.
 The Rust code responsible for sectors and proofs is in the [rust-fil-proofs](https://github.com/filecoin-project/rust-fil-proofs) repo. 
-This repo is included in go-filecoin as a Git submodule. 
+This repo is included in venus as a Git submodule. 
 The submodule refers to a specific repository SHA hash. 
-The `install-rust-proofs.sh` script, invoked by the `deps` build step of go-filecoin, builds the Rust proofs code and copies binary assets to locations hardcoded in Go interface code.
+The `install-rust-proofs.sh` script, invoked by the `deps` build step of venus, builds the Rust proofs code and copies binary assets to locations hardcoded in Go interface code.
 
 As an alternative to compiling Rust code locally, the continuous integration server publishes an archive of precompiled binary objects with every successful build of the `rust-fil-proofs/master` branch.
 These releases are identified by the Git submodule SHA. This archive is pushed to the GitHub releases service. 
@@ -461,11 +461,11 @@ The CIDs of the parameter files thus published must be pinned (made continuously
 The `paramfetch` program fetches params to local cache directory from IPFS gateway. 
 The `install-rust-proofs.sh` script fetches or generates these Groth parameters as necessary when building `deps`.
 
-Groth parameters in `/tmp/filecoin-proof-parameters` are accessed at go-filecoin runtime.
+Groth parameters in `/tmp/filecoin-proof-parameters` are accessed at venus runtime.
 The parameters are identified by the `parameters.json` file from fil-rust-proofs, which includes a checksum.
 
 ### Proof mode configuration
-For ease of development, go-filecoin can be configured to use a test proofs mode, which will cause storage miners to use sectors into which only 1016 bytes of user data can be written.
+For ease of development, venus can be configured to use a test proofs mode, which will cause storage miners to use sectors into which only 1016 bytes of user data can be written.
 This lowers the computational burden of sealing and generating PoSts.
 
 The `genesis.car` in `fixtures/test/` is configured to use test proofs mode.
@@ -482,7 +482,7 @@ A detailed overview of how Filecoin uses libp2p can be found in the [Networking 
 
 ## Filesystem storage
 
-The *repo*, aka `fsrepo`, is a directory stored on disk containing all necessary information to run a `go-filecoin daemon`, typically at `$HOME/.filecoin`. 
+The *repo*, aka `fsrepo`, is a directory stored on disk containing all necessary information to run a `venus daemon`, typically at `$HOME/.filecoin`. 
 The repo does not include client data stored by storage miners, which is held instead in the sector base. 
 The repo does include a JSON config file with preferences on how the daemon should operate, 
 several key value datastores holding data important to the internal services, 
@@ -490,7 +490,7 @@ and the keystore which holds private key data for encryption.
 
 ### JSON Config
 
-The JSON config file is stored at `$HOME/.filecoin/config.json`, and can be easily edited using the `go-filecoin config` command. 
+The JSON config file is stored at `$HOME/.filecoin/config.json`, and can be easily edited using the `venus config` command. 
 Users can also edit the file directly at their own peril.
 
 ### Datastores
@@ -514,7 +514,7 @@ This data lives in a file at `$HOME/.filecoin/keystore/self`.
 
 ## Testing
 
-The `go-filecoin` codebase has a few different testing mechanisms: 
+The `venus` codebase has a few different testing mechanisms: 
 unit tests, in-process integration tests, "daemon" integration tests, and a couple of high level functional tests.
 
 Many parts of code have good unit tests. 
@@ -535,30 +535,30 @@ Code generally uses simple manual dependency injection.
 A component that takes a large number of deps at construction can have them factored into a struct.
 A module should often (re-)declare a narrow subset of the interfaces it depends on (see [Consumer-defined interfaces](#consumer-defined-interfaces))), in canonical Go style. 
 
-Some [node integration tests](https://github.com/filecoin-project/go-filecoin/blob/master/node/node_test.go) start one or more full nodes in-process. 
+Some [node integration tests](https://github.com/filecoin-project/venus/blob/master/node/node_test.go) start one or more full nodes in-process. 
 This is useful for fine-grained control over the node being tested. 
 Setup for these tests is a bit difficult and we aim to make it much easier to instantiate and test full nodes in-process.
 
-Daemon tests are end-to-end integration tests that exercise the command interface of the `go-filecoin` binary. 
-These execute separate `go-filecoin` processes and drive them via the command line. 
-These tests are mostly under the [`commands`](https://github.com/filecoin-project/go-filecoin/blob/master/commands) package, 
-and use [TestDaemon](https://github.com/filecoin-project/go-filecoin/blob/master/testhelpers/commands.go). 
+Daemon tests are end-to-end integration tests that exercise the command interface of the `venus` binary. 
+These execute separate `venus` processes and drive them via the command line. 
+These tests are mostly under the [`commands`](https://github.com/filecoin-project/venus/blob/master/commands) package, 
+and use [TestDaemon](https://github.com/filecoin-project/venus/blob/master/testhelpers/commands.go). 
 Because the test and the daemon being tested are in separate processes, getting access to the daemon process’s output streams or attaching a debugger is tricky; 
-see comments in [createNewProcess][(https://github.com/filecoin-project/go-filecoin/blob/726e6705860ddfc8ca4e55bc3610ad2230a95c0c/testhelpers/commands.go#L849)
+see comments in [createNewProcess][(https://github.com/filecoin-project/venus/blob/726e6705860ddfc8ca4e55bc3610ad2230a95c0c/testhelpers/commands.go#L849)
 
 In daemon tests it is important to remember that messages do not have any effect on chain state until they are mined into a block. 
 Preparing an actor in order to receive messages and mutate state requires some delicate network set-up, mining messages into a block to create the actor before it can receive messages. 
-See `MineOnce` in [`mining/scheduler`](https://github.com/filecoin-project/go-filecoin/blob/master/mining/scheduler.go) which synchronously performs a round of block mining and then stops, pushing the test state forward.
+See `MineOnce` in [`mining/scheduler`](https://github.com/filecoin-project/venus/blob/master/mining/scheduler.go) which synchronously performs a round of block mining and then stops, pushing the test state forward.
 
 The `functional-tests` directory contains some Go and Bash scripts which perform complicated multi-node tests on our continuous build. 
 These are not daemon tests, but run separately.
 
 Some packages have a `testing.go` file with helpers for setting up tests involving that package’s types. 
-The [`types/testing.go`](https://github.com/filecoin-project/go-filecoin/blob/master/types/testing.go) file has some more generally useful constructors. 
-There is also a top-level [`testhelpers`](https://github.com/filecoin-project/go-filecoin/blob/master/testhelpers) package with higher level helpers, often used by daemon tests.
+The [`types/testing.go`](https://github.com/filecoin-project/venus/blob/master/types/testing.go) file has some more generally useful constructors. 
+There is also a top-level [`testhelpers`](https://github.com/filecoin-project/venus/blob/master/testhelpers) package with higher level helpers, often used by daemon tests.
 
-We’re in process of creating the Filecoin Automation and Systems Toolkit (FAST) [library](https://github.com/filecoin-project/go-filecoin/tree/master/tools/fast). 
-The goal of this is to unify duplicated code paths which bootstrap and drive `go-filecoin` daemons for daemon tests, functional tests, 
+We’re in process of creating the Filecoin Automation and Systems Toolkit (FAST) [library](https://github.com/filecoin-project/venus/tree/master/tools/fast). 
+The goal of this is to unify duplicated code paths which bootstrap and drive `venus` daemons for daemon tests, functional tests, 
 and network deployment verification, providing a common library for filecoin automation in Go. 
 
 Tests are typically run with `go run ./build/*.go test`. 
@@ -591,9 +591,9 @@ A sectorbuilder test is a resource-intensive test that may take minutes to run.
 
 ## Dependencies
 
-Dependencies in go-filecoin are managed as go modules, go's new dependency system.
+Dependencies in venus are managed as go modules, go's new dependency system.
 
-If you've cloned go-filecoin into your GOPATH, you may need to set the `GO111MODULES` environment variable to `on`. The build system automatically sets this but your favorite editor or IDE may not work without it.
+If you've cloned venus into your GOPATH, you may need to set the `GO111MODULES` environment variable to `on`. The build system automatically sets this but your favorite editor or IDE may not work without it.
 
 ## Patterns
 
@@ -611,9 +611,9 @@ The bar for adding new plumbing is high.
 It is very important, for testing and sanity, that plumbing methods be implemented in terms of their narrowest actual dependencies on core services,
 and that they not depend on Node or another god object.
 
-The plumbing API is defined by its implementation in [plumbing/api.go](https://github.com/filecoin-project/go-filecoin/blob/master/plumbing/api.go).
+The plumbing API is defined by its implementation in [plumbing/api.go](https://github.com/filecoin-project/venus/blob/master/plumbing/api.go).
 Consumers of plumbing (re-)define the subset of plumbing on which they depend, which is an idiomatic Go pattern (see below).
-Implementations of plumbing live in their own concisely named packages under [plumbing](https://github.com/filecoin-project/go-filecoin/tree/master/plumbing).
+Implementations of plumbing live in their own concisely named packages under [plumbing](https://github.com/filecoin-project/venus/tree/master/plumbing).
 
 *Porcelain* are calls on top of the plumbing API.
 A porcelain call is a useful composition of plumbing calls and is implemented in terms of calls to plumbing. 
@@ -621,11 +621,11 @@ An example of a porcelain call is `CreateMiner == MessageSend + MessageWait + Co
 The bar is low for creation of porcelain calls. 
 Porcelain calls should define the subset of the plumbing interface on which they depend for ease of testing.
 
-Porcelain lives in a single [porcelain](https://github.com/filecoin-project/go-filecoin/blob/master/porcelain/) package. 
+Porcelain lives in a single [porcelain](https://github.com/filecoin-project/venus/blob/master/porcelain/) package. 
 Porcelain calls are free functions that take the plumbing interface as an argument. 
 The call defines the subset of the plumbing interface that it needs, which can be easily faked in testing.
 
-We are in the [process of refactoring](https://github.com/filecoin-project/go-filecoin/issues/1469) all protocols to depend only on porcelain, 
+We are in the [process of refactoring](https://github.com/filecoin-project/venus/issues/1469) all protocols to depend only on porcelain, 
 plumbing and other core APIs, instead of on the Node.
 
 ### Consumer-defined interfaces
@@ -643,17 +643,17 @@ See also Dave Cheney on [SOLID Go Design](https://dave.cheney.net/2016/08/20/sol
 
 ### Observability
 
-go-filecoin uses [Opencensus-go](https://github.com/census-instrumentation/opencensus-go) for stats collection and distributed tracing instrumentation.
+venus uses [Opencensus-go](https://github.com/census-instrumentation/opencensus-go) for stats collection and distributed tracing instrumentation.
 Stats are exported for consumption via [Prometheus](https://prometheus.io/) and traces are exported for consumption via [Jaeger](https://www.jaegertracing.io/docs/1.11/).
 
 #### Metrics
 
-go-filecoin can be configured to collect and export metrics to Prometheus via the `MetricsConfig`.
-The details of this can be found inside the [`config/`](https://godoc.org/github.com/filecoin-project/go-filecoin/internal/pkg/config#ObservabilityConfig) package.
+venus can be configured to collect and export metrics to Prometheus via the `MetricsConfig`.
+The details of this can be found inside the [`config/`](https://godoc.org/github.com/filecoin-project/venus/internal/pkg/config#ObservabilityConfig) package.
 To view metrics from your filecoin node using the default configuration options set the `prometheusEnabled` value to `true`, start the filecoin daemon, then visit `localhost:9400/metrics` in your web-browser. 
 
 #### Tracing
 
-go-filecoin can be configured to collect and export traces to Jaeger via the `TraceConfig`.
-The details of this can be found inside the [`config/`](https://godoc.org/github.com/filecoin-project/go-filecoin/internal/pkg/config#ObservabilityConfig) package.
+venus can be configured to collect and export traces to Jaeger via the `TraceConfig`.
+The details of this can be found inside the [`config/`](https://godoc.org/github.com/filecoin-project/venus/internal/pkg/config#ObservabilityConfig) package.
 To collect traces from your filecoin node using the default configuration options set the `jaegerTracingEnabled` value to `true`, start the filecoin daemon, then follow the [Jaeger Getting](https://www.jaegertracing.io/docs/1.11/getting-started/#all-in-one) started guide.

@@ -3,9 +3,9 @@ package series
 import (
 	"context"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/venus/tools/fast"
 )
 
 // GetHeadBlockHeight will inspect the chain head and return the height

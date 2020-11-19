@@ -2,17 +2,15 @@ package fast
 
 import (
 	"context"
-	"io"
-	"io/ioutil"
-	"testing"
-	"time"
-
 	iptb "github.com/ipfs/iptb/testbed"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"io"
+	"io/ioutil"
+	"testing"
 
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	mockplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/mock"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	mockplugin "github.com/filecoin-project/venus/tools/iptb-plugins/filecoin/mock"
 )
 
 // must register all filecoin iptb plugins
@@ -136,7 +134,7 @@ func TestStartDaemon(t *testing.T) {
 	t.Run("providing both InitDaemon options and environment options", func(t *testing.T) {
 
 		fastenvOpts := FilecoinOpts{
-			DaemonOpts: []ProcessDaemonOption{POBlockTime(time.Second)},
+			DaemonOpts: []ProcessDaemonOption{POIsRelay()},
 		}
 
 		mfc := NewFilecoinProcess(ctx, fc, fastenvOpts)

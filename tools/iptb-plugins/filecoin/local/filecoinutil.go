@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/cmd"
 	"io"
 	"io/ioutil"
 	"os"
@@ -16,8 +17,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
-	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
+	"github.com/filecoin-project/venus/tools/iptb-plugins/filecoin"
 )
 
 func (l *Localfilecoin) isAlive() (bool, error) {
@@ -108,7 +108,7 @@ func (l *Localfilecoin) GetPeerID() (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	var details commands.IDDetails
+	var details cmd.IDDetails
 	err = details.UnmarshalJSON(buf.Bytes())
 	if err != nil {
 		return cid.Undef, err

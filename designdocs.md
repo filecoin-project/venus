@@ -53,7 +53,7 @@ A designdoc *does not* have to:
 ##### Something like BIP or EIP. 
 
 [Protocol-level changes](https://github.com/filecoin-project/specs/blob/master/process.md) go through a process 
-like that. Possibly we should adopt something similar for go-filecoin. But for now, we have designdocs.
+like that. Possibly we should adopt something similar for venus. But for now, we have designdocs.
 
 ##### Use specifications.
 

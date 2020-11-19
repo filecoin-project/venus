@@ -2,16 +2,16 @@ package fast
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/cmd"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	"github.com/filecoin-project/venus/pkg/config"
 )
 
 // InspectAll runs the `inspect all` command against the filecoin process
-func (f *Filecoin) InspectAll(ctx context.Context, options ...ActionOption) (*commands.AllInspectorInfo, error) {
-	var out commands.AllInspectorInfo
+func (f *Filecoin) InspectAll(ctx context.Context, options ...ActionOption) (*cmd.AllInspectorInfo, error) {
+	var out cmd.AllInspectorInfo
 
-	args := []string{"go-filecoin", "inspect", "all"}
+	args := []string{"venus", "inspect", "all"}
 
 	for _, option := range options {
 		args = append(args, option()...)
@@ -25,10 +25,10 @@ func (f *Filecoin) InspectAll(ctx context.Context, options ...ActionOption) (*co
 }
 
 // InspectRuntime runs the `inspect runtime` command against the filecoin process
-func (f *Filecoin) InspectRuntime(ctx context.Context, options ...ActionOption) (*commands.RuntimeInfo, error) {
-	var out commands.RuntimeInfo
+func (f *Filecoin) InspectRuntime(ctx context.Context, options ...ActionOption) (*cmd.RuntimeInfo, error) {
+	var out cmd.RuntimeInfo
 
-	args := []string{"go-filecoin", "inspect", "runtime"}
+	args := []string{"venus", "inspect", "runtime"}
 
 	for _, option := range options {
 		args = append(args, option()...)
@@ -42,10 +42,10 @@ func (f *Filecoin) InspectRuntime(ctx context.Context, options ...ActionOption) 
 }
 
 // InspectDisk runs the `inspect disk` command against the filecoin process
-func (f *Filecoin) InspectDisk(ctx context.Context, options ...ActionOption) (*commands.DiskInfo, error) {
-	var out commands.DiskInfo
+func (f *Filecoin) InspectDisk(ctx context.Context, options ...ActionOption) (*cmd.DiskInfo, error) {
+	var out cmd.DiskInfo
 
-	args := []string{"go-filecoin", "inspect", "disk"}
+	args := []string{"venus", "inspect", "disk"}
 
 	for _, option := range options {
 		args = append(args, option()...)
@@ -59,10 +59,10 @@ func (f *Filecoin) InspectDisk(ctx context.Context, options ...ActionOption) (*c
 }
 
 // InspectMemory runs the `inspect memory` command against the filecoin process
-func (f *Filecoin) InspectMemory(ctx context.Context, options ...ActionOption) (*commands.MemoryInfo, error) {
-	var out commands.MemoryInfo
+func (f *Filecoin) InspectMemory(ctx context.Context, options ...ActionOption) (*cmd.MemoryInfo, error) {
+	var out cmd.MemoryInfo
 
-	args := []string{"go-filecoin", "inspect", "memory"}
+	args := []string{"venus", "inspect", "memory"}
 
 	for _, option := range options {
 		args = append(args, option()...)
@@ -79,7 +79,7 @@ func (f *Filecoin) InspectMemory(ctx context.Context, options ...ActionOption) (
 func (f *Filecoin) InspectConfig(ctx context.Context, options ...ActionOption) (*config.Config, error) {
 	var out config.Config
 
-	args := []string{"go-filecoin", "inspect", "config"}
+	args := []string{"venus", "inspect", "config"}
 
 	for _, option := range options {
 		args = append(args, option()...)

@@ -3,7 +3,7 @@ package series
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/venus/tools/fast"
 )
 
 // InitAndStart is a quick way to run Init and Start for a filecoin process. A variadic set of functions

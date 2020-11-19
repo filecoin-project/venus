@@ -11,11 +11,11 @@ import (
 	"github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
-	"github.com/filecoin-project/go-filecoin/tools/fast"
-	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
-	"github.com/filecoin-project/go-filecoin/tools/fast/series"
-	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
+	"github.com/filecoin-project/venus/pkg/testhelpers"
+	"github.com/filecoin-project/venus/tools/fast"
+	"github.com/filecoin-project/venus/tools/fast/environment"
+	"github.com/filecoin-project/venus/tools/fast/series"
+	localplugin "github.com/filecoin-project/venus/tools/iptb-plugins/filecoin/local"
 )
 
 // DeploymentEnvironment provides common setup for writing tests which will run against
@@ -72,7 +72,7 @@ func makeLocal(ctx context.Context, t *testing.T, dir string, fastenvOpts fast.F
 	require.NoError(t, err)
 
 	fastenvOpts.InitOpts = append([]fast.ProcessInitOption{fast.POGenesisFile(genesisURI)}, fastenvOpts.InitOpts...)
-	fastenvOpts.DaemonOpts = append([]fast.ProcessDaemonOption{fast.POBlockTime(time.Second * 5)}, fastenvOpts.DaemonOpts...)
+	fastenvOpts.DaemonOpts = append([]fast.ProcessDaemonOption{}, fastenvOpts.DaemonOpts...)
 
 	ctx = series.SetCtxSleepDelay(ctx, time.Second*5)
 
@@ -82,9 +82,6 @@ func makeLocal(ctx context.Context, t *testing.T, dir string, fastenvOpts fast.F
 	require.NoError(t, err)
 
 	err = series.SetupGenesisNode(ctx, genesis, genesisMiner.Address, files.NewReaderFile(genesisMiner.Owner))
-	require.NoError(t, err)
-
-	err = genesis.MiningStart(ctx)
 	require.NoError(t, err)
 
 	details, err := genesis.ID(ctx)

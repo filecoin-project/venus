@@ -8,7 +8,7 @@ RUN curl -sSf https://sh.rustup.rs | sh -s -- -y
 # https://github.com/ipfs/go-ipfs/blob/master/Dockerfile
 # Thanks Lars :)
 
-ENV SRC_DIR /go/src/github.com/filecoin-project/go-filecoin
+ENV SRC_DIR /go/src/github.com/filecoin-project/venus
 ENV GO111MODULE on
 ARG FIL_PROOFS_PARAMETER_CACHE="./tmp/filecoin-proof-parameters"
 ARG FILECOIN_USE_PRECOMPILED_RUST_PROOFS=yes
@@ -43,9 +43,9 @@ FROM busybox:1.30.1-glibc AS filecoin
 MAINTAINER Filecoin Dev Team
 
 # Get the filecoin binary, entrypoint script, and TLS CAs from the build container.
-ENV SRC_DIR /go/src/github.com/filecoin-project/go-filecoin
+ENV SRC_DIR /go/src/github.com/filecoin-project/venus
 COPY --from=builder $SRC_DIR/tmp/filecoin-proof-parameters/* /tmp/filecoin-proof-parameters/
-COPY --from=builder $SRC_DIR/go-filecoin /usr/local/bin/go-filecoin
+COPY --from=builder $SRC_DIR/venus /usr/local/bin/venus
 COPY --from=builder $SRC_DIR/bin/container_daemon /usr/local/bin/start_filecoin
 COPY --from=builder $SRC_DIR/bin/devnet_start /usr/local/bin/devnet_start
 COPY --from=builder $SRC_DIR/bin/node_restart /usr/local/bin/node_restart

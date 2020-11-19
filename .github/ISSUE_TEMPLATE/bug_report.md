@@ -17,6 +17,6 @@ For questions, please ask on the forum: https://discuss.filecoin.io/
 **Diagnostic information:**
 <!-- Please run the following commands and paste the output here: -->
 
-- Filecoin Version: <!-- go-filecoin version -->
-- Filecoin Inspect Output: <!-- go-filecoin inspect all -->
+- Filecoin Version: <!-- venus version -->
+- Filecoin Inspect Output: <!--venus inspect all -->
 - Initialization Command: <!-- If you have having issues connecting to the network, what command did you use to initialize? -->

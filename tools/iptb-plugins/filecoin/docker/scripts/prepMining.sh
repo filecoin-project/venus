@@ -24,11 +24,11 @@ fi
 
 if [ "$1" -gt "$MAX_NODES" ];
 then
-  printf "If you wish to run with a value larger that 25, you must edit the Dockerfile in the go-filecoin repo\n
+  printf "If you wish to run with a value larger that 25, you must edit the Dockerfile in the venus repo\n
   Where to edit:\n
   ENV GENSETUP_COUNT 25 #<--SET THIS VALUE\n
   After edit you must rebuild the docker file:\n
-  $ docker build -t go-filecoin .
+  $ docker build -t venus .
   "
   exit 1
 fi
@@ -40,14 +40,14 @@ printf "Initializing %d nodes\n" "$1"
 iptb init -- --genesisfile=/data/genesis.car
 
 printf "Starting %d nodes\n" "$1"
-iptb start -- --block-time=5s
+iptb start
 
 printf "Configuring %d nodes\n" "$1"
 for i in $(eval echo {0..$1})
 do
   minerAddr=$(iptb run "$i" cat /data/minerAddr$i | tail -n 2 | head -n 1)
-  iptb run "$i" -- go-filecoin config mining.minerAddress \"\\\"$minerAddr\\\"\"
-  iptb run "$i" -- go-filecoin wallet import /data/walletKey$i
+  iptb run "$i" -- venus config mining.minerAddress \"\\\"$minerAddr\\\"\"
+  iptb run "$i" -- venus wallet import /data/walletKey$i
 done
 
 printf "Connecting %d nodes\n" "$1"

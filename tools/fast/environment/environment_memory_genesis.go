@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/cmd"
 	"io"
 	"math/big"
 	"net"
@@ -16,11 +18,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	logging "github.com/ipfs/go-log/v2"
 
-	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/constants"
-	"github.com/filecoin-project/go-filecoin/tools/fast"
-	"github.com/filecoin-project/go-filecoin/tools/fast/series"
-	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/tools/fast"
+	"github.com/filecoin-project/venus/tools/fast/series"
+	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 
 	iptb "github.com/ipfs/iptb/testbed"
 )
@@ -30,7 +31,7 @@ import (
 // functional tests!
 type MemoryGenesis struct {
 	genesisCar        []byte
-	genesisMinerOwner commands.WalletSerializeResult
+	genesisMinerOwner cmd.WalletSerializeResult
 	genesisMinerAddr  address.Address
 
 	location string
@@ -240,6 +241,7 @@ func (e *MemoryGenesis) buildGenesis(funds *big.Int) error {
 				Owner:            0,
 				SealProofType:    constants.DevSealProofType,
 				CommittedSectors: commCfgs,
+				MarketBalance:    abi.NewTokenAmount(0),
 			},
 		},
 		Network: "gfctest",
@@ -260,7 +262,7 @@ func (e *MemoryGenesis) buildGenesis(funds *big.Int) error {
 	}
 
 	e.genesisCar = genbuffer.Bytes()
-	e.genesisMinerOwner = commands.WalletSerializeResult{KeyInfo: info.Keys}
+	e.genesisMinerOwner = cmd.WalletSerializeResult{KeyInfo: info.Keys}
 	e.genesisMinerAddr = info.Miners[0].Address
 
 	return nil

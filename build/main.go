@@ -13,11 +13,8 @@ import (
 	"sync"
 	"time"
 
-	pf "github.com/filecoin-project/go-paramfetch"
-	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/go-filecoin/build/internal/helpers"
-	"github.com/filecoin-project/go-filecoin/build/internal/version"
+	"github.com/filecoin-project/venus/build/internal/helpers"
+	"github.com/filecoin-project/venus/build/internal/version"
 )
 
 var lineBreak = "\n"
@@ -120,17 +117,6 @@ func deps() {
 
 	runCmd(cmd("go mod download"))
 
-	dat, err := ioutil.ReadFile("./parameters.json")
-	if err != nil {
-		panic(errors.Wrap(err, "failed to read contents of ./parameters.json"))
-	}
-
-	log.Println("Getting parameters...")
-	err = pf.GetParams(dat, 2048)
-	if err != nil {
-		panic(errors.Wrap(err, "failed to acquire Groth parameters for development sectors"))
-	}
-
 	runCmd(cmd("./scripts/install-filecoin-ffi.sh"))
 }
 
@@ -153,7 +139,6 @@ func build() {
 	buildFaucet()
 	buildGenesisFileServer()
 	generateGenesis()
-	buildMigrations()
 	buildPrereleaseTool()
 }
 
@@ -163,15 +148,14 @@ func forcebuild() {
 	buildFaucet()
 	buildGenesisFileServer()
 	generateGenesis()
-	buildMigrations()
 	buildPrereleaseTool()
 }
 
 func forceBuildFC() {
-	log.Println("Force building go-filecoin...")
+	log.Println("Force building venus...")
 
 	runCmd(cmd([]string{
-		"bash", "-c", fmt.Sprintf("go build %s -a -v -o go-filecoin .", flags()),
+		"bash", "-c", fmt.Sprintf("go build %s -a -v -o venus .", flags()),
 	}...))
 }
 
@@ -245,17 +229,17 @@ func generateGenesis() {
 }
 
 func flags() string {
-	return fmt.Sprintf("-ldflags=github.com/filecoin-project/go-filecoin=\"%s\"", strings.Join([]string{
-		fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/build/flags.GitRoot=%s", helpers.GetGitRoot()),
-		fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/build/flags.GitCommit=%s", getCommitSha()),
+	return fmt.Sprintf("-ldflags=github.com/filecoin-project/venus=\"%s\"", strings.Join([]string{
+		fmt.Sprintf("-X github.com/filecoin-project/venus/build/flags.GitRoot=%s", helpers.GetGitRoot()),
+		fmt.Sprintf("-X github.com/filecoin-project/venus/build/flags.GitCommit=%s", getCommitSha()),
 	}, " "))
 }
 
 func buildFilecoin() {
-	log.Println("Building go-filecoin...")
+	log.Println("Building venus...")
 
 	runCmd(cmd([]string{
-		"bash", "-c", fmt.Sprintf("go build %s -v -o go-filecoin .", flags()),
+		"bash", "-c", fmt.Sprintf("go build %s -v -o venus .", flags()),
 	}...))
 }
 
@@ -275,12 +259,6 @@ func buildGenesisFileServer() {
 	log.Println("Building genesis file server...")
 
 	runCmd(cmd([]string{"go", "build", "-o", "./tools/genesis-file-server/genesis-file-server", "./tools/genesis-file-server/"}...))
-}
-
-func buildMigrations() {
-	log.Println("Building migrations...")
-	runCmd(cmd([]string{
-		"go", "build", "-o", "./tools/migration/go-filecoin-migrate", "./tools/migration/main.go"}...))
 }
 
 func buildPrereleaseTool() {
@@ -340,8 +318,6 @@ func main() {
 		buildGengen()
 	case "generate-genesis":
 		generateGenesis()
-	case "build-migrations":
-		buildMigrations()
 	case "build":
 		build()
 	case "fbuild":

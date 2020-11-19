@@ -6,11 +6,10 @@ package main
 // on the users computer. The network will stay standing till the program is closed.
 
 import (
-	"bytes"
 	"context"
-	"crypto/rand"
 	flg "flag"
 	"fmt"
+	"github.com/filecoin-project/venus/cmd"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -22,17 +21,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	files "github.com/ipfs/go-ipfs-files"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 
-	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/tools/fast"
-	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
-	"github.com/filecoin-project/go-filecoin/tools/fast/series"
-	lpfc "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
+	"github.com/filecoin-project/venus/tools/fast"
+	"github.com/filecoin-project/venus/tools/fast/environment"
+	"github.com/filecoin-project/venus/tools/fast/series"
+	lpfc "github.com/filecoin-project/venus/tools/iptb-plugins/filecoin/local"
 )
 
 var (
@@ -69,12 +65,12 @@ func init() {
 	// to searching path.
 	binpath, err = getFilecoinBinary()
 	if err != nil {
-		// Look for `go-filecoin` in the path to set `binpath` default
+		// Look for `venus` in the path to set `binpath` default
 		// If the binary is not found, an error will be returned. If the
 		// error is ErrNotFound we ignore it.
 		// Error is handled after flag parsing so help can be shown without
 		// erroring first
-		binpath, err = exec.LookPath("go-filecoin")
+		binpath, err = exec.LookPath("venus")
 		if err != nil {
 			xerr, ok := err.(*exec.Error)
 			if ok && xerr.Err == exec.ErrNotFound {
@@ -84,7 +80,7 @@ func init() {
 	}
 
 	flag.StringVar(&workdir, "workdir", workdir, "set the working directory used to store filecoin repos")
-	flag.StringVar(&binpath, "binpath", binpath, "set the binary used when executing `go-filecoin` commands")
+	flag.StringVar(&binpath, "binpath", binpath, "set the binary used when executing `venus` commands")
 	flag.BoolVar(&shell, "shell", shell, "setup a filecoin client node and enter into a shell ready to use")
 	flag.BoolVar(&smallSectors, "small-sectors", smallSectors, "enables small sectors")
 	flag.DurationVar(&blocktime, "blocktime", blocktime, "duration for blocktime")
@@ -96,12 +92,12 @@ func init() {
 	// ExitOnError is set
 	flag.Parse(os.Args[1:]) // nolint: errcheck
 
-	// If we failed to find `go-filecoin` and it was not set, handle the error
+	// If we failed to find `venus` and it was not set, handle the error
 	if len(binpath) == 0 {
-		msg := "failed when checking for `go-filecoin` binary;"
+		msg := "failed when checking for `venus` binary;"
 		if err == nil {
 			err = fmt.Errorf("no binary provided or found")
-			msg = "please install or build `go-filecoin`;"
+			msg = "please install or build `venus`;"
 		}
 
 		handleError(err, msg)
@@ -194,7 +190,7 @@ func main() {
 
 	fastenvOpts := fast.FilecoinOpts{
 		InitOpts:   []fast.ProcessInitOption{fast.POGenesisFile(genesisURI)},
-		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(blocktime)},
+		DaemonOpts: []fast.ProcessDaemonOption{},
 	}
 
 	ctx = series.SetCtxSleepDelay(ctx, blocktime)
@@ -213,11 +209,11 @@ func main() {
 		return
 	}
 
-	if err := genesis.MiningStart(ctx); err != nil {
-		exitcode = handleError(err, "failed to start mining on genesis node;")
-		return
-	}
-
+	/*	if err := genesis.MiningStart(ctx); err != nil {
+			exitcode = handleError(err, "failed to start mining on genesis node;")
+			return
+		}
+	*/
 	// Create the processes that we will use to become miners
 	var miners []*fast.Filecoin
 	for i := 0; i < minerCount; i++ {
@@ -252,8 +248,6 @@ func main() {
 	// WaitForDealState
 	// 9. Query deal till complete
 
-	var deals []*network.Response
-
 	for _, miner := range miners {
 		err = series.InitAndStart(ctx, miner)
 		if err != nil {
@@ -273,43 +267,10 @@ func main() {
 			return
 		}
 
-		pparams, err := miner.Protocol(ctx)
-		if err != nil {
-			exitcode = handleError(err, "failed to get protocol;")
-			return
-		}
-
-		sinfo := pparams.SupportedSectors[0]
-
-		ask, err := series.CreateStorageMinerWithAsk(ctx, miner, minerCollateral, minerPrice, minerExpiry, sinfo.Size)
-		if err != nil {
-			exitcode = handleError(err, "failed series.CreateStorageMinerWithAsk;")
-			return
-		}
-
-		if err := miner.MiningStart(ctx); err != nil {
+		/*	if err := miner.MiningStart(ctx); err != nil {
 			exitcode = handleError(err, "failed miner.MiningStart;")
 			return
-		}
-
-		var data bytes.Buffer
-		dataReader := io.LimitReader(rand.Reader, int64(sinfo.MaxPieceSize))
-		dataReader = io.TeeReader(dataReader, &data)
-		_, deal, err := series.ImportAndStore(ctx, genesis, ask, files.NewReaderFile(dataReader))
-		if err != nil {
-			exitcode = handleError(err, "failed series.ImportAndStore;")
-			return
-		}
-
-		deals = append(deals, deal)
-	}
-
-	for _, deal := range deals {
-		_, err = series.WaitForDealState(ctx, genesis, deal, storagemarket.StorageDealActive)
-		if err != nil {
-			exitcode = handleError(err, "failed series.WaitForDealState;")
-			return
-		}
+		}*/
 	}
 
 	if shell {
@@ -357,7 +318,7 @@ func main() {
 	}
 
 	fmt.Println("Finished!")
-	var nodeDetails []*commands.IDDetails
+	var nodeDetails []*cmd.IDDetails
 	nodes := env.Processes()
 	for _, node := range nodes {
 		details, err := node.ID(ctx)
@@ -416,7 +377,7 @@ func getFilecoinBinary() (string, error) {
 		return "", err
 	}
 
-	bin := filepath.Join(gopath, "/src/github.com/filecoin-project/go-filecoin/go-filecoin")
+	bin := filepath.Join(gopath, "/src/github.com/filecoin-project/venus/venus")
 	_, err = os.Stat(bin)
 	if err != nil {
 		return "", err

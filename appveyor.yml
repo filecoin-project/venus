@@ -2,7 +2,7 @@ version: "{build}"
 
 # Source Config
 
-clone_folder: c:\gopath\src\github.com\filecoin-project\go-filecoin
+clone_folder: c:\gopath\src\github.com\filecoin-project\venus
 
 # Build host
 

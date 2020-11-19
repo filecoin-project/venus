@@ -45,7 +45,7 @@ a. we find the peer; highly unlikely scenario, as the chance is 1/2^256 with our
 b. we yield because a timer runs out; the most probable scenario. This is a healthy timeout to timebox discovery iterations.
 
 Throughout this process, the libp2p stack generates `CONNECTED` events for every new connection we establish to a peer,
-for which `go-filecoin` registers a callback that triggers the Filecoin `HELLO` protocol negotiation.
+for which `venus` registers a callback that triggers the Filecoin `HELLO` protocol negotiation.
 If the other party responds positively, chain sync with that peer begins.
 
 A few relevant aspects to note:
