@@ -2,12 +2,12 @@ package chain_test
 
 import (
 	"context"
-	ds "github.com/ipfs/go-datastore"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
+	ds "github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -48,7 +48,7 @@ func newChainStore(r repo.Repo, genCid cid.Cid) *CborBlockStore {
 	cborStore := cborutil.NewIpldStore(tempBlock)
 
 	return &CborBlockStore{
-		Store:     chain.NewStore(r.Datastore(), cborStore, tempBlock, chain.NewStatusReporter(), block.UndefTipSet.Key(), genCid),
+		Store:     chain.NewStore(r.Datastore(), cborStore, tempBlock, chain.NewStatusReporter(), genCid),
 		cborStore: cborStore,
 	}
 }
@@ -260,9 +260,9 @@ func TestHead(t *testing.T) {
 	sr := chain.NewStatusReporter()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cborStore := cbor.NewCborStore(bs)
-	cs := chain.NewStore(r.Datastore(), cborStore, bs, sr, block.UndefTipSet.Key(), genTS.At(0).Cid())
+	cs := chain.NewStore(r.Datastore(), cborStore, bs, sr, genTS.At(0).Cid())
 	cboreStore := &CborBlockStore{
-		Store: chain.NewStore(r.Datastore(), cborStore, bs, sr, block.UndefTipSet.Key(), genTS.At(0).Cid()),
+		Store: chain.NewStore(r.Datastore(), cborStore, bs, sr, genTS.At(0).Cid()),
 	}
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
@@ -367,7 +367,7 @@ func TestLoadAndReboot(t *testing.T) {
 	requirePutBlocksToCborStore(t, cst, link4.ToSlice()...)
 
 	cboreStore := &CborBlockStore{
-		Store:     chain.NewStore(ds, cst, bs, chain.NewStatusReporter(), block.UndefTipSet.Key(), genTS.At(0).Cid()),
+		Store:     chain.NewStore(ds, cst, bs, chain.NewStatusReporter(), genTS.At(0).Cid()),
 		cborStore: cst,
 	}
 	requirePutTestChain(ctx, t, cboreStore, link4.Key(), builder, 5)
@@ -378,7 +378,7 @@ func TestLoadAndReboot(t *testing.T) {
 
 	// rebuild chain with same datastore and cborstore
 	sr := chain.NewStatusReporter()
-	rebootChain := chain.NewStore(ds, cst, bs, sr, block.UndefTipSet.Key(), genTS.At(0).Cid())
+	rebootChain := chain.NewStore(ds, cst, bs, sr, genTS.At(0).Cid())
 	rebootCbore := &CborBlockStore{
 		Store: rebootChain,
 	}

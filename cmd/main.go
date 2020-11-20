@@ -82,6 +82,8 @@ const (
 	IsRelay = "is-relay"
 
 	Size = "size"
+
+	ImportFile = "importfile"
 )
 
 func init() {
@@ -153,10 +155,10 @@ var rootCmdDaemon = &cmds.Command{
 
 // all top level commands, not available to daemon
 var rootSubcmdsLocal = map[string]*cmds.Command{
-	"daemon":  daemonCmd,
-	"fetch":   fetchCmd,
-	"init":    initCmd,
-	"import":  importCmd,
+	"daemon": daemonCmd,
+	"fetch":  fetchCmd,
+	"init":   initCmd,
+	//"import":  importCmd,
 	"version": versionCmd,
 	"leb128":  leb128Cmd,
 }

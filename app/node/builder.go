@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/venus/app/porcelain"
 	"github.com/filecoin-project/venus/app/submodule"
 	"github.com/filecoin-project/venus/pkg/beacon"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/journal"
@@ -40,7 +39,6 @@ type Builder struct {
 	repo        repo.Repo
 	journal     journal.Journal
 	isRelay     bool
-	checkPoint  block.TipSetKey
 	chainClock  clock.ChainEpochClock
 	genCid      cid.Cid
 	drand       beacon.Schedule
@@ -61,14 +59,6 @@ func OfflineMode(offlineMode bool) BuilderOpt {
 func IsRelay() BuilderOpt {
 	return func(c *Builder) error {
 		c.isRelay = true
-		return nil
-	}
-}
-
-// IsRelay configures node to act as a libp2p relay.
-func CheckPoint(checkPoint block.TipSetKey) BuilderOpt {
-	return func(c *Builder) error {
-		c.checkPoint = checkPoint
 		return nil
 	}
 }
@@ -232,7 +222,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	nd.ProofVerification = submodule.NewProofVerificationSubmodule(b.verifier)
 
-	nd.chain, err = submodule.NewChainSubmodule((*builder)(b), b.repo, &nd.Blockstore, &nd.ProofVerification, b.checkPoint, b.drand)
+	nd.chain, err = submodule.NewChainSubmodule((*builder)(b), b.repo, &nd.Blockstore, &nd.ProofVerification, b.drand)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}
@@ -264,7 +254,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Discovery")
 	}
 
-	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.ProofVerification.ProofVerifier, b.checkPoint)
+	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.ProofVerification.ProofVerifier, nd.chain.CheckPoint)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}

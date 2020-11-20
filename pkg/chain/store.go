@@ -40,6 +40,9 @@ var logStore = logging.Logger("chain.store")
 // HeadKey is the key at which the head tipset cid's are written in the datastore.
 var HeadKey = datastore.NewKey("/chain/heaviestTipSet")
 
+// CheckPoint is the key which the check-point written in the datastore.
+var CheckPoint = datastore.NewKey("/chain/checkPoint")
+
 type ipldSource struct {
 	// cst is a store allowing access
 	// (un)marshalling and interop with go-ipld-hamt.
@@ -115,7 +118,6 @@ func NewStore(ds repo.Datastore,
 	cst cbor.IpldStore,
 	bsstore blockstore.Blockstore,
 	sr Reporter,
-	checkPoint block.TipSetKey,
 	genesisCid cid.Cid,
 ) *Store {
 	ipldSource := newSource(cst)
@@ -126,7 +128,7 @@ func NewStore(ds repo.Datastore,
 		bsstore:             bsstore,
 		headEvents:          pubsub.New(12),
 		tipIndex:            NewTipIndex(),
-		checkPoint:          checkPoint,
+		checkPoint:          block.UndefTipSet.Key(),
 		genesis:             genesisCid,
 		reporter:            sr,
 		chainIndex:          NewChainIndex(tipsetProvider.GetTipSet),
@@ -642,6 +644,35 @@ func (store *Store) Import(r io.Reader) (*block.TipSet, error) {
 		curTipset = curParentTipset
 	}
 	return parentTipset, nil
+}
+
+func (store *Store) SetCheckPoint(checkPoint block.TipSetKey) {
+	store.checkPoint = checkPoint
+}
+
+// WriteCheckPoint writes the given cids to disk.
+func (store *Store) WriteCheckPoint(ctx context.Context, cids block.TipSetKey) error {
+	logStore.Infof("WriteCheckPoint %v", cids)
+	val, err := encoding.Encode(cids)
+	if err != nil {
+		return err
+	}
+
+	return store.ds.Put(CheckPoint, val)
+}
+
+// GetCheckPoint get the check point from store or disk.
+func (store *Store) GetCheckPoint() (block.TipSetKey, error) {
+	if !store.checkPoint.Empty() {
+		return store.checkPoint, nil
+	}
+	val, err := store.ds.Get(CheckPoint)
+	if err != nil {
+		return block.UndefTipSet.Key(), err
+	}
+	err = encoding.Decode(val, &store.checkPoint)
+
+	return store.checkPoint, err
 }
 
 // Stop stops all activities and cleans up.
