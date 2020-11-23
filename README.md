@@ -70,7 +70,7 @@ git clone https://github.com/filecoin-project/venus.git /path/to/filecoin-projec
 
 #### Install Go
 
-The build process for venus requires [Go](https://golang.org/doc/install) >= v1.13
+The build process for venus requires [Go](https://golang.org/doc/install) >= v1.15
 
 > Installing Go for the first time? We recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.
 
@@ -165,14 +165,6 @@ Open a new terminal to interact with your node:
 ```
 
 To see a full list of commands, run `./venus --help`.
-
-### Advanced usage
-
-#### Setting up a localnet
-
-The localnet FAST binary tool allows users to quickly and easily setup a local network on the users computer. 
-Please refer to the [localnet README](https://github.com/filecoin-project/venus/tree/master/tools/fast/bin/localnet#localnet) for more information. 
-The localnet tool is only compatible when built from the same git ref as the targeted `venus` binary.
 
 ## Contributing
 
