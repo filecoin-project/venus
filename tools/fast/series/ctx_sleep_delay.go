@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
+	"github.com/filecoin-project/venus/pkg/clock"
 )
 
 type ctxSleepDelayKey struct{}
@@ -25,7 +25,7 @@ func SetCtxSleepDelay(ctx context.Context, d time.Duration) context.Context {
 
 // CtxSleepDelay is a helper method to make sure people don't call `time.Sleep`
 // or `time.After` themselves in series. It will use the time.Duration in the
-// context, or default to `clock.epochDuration` from the go-filecoin/mining package.
+// context, or default to `clock.epochDuration` from the venus/mining package.
 // A channel is return which will receive a time.Time value after the delay.
 func CtxSleepDelay(ctx context.Context) <-chan time.Time {
 	d, ok := ctx.Value(sleepDelayKey).(time.Duration)

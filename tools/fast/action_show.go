@@ -5,9 +5,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/types"
 )
 
 // ShowHeader runs the `show header` command against the filecoin process
@@ -16,7 +15,7 @@ func (f *Filecoin) ShowHeader(ctx context.Context, ref cid.Cid) (*block.Block, e
 
 	sRef := ref.String()
 
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "show", "header", sRef); err != nil {
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "venus", "show", "header", sRef); err != nil {
 		return nil, err
 	}
 
@@ -29,7 +28,7 @@ func (f *Filecoin) ShowMessages(ctx context.Context, ref cid.Cid) ([]*types.Sign
 
 	sRef := ref.String()
 
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "show", "messages", sRef); err != nil {
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "venus", "show", "messages", sRef); err != nil {
 		return nil, err
 	}
 
@@ -37,12 +36,12 @@ func (f *Filecoin) ShowMessages(ctx context.Context, ref cid.Cid) ([]*types.Sign
 }
 
 // ShowReceipts runs the `show receipts` command against the filecoin process
-func (f *Filecoin) ShowReceipts(ctx context.Context, ref cid.Cid) ([]vm.MessageReceipt, error) {
-	var out []vm.MessageReceipt
+func (f *Filecoin) ShowReceipts(ctx context.Context, ref cid.Cid) ([]types.MessageReceipt, error) {
+	var out []types.MessageReceipt
 
 	sRef := ref.String()
 
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "show", "receipts", sRef); err != nil {
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "venus", "show", "receipts", sRef); err != nil {
 		return nil, err
 	}
 

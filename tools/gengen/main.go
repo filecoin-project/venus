@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	flg "flag"
 	"fmt"
+	"github.com/filecoin-project/venus/cmd"
 	"os"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
-	"github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	"github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/tools/gengen/util"
 )
 
 func writeKey(ki *crypto.KeyInfo, name string, jsonout bool) error {
@@ -17,8 +17,8 @@ func writeKey(ki *crypto.KeyInfo, name string, jsonout bool) error {
 		return err
 	}
 	if !jsonout {
-		fmt.Fprintf(os.Stderr, "key: %s - %s\n", name, addr)                                                                   // nolint: errcheck
-		fmt.Fprintf(os.Stderr, "run 'go-filecoin wallet import ./%s.key' to add private key for %[1]s to your wallet\n", name) // nolint: errcheck
+		fmt.Fprintf(os.Stderr, "key: %s - %s\n", name, addr)                                                             // nolint: errcheck
+		fmt.Fprintf(os.Stderr, "run 'venus wallet import ./%s.key' to add private key for %[1]s to your wallet\n", name) // nolint: errcheck
 	}
 	fi, err := os.Create(name + ".key")
 	if err != nil {
@@ -26,7 +26,7 @@ func writeKey(ki *crypto.KeyInfo, name string, jsonout bool) error {
 	}
 	defer fi.Close() // nolint: errcheck
 
-	var wir commands.WalletSerializeResult
+	var wir cmd.WalletSerializeResult
 	wir.KeyInfo = append(wir.KeyInfo, ki)
 
 	return json.NewEncoder(fi).Encode(wir)
@@ -56,9 +56,9 @@ $ cat setup.json
 }
 $ cat setup.json | gengen > genesis.car
 
-The outputted file can be used by go-filecoin during init to
+The outputted file can be used by venus during init to
 set the initial genesis block:
-$ go-filecoin init --genesisfile=genesis.car
+$ venus init --genesisfile=genesis.car
 */
 
 var (

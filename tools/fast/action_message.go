@@ -2,21 +2,21 @@ package fast
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/cmd"
 	"strconv"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/go-state-types/abi"
 	cid "github.com/ipfs/go-cid"
 
-	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 )
 
 // MessageSend runs the `message send` command against the filecoin process.
 func (f *Filecoin) MessageSend(ctx context.Context, target address.Address, method abi.MethodNum, options ...ActionOption) (cid.Cid, error) {
-	var out commands.MessageSendResult
+	var out cmd.MessageSendResult
 
-	args := []string{"go-filecoin", "message", "send"}
+	args := []string{"venus", "message", "send"}
 
 	for _, option := range options {
 		args = append(args, option()...)
@@ -36,10 +36,10 @@ func (f *Filecoin) MessageSend(ctx context.Context, target address.Address, meth
 }
 
 // MessageWait runs the `message wait` command against the filecoin process.
-func (f *Filecoin) MessageWait(ctx context.Context, mcid cid.Cid, options ...ActionOption) (commands.WaitResult, error) {
-	var out commands.WaitResult
+func (f *Filecoin) MessageWait(ctx context.Context, mcid cid.Cid, options ...ActionOption) (cmd.WaitResult, error) {
+	var out cmd.WaitResult
 
-	args := []string{"go-filecoin", "message", "wait"}
+	args := []string{"venus", "message", "wait"}
 
 	for _, option := range options {
 		args = append(args, option()...)
@@ -48,7 +48,7 @@ func (f *Filecoin) MessageWait(ctx context.Context, mcid cid.Cid, options ...Act
 	args = append(args, mcid.String())
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
-		return commands.WaitResult{}, err
+		return cmd.WaitResult{}, err
 	}
 
 	return out, nil

@@ -6,14 +6,14 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
+	"github.com/filecoin-project/venus/pkg/net"
 )
 
 // SwarmConnect runs the `swarm connect` command against the filecoin process
 func (f *Filecoin) SwarmConnect(ctx context.Context, addrs ...multiaddr.Multiaddr) (peer.ID, error) {
 	var out peer.ID
 
-	args := []string{"go-filecoin", "swarm", "connect"}
+	args := []string{"venus", "swarm", "connect"}
 
 	for _, addr := range addrs {
 		args = append(args, addr.String())
@@ -30,7 +30,7 @@ func (f *Filecoin) SwarmConnect(ctx context.Context, addrs ...multiaddr.Multiadd
 func (f *Filecoin) SwarmPeers(ctx context.Context, options ...ActionOption) ([]net.SwarmConnInfo, error) {
 	var out net.SwarmConnInfos
 
-	args := []string{"go-filecoin", "swarm", "peers"}
+	args := []string{"venus", "swarm", "peers"}
 
 	for _, option := range options {
 		args = append(args, option()...)

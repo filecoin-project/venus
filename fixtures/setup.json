@@ -1,7 +1,7 @@
 {
   "seed": 4,
   "keysToGen": 5,
-  "importKeys": [{"privateKey":"/8UoXvzGIU2H/TgTAmswx96m2dVCXkRqnIIlDhJrGCo=","sigType":2}],
+  "importKeys": [{"privateKey":"E6U+Omo+atjscNO0oRJvZfdmK3lFl9wo0YcWDVhn6TY=","sigType":2}],
   "preallocatedFunds": [
     "1000000",
     "1000000",
@@ -13,27 +13,28 @@
   "miners": [{
     "owner": 5,
     "sealProofType": 3,
+    "marketBalance": "0",
     "committedSectors": [{
-      "commR": {"/":"bafk4ehzaqugph7z7yajugw6wz6nn7x3akr3e32wecwexllfgqndnjt3nsaya"},
-      "commD": {"/":"bafk4chzavlx2s3zsomp6beohyevpbql477qyr7qnvgkvfwbbcqzfijo62arq"},
+      "commR": {"/":"bagboea4b5abcaziacbne3v3hh6bhgatc3dop72pnztj4xtvmppj4sq3jnieqoesx"},
+      "commD": {"/":"baga6ea4seaqc3dgscuewdd76uubtaki6usrdki7b4os7otho2downpjspp2ruii"},
       "sectorNum": 3,
       "proofType": 3,
       "dealCfg": {
-        "commP": {"/":"bafk4chzavlx2s3zsomp6beohyevpbql477qyr7qnvgkvfwbbcqzfijo62arq"},
+        "commP": {"/":"baga6ea4seaqc3dgscuewdd76uubtaki6usrdki7b4os7otho2downpjspp2ruii"},
         "pieceSize": 2048,
         "verified": false,
-        "endEpoch": 9001
+        "endEpoch": 1000000
       }
     },{
-      "commR": {"/":"bafk4ehza24k4j256kulsu34e4szjvmsbytibrx7kjzajc6c6rlcn2jfosada"},
-      "commD": {"/":"bafk4chzaqfni3wpij32pzgv2vuf63utnufburrjzrcoud75oz3pxkfisligq"},
+      "commR": {"/":"bagboea4b5abcal4itszbnmkiad3iasaqrndnejqqooxiiidu5ntgkybviipf5lid"},
+      "commD": {"/":"baga6ea4seaqmxjiljjcnscjhp2rc45tfjx5itjhpszsnaims7rzsdo5zlafqspq"},
       "sectorNum": 4,
       "proofType": 3,
       "dealCfg": {
-        "commP": {"/":"bafk4chzaqfni3wpij32pzgv2vuf63utnufburrjzrcoud75oz3pxkfisligq"},
+        "commP": {"/":"baga6ea4seaqmxjiljjcnscjhp2rc45tfjx5itjhpszsnaims7rzsdo5zlafqspq"},
         "pieceSize": 2048,
         "verified": false,
-        "endEpoch": 9001
+        "endEpoch": 1000000
       }
     }]
 

@@ -12,7 +12,7 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/go-filecoin/tools/faucet/limiter"
+	"github.com/filecoin-project/venus/tools/faucet/limiter"
 )
 
 var log = logging.Logger("faucet")
@@ -131,7 +131,7 @@ const form = `
 	<body>
 		<h1> What is your wallet address </h1>
 		<p> You can find this by running: </p>
-		<tt> go-filecoin address ls </tt>
+		<tt> venus address ls </tt>
 		<p> Address: </p>
 		<form action="/tap" method="post">
 			<input type="text" name="target" size="30" />

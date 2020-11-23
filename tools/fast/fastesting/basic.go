@@ -11,11 +11,11 @@ import (
 	"github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
-	"github.com/filecoin-project/go-filecoin/tools/fast"
-	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
-	"github.com/filecoin-project/go-filecoin/tools/fast/series"
-	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
+	"github.com/filecoin-project/venus/pkg/testhelpers"
+	"github.com/filecoin-project/venus/tools/fast"
+	"github.com/filecoin-project/venus/tools/fast/environment"
+	"github.com/filecoin-project/venus/tools/fast/series"
+	localplugin "github.com/filecoin-project/venus/tools/iptb-plugins/filecoin/local"
 )
 
 // TestEnvironment provides common setup for writing tests using FAST
@@ -61,10 +61,6 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.File
 
 	fastenvOpts.InitOpts = append([]fast.ProcessInitOption{fast.POGenesisFile(genesisURI)}, fastenvOpts.InitOpts...)
 
-	if isMissingBlockTimeOpt(fastenvOpts) {
-		fastenvOpts.DaemonOpts = append([]fast.ProcessDaemonOption{fast.POBlockTime(time.Millisecond)}, fastenvOpts.DaemonOpts...)
-	}
-
 	// Setup the first node which is used to help coordinate the other nodes by providing
 	// funds, mining for the network, etc
 	genesis, err := env.NewProcess(ctx, localplugin.PluginName, options, fastenvOpts)
@@ -73,13 +69,6 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.File
 	err = series.SetupGenesisNode(ctx, genesis, genesisMiner.Address, files.NewReaderFile(genesisMiner.Owner))
 	require.NoError(t, err)
 
-	// Define a MiningOnce function which will bet set on the context to provide
-	// a way to mine blocks in the series used during testing
-	var miningOnce series.MiningOnceFunc = func() {
-		_, err := genesis.MiningOnce(ctx)
-		require.NoError(t, err)
-	}
-
 	// Define a MessageWait function which will bet set on the context to provide
 	// a way to wait for a message to appear on the mining queue
 	var waitForMpool series.MpoolWaitFunc = func() {
@@ -87,7 +76,6 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.File
 		require.NoError(t, err)
 	}
 
-	ctx = series.SetCtxMiningOnce(ctx, miningOnce)
 	ctx = series.SetCtxWaitForMpool(ctx, waitForMpool)
 	ctx = series.SetCtxSleepDelay(ctx, time.Second)
 
@@ -174,14 +162,4 @@ func dumpEnvOutputOnFail(t *testing.T, procs []*fast.Filecoin) {
 		}
 		require.NoError(t, w.Close())
 	}
-}
-
-func isMissingBlockTimeOpt(opts fast.FilecoinOpts) bool {
-	for _, fn := range opts.DaemonOpts {
-		s := fn()
-		if len(s) > 0 && s[0] == "--block-time" {
-			return false
-		}
-	}
-	return true
 }

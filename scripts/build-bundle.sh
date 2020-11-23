@@ -8,8 +8,8 @@ pushd bundle
 mkdir -p filecoin
 
 # binary
-cp ../go-filecoin filecoin/
-chmod +x filecoin/go-filecoin
+cp ../venus filecoin/
+chmod +x filecoin/venus
 
 # proof params data
 cp ../vendors/go-sectorbuilder/paramcache filecoin/

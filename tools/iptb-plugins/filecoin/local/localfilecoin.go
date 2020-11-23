@@ -17,13 +17,13 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	"github.com/filecoin-project/venus/pkg/config"
 
 	"github.com/ipfs/iptb/testbed/interfaces"
 	"github.com/ipfs/iptb/util"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
+	"github.com/filecoin-project/venus/tools/iptb-plugins/filecoin"
 )
 
 // PluginName is the name of the plugin
@@ -36,7 +36,7 @@ var errIsAlive = errors.New("node is already running")
 var errTimeout = errors.New("timeout")
 
 // defaultFilecoinBinary is the name or full path of the binary that will be used
-const defaultFilecoinBinary = "go-filecoin"
+const defaultFilecoinBinary = "venus"
 
 // defaultRepoPath is the name of the repo path relative to the plugin root directory
 const defaultRepoPath = "repo"
@@ -324,7 +324,7 @@ func (l *Localfilecoin) RunCmd(ctx context.Context, stdin io.Reader, args ...str
 	}
 
 	firstArg := args[0]
-	if firstArg == "go-filecoin" {
+	if firstArg == "venus" {
 		firstArg = l.binPath
 	}
 
@@ -411,7 +411,7 @@ func (l *Localfilecoin) Connect(ctx context.Context, n testbedi.Core) error {
 }
 
 // Shell starts a user shell in the context of a node setting FIL_PATH to ensure calls to
-// go-filecoin will be ran agasint the target node. Stderr, stdout will be set to os.Stderr
+// venus will be ran agasint the target node. Stderr, stdout will be set to os.Stderr
 // and os.Stdout. If env TTY is set, it will be used for stdin, otherwise os.Stdin will be used.
 //
 // If FIL_PATH is already set, an error will be returned.
@@ -424,7 +424,7 @@ func (l *Localfilecoin) Connect(ctx context.Context, n testbedi.Core) error {
 // FIL_BINARY  - The value is set to the path of the binary used for running the Filecoin daemon.
 // PATH        - The users PATH will be updated to include a location that contains the FIL_BINARY.
 //
-// Note: user shell configuration may lead to the `go-filecoin` command not pointing to FIL_BINARY,
+// Note: user shell configuration may lead to the `venus` command not pointing to FIL_BINARY,
 // due to PATH ordering.
 func (l *Localfilecoin) Shell(ctx context.Context, ns []testbedi.Core) error {
 	shell := os.Getenv("SHELL")

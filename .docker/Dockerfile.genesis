@@ -8,7 +8,7 @@ RUN curl -sSf https://sh.rustup.rs | sh -s -- -y
 # https://github.com/ipfs/go-ipfs/blob/master/.docker/Dockerfile
 # Thanks Lars :)
 
-ENV SRC_DIR /go/src/github.com/filecoin-project/go-filecoin
+ENV SRC_DIR /go/src/github.com/filecoin-project/venus
 ENV GO111MODULE on
 
 COPY . $SRC_DIR
@@ -40,7 +40,7 @@ FROM busybox:1.30.1-glibc
 MAINTAINER Filecoin Dev Team
 
 # Get the binary, entrypoint script, and TLS CAs from the build container.
-ENV SRC_DIR /go/src/github.com/filecoin-project/go-filecoin
+ENV SRC_DIR /go/src/github.com/filecoin-project/venus
 COPY --from=0 $SRC_DIR/genesis-file-server /usr/local/bin/genesis-file-server
 COPY --from=0 /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=0 /tmp/tini /sbin/tini
