@@ -10,14 +10,11 @@ import (
 
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	cmds "github.com/ipfs/go-ipfs-cmds"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	xerrors "github.com/pkg/errors"
 	"gopkg.in/cheggaaa/pb.v1"
 
-	"github.com/filecoin-project/venus/app/paths"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -25,35 +22,13 @@ import (
 
 var logImport = logging.Logger("commands/import")
 
-var importCmd = &cmds.Command{
-	Helptext: cmds.HelpText{
-		Tagline: `
-import data into local repo.
-lotus chain export --recent-stateroots 901 <file>
-venus import <file>
-venus daemon --check-point <tipset>
-`,
-	},
-	Options: []cmds.Option{
-		cmds.StringOption("path", "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
-	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		repoDir, _ := req.Options[OptionRepoDir].(string)
-		repoDir, err := paths.GetRepoPath(repoDir)
-		if err != nil {
-			return err
-		}
-		rep, err := repo.OpenFSRepo(repoDir, repo.Version)
-		if err != nil {
-			return err
-		}
-		importPath, _ := req.Options["path"].(string)
-
-		return ImportChain(rep, importPath)
-	},
+// Import cache tipset cids to store.
+// The value of the cached tipset CIDS is used as the check-point when running `venus daemon`
+func Import(r repo.Repo, fileName string) error {
+	return importChain(r, fileName)
 }
 
-func ImportChain(r repo.Repo, fname string) error {
+func importChain(r repo.Repo, fname string) error {
 	var rd io.Reader
 	var l int64
 	if strings.HasPrefix(fname, "http://") || strings.HasPrefix(fname, "https://") {
@@ -94,7 +69,7 @@ func ImportChain(r repo.Repo, fname string) error {
 	bs := blockstore.NewBlockstore(r.Datastore())
 	// setup a ipldCbor on top of the local store
 	ipldCborStore := cborutil.NewIpldStore(bs)
-	chainStore := chain.NewStore(r.ChainDatastore(), ipldCborStore, bs, chainStatusReporter, block.UndefTipSet.Key(), cid.Undef)
+	chainStore := chain.NewStore(r.ChainDatastore(), ipldCborStore, bs, chainStatusReporter, cid.Undef)
 
 	bufr := bufio.NewReaderSize(rd, 1<<20)
 
@@ -117,6 +92,11 @@ func ImportChain(r repo.Repo, fname string) error {
 		return xerrors.Errorf("importing chain failed: %s", err)
 	}
 	logImport.Infof("accepting %s as new head", tip.Key().String())
+
+	err = chainStore.WriteCheckPoint(context.TODO(), tip.Key())
+	if err != nil {
+		logImport.Errorf("set check point error: %s", err.Error())
+	}
 
 	return err
 }

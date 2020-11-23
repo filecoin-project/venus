@@ -90,7 +90,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 	chainStatusReporter := chain.NewStatusReporter()
 
 	//chainstore
-	chainStore := chain.NewStore(chainDs, ipldStore, bs, chainStatusReporter, block.UndefTipSet.Key(), cid.Undef) //load genesis from car
+	chainStore := chain.NewStore(chainDs, ipldStore, bs, chainStatusReporter, cid.Undef) //load genesis from car
 
 	//drand
 	/*genBlk, err := chainStore.GetGenesisBlock(context.TODO())
@@ -245,7 +245,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 	chainStatusReporter := chain.NewStatusReporter()
 	chainDs := ds.NewMapDatastore() //just mock one
 	//chainstore
-	chainStore := chain.NewStore(chainDs, ipldStore, bs, chainStatusReporter, block.UndefTipSet.Key(), cid.Undef) //load genesis from car
+	chainStore := chain.NewStore(chainDs, ipldStore, bs, chainStatusReporter, cid.Undef) //load genesis from car
 
 	//drand
 	/*	genBlk, err := chainStore.GetGenesisBlock(context.TODO())

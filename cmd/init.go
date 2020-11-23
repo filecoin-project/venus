@@ -38,6 +38,7 @@ var initCmd = &cmds.Command{
 		cmds.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
 		cmds.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
 		cmds.StringOption(Network, "when set, populates config with network specific parameters"),
+		cmds.StringOption(ImportFile, "path of file or HTTP(S) URL containing archive of the block DAG data"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
@@ -86,6 +87,15 @@ var initCmd = &cmds.Command{
 		logInit.Info("Initializing node")
 		if err := node.Init(req.Context, rep, gif, initopts...); err != nil {
 			logInit.Errorf("Error initializing node %s", err)
+			return err
+		}
+
+		importFile, _ := req.Options[ImportFile].(string)
+		if len(importFile) != 0 {
+			err := Import(rep, importFile)
+			if err != nil {
+				logInit.Errorf("failed to import file, file name: %s, error: %s", importFile, err.Error())
+			}
 			return err
 		}
 

@@ -31,6 +31,8 @@ type ChainSubmodule struct {
 	StatusReporter *chain.StatusReporter
 
 	Fork fork.IFork
+
+	CheckPoint block.TipSetKey
 }
 
 // xxx go back to using an interface here
@@ -55,10 +57,10 @@ type chainConfig interface {
 }
 
 // NewChainSubmodule creates a new chain submodule.
-func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *BlockstoreSubmodule, verifier *ProofVerificationSubmodule, checkPoint block.TipSetKey, drand beacon.Schedule) (ChainSubmodule, error) {
+func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *BlockstoreSubmodule, verifier *ProofVerificationSubmodule, drand beacon.Schedule) (ChainSubmodule, error) {
 	// initialize chain store
 	chainStatusReporter := chain.NewStatusReporter()
-	chainStore := chain.NewStore(repo.ChainDatastore(), blockstore.CborStore, blockstore.Blockstore, chainStatusReporter, checkPoint, config.GenesisCid())
+	chainStore := chain.NewStore(repo.ChainDatastore(), blockstore.CborStore, blockstore.Blockstore, chainStatusReporter, config.GenesisCid())
 
 	actorState := appstate.NewTipSetStateViewer(chainStore, blockstore.CborStore)
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)
@@ -79,6 +81,7 @@ func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *Blockstor
 		Processor:      processor,
 		StatusReporter: chainStatusReporter,
 		Fork:           fork,
+		CheckPoint:     chainStore.GetCheckPoint(),
 	}, nil
 }
 
