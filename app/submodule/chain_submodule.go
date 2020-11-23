@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/venus/app/plumbing/cst"
 	"github.com/filecoin-project/venus/pkg/beacon"
@@ -18,8 +17,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm/register"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
 )
-
-var logChainSubmodule = logging.Logger("chain.submodule")
 
 // ChainSubmodule enhances the `Node` with chain capabilities.
 type ChainSubmodule struct {
