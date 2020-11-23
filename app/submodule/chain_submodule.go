@@ -65,12 +65,6 @@ func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *Blockstor
 	chainStatusReporter := chain.NewStatusReporter()
 	chainStore := chain.NewStore(repo.ChainDatastore(), blockstore.CborStore, blockstore.Blockstore, chainStatusReporter, config.GenesisCid())
 
-	var err error
-	var checkPoint block.TipSetKey
-
-	checkPoint, err = chainStore.GetCheckPoint()
-	logChainSubmodule.Infof("check point value: %v, error: %v", checkPoint, err)
-
 	actorState := appstate.NewTipSetStateViewer(chainStore, blockstore.CborStore)
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, register.DefaultActors, drand)
@@ -90,7 +84,7 @@ func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *Blockstor
 		Processor:      processor,
 		StatusReporter: chainStatusReporter,
 		Fork:           fork,
-		CheckPoint:     checkPoint,
+		CheckPoint:     chainStore.GetCheckPoint(),
 	}, nil
 }
 

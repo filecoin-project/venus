@@ -122,7 +122,7 @@ func NewStore(ds repo.Datastore,
 ) *Store {
 	ipldSource := newSource(cst)
 	tipsetProvider := TipSetProviderFromBlocks(context.TODO(), ipldSource)
-	return &Store{
+	store := &Store{
 		stateAndBlockSource: ipldSource,
 		ds:                  ds,
 		bsstore:             bsstore,
@@ -133,6 +133,16 @@ func NewStore(ds repo.Datastore,
 		reporter:            sr,
 		chainIndex:          NewChainIndex(tipsetProvider.GetTipSet),
 	}
+
+	val, err := store.ds.Get(CheckPoint)
+	if err != nil {
+		store.checkPoint = block.NewTipSetKey(genesisCid)
+	} else {
+		err = encoding.Decode(val, &store.checkPoint)
+	}
+	logStore.Infof("check point value: %v, error: %v", store.checkPoint, err)
+
+	return store
 }
 
 // Load rebuilds the Store's caches by traversing backwards from the
@@ -662,17 +672,8 @@ func (store *Store) WriteCheckPoint(ctx context.Context, cids block.TipSetKey) e
 }
 
 // GetCheckPoint get the check point from store or disk.
-func (store *Store) GetCheckPoint() (block.TipSetKey, error) {
-	if !store.checkPoint.Empty() {
-		return store.checkPoint, nil
-	}
-	val, err := store.ds.Get(CheckPoint)
-	if err != nil {
-		return block.UndefTipSet.Key(), err
-	}
-	err = encoding.Decode(val, &store.checkPoint)
-
-	return store.checkPoint, err
+func (store *Store) GetCheckPoint() block.TipSetKey {
+	return store.checkPoint
 }
 
 // Stop stops all activities and cleans up.
