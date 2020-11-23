@@ -137,7 +137,7 @@ If you have **problems with the build**, please consult the [Troubleshooting](ht
 
 ## Usage
 
-For a complete step-by-step tutorial, see [Getting Started](https://go.filecoin.io/venus-tutorial/Getting-Started.html).
+For a complete step-by-step  tutorial, see [Getting Started](https://go.filecoin.io/venus-tutorial/Getting-Started.html).
 
 #### Quick start:
 
