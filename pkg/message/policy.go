@@ -2,11 +2,11 @@ package message
 
 import (
 	"context"
-	"github.com/filecoin-project/go-state-types/abi"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -64,13 +64,12 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 	if err != nil {
 		return err
 	}
-
 	// Remove all messages in the new chain from the queue since they have been mined into blocks.
 	// Rearrange the tipsets into ascending height order so messages are discovered in nonce order.
 	chain.Reverse(newTips)
 	for _, tipset := range newTips {
 		for i := 0; i < tipset.Len(); i++ {
-			secpMsgs, _, err := p.messageProvider.LoadMetaMessages(ctx, tipset.At(i).Messages.Cid)
+			secpMsgs, blsMsgs, err := p.messageProvider.LoadMetaMessages(ctx, tipset.At(i).Messages.Cid)
 			if err != nil {
 				return err
 			}
@@ -80,10 +79,20 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 					return err
 				}
 				if found && !minedMsg.Equals(removed) {
-					log.Warnf("Queued message %v differs from mined message %v with same sender & nonce", removed, minedMsg)
+					log.Warnf("Queued secp message %v differs from mined message %v with same sender & nonce", removed, minedMsg)
 				}
 				// Else if not found, the message was not sent by this node, or has already been removed
 				// from the queue (e.g. a blockchain re-org).
+			}
+
+			for _, minedMsg := range blsMsgs {
+				removed, found, err := target.RemoveNext(ctx, minedMsg.From, minedMsg.Nonce)
+				if err != nil {
+					return err
+				}
+				if found && removed != nil && !minedMsg.Equals(&removed.Message) {
+					log.Warnf("Queued bls message %v differs from mined message %v with same sender & nonce", removed, minedMsg)
+				}
 			}
 		}
 	}

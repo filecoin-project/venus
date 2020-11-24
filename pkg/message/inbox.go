@@ -97,11 +97,20 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []*block.
 	var removeCids []cid.Cid
 	for _, tipset := range newChain {
 		for i := 0; i < tipset.Len(); i++ {
-			secpMsgs, _, err := ib.messageProvider.LoadMetaMessages(ctx, tipset.At(i).Messages.Cid)
+			secpMsgs, blsMsgs, err := ib.messageProvider.LoadMetaMessages(ctx, tipset.At(i).Messages.Cid)
 			if err != nil {
 				return err
 			}
 			for _, msg := range secpMsgs {
+				cid, err := msg.Cid()
+				if err != nil {
+					return err
+				}
+				removeCids = append(removeCids, cid)
+			}
+
+			for i, msg := range blsMsgs {
+				log.Info("i: ", i, " ", msg)
 				cid, err := msg.Cid()
 				if err != nil {
 					return err
