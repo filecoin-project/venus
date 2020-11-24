@@ -220,7 +220,7 @@ type MessageSignatureValidator struct {
 type signatureValidatorAPI interface {
 	Head() block.TipSetKey
 	GetTipSet(key block.TipSetKey) (*block.TipSet, error)
-	AccountStateView(baseKey block.TipSetKey, height abi.ChainEpoch) (state.AccountStateView, error)
+	AccountStateView(baseKey block.TipSetKey) (state.AccountStateView, error)
 }
 
 func NewMessageSignatureValidator(api signatureValidatorAPI) *MessageSignatureValidator {
@@ -233,12 +233,7 @@ func NewMessageSignatureValidator(api signatureValidatorAPI) *MessageSignatureVa
 //  validation failed, but possibly indicate a failure to retrieve state.
 func (v *MessageSignatureValidator) Validate(ctx context.Context, smsg *types.SignedMessage) error {
 	head := v.api.Head()
-	headTipset, err := v.api.GetTipSet(head)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get height: %v", err)
-	}
-
-	view, err := v.api.AccountStateView(head, headTipset.At(0).Height)
+	view, err := v.api.AccountStateView(head)
 	if err != nil {
 		return errors.Wrapf(err, "failed to load state at %v", head)
 	}

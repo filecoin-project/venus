@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/app/node"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -15,8 +17,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/vm"
 
-	"github.com/filecoin-project/venus/app/plumbing/cst"
-	"github.com/filecoin-project/venus/app/plumbing/msg"
+	"github.com/filecoin-project/venus/app/submodule/chain/cst"
+	"github.com/filecoin-project/venus/app/submodule/messaging/msg"
 	"github.com/filecoin-project/venus/pkg/message"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -46,12 +48,12 @@ var msgSendCmd = &cmds.Command{
 		Tagline: "Send a message", // This feels too generic...
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("target", true, false, "Address of the actor to send the message to"),
+		cmds.StringArg("target", true, false, "RustFulAddress of the actor to send the message to"),
 		cmds.StringArg("method", false, false, "The method to invoke on the target actor"),
 	},
 	Options: []cmds.Option{
 		cmds.StringOption("value", "Value to send with message in FIL"),
-		cmds.StringOption("from", "Address to send message from"),
+		cmds.StringOption("from", "RustFulAddress to send message from"),
 		feecapOption,
 		premiumOption,
 		limitOption,
@@ -90,7 +92,7 @@ var msgSendCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := GetPorcelainAPI(env).MessagePreview(
+			usedGas, err := env.(*node.Env).MessagingAPI.MessagePreview(
 				req.Context,
 				fromAddr,
 				target,
@@ -106,7 +108,7 @@ var msgSendCmd = &cmds.Command{
 			})
 		}
 
-		c, _, err := GetPorcelainAPI(env).MessageSend(
+		c, err := env.(*node.Env).MessagingAPI.MessageSend(
 			req.Context,
 			fromAddr,
 			target,
@@ -151,7 +153,7 @@ var signedMsgSendCmd = &cmds.Command{
 		}
 		signed := &m
 
-		c, _, err := GetPorcelainAPI(env).SignedMessageSend(
+		c, err := env.(*node.Env).MessagingAPI.SignedMessageSend(
 			req.Context,
 			signed,
 		)
@@ -170,7 +172,7 @@ var signedMsgSendCmd = &cmds.Command{
 
 // WaitResult is the result of a message wait call.
 type WaitResult struct {
-	Message   *types.SignedMessage
+	Message   *types.UnsignedMessage
 	Receipt   *types.MessageReceipt
 	Signature vm.ActorMethodSignature
 }
@@ -186,7 +188,8 @@ var msgWaitCmd = &cmds.Command{
 		cmds.BoolOption("message", "Print the whole message").WithDefault(true),
 		cmds.BoolOption("receipt", "Print the whole message receipt").WithDefault(true),
 		cmds.BoolOption("return", "Print the return value from the receipt").WithDefault(false),
-		cmds.Uint64Option("lookback", "Number of previous tipsets to be checked before waiting").WithDefault(msg.DefaultMessageWaitLookback),
+		cmds.Uint64Option("confidence", "Number of block to confirm message").WithDefault(constants.DefaultConfidence),
+		cmds.Uint64Option("lookback", "Number of previous tipsets to be checked before waiting").WithDefault(constants.DefaultMessageWaitLookback),
 		cmds.StringOption("timeout", "Maximum time to wait for message. e.g., 300ms, 1.5h, 2h45m.").WithDefault("10m"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -205,19 +208,19 @@ var msgWaitCmd = &cmds.Command{
 		}
 
 		lookback, _ := req.Options["lookback"].(uint64)
-
+		confidence, _ := req.Options["confidence"].(uint64)
 		ctx, cancel := context.WithTimeout(req.Context, timeoutDuration)
 		defer cancel()
 
-		err = GetPorcelainAPI(env).MessageWait(ctx, msgCid, lookback, func(blk *block.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
+		err = env.(*node.Env).MessagingAPI.MessageWait(ctx, msgCid, confidence, lookback, func(blk *block.Block, msg types.ChainMsg, receipt *types.MessageReceipt) error {
 			found = true
-			sig, err := GetPorcelainAPI(env).ActorGetSignature(req.Context, msg.Message.To, msg.Message.Method)
+			sig, err := env.(*node.Env).ChainAPI.ActorGetSignature(req.Context, msg.VMMessage().To, msg.VMMessage().Method)
 			if err != nil && err != cst.ErrNoMethod && err != cst.ErrNoActorImpl {
 				return errors.Wrap(err, "Couldn't get signature for message")
 			}
 
 			res := WaitResult{
-				Message: msg,
+				Message: msg.VMMessage(),
 				Receipt: receipt,
 				// Signature is required to decode the output.
 				Signature: sig,
@@ -258,11 +261,12 @@ var msgStatusCmd = &cmds.Command{
 			return errors.Wrap(err, "invalid cid "+req.Arguments[0])
 		}
 
-		api := GetPorcelainAPI(env)
+		api := env.(*node.Env).MessagingAPI
 		result := MessageStatusResult{}
 
 		// Look in message pool
-		result.PoolMsg, result.InPool = api.MessagePoolGet(msgCid)
+		result.PoolMsg, err = api.MessagePoolGet(msgCid)
+		result.InOutbox = err == nil
 
 		// Look in outbox
 		for _, addr := range api.OutboxQueues() {

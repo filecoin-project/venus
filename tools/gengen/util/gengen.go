@@ -117,7 +117,7 @@ type RenderedMinerInfo struct {
 	// Owner is the key name of the owner of this miner
 	Owner int
 
-	// Address is the address generated on-chain for the miner
+	// RustFulAddress is the address generated on-chain for the miner
 	Address address.Address
 
 	// The amount of storage power this miner was created with

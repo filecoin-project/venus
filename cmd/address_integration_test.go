@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/node/test"
 	"github.com/filecoin-project/venus/fixtures/fortest"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
@@ -31,7 +31,7 @@ func TestAddressNewAndList(t *testing.T) {
 	addrs := make([]address.Address, 10)
 	var err error
 	for i := 0; i < 10; i++ {
-		addrs[i], err = n.PorcelainAPI.WalletNewAddress(address.SECP256K1)
+		addrs[i], err = n.Wallet.API().WalletNewAddress(address.SECP256K1)
 		require.NoError(t, err)
 	}
 
@@ -51,7 +51,7 @@ func TestWalletBalance(t *testing.T) {
 
 	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
-	addr, err := n.PorcelainAPI.WalletNewAddress(address.SECP256K1)
+	addr, err := n.Wallet.API().WalletNewAddress(address.SECP256K1)
 	require.NoError(t, err)
 
 	t.Log("[success] not found, zero")
@@ -60,7 +60,7 @@ func TestWalletBalance(t *testing.T) {
 	assert.Equal(t, "0", balance.String())
 
 	t.Log("[success] balance 1394000000000000000000000000")
-	cmdClient.RunMarshaledJSON(ctx, &balance, "wallet", "balance", reward.Address.String())
+	cmdClient.RunMarshaledJSON(ctx, &balance, "wallet", "balance", builtin.RewardActorAddr.String())
 	assert.Equal(t, "1394000000000000000000000000", balance.String())
 
 	t.Log("[success] newly generated one")

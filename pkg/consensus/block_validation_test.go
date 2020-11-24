@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/clock"
@@ -265,11 +264,11 @@ func TestBlockValidSyntax(t *testing.T) {
 	validTi := block.Ticket{VRFProof: []byte{1}}
 	// create a valid block
 	blk := &block.Block{
-		Timestamp: validTs,
-		StateRoot: validSt,
-		Miner:     validAd,
-		Ticket:    validTi,
-		Height:    1,
+		Timestamp:       validTs,
+		ParentStateRoot: validSt,
+		Miner:           validAd,
+		Ticket:          validTi,
+		Height:          1,
 
 		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
@@ -288,9 +287,9 @@ func TestBlockValidSyntax(t *testing.T) {
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
 	// invalidate stateroot
-	blk.StateRoot = e.NewCid(cid.Undef)
+	blk.ParentStateRoot = e.NewCid(cid.Undef)
 	require.Error(t, validator.ValidateSyntax(ctx, blk))
-	blk.StateRoot = validSt
+	blk.ParentStateRoot = validSt
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
 	// invalidate miner address
@@ -337,7 +336,7 @@ func (fcs *fakeChainState) GetTipSetStateRoot(context.Context, block.TipSetKey) 
 	return cid.Undef, nil
 }
 
-func (fcs *fakeChainState) StateView(block.TipSetKey, abi.ChainEpoch) (*state.View, error) {
+func (fcs *fakeChainState) StateView(block.TipSetKey) (*state.View, error) {
 	return nil, nil
 }
 

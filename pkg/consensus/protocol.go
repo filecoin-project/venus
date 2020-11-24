@@ -29,7 +29,7 @@ import (
 type Protocol interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateID`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts *block.TipSet, secpMessages [][]*types.SignedMessage, blsMessages [][]*types.UnsignedMessage, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error)
+	RunStateTransition(ctx context.Context, ts *block.TipSet, blkMessageInfo []block.BlockMessagesInfo, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error)
 
 	// BlockTime returns the block time used by the consensus protocol.
 	BlockTime() time.Duration

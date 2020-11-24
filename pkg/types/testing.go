@@ -117,7 +117,7 @@ func MustGenerateKeyInfo(n int, seed byte) []crypto.KeyInfo {
 	return keyinfos
 }
 
-// SignBytes cryptographically signs `data` using the Address `addr`.
+// SignBytes cryptographically signs `data` using the RustFulAddress `addr`.
 func (ms MockSigner) SignBytes(_ context.Context, data []byte, addr address.Address) (crypto.Signature, error) {
 	ki, ok := ms.AddrKeyInfo[addr]
 	if !ok {
@@ -155,9 +155,9 @@ func (ms MockSigner) GetAddressForPubKey(pk []byte) (address.Address, error) {
 // exactly one place to create valid messages for tests if messages require validation in the
 // future.
 // TODO support chosing from address
-func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
+func NewSignedMessageForTestGetter(ms MockSigner) func(uint64) *SignedMessage {
 	i := 0
-	return func() *SignedMessage {
+	return func(nonce uint64) *SignedMessage {
 		s := fmt.Sprintf("smsg%d", i)
 		i++
 		newAddr, err := address.NewSecp256k1Address([]byte(s + "-to"))
@@ -167,7 +167,7 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 		msg := NewMeteredMessage(
 			ms.Addresses[0], // from needs to be an address from the signer
 			newAddr,
-			0,
+			nonce,
 			ZeroAttoFIL,
 			0,
 			[]byte("params"),
@@ -300,7 +300,7 @@ func MsgCidsEqual(m1, m2 *UnsignedMessage) bool {
 
 // SmsgCidsEqual returns true if the SignedMessage cids are equal. It panics if
 // it can't get their cid.
-func SmsgCidsEqual(m1, m2 *SignedMessage) bool {
+func SmsgCidsEqual(m1, m2 ChainMsg) bool {
 	m1Cid, err := m1.Cid()
 	if err != nil {
 		panic(err)

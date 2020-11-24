@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -54,7 +55,7 @@ var addrsNewCmd = &cmds.Command{
 		default:
 			return fmt.Errorf("unrecognized address protocol %s", protocolName)
 		}
-		addr, err := GetPorcelainAPI(env).WalletNewAddress(protocol)
+		addr, err := env.(*node.Env).WalletAPI.WalletNewAddress(protocol)
 		if err != nil {
 			return err
 		}
@@ -68,7 +69,7 @@ var addrsNewCmd = &cmds.Command{
 
 var addrsLsCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		addrs := GetPorcelainAPI(env).WalletAddresses()
+		addrs := env.(*node.Env).WalletAPI.WalletAddresses()
 
 		var alr AddressLsResult
 		for _, addr := range addrs {
@@ -82,7 +83,7 @@ var addrsLsCmd = &cmds.Command{
 
 var defaultAddressCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		addr, err := GetPorcelainAPI(env).WalletDefaultAddress()
+		addr, err := env.(*node.Env).WalletAPI.WalletDefaultAddress()
 		if err != nil {
 			return err
 		}
@@ -94,7 +95,7 @@ var defaultAddressCmd = &cmds.Command{
 
 var setDefaultAddressCmd = &cmds.Command{
 	Arguments: []cmds.Argument{
-		cmds.StringArg("address", true, false, "Address to set default for"),
+		cmds.StringArg("address", true, false, "RustFulAddress to set default for"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addr, err := address.NewFromString(req.Arguments[0])
@@ -102,7 +103,7 @@ var setDefaultAddressCmd = &cmds.Command{
 			return err
 		}
 
-		err = GetPorcelainAPI(env).SetWalletDefaultAddress(addr)
+		err = env.(*node.Env).WalletAPI.SetWalletDefaultAddress(addr)
 		if err != nil {
 			return err
 		}
@@ -114,7 +115,7 @@ var setDefaultAddressCmd = &cmds.Command{
 
 var balanceCmd = &cmds.Command{
 	Arguments: []cmds.Argument{
-		cmds.StringArg("address", true, false, "Address to get balance for"),
+		cmds.StringArg("address", true, false, "RustFulAddress to get balance for"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addr, err := address.NewFromString(req.Arguments[0])
@@ -122,7 +123,7 @@ var balanceCmd = &cmds.Command{
 			return err
 		}
 
-		balance, err := GetPorcelainAPI(env).WalletBalance(req.Context, addr)
+		balance, err := env.(*node.Env).WalletAPI.WalletBalance(req.Context, addr)
 		if err != nil {
 			return err
 		}
@@ -161,7 +162,7 @@ var walletImportCmd = &cmds.Command{
 			return fmt.Errorf("no keys in wallet file")
 		}
 
-		addrs, err := GetPorcelainAPI(env).WalletImport(keyInfos...)
+		addrs, err := env.(*node.Env).WalletAPI.WalletImport(keyInfos...)
 		if err != nil {
 			return err
 		}
@@ -190,7 +191,7 @@ var walletExportCmd = &cmds.Command{
 			addrs[i] = addr
 		}
 
-		kis, err := GetPorcelainAPI(env).WalletExport(addrs)
+		kis, err := env.(*node.Env).WalletAPI.WalletExport(addrs)
 		if err != nil {
 			return err
 		}

@@ -141,7 +141,7 @@ func (t *CallerValidationArgs) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.Addrs ([]address.Address) (slice)
+	// t.Addrs ([]address.RustFulAddress) (slice)
 	if len(t.Addrs) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.Addrs was too long")
 	}
@@ -214,7 +214,7 @@ func (t *CallerValidationArgs) UnmarshalCBOR(r io.Reader) error {
 
 		t.Branch = CallerValidationBranch(extraI)
 	}
-	// t.Addrs ([]address.Address) (slice)
+	// t.Addrs ([]address.RustFulAddress) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -303,7 +303,7 @@ func (t *CreateActorArgs) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Address (address.Address) (struct)
+	// t.RustFulAddress (address.RustFulAddress) (struct)
 	if err := t.Address.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -374,12 +374,12 @@ func (t *CreateActorArgs) UnmarshalCBOR(r io.Reader) error {
 	default:
 		return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
 	}
-	// t.Address (address.Address) (struct)
+	// t.RustFulAddress (address.RustFulAddress) (struct)
 
 	{
 
 		if err := t.Address.UnmarshalCBOR(br); err != nil {
-			return xerrors.Errorf("unmarshaling t.Address: %w", err)
+			return xerrors.Errorf("unmarshaling t.RustFulAddress: %w", err)
 		}
 
 	}
@@ -397,7 +397,7 @@ func (t *ResolveAddressResponse) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Address (address.Address) (struct)
+	// t.RustFulAddress (address.RustFulAddress) (struct)
 	if err := t.Address.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -427,12 +427,12 @@ func (t *ResolveAddressResponse) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Address (address.Address) (struct)
+	// t.RustFulAddress (address.RustFulAddress) (struct)
 
 	{
 
 		if err := t.Address.UnmarshalCBOR(br); err != nil {
-			return xerrors.Errorf("unmarshaling t.Address: %w", err)
+			return xerrors.Errorf("unmarshaling t.RustFulAddress: %w", err)
 		}
 
 	}
@@ -469,7 +469,7 @@ func (t *SendArgs) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.To (address.Address) (struct)
+	// t.To (address.RustFulAddress) (struct)
 	if err := t.To.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -518,7 +518,7 @@ func (t *SendArgs) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.To (address.Address) (struct)
+	// t.To (address.RustFulAddress) (struct)
 
 	{
 
@@ -903,12 +903,12 @@ func (t *InspectRuntimeReturn) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.Caller (address.Address) (struct)
+	// t.Caller (address.RustFulAddress) (struct)
 	if err := t.Caller.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.Receiver (address.Address) (struct)
+	// t.Receiver (address.RustFulAddress) (struct)
 	if err := t.Receiver.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -959,7 +959,7 @@ func (t *InspectRuntimeReturn) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Caller (address.Address) (struct)
+	// t.Caller (address.RustFulAddress) (struct)
 
 	{
 
@@ -968,7 +968,7 @@ func (t *InspectRuntimeReturn) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.Receiver (address.Address) (struct)
+	// t.Receiver (address.RustFulAddress) (struct)
 
 	{
 

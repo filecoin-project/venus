@@ -189,13 +189,13 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 
 func mustMakeTipset(t *testing.T, height abi.ChainEpoch) *block.TipSet {
 	ts, err := block.NewTipSet(&block.Block{
-		Miner:           types.NewForTestGetter()(),
-		Ticket:          block.Ticket{VRFProof: []byte{0}},
-		Parents:         block.TipSetKey{},
-		ParentWeight:    fbig.Zero(),
-		Height:          height,
-		MessageReceipts: enccid.NewCid(types.EmptyMessagesCID),
-		Messages:        enccid.NewCid(types.EmptyTxMetaCID),
+		Miner:                 types.NewForTestGetter()(),
+		Ticket:                block.Ticket{VRFProof: []byte{0}},
+		Parents:               block.TipSetKey{},
+		ParentWeight:          fbig.Zero(),
+		Height:                height,
+		ParentMessageReceipts: enccid.NewCid(types.EmptyMessagesCID),
+		Messages:              enccid.NewCid(types.EmptyTxMetaCID),
 	})
 	if err != nil {
 		t.Fatal(err)

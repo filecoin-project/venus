@@ -14,5 +14,6 @@ type chainProvider interface {
 	// list of non-empty tip heights.
 	chain.TipSetProvider
 	GetHead() block.TipSetKey
+	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 	GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error)
 }

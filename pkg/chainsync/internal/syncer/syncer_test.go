@@ -40,7 +40,7 @@ func TestOneBlock(t *testing.T) {
 	t1 := builder.AppendOn(builder.Genesis(), 1)
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", t1.Key(), heightFromTip(t, t1)), false))
 
-	verifyTip(t, builder.Store(), t1, t1.At(0).StateRoot.Cid)
+	verifyTip(t, builder.Store(), t1, t1.At(0).ParentStateRoot.Cid)
 	require.NoError(t, syncer.SetStagedHead(ctx))
 	verifyHead(t, builder.Store(), t1)
 }
@@ -415,7 +415,7 @@ type poisonValidator struct {
 	fullFailureTS   uint64
 }
 
-func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *block.TipSet, secpMessages [][]*types.SignedMessage, blsMessages [][]*types.UnsignedMessage, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
+func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *block.TipSet, blkMsgInfo []block.BlockMessagesInfo, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
 	stamp := ts.At(0).Timestamp
 	if pv.fullFailureTS == stamp {
 		return types.EmptyTxMetaCID, nil, errors.New("run state transition fails on poison timestamp")

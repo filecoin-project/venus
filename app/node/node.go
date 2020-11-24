@@ -3,30 +3,49 @@ package node
 import (
 	"context"
 	"fmt"
-	"reflect"
-	"runtime"
-
+	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	fbig "github.com/filecoin-project/go-state-types/big"
-	bserv "github.com/ipfs/go-blockservice"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/venus/app/porcelain"
-	"github.com/filecoin-project/venus/app/submodule"
+	"github.com/filecoin-project/venus/app/submodule/blockservice"
+	"github.com/filecoin-project/venus/app/submodule/blockstore"
+	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
+	configModule "github.com/filecoin-project/venus/app/submodule/config"
+	"github.com/filecoin-project/venus/app/submodule/discovery"
+	"github.com/filecoin-project/venus/app/submodule/messaging"
+	network2 "github.com/filecoin-project/venus/app/submodule/network"
+	"github.com/filecoin-project/venus/app/submodule/proofverification"
+	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
+	syncer2 "github.com/filecoin-project/venus/app/submodule/syncer"
+	"github.com/filecoin-project/venus/app/submodule/wallet"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/cborutil"
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/clock"
-	"github.com/filecoin-project/venus/pkg/message"
+	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/net/pubsub"
-	"github.com/filecoin-project/venus/pkg/protocol/drand"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/version"
+	bserv "github.com/ipfs/go-blockservice"
+	cmds "github.com/ipfs/go-ipfs-cmds"
+	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p-core/host"
+	ma "github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr-net" //nolint
+	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
+	"net/http"
+	"os"
+	"os/signal"
+	"reflect"
+	"runtime"
+	"syscall"
 )
 
 var log = logging.Logger("node") // nolint: deadcode
+
+// APIPrefix is the prefix for the http version of the api.
+const APIPrefix = "/api"
 
 // Node represents a full Filecoin node.
 type Node struct {
@@ -41,39 +60,38 @@ type Node struct {
 	// It contains all persistent artifacts of the filecoin node.
 	Repo repo.Repo
 
-	PorcelainAPI *porcelain.API
-	DrandAPI     *drand.API
-
 	//
 	// Core services
 	//
-
-	Blockstore   submodule.BlockstoreSubmodule
-	network      submodule.NetworkSubmodule
-	Blockservice submodule.BlockServiceSubmodule
-	Discovery    submodule.DiscoverySubmodule
+	ConfigModule *configModule.ConfigModule
+	Blockstore   *blockstore.BlockstoreSubmodule
+	network      *network2.NetworkSubmodule
+	Blockservice *blockservice.BlockServiceSubmodule
+	discovery    *discovery.DiscoverySubmodule
 
 	//
 	// Subsystems
 	//
-
-	chain  submodule.ChainSubmodule
-	syncer submodule.SyncerSubmodule
+	chain  *chain2.ChainSubmodule
+	syncer *syncer2.SyncerSubmodule
 
 	//
 	// Supporting services
 	//
-
-	Wallet            submodule.WalletSubmodule
-	Messaging         submodule.MessagingSubmodule
-	StorageNetworking submodule.StorageNetworkingSubmodule
-	ProofVerification submodule.ProofVerificationSubmodule
+	Wallet            *wallet.WalletSubmodule
+	Messaging         *messaging.MessagingSubmodule
+	StorageNetworking *storagenetworking.StorageNetworkingSubmodule
+	ProofVerification *proofverification.ProofVerificationSubmodule
 
 	//
 	// Protocols
 	//
-
 	VersionTable *version.ProtocolVersionTable
+
+	//
+	// Jsonrpc
+	//
+	jsonRPCService *jsonrpc.RPCServer
 }
 
 // Start boots up the node.
@@ -86,24 +104,19 @@ func (node *Node) Start(ctx context.Context) error {
 		return errors.Wrap(err, "failed to setup tracing")
 	}
 
-	err := node.chain.Start(ctx, node)
+	err := node.chain.Start(ctx)
 	if err != nil {
 		return err
 	}
 
+	go node.Messaging.Start(ctx) //nolint
+
 	var syncCtx context.Context
 	syncCtx, node.syncer.CancelChainSync = context.WithCancel(context.Background())
 
-	// Wire up propagation of new chain heads from the chain store to other components.
-	head, err := node.PorcelainAPI.ChainHead()
-	if err != nil {
-		return errors.Wrap(err, "failed to get chain head")
-	}
-	go node.handleNewChainHeads(syncCtx, head)
-
 	if !node.OfflineMode {
 		// Start node discovery
-		if err := node.Discovery.Start(node); err != nil {
+		if err := node.discovery.Start(); err != nil {
 			return err
 		}
 
@@ -137,37 +150,6 @@ func (node *Node) pubsubscribe(ctx context.Context, topic *pubsub.Topic, handler
 	return sub, nil
 }
 
-func (node *Node) handleNewChainHeads(ctx context.Context, firstHead *block.TipSet) {
-	newHeadCh := node.chain.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
-	defer log.Info("new head handler exited")
-	defer node.chain.ChainReader.HeadEvents().Unsub(newHeadCh)
-
-	handler := message.NewHeadHandler(node.Messaging.Inbox, node.Messaging.Outbox, node.chain.ChainReader, firstHead)
-
-	for {
-		log.Debugf("waiting for new head")
-		select {
-		case ts, ok := <-newHeadCh:
-			if !ok {
-				log.Error("failed new head channel receive")
-				return
-			}
-			newHead, ok := ts.(*block.TipSet)
-			if !ok {
-				log.Error("non-tipset published on heaviest tipset channel")
-				continue
-			}
-
-			log.Debug("message pool handling new head")
-			if err := handler.HandleNewHead(ctx, newHead); err != nil {
-				log.Error(err)
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
 func (node *Node) cancelSubscriptions() {
 	if node.syncer.CancelChainSync != nil {
 		node.syncer.CancelChainSync()
@@ -197,7 +179,7 @@ func (node *Node) Stop(ctx context.Context) {
 		fmt.Printf("error closing repo: %s\n", err)
 	}
 
-	node.Discovery.Stop()
+	node.discovery.Stop()
 
 	fmt.Println("stopping filecoin :(")
 }
@@ -244,16 +226,165 @@ func (node *Node) CborStore() *cborutil.IpldStore {
 }
 
 // Chain returns the chain submodule.
-func (node *Node) Chain() submodule.ChainSubmodule {
+func (node *Node) Chain() *chain2.ChainSubmodule {
 	return node.chain
 }
 
 // Syncer returns the syncer submodule.
-func (node *Node) Syncer() submodule.SyncerSubmodule {
+func (node *Node) Syncer() *syncer2.SyncerSubmodule {
 	return node.syncer
 }
 
+// Discovery returns the discovery submodule.
+func (node *Node) Discovery() *discovery.DiscoverySubmodule {
+	return node.discovery
+}
+
 // Network returns the network submodule.
-func (node *Node) Network() submodule.NetworkSubmodule {
+func (node *Node) Network() *network2.NetworkSubmodule {
 	return node.network
+}
+
+func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command, ready chan interface{}) error {
+	var terminate = make(chan os.Signal, 1)
+	signal.Notify(terminate, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(terminate)
+	// Signal that the sever has started and then wait for a signal to stop.
+
+	rustfulRpcServer, err := node.runRustfulAPI(ctx, rootCmdDaemon) //nolint
+	if err != nil {
+		return err
+	}
+
+	jsonrpcServer, err := node.runJsonrpcAPI(ctx)
+	if err != nil {
+		return err
+	}
+
+	close(ready)
+	select {
+	case <-terminate:
+		err = rustfulRpcServer.Shutdown(ctx)
+		if err != nil {
+			return err
+		}
+
+		err = jsonrpcServer.Shutdown(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// RunAPIAndWait starts an API server and waits for it to finish.
+// The `ready` channel is closed when the server is running and its API address has been
+// saved to the node's repo.
+// A message sent to or closure of the `terminate` channel signals the server to stop.
+func (node *Node) runRustfulAPI(ctx context.Context, rootCmdDaemon *cmds.Command) (*http.Server, error) {
+	servenv := node.createServerEnv(ctx)
+
+	apiConfig := node.Repo.Config().API
+	cfg := cmdhttp.NewServerConfig()
+	cfg.APIPath = APIPrefix
+	cfg.SetAllowedOrigins(apiConfig.AccessControlAllowOrigin...)
+	cfg.SetAllowedMethods(apiConfig.AccessControlAllowMethods...)
+	cfg.SetAllowCredentials(apiConfig.AccessControlAllowCredentials)
+
+	maddr, err := ma.NewMultiaddr(apiConfig.RustFulAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	// Listen on the configured address in order to bind the port number in case it has
+	// been configured as zero (i.e. OS-provided)
+	apiListener, err := manet.Listen(maddr) //nolint
+	if err != nil {
+		return nil, err
+	}
+
+	handler := http.NewServeMux()
+	handler.Handle("/debug/pprof/", http.DefaultServeMux)
+	handler.Handle(APIPrefix+"/", cmdhttp.NewHandler(servenv, rootCmdDaemon, cfg))
+
+	apiserv := &http.Server{
+		Handler: handler,
+	}
+
+	go func() {
+		err := apiserv.Serve(manet.NetListener(apiListener)) //nolint
+		if err != nil && err != http.ErrServerClosed {
+			return
+		}
+	}()
+
+	// Write the resolved API address to the repo
+	apiConfig.RustFulAddress = apiListener.Multiaddr().String()
+	if err := node.Repo.SetRustfulAPIAddr(apiConfig.RustFulAddress); err != nil {
+		log.Error("Could not save API address to repo")
+		return nil, err
+	}
+	return apiserv, nil
+}
+
+func (node *Node) runJsonrpcAPI(ctx context.Context) (*http.Server, error) { //nolint
+	apiConfig := node.Repo.Config().API
+	jwtAuth, err := jwtauth.NewJwtAuth(node.Repo)
+	if err != nil {
+		return nil, xerrors.Errorf("read or generate jwt secrect error %s", err)
+	}
+	ah := &auth.Handler{
+		Verify: jwtAuth.AuthVerify,
+		Next:   node.jsonRPCService.ServeHTTP,
+	}
+	handler := http.NewServeMux()
+	handler.Handle("/rpc/v0", ah)
+
+	maddr, err := ma.NewMultiaddr(apiConfig.JSONRPCAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	lst, err := manet.Listen(maddr) //nolint
+	if err != nil {
+		return nil, xerrors.Errorf("could not listen: %w", err)
+	}
+
+	rpcServer := &http.Server{
+		Handler: handler,
+	}
+
+	go func() {
+		err := rpcServer.Serve(manet.NetListener(lst)) //nolint
+		if err != nil && err != http.ErrServerClosed {
+			return
+		}
+	}()
+
+	// Write the resolved API address to the repo
+	apiConfig.JSONRPCAddress = lst.Multiaddr().String()
+	if err := node.Repo.SetJsonrpcAPIAddr(apiConfig.JSONRPCAddress); err != nil {
+		log.Warnf("Could not save API address to repo")
+		return nil, err
+	}
+
+	return rpcServer, nil
+}
+
+func (node *Node) createServerEnv(ctx context.Context) *Env {
+	return &Env{
+		ctx:                  ctx,
+		InspectorAPI:         NewInspectorAPI(node.Repo),
+		BlockServiceAPI:      node.Blockservice.API(),
+		BlockStoreAPI:        node.Blockstore.API(),
+		ChainAPI:             node.Chain().API(),
+		ConfigAPI:            node.ConfigModule.API(),
+		DiscoveryAPI:         node.Discovery().API(),
+		MessagingAPI:         node.Messaging.API(),
+		NetworkAPI:           node.Network().API(),
+		ProofVerificationAPI: node.ProofVerification.API(),
+		StorageNetworkingAPI: node.StorageNetworking.API(),
+		SyncerAPI:            node.Syncer().API(),
+		WalletAPI:            node.Wallet.API(),
+	}
 }

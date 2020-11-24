@@ -74,7 +74,6 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []*block.
 		return err
 	}
 
-	// Add all message from the old tipsets to the message pool, so they can be mined again.
 	for _, tipset := range oldChain {
 		for i := 0; i < tipset.Len(); i++ {
 			block := tipset.At(i)

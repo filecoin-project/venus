@@ -25,8 +25,8 @@ func TestMessagePoolAddRemove(t *testing.T) {
 	ctx := context.Background()
 
 	pool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
-	msg1 := newSignedMessage()
-	msg2 := mustSetNonce(mockSigner, newSignedMessage(), 1)
+	msg1 := newSignedMessage(0)
+	msg2 := newSignedMessage(1)
 
 	c1, err := msg1.Cid()
 	assert.NoError(t, err)
@@ -90,11 +90,11 @@ func TestMessagePoolValidate(t *testing.T) {
 		ctx := context.Background()
 		pool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
-		smsg1 := newSignedMessage()
+		smsg1 := newSignedMessage(0)
 		_, err := pool.Add(ctx, smsg1, 0)
 		require.NoError(t, err)
 
-		smsg2 := mustSetNonce(mockSigner, newSignedMessage(), smsg1.Message.CallSeqNum)
+		smsg2 := mustSetNonce(mockSigner, newSignedMessage(0), smsg1.Message.CallSeqNum)
 		_, err = pool.Add(ctx, smsg2, 0)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "message with same actor and nonce")
@@ -106,7 +106,7 @@ func TestMessagePoolValidate(t *testing.T) {
 		validator.Valid = false
 		pool := message.NewPool(config.NewDefaultConfig().Mpool, validator)
 
-		smsg1 := mustSetNonce(mockSigner, newSignedMessage(), 0)
+		smsg1 := newSignedMessage(0)
 		_, err := pool.Add(ctx, smsg1, 0)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "mock validation error")
@@ -119,7 +119,7 @@ func TestMessagePoolDedup(t *testing.T) {
 	ctx := context.Background()
 
 	pool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
-	msg1 := newSignedMessage()
+	msg1 := newSignedMessage(0)
 
 	assert.Len(t, pool.Pending(), 0)
 	_, err := pool.Add(ctx, msg1, 0)

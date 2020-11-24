@@ -32,7 +32,7 @@ func TestDaemonApiFile(t *testing.T) {
 
 	daemon := th.NewDaemon(t).Start()
 
-	apiPath := filepath.Join(daemon.RepoDir(), "api")
+	apiPath := filepath.Join(daemon.RepoDir(), "rustapi")
 	assert.FileExists(t, apiPath)
 
 	daemon.ShutdownEasy()

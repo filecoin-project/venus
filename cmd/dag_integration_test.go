@@ -25,10 +25,11 @@ func TestDagDaemon(t *testing.T) {
 		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
-		c := n.PorcelainAPI.ChainHeadKey().Iter().Value()
-
+		head, err := n.Chain().API().ChainHead()
+		require.NoError(t, err)
+		hb := head.Key().Iter().Value()
 		// get an IPLD node from the DAG by its CID
-		op := cmdClient.RunSuccess(ctx, "dag", "get", c.String(), "--enc", "json")
+		op := cmdClient.RunSuccess(ctx, "dag", "get", hb.String(), "--enc", "json")
 		result2 := op.ReadStdoutTrimNewlines()
 
 		ipldnode, err := cbor.FromJSON(bytes.NewReader([]byte(result2)), constants.DefaultHashFunction, -1)

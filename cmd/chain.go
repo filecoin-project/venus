@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"github.com/filecoin-project/venus/app/node"
 	"os"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -39,7 +40,7 @@ var storeHeadCmd = &cmds.Command{
 		Tagline: "Get heaviest tipset info",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		head, err := GetPorcelainAPI(env).ChainHead()
+		head, err := env.(*node.Env).ChainAPI.ChainHead()
 		if err != nil {
 			return err
 		}
@@ -78,17 +79,17 @@ var storeLsCmd = &cmds.Command{
 		var err error
 		height, _ := req.Options["height"].(int64)
 		if height >= 0 {
-			ts, err := GetPorcelainAPI(env).ChainGetTipSetByHeight(req.Context, nil, abi.ChainEpoch(height), true)
+			ts, err := env.(*node.Env).ChainAPI.ChainGetTipSetByHeight(req.Context, nil, abi.ChainEpoch(height), true)
 			if err != nil {
 				return err
 			}
 
-			iter, err = GetPorcelainAPI(env).ChainLsWithHead(req.Context, ts.Key())
+			iter, err = env.(*node.Env).ChainAPI.ChainLsWithHead(req.Context, ts.Key())
 			if err != nil {
 				return err
 			}
 		} else {
-			iter, err = GetPorcelainAPI(env).ChainLs(req.Context)
+			iter, err = env.(*node.Env).ChainAPI.ChainLs(req.Context)
 			if err != nil {
 				return err
 			}
@@ -121,7 +122,7 @@ var storeStatusCmd = &cmds.Command{
 		Tagline: "Show status of chain sync operation.",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		syncStatus := GetPorcelainAPI(env).SyncerStatus()
+		syncStatus := env.(*node.Env).SyncerAPI.SyncerStatus()
 		if err := re.Emit(syncStatus); err != nil {
 			return err
 		}
@@ -142,7 +143,7 @@ var storeSetHeadCmd = &cmds.Command{
 			return err
 		}
 		maybeNewHead := block.NewTipSetKey(headCids...)
-		return GetPorcelainAPI(env).ChainSetHead(req.Context, maybeNewHead)
+		return env.(*node.Env).ChainAPI.ChainSetHead(req.Context, maybeNewHead)
 	},
 }
 
@@ -173,7 +174,7 @@ var storeSyncCmd = &cmds.Command{
 			Height: 0, // only checked when trusted is false.
 			Head:   syncKey,
 		}
-		return GetPorcelainAPI(env).ChainSyncHandleNewTipSet(ci)
+		return env.(*node.Env).SyncerAPI.ChainSyncHandleNewTipSet(ci)
 	},
 }
 
@@ -198,7 +199,7 @@ var storeExportCmd = &cmds.Command{
 		}
 		expKey := block.NewTipSetKey(expCids...)
 
-		if err := GetPorcelainAPI(env).ChainExport(req.Context, expKey, f); err != nil {
+		if err := env.(*node.Env).ChainAPI.ChainExport(req.Context, expKey, f); err != nil {
 			return err
 		}
 		return nil

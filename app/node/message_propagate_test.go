@@ -72,7 +72,7 @@ func TestMessagePropagation(t *testing.T) {
 	fooMethod := abi.MethodNum(7232)
 
 	t.Run("message propagates", func(t *testing.T) {
-		_, _, err := sender.PorcelainAPI.MessageSend(
+		_, err := sender.Messaging.API().MessageSend(
 			ctx,
 			senderAddress,
 			init_.Address,

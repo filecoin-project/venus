@@ -66,7 +66,7 @@ func TestSignMessageOk(t *testing.T) {
 	})
 }
 
-// Signature is valid but signer does not match From Address.
+// Signature is valid but signer does not match From RustFulAddress.
 func TestBadFrom(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()

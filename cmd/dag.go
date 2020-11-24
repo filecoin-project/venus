@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"github.com/filecoin-project/venus/app/node"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
@@ -22,7 +23,7 @@ var dagGetCmd = &cmds.Command{
 		cmds.StringArg("ref", true, false, "CID of object to get"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		out, err := GetPorcelainAPI(env).DAGGetNode(req.Context, req.Arguments[0])
+		out, err := env.(*node.Env).BlockServiceAPI.DAGGetNode(req.Context, req.Arguments[0])
 		if err != nil {
 			return err
 		}

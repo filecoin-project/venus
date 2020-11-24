@@ -35,7 +35,7 @@ func TestWeight(t *testing.T) {
 		ElectionProof: &crypto.ElectionProof{
 			WinCount: 1,
 		},
-		StateRoot: enccid.NewCid(fakeRoot),
+		ParentStateRoot: enccid.NewCid(fakeRoot),
 	})
 	sel := consensus.NewChainSelector(cst, &viewer)
 	//sel := consensus.NewChainSelector(cst, &viewer, types.CidFromString(t, "genesisCid"))
@@ -81,7 +81,7 @@ func TestWeight(t *testing.T) {
 			ElectionProof: &crypto.ElectionProof{
 				WinCount: 1,
 			},
-			StateRoot: enccid.NewCid(fakeRoot),
+			ParentStateRoot: enccid.NewCid(fakeRoot),
 		})
 
 		// 49 + (4*256) + (4*1*1*256/2*5) = 1175
@@ -99,7 +99,7 @@ func TestWeight(t *testing.T) {
 				ElectionProof: &crypto.ElectionProof{
 					WinCount: 1,
 				},
-				StateRoot: enccid.NewCid(fakeRoot),
+				ParentStateRoot: enccid.NewCid(fakeRoot),
 			},
 			&block.Block{
 				ParentWeight: fbig.Zero(),
@@ -108,7 +108,7 @@ func TestWeight(t *testing.T) {
 				ElectionProof: &crypto.ElectionProof{
 					WinCount: 1,
 				},
-				StateRoot: enccid.NewCid(fakeRoot),
+				ParentStateRoot: enccid.NewCid(fakeRoot),
 			},
 			&block.Block{
 				ParentWeight: fbig.Zero(),
@@ -117,7 +117,7 @@ func TestWeight(t *testing.T) {
 				ElectionProof: &crypto.ElectionProof{
 					WinCount: 1,
 				},
-				StateRoot: enccid.NewCid(fakeRoot),
+				ParentStateRoot: enccid.NewCid(fakeRoot),
 			},
 		)
 		// 0 + (4*256) + (4*3*1*256/2*5) = 1331

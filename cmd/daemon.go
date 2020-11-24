@@ -1,26 +1,14 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
-	"net/http"
-	_ "net/http/pprof" // nolint: golint
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-
-	cmds "github.com/ipfs/go-ipfs-cmds"
-	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
-	ma "github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net" //nolint
-	"github.com/pkg/errors"
-
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"
-	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/journal"
 	"github.com/filecoin-project/venus/pkg/repo"
+	cmds "github.com/ipfs/go-ipfs-cmds"
+	_ "net/http/pprof" // nolint: golint
+	"os"
 )
 
 var daemonCmd = &cmds.Command{
@@ -49,12 +37,12 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 
 	// second highest precedence is env vars.
 	if envAPI := os.Getenv("FIL_API"); envAPI != "" {
-		config.API.Address = envAPI
+		config.API.RustFulAddress = envAPI
 	}
 
 	// highest precedence is cmd line flag.
 	if flagAPI, ok := req.Options[OptionAPI].(string); ok && flagAPI != "" {
-		config.API.Address = flagAPI
+		config.API.RustFulAddress = flagAPI
 	}
 
 	if swarmAddress, ok := req.Options[SwarmAddress].(string); ok && swarmAddress != "" {
@@ -116,17 +104,17 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	ready := make(chan interface{}, 1)
 	go func() {
 		<-ready
-		_ = re.Emit(fmt.Sprintf("API server listening on %s\n", config.API.Address))
+		lines := []string{
+			fmt.Sprintf("Rust API server listening on %s\n", config.API.RustFulAddress),
+			fmt.Sprintf("JsonRpc API server listening on %s\n", config.API.JSONRPCAddress),
+		}
+		_ = re.Emit(lines)
 	}()
-
-	var terminate = make(chan os.Signal, 1)
-	signal.Notify(terminate, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(terminate)
 
 	// The request is expected to remain open so the daemon uses the request context.
 	// Pass a new context here if the flow changes such that the command should exit while leaving
 	// a forked deamon running.
-	return RunAPIAndWait(req.Context, fcn, config.API, ready, terminate)
+	return fcn.RunRPCAndWait(req.Context, RootCmdDaemon, ready)
 }
 
 func getRepo(req *cmds.Request) (repo.Repo, error) {
@@ -136,77 +124,4 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 		return nil, err
 	}
 	return repo.OpenFSRepo(repoDir, repo.Version)
-}
-
-// RunAPIAndWait starts an API server and waits for it to finish.
-// The `ready` channel is closed when the server is running and its API address has been
-// saved to the node's repo.
-// A message sent to or closure of the `terminate` channel signals the server to stop.
-func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig, ready chan interface{}, terminate chan os.Signal) error {
-	servenv := CreateServerEnv(ctx, nd)
-
-	cfg := cmdhttp.NewServerConfig()
-	cfg.APIPath = APIPrefix
-	cfg.SetAllowedOrigins(config.AccessControlAllowOrigin...)
-	cfg.SetAllowedMethods(config.AccessControlAllowMethods...)
-	cfg.SetAllowCredentials(config.AccessControlAllowCredentials)
-
-	maddr, err := ma.NewMultiaddr(config.Address)
-	if err != nil {
-		return err
-	}
-
-	// Listen on the configured address in order to bind the port number in case it has
-	// been configured as zero (i.e. OS-provided)
-	apiListener, err := manet.Listen(maddr) //nolint
-	if err != nil {
-		return err
-	}
-
-	handler := http.NewServeMux()
-	handler.Handle("/debug/pprof/", http.DefaultServeMux)
-	handler.Handle(APIPrefix+"/", cmdhttp.NewHandler(servenv, rootCmdDaemon, cfg))
-
-	apiserv := http.Server{
-		Handler: handler,
-	}
-
-	go func() {
-		err := apiserv.Serve(manet.NetListener(apiListener)) //nolint
-		if err != nil && err != http.ErrServerClosed {
-			panic(err)
-		}
-	}()
-
-	// Write the resolved API address to the repo
-	config.Address = apiListener.Multiaddr().String()
-	if err := nd.Repo.SetAPIAddr(config.Address); err != nil {
-		return errors.Wrap(err, "Could not save API address to repo")
-	}
-	// Signal that the sever has started and then wait for a signal to stop.
-	close(ready)
-	received := <-terminate
-	if received != nil {
-		fmt.Println("Received signal", received)
-	}
-	fmt.Println("Shutting down...")
-
-	// Allow a grace period for clean shutdown.
-	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
-	defer cancel()
-
-	if err := apiserv.Shutdown(ctx); err != nil {
-		fmt.Println("Error shutting down API server:", err)
-	}
-
-	return nil
-}
-
-func CreateServerEnv(ctx context.Context, nd *node.Node) *Env {
-	return &Env{
-		drandAPI:     nd.DrandAPI,
-		ctx:          ctx,
-		inspectorAPI: NewInspectorAPI(nd.Repo),
-		porcelainAPI: nd.PorcelainAPI,
-	}
 }

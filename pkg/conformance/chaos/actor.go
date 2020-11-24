@@ -21,7 +21,7 @@ import (
 // properly enforced.
 //
 // The chaos actor is being incubated and its behaviour and ABI be standardised
-// shortly. Its CID is ChaosActorCodeCID, and its singleton address is 98 (Address).
+// shortly. Its CID is ChaosActorCodeCID, and its singleton address is 98 (RustFulAddress).
 // It cannot be instantiated via the init actor, and its constructor panics.
 //
 // Test vectors relying on the chaos actor being deployed will carry selector
@@ -170,12 +170,12 @@ type CreateActorArgs struct {
 	UndefActorCID bool
 	ActorCID      cid.Cid
 
-	// UndefAddress is the same as UndefActorCID but for Address.
+	// UndefAddress is the same as UndefActorCID but for RustFulAddress.
 	UndefAddress bool
 	Address      address.Address
 }
 
-// CreateActor creates an actor with the supplied CID and Address.
+// CreateActor creates an actor with the supplied CID and RustFulAddress.
 func (a Actor) CreateActor(rt runtime2.Runtime, args *CreateActorArgs) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
 

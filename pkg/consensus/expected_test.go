@@ -67,7 +67,7 @@ package consensus_test
 //		//Set miner actor
 //
 //		pTipSet := block.RequireNewTipSet(t, genesisBlock)
-//		nextRoot, miners, m2w := setTree(ctx, t, kis, cistore, bstore, genesisBlock.StateRoot)
+//		nextRoot, miners, m2w := setTree(ctx, t, kis, cistore, bstore, genesisBlock.ParentStateRoot)
 //
 //		views := consensus.AsDefaultStateViewer(appstate.NewViewer(cistore))
 //		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest,
@@ -78,7 +78,7 @@ package consensus_test
 //
 //		emptyBLSMessages, emptyMessages := emptyMessages(len(nextBlocks))
 //		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages,
-//			nextBlocks[0].ParentWeight, nextBlocks[0].StateRoot, nextBlocks[0].MessageReceipts)
+//			nextBlocks[0].ParentWeight, nextBlocks[0].ParentStateRoot, nextBlocks[0].ParentMessageReceipts)
 //		assert.NoError(t, err)
 //	})
 //
@@ -94,12 +94,12 @@ package consensus_test
 //		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(&vm.FakeSyscalls{}, &consensus.FakeChainRandomness{}), &views, th.BlockTimeTest,
 //			&consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{}, &TestChainReader{}, cl, drand)
 //
-//		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
+//		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.ParentStateRoot, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
 //		tipSet := block.RequireNewTipSet(t, nextBlocks...)
 //
 //		emptyBLSMessages, emptyMessages := emptyMessages(len(nextBlocks))
 //
-//		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, genesisBlock.ParentWeight, genesisBlock.StateRoot, genesisBlock.MessageReceipts)
+//		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, genesisBlock.ParentWeight, genesisBlock.ParentStateRoot, genesisBlock.ParentMessageReceipts)
 //		require.Error(t, err)
 //		assert.True(t, strings.Contains(err.Error(), "lost election"))
 //	})
@@ -116,7 +116,7 @@ package consensus_test
 //		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{}, &TestChainReader{}, cl, drand)
 //
 //		pTipSet := block.RequireNewTipSet(t, genesisBlock)
-//		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
+//		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.ParentStateRoot, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
 //		tipSet := block.RequireNewTipSet(t, nextBlocks...)
 //
 //		_, emptyMessages := emptyMessages(len(nextBlocks))
@@ -130,7 +130,7 @@ package consensus_test
 //		msg := types.NewUnsignedMessage(blsAddr, vmaddr.RequireIDAddress(t, 100), 0, types.NewAttoFILFromFIL(0), builtin.MethodSend, []byte{})
 //		blsMessages[0] = append(blsMessages[0], msg)
 //
-//		_, _, err = exp.RunStateTransition(ctx, tipSet, blsMessages, emptyMessages, nextBlocks[0].ParentWeight, nextBlocks[0].StateRoot, nextBlocks[0].MessageReceipts)
+//		_, _, err = exp.RunStateTransition(ctx, tipSet, blsMessages, emptyMessages, nextBlocks[0].ParentWeight, nextBlocks[0].ParentStateRoot, nextBlocks[0].ParentMessageReceipts)
 //		require.Error(t, err)
 //		assert.Contains(t, err.Error(), "block BLS signature does not validate")
 //	})
@@ -145,7 +145,7 @@ package consensus_test
 //		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{}, &TestChainReader{}, cl, drand)
 //
 //		pTipSet := block.RequireNewTipSet(t, genesisBlock)
-//		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
+//		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.ParentStateRoot, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
 //		tipSet := block.RequireNewTipSet(t, nextBlocks...)
 //
 //		emptyBLSMessages, _ := emptyMessages(len(nextBlocks))
@@ -166,7 +166,7 @@ package consensus_test
 //		}
 //		secpMessages[0] = append(secpMessages[0], smsg)
 //
-//		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, secpMessages, nextBlocks[0].ParentWeight, nextBlocks[0].StateRoot, nextBlocks[0].MessageReceipts.Cid)
+//		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, secpMessages, nextBlocks[0].ParentWeight, nextBlocks[0].ParentStateRoot, nextBlocks[0].ParentMessageReceipts.Cid)
 //		require.Error(t, err)
 //		assert.Contains(t, err.Error(), "secp message signature invalid")
 //	})
@@ -181,12 +181,12 @@ package consensus_test
 //		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FailingTicketValidator{}, &consensus.TestElectionPoster{}, &TestChainReader{}, cl, drand)
 //
 //		pTipSet := block.RequireNewTipSet(t, genesisBlock)
-//		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
+//		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.ParentStateRoot, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
 //		tipSet := block.RequireNewTipSet(t, nextBlocks...)
 //
 //		emptyBLSMessages, emptyMessages := emptyMessages(len(nextBlocks))
 //
-//		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, genesisBlock.ParentWeight, genesisBlock.StateRoot.Cid, genesisBlock.MessageReceipts.Cid)
+//		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, genesisBlock.ParentWeight, genesisBlock.ParentStateRoot.Cid, genesisBlock.ParentMessageReceipts.Cid)
 //		require.NotNil(t, err)
 //		assert.Contains(t, err.Error(), "invalid ticket")
 //	})
@@ -201,7 +201,7 @@ package consensus_test
 //		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{}, &TestChainReader{}, cl, drand)
 //
 //		pTipSet := block.RequireNewTipSet(t, genesisBlock)
-//		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
+//		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.ParentStateRoot, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
 //
 //		// Give block 0 an invalid signature
 //		nextBlocks[0].BlockSig = nextBlocks[1].BlockSig
@@ -209,7 +209,7 @@ package consensus_test
 //		tipSet := block.RequireNewTipSet(t, nextBlocks...)
 //		emptyBLSMessages, emptyMessages := emptyMessages(len(nextBlocks))
 //
-//		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, nextBlocks[0].ParentWeight, nextBlocks[0].StateRoot, nextBlocks[0].MessageReceipts.Cid)
+//		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, nextBlocks[0].ParentWeight, nextBlocks[0].ParentStateRoot, nextBlocks[0].ParentMessageReceipts.Cid)
 //		assert.EqualError(t, err, "block signature invalid")
 //	})
 //
@@ -223,14 +223,14 @@ package consensus_test
 //		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), &views, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{}, &consensus.TestElectionPoster{}, &TestChainReader{}, cl, drand)
 //
 //		pTipSet := block.RequireNewTipSet(t, genesisBlock)
-//		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
+//		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.ParentStateRoot, types.EmptyReceiptsCID, miners, minerToWorker, mockSigner)
 //		tipSet := block.RequireNewTipSet(t, nextBlocks...)
 //
 //		invalidParentWeight := fbig.NewInt(6)
 //
 //		emptyBLSMessages, emptyMessages := emptyMessages(len(nextBlocks))
 //
-//		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, invalidParentWeight, nextBlocks[0].StateRoot, nextBlocks[0].MessageReceipts.Cid)
+//		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, invalidParentWeight, nextBlocks[0].ParentStateRoot, nextBlocks[0].ParentMessageReceipts.Cid)
 //		assert.Contains(t, err.Error(), "invalid parent weight")
 //	})
 //}
@@ -254,7 +254,7 @@ package consensus_test
 //
 //// requireMakeNBlocks sets up 3 blocks with 3 owner actors and 3 miner actors and puts them in the state tree.
 //// the owner actors have associated mockSigners for signing blocks and tickets.
-//func requireMakeNBlocks(t *testing.T, n int, pTipSet block.TipSet, root cid.Cid, receiptRoot cid.Cid, minerAddrs []address.Address, m2w map[address.Address]address.Address, signer types.Signer) []*block.Block {
+//func requireMakeNBlocks(t *testing.T, n int, pTipSet block.TipSet, root cid.Cid, receiptRoot cid.Cid, minerAddrs []address.RustFulAddress, m2w map[address.RustFulAddress]address.RustFulAddress, signer types.Signer) []*block.Block {
 //	require.True(t, n <= len(minerAddrs))
 //	blocks := make([]*block.Block, n)
 //	for i := 0; i < n; i++ {
@@ -263,12 +263,12 @@ package consensus_test
 //	return blocks
 //}
 //
-//func minerToWorkerFromAddrs(ctx context.Context, t *testing.T, tree state.state, vms vm.Storage, kis []crypto.KeyInfo) ([]address.Address, map[address.Address]address.Address) {
-//	minerAddrs := make([]address.Address, len(kis))
+//func minerToWorkerFromAddrs(ctx context.Context, t *testing.T, tree state.state, vms vm.Storage, kis []crypto.KeyInfo) ([]address.RustFulAddress, map[address.RustFulAddress]address.RustFulAddress) {
+//	minerAddrs := make([]address.RustFulAddress, len(kis))
 //	require.Equal(t, len(kis), len(minerAddrs))
-//	minerToWorker := make(map[address.Address]address.Address, len(kis))
+//	minerToWorker := make(map[address.RustFulAddress]address.RustFulAddress, len(kis))
 //	for i := 0; i < len(kis); i++ {
-//		addr, err := kis[i].Address()
+//		addr, err := kis[i].RustFulAddress()
 //		require.NoError(t, err)
 //
 //		_, minerAddrs[i] = th.RequireNewMinerActor(ctx, t, tree, vms, addr, 10000, th.RequireRandomPeerID(t), types.ZeroAttoFIL)
@@ -278,14 +278,14 @@ package consensus_test
 //	return minerAddrs, minerToWorker
 //}
 //
-//func setTree(ctx context.Context, t *testing.T, kis []crypto.KeyInfo, cstore cbor.IpldStore, bstore blockstore.Blockstore, inRoot cid.Cid) (cid.Cid, []address.Address, map[address.Address]address.Address) {
+//func setTree(ctx context.Context, t *testing.T, kis []crypto.KeyInfo, cstore cbor.IpldStore, bstore blockstore.Blockstore, inRoot cid.Cid) (cid.Cid, []address.RustFulAddress, map[address.RustFulAddress]address.RustFulAddress) {
 //	tree, err := state.LoadState(ctx, cstore, inRoot)
 //	require.NoError(t, err)
-//	miners := make([]address.Address, len(kis))
-//	m2w := make(map[address.Address]address.Address, len(kis))
+//	miners := make([]address.RustFulAddress, len(kis))
+//	m2w := make(map[address.RustFulAddress]address.RustFulAddress, len(kis))
 //	vms := vm.NewStorage(bstore)
 //	for i, ki := range kis {
-//		workerAddr, err := ki.Address()
+//		workerAddr, err := ki.RustFulAddress()
 //		require.NoError(t, err)
 //		_, minerAddr := th.RequireNewMinerActor(ctx, t, *tree, vms, workerAddr, 10000, th.RequireRandomPeerID(t), types.ZeroAttoFIL)
 //		miners[i] = minerAddr

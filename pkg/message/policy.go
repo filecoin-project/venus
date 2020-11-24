@@ -2,10 +2,10 @@ package message
 
 import (
 	"context"
+	"github.com/filecoin-project/go-state-types/abi"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/venus/pkg/block"
@@ -103,7 +103,7 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 				return err
 			}
 			for _, restoredMsg := range secpMsgs {
-				err := target.Requeue(ctx, restoredMsg, uint64(chainHeight))
+				err := target.Requeue(ctx, restoredMsg, uint64(tipset.At(i).Height))
 				if err != nil {
 					return err
 				}

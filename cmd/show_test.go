@@ -183,7 +183,7 @@ func TestBlockDaemon(t *testing.T) {
 		mockBlk, err := mockBlock(t) //nolint
 		require.NoError(t, err)
 
-		from, err := n.PorcelainAPI.WalletDefaultAddress() // this should = fixtures.TestAddresses[0]
+		from, err := n.Wallet.API().WalletDefaultAddress() // this should = fixtures.TestAddresses[0]
 		require.NoError(t, err)
 		cmdClient.RunSuccess(ctx, "message", "send",
 			"--from", from.String(),
@@ -241,17 +241,17 @@ func mockBlock(t *testing.T) (*block.Block, error) {
 				Data:  []byte{0x3},
 			},
 		},
-		Messages:        enccid.NewCid(types.CidFromString(t, "somecid")),
-		MessageReceipts: enccid.NewCid(types.CidFromString(t, "somecid")),
-		Parents:         block.NewTipSetKey(types.CidFromString(t, "somecid")),
-		ParentWeight:    big.NewInt(1000),
-		StateRoot:       enccid.NewCid(types.CidFromString(t, "somecid")),
-		Timestamp:       1,
+		Messages:              enccid.NewCid(types.CidFromString(t, "somecid")),
+		ParentMessageReceipts: enccid.NewCid(types.CidFromString(t, "somecid")),
+		Parents:               block.NewTipSetKey(types.CidFromString(t, "somecid")),
+		ParentWeight:          big.NewInt(1000),
+		ParentStateRoot:       enccid.NewCid(types.CidFromString(t, "somecid")),
+		Timestamp:             1,
 		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x3},
 		},
-		BLSAggregateSig: &crypto.Signature{
+		BLSAggregate: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x3},
 		},

@@ -266,7 +266,7 @@ func (caculator *CirculatingSupplyCalculator) GetFilLocked(ctx context.Context, 
 	}
 
 	vms := vm.NewStorage(c.bstore)
-	priorState, err := state.LoadState(ctx, vms, ts.At(0).StateRoot.Cid)
+	priorState, err := state.LoadState(ctx, vms, ts.At(0).ParentStateRoot.Cid)
 	if err != nil {
 		return cid.Undef, []types.MessageReceipt{}, err
 	}
@@ -307,7 +307,7 @@ func (caculator *CirculatingSupplyCalculator) setupPreIgnitionGenesisActorsTestn
 	//}
 
 	cst := cbornode.NewCborStore(caculator.bstore)
-	sTree, err := state.LoadState(ctx, cst, gts.At(0).StateRoot.Cid)
+	sTree, err := state.LoadState(ctx, cst, gts.At(0).ParentStateRoot.Cid)
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %v", err)
 	}
@@ -382,7 +382,7 @@ func (caculator *CirculatingSupplyCalculator) setupPostIgnitionGenesisActors(ctx
 	//}
 
 	cst := cbornode.NewCborStore(caculator.bstore)
-	sTree, err := state.LoadState(ctx, cst, gts.At(0).StateRoot.Cid)
+	sTree, err := state.LoadState(ctx, cst, gts.At(0).ParentStateRoot.Cid)
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %v", err)
 	}

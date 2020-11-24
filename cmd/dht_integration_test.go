@@ -27,9 +27,9 @@ func TestDhtFindPeer(t *testing.T) {
 
 	node.ConnectNodes(t, n1, n2)
 
-	n2Id := n2.PorcelainAPI.NetworkGetPeerID()
+	n2Id := n2.Network().API().NetworkGetPeerID()
 	findpeerOutput := cmdClient.RunSuccess(ctx, "dht", "findpeer", n2Id.String()).ReadStdoutTrimNewlines()
-	n2Addr := n2.PorcelainAPI.NetworkGetPeerAddresses()[0]
+	n2Addr := n2.Network().API().NetworkGetPeerAddresses()[0]
 
 	assert.Contains(t, findpeerOutput, n2Addr.String())
 }

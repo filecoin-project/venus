@@ -1,0 +1,39 @@
+package config
+
+import (
+	repo2 "github.com/filecoin-project/venus/pkg/repo"
+	"sync"
+)
+
+// ConfigModule is plumbing implementation for setting and retrieving values from local config.
+type ConfigModule struct { //nolint
+	repo repo2.Repo
+	lock sync.Mutex
+}
+
+// NewConfig returns a new ConfigModule.
+func NewConfigModule(repo repo2.Repo) *ConfigModule {
+	return &ConfigModule{repo: repo}
+}
+
+// Set sets a value in config
+func (s *ConfigModule) Set(dottedKey string, jsonString string) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	cfg := s.repo.Config()
+	if err := cfg.Set(dottedKey, jsonString); err != nil {
+		return err
+	}
+
+	return s.repo.ReplaceConfig(cfg)
+}
+
+// Get gets a value from config
+func (s *ConfigModule) Get(dottedKey string) (interface{}, error) {
+	return s.repo.Config().Get(dottedKey)
+}
+
+func (s *ConfigModule) API() *ConfigAPI {
+	return &ConfigAPI{config: s}
+}

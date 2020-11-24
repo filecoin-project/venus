@@ -4,7 +4,7 @@ import (
 	"context"
 	gobig "math/big"
 
-	"github.com/filecoin-project/venus/app/plumbing/cst"
+	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -141,11 +141,15 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 
 	lvm := vm.NewVM(stateTree, vmStorage, syscalls, vmOption)
 
-	blocks := make([]vm.BlockMessagesInfo, 0, len(tipset.Blocks))
+	blocks := make([]block.BlockMessagesInfo, 0, len(tipset.Blocks))
 	for _, b := range tipset.Blocks {
-		sb := vm.BlockMessagesInfo{
-			Miner:    b.MinerAddr,
-			WinCount: b.WinCount,
+		sb := block.BlockMessagesInfo{
+			Block: &block.Block{
+				Miner: b.MinerAddr,
+				ElectionProof: &crypto2.ElectionProof{
+					WinCount: b.WinCount,
+				},
+			},
 		}
 		for _, m := range b.Messages {
 			msg, err := types.DecodeMessage(m)
@@ -154,7 +158,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 			}
 			switch msg.From.Protocol() {
 			case address.SECP256K1:
-				sb.SECPMessages = append(sb.SECPMessages, &types.SignedMessage{
+				sb.SecpkMessages = append(sb.SecpkMessages, &types.SignedMessage{
 					Message: *msg,
 					Signature: crypto.Signature{
 						Type: crypto.SigTypeSecp256k1,
@@ -162,7 +166,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 					},
 				})
 			case address.BLS:
-				sb.BLSMessages = append(sb.BLSMessages, msg)
+				sb.BlsMessages = append(sb.BlsMessages, msg)
 			default:
 				// sneak in messages originating from other addresses as both kinds.
 				// these should fail, as they are actually invalid senders.
@@ -173,8 +177,8 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 						Data: make([]byte, 65),
 					},
 				})*/
-				sb.BLSMessages = append(sb.BLSMessages, msg) //todo  use interface for message
-				sb.BLSMessages = append(sb.BLSMessages, msg)
+				sb.BlsMessages = append(sb.BlsMessages, msg) //todo  use interface for message
+				sb.BlsMessages = append(sb.BlsMessages, msg)
 			}
 		}
 		blocks = append(blocks, sb)

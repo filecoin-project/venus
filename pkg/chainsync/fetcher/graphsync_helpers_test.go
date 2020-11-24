@@ -34,7 +34,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/vm"
 )
 
 // fakeRequest captures the parameters necessary to uniquely
@@ -357,14 +356,14 @@ func requireBlockStorePut(t *testing.T, bs bstore.Blockstore, data format.Node) 
 
 func simpleBlock() *block.Block {
 	return &block.Block{
-		ParentWeight:    fbig.Zero(),
-		Parents:         block.NewTipSetKey(),
-		Height:          0,
-		StateRoot:       enccid.NewCid(types.EmptyMessagesCID),
-		Messages:        enccid.NewCid(types.EmptyTxMetaCID),
-		MessageReceipts: enccid.NewCid(types.EmptyReceiptsCID),
-		BlockSig:        &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
-		BLSAggregateSig: &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
+		ParentWeight:          fbig.Zero(),
+		Parents:               block.NewTipSetKey(),
+		Height:                0,
+		ParentStateRoot:       enccid.NewCid(types.EmptyMessagesCID),
+		Messages:              enccid.NewCid(types.EmptyTxMetaCID),
+		ParentMessageReceipts: enccid.NewCid(types.EmptyReceiptsCID),
+		BlockSig:              &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
+		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 	}
 }
 
@@ -383,7 +382,7 @@ func requireSimpleValidBlock(t *testing.T, nonce uint64, miner address.Address) 
 		MhLength: -1,
 	}.Sum(bytes)
 	require.NoError(t, err)
-	b.StateRoot = enccid.NewCid(rawRoot)
+	b.ParentStateRoot = enccid.NewCid(rawRoot)
 	b.Miner = miner
 	return b
 }
@@ -405,7 +404,7 @@ func (mv mockSyntaxValidator) ValidateUnsignedMessageSyntax(ctx context.Context,
 	return nil
 }
 
-func (mv mockSyntaxValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []vm.BlockMessagesInfo) error {
+func (mv mockSyntaxValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []block.BlockMessagesInfo) error {
 	return mv.validateReceiptsError
 }
 

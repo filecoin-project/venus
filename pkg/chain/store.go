@@ -29,8 +29,13 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
-// NewHeadTopic is the topic used to publish new heads.
-const NewHeadTopic = "new-head"
+// HeadChangeTopic is the topic used to publish new heads.
+const (
+	HeadChangeTopic = "headchange"
+	HCRevert        = "revert"
+	HCApply         = "apply"
+	HCCurrent       = "current"
+)
 
 // GenesisKey is the key at which the genesis Cid is written in the datastore.
 var GenesisKey = datastore.NewKey("/consensus/genesisCid")
@@ -39,6 +44,21 @@ var logStore = logging.Logger("chain.store")
 
 // HeadKey is the key at which the head tipset cid's are written in the datastore.
 var HeadKey = datastore.NewKey("/chain/heaviestTipSet")
+
+var ErrNotifeeDone = errors.New("notifee is done and should be removed")
+
+// ReorgNotifee represents a callback that gets called upon reorgs.
+type ReorgNotifee func(rev, app []*block.TipSet) error
+
+type reorg struct {
+	old []*block.TipSet
+	new []*block.TipSet
+}
+
+type HeadChange struct {
+	Type string
+	Val  *block.TipSet
+}
 
 // CheckPoint is the key which the check-point written in the datastore.
 var CheckPoint = datastore.NewKey("/chain/checkPoint")
@@ -111,6 +131,10 @@ type Store struct {
 	reporter Reporter
 
 	chainIndex *ChainIndex
+
+	notifees []ReorgNotifee
+
+	reorgCh chan reorg
 }
 
 // NewStore constructs a new default store.
@@ -126,12 +150,13 @@ func NewStore(ds repo.Datastore,
 		stateAndBlockSource: ipldSource,
 		ds:                  ds,
 		bsstore:             bsstore,
-		headEvents:          pubsub.New(12),
+		headEvents:          pubsub.New(64),
 		tipIndex:            NewTipIndex(),
 		checkPoint:          block.UndefTipSet.Key(),
 		genesis:             genesisCid,
 		reporter:            sr,
 		chainIndex:          NewChainIndex(tipsetProvider.GetTipSet),
+		notifees:            []ReorgNotifee{},
 	}
 
 	val, err := store.ds.Get(CheckPoint)
@@ -142,6 +167,7 @@ func NewStore(ds repo.Datastore,
 	}
 	logStore.Infof("check point value: %v, error: %v", store.checkPoint, err)
 
+	store.reorgCh = store.reorgWorker(context.TODO())
 	return store
 }
 
@@ -466,64 +492,180 @@ func (store *Store) HasTipSetAndStatesWithParentsAndHeight(parentKey block.TipSe
 	return store.tipIndex.HasByParentsAndHeight(parentKey, h)
 }
 
-// HeadEvents returns a pubsub interface the pushes events each time the
-// default store's head is reset.
-func (store *Store) HeadEvents() *pubsub.PubSub {
-	return store.headEvents
-}
-
 // SetHead sets the passed in tipset as the new head of this chain.
-func (store *Store) SetHead(ctx context.Context, ts *block.TipSet) error {
-	logStore.Infof("SetHead %s", ts.String())
+func (store *Store) SetHead(ctx context.Context, newTs *block.TipSet) error {
+	logStore.Infof("SetHead %s", newTs.String())
 
 	// Add logging to debug sporadic test failure.
-	if !ts.Defined() {
+	if !newTs.Defined() {
 		logStore.Errorf("publishing empty tipset")
 		logStore.Error(debug.Stack())
 	}
 
-	noop, err := store.setHeadPersistent(ctx, ts)
+	dropped, added, update, err := func() ([]*block.TipSet, []*block.TipSet, bool, error) {
+		var dropped []*block.TipSet
+		var added []*block.TipSet
+		var err error
+		store.mu.Lock()
+		defer store.mu.Unlock()
+
+		if store.head != nil {
+			if store.head.Equals(newTs) {
+				return nil, nil, false, nil
+			}
+			//reorg
+			oldHead := store.head
+			dropped, added, err = CollectTipsToCommonAncestor(ctx, store, oldHead, newTs)
+			if err != nil {
+				return nil, nil, false, err
+			}
+		} else {
+			added = []*block.TipSet{newTs}
+		}
+
+		// Ensure consistency by storing this new head on disk.
+		if errInner := store.writeHead(ctx, newTs.Key()); errInner != nil {
+			return nil, nil, false, errors.Wrap(errInner, "failed to write new Head to datastore")
+		}
+		store.head = newTs
+		return dropped, added, true, nil
+	}()
+
 	if err != nil {
 		return err
 	}
-	if noop {
-		// exit without sending head events if head was already set to ts
+
+	if !update {
 		return nil
 	}
 
-	h, err := ts.Height()
+	h, err := newTs.Height()
 	if err != nil {
 		return err
 	}
-	store.reporter.UpdateStatus(validateHead(ts.Key()), validateHeight(h))
-	// Publish an event that we have a new head.
-	store.HeadEvents().Pub(ts, NewHeadTopic)
+	store.reporter.UpdateStatus(validateHead(newTs.Key()), validateHeight(h))
 
+	//do reorg
+	store.reorgCh <- reorg{
+		old: dropped,
+		new: added,
+	}
 	return nil
+}
+
+func (store *Store) reorgWorker(ctx context.Context) chan reorg {
+	headChangeNotifee := func(rev, app []*block.TipSet) error {
+		notif := make([]*HeadChange, len(rev)+len(app))
+		for i, apply := range rev {
+			notif[i] = &HeadChange{
+				Type: HCRevert,
+				Val:  apply,
+			}
+		}
+
+		for i, revert := range app {
+			notif[i+len(rev)] = &HeadChange{
+				Type: HCApply,
+				Val:  revert,
+			}
+		}
+		// Publish an event that we have a new head.
+		store.headEvents.Pub(notif, HeadChangeTopic)
+		return nil
+	}
+
+	out := make(chan reorg, 32)
+	notifees := []ReorgNotifee{headChangeNotifee}
+
+	go func() {
+		defer log.Warn("reorgWorker quit")
+		for {
+			select {
+			case r := <-out:
+				var toremove map[int]struct{}
+				for i, hcf := range notifees {
+					err := hcf(r.old, r.new)
+
+					switch err {
+					case nil:
+
+					case ErrNotifeeDone:
+						if toremove == nil {
+							toremove = make(map[int]struct{})
+						}
+						toremove[i] = struct{}{}
+
+					default:
+						log.Error("head change func errored (BAD): ", err)
+					}
+				}
+
+				if len(toremove) > 0 {
+					newNotifees := make([]ReorgNotifee, 0, len(notifees)-len(toremove))
+					for i, hcf := range notifees {
+						_, remove := toremove[i]
+						if remove {
+							continue
+						}
+						newNotifees = append(newNotifees, hcf)
+					}
+					notifees = newNotifees
+				}
+
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return out
+}
+
+func (store *Store) SubHeadChanges(ctx context.Context) chan []*HeadChange {
+	out := make(chan []*HeadChange, 16)
+	store.mu.RLock()
+	head := store.head
+	store.mu.RUnlock()
+	out <- []*HeadChange{{
+		Type: HCCurrent,
+		Val:  head,
+	}}
+
+	subCh := store.headEvents.Sub(HeadChangeTopic)
+	go func() {
+		defer close(out)
+		var unsubOnce sync.Once
+
+		for {
+			select {
+			case val, ok := <-subCh:
+				if !ok {
+					log.Warn("chain head sub exit loop")
+					return
+				}
+				if len(out) > 5 {
+					log.Warnf("head change sub is slow, has %d buffered entries", len(out))
+				}
+				select {
+				case out <- val.([]*HeadChange):
+				case <-ctx.Done():
+				}
+			case <-ctx.Done():
+				unsubOnce.Do(func() {
+					go store.headEvents.Unsub(subCh)
+				})
+			}
+		}
+	}()
+	return out
+}
+
+func (store *Store) SubscribeHeadChanges(f ReorgNotifee) {
+	store.notifees = append(store.notifees, f)
 }
 
 // ReadOnlyStateStore provides a read-only IPLD store for access to chain state.
 func (store *Store) ReadOnlyStateStore() cborutil.ReadOnlyIpldStore {
 	return cborutil.ReadOnlyIpldStore{IpldStore: store.stateAndBlockSource.cborStore}
-}
-
-func (store *Store) setHeadPersistent(ctx context.Context, ts *block.TipSet) (bool, error) {
-	// setHeaadPersistent sets the head in memory and on disk if the head is not
-	// already set to ts.  If it is already set to ts it skips this and returns true
-	store.mu.Lock()
-	defer store.mu.Unlock()
-
-	// Ensure consistency by storing this new head on disk.
-	if errInner := store.writeHead(ctx, ts.Key()); errInner != nil {
-		return false, errors.Wrap(errInner, "failed to write new Head to datastore")
-	}
-	if ts.Equals(store.head) {
-		return true, nil
-	}
-
-	store.head = ts
-
-	return false, nil
 }
 
 // writeHead writes the given cid set as head to disk.
@@ -581,7 +723,6 @@ func (store *Store) deleteTipSetMetadata(ts *block.TipSet) error {
 func (store *Store) GetHead() block.TipSetKey {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
-
 	if !store.head.Defined() {
 		return block.TipSetKey{}
 	}
@@ -591,16 +732,12 @@ func (store *Store) GetHead() block.TipSetKey {
 
 // GenesisCid returns the genesis cid of the chain tracked by the default store.
 func (store *Store) GenesisCid() cid.Cid {
-	store.mu.Lock()
-	defer store.mu.Unlock()
 	return store.genesis
 }
 
 func (store *Store) GenesisRootCid() cid.Cid {
-	store.mu.Lock()
-	defer store.mu.Unlock()
 	genesis, _ := store.stateAndBlockSource.GetBlock(context.TODO(), store.GenesisCid())
-	return genesis.StateRoot.Cid
+	return genesis.ParentStateRoot.Cid
 }
 
 func (store *Store) Import(r io.Reader) (*block.TipSet, error) {
@@ -616,15 +753,15 @@ func (store *Store) Import(r io.Reader) (*block.TipSet, error) {
 
 	parent := root.EnsureParents()
 
-	log.Info("import height: ", root.EnsureHeight(), " root: ", root.At(0).StateRoot.Cid, " parents: ", root.At(0).Parents)
+	log.Info("import height: ", root.EnsureHeight(), " root: ", root.At(0).ParentStateRoot.Cid, " parents: ", root.At(0).Parents)
 	parentTipset, err := store.GetTipSet(parent)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
 	}
 	err = store.PutTipSetMetadata(context.Background(), &TipSetMetadata{
-		TipSetStateRoot: root.At(0).StateRoot.Cid,
+		TipSetStateRoot: root.At(0).ParentStateRoot.Cid,
 		TipSet:          parentTipset,
-		TipSetReceipts:  root.At(0).MessageReceipts.Cid,
+		TipSetReceipts:  root.At(0).ParentMessageReceipts.Cid,
 	})
 	if err != nil {
 		return nil, err
@@ -644,9 +781,9 @@ func (store *Store) Import(r io.Reader) (*block.TipSet, error) {
 
 		//save fake root
 		err = store.PutTipSetMetadata(context.Background(), &TipSetMetadata{
-			TipSetStateRoot: curTipset.At(0).StateRoot.Cid,
+			TipSetStateRoot: curTipset.At(0).ParentStateRoot.Cid,
 			TipSet:          curParentTipset,
-			TipSetReceipts:  curTipset.At(0).MessageReceipts.Cid,
+			TipSetReceipts:  curTipset.At(0).ParentMessageReceipts.Cid,
 		})
 		if err != nil {
 			return nil, err

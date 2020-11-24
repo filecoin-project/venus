@@ -383,18 +383,18 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 	}
 
 	geneblk := &block.Block{
-		Miner:           builtin.SystemActorAddr,
-		Ticket:          genesis.Ticket,
-		BeaconEntries:   []*block.BeaconEntry{{Data: []byte{0xca, 0xfe, 0xfa, 0xce}}},
-		ElectionProof:   new(crypto.ElectionProof),
-		Parents:         block.NewTipSetKey(),
-		ParentWeight:    big.Zero(),
-		Height:          0,
-		StateRoot:       enccid.NewCid(stateRoot),
-		MessageReceipts: enccid.NewCid(emptyAMTCid),
-		Messages:        enccid.NewCid(metaCid),
-		Timestamp:       g.cfg.Time,
-		ForkSignaling:   0,
+		Miner:                 builtin.SystemActorAddr,
+		Ticket:                genesis.Ticket,
+		BeaconEntries:         []*block.BeaconEntry{{Data: []byte{0xca, 0xfe, 0xfa, 0xce}}},
+		ElectionProof:         new(crypto.ElectionProof),
+		Parents:               block.NewTipSetKey(),
+		ParentWeight:          big.Zero(),
+		Height:                0,
+		ParentStateRoot:       enccid.NewCid(stateRoot),
+		ParentMessageReceipts: enccid.NewCid(emptyAMTCid),
+		Messages:              enccid.NewCid(metaCid),
+		Timestamp:             g.cfg.Time,
+		ForkSignaling:         0,
 	}
 
 	return g.cst.Put(ctx, geneblk)

@@ -95,11 +95,11 @@ func TestBlockPubSubValidation(t *testing.T) {
 	invalidBlk := &block.Block{
 		Height:          1,
 		Timestamp:       uint64(now.Add(time.Second * 60).Unix()), // invalid timestamp, 60 seconds in future
-		StateRoot:       enccid.NewCid(types.NewCidForTestGetter()()),
+		ParentStateRoot: enccid.NewCid(types.NewCidForTestGetter()()),
 		Miner:           miner,
 		Ticket:          block.Ticket{VRFProof: []byte{0}},
 		BlockSig:        &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
-		BLSAggregateSig: &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
+		BLSAggregate:    &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 	}
 	// publish the invalid block
 	payload := blocksub.Payload{
@@ -120,11 +120,11 @@ func TestBlockPubSubValidation(t *testing.T) {
 	validBlk := &block.Block{
 		Height:          1,
 		Timestamp:       uint64(validTime.Unix()),
-		StateRoot:       enccid.NewCid(types.NewCidForTestGetter()()),
+		ParentStateRoot: enccid.NewCid(types.NewCidForTestGetter()()),
 		Miner:           miner,
 		Ticket:          block.Ticket{VRFProof: []byte{0}},
 		BlockSig:        &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
-		BLSAggregateSig: &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
+		BLSAggregate:    &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 	}
 	// publish the invalid block
 	payload = blocksub.Payload{

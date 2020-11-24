@@ -277,7 +277,7 @@ func validateBlockstoreImport(ctx context.Context, t *testing.T, start, stop blo
 			var umsg types.UnsignedMessage
 			requireAMTDecoding(ctx, t, bstore, blsAMT, &umsg)
 
-			rectAMT, err := amt.LoadAMT(ctx, as, blk.MessageReceipts.Cid)
+			rectAMT, err := amt.LoadAMT(ctx, as, blk.ParentMessageReceipts.Cid)
 			require.NoError(t, err)
 
 			var rect types.MessageReceipt

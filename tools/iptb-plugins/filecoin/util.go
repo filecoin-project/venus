@@ -92,7 +92,7 @@ func tryAPICheck(l testbedi.Libp2p) error {
 
 // GetAPIAddrFromRepo reads the api address from the `api` file in a nodes repo.
 func GetAPIAddrFromRepo(dir string) (multiaddr.Multiaddr, error) {
-	addrStr, err := ioutil.ReadFile(filepath.Join(dir, "api"))
+	addrStr, err := ioutil.ReadFile(filepath.Join(dir, "rustapi"))
 	if err != nil {
 		return nil, err
 	}
