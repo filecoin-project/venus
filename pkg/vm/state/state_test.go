@@ -166,8 +166,8 @@ func TestStateTreeConsistency(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if root.String() != "bafy2bzacebzirvsnrqtjkzpc3md2lql46owuqcshwtpxv4hrbzead6xj5ywrk" {
-		t.Fatalf("state state Mismatch. Expected: bafy2bzaceb2bhqw75pqp44efoxvlnm73lnctq6djair56bfn5x3gw56epcxbi Actual: %s", root.String())
+	if root.String() != "bafy2bzaceamis23jp44ofm4fh6jwc4gkxlzhnvxrdw4zsn3v2fj6at6pf2m4y" {
+		t.Fatalf("state state Mismatch. Expected: bafy2bzaceamis23jp44ofm4fh6jwc4gkxlzhnvxrdw4zsn3v2fj6at6pf2m4y Actual: %s", root.String())
 	}
 
 }
