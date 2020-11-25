@@ -5,9 +5,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	fxamackercbor "github.com/fxamacker/cbor/v2"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -64,6 +66,25 @@ type StateRoot struct { //nolint
 	Actors enccid.Cid
 	// Info. The structure depends on the state root version.
 	Info enccid.Cid
+}
+
+// UnmarshalCBOR must implement cbg.Unmarshaller to insert this into a hamt.
+func (a *StateRoot) UnmarshalCBOR(r io.Reader) error {
+	bs, err := ioutil.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	return fxamackercbor.Unmarshal(bs, a)
+}
+
+// MarshalCBOR must implement cbg.Marshaller to insert this into a hamt.
+func (a *StateRoot) MarshalCBOR(w io.Writer) error {
+	bs, err := fxamackercbor.Marshal(a)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(bs)
+	return err
 }
 
 // TODO: version this.
@@ -438,12 +459,10 @@ func (st *State) At(root Root) error {
 	if err != nil {
 		return err
 	}
+
 	st.root = newState.root
 	st.version = newState.version
-	st.version = newState.version
-	st.version = newState.version
-	st.version = newState.version
-	st.version = newState.version
+	st.info = newState.info
 	return nil
 }
 func Diff(oldTree, newTree *State) (map[string]types.Actor, error) {
