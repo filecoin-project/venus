@@ -3,6 +3,8 @@ package constants
 import (
 	"math/big"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/go-state-types/network"
 )
 
@@ -10,7 +12,7 @@ import (
 // Consensus / Network
 
 const AllowableClockDriftSecs = uint64(1)
-const NewestNetworkVersion = network.Version6
+const NewestNetworkVersion = network.Version8
 const ActorUpgradeNetworkVersion = network.Version4
 
 // constants for Weight calculation
@@ -27,10 +29,16 @@ const FilReserved = uint64(300_000_000)
 var InitialRewardBalance *big.Int
 var InitialFilReserved *big.Int
 
+func SetAddressNetwork(n address.Network) {
+	address.CurrentNetwork = n
+}
+
 func init() {
 	InitialRewardBalance = big.NewInt(int64(FilAllocStorageMining))
 	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(int64(FilecoinPrecision)))
 
 	InitialFilReserved = big.NewInt(int64(FilReserved))
 	InitialFilReserved = InitialFilReserved.Mul(InitialFilReserved, big.NewInt(int64(FilecoinPrecision)))
+
+	SetAddressNetwork(address.Mainnet)
 }

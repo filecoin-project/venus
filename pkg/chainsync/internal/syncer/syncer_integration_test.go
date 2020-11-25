@@ -34,7 +34,7 @@ func TestLoadFork(t *testing.T) {
 	// *not* as the bsstore, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{}
 	sel := &chain.FakeChainSelector{}
-	s, err := syncer.NewSyncer(eval, eval, sel, builder.Store(), builder.Mstore(), builder.BlockStore(), builder, builder, status.NewReporter(), clock.NewFake(time.Unix(1234567890, 0)), &noopFaultDetector{}, block.UndefTipSet.Key(), nil)
+	s, err := syncer.NewSyncer(eval, eval, sel, builder.Store(), builder.Mstore(), builder.BlockStore(), builder, builder, status.NewReporter(), clock.NewFake(time.Unix(1234567890, 0)), &noopFaultDetector{}, nil)
 	require.NoError(t, err)
 	require.NoError(t, s.InitStaged())
 
@@ -76,7 +76,6 @@ func TestLoadFork(t *testing.T) {
 		status.NewReporter(),
 		clock.NewFake(time.Unix(1234567890, 0)),
 		&noopFaultDetector{},
-		block.UndefTipSet.Key(),
 		fork.NewMockFork())
 	require.NoError(t, err)
 	require.NoError(t, offlineSyncer.InitStaged())

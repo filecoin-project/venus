@@ -198,7 +198,39 @@ func newDefaultMessagePoolConfig() *MessagePoolConfig {
 
 type NetworkParamsConfig struct {
 	ConsensusMinerMinPower uint64 // uint64 goes up to 18 EiB
+	MinVerifiedDealSize    int64
 	ReplaceProofTypes      []int64
+	BlockDelay             uint64
+	DrandSchedule          map[abi.ChainEpoch]DrandEnum
+	ForkUpgradeParam       *ForkUpgradeConfig
+}
+
+type ForkUpgradeConfig struct {
+	UpgradeSmokeHeight       abi.ChainEpoch
+	UpgradeBreezeHeight      abi.ChainEpoch
+	UpgradeIgnitionHeight    abi.ChainEpoch
+	UpgradeLiftoffHeight     abi.ChainEpoch
+	UpgradeActorsV2Height    abi.ChainEpoch
+	UpgradeRefuelHeight      abi.ChainEpoch
+	UpgradeTapeHeight        abi.ChainEpoch
+	UpgradeKumquatHeight     abi.ChainEpoch
+	BreezeGasTampingDuration abi.ChainEpoch
+	UpgradeCalicoHeight      abi.ChainEpoch
+	UpgradePersianHeight     abi.ChainEpoch
+}
+
+var DefaultForkUpgradeParam = &ForkUpgradeConfig{
+	UpgradeBreezeHeight:      41280,
+	BreezeGasTampingDuration: 120,
+	UpgradeSmokeHeight:       51000,
+	UpgradeIgnitionHeight:    94000,
+	UpgradeRefuelHeight:      130800,
+	UpgradeTapeHeight:        140760,
+	UpgradeLiftoffHeight:     148888,
+	UpgradeKumquatHeight:     170000,
+	UpgradeCalicoHeight:      265200,
+	UpgradePersianHeight:     265200 + 120*60,
+	UpgradeActorsV2Height:    138720,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
@@ -210,6 +242,8 @@ func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 			int64(abi.RegisteredSealProof_StackedDrg32GiBV1),
 			int64(abi.RegisteredSealProof_StackedDrg64GiBV1),
 		},
+		DrandSchedule:    map[abi.ChainEpoch]DrandEnum{0: 5, -1: 1},
+		ForkUpgradeParam: DefaultForkUpgradeParam,
 	}
 }
 

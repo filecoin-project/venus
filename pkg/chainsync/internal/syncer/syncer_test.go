@@ -238,7 +238,8 @@ func TestNoUncessesaryFetch(t *testing.T) {
 		emptyFetcher,
 		status.NewReporter(),
 		clock.NewFake(time.Unix(1234567890, 0)),
-		&noopFaultDetector{}, block.UndefTipSet.Key(), fork.NewMockFork())
+		&noopFaultDetector{},
+		fork.NewMockFork())
 	require.NoError(t, err)
 	require.NoError(t, newSyncer.InitStaged())
 	assert.NoError(t, newSyncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", head.Key(), heightFromTip(t, head)), false))
@@ -564,7 +565,7 @@ func setupWithValidator(ctx context.Context, t *testing.T, fullVal syncer.FullBl
 		builder,
 		status.NewReporter(),
 		clock.NewFake(time.Unix(1234567890, 0)),
-		&noopFaultDetector{}, block.UndefTipSet.Key(), fork.NewMockFork())
+		&noopFaultDetector{}, fork.NewMockFork())
 	require.NoError(t, err)
 	require.NoError(t, syncer.InitStaged())
 

@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/specactors/aerrors"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/account"
 	init_ "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
@@ -48,6 +49,7 @@ type invocationContext struct {
 	gasTank           *gas.GasTracker
 	randSource        crypto.RandomnessSource
 	isCallerValidated bool
+	depth             uint64
 	allowSideEffects  bool
 	stateHandle       internalActorStateHandle
 	gasIpld           ipfscbor.IpldStore
@@ -58,9 +60,39 @@ type internalActorStateHandle interface {
 	Validate(func(interface{}) cid.Cid)
 }
 
-func newInvocationContext(rt *VM, gasIpld ipfscbor.IpldStore, topLevel *topLevelContext, msg VmMessage, gasTank *gas.GasTracker, randSource crypto.RandomnessSource) invocationContext {
+func newInvocationContext(rt *VM, gasIpld ipfscbor.IpldStore, topLevel *topLevelContext, msg VmMessage,
+	gasTank *gas.GasTracker, randSource crypto.RandomnessSource, parent *invocationContext) invocationContext {
 	orginMsg := msg
-	// Note: the toActor and stateHandle are loaded during the `invoke()`
+	ctx := invocationContext{
+		vm:                rt,
+		topLevel:          topLevel,
+		originMsg:         orginMsg,
+		gasTank:           gasTank,
+		randSource:        randSource,
+		isCallerValidated: false,
+		depth:             0,
+		allowSideEffects:  true,
+		stateHandle:       nil,
+		gasIpld:           gasIpld,
+	}
+
+	if parent != nil {
+		// TODO: The version check here should be unnecessary, but we can wait to take it out
+		if !parent.allowSideEffects && rt.NtwkVersion() >= network.Version7 {
+			runtime.Abortf(exitcode.SysErrForbidden, "internal calls currently disabled")
+		}
+		//ctx.gasUsed = parent.gasUsed
+		//ctx.origin = parent.origin
+		//ctx.originNonce = parent.originNonce
+		//ctx.numActorsCreated = parent.numActorsCreated
+		ctx.depth = parent.depth + 1
+	}
+
+	if ctx.depth > MaxCallDepth && rt.NtwkVersion() >= network.Version6 {
+		runtime.Abortf(exitcode.SysErrForbidden, "message execution exceeds call depth")
+	}
+
+	//Note: the toActor and stateHandle are loaded during the `invoke()`
 	resF, ok := rt.normalizeAddress(msg.From)
 	if !ok {
 		runtime.Abortf(exitcode.SysErrInvalidReceiver, "resolve msg.From [%s] address failed", msg.From)
@@ -72,19 +104,9 @@ func newInvocationContext(rt *VM, gasIpld ipfscbor.IpldStore, topLevel *topLevel
 		// may be set to undef if recipient doesn't exist yet
 		msg.To = resT
 	}
+	ctx.msg = msg
 
-	return invocationContext{
-		vm:                rt,
-		topLevel:          topLevel,
-		msg:               msg,
-		originMsg:         orginMsg,
-		gasTank:           gasTank,
-		randSource:        randSource,
-		isCallerValidated: false,
-		allowSideEffects:  true,
-		stateHandle:       nil,
-		gasIpld:           gasIpld,
-	}
+	return ctx
 }
 
 type stateHandleContext invocationContext
@@ -333,7 +355,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 			Params: &target,
 		}
 
-		newCtx := newInvocationContext(ctx.vm, ctx.gasIpld, ctx.topLevel, newMsg, ctx.gasTank, ctx.randSource)
+		newCtx := newInvocationContext(ctx.vm, ctx.gasIpld, ctx.topLevel, newMsg, ctx.gasTank, ctx.randSource, ctx)
 		_, code := newCtx.invoke()
 		if code.IsError() {
 			// we failed To construct an account actor..
@@ -447,7 +469,7 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 	}
 
 	// 1. build new context
-	newCtx := newInvocationContext(ctx.vm, ctx.gasIpld, ctx.topLevel, newMsg, ctx.gasTank, ctx.randSource)
+	newCtx := newInvocationContext(ctx.vm, ctx.gasIpld, ctx.topLevel, newMsg, ctx.gasTank, ctx.randSource, ctx)
 	// 2. invoke
 	ret, code := newCtx.invoke()
 	if code == 0 {
@@ -513,8 +535,8 @@ func (ctx *invocationContext) NewActorAddress() address.Address {
 //       case1: create based on message receive , the gas fee is deducted first.
 //       case2: create From spec actors, check first, and deduct gas fee
 func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) {
-	if !builtin.IsBuiltinActor(codeID) {
-		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
+	if addr == address.Undef && ctx.vm.NtwkVersion() >= network.Version7 {
+		runtime.Abortf(exitcode.SysErrorIllegalArgument, "CreateActor with Undef address")
 	}
 
 	vmlog.Debugf("creating actor, friendly-name: %s, code: %s, addr: %s\n", builtin.ActorNameByCode(codeID), codeID, addr)
@@ -546,26 +568,39 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 // DeleteActor implements runtime.ExtendedInvocationContext.
 func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 	receiver := ctx.originMsg.To
+	ctx.gasTank.Charge(ctx.vm.pricelist.OnDeleteActor(), "DeleteActor %s", receiver)
 	receiverActor, found, err := ctx.vm.state.GetActor(ctx.vm.context, receiver)
 	if err != nil {
-		panic(err)
+		if xerrors.Is(err, types.ErrActorNotFound) {
+			runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to load actor in delete actor: %s", err)
+		}
+		panic(aerrors.Fatalf("failed to get actor: %s", err))
 	}
 
 	if !found {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "delete non-existent actor %v", receiverActor)
 	}
 
-	ctx.gasTank.Charge(ctx.vm.pricelist.OnDeleteActor(), "DeleteActor %s", receiver)
+	if !receiverActor.Balance.IsZero() {
+		// TODO: Should be safe to drop the version-check,
+		//  since only the paych actor called this pre-version 7, but let's leave it for now
+		if ctx.vm.NtwkVersion() >= network.Version7 {
+			beneficiaryID, found := ctx.vm.normalizeAddress(beneficiary)
+			if !found {
+				runtime.Abortf(exitcode.SysErrorIllegalArgument, "beneficiary doesn't exist")
+			}
 
-	// Transfer any remaining balance To the beneficiary.
-	// This looks like it could cause a problem with gas refund going To a non-existent actor, but the gas payer
-	// is always an account actor, which cannot be the receiver of this message.
-	if receiverActor.Balance.GreaterThan(big.Zero()) {
+			if beneficiaryID == receiver {
+				runtime.Abortf(exitcode.SysErrorIllegalArgument, "benefactor cannot be beneficiary")
+			}
+		}
+
+		// Transfer the executing actor's balance to the beneficiary
 		ctx.vm.transfer(receiver, beneficiary, receiverActor.Balance)
 	}
 
 	if err := ctx.vm.state.DeleteActor(ctx.vm.context, receiver); err != nil {
-		panic(err)
+		panic(aerrors.Fatalf("failed to delete actor: %s", err))
 	}
 
 	_ = ctx.gasTank.TryCharge(gasOnActorExec)

@@ -2,11 +2,14 @@ package syncer
 
 import (
 	"context"
+	"time"
+
+	"github.com/filecoin-project/venus/pkg/repo"
+
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/discovery"
 	"github.com/filecoin-project/venus/app/submodule/network"
-	"time"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
@@ -51,6 +54,7 @@ type syncerConfig interface {
 	GenesisCid() cid.Cid
 	BlockTime() time.Duration
 	ChainClock() clock.ChainEpochClock
+	Repo() repo.Repo
 }
 
 type nodeChainSelector interface {
@@ -98,7 +102,7 @@ func NewSyncerSubmodule(ctx context.Context,
 	stateViewer := consensus.AsDefaultStateViewer(state.NewViewer(blockstore.CborStore))
 
 	nodeConsensus := consensus.NewExpected(blockstore.CborStore, blockstore.Blockstore, chn.Processor, &stateViewer,
-		config.BlockTime(), tickets, postVerifier, chn.ChainReader, config.ChainClock(), chn.Drand, chn.State, chn.MessageStore, chn.Fork)
+		config.BlockTime(), tickets, postVerifier, chn.ChainReader, config.ChainClock(), chn.Drand, chn.State, chn.MessageStore, chn.Fork, config.Repo().Config().NetworkParams)
 	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, &stateViewer)
 
 	// setup fecher
@@ -115,7 +119,7 @@ func NewSyncerSubmodule(ctx context.Context,
 	faultCh := make(chan slashing.ConsensusFault)
 	faultDetector := slashing.NewConsensusFaultDetector(faultCh)
 
-	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, blockstore.Blockstore, fetcher, exchangeClient, config.ChainClock(), chn.CheckPoint, faultDetector, chn.Fork)
+	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, blockstore.Blockstore, fetcher, exchangeClient, config.ChainClock(), faultDetector, chn.Fork)
 	if err != nil {
 		return nil, err
 	}

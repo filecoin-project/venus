@@ -46,8 +46,8 @@ func (t *GasTracker) Charge(gas GasCharge, msg string, args ...interface{}) {
 // Returns `True` if the there was enough gas To pay for `amount`.
 func (t *GasTracker) TryCharge(gasCharge GasCharge) bool {
 	toUse := gasCharge.Total()
-	//var callers [10]uintptr
-	//cout := gruntime.Callers(2+skip, callers[:])
+	var callers [10]uintptr
+	cout := 0 //gruntime.Callers(2+skip, callers[:])
 
 	now := time.Now()
 	if t.LastGasCharge != nil {
@@ -62,11 +62,19 @@ func (t *GasTracker) TryCharge(gasCharge GasCharge) bool {
 		ComputeGas: gasCharge.ComputeGas,
 		StorageGas: gasCharge.StorageGas,
 
-		TotalVirtualGas:   gasCharge.VirtualCompute*GasComputeMulti + gasCharge.VirtualStorage*GasStorageMulti,
+		//TotalVirtualGas:   gasCharge.VirtualCompute*GasComputeMulti + gasCharge.VirtualStorage*GasStorageMulti,
+		TotalVirtualGas:   gasCharge.VirtualCompute + gasCharge.VirtualStorage,
 		VirtualComputeGas: gasCharge.VirtualCompute,
 		VirtualStorageGas: gasCharge.VirtualStorage,
 
-		//Callers: callers[:cout],
+		Callers: callers[:cout],
+	}
+
+	if gasTrace.VirtualStorageGas == 0 {
+		gasTrace.VirtualStorageGas = gasTrace.StorageGas
+	}
+	if gasTrace.VirtualComputeGas == 0 {
+		gasTrace.VirtualComputeGas = gasTrace.ComputeGas
 	}
 
 	t.ExecutionTrace.GasCharges = append(t.ExecutionTrace.GasCharges, &gasTrace)

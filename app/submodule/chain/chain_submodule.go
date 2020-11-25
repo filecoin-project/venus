@@ -2,9 +2,13 @@ package chain
 
 import (
 	"context"
+	"time"
+
+	"github.com/filecoin-project/venus/pkg/clock"
+
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/app/submodule/proofverification"
-	"time"
+	"github.com/filecoin-project/venus/pkg/config"
 
 	"github.com/ipfs/go-cid"
 
@@ -44,11 +48,13 @@ type ChainSubmodule struct { //nolint
 // xxx go back to using an interface here
 type chainRepo interface {
 	ChainDatastore() repo.Datastore
+	Config() *config.Config
 }
 
 type chainConfig interface {
 	GenesisCid() cid.Cid
 	BlockTime() time.Duration
+	Repo() repo.Repo
 }
 
 // NewChainSubmodule creates a new chain submodule.
@@ -65,16 +71,18 @@ func NewChainSubmodule(config chainConfig,
 	if err != nil {
 		return nil, err
 	}
-	drand, err := beacon.DefaultDrandIfaceFromConfig(genBlk.Timestamp)
+
+	drand, err := beacon.DrandConfigSchedule(genBlk.Timestamp, uint64(clock.DefaultEpochDuration.Seconds()), repo.Config().NetworkParams.DrandSchedule)
 	if err != nil {
 		return nil, err
 	}
+
 	actorState := appstate.NewTipSetStateViewer(chainStore, blockstore.CborStore)
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, register.DefaultActors, drand)
 	faultChecker := slashing.NewFaultChecker(chainState)
 	syscalls := vmsupport.NewSyscalls(faultChecker, verifier.ProofVerifier)
-	fork, err := fork.NewChainFork(chainState, blockstore.CborStore, blockstore.Blockstore)
+	fork, err := fork.NewChainFork(chainState, blockstore.CborStore, blockstore.Blockstore, repo.Config().NetworkParams.ForkUpgradeParam)
 	if err != nil {
 		return nil, err
 	}

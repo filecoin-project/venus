@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	builtin2 "github.com/filecoin-project/specs-actors/actors/builtin"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/venus/pkg/constants"
-	xerrors "github.com/pkg/errors"
 	"io"
 	mrand "math/rand"
+
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	xerrors "github.com/pkg/errors"
 
 	address "github.com/filecoin-project/go-address"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
@@ -37,7 +35,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/encoding"
-	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	"github.com/filecoin-project/venus/pkg/proofs"
 	gfcstate "github.com/filecoin-project/venus/pkg/state"
@@ -51,25 +48,6 @@ const InitialBaseFee = 100e6
 
 // TODO: review add bu force
 // TODO: make a list/schedule of these.
-var GenesisNetworkVersion = func() network.Version {
-	// returns the version _before_ the first upgrade.
-	if fork.UpgradeBreezeHeight >= 0 {
-		return network.Version0
-	}
-	if fork.UpgradeSmokeHeight >= 0 {
-		return network.Version1
-	}
-	if fork.UpgradeIgnitionHeight >= 0 {
-		return network.Version2
-	}
-	if fork.UpgradeActorsV2Height >= 0 {
-		return network.Version3
-	}
-	if fork.UpgradeLiftoffHeight >= 0 {
-		return network.Version3
-	}
-	return constants.ActorUpgradeNetworkVersion - 1 // genesis requires actors v0.
-}()
 
 type cstore struct {
 	ctx context.Context
@@ -127,29 +105,7 @@ func NewGenesisGenerator(vmStorage *vm.Storage) *GenesisGenerator {
 	return &g
 }
 
-func (g *GenesisGenerator) initChainParams() {
-	fork.UpgradeBreezeHeight = 0
-	fork.BreezeGasTampingDuration = 120
-	fork.UpgradeSmokeHeight = 0
-	fork.UpgradeIgnitionHeight = 0
-	fork.UpgradeRefuelHeight = 0
-	fork.UpgradeActorsV2Height = 0
-	fork.UpgradeTapeHeight = 0
-	// This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
-	// Miners, clients, developers, custodians all need time to prepare.
-	// We still have upgrades and state changes to do, but can happen after signaling timing here.
-	fork.UpgradeLiftoffHeight = 0
-	fork.UpgradeKumquatHeight = 0
-
-	power0.ConsensusMinerMinPower = big.NewInt(0)
-	for _, policy := range builtin2.SealProofPolicies {
-		policy.ConsensusMinerMinPower = big.NewInt(0)
-	}
-}
-
 func (g *GenesisGenerator) Init(cfg *GenesisCfg) error {
-	g.initChainParams()
-
 	g.pnrg = mrand.New(mrand.NewSource(cfg.Seed))
 
 	keys, err := genKeys(cfg.KeysToGen, g.pnrg)
@@ -171,7 +127,7 @@ func (g *GenesisGenerator) Init(cfg *GenesisCfg) error {
 		newSupportedTypes[mCfg.SealProofType] = struct{}{}
 	}
 	// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
-	miner.SupportedProofTypes = newSupportedTypes
+	miner.PreCommitSealProofTypesV0 = newSupportedTypes
 
 	g.cfg = cfg
 	return nil

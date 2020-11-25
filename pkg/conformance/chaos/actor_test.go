@@ -2,7 +2,6 @@ package chaos
 
 import (
 	"context"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -13,6 +12,8 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	mock2 "github.com/filecoin-project/specs-actors/v2/support/mock"
 	atesting2 "github.com/filecoin-project/specs-actors/v2/support/testing"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
 func TestSingleton(t *testing.T) {
@@ -137,8 +138,9 @@ func TestMutateStateInTransaction(t *testing.T) {
 	var a Actor
 
 	rt.ExpectValidateCallerAny()
-	rt.StateCreate(&State{})
+	rt.Call(a.CreateState, nil)
 
+	rt.ExpectValidateCallerAny()
 	val := "__mutstat test"
 	rt.Call(a.MutateState, &MutateStateArgs{
 		Value:  val,
@@ -164,23 +166,31 @@ func TestMutateStateAfterTransaction(t *testing.T) {
 	var a Actor
 
 	rt.ExpectValidateCallerAny()
-	rt.StateCreate(&State{})
+	rt.Call(a.CreateState, nil)
 
+	rt.ExpectValidateCallerAny()
 	val := "__mutstat test"
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("The code did not panic")
+		} else {
+			var st State
+			rt.GetState(&st)
+
+			// state should be updated successfully _in_ the transaction but not outside
+			if st.Value != val+"-in" {
+				t.Fatal("state was not updated")
+			}
+
+			rt.Verify()
+		}
+	}()
+
 	rt.Call(a.MutateState, &MutateStateArgs{
 		Value:  val,
 		Branch: MutateAfterTransaction,
 	})
 
-	var st State
-	rt.GetState(&st)
-
-	// state should be updated successfully _in_ the transaction but not outside
-	if st.Value != val+"-in" {
-		t.Fatal("state was not updated")
-	}
-
-	rt.Verify()
 }
 
 func TestMutateStateReadonly(t *testing.T) {
@@ -192,22 +202,29 @@ func TestMutateStateReadonly(t *testing.T) {
 	var a Actor
 
 	rt.ExpectValidateCallerAny()
-	rt.StateCreate(&State{})
+	rt.Call(a.CreateState, nil)
 
+	rt.ExpectValidateCallerAny()
 	val := "__mutstat test"
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("The code did not panic")
+		} else {
+			var st State
+			rt.GetState(&st)
+
+			if st.Value != "" {
+				t.Fatal("state was not expected to be updated")
+			}
+
+			rt.Verify()
+		}
+	}()
+
 	rt.Call(a.MutateState, &MutateStateArgs{
 		Value:  val,
 		Branch: MutateReadonly,
 	})
-
-	var st State
-	rt.GetState(&st)
-
-	if st.Value != "" {
-		t.Fatal("state was not expected to be updated")
-	}
-
-	rt.Verify()
 }
 
 func TestMutateStateInvalidBranch(t *testing.T) {
@@ -268,11 +285,13 @@ func TestInspectRuntime(t *testing.T) {
 	receiver := atesting2.NewIDAddr(t, 101)
 	builder := mock2.NewBuilder(context.Background(), receiver)
 
-	rt := builder.Build(t)
-	rt.SetCaller(caller, builtin2.AccountActorCodeID)
-	rt.StateCreate(&State{})
 	var a Actor
 
+	rt := builder.Build(t)
+	rt.ExpectValidateCallerAny()
+	rt.Call(a.CreateState, nil)
+
+	rt.SetCaller(caller, builtin2.AccountActorCodeID)
 	rt.ExpectValidateCallerAny()
 	ret := rt.Call(a.InspectRuntime, abi.Empty)
 	rtr, ok := ret.(*InspectRuntimeReturn)

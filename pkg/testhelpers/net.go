@@ -109,6 +109,8 @@ func (fs fakeStream) Reset() error                       { return nil }         
 func (fs fakeStream) SetDeadline(_ time.Time) error      { return nil }               // nolint: golint
 func (fs fakeStream) SetReadDeadline(_ time.Time) error  { return nil }               // nolint: golint
 func (fs fakeStream) SetWriteDeadline(_ time.Time) error { return nil }               // nolint: golint
+func (fs fakeStream) CloseWrite() error                  { panic("implement me") }
+func (fs fakeStream) CloseRead() error                   { panic("implement me") }
 
 // RandPeerID is a libp2p random peer ID generator.
 // These peer.ID generators were copied from libp2p/go-testutil. We didn't bring in the

@@ -2,13 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	_ "net/http/pprof" // nolint: golint
+	"os"
+
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"
 	"github.com/filecoin-project/venus/pkg/journal"
 	"github.com/filecoin-project/venus/pkg/repo"
 	cmds "github.com/ipfs/go-ipfs-cmds"
-	_ "net/http/pprof" // nolint: golint
-	"os"
 )
 
 var daemonCmd = &cmds.Command{

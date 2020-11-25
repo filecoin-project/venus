@@ -56,7 +56,7 @@ func (vm *syscallsStateView) MinerControlAddresses(ctx context.Context, maddr ad
 		return address.Undef, address.Undef, fmt.Errorf("miner resolution found no such actor %s", maddr)
 	}
 
-	accountState, err := miner.Load(adt.WrapStore(vm.context, vm.store), accountActor)
+	accountState, err := miner.Load(adt.WrapStore(vm.context, vm.ctx.gasIpld), accountActor)
 	if err != nil {
 		panic(fmt.Errorf("signer resolution failed To lost stateView for %s ", maddr))
 	}

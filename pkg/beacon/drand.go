@@ -17,18 +17,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/clock"
+	cfg "github.com/filecoin-project/venus/pkg/config"
 )
-
-func DefaultDrandIfaceFromConfig(fcGenTS uint64) (Schedule, error) {
-	return DrandConfigSchedule(fcGenTS, uint64(clock.DefaultEpochDuration.Seconds()))
-}
-
-type DrandConfig struct {
-	Servers       []string
-	Relays        []string
-	ChainInfoJSON string
-}
 
 type drandPeer struct {
 	addr string
@@ -66,7 +56,7 @@ type DrandBeacon struct {
 	localCache map[uint64]block.BeaconEntry
 }
 
-func NewDrandBeacon(genTimeStamp, interval uint64, config DrandConfig) (*DrandBeacon, error) {
+func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*DrandBeacon, error) {
 	drandChain, err := dchain.InfoFromJSON(bytes.NewReader([]byte(config.ChainInfoJSON)))
 	if err != nil {
 		return nil, xerrors.Errorf("unable to unmarshal drand chain info: %w", err)

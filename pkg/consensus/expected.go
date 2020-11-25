@@ -9,22 +9,25 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/venus/pkg/config"
+
 	"github.com/Gurpartap/async"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -58,6 +61,8 @@ var (
 	// ErrReceiptRootMismatch is returned when the block's receipt root doesn't match the receipt root computed for the parent tipset.
 	ErrReceiptRootMismatch = errors.New("blocks receipt root does not match parent tip set")
 )
+
+var logExpect = logging.Logger("consensus")
 
 const AllowableClockDriftSecs = uint64(1)
 
@@ -127,6 +132,7 @@ type Expected struct {
 	clock                       clock.ChainEpochClock
 	drand                       beacon.Schedule
 	fork                        fork.IFork
+	config                      *config.NetworkParamsConfig
 	circulatingSupplyCalculator *CirculatingSupplyCalculator
 }
 
@@ -147,6 +153,7 @@ func NewExpected(cs cbor.IpldStore,
 	rnd Randness,
 	messageStore *chain.MessageStore,
 	fork fork.IFork,
+	config *config.NetworkParamsConfig,
 ) *Expected {
 	c := &Expected{
 		cstore:                      cs,
@@ -162,7 +169,8 @@ func NewExpected(cs cbor.IpldStore,
 		messageStore:                messageStore,
 		rnd:                         rnd,
 		fork:                        fork,
-		circulatingSupplyCalculator: NewCirculatingSupplyCalculator(bs, chainState),
+		config:                      config,
+		circulatingSupplyCalculator: NewCirculatingSupplyCalculator(bs, chainState, config.ForkUpgradeParam),
 	}
 	return c
 }
@@ -282,8 +290,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 
 	validationStart := time.Now()
 	defer func() {
-		fmt.Println("block validation took", time.Since(validationStart), "height", blk.Height, "age", time.Since(time.Unix(int64(blk.Timestamp), 0)))
-		log.Infow("block validation", "took", time.Since(validationStart), "height", blk.Height, "age", time.Since(time.Unix(int64(blk.Timestamp), 0)))
+		logExpect.Infow("block validation", "took", time.Since(validationStart), "height", blk.Height, "age", time.Since(time.Unix(int64(blk.Timestamp), 0)))
 	}()
 
 	// fast checks first
@@ -293,7 +300,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 
 	baseHeight, _ := parent.Height()
 	nulls := blk.Height - (baseHeight + 1)
-	if tgtTs := parent.MinTimestamp() + constants.BlockDelaySecs*uint64(nulls+1); blk.Timestamp != tgtTs {
+	if tgtTs := parent.MinTimestamp() + c.config.BlockDelay*uint64(nulls+1); blk.Timestamp != tgtTs {
 		return xerrors.Errorf("block has wrong timestamp: %d != %d", blk.Timestamp, tgtTs)
 	}
 
@@ -353,7 +360,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 	})
 
 	baseFeeCheck := async.Err(func() error {
-		baseFee, err := c.ComputeBaseFee(ctx, parent)
+		baseFee, err := c.messageStore.ComputeBaseFee(ctx, parent, c.config.ForkUpgradeParam)
 		if err != nil {
 			return xerrors.Errorf("computing base fee: %v", err)
 		}
@@ -388,7 +395,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 		}
 
 		sampleEpoch := blk.Height - constants.TicketRandomnessLookback
-		bSmokeHeight := blk.Height > fork.UpgradeSmokeHeight
+		bSmokeHeight := blk.Height > c.config.ForkUpgradeParam.UpgradeSmokeHeight
 		if err := c.IsValidTicket(ctx, blk.Parents, beaconBase, bSmokeHeight, sampleEpoch, blk.Miner, workerAddr, blk.Ticket); err != nil {
 			return errors.Wrapf(err, "invalid ticket: %s in block %s", blk.Ticket.String(), blk.Cid())
 		}
@@ -402,8 +409,9 @@ func (c *Expected) validateBlock(ctx context.Context,
 		return nil
 	})
 
+	winPoStNv := c.fork.GetNtwkVersion(ctx, baseHeight)
 	wproofCheck := async.Err(func() error {
-		if err := c.VerifyWinningPoStProof(ctx, blk, prevBeacon, lbStateRoot); err != nil {
+		if err := c.VerifyWinningPoStProof(ctx, winPoStNv, blk, prevBeacon, lbStateRoot); err != nil {
 			return xerrors.Errorf("invalid election post: %v", err)
 		}
 		return nil
@@ -456,7 +464,7 @@ func (c *Expected) ComputeBaseFee(ctx context.Context, ts *block.TipSet) (abi.To
 		return zero, err
 	}
 
-	if baseHeight > fork.UpgradeBreezeHeight && baseHeight < fork.UpgradeBreezeHeight+fork.BreezeGasTampingDuration {
+	if baseHeight > c.config.ForkUpgradeParam.UpgradeBreezeHeight && baseHeight < c.config.ForkUpgradeParam.UpgradeBreezeHeight+c.config.ForkUpgradeParam.BreezeGasTampingDuration {
 		return abi.NewTokenAmount(100), nil
 	}
 
@@ -495,7 +503,7 @@ func (c *Expected) ComputeBaseFee(ctx context.Context, ts *block.TipSet) (abi.To
 
 	parentBaseFee := ts.Blocks()[0].ParentBaseFee
 
-	return ComputeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks()), baseHeight), nil
+	return chain.ComputeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks()), baseHeight, c.config.ForkUpgradeParam), nil
 }
 
 var ErrTemporal = errors.New("temporal error")
@@ -551,7 +559,7 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 
 		// Phase 1: syntactic validation, as defined in the spec
 		minGas := pl.OnChainMessage(msg.ChainLength())
-		if err := m.ValidForBlockInclusion(minGas.Total()); err != nil {
+		if err := m.ValidForBlockInclusion(minGas.Total(), c.fork.GetNtwkVersion(ctx, blk.Height)); err != nil {
 			return err
 		}
 
@@ -632,7 +640,7 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 	return nil
 }
 
-func (c *Expected) VerifyWinningPoStProof(ctx context.Context, blk *block.Block, prevBeacon *block.BeaconEntry, lbst cid.Cid) error {
+func (c *Expected) VerifyWinningPoStProof(ctx context.Context, nv network.Version, blk *block.Block, prevBeacon *block.BeaconEntry, lbst cid.Cid) error {
 	if constants.InsecurePoStValidation {
 		if len(blk.WinPoStProof) == 0 {
 			return xerrors.Errorf("[INSECURE-POST-VALIDATION] No winning post proof given")
@@ -669,7 +677,7 @@ func (c *Expected) VerifyWinningPoStProof(ctx context.Context, blk *block.Block,
 		return xerrors.New("power state view is null")
 	}
 
-	sectors, err := view.GetSectorsForWinningPoSt(ctx, c.proofVerifier, lbst, blk.Miner, rand)
+	sectors, err := view.GetSectorsForWinningPoSt(ctx, nv, c.proofVerifier, lbst, blk.Miner, rand)
 	if err != nil {
 		return xerrors.Errorf("getting winning post sector set: %v", err)
 	}
@@ -1078,38 +1086,4 @@ func (h *headRandomness) Randomness(ctx context.Context, tag acrypto.DomainSepar
 
 func (h *headRandomness) GetRandomnessFromBeacon(ctx context.Context, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	return h.chain.ChainGetRandomnessFromBeacon(ctx, h.head, tag, epoch, entropy)
-}
-
-func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch) abi.TokenAmount {
-	// deta := gasLimitUsed/noOfBlocks - constants.BlockGasTarget
-	// change := baseFee * deta / BlockGasTarget
-	// nextBaseFee = baseFee + change
-	// nextBaseFee = max(nextBaseFee, constants.MinimumBaseFee)
-
-	var delta int64
-	if epoch > fork.UpgradeSmokeHeight {
-		delta = gasLimitUsed / int64(noOfBlocks)
-		delta -= constants.BlockGasTarget
-	} else {
-		delta = constants.PackingEfficiencyDenom * gasLimitUsed / (int64(noOfBlocks) * constants.PackingEfficiencyNum)
-		delta -= constants.BlockGasTarget
-	}
-
-	// cap change at 12.5% (BaseFeeMaxChangeDenom) by capping delta
-	if delta > constants.BlockGasTarget {
-		delta = constants.BlockGasTarget
-	}
-	if delta < -constants.BlockGasTarget {
-		delta = -constants.BlockGasTarget
-	}
-
-	change := big.Mul(baseFee, big.NewInt(delta))
-	change = big.Div(change, big.NewInt(constants.BlockGasTarget))
-	change = big.Div(change, big.NewInt(constants.BaseFeeMaxChangeDenom))
-
-	nextBaseFee := big.Add(baseFee, change)
-	if big.Cmp(nextBaseFee, big.NewInt(constants.MinimumBaseFee)) < 0 {
-		nextBaseFee = big.NewInt(constants.MinimumBaseFee)
-	}
-	return nextBaseFee
 }

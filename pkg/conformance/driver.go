@@ -4,7 +4,9 @@ import (
 	"context"
 	gobig "math/big"
 
+	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
+	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -104,17 +106,19 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 	}*/
 
 	//chain fork
+	mainNetParams := networks.Mainnet()
+	node.SetNetParams(&mainNetParams.Network)
 	messageStore := chain.NewMessageStore(bs)
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, bs, register.DefaultActors, nil)
 	faultChecker := slashing.NewFaultChecker(chainState)
 	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
-	chainFork, err := fork.NewChainFork(chainState, ipldStore, bs)
+	chainFork, err := fork.NewChainFork(chainState, ipldStore, bs, mainNetParams.Network.ForkUpgradeParam)
 	if err != nil {
 		return nil, err
 	}
 	var (
 		vmStorage = vm.NewStorage(bs)
-		caculator = consensus.NewCirculatingSupplyCalculator(bs, chainStore)
+		caculator = consensus.NewCirculatingSupplyCalculator(bs, chainStore, mainNetParams.Network.ForkUpgradeParam)
 
 		vmOption = vm.VmOption{
 			CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
@@ -263,11 +267,13 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		}*/
 
 	//chain fork
+	mainNetParams := networks.Mainnet()
+	node.SetNetParams(&mainNetParams.Network)
 	messageStore := chain.NewMessageStore(bs)
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, bs, coderLoader, nil)
 	faultChecker := slashing.NewFaultChecker(chainState)
 	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
-	chainFork, err := fork.NewChainFork(chainState, ipldStore, bs)
+	chainFork, err := fork.NewChainFork(chainState, ipldStore, bs, mainNetParams.Network.ForkUpgradeParam)
 	if err != nil {
 		return nil, cid.Undef, err
 	}

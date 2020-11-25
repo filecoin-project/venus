@@ -36,6 +36,7 @@ const (
 	// dealsDatastorePrefix   = "deals"
 	snapshotStorePrefix    = "snapshots"
 	snapshotFilenamePrefix = "snapshot"
+	dataTransfer           = "data-transfer"
 )
 
 var log = logging.Logger("repo")
@@ -129,6 +130,9 @@ func InitFSRepoDirect(targetPath string, version uint, cfg *config.Config) error
 
 	if err := initConfig(repoPath, cfg); err != nil {
 		return errors.Wrap(err, "initializing config file failed")
+	}
+	if err := initDataTransfer(repoPath); err != nil {
+		return errors.Wrap(err, "initializing data-transfer directory failed")
 	}
 	return nil
 }
@@ -488,6 +492,22 @@ func initConfig(p string, cfg *config.Config) error {
 	// make the snapshot dir
 	snapshotDir := filepath.Join(p, snapshotStorePrefix)
 	return ensureWritableDirectory(snapshotDir)
+}
+
+func initDataTransfer(p string) error {
+	dataTransferDir := filepath.Join(p, dataTransfer)
+	state, err := os.Stat(dataTransferDir)
+	if err == nil {
+		if state.IsDir() {
+			return nil
+		}
+		return errors.New("error must be a directory")
+	}
+	if !os.IsNotExist(err) {
+		return err
+	}
+	//create data-transfer state
+	return os.MkdirAll(dataTransferDir, 0777)
 }
 
 func genSnapshotFileName() string {

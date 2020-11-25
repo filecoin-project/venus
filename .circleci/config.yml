@@ -784,7 +784,7 @@ commands:
           name: Install OpenCL, a build-time requirement of libfilecoin
           command: |
             sudo apt-get update
-            sudo apt-get install ocl-icd-opencl-dev
+            sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
       - run:
           name: Configure environment variables
           command: |

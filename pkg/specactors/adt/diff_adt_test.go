@@ -3,22 +3,21 @@ package adt
 import (
 	"bytes"
 	"context"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	typegen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
-	"github.com/filecoin-project/venus/pkg/repo"
 
-	bstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/filecoin-project/venus/pkg/repo"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
 func TestDiffAdtArray(t *testing.T) {

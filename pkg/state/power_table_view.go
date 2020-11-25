@@ -2,9 +2,11 @@ package state
 
 import (
 	"context"
+
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
@@ -22,7 +24,7 @@ type PowerStateView interface {
 	MinerGetSector(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, bool, error)
 	PowerNetworkTotal(ctx context.Context) (*NetworkPower, error)
 	MinerClaimedPower(ctx context.Context, miner addr.Address) (raw, qa abi.StoragePower, err error)
-	GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, st cid.Cid, maddr addr.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error)
+	GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, st cid.Cid, maddr addr.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error)
 }
 
 // FaultStateView is a view of chain state for adjustment of miner power claims based on changes since the
@@ -82,6 +84,6 @@ func (v PowerTableView) SignerAddress(ctx context.Context, a addr.Address) (addr
 	return v.state.AccountSignerAddress(ctx, a)
 }
 
-func (v PowerTableView) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, st cid.Cid, maddr addr.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
-	return v.state.GetSectorsForWinningPoSt(ctx, pv, st, maddr, rand)
+func (v PowerTableView) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, st cid.Cid, maddr addr.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
+	return v.state.GetSectorsForWinningPoSt(ctx, nv, pv, st, maddr, rand)
 }
