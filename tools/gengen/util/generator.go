@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	mrand "math/rand"
+
 	builtin2 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/venus/pkg/constants"
 	xerrors "github.com/pkg/errors"
-	"io"
-	mrand "math/rand"
 
 	address "github.com/filecoin-project/go-address"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
@@ -171,7 +172,7 @@ func (g *GenesisGenerator) Init(cfg *GenesisCfg) error {
 		newSupportedTypes[mCfg.SealProofType] = struct{}{}
 	}
 	// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
-	miner.SupportedProofTypes = newSupportedTypes
+	miner.PreCommitSealProofTypesV0 = newSupportedTypes
 
 	g.cfg = cfg
 	return nil

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"math"
 	"os"
 
@@ -18,16 +17,18 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	xerrors "github.com/pkg/errors"
 
-	"github.com/filecoin-project/specs-actors/actors/migration/nv3"
-	m2 "github.com/filecoin-project/specs-actors/v2/actors/migration"
-
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	multisig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/migration/nv3"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv4"
+	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv7"
 
 	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/enccid"
 	bstore "github.com/filecoin-project/venus/pkg/fork/blockstore"
 	"github.com/filecoin-project/venus/pkg/fork/bufbstore"
@@ -37,7 +38,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/multisig"
 	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/types"
-
 	vmstate "github.com/filecoin-project/venus/pkg/vm/state"
 )
 
@@ -52,6 +52,8 @@ var (
 	UpgradeRefuelHeight   = abi.ChainEpoch(0)
 	UpgradeTapeHeight     = abi.ChainEpoch(0)
 	UpgradeKumquatHeight  = abi.ChainEpoch(0)
+	UpgradeCalicoHeight   = abi.ChainEpoch(0)
+	UpgradePersianHeight  = abi.ChainEpoch(0)
 
 	BreezeGasTampingDuration = abi.ChainEpoch(0)
 )
@@ -73,6 +75,8 @@ func init() {
 	// We still have upgrades and state changes to do, but can happen after signaling timing here.
 	UpgradeLiftoffHeight = 148888
 	UpgradeKumquatHeight = 170000
+	UpgradeCalicoHeight = 265200
+	UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
 
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
 	policy.SetSupportedProofTypes(
@@ -141,6 +145,14 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 	}, {
 		Height:    UpgradeKumquatHeight,
 		Network:   network.Version6,
+		Migration: nil,
+	}, {
+		Height:    UpgradeCalicoHeight,
+		Network:   network.Version7,
+		Migration: UpgradeCalico,
+	}, {
+		Height:    UpgradePersianHeight,
+		Network:   network.Version8,
 		Migration: nil,
 	}}
 
@@ -968,7 +980,7 @@ func UpgradeActorsV2(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi
 		return cid.Undef, xerrors.Errorf("failed to create new state info for actors v2: %v", err)
 	}
 
-	newHamtRoot, err := m2.MigrateStateTree(ctx, store, root, epoch, m2.DefaultConfig())
+	newHamtRoot, err := nv4.MigrateStateTree(ctx, store, root, epoch, nv4.DefaultConfig())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("upgrading to actors v2: %v", err)
 	}
@@ -1018,4 +1030,46 @@ func UpgradeLiftoff(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.
 	}
 
 	return tree.Flush(ctx)
+}
+
+func UpgradeCalico(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
+	store := adt.WrapStore(ctx, sm.ipldstore)
+	var stateRoot vmstate.StateRoot
+	if err := store.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != vmstate.StateTreeVersion1 {
+		return cid.Undef, xerrors.Errorf(
+			"expected state root version 1 for calico upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	newHamtRoot, err := nv7.MigrateStateTree(ctx, store, stateRoot.Actors.Cid, epoch, nv7.DefaultConfig())
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("running nv7 migration: %w", err)
+	}
+
+	newRoot, err := store.Put(ctx, &vmstate.StateRoot{
+		Version: stateRoot.Version,
+		Actors:  enccid.NewCid(newHamtRoot),
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// perform some basic sanity checks to make sure everything still works.
+	if newSm, err := vmstate.LoadState(ctx, store, newRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("state tree sanity load failed: %w", err)
+	} else if newRoot2, err := newSm.Flush(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("state tree sanity flush failed: %w", err)
+	} else if newRoot2 != newRoot {
+		return cid.Undef, xerrors.Errorf("state-root mismatch: %s != %s", newRoot, newRoot2)
+	} else if _, _, err := newSm.GetActor(ctx, builtin0.InitActorAddr); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load init actor after upgrade: %w", err)
+	}
+
+	return newRoot, nil
 }

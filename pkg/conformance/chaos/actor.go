@@ -227,6 +227,14 @@ type MutateStateArgs struct {
 	Branch MutateStateBranch
 }
 
+// CreateState creates the chaos actor's state
+func (a Actor) CreateState(rt runtime2.Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
+	rt.ValidateImmediateCallerAcceptAny()
+	rt.StateCreate(&State{})
+
+	return nil
+}
+
 // MutateState attempts to mutate a state value in the actor.
 func (a Actor) MutateState(rt runtime2.Runtime, args *MutateStateArgs) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
