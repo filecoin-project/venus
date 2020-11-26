@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"math"
 	"os"
 
@@ -12,11 +11,15 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
+	ipfsblock "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
+	mh "github.com/multiformats/go-multihash"
 	xerrors "github.com/pkg/errors"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/specs-actors/actors/migration/nv3"
 	m2 "github.com/filecoin-project/specs-actors/v2/actors/migration"
@@ -28,6 +31,7 @@ import (
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/enccid"
 	bstore "github.com/filecoin-project/venus/pkg/fork/blockstore"
 	"github.com/filecoin-project/venus/pkg/fork/bufbstore"
@@ -959,6 +963,150 @@ func ActorStore(ctx context.Context, bs blockstore.Blockstore) adt.Store {
 	return adt.WrapStore(ctx, cbor.NewCborStore(bs))
 }
 
+func linksForObj(blk ipfsblock.Block, cb func(cid.Cid)) error {
+	switch blk.Cid().Prefix().Codec {
+	case cid.DagCBOR:
+		err := cbg.ScanForLinks(bytes.NewReader(blk.RawData()), cb)
+		if err != nil {
+			return xerrors.Errorf("cbg.ScanForLinks: %v", err)
+		}
+		return nil
+	case cid.Raw:
+		// We implicitly have all children of raw blocks.
+		return nil
+	default:
+		return xerrors.Errorf("vm flush copy method only supports dag cbor")
+	}
+}
+
+func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(ipfsblock.Block) error) error {
+	if root.Prefix().MhType == 0 {
+		// identity cid, skip
+		return nil
+	}
+
+	blk, err := from.Get(root)
+	if err != nil {
+		return xerrors.Errorf("get %s failed: %v", root, err)
+	}
+
+	var lerr error
+	err = linksForObj(blk, func(link cid.Cid) {
+		if lerr != nil {
+			// Theres no erorr return on linksForObj callback :(
+			return
+		}
+
+		prefix := link.Prefix()
+		if prefix.Codec == cid.FilCommitmentSealed || prefix.Codec == cid.FilCommitmentUnsealed {
+			return
+		}
+
+		// We always have blocks inlined into CIDs, but we may not have their children.
+		if prefix.MhType == mh.IDENTITY {
+			// Unless the inlined block has no children.
+			if prefix.Codec == cid.Raw {
+				return
+			}
+		} else {
+			// If we have an object, we already have its children, skip the object.
+			has, err := to.Has(link)
+			if err != nil {
+				lerr = xerrors.Errorf("has: %v", err)
+				return
+			}
+			if has {
+				return
+			}
+		}
+
+		if err := copyRec(from, to, link, cp); err != nil {
+			lerr = err
+			return
+		}
+	})
+	if err != nil {
+		return xerrors.Errorf("linksForObj (%x): %v", blk.RawData(), err)
+	}
+	if lerr != nil {
+		return lerr
+	}
+
+	if err := cp(blk); err != nil {
+		return xerrors.Errorf("copy: %v", err)
+	}
+	return nil
+}
+
+func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) error {
+	ctx, span := trace.StartSpan(ctx, "vm.Copy") // nolint
+	defer span.End()
+
+	var numBlocks int
+	var totalCopySize int
+
+	const batchSize = 128
+	const bufCount = 3
+	freeBufs := make(chan []ipfsblock.Block, bufCount)
+	toFlush := make(chan []ipfsblock.Block, bufCount)
+	for i := 0; i < bufCount; i++ {
+		freeBufs <- make([]ipfsblock.Block, 0, batchSize)
+	}
+
+	errFlushChan := make(chan error)
+
+	go func() {
+		for b := range toFlush {
+			if err := to.PutMany(b); err != nil {
+				close(freeBufs)
+				errFlushChan <- xerrors.Errorf("batch put in copy: %v", err)
+				return
+			}
+			freeBufs <- b[:0]
+		}
+		close(errFlushChan)
+		close(freeBufs)
+	}()
+
+	var batch = <-freeBufs
+	batchCp := func(blk ipfsblock.Block) error {
+		numBlocks++
+		totalCopySize += len(blk.RawData())
+
+		batch = append(batch, blk)
+
+		if len(batch) >= batchSize {
+			toFlush <- batch
+			var ok bool
+			batch, ok = <-freeBufs
+			if !ok {
+				return <-errFlushChan
+			}
+		}
+		return nil
+	}
+
+	if err := copyRec(from, to, root, batchCp); err != nil {
+		return xerrors.Errorf("copyRec: %v", err)
+	}
+
+	if len(batch) > 0 {
+		toFlush <- batch
+	}
+	close(toFlush)        // close the toFlush triggering the loop to end
+	err := <-errFlushChan // get error out or get nil if it was closed
+	if err != nil {
+		return err
+	}
+
+	span.AddAttributes(
+		trace.Int64Attribute("numBlocks", int64(numBlocks)),
+		trace.Int64Attribute("copySize", int64(totalCopySize)),
+	)
+
+	return nil
+}
+
 func UpgradeActorsV2(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
 	buf := bufbstore.NewTieredBstore(sm.bs, bstore.NewTemporarySync())
 	store := ActorStore(ctx, buf)
@@ -993,15 +1141,14 @@ func UpgradeActorsV2(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi
 		return cid.Undef, xerrors.Errorf("failed to load init actor after upgrade: %v", err)
 	}
 
-	// Todo need to be implemented?
-	//{
-	//	from := buf
-	//	to := buf.Read()
-	//
-	//	if err := vm.Copy(ctx, from, to, newRoot); err != nil {
-	//		return cid.Undef, xerrors.Errorf("copying migrated tree: %v", err)
-	//	}
-	//}
+	{
+		from := buf
+		to := buf.Read()
+
+		if err := Copy(ctx, from, to, newRoot); err != nil {
+			return cid.Undef, xerrors.Errorf("copying migrated tree: %v", err)
+		}
+	}
 
 	return newRoot, nil
 }

@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	fxamackercbor "github.com/fxamacker/cbor/v2"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -65,8 +68,62 @@ type StateRoot struct { //nolint
 	Info enccid.Cid
 }
 
+// UnmarshalCBOR must implement cbg.Unmarshaller to insert this into a hamt.
+func (a *StateRoot) UnmarshalCBOR(r io.Reader) error {
+	bs, err := ioutil.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	return fxamackercbor.Unmarshal(bs, a)
+}
+
+// MarshalCBOR must implement cbg.Marshaller to insert this into a hamt.
+func (a *StateRoot) MarshalCBOR(w io.Writer) error {
+	bs, err := fxamackercbor.Marshal(a)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(bs)
+	return err
+}
+
 // TODO: version this.
 type StateInfo0 struct{} //nolint
+
+var lengthBufStateInfo0 = []byte{128}
+
+func (t *StateInfo0) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write(lengthBufStateInfo0); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *StateInfo0) UnmarshalCBOR(r io.Reader) error {
+	*t = StateInfo0{}
+
+	br := cbg.GetPeeker(r)
+	scratch := make([]byte, 8)
+
+	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 0 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	return nil
+}
 
 // state stores actors state by their ID.
 type State struct {
@@ -402,12 +459,10 @@ func (st *State) At(root Root) error {
 	if err != nil {
 		return err
 	}
+
 	st.root = newState.root
 	st.version = newState.version
-	st.version = newState.version
-	st.version = newState.version
-	st.version = newState.version
-	st.version = newState.version
+	st.info = newState.info
 	return nil
 }
 func Diff(oldTree, newTree *State) (map[string]types.Actor, error) {
