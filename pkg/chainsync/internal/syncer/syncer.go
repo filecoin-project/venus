@@ -3,9 +3,10 @@ package syncer
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/util"
 	"sync"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/util"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -673,7 +674,7 @@ loop:
 			targetTip = tipset.EnsureParents()
 			count++
 			if count%500 == 0 {
-				fmt.Println("load from local db ", "Height:", tipset.EnsureHeight())
+				logSyncer.Info("load from local db ", "Height: ", tipset.EnsureHeight())
 			}
 			continue
 		}

@@ -13,18 +13,19 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -58,6 +59,8 @@ var (
 	// ErrReceiptRootMismatch is returned when the block's receipt root doesn't match the receipt root computed for the parent tipset.
 	ErrReceiptRootMismatch = errors.New("blocks receipt root does not match parent tip set")
 )
+
+var logExpect = logging.Logger("consensus")
 
 const AllowableClockDriftSecs = uint64(1)
 
@@ -283,8 +286,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 
 	validationStart := time.Now()
 	defer func() {
-		fmt.Println("block validation took", time.Since(validationStart), "height", blk.Height, "age", time.Since(time.Unix(int64(blk.Timestamp), 0)))
-		log.Infow("block validation", "took", time.Since(validationStart), "height", blk.Height, "age", time.Since(time.Unix(int64(blk.Timestamp), 0)))
+		logExpect.Infow("block validation", "took", time.Since(validationStart), "height", blk.Height, "age", time.Since(time.Unix(int64(blk.Timestamp), 0)))
 	}()
 
 	// fast checks first
@@ -391,6 +393,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 		sampleEpoch := blk.Height - constants.TicketRandomnessLookback
 		bSmokeHeight := blk.Height > fork.UpgradeSmokeHeight
 		if err := c.IsValidTicket(ctx, blk.Parents, beaconBase, bSmokeHeight, sampleEpoch, blk.Miner, workerSignerAddr, blk.Ticket); err != nil {
+			logExpect.Errorf("invalid ticket: %s, cid: %s, height: %d", blk.Ticket.String(), blk.Cid(), blk.Height)
 			return errors.Wrapf(err, "invalid ticket: %s in block %s", blk.Ticket.String(), blk.Cid())
 		}
 		return nil

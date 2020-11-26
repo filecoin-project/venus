@@ -3,6 +3,8 @@ package gas
 import (
 	"fmt"
 
+	"github.com/filecoin-project/venus/pkg/fork"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"github.com/filecoin-project/venus/pkg/crypto"
@@ -81,6 +83,9 @@ type Pricelist interface {
 
 var prices = map[abi.ChainEpoch]Pricelist{
 	abi.ChainEpoch(0): &pricelistV0{
+		computeGasMulti: 1,
+		storageGasMulti: 1000,
+
 		onChainMessageComputeBase:    38863,
 		onChainMessageStorageBase:    36,
 		onChainMessageStoragePerByte: 1,
@@ -122,6 +127,55 @@ var prices = map[abi.ChainEpoch]Pricelist{
 				scale: 85639,
 			},
 		},
+		verifyPostDiscount:   true,
+		verifyConsensusFault: 495422,
+	},
+	abi.ChainEpoch(fork.UpgradeCalicoHeight): &pricelistV0{
+		computeGasMulti: 1,
+		storageGasMulti: 1300,
+
+		onChainMessageComputeBase:    38863,
+		onChainMessageStorageBase:    36,
+		onChainMessageStoragePerByte: 1,
+
+		onChainReturnValuePerByte: 1,
+
+		sendBase:                29233,
+		sendTransferFunds:       27500,
+		sendTransferOnlyPremium: 159672,
+		sendInvokeMethod:        -5377,
+
+		ipldGetBase:    114617,
+		ipldPutBase:    353640,
+		ipldPutPerByte: 1,
+
+		createActorCompute: 1108454,
+		createActorStorage: 36 + 40,
+		deleteActor:        -(36 + 40), // -createActorStorage
+
+		verifySignature: map[crypto.SigType]int64{
+			crypto.SigTypeBLS:       16598605,
+			crypto.SigTypeSecp256k1: 1637292,
+		},
+
+		hashingBase:                  31355,
+		computeUnsealedSectorCidBase: 98647,
+		verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
+		verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
+			abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
+				flat:  117680921,
+				scale: 43780,
+			},
+			abi.RegisteredPoStProof_StackedDrgWindow32GiBV1: {
+				flat:  117680921,
+				scale: 43780,
+			},
+			abi.RegisteredPoStProof_StackedDrgWindow64GiBV1: {
+				flat:  117680921,
+				scale: 43780,
+			},
+		},
+		verifyPostDiscount:   false,
 		verifyConsensusFault: 495422,
 	},
 }

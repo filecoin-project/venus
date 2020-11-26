@@ -2,8 +2,9 @@ package consensus
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"sync"
+
+	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -58,7 +59,9 @@ type CirculatingSupplyCalculator struct {
 	// info about the Accounts in the genesis state
 	preIgnitionGenInfos  *genesisInfo
 	postIgnitionGenInfos *genesisInfo
-	genesisMsigLk        sync.Mutex
+	postCalicoGenInfos   *genesisInfo
+
+	genesisMsigLk sync.Mutex
 }
 
 func NewCirculatingSupplyCalculator(bstore blockstore.Blockstore, genesisReader genesisReader) *CirculatingSupplyCalculator {
@@ -202,8 +205,15 @@ func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, 
 			au := big.Sub(v.InitialBalance, v.AmountLocked(height))
 			vf = big.Add(vf, au)
 		}
-	} else {
+	} else if height <= fork.UpgradeCalicoHeight {
 		for _, v := range caculator.postIgnitionGenInfos.genesisMsigs {
+			// In the pre-ignition logic, we simply called AmountLocked(height), assuming startEpoch was 0.
+			// The start epoch changed in the Ignition upgrade.
+			au := big.Sub(v.InitialBalance, v.AmountLocked(height-v.StartEpoch))
+			vf = big.Add(vf, au)
+		}
+	} else {
+		for _, v := range caculator.postCalicoGenInfos.genesisMsigs {
 			// In the pre-ignition logic, we simply called AmountLocked(height), assuming startEpoch was 0.
 			// The start epoch changed in the Ignition upgrade.
 			au := big.Sub(v.InitialBalance, v.AmountLocked(height-v.StartEpoch))

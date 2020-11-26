@@ -60,6 +60,10 @@ type internalActorStateHandle interface {
 
 func newInvocationContext(rt *VM, gasIpld ipfscbor.IpldStore, topLevel *topLevelContext, msg VmMessage, gasTank *gas.GasTracker, randSource crypto.RandomnessSource) invocationContext {
 	orginMsg := msg
+
+	//if rt.depth > MaxCallDepth && rt.NtwkVersion() >= network.Version6 {
+	//	runtime.Abortf(exitcode.SysErrForbidden, "message execution exceeds call depth")
+	//}
 	// Note: the toActor and stateHandle are loaded during the `invoke()`
 	resF, ok := rt.normalizeAddress(msg.From)
 	if !ok {

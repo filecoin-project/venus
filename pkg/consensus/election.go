@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/venus/pkg/constants"
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof" // todo ref lotus
@@ -89,6 +90,7 @@ func VerifyVRF(ctx context.Context, worker address.Address, vrfBase, vrfproof []
 	}
 
 	if err := sigs.Verify(sig, worker, vrfBase); err != nil {
+		logExpect.Warn("sig: ", sig, "worker: ", worker, "vrfBase: ", vrfBase, "err: ", err)
 		return xerrors.Errorf("vrf was invalid: %w", err)
 	}
 
@@ -112,5 +114,9 @@ func VerifyElectionPoStVRF(ctx context.Context, worker address.Address, rand []b
 	if constants.InsecurePoStValidation {
 		return nil
 	}
-	return VerifyVRF(ctx, worker, rand, evrf)
+	err := VerifyVRF(ctx, worker, rand, evrf)
+	if err != nil {
+		logExpect.Warn("worker: ", worker, "ran: ", rand, "evrf: ", evrf)
+	}
+	return err
 }
