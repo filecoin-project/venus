@@ -968,7 +968,7 @@ func linksForObj(blk ipfsblock.Block, cb func(cid.Cid)) error {
 	case cid.DagCBOR:
 		err := cbg.ScanForLinks(bytes.NewReader(blk.RawData()), cb)
 		if err != nil {
-			return xerrors.Errorf("cbg.ScanForLinks: %w", err)
+			return xerrors.Errorf("cbg.ScanForLinks: %v", err)
 		}
 		return nil
 	case cid.Raw:
@@ -987,7 +987,7 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(ipfsblock.Blo
 
 	blk, err := from.Get(root)
 	if err != nil {
-		return xerrors.Errorf("get %s failed: %w", root, err)
+		return xerrors.Errorf("get %s failed: %v", root, err)
 	}
 
 	var lerr error
@@ -1012,7 +1012,7 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(ipfsblock.Blo
 			// If we have an object, we already have its children, skip the object.
 			has, err := to.Has(link)
 			if err != nil {
-				lerr = xerrors.Errorf("has: %w", err)
+				lerr = xerrors.Errorf("has: %v", err)
 				return
 			}
 			if has {
@@ -1026,14 +1026,14 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(ipfsblock.Blo
 		}
 	})
 	if err != nil {
-		return xerrors.Errorf("linksForObj (%x): %w", blk.RawData(), err)
+		return xerrors.Errorf("linksForObj (%x): %v", blk.RawData(), err)
 	}
 	if lerr != nil {
 		return lerr
 	}
 
 	if err := cp(blk); err != nil {
-		return xerrors.Errorf("copy: %w", err)
+		return xerrors.Errorf("copy: %v", err)
 	}
 	return nil
 }
@@ -1059,7 +1059,7 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 		for b := range toFlush {
 			if err := to.PutMany(b); err != nil {
 				close(freeBufs)
-				errFlushChan <- xerrors.Errorf("batch put in copy: %w", err)
+				errFlushChan <- xerrors.Errorf("batch put in copy: %v", err)
 				return
 			}
 			freeBufs <- b[:0]
@@ -1087,7 +1087,7 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 	}
 
 	if err := copyRec(from, to, root, batchCp); err != nil {
-		return xerrors.Errorf("copyRec: %w", err)
+		return xerrors.Errorf("copyRec: %v", err)
 	}
 
 	if len(batch) > 0 {
