@@ -139,6 +139,9 @@ func MonkeyPatchNetworkParamsOption(params *config.NetworkParamsConfig) BuilderO
 			policy.SetSupportedProofTypes(newSupportedTypes...)
 		}
 
+		if params.MinVerifiedDealSize > 0 {
+			policy.SetMinVerifiedDealSize(abi.NewStoragePower(params.MinVerifiedDealSize))
+		}
 		return nil
 	}
 }
@@ -204,7 +207,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Blockstore")
 	}
-
 	nd.network, err = submodule.NewNetworkSubmodule(ctx, (*builder)(b), b.repo, &nd.Blockstore)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Network")
@@ -231,7 +233,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to construct drand grpc")
 		}
-		dGRPC, err := beacon.DefaultDrandIfaceFromConfig(genBlk.Timestamp)
+		dGRPC, err := beacon.DrandConfigSchedule(genBlk.Timestamp, uint64(clock.DefaultEpochDuration.Seconds()), b.repo.Config().NetworkParams.DrandSchedule)
 		if err != nil {
 			return nil, err
 		}
@@ -254,7 +256,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Discovery")
 	}
 
-	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.ProofVerification.ProofVerifier, nd.chain.CheckPoint)
+	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.ProofVerification.ProofVerifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}

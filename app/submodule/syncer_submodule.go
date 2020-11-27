@@ -2,6 +2,7 @@ package submodule
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/repo"
 	"time"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
@@ -45,6 +46,7 @@ type syncerConfig interface {
 	BlockTime() time.Duration
 	ChainClock() clock.ChainEpochClock
 	Drand() beacon.Schedule
+	Repo() repo.Repo
 }
 
 type nodeChainSelector interface {
@@ -59,8 +61,7 @@ func NewSyncerSubmodule(ctx context.Context,
 	network *NetworkSubmodule,
 	discovery *DiscoverySubmodule,
 	chn *ChainSubmodule,
-	postVerifier consensus.ProofVerifier,
-	checkPoint block.TipSetKey) (SyncerSubmodule, error) {
+	postVerifier consensus.ProofVerifier) (SyncerSubmodule, error) {
 	// setup validation
 	blkValid := consensus.NewDefaultBlockValidator(config.ChainClock(), chn.MessageStore, chn.State)
 	msgValid := consensus.NewMessageSyntaxValidator()
@@ -86,7 +87,6 @@ func NewSyncerSubmodule(ctx context.Context,
 		return SyncerSubmodule{}, errors.Wrap(err, "failed to locate genesis block during node build")
 	}
 
-	// setup default drand
 	d := config.Drand()
 
 	// set up consensus
@@ -96,7 +96,7 @@ func NewSyncerSubmodule(ctx context.Context,
 	stateViewer := consensus.AsDefaultStateViewer(state.NewViewer(blockstore.CborStore))
 
 	nodeConsensus := consensus.NewExpected(blockstore.CborStore, blockstore.Blockstore, chn.Processor, &stateViewer,
-		config.BlockTime(), tickets, postVerifier, chn.ChainReader, config.ChainClock(), d, chn.State, chn.MessageStore, chn.Fork)
+		config.BlockTime(), tickets, postVerifier, chn.ChainReader, config.ChainClock(), d, chn.State, chn.MessageStore, chn.Fork, config.Repo().Config().NetworkParams)
 	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, &stateViewer)
 
 	// setup fecher
@@ -113,7 +113,7 @@ func NewSyncerSubmodule(ctx context.Context,
 	faultCh := make(chan slashing.ConsensusFault)
 	faultDetector := slashing.NewConsensusFaultDetector(faultCh)
 
-	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, blockstore.Blockstore, fetcher, exchangeClient, config.ChainClock(), checkPoint, faultDetector, chn.Fork)
+	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, blockstore.Blockstore, fetcher, exchangeClient, config.ChainClock(), faultDetector, chn.Fork)
 	if err != nil {
 		return SyncerSubmodule{}, err
 	}

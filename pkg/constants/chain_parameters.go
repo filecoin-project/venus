@@ -22,7 +22,7 @@ const MinimumBaseFee = 100
 const PackingEfficiencyNum = 4
 const PackingEfficiencyDenom = 5
 
-const BlockDelaySecs = uint64(builtin0.EpochDurationSeconds)
+//const BlockDelaySecs = uint64(builtin0.EpochDurationSeconds)
 
 const PropagationDelaySecs = uint64(6)
 

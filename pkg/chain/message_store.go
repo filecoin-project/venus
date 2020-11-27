@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/config"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
@@ -27,7 +28,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/encoding"
-	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -412,14 +412,14 @@ func (ms *MessageStore) storeAMTCids(ctx context.Context, cids []cid.Cid) (cid.C
 	return amt.FromArray(ctx, as, cidMarshallers)
 }
 
-func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch) abi.TokenAmount {
+func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch, upgrade *config.ForkUpgradeConfig) abi.TokenAmount {
 	// deta := gasLimitUsed/noOfBlocks - constants.BlockGasTarget
 	// change := baseFee * deta / BlockGasTarget
 	// nextBaseFee = baseFee + change
 	// nextBaseFee = max(nextBaseFee, constants.MinimumBaseFee)
 
 	var delta int64
-	if epoch > fork.UpgradeSmokeHeight {
+	if epoch > upgrade.UpgradeSmokeHeight {
 		delta = gasLimitUsed / int64(noOfBlocks)
 		delta -= constants.BlockGasTarget
 	} else {
@@ -446,14 +446,14 @@ func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks 
 	return nextBaseFee
 }
 
-func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet) (abi.TokenAmount, error) {
+func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet, upgrade *config.ForkUpgradeConfig) (abi.TokenAmount, error) {
 	zero := abi.NewTokenAmount(0)
 	baseHeight, err := ts.Height()
 	if err != nil {
 		return zero, err
 	}
 
-	if baseHeight > fork.UpgradeBreezeHeight && baseHeight < fork.UpgradeBreezeHeight+fork.BreezeGasTampingDuration {
+	if baseHeight > upgrade.UpgradeBreezeHeight && baseHeight < upgrade.UpgradeBreezeHeight+upgrade.BreezeGasTampingDuration {
 		return abi.NewTokenAmount(100), nil
 	}
 
@@ -492,7 +492,7 @@ func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet) (a
 
 	parentBaseFee := ts.Blocks()[0].ParentBaseFee
 
-	return ComputeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks()), baseHeight), nil
+	return ComputeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks()), baseHeight, upgrade), nil
 }
 
 func GetReceiptRoot(receipts []types.MessageReceipt) (cid.Cid, error) {

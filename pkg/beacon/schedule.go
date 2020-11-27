@@ -5,14 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	xerrors "github.com/pkg/errors"
-
-	"github.com/filecoin-project/venus/pkg/fork"
 )
-
-var DrandScheduleFork = map[abi.ChainEpoch]DrandEnum{
-	0:                       DrandIncentinet,
-	fork.UpgradeSmokeHeight: DrandMainnet,
-}
 
 const (
 	DrandMainnet DrandEnum = iota + 1
@@ -89,9 +82,10 @@ func (bs Schedule) BeaconForEpoch(e abi.ChainEpoch) RandomBeacon {
 
 type DrandEnum int
 
-func DrandConfigSchedule(genTimeStamp uint64, blockDelay uint64) (Schedule, error) {
+func DrandConfigSchedule(genTimeStamp uint64, blockDelay uint64, drandSchedule map[abi.ChainEpoch]DrandEnum) (Schedule, error) {
 	shd := Schedule{}
-	for start, config := range DrandScheduleFork {
+
+	for start, config := range drandSchedule {
 		bc, err := NewDrandBeacon(genTimeStamp, blockDelay, DrandConfigs[config])
 		if err != nil {
 			return nil, xerrors.Errorf("creating drand beacon: %s", err)

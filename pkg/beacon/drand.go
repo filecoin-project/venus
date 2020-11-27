@@ -17,12 +17,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/clock"
 )
-
-func DefaultDrandIfaceFromConfig(fcGenTS uint64) (Schedule, error) {
-	return DrandConfigSchedule(fcGenTS, uint64(clock.DefaultEpochDuration.Seconds()))
-}
 
 type DrandConfig struct {
 	Servers       []string

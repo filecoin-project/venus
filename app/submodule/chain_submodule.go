@@ -2,7 +2,7 @@ package submodule
 
 import (
 	"context"
-
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/app/plumbing/cst"
@@ -50,6 +50,7 @@ type ChainSubmodule struct {
 */
 type chainRepo interface {
 	ChainDatastore() repo.Datastore
+	Config() *config.Config
 }
 
 type chainConfig interface {
@@ -67,7 +68,7 @@ func NewChainSubmodule(config chainConfig, repo chainRepo, blockstore *Blockstor
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, register.DefaultActors, drand)
 	faultChecker := slashing.NewFaultChecker(chainState)
 	syscalls := vmsupport.NewSyscalls(faultChecker, verifier.ProofVerifier)
-	fork, err := fork.NewChainFork(chainState, blockstore.CborStore, blockstore.Blockstore)
+	fork, err := fork.NewChainFork(chainState, blockstore.CborStore, blockstore.Blockstore, &repo.Config().NetworkParams.ForkUpgradeParam)
 	if err != nil {
 		return ChainSubmodule{}, err
 	}

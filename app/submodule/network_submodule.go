@@ -9,6 +9,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -31,7 +32,6 @@ import (
 	offroute "github.com/ipfs/go-ipfs-routing/offline"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p"
-	autonatsvc "github.com/libp2p/go-libp2p-autonat-svc"
 	circuit "github.com/libp2p/go-libp2p-circuit"
 	"github.com/libp2p/go-libp2p-core/host"
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
@@ -85,6 +85,7 @@ type networkConfig interface {
 type networkRepo interface {
 	Config() *config.Config
 	Datastore() ds.Batching
+	Path() (string, error)
 }
 
 // NewNetworkSubmodule creates a new network submodule.
@@ -196,7 +197,12 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	dtNet := dtnet.NewFromLibp2pHost(peerHost)
 	dtDs := namespace.Wrap(repo.Datastore(), datastore.NewKey("/datatransfer/client/transfers"))
 	transport := dtgstransport.NewTransport(peerHost.ID(), gsync)
-	dt, err := dtimpl.NewDataTransfer(dtDs, dtNet, transport, sc)
+
+	repoPath, err := repo.Path()
+	if err != nil {
+		return NetworkSubmodule{}, err
+	}
+	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(repoPath, "data-transfer"), dtNet, transport, sc)
 	if err != nil {
 		return NetworkSubmodule{}, err
 	}
@@ -262,13 +268,8 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 			publicAddrFactory,
 			libp2p.ChainOptions(libP2pOpts...),
 			libp2p.Ping(true),
+			libp2p.EnableNATService(),
 		)
-		if err != nil {
-			return nil, err
-		}
-
-		// Set up autoNATService as a streamhandler on the host.
-		_, err = autonatsvc.NewAutoNATService(ctx, relayHost, true)
 		if err != nil {
 			return nil, err
 		}

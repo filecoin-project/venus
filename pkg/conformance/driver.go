@@ -2,6 +2,7 @@ package conformance
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/config"
 	gobig "math/big"
 
 	"github.com/filecoin-project/venus/app/plumbing/cst"
@@ -108,13 +109,13 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, bs, register.DefaultActors, nil)
 	faultChecker := slashing.NewFaultChecker(chainState)
 	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
-	chainFork, err := fork.NewChainFork(chainState, ipldStore, bs)
+	chainFork, err := fork.NewChainFork(chainState, ipldStore, bs, &config.DefaultForkUpgradeParam)
 	if err != nil {
 		return nil, err
 	}
 	var (
 		vmStorage = vm.NewStorage(bs)
-		caculator = consensus.NewCirculatingSupplyCalculator(bs, chainStore)
+		caculator = consensus.NewCirculatingSupplyCalculator(bs, chainStore, &config.DefaultForkUpgradeParam)
 
 		vmOption = vm.VmOption{
 			CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
@@ -263,7 +264,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, bs, coderLoader, nil)
 	faultChecker := slashing.NewFaultChecker(chainState)
 	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
-	chainFork, err := fork.NewChainFork(chainState, ipldStore, bs)
+	chainFork, err := fork.NewChainFork(chainState, ipldStore, bs, &config.DefaultForkUpgradeParam)
 	if err != nil {
 		return nil, cid.Undef, err
 	}
