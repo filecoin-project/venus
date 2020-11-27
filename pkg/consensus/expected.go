@@ -330,13 +330,13 @@ func (c *Expected) validateBlock(ctx context.Context,
 	}
 
 	// get worker address
-	workerAddr, err := keyPowerTable.WorkerAddr(ctx, blk.Miner)
+	lbTs, lbStateRoot, err := c.GetLookbackTipSetForRound(ctx, parent, blk.Height)
 	if err != nil {
-		return errors.Wrap(err, "failed to read worker address of block miner")
+		return xerrors.Errorf("failed to get lookback tipset for block: %v", err)
 	}
-	workerSignerAddr, err := keyPowerTable.SignerAddress(ctx, workerAddr)
+	workerAddr, err := GetMinerWorkerRaw(ctx, lbStateRoot, c.bstore, blk.Miner)
 	if err != nil {
-		return errors.Wrapf(err, "failed to convert address, %s, to a signing address", workerAddr.String())
+		return xerrors.Errorf("query worker address failed: %s", err)
 	}
 
 	msgsCheck := async.Err(func() error {
@@ -367,7 +367,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 
 	blockSigCheck := async.Err(func() error {
 		// Validate block signature
-		if err := crypto.ValidateSignature(blk.SignatureData(), workerSignerAddr, *blk.BlockSig); err != nil {
+		if err := crypto.ValidateSignature(blk.SignatureData(), workerAddr, *blk.BlockSig); err != nil {
 			return errors.Wrap(err, "block signature invalid")
 		}
 
@@ -390,19 +390,14 @@ func (c *Expected) validateBlock(ctx context.Context,
 
 		sampleEpoch := blk.Height - constants.TicketRandomnessLookback
 		bSmokeHeight := blk.Height > fork.UpgradeSmokeHeight
-		if err := c.IsValidTicket(ctx, blk.Parents, beaconBase, bSmokeHeight, sampleEpoch, blk.Miner, workerSignerAddr, blk.Ticket); err != nil {
+		if err := c.IsValidTicket(ctx, blk.Parents, beaconBase, bSmokeHeight, sampleEpoch, blk.Miner, workerAddr, blk.Ticket); err != nil {
 			return errors.Wrapf(err, "invalid ticket: %s in block %s", blk.Ticket.String(), blk.Cid())
 		}
 		return nil
 	})
 
-	lbTs, lbStateRoot, err := c.GetLookbackTipSetForRound(ctx, parent, blk.Height)
-	if err != nil {
-		return xerrors.Errorf("failed to get lookback tipset for block: %v", err)
-	}
-
 	winnerCheck := async.Err(func() error {
-		if err = c.ValidateBlockWinner(ctx, lbTs, lbStateRoot, parent, parentStateRoot, blk, prevBeacon); err != nil {
+		if err = c.ValidateBlockWinner(ctx, workerAddr, lbTs, lbStateRoot, parent, parentStateRoot, blk, prevBeacon); err != nil {
 			return err
 		}
 		return nil
@@ -884,7 +879,7 @@ func GetMinerWorkerRaw(ctx context.Context, stateID cid.Cid, bstore blockstore.B
 	return aast.PubkeyAddress()
 }
 
-func (c *Expected) ValidateBlockWinner(ctx context.Context, lbTs *block.TipSet, lbRoot cid.Cid, baseTs *block.TipSet, baseRoot cid.Cid,
+func (c *Expected) ValidateBlockWinner(ctx context.Context, waddr address.Address, lbTs *block.TipSet, lbRoot cid.Cid, baseTs *block.TipSet, baseRoot cid.Cid,
 	blk *block.Block, prevEntry *block.BeaconEntry) error {
 	if blk.ElectionProof.WinCount < 1 {
 		return xerrors.Errorf("block is not claiming to be a winner")
@@ -912,11 +907,6 @@ func (c *Expected) ValidateBlockWinner(ctx context.Context, lbTs *block.TipSet, 
 	vrfBase, err := chain.DrawRandomness(rBeacon.Data, acrypto.DomainSeparationTag_ElectionProofProduction, blk.Height, buf.Bytes())
 	if err != nil {
 		return xerrors.Errorf("could not draw randomness: %s", err)
-	}
-
-	waddr, err := GetMinerWorkerRaw(ctx, lbRoot, c.bstore, blk.Miner)
-	if err != nil {
-		return xerrors.Errorf("query worker address failed: %s", err)
 	}
 
 	if err := VerifyElectionPoStVRF(ctx, waddr, vrfBase, blk.ElectionProof.VRFProof); err != nil {
