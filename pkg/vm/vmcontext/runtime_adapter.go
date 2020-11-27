@@ -19,8 +19,6 @@ import (
 	rtt "github.com/filecoin-project/go-state-types/rt"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/enccid"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
 )
@@ -248,38 +246,7 @@ func (a *runtimeAdapter) NewActorAddress() address.Address {
 
 // CreateActor implements Runtime.
 func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
-	if !builtin.IsBuiltinActor(codeID) {
-		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
-	}
-
-	vmlog.Debugf("creating actor, friendly-name: %s, code: %s, addr: %s\n", builtin.ActorNameByCode(codeID), codeID, addr)
-
-	// Check existing address. If nothing there, create empty actor.
-	//
-	// Note: we are storing the actors by ActorID *address*
-	_, found, err := a.ctx.vm.state.GetActor(a.ctx.vm.context, addr)
-	if err != nil {
-		panic(err)
-	}
-	if found {
-		runtime.Abortf(exitcode.SysErrorIllegalArgument, "Actor address already exists")
-	}
-
-	// Charge gas now that easy checks are done
-	a.ctx.gasTank.Charge(gas.PricelistByEpoch(a.ctx.vm.CurrentEpoch()).OnCreateActor(), "CreateActor code %s, address %s", codeID, addr)
-
-	newActor := &types.Actor{
-		// make this the right 'type' of actor
-		Code:       enccid.NewCid(codeID),
-		Balance:    abi.NewTokenAmount(0),
-		Head:       enccid.NewCid(EmptyObjectCid),
-		CallSeqNum: 0,
-	}
-	if err := a.ctx.vm.state.SetActor(a.ctx.vm.context, addr, newActor); err != nil {
-		panic(err)
-	}
-
-	_ = a.ctx.gasTank.TryCharge(gasOnActorExec)
+	a.ctx.CreateActor(codeID, addr)
 }
 
 // DeleteActor implements Runtime.

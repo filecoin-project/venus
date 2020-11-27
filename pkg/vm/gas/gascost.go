@@ -27,7 +27,7 @@ type GasCharge struct { //nolint
 }
 
 func (g GasCharge) Total() int64 {
-	return g.ComputeGas*GasComputeMulti + g.StorageGas*GasStorageMulti
+	return g.ComputeGas + g.StorageGas
 }
 
 func (g GasCharge) WithVirtual(compute, storage int64) GasCharge {
@@ -130,7 +130,7 @@ var prices = map[abi.ChainEpoch]Pricelist{
 		verifyPostDiscount:   true,
 		verifyConsensusFault: 495422,
 	},
-	abi.ChainEpoch(fork.UpgradeCalicoHeight): &pricelistV0{
+	fork.UpgradeCalicoHeight: &pricelistV0{
 		computeGasMulti: 1,
 		storageGasMulti: 1300,
 

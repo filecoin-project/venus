@@ -32,6 +32,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm/storage"
 )
 
+const MaxCallDepth = 4096
+
 var vmlog = logging.Logger("vm.context")
 var vmdebug = logging.Logger("vm.debug")
 
@@ -412,7 +414,7 @@ func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 		pricelist: vm.pricelist,
 		gasTank:   gasTank,
 	}
-	ctx := newInvocationContext(vm, gasIpld, &topLevel, imsg, gasTank, vm.vmOption.Rnd)
+	ctx := newInvocationContext(vm, gasIpld, &topLevel, imsg, gasTank, vm.vmOption.Rnd, nil)
 
 	// 4. invoke message
 	ret, code := ctx.invoke()
@@ -576,7 +578,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 
 	// 2. build invocation context
 	//Note replace from and to address here
-	ctx := newInvocationContext(vm, gasIpld, &topLevel, imsg, gasTank, vm.vmOption.Rnd)
+	ctx := newInvocationContext(vm, gasIpld, &topLevel, imsg, gasTank, vm.vmOption.Rnd, nil)
 
 	// 3. invoke
 	ret, code := ctx.invoke()

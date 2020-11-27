@@ -320,6 +320,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 		return xerrors.Errorf("get parent tipset state failed %s", err)
 	}
 	if !parentStateRoot.Equals(blk.StateRoot.Cid) {
+		fmt.Println("parentStateRoot: ", parentStateRoot, " blk.StateRoot.Cid: ", blk.StateRoot.Cid)
 		return ErrStateRootMismatch
 	}
 
@@ -411,8 +412,9 @@ func (c *Expected) validateBlock(ctx context.Context,
 		return nil
 	})
 
+	winPoStNv := c.fork.GetNtwkVersion(ctx, baseHeight)
 	wproofCheck := async.Err(func() error {
-		if err := c.VerifyWinningPoStProof(ctx, blk, prevBeacon, lbStateRoot); err != nil {
+		if err := c.VerifyWinningPoStProof(ctx, winPoStNv, blk, prevBeacon, lbStateRoot); err != nil {
 			return xerrors.Errorf("invalid election post: %v", err)
 		}
 		return nil
@@ -510,7 +512,7 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 
 		// Phase 1: syntactic validation, as defined in the spec
 		minGas := pl.OnChainMessage(msg.ChainLength())
-		if err := m.ValidForBlockInclusion(minGas.Total()); err != nil {
+		if err := m.ValidForBlockInclusion(minGas.Total(), c.fork.GetNtwkVersion(ctx, blk.Height)); err != nil {
 			return err
 		}
 
@@ -591,7 +593,7 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 	return nil
 }
 
-func (c *Expected) VerifyWinningPoStProof(ctx context.Context, blk *block.Block, prevBeacon *block.BeaconEntry, lbst cid.Cid) error {
+func (c *Expected) VerifyWinningPoStProof(ctx context.Context, nv network.Version, blk *block.Block, prevBeacon *block.BeaconEntry, lbst cid.Cid) error {
 	if constants.InsecurePoStValidation {
 		if len(blk.WinPoStProof) == 0 {
 			return xerrors.Errorf("[INSECURE-POST-VALIDATION] No winning post proof given")
@@ -628,7 +630,7 @@ func (c *Expected) VerifyWinningPoStProof(ctx context.Context, blk *block.Block,
 		return xerrors.New("power state view is null")
 	}
 
-	sectors, err := view.GetSectorsForWinningPoSt(ctx, c.proofVerifier, lbst, blk.Miner, rand)
+	sectors, err := view.GetSectorsForWinningPoSt(ctx, nv, c.proofVerifier, lbst, blk.Miner, rand)
 	if err != nil {
 		return xerrors.Errorf("getting winning post sector set: %v", err)
 	}

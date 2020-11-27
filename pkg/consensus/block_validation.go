@@ -167,7 +167,7 @@ func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, c
 		//}
 
 		minGas := pl.OnChainMessage(msg.ChainLength())
-		if err := m.ValidForBlockInclusion(minGas.Total()); err != nil {
+		if err := m.ValidForBlockInclusion(minGas.Total(), constants.NewestNetworkVersion); err != nil {
 			return err
 		}
 

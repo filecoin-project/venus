@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	specsbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/enccid"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/encoding"
 )
 
@@ -239,13 +241,17 @@ func (msg *UnsignedMessage) ToStorageBlock() (blocks.Block, error) {
 	return blocks.NewBlockWithCid(data, c)
 }
 
-func (msg *UnsignedMessage) ValidForBlockInclusion(minGas int64) error {
+func (msg *UnsignedMessage) ValidForBlockInclusion(minGas int64, version network.Version) error {
 	if msg.Version != 0 {
 		return xerrors.New("'Version' unsupported")
 	}
 
 	if msg.To == address.Undef {
 		return xerrors.New("'To' address cannot be empty")
+	}
+
+	if msg.To == constants.ZeroAddress && version >= network.Version7 {
+		return xerrors.New("invalid 'To' address")
 	}
 
 	if msg.From == address.Undef {
@@ -260,9 +266,9 @@ func (msg *UnsignedMessage) ValidForBlockInclusion(minGas int64) error {
 		return xerrors.New("'Value' field cannot be negative")
 	}
 
-	//if m.Value.GreaterThan(specsbig.NewInt(int64(FilBase))) {
-	//	return xerrors.New("'Value' field cannot be greater than total filecoin supply")
-	//}
+	if msg.Value.GreaterThan(crypto.TotalFilecoinInt) {
+		return xerrors.New("'Value' field cannot be greater than total filecoin supply")
+	}
 
 	if msg.GasFeeCap.Int == nil {
 		return xerrors.New("'GasFeeCap' cannot be nil")

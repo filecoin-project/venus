@@ -27,3 +27,6 @@ const BlockDelaySecs = uint64(builtin0.EpochDurationSeconds)
 const PropagationDelaySecs = uint64(6)
 
 var InsecurePoStValidation = false
+
+// the 'f' prefix doesn't matter
+var ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")

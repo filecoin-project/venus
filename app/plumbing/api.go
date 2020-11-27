@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
@@ -406,7 +407,9 @@ func (api *API) MinerGetBaseInfo(ctx context.Context, tsk block.TipSetKey, round
 		return nil, xerrors.Errorf("failed to get randomness for winning post: %v", err)
 	}
 
-	sectors, err := api.GetSectorsForWinningPoSt(ctx, pv, lbts, maddr, prand)
+	nv := api.fork.GetNtwkVersion(ctx, height)
+
+	sectors, err := api.GetSectorsForWinningPoSt(ctx, nv, pv, lbts, maddr, prand)
 	if err != nil {
 		return nil, xerrors.Errorf("getting winning post proving set: %v", err)
 	}
@@ -476,7 +479,7 @@ func (api *API) GetLookbackTipSetForRound(ctx context.Context, ts *block.TipSet,
 	return lbts, nil
 }
 
-func (api *API) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, ts *block.TipSet, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
+func (api *API) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, ts *block.TipSet, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
 	var partsProving []bitfield.BitField
 	var info *miner.MinerInfo
 
@@ -514,7 +517,7 @@ func (api *API) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Veri
 		return nil, nil
 	}
 
-	spt, err := ffiwrapper.SealProofTypeFromSectorSize(info.SectorSize)
+	spt, err := ffiwrapper.SealProofTypeFromSectorSize(info.SectorSize, nv)
 	if err != nil {
 		return nil, xerrors.Errorf("getting seal proof type: %v", err)
 	}

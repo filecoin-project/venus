@@ -10,7 +10,7 @@ import (
 // Consensus / Network
 
 const AllowableClockDriftSecs = uint64(1)
-const NewestNetworkVersion = network.Version6
+const NewestNetworkVersion = network.Version8
 const ActorUpgradeNetworkVersion = network.Version4
 
 // constants for Weight calculation
