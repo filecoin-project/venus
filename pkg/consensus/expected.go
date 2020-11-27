@@ -914,7 +914,7 @@ func (c *Expected) ValidateBlockWinner(ctx context.Context, lbTs *block.TipSet, 
 		return xerrors.Errorf("could not draw randomness: %s", err)
 	}
 
-	waddr, err := GetMinerWorkerRaw(ctx, baseRoot, c.bstore, blk.Miner)
+	waddr, err := GetMinerWorkerRaw(ctx, lbRoot, c.bstore, blk.Miner)
 	if err != nil {
 		return xerrors.Errorf("query worker address failed: %s", err)
 	}
