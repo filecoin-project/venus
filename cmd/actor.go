@@ -66,7 +66,7 @@ func makeActorView(act *types.Actor, addr address.Address) *ActorView {
 	return &ActorView{
 		Address: addr.String(),
 		Code:    act.Code.Cid,
-		Nonce:   act.CallSeqNum,
+		Nonce:   act.Nonce,
 		Balance: act.Balance,
 		Head:    act.Head.Cid,
 	}

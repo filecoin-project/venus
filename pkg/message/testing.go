@@ -61,7 +61,7 @@ func (p *FakeProvider) GetActorAt(ctx context.Context, key block.TipSetKey, addr
 }
 
 func (p *FakeProvider) LoadMessages(ctx context.Context, cid cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
-	msg := &types.UnsignedMessage{From: address.TestAddress, CallSeqNum: 1}
+	msg := &types.UnsignedMessage{From: address.TestAddress, Nonce: 1}
 	return []*types.SignedMessage{{Message: *msg}}, []*types.UnsignedMessage{msg}, nil
 }
 

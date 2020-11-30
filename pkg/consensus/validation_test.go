@@ -154,7 +154,7 @@ func TestMessageSyntaxValidator(t *testing.T) {
 
 func newActor(t *testing.T, balanceAF int, nonce uint64) *types.Actor {
 	actor := types.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(int64(balanceAF)), cid.Undef)
-	actor.CallSeqNum = nonce
+	actor.Nonce = nonce
 	return actor
 }
 

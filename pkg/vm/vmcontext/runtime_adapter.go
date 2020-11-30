@@ -270,10 +270,10 @@ func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
 
 	newActor := &types.Actor{
 		// make this the right 'type' of actor
-		Code:       enccid.NewCid(codeID),
-		Balance:    abi.NewTokenAmount(0),
-		Head:       enccid.NewCid(EmptyObjectCid),
-		CallSeqNum: 0,
+		Code:    enccid.NewCid(codeID),
+		Balance: abi.NewTokenAmount(0),
+		Head:    enccid.NewCid(EmptyObjectCid),
+		Nonce:   0,
 	}
 	if err := a.ctx.vm.state.SetActor(a.ctx.vm.context, addr, newActor); err != nil {
 		panic(err)

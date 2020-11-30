@@ -54,10 +54,10 @@ func NewStateWithBuiltinActor(t *testing.T, store cbor.IpldStore, ver StateTreeV
 	initCodeID, err := store.Put(ctx, initState)
 	require.NoError(t, err)
 	initActor := &types.Actor{
-		Code:       enccid.NewCid(builtin0.InitActorCodeID),
-		Head:       enccid.NewCid(initCodeID),
-		CallSeqNum: 0,
-		Balance:    abi.TokenAmount{},
+		Code:    enccid.NewCid(builtin0.InitActorCodeID),
+		Head:    enccid.NewCid(initCodeID),
+		Nonce:   0,
+		Balance: abi.TokenAmount{},
 	}
 	err = tree.SetActor(ctx, builtin0.InitActorAddr, initActor)
 	require.NoError(t, err)
@@ -87,10 +87,10 @@ func AddAccount(t *testing.T, tree *State, store cbor.IpldStore, addr address.Ad
 		panic(err)
 	}
 	accountActor := &types.Actor{
-		Code:       enccid.NewCid(builtin0.AccountActorCodeID),
-		Head:       enccid.NewCid(emptyObject),
-		CallSeqNum: 0,
-		Balance:    abi.TokenAmount{},
+		Code:    enccid.NewCid(builtin0.AccountActorCodeID),
+		Head:    enccid.NewCid(emptyObject),
+		Nonce:   0,
+		Balance: abi.TokenAmount{},
 	}
 	err = tree.SetActor(ctx, idAddr, accountActor)
 	require.NoError(t, err)
@@ -102,10 +102,10 @@ func AddAccount(t *testing.T, tree *State, store cbor.IpldStore, addr address.Ad
 		panic(err)
 	}
 	addrActor := &types.Actor{
-		Code:       enccid.NewCid(builtin0.AccountActorCodeID),
-		Head:       enccid.NewCid(accountRoot),
-		CallSeqNum: 0,
-		Balance:    abi.TokenAmount{},
+		Code:    enccid.NewCid(builtin0.AccountActorCodeID),
+		Head:    enccid.NewCid(accountRoot),
+		Nonce:   0,
+		Balance: abi.TokenAmount{},
 	}
 	err = tree.SetActor(context.Background(), addr, addrActor)
 	require.NoError(t, err)

@@ -811,10 +811,10 @@ func splitGenesisMultisig0(ctx context.Context, addr address.Address, store adt0
 	}
 
 	newActor := types.Actor{
-		Code:       enccid.NewCid(builtin0.MultisigActorCodeID),
-		Head:       enccid.NewCid(scid),
-		CallSeqNum: 0,
-		Balance:    big.Zero(),
+		Code:    enccid.NewCid(builtin0.MultisigActorCodeID),
+		Head:    enccid.NewCid(scid),
+		Nonce:   0,
+		Balance: big.Zero(),
 	}
 
 	i := uint64(0)

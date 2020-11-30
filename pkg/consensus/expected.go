@@ -578,11 +578,11 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 			if !builtin.IsAccountActor(act.Code.Cid) {
 				return xerrors.New("Sender must be an account actor")
 			}
-			nonces[m.From] = act.CallSeqNum
+			nonces[m.From] = act.Nonce
 		}
 
-		if nonces[m.From] != m.CallSeqNum {
-			return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", nonces[m.From], m.CallSeqNum)
+		if nonces[m.From] != m.Nonce {
+			return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", nonces[m.From], m.Nonce)
 		}
 		nonces[m.From]++
 

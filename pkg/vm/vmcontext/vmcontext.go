@@ -358,7 +358,7 @@ func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 	// 3. build context
 	topLevel := topLevelContext{
 		originatorStableAddress: imsg.From,
-		originatorCallSeq:       fromActor.CallSeqNum, // Implied CallSeqNum is that of the actor before incrementing.
+		originatorCallSeq:       fromActor.Nonce, // Implied Nonce is that of the actor before incrementing.
 		newActorAddressCount:    0,
 	}
 
@@ -456,7 +456,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 	}
 
 	// 3. make sure this is the right message order for fromActor
-	if msg.CallSeqNum != fromActor.CallSeqNum {
+	if msg.Nonce != fromActor.Nonce {
 		// Execution error; invalid seq number.
 		gasOutputs := gas.ZeroGasOutputs()
 		gasOutputs.MinerPenalty = minerPenaltyAmount
@@ -486,7 +486,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 		panic(xerrors.Errorf("failed To withdraw gas funds: %w", err))
 	}
 
-	// 5. Increment sender CallSeqNum
+	// 5. Increment sender Nonce
 	if err = vm.state.MutateActor(msg.From, func(msgFromActor *types.Actor) error {
 		msgFromActor.IncrementSeqNum()
 		return nil
@@ -510,7 +510,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 	// 3. process the msg
 	topLevel := topLevelContext{
 		originatorStableAddress: msg.From,
-		originatorCallSeq:       msg.CallSeqNum,
+		originatorCallSeq:       msg.Nonce,
 		newActorAddressCount:    0,
 	}
 

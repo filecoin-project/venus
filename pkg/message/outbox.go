@@ -180,7 +180,7 @@ func (ob *Outbox) UnSignedSend(ctx context.Context, message types.UnsignedMessag
 	if err != nil {
 		return cid.Undef, nil, errors.Wrapf(err, "failed calculating nonce for actor at %s", message.From)
 	}
-	message.CallSeqNum = nonce
+	message.Nonce = nonce
 
 	signed, err := types.NewSignedMessage(ctx, message, ob.signer)
 
@@ -261,10 +261,10 @@ func nextNonce(act *types.Actor, queue *Queue, address address.Address) (uint64,
 	}
 
 	poolNonce, found := queue.LargestNonce(address)
-	if found && poolNonce >= act.CallSeqNum {
+	if found && poolNonce >= act.Nonce {
 		return poolNonce + 1, nil
 	}
-	return act.CallSeqNum, nil
+	return act.Nonce, nil
 }
 
 func tipsetHeight(provider chainProvider, key block.TipSetKey) (abi.ChainEpoch, error) {

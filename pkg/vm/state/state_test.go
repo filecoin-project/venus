@@ -50,11 +50,11 @@ func TestStatePutGet(t *testing.T) {
 	act1out, found, err := tree.GetActor(ctx, addr1)
 	assert.NoError(t, err)
 	assert.True(t, found)
-	assert.Equal(t, uint64(1), act1out.CallSeqNum)
+	assert.Equal(t, uint64(1), act1out.Nonce)
 	act2out, found, err := tree.GetActor(ctx, addr2)
 	assert.NoError(t, err)
 	assert.True(t, found)
-	assert.Equal(t, uint64(2), act2out.CallSeqNum)
+	assert.Equal(t, uint64(2), act2out.Nonce)
 
 	// now test it persists across recreation of tree
 	tcid, err := tree.Flush(ctx)
@@ -66,11 +66,11 @@ func TestStatePutGet(t *testing.T) {
 	act1out2, found, err := tree2.GetActor(ctx, addr1)
 	assert.NoError(t, err)
 	assert.True(t, found)
-	assert.Equal(t, uint64(1), act1out2.CallSeqNum)
+	assert.Equal(t, uint64(1), act1out2.Nonce)
 	act2out2, found, err := tree2.GetActor(ctx, addr2)
 	assert.NoError(t, err)
 	assert.True(t, found)
-	assert.Equal(t, uint64(2), act2out2.CallSeqNum)
+	assert.Equal(t, uint64(2), act2out2.Nonce)
 }
 
 func TestStateErrors(t *testing.T) {
@@ -105,7 +105,7 @@ func TestGetAllActors(t *testing.T) {
 	}
 	addr := types.NewForTestGetter()()
 
-	newActor := types.Actor{Code: enccid.NewCid(builtin2.AccountActorCodeID), CallSeqNum: 1234, Balance: abi.NewTokenAmount(123)}
+	newActor := types.Actor{Code: enccid.NewCid(builtin2.AccountActorCodeID), Nonce: 1234, Balance: abi.NewTokenAmount(123)}
 	AddAccount(t, tree, cst, addr)
 	_, err = tree.Flush(ctx)
 	require.NoError(t, err)
@@ -116,7 +116,7 @@ func TestGetAllActors(t *testing.T) {
 		}
 		assert.Equal(t, addr, key)
 		assert.Equal(t, newActor.Code, result.Code)
-		assert.Equal(t, newActor.CallSeqNum, result.CallSeqNum)
+		assert.Equal(t, newActor.Nonce, result.Nonce)
 		assert.Equal(t, newActor.Balance, result.Balance)
 		return nil
 	})
@@ -153,10 +153,10 @@ func TestStateTreeConsistency(t *testing.T) {
 
 	for i, a := range addrs {
 		if err := tree.SetActor(ctx, a, &types.Actor{
-			Code:       enccid.NewCid(randomCid),
-			Head:       enccid.NewCid(randomCid),
-			Balance:    abi.NewTokenAmount(int64(10000 + i)),
-			CallSeqNum: uint64(1000 - i),
+			Code:    enccid.NewCid(randomCid),
+			Head:    enccid.NewCid(randomCid),
+			Balance: abi.NewTokenAmount(int64(10000 + i)),
+			Nonce:   uint64(1000 - i),
 		}); err != nil {
 			t.Fatal(err)
 		}
