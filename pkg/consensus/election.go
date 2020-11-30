@@ -90,7 +90,6 @@ func VerifyVRF(ctx context.Context, worker address.Address, vrfBase, vrfproof []
 	}
 
 	if err := sigs.Verify(sig, worker, vrfBase); err != nil {
-		logExpect.Warn("sig: ", sig, "worker: ", worker, "vrfBase: ", vrfBase, "err: ", err)
 		return xerrors.Errorf("vrf was invalid: %w", err)
 	}
 
@@ -114,9 +113,5 @@ func VerifyElectionPoStVRF(ctx context.Context, worker address.Address, rand []b
 	if constants.InsecurePoStValidation {
 		return nil
 	}
-	err := VerifyVRF(ctx, worker, rand, evrf)
-	if err != nil {
-		logExpect.Warn("worker: ", worker, "ran: ", rand, "evrf: ", evrf)
-	}
-	return err
+	return VerifyVRF(ctx, worker, rand, evrf)
 }

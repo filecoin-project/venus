@@ -320,7 +320,6 @@ func (c *Expected) validateBlock(ctx context.Context,
 		return xerrors.Errorf("get parent tipset state failed %s", err)
 	}
 	if !parentStateRoot.Equals(blk.StateRoot.Cid) {
-		fmt.Println("parentStateRoot: ", parentStateRoot, " blk.StateRoot.Cid: ", blk.StateRoot.Cid)
 		return ErrStateRootMismatch
 	}
 
@@ -394,7 +393,6 @@ func (c *Expected) validateBlock(ctx context.Context,
 		sampleEpoch := blk.Height - constants.TicketRandomnessLookback
 		bSmokeHeight := blk.Height > fork.UpgradeSmokeHeight
 		if err := c.IsValidTicket(ctx, blk.Parents, beaconBase, bSmokeHeight, sampleEpoch, blk.Miner, workerSignerAddr, blk.Ticket); err != nil {
-			logExpect.Errorf("invalid ticket: %s, cid: %s, height: %d", blk.Ticket.String(), blk.Cid(), blk.Height)
 			return errors.Wrapf(err, "invalid ticket: %s in block %s", blk.Ticket.String(), blk.Cid())
 		}
 		return nil

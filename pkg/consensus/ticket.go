@@ -59,7 +59,6 @@ func (tm TicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey,
 		return errors.Wrap(err, "failed to generate ticket randomness")
 	}
 
-	logExpect.Errorf("randomness: %s, ticket.VRFProof: %s", randomness, ticket.VRFProof)
 	return crypto.ValidateBlsSignature(randomness, workerSigner, ticket.VRFProof)
 }
 
