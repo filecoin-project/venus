@@ -125,17 +125,17 @@ func (dv *DefaultBlockValidator) ValidateHeaderSemantic(ctx context.Context, chi
 }
 
 func (dv *DefaultBlockValidator) validateMessage(msg *types.UnsignedMessage, expectedCallSeqNum map[address.Address]uint64, fromActor *types.Actor) error {
-	callSeq, ok := expectedCallSeqNum[msg.From]
+	nonce, ok := expectedCallSeqNum[msg.From]
 	if !ok {
-		callSeq = fromActor.CallSeqNum
+		nonce = fromActor.Nonce
 	}
 
 	// ensure message is in the correct order
-	if callSeq != msg.CallSeqNum {
-		return fmt.Errorf("callseqnum (%d) out of order (expected %d) from %s", msg.CallSeqNum, callSeq, msg.From)
+	if nonce != msg.Nonce {
+		return fmt.Errorf("nonce (%d) out of order (expected %d) from %s", msg.Nonce, nonce, msg.From)
 	}
 
-	expectedCallSeqNum[msg.From] = callSeq + 1
+	expectedCallSeqNum[msg.From] = nonce + 1
 	return nil
 }
 
@@ -188,11 +188,11 @@ func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, c
 			if !builtin.IsAccountActor(act.Code.Cid) {
 				return xerrors.New("Sender must be an account actor")
 			}
-			callSeqNums[m.From] = act.CallSeqNum
+			callSeqNums[m.From] = act.Nonce
 		}
 
-		if callSeqNums[m.From] != m.CallSeqNum {
-			return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", callSeqNums[m.From], m.CallSeqNum)
+		if callSeqNums[m.From] != m.Nonce {
+			return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", callSeqNums[m.From], m.Nonce)
 		}
 		callSeqNums[m.From]++
 

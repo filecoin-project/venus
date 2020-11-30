@@ -64,10 +64,10 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 	p := &block.Block{Height: 1, Timestamp: uint64(ts.Unix())}
 	parents := consensus.RequireNewTipSet(require.New(t), p)
 
-	msg0 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 1, Value: fbig.NewInt(0), GasFeeCap: fbig.NewInt(0), GasPremium: fbig.NewInt(0), GasLimit: 1000000}
-	msg1 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 2, Value: fbig.NewInt(0), GasFeeCap: fbig.NewInt(0), GasPremium: fbig.NewInt(0), GasLimit: 1000000}
-	msg2 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 3, Value: fbig.NewInt(0), GasFeeCap: fbig.NewInt(0), GasPremium: fbig.NewInt(0), GasLimit: 1000000}
-	msg3 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, CallSeqNum: 4, Value: fbig.NewInt(0), GasFeeCap: fbig.NewInt(0), GasPremium: fbig.NewInt(0), GasLimit: 1000000}
+	msg0 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, Nonce: 1, Value: fbig.NewInt(0), GasFeeCap: fbig.NewInt(0), GasPremium: fbig.NewInt(0), GasLimit: 1000000}
+	msg1 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, Nonce: 2, Value: fbig.NewInt(0), GasFeeCap: fbig.NewInt(0), GasPremium: fbig.NewInt(0), GasLimit: 1000000}
+	msg2 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, Nonce: 3, Value: fbig.NewInt(0), GasFeeCap: fbig.NewInt(0), GasPremium: fbig.NewInt(0), GasLimit: 1000000}
+	msg3 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, Nonce: 4, Value: fbig.NewInt(0), GasFeeCap: fbig.NewInt(0), GasPremium: fbig.NewInt(0), GasLimit: 1000000}
 
 	t.Run("rejects block with message from missing actor", func(t *testing.T) {
 		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{

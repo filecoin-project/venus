@@ -43,9 +43,9 @@ type Actor struct {
 	Code enccid.Cid
 	// Head is the CID of the root of the actor's state tree.
 	Head enccid.Cid
-	// CallSeqNum is the number expected on the next message from this actor.
+	// Nonce is the number expected on the next message from this actor.
 	// Messages are processed in strict, contiguous order.
-	CallSeqNum uint64
+	Nonce uint64
 	// Balance is the amount of attoFIL in the actor's account.
 	Balance abi.TokenAmount
 }
@@ -53,10 +53,10 @@ type Actor struct {
 // NewActor constructs a new actor.
 func NewActor(code cid.Cid, balance abi.TokenAmount, head cid.Cid) *Actor {
 	return &Actor{
-		Code:       enccid.NewCid(code),
-		CallSeqNum: 0,
-		Balance:    balance,
-		Head:       enccid.NewCid(head),
+		Code:    enccid.NewCid(code),
+		Nonce:   0,
+		Balance: balance,
+		Head:    enccid.NewCid(head),
 	}
 }
 
@@ -67,7 +67,7 @@ func (a *Actor) Empty() bool {
 
 // IncrementSeqNum increments the seq number.
 func (a *Actor) IncrementSeqNum() {
-	a.CallSeqNum = a.CallSeqNum + 1
+	a.Nonce = a.Nonce + 1
 }
 
 // UnmarshalCBOR must implement cbg.Unmarshaller to insert this into a hamt.

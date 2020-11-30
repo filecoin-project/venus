@@ -199,10 +199,10 @@ func (g *GenesisGenerator) createSingletonActor(ctx context.Context, addr addres
 	}
 
 	a := types.Actor{
-		Code:       enccid.NewCid(codeCid),
-		CallSeqNum: 0,
-		Balance:    balance,
-		Head:       enccid.NewCid(headCid),
+		Code:    enccid.NewCid(codeCid),
+		Nonce:   0,
+		Balance: balance,
+		Head:    enccid.NewCid(headCid),
 	}
 	if err := g.stateTree.SetActor(ctx, addr, &a); err != nil {
 		return nil, fmt.Errorf("failed to create actor during genesis block creation")
@@ -230,10 +230,10 @@ func (g *GenesisGenerator) updateSingletonActor(ctx context.Context, addr addres
 	}
 
 	a := types.Actor{
-		Code:       oldActor.Code,
-		CallSeqNum: 0,
-		Balance:    oldActor.Balance,
-		Head:       enccid.NewCid(headCid),
+		Code:    oldActor.Code,
+		Nonce:   0,
+		Balance: oldActor.Balance,
+		Head:    enccid.NewCid(headCid),
 	}
 	if err := g.stateTree.SetActor(ctx, addr, &a); err != nil {
 		return nil, fmt.Errorf("failed to create actor during genesis block creation")

@@ -149,6 +149,6 @@ func TestSignedMessageCorrupted(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.NoError(t, v.ValidateMessageSignature(ctx, smsg))
-	smsg.Message.CallSeqNum = uint64(42)
+	smsg.Message.Nonce = uint64(42)
 	assert.Error(t, v.ValidateMessageSignature(ctx, smsg))
 }

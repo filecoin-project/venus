@@ -98,14 +98,14 @@ func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.Uns
 		return fmt.Errorf("insufficient funds from sender %s to cover value and gas cost: %s ", msg.From, msg)
 	}
 
-	if msg.CallSeqNum < fromActor.CallSeqNum {
+	if msg.Nonce < fromActor.Nonce {
 		dropNonceTooLowCt.Inc(ctx, 1)
-		return fmt.Errorf("nonce %d lower than expected %d: %s", msg.CallSeqNum, fromActor.CallSeqNum, msg)
+		return fmt.Errorf("nonce %d lower than expected %d: %s", msg.Nonce, fromActor.Nonce, msg)
 	}
 
-	if msg.CallSeqNum > fromActor.CallSeqNum {
+	if msg.Nonce > fromActor.Nonce {
 		dropNonceTooHighCt.Inc(ctx, 1)
-		return fmt.Errorf("nonce %d greater than expected: %d: %s", msg.CallSeqNum, fromActor.CallSeqNum, msg)
+		return fmt.Errorf("nonce %d greater than expected: %d: %s", msg.Nonce, fromActor.Nonce, msg)
 	}
 
 	return nil

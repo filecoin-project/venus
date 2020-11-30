@@ -75,7 +75,7 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 				return err
 			}
 			for _, minedMsg := range secpMsgs {
-				removed, found, err := target.RemoveNext(ctx, minedMsg.Message.From, minedMsg.Message.CallSeqNum)
+				removed, found, err := target.RemoveNext(ctx, minedMsg.Message.From, minedMsg.Message.Nonce)
 				if err != nil {
 					return err
 				}
@@ -134,10 +134,10 @@ func (p *DefaultQueuePolicy) blockMsgsForTipset(ctx context.Context, ts *block.T
 	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
 		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
 		if _, ok := applied[m.From]; !ok {
-			applied[m.From] = m.CallSeqNum
+			applied[m.From] = m.Nonce
 		}
 
-		if applied[m.From] != m.CallSeqNum {
+		if applied[m.From] != m.Nonce {
 			return false, nil
 		}
 

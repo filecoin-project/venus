@@ -48,7 +48,7 @@ type addressNonce struct {
 }
 
 func newAddressNonce(msg *types.SignedMessage) addressNonce {
-	return addressNonce{addr: msg.Message.From, nonce: msg.Message.CallSeqNum}
+	return addressNonce{addr: msg.Message.From, nonce: msg.Message.Nonce}
 }
 
 // NewPool constructs a new Pool.
@@ -133,8 +133,8 @@ func (pool *Pool) LargestNonce(address address.Address) (largest uint64, found b
 	for _, m := range pool.Pending() {
 		if m.Message.From == address {
 			found = true
-			if m.Message.CallSeqNum > largest {
-				largest = m.Message.CallSeqNum
+			if m.Message.Nonce > largest {
+				largest = m.Message.Nonce
 			}
 		}
 	}

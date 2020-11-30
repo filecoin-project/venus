@@ -100,7 +100,7 @@ type UnsignedMessage struct {
 	// When receiving a message from a user account the nonce in
 	// the message must match the expected nonce in the from actor.
 	// This prevents replay attacks.
-	CallSeqNum uint64 `json:"callSeqNum"`
+	Nonce uint64 `json:"nonce"`
 
 	Value AttoFIL `json:"value"`
 
@@ -110,20 +110,18 @@ type UnsignedMessage struct {
 
 	Method abi.MethodNum `json:"method"`
 	Params []byte        `json:"params"`
-
-	// Pay attention to Equals() if updating this struct.
 }
 
 // NewUnsignedMessage creates a new message.
 func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte) *UnsignedMessage {
 	return &UnsignedMessage{
-		Version:    MessageVersion,
-		To:         to,
-		From:       from,
-		CallSeqNum: nonce,
-		Value:      value,
-		Method:     method,
-		Params:     params,
+		Version: MessageVersion,
+		To:      to,
+		From:    from,
+		Nonce:   nonce,
+		Value:   value,
+		Method:  method,
+		Params:  params,
 	}
 }
 
@@ -133,7 +131,7 @@ func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, me
 		Version:    MessageVersion,
 		To:         to,
 		From:       from,
-		CallSeqNum: nonce,
+		Nonce:      nonce,
 		Value:      value,
 		GasFeeCap:  gasFeeCap,
 		GasPremium: gasPremium,
@@ -204,7 +202,7 @@ func (msg *UnsignedMessage) String() string {
 func (msg *UnsignedMessage) Equals(other *UnsignedMessage) bool {
 	return msg.To == other.To &&
 		msg.From == other.From &&
-		msg.CallSeqNum == other.CallSeqNum &&
+		msg.Nonce == other.Nonce &&
 		msg.Value.Equals(other.Value) &&
 		msg.GasPremium.Equals(other.GasPremium) &&
 		msg.GasFeeCap.Equals(other.GasFeeCap) &&

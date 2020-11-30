@@ -54,7 +54,7 @@ func TestOutbox(t *testing.T) {
 		provider := message.NewFakeProvider(t)
 		gp := message.NewGasPredictor("gasPredictor")
 		actr := types.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
-		actr.CallSeqNum = 42
+		actr.Nonce = 42
 
 		keys := types.MustGenerateKeyInfo(1, 42)
 		mm := types.NewMessageMaker(t, keys)
@@ -84,7 +84,7 @@ func TestOutbox(t *testing.T) {
 			bcast  bool
 			nonce  uint64
 			height int
-		}{{true, actr.CallSeqNum, 1000}, {false, actr.CallSeqNum + 1, 1000}}
+		}{{true, actr.Nonce, 1000}, {false, actr.Nonce + 1, 1000}}
 
 		for _, test := range testCases {
 			_, pubDone, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasFeeCap(0), types.NewGasPremium(0), types.NewGas(0), test.bcast, builtin.MethodSend, abi.Empty)
@@ -94,7 +94,7 @@ func TestOutbox(t *testing.T) {
 			pubErr := <-pubDone
 			assert.NoError(t, pubErr)
 			require.NotNil(t, publisher.Message)
-			assert.Equal(t, test.nonce, publisher.Message.Message.CallSeqNum)
+			assert.Equal(t, test.nonce, publisher.Message.Message.Nonce)
 			assert.Equal(t, abi.ChainEpoch(test.height), publisher.Height)
 			assert.Equal(t, test.bcast, publisher.Bcast)
 		}
@@ -131,7 +131,7 @@ func TestOutbox(t *testing.T) {
 			)
 		})
 		actr := types.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
-		actr.CallSeqNum = 42
+		actr.Nonce = 42
 
 		provider.SetHeadAndActor(t, head.Key(), sender, actr)
 		defaultPolicy := message.NewMessageQueuePolicy(provider, 10)
@@ -162,13 +162,13 @@ func TestOutbox(t *testing.T) {
 		nonces := map[uint64]bool{}
 		for _, message := range enqueued {
 			assert.Equal(t, uint64(1000), message.Stamp)
-			_, found := nonces[message.Msg.Message.CallSeqNum]
+			_, found := nonces[message.Msg.Message.Nonce]
 			require.False(t, found)
-			nonces[message.Msg.Message.CallSeqNum] = true
+			nonces[message.Msg.Message.Nonce] = true
 		}
 
 		for i := 0; i < 60; i++ {
-			assert.True(t, nonces[actr.CallSeqNum+uint64(i)])
+			assert.True(t, nonces[actr.Nonce+uint64(i)])
 		}
 	})
 
